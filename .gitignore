@@ -1,0 +1,19 @@
+# ide noise
+.cache/
+.qtcreator/
+.vs/
+.vscode/
+CMakeLists.txt.user
+compile_commands.json
+*.vcxproj.user
+
+# whitelist shared vs code files
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# in-tree shadow builds
+build/
+out/
+
+# local files
+CMakeUserPresets.json
