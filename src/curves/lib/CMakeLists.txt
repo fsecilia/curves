@@ -23,6 +23,7 @@ add_library(lib
 )
 target_include_directories(lib INTERFACE
   "$<BUILD_INTERFACE:${config_gen_root}>"
+  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
 )
 
 target_link_libraries(lib PRIVATE userland_library)
