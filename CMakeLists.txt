@@ -17,4 +17,8 @@ if (ccache)
   set(CMAKE_CXX_LINKER_LAUNCHER "${ccache}")
 endif()
 
+# -----------------------------------------------------------------------------
+# Project Subdirectories
+# -----------------------------------------------------------------------------
+
 add_subdirectory(src/curves)
