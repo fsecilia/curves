@@ -21,6 +21,12 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG True)
 find_package(Threads REQUIRED)
 
+# Find gtest and enable testing if found.
+find_package(GTest)
+if (GTEST_FOUND)
+  set(curves_enable_testing True)
+endif()
+
 # -----------------------------------------------------------------------------
 # Project Subdirectories
 # -----------------------------------------------------------------------------
