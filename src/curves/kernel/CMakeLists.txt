@@ -65,6 +65,16 @@ set_target_properties(userland_library
     OUTPUT_NAME curves_userland
 )
 
+# Disable warnings.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(userland_library  PUBLIC
+    # This is temporary until we get a few modules populated.
+    -Wno-empty-translation-unit
+
+    -Wno-reserved-macro-identifier
+  )
+endif()
+
 # Define input and output dirs.
 set(driver_bin_dir "${CMAKE_CURRENT_BINARY_DIR}/driver")
 set(driver_src_dir "${CMAKE_CURRENT_SOURCE_DIR}/driver")
