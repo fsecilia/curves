@@ -1,0 +1,18 @@
+/*!
+  \file
+  \brief Generated file containing project information from cmake.
+
+  \copyright Copyright (c) 2025 Frank Secilia \n
+  SPDX-License-Identifier: MIT
+*/
+
+#pragma once
+
+// clang-format off
+
+#define version_major ${CMAKE_PROJECT_VERSION_MAJOR}
+#define version_minor ${CMAKE_PROJECT_VERSION_MINOR}
+#define version_patch ${CMAKE_PROJECT_VERSION_PATCH}
+#define version       "${CMAKE_PROJECT_VERSION}"
+
+// clang-format on
