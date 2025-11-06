@@ -76,7 +76,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(-fstrict-aliasing -fsized-deallocation)
+  add_compile_options(
+    -fstrict-aliasing
+    $<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>
+  )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -84,7 +87,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(-fconcepts-diagnostics-depth=10)
+  add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-fconcepts-diagnostics-depth=10>
+  )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")

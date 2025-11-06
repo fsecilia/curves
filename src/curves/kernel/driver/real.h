@@ -12,4 +12,6 @@
 #ifndef _CURVES_REAL_H
 #define _CURVES_REAL_H
 
+typedef int fixed_t;
+
 #endif /* _CURVES_REAL_H */
