@@ -25,9 +25,10 @@ target_include_directories(lib INTERFACE
   "$<BUILD_INTERFACE:${config_gen_root}>"
   "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
 )
-
 target_link_libraries(lib PRIVATE userland_library)
 set_target_properties(lib
   PROPERTIES
     OUTPUT_NAME curves
+    VERSION ${PROJECT_VERSION}
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
