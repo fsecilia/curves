@@ -86,38 +86,21 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   )
 endif()
 
-# Copy version.mk to build directory.
+# Copy make files to build directory, append VPATH to Kbuild for out of tree.
 add_custom_command(
-  OUTPUT "${driver_bin_dir}/version.mk"
+  OUTPUT
+    "${driver_bin_dir}/version.mk"
+    "${driver_bin_dir}/Makefile"
+    "${driver_bin_dir}/Kbuild"
   COMMAND
     "${CMAKE_COMMAND}" -E copy
       "${driver_src_dir}/version.mk"
-      "${driver_bin_dir}/version.mk"
-  DEPENDS "${driver_src_dir}/version.mk"
-  COMMENT "Copying version.mk..."
-)
-
-# Copy Makefile to build directory.
-add_custom_command(
-  OUTPUT "${driver_bin_dir}/Makefile"
-  COMMAND
-    "${CMAKE_COMMAND}" -E copy
       "${driver_src_dir}/Makefile"
-      "${driver_bin_dir}/Makefile"
-  DEPENDS "${driver_src_dir}/Makefile"
-  COMMENT "Copying Makefile..."
-)
-
-# Copy Kbuild to build directory, then append VPATH for out-of-tree build.
-add_custom_command(
-  OUTPUT "${driver_bin_dir}/Kbuild"
-  COMMAND
-    "${CMAKE_COMMAND}" -E copy
       "${driver_src_dir}/Kbuild"
-      "${driver_bin_dir}/Kbuild"
+      "${driver_bin_dir}"
   COMMAND echo "VPATH := ${driver_src_dir}" >> "${driver_bin_dir}/Kbuild"
-  DEPENDS "${driver_src_dir}/Kbuild"
-  COMMENT "Copying and configuring Kbuild..."
+  DEPENDS "${driver_src_dir}/version.mk"
+  COMMENT "Copying makefiles to build dir..."
 )
 
 # Path to final build output.
