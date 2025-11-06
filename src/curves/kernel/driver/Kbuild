@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GNU
+# Copyright (c) 2025 Frank Secilia
+
+obj-m := curves.o
+
+curves-common-objs := real.o
+
+curves-module-objs := entry_point.o
+
+curves-objs := $(curves-common-objs) $(curves-module-objs)
