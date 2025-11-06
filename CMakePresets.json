@@ -1,0 +1,155 @@
+{
+    "version": 10,
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
+            }
+        },
+
+        {
+            "name": "ninja",
+            "hidden": true,
+            "generator": "Ninja",
+            "inherits": ["base"]
+        },
+
+        {
+            "name": "debug",
+            "hidden": true,
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
+        },
+        {
+            "name": "release",
+            "hidden": true,
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}
+        },
+
+        {
+            "name": "linux-host",
+            "hidden": true,
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"}
+        },
+        {
+            "name": "osx-host",
+            "hidden": true,
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"}
+        },
+        {
+            "name": "windows-host",
+            "hidden": true,
+            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"}
+        },
+
+        {
+            "name": "clang",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "gcc",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "cl",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
+            }
+        },
+
+        {
+            "name": "ninja-linux-clang-debug",
+            "inherits": ["ninja", "linux-host", "clang", "debug"]
+        },
+        {
+            "name": "ninja-linux-clang-release",
+            "inherits": ["ninja", "linux-host", "clang", "release"]
+        },
+        {
+            "name": "ninja-linux-gcc-debug",
+            "inherits": ["ninja", "linux-host", "gcc", "debug"]
+        },
+        {
+            "name": "ninja-linux-gcc-release",
+            "inherits": ["ninja", "linux-host", "gcc", "release"]
+        },
+        {
+            "name": "ninja-osx-clang-debug",
+            "inherits": ["ninja", "osx-host", "clang", "debug"]
+        },
+        {
+            "name": "ninja-osx-clang-release",
+            "inherits": ["ninja", "osx-host", "clang", "release"]
+        },
+        {
+            "name": "ninja-windows-clang-debug",
+            "inherits": ["ninja", "windows-host", "clang", "debug"]
+        },
+        {
+            "name": "ninja-windows-clang-release",
+            "inherits": ["ninja", "windows-host", "clang", "release"]
+        },
+        {
+            "name": "ninja-windows-cl-debug",
+            "inherits": ["ninja", "windows-host", "cl", "debug"]
+        },
+        {
+            "name": "ninja-windows-cl-release",
+            "inherits": ["ninja", "windows-host", "cl", "release"]
+        }
+    ],
+
+    "buildPresets": [
+        {
+            "name": "ninja-linux-clang-debug",
+            "configurePreset": "ninja-linux-clang-debug"
+        },
+        {
+            "name": "ninja-linux-clang-release",
+            "configurePreset": "ninja-linux-clang-release"
+        },
+        {
+            "name": "ninja-linux-gcc-debug",
+            "configurePreset": "ninja-linux-gcc-debug"
+        },
+        {
+            "name": "ninja-linux-gcc-release",
+            "configurePreset": "ninja-linux-gcc-release"
+        },
+        {
+            "name": "ninja-osx-clang-debug",
+            "configurePreset": "ninja-osx-clang-debug"
+        },
+        {
+            "name": "ninja-osx-clang-release",
+            "configurePreset": "ninja-osx-clang-release"
+        },
+        {
+            "name": "ninja-windows-clang-debug",
+            "configurePreset": "ninja-windows-clang-debug"
+        },
+        {
+            "name": "ninja-windows-clang-release",
+            "configurePreset": "ninja-windows-clang-release"
+        },
+        {
+            "name": "ninja-windows-cl-debug",
+            "configurePreset": "ninja-windows-cl-debug"
+        },
+        {
+            "name": "ninja-windows-cl-release",
+            "configurePreset": "ninja-windows-cl-release"
+        }
+    ]
+}
