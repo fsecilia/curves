@@ -93,6 +93,34 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 # -----------------------------------------------------------------------------
+# Project Functions
+# -----------------------------------------------------------------------------
+
+# Disables a few warnings generated when using gtest.
+function(configure_test_target_warnings target)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(${target} PUBLIC
+      -Wno-ctad-maybe-unsupported
+      -Wno-global-constructors
+      -Wno-padded
+      -Wno-shadow
+      -Wno-shadow-field-in-constructor
+      -Wno-unneeded-member-function
+      -Wno-unused-member-function
+      -Wno-unused-template
+    )
+  endif()
+
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(${target} PUBLIC
+      -Wno-changes-meaning
+      -Wno-missing-field-initializers
+      -Wno-unused-local-typedefs
+    )
+  endif()
+endfunction()
+
+# -----------------------------------------------------------------------------
 # Project Subdirectories
 # -----------------------------------------------------------------------------
 
