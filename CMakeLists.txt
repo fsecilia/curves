@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 4.0.2)
 project(curves VERSION 0.1.0)
 
 # -----------------------------------------------------------------------------
-# ccache
+# Dependencies
 # -----------------------------------------------------------------------------
 
 # Use ccache, if available.
@@ -16,10 +16,6 @@ if (ccache)
   set(CMAKE_C_LINKER_LAUNCHER "${ccache}")
   set(CMAKE_CXX_LINKER_LAUNCHER "${ccache}")
 endif()
-
-# -----------------------------------------------------------------------------
-# Dependencies
-# -----------------------------------------------------------------------------
 
 # Find system threading library.
 set(THREADS_PREFER_PTHREAD_FLAG True)
