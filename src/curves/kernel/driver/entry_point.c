@@ -7,6 +7,7 @@
 #include "entry_point.h"
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/stringify.h>
 
 static int __init curves_init(void)
 {
@@ -23,3 +24,4 @@ module_exit(curves_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Frank Secilia");
 MODULE_DESCRIPTION("Curves mouse acceleration input handler");
+MODULE_VERSION(__stringify(CURVES_MODULE_VERSION));

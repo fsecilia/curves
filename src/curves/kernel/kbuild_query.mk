@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Frank Secilia
 
-include driver/Kbuild
+src := driver
 
-# Prints list of source files common to the kernel module and userland.
+include $(src)/Kbuild
+
 print-curves-common-sources:
-	@echo $(patsubst %.o,driver/%.c,$(curves-common-objs))
+	@echo $(patsubst %.o,$(src)/%.c,$(curves-common-objs))
 
-# Prints list of source files specific to the kernel module.
 print-curves-module-sources:
-	@echo $(patsubst %.o,driver/%.c,$(curves-module-objs))
+	@echo $(patsubst %.o,$(src)/%.c,$(curves-module-objs))

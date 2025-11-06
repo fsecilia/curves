@@ -40,6 +40,15 @@ set(module_headers
   "driver/entry_point.h"
 )
 
+# Define input and output dirs.
+set(driver_bin_dir "${CMAKE_CURRENT_BINARY_DIR}/driver")
+set(driver_src_dir "${CMAKE_CURRENT_SOURCE_DIR}/driver")
+
+# Write version.mk for the Kbuild.
+file(WRITE
+  "${driver_src_dir}/version.mk" "CURVES_VERSION := ${PROJECT_VERSION}\n"
+)
+
 # Get common sources from Kbuild.
 execute_process(
   COMMAND ${CMAKE_COMMAND} -E echo "Getting library sources..."
@@ -63,6 +72,8 @@ add_library(userland_library ${common_sources})
 set_target_properties(userland_library
   PROPERTIES
     OUTPUT_NAME curves_userland
+    VERSION ${PROJECT_VERSION}
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
 
 # Disable warnings.
@@ -75,9 +86,16 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   )
 endif()
 
-# Define input and output dirs.
-set(driver_bin_dir "${CMAKE_CURRENT_BINARY_DIR}/driver")
-set(driver_src_dir "${CMAKE_CURRENT_SOURCE_DIR}/driver")
+# Copy version.mk to build directory.
+add_custom_command(
+  OUTPUT "${driver_bin_dir}/version.mk"
+  COMMAND
+    "${CMAKE_COMMAND}" -E copy
+      "${driver_src_dir}/version.mk"
+      "${driver_bin_dir}/version.mk"
+  DEPENDS "${driver_src_dir}/version.mk"
+  COMMENT "Copying version.mk..."
+)
 
 # Copy Makefile to build directory.
 add_custom_command(
@@ -112,7 +130,9 @@ add_custom_command(
     M=${driver_bin_dir}
     modules
   WORKING_DIRECTORY "${driver_bin_dir}"
-  DEPENDS "${driver_bin_dir}/Makefile"
+  DEPENDS
+    "${driver_bin_dir}/version.mk"
+    "${driver_bin_dir}/Makefile"
     "${driver_bin_dir}/Kbuild"
     ${module_sources}
     ${module_headers}
