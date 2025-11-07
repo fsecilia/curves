@@ -86,44 +86,28 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   )
 endif()
 
-# Copy make files to build directory, append VPATH to Kbuild for out of tree.
-add_custom_command(
-  OUTPUT
-    "${driver_bin_dir}/version.mk"
-    "${driver_bin_dir}/Makefile"
-    "${driver_bin_dir}/Kbuild"
-  COMMAND
-    "${CMAKE_COMMAND}" -E copy
-      "${driver_src_dir}/version.mk"
-      "${driver_src_dir}/Makefile"
-      "${driver_src_dir}/Kbuild"
-      "${driver_bin_dir}"
-  COMMAND echo "VPATH := ${driver_src_dir}" >> "${driver_bin_dir}/Kbuild"
-  DEPENDS "${driver_src_dir}/version.mk"
-  COMMENT "Copying makefiles to build dir..."
-)
-
 # Path to final build output.
 set(kernel_module_output "${driver_bin_dir}/curves.ko")
+
+# Make command, without a target.
+set(kernel_make_command make -sC "/lib/modules/${CMAKE_SYSTEM_VERSION}/build"
+    M=${driver_src_dir}
+    MO=${driver_bin_dir}
+)
 
 # Kick off Kbuild.
 add_custom_command(
   OUTPUT "${kernel_module_output}"
-  COMMAND make -sC "/lib/modules/${CMAKE_SYSTEM_VERSION}/build"
-    M=${driver_bin_dir}
-    modules
+  COMMAND ${kernel_make_command} modules
   WORKING_DIRECTORY "${driver_bin_dir}"
   DEPENDS
-    "${driver_bin_dir}/version.mk"
-    "${driver_bin_dir}/Makefile"
-    "${driver_bin_dir}/Kbuild"
     ${module_sources}
     ${module_headers}
     userland_library
   COMMENT "Building kernel module..."
   VERBATIM
+  USES_TERMINAL
 )
 
 # Add named target to Kbuild.
 add_custom_target(kernel_module ALL DEPENDS "${kernel_module_output}")
-
