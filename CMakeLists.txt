@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Frank Secilia
 
-cmake_minimum_required(VERSION 4.0.2)
+cmake_minimum_required(VERSION 3.31)
 project(curves VERSION 0.1.0)
 
 # -----------------------------------------------------------------------------
