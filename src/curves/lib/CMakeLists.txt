@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Frank Secilia
 
+# -----------------------------------------------------------------------------
+# Project Files
+# -----------------------------------------------------------------------------
+
 set(library_files
   lib.cpp
   lib.hpp
@@ -15,6 +19,10 @@ set(config_gen_filename config.gen.hpp)
 set(config_gen_root "${CMAKE_BINARY_DIR}/gen")
 set(config_gen_file "${config_gen_root}/curves/${config_gen_filename}")
 configure_file("${config_template_file}" "${config_gen_file}")
+
+# -----------------------------------------------------------------------------
+# Project Definition
+# -----------------------------------------------------------------------------
 
 add_library(lib
   ${library_files}
