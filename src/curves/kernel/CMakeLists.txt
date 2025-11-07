@@ -111,3 +111,12 @@ add_custom_command(
 
 # Add named target to Kbuild.
 add_custom_target(kernel_module ALL DEPENDS "${kernel_module_output}")
+
+# Add a separate target for cleaning the module.
+add_custom_target(kernel_module_clean
+  COMMAND ${kernel_make_command} clean
+  WORKING_DIRECTORY "${driver_bin_dir}"
+  COMMENT "Cleaning kernel module..."
+  VERBATIM
+  USES_TERMINAL
+)
