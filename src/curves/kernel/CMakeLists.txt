@@ -2,7 +2,7 @@
 # Copyright (c) 2025 Frank Secilia
 #
 # This CMake script kicks off the kernel module's Kbuild when necessary and
-# builds a userland library from some of the common files in the module.
+# builds a userland library from the common files in the module.
 #
 # The module build is driven by the Kbuild file, `driver/Kbuild`. That file is
 # the source of truth for the files in the module. CMake asks the Kbuild for
@@ -15,8 +15,8 @@
 #      `real.c`). These are built by both the Kbuild for the module and by
 #      CMake in the library.
 #
-# These common sources are implementations of things like fixed point math and
-# the individual sensitivity curves. They are not anything that crosses the
+# These common sources are c implementations of things like fixed point math
+# and the individual sensitivity curves. They are not anything that crosses the
 # UAPI.
 #
 # CMake tracks dependencies for the library normally. When a common header
@@ -25,7 +25,7 @@
 # when a common header changes, the module is rebuilt.
 #
 # This leaves a dependency gap: headers for the module are not part of the
-# userland library and aren't tracked automatically. These headers must be
+# common library and aren't tracked automatically. These headers must be
 # tracked manually. The tracked files are listed in `module_headers`, below.
 
 # -----------------------------------------------------------------------------
@@ -37,10 +37,10 @@
 # This is a manually-updated list of module-specific headers. It mirrors the
 # file list in driver/Kbuild. This duplication is unavoidable.
 #
-# Headers for kernel-only sources are not tracked by the userland library
-# build. We list them here manually so the kernel module's custom build command
-# can depend on them. This way, modifying any kernel header, common or
-# module-only, correctly triggers a rebuild of the kernel module.
+# Headers for kernel-only sources are not tracked by the common library build.
+# We list them here manually so the kernel module's custom build command can
+# depend on them. This way, modifying any kernel header, common or module-only,
+# correctly triggers a rebuild of the kernel module.
 list(APPEND module_headers
   "driver/entry_point.h"
 )
@@ -90,18 +90,18 @@ execute_process(
 # Project Definition
 # -----------------------------------------------------------------------------
 
-# Add userland library containing common sources.
-add_library(userland_library ${common_sources})
-set_target_properties(userland_library
+# Add common library containing common sources.
+add_library(common_library ${common_sources})
+set_target_properties(common_library
   PROPERTIES
-    OUTPUT_NAME curves_userland
+    OUTPUT_NAME curves_common
     VERSION ${PROJECT_VERSION}
     SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
 
 # Disable warnings.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(userland_library  PUBLIC
+  target_compile_options(common_library PUBLIC
     # This is temporary until we get a few modules populated.
     -Wno-empty-translation-unit
 
@@ -130,7 +130,7 @@ add_custom_command(
   DEPENDS
     ${module_sources}
     ${module_headers}
-    userland_library
+    common_library
   COMMENT "Building kernel module..."
   VERBATIM
   USES_TERMINAL
