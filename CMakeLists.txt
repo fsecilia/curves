@@ -98,6 +98,17 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 # -----------------------------------------------------------------------------
+# Installation
+# -----------------------------------------------------------------------------
+
+# Determine install directories.
+include(GNUInstallDirs)
+
+# Suppress "Up-to-date" message cmake prints for every installed file.
+set(CMAKE_INSTALL_MESSAGE NEVER)
+
+
+# -----------------------------------------------------------------------------
 # Project Functions
 # -----------------------------------------------------------------------------
 

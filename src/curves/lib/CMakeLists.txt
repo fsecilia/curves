@@ -40,3 +40,19 @@ set_target_properties(lib
     VERSION ${PROJECT_VERSION}
     SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
+
+# -----------------------------------------------------------------------------
+# Installation
+# -----------------------------------------------------------------------------
+
+# Install library files.
+install(TARGETS lib
+  # Install .a or .lib, if configured.
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+
+  # Install .so, if configured.
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+
+  # Install .dll, if configured.
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
