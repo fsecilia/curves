@@ -42,7 +42,7 @@
 # depend on them. This way, modifying any kernel header, common or module-only,
 # correctly triggers a rebuild of the kernel module.
 list(APPEND module_headers
-  "driver/entry_point.h"
+  driver/entry_point.h
 )
 
 # -----------------------------------------------------------------------------
