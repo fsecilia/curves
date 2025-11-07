@@ -29,7 +29,7 @@
 # tracked manually. The tracked files are listed in `module_headers`, below.
 
 # -----------------------------------------------------------------------------
-# Module Headers
+# Project Files
 # -----------------------------------------------------------------------------
 
 # Define the list of kernel-only module headers.
@@ -43,6 +43,12 @@
 # correctly triggers a rebuild of the kernel module.
 list(APPEND module_headers
   driver/entry_point.h
+)
+
+# File list for common lib unit test project.
+list(APPEND common_test_files
+  common_test.cpp
+  common_test.hpp
 )
 
 # -----------------------------------------------------------------------------
@@ -70,7 +76,7 @@ file(WRITE
 
 # Get common sources from Kbuild.
 execute_process(
-  COMMAND ${CMAKE_COMMAND} -E echo "Getting library sources..."
+  COMMAND ${CMAKE_COMMAND} -E echo "Getting common sources..."
   COMMAND make -f kbuild_query.mk print-curves-common-sources
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   OUTPUT_VARIABLE common_sources
@@ -147,3 +153,20 @@ add_custom_target(kernel_module_clean
   VERBATIM
   USES_TERMINAL
 )
+
+# -----------------------------------------------------------------------------
+# Test Project
+# -----------------------------------------------------------------------------
+
+if (enable_testing)
+  add_executable(common_test ${common_test_files})
+  target_link_libraries(common_test PUBLIC
+    common_library
+    GTest::gmock_main
+    GTest::gtest_main
+    GTest::gmock
+    GTest::gtest
+  )
+  configure_test_target_warnings(common_test)
+  gtest_discover_tests(common_test)
+endif()

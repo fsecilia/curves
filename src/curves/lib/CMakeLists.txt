@@ -10,6 +10,11 @@ list(APPEND library_files
   lib.hpp
 )
 
+list(APPEND test_files
+  test.cpp
+  test.hpp
+)
+
 # -----------------------------------------------------------------------------
 # Generated Configuration
 # -----------------------------------------------------------------------------
@@ -33,7 +38,7 @@ target_include_directories(lib INTERFACE
   "$<BUILD_INTERFACE:${config_gen_root}>"
   "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
 )
-target_link_libraries(lib INTERFACE userland_library)
+target_link_libraries(lib INTERFACE common_library)
 set_target_properties(lib
   PROPERTIES
     OUTPUT_NAME curves
@@ -56,3 +61,20 @@ install(TARGETS lib
   # Install .dll, if configured.
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# -----------------------------------------------------------------------------
+# Test Project
+# -----------------------------------------------------------------------------
+
+if (enable_testing)
+  add_executable(test ${test_files})
+  target_link_libraries(test PUBLIC
+    lib
+    GTest::gmock_main
+    GTest::gtest_main
+    GTest::gmock
+    GTest::gtest
+  )
+  configure_test_target_warnings(test)
+  gtest_discover_tests(test)
+endif()
