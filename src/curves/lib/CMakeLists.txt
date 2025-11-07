@@ -5,7 +5,7 @@
 # Project Files
 # -----------------------------------------------------------------------------
 
-set(library_files
+list(APPEND library_files
   lib.cpp
   lib.hpp
 )
