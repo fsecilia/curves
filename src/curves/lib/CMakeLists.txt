@@ -24,7 +24,7 @@ configure_file("${config_template_file}" "${config_gen_file}")
 # Project Definition
 # -----------------------------------------------------------------------------
 
-add_library(lib
+add_library(lib INTERFACE
   ${library_files}
   "${config_template_file}"
   "${config_gen_file}"
@@ -33,7 +33,7 @@ target_include_directories(lib INTERFACE
   "$<BUILD_INTERFACE:${config_gen_root}>"
   "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
 )
-target_link_libraries(lib PRIVATE userland_library)
+target_link_libraries(lib INTERFACE userland_library)
 set_target_properties(lib
   PROPERTIES
     OUTPUT_NAME curves
