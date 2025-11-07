@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/*
+/*!
   \file
 
   Copyright (C) 2025 Frank Secilia \n
