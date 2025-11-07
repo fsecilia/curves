@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
-/*
+/*!
   \file
-
-  Copyright (C) 2025 Frank Secilia \n
-  Author: Frank Secilia <frank.secilia@gmail.com>
+  \copyright Copyright (C) 2025 Frank Secilia
 */
 
 #include "lib.hpp"
