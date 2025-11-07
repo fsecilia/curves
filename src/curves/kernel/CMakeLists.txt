@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2025 Frank Secilia
 #
-# This CMake scripot kicks off the kernel module's Kbuild when necessary and
+# This CMake script kicks off the kernel module's Kbuild when necessary and
 # builds a userland library from some of the common files in the module.
 #
 # The module build is driven by the Kbuild file, `driver/Kbuild`. That file is
@@ -25,29 +25,48 @@
 # when a common header changes, the module is rebuilt.
 #
 # This leaves a dependency gap: headers for the module are not part of the
-# user-space library and aren't tracked automatically. These headers must be
+# userland library and aren't tracked automatically. These headers must be
 # tracked manually. The tracked files are listed in `module_headers`, below.
+
+# -----------------------------------------------------------------------------
+# Module Headers
+# -----------------------------------------------------------------------------
 
 # Define the list of kernel-only module headers.
 #
-# Headers for kernel-only sources are not tracked by the user-space library
-# build. We list them here manually so the kernel module's custom build command
-# can depend on them.
+# This is a manually-updated list of module-specific headers. It mirrors the
+# file list in driver/Kbuild. This duplication is unavoidable.
 #
-# This way, modifying any kernel header, common or module-only, correctly
-# triggers a rebuild of the kernel module.
-set(module_headers
+# Headers for kernel-only sources are not tracked by the userland library
+# build. We list them here manually so the kernel module's custom build command
+# can depend on them. This way, modifying any kernel header, common or
+# module-only, correctly triggers a rebuild of the kernel module.
+list(APPEND module_headers
   "driver/entry_point.h"
 )
+
+# -----------------------------------------------------------------------------
+# Path Configuration
+# -----------------------------------------------------------------------------
 
 # Define input and output dirs.
 set(driver_bin_dir "${CMAKE_CURRENT_BINARY_DIR}/driver")
 set(driver_src_dir "${CMAKE_CURRENT_SOURCE_DIR}/driver")
 
+# -----------------------------------------------------------------------------
+# Kbuild Export
+# -----------------------------------------------------------------------------
+
 # Write version.mk for the Kbuild.
+#
+# This is how we export the CMake build version to the kernel module.
 file(WRITE
   "${driver_src_dir}/version.mk" "CURVES_VERSION := ${PROJECT_VERSION}\n"
 )
+
+# -----------------------------------------------------------------------------
+# Kbuild Import
+# -----------------------------------------------------------------------------
 
 # Get common sources from Kbuild.
 execute_process(
@@ -66,6 +85,10 @@ execute_process(
   OUTPUT_VARIABLE module_sources
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+# -----------------------------------------------------------------------------
+# Project Definition
+# -----------------------------------------------------------------------------
 
 # Add userland library containing common sources.
 add_library(userland_library ${common_sources})
@@ -86,10 +109,14 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   )
 endif()
 
+# -----------------------------------------------------------------------------
+# Kbuild Delegation
+# -----------------------------------------------------------------------------
+
 # Path to final build output.
 set(kernel_module_output "${driver_bin_dir}/curves.ko")
 
-# Make command, without a target.
+# Define base make command with no target listed.
 set(kernel_make_command make -sC "/lib/modules/${CMAKE_SYSTEM_VERSION}/build"
     M=${driver_src_dir}
     MO=${driver_bin_dir}
@@ -109,10 +136,10 @@ add_custom_command(
   USES_TERMINAL
 )
 
-# Add named target to Kbuild.
+# Add named target to kick off Kbuild.
 add_custom_target(kernel_module ALL DEPENDS "${kernel_module_output}")
 
-# Add a separate target for cleaning the module.
+# Add named target for cleaning the Kbuild.
 add_custom_target(kernel_module_clean
   COMMAND ${kernel_make_command} clean
   WORKING_DIRECTORY "${driver_bin_dir}"
