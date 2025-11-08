@@ -4,11 +4,11 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include <curves/kernel/test.hpp>
+#include <curves/test.hpp>
 #include <ostream>
 
 extern "C" {
-#include <curves/kernel/driver/math64.h>
+#include <curves/driver/math64.h>
 }  // extern "C"
 
 namespace curves {
