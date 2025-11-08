@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: MIT
 /*!
   \file
   \brief Generated file containing project information from cmake.
 
-  \copyright Copyright (c) 2025 Frank Secilia \n
-  SPDX-License-Identifier: MIT
+  \copyright Copyright (C) 2025 Frank Secilia
 */
 
 #pragma once
