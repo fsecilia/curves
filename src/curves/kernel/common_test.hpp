@@ -11,9 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace curves
-{
+namespace curves {
 
-//
+using namespace testing;
 
-} // namespace curve/
+}  // namespace curves

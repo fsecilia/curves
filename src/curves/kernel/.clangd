@@ -1,0 +1,4 @@
+# In your tests/.clangd file
+Diagnostics:
+  Suppress:
+    - unused-function

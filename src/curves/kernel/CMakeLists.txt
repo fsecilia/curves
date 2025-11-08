@@ -49,7 +49,7 @@ list(APPEND module_headers
 list(APPEND common_test_files
   common_test.cpp
   common_test.hpp
-  int128_test.cpp
+  math64_test.cpp
 )
 
 # -----------------------------------------------------------------------------
@@ -114,6 +114,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # This is temporary until we get a few modules populated.
     -Wno-empty-translation-unit
 
+    -Wno-old-style-cast
     -Wno-reserved-macro-identifier
   )
 endif()
@@ -173,6 +174,13 @@ if (enable_testing)
     GTest::gmock
     GTest::gtest
   )
+
   configure_test_target_warnings(common_test)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(common_test PUBLIC
+      -Wno-unused-function
+    )
+  endif()
+
   gtest_discover_tests(common_test)
 endif()
