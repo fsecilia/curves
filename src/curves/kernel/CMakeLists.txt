@@ -162,6 +162,9 @@ add_custom_target(kernel_module_clean
 
 if (enable_testing)
   add_executable(common_test ${common_test_files})
+  target_include_directories(common_test PUBLIC
+    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
+  )
   target_link_libraries(common_test PUBLIC
     common_library
     GTest::gmock_main
