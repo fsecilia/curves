@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include <curves/kernel/common_test.hpp>
+#include <curves/kernel/test.hpp>
 #include <ostream>
 
 extern "C" {

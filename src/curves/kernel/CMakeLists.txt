@@ -10,12 +10,20 @@
 # Project Files
 # -----------------------------------------------------------------------------
 
-# File list for common lib unit test project.
-list(APPEND common_test_files
-  common_test.cpp
-  common_test.hpp
-  math64_test.cpp
+list(APPEND lib_files
+  lib.cpp
+  lib.hpp
 )
+
+list(APPEND test_files
+  math64_test.cpp
+  test.cpp
+  test.hpp
+)
+
+# -----------------------------------------------------------------------------
+# Driver Headers
+# -----------------------------------------------------------------------------
 
 # The Kbuild is the source of truth for the files in the driver. CMake asks the
 # Kbuild for two lists of .c files:
@@ -35,13 +43,22 @@ list(APPEND common_test_files
 # automatically. However, this leaves a dependency gap: the Kbuild only reports
 # sources; it does not report headers.
 #
-# The list of headers must be tracked manually. This is that list.
+# The list of headers must be tracked manually. The list is split into 2 parts,
+# headers specific to the driver, and headers common to both the driver and the
+# library. This way, the common headers can be added to the library, and the
+# Kbuild target can depend on both.
+
 list(APPEND driver_headers
   driver/entry_point.h
 )
 
+list(APPEND common_headers
+  driver/fixed.h
+  driver/math64.h
+)
+
 # -----------------------------------------------------------------------------
-# Path Configuration
+# Driver Paths
 # -----------------------------------------------------------------------------
 
 # Define input and output dirs.
@@ -84,30 +101,6 @@ execute_process(
 separate_arguments(driver_sources UNIX_COMMAND ${driver_sources})
 
 # -----------------------------------------------------------------------------
-# Project Definition
-# -----------------------------------------------------------------------------
-
-# Add common library containing common sources.
-add_library(common_library ${common_sources})
-set_target_properties(common_library
-  PROPERTIES
-    OUTPUT_NAME curves_common
-    VERSION ${PROJECT_VERSION}
-    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-)
-
-# Disable warnings.
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(common_library PUBLIC
-    # This is temporary until we get a few modules populated.
-    -Wno-empty-translation-unit
-
-    -Wno-old-style-cast
-    -Wno-reserved-macro-identifier
-  )
-endif()
-
-# -----------------------------------------------------------------------------
 # Kbuild Delegation
 # -----------------------------------------------------------------------------
 
@@ -126,9 +119,10 @@ add_custom_command(
   COMMAND ${driver_make_command} modules
   WORKING_DIRECTORY "${driver_bin_dir}"
   DEPENDS
-    ${common_sources}
     ${driver_sources}
     ${driver_headers}
+    ${common_sources}
+    ${common_headers}
   COMMENT "Building driver..."
   VERBATIM
   USES_TERMINAL
@@ -147,28 +141,80 @@ add_custom_target(clean_driver
 )
 
 # -----------------------------------------------------------------------------
+# Generated Config
+# -----------------------------------------------------------------------------
+
+set(config_template_file config.hpp.in)
+set(config_gen_filename config.gen.hpp)
+set(config_gen_root "${CMAKE_BINARY_DIR}/gen")
+set(config_gen_file "${config_gen_root}/curves/${config_gen_filename}")
+configure_file("${config_template_file}" "${config_gen_file}")
+
+# -----------------------------------------------------------------------------
+# Library Project
+# -----------------------------------------------------------------------------
+
+add_library(lib
+  ${common_sources}
+  ${common_headers}
+  ${lib_files}
+  "${config_template_file}"
+  "${config_gen_file}"
+)
+
+target_include_directories(lib PUBLIC
+  "$<BUILD_INTERFACE:${config_gen_root}>"
+  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
+)
+
+set_target_properties(lib
+  PROPERTIES
+    OUTPUT_NAME curves
+    VERSION ${PROJECT_VERSION}
+    SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
+
+# Disable warnings from building kernel C files in C++ mode.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(lib PUBLIC
+    # This is temporary until we get a few modules populated.
+    -Wno-empty-translation-unit
+
+    -Wno-old-style-cast
+    -Wno-reserved-macro-identifier
+  )
+endif()
+
+install(TARGETS lib
+  # Install .a or .lib, if configured.
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+
+  # Install .so, if configured.
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+
+  # Install .dll, if configured.
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# -----------------------------------------------------------------------------
 # Test Project
 # -----------------------------------------------------------------------------
 
 if (enable_testing)
-  add_executable(common_test ${common_test_files})
-  target_include_directories(common_test PUBLIC
-    "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
-  )
-  target_link_libraries(common_test PUBLIC
-    common_library
+  add_executable(test ${test_files})
+  target_link_libraries(test PUBLIC
+    lib
     GTest::gmock_main
     GTest::gtest_main
     GTest::gmock
     GTest::gtest
   )
+  configure_test_target_warnings(test)
+  gtest_discover_tests(test)
 
-  configure_test_target_warnings(common_test)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(common_test PUBLIC
+    target_compile_options(test PUBLIC
       -Wno-unused-function
     )
   endif()
-
-  gtest_discover_tests(common_test)
 endif()

@@ -7,9 +7,9 @@ curves-common-objs := \
   fixed.o \
   math64.o
 
-curves-module-objs := entry_point.o
+curves-driver-objs := entry_point.o
 
-curves-objs := $(curves-common-objs) $(curves-module-objs)
+curves-objs := $(curves-common-objs) $(curves-driver-objs)
 
 # Compose module version string from actual version and git hash.
 include $(src)/version.mk

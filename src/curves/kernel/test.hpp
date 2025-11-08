@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Main header for common library unit tests.
+  \brief Main test header.
+
+  This file is included by every test file.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
