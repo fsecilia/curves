@@ -49,6 +49,7 @@ list(APPEND module_headers
 list(APPEND common_test_files
   common_test.cpp
   common_test.hpp
+  int128_test.cpp
 )
 
 # -----------------------------------------------------------------------------

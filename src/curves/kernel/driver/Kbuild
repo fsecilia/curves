@@ -3,7 +3,9 @@
 
 obj-m := curves.o
 
-curves-common-objs := fixed.o
+curves-common-objs := \
+  fixed.o \
+  int128.o
 
 curves-module-objs := entry_point.o
 
