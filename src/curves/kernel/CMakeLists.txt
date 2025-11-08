@@ -82,6 +82,7 @@ execute_process(
   OUTPUT_VARIABLE common_sources
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+separate_arguments(common_sources UNIX_COMMAND ${common_sources})
 
 # Get module sources from Kbuild.
 execute_process(
@@ -91,6 +92,7 @@ execute_process(
   OUTPUT_VARIABLE module_sources
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+separate_arguments(module_sources UNIX_COMMAND ${module_sources})
 
 # -----------------------------------------------------------------------------
 # Project Definition
