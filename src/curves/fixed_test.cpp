@@ -19,9 +19,9 @@ namespace {
 // Fixed Test
 // ----------------------------------------------------------------------------
 
-struct fixed_test_t : Test {};
+struct FixedTest : Test {};
 
-TEST_F(fixed_test_t, one_highest_precision) {
+TEST_F(FixedTest, one_highest_precision) {
   const auto decimal_place = 62;
   const auto expected = 4611686018427387904ll;
 
@@ -30,7 +30,7 @@ TEST_F(fixed_test_t, one_highest_precision) {
   ASSERT_EQ(expected, actual);
 }
 
-TEST_F(fixed_test_t, one_lowest_precision) {
+TEST_F(FixedTest, one_lowest_precision) {
   const auto decimal_place = 0;
   const auto expected = 1ll;
 
@@ -43,27 +43,27 @@ TEST_F(fixed_test_t, one_lowest_precision) {
 // Constant Test
 // ----------------------------------------------------------------------------
 
-struct constant_test_param_t {
+struct ConstTestParam {
   std::string name;
   curves_fixed_t (*constant_func)(unsigned int);
   unsigned int decimal_place;
   double expected_value;
   double tolerance;
 
-  friend auto operator<<(std::ostream& out, const constant_test_param_t& src)
+  friend auto operator<<(std::ostream& out, const ConstTestParam& src)
       -> std::ostream& {
     return out << "{" << src.decimal_place << ", " << src.expected_value << ", "
                << src.tolerance << "}";
   }
 };
 
-struct fixed_constant_test_t : public TestWithParam<constant_test_param_t> {
+struct FixedConstTest : public TestWithParam<ConstTestParam> {
   auto get_one(unsigned int decimal_place) const {
     return curves_const_one(decimal_place);
   }
 };
 
-TEST_P(fixed_constant_test_t, verify_constants) {
+TEST_P(FixedConstTest, verify_constants) {
   const auto param = GetParam();
 
   const auto actual_fixed = param.constant_func(param.decimal_place);
@@ -78,7 +78,7 @@ TEST_P(fixed_constant_test_t, verify_constants) {
   }
 }
 
-constant_test_param_t constant_test_params[] = {
+ConstTestParam constant_test_params[] = {
     // ln(2)
     {"ln2_high", curves_const_ln2, CURVES_LN_2_DECIMAL_PLACE, std::log(2.0),
      0.0},
@@ -87,9 +87,9 @@ constant_test_param_t constant_test_params[] = {
     {"ln2_low", curves_const_ln2, 1, std::log(2.0), 2.0e-1},
 };
 
-INSTANTIATE_TEST_SUITE_P(all_constants, fixed_constant_test_t,
+INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstTest,
                          ValuesIn(constant_test_params),
-                         [](const TestParamInfo<constant_test_param_t>& info) {
+                         [](const TestParamInfo<ConstTestParam>& info) {
                            return info.param.name;
                          });
 

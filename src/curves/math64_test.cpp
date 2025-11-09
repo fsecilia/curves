@@ -22,43 +22,42 @@ const auto max = std::numeric_limits<int64_t>::max();
 // Parameterized Test
 // ----------------------------------------------------------------------------
 
-struct param_t {
-  struct input_t {
+struct Param {
+  struct Input {
     int64_t left;
     int64_t right;
     unsigned int shift;
 
-    friend auto operator<<(std::ostream& out, const input_t& src)
+    friend auto operator<<(std::ostream& out, const Input& src)
         -> std::ostream& {
       return out << "{" << src.left << ", " << src.right << ", " << src.shift
                  << "}";
     }
   };
 
-  friend auto operator<<(std::ostream& out, const param_t& src)
-      -> std::ostream& {
+  friend auto operator<<(std::ostream& out, const Param& src) -> std::ostream& {
     return out << "{" << src.input << ", " << src.expected << "}";
   }
 
-  input_t input;
+  Input input;
   int64_t expected;
 };
 
-struct int128_test_t : TestWithParam<param_t> {};
+struct Int128Test : TestWithParam<Param> {};
 
 // ----------------------------------------------------------------------------
 // Multiplication
 // ----------------------------------------------------------------------------
 
-struct int128_test_mul_i64_i64_shr_t : int128_test_t {};
+struct Int128TestMulI64I64Shr : Int128Test {};
 
-TEST_P(int128_test_mul_i64_i64_shr_t, result) {
+TEST_P(Int128TestMulI64I64Shr, result) {
   const auto& input = GetParam().input;
   ASSERT_EQ(curves_mul_i64_i64_shr(input.left, input.right, input.shift),
             GetParam().expected);
 }
 
-const param_t mul_params[] = {
+const Param mul_params[] = {
     // simple zeros
     {{0, 1, 0}, 0},
     {{0, -1, 0}, 0},
@@ -160,22 +159,22 @@ const param_t mul_params[] = {
     {{max, 0, 200}, 0},
 };
 
-INSTANTIATE_TEST_SUITE_P(mul_params, int128_test_mul_i64_i64_shr_t,
+INSTANTIATE_TEST_SUITE_P(mul_params, Int128TestMulI64I64Shr,
                          ValuesIn(mul_params));
 
 // ----------------------------------------------------------------------------
 // Division
 // ----------------------------------------------------------------------------
 
-struct int128_test_div_i64_i64_shl_t : int128_test_t {};
+struct Int128TestDivI64I64Shl : Int128Test {};
 
-TEST_P(int128_test_div_i64_i64_shl_t, result) {
+TEST_P(Int128TestDivI64I64Shl, result) {
   const auto& input = GetParam().input;
   ASSERT_EQ(curves_div_i64_i64_shl(input.left, input.right, input.shift),
             GetParam().expected);
 }
 
-const param_t div_params[] = {
+const Param div_params[] = {
     // zero
     {{0, 1, 0}, 0},
     {{0, -1, 0}, 0},
@@ -306,7 +305,7 @@ const param_t div_params[] = {
     {{-1, -max, 200}, max},
 };
 
-INSTANTIATE_TEST_SUITE_P(div_params, int128_test_div_i64_i64_shl_t,
+INSTANTIATE_TEST_SUITE_P(div_params, Int128TestDivI64I64Shl,
                          ValuesIn(div_params));
 
 }  // namespace
