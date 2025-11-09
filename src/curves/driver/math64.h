@@ -18,15 +18,7 @@
 #ifndef _CURVES_MATH64_H
 #define _CURVES_MATH64_H
 
-#include "driver.h"
-
-#if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
-#error 128-bit multiplication and division not supported on this platform.
-#endif
-
-// Alias 128-bit extension types to suppress gcc warning.
-__extension__ typedef __int128 int128_t;
-__extension__ typedef unsigned __int128 uint128_t;
+#include "types.h"
 
 /*
  * Kernel mode x64 fails to link if you try to invoke a 128/128 divide, so
