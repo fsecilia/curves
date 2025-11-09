@@ -139,6 +139,25 @@ const param_t mul_params[] = {
     {{0, -100, 5}, 0},
     {{-100, 0, 5}, 0},
     {{0, -(1LL << 62), 32}, 0},
+
+    // shift >= 128 boundary and overflow (all should return 0)
+    {{1, 1, 128}, 0},      // shift == 128 exactly
+    {{100, 200, 128}, 0},  // shift == 128 with non-trivial values
+    {{max, max, 128}, 0},  // shift == 128 with large values
+    {{1, 1, 129}, 0},      // shift > 128
+    {{1, 1, 200}, 0},      // shift >> 128
+
+    // shift >= 128 with negative operands (all should return 0)
+    {{-1, 1, 128}, 0},
+    {{1, -1, 128}, 0},
+    {{-1, -1, 128}, 0},
+    {{-max, max, 128}, 0},
+    {{max, -max, 200}, 0},
+
+    // shift >= 128 with zero operands (all should return 0)
+    {{0, 0, 128}, 0},
+    {{0, max, 128}, 0},
+    {{max, 0, 200}, 0},
 };
 
 INSTANTIATE_TEST_SUITE_P(mul_params, int128_test_mul_i64_i64_shr_t,
@@ -246,6 +265,45 @@ const param_t div_params[] = {
     {{0, -100, 10}, 0},
     {{0, -(1LL << 62), 32}, 0},
     {{0, -1, 63}, 0},
+
+    // divisor == 0 error cases
+    {{0, 0, 0}, 0},        // 0/0 = 0 (arbitrary choice)
+    {{0, 0, 32}, 0},       // 0/0 with shift
+    {{1, 0, 0}, max},      // positive/0 = max
+    {{100, 0, 10}, max},   // positive/0 with shift
+    {{max, 0, 32}, max},   // max/0
+    {{-1, 0, 0}, min},     // negative/0 = min
+    {{-100, 0, 10}, min},  // negative/0 with shift
+    {{min, 0, 32}, min},   // min/0
+
+    // shift >= 128 saturation cases
+    {{0, 1, 128}, 0},    // 0 stays 0
+    {{0, -1, 128}, 0},   // 0 stays 0 (negative divisor)
+    {{0, 100, 200}, 0},  // 0 stays 0 (large shift)
+
+    // positive dividend, positive divisor -> max
+    {{1, 1, 128}, max},
+    {{100, 50, 128}, max},
+    {{max, 1, 129}, max},
+    {{1, max, 200}, max},
+
+    // positive dividend, negative divisor -> min
+    {{1, -1, 128}, min},
+    {{100, -50, 128}, min},
+    {{max, -1, 129}, min},
+    {{1, -max, 200}, min},
+
+    // negative dividend, positive divisor -> min
+    {{-1, 1, 128}, min},
+    {{-100, 50, 128}, min},
+    {{min, 1, 129}, min},
+    {{-1, max, 200}, min},
+
+    // negative dividend, negative divisor -> max
+    {{-1, -1, 128}, max},
+    {{-100, -50, 128}, max},
+    {{min, -1, 129}, max},
+    {{-1, -max, 200}, max},
 };
 
 INSTANTIATE_TEST_SUITE_P(div_params, int128_test_div_i64_i64_shl_t,

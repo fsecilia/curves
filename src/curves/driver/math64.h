@@ -89,10 +89,29 @@ static inline int64_t curves_mul_i64_i64_shr(int64_t multiplicand,
 static inline int64_t curves_div_i64_i64_shl(int64_t dividend, int64_t divisor,
 					     unsigned int shift)
 {
-	if (divisor == 0)
-		return 0;
-	if (shift >= 128)
-		return 0;
+	// Handle dividing by 0.
+	if (divisor == 0) {
+		/*
+		 * Both are 0, completely undefined result. Arbitrarily choose
+		 * to return 0.
+		*/
+		if (dividend == 0)
+			return 0;
+
+		// Saturate based on sign of result.
+		return dividend < 0 ? INT64_MIN : INT64_MAX;
+	}
+
+	// Handle large shifts.
+	if (shift >= 128) {
+		// 0 stays 0.
+		if (dividend == 0)
+			return 0;
+
+		// Saturate based on sign of result.
+		return (dividend > 0) == (divisor > 0) ? INT64_MAX : INT64_MIN;
+	}
+
 	return (int64_t)__div_s128_by_s64((int128_t)dividend << shift, divisor);
 }
 

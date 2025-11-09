@@ -12,10 +12,10 @@
 #if defined __KERNEL__
 #include <linux/kernel.h>
 #include <linux/types.h>
+#define INT64_MIN S64_MIN
+#define INT64_MAX S64_MAX
 #else
 #include <stdint.h>
-#define S64_MIN INT64_MIN
-#define S64_MAX INT64_MAX
 #endif
 
 #if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
