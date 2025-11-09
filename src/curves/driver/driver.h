@@ -12,7 +12,6 @@
 #if defined __KERNEL__
 #include <linux/kernel.h>
 #include <linux/types.h>
-#include <linux/math64.h>
 #else
 #include <stdint.h>
 #endif
