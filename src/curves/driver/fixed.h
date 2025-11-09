@@ -9,6 +9,8 @@
 #ifndef _CURVES_FIXED_H
 #define _CURVES_FIXED_H
 
-typedef int fixed_t;
+#include "types.h"
+
+typedef int64_t curves_fixed_t;
 
 #endif /* _CURVES_FIXED_h */
