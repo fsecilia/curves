@@ -14,6 +14,8 @@
 #include <linux/types.h>
 #else
 #include <stdint.h>
+#define S64_MIN INT64_MIN
+#define S64_MAX INT64_MAX
 #endif
 
 #if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
