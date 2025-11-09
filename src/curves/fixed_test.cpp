@@ -83,13 +83,13 @@ ConstTestParam constant_test_params[] = {
     {"ln2_high", curves_const_ln2, CURVES_LN_2_DECIMAL_PLACE, std::log(2.0),
      0.0},
     {"ln2_medium", curves_const_ln2, CURVES_LN_2_DECIMAL_PLACE / 2,
-     std::log(2.0), 5.0e-10},
+     std::log(2.0), 4.3e-10},
     {"ln2_low", curves_const_ln2, 1, std::log(2.0), 2.0e-1},
 
     // pi
     {"pi_high", curves_const_pi, CURVES_PI_DECIMAL_PLACE, M_PI, 0.0},
-    {"pi_medium", curves_const_pi, CURVES_PI_DECIMAL_PLACE / 2, M_PI, 1.0e-9},
-    {"pi_lo", curves_const_pi, 1, M_PI, 1.5e-1},
+    {"pi_medium", curves_const_pi, CURVES_PI_DECIMAL_PLACE / 2, M_PI, 1.3e-10},
+    {"pi_low", curves_const_pi, 1, M_PI, 1.5e-1},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstTest,
