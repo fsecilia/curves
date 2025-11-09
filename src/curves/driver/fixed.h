@@ -18,6 +18,14 @@ static inline curves_fixed_t curves_const_one(unsigned int decimal_place)
 	return 1ll << decimal_place;
 }
 
+#define CURVES_E_DECIMAL_PLACE 61
+static inline curves_fixed_t curves_const_e(unsigned int decimal_place)
+{
+	// This value was generated using wolfram alpha: round(e*2^61)
+	return 6267931151224907085ll >>
+	       (CURVES_E_DECIMAL_PLACE - decimal_place);
+}
+
 #define CURVES_LN_2_DECIMAL_PLACE 62
 static inline curves_fixed_t curves_const_ln2(unsigned int decimal_place)
 {
