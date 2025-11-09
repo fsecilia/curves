@@ -79,6 +79,11 @@ TEST_P(FixedConstTest, verify_constants) {
 }
 
 ConstTestParam constant_test_params[] = {
+    // e
+    {"e_high", curves_const_e, CURVES_E_DECIMAL_PLACE, M_E, 0.0},
+    {"e_medium", curves_const_e, CURVES_E_DECIMAL_PLACE / 2, M_E, 6.0e-10},
+    {"e_low", curves_const_e, 1, M_E, 2.2e-1},
+
     // ln(2)
     {"ln2_high", curves_const_ln2, CURVES_LN_2_DECIMAL_PLACE, std::log(2.0),
      0.0},
