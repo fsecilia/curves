@@ -16,6 +16,7 @@ list(APPEND lib_files
 )
 
 list(APPEND test_files
+  fixed_test.cpp
   math64_test.cpp
   test.cpp
   test.hpp
