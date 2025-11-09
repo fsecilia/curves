@@ -59,10 +59,10 @@ static inline int64_t __div_s128_by_s64(int128_t numerator, int64_t denominator)
  * curves_mul_i64_i64_shr() - Widening multiply with right shift
  * @multiplicand: Value to multiply
  * @multiplier: Amount to multiply by
- * @shift: Number of bits to right-shift the product (must be < 64)
+ * @shift: Number of bits to right-shift the product (< 128)
  *
  * Performs (multiplicand * multiplier) >> shift using 128-bit intermediate.
- * Returns 0 if shift >= 64.
+ * Returns 0 if shift >= 128.
  *
  * Return: 64-bit signed result
  */
@@ -70,19 +70,19 @@ static inline int64_t curves_mul_i64_i64_shr(int64_t multiplicand,
 					     int64_t multiplier,
 					     unsigned int shift)
 {
-	if (shift >= 64)
+	if (shift >= 128)
 		return 0;
-	return (int64_t)(((int128_t)multiplicand * multiplier) >> shift);
+	return (int64_t)((int128_t)multiplicand * multiplier >> shift);
 }
 
 /**
  * curves_div_i64_i64_shl() - Left shift with narrowing divide
  * @dividend: Value to divide
  * @divisor: Amount to divide by (must be non-zero)
- * @shift: Number of bits to left-shift numerator before division (must be < 64)
+ * @shift: Number of bits to left-shift numerator before division (< 128)
  *
  * Performs (numerator << shift) / denominator using 128-bit intermediate.
- * Returns 0 if denominator is zero or shift >= 64.
+ * Returns 0 if denominator is zero or shift >= 128.
  *
  * Return: 64-bit signed quotient
  */
@@ -91,7 +91,7 @@ static inline int64_t curves_div_i64_i64_shl(int64_t dividend, int64_t divisor,
 {
 	if (divisor == 0)
 		return 0;
-	if (shift >= 64)
+	if (shift >= 128)
 		return 0;
 	return (int64_t)__div_s128_by_s64((int128_t)dividend << shift, divisor);
 }
