@@ -5,6 +5,7 @@
 */
 
 #include <curves/test.hpp>
+#include <limits>
 #include <ostream>
 
 extern "C" {
@@ -14,8 +15,8 @@ extern "C" {
 namespace curves {
 namespace {
 
-const auto min = INT64_MIN;
-const auto max = INT64_MAX;
+const auto min = std::numeric_limits<int64_t>::min();
+const auto max = std::numeric_limits<int64_t>::max();
 
 // ----------------------------------------------------------------------------
 // Parameterized Test
