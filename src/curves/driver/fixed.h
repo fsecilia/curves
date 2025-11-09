@@ -26,4 +26,12 @@ static inline curves_fixed_t curves_const_ln2(unsigned int decimal_place)
 	       (CURVES_LN_2_DECIMAL_PLACE - decimal_place);
 }
 
+#define CURVES_PI_DECIMAL_PLACE 61
+static inline curves_fixed_t curves_const_pi(unsigned int decimal_place)
+{
+	// This value was generated using wolfram alpha: round(pi*2^61)
+	return 7244019458077122842ll >>
+	       (CURVES_PI_DECIMAL_PLACE - decimal_place);
+}
+
 #endif /* _CURVES_FIXED_h */
