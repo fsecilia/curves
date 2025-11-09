@@ -6,7 +6,8 @@
 
 #include "math64.h"
 
-extern int64_t curves_mul_i64_i64_shr(int64_t left, int64_t right,
-				      unsigned shift);
+extern int64_t curves_mul_i64_i64_shr(int64_t multiplicand, int64_t multiplier,
+				      unsigned int shift);
+
 extern int64_t curves_div_i64_i64_shl(int64_t numerator, int64_t denominator,
-				      unsigned shift);
+				      unsigned int shift);

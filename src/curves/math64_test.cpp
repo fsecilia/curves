@@ -26,7 +26,7 @@ struct param_t {
   struct input_t {
     int64_t left;
     int64_t right;
-    unsigned shift;
+    unsigned int shift;
 
     friend auto operator<<(std::ostream& out, const input_t& src)
         -> std::ostream& {
