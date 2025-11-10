@@ -183,6 +183,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-empty-translation-unit
 
     -Wno-old-style-cast
+    -Wno-reserved-identifier
     -Wno-reserved-macro-identifier
   )
 endif()
