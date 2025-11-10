@@ -4,6 +4,9 @@
 cmake_minimum_required(VERSION 3.31)
 project(curves VERSION 0.1.0)
 
+cmake_policy(SET CMP0156 NEW)
+set(QT_FORCE_CMP0156_TO_VALUE NEW)
+
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
