@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QQuickPaintedItem>
+#include <QtQml>
 #include <curves/ui/presenter.hpp>
 #include <memory>
 
