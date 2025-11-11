@@ -40,30 +40,30 @@ TEST_F(FixedTest, one_lowest_precision) {
 }
 
 // ----------------------------------------------------------------------------
-// Constant Test
+// Constants Test
 // ----------------------------------------------------------------------------
 
-struct ConstTestParam {
+struct ConstantsTestParam {
   std::string name;
   curves_fixed_t (*constant_func)(unsigned int);
   unsigned int decimal_place;
   double expected_value;
   double tolerance;
 
-  friend auto operator<<(std::ostream& out, const ConstTestParam& src)
+  friend auto operator<<(std::ostream& out, const ConstantsTestParam& src)
       -> std::ostream& {
     return out << "{" << src.decimal_place << ", " << src.expected_value << ", "
                << src.tolerance << "}";
   }
 };
 
-struct FixedConstTest : public TestWithParam<ConstTestParam> {
+struct FixedConstantsTest : public TestWithParam<ConstantsTestParam> {
   auto get_one(unsigned int decimal_place) const {
     return curves_const_one(decimal_place);
   }
 };
 
-TEST_P(FixedConstTest, verify_constants) {
+TEST_P(FixedConstantsTest, verify_constants) {
   const auto param = GetParam();
 
   const auto actual_fixed = param.constant_func(param.decimal_place);
@@ -78,7 +78,7 @@ TEST_P(FixedConstTest, verify_constants) {
   }
 }
 
-ConstTestParam constant_test_params[] = {
+ConstantsTestParam constants_test_params[] = {
     // e
     {"e_high", curves_const_e, CURVES_E_FRAC_BITS, M_E, 0.0},
     {"e_medium", curves_const_e, CURVES_E_FRAC_BITS / 2, M_E, 6.0e-10},
@@ -96,9 +96,9 @@ ConstTestParam constant_test_params[] = {
     {"pi_low", curves_const_pi, 1, M_PI, 1.5e-1},
 };
 
-INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstTest,
-                         ValuesIn(constant_test_params),
-                         [](const TestParamInfo<ConstTestParam>& info) {
+INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,
+                         ValuesIn(constants_test_params),
+                         [](const TestParamInfo<ConstantsTestParam>& info) {
                            return info.param.name;
                          });
 
