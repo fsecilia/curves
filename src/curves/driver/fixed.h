@@ -13,33 +13,30 @@
 
 typedef int64_t curves_fixed_t;
 
-static inline curves_fixed_t curves_const_one(unsigned int decimal_place)
+static inline curves_fixed_t curves_const_one(unsigned int frac_bits)
 {
-	return 1ll << decimal_place;
+	return 1ll << frac_bits;
 }
 
-#define CURVES_E_DECIMAL_PLACE 61
-static inline curves_fixed_t curves_const_e(unsigned int decimal_place)
+#define CURVES_E_FRAC_BITS 61
+static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(e*2^61)
-	return 6267931151224907085ll >>
-	       (CURVES_E_DECIMAL_PLACE - decimal_place);
+	return 6267931151224907085ll >> (CURVES_E_FRAC_BITS - frac_bits);
 }
 
-#define CURVES_LN_2_DECIMAL_PLACE 62
-static inline curves_fixed_t curves_const_ln2(unsigned int decimal_place)
+#define CURVES_LN_2_FRAC_BITS 62
+static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return 3196577161300663915ll >>
-	       (CURVES_LN_2_DECIMAL_PLACE - decimal_place);
+	return 3196577161300663915ll >> (CURVES_LN_2_FRAC_BITS - frac_bits);
 }
 
-#define CURVES_PI_DECIMAL_PLACE 61
-static inline curves_fixed_t curves_const_pi(unsigned int decimal_place)
+#define CURVES_PI_FRAC_BITS 61
+static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(pi*2^61)
-	return 7244019458077122842ll >>
-	       (CURVES_PI_DECIMAL_PLACE - decimal_place);
+	return 7244019458077122842ll >> (CURVES_PI_FRAC_BITS - frac_bits);
 }
 
 #endif /* _CURVES_FIXED_h */
