@@ -9,7 +9,7 @@
 #ifndef _CURVES_FIXED_H
 #define _CURVES_FIXED_H
 
-#include "types.h"
+#include "kernel_compat.h"
 
 typedef int64_t curves_fixed_t;
 

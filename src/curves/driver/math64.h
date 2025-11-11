@@ -18,7 +18,14 @@
 #ifndef _CURVES_MATH64_H
 #define _CURVES_MATH64_H
 
-#include "types.h"
+#include "kernel_compat.h"
+
+#if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
+#error This module requires 128-bit integer types, but they are not available.
+#endif
+
+__extension__ typedef __int128 int128_t;
+__extension__ typedef unsigned __int128 uint128_t;
 
 /**
  * __div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed integer

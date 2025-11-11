@@ -55,8 +55,8 @@ list(APPEND driver_headers
 
 list(APPEND common_headers
   driver/fixed.h
+  driver/kernel_compat.h
   driver/math64.h
-  driver/types.h
 )
 
 # -----------------------------------------------------------------------------
