@@ -11,6 +11,9 @@
 namespace curves {
 namespace {
 
+const auto min = std::numeric_limits<int64_t>::min();
+const auto max = std::numeric_limits<int64_t>::max();
+
 // ----------------------------------------------------------------------------
 // Fixed Test
 // ----------------------------------------------------------------------------
@@ -181,7 +184,7 @@ const IntegerConversionsTestParam
   {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
 
   // end of q63.0 range
-  {0, INT64_MAX, INT64_MAX},
+  {0, max, max},
 
   // -1
   {1, -1, -1ll << 1},
@@ -212,7 +215,7 @@ const IntegerConversionsTestParam
   { 1, -1ll << 62, (-1ll << 62) << 1},
 
   // end of negative q63.0 range
-  {0, INT64_MIN, INT64_MIN},
+  {0, min, min},
 };
 // clang-format on
 
@@ -310,9 +313,9 @@ const DoubleConversionTestParam from_double_params[] = {
   {32, (2ll << 32) + ((1ll << 31) | (1ll << 30)), 2.75},
 
   /*
-    The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so
-    the fixed point value we're generating here is actually
-    2^-33*(1 << 32) = 0.5, which truncates to 0.
+    The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so the
+    fixed point value we're generating here is actually 2^-33*(1 << 32) = 0.5,
+    which truncates to 0.
 
     These tests show it truncates to zero from both sides.
   */
@@ -322,30 +325,29 @@ const DoubleConversionTestParam from_double_params[] = {
   /*
     Min and max representable values for frac_bits = 0.
 
-    Ideally, we'd test against INT64_MAX, but it is a 63-bit number. A double
-    only has 53 bits of precision, so it can't be stored precisely in a double.
-    If we were to try to round trip it, the runtime would have to pick the
-    closest representable double, which in this case, causes it to round up to
-    2^64. The value in the double is then larger than INT64_MAX. Converting an
-    out of range double to an integer is undefined behavior. In this specific
-    case, on x64, converting back just happens to give the value INT64_MIN.
-    That is about as different from the value we started with as could be, so
-    the test fails.
+    Ideally, we'd test against max, but it is a 63-bit number. A double only
+    has 53 bits of precision, so it can't be stored precisely in a double. If
+    we were to try to round trip it, the runtime would have to pick the closest
+    representable double, which in this case, causes it to round up to 2^64.
+    The value in the double is then larger than max. Converting an out of range
+    double to an integer is undefined behavior. In this specific case, on x64,
+    converting back just happens to give the value min. That is about as
+    different from the value we started with as could be, so the test fails.
 
     Instead, we use the largest round-trippable integer, which is:
-      INT64_MAX - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
+      max - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
 
-    INT64_MIN is representable, so we use it directly.
+    min is representable, so we use it directly.
   */
-  {0, INT64_MIN, static_cast<double>(INT64_MIN)},
-  {0, INT64_MAX - 1023, static_cast<double>(INT64_MAX - 1023)},
+  {0, min, static_cast<double>(min)},
+  {0, max - 1023, static_cast<double>(max - 1023)},
 
   // Min and max representable values for frac_bits = 32
-  {32, INT64_MIN, -static_cast<double>(1ll << 31)},
+  {32, min, -static_cast<double>(1ll << 31)},
   {32, ((1ll << 31) - 1) << 32, static_cast<double>((1ll << 31) - 1)},
 
   // Min and max representable values for frac_bits = 62
-  {62, INT64_MIN, -2.0},
+  {62, min, -2.0},
   {62, 1ll << 62, 1.0},
 };
 // clang-format on
