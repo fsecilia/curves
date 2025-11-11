@@ -13,6 +13,7 @@ auto main(int argc, char* argv[]) -> int {
   auto app = QApplication{argc, argv};
 
   auto main_window = MainWindow{};
+  main_window.prepopulateCurveParameterWidgets(10);
   main_window.show();
 
   return app.exec();
