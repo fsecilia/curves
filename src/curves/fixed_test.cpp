@@ -22,19 +22,19 @@ namespace {
 struct FixedTest : Test {};
 
 TEST_F(FixedTest, one_highest_precision) {
-  const auto decimal_place = 62;
+  const auto frac_bits = 62;
   const auto expected = 4611686018427387904ll;
 
-  const auto actual = curves_const_one(decimal_place);
+  const auto actual = curves_const_one(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
 
 TEST_F(FixedTest, one_lowest_precision) {
-  const auto decimal_place = 0;
+  const auto frac_bits = 0;
   const auto expected = 1ll;
 
-  const auto actual = curves_const_one(decimal_place);
+  const auto actual = curves_const_one(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -46,28 +46,28 @@ TEST_F(FixedTest, one_lowest_precision) {
 struct ConstantsTestParam {
   std::string name;
   curves_fixed_t (*constant_func)(unsigned int);
-  unsigned int decimal_place;
+  unsigned int frac_bits;
   double expected_value;
   double tolerance;
 
   friend auto operator<<(std::ostream& out, const ConstantsTestParam& src)
       -> std::ostream& {
-    return out << "{" << src.decimal_place << ", " << src.expected_value << ", "
+    return out << "{" << src.frac_bits << ", " << src.expected_value << ", "
                << src.tolerance << "}";
   }
 };
 
 struct FixedConstantsTest : public TestWithParam<ConstantsTestParam> {
-  auto get_one(unsigned int decimal_place) const {
-    return curves_const_one(decimal_place);
+  auto get_one(unsigned int frac_bits) const {
+    return curves_const_one(frac_bits);
   }
 };
 
 TEST_P(FixedConstantsTest, verify_constants) {
   const auto param = GetParam();
 
-  const auto actual_fixed = param.constant_func(param.decimal_place);
-  const auto one_fixed = get_one(param.decimal_place);
+  const auto actual_fixed = param.constant_func(param.frac_bits);
+  const auto one_fixed = get_one(param.frac_bits);
 
   const auto actual_double = double(actual_fixed) / double(one_fixed);
 
