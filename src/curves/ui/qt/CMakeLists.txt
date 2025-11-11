@@ -39,3 +39,11 @@ set_target_properties(lib
   PROPERTIES
     OUTPUT_NAME curves
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  target_compile_options(curves_config PUBLIC
+    -Wno-ctad-maybe-unsupported
+    -Wno-unsafe-buffer-usage
+    -Wno-unsafe-buffer-usage-in-libc-call
+  )
+endif()

@@ -13,7 +13,7 @@ class CurveParameter : public QWidget {
 
  public:
   explicit CurveParameter(QWidget* parent = nullptr);
-  ~CurveParameter();
+  ~CurveParameter() override;
 
   auto parameterIndex() const -> int;
   auto setParameterIndex(int index) -> void;
