@@ -13,11 +13,23 @@
 
 typedef int64_t curves_fixed_t;
 
+/**
+ * curves_const_one() - Fixed-point constant 1
+ * @frac_bits: Fractional bit precision (0 to 63)
+ *
+ * Return: Constant value 1 with specified precision
+ */
 static inline curves_fixed_t curves_const_one(unsigned int frac_bits)
 {
 	return 1ll << frac_bits;
 }
 
+/**
+ * curves_const_e() - Fixed-point constant e
+ * @frac_bits: Fractional bit precision (0 to CURVES_E_FRAC_BITS)
+ *
+ * Return: Constant value e with specified precision
+ */
 #define CURVES_E_FRAC_BITS 61
 static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 {
@@ -25,6 +37,12 @@ static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 	return 6267931151224907085ll >> (CURVES_E_FRAC_BITS - frac_bits);
 }
 
+/**
+ * curves_const_ln2() - Fixed-point constant ln(2)
+ * @frac_bits: Fractional bit precision (0 to CURVES_LN_2_FRAC_BITS)
+ *
+ * Return: Constant value ln(2) with specified precision
+ */
 #define CURVES_LN_2_FRAC_BITS 62
 static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 {
@@ -32,6 +50,12 @@ static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 	return 3196577161300663915ll >> (CURVES_LN_2_FRAC_BITS - frac_bits);
 }
 
+/**
+ * curves_const_pi() - Fixed-point constant pi
+ * @frac_bits: Fractional bit precision (0 to CURVES_PI_FRAC_BITS)
+ *
+ * Return: Constant value pi with specified precision
+ */
 #define CURVES_PI_FRAC_BITS 61
 static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
 {
