@@ -6,20 +6,208 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>1000</width>
     <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Curves Config</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QWidget" name="main_content" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0,1">
+       <item>
+        <widget class="QListWidget" name="selected_curve">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>125</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>200</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">/* This targets the entire list widget itself. */
+QListWidget {
+    /* Removes the default &quot;sunken&quot; border. */
+    border: none;
+
+    /* Removes the dotted outline when focused. */
+    outline: 0px;
+}
+
+/* This targets each individual item in the list. */
+QListWidget::item {
+    /* Use button-like geometry. */
+    padding: 10px 12px;  /* 10px top/bottom, 12px left/right. */
+    margin: 4px 8px;     /* Space *between* the &quot;buttons&quot;. */
+
+    background-color: transparent; /* Default state is no color. */
+    border-radius: 5px; /* Rounded corners. */
+}
+
+/* This targets an item when the mouse hovers over it. */
+QListWidget::item:hover {
+    background-color: #585860; /* A cool gray hover. */
+}
+
+/* This targets the currently selected item. */
+QListWidget::item:selected {
+    background-color: #0078d4; /* A nice blue &quot;selected&quot; color. */
+    color: white; /* Make the text white. */
+}
+
+/* This makes the selection &quot;stick&quot; even if the widget
+ * loses focus (e.g., user clicks a textbox).
+ */
+QListWidget::item:selected:!active {
+    background-color: #0078d4;
+    color: white;
+}
+</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>Constant</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Linear</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Power</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Natural</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Synchronous</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Logarithmic</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Exponential</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Shape::NoFrame</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Shadow::Plain</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="curve_editor" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>1</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="mouseTracking">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="footer" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>50</height>
+       </size>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeType">
+          <enum>QSizePolicy::Policy::Expanding</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>875</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QPushButton" name="pushButton">
+         <property name="text">
+          <string>Apply</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>1000</width>
      <height>22</height>
     </rect>
    </property>
