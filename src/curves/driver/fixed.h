@@ -39,15 +39,15 @@ static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 
 /**
  * curves_const_ln2() - Fixed-point constant ln(2)
- * @frac_bits: Fractional bit precision (0 to CURVES_LN_2_FRAC_BITS)
+ * @frac_bits: Fractional bit precision (0 to CURVES_LN2_FRAC_BITS)
  *
  * Return: Constant value ln(2) with specified precision
  */
-#define CURVES_LN_2_FRAC_BITS 62
+#define CURVES_LN2_FRAC_BITS 62
 static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return 3196577161300663915ll >> (CURVES_LN_2_FRAC_BITS - frac_bits);
+	return 3196577161300663915ll >> (CURVES_LN2_FRAC_BITS - frac_bits);
 }
 
 /**

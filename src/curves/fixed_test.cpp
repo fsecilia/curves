@@ -81,8 +81,8 @@ ConstantsTestParam constants_test_params[] = {
     {"e_low", curves_const_e, 1, M_E, 2.2e-1},
 
     // ln(2)
-    {"ln2_high", curves_const_ln2, CURVES_LN_2_FRAC_BITS, std::log(2.0), 0.0},
-    {"ln2_medium", curves_const_ln2, CURVES_LN_2_FRAC_BITS / 2, std::log(2.0),
+    {"ln2_high", curves_const_ln2, CURVES_LN2_FRAC_BITS, std::log(2.0), 0.0},
+    {"ln2_medium", curves_const_ln2, CURVES_LN2_FRAC_BITS / 2, std::log(2.0),
      4.3e-10},
     {"ln2_low", curves_const_ln2, 1, std::log(2.0), 2.0e-1},
 
