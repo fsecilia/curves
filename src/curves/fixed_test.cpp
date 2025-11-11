@@ -70,7 +70,7 @@ TEST_P(FixedConstantsTest, verify_constants) {
   }
 }
 
-ConstantsTestParam constants_test_params[] = {
+const ConstantsTestParam constants_test_params[] = {
     // e
     {"e_high", curves_const_e, CURVES_E_FRAC_BITS, M_E, 0.0},
     {"e_medium", curves_const_e, CURVES_E_FRAC_BITS / 2, M_E, 6.0e-10},
@@ -145,7 +145,8 @@ TEST_P(FixedConversionsTestIntegerNontruncating, to_integer) {
 }
 
 // clang-format off
-IntegerConversionsTestParam nontruncating_integer_conversion_test_params[] = {
+const IntegerConversionsTestParam
+    nontruncating_integer_conversion_test_params[] = {
   // zero
   {1, 0, 0},
   {32, 0, 0},
@@ -243,7 +244,7 @@ TEST_P(FixedConversionsTestIntegerTruncation, truncation_is_flooring) {
 }
 
 // clang-format off
-IntegerConversionsTestParam integer_truncation_test_params[] = {
+const IntegerConversionsTestParam integer_truncation_test_params[] = {
   // nonzero positive: 2.75, truncates to 2, floors to 2
   {32, 2, 11811160064ll},
 
@@ -285,7 +286,7 @@ TEST_P(FixedConversionTestFixedFromDouble, from_double) {
 }
 
 // clang-format off
-DoubleConversionTestParam const from_double_params[] = {
+const DoubleConversionTestParam from_double_params[] = {
   /*
     The truncation from double to fixed is different than the truncation from
     fixed to integer. The conversion relies on the double->integer cast, which
@@ -366,7 +367,7 @@ TEST_P(FixedConversionTestFixedToDouble, to_double) {
 }
 
 // clang-format off
-DoubleConversionTestParam const to_double_params[] = {
+const DoubleConversionTestParam to_double_params[] = {
   // frac_bits = 0 is just the original integers as doubles with no scaling.
   {0, 123, 123.0},
   {0, -456, -456.0},
