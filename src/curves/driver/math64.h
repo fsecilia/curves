@@ -55,9 +55,9 @@ static inline int64_t __div_s128_by_s64(int128_t dividend, int64_t divisor)
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline int64_t __div_s128_by_s64(int128_t numerator, int64_t denominator)
+static inline int64_t __div_s128_by_s64(int128_t dividend, int64_t divisor)
 {
-	return (int64_t)(numerator / denominator);
+	return (int64_t)(dividend / divisor);
 }
 
 #endif
