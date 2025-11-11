@@ -224,11 +224,11 @@ INSTANTIATE_TEST_SUITE_P(
 // ----------------------------------------------------------------------------
 
 /*
-  These test that "truncation" is always towards negative infinity, both for
-  positive and negative fixed-point values. It's conventionally called
-  truncation instead of flooring because for positive values, it's the same,
-  but all fixed point numbers truncate towards negative infinity, not zero, so
-  the correct name is floor, not truncate.
+  These test that fixed->integer "truncation" is always towards negative
+  infinity, both for positive and negative fixed-point values. It's
+  conventionally called truncation instead of flooring because for positive
+  values, it's the same, but all fixed point numbers truncate towards negative
+  infinity, not zero, so the correct name is floor, not truncate.
 */
 struct FixedConversionsTestIntegerTruncation
     : public FixedConverstionsTestInteger {};
