@@ -261,5 +261,143 @@ IntegerConversionsTestParam integer_truncation_test_params[] = {
 INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestIntegerTruncation,
                          ValuesIn(integer_truncation_test_params));
 
+// ----------------------------------------------------------------------------
+// Double Conversions Tests
+// ----------------------------------------------------------------------------
+
+// Double -> Fixed
+// ----------------------------------------------------------------------------
+
+struct DoubleConversionTestParam {
+  unsigned int frac_bits;
+  curves_fixed_t fixed_value;
+  double double_value;
+};
+
+struct FixedConversionTestFixedFromDouble
+    : TestWithParam<DoubleConversionTestParam> {};
+
+TEST_P(FixedConversionTestFixedFromDouble, from_double) {
+  const auto param = GetParam();
+  const auto actual =
+      curves_fixed_from_double(param.frac_bits, param.double_value);
+  ASSERT_EQ(param.fixed_value, actual);
+}
+
+// clang-format off
+DoubleConversionTestParam const from_double_params[] = {
+  /*
+    The truncation from double to fixed is different than the truncation from
+    fixed to integer. The conversion relies on the double->integer cast, which
+    performs real truncation, rounding towards zero.
+
+    These tests show this for frac_bits = 0, which is really just round
+    tripping the truncation with no scaling.
+  */
+  {0, -123, -123.45},
+  {0, 123, 123.45},
+  {0, 0, -0.9},
+  {0, 0, 0.9},
+
+  /*
+    Normal values for frac_bits = 32:
+      2ll << 32 -> 2
+      1ll << 31 -> 0.5
+      1ll << 30 -> 0.25
+  */
+  {32, (-2ll << 32) - ((1ll << 31) | (1ll << 30)), -2.75},
+  {32, (2ll << 32) + ((1ll << 31) | (1ll << 30)), 2.75},
+
+  /*
+    The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so
+    the fixed point value we're generating here is actually
+    2^-33*(1 << 32) = 0.5, which truncates to 0.
+
+    These tests show it truncates to zero from both sides.
+  */
+  {32, 0, -std::ldexp(1.0, -33)},
+  {32, 0, std::ldexp(1.0, -33)},
+
+  /*
+    Min and max representable values for frac_bits = 0.
+
+    Ideally, we'd test against INT64_MAX, but it is a 63-bit number. A double
+    only has 53 bits of precision, so it can't be stored precisely in a double.
+    If we were to try to round trip it, the runtime would have to pick the
+    closest representable double, which in this case, causes it to round up to
+    2^64. The value in the double is then larger than INT64_MAX. Converting an
+    out of range double to an integer is undefined behavior. In this specific
+    case, on x64, converting back just happens to give the value INT64_MIN.
+    That is about as different from the value we started with as could be, so
+    the test fails.
+
+    Instead, we use the largest round-trippable integer, which is:
+      INT64_MAX - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
+
+    INT64_MIN is representable, so we use it directly.
+  */
+  {0, INT64_MIN, static_cast<double>(INT64_MIN)},
+  {0, INT64_MAX - 1023, static_cast<double>(INT64_MAX - 1023)},
+
+  // Min and max representable values for frac_bits = 32
+  {32, INT64_MIN, -static_cast<double>(1ll << 31)},
+  {32, ((1ll << 31) - 1) << 32, static_cast<double>((1ll << 31) - 1)},
+
+  // Min and max representable values for frac_bits = 62
+  {62, INT64_MIN, -2.0},
+  {62, 1ll << 62, 1.0},
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedFromDouble,
+                         ValuesIn(from_double_params));
+
+// Fixed -> Double
+// ----------------------------------------------------------------------------
+
+struct FixedConversionTestFixedToDouble
+    : TestWithParam<DoubleConversionTestParam> {};
+
+TEST_P(FixedConversionTestFixedToDouble, to_double) {
+  const auto param = GetParam();
+  const auto actual =
+      curves_fixed_to_double(param.frac_bits, param.fixed_value);
+  ASSERT_DOUBLE_EQ(param.double_value, actual);
+}
+
+// clang-format off
+DoubleConversionTestParam const to_double_params[] = {
+  // frac_bits = 0 is just the original integers as doubles with no scaling.
+  {0, 123, 123.0},
+  {0, -456, -456.0},
+
+  // frac_bits = 32, normal values with full precision
+  {32, (2ll << 32) | (1ll << 31), 2.5},
+  {32, (-3ll << 32) | (1ll << 31), -2.5},
+  {32, 1, std::ldexp(1.0, -32)}, // 1/2^32
+  {32, -1, -std::ldexp(1.0, -32)},
+
+  /*
+    frac_bits = 60 causes precision loss when converting to 53-bit double.
+
+    In q3.60:
+      (1ll << 60) is 1.0
+      (1ll << 0) is 2^-60 (60 - 0 = 60)
+      (1ll << 6) is 2^-54 (60 - 6 = 54)
+      (1ll << 7) is 2^-53 (60 - 7 = 53)
+
+    1 + 2^-60 will lose the 2^-60 part, (1ll << 0) bit is cleared
+    1 + 2^-54 will lose the 2^-54 part, (1ll << 6) bit is cleared
+    1 + 2^-53 will keep the 2^-53 part, (1ll << 7) bit is set
+  */
+  {60, (1ll << 60) | (1ll << 0), 1.0}, // The 2^-60 part is lost
+  {60, (1ll << 60) | (1ll << 6), 1.0}, // The 2^-54 part is lost
+  {60, (1ll << 60) | (1ll << 7), 1.0 + std::ldexp(1.0, -53)}, // bit is kept
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
+                         ValuesIn(to_double_params));
+
 }  // namespace
 }  // namespace curves
