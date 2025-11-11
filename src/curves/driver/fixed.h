@@ -39,4 +39,4 @@ static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
 	return 7244019458077122842ll >> (CURVES_PI_FRAC_BITS - frac_bits);
 }
 
-#endif /* _CURVES_FIXED_h */
+#endif /* _CURVES_FIXED_H */
