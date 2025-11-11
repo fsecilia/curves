@@ -25,7 +25,7 @@ TEST_F(FixedTest, one_highest_precision) {
   const auto frac_bits = 62;
   const auto expected = 4611686018427387904ll;
 
-  const auto actual = curves_const_one(frac_bits);
+  const auto actual = curves_const_1(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -34,7 +34,7 @@ TEST_F(FixedTest, one_lowest_precision) {
   const auto frac_bits = 0;
   const auto expected = 1ll;
 
-  const auto actual = curves_const_one(frac_bits);
+  const auto actual = curves_const_1(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -63,7 +63,7 @@ TEST_P(FixedConstantsTest, verify_constants) {
   const auto param = GetParam();
 
   const auto actual_fixed = param.constant_func(param.frac_bits);
-  const auto one_fixed = curves_const_one(param.frac_bits);
+  const auto one_fixed = curves_const_1(param.frac_bits);
 
   const auto actual_double = double(actual_fixed) / double(one_fixed);
 

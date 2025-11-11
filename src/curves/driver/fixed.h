@@ -14,12 +14,12 @@
 typedef int64_t curves_fixed_t;
 
 /**
- * curves_const_one() - Fixed-point constant 1
+ * curves_const_1() - Fixed-point constant 1
  * @frac_bits: Fractional bit precision (0 to 63)
  *
  * Return: Constant value 1 with specified precision
  */
-static inline curves_fixed_t curves_const_one(unsigned int frac_bits)
+static inline curves_fixed_t curves_const_1(unsigned int frac_bits)
 {
 	return 1ll << frac_bits;
 }
