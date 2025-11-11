@@ -57,17 +57,13 @@ struct ConstantsTestParam {
   }
 };
 
-struct FixedConstantsTest : public TestWithParam<ConstantsTestParam> {
-  auto get_one(unsigned int frac_bits) const {
-    return curves_const_one(frac_bits);
-  }
-};
+struct FixedConstantsTest : public TestWithParam<ConstantsTestParam> {};
 
 TEST_P(FixedConstantsTest, verify_constants) {
   const auto param = GetParam();
 
   const auto actual_fixed = param.constant_func(param.frac_bits);
-  const auto one_fixed = get_one(param.frac_bits);
+  const auto one_fixed = curves_const_one(param.frac_bits);
 
   const auto actual_double = double(actual_fixed) / double(one_fixed);
 
