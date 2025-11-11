@@ -4,13 +4,9 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include <cmath>
+#include "fixed.hpp"
 #include <curves/test.hpp>
 #include <string>
-
-extern "C" {
-#include <curves/driver/fixed.h>
-}  // extern "C"
 
 namespace curves {
 namespace {
