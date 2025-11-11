@@ -68,7 +68,7 @@ TEST_P(FixedConstantsTest, verify_constants) {
   const auto actual_double = double(actual_fixed) / double(one_fixed);
 
   if (param.tolerance == 0.0) {
-    ASSERT_EQ(param.expected_value, actual_double);
+    ASSERT_DOUBLE_EQ(param.expected_value, actual_double);
   } else {
     ASSERT_NEAR(param.expected_value, actual_double, param.tolerance);
   }
