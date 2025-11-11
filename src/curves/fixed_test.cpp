@@ -257,7 +257,7 @@ const IntegerConversionsTestParam integer_truncation_test_params[] = {
   // nonzero negative: -2.25, truncates to -2, but floors to -3
   {32, -3, -9663676416ll},
 };
-// clang_format on
+// clang-format on
 
 INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestIntegerTruncation,
                          ValuesIn(integer_truncation_test_params));
