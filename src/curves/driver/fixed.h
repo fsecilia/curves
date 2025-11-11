@@ -63,4 +63,30 @@ static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
 	return 7244019458077122842ll >> (CURVES_PI_FRAC_BITS - frac_bits);
 }
 
+/**
+ * curves_fixed_from_integer() - Converts integers to fixed point
+ * @frac_bits: Fractional bit precision (0 to 62)
+ * @value: Integer to convert
+ *
+ * Return: value in fixed-point with given precision
+ */
+static inline curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
+						       int64_t value)
+{
+	return value << frac_bits;
+}
+
+/**
+ * curves_fixed_to_integer() - Converts fixed point to integers
+ * @frac_bits: Fractional bit precision (0 to 62)
+ * @value: Fixed-point with given precision to convert
+ *
+ * Return: value as an integer
+ */
+static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
+					      curves_fixed_t value)
+{
+	return value >> frac_bits;
+}
+
 #endif /* _CURVES_FIXED_H */

@@ -19,3 +19,8 @@ extern curves_fixed_t curves_const_1(unsigned int frac_bits);
 extern curves_fixed_t curves_const_e(unsigned int frac_bits);
 extern curves_fixed_t curves_const_ln2(unsigned int frac_bits);
 extern curves_fixed_t curves_const_pi(unsigned int frac_bits);
+
+extern curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
+						int64_t value);
+extern int64_t curves_fixed_to_integer(unsigned int frac_bits,
+				       curves_fixed_t value);
