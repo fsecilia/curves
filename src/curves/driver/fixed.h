@@ -95,18 +95,20 @@ static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 }
 
 /**
- * curves_fixed_multiply() - Multiply two arbitrary-precision fixed-point values
- * @multiplicand_frac_bits: Fractional bits in multiplicand, [0, 62]
- * @multiplicand: Value to multiply
- * @multiplier_frac_bits: Fractional bits in multiplier, [0, 62]
- * @multiplier: Amount to multiply by
- * @output_frac_bits: Fractional bits in result, [0, 62]
+ * curves_fixed_multiply() - Multiplies two arbitrary-precision fixed-point
+ * values.
  *
- * Multiplies two fixed-point values with independent fractional precision
- * and shifts the result to match @output_frac_bits. The raw product has
- * @multiplicand_frac_bits + @multiplier_frac_bits fractional bits; this
- * function shifts it left or right as needed to produce the requested
- * output precision.
+ * @multiplicand_frac_bits: Fractional bits in multiplicand, [0, 62].
+ * @multiplicand: Value to multiply.
+ * @multiplier_frac_bits: Fractional bits in multiplier, [0, 62].
+ * @multiplier: Amount to multiply by.
+ * @output_frac_bits: Fractional bits in result, [0, 62].
+ *
+ * This function multiplies two fixed-point values with independent fractional
+ * precision and shifts the result to match @output_frac_bits. The raw product
+ * has @multiplicand_frac_bits + @multiplier_frac_bits fractional bits; this
+ * function shifts it left or right as needed to produce the requested output
+ * precision.
  *
  * The shift and multiply are done at 128 bits before truncating the result to
  * 64 bits.
@@ -143,7 +145,7 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		return 0;
 	}
 
-	// Shift and let caller ensure precision bounds prevent overflow.
+	// Shift and truncate.
 	return (curves_fixed_t)(shift > 0 ? product << shift :
 					    product >> -shift);
 }
