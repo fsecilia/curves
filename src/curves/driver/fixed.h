@@ -134,20 +134,23 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 	unsigned int product_frac_bits =
 		multiplicand_frac_bits + multiplier_frac_bits;
 
-	// Shift from where the result lands to where result is requested.
-	int shift = (int)output_frac_bits - (int)product_frac_bits;
+	if (output_frac_bits > product_frac_bits) {
+		unsigned int shift = output_frac_bits - product_frac_bits;
+		if (unlikely(shift >= 64)) {
+			WARN_ON_ONCE(shift >= 64);
+			return 0;
+		}
 
-	// Prevent UB from extreme shifts.
-	// Both of these shifts induce UB, but even if they didn't, they would
-	// unconditionally shift the entire result out of the final 64 bits.
-	if (unlikely(shift >= 64 || shift <= -128)) {
-		WARN_ON_ONCE(shift >= 64 || shift <= -128);
-		return 0;
+		return product << shift;
+	} else {
+		unsigned int shift = product_frac_bits - output_frac_bits;
+		if (unlikely(shift >= 128)) {
+			WARN_ON_ONCE(shift >= 128);
+			return 0;
+		}
+
+		return product >> shift;
 	}
-
-	// Shift and truncate.
-	return (curves_fixed_t)(shift > 0 ? product << shift :
-					    product >> -shift);
 }
 
 #endif /* _CURVES_FIXED_H */
