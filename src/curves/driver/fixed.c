@@ -36,3 +36,19 @@ extern curves_fixed_t curves_fixed_divide(unsigned int dividend_frac_bits,
 					  unsigned int divisor_frac_bits,
 					  curves_fixed_t divisor,
 					  unsigned int output_frac_bits);
+
+curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
+						    curves_fixed_t multiplier,
+						    int shift)
+{
+	// Right shift tends towards 0 in the limit, so return 0.
+	if (shift < 0)
+		return 0;
+
+	// 0 stays 0.
+	if (multiplicand == 0 || multiplier == 0)
+		return 0;
+
+	// This is a large left shift. Saturate based on sign of product.
+	return (multiplicand > 0) == (multiplier > 0) ? INT64_MAX : INT64_MIN;
+}

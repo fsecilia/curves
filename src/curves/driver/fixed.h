@@ -94,6 +94,10 @@ static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 	return value >> frac_bits;
 }
 
+curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
+						    curves_fixed_t multiplier,
+						    int shift);
+
 /**
  * curves_fixed_multiply() - Multiplies two arbitrary-precision fixed-point
  * values.
@@ -134,35 +138,19 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 	unsigned int product_frac_bits =
 		multiplicand_frac_bits + multiplier_frac_bits;
 
-	if (output_frac_bits > product_frac_bits) {
-		unsigned int shift = output_frac_bits - product_frac_bits;
+	// Calculate signed shift.
+	int shift = (int)output_frac_bits - (int)product_frac_bits;
 
-		// Handle large shifts.
-		if (unlikely(shift >= 64)) {
-			WARN_ON_ONCE(shift >= 64);
+	// Handle bad shifts.
+	if (unlikely(shift >= 64 || shift <= -128))
+		return __curves_fixed_multiply_error(multiplicand, multiplier,
+						     shift);
 
-			// 0 stays 0.
-			if (multiplicand == 0 || multiplier == 0)
-				return 0;
-
-			// Saturate based on sign of result.
-			return (multiplicand > 0) == (multiplier > 0) ?
-				       INT64_MAX :
-				       INT64_MIN;
-		}
-
+	// Execute signed shift.
+	if (shift > 0)
 		return product << shift;
-	} else {
-		unsigned int shift = product_frac_bits - output_frac_bits;
-
-		// Handle large shifts.
-		if (unlikely(shift >= 128)) {
-			WARN_ON_ONCE(shift >= 128);
-			return 0;
-		}
-
-		return product >> shift;
-	}
+	else
+		return product >> -shift;
 }
 
 static inline curves_fixed_t
