@@ -410,16 +410,16 @@ INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
 // ----------------------------------------------------------------------------
 
 struct MultiplicationParam {
+  curves_fixed_t multiplicand;
+  curves_fixed_t multiplier;
+  int desired_shift;
+  curves_fixed_t expected_result;
+
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
       -> std::ostream& {
     return out << "{" << src.multiplicand << ", " << src.multiplier << ", "
                << src.desired_shift << ", " << src.expected_result << "}";
   }
-
-  curves_fixed_t multiplicand;
-  curves_fixed_t multiplier;
-  int desired_shift;
-  curves_fixed_t expected_result;
 };
 
 // Test Fixture
