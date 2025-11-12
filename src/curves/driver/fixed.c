@@ -24,3 +24,9 @@ extern curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
 						int64_t value);
 extern int64_t curves_fixed_to_integer(unsigned int frac_bits,
 				       curves_fixed_t value);
+
+extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
+					    curves_fixed_t multiplicand,
+					    unsigned int multiplier_frac_bits,
+					    curves_fixed_t multiplier,
+					    unsigned int output_frac_bits);

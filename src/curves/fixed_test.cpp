@@ -402,5 +402,158 @@ const DoubleConversionTestParam to_double_params[] = {
 INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
                          ValuesIn(to_double_params));
 
+// ----------------------------------------------------------------------------
+// Multiplication Tests
+// ----------------------------------------------------------------------------
+
+/*
+  curves_fixed_multiply takes 5 paramters, but they are not independent.
+
+  The only real, independent parameters are the multiplicand, multiplier, and
+  the internal shift it calculates. Shift is calculated as output_frac_bits
+  minus the sum of the other frac bits.
+
+  The multiplicand, multiplier, and desired_shift are specified as test
+  parameters. The remaining values are derived from these.
+*/
+struct MultiplicationParam {
+  friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
+      -> std::ostream& {
+    return out << "{" << src.multiplicand << ", " << src.multiplier << ", "
+               << src.desired_shift << ", " << src.expected << "}";
+  }
+
+  curves_fixed_t multiplicand;
+  curves_fixed_t multiplier;
+  int desired_shift;
+  curves_fixed_t expected;
+};
+
+struct FixedMultiplicationTest : TestWithParam<MultiplicationParam> {};
+
+TEST_P(FixedMultiplicationTest, result) {
+  const auto& input = GetParam();
+
+#if 0
+  const auto expected_product = input.multiplicand * input.multiplier;
+  const auto expected_result = input.desired_shift < 0
+                                   ? expected_product >> -input.desired_shift
+                                   : expected_product << input.desired_shift;
+#endif
+  const auto expected_result = input.expected;
+
+  const auto actual_result = curves_fixed_multiply(
+      0, input.multiplicand, 0, input.multiplier, -input.desired_shift);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+const MultiplicationParam multiplication_params[] = {
+    {1, 1, 1, 0},
+
+    // simple zeros
+    {0, 1, 0, 0},
+    {0, -1, 0, 0},
+    {-1, 0, 0, 0},
+
+    // simple positive
+    {1, 1, 1, 0},
+    {1, 1, 0, 1},
+    {1LL << 62, 1, 0, 1LL << 62},
+
+    // small positive
+    {15, 26, 2, 15 * 26 >> 2},
+    {89, 11, 3, 89 * 11 >> 3},
+
+    // fixed point values
+    {1447LL << 32, 13LL << 32, 32, 1447LL * 13LL << 32},
+
+    // large positive values with shifts
+    {1LL << 62, 1, 1, 1LL << 61},
+    {1LL << 62, 1, 61, 2},
+    {1LL << 62, 1, 62, 1},
+    {1LL << 62, 1, 63, 0},
+    {1LL << 61, 2, 62, 1},
+    {1LL << 60, 4, 62, 1},
+
+    // values requiring more than 64 bits internally
+    {1LL << 32, 1LL << 32, 32, 1LL << 32},
+    {1LL << 40, 1LL << 40, 48, 1LL << 32},
+    {1LL << 50, 1LL << 50, 68, 1LL << 32},
+    {1000000000LL, 1000000000LL, 20, 953674316406LL},
+    {100LL << 32, 200LL << 32, 63, 100LL * 200 << 1},
+
+    // simple negatives
+    {-1, 1, 0, -1},
+    {1, -1, 0, -1},
+    {-1, -1, 0, 1},
+    {-1, 100, 0, -100},
+    {100, -1, 0, -100},
+
+    // negative * positive
+    {-15, 26, 2, -15 * 26 >> 2},
+    {-89, 11, 3, -89 * 11 >> 3},
+
+    // positive * negative
+    {15, -26, 2, 15 * -26 >> 2},
+    {89, -11, 3, 89 * -11 >> 3},
+
+    // negative * negative
+    {-15, -26, 2, 15 * 26 >> 2},
+    {-89, -11, 3, 89 * 11 >> 3},
+
+    // negative fixed point
+    {-1447LL << 32, 13LL << 32, 32, -1447LL * 13LL << 32},
+    {1447LL << 32, -13LL << 32, 32, -1447LL * 13LL << 32},
+    {-1447LL << 32, -13LL << 32, 32, 1447LL * 13LL << 32},
+
+    // large negative values
+    {-(1LL << 62), 1, 0, -(1LL << 62)},
+    {1, -(1LL << 62), 0, -(1LL << 62)},
+    {-(1LL << 62), -1, 0, 1LL << 62},
+    {-(1LL << 61), 2, 0, -(1LL << 62)},
+    {2, -(1LL << 61), 0, -(1LL << 62)},
+    {-(1LL << 61), -2, 0, 1LL << 62},
+
+    // large negative values with large shifts
+    {-(1LL << 62), 1, 62, -1},
+    {1LL << 62, -1, 62, -1},
+    {-(1LL << 62), -1, 62, 1},
+
+    // boundary
+    {max, 1, 0, max},
+    {max, 2, 1, max},
+    {max, -1, 0, -max},
+    {-max, 1, 0, -max},
+    {-max, -1, 0, max},
+
+    // various zeros
+    {0, -100, 5, 0},
+    {-100, 0, 5, 0},
+    {0, -(1LL << 62), 32, 0},
+
+    // shift >= 128 boundary and overflow (all should return 0)
+    {1, 1, 128, 0},      // shift == 128 exactly
+    {100, 200, 128, 0},  // shift == 128 with non-trivial values
+    {max, max, 128, 0},  // shift == 128 with large values
+    {1, 1, 129, 0},      // shift > 128
+    {1, 1, 200, 0},      // shift >> 128
+
+    // shift >= 128 with negative operands (all should return 0)
+    {-1, 1, 128, 0},
+    {1, -1, 128, 0},
+    {-1, -1, 128, 0},
+    {-max, max, 128, 0},
+    {max, -max, 200, 0},
+
+    // shift >= 128 with zero operands (all should return 0)
+    {0, 0, 128, 0},
+    {0, max, 128, 0},
+    {max, 0, 200, 0},
+};
+
+INSTANTIATE_TEST_SUITE_P(multiplication_params, FixedMultiplicationTest,
+                         ValuesIn(multiplication_params));
+
 }  // namespace
 }  // namespace curves
