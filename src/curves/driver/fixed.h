@@ -2,6 +2,10 @@
 /*
  * Fixed-point number type and supporting math functions.
  *
+ * This module uses arbitrary precision and does not have a particular
+ * preferred Q format. Each operation taking a fixed point input also takes the
+ * precision describing that input.
+ *
  * Copyright (C) 2025 Frank Secilia
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
