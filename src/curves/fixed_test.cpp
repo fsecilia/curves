@@ -11,8 +11,8 @@
 namespace curves {
 namespace {
 
-const auto min = std::numeric_limits<int64_t>::min();
-const auto max = std::numeric_limits<int64_t>::max();
+const auto kMin = std::numeric_limits<int64_t>::min();
+const auto kMax = std::numeric_limits<int64_t>::max();
 
 // ----------------------------------------------------------------------------
 // Fixed Test
@@ -184,7 +184,7 @@ const IntegerConversionsTestParam
   {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
 
   // end of q63.0 range
-  {0, max, max},
+  {0, kMax, kMax},
 
   // -1
   {1, -1, -1ll << 1},
@@ -215,7 +215,7 @@ const IntegerConversionsTestParam
   { 1, -1ll << 62, (-1ll << 62) << 1},
 
   // end of negative q63.0 range
-  {0, min, min},
+  {0, kMin, kMin},
 };
 // clang-format on
 
@@ -339,15 +339,15 @@ const DoubleConversionTestParam from_double_params[] = {
 
     min is representable, so we use it directly.
   */
-  {0, min, static_cast<double>(min)},
-  {0, max - 1023, static_cast<double>(max - 1023)},
+  {0, kMin, static_cast<double>(kMin)},
+  {0, kMax - 1023, static_cast<double>(kMax - 1023)},
 
   // Min and max representable values for frac_bits = 32
-  {32, min, -static_cast<double>(1ll << 31)},
+  {32, kMin, -static_cast<double>(1ll << 31)},
   {32, ((1ll << 31) - 1) << 32, static_cast<double>((1ll << 31) - 1)},
 
   // Min and max representable values for frac_bits = 62
-  {62, min, -2.0},
+  {62, kMin, -2.0},
   {62, 1ll << 62, 1.0},
 };
 // clang-format on
@@ -406,22 +406,9 @@ INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
 // Multiplication Tests
 // ----------------------------------------------------------------------------
 
-/*
-  curves_fixed_multiply takes 5 paramters, but they are not independent.
+// Test Parameter
+// ----------------------------------------------------------------------------
 
-  The only real, independent parameters are the multiplicand, multiplier, and
-  the internal shift it calculates from the 3 precisions. Shift is calculated
-  as output_frac_bits minus the sum of the other frac bits.
-
-  The multiplicand, multiplier, and desired_shift are specified as test
-  parameters. The remaining values are derived from these in various ways
-  depending on the test.
-
-  The shifts that curves_fixed_multiply takes are all unsigned, but during
-  manipulation, we run negative values through it. This is fine because the
-  magnitudes are all in range, and because of how 2's complement works; adding
-  the unsigned has the same effect as the intended subtraction.
-*/
 struct MultiplicationParam {
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
       -> std::ostream& {
@@ -435,42 +422,65 @@ struct MultiplicationParam {
   curves_fixed_t expected_result;
 };
 
-struct FixedMultiplicationTest : TestWithParam<MultiplicationParam> {
+// Test Fixture
+// ----------------------------------------------------------------------------
+
+/*
+  Parameterized test fixture for fixed-point multiplication.
+
+  curves_fixed_multiply() takes 5 parameters, but they are not independent. The
+  only real, independent parameters are the multiplicand, multiplier, and the
+  internal shift it calculates from the 3 precisions. The factors and
+  precisions are commutative, so the whole testable space reduces from
+  5-dimensional to 2.
+
+  The internal shift is calculated as:
+
+    `shift = output_frac_bits - (multiplicand_frac_bits + multiplier_frac_bits)`
+
+  The tests are parameterized by `multiplicand`, `multiplier`, and
+  `desired_shift`. The test harness then calculates the internal `shift`
+  indirectly as `shift = desired_shift` using the 3 frac_bits parameters.
+
+  In the test cases, this means:
+  - A positive `desired_shift` produces a left shift.
+  - A negative `desired_shift` produces a right shift.
+  - A zero `desired_shift` produces no shift; only truncation occurs.
+
+  The test cases (e.g., `via_multiplicand`, `via_output_frac_bits`) drive this
+  internal `shift` in different ways, but all should produce the same result
+  for the same `desired_shift`. By analogy, they're like different doors going
+  into the same room.
+
+  Since this is white-box testing, we know the implementation relies on the
+  commutativity of * (for factors) and + (for precisions). We deliberately omit
+  tests that just swap arguments left for right. This reduces the number of
+  test cases and the number of unique test parameterizations with no loss of
+  generality.
+*/
+struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
   const curves_fixed_t multiplicand = GetParam().multiplicand;
   const curves_fixed_t multiplier = GetParam().multiplier;
   const int desired_shift = GetParam().desired_shift;
   const curves_fixed_t expected_result = GetParam().expected_result;
 };
 
-TEST_P(FixedMultiplicationTest, via_multiplicand) {
-  const auto actual_result =
-      curves_fixed_multiply(desired_shift, multiplicand, 0, multiplier, 0);
+// Test Cases
+// ----------------------------------------------------------------------------
 
-  ASSERT_EQ(expected_result, actual_result);
-}
+/*
+  Splits shift between multiplicand (for right shifts) and output (for left
+  shifts).
 
-TEST_P(FixedMultiplicationTest, via_multiplier) {
-  const auto actual_result =
-      curves_fixed_multiply(0, multiplicand, desired_shift, multiplier, 0);
-
-  ASSERT_EQ(expected_result, actual_result);
-}
-
-TEST_P(FixedMultiplicationTest, via_output_frac_bits) {
-  const auto actual_result =
-      curves_fixed_multiply(0, multiplicand, 0, multiplier, -desired_shift);
-
-  ASSERT_EQ(expected_result, actual_result);
-}
-
-TEST_P(FixedMultiplicationTest, via_even_distribution) {
-  // Distribute about 1/3 of desired shift among the 3 parameters.
-  auto remaining = desired_shift;
-  const auto multiplicand_frac_bits = remaining / 3;
-  remaining -= multiplicand_frac_bits;
-  const auto multiplier_frac_bits = remaining / 2;
-  remaining -= multiplier_frac_bits;
-  auto output_frac_bits = -remaining;
+  In this test case, all of the desired shift comes from either the
+  multiplicand or output. Which is chosen depends on the shift's sign so not to
+  drive unsigned values negative.
+*/
+TEST_P(FixedMultiplicationTest, via_multiplicand_and_output) {
+  const unsigned int multiplicand_frac_bits =
+      (desired_shift < 0) ? -desired_shift : 0;
+  const unsigned int multiplier_frac_bits = 0;
+  const unsigned int output_frac_bits = (desired_shift > 0) ? desired_shift : 0;
 
   const auto actual_result =
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
@@ -479,153 +489,253 @@ TEST_P(FixedMultiplicationTest, via_even_distribution) {
   ASSERT_EQ(expected_result, actual_result);
 }
 
-const MultiplicationParam multiplication_params[] = {
-    // positive shifts
+// Distributes right shifts between both inputs. Left shifts come from output.
+TEST_P(FixedMultiplicationTest, via_all_inputs_and_output) {
+  const unsigned int total_input_bits =
+      (desired_shift < 0) ? -desired_shift : 0;
+  const unsigned int multiplicand_frac_bits = total_input_bits / 2;
+  const unsigned int multiplier_frac_bits =
+      total_input_bits - multiplicand_frac_bits;
+  const unsigned int output_frac_bits = (desired_shift > 0) ? desired_shift : 0;
 
-    // simple zeros
+  const auto actual_result =
+      curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
+                            multiplier_frac_bits, multiplier, output_frac_bits);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+/*
+  Biases shift by a large base precision to input and output, then reduces
+  output to acheive desired shift, spilling over to input if it underflows.
+  This tests a mix of both parameters for both positive and negative shifts.
+*/
+TEST_P(FixedMultiplicationTest, via_base_precision_mixed) {
+  const int kBasePrecision = 64;
+  const unsigned int multiplicand_frac_bits = kBasePrecision;
+  unsigned int multiplier_frac_bits = 0;
+  unsigned int output_frac_bits = 0;
+  if (kBasePrecision + desired_shift >= 0) {
+    // desired_shift does not reduce biased output_frac_bits past zero.
+    output_frac_bits = kBasePrecision + desired_shift;
+  } else {
+    // output_frac_bits would underflow, so increase multiplier instead.
+    multiplier_frac_bits = -(kBasePrecision + desired_shift);
+  }
+
+  const auto actual_result =
+      curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
+                            multiplier_frac_bits, multiplier, output_frac_bits);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+// Test Data
+// ----------------------------------------------------------------------------
+
+/*
+  Zero Operands
+
+  Any multiplication involving zero should result in zero, regardless of shift.
+*/
+// clang-format off
+const MultiplicationParam multiplication_zero_cases[] = {
     {0, 1, 0, 0},
     {0, -1, 0, 0},
     {-1, 0, 0, 0},
+    {0, -100, -5, 0},
+    {-100, 0, -5, 0},
+    {0, -(1LL << 62), -32, 0},
+    {0, 0, 1, 0},
+};
+// clang-format on
 
-    // simple positive
-    {1, 1, 1, 0},
+INSTANTIATE_TEST_SUITE_P(zero_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_zero_cases));
+
+/*
+  No Shift (desired_shift = 0)
+
+  Tests truncation and overflow when converting 128-bit product to 64-bit.
+*/
+// clang-format off
+const MultiplicationParam multiplication_no_shift_cases[] = {
+    // Simple signs
     {1, 1, 0, 1},
-    {1LL << 62, 1, 0, 1LL << 62},
-
-    // small positive
-    {15, 26, 2, 15 * 26 >> 2},
-    {89, 11, 3, 89 * 11 >> 3},
-
-    // fixed point values
-    {1447LL << 32, 13LL << 32, 32, 1447LL * 13LL << 32},
-
-    // large positive values with shifts
-    {1LL << 62, 1, 1, 1LL << 61},
-    {1LL << 62, 1, 61, 2},
-    {1LL << 62, 1, 62, 1},
-    {1LL << 62, 1, 63, 0},
-    {1LL << 61, 2, 62, 1},
-    {1LL << 60, 4, 62, 1},
-
-    // values requiring more than 64 bits internally
-    {1LL << 32, 1LL << 32, 32, 1LL << 32},
-    {1LL << 40, 1LL << 40, 48, 1LL << 32},
-    {1LL << 50, 1LL << 50, 68, 1LL << 32},
-    {1000000000LL, 1000000000LL, 20, 953674316406LL},
-    {100LL << 32, 200LL << 32, 63, 100LL * 200 << 1},
-
-    // simple negatives
     {-1, 1, 0, -1},
-    {1, -1, 0, -1},
     {-1, -1, 0, 1},
     {-1, 100, 0, -100},
-    {100, -1, 0, -100},
 
-    // negative * positive
-    {-15, 26, 2, -15 * 26 >> 2},
-    {-89, 11, 3, -89 * 11 >> 3},
-
-    // positive * negative
-    {15, -26, 2, 15 * -26 >> 2},
-    {89, -11, 3, 89 * -11 >> 3},
-
-    // negative * negative
-    {-15, -26, 2, 15 * 26 >> 2},
-    {-89, -11, 3, 89 * 11 >> 3},
-
-    // negative fixed point
-    {-1447LL << 32, 13LL << 32, 32, -1447LL * 13LL << 32},
-    {1447LL << 32, -13LL << 32, 32, -1447LL * 13LL << 32},
-    {-1447LL << 32, -13LL << 32, 32, 1447LL * 13LL << 32},
-
-    // large negative values
+    // Large values
+    {1LL << 62, 1, 0, 1LL << 62},
     {-(1LL << 62), 1, 0, -(1LL << 62)},
-    {1, -(1LL << 62), 0, -(1LL << 62)},
     {-(1LL << 62), -1, 0, 1LL << 62},
     {-(1LL << 61), 2, 0, -(1LL << 62)},
-    {2, -(1LL << 61), 0, -(1LL << 62)},
     {-(1LL << 61), -2, 0, 1LL << 62},
 
-    // large negative values with large shifts
-    {-(1LL << 62), 1, 62, -1},
-    {1LL << 62, -1, 62, -1},
-    {-(1LL << 62), -1, 62, 1},
+    // Boundary: max/min
+    {kMax, 1, 0, kMax},
+    {kMax, -1, 0, -kMax},
+    {-kMax, -1, 0, kMax},
 
-    // boundary
-    {max, 1, 0, max},
-    {max, 2, 1, max},
-    {max, -1, 0, -max},
-    {-max, 1, 0, -max},
-    {-max, 2, 1, -max},
-    {-max, -1, 0, max},
+    // Overflow on truncation (product > 64 bits)
+    {(1LL << 32), (1LL << 32), 0, 0}, // Product 1LL << 64, truncates to 0
+    {kMax, kMax, 0, 1},               // Product approx 1 << 126
+    {kMax, 2, 0, -2},                 // Product (1 << 64) - 2
+};
+// clang-format on
 
-    // various zeros
-    {0, -100, 5, 0},
-    {-100, 0, 5, 0},
-    {0, -(1LL << 62), 32, 0},
+INSTANTIATE_TEST_SUITE_P(no_shift_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_no_shift_cases));
 
-    // shift >= 128 boundary and overflow (all should return 0)
-    {1, 1, 128, 0},      // shift == 128 exactly
-    {100, 200, 128, 0},  // shift == 128 with non-trivial values
-    {max, max, 128, 0},  // shift == 128 with large values
-    {1, 1, 129, 0},      // shift > 128
-    {1, 1, 200, 0},      // shift >> 128
+/*
+  Negative (Right) Shifts (-128 < desired_shift < 0)
 
-    // shift >= 128 with negative operands (all should return 0)
-    {-1, 1, 128, 0},
-    {1, -1, 128, 0},
-    {-1, -1, 128, 0},
-    {-max, max, 128, 0},
-    {max, -max, 200, 0},
+  Tests normal operation, 128-bit intermediate products, and rounding.
+*/
+// clang-format off
+const MultiplicationParam multiplication_right_shift_cases[] = {
+    // Simple positive
+    {1, 1, -1, 0}, // Rounds to 0
+    {15, 26, -2, 15 * 26 >> 2},
+    {89, 11, -3, 89 * 11 >> 3},
 
-    // shift >= 128 with zero operands (all should return 0)
-    {0, 0, 128, 0},
-    {0, max, 128, 0},
-    {max, 0, 200, 0},
+    // Large positive values with shifts
+    {1LL << 62, 1, -1, 1LL << 61},
+    {1LL << 62, 1, -61, 2},
+    {1LL << 62, 1, -62, 1},
+    {1LL << 62, 1, -63, 0}, // Rounds to 0
+    {1LL << 61, 2, -62, 1},
+    {1LL << 60, 4, -62, 1},
 
-    // negative shifts
+    // Values requiring > 64 bits internally
+    {1LL << 32, 1LL << 32, -32, 1LL << 32}, // (1 << 64) >> 32
+    {1LL << 40, 1LL << 40, -48, 1LL << 32}, // (1 << 80) >> 48
+    {1LL << 50, 1LL << 50, -68, 1LL << 32}, // (1 << 100) >> 68
+    {1000000000LL, 1000000000LL, -20, 953674316406LL},
+    {100LL << 32, 200LL << 32, -63, 100LL * 200LL << 1}, // (X << 64) >> 63
 
-    // minimal left shift
-    {0, 0, -1, 0ll << 1},
-    {1, 1, -1, 1ll << 1},
+    // Fixed point values
+    {1447LL << 32, 13LL << 32, -32, 1447LL * 13LL << 32},
 
-    // Trivial: 1 * 1 << shift = 1 << shift
-    {1, 1, -32, 1ll << 32},
+    // All sign combinations
+    {-15, 26, -2, -15 * 26 >> 2},
+    {15, -26, -2, 15 * -26 >> 2},
+    {-15, -26, -2, 15 * 26 >> 2},
+    {-1447LL << 32, 13LL << 32, -32, -1447LL * 13LL << 32},
+    {1447LL << 32, -13LL << 32, -32, -1447LL * 13LL << 32},
+    {-1447LL << 32, -13LL << 32, -32, 1447LL * 13LL << 32},
 
-    // Powers of 2
-    {1ll << 10, 1ll << 10, -20, 1ll << 40},  // (2^10 * 2^10) << 20 = 2^40
+    // Large negative values
+    {-(1LL << 62), 1, -62, -1},
+    {-(1LL << 62), -1, -62, 1},
 
-    // Small non-powers
-    {100, 200, -10, (100 * 200) << 10},
+    // Boundary: max/min
+    {kMax, 2, -1, kMax},   // ((1 << 64) - 2) >> 1 = (1 << 63) - 1 = kMax
+    {-kMax, 2, -1, -kMax},
+
+    // Boundary: 127-bit shift
+    {1LL << 63, 1LL << 63, -126, 1}, // (1 << 126) >> 126 = 1
+    {1LL << 63, 1LL << 63, -127, 0}, // (1 << 126) >> 127 = 0
+
+    // (kMin*-1) >> 1 = (1 << 63) >> 1 = 1 << 62
+    {kMin, -1, -1, 1LL << 62},
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(right_shift_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_right_shift_cases));
+
+/*
+  Positive (Left) Shifts (0 < desired_shift < 64)
+
+  Tests normal operation and overflow into sign bit or out of 64 bits.
+*/
+// clang-format off
+const MultiplicationParam multiplication_left_shift_cases[] = {
+    {1, 1, 1, 1LL << 1},
+    {1, 1, 32, 1LL << 32},
+    {1LL << 10, 1LL << 10, 20, 1LL << 40}, // (2^20) << 20 = 2^40
+    {100, 200, 10, (100LL * 200) << 10},
+    {-100, 200, 10, (-100LL * 200) << 10},
+
+    // Boundary: shift to MSB
+    {1, 1, 62, 1LL << 62},
+    {2, 1, 62, kMin},
+    {1, 1, 63, kMin},
+    {1, -1, 63, kMin},
+
+    // Boundary: overflow
+    {2, 2, 63, 0}, // (4 << 63) overflows 64-bit signed
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(left_shift_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_left_shift_cases));
+
+/*
+  Extreme Negative (Right) Shift (desired_shift <= -128)
+
+  Tests the `shift <= -128` branch, which should always return 0.
+*/
+// clang-format off
+const MultiplicationParam multiplication_extreme_right_shift_cases[] = {
+    // Boundary
+    {1, 1, -128, 0},
+    {100, 200, -128, 0},
+    {kMax, kMax, -128, 0},
 
     // Signs
-    {-100, 200, -10, (-100 * 200) << 10},
+    {-1, 1, -128, 0},
+    {-1, -1, -128, 0},
+    {-kMax, kMax, -128, 0},
 
-    {1, 1, -63, 1ll << 63},  // This barely fits (MSB set)
-    {2, 2, -63, 0},          // 4 << 63 overflows
+    // Zeros
+    {0, 0, -128, 0},
+    {0, kMax, -128, 0},
 
-    // shift <= -64 boundary and overflow (all should return 0)
-    {1, 1, -64, 0},      // shift == -64 exactly
-    {100, 200, -64, 0},  // shift == -64 with non-trivial values
-    {max, max, -64, 0},  // shift == -64 with large values
-    {1, 1, -65, 0},      // shift < -64
-    {1, 1, -200, 0},     // shift >> -64
-
-    // shift <= -64 with negative operands (all should return 0)
-    {-1, 1, -64, 0},
-    {1, -1, -64, 0},
-    {-1, -1, -64, 0},
-    {-max, max, -64, 0},
-    {max, -max, -200, 0},
-
-    // shift <= -64 with zero operands (all should return 0)
-    {0, 0, -64, 0},
-    {0, max, -64, 0},
-    {max, 0, -200, 0},
+    // Well over boundary
+    {1, 1, -129, 0},
+    {1, 1, -200, 0},
+    {kMax, -kMax, -200, 0},
 };
+// clang-format on
 
-INSTANTIATE_TEST_SUITE_P(multiplication_params, FixedMultiplicationTest,
-                         ValuesIn(multiplication_params));
+INSTANTIATE_TEST_SUITE_P(
+    extreme_right_shift_cases, FixedMultiplicationTest,
+    testing::ValuesIn(multiplication_extreme_right_shift_cases));
+
+/*
+  Extreme Positive (Left) Shift (desired_shift >= 64)
+
+  Tests the `shift >= 64` branch, which should always return 0.
+*/
+// clang-format off
+const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
+    // Boundary
+    {1, 1, 64, 0},
+    {100, 200, 64, 0},
+    {kMax, kMax, 64, 0},
+
+    // Signs
+    {-1, 1, 64, 0},
+    {-1, -1, 64, 0},
+    {-kMax, kMax, 64, 0},
+
+    // Zeros
+    {0, 0, 64, 0},
+    {0, kMax, 64, 0},
+
+    // Well over boundary
+    {1, 1, 65, 0},
+    {1, 1, 200, 0},
+    {kMax, -kMax, 200, 0},
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(
+    extreme_left_shift_cases, FixedMultiplicationTest,
+    testing::ValuesIn(multiplication_extreme_left_shift_cases));
 
 }  // namespace
 }  // namespace curves
