@@ -480,7 +480,7 @@ TEST_P(FixedMultiplicationTest, via_even_distribution) {
 }
 
 const MultiplicationParam multiplication_params[] = {
-    {1, 1, 1, 0},
+    // positive shifts
 
     // simple zeros
     {0, 1, 0, 0},
@@ -556,6 +556,7 @@ const MultiplicationParam multiplication_params[] = {
     {max, 2, 1, max},
     {max, -1, 0, -max},
     {-max, 1, 0, -max},
+    {-max, 2, 1, -max},
     {-max, -1, 0, max},
 
     // various zeros
@@ -581,6 +582,46 @@ const MultiplicationParam multiplication_params[] = {
     {0, 0, 128, 0},
     {0, max, 128, 0},
     {max, 0, 200, 0},
+
+    // negative shifts
+
+    // minimal left shift
+    {0, 0, -1, 0ll << 1},
+    {1, 1, -1, 1ll << 1},
+
+    // Trivial: 1 * 1 << shift = 1 << shift
+    {1, 1, -32, 1ll << 32},
+
+    // Powers of 2
+    {1ll << 10, 1ll << 10, -20, 1ll << 40},  // (2^10 * 2^10) << 20 = 2^40
+
+    // Small non-powers
+    {100, 200, -10, (100 * 200) << 10},
+
+    // Signs
+    {-100, 200, -10, (-100 * 200) << 10},
+
+    {1, 1, -63, 1ll << 63},  // This barely fits (MSB set)
+    {2, 2, -63, 0},          // 4 << 63 overflows
+
+    // shift <= -64 boundary and overflow (all should return 0)
+    {1, 1, -64, 0},      // shift == -64 exactly
+    {100, 200, -64, 0},  // shift == -64 with non-trivial values
+    {max, max, -64, 0},  // shift == -64 with large values
+    {1, 1, -65, 0},      // shift < -64
+    {1, 1, -200, 0},     // shift >> -64
+
+    // shift <= -64 with negative operands (all should return 0)
+    {-1, 1, -64, 0},
+    {1, -1, -64, 0},
+    {-1, -1, -64, 0},
+    {-max, max, -64, 0},
+    {max, -max, -200, 0},
+
+    // shift <= -64 with zero operands (all should return 0)
+    {0, 0, -64, 0},
+    {0, max, -64, 0},
+    {max, 0, -200, 0},
 };
 
 INSTANTIATE_TEST_SUITE_P(multiplication_params, FixedMultiplicationTest,
