@@ -28,9 +28,11 @@ __extension__ typedef __int128 int128_t;
 __extension__ typedef unsigned __int128 uint128_t;
 
 /**
- * __div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed integer
- * @dividend: 128-bit value to divide
- * @divisor: 64-bit amount to divide by (must be non-zero)
+ * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
+ * integer.
+ *
+ * @dividend: 128-bit value to divide.
+ * @divisor: 64-bit amount to divide by. Must be non-zero.
  *
  * Performs 128/64 signed division. Caller must ensure divisor is non-zero.
  *
@@ -39,7 +41,7 @@ __extension__ typedef unsigned __int128 uint128_t;
 #if defined __KERNEL__ && defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline int64_t __div_s128_by_s64(int128_t dividend, int64_t divisor)
+static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
 {
 	int64_t dividend_high = dividend >> 64;
 	int64_t dividend_low = dividend & 0xFFFFFFFFFFFFFFFF;
@@ -55,7 +57,7 @@ static inline int64_t __div_s128_by_s64(int128_t dividend, int64_t divisor)
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline int64_t __div_s128_by_s64(int128_t dividend, int64_t divisor)
+static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
 {
 	return (int64_t)(dividend / divisor);
 }
@@ -119,7 +121,7 @@ static inline int64_t curves_div_i64_i64_shl(int64_t dividend, int64_t divisor,
 		return (dividend > 0) == (divisor > 0) ? INT64_MAX : INT64_MIN;
 	}
 
-	return (int64_t)__div_s128_by_s64((int128_t)dividend << shift, divisor);
+	return curves_div_s128_by_s64((int128_t)dividend << shift, divisor);
 }
 
 #endif /* _CURVES_MATH64_H */
