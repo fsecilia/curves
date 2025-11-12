@@ -426,30 +426,55 @@ struct MultiplicationParam {
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
       -> std::ostream& {
     return out << "{" << src.multiplicand << ", " << src.multiplier << ", "
-               << src.desired_shift << ", " << src.expected << "}";
+               << src.desired_shift << ", " << src.expected_result << "}";
   }
 
   curves_fixed_t multiplicand;
   curves_fixed_t multiplier;
   int desired_shift;
-  curves_fixed_t expected;
+  curves_fixed_t expected_result;
 };
 
-struct FixedMultiplicationTest : TestWithParam<MultiplicationParam> {};
+struct FixedMultiplicationTest : TestWithParam<MultiplicationParam> {
+  const curves_fixed_t multiplicand = GetParam().multiplicand;
+  const curves_fixed_t multiplier = GetParam().multiplier;
+  const int desired_shift = GetParam().desired_shift;
+  const curves_fixed_t expected_result = GetParam().expected_result;
+};
 
-TEST_P(FixedMultiplicationTest, result) {
-  const auto& input = GetParam();
+TEST_P(FixedMultiplicationTest, via_multiplicand) {
+  const auto actual_result =
+      curves_fixed_multiply(desired_shift, multiplicand, 0, multiplier, 0);
 
-#if 0
-  const auto expected_product = input.multiplicand * input.multiplier;
-  const auto expected_result = input.desired_shift < 0
-                                   ? expected_product >> -input.desired_shift
-                                   : expected_product << input.desired_shift;
-#endif
-  const auto expected_result = input.expected;
+  ASSERT_EQ(expected_result, actual_result);
+}
 
-  const auto actual_result = curves_fixed_multiply(
-      0, input.multiplicand, 0, input.multiplier, -input.desired_shift);
+TEST_P(FixedMultiplicationTest, via_multiplier) {
+  const auto actual_result =
+      curves_fixed_multiply(0, multiplicand, desired_shift, multiplier, 0);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+TEST_P(FixedMultiplicationTest, via_output_frac_bits) {
+  const auto actual_result =
+      curves_fixed_multiply(0, multiplicand, 0, multiplier, -desired_shift);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+TEST_P(FixedMultiplicationTest, via_even_distribution) {
+  // Distribute about 1/3 of desired shift among the 3 parameters.
+  auto remaining = desired_shift;
+  const auto multiplicand_frac_bits = remaining / 3;
+  remaining -= multiplicand_frac_bits;
+  const auto multiplier_frac_bits = remaining / 2;
+  remaining -= multiplier_frac_bits;
+  auto output_frac_bits = -remaining;
+
+  const auto actual_result =
+      curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
+                            multiplier_frac_bits, multiplier, output_frac_bits);
 
   ASSERT_EQ(expected_result, actual_result);
 }
