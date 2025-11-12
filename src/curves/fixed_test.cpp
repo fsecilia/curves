@@ -410,11 +410,17 @@ INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
   curves_fixed_multiply takes 5 paramters, but they are not independent.
 
   The only real, independent parameters are the multiplicand, multiplier, and
-  the internal shift it calculates. Shift is calculated as output_frac_bits
-  minus the sum of the other frac bits.
+  the internal shift it calculates from the 3 precisions. Shift is calculated
+  as output_frac_bits minus the sum of the other frac bits.
 
   The multiplicand, multiplier, and desired_shift are specified as test
-  parameters. The remaining values are derived from these.
+  parameters. The remaining values are derived from these in various ways
+  depending on the test.
+
+  The shifts that curves_fixed_multiply takes are all unsigned, but during
+  manipulation, we run negative values through it. This is fine because the
+  magnitudes are all in range, and because of how 2's complement works; adding
+  the unsigned has the same effect as the intended subtraction.
 */
 struct MultiplicationParam {
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
