@@ -91,34 +91,29 @@ static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 }
 
 /**
- * curves_fixed_multiply() - Multiplies two fixed-point numbers of arbitrary
- * precision
- * @multiplicand_frac_bits: Fractional bit precision of multiplicand (0 to 62)
+ * curves_fixed_multiply() - Multiply two arbitrary-precision fixed-point values
+ * @multiplicand_frac_bits: Fractional bits in multiplicand, [0, 62]
  * @multiplicand: Value to multiply
- * @multiplier_frac_bits: Fractional bit precision of multiplier (0 to 62)
+ * @multiplier_frac_bits: Fractional bits in multiplier, [0, 62]
  * @multiplier: Amount to multiply by
- * @output_frac_bits: Fractional bit precision of final output (0 to 62)
+ * @output_frac_bits: Fractional bits in result, [0, 62]
  *
- * This function takes two fixed-point values, each with their own arbitrary
- * precision, then produces their product at another precision. Precisions sum,
- * such that if you have a multiplicand in format qA.B and a multiplier in
- * format qC.D, their product will be in format q(A+B).(C+D). Typically, the
- * result must be shifted right to bring it back into a usable range. Here, the
- * result will be shifted so the precision matches exactly output_frac_bits. It
- * will shift left if necessary. This way, the output of one calculation can
- * chain directly into another with the expected precision, regardless of the
- * precision of the inputs that produced it.
+ * Multiplies two fixed-point values with independent fractional precision
+ * and shifts the result to match @output_frac_bits. The raw product has
+ * @multiplicand_frac_bits + @multiplier_frac_bits fractional bits; this
+ * function shifts it left or right as needed to produce the requested
+ * output precision.
  *
- * Internally, the multiplication and shift are done with 128-bits, before
- * truncating back to 64.
+ * The shift and multiply are done at 128 bits before truncating the result to
+ * 64 bits.
  *
- * Only the fractional bits are aligned to output_frac_bits. The integer bits
- * may still overflow. The caller must ensure output_frac_bits is appropriate
- * for the magnitude of multiplicand * multiplier. No overflow checking is
- * performed on the result value.
+ * The caller is responsible for ensuring @output_frac_bits leaves sufficient
+ * integer bits to represent the product magnitude. No overflow detection is
+ * performed.
  *
- * If the size of the shift to output_frac_bits would induce UB, the result is
- * 0.
+ * Return: Product shifted to @output_frac_bits precision, or 0 if the
+ * required shift would cause undefined behavior (|shift| >= 64 for left
+ * shifts, >= 128 for right shifts).
  */
 static inline curves_fixed_t
 curves_fixed_multiply(unsigned int multiplicand_frac_bits,
@@ -126,18 +121,25 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		      unsigned int multiplier_frac_bits,
 		      curves_fixed_t multiplier, unsigned int output_frac_bits)
 {
+	// Intermediate product comes from regular multiplication.
 	int128_t product = (int128_t)multiplicand * (int128_t)multiplier;
+
+	// Under multiplication, precisions sum because they are logs.
 	unsigned int product_frac_bits =
 		multiplicand_frac_bits + multiplier_frac_bits;
 
+	// Shift from where the result lands to where result is requested.
 	int shift = (int)output_frac_bits - (int)product_frac_bits;
 
 	// Prevent UB from extreme shifts.
-	if (shift >= 64 || shift <= -128)
+	// Both of these shifts induce UB, but even if they didn't, they would
+	// unconditionally shift the entire result out of the final 64 bits.
+	if (unlikely(shift >= 64 || shift <= -128)) {
+		WARN_ON_ONCE(shift >= 64 || shift <= -128);
 		return 0;
+	}
 
-	// Otherwise shift and let caller ensure precision bounds prevent
-	// overflow.
+	// Shift and let caller ensure precision bounds prevent overflow.
 	return (curves_fixed_t)(shift > 0 ? product << shift :
 					    product >> -shift);
 }
