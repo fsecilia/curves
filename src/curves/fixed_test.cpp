@@ -713,23 +713,23 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format off
 const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
     // Boundary
-    {1, 1, 64, 0},
-    {100, 200, 64, 0},
-    {kMax, kMax, 64, 0},
+    {1, 1, 64, kMax},
+    {100, 200, 64, kMax},
+    {kMax, kMax, 64, kMax},
 
     // Signs
-    {-1, 1, 64, 0},
-    {-1, -1, 64, 0},
-    {-kMax, kMax, 64, 0},
+    {-1, 1, 64, kMin},
+    {-1, -1, 64, kMax},
+    {-kMax, kMax, 64, kMin},
 
     // Zeros
     {0, 0, 64, 0},
     {0, kMax, 64, 0},
 
     // Well over boundary
-    {1, 1, 65, 0},
-    {1, 1, 200, 0},
-    {kMax, -kMax, 200, 0},
+    {1, 1, 65, kMax},
+    {1, 1, 200, kMax},
+    {kMax, -kMax, 200, kMin},
 };
 // clang-format on
 

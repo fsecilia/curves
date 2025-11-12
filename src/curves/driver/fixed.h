@@ -136,14 +136,26 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 
 	if (output_frac_bits > product_frac_bits) {
 		unsigned int shift = output_frac_bits - product_frac_bits;
+
+		// Handle large shifts.
 		if (unlikely(shift >= 64)) {
 			WARN_ON_ONCE(shift >= 64);
-			return 0;
+
+			// 0 stays 0.
+			if (multiplicand == 0 || multiplier == 0)
+				return 0;
+
+			// Saturate based on sign of result.
+			return (multiplicand > 0) == (multiplier > 0) ?
+				       INT64_MAX :
+				       INT64_MIN;
 		}
 
 		return product << shift;
 	} else {
 		unsigned int shift = product_frac_bits - output_frac_bits;
+
+		// Handle large shifts.
 		if (unlikely(shift >= 128)) {
 			WARN_ON_ONCE(shift >= 128);
 			return 0;
