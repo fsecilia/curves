@@ -153,4 +153,41 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 	}
 }
 
+static inline curves_fixed_t
+curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
+		    unsigned int divisor_frac_bits, curves_fixed_t divisor,
+		    unsigned int output_frac_bits)
+{
+	int shift = (int)divisor_frac_bits + (int)output_frac_bits -
+		    (int)dividend_frac_bits;
+
+	// Handle dividing by 0.
+	if (divisor == 0) {
+		/*
+		 * Both are 0, completely undefined result. Arbitrarily choose
+		 * to return 0.
+		*/
+		if (dividend == 0)
+			return 0;
+
+		// Saturate based on sign of result.
+		return dividend < 0 ? INT64_MIN : INT64_MAX;
+	}
+
+	// Handle large shifts.
+	if (shift >= 128) {
+		// 0 stays 0.
+		if (dividend == 0)
+			return 0;
+
+		// Saturate based on sign of result.
+		return (dividend > 0) == (divisor > 0) ? INT64_MAX : INT64_MIN;
+	}
+
+	if (shift > 0)
+		return ((int128_t)dividend << shift) / divisor;
+	else
+		return ((int128_t)dividend / divisor) >> shift;
+}
+
 #endif /* _CURVES_FIXED_H */

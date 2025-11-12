@@ -30,3 +30,9 @@ extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 					    unsigned int multiplier_frac_bits,
 					    curves_fixed_t multiplier,
 					    unsigned int output_frac_bits);
+
+extern curves_fixed_t curves_fixed_divide(unsigned int dividend_frac_bits,
+					  curves_fixed_t dividend,
+					  unsigned int divisor_frac_bits,
+					  curves_fixed_t divisor,
+					  unsigned int output_frac_bits);

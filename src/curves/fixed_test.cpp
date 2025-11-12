@@ -737,5 +737,180 @@ INSTANTIATE_TEST_SUITE_P(
     extreme_left_shift_cases, FixedMultiplicationTest,
     testing::ValuesIn(multiplication_extreme_left_shift_cases));
 
+// ----------------------------------------------------------------------------
+// Division Tests
+// ----------------------------------------------------------------------------
+
+// Test Parameter
+// ----------------------------------------------------------------------------
+
+struct DivisionParam {
+  curves_fixed_t dividend;
+  curves_fixed_t divisor;
+  int desired_shift;
+  curves_fixed_t expected_result;
+
+  friend auto operator<<(std::ostream& out, const DivisionParam& src)
+      -> std::ostream& {
+    return out << "{" << src.dividend << ", " << src.divisor << ", "
+               << src.desired_shift << ", " << src.expected_result << "}";
+  }
+};
+
+// Test Fixture
+// ----------------------------------------------------------------------------
+
+struct FixedDivisionTest : testing::TestWithParam<DivisionParam> {
+  const curves_fixed_t dividend = GetParam().dividend;
+  const curves_fixed_t divisor = GetParam().divisor;
+  const int desired_shift = GetParam().desired_shift;
+  const curves_fixed_t expected_result = GetParam().expected_result;
+};
+
+// Test Cases
+// ----------------------------------------------------------------------------
+
+TEST_P(FixedDivisionTest, divide) {
+  const auto actual_result =
+      curves_fixed_divide(0, dividend, 0, divisor, desired_shift);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+const DivisionParam division_params[] = {
+    {15, 26, 2, (15 << 2) / 26},
+
+    // zero
+    {0, 1, 0, 0},
+    {0, -1, 0, 0},
+
+    // simple positive
+    {1, 1, 0, 1},
+    {1, 1, 1, 2},
+
+    // numerator < denominator
+    {15, 26, 2, (15 << 2) / 26},
+    {11, 89, 3, (11 << 3) / 89},
+
+    // numerator > denominator
+    {26, 15, 2, (26 << 2) / 15},
+    {89, 11, 3, (89 << 3) / 11},
+
+    // unity
+    {100, 100, 10, 1LL << 10},
+    {1000, 1000, 20, 1LL << 20},
+
+    // fixed point values
+    {1447LL << 32, 13LL << 32, 32, (1447LL << 32) / 13LL},
+    {13LL << 32, 1447LL << 32, 32, (13LL << 32) / 1447LL},
+
+    // large positive values
+    {1LL << 61, 1, 1, 1LL << 62},
+    {1LL << 60, 1, 2, 1LL << 62},
+    {1LL << 62, 2, 1, 1LL << 62},
+    {1LL << 62, 4, 2, 1LL << 62},
+
+    // large shifts
+    {1, 1, 62, 1LL << 62},
+    {1, 1, 63, 1LL << 63},
+    {1, 2, 63, 1LL << 62},
+    {1, 1LL << 10, 63, 1LL << 53},
+
+    // small numerator / large denominator
+    {1, 1LL << 62, 62, 1LL},
+    {1, 1LL << 62, 63, 2},
+    {10, 1LL << 62, 63, 20},
+
+    // simple negatives
+    {-1, 1, 0, -1},
+    {1, -1, 0, -1},
+    {-1, -1, 0, 1},
+    {-100, 1, 0, -100},
+    {100, -1, 0, -100},
+
+    // negative / positive
+    {-15, 26, 2, (-15 << 2) / 26},
+    {-89, 11, 3, (-89 << 3) / 11},
+
+    // positive / negative
+    {15, -26, 2, (15 << 2) / -26},
+    {89, -11, 3, (89 << 3) / -11},
+
+    // negative / negative
+    {-15, -26, 2, (-15 << 2) / -26},
+    {-89, -11, 3, (-89 << 3) / -11},
+
+    // negative unity
+    {-100, -100, 10, 1LL << 10},
+    {-1000, -1000, 20, 1LL << 20},
+    {100, -100, 10, -(1LL << 10)},
+    {-100, 100, 10, -(1LL << 10)},
+
+    // negative fixed point values
+    {-1447LL << 32, 13LL << 32, 32, (-1447LL << 32) / 13LL},
+    {1447LL << 32, -13LL << 32, 32, (1447LL << 32) / -13LL},
+    {-1447LL << 32, -13LL << 32, 32, (-1447LL << 32) / -13LL},
+
+    // large negative values
+    {-(1LL << 61), 1, 1, -(1LL << 62)},
+    {-(1LL << 60), 1, 2, -(1LL << 62)},
+    {1LL << 61, -1, 1, -(1LL << 62)},
+
+    // negative values with large shifts
+    {-1, 1, 63, kMin},
+    {-1, -1, 63, 1LL << 63},
+    {-1, 1LL << 62, 63, -2},
+
+    // kMax boundary
+    {kMax, 1, 0, kMax},
+    {kMax, -1, 0, -kMax},
+
+    // various zeros
+    {0, -100, 10, 0},
+    {0, -(1LL << 62), 32, 0},
+    {0, -1, 63, 0},
+
+    // divisor == 0 error cases
+    {0, 0, 0, 0},         // 0/0 = 0 (arbitrary choice)
+    {0, 0, 32, 0},        // 0/0 with shift
+    {1, 0, 0, kMax},      // positive/0 = kMax
+    {100, 0, 10, kMax},   // positive/0 with shift
+    {kMax, 0, 32, kMax},  // kMax/0
+    {-1, 0, 0, kMin},     // negative/0 = kMin
+    {-100, 0, 10, kMin},  // negative/0 with shift
+    {kMin, 0, 32, kMin},  // kMin/0
+
+    // shift >= 128 saturation cases
+    {0, 1, 128, 0},    // 0 stays 0
+    {0, -1, 128, 0},   // 0 stays 0 (negative divisor)
+    {0, 100, 200, 0},  // 0 stays 0 (large shift)
+
+    // positive dividend, positive divisor -> kMax
+    {1, 1, 128, kMax},
+    {100, 50, 128, kMax},
+    {kMax, 1, 129, kMax},
+    {1, kMax, 200, kMax},
+
+    // positive dividend, negative divisor -> kMin
+    {1, -1, 128, kMin},
+    {100, -50, 128, kMin},
+    {kMax, -1, 129, kMin},
+    {1, -kMax, 200, kMin},
+
+    // negative dividend, positive divisor -> kMin
+    {-1, 1, 128, kMin},
+    {-100, 50, 128, kMin},
+    {kMin, 1, 129, kMin},
+    {-1, kMax, 200, kMin},
+
+    // negative dividend, negative divisor -> kMax
+    {-1, -1, 128, kMax},
+    {-100, -50, 128, kMax},
+    {kMin, -1, 129, kMax},
+    {-1, -kMax, 200, kMax},
+};
+
+INSTANTIATE_TEST_SUITE_P(division_params, FixedDivisionTest,
+                         ValuesIn(division_params));
 }  // namespace
 }  // namespace curves
