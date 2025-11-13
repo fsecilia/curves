@@ -88,4 +88,28 @@ static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
 }
 
 #endif
+
+// rounds to nearest
+static inline s64 curves_div_s128_by_s64_rtn(int128_t dividend, s64 divisor)
+{
+	struct curves_div_result raw =
+		curves_div_s128_by_s64(dividend, divisor);
+
+	// Determine if rounding is necessary.
+	s64 rem_sign = raw.remainder >> 63;
+	u64 rem_abs = (u64)((raw.remainder ^ rem_sign) - rem_sign);
+	s64 div_sign = divisor >> 63;
+	u64 div_abs = (u64)((divisor ^ div_sign) - div_sign);
+	bool needs_round = rem_abs >= (div_abs - rem_abs);
+
+	// Determine rounding directions.
+	bool is_negative = (dividend < 0) ^ (divisor < 0);
+	bool round_up = needs_round && !is_negative;
+	bool round_down = needs_round && is_negative;
+
+	// Round with boundary saturation.
+	return raw.quotient + (round_up && (raw.quotient != S64_MAX)) -
+	       (round_down && (raw.quotient != S64_MIN));
+}
+
 #endif /* _CURVES_MATH64_H */
