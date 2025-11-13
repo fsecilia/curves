@@ -141,14 +141,11 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 	// Intermediate product comes from regular multiplication.
 	int128_t product = (int128_t)multiplicand * (int128_t)multiplier;
 
-	// Under multiplication, precisions sum because they are logs.
-	unsigned int product_frac_bits =
-		multiplicand_frac_bits + multiplier_frac_bits;
+	// Calculate final shift to align binary point with output_frac_bits.
+	int shift = (int)output_frac_bits - (int)multiplicand_frac_bits -
+		    (int)multiplier_frac_bits;
 
-	// Calculate signed shift.
-	int shift = (int)output_frac_bits - (int)product_frac_bits;
-
-	// Handle bad shifts.
+	// Handle UB shifts.
 	if (unlikely(shift >= 64 || shift <= -128))
 		return __curves_fixed_multiply_error(multiplicand, multiplier,
 						     shift);
