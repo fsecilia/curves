@@ -83,20 +83,12 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 						  curves_fixed_t divisor,
 						  int shift)
 {
-	// 0 dividend stays 0, even for divide by 0.
-	if (dividend == 0)
+	// Zero if dividend is 0 or we're shifting right without a singularity.
+	if (dividend == 0 || (divisor != 0 && shift < 0))
 		return 0;
 
-	// Handle dividing by 0.
-	if (divisor == 0)
-		return saturate(dividend > 0);
-
-	// Right shift tends towards 0 in the limit, so return 0.
-	if (shift < 0)
-		return 0;
-
-	// This is a large left shift. Saturate based on sign of quotient.
-	return saturate((dividend > 0) == (divisor > 0));
+	// Otherwise, saturate based on sign of quotient.
+	return saturate((dividend ^ divisor) >= 0);
 }
 
 curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
