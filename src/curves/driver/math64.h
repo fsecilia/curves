@@ -44,7 +44,7 @@ __extension__ typedef unsigned __int128 uint128_t;
  *          Traps with #DE on x64.
  * Return: 64-bit signed quotient
  */
-#if defined __KERNEL__ && defined __x86_64__
+#if defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
 static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
