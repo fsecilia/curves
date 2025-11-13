@@ -94,6 +94,11 @@ static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 	return value >> frac_bits;
 }
 
+static inline curves_fixed_t __curves_fixed_saturate(bool result_positive)
+{
+	return result_positive ? INT64_MAX : INT64_MIN;
+}
+
 curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 						    curves_fixed_t multiplier,
 						    int shift);
@@ -156,11 +161,6 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 						  curves_fixed_t divisor,
 						  int shift);
-
-static inline curves_fixed_t __curves_fixed_saturate(bool result_positive)
-{
-	return result_positive ? INT64_MAX : INT64_MIN;
-}
 
 static inline curves_fixed_t
 __curves_fixed_divide_try_saturate(curves_fixed_t dividend,

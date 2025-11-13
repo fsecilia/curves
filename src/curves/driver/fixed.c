@@ -25,13 +25,13 @@ extern curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
 extern int64_t curves_fixed_to_integer(unsigned int frac_bits,
 				       curves_fixed_t value);
 
+extern curves_fixed_t __curves_fixed_saturate(bool result_positive);
+
 extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 					    curves_fixed_t multiplicand,
 					    unsigned int multiplier_frac_bits,
 					    curves_fixed_t multiplier,
 					    unsigned int output_frac_bits);
-
-extern curves_fixed_t __curves_fixed_saturate(bool result_positive);
 
 extern curves_fixed_t
 __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
@@ -57,26 +57,23 @@ curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 						    curves_fixed_t multiplier,
 						    int shift)
 {
-	// Right shift tends towards 0 in the limit, so return 0.
-	if (shift < 0)
+	// If either factor is 0 or shift would underflow, return 0.
+	if (multiplicand == 0 || multiplier == 0 || shift < 0)
 		return 0;
 
-	// 0 stays 0.
-	if (multiplicand == 0 || multiplier == 0)
-		return 0;
-
-	// This is a large left shift. Saturate based on sign of product.
-	return (multiplicand > 0) == (multiplier > 0) ? INT64_MAX : INT64_MIN;
+	// This would overflow. Saturate based on sign of product.
+	return __curves_fixed_saturate((multiplicand ^ multiplier) >= 0);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 						  curves_fixed_t divisor,
 						  int shift)
 {
-	// 0 if dividend is 0 or we're shifting right without a singularity.
+	// If the dividend is 0 or shift would underflow, return 0.
 	if (dividend == 0 || (divisor != 0 && shift < 0))
 		return 0;
 
-	// Otherwise, saturate based on sign of quotient.
+	// This either would overflow or the divisor is zero.
+	// Saturate based on sign of quotient.
 	return __curves_fixed_saturate((dividend ^ divisor) >= 0);
 }
