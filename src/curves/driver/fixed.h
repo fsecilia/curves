@@ -136,6 +136,8 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		      unsigned int multiplier_frac_bits,
 		      curves_fixed_t multiplier, unsigned int output_frac_bits)
 {
+	int128_t result;
+
 	// Intermediate product comes from regular multiplication.
 	int128_t product = (int128_t)multiplicand * (int128_t)multiplier;
 
@@ -153,9 +155,17 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 
 	// Execute signed shift.
 	if (shift > 0)
-		return (int64_t)(product << shift);
+		result = product << shift;
 	else
-		return (int64_t)(product >> -shift);
+		result = product >> -shift;
+
+	// Check that high word is clear and round trip conversions match.
+	if (unlikely(result != (curves_fixed_t)result))
+		return __curves_fixed_saturate((multiplicand ^ multiplier) >=
+					       0);
+
+	// Convert final result.
+	return (curves_fixed_t)result;
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,

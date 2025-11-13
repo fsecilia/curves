@@ -583,9 +583,9 @@ const MultiplicationParam multiplication_no_shift_cases[] = {
     {-kMax, -1, 0, kMax},
 
     // Overflow on truncation (product > 64 bits)
-    {(1LL << 32), (1LL << 32), 0, 0}, // Product 1LL << 64, truncates to 0
-    {kMax, kMax, 0, 1},               // Product approx 1 << 126
-    {kMax, 2, 0, -2},                 // Product (1 << 64) - 2
+    {(1LL << 32), (1LL << 32), 0, kMax},
+    {kMax, kMax, 0, kMax},
+    {kMax, 2, 0, kMax},
 };
 // clang-format on
 
@@ -665,12 +665,12 @@ const MultiplicationParam multiplication_left_shift_cases[] = {
 
     // Boundary: shift to MSB
     {1, 1, 62, 1LL << 62},
-    {2, 1, 62, kMin},
-    {1, 1, 63, kMin},
+    {2, 1, 62, kMax},
+    {1, 1, 63, kMax},
     {1, -1, 63, kMin},
 
     // Boundary: overflow
-    {2, 2, 63, 0}, // (4 << 63) overflows 64-bit signed
+    {2, 2, 63, kMax},
 };
 // clang-format on
 
