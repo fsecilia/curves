@@ -782,7 +782,6 @@ TEST_P(FixedDivisionTest, divide) {
 }
 
 const DivisionParam division_params[] = {
-
     // zero
     {0, 1, 0, 0},
     {0, -1, 0, 0},

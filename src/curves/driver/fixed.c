@@ -62,16 +62,18 @@ static inline curves_fixed_t try_saturate(curves_fixed_t dividend,
 					  curves_fixed_t divisor,
 					  int128_t threshold)
 {
-	if (divisor > 0) {
-		if (dividend >= threshold)
-			return saturate(true);
-		if (dividend < -threshold)
-			return saturate(false);
-	} else {
-		if (dividend > -threshold)
-			return saturate(false);
-		if (dividend <= threshold)
-			return saturate(true);
+	int128_t dividend_magnitude = dividend;
+	int128_t threshold_magnitude = threshold;
+
+	if (dividend_magnitude < 0)
+		dividend_magnitude = -dividend_magnitude;
+
+	if (threshold_magnitude < 0)
+		threshold_magnitude = -threshold_magnitude;
+
+	if (dividend_magnitude >= threshold_magnitude) {
+		// Saturate based on sign of quotient.
+		return saturate((dividend ^ divisor) >= 0);
 	}
 
 	return 0;
