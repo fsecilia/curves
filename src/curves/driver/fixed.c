@@ -52,3 +52,82 @@ curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 	// This is a large left shift. Saturate based on sign of product.
 	return (multiplicand > 0) == (multiplier > 0) ? INT64_MAX : INT64_MIN;
 }
+
+curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
+						  curves_fixed_t divisor,
+						  int shift)
+{
+	// 0 dividend stays 0, even for divide by 0.
+	if (dividend == 0)
+		return 0;
+
+	// Handle dividing by 0.
+	if (divisor == 0) {
+		// Saturate based on sign of dividend.
+		return dividend > 0 ? INT64_MAX : INT64_MIN;
+	}
+
+	// Right shift tends towards 0 in the limit, so return 0.
+	if (shift < 0) {
+		return 0;
+	}
+
+	// This is a large left shift. Saturate based on sign of quotient.
+	return (dividend > 0) == (divisor > 0) ? INT64_MAX : INT64_MIN;
+}
+
+curves_fixed_t __curves_fixed_divide(curves_fixed_t dividend,
+				     curves_fixed_t divisor, int shift)
+{
+	if (shift >= 0) {
+		// Overflow check without shifting dividend first
+		int threshold_shift = 63 - shift;
+		int128_t threshold_pos, threshold_neg;
+
+		if (threshold_shift >= 0) {
+			// 0 <= shift < 63: threshold is divisor << (63-shift)
+			threshold_pos = (int128_t)divisor << threshold_shift;
+		} else {
+			// shift >= 63: threshold is divisor >> (shift-63)
+			// This is a 64-bit right shift - very cheap!
+			threshold_pos = divisor >> -threshold_shift;
+		}
+		threshold_neg = -threshold_pos;
+
+		// Same overflow logic
+		if (divisor > 0) {
+			if (dividend >= threshold_pos)
+				return INT64_MAX;
+			if (dividend < threshold_neg)
+				return INT64_MIN;
+		} else {
+			if (dividend > threshold_neg)
+				return INT64_MIN;
+			if (dividend <= threshold_pos)
+				return INT64_MAX;
+		}
+
+		// Now safe to shift and divide
+		int128_t shifted_dividend = (int128_t)dividend << shift;
+		return curves_div_s128_by_s64(shifted_dividend, divisor);
+	} else {
+		// Divide first with relaxed overflow threshold, then right shift
+		int128_t threshold_pos = (int128_t)divisor << (63 + shift);
+		int128_t threshold_neg = -threshold_pos;
+
+		if (divisor > 0) {
+			if (dividend >= threshold_pos)
+				return INT64_MAX >> -shift;
+			if (dividend < threshold_neg)
+				return INT64_MIN >> -shift;
+		} else {
+			if (dividend > threshold_neg)
+				return INT64_MIN >> -shift;
+			if (dividend <= threshold_pos)
+				return INT64_MAX >> -shift;
+		}
+
+		int64_t quotient = curves_div_s128_by_s64(dividend, divisor);
+		return quotient >> -shift;
+	}
+}

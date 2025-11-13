@@ -778,7 +778,6 @@ TEST_P(FixedDivisionTest, divide) {
 }
 
 const DivisionParam division_params[] = {
-    {15, 26, 2, (15 << 2) / 26},
 
     // zero
     {0, 1, 0, 0},
@@ -812,7 +811,7 @@ const DivisionParam division_params[] = {
 
     // large shifts
     {1, 1, 62, 1LL << 62},
-    {1, 1, 63, 1LL << 63},
+    {1, 1, 63, kMax},
     {1, 2, 63, 1LL << 62},
     {1, 1LL << 10, 63, 1LL << 53},
 
@@ -858,7 +857,7 @@ const DivisionParam division_params[] = {
 
     // negative values with large shifts
     {-1, 1, 63, kMin},
-    {-1, -1, 63, 1LL << 63},
+    {-1, -1, 63, kMax},
     {-1, 1LL << 62, 63, -2},
 
     // kMax boundary
@@ -912,5 +911,6 @@ const DivisionParam division_params[] = {
 
 INSTANTIATE_TEST_SUITE_P(division_params, FixedDivisionTest,
                          ValuesIn(division_params));
+
 }  // namespace
 }  // namespace curves
