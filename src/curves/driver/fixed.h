@@ -253,7 +253,8 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 			return saturation;
 
 		return curves_div_s128_by_s64((int128_t)dividend << shift,
-					      divisor);
+					      divisor)
+			.quotient;
 
 	} else {
 		curves_fixed_t saturation =
@@ -262,7 +263,8 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 		if (saturation != 0)
 			return saturation >> -shift;
 
-		return curves_div_s128_by_s64(dividend, divisor) >> -shift;
+		return curves_div_s128_by_s64(dividend, divisor).quotient >>
+		       -shift;
 	}
 }
 

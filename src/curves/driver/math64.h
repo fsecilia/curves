@@ -27,6 +27,11 @@
 __extension__ typedef __int128 int128_t;
 __extension__ typedef unsigned __int128 uint128_t;
 
+struct curves_div_result {
+	int64_t quotient;
+	int64_t remainder;
+};
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer
@@ -47,26 +52,36 @@ __extension__ typedef unsigned __int128 uint128_t;
 #if defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
+static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
+							      int64_t divisor)
 {
-	int64_t dividend_low = (int64_t)dividend; // RAX
-	int64_t dividend_high = (int64_t)(dividend >> 64); // RDX
+	int64_t remainder;
 	int64_t quotient;
 
 	asm("idivq %[divisor]"
-	    : "=a"(quotient), "+d"(dividend_high)
-	    : "a"(dividend_low), [divisor] "rm"(divisor)
+	    : "=a"(quotient), "=d"(remainder)
+	    : "a"((int64_t)dividend),
+	      "d"((int64_t)(dividend >> 64)), [divisor] "rm"(divisor)
 	    : "cc");
 
-	return quotient;
+	return (struct curves_div_result){
+		.quotient = quotient,
+		.remainder = remainder,
+	};
 }
 
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
+static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
+							      int64_t divisor)
 {
-	return (int64_t)(dividend / divisor);
+	int64_t quotient = (int64_t)(dividend / divisor);
+	int64_t remainder = (int64_t)(dividend - (int128_t)quotient * divisor);
+	return (struct curves_div_result){
+		.quotient = quotient,
+		.remainder = remainder,
+	};
 }
 
 #endif
