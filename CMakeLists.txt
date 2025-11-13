@@ -52,6 +52,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-c++20-compat
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
+    -Wno-c99-extensions
     -Wno-documentation
     -Wno-documentation-unknown-command
     -Wno-exit-time-destructors

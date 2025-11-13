@@ -6,9 +6,14 @@
 
 #include <curves/test.hpp>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 extern "C" {
 #include <curves/driver/math64.h>
 }  // extern "C"
+
+#pragma GCC diagnostic pop
 
 namespace curves {
 namespace {
