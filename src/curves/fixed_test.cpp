@@ -478,9 +478,10 @@ struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
 */
 TEST_P(FixedMultiplicationTest, via_multiplicand_and_output) {
   const unsigned int multiplicand_frac_bits =
-      (desired_shift < 0) ? -desired_shift : 0;
+      static_cast<unsigned int>((desired_shift < 0) ? -desired_shift : 0);
   const unsigned int multiplier_frac_bits = 0;
-  const unsigned int output_frac_bits = (desired_shift > 0) ? desired_shift : 0;
+  const unsigned int output_frac_bits =
+      static_cast<unsigned int>((desired_shift > 0) ? desired_shift : 0);
 
   const auto actual_result =
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
@@ -492,11 +493,12 @@ TEST_P(FixedMultiplicationTest, via_multiplicand_and_output) {
 // Distributes right shifts between both inputs. Left shifts come from output.
 TEST_P(FixedMultiplicationTest, via_all_inputs_and_output) {
   const unsigned int total_input_bits =
-      (desired_shift < 0) ? -desired_shift : 0;
+      static_cast<unsigned int>((desired_shift < 0) ? -desired_shift : 0);
   const unsigned int multiplicand_frac_bits = total_input_bits / 2;
   const unsigned int multiplier_frac_bits =
       total_input_bits - multiplicand_frac_bits;
-  const unsigned int output_frac_bits = (desired_shift > 0) ? desired_shift : 0;
+  const unsigned int output_frac_bits =
+      static_cast<unsigned int>((desired_shift > 0) ? desired_shift : 0);
 
   const auto actual_result =
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
@@ -517,10 +519,12 @@ TEST_P(FixedMultiplicationTest, via_base_precision_mixed) {
   unsigned int output_frac_bits = 0;
   if (kBasePrecision + desired_shift >= 0) {
     // desired_shift does not reduce biased output_frac_bits past zero.
-    output_frac_bits = kBasePrecision + desired_shift;
+    output_frac_bits =
+        static_cast<unsigned int>(kBasePrecision + desired_shift);
   } else {
     // output_frac_bits would underflow, so increase multiplier instead.
-    multiplier_frac_bits = -(kBasePrecision + desired_shift);
+    multiplier_frac_bits =
+        static_cast<unsigned int>(-(kBasePrecision + desired_shift));
   }
 
   const auto actual_result =
@@ -771,8 +775,8 @@ struct FixedDivisionTest : testing::TestWithParam<DivisionParam> {
 // ----------------------------------------------------------------------------
 
 TEST_P(FixedDivisionTest, divide) {
-  const auto actual_result =
-      curves_fixed_divide(0, dividend, 0, divisor, desired_shift);
+  const auto actual_result = curves_fixed_divide(
+      0, dividend, 0, divisor, static_cast<unsigned int>(desired_shift));
 
   ASSERT_EQ(expected_result, actual_result);
 }
