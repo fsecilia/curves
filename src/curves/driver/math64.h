@@ -54,9 +54,10 @@ static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
 	int64_t quotient;
 
 	asm("idivq %[divisor]"
-	    : "=a"(quotient)
-	    : "a"(dividend_low), "d"(dividend_high), [divisor] "rm"(divisor)
-	    : "cc", "rdx");
+	    : "=a"(quotient), "+d"(dividend_high)
+	    : "a"(dividend_low), [divisor] "rm"(divisor)
+	    : "cc");
+
 	return quotient;
 }
 
