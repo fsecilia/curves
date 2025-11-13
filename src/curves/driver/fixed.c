@@ -91,12 +91,13 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 	return saturate((dividend ^ divisor) >= 0);
 }
 
-curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
-					    curves_fixed_t divisor, int shift,
-					    int saturation_threshold_bit)
+inline static curves_fixed_t
+__curves_fixed_try_saturate_lshift(curves_fixed_t dividend,
+				   curves_fixed_t divisor,
+				   int saturation_threshold_bit)
 {
 	int128_t saturation_threshold;
-	int64_t saturation;
+	curves_fixed_t saturation;
 
 	if (saturation_threshold_bit >= 0) {
 		// 128-bit shift
@@ -112,6 +113,34 @@ curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
 	if (saturation != 0)
 		return saturation;
 
+	return 0;
+}
+
+inline static curves_fixed_t
+__curves_fixed_try_saturate_rshift(curves_fixed_t dividend,
+				   curves_fixed_t divisor,
+				   int saturation_threshold_bit)
+{
+	int128_t saturation_threshold = (int128_t)divisor
+					<< saturation_threshold_bit;
+	int64_t saturation =
+		try_saturate(dividend, divisor, saturation_threshold);
+
+	if (saturation != 0)
+		return saturation;
+
+	return 0;
+}
+
+curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
+					    curves_fixed_t divisor, int shift,
+					    int saturation_threshold_bit)
+{
+	curves_fixed_t saturation = __curves_fixed_try_saturate_lshift(
+		dividend, divisor, saturation_threshold_bit);
+	if (saturation != 0)
+		return saturation;
+
 	return curves_div_s128_by_s64((int128_t)dividend << shift, divisor);
 }
 
@@ -119,11 +148,8 @@ curves_fixed_t __curves_fixed_divide_rshift(curves_fixed_t dividend,
 					    curves_fixed_t divisor, int shift,
 					    int saturation_threshold_bit)
 {
-	int128_t saturation_threshold = (int128_t)divisor
-					<< saturation_threshold_bit;
-	int64_t saturation =
-		try_saturate(dividend, divisor, saturation_threshold);
-
+	curves_fixed_t saturation = __curves_fixed_try_saturate_rshift(
+		dividend, divisor, saturation_threshold_bit);
 	if (saturation != 0)
 		return saturation >> -shift;
 
