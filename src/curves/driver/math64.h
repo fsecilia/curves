@@ -49,8 +49,8 @@ __extension__ typedef unsigned __int128 uint128_t;
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
 static inline int64_t curves_div_s128_by_s64(int128_t dividend, int64_t divisor)
 {
-	int64_t dividend_high = dividend >> 64;
-	int64_t dividend_low = dividend & 0xFFFFFFFFFFFFFFFF;
+	int64_t dividend_low = (int64_t)dividend; // RAX
+	int64_t dividend_high = (int64_t)(dividend >> 64); // RDX
 	int64_t quotient;
 
 	asm("idivq %[divisor]"
