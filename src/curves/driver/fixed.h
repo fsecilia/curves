@@ -157,8 +157,11 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 						  curves_fixed_t divisor,
 						  int shift);
 
-curves_fixed_t __curves_fixed_divide(curves_fixed_t dividend,
-				     curves_fixed_t divisor, int shift);
+curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
+					    curves_fixed_t divisor, int shift,
+					    int threshold_shift);
+curves_fixed_t __curves_fixed_divide_rshift(curves_fixed_t dividend,
+					    curves_fixed_t divisor, int shift);
 
 static inline curves_fixed_t
 curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
@@ -171,7 +174,13 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 	if (unlikely(shift >= 128 || shift <= -64 || divisor == 0))
 		return __curves_fixed_divide_error(dividend, divisor, shift);
 
-	return __curves_fixed_divide(dividend, divisor, shift);
+	if (shift >= 0) {
+		int threshold_shift = 63 - shift;
+		return __curves_fixed_divide_lshift(dividend, divisor, shift,
+						    threshold_shift);
+	} else {
+		return __curves_fixed_divide_rshift(dividend, divisor, shift);
+	}
 }
 
 #endif /* _CURVES_FIXED_H */
