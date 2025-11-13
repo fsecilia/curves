@@ -27,6 +27,9 @@
 __extension__ typedef __int128 int128_t;
 __extension__ typedef unsigned __int128 uint128_t;
 
+__extension__ typedef __int128 s128;
+__extension__ typedef unsigned __int128 u128;
+
 struct curves_div_result {
 	int64_t quotient;
 	int64_t remainder;

@@ -24,6 +24,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
+typedef int64_t s64;
+typedef uint64_t u64;
+
+#define S64_MIN INT64_MIN
+#define S64_MAX INT64_MAX
+
 #define __cold
 
 #if defined(__GNUC__)
