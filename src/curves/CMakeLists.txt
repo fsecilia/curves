@@ -23,10 +23,6 @@ list(APPEND test_files
   test.hpp
 )
 
-# -----------------------------------------------------------------------------
-# Driver Headers
-# -----------------------------------------------------------------------------
-
 # The Kbuild is the source of truth for the files in the driver. CMake asks the
 # Kbuild for two lists of .c files:
 #
@@ -58,6 +54,11 @@ list(APPEND common_headers
   driver/fixed.h
   driver/kernel_compat.h
   driver/math64.h
+)
+
+list(APPEND kbuild_files
+  driver/Kbuild
+  driver/Kconfig
 )
 
 # -----------------------------------------------------------------------------
@@ -122,6 +123,7 @@ add_custom_command(
   COMMAND ${driver_make_command} modules
   WORKING_DIRECTORY "${driver_bin_dir}"
   DEPENDS
+    ${kbuild_files}
     ${driver_sources}
     ${driver_headers}
     ${common_sources}
