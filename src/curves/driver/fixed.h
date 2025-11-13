@@ -148,9 +148,9 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 
 	// Execute signed shift.
 	if (shift > 0)
-		return product << shift;
+		return (int64_t)(product << shift);
 	else
-		return product >> -shift;
+		return (int64_t)(product >> -shift);
 }
 
 static inline curves_fixed_t
