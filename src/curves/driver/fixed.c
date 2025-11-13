@@ -108,8 +108,8 @@ curves_fixed_t __curves_fixed_divide(curves_fixed_t dividend,
 		}
 
 		// Now safe to shift and divide
-		int128_t shifted_dividend = (int128_t)dividend << shift;
-		return curves_div_s128_by_s64(shifted_dividend, divisor);
+		return curves_div_s128_by_s64((int128_t)dividend << shift,
+					      divisor);
 	} else {
 		// Divide first with relaxed overflow threshold, then right shift
 		int128_t threshold_pos = (int128_t)divisor << (63 + shift);
@@ -127,7 +127,6 @@ curves_fixed_t __curves_fixed_divide(curves_fixed_t dividend,
 				return INT64_MAX >> -shift;
 		}
 
-		int64_t quotient = curves_div_s128_by_s64(dividend, divisor);
-		return quotient >> -shift;
+		return curves_div_s128_by_s64(dividend, divisor) >> -shift;
 	}
 }
