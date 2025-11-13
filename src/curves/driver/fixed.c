@@ -60,18 +60,17 @@ static inline curves_fixed_t saturate(bool result_positive)
 
 static inline curves_fixed_t try_saturate(curves_fixed_t dividend,
 					  curves_fixed_t divisor,
-					  int128_t threshold_pos,
-					  int128_t threshold_neg)
+					  int128_t threshold)
 {
 	if (divisor > 0) {
-		if (dividend >= threshold_pos)
+		if (dividend >= threshold)
 			return saturate(true);
-		if (dividend < threshold_neg)
+		if (dividend < -threshold)
 			return saturate(false);
 	} else {
-		if (dividend > threshold_neg)
+		if (dividend > -threshold)
 			return saturate(false);
-		if (dividend <= threshold_pos)
+		if (dividend <= threshold)
 			return saturate(true);
 	}
 
@@ -87,14 +86,12 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 		return 0;
 
 	// Handle dividing by 0.
-	if (divisor == 0) {
+	if (divisor == 0)
 		return saturate(dividend > 0);
-	}
 
 	// Right shift tends towards 0 in the limit, so return 0.
-	if (shift < 0) {
+	if (shift < 0)
 		return 0;
-	}
 
 	// This is a large left shift. Saturate based on sign of quotient.
 	return saturate((dividend > 0) == (divisor > 0));
@@ -102,38 +99,36 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 
 curves_fixed_t __curves_fixed_divide_lshift(curves_fixed_t dividend,
 					    curves_fixed_t divisor, int shift,
-					    int threshold_shift)
+					    int saturation_threshold_bit)
 {
-	int128_t threshold_pos, threshold_neg;
+	int128_t saturation_threshold;
 	int64_t saturation;
 
-	if (threshold_shift >= 0) {
-		// 0 <= shift < 63: threshold is divisor << (63-shift)
-		threshold_pos = (int128_t)divisor << threshold_shift;
+	if (saturation_threshold_bit >= 0) {
+		// 128-bit shift
+		saturation_threshold = (int128_t)divisor
+				       << saturation_threshold_bit;
 	} else {
-		// shift >= 63: threshold is divisor >> (shift-63)
-		// This is a 64-bit right shift - very cheap!
-		threshold_pos = divisor >> -threshold_shift;
+		// 64-bit shift
+		saturation_threshold =
+			(int128_t)(divisor >> -saturation_threshold_bit);
 	}
-	threshold_neg = -threshold_pos;
 
-	saturation =
-		try_saturate(dividend, divisor, threshold_pos, threshold_neg);
+	saturation = try_saturate(dividend, divisor, saturation_threshold);
 	if (saturation != 0)
 		return saturation;
 
-	// Now safe to shift and divide
 	return curves_div_s128_by_s64((int128_t)dividend << shift, divisor);
 }
 
 curves_fixed_t __curves_fixed_divide_rshift(curves_fixed_t dividend,
-					    curves_fixed_t divisor, int shift)
+					    curves_fixed_t divisor, int shift,
+					    int saturation_threshold_bit)
 {
-	// Divide first with relaxed overflow threshold, then right shift
-	int128_t threshold_pos = (int128_t)divisor << (63 + shift);
-	int128_t threshold_neg = -threshold_pos;
+	int128_t saturation_threshold = (int128_t)divisor
+					<< saturation_threshold_bit;
 	int64_t saturation =
-		try_saturate(dividend, divisor, threshold_pos, threshold_neg);
+		try_saturate(dividend, divisor, saturation_threshold);
 
 	if (saturation != 0)
 		return saturation >> -shift;
