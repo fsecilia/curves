@@ -183,6 +183,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # This is temporary until we get a few modules populated.
     -Wno-empty-translation-unit
 
+    -Wno-language-extension-token
     -Wno-old-style-cast
     -Wno-reserved-identifier
     -Wno-reserved-macro-identifier
