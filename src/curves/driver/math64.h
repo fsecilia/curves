@@ -29,13 +29,19 @@ __extension__ typedef unsigned __int128 uint128_t;
 
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
- * integer.
+ * integer
+ * @dividend: 128-bit value to divide
+ * @divisor: 64-bit amount to divide by
  *
- * @dividend: 128-bit value to divide.
- * @divisor: 64-bit amount to divide by. Must be non-zero.
+ * Performs 128/64 signed division. Caller must ensure divisor is non-zero and
+ * that the quotient fits in a signed 64-bit integer.
  *
- * Performs 128/64 signed division. Caller must ensure divisor is non-zero.
+ * Common overflow cases:
+ * - Magnitude of top 65 bits of dividend >= magnitude of divisor
+ * - Dividend is S64_MIN and divisor is -1
  *
+ * Context: Undefined behavior if divisor is zero or quotient overflows int64_t.
+ *          Traps with #DE on x64.
  * Return: 64-bit signed quotient
  */
 #if defined __KERNEL__ && defined __x86_64__
