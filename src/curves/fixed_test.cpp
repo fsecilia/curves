@@ -101,33 +101,31 @@ INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,
 // Integer Conversions Tests
 // ----------------------------------------------------------------------------
 
-struct IntegerConversionsTestParam {
-  unsigned int frac_bits;
-  int64_t integer_value;
-  curves_fixed_t fixed_value;
-
-  friend auto operator<<(std::ostream& out,
-                         const IntegerConversionsTestParam& src)
-      -> std::ostream& {
-    return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
-               << src.fixed_value << "}";
-  }
-};
-
-struct FixedConverstionsTestInteger
-    : public TestWithParam<IntegerConversionsTestParam> {};
-
-// Non-truncating
+// Symmetric
 // ----------------------------------------------------------------------------
 
 /*
   These are tests that don't truncate the fixed value, so they are the same
   in either direction.
 */
-struct FixedConversionsTestIntegerNontruncating
-    : public FixedConverstionsTestInteger {};
 
-TEST_P(FixedConversionsTestIntegerNontruncating, to_fixed) {
+struct SymmetricIntegerConversionsParam {
+  unsigned int frac_bits;
+  int64_t integer_value;
+  curves_fixed_t fixed_value;
+
+  friend auto operator<<(std::ostream& out,
+                         const SymmetricIntegerConversionsParam& src)
+      -> std::ostream& {
+    return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
+               << src.fixed_value << "}";
+  }
+};
+
+struct FixedConversionsTestSymmetricIntegers
+    : public TestWithParam<SymmetricIntegerConversionsParam> {};
+
+TEST_P(FixedConversionsTestSymmetricIntegers, to_fixed) {
   const auto param = GetParam();
 
   const auto expected = param.fixed_value;
@@ -137,7 +135,7 @@ TEST_P(FixedConversionsTestIntegerNontruncating, to_fixed) {
   ASSERT_EQ(expected, actual);
 }
 
-TEST_P(FixedConversionsTestIntegerNontruncating, to_integer) {
+TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
   const auto param = GetParam();
 
   const auto expected = param.integer_value;
@@ -148,7 +146,7 @@ TEST_P(FixedConversionsTestIntegerNontruncating, to_integer) {
 }
 
 // clang-format off
-const IntegerConversionsTestParam
+const SymmetricIntegerConversionsParam
     nontruncating_integer_conversion_test_params[] = {
   // zero
   {1, 0, 0},
@@ -220,23 +218,35 @@ const IntegerConversionsTestParam
 // clang-format on
 
 INSTANTIATE_TEST_SUITE_P(
-    all_conversions, FixedConversionsTestIntegerNontruncating,
+    all_conversions, FixedConversionsTestSymmetricIntegers,
     ValuesIn(nontruncating_integer_conversion_test_params));
 
-// Truncating/Flooring
+// Rounding
 // ----------------------------------------------------------------------------
 
 /*
-  These test that fixed->integer "truncation" is always towards negative
-  infinity, both for positive and negative fixed-point values. It's
-  conventionally called truncation instead of flooring because for positive
-  values, it's the same, but all fixed point numbers truncate towards negative
-  infinity, not zero, so the correct name is floor, not truncate.
+  These test that fixed->integer conversions always round to nearest, rather
+  than the default fixed-point behavior to round towards negative infinity that
+  it gets from using integers.
 */
-struct FixedConversionsTestIntegerTruncation
-    : public FixedConverstionsTestInteger {};
 
-TEST_P(FixedConversionsTestIntegerTruncation, truncation_is_flooring) {
+struct RoundsToNearestIntegerConversionsParam {
+  unsigned int frac_bits;
+  curves_fixed_t fixed_value;
+  int64_t integer_value;
+
+  friend auto operator<<(std::ostream& out,
+                         const RoundsToNearestIntegerConversionsParam& src)
+      -> std::ostream& {
+    return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
+               << src.fixed_value << "}";
+  }
+};
+
+struct FixedConversionsTestIntegerRoundsToNearest
+    : public TestWithParam<RoundsToNearestIntegerConversionsParam> {};
+
+TEST_P(FixedConversionsTestIntegerRoundsToNearest, truncation_is_flooring) {
   const auto param = GetParam();
 
   const auto expected = param.integer_value;
@@ -246,24 +256,79 @@ TEST_P(FixedConversionsTestIntegerTruncation, truncation_is_flooring) {
   ASSERT_EQ(expected, actual);
 }
 
-// clang-format off
-const IntegerConversionsTestParam integer_truncation_test_params[] = {
-  // nonzero positive: 2.75, truncates to 2, floors to 2
-  {32, 2, 11811160064ll},
+const RoundsToNearestIntegerConversionsParam
+    high_precision_integer_conversion_test_params[] = {
+        {61, -4611686018427387904LL, -2},  // = -2, floors to -2, rounds to -2
+        {61, -4611686018427387903LL, -2},  // < -2, floors to -2, rounds to -2
+        {61, -3458764513820540928LL, -2},  // = -1.5, floors to -2, rounds to -2
+        {61, -3458764513820540927LL, -1},  // < -1.5, floors to -2, rounds to -1
+        {61, -2305843009213693952LL, -1},  // = -1, floors to -1, rounds to -1
+        {61, -2305843009213693951LL, -1},  // < -1, floors to -1, rounds to -1
+        {61, -1152921504606846976LL, -1},  // = -0.5, floors to -1, rounds to -1
+        {61, -1152921504606846975LL, 0},   // < -0.5, floors -1, rounds to 0
 
-  // zero positive: 0.75, truncates to 0, floors to 0
-  {32, 0, 3221225472ll},
+        {61, 1LL, 0},   // > 0, floors to 0, rounds to 0
+        {61, 0LL, 0},   // = 0, floors to 0, rounds to 0
+        {61, -1LL, 0},  // < 0, floors to 0, rounds to 0
 
-  // zero negative: -0.25, truncates to 0, but floors to -1
-  {32, -1, -1073741824ll},
-
-  // nonzero negative: -2.25, truncates to -2, but floors to -3
-  {32, -3, -9663676416ll},
+        {61, 1152921504606846975LL, 0},  // < 0.5, floors to 0, rounds to 0
+        {61, 1152921504606846976LL, 1},  // = 0.5, floors to 0, rounds to 1
+        {61, 2305843009213693951LL, 1},  // < 1, floors to 1, rounds to 1
+        {61, 2305843009213693952LL, 1},  // = 1, floors to 1, rounds to 1
+        {61, 3458764513820540927LL, 1},  // < 1.5, floors to 1, rounds to 1
+        {61, 3458764513820540928LL, 2},  // = 1.5, floors to 1, rounds to 2
+        {61, 4611686018427387903LL, 2},  // < 2, floors to 1, rounds to 2
+        {61, 4611686018427387904LL, 2},  // = 2, floors to 2, rounds to 2
 };
-// clang-format on
 
-INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestIntegerTruncation,
-                         ValuesIn(integer_truncation_test_params));
+INSTANTIATE_TEST_SUITE_P(
+    high_precision, FixedConversionsTestIntegerRoundsToNearest,
+    ValuesIn(high_precision_integer_conversion_test_params));
+
+// These test edge cases right at their edge, one inside, and the adjacent one
+// outside.
+const RoundsToNearestIntegerConversionsParam
+    boundary_integer_conversion_test_params[] = {
+        // frac_bits = 0: Special case, no rounding.
+        {0, INT64_MIN, INT64_MIN},
+        {0, INT64_MIN + 1, INT64_MIN + 1},
+        {0, INT64_MAX - 1, INT64_MAX - 1},
+        {0, INT64_MAX, INT64_MAX},
+
+        // frac_bits = 1: Lowest precision that isn't just integers.
+        {1, INT64_MIN, INT64_MIN >> 1},
+        {1, INT64_MIN + 1, INT64_MIN >> 1},
+        {1, INT64_MIN + 2, (INT64_MIN >> 1) + 1},
+        {1, INT64_MAX - 1, (INT64_MAX >> 1)},
+        {1, INT64_MAX, (INT64_MAX >> 1) + 1},
+
+        // frac_bits = 32: Typical precision
+        {32, INT64_MIN, INT64_MIN >> 32},
+        {32, INT64_MIN + (1LL << 31), INT64_MIN >> 32},
+        {32, INT64_MIN + (1LL << 31) + 1, (INT64_MIN >> 32) + 1},
+        {32, INT64_MAX - (1LL << 31), INT64_MAX >> 32},
+        {32, INT64_MAX - (1LL << 31) + 1, (INT64_MAX >> 32) + 1},
+        {32, INT64_MAX, (INT64_MAX >> 32) + 1},
+
+        // frac_bits = 61: Highest precision that doesn't hit range boundary.
+        {61, INT64_MIN, -4},
+        {61, INT64_MIN + (1LL << 60), -4},
+        {61, INT64_MIN + (1LL << 60) + 1, -3},
+        {61, INT64_MAX - (1LL << 60), 3},
+        {61, INT64_MAX - (1LL << 60) + 1, 4},
+        {61, INT64_MAX, 4},
+
+        // frac_bits = 62: Maximum precision
+        {62, INT64_MIN, -2},
+        {62, INT64_MIN + (1LL << 61), -2},
+        {62, INT64_MIN + (1LL << 61) + 1, -1},
+        {62, INT64_MAX - (1LL << 61), 1},
+        {62, INT64_MAX - (1LL << 61) + 1, 2},
+        {62, INT64_MAX, 2},
+};
+
+INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerRoundsToNearest,
+                         ValuesIn(boundary_integer_conversion_test_params));
 
 // ----------------------------------------------------------------------------
 // Double Conversions Tests

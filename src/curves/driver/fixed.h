@@ -91,7 +91,7 @@ static inline curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
 static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 					      curves_fixed_t value)
 {
-	return value >> frac_bits;
+	return curves_s64_shr_rtn(value, frac_bits);
 }
 
 curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
