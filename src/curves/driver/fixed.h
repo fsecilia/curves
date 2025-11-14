@@ -243,15 +243,21 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 
 		return curves_div_s128_by_s64_rtn((int128_t)dividend << shift,
 						  divisor);
-
 	} else {
+		s64 quotient;
+
+		unsigned int right_shift = (unsigned int)(-shift);
 		curves_fixed_t saturation =
 			__curves_fixed_divide_try_saturate_rshift(
 				dividend, divisor, shift);
 		if (saturation != 0)
-			return saturation >> -shift;
+			return saturation >> right_shift;
 
-		return curves_div_s128_by_s64_rtn(dividend, divisor) >> -shift;
+		// Divide, applying rtn to the remainder.
+		quotient = curves_div_s128_by_s64_rtn(dividend, divisor);
+
+		// Shift, applying rtn to the bits that are lost.
+		return curves_s64_shr_rtn(quotient, right_shift);
 	}
 }
 

@@ -154,7 +154,7 @@ static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
 
 #endif
 
-// rounds to nearest
+// divides, then rounds to nearest
 static inline s64 curves_div_s128_by_s64_rtn(int128_t dividend, s64 divisor)
 {
 	struct curves_div_result raw =
