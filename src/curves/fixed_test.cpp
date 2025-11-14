@@ -600,15 +600,15 @@ INSTANTIATE_TEST_SUITE_P(no_shift_cases, FixedMultiplicationTest,
 // clang-format off
 const MultiplicationParam multiplication_right_shift_cases[] = {
     // Simple positive
-    {1, 1, -1, 0}, // Rounds to 0
-    {15, 26, -2, 15 * 26 >> 2},
+    {1, 1, -1, 1}, // (1*1) >> 1 = 0.5, rounds up to 1
+    {15, 26, -2, (15 * 26 >> 2)+ 1},
     {89, 11, -3, 89 * 11 >> 3},
 
     // Large positive values with shifts
     {1LL << 62, 1, -1, 1LL << 61},
     {1LL << 62, 1, -61, 2},
     {1LL << 62, 1, -62, 1},
-    {1LL << 62, 1, -63, 0}, // Rounds to 0
+    {1LL << 62, 1, -63, 1},
     {1LL << 61, 2, -62, 1},
     {1LL << 60, 4, -62, 1},
 
@@ -625,7 +625,7 @@ const MultiplicationParam multiplication_right_shift_cases[] = {
     // All sign combinations
     {-15, 26, -2, -15 * 26 >> 2},
     {15, -26, -2, 15 * -26 >> 2},
-    {-15, -26, -2, 15 * 26 >> 2},
+    {-15, -26, -2, (15 * 26 >> 2) + 1},
     {-1447LL << 32, 13LL << 32, -32, -1447LL * 13LL << 32},
     {1447LL << 32, -13LL << 32, -32, -1447LL * 13LL << 32},
     {-1447LL << 32, -13LL << 32, -32, 1447LL * 13LL << 32},
@@ -640,7 +640,7 @@ const MultiplicationParam multiplication_right_shift_cases[] = {
 
     // Boundary: 127-bit shift
     {1LL << 63, 1LL << 63, -126, 1}, // (1 << 126) >> 126 = 1
-    {1LL << 63, 1LL << 63, -127, 0}, // (1 << 126) >> 127 = 0
+    {1LL << 63, 1LL << 63, -127, 1}, // (1 << 126) >> 127 = 0.5, rounds to 1
 
     // (kMin*-1) >> 1 = (1 << 63) >> 1 = 1 << 62
     {kMin, -1, -1, 1LL << 62},
@@ -740,6 +740,42 @@ const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
 INSTANTIATE_TEST_SUITE_P(
     extreme_left_shift_cases, FixedMultiplicationTest,
     testing::ValuesIn(multiplication_extreme_left_shift_cases));
+
+/*
+  Rounding.
+
+  Tests that rounding to nearest is biased correctly.
+*/
+// clang-format on
+const MultiplicationParam multiplication_rounding_cases[] = {
+    {3, 1, -1, 2},    //  1.5 ->  2
+    {-3, 1, -1, -2},  // -1.5 -> -2
+    {1, 1, -1, 1},    //  0.5 ->  1 (The tie-breaker)
+    {-1, 1, -1, -1},  // -0.5 -> -1 (The negative tie-breaker)};
+
+    {3 << 10, 1, -11, 2},    //  1.5 ->  2
+    {-3 << 10, 1, -11, -2},  // -1.5 -> -2
+    {1 << 10, 1, -10, 1},    //  0.5 ->  1 (The tie-breaker)
+    {-1 << 10, 1, -10, -1},  // -0.5 -> -1 (The negative tie-breaker)
+
+    {-511, 1, -10, 0},   // -0.499... rounds to 0
+    {-512, 1, -10, -1},  // -0.5      rounds to -1
+    {511, 1, -10, 0},    //  0.499... rounds to 0
+    {512, 1, -10, 1},    //  0.5      rounds to 1
+
+    {INT64_MIN, (1LL << 62), -100, -(1LL << 25)},
+    {INT64_MAX, (1LL << 62), -100, (1LL << 25)},
+    {INT64_MIN, INT64_MAX, -100, -(1LL << 26)},
+    {INT64_MAX, INT64_MAX, -100, (1LL << 26)},
+    {INT64_MIN, INT64_MIN, -100, (1LL << 26)},
+
+    // Final boss test vector.
+    {INT64_MIN, INT64_MIN, -127, 1},
+};
+// clang-format on
+
+INSTANTIATE_TEST_SUITE_P(rounding_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_rounding_cases));
 
 // ----------------------------------------------------------------------------
 // Division Tests
