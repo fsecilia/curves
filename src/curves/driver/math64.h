@@ -44,6 +44,28 @@ static inline s64 curves_s128_to_s64_truncate(s128 value)
 	return (s64)value;
 }
 
+// Shifts and applies round-to-nearest.
+static inline s64 curves_s64_shr_rtn(s64 value, unsigned int right_shift)
+{
+	s64 bias = 1LL << (right_shift - 1);
+
+	if (value < 0) {
+		// Negatives round symmetrically.
+		//
+		// Subtract 1 from bias to compensate for right-shift flooring
+		// towards -infinity.
+		return (value + (bias - 1)) >> right_shift;
+	} else {
+		// Positives must protect from overflow.
+		//
+		// Cast to unsigned to use bit 63 as magnitude rather than
+		// sign. Handles edge case where value + bias overflows s64.
+		u64 u_value = (u64)value;
+		u64 u_bias = (u64)bias;
+		return (s64)((u_value + u_bias) >> right_shift);
+	}
+}
+
 // Shifts and applies round-to-nearest before truncating from s128 to s64.
 static inline s64 curves_s128_to_s64_shr_rtn(s128 value,
 					     unsigned int right_shift)
