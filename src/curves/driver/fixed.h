@@ -174,8 +174,8 @@ __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
 }
 
 static inline curves_fixed_t
-__curves_fixed_divide_try_saturate_lshift(curves_fixed_t dividend,
-					  curves_fixed_t divisor, int shift)
+__curves_fixed_divide_try_saturate_shl(curves_fixed_t dividend,
+				       curves_fixed_t divisor, int shift)
 {
 	int128_t saturation_threshold;
 	curves_fixed_t saturation;
@@ -201,8 +201,8 @@ __curves_fixed_divide_try_saturate_lshift(curves_fixed_t dividend,
 }
 
 static inline curves_fixed_t
-__curves_fixed_divide_try_saturate_rshift(curves_fixed_t dividend,
-					  curves_fixed_t divisor, int shift)
+__curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
+				       curves_fixed_t divisor, int shift)
 {
 	int saturation_threshold_bit = 63 + shift;
 
@@ -230,8 +230,8 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 
 	if (shift >= 0) {
 		curves_fixed_t saturation =
-			__curves_fixed_divide_try_saturate_lshift(
-				dividend, divisor, shift);
+			__curves_fixed_divide_try_saturate_shl(dividend,
+							       divisor, shift);
 		if (saturation != 0)
 			return saturation;
 
@@ -242,8 +242,8 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 
 		unsigned int right_shift = (unsigned int)(-shift);
 		curves_fixed_t saturation =
-			__curves_fixed_divide_try_saturate_rshift(
-				dividend, divisor, shift);
+			__curves_fixed_divide_try_saturate_shr(dividend,
+							       divisor, shift);
 		if (saturation != 0)
 			return saturation >> right_shift;
 

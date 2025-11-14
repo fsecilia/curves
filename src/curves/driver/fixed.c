@@ -42,14 +42,14 @@ extern curves_fixed_t curves_fixed_divide(unsigned int dividend_frac_bits,
 					  unsigned int output_frac_bits);
 
 extern curves_fixed_t
-__curves_fixed_divide_try_saturate_lshift(curves_fixed_t dividend,
-					  curves_fixed_t divisor,
-					  int saturation_threshold_bit);
+__curves_fixed_divide_try_saturate_shl(curves_fixed_t dividend,
+				       curves_fixed_t divisor,
+				       int saturation_threshold_bit);
 
 extern curves_fixed_t
-__curves_fixed_divide_try_saturate_rshift(curves_fixed_t dividend,
-					  curves_fixed_t divisor,
-					  int saturation_threshold_bit);
+__curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
+				       curves_fixed_t divisor,
+				       int saturation_threshold_bit);
 
 curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 						    curves_fixed_t multiplier,
