@@ -60,9 +60,7 @@ static inline s64 curves_s64_shr_rtn(s64 value, unsigned int right_shift)
 		//
 		// Cast to unsigned to use bit 63 as magnitude rather than
 		// sign. Handles edge case where value + bias overflows s64.
-		u64 u_value = (u64)value;
-		u64 u_bias = (u64)bias;
-		return (s64)((u_value + u_bias) >> right_shift);
+		return ((u64)value + (u64)bias) >> right_shift;
 	}
 }
 
@@ -86,9 +84,7 @@ static inline s64 curves_s128_to_s64_shr_rtn(s128 value,
 		//
 		// Cast to unsigned to use bit 127 as magnitude rather than
 		// sign. Handles edge case where value + bias overflows s128.
-		u128 u_value = (u128)value;
-		u128 u_bias = (u128)bias;
-		result = (u128)((u_value + u_bias) >> right_shift);
+		result = ((u128)value + (u128)bias) >> right_shift;
 	}
 
 	return curves_s128_to_s64_truncate(result);
