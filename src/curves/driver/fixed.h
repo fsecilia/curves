@@ -131,8 +131,6 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		      unsigned int multiplier_frac_bits,
 		      curves_fixed_t multiplier, unsigned int output_frac_bits)
 {
-	int128_t result;
-
 	// Intermediate product comes from regular multiplication.
 	int128_t product = (int128_t)multiplicand * (int128_t)multiplier;
 
@@ -147,37 +145,13 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 
 	// Execute signed shift.
 	if (shift >= 0) {
-		// Left shift needs no rounding.
-		result = product << shift;
+		// Left shift truncates because low bits are already 0.
+		return curves_s128_to_s64_truncate(product << shift);
 	} else {
-		// Apply symmetric round-to-nearest
-		int right_shift = -shift;
-
-		// Calculate 0.5 bias in the target precision
-		// (1 << (right_shift - 1)) safely handles shifts 1..127
-		int128_t bias = (int128_t)1 << (right_shift - 1);
-
-		if (product < 0) {
-			// Negative Case: Symmetric Rounding
-			//
-			// Subtract 1 from bias to compensate for right-shift
-			// flooring towards -infinity. (-1.5 becomes -2)
-			result = (product + (bias - 1)) >> right_shift;
-		} else {
-			// Positive Case: Overflow Protection
-			//
-			// Cast to unsigned to use bit 127 as magnitude rather
-			// than sign. Handles the edge case where product +
-			// bias == 2^127.
-			uint128_t u_product = (uint128_t)product;
-			uint128_t u_bias = (uint128_t)bias;
-
-			result =
-				(int128_t)((u_product + u_bias) >> right_shift);
-		}
+		// Right shift must round lost bits.
+		return curves_s128_to_s64_shr_rtn(product,
+						  (unsigned int)(-shift));
 	}
-
-	return curves_s128_to_s64_truncate(result);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
