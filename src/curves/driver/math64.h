@@ -47,6 +47,10 @@ static inline s64 curves_s128_to_s64_truncate(s128 value)
 // Shifts and applies round-to-nearest.
 static inline s64 curves_s64_shr_rtn(s64 value, unsigned int right_shift)
 {
+	// Right shift of 0 is a no-op.
+	if (right_shift == 0)
+		return value;
+
 	s64 bias = 1LL << (right_shift - 1);
 
 	if (value < 0) {
