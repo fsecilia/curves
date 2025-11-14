@@ -145,81 +145,78 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
   ASSERT_EQ(expected, actual);
 }
 
-// clang-format off
 const SymmetricIntegerConversionsParam
-    nontruncating_integer_conversion_test_params[] = {
-  // zero
-  {1, 0, 0},
-  {32, 0, 0},
-  {63, 0, 0},
+    symmetric_integer_conversion_test_params[] = {
+        // end of negative q63.0 range
+        {0, kMin, kMin},
 
-  // 1
-  {1, 1, 1ll << 1},
-  {32, 1, 1ll << 32},
-  {62, 1, 1ll << 62},
+        // end of q62.1 range
+        {1, -1ll << 62, (-1ll << 62) << 1},
 
-  // 2
-  {1, 2, 2ll << 1},
-  {32, 2, 2ll << 32},
-  {61, 2, 2ll << 61},
+        // end of q47.16 range
+        {1, -1ll << 47, (-1ll << 47) << 1},
+        {8, -1ll << 47, (-1ll << 47) << 8},
+        {16, -1ll << 47, (-1ll << 47) << 16},
 
-  // end of q15.48 range
-  {1, (1ll << 15) - 1, ((1ll << 15) - 1) << 1},
-  {24, (1ll << 15) - 1, ((1ll << 15) - 1) << 24},
-  {48, (1ll << 15) - 1, ((1ll << 15) - 1) << 48},
+        // end of q31.32 range
+        {1, -1ll << 31, (-1ll << 31) << 1},
+        {16, -1ll << 31, (-1ll << 31) << 16},
+        {32, -1ll << 31, (-1ll << 31) << 32},
 
-  // end of q31.32 range
-  {1, (1ll << 31) - 1, ((1ll << 31) - 1) << 1},
-  {16, (1ll << 31) - 1, ((1ll << 31) - 1) << 16},
-  {32, (1ll << 31) - 1, ((1ll << 31) - 1) << 32},
+        // end of q15.48 range
+        {1, -1ll << 15, (-1ll << 15) << 1},
+        {24, -1ll << 15, (-1ll << 15) << 24},
+        {48, -1ll << 15, (-1ll << 15) << 48},
 
-  // end of q47.16 range
-  {1, (1ll << 47) - 1, ((1ll << 47) - 1) << 1},
-  {8, (1ll << 47) - 1, ((1ll << 47) - 1) << 8},
-  {16, (1ll << 47) - 1, ((1ll << 47) - 1) << 16},
+        // -2
+        {1, -2, -2ll << 1},
+        {32, -2, -2ll << 32},
+        {61, -2, -2ll << 61},
 
-  // end of q62.1 range
-  {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
+        // -1
+        {1, -1, -1ll << 1},
+        {32, -1, -1ll << 32},
+        {62, -1, -1ll << 62},
 
-  // end of q63.0 range
-  {0, kMax, kMax},
+        // zero
+        {1, 0, 0},
+        {32, 0, 0},
+        {63, 0, 0},
 
-  // -1
-  {1, -1, -1ll << 1},
-  {32, -1, -1ll << 32},
-  {62, -1, -1ll << 62},
+        // 1
+        {1, 1, 1ll << 1},
+        {32, 1, 1ll << 32},
+        {62, 1, 1ll << 62},
 
-  // -2
-  {1, -2, -2ll << 1},
-  {32, -2, -2ll << 32},
-  {61, -2, -2ll << 61},
+        // 2
+        {1, 2, 2ll << 1},
+        {32, 2, 2ll << 32},
+        {61, 2, 2ll << 61},
 
-  // end of q15.48 range
-  {1,  -1ll << 15, (-1ll << 15) << 1},
-  {24, -1ll << 15, (-1ll << 15) << 24},
-  {48, -1ll << 15, (-1ll << 15) << 48},
+        // end of q15.48 range
+        {1, (1ll << 15) - 1, ((1ll << 15) - 1) << 1},
+        {24, (1ll << 15) - 1, ((1ll << 15) - 1) << 24},
+        {48, (1ll << 15) - 1, ((1ll << 15) - 1) << 48},
 
-  // end of q31.32 range
-  { 1, -1ll << 31, (-1ll << 31) << 1},
-  {16, -1ll << 31, (-1ll << 31) << 16},
-  {32, -1ll << 31, (-1ll << 31) << 32},
+        // end of q31.32 range
+        {1, (1ll << 31) - 1, ((1ll << 31) - 1) << 1},
+        {16, (1ll << 31) - 1, ((1ll << 31) - 1) << 16},
+        {32, (1ll << 31) - 1, ((1ll << 31) - 1) << 32},
 
-  // end of q47.16 range
-  { 1, -1ll << 47, (-1ll << 47) << 1},
-  { 8, -1ll << 47, (-1ll << 47) << 8},
-  {16, -1ll << 47, (-1ll << 47) << 16},
+        // end of q47.16 range
+        {1, (1ll << 47) - 1, ((1ll << 47) - 1) << 1},
+        {8, (1ll << 47) - 1, ((1ll << 47) - 1) << 8},
+        {16, (1ll << 47) - 1, ((1ll << 47) - 1) << 16},
 
-  // end of q62.1 range
-  { 1, -1ll << 62, (-1ll << 62) << 1},
+        // end of q62.1 range
+        {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
 
-  // end of negative q63.0 range
-  {0, kMin, kMin},
+        // end of q63.0 range
+        {0, kMax, kMax},
 };
-// clang-format on
 
-INSTANTIATE_TEST_SUITE_P(
-    all_conversions, FixedConversionsTestSymmetricIntegers,
-    ValuesIn(nontruncating_integer_conversion_test_params));
+INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
+                         ValuesIn(symmetric_integer_conversion_test_params));
 
 // Rounding
 // ----------------------------------------------------------------------------
