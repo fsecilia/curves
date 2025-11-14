@@ -30,6 +30,11 @@ __extension__ typedef unsigned __int128 uint128_t;
 __extension__ typedef __int128 s128;
 __extension__ typedef unsigned __int128 u128;
 
+static inline s64 curves_s64_saturate(bool result_positive)
+{
+	return result_positive ? S64_MAX : S64_MIN;
+}
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer

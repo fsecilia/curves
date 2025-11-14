@@ -25,8 +25,6 @@ extern curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
 extern int64_t curves_fixed_to_integer(unsigned int frac_bits,
 				       curves_fixed_t value);
 
-extern curves_fixed_t __curves_fixed_saturate(bool result_positive);
-
 extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 					    curves_fixed_t multiplicand,
 					    unsigned int multiplier_frac_bits,
@@ -62,7 +60,7 @@ curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 		return 0;
 
 	// This would overflow. Saturate based on sign of product.
-	return __curves_fixed_saturate((multiplicand ^ multiplier) >= 0);
+	return curves_s64_saturate((multiplicand ^ multiplier) >= 0);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
@@ -75,5 +73,5 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 
 	// This either would overflow or the divisor is zero.
 	// Saturate based on sign of quotient.
-	return __curves_fixed_saturate((dividend ^ divisor) >= 0);
+	return curves_s64_saturate((dividend ^ divisor) >= 0);
 }

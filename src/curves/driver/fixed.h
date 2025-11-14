@@ -94,11 +94,6 @@ static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 	return value >> frac_bits;
 }
 
-static inline curves_fixed_t __curves_fixed_saturate(bool result_positive)
-{
-	return result_positive ? INT64_MAX : INT64_MIN;
-}
-
 curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
 						    curves_fixed_t multiplier,
 						    int shift);
@@ -187,7 +182,7 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 	// Check if any high bits are dirty, or if round-trip fails.
 	if (unlikely(result != (curves_fixed_t)result)) {
 		curves_fixed_t sign = (multiplicand ^ multiplier);
-		return __curves_fixed_saturate(sign >= 0);
+		return curves_s64_saturate(sign >= 0);
 	}
 
 	// Convert final result.
@@ -213,7 +208,7 @@ __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
 
 	if (dividend_magnitude >= threshold_magnitude) {
 		// Saturate based on sign of quotient.
-		return __curves_fixed_saturate((dividend ^ divisor) >= 0);
+		return curves_s64_saturate((dividend ^ divisor) >= 0);
 	}
 
 	return 0;
