@@ -35,6 +35,15 @@ static inline s64 curves_s64_saturate(bool result_positive)
 	return result_positive ? S64_MAX : S64_MIN;
 }
 
+static inline s64 curves_s128_to_s64_truncate(s128 value)
+{
+	// Round trip should produce the same value.
+	if (unlikely(value != (s64)value))
+		return curves_s64_saturate(value >= 0);
+
+	return (s64)value;
+}
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer

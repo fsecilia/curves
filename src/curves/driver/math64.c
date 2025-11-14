@@ -7,3 +7,4 @@
 #include "math64.h"
 
 extern s64 curves_s64_saturate(bool result_positive);
+extern s64 curves_s128_to_s64_truncate(s128 value);

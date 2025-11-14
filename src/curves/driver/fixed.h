@@ -177,16 +177,7 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		}
 	}
 
-	// Before converting back to 64-bit, all bits in the high word must be
-	// either clear, or a sign extension of the low word.
-	// Check if any high bits are dirty, or if round-trip fails.
-	if (unlikely(result != (curves_fixed_t)result)) {
-		curves_fixed_t sign = (multiplicand ^ multiplier);
-		return curves_s64_saturate(sign >= 0);
-	}
-
-	// Convert final result.
-	return (curves_fixed_t)result;
+	return curves_s128_to_s64_truncate(result);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
