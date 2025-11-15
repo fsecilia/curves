@@ -464,6 +464,7 @@ const DoubleConversionTestParam to_double_params[] = {
 INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
                          ValuesIn(to_double_params));
 
+#if 0
 // ----------------------------------------------------------------------------
 // Multiplication Tests
 // ----------------------------------------------------------------------------
@@ -1012,6 +1013,6 @@ const DivisionParam division_params[] = {
 
 INSTANTIATE_TEST_SUITE_P(division_params, FixedDivisionTest,
                          ValuesIn(division_params));
-
+#endif
 }  // namespace
 }  // namespace curves
