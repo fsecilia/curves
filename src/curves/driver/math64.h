@@ -26,8 +26,8 @@ static inline s64 curves_saturate_s64(bool result_positive)
 }
 
 // Truncates, rounding towards zero.
-static inline s64 curves_truncate_s64(unsigned int frac_bits, s64 value,
-				      unsigned int shift)
+static inline s64 __curves_truncate_s64(unsigned int frac_bits, s64 value,
+					unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if negative.
 	s64 sign_mask = value >> 63;
@@ -59,12 +59,12 @@ static inline s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
 	if (output_frac_bits > frac_bits)
 		return value << shift;
 	else
-		return curves_truncate_s64(frac_bits, value, -shift);
+		return __curves_truncate_s64(frac_bits, value, -shift);
 }
 
 // Truncates, rounding toward zero.
-static inline s64 curves_truncate_s128(unsigned int frac_bits, s128 value,
-				       unsigned int shift)
+static inline s64 __curves_truncate_s128(unsigned int frac_bits, s128 value,
+					 unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
@@ -102,7 +102,7 @@ static inline s64 curves_rescale_s128(unsigned int frac_bits, s128 value,
 	if (output_frac_bits > frac_bits)
 		return value << shift;
 	else
-		return curves_truncate_s128(frac_bits, value, -shift);
+		return __curves_truncate_s128(frac_bits, value, -shift);
 }
 
 /**
