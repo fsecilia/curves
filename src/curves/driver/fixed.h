@@ -126,6 +126,7 @@ static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
  *
  * Return: Constant value 1 with specified precision.
  */
+#define CURVES_FIXED_1_FRAC_BITS 62
 static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 {
 	return curves_fixed_from_integer(frac_bits, 1);

@@ -501,6 +501,11 @@ TEST_P(FixedConstantsTest, verify_constants) {
 }
 
 const ConstantsTestParam constants_test_params[] = {
+    // 1
+    {"1_high", curves_fixed_const_1, CURVES_FIXED_1_FRAC_BITS, 1, 0.0},
+    {"1_medium", curves_fixed_const_1, CURVES_FIXED_1_FRAC_BITS / 2, 1, 0.0},
+    {"1_low", curves_fixed_const_1, 1, 1, 0.0},
+
     // e
     {"e_high", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS, M_E, 0.0},
     {"e_medium", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS / 2, M_E,
