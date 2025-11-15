@@ -52,15 +52,7 @@ static inline int64_t curves_truncate_s64(unsigned int frac_bits, int64_t value,
 	return biased_value >> shift;
 }
 
-static inline int64_t __curves_rescale_error_s64(int64_t value, int shift)
-{
-	// If the value is 0 or shift would underflow, return 0.
-	if (value == 0 || shift < 0)
-		return 0;
-
-	// This would overflow. Saturate based on sign of product.
-	return curves_saturate_s64(value >= 0);
-}
+int64_t __cold __curves_rescale_error_s64(int64_t value, int shift);
 
 // Shifts binary point to output_frac bits, truncating if necessary.
 static inline int64_t curves_rescale_s64(unsigned int frac_bits, int64_t value,
@@ -104,16 +96,7 @@ static inline int64_t curves_truncate_s128(unsigned int frac_bits,
 	return (int64_t)result;
 }
 
-// Shifts binary point to output_frac bits, truncating if necessary.
-static inline int64_t __curves_rescale_error_s128(int128_t value, int shift)
-{
-	// If the value is 0 or shift would underflow, return 0.
-	if (value == 0 || shift < 0)
-		return 0;
-
-	// This would overflow. Saturate based on sign of product.
-	return curves_saturate_s64(value >= 0);
-}
+int64_t __cold __curves_rescale_error_s128(int128_t value, int shift);
 
 static inline int64_t curves_rescale_s128(unsigned int frac_bits,
 					  int128_t value,
