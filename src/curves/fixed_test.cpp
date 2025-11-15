@@ -281,38 +281,38 @@ INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
 // outside.
 const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
     // frac_bits = 0: Special case, no rounding.
-    {0, INT64_MIN, INT64_MIN},
-    {0, INT64_MIN + 1, INT64_MIN + 1},
-    {0, INT64_MAX - 1, INT64_MAX - 1},
-    {0, INT64_MAX, INT64_MAX},
+    {0, kMin, kMin},
+    {0, kMin + 1, kMin + 1},
+    {0, kMax - 1, kMax - 1},
+    {0, kMax, kMax},
 
     // frac_bits = 1: Lowest precision that isn't just integers.
-    {1, INT64_MIN, INT64_MIN >> 1},
-    {1, INT64_MIN + 1, (INT64_MIN >> 1) + 1},
-    {1, INT64_MAX - 2, (INT64_MAX >> 1) - 1},
-    {1, INT64_MAX - 1, INT64_MAX >> 1},
-    {1, INT64_MAX, INT64_MAX >> 1},
+    {1, kMin, kMin >> 1},
+    {1, kMin + 1, (kMin >> 1) + 1},
+    {1, kMax - 2, (kMax >> 1) - 1},
+    {1, kMax - 1, kMax >> 1},
+    {1, kMax, kMax >> 1},
 
     // frac_bits = 32: Typical precision
-    {32, INT64_MIN, INT64_MIN >> 32},
-    {32, INT64_MIN + 1, (INT64_MIN >> 32) + 1},
-    {32, INT64_MAX - (1LL << 32), (INT64_MAX >> 32) - 1},
-    {32, INT64_MAX - (1LL << 32) + 1, (INT64_MAX >> 32)},
-    {32, INT64_MAX, (INT64_MAX >> 32)},
+    {32, kMin, kMin >> 32},
+    {32, kMin + 1, (kMin >> 32) + 1},
+    {32, kMax - (1LL << 32), (kMax >> 32) - 1},
+    {32, kMax - (1LL << 32) + 1, (kMax >> 32)},
+    {32, kMax, (kMax >> 32)},
 
     // frac_bits = 61: Highest precision that doesn't hit range boundary.
-    {61, INT64_MIN, -4},
-    {61, INT64_MIN + 1, -3},
-    {61, INT64_MAX - (1LL << 61), 2},
-    {61, INT64_MAX - (1LL << 61) + 1, 3},
-    {61, INT64_MAX, 3},
+    {61, kMin, -4},
+    {61, kMin + 1, -3},
+    {61, kMax - (1LL << 61), 2},
+    {61, kMax - (1LL << 61) + 1, 3},
+    {61, kMax, 3},
 
     // frac_bits = 62: Maximum precision
-    {62, INT64_MIN, -2},
-    {62, INT64_MIN + 1, -1},
-    {62, INT64_MAX - (1LL << 62), 0},
-    {62, INT64_MAX - (1LL << 62) + 1, 1},
-    {62, INT64_MAX, 1},
+    {62, kMin, -2},
+    {62, kMin + 1, -1},
+    {62, kMax - (1LL << 62), 0},
+    {62, kMax - (1LL << 62) + 1, 1},
+    {62, kMax, 1},
 };
 
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
@@ -836,14 +836,14 @@ const MultiplicationParam multiplication_truncation_cases[] = {
     {511, 1, -10, 0},    //  0.499... rounds to 0
     {512, 1, -10, 1},    //  0.5      rounds to 1
 
-    {INT64_MIN, (1LL << 62), -100, -(1LL << 25)},
-    {INT64_MAX, (1LL << 62), -100, (1LL << 25)},
-    {INT64_MIN, INT64_MAX, -100, -(1LL << 26)},
-    {INT64_MAX, INT64_MAX, -100, (1LL << 26)},
-    {INT64_MIN, INT64_MIN, -100, (1LL << 26)},
+    {kMin, (1LL << 62), -100, -(1LL << 25)},
+    {kMax, (1LL << 62), -100, (1LL << 25)},
+    {kMin, kMax, -100, -(1LL << 26)},
+    {kMax, kMax, -100, (1LL << 26)},
+    {kMin, kMin, -100, (1LL << 26)},
 
     // Final boss test vector.
-    {INT64_MIN, INT64_MIN, -127, 1},
+    {kMin, kMin, -127, 1},
 };
 
 INSTANTIATE_TEST_SUITE_P(truncation_cases, FixedMultiplicationTest,
