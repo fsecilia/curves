@@ -15,6 +15,75 @@ const auto kMin = std::numeric_limits<int64_t>::min();
 const auto kMax = std::numeric_limits<int64_t>::max();
 
 // ----------------------------------------------------------------------------
+// curves_fixed_truncate_s64() Tests
+// ----------------------------------------------------------------------------
+
+struct CurvesFixedTruncateS64TestParam {
+  unsigned int frac_bits;
+  s64 value;
+  unsigned int shift;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const CurvesFixedTruncateS64TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.frac_bits << ", " << src.value << ", " << src.shift
+               << ", " << src.expected_result << "}";
+  }
+};
+
+struct CurvesFixedTruncateS64Test
+    : TestWithParam<CurvesFixedTruncateS64TestParam> {};
+
+TEST_P(CurvesFixedTruncateS64Test, curves_fixed_truncate_s64) {
+  ASSERT_EQ(GetParam().expected_result,
+            __curves_fixed_truncate_s64(GetParam().frac_bits, GetParam().value,
+                                        GetParam().shift));
+}
+
+CurvesFixedTruncateS64TestParam truncate_s64_nonnegative_values[] = {
+    // zero
+    {0, 0, 0, 0},
+    {0, 0, 1, 0},
+
+    // single bit
+    {0, 1, 0, 1},
+    {0, 1, 1, 0},
+    {0, 1, 63, 0},
+
+    // multiple bits
+    {0, 3, 0, 3},
+    {0, 3, 1, 1},
+    {0, 3, 2, 0},
+
+    // boundary
+    {0, kMax, 0, kMax},
+    {0, kMax, 1, kMax >> 1},
+    {0, kMax, 32, kMax >> 32},
+    {0, kMax, 62, 1},
+    {0, kMax, 63, 0},
+};
+
+INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesFixedTruncateS64Test,
+                         ValuesIn(truncate_s64_nonnegative_values));
+
+CurvesFixedTruncateS64TestParam truncate_s64_negative_values[] = {
+    // unbiased: these must floor because of 0 frac bits.
+    {0, -1, 0, -1},
+    {0, -1, 1, -1},
+    {0, kMin, 0, kMin},
+    {0, kMin, 1, kMin >> 1},
+
+    // smallest biased cases
+    {1, -1, 0, 0},   // Boundary adjacent: -1 + 1 = 0
+    {1, -2, 0, -1},  // On boundary: -2 + 1 = -1
+    {1, -3, 0, -2},  // Past boundary: -3 + 1 = -2
+};
+
+INSTANTIATE_TEST_SUITE_P(negative_values, CurvesFixedTruncateS64Test,
+                         ValuesIn(truncate_s64_negative_values));
+
+// ----------------------------------------------------------------------------
 // Fixed Test
 // ----------------------------------------------------------------------------
 
@@ -24,7 +93,7 @@ TEST_F(FixedTest, one_highest_precision) {
   const auto frac_bits = 62;
   const auto expected = 4611686018427387904ll;
 
-  const auto actual = curves_const_1(frac_bits);
+  const auto actual = curves_fixed_const_1(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -33,7 +102,7 @@ TEST_F(FixedTest, one_lowest_precision) {
   const auto frac_bits = 0;
   const auto expected = 1ll;
 
-  const auto actual = curves_const_1(frac_bits);
+  const auto actual = curves_fixed_const_1(frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -62,7 +131,7 @@ TEST_P(FixedConstantsTest, verify_constants) {
   const auto param = GetParam();
 
   const auto actual_fixed = param.constant_func(param.frac_bits);
-  const auto one_fixed = curves_const_1(param.frac_bits);
+  const auto one_fixed = curves_fixed_const_1(param.frac_bits);
 
   const auto actual_double = double(actual_fixed) / double(one_fixed);
 
@@ -75,20 +144,23 @@ TEST_P(FixedConstantsTest, verify_constants) {
 
 const ConstantsTestParam constants_test_params[] = {
     // e
-    {"e_high", curves_const_e, CURVES_E_FRAC_BITS, M_E, 0.0},
-    {"e_medium", curves_const_e, CURVES_E_FRAC_BITS / 2, M_E, 6.0e-10},
-    {"e_low", curves_const_e, 1, M_E, 2.2e-1},
+    {"e_high", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS, M_E, 0.0},
+    {"e_medium", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS / 2, M_E,
+     6.0e-10},
+    {"e_low", curves_fixed_const_e, 1, M_E, 2.2e-1},
 
     // ln(2)
-    {"ln2_high", curves_const_ln2, CURVES_LN2_FRAC_BITS, std::log(2.0), 0.0},
-    {"ln2_medium", curves_const_ln2, CURVES_LN2_FRAC_BITS / 2, std::log(2.0),
-     4.3e-10},
-    {"ln2_low", curves_const_ln2, 1, std::log(2.0), 2.0e-1},
+    {"ln2_high", curves_fixed_const_ln2, CURVES_FIXED_LN2_FRAC_BITS,
+     std::log(2.0), 0.0},
+    {"ln2_medium", curves_fixed_const_ln2, CURVES_FIXED_LN2_FRAC_BITS / 2,
+     std::log(2.0), 4.3e-10},
+    {"ln2_low", curves_fixed_const_ln2, 1, std::log(2.0), 2.0e-1},
 
     // pi
-    {"pi_high", curves_const_pi, CURVES_PI_FRAC_BITS, M_PI, 0.0},
-    {"pi_medium", curves_const_pi, CURVES_PI_FRAC_BITS / 2, M_PI, 1.3e-10},
-    {"pi_low", curves_const_pi, 1, M_PI, 1.5e-1},
+    {"pi_high", curves_fixed_const_pi, CURVES_FIXED_PI_FRAC_BITS, M_PI, 0.0},
+    {"pi_medium", curves_fixed_const_pi, CURVES_FIXED_PI_FRAC_BITS / 2, M_PI,
+     1.3e-10},
+    {"pi_low", curves_fixed_const_pi, 1, M_PI, 1.5e-1},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,

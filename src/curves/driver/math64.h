@@ -20,89 +20,9 @@
 
 #include "kernel_compat.h"
 
-static inline s64 curves_saturate_s64(bool result_positive)
+static inline s64 curves_saturate_s64(bool positive)
 {
-	return result_positive ? S64_MAX : S64_MIN;
-}
-
-// Truncates, rounding towards zero.
-static inline s64 __curves_truncate_s64(unsigned int frac_bits, s64 value,
-					unsigned int shift)
-{
-	// Extract sign of value: 0 if positive, -1 (all bits set) if negative.
-	s64 sign_mask = value >> 63;
-
-	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	s64 bias = ((1LL << frac_bits) - 1) & sign_mask;
-
-	// This can't overflow because it is only nonzero for negative numbers,
-	// and it is never large enough to reach the end of the range.
-	s64 biased_value = value + bias;
-
-	return biased_value >> shift;
-}
-
-s64 __cold __curves_rescale_error_s64(s64 value, int shift);
-
-// Shifts binary point to output_frac bits, truncating if necessary.
-static inline s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
-				     unsigned int output_frac_bits)
-{
-	// Calculate final shift to align binary point with output_frac_bits.
-	int shift = (int)output_frac_bits - (int)frac_bits;
-
-	// Handle UB shifts.
-	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
-		return __curves_rescale_error_s64(value, shift);
-
-	// Shift into final place.
-	if (shift >= 0)
-		return value << shift;
-	else
-		return __curves_truncate_s64(frac_bits, value, -shift);
-}
-
-// Truncates, rounding toward zero.
-static inline s64 __curves_truncate_s128(unsigned int frac_bits, s128 value,
-					 unsigned int shift)
-{
-	// Extract sign of value: 0 if positive, -1 (all bits set) if
-	// negative.
-	s128 sign_mask = value >> 127;
-
-	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	s128 bias = ((1LL << frac_bits) - 1) & sign_mask;
-
-	// This can't overflow because it is only nonzero for negative numbers,
-	// and it is never large enough to reach the end of the range.
-	s128 biased_value = value + bias;
-
-	s128 result = biased_value >> shift;
-
-	if (unlikely(result != (s64)result)) {
-		return curves_saturate_s64(result > 0);
-	}
-
-	return (s64)result;
-}
-
-s64 __cold __curves_rescale_error_s128(s128 value, int shift);
-
-static inline s64 curves_rescale_s128(unsigned int frac_bits, s128 value,
-				      unsigned int output_frac_bits)
-{
-	// Calculate final shift to align binary point with output_frac_bits.
-	int shift = (int)output_frac_bits - (int)frac_bits;
-
-	// Handle UB shifts.
-	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
-		return __curves_rescale_error_s128(value, shift);
-
-	// Shift into final place.
-	if (shift >= 0)
-		return value << shift;
-	else
-		return __curves_truncate_s128(frac_bits, value, -shift);
+	return positive ? S64_MAX : S64_MIN;
 }
 
 /**

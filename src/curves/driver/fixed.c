@@ -15,32 +15,48 @@
 
 #include "fixed.h"
 
-extern s64 curves_const_1(unsigned int frac_bits);
-extern s64 curves_const_e(unsigned int frac_bits);
-extern s64 curves_const_ln2(unsigned int frac_bits);
-extern s64 curves_const_pi(unsigned int frac_bits);
+extern s64 __curves_fixed_truncate_s64(unsigned int frac_bits, s64 value,
+				       unsigned int shift);
+extern s64 curves_fixed_rescale_s64(unsigned int frac_bits, s64 value,
+				    unsigned int output_frac_bits);
+
+s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift)
+{
+	// If the value is 0 or shift would underflow, return 0.
+	if (value == 0 || shift < 0)
+		return 0;
+
+	// This would overflow. Saturate based on sign of product.
+	return curves_saturate_s64(value >= 0);
+}
+
+s64 __cold __curves_fixed_rescale_error_s128(s128 value, int shift)
+{
+	// If the value is 0 or shift would underflow, return 0.
+	if (value == 0 || shift < 0)
+		return 0;
+
+	// This would overflow. Saturate based on sign of product.
+	return curves_saturate_s64(value >= 0);
+}
+
+extern s64 __curves_fixed_truncate_s128(unsigned int frac_bits, s128 value,
+					unsigned int shift);
+extern s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
+				     unsigned int output_frac_bits);
+
+extern s64 curves_fixed_const_1(unsigned int frac_bits);
+extern s64 curves_fixed_const_e(unsigned int frac_bits);
+extern s64 curves_fixed_const_ln2(unsigned int frac_bits);
+extern s64 curves_fixed_const_pi(unsigned int frac_bits);
 
 extern s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value);
-
 extern s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value);
 
 extern s64 curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 				 s64 multiplicand,
 				 unsigned int multiplier_frac_bits,
 				 s64 multiplier, unsigned int output_frac_bits);
-
-extern s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
-					      s128 threshold);
-
-extern s64 curves_fixed_divide(unsigned int dividend_frac_bits, s64 dividend,
-			       unsigned int divisor_frac_bits, s64 divisor,
-			       unsigned int output_frac_bits);
-
-extern s64 __curves_fixed_divide_try_saturate_shl(s64 dividend, s64 divisor,
-						  int saturation_threshold_bit);
-
-extern s64 __curves_fixed_divide_try_saturate_shr(s64 dividend, s64 divisor,
-						  int saturation_threshold_bit);
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift)
 {
@@ -52,3 +68,13 @@ s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift)
 	// Saturate based on sign of quotient.
 	return curves_saturate_s64((dividend ^ divisor) >= 0);
 }
+
+extern s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
+					      s128 threshold);
+extern s64 __curves_fixed_divide_try_saturate_shl(s64 dividend, s64 divisor,
+						  int saturation_threshold_bit);
+extern s64 __curves_fixed_divide_try_saturate_shr(s64 dividend, s64 divisor,
+						  int saturation_threshold_bit);
+extern s64 curves_fixed_divide(unsigned int dividend_frac_bits, s64 dividend,
+			       unsigned int divisor_frac_bits, s64 divisor,
+			       unsigned int output_frac_bits);
