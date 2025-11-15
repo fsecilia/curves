@@ -33,7 +33,7 @@ extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 
 extern curves_fixed_t
 __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
-				   curves_fixed_t divisor, int128_t threshold);
+				   curves_fixed_t divisor, s128 threshold);
 
 extern curves_fixed_t curves_fixed_divide(unsigned int dividend_frac_bits,
 					  curves_fixed_t dividend,

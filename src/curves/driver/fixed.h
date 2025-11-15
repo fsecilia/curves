@@ -132,8 +132,7 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 {
 	return curves_rescale_s128(
 		multiplicand_frac_bits + multiplier_frac_bits,
-		(int128_t)multiplicand * (int128_t)multiplier,
-		output_frac_bits);
+		(s128)multiplicand * (s128)multiplier, output_frac_bits);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
@@ -142,10 +141,10 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 
 static inline curves_fixed_t
 __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
-				   curves_fixed_t divisor, int128_t threshold)
+				   curves_fixed_t divisor, s128 threshold)
 {
-	int128_t abs_dividend = dividend < 0 ? -dividend : dividend;
-	int128_t abs_threshold = threshold < 0 ? -threshold : threshold;
+	s128 abs_dividend = dividend < 0 ? -dividend : dividend;
+	s128 abs_threshold = threshold < 0 ? -threshold : threshold;
 
 	if (unlikely(abs_dividend >= abs_threshold)) {
 		// Saturate based on sign of quotient.
@@ -159,19 +158,19 @@ static inline curves_fixed_t
 __curves_fixed_divide_try_saturate_shl(curves_fixed_t dividend,
 				       curves_fixed_t divisor, int shift)
 {
-	int128_t saturation_threshold;
+	s128 saturation_threshold;
 	curves_fixed_t saturation;
 
 	int saturation_threshold_bit = 63 - shift;
 
 	if (saturation_threshold_bit >= 0) {
 		// 128-bit shift
-		saturation_threshold = (int128_t)divisor
+		saturation_threshold = (s128)divisor
 				       << saturation_threshold_bit;
 	} else {
 		// 64-bit shift
 		saturation_threshold =
-			(int128_t)(divisor >> -saturation_threshold_bit);
+			(s128)(divisor >> -saturation_threshold_bit);
 	}
 
 	saturation = __curves_fixed_divide_try_saturate(dividend, divisor,
@@ -188,8 +187,7 @@ __curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
 {
 	int saturation_threshold_bit = 63 + shift;
 
-	int128_t saturation_threshold = (int128_t)divisor
-					<< saturation_threshold_bit;
+	s128 saturation_threshold = (s128)divisor << saturation_threshold_bit;
 	curves_fixed_t saturation = __curves_fixed_divide_try_saturate(
 		dividend, divisor, saturation_threshold);
 
@@ -217,8 +215,7 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 		if (unlikely(saturation != 0))
 			return saturation;
 
-		return curves_div_s128_s64((int128_t)dividend << shift,
-					   divisor);
+		return curves_div_s128_s64((s128)dividend << shift, divisor);
 	} else {
 		curves_fixed_t saturation =
 			__curves_fixed_divide_try_saturate_shr(dividend,

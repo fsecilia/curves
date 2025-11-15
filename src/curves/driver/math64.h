@@ -20,16 +20,6 @@
 
 #include "kernel_compat.h"
 
-#if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
-#error This module requires 128-bit integer types, but they are not available.
-#endif
-
-__extension__ typedef __int128 int128_t;
-__extension__ typedef unsigned __int128 uint128_t;
-
-__extension__ typedef __int128 s128;
-__extension__ typedef unsigned __int128 u128;
-
 static inline s64 curves_saturate_s64(bool result_positive)
 {
 	return result_positive ? S64_MAX : S64_MIN;
@@ -73,21 +63,21 @@ static inline s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
 }
 
 // Truncates, rounding toward zero.
-static inline s64 curves_truncate_s128(unsigned int frac_bits, int128_t value,
+static inline s64 curves_truncate_s128(unsigned int frac_bits, s128 value,
 				       unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
-	int128_t sign_mask = value >> 127;
+	s128 sign_mask = value >> 127;
 
 	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	int128_t bias = ((1LL << frac_bits) - 1) & sign_mask;
+	s128 bias = ((1LL << frac_bits) - 1) & sign_mask;
 
 	// This can't overflow because it is only nonzero for negative numbers,
 	// and it is never large enough to reach the end of the range.
-	int128_t biased_value = value + bias;
+	s128 biased_value = value + bias;
 
-	int128_t result = biased_value >> shift;
+	s128 result = biased_value >> shift;
 
 	if (unlikely(result != (s64)result)) {
 		return curves_saturate_s64(result > 0);
@@ -96,9 +86,9 @@ static inline s64 curves_truncate_s128(unsigned int frac_bits, int128_t value,
 	return (s64)result;
 }
 
-s64 __cold __curves_rescale_error_s128(int128_t value, int shift);
+s64 __cold __curves_rescale_error_s128(s128 value, int shift);
 
-static inline s64 curves_rescale_s128(unsigned int frac_bits, int128_t value,
+static inline s64 curves_rescale_s128(unsigned int frac_bits, s128 value,
 				      unsigned int output_frac_bits)
 {
 	// Calculate final shift to align binary point with output_frac_bits.
@@ -136,7 +126,7 @@ static inline s64 curves_rescale_s128(unsigned int frac_bits, int128_t value,
 #if defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline s64 curves_div_s128_s64(int128_t dividend, s64 divisor)
+static inline s64 curves_div_s128_s64(s128 dividend, s64 divisor)
 {
 	s64 dividend_high = (s64)(dividend >> 64); // RDX
 	s64 dividend_low = (s64)dividend; // RAX

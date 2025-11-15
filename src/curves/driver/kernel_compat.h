@@ -9,6 +9,10 @@
 #ifndef _CURVES_TYPES_H
 #define _CURVES_TYPES_H
 
+#if !(defined __SIZEOF_INT128__ && __SIZEOF_INT128__ == 16)
+#error This module requires 128-bit integer types, but they are not available.
+#endif
+
 #if defined __KERNEL__
 
 #include <linux/kernel.h>
@@ -23,6 +27,8 @@
 
 typedef int64_t s64;
 typedef uint64_t u64;
+__extension__ typedef __int128 s128;
+__extension__ typedef unsigned __int128 u128;
 
 #define S64_MIN INT64_MIN
 #define S64_MAX INT64_MAX
