@@ -109,13 +109,12 @@ INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,
   in either direction.
 */
 
-struct SymmetricIntegerConversionsParam {
+struct SymmetricIntegersParam {
   unsigned int frac_bits;
   int64_t integer_value;
   curves_fixed_t fixed_value;
 
-  friend auto operator<<(std::ostream& out,
-                         const SymmetricIntegerConversionsParam& src)
+  friend auto operator<<(std::ostream& out, const SymmetricIntegersParam& src)
       -> std::ostream& {
     return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
                << src.fixed_value << "}";
@@ -123,7 +122,7 @@ struct SymmetricIntegerConversionsParam {
 };
 
 struct FixedConversionsTestSymmetricIntegers
-    : public TestWithParam<SymmetricIntegerConversionsParam> {};
+    : public TestWithParam<SymmetricIntegersParam> {};
 
 TEST_P(FixedConversionsTestSymmetricIntegers, to_fixed) {
   const auto param = GetParam();
@@ -145,105 +144,103 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
   ASSERT_EQ(expected, actual);
 }
 
-const SymmetricIntegerConversionsParam
-    symmetric_integer_conversion_test_params[] = {
-        // end of negative q63.0 range
-        {0, kMin, kMin},
+const SymmetricIntegersParam symmetric_integer_params[] = {
+    // end of negative q63.0 range
+    {0, kMin, kMin},
 
-        // end of q62.1 range
-        {1, -1ll << 62, (-1ll << 62) << 1},
+    // end of q62.1 range
+    {1, -1ll << 62, (-1ll << 62) << 1},
 
-        // end of q47.16 range
-        {1, -1ll << 47, (-1ll << 47) << 1},
-        {8, -1ll << 47, (-1ll << 47) << 8},
-        {16, -1ll << 47, (-1ll << 47) << 16},
+    // end of q47.16 range
+    {1, -1ll << 47, (-1ll << 47) << 1},
+    {8, -1ll << 47, (-1ll << 47) << 8},
+    {16, -1ll << 47, (-1ll << 47) << 16},
 
-        // end of q31.32 range
-        {1, -1ll << 31, (-1ll << 31) << 1},
-        {16, -1ll << 31, (-1ll << 31) << 16},
-        {32, -1ll << 31, (-1ll << 31) << 32},
+    // end of q31.32 range
+    {1, -1ll << 31, (-1ll << 31) << 1},
+    {16, -1ll << 31, (-1ll << 31) << 16},
+    {32, -1ll << 31, (-1ll << 31) << 32},
 
-        // end of q15.48 range
-        {1, -1ll << 15, (-1ll << 15) << 1},
-        {24, -1ll << 15, (-1ll << 15) << 24},
-        {48, -1ll << 15, (-1ll << 15) << 48},
+    // end of q15.48 range
+    {1, -1ll << 15, (-1ll << 15) << 1},
+    {24, -1ll << 15, (-1ll << 15) << 24},
+    {48, -1ll << 15, (-1ll << 15) << 48},
 
-        // -2
-        {1, -2, -2ll << 1},
-        {32, -2, -2ll << 32},
-        {61, -2, -2ll << 61},
+    // -2
+    {1, -2, -2ll << 1},
+    {32, -2, -2ll << 32},
+    {61, -2, -2ll << 61},
 
-        // -1
-        {1, -1, -1ll << 1},
-        {32, -1, -1ll << 32},
-        {62, -1, -1ll << 62},
+    // -1
+    {1, -1, -1ll << 1},
+    {32, -1, -1ll << 32},
+    {62, -1, -1ll << 62},
 
-        // zero
-        {1, 0, 0},
-        {32, 0, 0},
-        {63, 0, 0},
+    // zero
+    {1, 0, 0},
+    {32, 0, 0},
+    {63, 0, 0},
 
-        // 1
-        {1, 1, 1ll << 1},
-        {32, 1, 1ll << 32},
-        {62, 1, 1ll << 62},
+    // 1
+    {1, 1, 1ll << 1},
+    {32, 1, 1ll << 32},
+    {62, 1, 1ll << 62},
 
-        // 2
-        {1, 2, 2ll << 1},
-        {32, 2, 2ll << 32},
-        {61, 2, 2ll << 61},
+    // 2
+    {1, 2, 2ll << 1},
+    {32, 2, 2ll << 32},
+    {61, 2, 2ll << 61},
 
-        // end of q15.48 range
-        {1, (1ll << 15) - 1, ((1ll << 15) - 1) << 1},
-        {24, (1ll << 15) - 1, ((1ll << 15) - 1) << 24},
-        {48, (1ll << 15) - 1, ((1ll << 15) - 1) << 48},
+    // end of q15.48 range
+    {1, (1ll << 15) - 1, ((1ll << 15) - 1) << 1},
+    {24, (1ll << 15) - 1, ((1ll << 15) - 1) << 24},
+    {48, (1ll << 15) - 1, ((1ll << 15) - 1) << 48},
 
-        // end of q31.32 range
-        {1, (1ll << 31) - 1, ((1ll << 31) - 1) << 1},
-        {16, (1ll << 31) - 1, ((1ll << 31) - 1) << 16},
-        {32, (1ll << 31) - 1, ((1ll << 31) - 1) << 32},
+    // end of q31.32 range
+    {1, (1ll << 31) - 1, ((1ll << 31) - 1) << 1},
+    {16, (1ll << 31) - 1, ((1ll << 31) - 1) << 16},
+    {32, (1ll << 31) - 1, ((1ll << 31) - 1) << 32},
 
-        // end of q47.16 range
-        {1, (1ll << 47) - 1, ((1ll << 47) - 1) << 1},
-        {8, (1ll << 47) - 1, ((1ll << 47) - 1) << 8},
-        {16, (1ll << 47) - 1, ((1ll << 47) - 1) << 16},
+    // end of q47.16 range
+    {1, (1ll << 47) - 1, ((1ll << 47) - 1) << 1},
+    {8, (1ll << 47) - 1, ((1ll << 47) - 1) << 8},
+    {16, (1ll << 47) - 1, ((1ll << 47) - 1) << 16},
 
-        // end of q62.1 range
-        {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
+    // end of q62.1 range
+    {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
 
-        // end of q63.0 range
-        {0, kMax, kMax},
+    // end of q63.0 range
+    {0, kMax, kMax},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
-                         ValuesIn(symmetric_integer_conversion_test_params));
+                         ValuesIn(symmetric_integer_params));
 
-// Rounding
+// Truncation
 // ----------------------------------------------------------------------------
 
 /*
-  These test that fixed->integer conversions always round to nearest, rather
-  than the default fixed-point behavior to round towards negative infinity that
-  it gets from using integers.
+  These test that fixed->integer conversions always truncate, rather than the
+  default fixed-point behavior to round towards negative infinity that it gets
+  from using integers.
 */
 
-struct RoundsToNearestIntegerConversionsParam {
+struct IntegerTruncationParam {
   unsigned int frac_bits;
   curves_fixed_t fixed_value;
   int64_t integer_value;
 
-  friend auto operator<<(std::ostream& out,
-                         const RoundsToNearestIntegerConversionsParam& src)
+  friend auto operator<<(std::ostream& out, const IntegerTruncationParam& src)
       -> std::ostream& {
     return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
                << src.fixed_value << "}";
   }
 };
 
-struct FixedConversionsTestIntegerRoundsToNearest
-    : public TestWithParam<RoundsToNearestIntegerConversionsParam> {};
+struct FixedConversionsTestIntegerTruncation
+    : public TestWithParam<IntegerTruncationParam> {};
 
-TEST_P(FixedConversionsTestIntegerRoundsToNearest, truncation_is_flooring) {
+TEST_P(FixedConversionsTestIntegerTruncation, conversion_to_integer_truncates) {
   const auto param = GetParam();
 
   const auto expected = param.integer_value;
@@ -253,79 +250,73 @@ TEST_P(FixedConversionsTestIntegerRoundsToNearest, truncation_is_flooring) {
   ASSERT_EQ(expected, actual);
 }
 
-const RoundsToNearestIntegerConversionsParam
-    high_precision_integer_conversion_test_params[] = {
-        {61, -4611686018427387904LL, -2},  // = -2, floors to -2, rounds to -2
-        {61, -4611686018427387903LL, -2},  // < -2, floors to -2, rounds to -2
-        {61, -3458764513820540928LL, -2},  // = -1.5, floors to -2, rounds to -2
-        {61, -3458764513820540927LL, -1},  // < -1.5, floors to -2, rounds to -1
-        {61, -2305843009213693952LL, -1},  // = -1, floors to -1, rounds to -1
-        {61, -2305843009213693951LL, -1},  // < -1, floors to -1, rounds to -1
-        {61, -1152921504606846976LL, -1},  // = -0.5, floors to -1, rounds to -1
-        {61, -1152921504606846975LL, 0},   // < -0.5, floors -1, rounds to 0
+const IntegerTruncationParam integer_truncation_test_params[] = {
+    {61, -4611686018427387904LL, -2},  // = -2, floors to -2, truncates to -2
+    {61, -4611686018427387903LL, -1},  // < -2, floors to -2, truncates to -1
+    {61, -3458764513820540928LL, -1},  // = -1.5, floors to -2, truncates to -1
+    {61, -3458764513820540927LL, -1},  // < -1.5, floors to -2, truncates to -1
+    {61, -2305843009213693952LL, -1},  // = -1, floors to -1, truncates to -1
+    {61, -2305843009213693951LL, 0},   // < -1, floors to -1, truncates to 0
+    {61, -1152921504606846976LL, 0},   // = -0.5, floors to -1, truncates to 0
+    {61, -1152921504606846975LL, 0},   // < -0.5, floors -1, truncates to 0
 
-        {61, 1LL, 0},   // > 0, floors to 0, rounds to 0
-        {61, 0LL, 0},   // = 0, floors to 0, rounds to 0
-        {61, -1LL, 0},  // < 0, floors to 0, rounds to 0
+    {61, 1LL, 0},   // > 0, floors to 0, truncates to 0
+    {61, 0LL, 0},   // = 0, floors to 0, truncates to 0
+    {61, -1LL, 0},  // < 0, floors to 0, truncates to 0
 
-        {61, 1152921504606846975LL, 0},  // < 0.5, floors to 0, rounds to 0
-        {61, 1152921504606846976LL, 1},  // = 0.5, floors to 0, rounds to 1
-        {61, 2305843009213693951LL, 1},  // < 1, floors to 1, rounds to 1
-        {61, 2305843009213693952LL, 1},  // = 1, floors to 1, rounds to 1
-        {61, 3458764513820540927LL, 1},  // < 1.5, floors to 1, rounds to 1
-        {61, 3458764513820540928LL, 2},  // = 1.5, floors to 1, rounds to 2
-        {61, 4611686018427387903LL, 2},  // < 2, floors to 1, rounds to 2
-        {61, 4611686018427387904LL, 2},  // = 2, floors to 2, rounds to 2
+    {61, 1152921504606846975LL, 0},  // < 0.5, floors to 0, truncates to 0
+    {61, 1152921504606846976LL, 0},  // = 0.5, floors to 0, truncates to 1
+    {61, 2305843009213693951LL, 0},  // < 1, floors to 1, truncates to 1
+    {61, 2305843009213693952LL, 1},  // = 1, floors to 1, truncates to 1
+    {61, 3458764513820540927LL, 1},  // < 1.5, floors to 1, truncates to 1
+    {61, 3458764513820540928LL, 1},  // = 1.5, floors to 1, truncates to 2
+    {61, 4611686018427387903LL, 1},  // < 2, floors to 1, truncates to 2
+    {61, 4611686018427387904LL, 2},  // = 2, floors to 2, truncates to 2
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    high_precision, FixedConversionsTestIntegerRoundsToNearest,
-    ValuesIn(high_precision_integer_conversion_test_params));
+INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
+                         ValuesIn(integer_truncation_test_params));
 
 // These test edge cases right at their edge, one inside, and the adjacent one
 // outside.
-const RoundsToNearestIntegerConversionsParam
-    boundary_integer_conversion_test_params[] = {
-        // frac_bits = 0: Special case, no rounding.
-        {0, INT64_MIN, INT64_MIN},
-        {0, INT64_MIN + 1, INT64_MIN + 1},
-        {0, INT64_MAX - 1, INT64_MAX - 1},
-        {0, INT64_MAX, INT64_MAX},
+const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
+    // frac_bits = 0: Special case, no rounding.
+    {0, INT64_MIN, INT64_MIN},
+    {0, INT64_MIN + 1, INT64_MIN + 1},
+    {0, INT64_MAX - 1, INT64_MAX - 1},
+    {0, INT64_MAX, INT64_MAX},
 
-        // frac_bits = 1: Lowest precision that isn't just integers.
-        {1, INT64_MIN, INT64_MIN >> 1},
-        {1, INT64_MIN + 1, INT64_MIN >> 1},
-        {1, INT64_MIN + 2, (INT64_MIN >> 1) + 1},
-        {1, INT64_MAX - 1, (INT64_MAX >> 1)},
-        {1, INT64_MAX, (INT64_MAX >> 1) + 1},
+    // frac_bits = 1: Lowest precision that isn't just integers.
+    {1, INT64_MIN, INT64_MIN >> 1},
+    {1, INT64_MIN + 1, (INT64_MIN >> 1) + 1},
+    {1, INT64_MAX - 2, (INT64_MAX >> 1) - 1},
+    {1, INT64_MAX - 1, INT64_MAX >> 1},
+    {1, INT64_MAX, INT64_MAX >> 1},
 
-        // frac_bits = 32: Typical precision
-        {32, INT64_MIN, INT64_MIN >> 32},
-        {32, INT64_MIN + (1LL << 31), INT64_MIN >> 32},
-        {32, INT64_MIN + (1LL << 31) + 1, (INT64_MIN >> 32) + 1},
-        {32, INT64_MAX - (1LL << 31), INT64_MAX >> 32},
-        {32, INT64_MAX - (1LL << 31) + 1, (INT64_MAX >> 32) + 1},
-        {32, INT64_MAX, (INT64_MAX >> 32) + 1},
+    // frac_bits = 32: Typical precision
+    {32, INT64_MIN, INT64_MIN >> 32},
+    {32, INT64_MIN + 1, (INT64_MIN >> 32) + 1},
+    {32, INT64_MAX - (1LL << 32), (INT64_MAX >> 32) - 1},
+    {32, INT64_MAX - (1LL << 32) + 1, (INT64_MAX >> 32)},
+    {32, INT64_MAX, (INT64_MAX >> 32)},
 
-        // frac_bits = 61: Highest precision that doesn't hit range boundary.
-        {61, INT64_MIN, -4},
-        {61, INT64_MIN + (1LL << 60), -4},
-        {61, INT64_MIN + (1LL << 60) + 1, -3},
-        {61, INT64_MAX - (1LL << 60), 3},
-        {61, INT64_MAX - (1LL << 60) + 1, 4},
-        {61, INT64_MAX, 4},
+    // frac_bits = 61: Highest precision that doesn't hit range boundary.
+    {61, INT64_MIN, -4},
+    {61, INT64_MIN + 1, -3},
+    {61, INT64_MAX - (1LL << 61), 2},
+    {61, INT64_MAX - (1LL << 61) + 1, 3},
+    {61, INT64_MAX, 3},
 
-        // frac_bits = 62: Maximum precision
-        {62, INT64_MIN, -2},
-        {62, INT64_MIN + (1LL << 61), -2},
-        {62, INT64_MIN + (1LL << 61) + 1, -1},
-        {62, INT64_MAX - (1LL << 61), 1},
-        {62, INT64_MAX - (1LL << 61) + 1, 2},
-        {62, INT64_MAX, 2},
+    // frac_bits = 62: Maximum precision
+    {62, INT64_MIN, -2},
+    {62, INT64_MIN + 1, -1},
+    {62, INT64_MAX - (1LL << 62), 0},
+    {62, INT64_MAX - (1LL << 62) + 1, 1},
+    {62, INT64_MAX, 1},
 };
 
-INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerRoundsToNearest,
-                         ValuesIn(boundary_integer_conversion_test_params));
+INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
+                         ValuesIn(integer_truncation_boundary_test_params));
 
 // ----------------------------------------------------------------------------
 // Double Conversions Tests
@@ -477,6 +468,7 @@ struct MultiplicationParam {
   curves_fixed_t multiplier;
   int desired_shift;
   curves_fixed_t expected_result;
+  curves_fixed_t expected_bias;
 
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
       -> std::ostream& {
@@ -525,7 +517,19 @@ struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
   const curves_fixed_t multiplicand = GetParam().multiplicand;
   const curves_fixed_t multiplier = GetParam().multiplier;
   const int desired_shift = GetParam().desired_shift;
-  const curves_fixed_t expected_result = GetParam().expected_result;
+  auto expected_result(unsigned int multiplicand_frac_bits,
+                       unsigned int multiplier_frac_bits) const noexcept
+      -> curves_fixed_t {
+    const auto unbiased_result = GetParam().expected_result;
+    const auto value = static_cast<int128_t>(multiplicand) * multiplier;
+    if (value >= 0) return unbiased_result;
+
+    int128_t sign_mask = value >> 127;
+
+    const auto frac_bits = multiplicand_frac_bits + multiplier_frac_bits;
+    int128_t bias = ((1LL << frac_bits) - 1) & sign_mask;
+    return value + bias;
+  }
 };
 
 // Test Cases
@@ -550,7 +554,8 @@ TEST_P(FixedMultiplicationTest, via_multiplicand_and_output) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result, actual_result);
+  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
+            actual_result);
 }
 
 // Distributes right shifts between both inputs. Left shifts come from output.
@@ -567,7 +572,8 @@ TEST_P(FixedMultiplicationTest, via_all_inputs_and_output) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result, actual_result);
+  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
+            actual_result);
 }
 
 /*
@@ -594,9 +600,11 @@ TEST_P(FixedMultiplicationTest, via_base_precision_mixed) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result, actual_result);
+  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
+            actual_result);
 }
 
+#if 1
 // Test Data
 // ----------------------------------------------------------------------------
 
@@ -627,6 +635,10 @@ INSTANTIATE_TEST_SUITE_P(zero_cases, FixedMultiplicationTest,
 */
 // clang-format off
 const MultiplicationParam multiplication_no_shift_cases[] = {
+    {(1LL << 32), (1LL << 32), 0, kMax},
+    {kMax, kMax, 0, kMax},
+    {kMax, 2, 0, kMax},
+
     // Simple signs
     {1, 1, 0, 1},
     {-1, 1, 0, -1},
@@ -646,9 +658,6 @@ const MultiplicationParam multiplication_no_shift_cases[] = {
     {-kMax, -1, 0, kMax},
 
     // Overflow on truncation (product > 64 bits)
-    {(1LL << 32), (1LL << 32), 0, kMax},
-    {kMax, kMax, 0, kMax},
-    {kMax, 2, 0, kMax},
 };
 // clang-format on
 
@@ -663,15 +672,15 @@ INSTANTIATE_TEST_SUITE_P(no_shift_cases, FixedMultiplicationTest,
 // clang-format off
 const MultiplicationParam multiplication_right_shift_cases[] = {
     // Simple positive
-    {1, 1, -1, 1}, // (1*1) >> 1 = 0.5, rounds up to 1
-    {15, 26, -2, (15 * 26 >> 2)+ 1},
+    {1, 1, -1, 0}, 
+    {15, 26, -2, (15 * 26 >> 2)},
     {89, 11, -3, 89 * 11 >> 3},
 
     // Large positive values with shifts
     {1LL << 62, 1, -1, 1LL << 61},
     {1LL << 62, 1, -61, 2},
     {1LL << 62, 1, -62, 1},
-    {1LL << 62, 1, -63, 1},
+    {1LL << 62, 1, -63, 0},
     {1LL << 61, 2, -62, 1},
     {1LL << 60, 4, -62, 1},
 
@@ -686,9 +695,9 @@ const MultiplicationParam multiplication_right_shift_cases[] = {
     {1447LL << 32, 13LL << 32, -32, 1447LL * 13LL << 32},
 
     // All sign combinations
-    {-15, 26, -2, -15 * 26 >> 2},
-    {15, -26, -2, 15 * -26 >> 2},
-    {-15, -26, -2, (15 * 26 >> 2) + 1},
+    {-15, 26, -2, (-15 * 26 >> 2) + 0*1},
+    {15, -26, -2, (15 * -26 >> 2) + 0*1},
+    {-15, -26, -2, 15 * 26 >> 2},
     {-1447LL << 32, 13LL << 32, -32, -1447LL * 13LL << 32},
     {1447LL << 32, -13LL << 32, -32, -1447LL * 13LL << 32},
     {-1447LL << 32, -13LL << 32, -32, 1447LL * 13LL << 32},
@@ -703,7 +712,7 @@ const MultiplicationParam multiplication_right_shift_cases[] = {
 
     // Boundary: 127-bit shift
     {1LL << 63, 1LL << 63, -126, 1}, // (1 << 126) >> 126 = 1
-    {1LL << 63, 1LL << 63, -127, 1}, // (1 << 126) >> 127 = 0.5, rounds to 1
+    {1LL << 63, 1LL << 63, -127, 0}, // (1 << 126) >> 127 = 0.5
 
     // (kMin*-1) >> 1 = (1 << 63) >> 1 = 1 << 62
     {kMin, -1, -1, 1LL << 62},
@@ -803,23 +812,24 @@ const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
 INSTANTIATE_TEST_SUITE_P(
     extreme_left_shift_cases, FixedMultiplicationTest,
     testing::ValuesIn(multiplication_extreme_left_shift_cases));
+#endif
 
 /*
-  Rounding.
+  Truncation.
 
-  Tests that rounding to nearest is biased correctly.
+  Tests that truncation rounds towards zero for both positive and negative
+  cases.
 */
-// clang-format on
-const MultiplicationParam multiplication_rounding_cases[] = {
-    {3, 1, -1, 2},    //  1.5 ->  2
-    {-3, 1, -1, -2},  // -1.5 -> -2
-    {1, 1, -1, 1},    //  0.5 ->  1 (The tie-breaker)
-    {-1, 1, -1, -1},  // -0.5 -> -1 (The negative tie-breaker)};
+const MultiplicationParam multiplication_truncation_cases[] = {
+    {3, 1, -1, 1},    //  1.5 ->  1
+    {-3, 1, -1, -1},  // -1.5 -> -1
+    {1, 1, -1, 0},    //  0.5 ->  0
+    {-1, 1, -1, 0},   // -0.5 -> -0
 
-    {3 << 10, 1, -11, 2},    //  1.5 ->  2
-    {-3 << 10, 1, -11, -2},  // -1.5 -> -2
-    {1 << 10, 1, -10, 1},    //  0.5 ->  1 (The tie-breaker)
-    {-1 << 10, 1, -10, -1},  // -0.5 -> -1 (The negative tie-breaker)
+    {3 << 10, 1, -11, 1},    //  1.5 ->  1
+    {-3 << 10, 1, -11, -1},  // -1.5 -> -1
+    {1 << 10, 1, -11, 0},    //  0.5 ->  0
+    {-1 << 10, 1, -11, -0},  // -0.5 -> -0
 
     {-511, 1, -10, 0},   // -0.499... rounds to 0
     {-512, 1, -10, -1},  // -0.5      rounds to -1
@@ -835,10 +845,9 @@ const MultiplicationParam multiplication_rounding_cases[] = {
     // Final boss test vector.
     {INT64_MIN, INT64_MIN, -127, 1},
 };
-// clang-format on
 
-INSTANTIATE_TEST_SUITE_P(rounding_cases, FixedMultiplicationTest,
-                         testing::ValuesIn(multiplication_rounding_cases));
+INSTANTIATE_TEST_SUITE_P(truncation_cases, FixedMultiplicationTest,
+                         testing::ValuesIn(multiplication_truncation_cases));
 
 // ----------------------------------------------------------------------------
 // Division Tests
@@ -1014,5 +1023,6 @@ const DivisionParam division_params[] = {
 INSTANTIATE_TEST_SUITE_P(division_params, FixedDivisionTest,
                          ValuesIn(division_params));
 #endif
+
 }  // namespace
 }  // namespace curves

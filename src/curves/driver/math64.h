@@ -30,68 +30,107 @@ __extension__ typedef unsigned __int128 uint128_t;
 __extension__ typedef __int128 s128;
 __extension__ typedef unsigned __int128 u128;
 
-static inline s64 curves_s64_saturate(bool result_positive)
+static inline s64 curves_saturate_s64(bool result_positive)
 {
 	return result_positive ? S64_MAX : S64_MIN;
 }
 
-static inline s64 curves_s128_to_s64_truncate(s128 value)
+// Truncates, rounding towards zero.
+static inline int64_t curves_truncate_s64(unsigned int frac_bits, int64_t value,
+					  unsigned int shift)
 {
-	// Round trip should produce the same value.
-	if (unlikely(value != (s64)value))
-		return curves_s64_saturate(value >= 0);
+	// Extract sign of value: 0 if positive, -1 (all bits set) if negative.
+	int64_t sign_mask = value >> 63;
 
-	return (s64)value;
+	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
+	int64_t bias = ((1LL << frac_bits) - 1) & sign_mask;
+
+	// This can't overflow because it is only nonzero for negative numbers,
+	// and it is never large enough to reach the end of the range.
+	int64_t biased_value = value + bias;
+
+	return biased_value >> shift;
 }
 
-// Shifts right and applies round-to-nearest.
-static inline s64 curves_s64_shr_rtn(s64 value, unsigned int shift)
+static inline int64_t __curves_rescale_error_s64(int64_t value, int shift)
 {
-	// Shift of 0 is a no-op.
-	if (shift == 0)
-		return value;
+	// If the value is 0 or shift would underflow, return 0.
+	if (value == 0 || shift < 0)
+		return 0;
 
-	s64 bias = 1LL << (shift - 1);
-
-	if (value < 0) {
-		// Negatives round symmetrically.
-		//
-		// Subtract 1 from bias to compensate for right-shift flooring
-		// towards -infinity.
-		return (value + (bias - 1)) >> shift;
-	} else {
-		// Positives must protect from overflow.
-		//
-		// Cast to unsigned to use bit 63 as magnitude rather than
-		// sign. Handles edge case where value + bias overflows s64.
-		return ((u64)value + (u64)bias) >> shift;
-	}
+	// This would overflow. Saturate based on sign of product.
+	return curves_saturate_s64(value >= 0);
 }
 
-// Shifts and applies round-to-nearest before truncating from s128 to s64.
-static inline s64 curves_s128_to_s64_shr_rtn(s128 value,
-					     unsigned int right_shift)
+// Shifts binary point to output_frac bits, truncating if necessary.
+static inline int64_t curves_rescale_s64(unsigned int frac_bits, int64_t value,
+					 unsigned int output_frac_bits)
 {
-	s128 result;
+	// Calculate final shift to align binary point with output_frac_bits.
+	int shift = (int)output_frac_bits - (int)frac_bits;
 
-	// Calculate 0.5 bias in the target precision.
-	s128 bias = (s128)1 << (right_shift - 1);
+	// Handle UB shifts.
+	if (unlikely(shift >= 64 || shift <= -64))
+		return __curves_rescale_error_s64(value, shift);
 
-	if (value < 0) {
-		// Negatives round symmetrically.
-		//
-		// Subtract 1 from bias to compensate for right-shift flooring
-		// towards -infinity. (-1.5 becomes -2)
-		result = (value + (bias - 1)) >> right_shift;
-	} else {
-		// Positives must protect from overflow.
-		//
-		// Cast to unsigned to use bit 127 as magnitude rather than
-		// sign. Handles edge case where value + bias overflows s128.
-		result = ((u128)value + (u128)bias) >> right_shift;
+	// Shift into final place.
+	if (output_frac_bits > frac_bits)
+		return value << shift;
+	else
+		return curves_truncate_s64(frac_bits, value, -shift);
+}
+
+// Truncates, rounding toward zero.
+static inline int64_t curves_truncate_s128(unsigned int frac_bits,
+					   int128_t value, unsigned int shift)
+{
+	// Extract sign of value: 0 if positive, -1 (all bits set) if
+	// negative.
+	int128_t sign_mask = value >> 127;
+
+	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
+	int128_t bias = ((1LL << frac_bits) - 1) & sign_mask;
+
+	// This can't overflow because it is only nonzero for negative numbers,
+	// and it is never large enough to reach the end of the range.
+	int128_t biased_value = value + bias;
+
+	int128_t result = biased_value >> shift;
+
+	if (unlikely(result != (int64_t)result)) {
+		return curves_saturate_s64(result > 0);
 	}
 
-	return curves_s128_to_s64_truncate(result);
+	return (int64_t)result;
+}
+
+// Shifts binary point to output_frac bits, truncating if necessary.
+static inline int64_t __curves_rescale_error_s128(int128_t value, int shift)
+{
+	// If the value is 0 or shift would underflow, return 0.
+	if (value == 0 || shift < 0)
+		return 0;
+
+	// This would overflow. Saturate based on sign of product.
+	return curves_saturate_s64(value >= 0);
+}
+
+static inline int64_t curves_rescale_s128(unsigned int frac_bits,
+					  int128_t value,
+					  unsigned int output_frac_bits)
+{
+	// Calculate final shift to align binary point with output_frac_bits.
+	int shift = (int)output_frac_bits - (int)frac_bits;
+
+	// Handle UB shifts.
+	if (unlikely(shift >= 128 || shift <= -128))
+		return __curves_rescale_error_s128(value, shift);
+
+	// Shift into final place.
+	if (output_frac_bits > frac_bits)
+		return value << shift;
+	else
+		return curves_truncate_s128(frac_bits, value, -shift);
 }
 
 /**
@@ -112,69 +151,31 @@ static inline s64 curves_s128_to_s64_shr_rtn(s128 value,
  * Return: 64-bit signed quotient
  */
 
-struct curves_div_result {
-	int64_t quotient;
-	int64_t remainder;
-};
-
 #if defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
-							      int64_t divisor)
+static inline int64_t curves_div_s128_s64(int128_t dividend, int64_t divisor)
 {
-	int64_t remainder;
+	int64_t dividend_high = (int64_t)(dividend >> 64); // RDX
+	int64_t dividend_low = (int64_t)dividend; // RAX
 	int64_t quotient;
 
 	asm("idivq %[divisor]"
-	    : "=a"(quotient), "=d"(remainder)
-	    : "a"((int64_t)dividend),
-	      "d"((int64_t)(dividend >> 64)), [divisor] "rm"(divisor)
+	    : "=a"(quotient), "+d"(dividend_high)
+	    : "a"(dividend_low), [divisor] "rm"(divisor)
 	    : "cc");
 
-	return (struct curves_div_result){
-		.quotient = quotient,
-		.remainder = remainder,
-	};
+	return quotient;
 }
 
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline struct curves_div_result curves_div_s128_by_s64(int128_t dividend,
-							      int64_t divisor)
+static inline int64_t curves_div_s128_s64(int128_t dividend, int64_t divisor)
 {
-	int64_t quotient = (int64_t)(dividend / divisor);
-	int64_t remainder = (int64_t)(dividend - (int128_t)quotient * divisor);
-	return (struct curves_div_result){
-		.quotient = quotient,
-		.remainder = remainder,
-	};
+	return (int64_t)(dividend / divisor);
 }
 
 #endif
-
-// divides, then rounds to nearest
-static inline s64 curves_div_s128_by_s64_rtn(int128_t dividend, s64 divisor)
-{
-	struct curves_div_result raw =
-		curves_div_s128_by_s64(dividend, divisor);
-
-	// Determine if rounding is necessary.
-	s64 rem_sign = raw.remainder >> 63;
-	u64 rem_abs = (u64)((raw.remainder ^ rem_sign) - rem_sign);
-	s64 div_sign = divisor >> 63;
-	u64 div_abs = (u64)((divisor ^ div_sign) - div_sign);
-	bool needs_round = rem_abs >= (div_abs - rem_abs);
-
-	// Determine rounding directions.
-	bool is_negative = (dividend < 0) ^ (divisor < 0);
-	bool round_up = needs_round && !is_negative;
-	bool round_down = needs_round && is_negative;
-
-	// Round with boundary saturation.
-	return raw.quotient + (round_up && (raw.quotient != S64_MAX)) -
-	       (round_down && (raw.quotient != S64_MIN));
-}
 
 #endif /* _CURVES_MATH64_H */

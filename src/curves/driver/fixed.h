@@ -39,7 +39,8 @@ static inline curves_fixed_t curves_const_1(unsigned int frac_bits)
 static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(e*2^61)
-	return 6267931151224907085ll >> (CURVES_E_FRAC_BITS - frac_bits);
+	return curves_rescale_s64(CURVES_E_FRAC_BITS, 6267931151224907085ll,
+				  frac_bits);
 }
 
 /**
@@ -52,7 +53,8 @@ static inline curves_fixed_t curves_const_e(unsigned int frac_bits)
 static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return 3196577161300663915ll >> (CURVES_LN2_FRAC_BITS - frac_bits);
+	return curves_rescale_s64(CURVES_LN2_FRAC_BITS, 3196577161300663915ll,
+				  frac_bits);
 }
 
 /**
@@ -65,7 +67,8 @@ static inline curves_fixed_t curves_const_ln2(unsigned int frac_bits)
 static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(pi*2^61)
-	return 7244019458077122842ll >> (CURVES_PI_FRAC_BITS - frac_bits);
+	return curves_rescale_s64(CURVES_PI_FRAC_BITS, 7244019458077122842ll,
+				  frac_bits);
 }
 
 /**
@@ -86,17 +89,13 @@ static inline curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
  * @frac_bits: Fractional bit precision, [0, 62].
  * @value: Fixed-point with given precision to convert
  *
- * Return: value as an integer.
+ * Return: value truncated to an integer.
  */
 static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
 					      curves_fixed_t value)
 {
-	return curves_s64_shr_rtn(value, frac_bits);
+	return curves_rescale_s64(frac_bits, value, 0);
 }
-
-curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
-						    curves_fixed_t multiplier,
-						    int shift);
 
 /**
  * curves_fixed_multiply() - Multiplies two arbitrary-precision fixed-point
@@ -131,27 +130,10 @@ curves_fixed_multiply(unsigned int multiplicand_frac_bits,
 		      unsigned int multiplier_frac_bits,
 		      curves_fixed_t multiplier, unsigned int output_frac_bits)
 {
-	// Intermediate product comes from regular multiplication.
-	int128_t product = (int128_t)multiplicand * (int128_t)multiplier;
-
-	// Calculate final shift to align binary point with output_frac_bits.
-	int shift = (int)output_frac_bits - (int)multiplicand_frac_bits -
-		    (int)multiplier_frac_bits;
-
-	// Handle UB shifts.
-	if (unlikely(shift >= 64 || shift <= -128))
-		return __curves_fixed_multiply_error(multiplicand, multiplier,
-						     shift);
-
-	// Execute signed shift.
-	if (shift >= 0) {
-		// Left shift truncates because low bits are already 0.
-		return curves_s128_to_s64_truncate(product << shift);
-	} else {
-		// Right shift must round lost bits.
-		return curves_s128_to_s64_shr_rtn(product,
-						  (unsigned int)(-shift));
-	}
+	return curves_rescale_s128(
+		multiplicand_frac_bits + multiplier_frac_bits,
+		(int128_t)multiplicand * (int128_t)multiplier,
+		output_frac_bits);
 }
 
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
@@ -165,9 +147,9 @@ __curves_fixed_divide_try_saturate(curves_fixed_t dividend,
 	int128_t abs_dividend = dividend < 0 ? -dividend : dividend;
 	int128_t abs_threshold = threshold < 0 ? -threshold : threshold;
 
-	if (abs_dividend >= abs_threshold) {
+	if (unlikely(abs_dividend >= abs_threshold)) {
 		// Saturate based on sign of quotient.
-		return curves_s64_saturate((dividend ^ divisor) >= 0);
+		return curves_saturate_s64((dividend ^ divisor) >= 0);
 	}
 
 	return 0;
@@ -194,7 +176,7 @@ __curves_fixed_divide_try_saturate_shl(curves_fixed_t dividend,
 
 	saturation = __curves_fixed_divide_try_saturate(dividend, divisor,
 							saturation_threshold);
-	if (saturation != 0)
+	if (unlikely(saturation != 0))
 		return saturation;
 
 	return 0;
@@ -211,8 +193,8 @@ __curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
 	curves_fixed_t saturation = __curves_fixed_divide_try_saturate(
 		dividend, divisor, saturation_threshold);
 
-	if (saturation != 0)
-		return saturation;
+	if (unlikely(saturation != 0))
+		return saturation >> -shift;
 
 	return 0;
 }
@@ -232,26 +214,22 @@ curves_fixed_divide(unsigned int dividend_frac_bits, curves_fixed_t dividend,
 		curves_fixed_t saturation =
 			__curves_fixed_divide_try_saturate_shl(dividend,
 							       divisor, shift);
-		if (saturation != 0)
+		if (unlikely(saturation != 0))
 			return saturation;
 
-		return curves_div_s128_by_s64_rtn((int128_t)dividend << shift,
-						  divisor);
+		return curves_div_s128_s64((int128_t)dividend << shift,
+					   divisor);
 	} else {
-		curves_fixed_t quotient;
-
-		unsigned int right_shift = (unsigned int)(-shift);
 		curves_fixed_t saturation =
 			__curves_fixed_divide_try_saturate_shr(dividend,
 							       divisor, shift);
-		if (saturation != 0)
-			return saturation >> right_shift;
+		if (unlikely(saturation != 0))
+			return saturation;
 
-		// Divide, applying rtn to the remainder.
-		quotient = curves_div_s128_by_s64_rtn(dividend, divisor);
-
-		// Shift, applying rtn to the bits that are lost.
-		return curves_s64_shr_rtn(quotient, right_shift);
+		return curves_rescale_s64(
+			divisor_frac_bits - dividend_frac_bits,
+			curves_div_s128_s64(dividend, divisor),
+			output_frac_bits);
 	}
 }
 

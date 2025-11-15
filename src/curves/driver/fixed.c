@@ -51,18 +51,6 @@ __curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
 				       curves_fixed_t divisor,
 				       int saturation_threshold_bit);
 
-curves_fixed_t __cold __curves_fixed_multiply_error(curves_fixed_t multiplicand,
-						    curves_fixed_t multiplier,
-						    int shift)
-{
-	// If either factor is 0 or shift would underflow, return 0.
-	if (multiplicand == 0 || multiplier == 0 || shift < 0)
-		return 0;
-
-	// This would overflow. Saturate based on sign of product.
-	return curves_s64_saturate((multiplicand ^ multiplier) >= 0);
-}
-
 curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 						  curves_fixed_t divisor,
 						  int shift)
@@ -73,5 +61,5 @@ curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
 
 	// This either would overflow or the divisor is zero.
 	// Saturate based on sign of quotient.
-	return curves_s64_saturate((dividend ^ divisor) >= 0);
+	return curves_saturate_s64((dividend ^ divisor) >= 0);
 }
