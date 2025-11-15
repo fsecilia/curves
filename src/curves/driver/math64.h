@@ -52,11 +52,11 @@ static inline s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
 	int shift = (int)output_frac_bits - (int)frac_bits;
 
 	// Handle UB shifts.
-	if (unlikely(shift >= 64 || shift <= -64))
+	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
 		return __curves_rescale_error_s64(value, shift);
 
 	// Shift into final place.
-	if (output_frac_bits > frac_bits)
+	if (shift >= 0)
 		return value << shift;
 	else
 		return __curves_truncate_s64(frac_bits, value, -shift);
@@ -95,11 +95,11 @@ static inline s64 curves_rescale_s128(unsigned int frac_bits, s128 value,
 	int shift = (int)output_frac_bits - (int)frac_bits;
 
 	// Handle UB shifts.
-	if (unlikely(shift >= 128 || shift <= -128))
+	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
 		return __curves_rescale_error_s128(value, shift);
 
 	// Shift into final place.
-	if (output_frac_bits > frac_bits)
+	if (shift >= 0)
 		return value << shift;
 	else
 		return __curves_truncate_s128(frac_bits, value, -shift);
