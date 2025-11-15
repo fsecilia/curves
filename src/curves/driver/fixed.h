@@ -122,7 +122,7 @@ static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
 
 /**
  * curves_fixed_const_1() - Fixed-point constant 1.
- * @frac_bits: Fractional bit precision, [0 to 63].
+ * @frac_bits: Fractional bit precision, [0 to 62].
  *
  * Return: Constant value 1 with specified precision.
  */
