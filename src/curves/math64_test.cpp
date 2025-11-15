@@ -73,5 +73,21 @@ CurvesTruncateS64TestParam truncate_s64_nonnegative_values[] = {
 INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesTruncateS64Test,
                          ValuesIn(truncate_s64_nonnegative_values));
 
+CurvesTruncateS64TestParam truncate_s64_negative_values[] = {
+    // unbiased: these must floor because of 0 frac bits.
+    {0, -1, 0, -1},
+    {0, -1, 1, -1},
+    {0, kMin, 0, kMin},
+    {0, kMin, 1, kMin >> 1},
+
+    // smallest biased cases
+    {1, -1, 0, 0},   // Boundary adjacent: -1 + 1 = 0
+    {1, -2, 0, -1},  // On boundary: -2 + 1 = -1
+    {1, -3, 0, -2},  // Past boundary: -3 + 1 = -2
+};
+
+INSTANTIATE_TEST_SUITE_P(negative_values, CurvesTruncateS64Test,
+                         ValuesIn(truncate_s64_negative_values));
+
 }  // namespace
 }  // namespace curves
