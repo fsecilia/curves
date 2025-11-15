@@ -7,6 +7,17 @@
 #include "math64.h"
 
 extern s64 curves_saturate_s64(bool result_positive);
+
+extern s64 __curves_truncate_s64(unsigned int frac_bits, s64 value,
+				 unsigned int shift);
+extern s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
+			      unsigned int output_frac_bits);
+
+extern s64 __curves_truncate_s128(unsigned int frac_bits, s128 value,
+				  unsigned int shift);
+extern s64 curves_rescale_s128(unsigned int frac_bits, s128 value,
+			       unsigned int output_frac_bits);
+
 extern s64 curves_div_s128_s64(s128 dividend, s64 divisor);
 
 s64 __cold __curves_rescale_error_s64(s64 value, int shift)
