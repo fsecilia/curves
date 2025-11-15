@@ -105,7 +105,7 @@ static inline s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
  */
 static inline s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value)
 {
-	return value << frac_bits;
+	return curves_fixed_rescale_s64(0, value, frac_bits);
 }
 
 /**
