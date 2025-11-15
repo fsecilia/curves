@@ -97,6 +97,30 @@ static inline s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
 }
 
 /**
+ * curves_fixed_from_integer() - Converts integers to fixed point
+ * @frac_bits: Fractional bit precision, [0, 62].
+ * @value: Integer to convert
+ *
+ * Return: value in fixed-point with given precision.
+ */
+static inline s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value)
+{
+	return value << frac_bits;
+}
+
+/**
+ * curves_fixed_to_integer() - Converts fixed point to integers
+ * @frac_bits: Fractional bit precision, [0, 62].
+ * @value: Fixed-point with given precision to convert
+ *
+ * Return: value truncated to an integer.
+ */
+static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
+{
+	return curves_fixed_rescale_s64(frac_bits, value, 0);
+}
+
+/**
  * curves_fixed_const_1() - Fixed-point constant 1.
  * @frac_bits: Fractional bit precision, [0 to 63].
  *
@@ -147,30 +171,6 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 	// This value was generated using wolfram alpha: round(pi*2^61)
 	return curves_fixed_rescale_s64(CURVES_FIXED_PI_FRAC_BITS,
 					7244019458077122842ll, frac_bits);
-}
-
-/**
- * curves_fixed_from_integer() - Converts integers to fixed point
- * @frac_bits: Fractional bit precision, [0, 62].
- * @value: Integer to convert
- *
- * Return: value in fixed-point with given precision.
- */
-static inline s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value)
-{
-	return value << frac_bits;
-}
-
-/**
- * curves_fixed_to_integer() - Converts fixed point to integers
- * @frac_bits: Fractional bit precision, [0, 62].
- * @value: Fixed-point with given precision to convert
- *
- * Return: value truncated to an integer.
- */
-static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
-{
-	return curves_fixed_rescale_s64(frac_bits, value, 0);
 }
 
 /**
