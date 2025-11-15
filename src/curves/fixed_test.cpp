@@ -265,12 +265,12 @@ const IntegerTruncationParam integer_truncation_test_params[] = {
     {61, -1LL, 0},  // < 0, floors to 0, truncates to 0
 
     {61, 1152921504606846975LL, 0},  // < 0.5, floors to 0, truncates to 0
-    {61, 1152921504606846976LL, 0},  // = 0.5, floors to 0, truncates to 1
-    {61, 2305843009213693951LL, 0},  // < 1, floors to 1, truncates to 1
+    {61, 1152921504606846976LL, 0},  // = 0.5, floors to 0, truncates to 0
+    {61, 2305843009213693951LL, 0},  // < 1, floors to 0, truncates to 0
     {61, 2305843009213693952LL, 1},  // = 1, floors to 1, truncates to 1
     {61, 3458764513820540927LL, 1},  // < 1.5, floors to 1, truncates to 1
-    {61, 3458764513820540928LL, 1},  // = 1.5, floors to 1, truncates to 2
-    {61, 4611686018427387903LL, 1},  // < 2, floors to 1, truncates to 2
+    {61, 3458764513820540928LL, 1},  // = 1.5, floors to 1, truncates to 1
+    {61, 4611686018427387903LL, 1},  // < 2, floors to 1, truncates to 1
     {61, 4611686018427387904LL, 2},  // = 2, floors to 2, truncates to 2
 };
 
