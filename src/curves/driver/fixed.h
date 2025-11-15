@@ -128,7 +128,7 @@ static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
  */
 static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 {
-	return 1ll << frac_bits;
+	return curves_fixed_from_integer(frac_bits, 1);
 }
 
 /**
