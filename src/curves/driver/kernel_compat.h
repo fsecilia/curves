@@ -15,9 +15,6 @@
 #include <linux/types.h>
 #include <asm/bug.h>
 
-#define INT64_MIN S64_MIN
-#define INT64_MAX S64_MAX
-
 #else
 
 #include <stdbool.h>

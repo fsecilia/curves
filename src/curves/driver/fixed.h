@@ -16,7 +16,7 @@
 #include "kernel_compat.h"
 #include "math64.h"
 
-typedef int64_t curves_fixed_t;
+typedef s64 curves_fixed_t;
 
 /**
  * curves_const_1() - Fixed-point constant 1.
@@ -79,7 +79,7 @@ static inline curves_fixed_t curves_const_pi(unsigned int frac_bits)
  * Return: value in fixed-point with given precision.
  */
 static inline curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
-						       int64_t value)
+						       s64 value)
 {
 	return value << frac_bits;
 }
@@ -91,8 +91,8 @@ static inline curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
  *
  * Return: value truncated to an integer.
  */
-static inline int64_t curves_fixed_to_integer(unsigned int frac_bits,
-					      curves_fixed_t value)
+static inline s64 curves_fixed_to_integer(unsigned int frac_bits,
+					  curves_fixed_t value)
 {
 	return curves_rescale_s64(frac_bits, value, 0);
 }

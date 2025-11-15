@@ -36,27 +36,27 @@ static inline s64 curves_saturate_s64(bool result_positive)
 }
 
 // Truncates, rounding towards zero.
-static inline int64_t curves_truncate_s64(unsigned int frac_bits, int64_t value,
-					  unsigned int shift)
+static inline s64 curves_truncate_s64(unsigned int frac_bits, s64 value,
+				      unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if negative.
-	int64_t sign_mask = value >> 63;
+	s64 sign_mask = value >> 63;
 
 	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	int64_t bias = ((1LL << frac_bits) - 1) & sign_mask;
+	s64 bias = ((1LL << frac_bits) - 1) & sign_mask;
 
 	// This can't overflow because it is only nonzero for negative numbers,
 	// and it is never large enough to reach the end of the range.
-	int64_t biased_value = value + bias;
+	s64 biased_value = value + bias;
 
 	return biased_value >> shift;
 }
 
-int64_t __cold __curves_rescale_error_s64(int64_t value, int shift);
+s64 __cold __curves_rescale_error_s64(s64 value, int shift);
 
 // Shifts binary point to output_frac bits, truncating if necessary.
-static inline int64_t curves_rescale_s64(unsigned int frac_bits, int64_t value,
-					 unsigned int output_frac_bits)
+static inline s64 curves_rescale_s64(unsigned int frac_bits, s64 value,
+				     unsigned int output_frac_bits)
 {
 	// Calculate final shift to align binary point with output_frac_bits.
 	int shift = (int)output_frac_bits - (int)frac_bits;
@@ -73,8 +73,8 @@ static inline int64_t curves_rescale_s64(unsigned int frac_bits, int64_t value,
 }
 
 // Truncates, rounding toward zero.
-static inline int64_t curves_truncate_s128(unsigned int frac_bits,
-					   int128_t value, unsigned int shift)
+static inline s64 curves_truncate_s128(unsigned int frac_bits, int128_t value,
+				       unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
@@ -89,18 +89,17 @@ static inline int64_t curves_truncate_s128(unsigned int frac_bits,
 
 	int128_t result = biased_value >> shift;
 
-	if (unlikely(result != (int64_t)result)) {
+	if (unlikely(result != (s64)result)) {
 		return curves_saturate_s64(result > 0);
 	}
 
-	return (int64_t)result;
+	return (s64)result;
 }
 
-int64_t __cold __curves_rescale_error_s128(int128_t value, int shift);
+s64 __cold __curves_rescale_error_s128(int128_t value, int shift);
 
-static inline int64_t curves_rescale_s128(unsigned int frac_bits,
-					  int128_t value,
-					  unsigned int output_frac_bits)
+static inline s64 curves_rescale_s128(unsigned int frac_bits, int128_t value,
+				      unsigned int output_frac_bits)
 {
 	// Calculate final shift to align binary point with output_frac_bits.
 	int shift = (int)output_frac_bits - (int)frac_bits;
@@ -129,7 +128,7 @@ static inline int64_t curves_rescale_s128(unsigned int frac_bits,
  * - Magnitude of top 65 bits of dividend >= magnitude of divisor
  * - Dividend is S64_MIN and divisor is -1
  *
- * Context: Undefined behavior if divisor is zero or quotient overflows int64_t.
+ * Context: Undefined behavior if divisor is zero or quotient overflows s64.
  *          Traps with #DE on x64.
  * Return: 64-bit signed quotient
  */
@@ -137,11 +136,11 @@ static inline int64_t curves_rescale_s128(unsigned int frac_bits,
 #if defined __x86_64__
 
 // x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline int64_t curves_div_s128_s64(int128_t dividend, int64_t divisor)
+static inline s64 curves_div_s128_s64(int128_t dividend, s64 divisor)
 {
-	int64_t dividend_high = (int64_t)(dividend >> 64); // RDX
-	int64_t dividend_low = (int64_t)dividend; // RAX
-	int64_t quotient;
+	s64 dividend_high = (s64)(dividend >> 64); // RDX
+	s64 dividend_low = (s64)dividend; // RAX
+	s64 quotient;
 
 	asm("idivq %[divisor]"
 	    : "=a"(quotient), "+d"(dividend_high)
@@ -154,9 +153,9 @@ static inline int64_t curves_div_s128_s64(int128_t dividend, int64_t divisor)
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline int64_t curves_div_s128_s64(int128_t dividend, int64_t divisor)
+static inline s64 curves_div_s128_s64(int128_t dividend, s64 divisor)
 {
-	return (int64_t)(dividend / divisor);
+	return (s64)(dividend / divisor);
 }
 
 #endif
