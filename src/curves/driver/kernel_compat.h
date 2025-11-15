@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*
- * Type compatibility module to allow use in kernel and in user mode code.
+ * Compatibility module to allow using fixed-point code in kernel and in user
+ * mode.
  *
  * Copyright (C) 2025 Frank Secilia
  * Author: Frank Secilia <frank.secilia@gmail.com>
