@@ -15,45 +15,34 @@
 
 #include "fixed.h"
 
-extern curves_fixed_t curves_const_1(unsigned int frac_bits);
-extern curves_fixed_t curves_const_e(unsigned int frac_bits);
-extern curves_fixed_t curves_const_ln2(unsigned int frac_bits);
-extern curves_fixed_t curves_const_pi(unsigned int frac_bits);
+extern s64 curves_const_1(unsigned int frac_bits);
+extern s64 curves_const_e(unsigned int frac_bits);
+extern s64 curves_const_ln2(unsigned int frac_bits);
+extern s64 curves_const_pi(unsigned int frac_bits);
 
-extern curves_fixed_t curves_fixed_from_integer(unsigned int frac_bits,
-						s64 value);
-extern s64 curves_fixed_to_integer(unsigned int frac_bits,
-				   curves_fixed_t value);
+extern s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value);
 
-extern curves_fixed_t curves_fixed_multiply(unsigned int multiplicand_frac_bits,
-					    curves_fixed_t multiplicand,
-					    unsigned int multiplier_frac_bits,
-					    curves_fixed_t multiplier,
-					    unsigned int output_frac_bits);
+extern s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value);
 
-extern curves_fixed_t
-__curves_fixed_divide_try_saturate(curves_fixed_t dividend,
-				   curves_fixed_t divisor, s128 threshold);
+extern s64 curves_fixed_multiply(unsigned int multiplicand_frac_bits,
+				 s64 multiplicand,
+				 unsigned int multiplier_frac_bits,
+				 s64 multiplier, unsigned int output_frac_bits);
 
-extern curves_fixed_t curves_fixed_divide(unsigned int dividend_frac_bits,
-					  curves_fixed_t dividend,
-					  unsigned int divisor_frac_bits,
-					  curves_fixed_t divisor,
-					  unsigned int output_frac_bits);
+extern s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
+					      s128 threshold);
 
-extern curves_fixed_t
-__curves_fixed_divide_try_saturate_shl(curves_fixed_t dividend,
-				       curves_fixed_t divisor,
-				       int saturation_threshold_bit);
+extern s64 curves_fixed_divide(unsigned int dividend_frac_bits, s64 dividend,
+			       unsigned int divisor_frac_bits, s64 divisor,
+			       unsigned int output_frac_bits);
 
-extern curves_fixed_t
-__curves_fixed_divide_try_saturate_shr(curves_fixed_t dividend,
-				       curves_fixed_t divisor,
-				       int saturation_threshold_bit);
+extern s64 __curves_fixed_divide_try_saturate_shl(s64 dividend, s64 divisor,
+						  int saturation_threshold_bit);
 
-curves_fixed_t __cold __curves_fixed_divide_error(curves_fixed_t dividend,
-						  curves_fixed_t divisor,
-						  int shift)
+extern s64 __curves_fixed_divide_try_saturate_shr(s64 dividend, s64 divisor,
+						  int saturation_threshold_bit);
+
+s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift)
 {
 	// If the dividend is 0 or shift would underflow, return 0.
 	if (dividend == 0 || (divisor != 0 && shift < 0))

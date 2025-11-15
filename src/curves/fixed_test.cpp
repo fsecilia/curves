@@ -44,7 +44,7 @@ TEST_F(FixedTest, one_lowest_precision) {
 
 struct ConstantsTestParam {
   std::string name;
-  curves_fixed_t (*constant_func)(unsigned int);
+  s64 (*constant_func)(unsigned int);
   unsigned int frac_bits;
   double expected_value;
   double tolerance;
@@ -112,7 +112,7 @@ INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,
 struct SymmetricIntegersParam {
   unsigned int frac_bits;
   int64_t integer_value;
-  curves_fixed_t fixed_value;
+  s64 fixed_value;
 
   friend auto operator<<(std::ostream& out, const SymmetricIntegersParam& src)
       -> std::ostream& {
@@ -227,7 +227,7 @@ INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
 
 struct IntegerTruncationParam {
   unsigned int frac_bits;
-  curves_fixed_t fixed_value;
+  s64 fixed_value;
   int64_t integer_value;
 
   friend auto operator<<(std::ostream& out, const IntegerTruncationParam& src)
@@ -327,7 +327,7 @@ INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
 
 struct DoubleConversionTestParam {
   unsigned int frac_bits;
-  curves_fixed_t fixed_value;
+  s64 fixed_value;
   double double_value;
 };
 
@@ -464,11 +464,11 @@ INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
 // ----------------------------------------------------------------------------
 
 struct MultiplicationParam {
-  curves_fixed_t multiplicand;
-  curves_fixed_t multiplier;
+  s64 multiplicand;
+  s64 multiplier;
   int desired_shift;
-  curves_fixed_t expected_result;
-  curves_fixed_t expected_bias;
+  s64 expected_result;
+  s64 expected_bias;
 
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
       -> std::ostream& {
@@ -514,12 +514,12 @@ struct MultiplicationParam {
   generality.
 */
 struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
-  const curves_fixed_t multiplicand = GetParam().multiplicand;
-  const curves_fixed_t multiplier = GetParam().multiplier;
+  const s64 multiplicand = GetParam().multiplicand;
+  const s64 multiplier = GetParam().multiplier;
   const int desired_shift = GetParam().desired_shift;
   auto expected_result(unsigned int multiplicand_frac_bits,
                        unsigned int multiplier_frac_bits) const noexcept
-      -> curves_fixed_t {
+      -> s64 {
     const auto unbiased_result = GetParam().expected_result;
     const auto value = static_cast<int128_t>(multiplicand) * multiplier;
     if (value >= 0) return unbiased_result;
@@ -857,10 +857,10 @@ INSTANTIATE_TEST_SUITE_P(truncation_cases, FixedMultiplicationTest,
 // ----------------------------------------------------------------------------
 
 struct DivisionParam {
-  curves_fixed_t dividend;
-  curves_fixed_t divisor;
+  s64 dividend;
+  s64 divisor;
   int desired_shift;
-  curves_fixed_t expected_result;
+  s64 expected_result;
 
   friend auto operator<<(std::ostream& out, const DivisionParam& src)
       -> std::ostream& {
@@ -873,10 +873,10 @@ struct DivisionParam {
 // ----------------------------------------------------------------------------
 
 struct FixedDivisionTest : testing::TestWithParam<DivisionParam> {
-  const curves_fixed_t dividend = GetParam().dividend;
-  const curves_fixed_t divisor = GetParam().divisor;
+  const s64 dividend = GetParam().dividend;
+  const s64 divisor = GetParam().divisor;
   const int desired_shift = GetParam().desired_shift;
-  const curves_fixed_t expected_result = GetParam().expected_result;
+  const s64 expected_result = GetParam().expected_result;
 };
 
 // Test Cases

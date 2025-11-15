@@ -23,15 +23,15 @@ extern "C" {
 namespace curves {
 
 inline auto curves_fixed_from_double(unsigned int frac_bits,
-                                     double value) noexcept -> curves_fixed_t {
+                                     double value) noexcept -> s64 {
   auto scaled_double =
       static_cast<double>(value) * static_cast<double>(1ll << frac_bits);
-  auto fixed = static_cast<curves_fixed_t>(scaled_double);
+  auto fixed = static_cast<s64>(scaled_double);
   return fixed;
 }
 
-inline auto curves_fixed_to_double(unsigned int frac_bits,
-                                   curves_fixed_t value) noexcept -> double {
+inline auto curves_fixed_to_double(unsigned int frac_bits, s64 value) noexcept
+    -> double {
   return static_cast<double>(value) / static_cast<double>(1ll << frac_bits);
 }
 
