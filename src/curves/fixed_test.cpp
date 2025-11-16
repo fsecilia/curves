@@ -18,85 +18,154 @@ const auto kMax = std::numeric_limits<int64_t>::max();
 // curves_fixed_truncate_s64() Tests
 // ----------------------------------------------------------------------------
 
-struct CurvesFixedTruncateS64TestParam {
+struct CurvesFixedTruncateS64ShrTestParam {
   s64 value;
   unsigned int shift;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
-                         const CurvesFixedTruncateS64TestParam& src)
+                         const CurvesFixedTruncateS64ShrTestParam& src)
       -> std::ostream& {
     return out << "{" << src.value << ", " << src.shift << ", "
                << src.expected_result << "}";
   }
 };
 
-struct CurvesFixedTruncateS64Test
-    : TestWithParam<CurvesFixedTruncateS64TestParam> {
+struct CurvesFixedTruncateS64ShrTest
+    : TestWithParam<CurvesFixedTruncateS64ShrTestParam> {
   s64 value = GetParam().value;
   unsigned int shift = GetParam().shift;
   s64 expected_result = GetParam().expected_result;
 };
 
-TEST_P(CurvesFixedTruncateS64Test, expected_result) {
+TEST_P(CurvesFixedTruncateS64ShrTest, expected_result) {
   ASSERT_EQ(expected_result, __curves_fixed_truncate_s64_shr(value, shift));
 }
 
-// clang-format off
-CurvesFixedTruncateS64TestParam truncate_s64_all_cases[] = {
-  {(1LL << 16) - 1, 8, ((1LL << 16) - 1) >> 8}, // not biased
-  {(1LL << 16) + 0, 8, ((1LL << 16) + 0) >> 8},
-  {(1LL << 16) + 1, 8, ((1LL << 16) + 1) >> 8},
+// For each shift value (0, 1, 16, 32, 62, 63):
+//   Test positive value +/- 1, + 0
+//   Test zero +/- 1, + 0
+//   Test negative exact multiple of (1 << shift) +/- 1, + 0
+//   Test INT64_MIN + 1, + 0
+CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
+    // shift: 0, special case; no truncation occurs
 
-  {0 - 1, 8, ((0 - 1) >> 8) + 1}, // biased
-  {0 + 0, 8, (0 + 0) >> 8},
-  {0 + 1, 8, (0 + 1) >> 8},
+    // shift: 0, first positive boundary
+    {(1LL << 0) + 1, 0, ((1LL << 0) + 1) >> 0},  // not biased
+    {(1LL << 0) + 0, 0, ((1LL << 0) + 0) >> 0},  // not biased
+    {(1LL << 0) - 1, 0, ((1LL << 0) - 1) >> 0},  // not biased
 
-#if 0
-  {-1, 16, 0, },
-  {0, 16, 0, },
-  {1, 16, 1 >> 8, },
-  {-(1LL << 16) - 1, 16, (-(1LL << 16)) >> 8, },
-  {(1LL << 16), 16, (1LL << 16) >> 8, },
-  {(1LL << 16) + 1,16,  (2 * (1LL << 16)) >> 8, },
-  {-kMax - 1, 16, (-kMax) >> 8, },
-  {-kMax, 16, (-kMax) >> 8, },
-  {-kMax + 1, 16, (-kMax + (1LL << 16)) >> 8, },
-  {kMin + 1, 16, kMin, },
-  {kMin, 16, kMin, },
-#endif
+    // shift: 0, boundary at zero
+    {0LL + 1, 0, ((0LL + 1) >> 0) + 0},  // not biased
+    {0LL + 0, 0, ((0LL + 0) >> 0) + 0},  // not biased
+    {0LL - 1, 0, ((0LL - 1) >> 0) + 0},  // not biased
+
+    // shift: 0, first negative boundary
+    {-(1LL << 0) + 1, 0, ((-(1LL << 0) + 1) >> 0) + 0},  // not biased
+    {-(1LL << 0) + 0, 0, ((-(1LL << 0) + 0) >> 0) + 0},  // not biased
+    {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},  // not biased
+
+    // shift: 0,
+    {kMin + 1, 0, ((kMin + 1) >> 0) + 0},  // not biased
+    {kMin + 0, 0, ((kMin + 0) >> 0) + 0},  // not biased
+
+    // shift: 1
+
+    // shift: 1, first positive boundary
+    {(1LL << 1) + 1, 1, ((1LL << 1) + 1) >> 1},  // not biased
+    {(1LL << 1) + 0, 1, ((1LL << 1) + 0) >> 1},  // not biased
+    {(1LL << 1) - 1, 1, ((1LL << 1) - 1) >> 1},  // not biased
+
+    // shift: 1, boundary at zero
+    {0LL + 1, 1, ((0LL + 1) >> 1) + 0},  // not biased
+    {0LL + 0, 1, ((0LL + 0) >> 1) + 0},  // not biased
+    {0LL - 1, 1, ((0LL - 1) >> 1) + 1},  // rounds up
+
+    // shift: 1, first negative boundary
+    {-(1LL << 1) + 1, 1, ((-(1LL << 1) + 1) >> 1) + 1},  // rounds up
+    {-(1LL << 1) + 0, 1, ((-(1LL << 1) + 0) >> 1) + 0},  // not biased
+    {-(1LL << 1) - 1, 1, ((-(1LL << 1) - 1) >> 1) + 1},  // rounds up
+
+    // shift: 1,
+    {kMin + 1, 1, ((kMin + 1) >> 1) + 1},  // rounds up
+    {kMin + 0, 1, ((kMin + 0) >> 1) + 0},  // not biased
+
+    // shift: 16
+
+    // shift: 16, first positive boundary
+    {(1LL << 16) + 1, 16, ((1LL << 16) + 1) >> 16},  // not biased
+    {(1LL << 16) + 0, 16, ((1LL << 16) + 0) >> 16},  // not biased
+    {(1LL << 16) - 1, 16, ((1LL << 16) - 1) >> 16},  // not biased
+
+    // shift: 16, boundary at zero
+    {0LL + 1, 16, ((0LL + 1) >> 16) + 0},  // not biased
+    {0LL + 0, 16, ((0LL + 0) >> 16) + 0},  // not biased
+    {0LL - 1, 16, ((0LL - 1) >> 16) + 1},  // rounds up
+
+    // shift: 16, first negative boundary
+    {-(1LL << 16) + 1, 16, ((-(1LL << 16) + 1) >> 16) + 1},  // rounds up
+    {-(1LL << 16) + 0, 16, ((-(1LL << 16) + 0) >> 16) + 0},  // not biased
+    {-(1LL << 16) - 1, 16, ((-(1LL << 16) - 1) >> 16) + 1},  // rounds up
+
+    // shift: 16,
+    {kMin + 1, 16, ((kMin + 1) >> 16) + 1},  // rounds up
+    {kMin + 0, 16, ((kMin + 0) >> 16) + 0},  // not biased
+
+    // shift: 32
+
+    // shift: 32, first positive boundary
+    {(1LL << 32) + 1, 32, ((1LL << 32) + 1) >> 32},  // not biased
+    {(1LL << 32) + 0, 32, ((1LL << 32) + 0) >> 32},  // not biased
+    {(1LL << 32) - 1, 32, ((1LL << 32) - 1) >> 32},  // not biased
+
+    // shift: 32, boundary at zero
+    {0LL + 1, 32, ((0LL + 1) >> 32) + 0},  // not biased
+    {0LL + 0, 32, ((0LL + 0) >> 32) + 0},  // not biased
+    {0LL - 1, 32, ((0LL - 1) >> 32) + 1},  // rounds up
+
+    // shift: 32, first negative boundary
+    {-(1LL << 32) + 1, 32, ((-(1LL << 32) + 1) >> 32) + 1},  // rounds up
+    {-(1LL << 32) + 0, 32, ((-(1LL << 32) + 0) >> 32) + 0},  // not biased
+    {-(1LL << 32) - 1, 32, ((-(1LL << 32) - 1) >> 32) + 1},  // rounds up
+
+    // shift: 32,
+    {kMin + 1, 32, ((kMin + 1) >> 32) + 1},  // rounds up
+    {kMin + 0, 32, ((kMin + 0) >> 32) + 0},  // not biased
+
+    // shift: 62, last shift with no special cases
+
+    // shift: 62, first positive boundary
+    {(1LL << 62) + 1, 62, ((1LL << 62) + 1) >> 62},  // not biased
+    {(1LL << 62) + 0, 62, ((1LL << 62) + 0) >> 62},  // not biased
+    {(1LL << 62) - 1, 62, ((1LL << 62) - 1) >> 62},  // not biased
+
+    // shift: 62, boundary at zero
+    {0LL + 1, 62, ((0LL + 1) >> 62) + 0},  // not biased
+    {0LL + 0, 62, ((0LL + 0) >> 62) + 0},  // not biased
+    {0LL - 1, 62, ((0LL - 1) >> 62) + 1},  // rounds up
+
+    // shift: 62, first negative boundary
+    {-(1LL << 62) + 1, 62, ((-(1LL << 62) + 1) >> 62) + 1},  // rounds up
+    {-(1LL << 62) + 0, 62, ((-(1LL << 62) + 0) >> 62) + 0},  // not biased
+    {-(1LL << 62) - 1, 62, ((-(1LL << 62) - 1) >> 62) + 1},  // rounds up
+
+    // shift: 62,
+    {kMin + 1, 62, ((kMin + 1) >> 62) + 1},  // rounds up
+    {kMin + 0, 62, ((kMin + 0) >> 62) + 0},  // not biased
+
+    // shift: 63; no positive integers, only one negative boundary
+
+    // shift: 63, boundary at zero
+    {0LL + 1, 63, ((0LL + 1) >> 63) + 0},  // not biased
+    {0LL + 0, 63, ((0LL + 0) >> 63) + 0},  // not biased
+    {0LL - 1, 63, ((0LL - 1) >> 63) + 1},  // rounds up
+
+    // shift: 63,
+    {kMin + 1, 63, ((kMin + 1) >> 63) + 1},  // rounds up
+    {kMin + 0, 63, ((kMin + 0) >> 63) + 0},  // not biased
 };
-// clang-format on
 
-#if 0
-    {0, 0},
-    {0, 63},
-
-    {1, 0},
-    {1, 1},
-    {1, 2},
-    {1, 63},
-
-    {16, 0},
-    {16, 8},
-    {16, 16},
-    {16, 32},
-    {16, 63},
-
-    {32, 0},
-    {32, 16},
-    {32, 32},
-    {32, 63},
-
-    {62, 0},
-    {62, 16},
-    {62, 32},
-    {62, 63},
-};
-
-#endif
-
-INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedTruncateS64Test,
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedTruncateS64ShrTest,
                          ValuesIn(truncate_s64_all_cases));
 
 // ----------------------------------------------------------------------------
