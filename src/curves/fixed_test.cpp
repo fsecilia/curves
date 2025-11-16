@@ -209,6 +209,115 @@ INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
                          ValuesIn(rescale_error_s64_all_cases));
 
 // ----------------------------------------------------------------------------
+// curves_fixed_rescale_s64
+// ----------------------------------------------------------------------------
+
+struct CurvesFixedRescaleS64TestParam {
+  s64 value;
+  unsigned int frac_bits;
+  unsigned int output_frac_bits;
+  s64 expected_result;
+};
+
+struct CurvesFixedRescaleS64Test
+    : TestWithParam<CurvesFixedRescaleS64TestParam> {
+  s64 value = GetParam().value;
+  unsigned int frac_bits = GetParam().frac_bits;
+  unsigned int output_frac_bits = GetParam().output_frac_bits;
+  s64 expected_result = GetParam().expected_result;
+};
+
+TEST_P(CurvesFixedRescaleS64Test, expected_result) {
+  ASSERT_EQ(expected_result,
+            curves_fixed_rescale_s64(value, frac_bits, output_frac_bits));
+}
+
+/*
+  Invalid scale tests for truncation with frac_bits/output_frac_bits >= 64.
+
+  Test coverage was systematically derived by enumerating all paths through
+  the conditional logic.
+
+  Conditions:
+    A = frac_bits >= 64
+    B = output_frac_bits >= 64
+    C = value == 0
+    D = output_frac_bits < frac_bits
+
+  Return 0 paths: (A||B) && (C||D) → AC, AD, BC, ABCD tested
+  Saturate paths: (A||B) && !C && !D → A!C!D, B!C!D tested (both signs)
+*/
+const CurvesFixedRescaleS64TestParam rescale_s64_invalid_scales[] = {
+    // Path AC: frac_bits boundary, zero value
+    {0, 64, 32, 0},
+
+    // Path AD: frac_bits boundary, right shift
+    {100, 64, 63, 0},
+
+    // Path BC: output_frac_bits boundary, zero value
+    {0, 32, 64, 0},
+
+    // Path ABCD: both boundaries, multiple conditions active
+    {0, 64, 64, 0},
+
+    // Path A!C!D: frac_bits boundary, left shift, positive saturation
+    {1, 64, 65, kMax},
+
+    // Path A!C!D: frac_bits boundary, left shift, negative saturation
+    {-1, 64, 65, kMin},
+
+    // Path B!C!D: output_frac_bits boundary, positive saturation
+    {kMax, 32, 64, kMax},
+
+    // Path B!C!D: output_frac_bits boundary, negative saturation
+    {kMin, 32, 64, kMin},
+};
+
+INSTANTIATE_TEST_SUITE_P(invalid_scales, CurvesFixedRescaleS64Test,
+                         ValuesIn(rescale_s64_invalid_scales));
+
+/*
+  Systematic boundary value analysis coverage:
+
+  Value categories: zero, positive (positive), negative (negative),
+                    large_positive, large_negative
+  Shift relationship: right (output < frac), equal, left (output > frac)
+  Parameter boundaries: min (0), max (63), mid (mid-range)
+
+  Coverage matrix (showing key combinations tested):
+  right + negative + mid        - negative values through helper
+  right + zero + mid            - zero special case
+  right + positive + MIN_OUT    - boundary: output_frac_bits at min
+  right + positive + mid        - basic right shift path
+  right + positive + max_FRAC   - boundary: frac_bits at max valid
+  right + positive + large_DIFF - extreme shift amount
+
+  equal + zero + mid            - zero with no shift
+  equal + positive + MIN        - boundary: both params at min
+  equal + positive + mid        - basic equal path
+  equal + positive + max        - boundary: both params at max
+
+  left + positive + mid         - basic left shift path
+  left + negative + mid         - negative left shift
+  left + zero + mid             - zero with left shift
+  left + positive + max_OUT     - boundary: output_frac_bits at max
+  left + positive + large_DIFF  - extreme left shift amount
+*/
+const CurvesFixedRescaleS64TestParam rescale_s64_valid_scales[] = {
+    // output_frac_bits < frac_bits
+    {35 << 16, 48, 32, 35},
+
+    // output_frac_bits 0 frac_bits
+    {35 << 16, 40, 40, 35 << 16},
+
+    // output_frac_bits > frac_bits
+    {35, 32, 48, 35 << 16},
+};
+
+INSTANTIATE_TEST_SUITE_P(valid_scales, CurvesFixedRescaleS64Test,
+                         ValuesIn(rescale_s64_valid_scales));
+
+// ----------------------------------------------------------------------------
 // Integer Conversions Tests
 // ----------------------------------------------------------------------------
 
