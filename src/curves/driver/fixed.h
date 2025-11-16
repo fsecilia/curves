@@ -53,7 +53,8 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s64_shr(value, -shift);
+		return __curves_fixed_truncate_s64_shr(value,
+						       (unsigned int)-shift);
 }
 
 // Truncates, rounding toward zero.
@@ -94,9 +95,10 @@ static inline s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 
 	// Shift into final place.
 	if (shift >= 0)
-		return value << shift;
+		return (s64)(value << shift);
 	else
-		return __curves_fixed_truncate_s128_shr(value, -shift);
+		return __curves_fixed_truncate_s128_shr(value,
+							(unsigned int)-shift);
 }
 
 /**
