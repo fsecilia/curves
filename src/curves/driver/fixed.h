@@ -38,19 +38,22 @@ s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift);
 static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 					   unsigned int output_frac_bits)
 {
-	// Calculate final shift to align binary point with output_frac_bits.
-	int shift = (int)output_frac_bits - (int)frac_bits;
+	// Handle invalid scales.
+	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64)) {
+		// Zero values and right shifts return 0.
+		if (value == 0 || output_frac_bits < frac_bits)
+			return 0;
 
-	// Handle UB shifts.
-	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
-		return __curves_fixed_rescale_error_s64(value, shift);
+		// Left shifts that would overflow saturate based on sign.
+		return curves_saturate_s64(value >= 0);
+	}
 
 	// Shift into final place.
-	if (shift >= 0)
-		return value << shift;
+	if (output_frac_bits < frac_bits)
+		return __curves_fixed_truncate_s64_shr(
+			value, frac_bits - output_frac_bits);
 	else
-		return __curves_fixed_truncate_s64_shr(value,
-						       (unsigned int)-shift);
+		return value << (output_frac_bits - frac_bits);
 }
 
 // Truncates, rounding toward zero.
