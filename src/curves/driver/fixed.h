@@ -20,10 +20,14 @@
 static inline s64 __curves_fixed_truncate_s64(unsigned int frac_bits, s64 value,
 					      unsigned int shift)
 {
-	// Extract sign of value: 0 if positive, -1 (all bits set) if negative.
+	// Extract sign of value: 0 if positive, ~0 if negative.
 	s64 sign_mask = value >> 63;
 
-	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
+	// frac_bits describes value's binary point, its scale. For a given
+	// scale, the implied denominator = 2^frac_bits. In order to round up,
+	// you must bias each value by (denominator - 1). But since positive
+	// integers already truncate toward zero, we mask it so it only applies
+	// to negative values.
 	s64 bias = ((1LL << frac_bits) - 1) & sign_mask;
 
 	// This can't overflow because it is only nonzero for negative numbers,
