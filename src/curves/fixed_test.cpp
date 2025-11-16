@@ -19,15 +19,15 @@ const auto kMax = std::numeric_limits<int64_t>::max();
 // ----------------------------------------------------------------------------
 
 struct CurvesFixedTruncateS64TestParam {
-  unsigned int frac_bits;
   s64 value;
+  unsigned int frac_bits;
   unsigned int shift;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
                          const CurvesFixedTruncateS64TestParam& src)
       -> std::ostream& {
-    return out << "{" << src.frac_bits << ", " << src.value << ", " << src.shift
+    return out << "{" << src.value << ", " << src.frac_bits << ", " << src.shift
                << ", " << src.expected_result << "}";
   }
 };
@@ -37,7 +37,7 @@ struct CurvesFixedTruncateS64Test
 
 TEST_P(CurvesFixedTruncateS64Test, curves_fixed_truncate_s64) {
   ASSERT_EQ(GetParam().expected_result,
-            __curves_fixed_truncate_s64(GetParam().frac_bits, GetParam().value,
+            __curves_fixed_truncate_s64(GetParam().value, GetParam().frac_bits,
                                         GetParam().shift));
 }
 
@@ -47,21 +47,21 @@ CurvesFixedTruncateS64TestParam truncate_s64_nonnegative_values[] = {
     {0, 0, 1, 0},
 
     // single bit
-    {0, 1, 0, 1},
-    {0, 1, 1, 0},
-    {0, 1, 63, 0},
+    {1, 0, 0, 1},
+    {1, 0, 1, 0},
+    {1, 0, 63, 0},
 
     // multiple bits
-    {0, 3, 0, 3},
-    {0, 3, 1, 1},
-    {0, 3, 2, 0},
+    {3, 0, 0, 3},
+    {3, 0, 1, 1},
+    {3, 0, 2, 0},
 
     // boundary
-    {0, kMax, 0, kMax},
-    {0, kMax, 1, kMax >> 1},
-    {0, kMax, 32, kMax >> 32},
-    {0, kMax, 62, 1},
-    {0, kMax, 63, 0},
+    {kMax, 0, 0, kMax},
+    {kMax, 0, 1, kMax >> 1},
+    {kMax, 0, 32, kMax >> 32},
+    {kMax, 0, 62, 1},
+    {kMax, 0, 63, 0},
 };
 
 INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesFixedTruncateS64Test,
@@ -70,35 +70,35 @@ INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesFixedTruncateS64Test,
 CurvesFixedTruncateS64TestParam truncate_s64_negative_values[] = {
 
     // unbiased cases: these must floor because of 0 frac bits.
-    {0, -1, 0, -1},
-    {0, -1, 1, -1},
-    {0, kMin, 0, kMin},
-    {0, kMin, 1, kMin >> 1},
+    {-1, 0, 0, -1},
+    {-1, 0, 1, -1},
+    {kMin, 0, 0, kMin},
+    {kMin, 0, 1, kMin >> 1},
 
     // smallest biased cases: bias is 1/2
-    {1, -1, 0, 0},   // (-1/2 + 1/2) >> 0 = -0 >> 0 =  0 (Adjacent)
-    {1, -2, 0, -1},  // (-2/2 + 1/2) >> 0 = -1 >> 0 = -1 (Boundary)
-    {1, -3, 0, -2},  // (-3/2 + 1/2) >> 0 = -2 >> 0 = -2 (Past)
+    {-1, 1, 0, 0},   // (-1/2 + 1/2) >> 0 = -0 >> 0 =  0 (Adjacent)
+    {-2, 1, 0, -1},  // (-2/2 + 1/2) >> 0 = -1 >> 0 = -1 (Boundary)
+    {-3, 1, 0, -2},  // (-3/2 + 1/2) >> 0 = -2 >> 0 = -2 (Past)
 
     // typical small bias: bias is 15/16
-    {4, -15, 0, 0},   // (-15/16 + 15/16) >> 0 =  0 >> 0 =  0 (Adjacent)
-    {4, -16, 0, -1},  // (-16/16 + 15/16) >> 0 = -1 >> 0 = -1 (Boundary)
-    {4, -17, 0, -2},  // (-17/16 + 15/16) >> 0 = -2 >> 0 = -2 (Past)
+    {-15, 4, 0, 0},   // (-15/16 + 15/16) >> 0 =  0 >> 0 =  0 (Adjacent)
+    {-16, 4, 0, -1},  // (-16/16 + 15/16) >> 0 = -1 >> 0 = -1 (Boundary)
+    {-17, 4, 0, -2},  // (-17/16 + 15/16) >> 0 = -2 >> 0 = -2 (Past)
 
-    {4, -16, 1, -1},  // (-16/16 + 15/16) >> 1 = -1 >> 1 = -1 (Adjacent)
-    {4, -17, 1, -1},  // (-17/16 + 15/16) >> 1 = -2 >> 1 = -1 (Boundary)
-    {4, -18, 1, -2},  // (-18/16 + 15/16) >> 1 = -3 >> 1 = -2 (Past)
+    {-16, 4, 1, -1},  // (-16/16 + 15/16) >> 1 = -1 >> 1 = -1 (Adjacent)
+    {-17, 4, 1, -1},  // (-17/16 + 15/16) >> 1 = -2 >> 1 = -1 (Boundary)
+    {-18, 4, 1, -2},  // (-18/16 + 15/16) >> 1 = -3 >> 1 = -2 (Past)
 
     // last case before boundary
-    {62, -(1LL << 62) + 1, 0, 0},   // (Adjacent)
-    {62, -(1LL << 62) + 0, 0, -1},  // (Boundary)
-    {62, -(1LL << 62) - 1, 0, -2},  // (Past)
+    {-(1LL << 62) + 1, 62, 0, 0},   // (Adjacent)
+    {-(1LL << 62) + 0, 62, 0, -1},  // (Boundary)
+    {-(1LL << 62) - 1, 62, 0, -2},  // (Past)
 
     // max boundaries
-    {63, -kMax + 1, 0, 1},
-    {63, -kMax, 0, 0},
-    {63, kMin + 1, 0, 0},
-    {63, kMin, 0, -1},
+    {-kMax + 1, 63, 0, 1},
+    {-kMax, 63, 0, 0},
+    {kMin + 1, 63, 0, 0},
+    {kMin, 63, 0, -1},
 };
 
 INSTANTIATE_TEST_SUITE_P(negative_values, CurvesFixedTruncateS64Test,
@@ -117,13 +117,13 @@ INSTANTIATE_TEST_SUITE_P(negative_values, CurvesFixedTruncateS64Test,
 */
 
 struct SymmetricIntegersParam {
-  unsigned int frac_bits;
   int64_t integer_value;
+  unsigned int frac_bits;
   s64 fixed_value;
 
   friend auto operator<<(std::ostream& out, const SymmetricIntegersParam& src)
       -> std::ostream& {
-    return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
+    return out << "{" << src.integer_value << ", " << src.frac_bits << ", "
                << src.fixed_value << "}";
   }
 };
@@ -136,7 +136,7 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_fixed) {
 
   const auto expected = param.fixed_value;
   const auto actual =
-      curves_fixed_from_integer(param.frac_bits, param.integer_value);
+      curves_fixed_from_integer(param.integer_value, param.frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
@@ -146,78 +146,78 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
 
   const auto expected = param.integer_value;
   const auto actual =
-      curves_fixed_to_integer(param.frac_bits, param.fixed_value);
+      curves_fixed_to_integer(param.fixed_value, param.frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
 
 const SymmetricIntegersParam symmetric_integer_params[] = {
     // end of negative q63.0 range
-    {0, kMin, kMin},
+    {kMin, 0, kMin},
 
     // end of q62.1 range
-    {1, -1ll << 62, (-1ll << 62) << 1},
+    {-1ll << 62, 1, (-1ll << 62) << 1},
 
     // end of q47.16 range
-    {1, -1ll << 47, (-1ll << 47) << 1},
-    {8, -1ll << 47, (-1ll << 47) << 8},
-    {16, -1ll << 47, (-1ll << 47) << 16},
+    {-1ll << 47, 1, (-1ll << 47) << 1},
+    {-1ll << 47, 8, (-1ll << 47) << 8},
+    {-1ll << 47, 16, (-1ll << 47) << 16},
 
     // end of q31.32 range
-    {1, -1ll << 31, (-1ll << 31) << 1},
-    {16, -1ll << 31, (-1ll << 31) << 16},
-    {32, -1ll << 31, (-1ll << 31) << 32},
+    {-1ll << 31, 1, (-1ll << 31) << 1},
+    {-1ll << 31, 16, (-1ll << 31) << 16},
+    {-1ll << 31, 32, (-1ll << 31) << 32},
 
     // end of q15.48 range
-    {1, -1ll << 15, (-1ll << 15) << 1},
-    {24, -1ll << 15, (-1ll << 15) << 24},
-    {48, -1ll << 15, (-1ll << 15) << 48},
+    {-1ll << 15, 1, (-1ll << 15) << 1},
+    {-1ll << 15, 24, (-1ll << 15) << 24},
+    {-1ll << 15, 48, (-1ll << 15) << 48},
 
     // -2
-    {1, -2, -2ll << 1},
-    {32, -2, -2ll << 32},
-    {61, -2, -2ll << 61},
+    {-2, 1, -2ll << 1},
+    {-2, 32, -2ll << 32},
+    {-2, 61, -2ll << 61},
 
     // -1
-    {1, -1, -1ll << 1},
-    {32, -1, -1ll << 32},
-    {62, -1, -1ll << 62},
+    {-1, 1, -1ll << 1},
+    {-1, 32, -1ll << 32},
+    {-1, 62, -1ll << 62},
 
     // zero
-    {1, 0, 0},
-    {32, 0, 0},
-    {63, 0, 0},
+    {0, 1, 0},
+    {0, 32, 0},
+    {0, 63, 0},
 
     // 1
     {1, 1, 1ll << 1},
-    {32, 1, 1ll << 32},
-    {62, 1, 1ll << 62},
+    {1, 32, 1ll << 32},
+    {1, 62, 1ll << 62},
 
     // 2
-    {1, 2, 2ll << 1},
-    {32, 2, 2ll << 32},
-    {61, 2, 2ll << 61},
+    {2, 1, 2ll << 1},
+    {2, 32, 2ll << 32},
+    {2, 61, 2ll << 61},
 
     // end of q15.48 range
-    {1, (1ll << 15) - 1, ((1ll << 15) - 1) << 1},
-    {24, (1ll << 15) - 1, ((1ll << 15) - 1) << 24},
-    {48, (1ll << 15) - 1, ((1ll << 15) - 1) << 48},
+    {(1ll << 15) - 1, 1, ((1ll << 15) - 1) << 1},
+    {(1ll << 15) - 1, 24, ((1ll << 15) - 1) << 24},
+    {(1ll << 15) - 1, 48, ((1ll << 15) - 1) << 48},
 
     // end of q31.32 range
-    {1, (1ll << 31) - 1, ((1ll << 31) - 1) << 1},
-    {16, (1ll << 31) - 1, ((1ll << 31) - 1) << 16},
-    {32, (1ll << 31) - 1, ((1ll << 31) - 1) << 32},
+    {(1ll << 31) - 1, 1, ((1ll << 31) - 1) << 1},
+    {(1ll << 31) - 1, 16, ((1ll << 31) - 1) << 16},
+    {(1ll << 31) - 1, 32, ((1ll << 31) - 1) << 32},
 
     // end of q47.16 range
-    {1, (1ll << 47) - 1, ((1ll << 47) - 1) << 1},
-    {8, (1ll << 47) - 1, ((1ll << 47) - 1) << 8},
-    {16, (1ll << 47) - 1, ((1ll << 47) - 1) << 16},
+    {(1ll << 47) - 1, 1, ((1ll << 47) - 1) << 1},
+    {(1ll << 47) - 1, 8, ((1ll << 47) - 1) << 8},
+    {(1ll << 47) - 1, 16, ((1ll << 47) - 1) << 16},
 
     // end of q62.1 range
-    {1, (1ll << 62) - 1, ((1ll << 62) - 1) << 1},
+    {(1ll << 62) - 1, 1, ((1ll << 62) - 1) << 1},
 
     // end of q63.0 range
-    {0, kMax, kMax},
+    {kMax, 0, kMax},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
@@ -233,13 +233,13 @@ INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
 */
 
 struct IntegerTruncationParam {
-  unsigned int frac_bits;
   s64 fixed_value;
+  unsigned int frac_bits;
   int64_t integer_value;
 
   friend auto operator<<(std::ostream& out, const IntegerTruncationParam& src)
       -> std::ostream& {
-    return out << "{" << src.frac_bits << ", " << src.integer_value << ", "
+    return out << "{" << src.integer_value << ", " << src.frac_bits << ", "
                << src.fixed_value << "}";
   }
 };
@@ -252,33 +252,33 @@ TEST_P(FixedConversionsTestIntegerTruncation, conversion_to_integer_truncates) {
 
   const auto expected = param.integer_value;
   const auto actual =
-      curves_fixed_to_integer(param.frac_bits, param.fixed_value);
+      curves_fixed_to_integer(param.fixed_value, param.frac_bits);
 
   ASSERT_EQ(expected, actual);
 }
 
 const IntegerTruncationParam integer_truncation_test_params[] = {
-    {61, -4611686018427387904LL, -2},  // = -2, floors to -2, truncates to -2
-    {61, -4611686018427387903LL, -1},  // < -2, floors to -2, truncates to -1
-    {61, -3458764513820540928LL, -1},  // = -1.5, floors to -2, truncates to -1
-    {61, -3458764513820540927LL, -1},  // < -1.5, floors to -2, truncates to -1
-    {61, -2305843009213693952LL, -1},  // = -1, floors to -1, truncates to -1
-    {61, -2305843009213693951LL, 0},   // < -1, floors to -1, truncates to 0
-    {61, -1152921504606846976LL, 0},   // = -0.5, floors to -1, truncates to 0
-    {61, -1152921504606846975LL, 0},   // < -0.5, floors -1, truncates to 0
+    {-4611686018427387904LL, 61, -2},  // = -2, floors to -2, truncates to -2
+    {-4611686018427387903LL, 61, -1},  // < -2, floors to -2, truncates to -1
+    {-3458764513820540928LL, 61, -1},  // = -1.5, floors to -2, truncates to -1
+    {-3458764513820540927LL, 61, -1},  // < -1.5, floors to -2, truncates to -1
+    {-2305843009213693952LL, 61, -1},  // = -1, floors to -1, truncates to -1
+    {-2305843009213693951LL, 61, 0},   // < -1, floors to -1, truncates to 0
+    {-1152921504606846976LL, 61, 0},   // = -0.5, floors to -1, truncates to 0
+    {-1152921504606846975LL, 61, 0},   // < -0.5, floors -1, truncates to 0
 
-    {61, 1LL, 0},   // > 0, floors to 0, truncates to 0
-    {61, 0LL, 0},   // = 0, floors to 0, truncates to 0
-    {61, -1LL, 0},  // < 0, floors to 0, truncates to 0
+    {1LL, 61, 0},   // > 0, floors to 0, truncates to 0
+    {0LL, 61, 0},   // = 0, floors to 0, truncates to 0
+    {-1LL, 61, 0},  // < 0, floors to 0, truncates to 0
 
-    {61, 1152921504606846975LL, 0},  // < 0.5, floors to 0, truncates to 0
-    {61, 1152921504606846976LL, 0},  // = 0.5, floors to 0, truncates to 0
-    {61, 2305843009213693951LL, 0},  // < 1, floors to 0, truncates to 0
-    {61, 2305843009213693952LL, 1},  // = 1, floors to 1, truncates to 1
-    {61, 3458764513820540927LL, 1},  // < 1.5, floors to 1, truncates to 1
-    {61, 3458764513820540928LL, 1},  // = 1.5, floors to 1, truncates to 1
-    {61, 4611686018427387903LL, 1},  // < 2, floors to 1, truncates to 1
-    {61, 4611686018427387904LL, 2},  // = 2, floors to 2, truncates to 2
+    {1152921504606846975LL, 61, 0},  // < 0.5, floors to 0, truncates to 0
+    {1152921504606846976LL, 61, 0},  // = 0.5, floors to 0, truncates to 0
+    {2305843009213693951LL, 61, 0},  // < 1, floors to 0, truncates to 0
+    {2305843009213693952LL, 61, 1},  // = 1, floors to 1, truncates to 1
+    {3458764513820540927LL, 61, 1},  // < 1.5, floors to 1, truncates to 1
+    {3458764513820540928LL, 61, 1},  // = 1.5, floors to 1, truncates to 1
+    {4611686018427387903LL, 61, 1},  // < 2, floors to 1, truncates to 1
+    {4611686018427387904LL, 61, 2},  // = 2, floors to 2, truncates to 2
 };
 
 INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
@@ -288,38 +288,38 @@ INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
 // outside.
 const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
     // frac_bits = 0: Special case, no rounding.
-    {0, kMin, kMin},
-    {0, kMin + 1, kMin + 1},
-    {0, kMax - 1, kMax - 1},
-    {0, kMax, kMax},
+    {kMin, 0, kMin},
+    {kMin + 1, 0, kMin + 1},
+    {kMax - 1, 0, kMax - 1},
+    {kMax, 0, kMax},
 
     // frac_bits = 1: Lowest precision that isn't just integers.
-    {1, kMin, kMin >> 1},
-    {1, kMin + 1, (kMin >> 1) + 1},
-    {1, kMax - 2, (kMax >> 1) - 1},
-    {1, kMax - 1, kMax >> 1},
-    {1, kMax, kMax >> 1},
+    {kMin, 1, kMin >> 1},
+    {kMin + 1, 1, (kMin >> 1) + 1},
+    {kMax - 2, 1, (kMax >> 1) - 1},
+    {kMax - 1, 1, kMax >> 1},
+    {kMax, 1, kMax >> 1},
 
     // frac_bits = 32: Typical precision
-    {32, kMin, kMin >> 32},
-    {32, kMin + 1, (kMin >> 32) + 1},
-    {32, kMax - (1LL << 32), (kMax >> 32) - 1},
-    {32, kMax - (1LL << 32) + 1, (kMax >> 32)},
-    {32, kMax, (kMax >> 32)},
+    {kMin, 32, kMin >> 32},
+    {kMin + 1, 32, (kMin >> 32) + 1},
+    {kMax - (1LL << 32), 32, (kMax >> 32) - 1},
+    {kMax - (1LL << 32) + 1, 32, (kMax >> 32)},
+    {kMax, 32, (kMax >> 32)},
 
     // frac_bits = 61: Highest precision that doesn't hit range boundary.
-    {61, kMin, -4},
-    {61, kMin + 1, -3},
-    {61, kMax - (1LL << 61), 2},
-    {61, kMax - (1LL << 61) + 1, 3},
-    {61, kMax, 3},
+    {kMin, 61, -4},
+    {kMin + 1, 61, -3},
+    {kMax - (1LL << 61), 61, 2},
+    {kMax - (1LL << 61) + 1, 61, 3},
+    {kMax, 61, 3},
 
     // frac_bits = 62: Maximum precision
-    {62, kMin, -2},
-    {62, kMin + 1, -1},
-    {62, kMax - (1LL << 62), 0},
-    {62, kMax - (1LL << 62) + 1, 1},
-    {62, kMax, 1},
+    {kMin, 62, -2},
+    {kMin + 1, 62, -1},
+    {kMax - (1LL << 62), 62, 0},
+    {kMax - (1LL << 62) + 1, 62, 1},
+    {kMax, 62, 1},
 };
 
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
@@ -333,8 +333,8 @@ INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
 // ----------------------------------------------------------------------------
 
 struct DoubleConversionTestParam {
-  unsigned int frac_bits;
   s64 fixed_value;
+  unsigned int frac_bits;
   double double_value;
 };
 
@@ -344,7 +344,7 @@ struct FixedConversionTestFixedFromDouble
 TEST_P(FixedConversionTestFixedFromDouble, from_double) {
   const auto param = GetParam();
   const auto actual =
-      curves_fixed_from_double(param.frac_bits, param.double_value);
+      curves_fixed_from_double(param.double_value, param.frac_bits);
   ASSERT_EQ(param.fixed_value, actual);
 }
 
@@ -358,10 +358,10 @@ const DoubleConversionTestParam from_double_params[] = {
     These tests show this for frac_bits = 0, which is really just round
     tripping the truncation with no scaling.
   */
-  {0, -123, -123.45},
-  {0, 123, 123.45},
-  {0, 0, -0.9},
-  {0, 0, 0.9},
+  {-123, 0, -123.45},
+  {123,  0,  123.45},
+  {0,    0,  -0.9},
+  {0,    0,  0.9},
 
   /*
     Normal values for frac_bits = 32:
@@ -369,8 +369,8 @@ const DoubleConversionTestParam from_double_params[] = {
       1ll << 31 -> 0.5
       1ll << 30 -> 0.25
   */
-  {32, (-2ll << 32) - ((1ll << 31) | (1ll << 30)), -2.75},
-  {32, (2ll << 32) + ((1ll << 31) | (1ll << 30)), 2.75},
+  {(-2ll << 32) - ((1ll << 31) | (1ll << 30)), 32, -2.75},
+  {(2ll << 32) + ((1ll << 31) | (1ll << 30)),  32, 2.75},
 
   /*
     The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so the
@@ -379,8 +379,8 @@ const DoubleConversionTestParam from_double_params[] = {
 
     These tests show it truncates to zero from both sides.
   */
-  {32, 0, -std::ldexp(1.0, -33)},
-  {32, 0, std::ldexp(1.0, -33)},
+  {0, 32, -std::ldexp(1.0, -33)},
+  {0, 32, std::ldexp(1.0, -33)},
 
   /*
     Min and max representable values for frac_bits = 0.
@@ -399,16 +399,16 @@ const DoubleConversionTestParam from_double_params[] = {
 
     min is representable, so we use it directly.
   */
-  {0, kMin, static_cast<double>(kMin)},
-  {0, kMax - 1023, static_cast<double>(kMax - 1023)},
+  {kMin,        0, static_cast<double>(kMin)},
+  {kMax - 1023, 0, static_cast<double>(kMax - 1023)},
 
   // Min and max representable values for frac_bits = 32
-  {32, kMin, -static_cast<double>(1ll << 31)},
-  {32, ((1ll << 31) - 1) << 32, static_cast<double>((1ll << 31) - 1)},
+  {kMin,                    32, -static_cast<double>(1ll << 31)},
+  {((1ll << 31) - 1) << 32, 32, static_cast<double>((1ll << 31) - 1)},
 
   // Min and max representable values for frac_bits = 62
-  {62, kMin, -2.0},
-  {62, 1ll << 62, 1.0},
+  {kMin,      62, -2.0},
+  {1ll << 62, 62, 1.0},
 };
 // clang-format on
 
@@ -424,21 +424,21 @@ struct FixedConversionTestFixedToDouble
 TEST_P(FixedConversionTestFixedToDouble, to_double) {
   const auto param = GetParam();
   const auto actual =
-      curves_fixed_to_double(param.frac_bits, param.fixed_value);
+      curves_fixed_to_double(param.fixed_value, param.frac_bits);
   ASSERT_DOUBLE_EQ(param.double_value, actual);
 }
 
 // clang-format off
 const DoubleConversionTestParam to_double_params[] = {
   // frac_bits = 0 is just the original integers as doubles with no scaling.
-  {0, 123, 123.0},
-  {0, -456, -456.0},
+  {123, 0, 123.0},
+  {-456,0,  -456.0},
 
   // frac_bits = 32, normal values with full precision
-  {32, (2ll << 32) | (1ll << 31), 2.5},
-  {32, (-3ll << 32) | (1ll << 31), -2.5},
-  {32, 1, std::ldexp(1.0, -32)}, // 1/2^32
-  {32, -1, -std::ldexp(1.0, -32)},
+  {(2ll << 32) | (1ll << 31),  32, 2.5},
+  {(-3ll << 32) | (1ll << 31), 32, -2.5},
+  {1,                          32, std::ldexp(1.0, -32)}, // 1/2^32
+  {-1,                         32, -std::ldexp(1.0, -32)},
 
   /*
     frac_bits = 60 causes precision loss when converting to 53-bit double.
@@ -453,9 +453,9 @@ const DoubleConversionTestParam to_double_params[] = {
     1 + 2^-54 will lose the 2^-54 part, (1ll << 6) bit is cleared
     1 + 2^-53 will keep the 2^-53 part, (1ll << 7) bit is set
   */
-  {60, (1ll << 60) | (1ll << 0), 1.0}, // The 2^-60 part is lost
-  {60, (1ll << 60) | (1ll << 6), 1.0}, // The 2^-54 part is lost
-  {60, (1ll << 60) | (1ll << 7), 1.0 + std::ldexp(1.0, -53)}, // bit is kept
+  {(1ll << 60) | (1ll << 0), 60, 1.0}, // The 2^-60 part is lost
+  {(1ll << 60) | (1ll << 6), 60, 1.0}, // The 2^-54 part is lost
+  {(1ll << 60) | (1ll << 7), 60, 1.0 + std::ldexp(1.0, -53)}, // bit is kept
 };
 // clang-format on
 
@@ -493,13 +493,13 @@ TEST_F(FixedTest, one_lowest_precision) {
 struct ConstantsTestParam {
   std::string name;
   s64 (*constant_func)(unsigned int);
-  unsigned int frac_bits;
   double expected_value;
+  unsigned int frac_bits;
   double tolerance;
 
   friend auto operator<<(std::ostream& out, const ConstantsTestParam& src)
       -> std::ostream& {
-    return out << "{" << src.frac_bits << ", " << src.expected_value << ", "
+    return out << "{" << src.expected_value << ", " << src.frac_bits << ", "
                << src.tolerance << "}";
   }
 };
@@ -523,28 +523,28 @@ TEST_P(FixedConstantsTest, verify_constants) {
 
 const ConstantsTestParam constants_test_params[] = {
     // 1
-    {"1_high", curves_fixed_const_1, CURVES_FIXED_1_FRAC_BITS, 1, 0.0},
-    {"1_medium", curves_fixed_const_1, CURVES_FIXED_1_FRAC_BITS / 2, 1, 0.0},
+    {"1_high", curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS, 0.0},
+    {"1_medium", curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS / 2, 0.0},
     {"1_low", curves_fixed_const_1, 1, 1, 0.0},
 
     // e
-    {"e_high", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS, M_E, 0.0},
-    {"e_medium", curves_fixed_const_e, CURVES_FIXED_E_FRAC_BITS / 2, M_E,
+    {"e_high", curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS, 0.0},
+    {"e_medium", curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS / 2,
      6.0e-10},
-    {"e_low", curves_fixed_const_e, 1, M_E, 2.2e-1},
+    {"e_low", curves_fixed_const_e, M_E, 1, 2.2e-1},
 
     // ln(2)
-    {"ln2_high", curves_fixed_const_ln2, CURVES_FIXED_LN2_FRAC_BITS,
-     std::log(2.0), 0.0},
-    {"ln2_medium", curves_fixed_const_ln2, CURVES_FIXED_LN2_FRAC_BITS / 2,
-     std::log(2.0), 4.3e-10},
-    {"ln2_low", curves_fixed_const_ln2, 1, std::log(2.0), 2.0e-1},
+    {"ln2_high", curves_fixed_const_ln2, std::log(2.0),
+     CURVES_FIXED_LN2_FRAC_BITS, 0.0},
+    {"ln2_medium", curves_fixed_const_ln2, std::log(2.0),
+     CURVES_FIXED_LN2_FRAC_BITS / 2, 4.3e-10},
+    {"ln2_low", curves_fixed_const_ln2, std::log(2.0), 1, 2.0e-1},
 
     // pi
-    {"pi_high", curves_fixed_const_pi, CURVES_FIXED_PI_FRAC_BITS, M_PI, 0.0},
-    {"pi_medium", curves_fixed_const_pi, CURVES_FIXED_PI_FRAC_BITS / 2, M_PI,
+    {"pi_high", curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS, 0.0},
+    {"pi_medium", curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS / 2,
      1.3e-10},
-    {"pi_low", curves_fixed_const_pi, 1, M_PI, 1.5e-1},
+    {"pi_low", curves_fixed_const_pi, M_PI, 1, 1.5e-1},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,

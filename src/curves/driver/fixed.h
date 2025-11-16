@@ -17,7 +17,7 @@
 #include "math64.h"
 
 // Truncates, rounding towards zero.
-static inline s64 __curves_fixed_truncate_s64(unsigned int frac_bits, s64 value,
+static inline s64 __curves_fixed_truncate_s64(s64 value, unsigned int frac_bits,
 					      unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, ~0 if negative.
@@ -40,7 +40,7 @@ static inline s64 __curves_fixed_truncate_s64(unsigned int frac_bits, s64 value,
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift);
 
 // Shifts binary point to output_frac bits, truncating if necessary.
-static inline s64 curves_fixed_rescale_s64(unsigned int frac_bits, s64 value,
+static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 					   unsigned int output_frac_bits)
 {
 	// Calculate final shift to align binary point with output_frac_bits.
@@ -54,12 +54,13 @@ static inline s64 curves_fixed_rescale_s64(unsigned int frac_bits, s64 value,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s64(frac_bits, value, -shift);
+		return __curves_fixed_truncate_s64(value, frac_bits, -shift);
 }
 
 // Truncates, rounding toward zero.
-static inline s64 __curves_fixed_truncate_s128(unsigned int frac_bits,
-					       s128 value, unsigned int shift)
+static inline s64 __curves_fixed_truncate_s128(s128 value,
+					       unsigned int frac_bits,
+					       unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
@@ -83,7 +84,7 @@ static inline s64 __curves_fixed_truncate_s128(unsigned int frac_bits,
 
 s64 __cold __curves_fixed_rescale_error_s128(s128 value, int shift);
 
-static inline s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
+static inline s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits)
 {
 	// Calculate final shift to align binary point with output_frac_bits.
@@ -97,7 +98,7 @@ static inline s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s128(frac_bits, value, -shift);
+		return __curves_fixed_truncate_s128(value, frac_bits, -shift);
 }
 
 /**
@@ -107,9 +108,9 @@ static inline s64 curves_fixed_rescale_s128(unsigned int frac_bits, s128 value,
  *
  * Return: value in fixed-point with given precision.
  */
-static inline s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value)
+static inline s64 curves_fixed_from_integer(s64 value, unsigned int frac_bits)
 {
-	return curves_fixed_rescale_s64(0, value, frac_bits);
+	return curves_fixed_rescale_s64(value, 0, frac_bits);
 }
 
 /**
@@ -119,9 +120,9 @@ static inline s64 curves_fixed_from_integer(unsigned int frac_bits, s64 value)
  *
  * Return: value truncated to an integer.
  */
-static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
+static inline s64 curves_fixed_to_integer(s64 value, unsigned int frac_bits)
 {
-	return curves_fixed_rescale_s64(frac_bits, value, 0);
+	return curves_fixed_rescale_s64(value, frac_bits, 0);
 }
 
 /**
@@ -133,7 +134,7 @@ static inline s64 curves_fixed_to_integer(unsigned int frac_bits, s64 value)
 #define CURVES_FIXED_1_FRAC_BITS 62
 static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 {
-	return curves_fixed_from_integer(frac_bits, 1);
+	return curves_fixed_from_integer(1, frac_bits);
 }
 
 /**
@@ -146,8 +147,8 @@ static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 static inline s64 curves_fixed_const_e(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(e*2^61)
-	return curves_fixed_rescale_s64(CURVES_FIXED_E_FRAC_BITS,
-					6267931151224907085ll, frac_bits);
+	return curves_fixed_rescale_s64(6267931151224907085ll,
+					CURVES_FIXED_E_FRAC_BITS, frac_bits);
 }
 
 /**
@@ -160,8 +161,8 @@ static inline s64 curves_fixed_const_e(unsigned int frac_bits)
 static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return curves_fixed_rescale_s64(CURVES_FIXED_LN2_FRAC_BITS,
-					3196577161300663915ll, frac_bits);
+	return curves_fixed_rescale_s64(3196577161300663915ll,
+					CURVES_FIXED_LN2_FRAC_BITS, frac_bits);
 }
 
 /**
@@ -174,8 +175,8 @@ static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
 static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(pi*2^61)
-	return curves_fixed_rescale_s64(CURVES_FIXED_PI_FRAC_BITS,
-					7244019458077122842ll, frac_bits);
+	return curves_fixed_rescale_s64(7244019458077122842ll,
+					CURVES_FIXED_PI_FRAC_BITS, frac_bits);
 }
 
 /**
@@ -205,15 +206,16 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
  * required shift would cause undefined behavior (|shift| >= 64 for left
  * shifts, >= 128 for right shifts).
  */
-static inline s64 curves_fixed_multiply(unsigned int multiplicand_frac_bits,
-					s64 multiplicand,
-					unsigned int multiplier_frac_bits,
+static inline s64 curves_fixed_multiply(s64 multiplicand,
+					unsigned int multiplicand_frac_bits,
 					s64 multiplier,
+					unsigned int multiplier_frac_bits,
 					unsigned int output_frac_bits)
 {
-	return curves_fixed_rescale_s128(
-		multiplicand_frac_bits + multiplier_frac_bits,
-		(s128)multiplicand * (s128)multiplier, output_frac_bits);
+	return curves_fixed_rescale_s128((s128)multiplicand * (s128)multiplier,
+					 multiplicand_frac_bits +
+						 multiplier_frac_bits,
+					 output_frac_bits);
 }
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift);
@@ -273,10 +275,10 @@ static inline s64 __curves_fixed_divide_try_saturate_shr(s64 dividend,
 	return 0;
 }
 
-static inline s64 curves_fixed_divide(unsigned int dividend_frac_bits,
-				      s64 dividend,
-				      unsigned int divisor_frac_bits,
+static inline s64 curves_fixed_divide(s64 dividend,
+				      unsigned int dividend_frac_bits,
 				      s64 divisor,
+				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
 	int shift = (int)output_frac_bits + (int)divisor_frac_bits -
@@ -299,8 +301,8 @@ static inline s64 curves_fixed_divide(unsigned int dividend_frac_bits,
 			return saturation;
 
 		return curves_fixed_rescale_s64(
-			divisor_frac_bits - dividend_frac_bits,
 			curves_div_s128_s64(dividend, divisor),
+			divisor_frac_bits - dividend_frac_bits,
 			output_frac_bits);
 	}
 }
