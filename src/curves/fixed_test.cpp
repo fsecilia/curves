@@ -153,7 +153,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {kMin + 1, 62, ((kMin + 1) >> 62) + 1},  // rounds up
     {kMin + 0, 62, ((kMin + 0) >> 62) + 0},  // not biased
 
-    // shift: 63; no positive integers, only one negative boundary
+    // shift: 63: special case; no positive integers, only one negative boundary
 
     // shift: 63, boundary at zero
     {0LL + 1, 63, ((0LL + 1) >> 63) + 0},  // not biased
