@@ -15,7 +15,7 @@ const auto kMin = std::numeric_limits<int64_t>::min();
 const auto kMax = std::numeric_limits<int64_t>::max();
 
 // ----------------------------------------------------------------------------
-// curves_fixed_truncate_s64() Tests
+// __curves_fixed_truncate_s64() Tests
 // ----------------------------------------------------------------------------
 
 struct CurvesFixedTruncateS64ShrTestParam {
