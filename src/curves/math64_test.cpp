@@ -16,5 +16,19 @@ extern "C" {
 #pragma GCC diagnostic pop
 
 namespace curves {
-namespace {}  // namespace
+namespace {
+
+// ----------------------------------------------------------------------------
+// curves_saturate_s64
+// ----------------------------------------------------------------------------
+
+TEST(curves_saturate_s64, negative) {
+  ASSERT_EQ(S64_MIN, curves_saturate_s64(false));
+}
+
+TEST(curves_saturate_s64, positive) {
+  ASSERT_EQ(S64_MAX, curves_saturate_s64(true));
+}
+
+}  // namespace
 }  // namespace curves
