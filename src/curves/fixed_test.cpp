@@ -68,16 +68,37 @@ INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesFixedTruncateS64Test,
                          ValuesIn(truncate_s64_nonnegative_values));
 
 CurvesFixedTruncateS64TestParam truncate_s64_negative_values[] = {
-    // unbiased: these must floor because of 0 frac bits.
+
+    // unbiased cases: these must floor because of 0 frac bits.
     {0, -1, 0, -1},
     {0, -1, 1, -1},
     {0, kMin, 0, kMin},
     {0, kMin, 1, kMin >> 1},
 
-    // smallest biased cases
-    {1, -1, 0, 0},   // Boundary adjacent: -1 + 1 = 0
-    {1, -2, 0, -1},  // On boundary: -2 + 1 = -1
-    {1, -3, 0, -2},  // Past boundary: -3 + 1 = -2
+    // smallest biased cases: bias is 1/2
+    {1, -1, 0, 0},   // (-1/2 + 1/2) >> 0 = -0 >> 0 =  0 (Adjacent)
+    {1, -2, 0, -1},  // (-2/2 + 1/2) >> 0 = -1 >> 0 = -1 (Boundary)
+    {1, -3, 0, -2},  // (-3/2 + 1/2) >> 0 = -2 >> 0 = -2 (Past)
+
+    // typical small bias: bias is 15/16
+    {4, -15, 0, 0},   // (-15/16 + 15/16) >> 0 =  0 >> 0 =  0 (Adjacent)
+    {4, -16, 0, -1},  // (-16/16 + 15/16) >> 0 = -1 >> 0 = -1 (Boundary)
+    {4, -17, 0, -2},  // (-17/16 + 15/16) >> 0 = -2 >> 0 = -2 (Past)
+
+    {4, -16, 1, -1},  // (-16/16 + 15/16) >> 1 = -1 >> 1 = -1 (Adjacent)
+    {4, -17, 1, -1},  // (-17/16 + 15/16) >> 1 = -2 >> 1 = -1 (Boundary)
+    {4, -18, 1, -2},  // (-18/16 + 15/16) >> 1 = -3 >> 1 = -2 (Past)
+
+    // last case before boundary
+    {62, -(1LL << 62) + 1, 0, 0},   // (Adjacent)
+    {62, -(1LL << 62) + 0, 0, -1},  // (Boundary)
+    {62, -(1LL << 62) - 1, 0, -2},  // (Past)
+
+    // max boundaries
+    {63, -kMax + 1, 0, 1},
+    {63, -kMax, 0, 0},
+    {63, kMin + 1, 0, 0},
+    {63, kMin, 0, -1},
 };
 
 INSTANTIATE_TEST_SUITE_P(negative_values, CurvesFixedTruncateS64Test,
