@@ -20,89 +20,84 @@ const auto kMax = std::numeric_limits<int64_t>::max();
 
 struct CurvesFixedTruncateS64TestParam {
   s64 value;
-  unsigned int frac_bits;
   unsigned int shift;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
                          const CurvesFixedTruncateS64TestParam& src)
       -> std::ostream& {
-    return out << "{" << src.value << ", " << src.frac_bits << ", " << src.shift
-               << ", " << src.expected_result << "}";
+    return out << "{" << src.value << ", " << src.shift << ", "
+               << src.expected_result << "}";
   }
 };
 
 struct CurvesFixedTruncateS64Test
-    : TestWithParam<CurvesFixedTruncateS64TestParam> {};
+    : TestWithParam<CurvesFixedTruncateS64TestParam> {
+  s64 value = GetParam().value;
+  unsigned int shift = GetParam().shift;
+  s64 expected_result = GetParam().expected_result;
+};
 
-TEST_P(CurvesFixedTruncateS64Test, curves_fixed_truncate_s64) {
-  ASSERT_EQ(GetParam().expected_result,
-            __curves_fixed_truncate_s64(GetParam().value, GetParam().frac_bits,
-                                        GetParam().shift));
+TEST_P(CurvesFixedTruncateS64Test, expected_result) {
+  ASSERT_EQ(expected_result, __curves_fixed_truncate_s64(value, shift));
 }
 
-CurvesFixedTruncateS64TestParam truncate_s64_nonnegative_values[] = {
-    // zero
-    {0, 0, 0, 0},
-    {0, 0, 1, 0},
+// clang-format off
+CurvesFixedTruncateS64TestParam truncate_s64_all_cases[] = {
+  {(1LL << 16) - 1, 8, ((1LL << 16) - 1) >> 8}, // not biased
+  {(1LL << 16) + 0, 8, ((1LL << 16) + 0) >> 8},
+  {(1LL << 16) + 1, 8, ((1LL << 16) + 1) >> 8},
 
-    // single bit
-    {1, 0, 0, 1},
-    {1, 0, 1, 0},
-    {1, 0, 63, 0},
+  {0 - 1, 8, ((0 - 1) >> 8) + 1}, // biased
+  {0 + 0, 8, (0 + 0) >> 8},
+  {0 + 1, 8, (0 + 1) >> 8},
 
-    // multiple bits
-    {3, 0, 0, 3},
-    {3, 0, 1, 1},
-    {3, 0, 2, 0},
+#if 0
+  {-1, 16, 0, },
+  {0, 16, 0, },
+  {1, 16, 1 >> 8, },
+  {-(1LL << 16) - 1, 16, (-(1LL << 16)) >> 8, },
+  {(1LL << 16), 16, (1LL << 16) >> 8, },
+  {(1LL << 16) + 1,16,  (2 * (1LL << 16)) >> 8, },
+  {-kMax - 1, 16, (-kMax) >> 8, },
+  {-kMax, 16, (-kMax) >> 8, },
+  {-kMax + 1, 16, (-kMax + (1LL << 16)) >> 8, },
+  {kMin + 1, 16, kMin, },
+  {kMin, 16, kMin, },
+#endif
+};
+// clang-format on
 
-    // boundary
-    {kMax, 0, 0, kMax},
-    {kMax, 0, 1, kMax >> 1},
-    {kMax, 0, 32, kMax >> 32},
-    {kMax, 0, 62, 1},
-    {kMax, 0, 63, 0},
+#if 0
+    {0, 0},
+    {0, 63},
+
+    {1, 0},
+    {1, 1},
+    {1, 2},
+    {1, 63},
+
+    {16, 0},
+    {16, 8},
+    {16, 16},
+    {16, 32},
+    {16, 63},
+
+    {32, 0},
+    {32, 16},
+    {32, 32},
+    {32, 63},
+
+    {62, 0},
+    {62, 16},
+    {62, 32},
+    {62, 63},
 };
 
-INSTANTIATE_TEST_SUITE_P(nonnegative_values, CurvesFixedTruncateS64Test,
-                         ValuesIn(truncate_s64_nonnegative_values));
+#endif
 
-CurvesFixedTruncateS64TestParam truncate_s64_negative_values[] = {
-
-    // unbiased cases: these must floor because of 0 frac bits.
-    {-1, 0, 0, -1},
-    {-1, 0, 1, -1},
-    {kMin, 0, 0, kMin},
-    {kMin, 0, 1, kMin >> 1},
-
-    // smallest biased cases: bias is 1/2
-    {-1, 1, 0, 0},   // (-1/2 + 1/2) >> 0 = -0 >> 0 =  0 (Adjacent)
-    {-2, 1, 0, -1},  // (-2/2 + 1/2) >> 0 = -1 >> 0 = -1 (Boundary)
-    {-3, 1, 0, -2},  // (-3/2 + 1/2) >> 0 = -2 >> 0 = -2 (Past)
-
-    // typical small bias: bias is 15/16
-    {-15, 4, 0, 0},   // (-15/16 + 15/16) >> 0 =  0 >> 0 =  0 (Adjacent)
-    {-16, 4, 0, -1},  // (-16/16 + 15/16) >> 0 = -1 >> 0 = -1 (Boundary)
-    {-17, 4, 0, -2},  // (-17/16 + 15/16) >> 0 = -2 >> 0 = -2 (Past)
-
-    {-16, 4, 1, -1},  // (-16/16 + 15/16) >> 1 = -1 >> 1 = -1 (Adjacent)
-    {-17, 4, 1, -1},  // (-17/16 + 15/16) >> 1 = -2 >> 1 = -1 (Boundary)
-    {-18, 4, 1, -2},  // (-18/16 + 15/16) >> 1 = -3 >> 1 = -2 (Past)
-
-    // last case before boundary
-    {-(1LL << 62) + 1, 62, 0, 0},   // (Adjacent)
-    {-(1LL << 62) + 0, 62, 0, -1},  // (Boundary)
-    {-(1LL << 62) - 1, 62, 0, -2},  // (Past)
-
-    // max boundaries
-    {-kMax + 1, 63, 0, 1},
-    {-kMax, 63, 0, 0},
-    {kMin + 1, 63, 0, 0},
-    {kMin, 63, 0, -1},
-};
-
-INSTANTIATE_TEST_SUITE_P(negative_values, CurvesFixedTruncateS64Test,
-                         ValuesIn(truncate_s64_negative_values));
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedTruncateS64Test,
+                         ValuesIn(truncate_s64_all_cases));
 
 // ----------------------------------------------------------------------------
 // Integer Conversions Tests

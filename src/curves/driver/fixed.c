@@ -15,8 +15,7 @@
 
 #include "fixed.h"
 
-extern s64 __curves_fixed_truncate_s64(s64 value, unsigned int frac_bits,
-				       unsigned int shift);
+extern s64 __curves_fixed_truncate_s64(s64 value, unsigned int shift);
 extern s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 				    unsigned int output_frac_bits);
 
@@ -40,8 +39,7 @@ s64 __cold __curves_fixed_rescale_error_s128(s128 value, int shift)
 	return curves_saturate_s64(value >= 0);
 }
 
-extern s64 __curves_fixed_truncate_s128(s128 value, unsigned int frac_bits,
-					unsigned int shift);
+extern s64 __curves_fixed_truncate_s128(s128 value, unsigned int shift);
 extern s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 				     unsigned int output_frac_bits);
 

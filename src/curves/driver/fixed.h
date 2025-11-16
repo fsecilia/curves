@@ -17,8 +17,7 @@
 #include "math64.h"
 
 // Truncates, rounding towards zero.
-static inline s64 __curves_fixed_truncate_s64(s64 value, unsigned int frac_bits,
-					      unsigned int shift)
+static inline s64 __curves_fixed_truncate_s64(s64 value, unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, ~0 if negative.
 	s64 sign_mask = value >> 63;
@@ -28,7 +27,7 @@ static inline s64 __curves_fixed_truncate_s64(s64 value, unsigned int frac_bits,
 	// you must bias each value by (denominator - 1). But since positive
 	// integers already truncate toward zero, we mask it so it only applies
 	// to negative values.
-	s64 bias = ((1LL << frac_bits) - 1) & sign_mask;
+	s64 bias = ((1LL << shift) - 1) & sign_mask;
 
 	// This can't overflow because it is only nonzero for negative numbers,
 	// and it is never large enough to reach the end of the range.
@@ -54,20 +53,18 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s64(value, frac_bits, -shift);
+		return __curves_fixed_truncate_s64(value, -shift);
 }
 
 // Truncates, rounding toward zero.
-static inline s64 __curves_fixed_truncate_s128(s128 value,
-					       unsigned int frac_bits,
-					       unsigned int shift)
+static inline s64 __curves_fixed_truncate_s128(s128 value, unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
 	s128 sign_mask = value >> 127;
 
 	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	s128 bias = ((1LL << frac_bits) - 1) & sign_mask;
+	s128 bias = ((1LL << shift) - 1) & sign_mask;
 
 	// This can't overflow because it is only nonzero for negative numbers,
 	// and it is never large enough to reach the end of the range.
@@ -98,7 +95,7 @@ static inline s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s128(value, frac_bits, -shift);
+		return __curves_fixed_truncate_s128(value, -shift);
 }
 
 /**
