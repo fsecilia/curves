@@ -17,7 +17,7 @@
 #include "math64.h"
 
 // Truncates, rounding towards zero.
-static inline s64 __curves_fixed_truncate_s64(s64 value, unsigned int shift)
+static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, ~0 if negative.
 	s64 sign_mask = value >> 63;
@@ -53,11 +53,12 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s64(value, -shift);
+		return __curves_fixed_truncate_s64_shr(value, -shift);
 }
 
 // Truncates, rounding toward zero.
-static inline s64 __curves_fixed_truncate_s128(s128 value, unsigned int shift)
+static inline s64 __curves_fixed_truncate_s128_shr(s128 value,
+						   unsigned int shift)
 {
 	// Extract sign of value: 0 if positive, -1 (all bits set) if
 	// negative.
@@ -95,7 +96,7 @@ static inline s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 	if (shift >= 0)
 		return value << shift;
 	else
-		return __curves_fixed_truncate_s128(value, -shift);
+		return __curves_fixed_truncate_s128_shr(value, -shift);
 }
 
 /**

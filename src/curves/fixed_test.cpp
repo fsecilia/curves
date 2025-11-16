@@ -39,7 +39,7 @@ struct CurvesFixedTruncateS64Test
 };
 
 TEST_P(CurvesFixedTruncateS64Test, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_truncate_s64(value, shift));
+  ASSERT_EQ(expected_result, __curves_fixed_truncate_s64_shr(value, shift));
 }
 
 // clang-format off
