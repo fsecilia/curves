@@ -19,20 +19,16 @@
 // Truncates, rounding towards zero.
 static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
 {
-	// Extract sign of value: 0 if positive, ~0 if negative.
+	// To round up during division, bias dividend by divisor - 1.
+	s64 divisor = 1LL << shift;
+	s64 bias = divisor - 1;
+
+	// Positive numbers already round towards zero.
+	// Apply bias only when value is negative.
 	s64 sign_mask = value >> 63;
+	s64 biased_value = value + (bias & sign_mask);
 
-	// frac_bits describes value's binary point, its scale. For a given
-	// scale, the implied denominator = 2^frac_bits. In order to round up,
-	// you must bias each value by (denominator - 1). But since positive
-	// integers already truncate toward zero, we mask it so it only applies
-	// to negative values.
-	s64 bias = ((1LL << shift) - 1) & sign_mask;
-
-	// This can't overflow because it is only nonzero for negative numbers,
-	// and it is never large enough to reach the end of the range.
-	s64 biased_value = value + bias;
-
+	// Perform division.
 	return biased_value >> shift;
 }
 
