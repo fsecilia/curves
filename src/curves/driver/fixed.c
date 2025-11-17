@@ -31,20 +31,23 @@ extern s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift);
 extern s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 				    unsigned int output_frac_bits);
 
-extern s64 __curves_fixed_truncate_s128_shr(s128 value, unsigned int shift);
-
-s64 __cold __curves_fixed_rescale_error_s128(s128 value, int shift)
+s128 __cold __curves_fixed_rescale_error_s128(s128 value,
+					      unsigned int frac_bits,
+					      unsigned int output_frac_bits)
 {
-	// If the value is 0 or shift would underflow, return 0.
-	if (value == 0 || shift < 0)
+	// Zero values and right shifts return 0.
+	if (value == 0 || output_frac_bits < frac_bits)
 		return 0;
 
-	// This would overflow. Saturate based on sign of product.
-	return curves_saturate_s64(value >= 0);
+	// Left shifts that would overflow saturate based on sign.
+	return curves_saturate_s128(value >= 0);
 }
 
-extern s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
-				     unsigned int output_frac_bits);
+extern s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift);
+extern s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift);
+extern s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
+				      unsigned int output_frac_bits);
+extern s64 curves_fixed_narrow_s128_s64(s128 value);
 
 extern s64 curves_fixed_from_integer(s64 value, unsigned int frac_bits);
 extern s64 curves_fixed_to_integer(s64 value, unsigned int frac_bits);

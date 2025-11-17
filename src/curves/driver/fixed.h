@@ -71,48 +71,70 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 						  output_frac_bits - frac_bits);
 }
 
-// Truncates, rounding toward zero.
-static inline s64 __curves_fixed_truncate_s128_shr(s128 value,
-						   unsigned int shift)
+s128 __cold __curves_fixed_rescale_error_s128(s128 value,
+					      unsigned int frac_bits,
+					      unsigned int output_frac_bits);
+
+// Shifts right, rounding towards zero.
+static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
 {
-	// Extract sign of value: 0 if positive, -1 (all bits set) if
-	// negative.
+	// To round up during division, bias dividend by divisor - 1.
+	s128 divisor = 1LL << shift;
+	s128 bias = divisor - 1;
+
+	// Positive numbers already round towards zero.
+	// Apply bias only when value is negative.
 	s128 sign_mask = value >> 127;
+	s128 biased_value = value + (bias & sign_mask);
 
-	// Bias is (2^frac_bits - 1) for negatives, 0 for positives.
-	s128 bias = ((1LL << shift) - 1) & sign_mask;
-
-	// This can't overflow because it is only nonzero for negative numbers,
-	// and it is never large enough to reach the end of the range.
-	s128 biased_value = value + bias;
-
-	s128 result = biased_value >> shift;
-
-	if (unlikely(result != (s64)result)) {
-		return curves_saturate_s64(result > 0);
-	}
-
-	return (s64)result;
+	// Perform division.
+	return biased_value >> shift;
 }
 
-s64 __cold __curves_fixed_rescale_error_s128(s128 value, int shift);
-
-static inline s64 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
-					    unsigned int output_frac_bits)
+// Shifts left, saturating if the value overflows.
+static inline s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift)
 {
-	// Calculate final shift to align binary point with output_frac_bits.
-	int shift = (int)output_frac_bits - (int)frac_bits;
+	// Find the maximum value that doesn't overflow.
+	s128 max_safe_val = CURVES_S128_MAX >> shift;
+	if (unlikely(value > max_safe_val))
+		return CURVES_S128_MAX;
 
-	// Handle UB shifts.
-	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
-		return __curves_fixed_rescale_error_s128(value, shift);
+	// Find the minimum value that doesn't overflow.
+	s128 min_safe_val = CURVES_S128_MIN >> shift;
+	if (unlikely(value < min_safe_val))
+		return CURVES_S128_MIN;
+
+	// The value is safe to shift.
+	return value << shift;
+}
+
+// Shifts binary point from frac_bits to output_frac_bits, truncating or
+// saturating as necessary.
+static inline s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
+					     unsigned int output_frac_bits)
+{
+	// Handle invalid scales.
+	if (unlikely(frac_bits >= 128 || output_frac_bits >= 128))
+		return __curves_fixed_rescale_error_s128(value, frac_bits,
+							 output_frac_bits);
 
 	// Shift into final place.
-	if (shift >= 0)
-		return (s64)(value << shift);
+	if (output_frac_bits < frac_bits)
+		return __curves_fixed_shr_rtz_s128(
+			value, frac_bits - output_frac_bits);
 	else
-		return __curves_fixed_truncate_s128_shr(value,
-							(unsigned int)-shift);
+		return __curves_fixed_shl_sat_s128(value, output_frac_bits -
+								  frac_bits);
+}
+
+// Narrows a 128-bit fixed-point value to 64-bits, saturating on overflow.
+static inline s64 curves_fixed_narrow_s128_s64(s128 value)
+{
+	if (unlikely(value != (s64)value)) {
+		return curves_saturate_s64(value > 0);
+	}
+
+	return (s64)value;
 }
 
 /**
@@ -226,10 +248,10 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 					unsigned int multiplier_frac_bits,
 					unsigned int output_frac_bits)
 {
-	return curves_fixed_rescale_s128((s128)multiplicand * (s128)multiplier,
-					 multiplicand_frac_bits +
-						 multiplier_frac_bits,
-					 output_frac_bits);
+	return curves_fixed_narrow_s128_s64(curves_fixed_rescale_s128(
+		(s128)multiplicand * (s128)multiplier,
+		multiplicand_frac_bits + multiplier_frac_bits,
+		output_frac_bits));
 }
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift);
