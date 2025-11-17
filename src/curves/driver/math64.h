@@ -28,6 +28,11 @@ static inline s64 curves_saturate_s64(bool positive)
 	return positive ? S64_MAX : S64_MIN;
 }
 
+static inline s128 curves_saturate_s128(bool positive)
+{
+	return positive ? CURVES_S128_MAX : CURVES_S128_MIN;
+}
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer

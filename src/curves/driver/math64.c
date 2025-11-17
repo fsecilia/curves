@@ -7,4 +7,5 @@
 #include "math64.h"
 
 extern s64 curves_saturate_s64(bool result_positive);
+extern s128 curves_saturate_s128(bool result_positive);
 extern s64 curves_div_s128_s64(s128 dividend, s64 divisor);

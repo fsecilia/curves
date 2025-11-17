@@ -30,5 +30,13 @@ TEST(curves_saturate_s64, positive) {
   ASSERT_EQ(S64_MAX, curves_saturate_s64(true));
 }
 
+TEST(curves_saturate_s128, negative) {
+  ASSERT_EQ(CURVES_S128_MIN, curves_saturate_s128(false));
+}
+
+TEST(curves_saturate_s128, positive) {
+  ASSERT_EQ(CURVES_S128_MAX, curves_saturate_s128(true));
+}
+
 }  // namespace
 }  // namespace curves
