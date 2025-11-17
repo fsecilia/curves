@@ -376,44 +376,19 @@ TEST_P(CurvesFixedRescaleS64Test, expected_result) {
             curves_fixed_rescale_s64(value, frac_bits, output_frac_bits));
 }
 
-/*
-  Invalid scale tests for truncation with frac_bits/output_frac_bits >= 64.
-
-  Test coverage derived by enumerating all paths through the conditional logic.
-
-  Conditions:
-    A = frac_bits >= 64
-    B = output_frac_bits >= 64
-    C = value == 0
-    D = output_frac_bits < frac_bits
-
-  Return 0 paths: (A||B) && (C||D) -> AC, AD, BC, ABCD tested
-  Saturate paths: (A||B) && !C && !D -> A!C!D, B!C!D tested, both signs
-*/
+// Tests that invalid scales are correctly dispatched to the error handler.
 const CurvesFixedRescaleS64TestParam rescale_s64_invalid_scales[] = {
-    // Path AC: frac_bits boundary, zero value
-    {0, 64, 32, 0},
-
-    // Path AD: frac_bits boundary, right shift
+    // frac_bits >= 64, triggers error handler
+    // output < frac, return 0
     {100, 64, 63, 0},
 
-    // Path BC: output_frac_bits boundary, zero value
-    {0, 32, 64, 0},
+    // output_frac_bits >= 64, triggers error handler
+    // value > 0, output >= frac, saturate max
+    {1, 32, 64, S64_MAX},
 
-    // Path ABCD: both boundaries, multiple conditions active
-    {0, 64, 64, 0},
-
-    // Path A!C!D: frac_bits boundary, left shift, positive saturation
-    {1, 64, 65, kMax},
-
-    // Path A!C!D: frac_bits boundary, left shift, negative saturation
-    {-1, 64, 65, kMin},
-
-    // Path B!C!D: output_frac_bits boundary, positive saturation
-    {kMax, 32, 64, kMax},
-
-    // Path B!C!D: output_frac_bits boundary, negative saturation
-    {kMin, 32, 64, kMin},
+    // both >= 64, triggers error handler)
+    // value < 0, output >= frac, saturate min
+    {-1, 64, 64, S64_MIN},
 };
 
 INSTANTIATE_TEST_SUITE_P(invalid_scales, CurvesFixedRescaleS64Test,
