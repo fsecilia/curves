@@ -375,8 +375,7 @@ TEST_P(CurvesFixedRescaleS64Test, expected_result) {
 /*
   Invalid scale tests for truncation with frac_bits/output_frac_bits >= 64.
 
-  Test coverage was systematically derived by enumerating all paths through
-  the conditional logic.
+  Test coverage derived by enumerating all paths through the conditional logic.
 
   Conditions:
     A = frac_bits >= 64
@@ -385,7 +384,7 @@ TEST_P(CurvesFixedRescaleS64Test, expected_result) {
     D = output_frac_bits < frac_bits
 
   Return 0 paths: (A||B) && (C||D) → AC, AD, BC, ABCD tested
-  Saturate paths: (A||B) && !C && !D → A!C!D, B!C!D tested (both signs)
+  Saturate paths: (A||B) && !C && !D → A!C!D, B!C!D tested, both signs
 */
 const CurvesFixedRescaleS64TestParam rescale_s64_invalid_scales[] = {
     // Path AC: frac_bits boundary, zero value
