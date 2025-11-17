@@ -16,6 +16,8 @@
 #include "kernel_compat.h"
 #include "math64.h"
 
+s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift);
+
 // Truncates, rounding towards zero.
 static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
 {
@@ -31,8 +33,6 @@ static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
 	// Perform division.
 	return biased_value >> shift;
 }
-
-s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift);
 
 // Shifts left, saturating if the value overflows.
 static inline s64 __curves_fixed_saturate_s64_shl(s64 value, unsigned int shift)

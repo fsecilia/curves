@@ -15,6 +15,53 @@ const auto kMin = std::numeric_limits<int64_t>::min();
 const auto kMax = std::numeric_limits<int64_t>::max();
 
 // ----------------------------------------------------------------------------
+// __curves_fixed_rescale_error_s64
+// ----------------------------------------------------------------------------
+
+struct CurvesFixedRescaleErrorS64TestParam {
+  s64 value;
+  int shift;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const CurvesFixedRescaleErrorS64TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.shift << ", "
+               << src.expected_result << "}";
+  }
+};
+
+struct CurvesFixedRescaleErrorS64Test
+    : TestWithParam<CurvesFixedRescaleErrorS64TestParam> {
+  s64 value = GetParam().value;
+  int shift = GetParam().shift;
+  s64 expected_result = GetParam().expected_result;
+};
+
+TEST_P(CurvesFixedRescaleErrorS64Test, expected_result) {
+  ASSERT_EQ(expected_result, __curves_fixed_rescale_error_s64(value, shift));
+}
+
+const CurvesFixedRescaleErrorS64TestParam rescale_error_s64_all_cases[] = {
+    {0, 0, 0},    // value == 0 && shift == 0
+    {0, -1, 0},   // value == 0 && shift < 0
+    {-1, -1, 0},  // value < 0 && shift < 0
+    {1, -1, 0},   // value > 0 && shift < 0
+
+    {1, 0, S64_MAX},   // value > 0 && shift == 0
+    {-1, 0, S64_MIN},  // value < 0 && shift == 0
+
+    {1, 1, S64_MAX},   // value > 0 && shift > 0
+    {-1, 1, S64_MIN},  // value < 0 && shift > 0
+
+    {S64_MAX, 1, S64_MAX},  // value > 0 && shift > 0; edge case
+    {S64_MIN, 1, S64_MIN},  // value < 0 && shift > 0; edge case
+};
+
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
+                         ValuesIn(rescale_error_s64_all_cases));
+
+// ----------------------------------------------------------------------------
 // __curves_fixed_truncate_s64_shr() Tests
 // ----------------------------------------------------------------------------
 
@@ -167,53 +214,6 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
 
 INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedTruncateS64ShrTest,
                          ValuesIn(truncate_s64_all_cases));
-
-// ----------------------------------------------------------------------------
-// __curves_fixed_rescale_error_s64
-// ----------------------------------------------------------------------------
-
-struct CurvesFixedRescaleErrorS64TestParam {
-  s64 value;
-  int shift;
-  s64 expected_result;
-
-  friend auto operator<<(std::ostream& out,
-                         const CurvesFixedRescaleErrorS64TestParam& src)
-      -> std::ostream& {
-    return out << "{" << src.value << ", " << src.shift << ", "
-               << src.expected_result << "}";
-  }
-};
-
-struct CurvesFixedRescaleErrorS64Test
-    : TestWithParam<CurvesFixedRescaleErrorS64TestParam> {
-  s64 value = GetParam().value;
-  int shift = GetParam().shift;
-  s64 expected_result = GetParam().expected_result;
-};
-
-TEST_P(CurvesFixedRescaleErrorS64Test, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_rescale_error_s64(value, shift));
-}
-
-const CurvesFixedRescaleErrorS64TestParam rescale_error_s64_all_cases[] = {
-    {0, 0, 0},    // value == 0 && shift == 0
-    {0, -1, 0},   // value == 0 && shift < 0
-    {-1, -1, 0},  // value < 0 && shift < 0
-    {1, -1, 0},   // value > 0 && shift < 0
-
-    {1, 0, S64_MAX},   // value > 0 && shift == 0
-    {-1, 0, S64_MIN},  // value < 0 && shift == 0
-
-    {1, 1, S64_MAX},   // value > 0 && shift > 0
-    {-1, 1, S64_MIN},  // value < 0 && shift > 0
-
-    {S64_MAX, 1, S64_MAX},  // value > 0 && shift > 0; edge case
-    {S64_MIN, 1, S64_MIN},  // value < 0 && shift > 0; edge case
-};
-
-INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
-                         ValuesIn(rescale_error_s64_all_cases));
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_saturate_s64_shl() Tests
