@@ -176,6 +176,13 @@ struct CurvesFixedRescaleErrorS64TestParam {
   s64 value;
   int shift;
   s64 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const CurvesFixedRescaleErrorS64TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.shift << ", "
+               << src.expected_result << "}";
+  }
 };
 
 struct CurvesFixedRescaleErrorS64Test
@@ -217,6 +224,13 @@ struct CurvesFixedRescaleS64TestParam {
   unsigned int frac_bits;
   unsigned int output_frac_bits;
   s64 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const CurvesFixedRescaleS64TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.frac_bits << ", "
+               << src.output_frac_bits << ", " << src.expected_result << "}";
+  }
 };
 
 struct CurvesFixedRescaleS64Test
