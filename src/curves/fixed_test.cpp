@@ -65,7 +65,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {-(1LL << 0) + 0, 0, ((-(1LL << 0) + 0) >> 0) + 0},  // not biased
     {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},  // not biased
 
-    // shift: 0,
+    // shift: 0, min
     {kMin + 1, 0, ((kMin + 1) >> 0) + 0},  // not biased
     {kMin + 0, 0, ((kMin + 0) >> 0) + 0},  // not biased
 
@@ -86,7 +86,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {-(1LL << 1) + 0, 1, ((-(1LL << 1) + 0) >> 1) + 0},  // not biased
     {-(1LL << 1) - 1, 1, ((-(1LL << 1) - 1) >> 1) + 1},  // rounds up
 
-    // shift: 1,
+    // shift: 1, min
     {kMin + 1, 1, ((kMin + 1) >> 1) + 1},  // rounds up
     {kMin + 0, 1, ((kMin + 0) >> 1) + 0},  // not biased
 
@@ -107,7 +107,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {-(1LL << 16) + 0, 16, ((-(1LL << 16) + 0) >> 16) + 0},  // not biased
     {-(1LL << 16) - 1, 16, ((-(1LL << 16) - 1) >> 16) + 1},  // rounds up
 
-    // shift: 16,
+    // shift: 16, min
     {kMin + 1, 16, ((kMin + 1) >> 16) + 1},  // rounds up
     {kMin + 0, 16, ((kMin + 0) >> 16) + 0},  // not biased
 
@@ -128,7 +128,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {-(1LL << 32) + 0, 32, ((-(1LL << 32) + 0) >> 32) + 0},  // not biased
     {-(1LL << 32) - 1, 32, ((-(1LL << 32) - 1) >> 32) + 1},  // rounds up
 
-    // shift: 32,
+    // shift: 32, min
     {kMin + 1, 32, ((kMin + 1) >> 32) + 1},  // rounds up
     {kMin + 0, 32, ((kMin + 0) >> 32) + 0},  // not biased
 
@@ -149,7 +149,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {-(1LL << 62) + 0, 62, ((-(1LL << 62) + 0) >> 62) + 0},  // not biased
     {-(1LL << 62) - 1, 62, ((-(1LL << 62) - 1) >> 62) + 1},  // rounds up
 
-    // shift: 62,
+    // shift: 62, min
     {kMin + 1, 62, ((kMin + 1) >> 62) + 1},  // rounds up
     {kMin + 0, 62, ((kMin + 0) >> 62) + 0},  // not biased
 
@@ -160,7 +160,7 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {0LL + 0, 63, ((0LL + 0) >> 63) + 0},  // not biased
     {0LL - 1, 63, ((0LL - 1) >> 63) + 1},  // rounds up
 
-    // shift: 63,
+    // shift: 63, min
     {kMin + 1, 63, ((kMin + 1) >> 63) + 1},  // rounds up
     {kMin + 0, 63, ((kMin + 0) >> 63) + 0},  // not biased
 };
