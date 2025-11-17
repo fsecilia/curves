@@ -387,8 +387,8 @@ TEST_P(CurvesFixedRescaleS64Test, expected_result) {
     C = value == 0
     D = output_frac_bits < frac_bits
 
-  Return 0 paths: (A||B) && (C||D) → AC, AD, BC, ABCD tested
-  Saturate paths: (A||B) && !C && !D → A!C!D, B!C!D tested, both signs
+  Return 0 paths: (A||B) && (C||D) -> AC, AD, BC, ABCD tested
+  Saturate paths: (A||B) && !C && !D -> A!C!D, B!C!D tested, both signs
 */
 const CurvesFixedRescaleS64TestParam rescale_s64_invalid_scales[] = {
     // Path AC: frac_bits boundary, zero value
@@ -484,11 +484,11 @@ const CurvesFixedRescaleS64TestParam rescale_s64_valid_scales[] = {
     // Large shift amount (shift by 60)
     {3, 0, 60, 3LL << 60},
 
-    // Saturation: large positive that overflows → kMax
-    // kMax >> 4 shifted left by 5 overflows (bit 58 → bit 63)
+    // Saturation: large positive that overflows -> kMax
+    // kMax >> 4 shifted left by 5 overflows (bit 58 -> bit 63)
     {INT64_MAX >> 4, 58, 63, INT64_MAX},
 
-    // Saturation: large negative that overflows → kMin
+    // Saturation: large negative that overflows -> kMin
     // kMin >> 4 shifted left by 5 overflows
     {INT64_MIN >> 4, 58, 63, INT64_MIN},
 
