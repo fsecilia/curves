@@ -20,6 +20,9 @@
 
 #include "kernel_compat.h"
 
+#define CURVES_S128_MAX ((s128)(~((u128)1 << 127)))
+#define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
+
 static inline s64 curves_saturate_s64(bool positive)
 {
 	return positive ? S64_MAX : S64_MIN;
