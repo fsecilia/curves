@@ -69,27 +69,26 @@ INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
 // __curves_fixed_truncate_s64_shr() Tests
 // ----------------------------------------------------------------------------
 
-struct CurvesFixedTruncateS64ShrTestParam {
+struct CurvesFixedShrRtzS64TestParam {
   s64 value;
   unsigned int shift;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
-                         const CurvesFixedTruncateS64ShrTestParam& src)
+                         const CurvesFixedShrRtzS64TestParam& src)
       -> std::ostream& {
     return out << "{" << src.value << ", " << src.shift << ", "
                << src.expected_result << "}";
   }
 };
 
-struct CurvesFixedTruncateS64ShrTest
-    : TestWithParam<CurvesFixedTruncateS64ShrTestParam> {
+struct CurvesFixedShrRtzS64Test : TestWithParam<CurvesFixedShrRtzS64TestParam> {
   s64 value = GetParam().value;
   unsigned int shift = GetParam().shift;
   s64 expected_result = GetParam().expected_result;
 };
 
-TEST_P(CurvesFixedTruncateS64ShrTest, expected_result) {
+TEST_P(CurvesFixedShrRtzS64Test, expected_result) {
   ASSERT_EQ(expected_result, __curves_fixed_shr_rtz_s64(value, shift));
 }
 
@@ -98,7 +97,7 @@ TEST_P(CurvesFixedTruncateS64ShrTest, expected_result) {
 //   Test zero +/- 1, + 0
 //   Test negative exact multiple of (1 << shift) +/- 1, + 0
 //   Test INT64_MIN + 1, + 0
-CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
+CurvesFixedShrRtzS64TestParam fixed_shr_rtz_s64_all_cases[] = {
     // shift: 0, special case; no truncation occurs
 
     // shift: 0, first positive boundary
@@ -216,38 +215,37 @@ CurvesFixedTruncateS64ShrTestParam truncate_s64_all_cases[] = {
     {kMin + 0, 63, ((kMin + 0) >> 63) + 0},  // not biased
 };
 
-INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedTruncateS64ShrTest,
-                         ValuesIn(truncate_s64_all_cases));
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedShrRtzS64Test,
+                         ValuesIn(fixed_shr_rtz_s64_all_cases));
 
 // ----------------------------------------------------------------------------
-// __curves_fixed_saturate_s64_shl() Tests
+// __curves_fixed_shl_sat_s64_shl() Tests
 // ----------------------------------------------------------------------------
 
-struct CurvesFixedSaturateS64ShlTestParam {
+struct CurvesFixedShlSatS64TestParam {
   s64 value;
   unsigned int shift;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
-                         const CurvesFixedSaturateS64ShlTestParam& src)
+                         const CurvesFixedShlSatS64TestParam& src)
       -> std::ostream& {
     return out << "{" << src.value << ", " << src.shift << ", "
                << src.expected_result << "}";
   }
 };
 
-struct CurvesFixedSaturateS64ShlTest
-    : TestWithParam<CurvesFixedSaturateS64ShlTestParam> {
+struct CurvesFixedShlSatS64Test : TestWithParam<CurvesFixedShlSatS64TestParam> {
   s64 value = GetParam().value;
   unsigned int shift = GetParam().shift;
   s64 expected_result = GetParam().expected_result;
 };
 
-TEST_P(CurvesFixedSaturateS64ShlTest, expected_result) {
+TEST_P(CurvesFixedShlSatS64Test, expected_result) {
   ASSERT_EQ(expected_result, __curves_fixed_shl_sat_s64(value, shift));
 }
 
-const CurvesFixedSaturateS64ShlTestParam saturate_s64_shl_all_cases[] = {
+const CurvesFixedShlSatS64TestParam shl_sat_s64_shl_all_cases[] = {
     // Zero with various shifts always returns zero, regardless of shift amount.
     {0, 0, 0},
     {0, 1, 0},
@@ -342,8 +340,8 @@ const CurvesFixedSaturateS64ShlTestParam saturate_s64_shl_all_cases[] = {
     {-2, 63, S64_MIN},   // Any value less than -1 saturates
 };
 
-INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedSaturateS64ShlTest,
-                         ValuesIn(saturate_s64_shl_all_cases));
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shl_all_cases));
 
 // ----------------------------------------------------------------------------
 // curves_fixed_rescale_s64
