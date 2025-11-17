@@ -293,39 +293,90 @@ INSTANTIATE_TEST_SUITE_P(invalid_scales, CurvesFixedRescaleS64Test,
 /*
   Systematic boundary value analysis coverage:
 
-  Value categories: zero, positive (positive), negative (negative),
-                    large_positive, large_negative
-  Shift relationship: right (output < frac), equal, left (output > frac)
-  Parameter boundaries: min (0), max (63), mid (mid-range)
-
-  Coverage matrix (showing key combinations tested):
-  right + negative + mid        - negative values through helper
-  right + zero + mid            - zero special case
-  right + positive + MIN_OUT    - boundary: output_frac_bits at min
-  right + positive + mid        - basic right shift path
-  right + positive + max_FRAC   - boundary: frac_bits at max valid
-  right + positive + large_DIFF - extreme shift amount
-
-  equal + zero + mid            - zero with no shift
-  equal + positive + MIN        - boundary: both params at min
-  equal + positive + mid        - basic equal path
-  equal + positive + max        - boundary: both params at max
-
-  left + positive + mid         - basic left shift path
-  left + negative + mid         - negative left shift
-  left + zero + mid             - zero with left shift
-  left + positive + max_OUT     - boundary: output_frac_bits at max
-  left + positive + large_DIFF  - extreme left shift amount
+  Value categories: kMin, kMin + 1, -1, zero, 1, kMax - 1, kMax
+  Shift direction: right (output < frac), equal, left (output > frac)
+  Shift boundaries: min (0), mid (31), max (63)
 */
 const CurvesFixedRescaleS64TestParam rescale_s64_valid_scales[] = {
-    // output_frac_bits < frac_bits
-    {35 << 16, 48, 32, 35},
+    // Right shift path (output_frac_bits < frac_bits)
 
-    // output_frac_bits 0 frac_bits
-    {35 << 16, 40, 40, 35 << 16},
+    // Basic positive with mid-range params
+    {35LL << 16, 48, 32, 35},
 
-    // output_frac_bits > frac_bits
-    {35, 32, 48, 35 << 16},
+    // Negative value
+    {-35LL << 16, 48, 32, -35},
+
+    // Zero
+    {0, 48, 32, 0},
+
+    // Boundary: frac_bits at 63 (maximum valid)
+    {100LL << 31, 63, 32, 100},
+
+    // Boundary: output_frac_bits at 0 (minimum valid)
+    {35LL << 32, 32, 0, 35},
+
+    // Large shift amount (shift by 60)
+    {3LL << 60, 62, 2, 3},
+
+    // Extreme value: kMax (safe because right shift)
+    {INT64_MAX, 48, 32, INT64_MAX >> 16},
+
+    // Equal path (output_frac_bits == frac_bits)
+
+    // Basic positive
+    {35LL << 16, 40, 40, 35LL << 16},
+
+    // Zero
+    {0, 40, 40, 0},
+
+    // Boundary: both at 0 (minimum valid)
+    {35, 0, 0, 35},
+
+    // Boundary: both at 63 (maximum valid)
+    {100, 63, 63, 100},
+
+    // Extreme value: kMax
+    {INT64_MAX, 40, 40, INT64_MAX},
+
+    // Left shift path (output_frac_bits > frac_bits)
+
+    // Basic positive with mid-range params
+    {35, 32, 48, 35LL << 16},
+
+    // Negative value
+    {-35, 32, 48, -35LL << 16},
+
+    // Zero
+    {0, 32, 48, 0},
+
+    // Boundary: output_frac_bits at 63
+    {100, 32, 63, 100LL << 31},
+
+    // Large shift amount (shift by 60)
+    {3, 0, 60, 3LL << 60},
+
+    // Saturation: large positive that overflows → kMax
+    // kMax >> 4 shifted left by 5 overflows (bit 58 → bit 63)
+    {INT64_MAX >> 4, 58, 63, INT64_MAX},
+
+    // Saturation: large negative that overflows → kMin
+    // kMin >> 4 shifted left by 5 overflows
+    {INT64_MIN >> 4, 58, 63, INT64_MIN},
+
+    // No overflow: large positive that fits
+    // kMax >> 10 shifted left by 10 fits exactly
+    {INT64_MAX >> 10, 53, 63, (INT64_MAX >> 10) << 10},
+
+    // No overflow: large negative that fits
+    {INT64_MIN >> 10, 53, 63, (INT64_MIN >> 10) << 10},
+
+    // Threshold: exactly at overflow boundary (positive)
+    // Largest positive value with top 5 bits zero
+    {(1LL << 58) - 1, 58, 63, ((1LL << 58) - 1) << 5},
+
+    // Threshold: exactly at overflow boundary (negative)
+    // Most negative value with top 5 bits as ones (sign extension)
+    {-(1LL << 58), 58, 63, (-(1LL << 58)) << 5},
 };
 
 INSTANTIATE_TEST_SUITE_P(valid_scales, CurvesFixedRescaleS64Test,
