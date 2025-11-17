@@ -33,36 +33,65 @@ struct FixedRescaleErrorS64TestParam {
 };
 
 struct FixedRescaleErrorS64Test : TestWithParam<FixedRescaleErrorS64TestParam> {
-  s64 value = GetParam().value;
-  unsigned int frac_bits = GetParam().frac_bits;
-  unsigned int output_frac_bits = GetParam().output_frac_bits;
-  s64 expected_result = GetParam().expected_result;
 };
 
 TEST_P(FixedRescaleErrorS64Test, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_rescale_error_s64(
-                                 value, frac_bits, output_frac_bits));
+  const auto actual_result = __curves_fixed_rescale_error_s64(
+      GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits);
+
+  ASSERT_EQ(GetParam().expected_result, actual_result);
 }
 
-const FixedRescaleErrorS64TestParam rescale_error_s64_all_cases[] = {
-    {0, 0, 0, 0},   // value == 0, no shift, all frac bits 0
-    {0, 1, 1, 0},   // value == 0, no shift, nonzero frac bits
-    {0, 1, 0, 0},   // value == 0, right shift
-    {-1, 1, 0, 0},  // value < 0, right shift
-    {1, 1, 0, 0},   // value > 0, right shift
-
-    {1, 0, 0, S64_MAX},   // value > 0, no shift
-    {-1, 0, 0, S64_MIN},  // value < 0, no shift
-
-    {1, 0, 1, S64_MAX},   // value > 0, left shift
-    {-1, 0, 1, S64_MIN},  // value < 0, left shift
-
-    {S64_MAX, 0, 1, S64_MAX},  // value > 0, left shift; edge case
-    {S64_MIN, 0, 1, S64_MIN},  // value < 0, left shift; edge case
+/*
+  Tests zero-value inputs. These always return zero regardless of shift
+  direction or precision, since zero can't overflow.
+*/
+const FixedRescaleErrorS64TestParam rescale_error_s64_zero_values[] = {
+    {0, 0, 0, 0},  // All fractional bits zero
+    {0, 1, 1, 0},  // No shift, nonzero fractional bits
+    {0, 1, 0, 0},  // Right shift
+    {0, 0, 1, 0},  // Left shift
 };
+INSTANTIATE_TEST_SUITE_P(zero_values, FixedRescaleErrorS64Test,
+                         ValuesIn(rescale_error_s64_zero_values));
 
-INSTANTIATE_TEST_SUITE_P(all_cases, FixedRescaleErrorS64Test,
-                         ValuesIn(rescale_error_s64_all_cases));
+/*
+  Tests right shift cases, output_frac_bits < frac_bits. The error handler
+  returns zero for right shifts regardless of the input value, since right
+  shifts reduce magnitude and cannot cause overflow.
+*/
+const FixedRescaleErrorS64TestParam rescale_error_s64_shr[] = {
+    {-1, 1, 0, 0},
+    {1, 1, 0, 0},
+};
+INSTANTIATE_TEST_SUITE_P(right_shifts, FixedRescaleErrorS64Test,
+                         ValuesIn(rescale_error_s64_shr));
+
+/*
+  Tests no-shift cases, output_frac_bits == frac_bits, with non-zero values.
+  When an invalid number of fractional bits cause the error handler to be
+  called with no shift required, non-zero values saturate based on their sign.
+*/
+const FixedRescaleErrorS64TestParam rescale_error_s64_no_shift_sat[] = {
+    {1, 0, 0, S64_MAX},   // Positive saturates to max
+    {-1, 0, 0, S64_MIN},  // Negative saturates to min
+};
+INSTANTIATE_TEST_SUITE_P(no_shift_saturation, FixedRescaleErrorS64Test,
+                         ValuesIn(rescale_error_s64_no_shift_sat));
+
+/*
+  Tests left shift cases, output_frac_bits > frac_bits, with non-zero values.
+  Left shifts that trigger the error handler cause saturation based on sign.
+  Tests include both regular values and boundary values at S64_MAX/S64_MIN.
+*/
+const FixedRescaleErrorS64TestParam rescale_error_s64_shl_sat[] = {
+    {1, 0, 1, S64_MAX},        // Positive regular value
+    {-1, 0, 1, S64_MIN},       // Negative regular value
+    {S64_MAX, 0, 1, S64_MAX},  // Positive boundary value
+    {S64_MIN, 0, 1, S64_MIN},  // Negative boundary value
+};
+INSTANTIATE_TEST_SUITE_P(left_shift_saturation, FixedRescaleErrorS64Test,
+                         ValuesIn(rescale_error_s64_shl_sat));
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_truncate_s64_shr() Tests
