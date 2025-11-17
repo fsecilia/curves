@@ -19,8 +19,8 @@
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits);
 
-// Truncates, rounding towards zero.
-static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
+// Shifts right, rounding towards zero.
+static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 {
 	// To round up during division, bias dividend by divisor - 1.
 	s64 divisor = 1LL << shift;
@@ -36,7 +36,7 @@ static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
 }
 
 // Shifts left, saturating if the value overflows.
-static inline s64 __curves_fixed_saturate_s64_shl(s64 value, unsigned int shift)
+static inline s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift)
 {
 	// Find the maximum value that doesn't overflow.
 	s64 max_safe_val = S64_MAX >> shift;
@@ -64,11 +64,11 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 
 	// Shift into final place.
 	if (output_frac_bits < frac_bits)
-		return __curves_fixed_truncate_s64_shr(
-			value, frac_bits - output_frac_bits);
+		return __curves_fixed_shr_rtz_s64(value,
+						  frac_bits - output_frac_bits);
 	else
-		return __curves_fixed_saturate_s64_shl(
-			value, output_frac_bits - frac_bits);
+		return __curves_fixed_shl_sat_s64(value,
+						  output_frac_bits - frac_bits);
 }
 
 // Truncates, rounding toward zero.

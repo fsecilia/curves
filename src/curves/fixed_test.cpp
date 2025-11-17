@@ -90,7 +90,7 @@ struct CurvesFixedTruncateS64ShrTest
 };
 
 TEST_P(CurvesFixedTruncateS64ShrTest, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_truncate_s64_shr(value, shift));
+  ASSERT_EQ(expected_result, __curves_fixed_shr_rtz_s64(value, shift));
 }
 
 // For each shift value (0, 1, 16, 32, 62, 63):
@@ -244,7 +244,7 @@ struct CurvesFixedSaturateS64ShlTest
 };
 
 TEST_P(CurvesFixedSaturateS64ShlTest, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_saturate_s64_shl(value, shift));
+  ASSERT_EQ(expected_result, __curves_fixed_shl_sat_s64(value, shift));
 }
 
 const CurvesFixedSaturateS64ShlTestParam saturate_s64_shl_all_cases[] = {
