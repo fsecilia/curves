@@ -16,7 +16,8 @@
 #include "kernel_compat.h"
 #include "math64.h"
 
-s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift);
+s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
+					    unsigned int output_frac_bits);
 
 // Truncates, rounding towards zero.
 static inline s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift)
@@ -57,14 +58,9 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 					   unsigned int output_frac_bits)
 {
 	// Handle invalid scales.
-	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64)) {
-		// Zero values and right shifts return 0.
-		if (value == 0 || output_frac_bits < frac_bits)
-			return 0;
-
-		// Left shifts that would overflow saturate based on sign.
-		return curves_saturate_s64(value >= 0);
-	}
+	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
+		return __curves_fixed_rescale_error_s64(value, frac_bits,
+							output_frac_bits);
 
 	// Shift into final place.
 	if (output_frac_bits < frac_bits)

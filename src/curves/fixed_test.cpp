@@ -20,42 +20,46 @@ const auto kMax = std::numeric_limits<int64_t>::max();
 
 struct CurvesFixedRescaleErrorS64TestParam {
   s64 value;
-  int shift;
+  unsigned int frac_bits;
+  unsigned int output_frac_bits;
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out,
                          const CurvesFixedRescaleErrorS64TestParam& src)
       -> std::ostream& {
-    return out << "{" << src.value << ", " << src.shift << ", "
-               << src.expected_result << "}";
+    return out << "{" << src.value << ", " << src.frac_bits << ", "
+               << src.output_frac_bits << ", " << src.expected_result << "}";
   }
 };
 
 struct CurvesFixedRescaleErrorS64Test
     : TestWithParam<CurvesFixedRescaleErrorS64TestParam> {
   s64 value = GetParam().value;
-  int shift = GetParam().shift;
+  unsigned int frac_bits = GetParam().frac_bits;
+  unsigned int output_frac_bits = GetParam().output_frac_bits;
   s64 expected_result = GetParam().expected_result;
 };
 
 TEST_P(CurvesFixedRescaleErrorS64Test, expected_result) {
-  ASSERT_EQ(expected_result, __curves_fixed_rescale_error_s64(value, shift));
+  ASSERT_EQ(expected_result, __curves_fixed_rescale_error_s64(
+                                 value, frac_bits, output_frac_bits));
 }
 
 const CurvesFixedRescaleErrorS64TestParam rescale_error_s64_all_cases[] = {
-    {0, 0, 0},    // value == 0 && shift == 0
-    {0, -1, 0},   // value == 0 && shift < 0
-    {-1, -1, 0},  // value < 0 && shift < 0
-    {1, -1, 0},   // value > 0 && shift < 0
+    {0, 0, 0, 0},   // value == 0, no shift, all frac bits 0
+    {0, 1, 1, 0},   // value == 0, no shift, nonzero frac bits
+    {0, 1, 0, 0},   // value == 0, right shift
+    {-1, 1, 0, 0},  // value < 0, right shift
+    {1, 1, 0, 0},   // value > 0, right shift
 
-    {1, 0, S64_MAX},   // value > 0 && shift == 0
-    {-1, 0, S64_MIN},  // value < 0 && shift == 0
+    {1, 0, 0, S64_MAX},   // value > 0, no shift
+    {-1, 0, 0, S64_MIN},  // value < 0, no shift
 
-    {1, 1, S64_MAX},   // value > 0 && shift > 0
-    {-1, 1, S64_MIN},  // value < 0 && shift > 0
+    {1, 0, 1, S64_MAX},   // value > 0, left shift
+    {-1, 0, 1, S64_MIN},  // value < 0, left shift
 
-    {S64_MAX, 1, S64_MAX},  // value > 0 && shift > 0; edge case
-    {S64_MIN, 1, S64_MIN},  // value < 0 && shift > 0; edge case
+    {S64_MAX, 0, 1, S64_MAX},  // value > 0, left shift; edge case
+    {S64_MIN, 0, 1, S64_MIN},  // value < 0, left shift; edge case
 };
 
 INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
