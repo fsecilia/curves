@@ -33,6 +33,8 @@ __extension__ typedef unsigned __int128 u128;
 
 #define S64_MIN INT64_MIN
 #define S64_MAX INT64_MAX
+#define S32_MIN INT32_MIN
+#define S32_MAX INT32_MAX
 
 #define __cold
 

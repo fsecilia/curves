@@ -216,6 +216,132 @@ INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedRescaleErrorS64Test,
                          ValuesIn(rescale_error_s64_all_cases));
 
 // ----------------------------------------------------------------------------
+// __curves_fixed_saturate_s64_shl() Tests
+// ----------------------------------------------------------------------------
+
+struct CurvesFixedSaturateS64ShlTestParam {
+  s64 value;
+  unsigned int shift;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const CurvesFixedSaturateS64ShlTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.shift << ", "
+               << src.expected_result << "}";
+  }
+};
+
+struct CurvesFixedSaturateS64ShlTest
+    : TestWithParam<CurvesFixedSaturateS64ShlTestParam> {
+  s64 value = GetParam().value;
+  unsigned int shift = GetParam().shift;
+  s64 expected_result = GetParam().expected_result;
+};
+
+TEST_P(CurvesFixedSaturateS64ShlTest, expected_result) {
+  ASSERT_EQ(expected_result, __curves_fixed_saturate_s64_shl(value, shift));
+}
+
+const CurvesFixedSaturateS64ShlTestParam saturate_s64_shl_all_cases[] = {
+    // Zero with various shifts always returns zero, regardless of shift amount.
+    {0, 0, 0},
+    {0, 1, 0},
+    {0, 32, 0},
+    {0, 63, 0},
+
+    // When shift is zero, the function returns the original value unchanged,
+    // since no shifting occurs and no overflow is possible.
+    {1, 0, 1},
+    {100, 0, 100},
+    {S64_MAX, 0, S64_MAX},
+    {-1, 0, -1},
+    {-100, 0, -100},
+    {S64_MIN, 0, S64_MIN},
+
+    // Small positive values that fit within the safe range and shift without
+    // overflow. These demonstrate normal operation where the result is simply
+    // value << shift.
+    {1, 1, 2},
+    {1, 10, 1 << 10},
+    {1, 62, 1LL << 62},
+    {100, 10, 100 << 10},
+    {1000, 20, 1000LL << 20},
+
+    // Small negative values that shift safely. Negative values shift the same
+    // way as positive values, preserving the sign bit.
+    {-1, 1, -2},
+    {-1, 10, -(1 << 10)},
+    {-1, 62, -(1LL << 62)},
+    {-100, 10, -(100 << 10)},
+    {-1000, 20, -(1000LL << 20)},
+
+    // Mixed magnitude cases showing practical values and their behavior at
+    // different shift amounts. These verify the function works correctly for
+    // values commonly seen in real-world,  fixed-point arithmetic.
+    {1000000, 25, 1000000LL << 25},      // Large but safe
+    {1000000, 50, S64_MAX},              // Larger shift causes saturation
+    {-1000000, 25, -(1000000LL << 25)},  // Negative large but safe
+    {-1000000, 50, S64_MIN},             // Negative with large shift saturates
+
+    // Positive saturation boundary testing for shift == 1. The maximum
+    // safe value for this shift is S64_MAX >> 1. Values at or below this
+    // boundary shift safely, while values above saturate to S64_MAX.
+    {S64_MAX >> 1, 1, (S64_MAX >> 1) << 1},  // Right at boundary, shifts safely
+    {(S64_MAX >> 1) + 1, 1, S64_MAX},        // Just over boundary, saturates
+    {S64_MAX, 1, S64_MAX},                   // Far over boundary, saturates
+
+    // Negative saturation boundary testing for shift == 1. The minimum
+    // safe value is S64_MIN >> 1. Values at or above this boundary shift
+    // safely, while values below saturate to S64_MIN.
+    {S64_MIN >> 1, 1, S64_MIN},        // Right at boundary, shifts safely
+    {(S64_MIN >> 1) - 1, 1, S64_MIN},  // Just under boundary, saturates
+    {S64_MIN, 1, S64_MIN},             // Far under boundary, saturates
+
+    // Positive saturation cases for shift == 2. The safe range shrinks
+    // to [S64_MIN >> 2, S64_MAX >> 2].
+    {S64_MAX >> 2, 2, (S64_MAX >> 2) << 2},  // At boundary, safe
+    {(S64_MAX >> 2) + 1, 2, S64_MAX},        // Just over, saturates
+    {S64_MAX, 2, S64_MAX},                   // Far over, saturates
+
+    // Negative saturation cases for shift == 2.
+    {S64_MIN >> 2, 2, S64_MIN},        // At boundary, safe
+    {(S64_MIN >> 2) - 1, 2, S64_MIN},  // Just under, saturates
+    {S64_MIN, 2, S64_MIN},             // Far under, saturates
+
+    // Large shift of 32 bits. The safe range becomes the int32 range since
+    // max_safe_val equals S64_MAX >> 32, which equals S32_MAX, and
+    // min_safe_val equals S64_MIN >> 32, which equals S32_MIN.
+    {1, 32, 1LL << 32},                              // Beginning of range
+    {S32_MAX, 32, static_cast<s64>(S32_MAX) << 32},  // Positive boundary, safe
+    {static_cast<s64>(S32_MAX) + 1, 32, S64_MAX},    // Just over, saturates
+    {-1, 32, -(1LL << 32)},                          // Beginning of range
+    {S32_MIN, 32, S64_MIN},                          // Negative boundary, safe
+    {static_cast<s64>(S32_MIN) - 1, 32, S64_MIN},    // Just under, saturates
+
+    // Final normal case where shift == 62.
+    // Here max_safe_val == 1 and min_safe_val == -2.
+    {1, 62, 1LL << 62},      // At positive boundary, safe
+    {2, 62, S64_MAX},        // Over positive boundary, saturates
+    {-1, 62, -(1LL << 62)},  // Safe negative value
+    {-2, 62, S64_MIN},       // At negative boundary, safe
+    {-3, 62, S64_MIN},       // Under negative boundary, saturates
+
+    // Maximum shift of 63 bits. The safe range becomes narrow with
+    // max_safe_val == 0 and min_safe_val == -1. Only these two values can be
+    // shifted without saturation, but -1 << 63 is indistinguishable from
+    // saturation anyway.
+    {0, 63, 0},          // Only safe positive value
+    {-1, 63, S64_MIN},   // Only safe negative value
+    {1, 63, S64_MAX},    // Any positive value saturates
+    {100, 63, S64_MAX},  // Large positive saturates
+    {-2, 63, S64_MIN},   // Any value less than -1 saturates
+};
+
+INSTANTIATE_TEST_SUITE_P(all_cases, CurvesFixedSaturateS64ShlTest,
+                         ValuesIn(saturate_s64_shl_all_cases));
+
+// ----------------------------------------------------------------------------
 // curves_fixed_rescale_s64
 // ----------------------------------------------------------------------------
 
