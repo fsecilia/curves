@@ -796,7 +796,7 @@ struct MultiplicationParam {
   s64 expected_bias;
 
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
-      -> std::ostream& {
+ -> std::ostream& {
     return out << "{" << src.multiplicand << ", " << src.multiplier << ", "
                << src.desired_shift << ", " << src.expected_result << "}";
   }
@@ -844,7 +844,7 @@ struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
   const int desired_shift = GetParam().desired_shift;
   auto expected_result(unsigned int multiplicand_frac_bits,
                        unsigned int multiplier_frac_bits) const noexcept
-      -> s64 {
+ -> s64 {
     const auto unbiased_result = GetParam().expected_result;
     const auto value = static_cast<int128_t>(multiplicand) * multiplier;
     if (value >= 0) return unbiased_result;
@@ -1188,7 +1188,7 @@ struct DivisionParam {
   s64 expected_result;
 
   friend auto operator<<(std::ostream& out, const DivisionParam& src)
-      -> std::ostream& {
+ -> std::ostream& {
     return out << "{" << src.dividend << ", " << src.divisor << ", "
                << src.desired_shift << ", " << src.expected_result << "}";
   }
