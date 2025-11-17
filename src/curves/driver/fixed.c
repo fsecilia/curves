@@ -26,6 +26,7 @@ s64 __cold __curves_fixed_rescale_error_s64(s64 value, int shift)
 }
 
 extern s64 __curves_fixed_truncate_s64_shr(s64 value, unsigned int shift);
+extern s64 __curves_fixed_saturate_s64_shl(s64 value, unsigned int shift);
 extern s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 				    unsigned int output_frac_bits);
 
