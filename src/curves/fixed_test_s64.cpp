@@ -306,9 +306,9 @@ INSTANTIATE_TEST_SUITE_P(shift_0, FixedShrRtzS64EdgeCasesTest,
 // shift 63: no positive integers, only one negative and it is the boundary
 FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_63[] = {
     // boundary at zero
-    {0LL + 1, 63, ((0LL + 1) >> 63) + 0},  // rounds down
-    {0LL + 0, 63, ((0LL + 0) >> 63) + 0},
-    {0LL - 1, 63, ((0LL - 1) >> 63) + 1},  // rounds up
+    {+1, 63, (+1LL >> 63) + 0},  // rounds down
+    {+0, 63, (+0LL >> 63) + 0},
+    {-1, 63, (-1LL >> 63) + 1},  // rounds up
 
     // boundary at min
     {S64_MIN + 1, 63, ((S64_MIN + 1) >> 63) + 1},  // rounds up

@@ -321,5 +321,172 @@ FixedShrRtzS128EdgeCasesTestParam shr_rtz_s128_shift_127[] = {
 INSTANTIATE_TEST_SUITE_P(shift_127, FixedShrRtzS128EdgeCasesTest,
                          ValuesIn(shr_rtz_s128_shift_127));
 
+// ----------------------------------------------------------------------------
+// __curves_fixed_shl_sat_s128
+// ----------------------------------------------------------------------------
+
+struct FixedShlSatS128TestParam {
+  s128 value;
+  unsigned int shift;
+  s128 expected_result;
+
+  friend auto operator<<(std::ostream& out, const FixedShlSatS128TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.shift << ", "
+               << src.expected_result << "}";
+  }
+};
+
+struct FixedShlSatS128Test : TestWithParam<FixedShlSatS128TestParam> {
+  s128 value = GetParam().value;
+  unsigned int shift = GetParam().shift;
+  s128 expected_result = GetParam().expected_result;
+};
+
+TEST_P(FixedShlSatS128Test, expected_result) {
+  ASSERT_EQ(expected_result, __curves_fixed_shl_sat_s128(value, shift));
+}
+
+// Zero with various shifts always returns zero, regardless of shift amount.
+const FixedShlSatS128TestParam shl_sat_s128_zero_with_various_shifts[] = {
+    {0, 0, 0},
+    {0, 1, 0},
+    {0, 32, 0},
+    {0, 127, 0},
+};
+INSTANTIATE_TEST_SUITE_P(zero_with_various_shifts, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_zero_with_various_shifts));
+
+/*
+  When shift is zero, the function returns the original value unchanged, since
+  no shifting occurs and no overflow is possible.
+*/
+const FixedShlSatS128TestParam shl_sat_s128_shift_0[] = {
+    {1, 0, 1},   {100, 0, 100},   {S128_MAX, 0, S128_MAX},
+    {-1, 0, -1}, {-100, 0, -100}, {S128_MIN, 0, S128_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(shift_0, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_0));
+
+/*
+  Small positive values that fit within the safe range and shift without
+  overflow. These demonstrate normal operation where the result is simply
+  value << shift.
+*/
+const FixedShlSatS128TestParam shl_sat_s128_normal_operation[] = {
+    {1, 1, 2},
+    {1, 10, 1 << 10},
+    {1, 126, static_cast<s128>(1) << 126},
+    {100, 10, 100 << 10},
+    {1000, 20, 1000LL << 20},
+};
+INSTANTIATE_TEST_SUITE_P(normal_operation, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_normal_operation));
+
+/*
+  Small negative values that shift safely. Negative values shift the same way
+  as positive values, preserving the sign bit.
+*/
+const FixedShlSatS128TestParam shl_sat_s128_small_negatives[] = {
+    {-1, 1, -2},
+    {-1, 10, -(1 << 10)},
+    {-1, 126, -(static_cast<s128>(1) << 126)},
+    {-100, 10, -(100 << 10)},
+    {-1000, 20, -(1000LL << 20)},
+};
+INSTANTIATE_TEST_SUITE_P(small_negatives, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_small_negatives));
+
+/*
+  Mixed magnitude cases showing practical values and their behavior at
+  different shift amounts. These verify the function works correctly for
+  values commonly seen in real-world, fixed-point arithmetic.
+*/
+const FixedShlSatS128TestParam shl_sat_s128_mixed_magnitude[] = {
+    {1000000, 60, static_cast<s128>(1000000) << 60},  // Large but safe
+    {1000000, 120, S128_MAX},  // Larger shift causes saturation
+    {-1000000, 60,
+     -(static_cast<s128>(1000000) << 60)},  // Negative large but safe
+    {-1000000, 120, S128_MIN},  // Negative with large shift saturates
+};
+INSTANTIATE_TEST_SUITE_P(mixed_magnitude, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_mixed_magnitude));
+
+/*
+  Boundary cases for shift == 1. The safe range is
+  [S128_MIN >> 1, S128_MAX >> 1].
+*/
+const FixedShlSatS128TestParam shl_sat_s128_shift_1_boundaries[] = {
+    // Positive saturation boundary.
+    {S128_MAX >> 1, 1,
+     (S128_MAX >> 1) << 1},              // Right at boundary, shifts safely
+    {(S128_MAX >> 1) + 1, 1, S128_MAX},  // Just over boundary, saturates
+    {S128_MAX, 1, S128_MAX},             // Far over boundary, saturates
+
+    // Negative saturation boundary.
+    {S128_MIN >> 1, 1, S128_MIN},        // Right at boundary, shifts safely
+    {(S128_MIN >> 1) - 1, 1, S128_MIN},  // Just under boundary, saturates
+    {S128_MIN, 1, S128_MIN},             // Far under boundary, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_1_boundaries, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_1_boundaries));
+
+/*
+  Boundary cases for shift == 2. The safe range is
+  [S128_MIN >> 2, S128_MAX >> 2].
+*/
+const FixedShlSatS128TestParam shl_sat_s128_shift_2_boundaries[] = {
+    // Positive saturation cases.
+    {S128_MAX >> 2, 2, (S128_MAX >> 2) << 2},  // At boundary, safe
+    {(S128_MAX >> 2) + 1, 2, S128_MAX},        // Just over, saturates
+    {S128_MAX, 2, S128_MAX},                   // Far over, saturates
+
+    // Negative saturation cases.
+    {S128_MIN >> 2, 2, S128_MIN},        // At boundary, safe
+    {(S128_MIN >> 2) - 1, 2, S128_MIN},  // Just under, saturates
+    {S128_MIN, 2, S128_MIN},             // Far under, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_2_boundaries, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_2_boundaries));
+
+// Boundary cases for shift == 64. The safe range is the int64 range.
+const FixedShlSatS128TestParam shl_sat_s128_shift_64[] = {
+    {1, 64, static_cast<s128>(1) << 64},              // Beginning of range
+    {S64_MAX, 64, static_cast<s128>(S64_MAX) << 64},  // Positive boundary, safe
+    {static_cast<s128>(S64_MAX) + 1, 64, S128_MAX},   // Just over, saturates
+
+    {-1, 64, -(static_cast<s128>(1) << 64)},         // Beginning of range
+    {S64_MIN, 64, S128_MIN},                         // Negative boundary, safe
+    {static_cast<s128>(S64_MIN) - 1, 64, S128_MIN},  // Just under, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_64, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_64));
+
+// Final normal case where shift == 126. The safe range is [-2, 1].
+const FixedShlSatS128TestParam shl_sat_s128_shift_126[] = {
+    {1, 126, static_cast<s128>(1) << 126},  // At positive boundary, safe
+    {2, 126, S128_MAX},                     // Over positive boundary, saturates
+    {-1, 126, -(static_cast<s128>(1) << 126)},  // Safe negative value
+    {-2, 126, S128_MIN},                        // At negative boundary, safe
+    {-3, 126, S128_MIN},  // Under negative boundary, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_126, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_126));
+
+/*
+  Maximum shift of 127 bits. The safe range becomes [-1, 0]. Only these two
+  values can be shifted without saturation, but -1 << 127 is indistinguishable
+  from saturation anyway.
+*/
+const FixedShlSatS128TestParam shl_sat_s128_shift_127[] = {
+    {0, 127, 0},           // Only safe positive value
+    {-1, 127, S128_MIN},   // Only safe negative value
+    {1, 127, S128_MAX},    // Any positive value saturates
+    {100, 127, S128_MAX},  // Large positive saturates
+    {-2, 127, S128_MIN},   // Any value less than -1 saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_127, FixedShlSatS128Test,
+                         ValuesIn(shl_sat_s128_shift_127));
+
 }  // namespace
 }  // namespace curves
