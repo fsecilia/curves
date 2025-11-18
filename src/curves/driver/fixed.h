@@ -254,22 +254,17 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
  * @multiplier: Amount to multiply by.
  * @output_frac_bits: Fractional bits in result, [0, 62].
  *
- * This function multiplies two fixed-point values with independent fractional
- * precision and shifts the result to match @output_frac_bits. The raw product
- * has @multiplicand_frac_bits + @multiplier_frac_bits fractional bits; this
+ * This function multiplies two fixed-point values with independent precisions
+ * and shifts the result to match @output_frac_bits. The raw product has
+ * @multiplicand_frac_bits + @multiplier_frac_bits fractional bits; this
  * function shifts it left or right as needed to produce the requested output
  * precision.
  *
- * The shift and multiply are done at 128 bits before truncating the result to
- * 64 bits.
+ * The shift and multiply are done at 128 bits before rounding the result to
+ * 64 bits. Rounding is always towards zero.
  *
- * The caller is responsible for ensuring @output_frac_bits leaves sufficient
- * integer bits to represent the product magnitude. No overflow detection is
- * performed.
- *
- * Return: Product shifted to @output_frac_bits precision, or 0 if the
- * required shift would cause undefined behavior (|shift| >= 64 for left
- * shifts, >= 128 for right shifts).
+ * Return: Product shifted to @output_frac_bits precision, 0 on underflow, or
+ * signed saturation on overflow.
  */
 static inline s64 curves_fixed_multiply(s64 multiplicand,
 					unsigned int multiplicand_frac_bits,
