@@ -58,37 +58,16 @@ TEST_P(FixedTestSymmetricIntegerConversion, to_integer) {
   ASSERT_EQ(expected, actual);
 }
 
-const SymmetricIntegerConversionParam symmetric_integer_conversion_params[] = {
-    // end of negative q63.0 range
-    {S64_MIN, 0, S64_MIN},
-
-    // end of q62.1 range
-    {-1ll << 62, 1, (-1ll << 62) << 1},
-
-    // end of q47.16 range
-    {-1ll << 47, 1, (-1ll << 47) << 1},
-    {-1ll << 47, 8, (-1ll << 47) << 8},
-    {-1ll << 47, 16, (-1ll << 47) << 16},
-
-    // end of q31.32 range
-    {-1ll << 31, 1, (-1ll << 31) << 1},
-    {-1ll << 31, 16, (-1ll << 31) << 16},
-    {-1ll << 31, 32, (-1ll << 31) << 32},
-
-    // end of q15.48 range
-    {-1ll << 15, 1, (-1ll << 15) << 1},
-    {-1ll << 15, 24, (-1ll << 15) << 24},
-    {-1ll << 15, 48, (-1ll << 15) << 48},
-
+const SymmetricIntegerConversionParam sym_int_near_zero[] = {
     // -2
-    {-2, 1, -2ll << 1},
-    {-2, 32, -2ll << 32},
-    {-2, 61, -2ll << 61},
+    {-2, 1, -2LL << 1},
+    {-2, 32, -2LL << 32},
+    {-2, 61, -2LL << 61},
 
     // -1
-    {-1, 1, -1ll << 1},
-    {-1, 32, -1ll << 32},
-    {-1, 62, -1ll << 62},
+    {-1, 1, -1LL << 1},
+    {-1, 32, -1LL << 32},
+    {-1, 62, -1LL << 62},
 
     // zero
     {0, 1, 0},
@@ -96,39 +75,69 @@ const SymmetricIntegerConversionParam symmetric_integer_conversion_params[] = {
     {0, 63, 0},
 
     // 1
-    {1, 1, 1ll << 1},
-    {1, 32, 1ll << 32},
-    {1, 62, 1ll << 62},
+    {1, 1, 1LL << 1},
+    {1, 32, 1LL << 32},
+    {1, 62, 1LL << 62},
 
     // 2
-    {2, 1, 2ll << 1},
-    {2, 32, 2ll << 32},
-    {2, 61, 2ll << 61},
+    {2, 1, 2LL << 1},
+    {2, 32, 2LL << 32},
+    {2, 61, 2LL << 61},
+};
+INSTANTIATE_TEST_SUITE_P(near_zero, FixedTestSymmetricIntegerConversion,
+                         ValuesIn(sym_int_near_zero));
 
+const SymmetricIntegerConversionParam sym_int_negative_boundaries[] = {
     // end of q15.48 range
-    {(1ll << 15) - 1, 1, ((1ll << 15) - 1) << 1},
-    {(1ll << 15) - 1, 24, ((1ll << 15) - 1) << 24},
-    {(1ll << 15) - 1, 48, ((1ll << 15) - 1) << 48},
+    {-1LL << 15, 1, (-1LL << 15) << 1},
+    {-1LL << 15, 24, (-1LL << 15) << 24},
+    {-1LL << 15, 48, (-1LL << 15) << 48},
 
     // end of q31.32 range
-    {(1ll << 31) - 1, 1, ((1ll << 31) - 1) << 1},
-    {(1ll << 31) - 1, 16, ((1ll << 31) - 1) << 16},
-    {(1ll << 31) - 1, 32, ((1ll << 31) - 1) << 32},
+    {-1LL << 31, 1, (-1LL << 31) << 1},
+    {-1LL << 31, 16, (-1LL << 31) << 16},
+    {-1LL << 31, 32, (-1LL << 31) << 32},
 
     // end of q47.16 range
-    {(1ll << 47) - 1, 1, ((1ll << 47) - 1) << 1},
-    {(1ll << 47) - 1, 8, ((1ll << 47) - 1) << 8},
-    {(1ll << 47) - 1, 16, ((1ll << 47) - 1) << 16},
+    {-1LL << 47, 1, (-1LL << 47) << 1},
+    {-1LL << 47, 8, (-1LL << 47) << 8},
+    {-1LL << 47, 16, (-1LL << 47) << 16},
+
+    // end of q62.1 range
+    {-1ll << 62, 1, (-1ll << 62) << 1},
+
+    // end of q63.0 range (S64_MIN)
+    {S64_MIN, 0, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(negative_boundaries,
+                         FixedTestSymmetricIntegerConversion,
+                         ValuesIn(sym_int_negative_boundaries));
+
+const SymmetricIntegerConversionParam sym_int_positive_boundaries[] = {
+    // end of q15.48 range
+    {(1LL << 15) - 1, 1, ((1LL << 15) - 1) << 1},
+    {(1LL << 15) - 1, 24, ((1LL << 15) - 1) << 24},
+    {(1LL << 15) - 1, 48, ((1LL << 15) - 1) << 48},
+
+    // end of q31.32 range
+    {(1LL << 31) - 1, 1, ((1LL << 31) - 1) << 1},
+    {(1LL << 31) - 1, 16, ((1LL << 31) - 1) << 16},
+    {(1LL << 31) - 1, 32, ((1LL << 31) - 1) << 32},
+
+    // end of q47.16 range
+    {(1LL << 47) - 1, 1, ((1LL << 47) - 1) << 1},
+    {(1LL << 47) - 1, 8, ((1LL << 47) - 1) << 8},
+    {(1LL << 47) - 1, 16, ((1LL << 47) - 1) << 16},
 
     // end of q62.1 range
     {(1ll << 62) - 1, 1, ((1ll << 62) - 1) << 1},
 
-    // end of q63.0 range
+    // end of q63.0 range (S64_MAX)
     {S64_MAX, 0, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(symmetric_integer_conversion,
+INSTANTIATE_TEST_SUITE_P(positive_boundaries,
                          FixedTestSymmetricIntegerConversion,
-                         ValuesIn(symmetric_integer_conversion_params));
+                         ValuesIn(sym_int_positive_boundaries));
 
 // Rounding
 // ----------------------------------------------------------------------------
