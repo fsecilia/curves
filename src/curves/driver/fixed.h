@@ -362,7 +362,7 @@ static inline s64 curves_fixed_divide(s64 dividend,
 
 		return curves_fixed_rescale_s64(
 			curves_div_s128_s64(dividend, divisor),
-			divisor_frac_bits - dividend_frac_bits,
+			dividend_frac_bits - divisor_frac_bits,
 			output_frac_bits);
 	}
 }
