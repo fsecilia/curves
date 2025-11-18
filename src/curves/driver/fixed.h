@@ -330,7 +330,7 @@ static inline s64 __curves_fixed_divide_try_saturate_shr(s64 dividend,
 		dividend, divisor, saturation_threshold);
 
 	if (unlikely(saturation != 0))
-		return saturation >> -shift;
+		return saturation;
 
 	return 0;
 }
