@@ -94,156 +94,217 @@ INSTANTIATE_TEST_SUITE_P(left_shift_saturation, FixedRescaleErrorS64Test,
                          ValuesIn(rescale_error_s64_shl_sat));
 
 // ----------------------------------------------------------------------------
-// __curves_fixed_truncate_s64_shr() Tests
+// __curves_fixed_shr_rtz_s64() Tests
 // ----------------------------------------------------------------------------
 
-struct FixedShrRtzS64TestParam {
+// Tests values -1, 0, 1 at various shifts.
+struct FixedShrRtzS64NearZeroTest : TestWithParam<unsigned int> {
+  unsigned int shift = GetParam();
+};
+
+// The first value before 0 should round up to zero.
+TEST_P(FixedShrRtzS64NearZeroTest, predecessor_rounds_up_towards_zero) {
+  s64 value = -1;  // -1/divisor
+  s64 expected = 0;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+// 0 is a multiple of divisor, so it should not round in either direction.
+TEST_P(FixedShrRtzS64NearZeroTest, exact_stays_zero) {
+  s64 value = 0;  // 0 exactly
+  s64 expected = 0;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+// The first value after 0 should round down.
+TEST_P(FixedShrRtzS64NearZeroTest, successor_rounds_down_towards_zero) {
+  s64 value = 1;  // 1/divisor
+  s64 expected = 0;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+INSTANTIATE_TEST_SUITE_P(various_shifts, FixedShrRtzS64NearZeroTest,
+                         Values(1, 16, 32, 62, 63));
+
+// ----------------------------------------------------------------------------
+
+// Tests shifts and scales that aren't boundary conditions.
+struct FixedShrRtzS64CommonCasesTestParam {
+  unsigned int shift;
+  s64 scale;
+
+  friend auto operator<<(std::ostream& out,
+                         const FixedShrRtzS64CommonCasesTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.shift << ", " << src.scale << "}";
+  }
+};
+
+struct FixedShrRtzS64CommonCasesTest
+    : TestWithParam<FixedShrRtzS64CommonCasesTestParam> {
+  unsigned int shift = GetParam().shift;
+  s64 scale = GetParam().scale;
+  s64 divisor = 1LL << shift;
+};
+
+// The first value before a negative multiple of divisor should round up.
+TEST_P(FixedShrRtzS64CommonCasesTest,
+       negative_predecessor_rounds_up_towards_zero) {
+  const auto value = -scale * divisor - 1;  // -scale - 1/divisor
+  const auto expected = -scale;
+
+  const auto actual = __curves_fixed_shr_rtz_s64(value, shift);
+
+  ASSERT_EQ(expected, actual);
+}
+
+// Exact multiples shouldn't round; there's no fractional part to handle.
+TEST_P(FixedShrRtzS64CommonCasesTest, negative_exact_multiple_no_rounding) {
+  s64 value = -scale * divisor;  // -scale exactly
+  s64 expected = -scale;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+// The first value after a negative multiple of divisor should round up.
+TEST_P(FixedShrRtzS64CommonCasesTest,
+       negative_successor_rounds_up_towards_zero) {
+  s64 value = -scale * divisor + 1;  // -scale + 1/divisor
+  s64 expected = -scale + 1;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+// The first value before a positive multiple of divisor should round down.
+TEST_P(FixedShrRtzS64CommonCasesTest,
+       positive_predecessor_rounds_down_towards_zero) {
+  const auto value = scale * divisor - 1;  // scale - 1/divisor
+  const auto expected = scale - 1;
+
+  const auto actual = __curves_fixed_shr_rtz_s64(value, shift);
+
+  ASSERT_EQ(expected, actual);
+}
+
+// Exact multiples shouldn't round; there's no fractional part to handle.
+TEST_P(FixedShrRtzS64CommonCasesTest, positive_exact_multiple_no_rounding) {
+  s64 value = scale * divisor;  // scale exactly
+  s64 expected = scale;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+// The first value after a positive multiple of divisor should round down.
+TEST_P(FixedShrRtzS64CommonCasesTest,
+       positive_successor_rounds_down_towards_zero) {
+  s64 value = scale * divisor + 1;  // scale + 1/divisor
+  s64 expected = scale;
+  ASSERT_EQ(expected, __curves_fixed_shr_rtz_s64(value, shift));
+}
+
+const FixedShrRtzS64CommonCasesTestParam shr_rtz_s64_shift_1[] = {
+    {1, 1},                // unity
+    {1, 2},                // smallest nonunity multiplier
+    {1, 3},                // small odd multiplier
+    {1, 1LL << 32},        // large multiplier
+    {1, (1LL << 61) - 1},  // very large odd multiplier
+    {1, 1LL << 61},        // max scale for this shift
+};
+INSTANTIATE_TEST_SUITE_P(shift_1, FixedShrRtzS64CommonCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_1));
+
+const FixedShrRtzS64CommonCasesTestParam shr_rtz_s64_shift_16[] = {
+    {16, 1},                // unity
+    {16, 2},                // smallest nonunity multiplier
+    {16, 3},                // small odd multiplier
+    {16, 1LL << 24},        // large multiplier
+    {16, (1LL << 47) - 1},  // max scale for this shift
+};
+INSTANTIATE_TEST_SUITE_P(shift_16, FixedShrRtzS64CommonCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_16));
+
+const FixedShrRtzS64CommonCasesTestParam shr_rtz_s64_shift_32[] = {
+    {32, 1},                // unity
+    {32, 2},                // smallest nonunity multiplier
+    {32, 3},                // small odd multiplier
+    {32, (1LL << 16)},      // representative multiplier
+    {32, (1LL << 31) - 1},  // max scale for this shift
+
+    {62, 1},  // 62 has no room for scales
+};
+INSTANTIATE_TEST_SUITE_P(shift_32, FixedShrRtzS64CommonCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_32));
+
+const FixedShrRtzS64CommonCasesTestParam shr_rtz_s64_shift_62[] = {
+    {62, 1},  // 62 has no room for scales
+};
+INSTANTIATE_TEST_SUITE_P(shift_62, FixedShrRtzS64CommonCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_62));
+
+// ----------------------------------------------------------------------------
+
+// Tests specific edge cases.
+struct FixedShrRtzS64EdgeCasesTestParam {
   s64 value;
   unsigned int shift;
   s64 expected_result;
 
-  friend auto operator<<(std::ostream& out, const FixedShrRtzS64TestParam& src)
+  friend auto operator<<(std::ostream& out,
+                         const FixedShrRtzS64EdgeCasesTestParam& src)
       -> std::ostream& {
     return out << "{" << src.value << ", " << src.shift << ", "
                << src.expected_result << "}";
   }
 };
 
-struct FixedShrRtzS64Test : TestWithParam<FixedShrRtzS64TestParam> {
+struct FixedShrRtzS64EdgeCasesTest
+    : TestWithParam<FixedShrRtzS64EdgeCasesTestParam> {
   s64 value = GetParam().value;
   unsigned int shift = GetParam().shift;
   s64 expected_result = GetParam().expected_result;
 };
 
-TEST_P(FixedShrRtzS64Test, expected_result) {
+TEST_P(FixedShrRtzS64EdgeCasesTest, expected_result) {
   ASSERT_EQ(expected_result, __curves_fixed_shr_rtz_s64(value, shift));
 }
 
-// For each shift value (0, 1, 16, 32, 62, 63):
-//   Test positive value +/- 1, + 0
-//   Test zero +/- 1, + 0
-//   Test negative exact multiple of (1 << shift) +/- 1, + 0
-//   Test INT64_MIN + 1, + 0
-FixedShrRtzS64TestParam fixed_shr_rtz_s64_all_cases[] = {
-    // shift: 0, special case; no truncation occurs
+// shift 0: no truncation occurs
+FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_0[] = {
+    // kMax doesn't round down only when shift is 0
+    {kMax - 0, 0, ((kMax - 0) >> 0) + 0},
+    {kMax - 1, 0, ((kMax - 1) >> 0) + 0},
 
-    // shift: 0, first positive boundary
-    {(1LL << 0) + 1, 0, ((1LL << 0) + 1) >> 0},  // not biased
-    {(1LL << 0) + 0, 0, ((1LL << 0) + 0) >> 0},  // not biased
-    {(1LL << 0) - 1, 0, ((1LL << 0) - 1) >> 0},  // not biased
+    // first positive boundary
+    {(1LL << 0) + 1, 0, ((1LL << 0) + 1) >> 0},
+    {(1LL << 0) + 0, 0, ((1LL << 0) + 0) >> 0},
+    {(1LL << 0) - 1, 0, ((1LL << 0) - 1) >> 0},
 
-    // shift: 0, boundary at zero
-    {0LL + 1, 0, ((0LL + 1) >> 0) + 0},  // not biased
-    {0LL + 0, 0, ((0LL + 0) >> 0) + 0},  // not biased
-    {0LL - 1, 0, ((0LL - 1) >> 0) + 0},  // not biased
+    // boundary at zero
+    {0LL + 1, 0, ((0LL + 1) >> 0) + 0},
+    {0LL + 0, 0, ((0LL + 0) >> 0) + 0},
+    {0LL - 1, 0, ((0LL - 1) >> 0) + 0},
 
-    // shift: 0, first negative boundary
-    {-(1LL << 0) + 1, 0, ((-(1LL << 0) + 1) >> 0) + 0},  // not biased
-    {-(1LL << 0) + 0, 0, ((-(1LL << 0) + 0) >> 0) + 0},  // not biased
-    {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},  // not biased
+    // first negative boundary
+    {-(1LL << 0) + 1, 0, ((-(1LL << 0) + 1) >> 0) + 0},
+    {-(1LL << 0) + 0, 0, ((-(1LL << 0) + 0) >> 0) + 0},
+    {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},
 
-    // shift: 0, min
-    {kMin + 1, 0, ((kMin + 1) >> 0) + 0},  // not biased
-    {kMin + 0, 0, ((kMin + 0) >> 0) + 0},  // not biased
+    // boundary at min
+    {kMin + 1, 0, ((kMin + 1) >> 0) + 0},
+    {kMin + 0, 0, ((kMin + 0) >> 0) + 0},
+};
+INSTANTIATE_TEST_SUITE_P(shift_0, FixedShrRtzS64EdgeCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_0));
 
-    // shift: 1
-
-    // shift: 1, first positive boundary
-    {(1LL << 1) + 1, 1, ((1LL << 1) + 1) >> 1},  // not biased
-    {(1LL << 1) + 0, 1, ((1LL << 1) + 0) >> 1},  // not biased
-    {(1LL << 1) - 1, 1, ((1LL << 1) - 1) >> 1},  // not biased
-
-    // shift: 1, boundary at zero
-    {0LL + 1, 1, ((0LL + 1) >> 1) + 0},  // not biased
-    {0LL + 0, 1, ((0LL + 0) >> 1) + 0},  // not biased
-    {0LL - 1, 1, ((0LL - 1) >> 1) + 1},  // rounds up
-
-    // shift: 1, first negative boundary
-    {-(1LL << 1) + 1, 1, ((-(1LL << 1) + 1) >> 1) + 1},  // rounds up
-    {-(1LL << 1) + 0, 1, ((-(1LL << 1) + 0) >> 1) + 0},  // not biased
-    {-(1LL << 1) - 1, 1, ((-(1LL << 1) - 1) >> 1) + 1},  // rounds up
-
-    // shift: 1, min
-    {kMin + 1, 1, ((kMin + 1) >> 1) + 1},  // rounds up
-    {kMin + 0, 1, ((kMin + 0) >> 1) + 0},  // not biased
-
-    // shift: 16
-
-    // shift: 16, first positive boundary
-    {(1LL << 16) + 1, 16, ((1LL << 16) + 1) >> 16},  // not biased
-    {(1LL << 16) + 0, 16, ((1LL << 16) + 0) >> 16},  // not biased
-    {(1LL << 16) - 1, 16, ((1LL << 16) - 1) >> 16},  // not biased
-
-    // shift: 16, boundary at zero
-    {0LL + 1, 16, ((0LL + 1) >> 16) + 0},  // not biased
-    {0LL + 0, 16, ((0LL + 0) >> 16) + 0},  // not biased
-    {0LL - 1, 16, ((0LL - 1) >> 16) + 1},  // rounds up
-
-    // shift: 16, first negative boundary
-    {-(1LL << 16) + 1, 16, ((-(1LL << 16) + 1) >> 16) + 1},  // rounds up
-    {-(1LL << 16) + 0, 16, ((-(1LL << 16) + 0) >> 16) + 0},  // not biased
-    {-(1LL << 16) - 1, 16, ((-(1LL << 16) - 1) >> 16) + 1},  // rounds up
-
-    // shift: 16, min
-    {kMin + 1, 16, ((kMin + 1) >> 16) + 1},  // rounds up
-    {kMin + 0, 16, ((kMin + 0) >> 16) + 0},  // not biased
-
-    // shift: 32
-
-    // shift: 32, first positive boundary
-    {(1LL << 32) + 1, 32, ((1LL << 32) + 1) >> 32},  // not biased
-    {(1LL << 32) + 0, 32, ((1LL << 32) + 0) >> 32},  // not biased
-    {(1LL << 32) - 1, 32, ((1LL << 32) - 1) >> 32},  // not biased
-
-    // shift: 32, boundary at zero
-    {0LL + 1, 32, ((0LL + 1) >> 32) + 0},  // not biased
-    {0LL + 0, 32, ((0LL + 0) >> 32) + 0},  // not biased
-    {0LL - 1, 32, ((0LL - 1) >> 32) + 1},  // rounds up
-
-    // shift: 32, first negative boundary
-    {-(1LL << 32) + 1, 32, ((-(1LL << 32) + 1) >> 32) + 1},  // rounds up
-    {-(1LL << 32) + 0, 32, ((-(1LL << 32) + 0) >> 32) + 0},  // not biased
-    {-(1LL << 32) - 1, 32, ((-(1LL << 32) - 1) >> 32) + 1},  // rounds up
-
-    // shift: 32, min
-    {kMin + 1, 32, ((kMin + 1) >> 32) + 1},  // rounds up
-    {kMin + 0, 32, ((kMin + 0) >> 32) + 0},  // not biased
-
-    // shift: 62, last shift with no special cases
-
-    // shift: 62, first positive boundary
-    {(1LL << 62) + 1, 62, ((1LL << 62) + 1) >> 62},  // not biased
-    {(1LL << 62) + 0, 62, ((1LL << 62) + 0) >> 62},  // not biased
-    {(1LL << 62) - 1, 62, ((1LL << 62) - 1) >> 62},  // not biased
-
-    // shift: 62, boundary at zero
-    {0LL + 1, 62, ((0LL + 1) >> 62) + 0},  // not biased
-    {0LL + 0, 62, ((0LL + 0) >> 62) + 0},  // not biased
-    {0LL - 1, 62, ((0LL - 1) >> 62) + 1},  // rounds up
-
-    // shift: 62, first negative boundary
-    {-(1LL << 62) + 1, 62, ((-(1LL << 62) + 1) >> 62) + 1},  // rounds up
-    {-(1LL << 62) + 0, 62, ((-(1LL << 62) + 0) >> 62) + 0},  // not biased
-    {-(1LL << 62) - 1, 62, ((-(1LL << 62) - 1) >> 62) + 1},  // rounds up
-
-    // shift: 62, min
-    {kMin + 1, 62, ((kMin + 1) >> 62) + 1},  // rounds up
-    {kMin + 0, 62, ((kMin + 0) >> 62) + 0},  // not biased
-
-    // shift: 63: special case; no positive integers, only one negative boundary
-
-    // shift: 63, boundary at zero
-    {0LL + 1, 63, ((0LL + 1) >> 63) + 0},  // not biased
-    {0LL + 0, 63, ((0LL + 0) >> 63) + 0},  // not biased
+// shift 63: no positive integers, only one negative and it is the boundary
+FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_63[] = {
+    // boundary at zero
+    {0LL + 1, 63, ((0LL + 1) >> 63) + 0},  // rounds down
+    {0LL + 0, 63, ((0LL + 0) >> 63) + 0},
     {0LL - 1, 63, ((0LL - 1) >> 63) + 1},  // rounds up
 
-    // shift: 63, min
+    // boundary at min
     {kMin + 1, 63, ((kMin + 1) >> 63) + 1},  // rounds up
-    {kMin + 0, 63, ((kMin + 0) >> 63) + 0},  // not biased
+    {kMin + 0, 63, ((kMin + 0) >> 63) + 0},
 };
-
-INSTANTIATE_TEST_SUITE_P(all_cases, FixedShrRtzS64Test,
-                         ValuesIn(fixed_shr_rtz_s64_all_cases));
+INSTANTIATE_TEST_SUITE_P(shift_63, FixedShrRtzS64EdgeCasesTest,
+                         ValuesIn(shr_rtz_s64_shift_63));
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_shl_sat_s64_shl() Tests
