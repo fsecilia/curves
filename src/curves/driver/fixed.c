@@ -15,6 +15,10 @@
 
 #include "fixed.h"
 
+// ----------------------------------------------------------------------------
+// 64-bit API
+// ----------------------------------------------------------------------------
+
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits)
 {
@@ -30,6 +34,10 @@ extern s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift);
 extern s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift);
 extern s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 				    unsigned int output_frac_bits);
+
+// ----------------------------------------------------------------------------
+// 128-bit API
+// ----------------------------------------------------------------------------
 
 s128 __cold __curves_fixed_rescale_error_s128(s128 value,
 					      unsigned int frac_bits,
@@ -48,6 +56,10 @@ extern s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift);
 extern s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 				      unsigned int output_frac_bits);
 extern s64 curves_fixed_narrow_s128_s64(s128 value);
+
+// ----------------------------------------------------------------------------
+// Common API
+// ----------------------------------------------------------------------------
 
 extern s64 curves_fixed_from_integer(s64 value, unsigned int frac_bits);
 extern s64 curves_fixed_to_integer(s64 value, unsigned int frac_bits);
