@@ -163,7 +163,7 @@ static inline s64 curves_fixed_narrow_s128_s64(s128 value)
 }
 
 // ----------------------------------------------------------------------------
-// Common API
+// Conversions
 // ----------------------------------------------------------------------------
 
 /**
@@ -189,6 +189,10 @@ static inline s64 curves_fixed_to_integer(s64 value, unsigned int frac_bits)
 {
 	return curves_fixed_rescale_s64(value, frac_bits, 0);
 }
+
+// ----------------------------------------------------------------------------
+// Constants
+// ----------------------------------------------------------------------------
 
 /**
  * curves_fixed_const_1() - Fixed-point constant 1.
@@ -244,6 +248,10 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 					CURVES_FIXED_PI_FRAC_BITS, frac_bits);
 }
 
+// ----------------------------------------------------------------------------
+// Multiplication
+// ----------------------------------------------------------------------------
+
 /**
  * curves_fixed_multiply() - Multiplies two arbitrary-precision fixed-point
  * values.
@@ -277,6 +285,10 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 		multiplicand_frac_bits + multiplier_frac_bits,
 		output_frac_bits));
 }
+
+// ----------------------------------------------------------------------------
+// Division
+// ----------------------------------------------------------------------------
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift);
 
