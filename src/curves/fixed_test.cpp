@@ -281,7 +281,7 @@ struct FixedFromDoubleParam {
   }
 };
 
-// Tests that doubles round to 0 during conversion to fixed-point.
+// Tests that doubles round to nearest during conversion to fixed-point.
 struct FixedConversionTestFixedFromDouble
     : TestWithParam<FixedFromDoubleParam> {};
 
