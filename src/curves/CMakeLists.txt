@@ -18,6 +18,8 @@ list(APPEND lib_files
 
 list(APPEND test_files
   fixed_test.cpp
+  fixed_test_s128.cpp
+  fixed_test_s64.cpp
   math64_test.cpp
   test.cpp
   test.hpp
