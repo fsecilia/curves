@@ -339,23 +339,23 @@ static inline s64 __curves_fixed_divide_check_saturation(s64 dividend,
 }
 
 // Performs left-shift, then division.
-// Assumes saturation has already been checked
+// Assumes saturation has already been checked.
 static inline s64 __curves_fixed_divide_shl(s64 dividend, s64 divisor,
 					    int shift)
 {
-	// Scale dividend up before dividing for maximum precision
+	// Scale dividend up before dividing for maximum precision.
 	return curves_div_s128_s64(((s128)dividend) << shift, divisor);
 }
 
 // Performs division, then right-shift.
-// Assumes saturation has already been checked
+// Assumes saturation has already been checked.
 static inline s64 __curves_fixed_divide_shr(s64 dividend,
 					    unsigned int dividend_frac_bits,
 					    s64 divisor,
 					    unsigned int divisor_frac_bits,
 					    unsigned int output_frac_bits)
 {
-	// Compute the division at native precision
+	// Compute the division at native precision.
 	s64 quotient = curves_div_s128_s64(((s128)dividend), divisor);
 
 	// The quotient has (dividend_frac_bits - divisor_frac_bits) fractional
@@ -365,36 +365,34 @@ static inline s64 __curves_fixed_divide_shr(s64 dividend,
 					output_frac_bits);
 }
 
-// Main division function: hot path
+// Division entrypoint.
 static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int dividend_frac_bits,
 				      s64 divisor,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
-	// Calculate the shift needed
+	// Calculate the total shift needed.
 	int shift = (int)output_frac_bits + (int)divisor_frac_bits -
 		    (int)dividend_frac_bits;
 
-	// Fast path: check for error conditions and delegate to cold path
+	// Check for error conditions and delegate to cold path.
 	if (unlikely(divisor == 0 || dividend == 0 || shift <= -64 ||
 		     shift >= 128 || dividend_frac_bits >= 64 ||
 		     divisor_frac_bits >= 64 || output_frac_bits >= 64)) {
 		return __curves_fixed_divide_error(dividend, divisor, shift);
 	}
 
-	// Check if the result would saturate
+	// Check if the result would saturate.
 	s64 saturation = __curves_fixed_divide_check_saturation(dividend,
 								divisor, shift);
 	if (unlikely(saturation != 0))
 		return saturation;
 
-	// Perform the division with appropriate precision technique
+	// Choose implementation based on shift direction.
 	if (shift >= 0) {
-		// Left shift: simple and efficient
 		return __curves_fixed_divide_shl(dividend, divisor, shift);
 	} else {
-		// Right shift: use Q64.64 for maximum precision
 		return __curves_fixed_divide_shr(dividend, dividend_frac_bits,
 						 divisor, divisor_frac_bits,
 						 output_frac_bits);
