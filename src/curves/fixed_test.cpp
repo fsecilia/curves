@@ -94,7 +94,7 @@ INSTANTIATE_TEST_SUITE_P(left_shift_saturation, FixedRescaleErrorS64Test,
                          ValuesIn(rescale_error_s64_shl_sat));
 
 // ----------------------------------------------------------------------------
-// __curves_fixed_shr_rtz_s64() Tests
+// __curves_fixed_shr_rtz_s64
 // ----------------------------------------------------------------------------
 
 // Tests values -1, 0, 1 at various shifts.
