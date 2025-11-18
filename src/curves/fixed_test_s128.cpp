@@ -290,27 +290,27 @@ TEST_P(FixedShrRtzS128EdgeCasesTest, expected_result) {
 // shift 0: no truncation occurs
 FixedShrRtzS128EdgeCasesTestParam shr_rtz_s128_shift_0[] = {
     // S128_MAX doesn't round down only when shift is 0
-    {S128_MAX - 0, 0, ((S128_MAX - 0) >> 0) + 0},
-    {S128_MAX - 1, 0, ((S128_MAX - 1) >> 0) + 0},
+    {S128_MAX + 0, 0, S128_MAX + 0},
+    {S128_MAX - 1, 0, S128_MAX - 1},
 
     // first positive boundary
-    {(1LL << 0) + 1, 0, ((1LL << 0) + 1) >> 0},
-    {(1LL << 0) + 0, 0, ((1LL << 0) + 0) >> 0},
-    {(1LL << 0) - 1, 0, ((1LL << 0) - 1) >> 0},
+    {1 + 1, 0, 1 + 1},
+    {1 + 0, 0, 1 + 0},
+    {1 - 1, 0, 1 - 1},
 
     // boundary at zero
-    {0LL + 1, 0, ((0LL + 1) >> 0) + 0},
-    {0LL + 0, 0, ((0LL + 0) >> 0) + 0},
-    {0LL - 1, 0, ((0LL - 1) >> 0) + 0},
+    {0 + 1, 0, 0 + 1},
+    {0 + 0, 0, 0 + 0},
+    {0 - 1, 0, 0 - 1},
 
     // first negative boundary
-    {-(1LL << 0) + 1, 0, ((-(1LL << 0) + 1) >> 0) + 0},
-    {-(1LL << 0) + 0, 0, ((-(1LL << 0) + 0) >> 0) + 0},
-    {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},
+    {-1 + 1, 0, -1 + 1},
+    {-1 + 0, 0, -1 + 0},
+    {-1 - 1, 0, -1 - 1},
 
     // boundary at min
-    {S128_MIN + 1, 0, ((S128_MIN + 1) >> 0) + 0},
-    {S128_MIN + 0, 0, ((S128_MIN + 0) >> 0) + 0},
+    {S128_MIN + 1, 0, S128_MIN + 1},
+    {S128_MIN + 0, 0, S128_MIN + 0},
 };
 INSTANTIATE_TEST_SUITE_P(shift_0, FixedShrRtzS128EdgeCasesTest,
                          ValuesIn(shr_rtz_s128_shift_0));
