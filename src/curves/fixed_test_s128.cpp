@@ -11,6 +11,8 @@
 #include <curves/test.hpp>
 #include <algorithm>
 
+#define S128_MAX CURVES_S128_MAX
+#define S128_MIN CURVES_S128_MIN
 
 namespace curves {
 namespace {
