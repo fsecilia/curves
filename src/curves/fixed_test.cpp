@@ -11,9 +11,6 @@
 namespace curves {
 namespace {
 
-const auto kMin = std::numeric_limits<int64_t>::min();
-const auto kMax = std::numeric_limits<int64_t>::max();
-
 // ----------------------------------------------------------------------------
 // __curves_fixed_rescale_error_s64
 // ----------------------------------------------------------------------------
@@ -266,9 +263,9 @@ TEST_P(FixedShrRtzS64EdgeCasesTest, expected_result) {
 
 // shift 0: no truncation occurs
 FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_0[] = {
-    // kMax doesn't round down only when shift is 0
-    {kMax - 0, 0, ((kMax - 0) >> 0) + 0},
-    {kMax - 1, 0, ((kMax - 1) >> 0) + 0},
+    // S64_MAX doesn't round down only when shift is 0
+    {S64_MAX - 0, 0, ((S64_MAX - 0) >> 0) + 0},
+    {S64_MAX - 1, 0, ((S64_MAX - 1) >> 0) + 0},
 
     // first positive boundary
     {(1LL << 0) + 1, 0, ((1LL << 0) + 1) >> 0},
@@ -286,8 +283,8 @@ FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_0[] = {
     {-(1LL << 0) - 1, 0, ((-(1LL << 0) - 1) >> 0) + 0},
 
     // boundary at min
-    {kMin + 1, 0, ((kMin + 1) >> 0) + 0},
-    {kMin + 0, 0, ((kMin + 0) >> 0) + 0},
+    {S64_MIN + 1, 0, ((S64_MIN + 1) >> 0) + 0},
+    {S64_MIN + 0, 0, ((S64_MIN + 0) >> 0) + 0},
 };
 INSTANTIATE_TEST_SUITE_P(shift_0, FixedShrRtzS64EdgeCasesTest,
                          ValuesIn(shr_rtz_s64_shift_0));
@@ -300,8 +297,8 @@ FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_63[] = {
     {0LL - 1, 63, ((0LL - 1) >> 63) + 1},  // rounds up
 
     // boundary at min
-    {kMin + 1, 63, ((kMin + 1) >> 63) + 1},  // rounds up
-    {kMin + 0, 63, ((kMin + 0) >> 63) + 0},
+    {S64_MIN + 1, 63, ((S64_MIN + 1) >> 63) + 1},  // rounds up
+    {S64_MIN + 0, 63, ((S64_MIN + 0) >> 63) + 0},
 };
 INSTANTIATE_TEST_SUITE_P(shift_63, FixedShrRtzS64EdgeCasesTest,
                          ValuesIn(shr_rtz_s64_shift_63));
@@ -537,8 +534,8 @@ const FixedRescaleS64TestParam rescale_s64_right_shift[] = {
     // Large shift amount (shift by 60)
     {3LL << 60, 62, 2, 3},
 
-    // Extreme value: kMax (safe because right shift)
-    {INT64_MAX, 48, 32, INT64_MAX >> 16},
+    // Extreme value: S64_MAX (safe because right shift)
+    {S64_MAX, 48, 32, S64_MAX >> 16},
 };
 INSTANTIATE_TEST_SUITE_P(right_shift, FixedRescaleS64Test,
                          ValuesIn(rescale_s64_right_shift));
@@ -557,8 +554,8 @@ const FixedRescaleS64TestParam rescale_s64_no_shift[] = {
     // Boundary: both at 63 (maximum valid)
     {100, 63, 63, 100},
 
-    // Extreme value: kMax
-    {INT64_MAX, 40, 40, INT64_MAX},
+    // Extreme value: S64_MAX
+    {S64_MAX, 40, 40, S64_MAX},
 
 };
 INSTANTIATE_TEST_SUITE_P(no_shift, FixedRescaleS64Test,
@@ -587,20 +584,20 @@ INSTANTIATE_TEST_SUITE_P(left_shift, FixedRescaleS64Test,
 
 // Edge cases.
 const FixedRescaleS64TestParam rescale_s64_edge_cases[] = {
-    // Saturation: large positive that overflows -> kMax
-    // kMax >> 4 shifted left by 5 overflows (bit 58 -> bit 63)
-    {INT64_MAX >> 4, 58, 63, INT64_MAX},
+    // Saturation: large positive that overflows -> S64_MAX
+    // S64_MAX >> 4 shifted left by 5 overflows (bit 58 -> bit 63)
+    {S64_MAX >> 4, 58, 63, S64_MAX},
 
-    // Saturation: large negative that overflows -> kMin
-    // kMin >> 4 shifted left by 5 overflows
-    {INT64_MIN >> 4, 58, 63, INT64_MIN},
+    // Saturation: large negative that overflows -> S64_MIN
+    // S64_MIN >> 4 shifted left by 5 overflows
+    {S64_MIN >> 4, 58, 63, S64_MIN},
 
     // No overflow: large positive that fits
-    // kMax >> 10 shifted left by 10 fits exactly
-    {INT64_MAX >> 10, 53, 63, (INT64_MAX >> 10) << 10},
+    // S64_MAX >> 10 shifted left by 10 fits exactly
+    {S64_MAX >> 10, 53, 63, (S64_MAX >> 10) << 10},
 
     // No overflow: large negative that fits
-    {INT64_MIN >> 10, 53, 63, (INT64_MIN >> 10) << 10},
+    {S64_MIN >> 10, 53, 63, (S64_MIN >> 10) << 10},
 
     // Threshold: exactly at overflow boundary (positive)
     // Largest positive value with top 5 bits zero
@@ -662,7 +659,7 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
 
 const SymmetricIntegersParam symmetric_integer_params[] = {
     // end of negative q63.0 range
-    {kMin, 0, kMin},
+    {S64_MIN, 0, S64_MIN},
 
     // end of q62.1 range
     {-1ll << 62, 1, (-1ll << 62) << 1},
@@ -726,7 +723,7 @@ const SymmetricIntegersParam symmetric_integer_params[] = {
     {(1ll << 62) - 1, 1, ((1ll << 62) - 1) << 1},
 
     // end of q63.0 range
-    {kMax, 0, kMax},
+    {S64_MAX, 0, S64_MAX},
 };
 
 INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
@@ -797,38 +794,38 @@ INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
 // outside.
 const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
     // frac_bits = 0: Special case, no rounding.
-    {kMin, 0, kMin},
-    {kMin + 1, 0, kMin + 1},
-    {kMax - 1, 0, kMax - 1},
-    {kMax, 0, kMax},
+    {S64_MIN, 0, S64_MIN},
+    {S64_MIN + 1, 0, S64_MIN + 1},
+    {S64_MAX - 1, 0, S64_MAX - 1},
+    {S64_MAX, 0, S64_MAX},
 
     // frac_bits = 1: Lowest precision that isn't just integers.
-    {kMin, 1, kMin >> 1},
-    {kMin + 1, 1, (kMin >> 1) + 1},
-    {kMax - 2, 1, (kMax >> 1) - 1},
-    {kMax - 1, 1, kMax >> 1},
-    {kMax, 1, kMax >> 1},
+    {S64_MIN, 1, S64_MIN >> 1},
+    {S64_MIN + 1, 1, (S64_MIN >> 1) + 1},
+    {S64_MAX - 2, 1, (S64_MAX >> 1) - 1},
+    {S64_MAX - 1, 1, S64_MAX >> 1},
+    {S64_MAX, 1, S64_MAX >> 1},
 
     // frac_bits = 32: Typical precision
-    {kMin, 32, kMin >> 32},
-    {kMin + 1, 32, (kMin >> 32) + 1},
-    {kMax - (1LL << 32), 32, (kMax >> 32) - 1},
-    {kMax - (1LL << 32) + 1, 32, (kMax >> 32)},
-    {kMax, 32, (kMax >> 32)},
+    {S64_MIN, 32, S64_MIN >> 32},
+    {S64_MIN + 1, 32, (S64_MIN >> 32) + 1},
+    {S64_MAX - (1LL << 32), 32, (S64_MAX >> 32) - 1},
+    {S64_MAX - (1LL << 32) + 1, 32, (S64_MAX >> 32)},
+    {S64_MAX, 32, (S64_MAX >> 32)},
 
     // frac_bits = 61: Highest precision that doesn't hit range boundary.
-    {kMin, 61, -4},
-    {kMin + 1, 61, -3},
-    {kMax - (1LL << 61), 61, 2},
-    {kMax - (1LL << 61) + 1, 61, 3},
-    {kMax, 61, 3},
+    {S64_MIN, 61, -4},
+    {S64_MIN + 1, 61, -3},
+    {S64_MAX - (1LL << 61), 61, 2},
+    {S64_MAX - (1LL << 61) + 1, 61, 3},
+    {S64_MAX, 61, 3},
 
     // frac_bits = 62: Maximum precision
-    {kMin, 62, -2},
-    {kMin + 1, 62, -1},
-    {kMax - (1LL << 62), 62, 0},
-    {kMax - (1LL << 62) + 1, 62, 1},
-    {kMax, 62, 1},
+    {S64_MIN, 62, -2},
+    {S64_MIN + 1, 62, -1},
+    {S64_MAX - (1LL << 62), 62, 0},
+    {S64_MAX - (1LL << 62) + 1, 62, 1},
+    {S64_MAX, 62, 1},
 };
 
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
@@ -879,7 +876,7 @@ const DoubleConversionTestParam from_double_params[] = {
       1ll << 30 -> 0.25
   */
   {(-2ll << 32) - ((1ll << 31) | (1ll << 30)), 32, -2.75},
-  {(2ll << 32) + ((1ll << 31) | (1ll << 30)),  32, 2.75},
+  {( 2ll << 32) + ((1ll << 31) | (1ll << 30)),  32, 2.75},
 
   /*
     The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so the
@@ -889,35 +886,36 @@ const DoubleConversionTestParam from_double_params[] = {
     These tests show it truncates to zero from both sides.
   */
   {0, 32, -std::ldexp(1.0, -33)},
-  {0, 32, std::ldexp(1.0, -33)},
+  {0, 32,  std::ldexp(1.0, -33)},
 
   /*
     Min and max representable values for frac_bits = 0.
 
-    Ideally, we'd test against max, but it is a 63-bit number. A double only
-    has 53 bits of precision, so it can't be stored precisely in a double. If
-    we were to try to round trip it, the runtime would have to pick the closest
-    representable double, which in this case, causes it to round up to 2^64.
-    The value in the double is then larger than max. Converting an out of range
-    double to an integer is undefined behavior. In this specific case, on x64,
-    converting back just happens to give the value min. That is about as
-    different from the value we started with as could be, so the test fails.
+    Ideally, we'd test against S64_MAX, but it is a 63-bit number. A double
+    only has 53 bits of precision, so it can't be stored precisely in a double.
+    If we were to try to round trip it, the runtime would have to pick the
+    closest representable double, which in this case, causes it to round up to
+    2^64. The value in the double is then larger than S64_MAX. Converting an
+    out of range double to an integer is undefined behavior. In this specific
+    case, on x64, converting back just happens to give the value S64_MIN. That
+    is about as different from the value we started with as could be, so the
+    test fails.
 
     Instead, we use the largest round-trippable integer, which is:
-      max - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
+      S64_MAX - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
 
-    min is representable, so we use it directly.
+    S64_MIN is representable, so we use it directly.
   */
-  {kMin,        0, static_cast<double>(kMin)},
-  {kMax - 1023, 0, static_cast<double>(kMax - 1023)},
+  {S64_MIN,        0, static_cast<double>(S64_MIN)},
+  {S64_MAX - 1023, 0, static_cast<double>(S64_MAX - 1023)},
 
   // Min and max representable values for frac_bits = 32
-  {kMin,                    32, -static_cast<double>(1ll << 31)},
-  {((1ll << 31) - 1) << 32, 32, static_cast<double>((1ll << 31) - 1)},
+  {S64_MIN,                 32, -static_cast<double>(1ll << 31)},
+  {((1ll << 31) - 1) << 32, 32,  static_cast<double>((1ll << 31) - 1)},
 
   // Min and max representable values for frac_bits = 62
-  {kMin,      62, -2.0},
-  {1ll << 62, 62, 1.0},
+  {S64_MIN,   62, -2.0},
+  {1ll << 62, 62,  1.0},
 };
 // clang-format on
 
@@ -1242,9 +1240,9 @@ INSTANTIATE_TEST_SUITE_P(zero_cases, FixedMultiplicationTest,
 */
 // clang-format off
 const MultiplicationParam multiplication_no_shift_cases[] = {
-    {(1LL << 32), (1LL << 32), 0, kMax},
-    {kMax, kMax, 0, kMax},
-    {kMax, 2, 0, kMax},
+    {(1LL << 32), (1LL << 32), 0, S64_MAX},
+    {S64_MAX, S64_MAX, 0, S64_MAX},
+    {S64_MAX, 2, 0, S64_MAX},
 
     // Simple signs
     {1, 1, 0, 1},
@@ -1260,9 +1258,9 @@ const MultiplicationParam multiplication_no_shift_cases[] = {
     {-(1LL << 61), -2, 0, 1LL << 62},
 
     // Boundary: max/min
-    {kMax, 1, 0, kMax},
-    {kMax, -1, 0, -kMax},
-    {-kMax, -1, 0, kMax},
+    {S64_MAX, 1, 0, S64_MAX},
+    {S64_MAX, -1, 0, -S64_MAX},
+    {-S64_MAX, -1, 0, S64_MAX},
 
     // Overflow on truncation (product > 64 bits)
 };
@@ -1314,15 +1312,15 @@ const MultiplicationParam multiplication_right_shift_cases[] = {
     {-(1LL << 62), -1, -62, 1},
 
     // Boundary: max/min
-    {kMax, 2, -1, kMax},   // ((1 << 64) - 2) >> 1 = (1 << 63) - 1 = kMax
-    {-kMax, 2, -1, -kMax},
+    {S64_MAX, 2, -1, S64_MAX},   // ((1 << 64) - 2) >> 1 = (1 << 63) - 1 = S64_MAX
+    {-S64_MAX, 2, -1, -S64_MAX},
 
     // Boundary: 127-bit shift
     {1LL << 63, 1LL << 63, -126, 1}, // (1 << 126) >> 126 = 1
     {1LL << 63, 1LL << 63, -127, 0}, // (1 << 126) >> 127 = 0.5
 
-    // (kMin*-1) >> 1 = (1 << 63) >> 1 = 1 << 62
-    {kMin, -1, -1, 1LL << 62},
+    // (S64_MIN*-1) >> 1 = (1 << 63) >> 1 = 1 << 62
+    {S64_MIN, -1, -1, 1LL << 62},
 };
 // clang-format on
 
@@ -1344,12 +1342,12 @@ const MultiplicationParam multiplication_left_shift_cases[] = {
 
     // Boundary: shift to MSB
     {1, 1, 62, 1LL << 62},
-    {2, 1, 62, kMax},
-    {1, 1, 63, kMax},
-    {1, -1, 63, kMin},
+    {2, 1, 62, S64_MAX},
+    {1, 1, 63, S64_MAX},
+    {1, -1, 63, S64_MIN},
 
     // Boundary: overflow
-    {2, 2, 63, kMax},
+    {2, 2, 63, S64_MAX},
 };
 // clang-format on
 
@@ -1366,21 +1364,21 @@ const MultiplicationParam multiplication_extreme_right_shift_cases[] = {
     // Boundary
     {1, 1, -128, 0},
     {100, 200, -128, 0},
-    {kMax, kMax, -128, 0},
+    {S64_MAX, S64_MAX, -128, 0},
 
     // Signs
     {-1, 1, -128, 0},
     {-1, -1, -128, 0},
-    {-kMax, kMax, -128, 0},
+    {-S64_MAX, S64_MAX, -128, 0},
 
     // Zeros
     {0, 0, -128, 0},
-    {0, kMax, -128, 0},
+    {0, S64_MAX, -128, 0},
 
     // Well over boundary
     {1, 1, -129, 0},
     {1, 1, -200, 0},
-    {kMax, -kMax, -200, 0},
+    {S64_MAX, -S64_MAX, -200, 0},
 };
 // clang-format on
 
@@ -1396,23 +1394,23 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format off
 const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
     // Boundary
-    {1, 1, 64, kMax},
-    {100, 200, 64, kMax},
-    {kMax, kMax, 64, kMax},
+    {1, 1, 64, S64_MAX},
+    {100, 200, 64, S64_MAX},
+    {S64_MAX, S64_MAX, 64, S64_MAX},
 
     // Signs
-    {-1, 1, 64, kMin},
-    {-1, -1, 64, kMax},
-    {-kMax, kMax, 64, kMin},
+    {-1, 1, 64, S64_MIN},
+    {-1, -1, 64, S64_MAX},
+    {-S64_MAX, S64_MAX, 64, S64_MIN},
 
     // Zeros
     {0, 0, 64, 0},
-    {0, kMax, 64, 0},
+    {0, S64_MAX, 64, 0},
 
     // Well over boundary
-    {1, 1, 65, kMax},
-    {1, 1, 200, kMax},
-    {kMax, -kMax, 200, kMin},
+    {1, 1, 65, S64_MAX},
+    {1, 1, 200, S64_MAX},
+    {S64_MAX, -S64_MAX, 200, S64_MIN},
 };
 // clang-format on
 
@@ -1443,14 +1441,14 @@ const MultiplicationParam multiplication_truncation_cases[] = {
     {511, 1, -10, 0},    //  0.499... rounds to 0
     {512, 1, -10, 1},    //  0.5      rounds to 1
 
-    {kMin, (1LL << 62), -100, -(1LL << 25)},
-    {kMax, (1LL << 62), -100, (1LL << 25)},
-    {kMin, kMax, -100, -(1LL << 26)},
-    {kMax, kMax, -100, (1LL << 26)},
-    {kMin, kMin, -100, (1LL << 26)},
+    {S64_MIN, (1LL << 62), -100, -(1LL << 25)},
+    {S64_MAX, (1LL << 62), -100, (1LL << 25)},
+    {S64_MIN, S64_MAX, -100, -(1LL << 26)},
+    {S64_MAX, S64_MAX, -100, (1LL << 26)},
+    {S64_MIN, S64_MIN, -100, (1LL << 26)},
 
     // Final boss test vector.
-    {kMin, kMin, -127, 1},
+    {S64_MIN, S64_MIN, -127, 1},
 };
 
 INSTANTIATE_TEST_SUITE_P(truncation_cases, FixedMultiplicationTest,
@@ -1529,7 +1527,7 @@ const DivisionParam division_params[] = {
 
     // large shifts
     {1, 1, 62, 1LL << 62},
-    {1, 1, 63, kMax},
+    {1, 1, 63, S64_MAX},
     {1, 2, 63, 1LL << 62},
     {1, 1LL << 10, 63, 1LL << 53},
 
@@ -1574,13 +1572,13 @@ const DivisionParam division_params[] = {
     {1LL << 61, -1, 1, -(1LL << 62)},
 
     // negative values with large shifts
-    {-1, 1, 63, kMin},
-    {-1, -1, 63, kMax},
+    {-1, 1, 63, S64_MIN},
+    {-1, -1, 63, S64_MAX},
     {-1, 1LL << 62, 63, -2},
 
-    // kMax boundary
-    {kMax, 1, 0, kMax},
-    {kMax, -1, 0, -kMax},
+    // S64_MAX boundary
+    {S64_MAX, 1, 0, S64_MAX},
+    {S64_MAX, -1, 0, -S64_MAX},
 
     // various zeros
     {0, -100, 10, 0},
@@ -1590,41 +1588,41 @@ const DivisionParam division_params[] = {
     // divisor == 0 error cases
     {0, 0, 0, 0},         // 0/0 = 0 (arbitrary choice)
     {0, 0, 32, 0},        // 0/0 with shift
-    {1, 0, 0, kMax},      // positive/0 = kMax
-    {100, 0, 10, kMax},   // positive/0 with shift
-    {kMax, 0, 32, kMax},  // kMax/0
-    {-1, 0, 0, kMin},     // negative/0 = kMin
-    {-100, 0, 10, kMin},  // negative/0 with shift
-    {kMin, 0, 32, kMin},  // kMin/0
+    {1, 0, 0, S64_MAX},      // positive/0 = S64_MAX
+    {100, 0, 10, S64_MAX},   // positive/0 with shift
+    {S64_MAX, 0, 32, S64_MAX},  // S64_MAX/0
+    {-1, 0, 0, S64_MIN},     // negative/0 = S64_MIN
+    {-100, 0, 10, S64_MIN},  // negative/0 with shift
+    {S64_MIN, 0, 32, S64_MIN},  // S64_MIN/0
 
     // shift >= 128 saturation cases
     {0, 1, 128, 0},    // 0 stays 0
     {0, -1, 128, 0},   // 0 stays 0 (negative divisor)
     {0, 100, 200, 0},  // 0 stays 0 (large shift)
 
-    // positive dividend, positive divisor -> kMax
-    {1, 1, 128, kMax},
-    {100, 50, 128, kMax},
-    {kMax, 1, 129, kMax},
-    {1, kMax, 200, kMax},
+    // positive dividend, positive divisor -> S64_MAX
+    {1, 1, 128, S64_MAX},
+    {100, 50, 128, S64_MAX},
+    {S64_MAX, 1, 129, S64_MAX},
+    {1, S64_MAX, 200, S64_MAX},
 
-    // positive dividend, negative divisor -> kMin
-    {1, -1, 128, kMin},
-    {100, -50, 128, kMin},
-    {kMax, -1, 129, kMin},
-    {1, -kMax, 200, kMin},
+    // positive dividend, negative divisor -> S64_MIN
+    {1, -1, 128, S64_MIN},
+    {100, -50, 128, S64_MIN},
+    {S64_MAX, -1, 129, S64_MIN},
+    {1, -S64_MAX, 200, S64_MIN},
 
-    // negative dividend, positive divisor -> kMin
-    {-1, 1, 128, kMin},
-    {-100, 50, 128, kMin},
-    {kMin, 1, 129, kMin},
-    {-1, kMax, 200, kMin},
+    // negative dividend, positive divisor -> S64_MIN
+    {-1, 1, 128, S64_MIN},
+    {-100, 50, 128, S64_MIN},
+    {S64_MIN, 1, 129, S64_MIN},
+    {-1, S64_MAX, 200, S64_MIN},
 
-    // negative dividend, negative divisor -> kMax
-    {-1, -1, 128, kMax},
-    {-100, -50, 128, kMax},
-    {kMin, -1, 129, kMax},
-    {-1, -kMax, 200, kMax},
+    // negative dividend, negative divisor -> S64_MAX
+    {-1, -1, 128, S64_MAX},
+    {-100, -50, 128, S64_MAX},
+    {S64_MIN, -1, 129, S64_MAX},
+    {-1, -S64_MAX, 200, S64_MAX},
 };
 
 INSTANTIATE_TEST_SUITE_P(division_params, FixedDivisionTest,
