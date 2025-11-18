@@ -514,20 +514,11 @@ const FixedRescaleS64TestParam rescale_s64_invalid_scales[] = {
     // value < 0, output >= frac, saturate min
     {-1, 64, 64, S64_MIN},
 };
-
 INSTANTIATE_TEST_SUITE_P(invalid_scales, FixedRescaleS64Test,
                          ValuesIn(rescale_s64_invalid_scales));
 
-/*
-  Systematic boundary value analysis coverage:
-
-  Value categories: kMin, kMin + 1, -1, zero, 1, kMax - 1, kMax
-  Shift direction: right (output < frac), equal, left (output > frac)
-  Shift boundaries: min (0), mid (31), max (63)
-*/
-const FixedRescaleS64TestParam rescale_s64_valid_scales[] = {
-    // Right shift path (output_frac_bits < frac_bits)
-
+// Right shift path (output_frac_bits < frac_bits)
+const FixedRescaleS64TestParam rescale_s64_right_shift[] = {
     // Basic positive with mid-range params
     {35LL << 16, 48, 32, 35},
 
@@ -548,9 +539,12 @@ const FixedRescaleS64TestParam rescale_s64_valid_scales[] = {
 
     // Extreme value: kMax (safe because right shift)
     {INT64_MAX, 48, 32, INT64_MAX >> 16},
+};
+INSTANTIATE_TEST_SUITE_P(right_shift, FixedRescaleS64Test,
+                         ValuesIn(rescale_s64_right_shift));
 
-    // Equal path (output_frac_bits == frac_bits)
-
+// Equal path (output_frac_bits == frac_bits)
+const FixedRescaleS64TestParam rescale_s64_no_shift[] = {
     // Basic positive
     {35LL << 16, 40, 40, 35LL << 16},
 
@@ -566,8 +560,12 @@ const FixedRescaleS64TestParam rescale_s64_valid_scales[] = {
     // Extreme value: kMax
     {INT64_MAX, 40, 40, INT64_MAX},
 
-    // Left shift path (output_frac_bits > frac_bits)
+};
+INSTANTIATE_TEST_SUITE_P(no_shift, FixedRescaleS64Test,
+                         ValuesIn(rescale_s64_no_shift));
 
+// Left shift path (output_frac_bits > frac_bits)
+const FixedRescaleS64TestParam rescale_s64_left_shift[] = {
     // Basic positive with mid-range params
     {35, 32, 48, 35LL << 16},
 
@@ -583,6 +581,12 @@ const FixedRescaleS64TestParam rescale_s64_valid_scales[] = {
     // Large shift amount (shift by 60)
     {3, 0, 60, 3LL << 60},
 
+};
+INSTANTIATE_TEST_SUITE_P(left_shift, FixedRescaleS64Test,
+                         ValuesIn(rescale_s64_left_shift));
+
+// Edge cases.
+const FixedRescaleS64TestParam rescale_s64_edge_cases[] = {
     // Saturation: large positive that overflows -> kMax
     // kMax >> 4 shifted left by 5 overflows (bit 58 -> bit 63)
     {INT64_MAX >> 4, 58, 63, INT64_MAX},
@@ -606,9 +610,8 @@ const FixedRescaleS64TestParam rescale_s64_valid_scales[] = {
     // Most negative value with top 5 bits as ones (sign extension)
     {-(1LL << 58), 58, 63, (-(1LL << 58)) << 5},
 };
-
-INSTANTIATE_TEST_SUITE_P(valid_scales, FixedRescaleS64Test,
-                         ValuesIn(rescale_s64_valid_scales));
+INSTANTIATE_TEST_SUITE_P(edge_cases, FixedRescaleS64Test,
+                         ValuesIn(rescale_s64_edge_cases));
 
 // ----------------------------------------------------------------------------
 // Integer Conversions Tests
