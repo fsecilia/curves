@@ -79,21 +79,23 @@ extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplier_frac_bits,
 				 unsigned int output_frac_bits);
 
+// Cold path: handles all error cases
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift)
 {
-	// Zero dividend always produces zero.
+	// Zero dividend always produces zero
 	if (dividend == 0)
 		return 0;
 
-	// Division by zero saturates based on dividend sign.
+	// Division by zero saturates based on dividend sign
 	if (divisor == 0)
 		return curves_saturate_s64(dividend >= 0);
 
-	// Excessive right shift causes underflow to zero.
+	// Extreme right shift causes underflow to zero
 	if (shift <= -64)
 		return 0;
 
-	// All other cases (invalid parameters, excessive left shift) saturate.
+	// Extreme left shift or invalid parameters cause saturation
+	// Saturate based on the sign of the quotient (dividend ^ divisor)
 	return curves_saturate_s64((dividend ^ divisor) >= 0);
 }
 

@@ -292,70 +292,112 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift);
 
-static inline s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
-						     int shift)
+// Determines threshold value of |dividend| that saturates division.
+//
+// For a particular shift, the quotient is: (dividend*2^shift) / divisor
+// This overflows s64 if |dividend|*2^shift >= |divisor|*2^63
+// Solving, |dividend| >= |divisor|*2^(63 - shift)
+// Returns |divisor|*2^(63 - shift)
+static inline s128 __curves_fixed_min_saturating_dividend(s64 divisor,
+							  int shift)
 {
-	s128 saturation_threshold;
-	int saturation_threshold_bit = 63 - shift;
+	// Use absolute value since we're computing a magnitude threshold.
+	s128 abs_divisor = (divisor < 0) ? -(s128)divisor : divisor;
 
-	if (saturation_threshold_bit >= 0) {
-		// 128-bit left shift - handles both shift >= 0 and shift < 0
-		// cases when the threshold bit is positive
-		saturation_threshold = (s128)divisor
-				       << saturation_threshold_bit;
+	// Compute 2^(63 - shift)*abs_divisor.
+	// The shift direction depends on whether (63 - shift) is positive.
+	int threshold_shift = 63 - shift;
+	if (threshold_shift >= 0) {
+		return abs_divisor << threshold_shift;
 	} else {
-		// 64-bit right shift - only needed when shift > 63
-		saturation_threshold =
-			(s128)(divisor >> -saturation_threshold_bit);
+		return abs_divisor >> -threshold_shift;
 	}
+}
 
-	// Check for saturation and return S64_MAX or S64_MIN if needed
-	s128 abs_dividend = dividend < 0 ? -dividend : dividend;
-	s128 abs_threshold = saturation_threshold < 0 ? -saturation_threshold :
-							saturation_threshold;
+// Checks if division would saturate s64 result.
+//
+// Returns the saturation value (S64_MAX or S64_MIN) if it would saturate, or 0
+// if the division is safe to perform.
+static inline s64 __curves_fixed_divide_check_saturation(s64 dividend,
+							 s64 divisor, int shift)
+{
+	// Compute min saturating |dividend| threshold.
+	s128 min_saturating_dividend =
+		__curves_fixed_min_saturating_dividend(divisor, shift);
 
-	if (unlikely(abs_dividend >= abs_threshold)) {
-		// Saturate based on sign of quotient
+	// Check if |dividend| exceeds this threshold.
+	s128 abs_dividend = (dividend < 0) ? -(s128)dividend : dividend;
+
+	if (abs_dividend >= min_saturating_dividend) {
+		// We would saturate - return the appropriate limit based on
+		// sign of quotient.
 		return curves_saturate_s64((dividend ^ divisor) >= 0);
 	}
 
+	// No saturation needed.
 	return 0;
 }
 
+// Performs left-shift, then division.
+// Assumes saturation has already been checked
+static inline s64 __curves_fixed_divide_shl(s64 dividend, s64 divisor,
+					    int shift)
+{
+	// Scale dividend up before dividing for maximum precision
+	return curves_div_s128_s64(((s128)dividend) << shift, divisor);
+}
+
+// Performs division, then right-shift.
+// Assumes saturation has already been checked
+static inline s64 __curves_fixed_divide_shr(s64 dividend,
+					    unsigned int dividend_frac_bits,
+					    s64 divisor,
+					    unsigned int divisor_frac_bits,
+					    unsigned int output_frac_bits)
+{
+	// Compute the division at native precision
+	s64 quotient = curves_div_s128_s64(((s128)dividend), divisor);
+
+	// The quotient has (dividend_frac_bits - divisor_frac_bits) fractional
+	// bits. Rescale it to output_frac_bits.
+	return curves_fixed_rescale_s64(quotient,
+					dividend_frac_bits - divisor_frac_bits,
+					output_frac_bits);
+}
+
+// Main division function: hot path
 static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int dividend_frac_bits,
 				      s64 divisor,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
-	// Calculate shift from the parameters.
+	// Calculate the shift needed
 	int shift = (int)output_frac_bits + (int)divisor_frac_bits -
 		    (int)dividend_frac_bits;
 
-	// Validate all parameters and check for problematic shift values or
-	// division by zero.
-	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
-		     output_frac_bits >= 64 || divisor == 0 || shift >= 127 ||
-		     shift <= -64))
+	// Fast path: check for error conditions and delegate to cold path
+	if (unlikely(divisor == 0 || dividend == 0 || shift <= -64 ||
+		     shift >= 128 || dividend_frac_bits >= 64 ||
+		     divisor_frac_bits >= 64 || output_frac_bits >= 64)) {
 		return __curves_fixed_divide_error(dividend, divisor, shift);
+	}
 
-	// Check if the result would saturate even with valid parameters.
-	s64 saturation =
-		__curves_fixed_divide_try_saturate(dividend, divisor, shift);
+	// Check if the result would saturate
+	s64 saturation = __curves_fixed_divide_check_saturation(dividend,
+								divisor, shift);
 	if (unlikely(saturation != 0))
 		return saturation;
 
-	// Perform the division with appropriate precision adjustment.
+	// Perform the division with appropriate precision technique
 	if (shift >= 0) {
-		// Left shift dividend before dividing to increase output
-		// precision.
-		return curves_div_s128_s64((s128)dividend << shift, divisor);
+		// Left shift: simple and efficient
+		return __curves_fixed_divide_shl(dividend, divisor, shift);
 	} else {
-		// Divide first, then rescale to reduce output precision
-		return curves_fixed_rescale_s64(
-			curves_div_s128_s64(dividend, divisor),
-			dividend_frac_bits - divisor_frac_bits,
-			output_frac_bits);
+		// Right shift: use Q64.64 for maximum precision
+		return __curves_fixed_divide_shr(dividend, dividend_frac_bits,
+						 divisor, divisor_frac_bits,
+						 output_frac_bits);
 	}
 }
 
