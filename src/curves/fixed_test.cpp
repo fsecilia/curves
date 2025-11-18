@@ -240,14 +240,21 @@ INSTANTIATE_TEST_SUITE_P(boundaries, FixedTestRoundingIntegerConversion,
 // Double -> Fixed
 // ----------------------------------------------------------------------------
 
-struct DoubleConversionTestParam {
+struct FixedFromDoubleParam {
+  double double_value;
   s64 fixed_value;
   unsigned int frac_bits;
-  double double_value;
+
+  friend auto operator<<(std::ostream& out, const FixedFromDoubleParam& src)
+      -> std::ostream& {
+    return out << "{" << src.double_value << ", " << src.fixed_value << ", "
+               << src.frac_bits << "}";
+  }
 };
 
+// Tests that doubles round to 0 during conversion to fixed-point.
 struct FixedConversionTestFixedFromDouble
-    : TestWithParam<DoubleConversionTestParam> {};
+    : TestWithParam<FixedFromDoubleParam> {};
 
 TEST_P(FixedConversionTestFixedFromDouble, from_double) {
   const auto param = GetParam();
@@ -256,73 +263,72 @@ TEST_P(FixedConversionTestFixedFromDouble, from_double) {
   ASSERT_EQ(param.fixed_value, actual);
 }
 
-// clang-format off
-const DoubleConversionTestParam from_double_params[] = {
-  /*
-    The truncation from double to fixed is different than the truncation from
-    fixed to integer. The conversion relies on the double->integer cast, which
-    performs real truncation, rounding towards zero.
+// frac_bits = 0, no scaling occurs, so this is simple double->integer rounding.
+const FixedFromDoubleParam from_double_frac_bits_0[] = {
+    {-123.45, -123, 0},
+    {-0.9, 0, 0},
+    {0.9, 0, 0},
+    {123.45, 123, 0},
 
-    These tests show this for frac_bits = 0, which is really just round
-    tripping the truncation with no scaling.
-  */
-  {-123, 0, -123.45},
-  {123,  0,  123.45},
-  {0,    0,  -0.9},
-  {0,    0,  0.9},
+    /*
+      Min and max representable values.
 
-  /*
-    Normal values for frac_bits = 32:
-      2ll << 32 -> 2
-      1ll << 31 -> 0.5
-      1ll << 30 -> 0.25
-  */
-  {(-2ll << 32) - ((1ll << 31) | (1ll << 30)), 32, -2.75},
-  {( 2ll << 32) + ((1ll << 31) | (1ll << 30)),  32, 2.75},
+      Ideally, we'd test against S64_MAX, but it is a 63-bit number. A double
+      only has 53 bits of precision, so S64_MAX can't be stored precisely in a
+      double. If we were to try to round trip it, the runtime would have to
+      pick the closest representable double, which in this case, causes it to
+      round up to 2^64. The value in the double is then larger than S64_MAX.
+      Converting an out of range double to an integer is undefined behavior. In
+      this specific case, on x64, converting back just happens to give the
+      value S64_MIN. That is about as different from the value we started with
+      as could be, so the test fails.
 
-  /*
-    The smallest bit at precision 32 is 1/2^32. 2^-33 is half of that, so the
-    fixed point value we're generating here is actually 2^-33*(1 << 32) = 0.5,
-    which truncates to 0.
+      Instead, we use the largest round-trippable integer, which is:
+        (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10 = S64_MAX - 1023
 
-    These tests show it truncates to zero from both sides.
-  */
-  {0, 32, -std::ldexp(1.0, -33)},
-  {0, 32,  std::ldexp(1.0, -33)},
-
-  /*
-    Min and max representable values for frac_bits = 0.
-
-    Ideally, we'd test against S64_MAX, but it is a 63-bit number. A double
-    only has 53 bits of precision, so it can't be stored precisely in a double.
-    If we were to try to round trip it, the runtime would have to pick the
-    closest representable double, which in this case, causes it to round up to
-    2^64. The value in the double is then larger than S64_MAX. Converting an
-    out of range double to an integer is undefined behavior. In this specific
-    case, on x64, converting back just happens to give the value S64_MIN. That
-    is about as different from the value we started with as could be, so the
-    test fails.
-
-    Instead, we use the largest round-trippable integer, which is:
-      S64_MAX - 1023 = (2^63 - 1) - (2^10 - 1) = 2^63 - 2^10
-
-    S64_MIN is representable, so we use it directly.
-  */
-  {S64_MIN,        0, static_cast<double>(S64_MIN)},
-  {S64_MAX - 1023, 0, static_cast<double>(S64_MAX - 1023)},
-
-  // Min and max representable values for frac_bits = 32
-  {S64_MIN,                 32, -static_cast<double>(1ll << 31)},
-  {((1ll << 31) - 1) << 32, 32,  static_cast<double>((1ll << 31) - 1)},
-
-  // Min and max representable values for frac_bits = 62
-  {S64_MIN,   62, -2.0},
-  {1ll << 62, 62,  1.0},
+      S64_MIN is representable, so we use it directly.
+    */
+    {static_cast<double>(S64_MIN), S64_MIN, 0},
+    {static_cast<double>(S64_MAX - 1023), S64_MAX - 1023, 0},
 };
-// clang-format on
+INSTANTIATE_TEST_SUITE_P(frac_bits_0, FixedConversionTestFixedFromDouble,
+                         ValuesIn(from_double_frac_bits_0));
 
-INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedFromDouble,
-                         ValuesIn(from_double_params));
+// frac_bits = 32
+const FixedFromDoubleParam from_double_frac_bits_32[] = {
+    {-123.45, -530213712691, 32},
+    {-0.9, -3865470566, 32},
+    {0.9, 3865470566, 32},
+    {123.45, 530213712691, 32},
+
+    /*
+      With 32 fractional bits, the smallest bit represents 1/2^32. 2^-33 is
+      half of that, so the fixed point value we're generating here is actually
+      2^-33*(1 << 32) = 0.5, which truncates to 0 from both sides.
+    */
+    {-std::ldexp(1.0, -33), 0, 32},
+    {std::ldexp(1.0, -33), 0, 32},
+
+    // Min and max representable values.
+    {-static_cast<double>(1ll << 31), S64_MIN, 32},
+    {static_cast<double>((1ll << 31) - 1), ((1ll << 31) - 1) << 32, 32},
+};
+INSTANTIATE_TEST_SUITE_P(frac_bits_32, FixedConversionTestFixedFromDouble,
+                         ValuesIn(from_double_frac_bits_32));
+
+// frac_bits = 62
+const FixedFromDoubleParam from_double_frac_bits_62[] = {
+    // At infinite precision, these values would be +/-4150517416584649114, but
+    // double rounds to 53 bits, so they become +/-4150517416584649216.
+    {-0.9, -4150517416584649216LL, 62},
+    {0.9, 4150517416584649216LL, 62},
+
+    // Min and max representable values.
+    {-2.0, S64_MIN, 62},
+    {1.0, 1ll << 62, 62},
+};
+INSTANTIATE_TEST_SUITE_P(frac_bits_62, FixedConversionTestFixedFromDouble,
+                         ValuesIn(from_double_frac_bits_62));
 
 // Fixed -> Double
 // ----------------------------------------------------------------------------
