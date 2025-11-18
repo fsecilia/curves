@@ -72,7 +72,7 @@ static inline s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift)
 static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 					   unsigned int output_frac_bits)
 {
-	// Handle invalid scales.
+	// Handle invalid scales
 	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
 		return __curves_fixed_rescale_error_s64(value, frac_bits,
 							output_frac_bits);
@@ -281,56 +281,31 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift);
 
 static inline s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
-						     s128 threshold)
-{
-	s128 abs_dividend = dividend < 0 ? -dividend : dividend;
-	s128 abs_threshold = threshold < 0 ? -threshold : threshold;
-
-	if (unlikely(abs_dividend >= abs_threshold)) {
-		// Saturate based on sign of quotient.
-		return curves_saturate_s64((dividend ^ divisor) >= 0);
-	}
-
-	return 0;
-}
-
-static inline s64 __curves_fixed_divide_try_saturate_shl(s64 dividend,
-							 s64 divisor, int shift)
+						     int shift)
 {
 	s128 saturation_threshold;
-	s64 saturation;
-
 	int saturation_threshold_bit = 63 - shift;
 
 	if (saturation_threshold_bit >= 0) {
-		// 128-bit shift
+		// 128-bit left shift - handles both shift >= 0 and shift < 0
+		// cases when the threshold bit is positive
 		saturation_threshold = (s128)divisor
 				       << saturation_threshold_bit;
 	} else {
-		// 64-bit shift
+		// 64-bit right shift - only needed when shift > 63
 		saturation_threshold =
 			(s128)(divisor >> -saturation_threshold_bit);
 	}
 
-	saturation = __curves_fixed_divide_try_saturate(dividend, divisor,
-							saturation_threshold);
-	if (unlikely(saturation != 0))
-		return saturation;
+	// Check for saturation and return S64_MAX or S64_MIN if needed
+	s128 abs_dividend = dividend < 0 ? -dividend : dividend;
+	s128 abs_threshold = saturation_threshold < 0 ? -saturation_threshold :
+							saturation_threshold;
 
-	return 0;
-}
-
-static inline s64 __curves_fixed_divide_try_saturate_shr(s64 dividend,
-							 s64 divisor, int shift)
-{
-	int saturation_threshold_bit = 63 - shift;
-
-	s128 saturation_threshold = (s128)divisor << saturation_threshold_bit;
-	s64 saturation = __curves_fixed_divide_try_saturate(
-		dividend, divisor, saturation_threshold);
-
-	if (unlikely(saturation != 0))
-		return saturation;
+	if (unlikely(abs_dividend >= abs_threshold)) {
+		// Saturate based on sign of quotient
+		return curves_saturate_s64((dividend ^ divisor) >= 0);
+	}
 
 	return 0;
 }
@@ -341,25 +316,30 @@ static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
+	// Calculate shift from the parameters.
 	int shift = (int)output_frac_bits + (int)divisor_frac_bits -
 		    (int)dividend_frac_bits;
 
-	if (unlikely(shift >= 128 || shift <= -64 || divisor == 0))
+	// Validate all parameters and check for problematic shift values or
+	// division by zero.
+	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
+		     output_frac_bits >= 64 || divisor == 0 || shift >= 127 ||
+		     shift <= -64))
 		return __curves_fixed_divide_error(dividend, divisor, shift);
 
-	if (shift >= 0) {
-		s64 saturation = __curves_fixed_divide_try_saturate_shl(
-			dividend, divisor, shift);
-		if (unlikely(saturation != 0))
-			return saturation;
+	// Check if the result would saturate even with valid parameters.
+	s64 saturation =
+		__curves_fixed_divide_try_saturate(dividend, divisor, shift);
+	if (unlikely(saturation != 0))
+		return saturation;
 
+	// Perform the division with appropriate precision adjustment.
+	if (shift >= 0) {
+		// Left shift dividend before dividing to increase output
+		// precision.
 		return curves_div_s128_s64((s128)dividend << shift, divisor);
 	} else {
-		s64 saturation = __curves_fixed_divide_try_saturate_shr(
-			dividend, divisor, shift);
-		if (unlikely(saturation != 0))
-			return saturation;
-
+		// Divide first, then rescale to reduce output precision
 		return curves_fixed_rescale_s64(
 			curves_div_s128_s64(dividend, divisor),
 			dividend_frac_bits - divisor_frac_bits,
