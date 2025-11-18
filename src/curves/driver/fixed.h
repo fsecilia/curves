@@ -16,7 +16,9 @@
 #include "kernel_compat.h"
 #include "math64.h"
 
-#define CURVES_S128_MAX ((s128)(~((u128)1 << 127)))
+#define CURVES_U128_MAX (~(u128)0)
+
+#define CURVES_S128_MAX ((s128)(CURVES_U128_MAX >> 1))
 #define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
 
 // ----------------------------------------------------------------------------
