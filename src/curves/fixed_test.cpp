@@ -333,8 +333,20 @@ INSTANTIATE_TEST_SUITE_P(frac_bits_62, FixedConversionTestFixedFromDouble,
 // Fixed -> Double
 // ----------------------------------------------------------------------------
 
+struct FixedToDoubleTestParam {
+  s64 fixed_value;
+  unsigned int frac_bits;
+  double double_value;
+
+  friend auto operator<<(std::ostream& out, const FixedToDoubleTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.fixed_value << ", " << src.frac_bits << ", "
+               << src.double_value << "}";
+  }
+};
+
 struct FixedConversionTestFixedToDouble
-    : TestWithParam<DoubleConversionTestParam> {};
+    : TestWithParam<FixedToDoubleTestParam> {};
 
 TEST_P(FixedConversionTestFixedToDouble, to_double) {
   const auto param = GetParam();
@@ -343,39 +355,49 @@ TEST_P(FixedConversionTestFixedToDouble, to_double) {
   ASSERT_DOUBLE_EQ(param.double_value, actual);
 }
 
-// clang-format off
-const DoubleConversionTestParam to_double_params[] = {
-  // frac_bits = 0 is just the original integers as doubles with no scaling.
-  {123, 0, 123.0},
-  {-456,0,  -456.0},
-
-  // frac_bits = 32, normal values with full precision
-  {(2ll << 32) | (1ll << 31),  32, 2.5},
-  {(-3ll << 32) | (1ll << 31), 32, -2.5},
-  {1,                          32, std::ldexp(1.0, -32)}, // 1/2^32
-  {-1,                         32, -std::ldexp(1.0, -32)},
-
-  /*
-    frac_bits = 60 causes precision loss when converting to 53-bit double.
-
-    In q3.60:
-      (1ll << 60) is 1.0
-      (1ll << 0) is 2^-60 (60 - 0 = 60)
-      (1ll << 6) is 2^-54 (60 - 6 = 54)
-      (1ll << 7) is 2^-53 (60 - 7 = 53)
-
-    1 + 2^-60 will lose the 2^-60 part, (1ll << 0) bit is cleared
-    1 + 2^-54 will lose the 2^-54 part, (1ll << 6) bit is cleared
-    1 + 2^-53 will keep the 2^-53 part, (1ll << 7) bit is set
-  */
-  {(1ll << 60) | (1ll << 0), 60, 1.0}, // The 2^-60 part is lost
-  {(1ll << 60) | (1ll << 6), 60, 1.0}, // The 2^-54 part is lost
-  {(1ll << 60) | (1ll << 7), 60, 1.0 + std::ldexp(1.0, -53)}, // bit is kept
+// frac_bits = 0
+const FixedToDoubleTestParam to_double_frac_bits_0[] = {
+    // frac_bits = 0 is just the original integers as doubles with no scaling.
+    {123, 0, 123.0},
+    {-456, 0, -456.0},
 };
-// clang-format on
+INSTANTIATE_TEST_SUITE_P(frac_bits_0, FixedConversionTestFixedToDouble,
+                         ValuesIn(to_double_frac_bits_0));
 
-INSTANTIATE_TEST_SUITE_P(all, FixedConversionTestFixedToDouble,
-                         ValuesIn(to_double_params));
+// frac_bits = 32
+const FixedToDoubleTestParam to_double_frac_bits_32[] = {
+    // frac_bits = 32, normal values with full precision
+    {(2ll << 32) | (1ll << 31), 32, 2.5},
+    {(-3ll << 32) | (1ll << 31), 32, -2.5},
+    {1, 32, std::ldexp(1.0, -32)},    // 1/2^32
+    {-1, 32, -std::ldexp(1.0, -32)},  // -1/2^32
+};
+INSTANTIATE_TEST_SUITE_P(frac_bits_32, FixedConversionTestFixedToDouble,
+                         ValuesIn(to_double_frac_bits_32));
+
+/*
+  frac_bits = 60
+
+  60 bits of fixed-point precision suffers precision loss when converting to a
+  53-bit double.
+
+  In q3.60:
+    (1ll << 60) is 1.0
+    (1ll << 0) is 2^-60 (60 - 0 = 60)
+    (1ll << 6) is 2^-54 (60 - 6 = 54)
+    (1ll << 7) is 2^-53 (60 - 7 = 53)
+
+  1 + 2^-60 will lose the 2^-60 part, (1ll << 0) bit is cleared
+  1 + 2^-54 will lose the 2^-54 part, (1ll << 6) bit is cleared
+  1 + 2^-53 will keep the 2^-53 part, (1ll << 7) bit is set
+*/
+const FixedToDoubleTestParam to_double_frac_bits_60[] = {
+    {(1ll << 60) | (1ll << 0), 60, 1.0},  // The 2^-60 part is lost
+    {(1ll << 60) | (1ll << 6), 60, 1.0},  // The 2^-54 part is lost
+    {(1ll << 60) | (1ll << 7), 60, 1.0 + std::ldexp(1.0, -53)},  // bit is kept
+};
+INSTANTIATE_TEST_SUITE_P(frac_bits_60, FixedConversionTestFixedToDouble,
+                         ValuesIn(to_double_frac_bits_60));
 
 // ----------------------------------------------------------------------------
 // Fixed Test
