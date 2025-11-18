@@ -6,7 +6,6 @@
 
 #include "fixed.hpp"
 #include <curves/test.hpp>
-#include <string>
 
 namespace curves {
 namespace {
