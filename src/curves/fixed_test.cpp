@@ -18,27 +18,27 @@ namespace {
 // Symmetric
 // ----------------------------------------------------------------------------
 
-/*
-  These are tests that don't truncate the fixed value, so they are the same
-  in either direction.
-*/
-
-struct SymmetricIntegersParam {
+struct SymmetricIntegerConversionParam {
   int64_t integer_value;
   unsigned int frac_bits;
   s64 fixed_value;
 
-  friend auto operator<<(std::ostream& out, const SymmetricIntegersParam& src)
+  friend auto operator<<(std::ostream& out,
+                         const SymmetricIntegerConversionParam& src)
       -> std::ostream& {
     return out << "{" << src.integer_value << ", " << src.frac_bits << ", "
                << src.fixed_value << "}";
   }
 };
 
-struct FixedConversionsTestSymmetricIntegers
-    : public TestWithParam<SymmetricIntegersParam> {};
+/*
+  These tests use values that don't need to round the fixed value, so they are
+  the same in either direction, int->fixed or fixed->int.
+*/
+struct FixedTestSymmetricIntegerConversion
+    : public TestWithParam<SymmetricIntegerConversionParam> {};
 
-TEST_P(FixedConversionsTestSymmetricIntegers, to_fixed) {
+TEST_P(FixedTestSymmetricIntegerConversion, to_fixed) {
   const auto param = GetParam();
 
   const auto expected = param.fixed_value;
@@ -48,7 +48,7 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_fixed) {
   ASSERT_EQ(expected, actual);
 }
 
-TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
+TEST_P(FixedTestSymmetricIntegerConversion, to_integer) {
   const auto param = GetParam();
 
   const auto expected = param.integer_value;
@@ -58,7 +58,7 @@ TEST_P(FixedConversionsTestSymmetricIntegers, to_integer) {
   ASSERT_EQ(expected, actual);
 }
 
-const SymmetricIntegersParam symmetric_integer_params[] = {
+const SymmetricIntegerConversionParam symmetric_integer_conversion_params[] = {
     // end of negative q63.0 range
     {S64_MIN, 0, S64_MIN},
 
@@ -126,35 +126,38 @@ const SymmetricIntegersParam symmetric_integer_params[] = {
     // end of q63.0 range
     {S64_MAX, 0, S64_MAX},
 };
+INSTANTIATE_TEST_SUITE_P(symmetric_integer_conversion,
+                         FixedTestSymmetricIntegerConversion,
+                         ValuesIn(symmetric_integer_conversion_params));
 
-INSTANTIATE_TEST_SUITE_P(all_conversions, FixedConversionsTestSymmetricIntegers,
-                         ValuesIn(symmetric_integer_params));
-
-// Truncation
+// Rounding
 // ----------------------------------------------------------------------------
 
-/*
-  These test that fixed->integer conversions always truncate, rather than the
-  default fixed-point behavior to round towards negative infinity that it gets
-  from using integers.
-*/
-
-struct IntegerTruncationParam {
+struct RoundingIntegerConversionParam {
   s64 fixed_value;
   unsigned int frac_bits;
   int64_t integer_value;
 
-  friend auto operator<<(std::ostream& out, const IntegerTruncationParam& src)
+  friend auto operator<<(std::ostream& out,
+                         const RoundingIntegerConversionParam& src)
       -> std::ostream& {
     return out << "{" << src.integer_value << ", " << src.frac_bits << ", "
                << src.fixed_value << "}";
   }
 };
 
-struct FixedConversionsTestIntegerTruncation
-    : public TestWithParam<IntegerTruncationParam> {};
+/*
+  These test that fixed->integer conversions always round-to-zero, rather than
+  the default integer behavior to round towards negative infinity.
 
-TEST_P(FixedConversionsTestIntegerTruncation, conversion_to_integer_truncates) {
+  This conversion is implemented in terms of curves_fixed_rescale_s64, which
+  has already been tested extensively. This test just checks a few specific
+  rounding cases with high precision.
+*/
+struct FixedTestRoundingIntegerConversion
+    : public TestWithParam<RoundingIntegerConversionParam> {};
+
+TEST_P(FixedTestRoundingIntegerConversion, conversion_to_integer_truncates) {
   const auto param = GetParam();
 
   const auto expected = param.integer_value;
@@ -164,7 +167,7 @@ TEST_P(FixedConversionsTestIntegerTruncation, conversion_to_integer_truncates) {
   ASSERT_EQ(expected, actual);
 }
 
-const IntegerTruncationParam integer_truncation_test_params[] = {
+const RoundingIntegerConversionParam rounding_integer_conversion_params[] = {
     {-4611686018427387904LL, 61, -2},  // = -2, floors to -2, truncates to -2
     {-4611686018427387903LL, 61, -1},  // < -2, floors to -2, truncates to -1
     {-3458764513820540928LL, 61, -1},  // = -1.5, floors to -2, truncates to -1
@@ -187,13 +190,12 @@ const IntegerTruncationParam integer_truncation_test_params[] = {
     {4611686018427387903LL, 61, 1},  // < 2, floors to 1, truncates to 1
     {4611686018427387904LL, 61, 2},  // = 2, floors to 2, truncates to 2
 };
-
-INSTANTIATE_TEST_SUITE_P(high_precision, FixedConversionsTestIntegerTruncation,
-                         ValuesIn(integer_truncation_test_params));
+INSTANTIATE_TEST_SUITE_P(high_precision, FixedTestRoundingIntegerConversion,
+                         ValuesIn(rounding_integer_conversion_params));
 
 // These test edge cases right at their edge, one inside, and the adjacent one
 // outside.
-const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
+const RoundingIntegerConversionParam rounding_integer_edge_case_params[] = {
     // frac_bits = 0: Special case, no rounding.
     {S64_MIN, 0, S64_MIN},
     {S64_MIN + 1, 0, S64_MIN + 1},
@@ -228,9 +230,8 @@ const IntegerTruncationParam integer_truncation_boundary_test_params[] = {
     {S64_MAX - (1LL << 62) + 1, 62, 1},
     {S64_MAX, 62, 1},
 };
-
-INSTANTIATE_TEST_SUITE_P(boundaries, FixedConversionsTestIntegerTruncation,
-                         ValuesIn(integer_truncation_boundary_test_params));
+INSTANTIATE_TEST_SUITE_P(boundaries, FixedTestRoundingIntegerConversion,
+                         ValuesIn(rounding_integer_edge_case_params));
 
 // ----------------------------------------------------------------------------
 // Double Conversions Tests
