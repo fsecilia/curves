@@ -323,7 +323,7 @@ static inline s64 __curves_fixed_divide_try_saturate_shl(s64 dividend,
 static inline s64 __curves_fixed_divide_try_saturate_shr(s64 dividend,
 							 s64 divisor, int shift)
 {
-	int saturation_threshold_bit = 63 + shift;
+	int saturation_threshold_bit = 63 - shift;
 
 	s128 saturation_threshold = (s128)divisor << saturation_threshold_bit;
 	s64 saturation = __curves_fixed_divide_try_saturate(
