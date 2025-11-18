@@ -3,7 +3,7 @@
   \file
   \copyright Copyright (C) 2025 Frank Secilia
 
-  This file contains tests for s128 versions of functions that also have an s128
+  This file contains tests for s128 versions of functions that also have an s64
   version.
 */
 
