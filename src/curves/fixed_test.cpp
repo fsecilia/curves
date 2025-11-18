@@ -176,7 +176,7 @@ TEST_P(FixedTestRoundingIntegerConversion, conversion_to_integer_truncates) {
   ASSERT_EQ(expected, actual);
 }
 
-const RoundingIntegerConversionParam rounding_integer_conversion_params[] = {
+const RoundingIntegerConversionParam round_ints_negative[] = {
     {-4611686018427387904LL, 61, -2},  // = -2, floors to -2, truncates to -2
     {-4611686018427387903LL, 61, -1},  // < -2, floors to -2, truncates to -1
     {-3458764513820540928LL, 61, -1},  // = -1.5, floors to -2, truncates to -1
@@ -185,11 +185,19 @@ const RoundingIntegerConversionParam rounding_integer_conversion_params[] = {
     {-2305843009213693951LL, 61, 0},   // < -1, floors to -1, truncates to 0
     {-1152921504606846976LL, 61, 0},   // = -0.5, floors to -1, truncates to 0
     {-1152921504606846975LL, 61, 0},   // < -0.5, floors -1, truncates to 0
+};
+INSTANTIATE_TEST_SUITE_P(negative, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_negative));
 
+const RoundingIntegerConversionParam round_ints_near_zero[] = {
     {1LL, 61, 0},   // > 0, floors to 0, truncates to 0
     {0LL, 61, 0},   // = 0, floors to 0, truncates to 0
     {-1LL, 61, 0},  // < 0, floors to 0, truncates to 0
+};
+INSTANTIATE_TEST_SUITE_P(near_zero, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_near_zero));
 
+const RoundingIntegerConversionParam round_ints_positive[] = {
     {1152921504606846975LL, 61, 0},  // < 0.5, floors to 0, truncates to 0
     {1152921504606846976LL, 61, 0},  // = 0.5, floors to 0, truncates to 0
     {2305843009213693951LL, 61, 0},  // < 1, floors to 0, truncates to 0
@@ -199,48 +207,60 @@ const RoundingIntegerConversionParam rounding_integer_conversion_params[] = {
     {4611686018427387903LL, 61, 1},  // < 2, floors to 1, truncates to 1
     {4611686018427387904LL, 61, 2},  // = 2, floors to 2, truncates to 2
 };
-INSTANTIATE_TEST_SUITE_P(high_precision, FixedTestRoundingIntegerConversion,
-                         ValuesIn(rounding_integer_conversion_params));
+INSTANTIATE_TEST_SUITE_P(positive, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_positive));
 
-// These test edge cases right at their edge, one inside, and the adjacent one
-// outside.
-const RoundingIntegerConversionParam rounding_integer_edge_case_params[] = {
-    // frac_bits = 0: Special case, no rounding.
+// frac_bits = 0: Special case, no rounding.
+const RoundingIntegerConversionParam round_ints_edge_case_0[] = {
     {S64_MIN, 0, S64_MIN},
     {S64_MIN + 1, 0, S64_MIN + 1},
     {S64_MAX - 1, 0, S64_MAX - 1},
     {S64_MAX, 0, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(edge_case_0, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_edge_case_0));
 
-    // frac_bits = 1: Lowest precision that isn't just integers.
-    {S64_MIN, 1, S64_MIN >> 1},
-    {S64_MIN + 1, 1, (S64_MIN >> 1) + 1},
-    {S64_MAX - 2, 1, (S64_MAX >> 1) - 1},
-    {S64_MAX - 1, 1, S64_MAX >> 1},
+// frac_bits = 1: Lowest precision that isn't just integers.
+const RoundingIntegerConversionParam round_ints_edge_case_1[] = {
+    {S64_MIN, 1, S64_MIN >> 1},           {S64_MIN + 1, 1, (S64_MIN >> 1) + 1},
+    {S64_MAX - 2, 1, (S64_MAX >> 1) - 1}, {S64_MAX - 1, 1, S64_MAX >> 1},
     {S64_MAX, 1, S64_MAX >> 1},
+};
+INSTANTIATE_TEST_SUITE_P(edge_case_1, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_edge_case_1));
 
-    // frac_bits = 32: Typical precision
+// frac_bits = 32: Typical precision
+const RoundingIntegerConversionParam round_ints_edge_case_32[] = {
     {S64_MIN, 32, S64_MIN >> 32},
     {S64_MIN + 1, 32, (S64_MIN >> 32) + 1},
     {S64_MAX - (1LL << 32), 32, (S64_MAX >> 32) - 1},
     {S64_MAX - (1LL << 32) + 1, 32, (S64_MAX >> 32)},
     {S64_MAX, 32, (S64_MAX >> 32)},
+};
+INSTANTIATE_TEST_SUITE_P(edge_case_32, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_edge_case_32));
 
-    // frac_bits = 61: Highest precision that doesn't hit range boundary.
+// frac_bits = 61: Highest precision that doesn't hit range boundary.
+const RoundingIntegerConversionParam round_ints_edge_case_61[] = {
     {S64_MIN, 61, -4},
     {S64_MIN + 1, 61, -3},
     {S64_MAX - (1LL << 61), 61, 2},
     {S64_MAX - (1LL << 61) + 1, 61, 3},
     {S64_MAX, 61, 3},
+};
+INSTANTIATE_TEST_SUITE_P(edge_case_61, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_edge_case_61));
 
-    // frac_bits = 62: Maximum precision
+// frac_bits = 62: Maximum precision
+const RoundingIntegerConversionParam round_ints_edge_case_62[] = {
     {S64_MIN, 62, -2},
     {S64_MIN + 1, 62, -1},
     {S64_MAX - (1LL << 62), 62, 0},
     {S64_MAX - (1LL << 62) + 1, 62, 1},
     {S64_MAX, 62, 1},
 };
-INSTANTIATE_TEST_SUITE_P(boundaries, FixedTestRoundingIntegerConversion,
-                         ValuesIn(rounding_integer_edge_case_params));
+INSTANTIATE_TEST_SUITE_P(edge_case_62, FixedTestRoundingIntegerConversion,
+                         ValuesIn(round_ints_edge_case_62));
 
 // ----------------------------------------------------------------------------
 // Double Conversions Tests
