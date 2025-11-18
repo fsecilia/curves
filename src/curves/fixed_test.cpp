@@ -556,7 +556,6 @@ const FixedRescaleS64TestParam rescale_s64_no_shift[] = {
 
     // Extreme value: S64_MAX
     {S64_MAX, 40, 40, S64_MAX},
-
 };
 INSTANTIATE_TEST_SUITE_P(no_shift, FixedRescaleS64Test,
                          ValuesIn(rescale_s64_no_shift));
@@ -577,7 +576,6 @@ const FixedRescaleS64TestParam rescale_s64_left_shift[] = {
 
     // Large shift amount (shift by 60)
     {3, 0, 60, 3LL << 60},
-
 };
 INSTANTIATE_TEST_SUITE_P(left_shift, FixedRescaleS64Test,
                          ValuesIn(rescale_s64_left_shift));
