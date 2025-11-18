@@ -217,7 +217,7 @@ const FixedShrRtzS128CommonCasesTestParam shr_rtz_s128_shift_1[] = {
     {1, 1},                                  // unity
     {1, 2},                                  // smallest nonunity multiplier
     {1, 3},                                  // small odd multiplier
-    {1, 1LL << 32},                          // large multiplier
+    {1, static_cast<s128>(1) << 64},         // large multiplier
     {1, (static_cast<s128>(1) << 125) - 1},  // very large odd multiplier
     {1, static_cast<s128>(1) << 125},        // max scale for this shift
 };
@@ -225,26 +225,34 @@ INSTANTIATE_TEST_SUITE_P(shift_1, FixedShrRtzS128CommonCasesTest,
                          ValuesIn(shr_rtz_s128_shift_1));
 
 const FixedShrRtzS128CommonCasesTestParam shr_rtz_s128_shift_16[] = {
-    {16, 1},                // unity
-    {16, 2},                // smallest nonunity multiplier
-    {16, 3},                // small odd multiplier
-    {16, 1LL << 24},        // large multiplier
-    {16, (1LL << 47) - 1},  // max scale for this shift
+    {16, 1},                                  // unity
+    {16, 2},                                  // smallest nonunity multiplier
+    {16, 3},                                  // small odd multiplier
+    {16, 1LL << 48},                          // large multiplier
+    {16, (static_cast<s128>(1) << 111) - 1},  // max scale for this shift
 };
 INSTANTIATE_TEST_SUITE_P(shift_16, FixedShrRtzS128CommonCasesTest,
                          ValuesIn(shr_rtz_s128_shift_16));
 
 const FixedShrRtzS128CommonCasesTestParam shr_rtz_s128_shift_32[] = {
-    {32, 1},                // unity
-    {32, 2},                // smallest nonunity multiplier
-    {32, 3},                // small odd multiplier
-    {32, (1LL << 16)},      // representative multiplier
-    {32, (1LL << 31) - 1},  // max scale for this shift
-
-    {126, 1},  // 126 has no room for scales
+    {32, 1},                                 // unity
+    {32, 2},                                 // smallest nonunity multiplier
+    {32, 3},                                 // small odd multiplier
+    {32, (static_cast<s128>(1) << 48)},      // representative multiplier
+    {32, (static_cast<s128>(1) << 95) - 1},  // max scale for this shift
 };
 INSTANTIATE_TEST_SUITE_P(shift_32, FixedShrRtzS128CommonCasesTest,
                          ValuesIn(shr_rtz_s128_shift_32));
+
+const FixedShrRtzS128CommonCasesTestParam shr_rtz_s128_shift_64[] = {
+    {64, 1},                                 // unity
+    {64, 2},                                 // smallest nonunity multiplier
+    {64, 3},                                 // small odd multiplier
+    {64, (static_cast<s128>(1) << 32)},      // representative multiplier
+    {64, (static_cast<s128>(1) << 63) - 1},  // max scale for this shift
+};
+INSTANTIATE_TEST_SUITE_P(shift_64, FixedShrRtzS128CommonCasesTest,
+                         ValuesIn(shr_rtz_s128_shift_64));
 
 const FixedShrRtzS128CommonCasesTestParam shr_rtz_s128_shift_126[] = {
     {126, 1},  // 126 has no room for scales
@@ -349,10 +357,7 @@ TEST_P(FixedShlSatS128Test, expected_result) {
 
 // Zero with various shifts always returns zero, regardless of shift amount.
 const FixedShlSatS128TestParam shl_sat_s128_zero_with_various_shifts[] = {
-    {0, 0, 0},
-    {0, 1, 0},
-    {0, 32, 0},
-    {0, 127, 0},
+    {0, 0, 0}, {0, 1, 0}, {0, 32, 0}, {0, 64, 0}, {0, 127, 0},
 };
 INSTANTIATE_TEST_SUITE_P(zero_with_various_shifts, FixedShlSatS128Test,
                          ValuesIn(shl_sat_s128_zero_with_various_shifts));
@@ -403,8 +408,10 @@ INSTANTIATE_TEST_SUITE_P(small_negatives, FixedShlSatS128Test,
   values commonly seen in real-world, fixed-point arithmetic.
 */
 const FixedShlSatS128TestParam shl_sat_s128_mixed_magnitude[] = {
+    {1000000, 40, static_cast<s128>(1000000) << 40},  // safe
     {1000000, 60, static_cast<s128>(1000000) << 60},  // Large but safe
     {1000000, 120, S128_MAX},  // Larger shift causes saturation
+    {-1000000, 40, -(static_cast<s128>(1000000) << 40)},  // Negative safe
     {-1000000, 60,
      -(static_cast<s128>(1000000) << 60)},  // Negative large but safe
     {-1000000, 120, S128_MIN},  // Negative with large shift saturates
