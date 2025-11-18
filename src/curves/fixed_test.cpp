@@ -433,7 +433,6 @@ INSTANTIATE_TEST_SUITE_P(frac_bits_60, FixedConversionTestFixedToDouble,
 // ----------------------------------------------------------------------------
 
 struct ConstantsTestParam {
-  std::string name;
   s64 (*constant_func)(unsigned int);
   double expected_value;
   unsigned int frac_bits;
@@ -463,37 +462,42 @@ TEST_P(FixedConstantsTest, verify_constants) {
   }
 }
 
-const ConstantsTestParam constants_test_params[] = {
-    // 1
-    {"1_high", curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS, 0.0},
-    {"1_medium", curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS / 2, 0.0},
-    {"1_low", curves_fixed_const_1, 1, 1, 0.0},
-
-    // e
-    {"e_high", curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS, 0.0},
-    {"e_medium", curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS / 2,
-     6.0e-10},
-    {"e_low", curves_fixed_const_e, M_E, 1, 2.2e-1},
-
-    // ln(2)
-    {"ln2_high", curves_fixed_const_ln2, std::log(2.0),
-     CURVES_FIXED_LN2_FRAC_BITS, 0.0},
-    {"ln2_medium", curves_fixed_const_ln2, std::log(2.0),
-     CURVES_FIXED_LN2_FRAC_BITS / 2, 4.3e-10},
-    {"ln2_low", curves_fixed_const_ln2, std::log(2.0), 1, 2.0e-1},
-
-    // pi
-    {"pi_high", curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS, 0.0},
-    {"pi_medium", curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS / 2,
-     1.3e-10},
-    {"pi_low", curves_fixed_const_pi, M_PI, 1, 1.5e-1},
+// 1
+const ConstantsTestParam constants_1[] = {
+    {curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS, 0.0},
+    {curves_fixed_const_1, 1, CURVES_FIXED_1_FRAC_BITS / 2, 0.0},
+    {curves_fixed_const_1, 1, 1, 0.0},
 };
+INSTANTIATE_TEST_SUITE_P(constants_1, FixedConstantsTest,
+                         ValuesIn(constants_1));
 
-INSTANTIATE_TEST_SUITE_P(all_constants, FixedConstantsTest,
-                         ValuesIn(constants_test_params),
-                         [](const TestParamInfo<ConstantsTestParam>& info) {
-                           return info.param.name;
-                         });
+// e
+const ConstantsTestParam constants_e[] = {
+    {curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS, 0.0},
+    {curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS / 2, 6.0e-10},
+    {curves_fixed_const_e, M_E, 1, 2.2e-1},
+};
+INSTANTIATE_TEST_SUITE_P(constants_e, FixedConstantsTest,
+                         ValuesIn(constants_e));
+
+// ln(2)
+const ConstantsTestParam constants_ln2[] = {
+    {curves_fixed_const_ln2, std::log(2.0), CURVES_FIXED_LN2_FRAC_BITS, 0.0},
+    {curves_fixed_const_ln2, std::log(2.0), CURVES_FIXED_LN2_FRAC_BITS / 2,
+     4.3e-10},
+    {curves_fixed_const_ln2, std::log(2.0), 1, 2.0e-1},
+};
+INSTANTIATE_TEST_SUITE_P(constants_ln2, FixedConstantsTest,
+                         ValuesIn(constants_ln2));
+
+// pi
+const ConstantsTestParam constants_pi[] = {
+    {curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS, 0.0},
+    {curves_fixed_const_pi, M_PI, CURVES_FIXED_PI_FRAC_BITS / 2, 1.3e-10},
+    {curves_fixed_const_pi, M_PI, 1, 1.5e-1},
+};
+INSTANTIATE_TEST_SUITE_P(constants_pi, FixedConstantsTest,
+                         ValuesIn(constants_pi));
 
 #if 0
 // ----------------------------------------------------------------------------
