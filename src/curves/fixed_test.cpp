@@ -307,7 +307,7 @@ INSTANTIATE_TEST_SUITE_P(shift_63, FixedShrRtzS64EdgeCasesTest,
                          ValuesIn(shr_rtz_s64_shift_63));
 
 // ----------------------------------------------------------------------------
-// __curves_fixed_shl_sat_s64_shl() Tests
+// __curves_fixed_shl_sat_s64
 // ----------------------------------------------------------------------------
 
 struct FixedShlSatS64TestParam {
@@ -332,103 +332,144 @@ TEST_P(FixedShlSatS64Test, expected_result) {
   ASSERT_EQ(expected_result, __curves_fixed_shl_sat_s64(value, shift));
 }
 
-const FixedShlSatS64TestParam shl_sat_s64_shl_all_cases[] = {
-    // Zero with various shifts always returns zero, regardless of shift amount.
+// Zero with various shifts always returns zero, regardless of shift amount.
+const FixedShlSatS64TestParam shl_sat_s64_zero_with_various_shifts[] = {
     {0, 0, 0},
     {0, 1, 0},
     {0, 32, 0},
     {0, 63, 0},
+};
+INSTANTIATE_TEST_SUITE_P(zero_with_various_shifts, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_zero_with_various_shifts));
 
-    // When shift is zero, the function returns the original value unchanged,
-    // since no shifting occurs and no overflow is possible.
-    {1, 0, 1},
-    {100, 0, 100},
-    {S64_MAX, 0, S64_MAX},
-    {-1, 0, -1},
-    {-100, 0, -100},
-    {S64_MIN, 0, S64_MIN},
+/*
+  When shift is zero, the function returns the original value unchanged, since
+  no shifting occurs and no overflow is possible.
+*/
+const FixedShlSatS64TestParam shl_sat_s64_shift_0[] = {
+    {1, 0, 1},   {100, 0, 100},   {S64_MAX, 0, S64_MAX},
+    {-1, 0, -1}, {-100, 0, -100}, {S64_MIN, 0, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(shift_0, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_0));
 
-    // Small positive values that fit within the safe range and shift without
-    // overflow. These demonstrate normal operation where the result is simply
-    // value << shift.
+/*
+  Small positive values that fit within the safe range and shift without
+  overflow. These demonstrate normal operation where the result is simply
+  value << shift.
+*/
+const FixedShlSatS64TestParam shl_sat_s64_normal_operation[] = {
     {1, 1, 2},
     {1, 10, 1 << 10},
     {1, 62, 1LL << 62},
     {100, 10, 100 << 10},
     {1000, 20, 1000LL << 20},
+};
+INSTANTIATE_TEST_SUITE_P(normal_operation, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_normal_operation));
 
-    // Small negative values that shift safely. Negative values shift the same
-    // way as positive values, preserving the sign bit.
+/*
+  Small negative values that shift safely. Negative values shift the same way
+  as positive values, preserving the sign bit.
+*/
+const FixedShlSatS64TestParam shl_sat_s64_small_negatives[] = {
     {-1, 1, -2},
     {-1, 10, -(1 << 10)},
     {-1, 62, -(1LL << 62)},
     {-100, 10, -(100 << 10)},
     {-1000, 20, -(1000LL << 20)},
+};
+INSTANTIATE_TEST_SUITE_P(small_negatives, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_small_negatives));
 
-    // Mixed magnitude cases showing practical values and their behavior at
-    // different shift amounts. These verify the function works correctly for
-    // values commonly seen in real-world,  fixed-point arithmetic.
+/*
+  Mixed magnitude cases showing practical values and their behavior at
+  different shift amounts. These verify the function works correctly for
+  values commonly seen in real-world, fixed-point arithmetic.
+*/
+const FixedShlSatS64TestParam shl_sat_s64_mixed_magnitude[] = {
     {1000000, 25, 1000000LL << 25},      // Large but safe
     {1000000, 50, S64_MAX},              // Larger shift causes saturation
     {-1000000, 25, -(1000000LL << 25)},  // Negative large but safe
     {-1000000, 50, S64_MIN},             // Negative with large shift saturates
+};
+INSTANTIATE_TEST_SUITE_P(mixed_magnitude, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_mixed_magnitude));
 
-    // Positive saturation boundary testing for shift == 1. The maximum
-    // safe value for this shift is S64_MAX >> 1. Values at or below this
-    // boundary shift safely, while values above saturate to S64_MAX.
+/*
+  Boundary cases for shift == 1. The safe range is
+  [S64_MIN >> 1, S64_MAX >> 1].
+*/
+const FixedShlSatS64TestParam shl_sat_s64_shift_1_boundaries[] = {
+    // Positive saturation boundary.
     {S64_MAX >> 1, 1, (S64_MAX >> 1) << 1},  // Right at boundary, shifts safely
     {(S64_MAX >> 1) + 1, 1, S64_MAX},        // Just over boundary, saturates
     {S64_MAX, 1, S64_MAX},                   // Far over boundary, saturates
 
-    // Negative saturation boundary testing for shift == 1. The minimum
-    // safe value is S64_MIN >> 1. Values at or above this boundary shift
-    // safely, while values below saturate to S64_MIN.
+    // Negative saturation boundary.
     {S64_MIN >> 1, 1, S64_MIN},        // Right at boundary, shifts safely
     {(S64_MIN >> 1) - 1, 1, S64_MIN},  // Just under boundary, saturates
     {S64_MIN, 1, S64_MIN},             // Far under boundary, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_1_boundaries, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_1_boundaries));
 
-    // Positive saturation cases for shift == 2. The safe range shrinks
-    // to [S64_MIN >> 2, S64_MAX >> 2].
+/*
+  Boundary cases for shift == 2. The safe range is
+  [S64_MIN >> 2, S64_MAX >> 2].
+*/
+const FixedShlSatS64TestParam shl_sat_s64_shift_2_boundaries[] = {
+    // Positive saturation cases.
     {S64_MAX >> 2, 2, (S64_MAX >> 2) << 2},  // At boundary, safe
     {(S64_MAX >> 2) + 1, 2, S64_MAX},        // Just over, saturates
     {S64_MAX, 2, S64_MAX},                   // Far over, saturates
 
-    // Negative saturation cases for shift == 2.
+    // Negative saturation cases.
     {S64_MIN >> 2, 2, S64_MIN},        // At boundary, safe
     {(S64_MIN >> 2) - 1, 2, S64_MIN},  // Just under, saturates
     {S64_MIN, 2, S64_MIN},             // Far under, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_2_boundaries, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_2_boundaries));
 
-    // Large shift of 32 bits. The safe range becomes the int32 range since
-    // max_safe_val equals S64_MAX >> 32, which equals S32_MAX, and
-    // min_safe_val equals S64_MIN >> 32, which equals S32_MIN.
+// Boundary cases for shift == 32. The safe range is the int32 range.
+const FixedShlSatS64TestParam shl_sat_s64_shift_32[] = {
     {1, 32, 1LL << 32},                              // Beginning of range
     {S32_MAX, 32, static_cast<s64>(S32_MAX) << 32},  // Positive boundary, safe
     {static_cast<s64>(S32_MAX) + 1, 32, S64_MAX},    // Just over, saturates
-    {-1, 32, -(1LL << 32)},                          // Beginning of range
-    {S32_MIN, 32, S64_MIN},                          // Negative boundary, safe
-    {static_cast<s64>(S32_MIN) - 1, 32, S64_MIN},    // Just under, saturates
 
-    // Final normal case where shift == 62.
-    // Here max_safe_val == 1 and min_safe_val == -2.
+    {-1, 32, -(1LL << 32)},                        // Beginning of range
+    {S32_MIN, 32, S64_MIN},                        // Negative boundary, safe
+    {static_cast<s64>(S32_MIN) - 1, 32, S64_MIN},  // Just under, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_32, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_32));
+
+// Final normal case where shift == 62. The safe range is [-2, 1].
+const FixedShlSatS64TestParam shl_sat_s64_shift_62[] = {
     {1, 62, 1LL << 62},      // At positive boundary, safe
     {2, 62, S64_MAX},        // Over positive boundary, saturates
     {-1, 62, -(1LL << 62)},  // Safe negative value
     {-2, 62, S64_MIN},       // At negative boundary, safe
     {-3, 62, S64_MIN},       // Under negative boundary, saturates
+};
+INSTANTIATE_TEST_SUITE_P(shift_62, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_62));
 
-    // Maximum shift of 63 bits. The safe range becomes narrow with
-    // max_safe_val == 0 and min_safe_val == -1. Only these two values can be
-    // shifted without saturation, but -1 << 63 is indistinguishable from
-    // saturation anyway.
+/*
+  Maximum shift of 63 bits. The safe range becomes [-1, 0]. Only these two
+  values can be shifted without saturation, but -1 << 63 is indistinguishable
+  from saturation anyway.
+*/
+const FixedShlSatS64TestParam shl_sat_s64_shift_63[] = {
     {0, 63, 0},          // Only safe positive value
     {-1, 63, S64_MIN},   // Only safe negative value
     {1, 63, S64_MAX},    // Any positive value saturates
     {100, 63, S64_MAX},  // Large positive saturates
     {-2, 63, S64_MIN},   // Any value less than -1 saturates
 };
-
-INSTANTIATE_TEST_SUITE_P(all_cases, FixedShlSatS64Test,
-                         ValuesIn(shl_sat_s64_shl_all_cases));
+INSTANTIATE_TEST_SUITE_P(shift_63, FixedShlSatS64Test,
+                         ValuesIn(shl_sat_s64_shift_63));
 
 // ----------------------------------------------------------------------------
 // curves_fixed_rescale_s64
