@@ -12,11 +12,13 @@
 
 list(APPEND lib_files
   fixed.hpp
+  fixed_io.hpp
   lib.cpp
   lib.hpp
 )
 
 list(APPEND test_files
+  fixed_io_test.cpp
   fixed_test.cpp
   fixed_test_s128.cpp
   fixed_test_s64.cpp
