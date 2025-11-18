@@ -495,5 +495,148 @@ const FixedShlSatS128TestParam shl_sat_s128_shift_127[] = {
 INSTANTIATE_TEST_SUITE_P(shift_127, FixedShlSatS128Test,
                          ValuesIn(shl_sat_s128_shift_127));
 
+// ----------------------------------------------------------------------------
+// curves_fixed_rescale_s128
+// ----------------------------------------------------------------------------
+
+struct FixedRescaleS128TestParam {
+  s128 value;
+  unsigned int frac_bits;
+  unsigned int output_frac_bits;
+  s128 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const FixedRescaleS128TestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.value << ", " << src.frac_bits << ", "
+               << src.output_frac_bits << ", " << src.expected_result << "}";
+  }
+};
+
+struct FixedRescaleS128Test : TestWithParam<FixedRescaleS128TestParam> {
+  s128 value = GetParam().value;
+  unsigned int frac_bits = GetParam().frac_bits;
+  unsigned int output_frac_bits = GetParam().output_frac_bits;
+  s128 expected_result = GetParam().expected_result;
+};
+
+TEST_P(FixedRescaleS128Test, expected_result) {
+  ASSERT_EQ(expected_result,
+            curves_fixed_rescale_s128(value, frac_bits, output_frac_bits));
+}
+
+// Tests that invalid scales are correctly dispatched to the error handler.
+const FixedRescaleS128TestParam rescale_s128_invalid_scales[] = {
+    // frac_bits >= 128, triggers error handler
+    // output < frac, return 0
+    {100, 128, 127, 0},
+
+    // output_frac_bits >= 128, triggers error handler
+    // value > 0, output >= frac, saturate max
+    {1, 64, 128, S128_MAX},
+
+    // both >= 128, triggers error handler)
+    // value < 0, output >= frac, saturate min
+    {-1, 128, 128, S128_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(invalid_scales, FixedRescaleS128Test,
+                         ValuesIn(rescale_s128_invalid_scales));
+
+// Right shift path (output_frac_bits < frac_bits)
+const FixedRescaleS128TestParam rescale_s128_right_shift[] = {
+    // Basic positive with mid-range params
+    {35LL << 32, 96, 64, 35},
+
+    // Negative value
+    {-35LL << 32, 96, 64, -35},
+
+    // Zero
+    {0, 96, 64, 0},
+
+    // Boundary: frac_bits at 127 (maximum valid)
+    {static_cast<s128>(100) << 63, 127, 64, 100},
+
+    // Boundary: output_frac_bits at 0 (minimum valid)
+    {static_cast<s128>(35) << 64, 64, 0, 35},
+
+    // Large shift amount (shift by 120)
+    {static_cast<s128>(3) << 120, 122, 2, 3},
+
+    // Extreme value: S128_MAX (safe because right shift)
+    {S128_MAX, 96, 64, S128_MAX >> 32},
+};
+INSTANTIATE_TEST_SUITE_P(right_shift, FixedRescaleS128Test,
+                         ValuesIn(rescale_s128_right_shift));
+
+// Equal path (output_frac_bits == frac_bits)
+const FixedRescaleS128TestParam rescale_s128_no_shift[] = {
+    // Basic positive
+    {35LL << 32, 96, 96, 35LL << 32},
+
+    // Zero
+    {0, 96, 96, 0},
+
+    // Boundary: both at 0 (minimum valid)
+    {35, 0, 0, 35},
+
+    // Boundary: both at 127 (maximum valid)
+    {100, 127, 127, 100},
+
+    // Extreme value: S128_MAX
+    {S128_MAX, 96, 96, S128_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(no_shift, FixedRescaleS128Test,
+                         ValuesIn(rescale_s128_no_shift));
+
+// Left shift path (output_frac_bits > frac_bits)
+const FixedRescaleS128TestParam rescale_s128_left_shift[] = {
+    // Basic positive with mid-range params
+    {35, 64, 96, 35LL << 32},
+
+    // Negative value
+    {-35, 64, 96, -35LL << 32},
+
+    // Zero
+    {0, 64, 96, 0},
+
+    // Boundary: output_frac_bits at 127
+    {100, 64, 127, static_cast<s128>(100) << 63},
+
+    // Large shift amount (shift by 120)
+    {3, 0, 120, static_cast<s128>(3) << 120},
+};
+INSTANTIATE_TEST_SUITE_P(left_shift, FixedRescaleS128Test,
+                         ValuesIn(rescale_s128_left_shift));
+
+// Edge cases.
+const FixedRescaleS128TestParam rescale_s128_edge_cases[] = {
+    // Saturation: large positive that overflows -> S128_MAX
+    // S128_MAX >> 4 shifted left by 5 overflows (bit 122 -> bit 127)
+    {S128_MAX >> 4, 122, 127, S128_MAX},
+
+    // Saturation: large negative that overflows -> S128_MIN
+    // S128_MIN >> 4 shifted left by 5 overflows
+    {S128_MIN >> 4, 122, 127, S128_MIN},
+
+    // No overflow: large positive that fits
+    // S128_MAX >> 10 shifted left by 10 fits exactly
+    {S128_MAX >> 10, 117, 127, (S128_MAX >> 10) << 10},
+
+    // No overflow: large negative that fits
+    {S128_MIN >> 10, 117, 127, (S128_MIN >> 10) << 10},
+
+    // Threshold: exactly at overflow boundary (positive)
+    // Largest positive value with top 5 bits zero
+    {(static_cast<s128>(1) << 122) - 1, 122, 127,
+     ((static_cast<s128>(1) << 122) - 1) << 5},
+
+    // Threshold: exactly at overflow boundary (negative)
+    // Most negative value with top 5 bits as ones (sign extension)
+    {-(static_cast<s128>(1) << 122), 122, 127,
+     (-(static_cast<s128>(1) << 122)) << 5},
+};
+INSTANTIATE_TEST_SUITE_P(edge_cases, FixedRescaleS128Test,
+                         ValuesIn(rescale_s128_edge_cases));
+
 }  // namespace
 }  // namespace curves
