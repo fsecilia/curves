@@ -520,9 +520,9 @@ struct MultiplicationTestParams {
   }
 };
 
-struct MultiplicationTest : TestWithParam<MultiplicationTestParams> {};
+struct FixedMultiplicationTest : TestWithParam<MultiplicationTestParams> {};
 
-TEST_P(MultiplicationTest, expected_result) {
+TEST_P(FixedMultiplicationTest, expected_result) {
   const auto expected_result = GetParam().expected_result;
 
   const auto actual_result = curves_fixed_multiply(
@@ -538,7 +538,7 @@ TEST_P(MultiplicationTest, expected_result) {
   multiplication is commutative, we can reduce the number of test cases by only
   including combinations, rather than permutations.
 */
-TEST_P(MultiplicationTest, multiplication_is_commutative) {
+TEST_P(FixedMultiplicationTest, multiplication_is_commutative) {
   const auto expected_result = GetParam().expected_result;
 
   const auto actual_result = curves_fixed_multiply(
@@ -553,7 +553,7 @@ TEST_P(MultiplicationTest, multiplication_is_commutative) {
   This switches only the frac bits, because they are summed, so we can reduce
   the number of test cases even further.
 */
-TEST_P(MultiplicationTest, frac_bits_order_doesnt_matter) {
+TEST_P(FixedMultiplicationTest, frac_bits_order_doesnt_matter) {
   const auto expected_result = GetParam().expected_result;
 
   const auto actual_result = curves_fixed_multiply(
@@ -571,7 +571,7 @@ const MultiplicationTestParams multiplication_zero[] = {
     {0, 62, 5, 62, 62, 0},    // High precision, non-zero multiplier
     {100, 32, 0, 32, 32, 0},  // Non-zero multiplicand
 };
-INSTANTIATE_TEST_SUITE_P(zero, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(zero, FixedMultiplicationTest,
                          ValuesIn(multiplication_zero));
 
 // Multiplying by 1 should preserve the value (with rescaling).
@@ -585,7 +585,7 @@ const MultiplicationTestParams multiplication_identity[] = {
     // Different input precisions, same output precision
     {3LL << 16, 16, 1LL << 32, 32, 32, 3LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(identity, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(identity, FixedMultiplicationTest,
                          ValuesIn(multiplication_identity));
 
 // Simple integer multiplication (frac_bits = 0 for all).
@@ -593,7 +593,7 @@ const MultiplicationTestParams multiplication_integers[] = {
     {2, 0, 3, 0, 0, 6},   {5, 0, 7, 0, 0, 35},   {10, 0, 10, 0, 0, 100},
     {-2, 0, 3, 0, 0, -6}, {-5, 0, -7, 0, 0, 35},
 };
-INSTANTIATE_TEST_SUITE_P(integers, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(integers, FixedMultiplicationTest,
                          ValuesIn(multiplication_integers));
 
 // Basic fractional multiplication with simple, verifiable values.
@@ -610,7 +610,7 @@ const MultiplicationTestParams multiplication_simple_fractions[] = {
     // Negative: -2.0 * 3.0 = -6.0
     {-(2LL << 32), 32, 3LL << 32, 32, 32, -(6LL << 32)},
 };
-INSTANTIATE_TEST_SUITE_P(simple_fractions, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(simple_fractions, FixedMultiplicationTest,
                          ValuesIn(multiplication_simple_fractions));
 
 // Multiplying values with different input and output precisions.
@@ -635,7 +635,7 @@ const MultiplicationTestParams multiplication_precision_conversion[] = {
     // Output: 32 fractional bits (left shift by 32)
     {3, 0, 2, 0, 32, 6LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(precision_conversion, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(precision_conversion, FixedMultiplicationTest,
                          ValuesIn(multiplication_precision_conversion));
 
 // Verify round-to-zero behavior when precision is reduced.
@@ -657,7 +657,7 @@ const MultiplicationTestParams multiplication_rounding[] = {
     // Use (3 << 32) - 1 to represent 2.999... in q31.32
     {(3LL << 32) - 1, 32, 1LL << 32, 32, 0, 2},
 };
-INSTANTIATE_TEST_SUITE_P(rounding, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(rounding, FixedMultiplicationTest,
                          ValuesIn(multiplication_rounding));
 
 // Verify correct sign handling for all input sign combinations.
@@ -678,7 +678,7 @@ const MultiplicationTestParams multiplication_signs[] = {
     {5LL << 32, 32, -(1LL << 32), 32, 32, -(5LL << 32)},
     {-(5LL << 32), 32, -(1LL << 32), 32, 32, 5LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(signs, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(signs, FixedMultiplicationTest,
                          ValuesIn(multiplication_signs));
 
 // Verify saturation when the result is too large for s64.
@@ -704,7 +704,7 @@ const MultiplicationTestParams multiplication_saturation[] = {
     {S64_MIN, 0, S64_MAX, 0, 0, S64_MIN},
     {S64_MIN, 0, S64_MIN, 0, 0, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(saturation, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(saturation, FixedMultiplicationTest,
                          ValuesIn(multiplication_saturation));
 
 // Large values that fit correctly without saturating.
@@ -724,7 +724,7 @@ const MultiplicationTestParams multiplication_boundaries[] = {
     {S64_MAX, 0, 1, 0, 0, S64_MAX},
     {S64_MIN, 0, 1, 0, 0, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(boundaries, MultiplicationTest,
+INSTANTIATE_TEST_SUITE_P(boundaries, FixedMultiplicationTest,
                          ValuesIn(multiplication_boundaries));
 
 }  // namespace
