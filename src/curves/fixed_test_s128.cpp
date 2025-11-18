@@ -22,12 +22,10 @@ namespace {
 // ----------------------------------------------------------------------------
 
 TEST(curves_saturate_s128, negative) {
-  std::cerr << S128_MIN << std::endl;
   ASSERT_EQ(S128_MIN, curves_saturate_s128(false));
 }
 
 TEST(curves_saturate_s128, positive) {
-  std::cerr << S128_MAX << std::endl;
   ASSERT_EQ(S128_MAX, curves_saturate_s128(true));
 }
 
