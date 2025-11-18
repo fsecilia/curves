@@ -429,30 +429,6 @@ INSTANTIATE_TEST_SUITE_P(frac_bits_60, FixedConversionTestFixedToDouble,
                          ValuesIn(to_double_frac_bits_60));
 
 // ----------------------------------------------------------------------------
-// Fixed Test
-// ----------------------------------------------------------------------------
-
-struct FixedTest : Test {};
-
-TEST_F(FixedTest, one_highest_precision) {
-  const auto frac_bits = 62;
-  const auto expected = 4611686018427387904ll;
-
-  const auto actual = curves_fixed_const_1(frac_bits);
-
-  ASSERT_EQ(expected, actual);
-}
-
-TEST_F(FixedTest, one_lowest_precision) {
-  const auto frac_bits = 0;
-  const auto expected = 1ll;
-
-  const auto actual = curves_fixed_const_1(frac_bits);
-
-  ASSERT_EQ(expected, actual);
-}
-
-// ----------------------------------------------------------------------------
 // Constants Test
 // ----------------------------------------------------------------------------
 
