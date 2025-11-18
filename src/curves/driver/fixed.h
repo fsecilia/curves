@@ -104,7 +104,7 @@ s128 __cold __curves_fixed_rescale_error_s128(s128 value,
 static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
 {
 	// To round up during division, bias dividend by divisor - 1.
-	s128 divisor = 1LL << shift;
+	s128 divisor = (s128)1 << shift;
 	s128 bias = divisor - 1;
 
 	// Positive numbers already round towards zero.
