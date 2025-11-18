@@ -512,7 +512,6 @@ struct MultiplicationParam {
   s64 multiplier;
   int desired_shift;
   s64 expected_result;
-  s64 expected_bias;
 
   friend auto operator<<(std::ostream& out, const MultiplicationParam& src)
  -> std::ostream& {
@@ -561,19 +560,7 @@ struct FixedMultiplicationTest : testing::TestWithParam<MultiplicationParam> {
   const s64 multiplicand = GetParam().multiplicand;
   const s64 multiplier = GetParam().multiplier;
   const int desired_shift = GetParam().desired_shift;
-  auto expected_result(unsigned int multiplicand_frac_bits,
-                       unsigned int multiplier_frac_bits) const noexcept
- -> s64 {
-    const auto unbiased_result = GetParam().expected_result;
-    const auto value = static_cast<int128_t>(multiplicand) * multiplier;
-    if (value >= 0) return unbiased_result;
-
-    int128_t sign_mask = value >> 127;
-
-    const auto frac_bits = multiplicand_frac_bits + multiplier_frac_bits;
-    int128_t bias = ((1LL << frac_bits) - 1) & sign_mask;
-    return value + bias;
-  }
+  const s64 expected_result = GetParam().expected_result;
 };
 
 // Test Cases
@@ -598,8 +585,7 @@ TEST_P(FixedMultiplicationTest, via_multiplicand_and_output) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
-            actual_result);
+  ASSERT_EQ(expected_result, actual_result);
 }
 
 // Distributes right shifts between both inputs. Left shifts come from output.
@@ -616,8 +602,7 @@ TEST_P(FixedMultiplicationTest, via_all_inputs_and_output) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
-            actual_result);
+  ASSERT_EQ(expected_result, actual_result);
 }
 
 /*
@@ -644,11 +629,9 @@ TEST_P(FixedMultiplicationTest, via_base_precision_mixed) {
       curves_fixed_multiply(multiplicand_frac_bits, multiplicand,
                             multiplier_frac_bits, multiplier, output_frac_bits);
 
-  ASSERT_EQ(expected_result(multiplicand_frac_bits, multiplier_frac_bits),
-            actual_result);
+  ASSERT_EQ(expected_result, actual_result);
 }
 
-#if 1
 // Test Data
 // ----------------------------------------------------------------------------
 
@@ -856,7 +839,6 @@ const MultiplicationParam multiplication_extreme_left_shift_cases[] = {
 INSTANTIATE_TEST_SUITE_P(
     extreme_left_shift_cases, FixedMultiplicationTest,
     testing::ValuesIn(multiplication_extreme_left_shift_cases));
-#endif
 
 /*
   Truncation.
