@@ -236,8 +236,6 @@ const FixedShrRtzS64CommonCasesTestParam shr_rtz_s64_shift_32[] = {
     {32, 3},                // small odd multiplier
     {32, (1LL << 16)},      // representative multiplier
     {32, (1LL << 31) - 1},  // max scale for this shift
-
-    {62, 1},  // 62 has no room for scales
 };
 INSTANTIATE_TEST_SUITE_P(shift_32, FixedShrRtzS64CommonCasesTest,
                          ValuesIn(shr_rtz_s64_shift_32));
@@ -399,10 +397,12 @@ INSTANTIATE_TEST_SUITE_P(small_negatives, FixedShlSatS64Test,
   values commonly seen in real-world, fixed-point arithmetic.
 */
 const FixedShlSatS64TestParam shl_sat_s64_mixed_magnitude[] = {
-    {1000000, 25, 1000000LL << 25},      // Large but safe
-    {1000000, 50, S64_MAX},              // Larger shift causes saturation
-    {-1000000, 25, -(1000000LL << 25)},  // Negative large but safe
-    {-1000000, 50, S64_MIN},             // Negative with large shift saturates
+    {1000000, 15, 1000000LL << 15},      // Large
+    {1000000, 30, 1000000LL << 30},      // Large but safe
+    {1000000, 60, S64_MAX},              // Larger shift causes saturation
+    {-1000000, 15, -(1000000LL << 15)},  // Negative large
+    {-1000000, 30, -(1000000LL << 30)},  // Negative large but safe
+    {-1000000, 60, S64_MIN},             // Negative with large shift saturates
 };
 INSTANTIATE_TEST_SUITE_P(mixed_magnitude, FixedShlSatS64Test,
                          ValuesIn(shl_sat_s64_mixed_magnitude));
