@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <curves/lib.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
