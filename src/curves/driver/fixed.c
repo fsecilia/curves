@@ -79,31 +79,21 @@ extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplier_frac_bits,
 				 unsigned int output_frac_bits);
 
-s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor, int shift)
+s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor)
 {
-	// Zero dividend always produces zero
+	// 0 dividend always produces 0.
 	if (dividend == 0)
 		return 0;
 
-	// Division by zero saturates based on dividend sign
+	// Division by zero saturates based on dividend sign.
 	if (divisor == 0)
 		return curves_saturate_s64(dividend >= 0);
 
-	// Extreme right shift causes underflow to zero
-	if (shift <= -64)
-		return 0;
-
-	// Extreme left shift or invalid parameters cause saturation
 	// Saturate based on the sign of the quotient (dividend ^ divisor)
 	return curves_saturate_s64((dividend ^ divisor) >= 0);
 }
 
-extern s64 __curves_fixed_divide_try_saturate(s64 dividend, s64 divisor,
-					      int shift);
-extern s64 __curves_fixed_divide_try_saturate_shl(s64 dividend, s64 divisor,
-						  int saturation_threshold_bit);
-extern s64 __curves_fixed_divide_try_saturate_shr(s64 dividend, s64 divisor,
-						  int saturation_threshold_bit);
+extern int __curves_fixed_divide_optimal_shift(s64 dividend, s64 divisor);
 extern s64 curves_fixed_divide(s64 dividend, unsigned int dividend_frac_bits,
 			       s64 divisor, unsigned int divisor_frac_bits,
 			       unsigned int output_frac_bits);
