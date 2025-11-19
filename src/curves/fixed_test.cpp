@@ -801,5 +801,126 @@ const DivideErrorTestParam divide_error_saturation[] = {
 INSTANTIATE_TEST_SUITE_P(saturation, FixedDivideErrorTest,
                          ValuesIn(divide_error_saturation));
 
+// ----------------------------------------------------------------------------
+// __curves_fixed_divide_optimal_shift()
+// ----------------------------------------------------------------------------
+
+struct DivideOptimalShiftParams {
+  s64 dividend;
+  s64 divisor;
+  int expected_shift;
+
+  friend auto operator<<(std::ostream& out, const DivideOptimalShiftParams& src)
+      -> std::ostream& {
+    return out << "{" << src.dividend << ", " << src.divisor << ", "
+               << src.expected_shift << " } ";
+  }
+};
+
+struct DivideOptimalShiftTest : TestWithParam<DivideOptimalShiftParams> {};
+
+TEST_P(DivideOptimalShiftTest, expected_result) {
+  const auto actual_shift = __curves_fixed_divide_optimal_shift(
+      GetParam().dividend, GetParam().divisor);
+
+  ASSERT_EQ(GetParam().expected_shift, actual_shift);
+}
+
+/*
+  Identity and Basics
+
+  Baseline sanity checks.
+*/
+const DivideOptimalShiftParams shift_basics[] = {
+    // 1 / 1 -> Shift 62.
+    // Check: (1 << 62) / 1 = 2^62 (Fits in s64 positive range)
+    {1, 1, 62},
+
+    // 1 / 2 -> Shift 63.
+    // Divisor is larger (clz=62), so we can shift dividend more.
+    // 62 + 63 - 62 = 63.
+    {1, 2, 63},
+
+    // 2 / 1 -> Shift 61.
+    // Dividend is larger (clz=62), need to shift less to avoid overflow.
+    // 62 + 62 - 63 = 61.
+    {2, 1, 61},
+
+    // 100 / 10 -> Shift 62.
+    // 62 + clz(100) - clz(10) -> 62 + 57 - 60 = 59?
+    // Let's recheck math:
+    // clz(100) = 57. clz(10) = 60.
+    // 62 + 57 - 60 = 59.
+    {100, 10, 59},
+};
+INSTANTIATE_TEST_SUITE_P(Basics, DivideOptimalShiftTest,
+                         ValuesIn(shift_basics));
+
+/*
+  Zero Dividend (The | 1 Trick)
+
+  Verifies that the branchless fix works and treats 0 exactly like 1.
+*/
+const DivideOptimalShiftParams shift_zeros[] = {
+    // 0 / 1.
+    // Internal logic: clz(0 | 1) -> clz(1) -> 63.
+    // Result: 62 + 63 - 63 = 62.
+    {0, 1, 62},
+
+    // 0 / S64_MAX.
+    // clz(dividend) = 63. clz(divisor) = 1.
+    // 62 + 63 - 1 = 124.
+    {0, S64_MAX, 124},
+};
+INSTANTIATE_TEST_SUITE_P(Zeros, DivideOptimalShiftTest, ValuesIn(shift_zeros));
+
+/*
+  Sign Invariance
+
+  Verifies abs() is working. The shift should only depend on magnitude.
+*/
+const DivideOptimalShiftParams shift_signs[] = {
+    // 1 / -1 -> Same as 1 / 1 -> 62
+    {1, -1, 62},
+
+    // -1 / 1 -> Same as 1 / 1 -> 62
+    {-1, 1, 62},
+
+    // -1 / -1 -> Same as 1 / 1 -> 62
+    {-1, -1, 62},
+};
+INSTANTIATE_TEST_SUITE_P(Signs, DivideOptimalShiftTest, ValuesIn(shift_signs));
+
+/*
+  Extremes and Overflows
+
+  Testing the boundaries of s64.
+*/
+const DivideOptimalShiftParams shift_extremes[] = {
+    // S64_MAX / 1
+    // clz(MAX) = 1. clz(1) = 63.
+    // 62 + 1 - 63 = 0.
+    // (We can't shift S64_MAX left at all, valid)
+    {S64_MAX, 1, 0},
+
+    // S64_MIN / 1 (The Edge Case)
+    // clz(MIN) = 0. clz(1) = 63.
+    // 62 + 0 - 63 = -1.
+    // (Correctly identifies that S64_MIN / 1 requires saturation/checks)
+    {S64_MIN, 1, -1},
+
+    // 1 / S64_MAX
+    // clz(1) = 63. clz(MAX) = 1.
+    // 62 + 63 - 1 = 124.
+    // (We can shift 1 left by 124 bits safely inside s128)
+    {1, S64_MAX, 124},
+
+    // S64_MAX / S64_MAX
+    // 62 + 1 - 1 = 62.
+    {S64_MAX, S64_MAX, 62},
+};
+INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
+                         ValuesIn(shift_extremes));
+
 }  // namespace
 }  // namespace curves
