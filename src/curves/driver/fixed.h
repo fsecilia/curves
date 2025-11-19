@@ -35,6 +35,9 @@ s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits);
 
 // Shifts right, rounding towards zero.
+// Preconditions:
+//   - shift must be in range [0, 63]
+//   - caller is responsible for validating shift range
 static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 {
 	// To round up during division, bias dividend by divisor - 1.
@@ -51,6 +54,9 @@ static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 }
 
 // Shifts left, saturating if the value overflows.
+// Preconditions:
+//   - shift must be in range [0, 63]
+//   - caller is responsible for validating shift range
 static inline s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift)
 {
 	s64 max_safe_val;
