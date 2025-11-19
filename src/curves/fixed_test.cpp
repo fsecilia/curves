@@ -1023,5 +1023,168 @@ const MinSaturatingDividendTestParam min_saturating_dividend_extreme_shifts[] =
 INSTANTIATE_TEST_SUITE_P(extreme_shifts, FixedMinSaturatingDividendTest,
                          ValuesIn(min_saturating_dividend_extreme_shifts));
 
+// ----------------------------------------------------------------------------
+// __curves_fixed_divide_check_saturation()
+// ----------------------------------------------------------------------------
+
+struct DivideCheckSaturationTestParam {
+  s64 dividend;
+  s64 divisor;
+  int shift;
+  s128 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const DivideCheckSaturationTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.dividend << ", " << src.divisor << ", "
+               << src.shift << ", " << src.expected_result << "}";
+  }
+};
+
+struct DivideCheckSaturationTest
+    : TestWithParam<DivideCheckSaturationTestParam> {};
+
+TEST_P(DivideCheckSaturationTest, expected_result) {
+  const auto actual_result = __curves_fixed_divide_check_saturation(
+      GetParam().dividend, GetParam().divisor, GetParam().shift);
+
+  const auto expected_result = GetParam().expected_result;
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+// Cases where dividend is well below threshold - no saturation
+const DivideCheckSaturationTestParam divide_check_no_saturation[] = {
+    // Small dividend, small divisor, zero shift
+    // threshold = 1 << 63, dividend = 1, no saturation
+    {1, 1, 0, 0},
+    {100, 100, 0, 0},
+    {1000, 1000, 0, 0},
+
+    // Small dividend, various shifts
+    {1, 100, 0, 0},
+    {1, 100, 32, 0},
+    {1, 100, 63, 0},
+
+    // Negative dividends below threshold
+    {-1, 1, 0, 0},
+    {-100, 100, 0, 0},
+    {-1000, 1000, 0, 0},
+
+    // Mixed signs, dividend below threshold
+    {100, -1000, 0, 0},
+    {-100, 1000, 32, 0},
+
+    // Right shift cases (shift > 63) have higher thresholds
+    // threshold = divisor >> (shift - 63), so larger dividends are safe
+    {100, 1000, 64, 0},  // threshold = 1000 >> 1 = 500, dividend = 100 < 500
+
+    // threshold = 10000 >> 2 = 2500, dividend = 1000 < 2500
+    {1000, 10000, 65, 0},
+};
+INSTANTIATE_TEST_SUITE_P(no_saturation, DivideCheckSaturationTest,
+                         ValuesIn(divide_check_no_saturation));
+
+// Cases exactly at the saturation boundary
+const DivideCheckSaturationTestParam divide_check_at_boundary[] = {
+    // Positive dividend, positive divisor -> S64_MAX
+    {100, 100, 63, S64_MAX},
+    {1000, 1000, 63, S64_MAX},
+    {S64_MAX, S64_MAX, 63, S64_MAX},
+
+    // Negative dividend, negative divisor -> S64_MAX (same sign)
+    {-100, -100, 63, S64_MAX},
+    {-1000, -1000, 63, S64_MAX},
+    {-S64_MAX, -S64_MAX, 63, S64_MAX},
+
+    // Positive dividend, negative divisor -> S64_MIN (different sign)
+    {100, -100, 63, S64_MIN},
+    {1000, -1000, 63, S64_MIN},
+    {S64_MAX, -S64_MAX, 63, S64_MIN},
+
+    // Negative dividend, positive divisor -> S64_MIN (different sign)
+    {-100, 100, 63, S64_MIN},
+    {-1000, 1000, 63, S64_MIN},
+    {-S64_MAX, S64_MAX, 63, S64_MIN},
+
+    // For shift = 64, threshold = divisor >> 1
+    // dividend = divisor >> 1 should saturate
+    {50, 100, 64, S64_MAX},    // threshold = 100 >> 1 = 50
+    {500, 1000, 64, S64_MAX},  // threshold = 1000 >> 1 = 500
+    {-50, 100, 64, S64_MIN},   // different signs
+    {50, -100, 64, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(at_boundary, DivideCheckSaturationTest,
+                         ValuesIn(divide_check_at_boundary));
+
+// Cases where dividend clearly exceeds threshold
+const DivideCheckSaturationTestParam divide_check_exceeds_threshold[] = {
+    // For shift = 63, threshold = divisor
+    // Use dividend > divisor
+
+    // Positive dividend, positive divisor -> S64_MAX
+    {200, 100, 63, S64_MAX},
+    {2000, 1000, 63, S64_MAX},
+    {S64_MAX, 1, 63, S64_MAX},
+    {S64_MAX, 100, 63, S64_MAX},
+
+    // Negative dividend, negative divisor -> S64_MAX (same sign)
+    {-200, -100, 63, S64_MAX},
+    {-2000, -1000, 63, S64_MAX},
+    {S64_MIN, -1, 63, S64_MAX},  // |S64_MIN| = 2^63, |-1| = 1
+
+    // Positive dividend, negative divisor -> S64_MIN
+    {200, -100, 63, S64_MIN},
+    {2000, -1000, 63, S64_MIN},
+    {S64_MAX, -1, 63, S64_MIN},
+
+    // Negative dividend, positive divisor -> S64_MIN
+    {-200, 100, 63, S64_MIN},
+    {-2000, 1000, 63, S64_MIN},
+    {S64_MIN, 1, 63, S64_MIN},
+
+    // For shift = 0, threshold is very high (divisor << 63)
+    // Most dividends will be safe except extreme values
+    {S64_MIN, 1, 0, S64_MIN},  // |dividend| = 2^63 vs threshold = 1 << 63
+    {S64_MAX, 2, 0,
+     0},  // |dividend| = S64_MAX vs threshold = 2 << 63, actually below
+
+    // For shift = 32, threshold = divisor << 31
+    {S64_MAX, 1, 32, S64_MAX},  // |dividend| = S64_MAX vs threshold = 1 << 31
+    {(1LL << 40), 1, 32, S64_MAX},  // |dividend| = 2^40 vs threshold = 2^31
+    {-(1LL << 40), 1, 32, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(exceeds_threshold, DivideCheckSaturationTest,
+                         ValuesIn(divide_check_exceeds_threshold));
+
+// Edge case: S64_MIN has special absolute value handling
+const DivideCheckSaturationTestParam divide_check_s64_min[] = {
+    // S64_MIN's absolute value is 2^63, which doesn't fit in s64
+    // The cast to s128 before negation is important here
+
+    // S64_MIN with small divisor should saturate
+    {S64_MIN, 1, 63, S64_MIN},     // |dividend| = 2^63, threshold = 1
+    {S64_MIN, 100, 63, S64_MIN},   // |dividend| = 2^63, threshold = 100
+    {S64_MIN, 1000, 63, S64_MIN},  // |dividend| = 2^63, threshold = 1000
+
+    // S64_MIN with large divisor might not saturate depending on shift
+    {S64_MIN, S64_MAX, 63, S64_MIN},  // |dividend| = 2^63, threshold = S64_MAX
+
+    // S64_MIN with negative divisor (same sign for quotient)
+    {S64_MIN, -1, 63, S64_MAX},  // both negative -> positive result
+    {S64_MIN, -100, 63, S64_MAX},
+    {S64_MIN, -S64_MAX, 63, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(s64_min_special, DivideCheckSaturationTest,
+                         ValuesIn(divide_check_s64_min));
+
+// Zero dividend always returns 0 (no saturation)
+const DivideCheckSaturationTestParam divide_check_zero_dividend[] = {
+    {0, 1, 0, 0},       {0, 100, 0, 0},      {0, -100, 0, 0},
+    {0, S64_MAX, 0, 0}, {0, S64_MIN, 32, 0}, {0, 1, 63, 0},
+};
+INSTANTIATE_TEST_SUITE_P(zero_dividend, DivideCheckSaturationTest,
+                         ValuesIn(divide_check_zero_dividend));
+
 }  // namespace
 }  // namespace curves
