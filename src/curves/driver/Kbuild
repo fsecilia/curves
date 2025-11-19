@@ -5,6 +5,7 @@ obj-m := curves.o
 
 curves-common-objs := \
   fixed.o \
+  kernel_compat.o \
   math64.o
 
 curves-driver-objs := entry_point.o

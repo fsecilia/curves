@@ -19,6 +19,12 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <asm/bug.h>
+#include <linux/bitops.h>
+
+static inline unsigned int clz64(u64 x)
+{
+	return 64 - fls64(x);
+}
 
 #else
 
@@ -64,6 +70,11 @@ __extension__ typedef unsigned __int128 u128;
 
 #define WARN_ON_ONCE(condition) \
 	WARN_ONCE(condition, "WARNING at %s:%d\n", __FILE__, __LINE__)
+
+static inline unsigned int clz64(u64 x)
+{
+	return x ? __builtin_clzll(x) : 64;
+}
 
 #endif
 
