@@ -265,7 +265,7 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 // ----------------------------------------------------------------------------
 
 /**
- * curves_fixed_multiply() - Multiplies two arbitrary-precision fixed-point
+ * curves_fixed_multiply() - Multiplies two variable-precision, fixed-point
  * values.
  *
  * @multiplicand_frac_bits: Fractional bits in multiplicand, [0, 62].
@@ -325,7 +325,9 @@ static inline int __curves_fixed_divide_optimal_shift(s64 dividend, s64 divisor)
 	return 62 + clz64(abs_dividend | 1) - clz64(abs_divisor);
 }
 
-// Division entrypoint.
+/**
+ * curves_fixed_divide() - Divides two variable-precision, fixed-point values.
+*/
 static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int dividend_frac_bits,
 				      s64 divisor,
