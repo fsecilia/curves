@@ -350,7 +350,7 @@ static inline s64 __curves_fixed_divide_shl(s64 dividend, s64 divisor,
 					    int shift)
 {
 	// Scale dividend up before dividing for maximum precision.
-	return curves_div_s128_s64(((s128)dividend) << shift, divisor);
+	return curves_div_s128_s64((s128)dividend << shift, divisor);
 }
 
 // Performs division, then right-shift.
@@ -362,7 +362,7 @@ static inline s64 __curves_fixed_divide_shr(s64 dividend,
 					    unsigned int output_frac_bits)
 {
 	// Compute the division at native precision.
-	s64 quotient = curves_div_s128_s64(((s128)dividend), divisor);
+	s64 quotient = curves_div_s128_s64((s128)dividend, divisor);
 
 	// The quotient has (dividend_frac_bits - divisor_frac_bits) fractional
 	// bits. Rescale it to output_frac_bits.
