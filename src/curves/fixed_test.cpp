@@ -726,5 +726,119 @@ const MultiplicationTestParams multiplication_boundaries[] = {
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedMultiplicationTest,
                          ValuesIn(multiplication_boundaries));
 
+// ----------------------------------------------------------------------------
+// __curves_fixed_divide_error()
+// ----------------------------------------------------------------------------
+
+struct DivideErrorTestParam {
+  s64 dividend;
+  s64 divisor;
+  int shift;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const DivideErrorTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.dividend << ", " << src.divisor << ", "
+               << src.shift << ", " << src.expected_result << "}";
+  }
+};
+
+struct FixedDivideErrorTest : TestWithParam<DivideErrorTestParam> {};
+
+TEST_P(FixedDivideErrorTest, expected_result) {
+  const auto actual_result = __curves_fixed_divide_error(
+      GetParam().dividend, GetParam().divisor, GetParam().shift);
+
+  const auto expected_result = GetParam().expected_result;
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+// Zero dividend always returns 0 regardless of divisor or shift
+const DivideErrorTestParam divide_error_zero_dividend[] = {
+    {0, 0, 0, 0},        // All parameters zero
+    {0, 1, 0, 0},        // Non-zero divisor
+    {0, -1, 0, 0},       // Negative divisor
+    {0, S64_MAX, 0, 0},  // Maximum divisor
+    {0, S64_MIN, 0, 0},  // Minimum divisor
+    {0, 100, 50, 0},     // Arbitrary positive shift
+    {0, 100, -50, 0},    // Arbitrary negative shift
+    {0, 100, -64, 0},    // Boundary right shift
+    {0, 100, -65, 0},    // Extreme right shift
+    {0, 100, 127, 0},    // Extreme left shift
+};
+INSTANTIATE_TEST_SUITE_P(zero_dividend, FixedDivideErrorTest,
+                         ValuesIn(divide_error_zero_dividend));
+
+// Division by zero saturates based on dividend sign
+const DivideErrorTestParam divide_error_division_by_zero[] = {
+    // Positive dividends saturate to S64_MAX
+    {1, 0, 0, S64_MAX},
+    {100, 0, 0, S64_MAX},
+    {S64_MAX, 0, 0, S64_MAX},
+    {1, 0, 50, S64_MAX},   // Shift doesn't affect result
+    {1, 0, -50, S64_MAX},  // Shift doesn't affect result
+    {1, 0, -64, S64_MAX},  // Even at extreme shifts
+    {1, 0, 127, S64_MAX},
+
+    // Negative dividends saturate to S64_MIN
+    {-1, 0, 0, S64_MIN},
+    {-100, 0, 0, S64_MIN},
+    {S64_MIN, 0, 0, S64_MIN},
+    {-1, 0, 50, S64_MIN},
+    {-1, 0, -50, S64_MIN},
+    {-1, 0, -64, S64_MIN},
+    {-1, 0, 127, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(division_by_zero, FixedDivideErrorTest,
+                         ValuesIn(divide_error_division_by_zero));
+
+// Extreme right shift (shift <= -64) causes underflow to 0
+const DivideErrorTestParam divide_error_extreme_right_shift[] = {
+    // Boundary case: shift = -64
+    {1, 1, -64, 0},
+    {100, 50, -64, 0},
+    {S64_MAX, 1, -64, 0},
+    {S64_MIN, 1, -64, 0},
+    {-100, 50, -64, 0},
+
+    // Beyond boundary: shift < -64
+    {1, 1, -65, 0},
+    {1, 1, -100, 0},
+    {1, 1, -1000, 0},
+    {S64_MAX, S64_MAX, -65, 0},
+    {S64_MIN, S64_MAX, -65, 0},
+};
+INSTANTIATE_TEST_SUITE_P(extreme_right_shift, FixedDivideErrorTest,
+                         ValuesIn(divide_error_extreme_right_shift));
+
+// Extreme left shift or invalid parameters cause saturation based on quotient
+// sign
+const DivideErrorTestParam divide_error_saturation[] = {
+    // Positive quotient (same signs) -> S64_MAX
+    {1, 1, 64, S64_MAX},    // shift = 64 boundary
+    {1, 1, 65, S64_MAX},    // shift > 64
+    {1, 1, 127, S64_MAX},   // Large shift
+    {1, 1, 1000, S64_MAX},  // Very large shift
+    {100, 50, 64, S64_MAX},
+    {S64_MAX, 1, 64, S64_MAX},
+    {-1, -1, 64, S64_MAX},  // Both negative
+    {-100, -50, 64, S64_MAX},
+    {S64_MIN, -1, 64, S64_MAX},
+
+    // Negative quotient (different signs) -> S64_MIN
+    {1, -1, 64, S64_MIN},
+    {1, -1, 65, S64_MIN},
+    {1, -1, 127, S64_MIN},
+    {1, -1, 1000, S64_MIN},
+    {100, -50, 64, S64_MIN},
+    {S64_MAX, -1, 64, S64_MIN},
+    {-1, 1, 64, S64_MIN},
+    {-100, 50, 64, S64_MIN},
+    {S64_MIN, 1, 64, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(saturation, FixedDivideErrorTest,
+                         ValuesIn(divide_error_saturation));
+
 }  // namespace
 }  // namespace curves
