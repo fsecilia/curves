@@ -922,5 +922,158 @@ const DivideOptimalShiftParams shift_extremes[] = {
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
                          ValuesIn(shift_extremes));
 
+// ----------------------------------------------------------------------------
+// curves_fixed_divide()
+// ----------------------------------------------------------------------------
+
+struct DivisionTestParams {
+  s64 dividend;
+  unsigned int dividend_frac_bits;
+  s64 divisor;
+  unsigned int divisor_frac_bits;
+  unsigned int output_frac_bits;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const DivisionTestParams& src)
+      -> std::ostream& {
+    return out << "{" << src.dividend << ", " << src.dividend_frac_bits << ", "
+               << src.divisor << ", " << src.divisor_frac_bits << ", "
+               << src.output_frac_bits << ", " << src.expected_result << "}";
+  }
+};
+
+struct FixedDivisionTest : TestWithParam<DivisionTestParams> {};
+
+TEST_P(FixedDivisionTest, expected_result) {
+  const auto expected_result = GetParam().expected_result;
+
+  const auto actual_result = curves_fixed_divide(
+      GetParam().dividend, GetParam().dividend_frac_bits, GetParam().divisor,
+      GetParam().divisor_frac_bits, GetParam().output_frac_bits);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+/*
+  Basic Integer Math
+
+  Sanity checks ensuring the basic plumbing works with 0 scaling.
+*/
+const DivisionTestParams divide_basics[] = {
+    // 100 / 2 = 50
+    {100, 0, 2, 0, 0, 50},
+    // 100 / -2 = -50 (Sign logic)
+    {100, 0, -2, 0, 0, -50},
+    // -100 / 2 = -50
+    {-100, 0, 2, 0, 0, -50},
+    // -100 / -2 = 50
+    {-100, 0, -2, 0, 0, 50},
+    // 0 / 50 = 0 (The Dividend=0 edge case, verifying the |1 trick works)
+    {0, 0, 50, 0, 0, 0},
+    // Identity: 123 / 1 = 123
+    {123, 0, 1, 0, 0, 123},
+};
+INSTANTIATE_TEST_SUITE_P(basics, FixedDivisionTest, ValuesIn(divide_basics));
+
+/*
+  Precision & Scaling
+
+  Tests that output_frac_bits correctly shifts the result relative to input
+  scales.
+*/
+const DivisionTestParams divide_scaling[] = {
+    // 1 / 2 = 0.5 (Result requested in Q1) -> stored as 1
+    {1, 0, 2, 0, 1, 1},
+
+    // 1 / 2 = 0.5 (Result requested in Q32) -> stored as 0.5 * 2^32
+    {1, 0, 2, 0, 32, 2147483648LL},
+
+    // Mixed Input Scales:
+    // Dividend 1.0 (Q16 representation: 65536)
+    // Divisor  0.5 (Q17 representation: 65536)
+    // Math: 1.0 / 0.5 = 2.0.
+    // Result requested in Q0 -> 2
+    {65536, 16, 65536, 17, 0, 2},
+
+    // Same inputs, Result requested in Q4 -> 2.0 * 16 = 32
+    {65536, 16, 65536, 17, 4, 32},
+};
+INSTANTIATE_TEST_SUITE_P(scaling, FixedDivisionTest, ValuesIn(divide_scaling));
+
+/*
+  Optimal Shift (Precision Preservation)
+
+  These tests fail if you naively shift to total_shift. They require the
+  intermediate calculation to be "super scaled" to preserve bits.
+*/
+const DivisionTestParams divide_high_precision[] = {
+    // 1 / 3 approx 0.3333...
+    // If we shifted just enough for Q2 output, we'd calculate 100/11 = 0.
+    // We need internal precision to capture the fraction.
+    // 1 / 3 in Q16 -> 21845 (0.333328...)
+    {1, 0, 3, 0, 16, 21845},
+
+    // Extreme case: Small / Large -> High Precision Output
+    // 1 / 1,000,000. Output requested in Q40.
+    // Target: 1e-6 * 2^40 = 1,099,511.6... -> 1,099,511 (RTZ)
+    {1, 0, 1000000, 0, 40, 1099511},
+};
+INSTANTIATE_TEST_SUITE_P(HighPrecision, FixedDivisionTest,
+                         ValuesIn(divide_high_precision));
+
+/*
+  Rounding (RTZ)
+
+  Verifies that we are strictly rounding toward zero, not nearest, and not
+  floor (for negatives).
+*/
+const DivisionTestParams divide_rounding[] = {
+    // Positive Truncation: 2 / 3 = 0.66... -> 0 in Q0
+    {2, 0, 3, 0, 0, 0},
+
+    // Negative Truncation (RTZ check):
+    // -2 / 3 = -0.66...
+    // Floor would be -1. RTZ should be 0.
+    {-2, 0, 3, 0, 0, 0},
+
+    // Precision Downshift Rounding:
+    // 10 / 3 = 3.333...
+    // Calculated high precision, then shifted down to Q0.
+    // Should be 3.
+    {10, 0, 3, 0, 0, 3},
+
+    // Negative Downshift:
+    // -10 / 3 = -3.333...
+    // Should be -3.
+    {-10, 0, 3, 0, 0, -3},
+};
+INSTANTIATE_TEST_SUITE_P(Rounding, FixedDivisionTest,
+                         ValuesIn(divide_rounding));
+
+/*
+  Saturation
+
+  Verifies the overflow guards.
+*/
+const DivisionTestParams divide_saturation[] = {
+    // S64_MAX / 0.5 (Divisor is 1 in Q1) -> S64_MAX * 2 -> Overflow
+    // Should return S64_MAX
+    {S64_MAX, 0, 1, 1, 0, S64_MAX},
+
+    // S64_MIN / 0.5 -> S64_MIN * 2 -> Underflow
+    // Should return S64_MIN
+    {S64_MIN, 0, 1, 1, 0, S64_MIN},
+
+    // S64_MIN / -1 -> S64_MAX + 1 -> Overflow
+    // Should return S64_MAX
+    {S64_MIN, 0, -1, 0, 0, S64_MAX},
+
+    // Just barely overflowing:
+    // (2^62) / 0.5 -> 2^63 -> Overflow
+    {1LL << 62, 0, 1, 1, 0, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(Saturation, FixedDivisionTest,
+                         ValuesIn(divide_saturation));
+
 }  // namespace
 }  // namespace curves
