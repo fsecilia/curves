@@ -5,6 +5,7 @@
 */
 
 #include "fixed.hpp"
+#include "fixed_io.hpp"
 #include <curves/test.hpp>
 
 namespace curves {
@@ -839,6 +840,188 @@ const DivideErrorTestParam divide_error_saturation[] = {
 };
 INSTANTIATE_TEST_SUITE_P(saturation, FixedDivideErrorTest,
                          ValuesIn(divide_error_saturation));
+
+// ----------------------------------------------------------------------------
+// __curves_fixed_min_saturating_dividend()
+// ----------------------------------------------------------------------------
+
+struct MinSaturatingDividendTestParam {
+  s64 divisor;
+  int shift;
+  s128 expected_result;
+
+  friend auto operator<<(std::ostream& out,
+                         const MinSaturatingDividendTestParam& src)
+      -> std::ostream& {
+    return out << "{" << src.divisor << ", " << src.shift << ", "
+               << src.expected_result << "}";
+  }
+};
+
+struct FixedMinSaturatingDividendTest
+    : TestWithParam<MinSaturatingDividendTestParam> {};
+
+TEST_P(FixedMinSaturatingDividendTest, expected_result) {
+  const auto actual_result = __curves_fixed_min_saturating_dividend(
+      GetParam().divisor, GetParam().shift);
+
+  const auto expected_result = GetParam().expected_result;
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+// Zero divisor returns 0 regardless of shift
+const MinSaturatingDividendTestParam min_saturating_dividend_zero[] = {
+    {0, 0, 0}, {0, 32, 0}, {0, 63, 0}, {0, 64, 0}, {0, -100, 0}, {0, 100, 0},
+};
+INSTANTIATE_TEST_SUITE_P(zero_divisor, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_zero));
+
+// Small positive divisor with various shifts
+const MinSaturatingDividendTestParam min_saturating_dividend_small_positive[] =
+    {
+        // divisor = 1
+        {1, 0, static_cast<s128>(1) << 63},    // 1 << 63
+        {1, 32, static_cast<s128>(1) << 31},   // 1 << 31
+        {1, 63, static_cast<s128>(1) << 0},    // 1 << 0 = 1
+        {1, 64, static_cast<s128>(1) >> 1},    // 1 >> 1 = 0
+        {1, 100, static_cast<s128>(1) >> 37},  // 1 >> 37 = 0
+
+        // divisor = 100
+        {100, 0, static_cast<s128>(100) << 63},   // 100 << 63
+        {100, 32, static_cast<s128>(100) << 31},  // 100 << 31
+        {100, 63, static_cast<s128>(100) << 0},   // 100
+        {100, 64, static_cast<s128>(100) >> 1},   // 50
+        {100, 70, static_cast<s128>(100) >> 7},   // 0 (since 100 < 128)
+};
+INSTANTIATE_TEST_SUITE_P(small_positive_divisor, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_small_positive));
+
+// Small negative divisor - should produce same results as positive (uses abs)
+const MinSaturatingDividendTestParam min_saturating_dividend_small_negative[] =
+    {
+        // divisor = -1 (abs = 1)
+        {-1, 0, static_cast<s128>(1) << 63},
+        {-1, 32, static_cast<s128>(1) << 31},
+        {-1, 63, static_cast<s128>(1) << 0},
+        {-1, 64, static_cast<s128>(1) >> 1},
+
+        // divisor = -100 (abs = 100)
+        {-100, 0, static_cast<s128>(100) << 63},
+        {-100, 32, static_cast<s128>(100) << 31},
+        {-100, 63, static_cast<s128>(100) << 0},
+        {-100, 64, static_cast<s128>(100) >> 1},
+};
+INSTANTIATE_TEST_SUITE_P(small_negative_divisor, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_small_negative));
+
+// Boundary case: shift = 63 (threshold_shift = 0, no shift applied)
+const MinSaturatingDividendTestParam min_saturating_dividend_no_shift[] = {
+    {1, 63, 1},
+    {100, 63, 100},
+    {1000, 63, 1000},
+    {S64_MAX, 63, S64_MAX},
+    {-1, 63, 1},
+    {-100, 63, 100},
+    {-S64_MAX, 63, S64_MAX},
+    {S64_MIN, 63, static_cast<s128>(1) << 63},  // abs(S64_MIN) = 2^63
+};
+INSTANTIATE_TEST_SUITE_P(no_shift, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_no_shift));
+
+// Left shift cases (shift < 63, so threshold_shift > 0)
+const MinSaturatingDividendTestParam min_saturating_dividend_left_shift[] = {
+    // shift = 0 (maximum left shift of 63)
+    {1, 0, static_cast<s128>(1) << 63},
+    {2, 0, static_cast<s128>(2) << 63},
+    {1000, 0, static_cast<s128>(1000) << 63},
+
+    // shift = 1 (left shift by 62)
+    {1, 1, static_cast<s128>(1) << 62},
+    {100, 1, static_cast<s128>(100) << 62},
+
+    // shift = 31 (left shift by 32)
+    {1, 31, static_cast<s128>(1) << 32},
+    {1000, 31, static_cast<s128>(1000) << 32},
+
+    // shift = 62 (left shift by 1)
+    {1, 62, static_cast<s128>(1) << 1},
+    {S64_MAX, 62, static_cast<s128>(S64_MAX) << 1},
+};
+INSTANTIATE_TEST_SUITE_P(left_shift, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_left_shift));
+
+// Right shift cases (shift > 63, so threshold_shift < 0)
+const MinSaturatingDividendTestParam min_saturating_dividend_right_shift[] = {
+    // shift = 64 (right shift by 1)
+    {2, 64, static_cast<s128>(2) >> 1},      // 1
+    {100, 64, static_cast<s128>(100) >> 1},  // 50
+    {1000, 64, static_cast<s128>(1000) >> 1},
+
+    // shift = 65 (right shift by 2)
+    {4, 65, static_cast<s128>(4) >> 2},      // 1
+    {100, 65, static_cast<s128>(100) >> 2},  // 25
+
+    // shift = 70 (right shift by 7)
+    {128, 70, static_cast<s128>(128) >> 7},    // 1
+    {1000, 70, static_cast<s128>(1000) >> 7},  // 7
+
+    // shift = 95 (right shift by 32)
+    {(1LL << 32), 95, static_cast<s128>(1LL << 32) >> 32},  // 1
+    {(1000LL << 32), 95, static_cast<s128>(1000LL << 32) >> 32},
+
+    // Large right shift that produces 0
+    {1, 64, 0},     // 1 >> 1 = 0
+    {10, 67, 0},    // 10 >> 4 = 0
+    {100, 100, 0},  // 100 >> 37 = 0
+};
+INSTANTIATE_TEST_SUITE_P(right_shift, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_right_shift));
+
+// Extreme divisor values
+const MinSaturatingDividendTestParam
+    min_saturating_dividend_extreme_divisors[] = {
+        // S64_MAX
+        {S64_MAX, 0, static_cast<s128>(S64_MAX) << 63},
+        {S64_MAX, 32, static_cast<s128>(S64_MAX) << 31},
+        {S64_MAX, 63, S64_MAX},
+        {S64_MAX, 64, static_cast<s128>(S64_MAX) >> 1},
+        {S64_MAX, 100, static_cast<s128>(S64_MAX) >> 37},
+
+        // -S64_MAX
+        {-S64_MAX, 0, static_cast<s128>(S64_MAX) << 63},
+        {-S64_MAX, 32, static_cast<s128>(S64_MAX) << 31},
+        {-S64_MAX, 63, S64_MAX},
+
+        // S64_MIN (abs = 2^63)
+        {S64_MIN, 0, static_cast<s128>(1) << 126},   // 2^63 << 63 = 2^126
+        {S64_MIN, 31, static_cast<s128>(1) << 95},   // 2^63 << 31 = 2^95
+        {S64_MIN, 63, static_cast<s128>(1) << 63},   // 2^63 << 0 = 2^63
+        {S64_MIN, 64, static_cast<s128>(1) << 62},   // 2^63 >> 1 = 2^62
+        {S64_MIN, 100, static_cast<s128>(1) << 26},  // 2^63 >> 37 = 2^26
+};
+INSTANTIATE_TEST_SUITE_P(extreme_divisors, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_extreme_divisors));
+
+// Extreme shift values
+const MinSaturatingDividendTestParam min_saturating_dividend_extreme_shifts[] =
+    {
+        // Maximum valid left shift for s128 is 127 bits
+        // To get threshold_shift = 127, we need shift = 63 - 127 = -64
+        {1, -64, static_cast<s128>(1) << 127},
+        {2, -64, static_cast<s128>(2) << 127},
+        {100, -64, static_cast<s128>(100) << 127},
+
+        // Large negative shift (but still valid)
+        {1, -50, static_cast<s128>(1) << 113},
+        {100, -50, static_cast<s128>(100) << 113},
+
+        // Large positive shift (large right shift)
+        {S64_MAX, 150, static_cast<s128>(S64_MAX) >> 87},
+        {(1LL << 50), 150, static_cast<s128>(1LL << 50) >> 87},
+};
+INSTANTIATE_TEST_SUITE_P(extreme_shifts, FixedMinSaturatingDividendTest,
+                         ValuesIn(min_saturating_dividend_extreme_shifts));
 
 }  // namespace
 }  // namespace curves
