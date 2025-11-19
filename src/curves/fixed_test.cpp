@@ -1071,6 +1071,14 @@ const DivisionTestParams divide_saturation[] = {
     // Just barely overflowing:
     // (2^62) / 0.5 -> 2^63 -> Overflow
     {1LL << 62, 0, 1, 1, 0, S64_MAX},
+
+    // Positive remaining_shift overflow: 124 > 63
+    // Dividing large integer by tiny fraction (1/2^62). Should saturate.
+    {S64_MAX, 0, 1, 62, 62, S64_MAX},
+
+    // Negative remaining_shift overflow: -186 < -63
+    // Dividing tiny fraction (1/2^62) by huge integer. Should round to 0.
+    {1, 62, S64_MAX, 0, 0, 0},
 };
 INSTANTIATE_TEST_SUITE_P(Saturation, FixedDivisionTest,
                          ValuesIn(divide_saturation));

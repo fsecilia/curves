@@ -334,35 +334,41 @@ static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
-	int optimal_shift, remaining_shift, quotient_frac_bits;
+	int optimal_shift, quotient_frac_bits, remaining_shift;
 	s64 quotient;
 
+	// Validate inputs.
 	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
 		     output_frac_bits >= 64 || divisor == 0))
 		return __curves_fixed_divide_error(dividend, divisor);
 
 	// Find maximum shift to apply before division to avoid overflow.
-	// This maximizes s128 headroom.
 	optimal_shift = __curves_fixed_divide_optimal_shift(dividend, divisor);
 	if (unlikely(optimal_shift < 0))
 		return curves_saturate_s64((dividend ^ divisor) >= 0);
 
-	// Divide with optimal shift.
-	quotient =
-		curves_div_s128_s64((s128)dividend << optimal_shift, divisor);
+	// Calculate the precision we'll have after division.
 	quotient_frac_bits = (int)dividend_frac_bits + optimal_shift -
 			     (int)divisor_frac_bits;
 
-	// Apply remaining shift to quotient.
+	// Check if the remaining shift is within the valid range.
 	remaining_shift = (int)output_frac_bits - quotient_frac_bits;
+	if (unlikely(remaining_shift > 63)) {
+		return curves_saturate_s64((dividend ^ divisor) >= 0);
+	} else if (unlikely(remaining_shift < -63)) {
+		return 0;
+	}
+
+	// Divide with optimal shift to maximize intermediate precision.
+	quotient =
+		curves_div_s128_s64((s128)dividend << optimal_shift, divisor);
+
+	// Apply remaining shift to reach target precision.
 	if (remaining_shift > 0) {
-		// Need more left shift to reach output precision.
 		return __curves_fixed_shl_sat_s64(quotient, remaining_shift);
 	} else if (remaining_shift < 0) {
-		// Pre-shifted too far, need to shift back right.
 		return __curves_fixed_shr_rtz_s64(quotient, -remaining_shift);
 	} else {
-		// Exactly at target precision, no adjustment needed.
 		return quotient;
 	}
 }
