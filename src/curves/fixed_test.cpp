@@ -500,7 +500,7 @@ INSTANTIATE_TEST_SUITE_P(constants_pi, FixedConstantsTest,
                          ValuesIn(constants_pi));
 
 // ----------------------------------------------------------------------------
-// Multiplication Test
+// curves_fixed_multiply()
 // ----------------------------------------------------------------------------
 
 struct MultiplicationTestParams {
