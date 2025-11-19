@@ -53,13 +53,16 @@ static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 // Shifts left, saturating if the value overflows.
 static inline s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift)
 {
+	s64 max_safe_val;
+	s64 min_safe_val;
+
 	// Find the maximum value that doesn't overflow.
-	s64 max_safe_val = S64_MAX >> shift;
+	max_safe_val = S64_MAX >> shift;
 	if (unlikely(value > max_safe_val))
 		return S64_MAX;
 
 	// Find the minimum value that doesn't overflow.
-	s64 min_safe_val = S64_MIN >> shift;
+	min_safe_val = S64_MIN >> shift;
 	if (unlikely(value < min_safe_val))
 		return S64_MIN;
 
@@ -119,13 +122,16 @@ static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
 // Shifts left, saturating if the value overflows.
 static inline s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift)
 {
+	s128 max_safe_val;
+	s128 min_safe_val;
+
 	// Find the maximum value that doesn't overflow.
-	s128 max_safe_val = CURVES_S128_MAX >> shift;
+	max_safe_val = CURVES_S128_MAX >> shift;
 	if (unlikely(value > max_safe_val))
 		return CURVES_S128_MAX;
 
 	// Find the minimum value that doesn't overflow.
-	s128 min_safe_val = CURVES_S128_MIN >> shift;
+	min_safe_val = CURVES_S128_MIN >> shift;
 	if (unlikely(value < min_safe_val))
 		return CURVES_S128_MIN;
 
@@ -372,6 +378,8 @@ static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
+	s64 saturation;
+
 	// Calculate the total shift needed.
 	int shift = (int)output_frac_bits + (int)divisor_frac_bits -
 		    (int)dividend_frac_bits;
@@ -384,8 +392,8 @@ static inline s64 curves_fixed_divide(s64 dividend,
 	}
 
 	// Check if the result would saturate.
-	s64 saturation = __curves_fixed_divide_check_saturation(dividend,
-								divisor, shift);
+	saturation = __curves_fixed_divide_check_saturation(dividend, divisor,
+							    shift);
 	if (unlikely(saturation != 0))
 		return saturation;
 

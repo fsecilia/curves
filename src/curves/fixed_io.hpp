@@ -20,15 +20,14 @@ inline auto operator<<(std::ostream& out, u128 src) -> std::ostream& {
   if (src == 0) return out << "0";
 
   std::array<char, 39> buffer;
-  auto next = std::begin(buffer);
+  auto cur = std::end(buffer);
 
   while (src > 0) {
-    *next++ = '0' + (src % 10);
+    *--cur = '0' + (src % 10);
     src /= 10;
   }
 
-  std::reverse(buffer.begin(), next);
-  out.write(buffer.data(), next - buffer.begin());
+  out.write(cur, std::end(buffer) - cur);
 
   return out;
 }

@@ -58,6 +58,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-exit-time-destructors
     -Wno-global-constructors
     -Wno-padded
+    -Wno-unsafe-buffer-usage
   )
 endif()
 
