@@ -73,6 +73,18 @@ extern s64 curves_fixed_const_e(unsigned int frac_bits);
 extern s64 curves_fixed_const_ln2(unsigned int frac_bits);
 extern s64 curves_fixed_const_pi(unsigned int frac_bits);
 
+s64 __cold __curves_fixed_add_error(unsigned int augend_frac_bits,
+				    unsigned int addend_frac_bits,
+				    unsigned int output_frac_bits)
+{
+	WARN_ONCE(1,
+		  "curves_fixed_add: invalid frac_bits "
+		  "(augend=%u, addend=%u, output=%u)\n",
+		  augend_frac_bits, addend_frac_bits, output_frac_bits);
+
+	return 0;
+}
+
 extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplicand_frac_bits,
 				 s64 multiplier,

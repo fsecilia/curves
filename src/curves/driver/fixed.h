@@ -261,6 +261,55 @@ static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 }
 
 // ----------------------------------------------------------------------------
+// Addition
+// ----------------------------------------------------------------------------
+
+s64 __cold __curves_fixed_add_error(unsigned int augend_frac_bits,
+				    unsigned int addend_frac_bits,
+				    unsigned int output_frac_bits);
+
+static inline s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
+				   s64 addend, unsigned int addend_frac_bits,
+				   unsigned int output_frac_bits)
+{
+	s64 intermediate_augend, intermediate_addend;
+	unsigned int max_frac_bits;
+
+	// Validate inputs.
+	if (unlikely(augend_frac_bits >= 64 || addend_frac_bits >= 64 ||
+		     output_frac_bits >= 64)) {
+		return __curves_fixed_add_error(
+			augend_frac_bits, addend_frac_bits, output_frac_bits);
+	}
+
+	// Choose greater intermediate precision.
+	max_frac_bits = output_frac_bits;
+	if (max_frac_bits < augend_frac_bits)
+		max_frac_bits = augend_frac_bits;
+	if (max_frac_bits < addend_frac_bits)
+		max_frac_bits = addend_frac_bits;
+
+	// Promote both summands to greater intermediate precision.
+	intermediate_augend = curves_fixed_rescale_s64(augend, augend_frac_bits,
+						       max_frac_bits);
+	intermediate_addend = curves_fixed_rescale_s64(addend, addend_frac_bits,
+						       max_frac_bits);
+
+	// Check for saturation.
+	if (intermediate_addend > 0 &&
+	    intermediate_augend > S64_MAX - intermediate_addend)
+		return curves_saturate_s64(true);
+	if (intermediate_addend < 0 &&
+	    intermediate_augend < S64_MIN - intermediate_addend)
+		return curves_saturate_s64(false);
+
+	// Return sum scaled to output precision.
+	return curves_fixed_rescale_s64(intermediate_augend +
+						intermediate_addend,
+					max_frac_bits, output_frac_bits);
+}
+
+// ----------------------------------------------------------------------------
 // Multiplication
 // ----------------------------------------------------------------------------
 
