@@ -94,8 +94,8 @@ s64 __cold __curves_fixed_subtract_error(unsigned int minuend_frac_bits,
 					 unsigned int output_frac_bits)
 {
 	WARN_ONCE(1,
-		  "curves_fixed_add: invalid frac_bits "
-		  "(minuend=%u, subtraend=%u, output=%u)\n",
+		  "curves_fixed_subtract: invalid frac_bits "
+		  "(minuend=%u, subtrahend=%u, output=%u)\n",
 		  minuend_frac_bits, subtrahend_frac_bits, output_frac_bits);
 
 	return 0;
