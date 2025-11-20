@@ -209,7 +209,7 @@ INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
 // curves_fixed_divide()
 // ----------------------------------------------------------------------------
 
-struct DivisionTestParams {
+struct DivideTestParams {
   s64 dividend;
   unsigned int dividend_frac_bits;
   s64 divisor;
@@ -217,7 +217,7 @@ struct DivisionTestParams {
   unsigned int output_frac_bits;
   s64 expected_result;
 
-  friend auto operator<<(std::ostream& out, const DivisionTestParams& src)
+  friend auto operator<<(std::ostream& out, const DivideTestParams& src)
       -> std::ostream& {
     return out << "{" << src.dividend << ", " << src.dividend_frac_bits << ", "
                << src.divisor << ", " << src.divisor_frac_bits << ", "
@@ -225,9 +225,9 @@ struct DivisionTestParams {
   }
 };
 
-struct FixedDivisionTest : TestWithParam<DivisionTestParams> {};
+struct FixedDivideTest : TestWithParam<DivideTestParams> {};
 
-TEST_P(FixedDivisionTest, expected_result) {
+TEST_P(FixedDivideTest, expected_result) {
   const auto expected_result = GetParam().expected_result;
 
   const auto actual_result = curves_fixed_divide(
@@ -242,7 +242,7 @@ TEST_P(FixedDivisionTest, expected_result) {
 
   Tests that frac_bits >= 64 triggers the error handler correctly.
 */
-const DivisionTestParams divide_invalid_frac_bits[] = {
+const DivideTestParams divide_invalid_frac_bits[] = {
     // Invalid dividend_frac_bits
     {-100, 64, 2, 0, 0, S64_MIN},
     {100, 64, 2, 0, 0, S64_MAX},
@@ -262,7 +262,7 @@ const DivisionTestParams divide_invalid_frac_bits[] = {
     {100, 64, -2, 64, 64, S64_MIN},
     {100, 64, 2, 64, 64, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(invalid_frac_bits, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(invalid_frac_bits, FixedDivideTest,
                          ValuesIn(divide_invalid_frac_bits));
 
 /*
@@ -271,7 +271,7 @@ INSTANTIATE_TEST_SUITE_P(invalid_frac_bits, FixedDivisionTest,
   Zero divided by anything (except 0) should always yield 0, regardless of
   precision settings. The optimal shift logic handles 0 with the (| 1) trick.
 */
-const DivisionTestParams divide_zero_dividend[] = {
+const DivideTestParams divide_zero_dividend[] = {
     // Zero precision
     {0, 0, 1, 0, 0, 0},
     {0, 0, 100, 0, 0, 0},
@@ -295,7 +295,7 @@ const DivisionTestParams divide_zero_dividend[] = {
     {0, 32, -100, 32, 32, 0},
     {0, 0, S64_MIN, 0, 0, 0},
 };
-INSTANTIATE_TEST_SUITE_P(zero_dividend, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(zero_dividend, FixedDivideTest,
                          ValuesIn(divide_zero_dividend));
 
 /*
@@ -304,7 +304,7 @@ INSTANTIATE_TEST_SUITE_P(zero_dividend, FixedDivisionTest,
   Should saturate based on dividend sign. Positive dividends -> S64_MAX,
   negative dividends -> S64_MIN.
 */
-const DivisionTestParams divide_by_zero[] = {
+const DivideTestParams divide_by_zero[] = {
     // Positive dividends
     {1, 0, 0, 0, 0, S64_MAX},
     {100, 0, 0, 0, 0, S64_MAX},
@@ -319,7 +319,7 @@ const DivisionTestParams divide_by_zero[] = {
     {-1, 32, 0, 32, 32, S64_MIN},
     {-1, 62, 0, 62, 62, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(division_by_zero, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(division_by_zero, FixedDivideTest,
                          ValuesIn(divide_by_zero));
 
 /*
@@ -327,7 +327,7 @@ INSTANTIATE_TEST_SUITE_P(division_by_zero, FixedDivisionTest,
 
   Dividing by 1 should preserve the value after rescaling to output precision.
 */
-const DivisionTestParams divide_by_one[] = {
+const DivideTestParams divide_by_one[] = {
     // Zero precision - direct pass-through
     {50, 0, 1, 0, 0, 50},
     {-50, 0, 1, 0, 0, -50},
@@ -346,14 +346,14 @@ const DivisionTestParams divide_by_one[] = {
     {50LL << 32, 32, 1LL << 32, 32, 0, 50},
     {50LL << 48, 48, 1LL << 48, 48, 32, 50LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(identity, FixedDivisionTest, ValuesIn(divide_by_one));
+INSTANTIATE_TEST_SUITE_P(identity, FixedDivideTest, ValuesIn(divide_by_one));
 
 /*
   Simple Integer Cases
 
   Basic division with frac_bits = 0 for all parameters.
 */
-const DivisionTestParams divide_integers[] = {
+const DivideTestParams divide_integers[] = {
     // Exact divisions
     {100, 0, 2, 0, 0, 50},
     {1000, 0, 10, 0, 0, 100},
@@ -388,8 +388,7 @@ const DivisionTestParams divide_integers[] = {
     {1000000, 0, 999999, 0, 0, 1},
     {1000000, 0, 1000001, 0, 0, 0},
 };
-INSTANTIATE_TEST_SUITE_P(integers, FixedDivisionTest,
-                         ValuesIn(divide_integers));
+INSTANTIATE_TEST_SUITE_P(integers, FixedDivideTest, ValuesIn(divide_integers));
 
 /*
   All Sign Combinations
@@ -398,7 +397,7 @@ INSTANTIATE_TEST_SUITE_P(integers, FixedDivisionTest,
   positive/negative = negative, negative/positive = negative,
   negative/negative = positive.
 */
-const DivisionTestParams divide_signs[] = {
+const DivideTestParams divide_signs[] = {
     // Positive / Positive = Positive
     {100, 0, 2, 0, 0, 50},
     {1000LL << 32, 32, 10LL << 32, 32, 32, 100LL << 32},
@@ -420,7 +419,7 @@ const DivisionTestParams divide_signs[] = {
     {-1234, 0, -1, 0, 0, 1234},
     {5678LL << 16, 16, -(1LL << 16), 16, 16, -(5678LL << 16)},
 };
-INSTANTIATE_TEST_SUITE_P(signs, FixedDivisionTest, ValuesIn(divide_signs));
+INSTANTIATE_TEST_SUITE_P(signs, FixedDivideTest, ValuesIn(divide_signs));
 
 /*
   Output Precision Greater Than Input Precision
@@ -428,7 +427,7 @@ INSTANTIATE_TEST_SUITE_P(signs, FixedDivisionTest, ValuesIn(divide_signs));
   Tests where output_frac_bits > dividend_frac_bits + optimal_shift -
   divisor_frac_bits, requiring a left shift of the quotient.
 */
-const DivisionTestParams divide_precision_upscale[] = {
+const DivideTestParams divide_precision_upscale[] = {
     // Integer to fixed-point
     {1, 0, 2, 0, 1, 1},           // 0.5 in Q0.1
     {1, 0, 2, 0, 16, 1 << 15},    // 0.5 in Q16
@@ -443,7 +442,7 @@ const DivisionTestParams divide_precision_upscale[] = {
     {100, 0, 1LL << 16, 16, 32, 100LL << 32},
     {1LL << 16, 16, 100, 0, 32, (1LL << 32) / 100},
 };
-INSTANTIATE_TEST_SUITE_P(precision_upscale, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(precision_upscale, FixedDivideTest,
                          ValuesIn(divide_precision_upscale));
 
 /*
@@ -453,7 +452,7 @@ INSTANTIATE_TEST_SUITE_P(precision_upscale, FixedDivisionTest,
     output_frac_bits < dividend_frac_bits + optimal_shift - divisor_frac_bits,
   requiring a right shift of the quotient with round-to-zero behavior.
 */
-const DivisionTestParams divide_precision_downscale[] = {
+const DivideTestParams divide_precision_downscale[] = {
     // High precision to integer
     {100LL << 32, 32, 10LL << 32, 32, 0, 10},
     {(1LL << 32) / 2, 32, 1LL << 32, 32, 0, 0},  // 0.5 truncates to 0
@@ -471,7 +470,7 @@ const DivisionTestParams divide_precision_downscale[] = {
     {1001LL << 32, 32, 1000LL << 32, 32, 0, 1},  // 1.001 -> 1
     {999LL << 32, 32, 1000LL << 32, 32, 0, 0},   // 0.999 -> 0
 };
-INSTANTIATE_TEST_SUITE_P(precision_downscale, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(precision_downscale, FixedDivideTest,
                          ValuesIn(divide_precision_downscale));
 
 /*
@@ -480,7 +479,7 @@ INSTANTIATE_TEST_SUITE_P(precision_downscale, FixedDivisionTest,
   When dividend_frac_bits = divisor_frac_bits = output_frac_bits, the
   scaling should be relatively straightforward.
 */
-const DivisionTestParams divide_equal_precision[] = {
+const DivideTestParams divide_equal_precision[] = {
     // Q32.32 format
     {100LL << 32, 32, 10LL << 32, 32, 32, 10LL << 32},
     {(3LL << 32) / 2, 32, 1LL << 32, 32, 32, (3LL << 32) / 2},
@@ -496,7 +495,7 @@ const DivisionTestParams divide_equal_precision[] = {
     // Q0.0 format (integers)
     {1000, 0, 10, 0, 0, 100},
 };
-INSTANTIATE_TEST_SUITE_P(equal_precision, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(equal_precision, FixedDivideTest,
                          ValuesIn(divide_equal_precision));
 
 /*
@@ -505,7 +504,7 @@ INSTANTIATE_TEST_SUITE_P(equal_precision, FixedDivisionTest,
   When the dividend is large enough that no left shift can be applied without
   risking overflow. This happens when clz(dividend) <= clz(divisor) + 1.
 */
-const DivisionTestParams divide_optimal_shift_zero[] = {
+const DivideTestParams divide_optimal_shift_zero[] = {
     // S64_MAX / 1: clz(MAX) = 1, clz(1) = 63, optimal = 62 + 1 - 63 = 0
     {S64_MAX, 0, 1, 0, 0, S64_MAX},
 
@@ -521,7 +520,7 @@ const DivisionTestParams divide_optimal_shift_zero[] = {
     {-(1LL << 62), 0, 1, 0, 0, -(1LL << 62)},
     {S64_MIN >> 1, 0, 1, 0, 0, S64_MIN >> 1},
 };
-INSTANTIATE_TEST_SUITE_P(optimal_shift_zero, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(optimal_shift_zero, FixedDivideTest,
                          ValuesIn(divide_optimal_shift_zero));
 
 /*
@@ -530,7 +529,7 @@ INSTANTIATE_TEST_SUITE_P(optimal_shift_zero, FixedDivisionTest,
   The special S64_MIN / 1 case where clz(S64_MIN) = 0, resulting in
   optimal_shift = 62 + 0 - 63 = -1, which should saturate.
 */
-const DivisionTestParams divide_optimal_shift_negative[] = {
+const DivideTestParams divide_optimal_shift_negative[] = {
     // S64_MIN / 1 should saturate to S64_MIN (same sign)
     {S64_MIN, 0, 1, 0, 0, S64_MIN},
 
@@ -542,7 +541,7 @@ const DivisionTestParams divide_optimal_shift_negative[] = {
     {S64_MIN, 0, -1, 0, 32, S64_MAX},
     {S64_MIN, 32, 1LL << 32, 32, 32, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(optimal_shift_negative, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(optimal_shift_negative, FixedDivideTest,
                          ValuesIn(divide_optimal_shift_negative));
 
 /*
@@ -551,7 +550,7 @@ INSTANTIATE_TEST_SUITE_P(optimal_shift_negative, FixedDivisionTest,
   Small dividend and/or large divisor produce high optimal shift values,
   maximizing intermediate precision before division.
 */
-const DivisionTestParams divide_optimal_shift_maximum[] = {
+const DivideTestParams divide_optimal_shift_maximum[] = {
     // 1 / S64_MAX: clz(1) = 63, clz(MAX) = 1, optimal = 62 + 63 - 1 = 124
     {1, 0, S64_MAX, 0, 0, 0},
     {1, 0, S64_MAX, 0, 32, 0},
@@ -565,7 +564,7 @@ const DivisionTestParams divide_optimal_shift_maximum[] = {
     {1, 0, 3, 0, 62, 1537228672809129301LL},  // 1/3 in Q62
     {1, 0, 7, 0, 62, 658812288346769700LL},   // 1/7 in Q62, rounded toward 0
 };
-INSTANTIATE_TEST_SUITE_P(optimal_shift_maximum, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(optimal_shift_maximum, FixedDivideTest,
                          ValuesIn(divide_optimal_shift_maximum));
 
 /*
@@ -574,7 +573,7 @@ INSTANTIATE_TEST_SUITE_P(optimal_shift_maximum, FixedDivisionTest,
   When remaining_shift > 63, the result would require shifting beyond s64
   capacity, so the function saturates based on quotient sign.
 */
-const DivisionTestParams divide_remaining_shift_overflow[] = {
+const DivideTestParams divide_remaining_shift_overflow[] = {
     // Positive results saturate to S64_MAX
     {1, 0, 1LL << 62, 62, 62, 1LL << 62},
     {100, 0, 1, 0, 63, S64_MAX},
@@ -586,7 +585,7 @@ const DivisionTestParams divide_remaining_shift_overflow[] = {
     {-1, 0, 2, 1, 63, S64_MIN},
     {1, 0, -2, 1, 63, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(remaining_shift_overflow, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(remaining_shift_overflow, FixedDivideTest,
                          ValuesIn(divide_remaining_shift_overflow));
 
 /*
@@ -595,7 +594,7 @@ INSTANTIATE_TEST_SUITE_P(remaining_shift_overflow, FixedDivisionTest,
   When remaining_shift < -63, the result would be shifted so far right that
   it becomes 0.
 */
-const DivisionTestParams divide_remaining_shift_underflow[] = {
+const DivideTestParams divide_remaining_shift_underflow[] = {
     // Large intermediate precision, no output precision
     {1, 62, S64_MAX, 0, 0, 0},
     {100, 60, 1LL << 62, 0, 0, 0},
@@ -605,7 +604,7 @@ const DivisionTestParams divide_remaining_shift_underflow[] = {
     {1, 60, 1LL << 60, 0, 0, 0},
     {1, 62, 1LL << 30, 0, 0, 0},
 };
-INSTANTIATE_TEST_SUITE_P(remaining_shift_underflow, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(remaining_shift_underflow, FixedDivideTest,
                          ValuesIn(divide_remaining_shift_underflow));
 
 /*
@@ -613,7 +612,7 @@ INSTANTIATE_TEST_SUITE_P(remaining_shift_underflow, FixedDivisionTest,
 
   When a positive result has a fractional part, it should truncate toward zero.
 */
-const DivisionTestParams divide_rtz_positive[] = {
+const DivideTestParams divide_rtz_positive[] = {
     // 1 / 3 = 0.333...
     {1, 0, 3, 0, 0, 0},
     {1, 0, 3, 0, 16, 21845},       // 0.333328... in Q16
@@ -639,7 +638,7 @@ const DivisionTestParams divide_rtz_positive[] = {
     {1, 0, 1000000, 0, 0, 0},
     {1, 0, 1000000, 0, 32, 4294},
 };
-INSTANTIATE_TEST_SUITE_P(rtz_positive, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(rtz_positive, FixedDivideTest,
                          ValuesIn(divide_rtz_positive));
 
 /*
@@ -648,7 +647,7 @@ INSTANTIATE_TEST_SUITE_P(rtz_positive, FixedDivisionTest,
   When a negative result has a fractional part, it should truncate toward zero
   (not toward negative infinity like floor division).
 */
-const DivisionTestParams divide_rtz_negative[] = {
+const DivideTestParams divide_rtz_negative[] = {
     // -1 / 3 = -0.333...
     {-1, 0, 3, 0, 0, 0},
     {-1, 0, 3, 0, 16, -21845},
@@ -671,7 +670,7 @@ const DivisionTestParams divide_rtz_negative[] = {
     {-1001, 0, 1000, 0, 0, -1},
     {-1001, 0, 1000, 0, 16, -65601},
 };
-INSTANTIATE_TEST_SUITE_P(rtz_negative, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(rtz_negative, FixedDivideTest,
                          ValuesIn(divide_rtz_negative));
 
 /*
@@ -680,7 +679,7 @@ INSTANTIATE_TEST_SUITE_P(rtz_negative, FixedDivisionTest,
   Division operations where the mathematical result is very small and rounds
   to zero at the requested output precision.
 */
-const DivisionTestParams divide_near_zero[] = {
+const DivideTestParams divide_near_zero[] = {
     // Positive near-zero
     {1, 0, 1000000, 0, 0, 0},
     {1, 0, S64_MAX, 0, 0, 0},
@@ -697,7 +696,7 @@ const DivisionTestParams divide_near_zero[] = {
     {10, 0, 1LL << 50, 0, 10, 0},
     {100, 16, 1LL << 50, 16, 16, 0},
 };
-INSTANTIATE_TEST_SUITE_P(near_zero, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(near_zero, FixedDivideTest,
                          ValuesIn(divide_near_zero));
 
 /*
@@ -705,7 +704,7 @@ INSTANTIATE_TEST_SUITE_P(near_zero, FixedDivisionTest,
 
   Division operations that would produce results exceeding S64_MAX.
 */
-const DivisionTestParams divide_saturate_positive[] = {
+const DivideTestParams divide_saturate_positive[] = {
     // S64_MAX / small divisor with precision increase
     {S64_MAX, 0, 1, 0, 1, S64_MAX},
     {S64_MAX, 0, 1, 0, 10, S64_MAX},
@@ -722,7 +721,7 @@ const DivisionTestParams divide_saturate_positive[] = {
     {S64_MAX, 32, 1LL << 32, 32, 33, S64_MAX},
     {1LL << 62, 32, 1LL << 32, 32, 33, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(saturate_positive, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(saturate_positive, FixedDivideTest,
                          ValuesIn(divide_saturate_positive));
 
 /*
@@ -730,7 +729,7 @@ INSTANTIATE_TEST_SUITE_P(saturate_positive, FixedDivisionTest,
 
   Division operations that would produce results below S64_MIN.
 */
-const DivisionTestParams divide_saturate_negative[] = {
+const DivideTestParams divide_saturate_negative[] = {
     // S64_MIN / 1 with precision increase
     {S64_MIN, 0, 1, 0, 1, S64_MIN},
     {S64_MIN, 0, 1, 0, 10, S64_MIN},
@@ -751,7 +750,7 @@ const DivisionTestParams divide_saturate_negative[] = {
     {S64_MIN, 32, 1LL << 32, 32, 33, S64_MIN},
     {-(1LL << 62), 32, 1LL << 32, 32, 33, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(saturate_negative, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(saturate_negative, FixedDivideTest,
                          ValuesIn(divide_saturate_negative));
 
 /*
@@ -760,7 +759,7 @@ INSTANTIATE_TEST_SUITE_P(saturate_negative, FixedDivisionTest,
   S64_MIN is special because it's the only value where abs(x) doesn't fit
   in the positive range of s64. Tests various operations involving S64_MIN.
 */
-const DivisionTestParams divide_s64_min_special[] = {
+const DivideTestParams divide_s64_min_special[] = {
     // S64_MIN / 1 = S64_MIN
     {S64_MIN, 0, 1, 0, 0, S64_MIN},
     {S64_MIN, 32, 1LL << 32, 32, 32, S64_MIN},
@@ -784,7 +783,7 @@ const DivisionTestParams divide_s64_min_special[] = {
     {S64_MIN, 0, S64_MIN, 0, 0, 1},
     {S64_MIN, 32, S64_MIN, 32, 32, 1LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(s64_min_special, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(s64_min_special, FixedDivideTest,
                          ValuesIn(divide_s64_min_special));
 
 /*
@@ -792,7 +791,7 @@ INSTANTIATE_TEST_SUITE_P(s64_min_special, FixedDivisionTest,
 
   Tests involving the maximum positive s64 value.
 */
-const DivisionTestParams divide_s64_max_cases[] = {
+const DivideTestParams divide_s64_max_cases[] = {
     // S64_MAX / 1 = S64_MAX
     {S64_MAX, 0, 1, 0, 0, S64_MAX},
     {S64_MAX, 32, 1LL << 32, 32, 32, S64_MAX},
@@ -815,7 +814,7 @@ const DivisionTestParams divide_s64_max_cases[] = {
     {1, 0, S64_MAX, 0, 0, 0},
     {1, 0, S64_MAX, 0, 62, 0},
 };
-INSTANTIATE_TEST_SUITE_P(s64_max_cases, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(s64_max_cases, FixedDivideTest,
                          ValuesIn(divide_s64_max_cases));
 
 /*
@@ -823,7 +822,7 @@ INSTANTIATE_TEST_SUITE_P(s64_max_cases, FixedDivisionTest,
 
   Tests using the highest safe fractional bit counts for the input values.
 */
-const DivisionTestParams divide_high_precision[] = {
+const DivideTestParams divide_high_precision[] = {
     // 1.5 / 1.5 = 1.0
     {(1LL << 62) + (1LL << 61), 62, (1LL << 62) + (1LL << 61), 62, 62,
      1LL << 62},
@@ -841,7 +840,7 @@ const DivisionTestParams divide_high_precision[] = {
     {15, 0, 10, 0, 62, (3LL << 61)},  // 15/10 = 1.5
     {7, 0, 4, 0, 62, (7LL << 60)},    // 7/4 = 1.75
 };
-INSTANTIATE_TEST_SUITE_P(high_precision, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(high_precision, FixedDivideTest,
                          ValuesIn(divide_high_precision));
 
 /*
@@ -850,7 +849,7 @@ INSTANTIATE_TEST_SUITE_P(high_precision, FixedDivisionTest,
   Division operations that might appear in actual fixed-point calculations,
   with realistic precision combinations.
 */
-const DivisionTestParams divide_realistic[] = {
+const DivideTestParams divide_realistic[] = {
     // Computing percentages (Q16.16)
     {75LL << 16, 16, 100LL << 16, 16, 16, (75LL << 16) / 100},        // 0.75
     {12345LL << 16, 16, 100LL << 16, 16, 16, (12345LL << 16) / 100},  // 123.45
@@ -872,7 +871,7 @@ const DivisionTestParams divide_realistic[] = {
     {100LL << 16, 16, 3, 0, 32, (100LL << 32) / 3},
     {1000, 0, 16LL << 16, 16, 16, (1000LL << 16) / 16},
 };
-INSTANTIATE_TEST_SUITE_P(realistic, FixedDivisionTest,
+INSTANTIATE_TEST_SUITE_P(realistic, FixedDivideTest,
                          ValuesIn(divide_realistic));
 
 }  // namespace
