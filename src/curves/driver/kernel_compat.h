@@ -73,7 +73,7 @@ __extension__ typedef unsigned __int128 u128;
 
 static inline unsigned int clz64(u64 x)
 {
-	return x ? __builtin_clzll(x) : 64;
+	return x ? (unsigned int)__builtin_clzll(x) : (unsigned int)64;
 }
 
 #endif
