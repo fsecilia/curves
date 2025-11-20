@@ -6,7 +6,7 @@
 
 #include <curves/test.hpp>
 #include <curves/fixed.hpp>
-#include <curves/fixed_io.hpp>
+#include <curves/io.hpp>
 
 namespace curves {
 namespace {

@@ -12,7 +12,7 @@
 
 list(APPEND lib_files
   fixed.hpp
-  fixed_io.hpp
+  io.hpp
   lib.cpp
   lib.hpp
 )
@@ -20,12 +20,12 @@ list(APPEND lib_files
 list(APPEND test_files
   fixed_test/add.cpp
   fixed_test/divide.cpp
-  fixed_test/io.cpp
   fixed_test/multiply.cpp
   fixed_test/s128.cpp
   fixed_test/s64.cpp
   fixed_test/subtract.cpp
   fixed_test/test.cpp
+  io_test.cpp
   math64_test.cpp
   test.cpp
   test.hpp

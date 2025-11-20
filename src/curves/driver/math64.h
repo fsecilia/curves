@@ -20,6 +20,11 @@
 
 #include "kernel_compat.h"
 
+#define CURVES_U128_MAX (~(u128)0)
+
+#define CURVES_S128_MAX ((s128)(CURVES_U128_MAX >> 1))
+#define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer
