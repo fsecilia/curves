@@ -123,8 +123,15 @@ const SubtractTestParams subtract_equal_precision[] = {
     // Q32.32 format
     {10LL << 32, 32, 20LL << 32, 32, 32, -(10LL << 32)},
     {-(5LL << 32), 32, -(3LL << 32), 32, 32, -(2LL << 32)},
+    {-(50LL << 32), 32, -(100LL << 32), 32, 32, 50LL << 32},
+
+    // 1.5 - 2.5 = -1.0
     {(1LL << 32) + (1LL << 31), 32, (2LL << 32) + (1LL << 31), 32, 32,
-     -(1LL << 32)},  // 1.5 - 2.5 = -1.0
+     -(1LL << 32)},
+
+    // 10.25 - 20.75 = -10.5
+    {(10LL << 32) + (1LL << 30), 32, (20LL << 32) + (3LL << 30), 32, 32,
+     -(10LL << 32) - (1LL << 31)},
 
     // Q16.48 format
     {100LL << 48, 48, 200LL << 48, 48, 48, -(100LL << 48)},
@@ -160,6 +167,7 @@ const SubtractTestParams subtract_different_input_precision[] = {
     // Both different, output matches neither
     {10LL << 16, 16, 20LL << 24, 24, 32, (10LL << 32) - (20LL << 32)},
     {5LL << 8, 8, 3LL << 16, 16, 24, (5LL << 24) - (3LL << 24)},
+    {-(10LL << 16), 16, -(100LL << 48), 48, 32, 90LL << 32},
 
     // Negative values with mixed precisions
     {-(10LL << 32), 32, -20, 0, 32, -(10LL << 32) + (20LL << 32)},
@@ -167,6 +175,28 @@ const SubtractTestParams subtract_different_input_precision[] = {
 };
 INSTANTIATE_TEST_SUITE_P(different_input_precision, FixedSubtractTest,
                          ValuesIn(subtract_different_input_precision));
+
+/*
+  Order-dependent Mixed Precision
+
+  These test what addition's commutativity test case catches.
+*/
+const SubtractTestParams subtract_order_dependent[] = {
+    // High precision first, low precision second
+    {100LL << 48, 48, 50, 0, 48, (50LL << 48)},
+    {100LL << 48, 48, 50, 0, 32, (50LL << 32)},
+    {100LL << 48, 48, 50, 0, 16, (50LL << 16)},
+
+    // Low precision first, high precision second, negative result.
+    {100, 0, 150LL << 48, 48, 48, -(50LL << 48)},
+    {100, 0, 150LL << 48, 48, 32, -(50LL << 32)},
+
+    // Different input precisions, various output precisions
+    {100LL << 24, 24, 50LL << 40, 40, 16, (50LL << 16)},
+    {100LL << 40, 40, 150LL << 24, 24, 32, -(50LL << 32)},
+};
+INSTANTIATE_TEST_SUITE_P(order_dependent, FixedSubtractTest,
+                         ValuesIn(subtract_order_dependent));
 
 /*
   Output Precision Conversion
@@ -195,6 +225,17 @@ const SubtractTestParams subtract_output_precision_differs[] = {
 
     // 5.75 - 3.75 = 2
     {(5LL << 32) + (3LL << 30), 32, (3LL << 32) + (1LL << 30), 32, 0, 2},
+
+    // Large values downscaling
+    {(S64_MAX >> 17), 48, (S64_MAX >> 18), 48, 32,
+     ((S64_MAX >> 17) - (S64_MAX >> 18)) >> 16},
+
+    // Upscaling near boundaries
+    {(S64_MAX >> 33), 0, (S64_MAX >> 34), 0, 32,
+     ((S64_MAX >> 33) - (S64_MAX >> 34)) << 32},
+
+    // Mixed precision with saturation, saturates after rescale
+    {S64_MAX >> 1, 16, -(S64_MAX >> 2), 0, 32, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(output_precision_differs, FixedSubtractTest,
                          ValuesIn(subtract_output_precision_differs));
@@ -300,14 +341,14 @@ INSTANTIATE_TEST_SUITE_P(saturate_negative, FixedSubtractTest,
 */
 const SubtractTestParams subtract_boundaries[] = {
     // Just under positive overflow
-    {S64_MAX - 1, 0, -1, 0, 0, S64_MAX},         // Exactly at max
-    {S64_MAX - 100, 0, -100, 0, 0, S64_MAX},     // Exactly at max
-    {S64_MAX - 100, 0, -99, 0, 0, S64_MAX - 1},  // One below max
+    {S64_MAX - 1, 0, -1, 0, 0, S64_MAX},
+    {S64_MAX - 100, 0, -100, 0, 0, S64_MAX},
+    {S64_MAX - 100, 0, -99, 0, 0, S64_MAX - 1},
 
     // Just above negative underflow
-    {S64_MIN + 1, 0, 1, 0, 0, S64_MIN},         // Exactly at min
-    {S64_MIN + 100, 0, 100, 0, 0, S64_MIN},     // Exactly at min
-    {S64_MIN + 100, 0, 99, 0, 0, S64_MIN + 1},  // One above min
+    {S64_MIN + 1, 0, 1, 0, 0, S64_MIN},
+    {S64_MIN + 100, 0, 100, 0, 0, S64_MIN},
+    {S64_MIN + 100, 0, 99, 0, 0, S64_MIN + 1},
 
     // Large values that just barely fit without overflow
     {S64_MAX >> 1, 0, -(S64_MAX >> 1), 0, 0, S64_MAX - 1},
@@ -316,6 +357,12 @@ const SubtractTestParams subtract_boundaries[] = {
     // With fractional bits
     {S64_MAX - (1LL << 32), 32, -((1LL << 32) - 1), 32, 32, S64_MAX - 1},
     {S64_MIN + (1LL << 32), 32, (1LL << 32) - 1, 32, 32, S64_MIN + 1},
+
+    // Values that cross 0.
+    {-1, 0, -S64_MAX, 0, 0, S64_MAX - 1},
+    {1, 0, S64_MAX, 0, 0, -(S64_MAX - 1)},
+    {-1, 0, S64_MIN, 0, 0, S64_MAX},
+    {1, 0, S64_MIN, 0, 0, -(S64_MIN + 1)},
 };
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedSubtractTest,
                          ValuesIn(subtract_boundaries));
@@ -353,6 +400,18 @@ const SubtractTestParams subtract_rounding[] = {
     // 3.999... - 2.0 = 1.999..., keeps precision at Q16
     {(3LL << 32) + ((1LL << 32) - 1), 32, 2LL << 32, 32, 16,
      (1LL << 16) + ((1LL << 16) - 1)},
+
+    // Just under integer boundary (positive)
+    // 1.999... - 0.5 = 1.499... -> 1
+    {(2LL << 32) - 1, 32, 1LL << 31, 32, 0, 1},
+
+    // Just under integer boundary (negative)
+    // -1.999... - (-0.5) = -1.499... -> -1
+    {-((2LL << 32) - 1), 32, -(1LL << 31), 32, 0, -1},
+
+    // Crossing integer boundary
+    {(1LL << 31), 32, (1LL << 32), 32, 0, 0},    // 0.5 - 1.0 = -0.5 -> 0
+    {-(1LL << 31), 32, -(1LL << 32), 32, 0, 0},  // -0.5 - (-1.0) = 0.5 -> 0
 };
 INSTANTIATE_TEST_SUITE_P(rounding, FixedSubtractTest,
                          ValuesIn(subtract_rounding));
@@ -383,6 +442,20 @@ const SubtractTestParams subtract_s64_boundaries[] = {
     // Rescaling boundary values
     {S64_MAX, 0, 0, 0, 32, S64_MAX},  // Rescaling MAX saturates
     {S64_MIN, 0, 0, 0, 32, S64_MIN},  // Rescaling MIN saturates
+
+    // S64_MIN - S64_MIN = 0
+    {S64_MIN, 0, S64_MIN, 0, 0, 0},
+
+    // S64_MIN - S64_MAX = saturate to S64_MIN
+    {S64_MIN, 0, S64_MAX, 0, 0, S64_MIN},
+
+    // Small positive - S64_MIN = saturate
+    {1, 0, S64_MIN, 0, 0, S64_MAX},
+    {100, 0, S64_MIN, 0, 0, S64_MAX},
+
+    // Small negative - S64_MIN = does NOT saturate
+    {-100, 0, S64_MIN, 0, 0, S64_MAX - 99},
+    {-1, 0, S64_MIN, 0, 0, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(s64_boundaries, FixedSubtractTest,
                          ValuesIn(subtract_s64_boundaries));
