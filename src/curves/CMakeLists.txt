@@ -18,9 +18,13 @@ list(APPEND lib_files
 )
 
 list(APPEND test_files
+  fixed_test/addition.cpp
+  fixed_test/division.cpp
   fixed_test/io.cpp
+  fixed_test/multiplication.cpp
   fixed_test/s128.cpp
   fixed_test/s64.cpp
+  fixed_test/subtraction.cpp
   fixed_test/test.cpp
   math64_test.cpp
   test.cpp
