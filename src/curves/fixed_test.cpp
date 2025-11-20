@@ -500,6 +500,67 @@ INSTANTIATE_TEST_SUITE_P(constants_pi, FixedConstantsTest,
                          ValuesIn(constants_pi));
 
 // ----------------------------------------------------------------------------
+// curves_fixed_add()
+// ----------------------------------------------------------------------------
+
+struct AddTestParams {
+  s64 augend;
+  unsigned int augend_frac_bits;
+  s64 addend;
+  unsigned int addend_frac_bits;
+  unsigned int output_frac_bits;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const AddTestParams& src)
+      -> std::ostream& {
+    return out << "{" << src.augend << ", " << src.augend_frac_bits << ", "
+               << src.addend << ", " << src.addend_frac_bits << ", "
+               << src.output_frac_bits << ", " << src.expected_result << "}";
+  }
+};
+
+struct FixedAddTest : TestWithParam<AddTestParams> {};
+
+TEST_P(FixedAddTest, expected_result) {
+  const auto expected_result = GetParam().expected_result;
+
+  const auto actual_result = curves_fixed_add(
+      GetParam().augend, GetParam().augend_frac_bits, GetParam().addend,
+      GetParam().addend_frac_bits, GetParam().output_frac_bits);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+/*
+  This switches both addend and augend and their frac bits. Because
+  add is commutative, we can reduce the number of test cases by only
+  including combinations, rather than permutations.
+*/
+TEST_P(FixedAddTest, add_is_commutative) {
+  const auto expected_result = GetParam().expected_result;
+
+  const auto actual_result = curves_fixed_add(
+      GetParam().addend, GetParam().addend_frac_bits, GetParam().augend,
+      GetParam().augend_frac_bits, GetParam().output_frac_bits);
+
+  ASSERT_EQ(expected_result, actual_result);
+}
+
+/*
+  Identity and Baseline
+
+  Baseline sanity checks without precision changes. Zero added anything to
+  changes nothing, regardless of precision.
+*/
+const AddTestParams add_zero[] = {
+    {0, 0, 0, 0, 0, 0},         // Zero precision
+    {0, 32, 0, 32, 32, 0},      // Mid precision
+    {0, 62, 5, 62, 62, 5},      // High precision, non-zero addend
+    {100, 32, 0, 32, 32, 100},  // Non-zero augend
+};
+INSTANTIATE_TEST_SUITE_P(zero, FixedAddTest, ValuesIn(add_zero));
+
+// ----------------------------------------------------------------------------
 // curves_fixed_multiply()
 // ----------------------------------------------------------------------------
 
