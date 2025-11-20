@@ -85,6 +85,10 @@ s64 __cold __curves_fixed_add_error(unsigned int augend_frac_bits,
 	return 0;
 }
 
+extern s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
+			    s64 addend, unsigned int addend_frac_bits,
+			    unsigned int output_frac_bits);
+
 extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplicand_frac_bits,
 				 s64 multiplier,
