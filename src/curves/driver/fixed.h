@@ -305,6 +305,58 @@ static inline s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
 }
 
 // ----------------------------------------------------------------------------
+// Subtraction
+// ----------------------------------------------------------------------------
+
+s64 __cold __curves_fixed_subtract_error(unsigned int minuend_frac_bits,
+					 unsigned int subtrahend_frac_bits,
+					 unsigned int output_frac_bits);
+
+static inline s64 curves_fixed_subtract(s64 minuend,
+					unsigned int minuend_frac_bits,
+					s64 subtrahend,
+					unsigned int subtrahend_frac_bits,
+					unsigned int output_frac_bits)
+{
+	s64 intermediate_minuend, intermediate_subtrahend;
+	unsigned int max_frac_bits;
+
+	// Validate inputs.
+	if (unlikely(minuend_frac_bits >= 64 || subtrahend_frac_bits >= 64 ||
+		     output_frac_bits >= 64)) {
+		return __curves_fixed_subtract_error(minuend_frac_bits,
+						     subtrahend_frac_bits,
+						     output_frac_bits);
+	}
+
+	// Choose greater intermediate precision.
+	max_frac_bits = output_frac_bits;
+	if (max_frac_bits < minuend_frac_bits)
+		max_frac_bits = minuend_frac_bits;
+	if (max_frac_bits < subtrahend_frac_bits)
+		max_frac_bits = subtrahend_frac_bits;
+
+	// Promote both summands to greater intermediate precision.
+	intermediate_minuend = curves_fixed_rescale_s64(
+		minuend, minuend_frac_bits, max_frac_bits);
+	intermediate_subtrahend = curves_fixed_rescale_s64(
+		subtrahend, subtrahend_frac_bits, max_frac_bits);
+
+	// Check for saturation.
+	if (intermediate_subtrahend < 0 &&
+	    intermediate_minuend > S64_MAX + intermediate_subtrahend)
+		return curves_saturate_s64(true);
+	if (intermediate_subtrahend > 0 &&
+	    intermediate_minuend < S64_MIN + intermediate_subtrahend)
+		return curves_saturate_s64(false);
+
+	// Return sum scaled to output precision.
+	return curves_fixed_rescale_s64(intermediate_minuend -
+						intermediate_subtrahend,
+					max_frac_bits, output_frac_bits);
+}
+
+// ----------------------------------------------------------------------------
 // Multiplication
 // ----------------------------------------------------------------------------
 

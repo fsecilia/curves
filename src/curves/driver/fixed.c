@@ -89,6 +89,18 @@ extern s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
 			    s64 addend, unsigned int addend_frac_bits,
 			    unsigned int output_frac_bits);
 
+s64 __cold __curves_fixed_subtract_error(unsigned int minuend_frac_bits,
+					 unsigned int subtrahend_frac_bits,
+					 unsigned int output_frac_bits)
+{
+	WARN_ONCE(1,
+		  "curves_fixed_add: invalid frac_bits "
+		  "(minuend=%u, subtraend=%u, output=%u)\n",
+		  minuend_frac_bits, subtrahend_frac_bits, output_frac_bits);
+
+	return 0;
+}
+
 extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplicand_frac_bits,
 				 s64 multiplier,
