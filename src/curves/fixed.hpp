@@ -9,7 +9,6 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <cmath>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
