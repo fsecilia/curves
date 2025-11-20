@@ -114,7 +114,7 @@ TEST_P(DivideOptimalShiftTest, expected_result) {
 
   Baseline sanity checks.
 */
-const DivideOptimalShiftParams shift_basics[] = {
+const DivideOptimalShiftParams divide_optimal_shift_basics[] = {
     // 1 / 1 -> Shift 62.
     // Check: (1 << 62) / 1 = 2^62 (Fits in s64 positive range)
     {1, 1, 62},
@@ -136,15 +136,15 @@ const DivideOptimalShiftParams shift_basics[] = {
     // 62 + 57 - 60 = 59.
     {100, 10, 59},
 };
-INSTANTIATE_TEST_SUITE_P(Basics, DivideOptimalShiftTest,
-                         ValuesIn(shift_basics));
+INSTANTIATE_TEST_SUITE_P(basics, DivideOptimalShiftTest,
+                         ValuesIn(divide_optimal_shift_basics));
 
 /*
   Zero Dividend (The | 1 Trick)
 
   Verifies that the branchless fix works and treats 0 exactly like 1.
 */
-const DivideOptimalShiftParams shift_zeros[] = {
+const DivideOptimalShiftParams divide_optimal_shift_zeros[] = {
     // 0 / 1.
     // Internal logic: clz(0 | 1) -> clz(1) -> 63.
     // Result: 62 + 63 - 63 = 62.
@@ -155,14 +155,15 @@ const DivideOptimalShiftParams shift_zeros[] = {
     // 62 + 63 - 1 = 124.
     {0, S64_MAX, 124},
 };
-INSTANTIATE_TEST_SUITE_P(Zeros, DivideOptimalShiftTest, ValuesIn(shift_zeros));
+INSTANTIATE_TEST_SUITE_P(zeros, DivideOptimalShiftTest,
+                         ValuesIn(divide_optimal_shift_zeros));
 
 /*
   Sign Invariance
 
   Verifies abs() is working. The shift should only depend on magnitude.
 */
-const DivideOptimalShiftParams shift_signs[] = {
+const DivideOptimalShiftParams divide_optimal_shift_signs[] = {
     // 1 / -1 -> Same as 1 / 1 -> 62
     {1, -1, 62},
 
@@ -172,14 +173,15 @@ const DivideOptimalShiftParams shift_signs[] = {
     // -1 / -1 -> Same as 1 / 1 -> 62
     {-1, -1, 62},
 };
-INSTANTIATE_TEST_SUITE_P(Signs, DivideOptimalShiftTest, ValuesIn(shift_signs));
+INSTANTIATE_TEST_SUITE_P(Signs, DivideOptimalShiftTest,
+                         ValuesIn(divide_optimal_shift_signs));
 
 /*
   Extremes and Overflows
 
   Testing the boundaries of s64.
 */
-const DivideOptimalShiftParams shift_extremes[] = {
+const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
     // S64_MAX / 1
     // clz(MAX) = 1. clz(1) = 63.
     // 62 + 1 - 63 = 0.
@@ -203,7 +205,7 @@ const DivideOptimalShiftParams shift_extremes[] = {
     {S64_MAX, S64_MAX, 62},
 };
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
-                         ValuesIn(shift_extremes));
+                         ValuesIn(divide_optimal_shift_extremes));
 
 // ----------------------------------------------------------------------------
 // curves_fixed_divide()

@@ -76,17 +76,16 @@ TEST_P(FixedMultiplyTest, frac_bits_order_doesnt_matter) {
 }
 
 // Zero multiplied by anything yields zero, regardless of precision.
-const MultiplyTestParams multiplication_zero[] = {
+const MultiplyTestParams multiply_zero[] = {
     {0, 0, 0, 0, 0, 0},       // Zero precision
     {0, 32, 0, 32, 32, 0},    // Mid precision
     {0, 62, 5, 62, 62, 0},    // High precision, non-zero multiplier
     {100, 32, 0, 32, 32, 0},  // Non-zero multiplicand
 };
-INSTANTIATE_TEST_SUITE_P(zero, FixedMultiplyTest,
-                         ValuesIn(multiplication_zero));
+INSTANTIATE_TEST_SUITE_P(zero, FixedMultiplyTest, ValuesIn(multiply_zero));
 
 // Multiplying by 1 should preserve the value (with rescaling).
-const MultiplyTestParams multiplication_identity[] = {
+const MultiplyTestParams multiply_identity[] = {
     // At zero precision: 2 * 1 = 2
     {2, 0, 1, 0, 0, 2},
 
@@ -97,18 +96,18 @@ const MultiplyTestParams multiplication_identity[] = {
     {3LL << 16, 16, 1LL << 32, 32, 32, 3LL << 32},
 };
 INSTANTIATE_TEST_SUITE_P(identity, FixedMultiplyTest,
-                         ValuesIn(multiplication_identity));
+                         ValuesIn(multiply_identity));
 
 // Simple integer multiplication (frac_bits = 0 for all).
-const MultiplyTestParams multiplication_integers[] = {
+const MultiplyTestParams multiply_integers[] = {
     {2, 0, 3, 0, 0, 6},   {5, 0, 7, 0, 0, 35},   {10, 0, 10, 0, 0, 100},
     {-2, 0, 3, 0, 0, -6}, {-5, 0, -7, 0, 0, 35},
 };
 INSTANTIATE_TEST_SUITE_P(integers, FixedMultiplyTest,
-                         ValuesIn(multiplication_integers));
+                         ValuesIn(multiply_integers));
 
 // Basic fractional multiplication with simple, verifiable values.
-const MultiplyTestParams multiplication_simple_fractions[] = {
+const MultiplyTestParams multiply_simple_fractions[] = {
     // 2.0 * 3.0 = 6.0, all at q31.32
     {2LL << 32, 32, 3LL << 32, 32, 32, 6LL << 32},
 
@@ -122,10 +121,10 @@ const MultiplyTestParams multiplication_simple_fractions[] = {
     {-(2LL << 32), 32, 3LL << 32, 32, 32, -(6LL << 32)},
 };
 INSTANTIATE_TEST_SUITE_P(simple_fractions, FixedMultiplyTest,
-                         ValuesIn(multiplication_simple_fractions));
+                         ValuesIn(multiply_simple_fractions));
 
 // Multiplying values with different input and output precisions.
-const MultiplyTestParams multiplication_precision_conversion[] = {
+const MultiplyTestParams multiply_precision_conversion[] = {
     // 2.0 (q31.32) * 3.0 (q15.48) = 6.0 (q31.32)
     // Input sum: 32 + 48 = 80 fractional bits
     // Output: 32 fractional bits (right shift by 48)
@@ -147,10 +146,10 @@ const MultiplyTestParams multiplication_precision_conversion[] = {
     {3, 0, 2, 0, 32, 6LL << 32},
 };
 INSTANTIATE_TEST_SUITE_P(precision_conversion, FixedMultiplyTest,
-                         ValuesIn(multiplication_precision_conversion));
+                         ValuesIn(multiply_precision_conversion));
 
 // Verify round-to-zero behavior when precision is reduced.
-const MultiplyTestParams multiplication_rounding[] = {
+const MultiplyTestParams multiply_rounding[] = {
     // Positive: 1.5 * 1.5 = 2.25, truncates to 2.0 (not 2.5 or 3.0)
     // At q1.61: 1.5 = 3 << 60, so 1.5 * 1.5 = (3 << 60) * (3 << 60) = 9 << 120
     // Intermediate in q2.122: 9 << 120
@@ -169,10 +168,10 @@ const MultiplyTestParams multiplication_rounding[] = {
     {(3LL << 32) - 1, 32, 1LL << 32, 32, 0, 2},
 };
 INSTANTIATE_TEST_SUITE_P(rounding, FixedMultiplyTest,
-                         ValuesIn(multiplication_rounding));
+                         ValuesIn(multiply_rounding));
 
 // Verify correct sign handling for all input sign combinations.
-const MultiplyTestParams multiplication_signs[] = {
+const MultiplyTestParams multiply_signs[] = {
     // Positive * Positive = Positive
     {3LL << 32, 32, 2LL << 32, 32, 32, 6LL << 32},
 
@@ -189,11 +188,10 @@ const MultiplyTestParams multiplication_signs[] = {
     {5LL << 32, 32, -(1LL << 32), 32, 32, -(5LL << 32)},
     {-(5LL << 32), 32, -(1LL << 32), 32, 32, 5LL << 32},
 };
-INSTANTIATE_TEST_SUITE_P(signs, FixedMultiplyTest,
-                         ValuesIn(multiplication_signs));
+INSTANTIATE_TEST_SUITE_P(signs, FixedMultiplyTest, ValuesIn(multiply_signs));
 
 // Verify saturation when the result is too large for s64.
-const MultiplyTestParams multiplication_saturation[] = {
+const MultiplyTestParams multiply_saturation[] = {
     // Positive overflow: Large positive values that exceed S64_MAX
     // S64_MAX is about 9.2e18. If we multiply two values near sqrt(S64_MAX)
     // which is about 3e9, we'll overflow.
@@ -216,10 +214,10 @@ const MultiplyTestParams multiplication_saturation[] = {
     {S64_MIN, 0, S64_MIN, 0, 0, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(saturation, FixedMultiplyTest,
-                         ValuesIn(multiplication_saturation));
+                         ValuesIn(multiply_saturation));
 
 // Large values that fit correctly without saturating.
-const MultiplyTestParams multiplication_boundaries[] = {
+const MultiplyTestParams multiply_boundaries[] = {
     // Values that are large but whose product fits in s64
     // For q31.32: max safe value is roughly sqrt(S64_MAX >> 32)
     // That's about sqrt(2^31) = 2^15.5 ~= 46340
@@ -236,7 +234,7 @@ const MultiplyTestParams multiplication_boundaries[] = {
     {S64_MIN, 0, 1, 0, 0, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(boundaries, FixedMultiplyTest,
-                         ValuesIn(multiplication_boundaries));
+                         ValuesIn(multiply_boundaries));
 
 }  // namespace
 }  // namespace curves
