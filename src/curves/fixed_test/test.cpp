@@ -4,9 +4,9 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "fixed.hpp"
-#include "fixed_io.hpp"
 #include <curves/test.hpp>
+#include <curves/fixed.hpp>
+#include <curves/fixed_io.hpp>
 
 namespace curves {
 namespace {

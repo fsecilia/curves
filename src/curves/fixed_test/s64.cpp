@@ -7,8 +7,8 @@
   version.
 */
 
-#include "fixed.hpp"
 #include <curves/test.hpp>
+#include <curves/fixed.hpp>
 
 namespace curves {
 namespace {

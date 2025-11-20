@@ -7,9 +7,9 @@
   version.
 */
 
-#include "fixed.hpp"
-#include "fixed_io.hpp"
 #include <curves/test.hpp>
+#include <curves/fixed.hpp>
+#include <curves/fixed_io.hpp>
 
 #define S128_MAX CURVES_S128_MAX
 #define S128_MIN CURVES_S128_MIN

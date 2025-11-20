@@ -18,10 +18,10 @@ list(APPEND lib_files
 )
 
 list(APPEND test_files
-  fixed_io_test.cpp
-  fixed_test.cpp
-  fixed_test_s128.cpp
-  fixed_test_s64.cpp
+  fixed_test/io.cpp
+  fixed_test/s128.cpp
+  fixed_test/s64.cpp
+  fixed_test/test.cpp
   math64_test.cpp
   test.cpp
   test.hpp
