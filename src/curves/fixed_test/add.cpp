@@ -223,13 +223,13 @@ const AddTestParams add_signs[] = {
     {100, 0, 50, 0, 0, 150},
     {10LL << 32, 32, 20LL << 32, 32, 32, 30LL << 32},
 
-    // Positive + Negative = ? (depends on magnitudes)
+    // Positive + Negative result depends on magnitudes
     {100, 0, -50, 0, 0, 50},   // Result positive
     {50, 0, -100, 0, 0, -50},  // Result negative
     {100, 0, -100, 0, 0, 0},   // Result zero
     {(10LL << 32), 32, -(3LL << 32), 32, 32, 7LL << 32},
 
-    // Negative + Positive = ? (depends on magnitudes)
+    // Negative + Positive result depends on magnitudes
     {-100, 0, 50, 0, 0, -50},  // Result negative
     {-50, 0, 100, 0, 0, 50},   // Result positive
     {-100, 0, 100, 0, 0, 0},   // Result zero
@@ -265,8 +265,8 @@ const AddTestParams add_saturate_positive[] = {
     {S64_MAX >> 16, 16, 1LL << 16, 16, 32, S64_MAX},
     {S64_MAX, 0, 1LL << 32, 32, 32, S64_MAX},
 
-    // Overflow when upscaling to output precision
-    {(S64_MAX >> 1), 0, (S64_MAX >> 1), 0, 1, S64_MAX},
+    // Overflow after upscaling to output precision
+    {S64_MAX >> 1, 0, S64_MAX >> 1, 0, 1, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(saturate_positive, FixedAddTest,
                          ValuesIn(add_saturate_positive));
@@ -295,7 +295,7 @@ const AddTestParams add_saturate_negative[] = {
     {S64_MIN >> 16, 16, -(1LL << 16), 16, 32, S64_MIN},
     {S64_MIN, 0, -(1LL << 32), 32, 32, S64_MIN},
 
-    // Underflow when upscaling to output precision
+    // Underflow after upscaling to output precision
     {(S64_MIN >> 1), 0, (S64_MIN >> 1), 0, 1, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(saturate_negative, FixedAddTest,
@@ -318,10 +318,9 @@ const AddTestParams add_boundaries[] = {
     {S64_MIN + 100, 0, -100, 0, 0, S64_MIN},     // Exactly at min
     {S64_MIN + 100, 0, -99, 0, 0, S64_MIN + 1},  // One above min
 
-    // Large values that fit without overflow
-    {S64_MAX >> 1, 0, S64_MAX >> 1, 0, 0, S64_MAX - 1},  // Just fits
-    {(S64_MIN >> 1) + 1, 0, (S64_MIN >> 1) + 1, 0, 0,
-     S64_MIN + 2},  // Just fits
+    // Large values that just barely fit without overflow
+    {S64_MAX >> 1, 0, S64_MAX >> 1, 0, 0, S64_MAX - 1},
+    {(S64_MIN >> 1) + 1, 0, (S64_MIN >> 1) + 1, 0, 0, S64_MIN + 2},
 
     // With fractional bits
     {S64_MAX - (1LL << 32), 32, (1LL << 32) - 1, 32, 32, S64_MAX - 1},
@@ -340,21 +339,21 @@ const AddTestParams add_rounding[] = {
     // 1.75 + 0.75 = 2.5, truncates to 2 at Q0
     {(7LL << 30), 32, (3LL << 30), 32, 0, 2},
 
-    // 1.9 + 0.9 = 2.8, truncates to 2 at Q0
+    // 1.9375 + 0.9375 = 2.875, truncates to 2 at Q0
     {(1LL << 32) + (15LL << 28), 32, (1LL << 28) * 15, 32, 0, 2},
 
     // Negative results with fractional parts
     // -1.75 + -0.75 = -2.5, truncates to -2 at Q0 (toward zero, not -3)
     {-(7LL << 30), 32, -(3LL << 30), 32, 0, -2},
 
-    // -1.9 + -0.9 = -2.8, truncates to -2 at Q0 (toward zero, not -3)
-    {-((1LL << 32) + (15LL << 28)), 32, -((1LL << 28) * 15), 32, 0, -2},
+    // -1.9375 + -0.9375 = -2.875, truncates to -2 at Q0 (toward zero, not -3)
+    {-((1LL << 32) + (15LL << 28)), 32, -(15LL << 28), 32, 0, -2},
 
-    // Mixed signs: 10.7 + (-5.3) = 5.4, truncates to 5
-    {(10LL << 32) + (3LL << 31), 32, -((5LL << 32) + (3LL << 30)), 32, 0, 5},
+    // Mixed signs: 11.25 - 5.5 = 5.75, truncates to 5
+    {(11LL << 32) + (1LL << 30), 32, -((5LL << 32) + (1LL << 31)), 32, 0, 5},
 
     // Downscaling from Q32 to Q16
-    // 3.999... + 2.000... = 5.999..., keeps precision at Q16
+    // 3.999... + 2.0 = 5.999..., keeps precision at Q16
     {(3LL << 32) + ((1LL << 32) - 1), 32, 2LL << 32, 32, 16,
      (5LL << 16) + ((1LL << 16) - 1)},
 };
@@ -370,13 +369,13 @@ const AddTestParams add_s64_boundaries[] = {
     // S64_MAX as operand
     {S64_MAX, 0, 0, 0, 0, S64_MAX},       // MAX + 0 = MAX
     {S64_MAX, 32, 0, 32, 32, S64_MAX},    // MAX + 0 at Q32 = MAX
-    {S64_MAX, 0, -1, 0, 0, S64_MAX - 1},  // MAX + (-1) = MAX-1
+    {S64_MAX, 0, -1, 0, 0, S64_MAX - 1},  // MAX + (-1) = MAX - 1
     {S64_MAX, 32, -(1LL << 32), 32, 32, S64_MAX - (1LL << 32)},
 
     // S64_MIN as operand
     {S64_MIN, 0, 0, 0, 0, S64_MIN},      // MIN + 0 = MIN
     {S64_MIN, 32, 0, 32, 32, S64_MIN},   // MIN + 0 at Q32 = MIN
-    {S64_MIN, 0, 1, 0, 0, S64_MIN + 1},  // MIN + 1 = MIN+1
+    {S64_MIN, 0, 1, 0, 0, S64_MIN + 1},  // MIN + 1 = MIN + 1
     {S64_MIN, 32, 1LL << 32, 32, 32, S64_MIN + (1LL << 32)},
 
     // Both at boundaries with opposite signs (should not overflow)
@@ -397,15 +396,9 @@ INSTANTIATE_TEST_SUITE_P(s64_boundaries, FixedAddTest,
   with realistic precision combinations for common use cases.
 */
 const AddTestParams add_realistic[] = {
-    // Financial calculations (Q16.48 for sub-cent precision)
-    {12345LL << 48, 48, 67890LL << 48, 48, 48,
-     80235LL << 48},  // $123.45 + $678.90
-    {(100LL << 48) | (1LL << 47), 48, (200LL << 48) | (1LL << 47), 48, 48,
-     (300LL << 48) | (1LL << 48)},  // $100.50 + $200.50 = $301.00
-
     // Physics calculations (Q24.40 for position/velocity)
     {(10LL << 40), 40, (5LL << 40), 40, 40, (15LL << 40)},   // 10.0 + 5.0 m
-    {(98LL << 38), 40, (5LL << 38), 40, 40, (103LL << 38)},  // 9.8 + 0.5 m/s²
+    {(98LL << 38), 40, (5LL << 38), 40, 40, (103LL << 38)},  // 9.8 + 0.5 m/s^2
 
     // Graphics/normalized values (Q2.61 for [0,1] range)
     {1LL << 60, 61, 1LL << 59, 61, 61, 3LL << 59},  // 0.5 + 0.25 = 0.75
