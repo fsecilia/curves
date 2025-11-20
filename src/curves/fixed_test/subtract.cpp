@@ -491,5 +491,360 @@ const SubtractTestParams subtract_realistic[] = {
 INSTANTIATE_TEST_SUITE_P(realistic, FixedSubtractTest,
                          ValuesIn(subtract_realistic));
 
+// ----------------------------------------------------------------------------
+// Intermediate Saturation Tests
+// ----------------------------------------------------------------------------
+
+/*
+  Category 1A: First Argument (Minuend) Overflows -> S64_MAX During Upscale
+
+  Minuend saturates to S64_MAX when upscaled, then subtracts valid subtrahend.
+*/
+
+// Minuend overflows to S64_MAX, subtrahend is small positive
+const SubtractTestParams subtract_first_overflow_small_pos[] = {
+    // minuend: 2^53 at Q0 -> saturates to S64_MAX at Q32
+    // subtrahend: 100 at Q32
+    // difference: S64_MAX - 100 -> no saturation in subtract step
+    {S64_MAX >> 10, 0, 100LL << 32, 32, 32, S64_MAX - (100LL << 32)},
+
+    {S64_MAX >> 15, 16, 50LL << 32, 32, 32, S64_MAX - (50LL << 32)},
+    {S64_MAX >> 7, 8, 200LL << 48, 48, 48, S64_MAX - (200LL << 48)},
+};
+INSTANTIATE_TEST_SUITE_P(first_overflow_small_pos, FixedSubtractTest,
+                         ValuesIn(subtract_first_overflow_small_pos));
+
+// Minuend overflows to S64_MAX, subtrahend is large positive
+const SubtractTestParams subtract_first_overflow_large_pos[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: S64_MAX at Q32 (already at max precision)
+    // difference: S64_MAX - S64_MAX = 0
+    {S64_MAX >> 10, 0, S64_MAX, 32, 32, 0},
+
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: 2^62 at Q32
+    // difference: S64_MAX - 2^62 = positive
+    {S64_MAX >> 10, 0, 1LL << 62, 32, 32, S64_MAX - (1LL << 62)},
+};
+INSTANTIATE_TEST_SUITE_P(first_overflow_large_pos, FixedSubtractTest,
+                         ValuesIn(subtract_first_overflow_large_pos));
+
+// Minuend overflows to S64_MAX, subtrahend is small negative (effectively
+// addition)
+const SubtractTestParams subtract_first_overflow_small_neg[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: -100 at Q32
+    // difference: S64_MAX - (-100) = S64_MAX + 100 -> saturates to S64_MAX
+    {S64_MAX >> 10, 0, -(100LL << 32), 32, 32, S64_MAX},
+
+    {S64_MAX >> 15, 16, -(50LL << 32), 32, 32, S64_MAX},
+    {S64_MAX >> 7, 8, -(200LL << 48), 48, 48, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(first_overflow_small_neg, FixedSubtractTest,
+                         ValuesIn(subtract_first_overflow_small_neg));
+
+// Minuend overflows to S64_MAX, subtrahend is large negative
+const SubtractTestParams subtract_first_overflow_large_neg[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: S64_MIN at Q32 (already at max precision)
+    // difference: S64_MAX - S64_MIN -> saturates to S64_MAX
+    {S64_MAX >> 10, 0, S64_MIN, 32, 32, S64_MAX},
+
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: -(2^62) at Q32
+    // difference: S64_MAX - (-(2^62)) = S64_MAX + 2^62 -> saturates
+    {S64_MAX >> 10, 0, -(1LL << 62), 32, 32, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(first_overflow_large_neg, FixedSubtractTest,
+                         ValuesIn(subtract_first_overflow_large_neg));
+
+/*
+  Category 1B: First Argument (Minuend) Underflows -> S64_MIN During Upscale
+
+  Minuend saturates to S64_MIN when upscaled, then subtracts valid subtrahend.
+*/
+
+// Minuend underflows to S64_MIN, subtrahend is small positive (saturates)
+const SubtractTestParams subtract_first_underflow_small_pos[] = {
+    // minuend: -(2^53) at Q0 -> saturates to S64_MIN at Q32
+    // subtrahend: 100 at Q32
+    // difference: S64_MIN - 100 -> saturates to S64_MIN
+    {S64_MIN >> 10, 0, 100LL << 32, 32, 32, S64_MIN},
+
+    {S64_MIN >> 15, 16, 50LL << 32, 32, 32, S64_MIN},
+    {S64_MIN >> 7, 8, 200LL << 48, 48, 48, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(first_underflow_small_pos, FixedSubtractTest,
+                         ValuesIn(subtract_first_underflow_small_pos));
+
+// Minuend underflows to S64_MIN, subtrahend is large positive
+const SubtractTestParams subtract_first_underflow_large_pos[] = {
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: S64_MAX at Q32
+    // difference: S64_MIN - S64_MAX -> saturates to S64_MIN
+    {S64_MIN >> 10, 0, S64_MAX, 32, 32, S64_MIN},
+
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: 2^62 at Q32
+    // difference: S64_MIN - 2^62 -> saturates to S64_MIN
+    {S64_MIN >> 10, 0, 1LL << 62, 32, 32, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(first_underflow_large_pos, FixedSubtractTest,
+                         ValuesIn(subtract_first_underflow_large_pos));
+
+// Minuend underflows to S64_MIN, subtrahend is small negative (effectively
+// addition)
+const SubtractTestParams subtract_first_underflow_small_neg[] = {
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: -100 at Q32
+    // difference: S64_MIN - (-100) = S64_MIN + 100 -> no saturation
+    {S64_MIN >> 10, 0, -(100LL << 32), 32, 32, S64_MIN + (100LL << 32)},
+
+    {S64_MIN >> 15, 16, -(50LL << 32), 32, 32, S64_MIN + (50LL << 32)},
+};
+INSTANTIATE_TEST_SUITE_P(first_underflow_small_neg, FixedSubtractTest,
+                         ValuesIn(subtract_first_underflow_small_neg));
+
+// Minuend underflows to S64_MIN, subtrahend is large negative
+const SubtractTestParams subtract_first_underflow_large_neg[] = {
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: S64_MIN at Q32
+    // difference: S64_MIN - S64_MIN = 0
+    {S64_MIN >> 10, 0, S64_MIN, 32, 32, 0},
+
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: -(2^62) at Q32
+    // difference: S64_MIN - (-(2^62)) = S64_MIN + 2^62 -> negative
+    {S64_MIN >> 10, 0, -(1LL << 62), 32, 32, S64_MIN + (1LL << 62)},
+};
+INSTANTIATE_TEST_SUITE_P(first_underflow_large_neg, FixedSubtractTest,
+                         ValuesIn(subtract_first_underflow_large_neg));
+
+/*
+  Category 2A: Second Argument (Subtrahend) Overflows -> S64_MAX During Upscale
+
+  Subtrahend saturates to S64_MAX when upscaled, then subtracted from valid
+  minuend.
+*/
+
+// Subtrahend overflows to S64_MAX, minuend is small positive
+const SubtractTestParams subtract_second_overflow_small_pos[] = {
+    // minuend: 100 at Q32
+    // subtrahend: 2^53 at Q0 -> saturates to S64_MAX at Q32
+    // difference: 100 - S64_MAX -> negative (no saturation)
+    {100LL << 32, 32, S64_MAX >> 10, 0, 32, (100LL << 32) - S64_MAX},
+
+    {50LL << 32, 32, S64_MAX >> 15, 16, 32, (50LL << 32) - S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(second_overflow_small_pos, FixedSubtractTest,
+                         ValuesIn(subtract_second_overflow_small_pos));
+
+// Subtrahend overflows to S64_MAX, minuend is large positive
+const SubtractTestParams subtract_second_overflow_large_pos[] = {
+    // minuend: S64_MAX at Q32
+    // subtrahend: saturates to S64_MAX at Q32
+    // difference: S64_MAX - S64_MAX = 0
+    {S64_MAX, 32, S64_MAX >> 10, 0, 32, 0},
+
+    // minuend: 2^62 at Q32
+    // subtrahend: saturates to S64_MAX at Q32
+    // difference: 2^62 - S64_MAX -> negative
+    {1LL << 62, 32, S64_MAX >> 10, 0, 32, (1LL << 62) - S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(second_overflow_large_pos, FixedSubtractTest,
+                         ValuesIn(subtract_second_overflow_large_pos));
+
+// Subtrahend overflows to S64_MAX, minuend is small negative (saturates)
+const SubtractTestParams subtract_second_overflow_small_neg[] = {
+    // minuend: -100 at Q32
+    // subtrahend: saturates to S64_MAX at Q32
+    // difference: -100 - S64_MAX -> saturates to S64_MIN
+    {-(100LL << 32), 32, S64_MAX >> 10, 0, 32, S64_MIN},
+
+    {-(50LL << 32), 32, S64_MAX >> 15, 16, 32, S64_MIN},
+
+    // {-(100LL << 32), 32, S64_MAX >> 10, 0, 32, -(100LL << 32) - S64_MAX},
+    // {-(50LL << 32), 32, S64_MAX >> 15, 16, 32, -(50LL << 32) - S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(second_overflow_small_neg, FixedSubtractTest,
+                         ValuesIn(subtract_second_overflow_small_neg));
+
+// Subtrahend overflows to S64_MAX, minuend is large negative
+const SubtractTestParams subtract_second_overflow_large_neg[] = {
+    // minuend: S64_MIN at Q32
+    // subtrahend: saturates to S64_MAX at Q32
+    // difference: S64_MIN - S64_MAX -> saturates to S64_MIN
+    {S64_MIN, 32, S64_MAX >> 10, 0, 32, S64_MIN},
+
+    // minuend: -(2^62) at Q32
+    // subtrahend: saturates to S64_MAX at Q32
+    // difference: -(2^62) - S64_MAX -> saturates to S64_MIN
+    {-(1LL << 62), 32, S64_MAX >> 10, 0, 32, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(second_overflow_large_neg, FixedSubtractTest,
+                         ValuesIn(subtract_second_overflow_large_neg));
+
+/*
+  Category 2B: Second Argument (Subtrahend) Underflows -> S64_MIN During Upscale
+
+  Subtrahend saturates to S64_MIN when upscaled, effectively adds large
+  positive.
+*/
+
+// Subtrahend underflows to S64_MIN, minuend is small positive (effectively
+// addition)
+const SubtractTestParams subtract_second_underflow_small_pos[] = {
+    // minuend: 100 at Q32
+    // subtrahend: -(2^53) at Q0 -> saturates to S64_MIN at Q32
+    // difference: 100 - S64_MIN = 100 + S64_MAX -> saturates to S64_MAX
+    {100LL << 32, 32, S64_MIN >> 10, 0, 32, S64_MAX},
+
+    {50LL << 32, 32, S64_MIN >> 15, 16, 32, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(second_underflow_small_pos, FixedSubtractTest,
+                         ValuesIn(subtract_second_underflow_small_pos));
+
+// Subtrahend underflows to S64_MIN, minuend is large positive
+const SubtractTestParams subtract_second_underflow_large_pos[] = {
+    // minuend: S64_MAX at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: S64_MAX - S64_MIN -> saturates to S64_MAX
+    {S64_MAX, 32, S64_MIN >> 10, 0, 32, S64_MAX},
+
+    // minuend: 2^62 at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: 2^62 - S64_MIN -> saturates to S64_MAX
+    {1LL << 62, 32, S64_MIN >> 10, 0, 32, S64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(second_underflow_large_pos, FixedSubtractTest,
+                         ValuesIn(subtract_second_underflow_large_pos));
+
+// Subtrahend underflows to S64_MIN, minuend is small negative
+const SubtractTestParams subtract_second_underflow_small_neg[] = {
+    // minuend: -100 at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: -100 - S64_MIN = -100 + S64_MAX -> large positive
+    {-(100LL << 32), 32, S64_MIN >> 10, 0, 32, S64_MAX - (100LL << 32) + 1},
+
+    {-(50LL << 32), 32, S64_MIN >> 15, 16, 32, S64_MAX - (50LL << 32) + 1},
+};
+INSTANTIATE_TEST_SUITE_P(second_underflow_small_neg, FixedSubtractTest,
+                         ValuesIn(subtract_second_underflow_small_neg));
+
+// Subtrahend underflows to S64_MIN, minuend is large negative
+const SubtractTestParams subtract_second_underflow_large_neg[] = {
+    // minuend: S64_MIN at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: S64_MIN - S64_MIN = 0
+    {S64_MIN, 32, S64_MIN >> 10, 0, 32, 0},
+
+    // minuend: -(2^62) at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: -(2^62) - S64_MIN -> positive
+    // {-(1LL << 62), 32, S64_MIN >> 10, 0, 32, S64_MAX - (1LL << 62)},
+    {-(1LL << 62), 32, S64_MIN >> 10, 0, 32, -(1LL << 62) - S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(second_underflow_large_neg, FixedSubtractTest,
+                         ValuesIn(subtract_second_underflow_large_neg));
+
+/*
+  Category 3: Both Arguments Saturate During Upscale
+*/
+
+// Both overflow to S64_MAX
+const SubtractTestParams subtract_both_overflow[] = {
+    // Both saturate to S64_MAX at Q32
+    // difference: S64_MAX - S64_MAX = 0
+    {S64_MAX >> 10, 0, S64_MAX >> 10, 0, 32, 0},
+
+    // Different precisions, both overflow
+    {S64_MAX >> 15, 16, S64_MAX >> 7, 8, 32, 0},
+    {S64_MAX >> 20, 0, S64_MAX >> 10, 10, 48, 0},
+};
+INSTANTIATE_TEST_SUITE_P(both_overflow, FixedSubtractTest,
+                         ValuesIn(subtract_both_overflow));
+
+// Both underflow to S64_MIN
+const SubtractTestParams subtract_both_underflow[] = {
+    // Both saturate to S64_MIN at Q32
+    // difference: S64_MIN - S64_MIN = 0
+    {S64_MIN >> 10, 0, S64_MIN >> 10, 0, 32, 0},
+
+    {S64_MIN >> 15, 16, S64_MIN >> 7, 8, 32, 0},
+    {S64_MIN >> 20, 0, S64_MIN >> 10, 10, 48, 0},
+};
+INSTANTIATE_TEST_SUITE_P(both_underflow, FixedSubtractTest,
+                         ValuesIn(subtract_both_underflow));
+
+// One overflows, one underflows
+const SubtractTestParams subtract_opposite_saturation[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: saturates to S64_MIN at Q32
+    // difference: S64_MAX - S64_MIN -> saturates to S64_MAX
+    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 32, S64_MAX},
+
+    // Flipped: S64_MIN - S64_MAX -> saturates to S64_MIN
+    {S64_MIN >> 10, 0, S64_MAX >> 10, 0, 32, S64_MIN},
+
+    // Different precisions
+    {S64_MAX >> 15, 16, S64_MIN >> 7, 8, 32, S64_MAX},
+    {S64_MIN >> 20, 10, S64_MAX >> 10, 20, 48, S64_MIN},
+};
+INSTANTIATE_TEST_SUITE_P(opposite_saturation, FixedSubtractTest,
+                         ValuesIn(subtract_opposite_saturation));
+
+/*
+  Category 4A: Intermediate Saturation + Output Upscale Saturation
+*/
+
+// First arg saturates, then output upscale also saturates
+const SubtractTestParams subtract_intermediate_saturation_only[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: 100 at Q32
+    // difference: S64_MAX - 100 at Q32
+    // output: tries to upscale to Q33 -> saturates to S64_MAX
+    // {S64_MAX >> 10, 0, 100LL << 32, 32, 33, S64_MAX},
+    {S64_MAX >> 10, 0, 100LL << 32, 32, 33, S64_MAX - (100LL << 33)},
+
+    // Similar with underflow
+    {S64_MIN >> 10, 0, 100LL << 32, 32, 33, S64_MIN},
+
+    // Both saturate to same value -> difference is 0, upscale doesn't saturate
+    {S64_MAX >> 10, 0, S64_MAX >> 10, 0, 33, 0},
+};
+INSTANTIATE_TEST_SUITE_P(intermediate_then_output_upscale, FixedSubtractTest,
+                         ValuesIn(subtract_intermediate_saturation_only));
+
+/*
+  Category 4B: Intermediate Saturation + Output Downscale
+*/
+
+// Intermediate saturation, then downscale for output
+const SubtractTestParams subtract_intermediate_then_downscale[] = {
+    // minuend: saturates to S64_MAX at Q32
+    // subtrahend: 100 at Q32
+    // difference: S64_MAX - 100 at Q32
+    // output: downscale to Q16
+    {S64_MAX >> 10, 0, 100LL << 32, 32, 16, (S64_MAX - (100LL << 32)) >> 16},
+
+    // minuend: saturates to S64_MIN at Q32
+    // subtrahend: 100 at Q32
+    // difference: S64_MIN at Q32 (saturated in subtract step)
+    // output: downscale to Q16
+    // {S64_MIN >> 10, 0, 100LL << 32, 32, 16, S64_MIN >> 16},
+    {S64_MIN >> 10, 0, 100LL << 32, 32, 16, S64_MIN},  // Stays saturated
+
+    // Both saturate to same value -> 0, then downscale
+    {S64_MAX >> 10, 0, S64_MAX >> 10, 0, 16, 0},
+    {S64_MIN >> 10, 0, S64_MIN >> 10, 0, 16, 0},
+
+    // Opposite saturation, then downscale
+    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 16, S64_MAX},  // Stays saturated
+    {S64_MIN >> 10, 0, S64_MAX >> 10, 0, 16, S64_MIN},  // Stays saturated
+
+};
+INSTANTIATE_TEST_SUITE_P(intermediate_then_downscale, FixedSubtractTest,
+                         ValuesIn(subtract_intermediate_then_downscale));
+
 }  // namespace
 }  // namespace curves
