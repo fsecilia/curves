@@ -207,28 +207,28 @@ INSTANTIATE_TEST_SUITE_P(output_precision_differs, FixedSubtractTest,
 */
 const SubtractTestParams subtract_signs[] = {
     // Positive - Positive result depends on magnitudes
-    {100, 0, 150, 0, 0, -50},
-    {100, 0, 100, 0, 0, 0},
-    {100, 0, 50, 0, 0, 50},
-    {10LL << 32, 32, 20LL << 32, 32, 32, -(10LL << 32)},
+    {100, 0, 50, 0, 0, 50},   // Result positive
+    {50, 0, 100, 0, 0, -50},  // Result negative
+    {100, 0, 100, 0, 0, 0},   // Result zero
+    {10LL << 32, 32, 20LL << 32, 32, 32, -10LL << 32},
 
     // Positive - Negative = Positive (larger)
-    {100, 0, -150, 0, 0, 250},
-    {100, 0, -100, 0, 0, 200},
     {100, 0, -50, 0, 0, 150},
-    {(10LL << 32), 32, -(3LL << 32), 32, 32, 13LL << 32},
+    {50, 0, -100, 0, 0, 150},
+    {100, 0, -100, 0, 0, 200},
+    {10LL << 32, 32, -(3LL << 32), 32, 32, 13LL << 32},
 
     // Negative - Positive = Negative (larger magnitude)
-    {-100, 0, -150, 0, 0, 50},
-    {-100, 0, -100, 0, 0, 0},
-    {-100, 0, -50, 0, 0, -50},
-    {-(10LL << 32), 32, -(20LL << 32), 32, 32, 10LL << 32},
+    {-100, 0, 50, 0, 0, -150},
+    {-50, 0, 100, 0, 0, -150},
+    {-100, 0, 100, 0, 0, -200},
+    {-(10LL << 32), 32, 3LL << 32, 32, 32, -(13LL << 32)},
 
     // Negative - Negative result depends on magnitudes
-    {100, 0, -150, 0, 0, 250},
-    {100, 0, -100, 0, 0, 200},
-    {100, 0, -50, 0, 0, 150},
-    {10LL << 32, 32, -(20LL << 32), 32, 32, 30LL << 32},
+    {-50, 0, -100, 0, 0, 50},   // Result positive
+    {-100, 0, -50, 0, 0, -50},  // Result negative
+    {-100, 0, -100, 0, 0, 0},   // Result zero
+    {-(10LL << 32), 32, -(20LL << 32), 32, 32, 10LL << 32},
 };
 INSTANTIATE_TEST_SUITE_P(signs, FixedSubtractTest, ValuesIn(subtract_signs));
 
