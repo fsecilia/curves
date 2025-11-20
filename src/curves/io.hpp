@@ -9,7 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/driver/math64.h>
+#include <curves/driver/math.h>
 #include <array>
 #include <ostream>
 

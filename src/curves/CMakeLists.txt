@@ -26,7 +26,7 @@ list(APPEND test_files
   fixed_test/subtract.cpp
   fixed_test/test.cpp
   io_test.cpp
-  math64_test.cpp
+  math_test.cpp
   test.cpp
   test.hpp
 )
@@ -61,7 +61,7 @@ list(APPEND driver_headers
 list(APPEND common_headers
   driver/fixed.h
   driver/kernel_compat.h
-  driver/math64.h
+  driver/math.h
 )
 
 list(APPEND kbuild_files

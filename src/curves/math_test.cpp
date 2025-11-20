@@ -10,7 +10,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 
 extern "C" {
-#include <curves/driver/math64.h>
+#include <curves/driver/math.h>
 }  // extern "C"
 
 #pragma GCC diagnostic pop

@@ -14,7 +14,7 @@
 #define _CURVES_FIXED_H
 
 #include "kernel_compat.h"
-#include "math64.h"
+#include "math.h"
 
 // ----------------------------------------------------------------------------
 // 64-bit API
