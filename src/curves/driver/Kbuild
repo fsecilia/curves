@@ -14,6 +14,7 @@ curves-objs := $(curves-common-objs) $(curves-driver-objs)
 
 # Compose module version string from actual version and git hash.
 include $(src)/version.mk
-GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo "standalone")
-CURVES_MODULE_VERSION := "$(CURVES_VERSION)-$(GIT_HASH)"
+CURVES_GIT_HASH := \
+  $(shell git rev-parse --short HEAD 2>/dev/null || echo "standalone")
+CURVES_MODULE_VERSION := "$(CURVES_VERSION)-$(CURVES_GIT_HASH)"
 ccflags-y += -DCURVES_MODULE_VERSION="\"$(CURVES_MODULE_VERSION)\""
