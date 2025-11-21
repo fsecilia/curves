@@ -21,7 +21,7 @@
 #include <asm/bug.h>
 #include <linux/bitops.h>
 
-static inline unsigned int clz64(u64 x)
+static inline unsigned int curves_clz64(u64 x)
 {
 	return 64 - fls64(x);
 }
@@ -71,7 +71,7 @@ __extension__ typedef unsigned __int128 u128;
 #define WARN_ON_ONCE(condition) \
 	WARN_ONCE(condition, "WARNING at %s:%d\n", __FILE__, __LINE__)
 
-static inline unsigned int clz64(u64 x)
+static inline unsigned int curves_clz64(u64 x)
 {
 	return x ? (unsigned int)__builtin_clzll(x) : (unsigned int)64;
 }

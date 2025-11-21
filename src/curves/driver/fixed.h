@@ -418,7 +418,8 @@ static inline int __curves_fixed_divide_optimal_shift(s64 dividend, s64 divisor)
 	//
 	// The | 1 is because clz64(0) is UB. This allows the divisor to be
 	// 0 without using a conditional. The final result will still be 0.
-	return 62 + (int)clz64(abs_dividend | 1) - (int)clz64(abs_divisor);
+	return 62 + (int)curves_clz64(abs_dividend | 1) -
+	       (int)curves_clz64(abs_divisor);
 }
 
 /**
