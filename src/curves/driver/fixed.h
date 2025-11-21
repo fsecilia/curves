@@ -162,9 +162,11 @@ static inline s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 // Narrows a 128-bit fixed-point value to 64-bits, saturating on overflow.
 static inline s64 curves_fixed_narrow_s128_s64(s128 value)
 {
-	if (unlikely(value != (s64)value)) {
-		return curves_saturate_s64(value > 0);
-	}
+	if (unlikely(value > (s128)S64_MAX))
+		return S64_MAX;
+
+	if (unlikely(value < (s128)S64_MIN))
+		return S64_MIN;
 
 	return (s64)value;
 }
