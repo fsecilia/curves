@@ -55,17 +55,15 @@ static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 static inline s64 __curves_fixed_shr_rne_s64(s64 value, unsigned int shift)
 {
 	u64 half = 1ULL << (shift - 1);
+	u64 frac_mask = (1ULL << shift) - 1;
 
 	s64 int_part = value >> shift;
-	s64 is_odd = int_part & 1;
-
-	u64 frac_mask = (1ULL << shift) - 1;
 	u64 frac_part = (u64)value & frac_mask;
 
-	u64 bias = (half - 1) + (u64)is_odd;
-	u64 biased_value = frac_part + bias;
+	s64 is_odd = int_part & 1;
 
-	s64 carry = (s64)(biased_value >> shift);
+	u64 bias = (half - 1) + (u64)is_odd;
+	s64 carry = (s64)((frac_part + bias) >> shift);
 
 	return int_part + carry;
 }
@@ -148,17 +146,16 @@ static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
 //   - caller is responsible for validating shift ranges
 static inline s128 __curves_fixed_shr_rne_s128(s128 value, unsigned int shift)
 {
-	s128 int_part = value >> shift;
-	s128 is_odd = int_part & 1;
-
 	u128 half = (u128)1 << (shift - 1);
-	u128 bias = (half - 1) + (u128)is_odd;
-
 	u128 frac_mask = ((u128)1 << shift) - 1;
+
+	s128 int_part = value >> shift;
 	u128 frac_part = (u128)value & frac_mask;
 
-	u128 biased_value = frac_part + bias;
-	s128 carry = (s128)(biased_value >> shift);
+	s128 is_odd = int_part & 1;
+
+	u128 bias = (half - 1) + (u128)is_odd;
+	s128 carry = (s128)((frac_part + bias) >> shift);
 
 	return int_part + carry;
 }
