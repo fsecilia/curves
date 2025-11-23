@@ -432,26 +432,46 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor);
 
-// Finds a 128-bit left shift to apply to a dividend before dividing to
-// maximize precision without saturating.
-//
-// Returns: maximum left shift that guarantees division result fits into an
-// s64.
-static inline int __curves_fixed_divide_optimal_shift(s64 dividend, s64 divisor)
+/**
+ * Calculates the 128-bit left shift to apply to a 64-bit dividend that
+ * maximizes precision without overflowing.
+ *
+ * To divide safely, the high 64 bits of the dividend must be strictly less
+ * than the divisor. This function finds the largest 'shift' such that:
+ *
+ *	(dividend << shift) >> 64 < divisor
+ *
+ * This guarantees the resulting quotient fits in a u64 without trapping.
+ *
+ * Returns: maximum left shift that guarantees quotient fits into an u64.
+ */
+static inline int __curves_fixed_divide_optimal_shift(u64 dividend, u64 divisor)
 {
-	// Convert to magnitudes in u64 for clz.
-	u64 abs_dividend = dividend < 0 ? -(u64)dividend : (u64)dividend;
-	u64 abs_divisor = divisor < 0 ? -(u64)divisor : (u64)divisor;
+	// Determine headroom.
+	//
+	// We use clz(dividend | 1) here because clz(0) is UB. This only
+	// affects the dividend == 0 case, and that case does not affect
+	// division. This saves checking dividend == 0 explicitly in a
+	// conditional.
+	int dividend_shift = (int)curves_clz64(dividend | 1);
+	int divisor_shift = (int)curves_clz64(divisor);
 
-	// Find maximum shift where quotient still fits in s64.
+	// Calculate conservative shift.
 	//
-	// 62 ensures the quotient magnitude is < 2^63, preventing division
-	// from trapping.
+	// This is the largest shift guaranteed not to overflow the division.
+	// It gives up 1 bit of precision to ensure safety.
+	int total_shift = 64 + dividend_shift - divisor_shift - 1;
+
+	// Reclaim the lost bit if safe.
 	//
-	// The | 1 is because clz64(0) is UB. This allows the divisor to be
-	// 0 without using a conditional. The final result will still be 0.
-	return 62 + (int)curves_clz64(abs_dividend | 1) -
-	       (int)curves_clz64(abs_divisor);
+	// We can shift one more bit when divisor is larger than dividend.
+	// Normalize values to align MSBs, then their difference has the high
+	// bit set when safe. Add that bit back to the total shift.
+	u64 aligned_dividend = dividend << dividend_shift;
+	u64 aligned_divisor = divisor << divisor_shift;
+	total_shift += (aligned_dividend - aligned_divisor) >> 63;
+
+	return total_shift;
 }
 
 /**
@@ -465,7 +485,7 @@ static inline s64 curves_fixed_divide(s64 dividend,
 {
 	int optimal_shift, quotient_frac_bits, remaining_shift;
 	s64 sign_mask = (divisor ^ dividend) >> 63;
-	u128 u_dividend = (u128)(curves_abs64(dividend));
+	u64 u_dividend = (u64)(curves_abs64(dividend));
 	u64 u_divisor = (u64)(curves_abs64(divisor));
 	s64 quotient;
 
@@ -478,7 +498,8 @@ static inline s64 curves_fixed_divide(s64 dividend,
 		return 0;
 
 	// Find maximum shift to apply before division to avoid overflow.
-	optimal_shift = __curves_fixed_divide_optimal_shift(dividend, divisor);
+	optimal_shift =
+		__curves_fixed_divide_optimal_shift(u_dividend, u_divisor);
 	if (unlikely(optimal_shift < 0))
 		return curves_saturate_s64((dividend ^ divisor) >= 0);
 
@@ -495,9 +516,10 @@ static inline s64 curves_fixed_divide(s64 dividend,
 	}
 
 	// Divide with optimal shift to maximize intermediate precision.
-	quotient = sign_mask * (s64)curves_div_u128_u64(
-				       u_dividend << optimal_shift, u_divisor)
-				       .quotient;
+	quotient = sign_mask *
+		   (s64)curves_div_u128_u64((u128)u_dividend << optimal_shift,
+					    u_divisor)
+			   .quotient;
 
 	// Apply remaining shift to reach target precision.
 	if (remaining_shift > 0) {

@@ -89,8 +89,8 @@ INSTANTIATE_TEST_SUITE_P(saturation, FixedDivideErrorTest,
 // ----------------------------------------------------------------------------
 
 struct DivideOptimalShiftParams {
-  s64 dividend;
-  s64 divisor;
+  u64 dividend;
+  u64 divisor;
   int expected_shift;
 
   friend auto operator<<(std::ostream& out, const DivideOptimalShiftParams& src)
@@ -115,26 +115,22 @@ TEST_P(DivideOptimalShiftTest, expected_result) {
   Baseline sanity checks.
 */
 const DivideOptimalShiftParams divide_optimal_shift_basics[] = {
-    // 1 / 1 -> Shift 62.
-    // Check: (1 << 62) / 1 = 2^62 (Fits in s64 positive range)
-    {1, 1, 62},
+    // 1 / 1 -> Shift 63.
+    // Dividend is not smaller, so we shift conservatively.
+    {1, 1, 63},
 
-    // 1 / 2 -> Shift 63.
-    // Divisor is larger (clz=62), so we can shift dividend more.
-    // 62 + 63 - 62 = 63.
-    {1, 2, 63},
+    // 1 / 2 -> Shift 64.
+    // Divisor is larger, so we can shift dividend by one more bit.
+    {1, 2, 64},
 
-    // 2 / 1 -> Shift 61.
-    // Dividend is larger (clz=62), need to shift less to avoid overflow.
-    // 62 + 62 - 63 = 61.
-    {2, 1, 61},
+    // 2 / 1 -> Shift 62.
+    // Dividend is larger, so shift is conservative.
+    {2, 1, 62},
 
-    // 100 / 10 -> Shift 62.
-    // 62 + clz(100) - clz(10) -> 62 + 57 - 60 = 59?
-    // Let's recheck math:
-    // clz(100) = 57. clz(10) = 60.
-    // 62 + 57 - 60 = 59.
-    {100, 10, 59},
+    // 100 / 10 -> Shift 60.
+    // 64 + clz(100) - clz(10) - 1 -> 64 + 57 - 60 - 1 = 60.
+    // Dividend is larger, so shift is conservative.
+    {100, 10, 60},
 };
 INSTANTIATE_TEST_SUITE_P(basics, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_basics));
@@ -142,22 +138,31 @@ INSTANTIATE_TEST_SUITE_P(basics, DivideOptimalShiftTest,
 /*
   Zero Dividend (The | 1 Trick)
 
-  Verifies that the branchless fix works and treats 0 exactly like 1.
+  Verifies the branchless behavior when we use the clz trick to avoid checking
+  (dividend == 0) explicitly.
 */
 const DivideOptimalShiftParams divide_optimal_shift_zeros[] = {
     // 0 / 1.
     // Internal logic: clz(0 | 1) -> clz(1) -> 63.
-    // Result: 62 + 63 - 63 = 62.
-    {0, 1, 62},
+    // Result: 64 + 63 - 63 = 64.
+    {0, 1, 64},
 
     // 0 / S64_MAX.
     // clz(dividend) = 63. clz(divisor) = 1.
-    // 62 + 63 - 1 = 124.
-    {0, S64_MAX, 124},
+    // 64 + 63 - 1 - 1 = 125.
+    {0, S64_MAX, 125},
+
+    // 0 / U64_MAX.
+    // clz(dividend) = 63. clz(divisor) = 0.
+    // 64 + 63 - 0 - 1 = 126.
+    {0, U64_MAX, 126},
 };
 INSTANTIATE_TEST_SUITE_P(zeros, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_zeros));
 
+// This test was relevant when division was based on s64. Now that it is based
+// on u64, I'm not sure there is an analogue.
+#if 0
 /*
   Sign Invariance
 
@@ -175,6 +180,7 @@ const DivideOptimalShiftParams divide_optimal_shift_signs[] = {
 };
 INSTANTIATE_TEST_SUITE_P(Signs, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_signs));
+#endif
 
 /*
   Extremes and Overflows
@@ -182,27 +188,28 @@ INSTANTIATE_TEST_SUITE_P(Signs, DivideOptimalShiftTest,
   Testing the boundaries of s64.
 */
 const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
-    // S64_MAX / 1
-    // clz(MAX) = 1. clz(1) = 63.
-    // 62 + 1 - 63 = 0.
-    // (We can't shift S64_MAX left at all, valid)
-    {S64_MAX, 1, 0},
+    // U64_MAX / 1
+    // clz(U64_MAX) = 0. clz(1) = 63.
+    // 64 + 0 - 63 - 1 = 0.
+    {U64_MAX, 1, 0},
 
-    // S64_MIN / 1 (The Edge Case)
-    // clz(MIN) = 0. clz(1) = 63.
-    // 62 + 0 - 63 = -1.
-    // (Correctly identifies that S64_MIN / 1 requires saturation/checks)
-    {S64_MIN, 1, -1},
+    // S64_MAX / 1
+    // clz(S64_MAX) = 1. clz(1) = 63.
+    // 64 + 1 - 63 - 1  = 1.
+    {S64_MAX, 1, 1},
 
     // 1 / S64_MAX
-    // clz(1) = 63. clz(MAX) = 1.
-    // 62 + 63 - 1 = 124.
-    // (We can shift 1 left by 124 bits safely inside s128)
-    {1, S64_MAX, 124},
+    // clz(1) = 63. clz(S64_MAX) = 1.
+    // 64 + 63 - 1 - 1 + 1  = 126.
+    {1, S64_MAX, 126},
 
     // S64_MAX / S64_MAX
-    // 62 + 1 - 1 = 62.
-    {S64_MAX, S64_MAX, 62},
+    // 64 + 1 - 1 - 1 = 63.
+    {S64_MAX, S64_MAX, 63},
+
+    // U64_MAX / U64_MAX
+    // 64 + 0 - 0 - 1  = 63.
+    {U64_MAX, U64_MAX, 63},
 };
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_extremes));
