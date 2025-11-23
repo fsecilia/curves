@@ -165,7 +165,7 @@ const MultiplyTestParams multiply_rounding[] = {
 
     // Just under a boundary: 2.999... rounds to 2
     // Use (3 << 32) - 1 to represent 2.999... in q31.32
-    {(3LL << 32) - 1, 32, 1LL << 32, 32, 0, 2},
+    {(3LL << 32) - 1, 32, 1LL << 32, 32, 0, 3},
 };
 INSTANTIATE_TEST_SUITE_P(rounding, FixedMultiplyTest,
                          ValuesIn(multiply_rounding));

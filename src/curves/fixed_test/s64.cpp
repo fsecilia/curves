@@ -549,7 +549,7 @@ const FixedRescaleS64TestParam rescale_s64_right_shift[] = {
     {3LL << 60, 62, 2, 3},
 
     // Extreme value: S64_MAX (safe because right shift)
-    {S64_MAX, 48, 32, S64_MAX >> 16},
+    {S64_MAX, 48, 32, (S64_MAX >> 16) + 1},
 };
 INSTANTIATE_TEST_SUITE_P(right_shift, FixedRescaleS64Test,
                          ValuesIn(rescale_s64_right_shift));

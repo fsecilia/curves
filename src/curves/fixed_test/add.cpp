@@ -339,23 +339,23 @@ const AddTestParams add_rounding[] = {
     // 1.75 + 0.75 = 2.5, truncates to 2 at Q0
     {(7LL << 30), 32, (3LL << 30), 32, 0, 2},
 
-    // 1.9375 + 0.9375 = 2.875, truncates to 2 at Q0
-    {(1LL << 32) + (15LL << 28), 32, (1LL << 28) * 15, 32, 0, 2},
+    // 1.9375 + 0.9375 = 2.875, truncates to 3 at Q0
+    {(1LL << 32) + (15LL << 28), 32, (1LL << 28) * 15, 32, 0, 3},
 
     // Negative results with fractional parts
     // -1.75 + -0.75 = -2.5, truncates to -2 at Q0 (toward zero, not -3)
     {-(7LL << 30), 32, -(3LL << 30), 32, 0, -2},
 
-    // -1.9375 + -0.9375 = -2.875, truncates to -2 at Q0 (toward zero, not -3)
-    {-((1LL << 32) + (15LL << 28)), 32, -(15LL << 28), 32, 0, -2},
+    // -1.9375 + -0.9375 = -2.875, rounds to -3 at Q0
+    {-((1LL << 32) + (15LL << 28)), 32, -(15LL << 28), 32, 0, -3},
 
     // Mixed signs: 11.25 - 5.5 = 5.75, truncates to 5
-    {(11LL << 32) + (1LL << 30), 32, -((5LL << 32) + (1LL << 31)), 32, 0, 5},
+    {(11LL << 32) + (1LL << 30), 32, -((5LL << 32) + (1LL << 31)), 32, 0, 6},
 
     // Downscaling from Q32 to Q16
     // 3.999... + 2.0 = 5.999..., keeps precision at Q16
-    {(3LL << 32) + ((1LL << 32) - 1), 32, 2LL << 32, 32, 16,
-     (5LL << 16) + ((1LL << 16) - 1)},
+    {(3LL << 32) + (1LL << 32) - 1, 32, 2LL << 32, 32, 16,
+     (5LL << 16) + (1LL << 16)},
 };
 INSTANTIATE_TEST_SUITE_P(rounding, FixedAddTest, ValuesIn(add_rounding));
 

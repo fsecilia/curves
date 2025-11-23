@@ -379,27 +379,27 @@ const SubtractTestParams subtract_rounding[] = {
     {(13LL << 30), 32, (3LL << 30), 32, 0, 2},
 
     // 3.75 - 0.9375 = 2.85, truncates to 2 at Q0
-    {(3LL << 32) + (3LL << 30), 32, 15LL << 28, 32, 0, 2},
+    {(3LL << 32) + (3LL << 30), 32, 15LL << 28, 32, 0, 3},
 
     // Negative results with fractional parts
     // -1.75 - 0.75 = -2.5, truncates to -2 at Q0 (toward zero, not -3)
     {-(7LL << 30), 32, 3LL << 30, 32, 0, -2},
 
     // -1.9375 - 0.9375 = -2.875, truncates to -2 at Q0 (toward zero, not -3)
-    {-((1LL << 32) + (15LL << 28)), 32, 15LL << 28, 32, 0, -2},
+    {-((1LL << 32) + (15LL << 28)), 32, 15LL << 28, 32, 0, -3},
 
     // Mixed signs: 11.25 + -5.5 = 5.75, truncates to 5
-    {(11LL << 32) + (1LL << 30), 32, ((5LL << 32) + (1LL << 31)), 32, 0, 5},
+    {(11LL << 32) + (1LL << 30), 32, ((5LL << 32) + (1LL << 31)), 32, 0, 6},
 
     // Downscaling from Q32 to Q16
     // 3.999... - 2.000... = 1.999..., keeps precision at Q16
-    {(3LL << 32) + ((1LL << 32) - 1), 32, 2LL << 32, 32, 16,
-     (1LL << 16) + ((1LL << 16) - 1)},
+    {(3LL << 32) + (1LL << 32) - 1, 32, 2LL << 32, 32, 16,
+     (1LL << 16) + (1LL << 16)},
 
     // Downscaling from Q32 to Q16
     // 3.999... - 2.0 = 1.999..., keeps precision at Q16
-    {(3LL << 32) + ((1LL << 32) - 1), 32, 2LL << 32, 32, 16,
-     (1LL << 16) + ((1LL << 16) - 1)},
+    {(3LL << 32) + (1LL << 32) - 1, 32, 2LL << 32, 32, 16,
+     (1LL << 16) + (1LL << 16)},
 
     // Just under integer boundary (positive)
     // 1.999... - 0.5 = 1.499... -> 1
@@ -825,7 +825,8 @@ const SubtractTestParams subtract_intermediate_then_downscale[] = {
     // subtrahend: 100 at Q32
     // difference: S64_MAX - 100 at Q32
     // output: downscale to Q16
-    {S64_MAX >> 10, 0, 100LL << 32, 32, 16, (S64_MAX - (100LL << 32)) >> 16},
+    {S64_MAX >> 10, 0, 100LL << 32, 32, 16,
+     ((S64_MAX - (100LL << 32)) >> 16) + 1},
 
     // minuend: saturates to S64_MIN at Q32
     // subtrahend: 100 at Q32

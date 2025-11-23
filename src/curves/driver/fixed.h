@@ -48,6 +48,28 @@ static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
 	return biased_value >> shift;
 }
 
+// Shifts right, rounding towards nearest even (rne).
+// Preconditions:
+//   - shift must be in range [1, 63]
+//   - caller is responsible for validating shift ranges
+static inline s64 __curves_fixed_shr_rne_s64(s64 value, unsigned int shift)
+{
+	u64 half = 1ULL << (shift - 1);
+
+	s64 int_part = value >> shift;
+	s64 is_odd = int_part & 1;
+
+	u64 frac_mask = (1ULL << shift) - 1;
+	u64 frac_part = (u64)value & frac_mask;
+
+	u64 bias = (half - 1) + (u64)is_odd;
+	u64 biased_value = frac_part + bias;
+
+	s64 carry = (s64)(biased_value >> shift);
+
+	return int_part + carry;
+}
+
 // Shifts left, saturating if the value overflows.
 // Preconditions:
 //   - shift must be in range [0, 63]
@@ -83,7 +105,7 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 
 	// Shift into final place.
 	if (output_frac_bits < frac_bits)
-		return __curves_fixed_shr_rtz_s64(value,
+		return __curves_fixed_shr_rne_s64(value,
 						  frac_bits - output_frac_bits);
 	else
 		return __curves_fixed_shl_sat_s64(value,
@@ -120,6 +142,27 @@ static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
 	return biased_value >> shift;
 }
 
+// Shifts right, rounding towards nearest even (rne).
+// Preconditions:
+//   - shift must be in range [1, 63]
+//   - caller is responsible for validating shift ranges
+static inline s128 __curves_fixed_shr_rne_s128(s128 value, unsigned int shift)
+{
+	s128 int_part = value >> shift;
+	s128 is_odd = int_part & 1;
+
+	u128 half = (u128)1 << (shift - 1);
+	u128 bias = (half - 1) + (u128)is_odd;
+
+	u128 frac_mask = ((u128)1 << shift) - 1;
+	u128 frac_part = (u128)value & frac_mask;
+
+	u128 biased_value = frac_part + bias;
+	s128 carry = (s128)(biased_value >> shift);
+
+	return int_part + carry;
+}
+
 // Shifts left, saturating if the value overflows.
 static inline s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift)
 {
@@ -150,9 +193,8 @@ static inline s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 		return __curves_fixed_rescale_error_s128(value, frac_bits,
 							 output_frac_bits);
 
-	// Shift into final place.
 	if (output_frac_bits < frac_bits)
-		return __curves_fixed_shr_rtz_s128(
+		return __curves_fixed_shr_rne_s128(
 			value, frac_bits - output_frac_bits);
 	else
 		return __curves_fixed_shl_sat_s128(value, output_frac_bits -

@@ -563,7 +563,7 @@ const FixedRescaleS128TestParam rescale_s128_right_shift[] = {
     {static_cast<s128>(3) << 120, 122, 2, 3},
 
     // Extreme value: S128_MAX (safe because right shift)
-    {S128_MAX, 96, 64, S128_MAX >> 32},
+    {S128_MAX, 96, 64, (S128_MAX >> 32) + 1},
 };
 INSTANTIATE_TEST_SUITE_P(right_shift, FixedRescaleS128Test,
                          ValuesIn(rescale_s128_right_shift));
