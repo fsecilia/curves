@@ -464,12 +464,18 @@ static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int output_frac_bits)
 {
 	int optimal_shift, quotient_frac_bits, remaining_shift;
+	s64 sign_mask = (divisor ^ dividend) >> 63;
+	u128 u_dividend = (u128)(curves_abs64(dividend));
+	u64 u_divisor = (u64)(curves_abs64(divisor));
 	s64 quotient;
 
 	// Validate inputs.
 	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
 		     output_frac_bits >= 64 || divisor == 0))
 		return __curves_fixed_divide_error(dividend, divisor);
+
+	if (dividend == 0)
+		return 0;
 
 	// Find maximum shift to apply before division to avoid overflow.
 	optimal_shift = __curves_fixed_divide_optimal_shift(dividend, divisor);
@@ -489,8 +495,9 @@ static inline s64 curves_fixed_divide(s64 dividend,
 	}
 
 	// Divide with optimal shift to maximize intermediate precision.
-	quotient =
-		curves_div_s128_s64((s128)dividend << optimal_shift, divisor);
+	quotient = sign_mask * (s64)curves_div_u128_u64(
+				       u_dividend << optimal_shift, u_divisor)
+				       .quotient;
 
 	// Apply remaining shift to reach target precision.
 	if (remaining_shift > 0) {

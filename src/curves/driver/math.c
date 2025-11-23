@@ -6,5 +6,7 @@
 
 #include "math.h"
 
-extern s64 curves_div_s128_s64(s128 dividend, s64 divisor);
 extern s64 curves_fixed_narrow_s128_s64(s128 value);
+
+extern struct div_u128_u64_result
+curves_div_u128_u64(unsigned __int128 dividend, u64 divisor);

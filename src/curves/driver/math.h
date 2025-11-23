@@ -38,7 +38,7 @@ static inline s64 curves_narrow_s128_s64(s128 value)
 }
 
 /**
- * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
+ * curves_div_u128_by_u64() - Divide 128-bit signed integer by 64-bit signed
  * integer
  * @dividend: 128-bit value to divide
  * @divisor: 64-bit amount to divide by
@@ -46,38 +46,43 @@ static inline s64 curves_narrow_s128_s64(s128 value)
  * Performs 128/64 signed division. Caller must ensure divisor is non-zero and
  * that the quotient fits in a signed 64-bit integer.
  *
- * Common overflow cases:
- * - Magnitude of top 65 bits of dividend >= magnitude of divisor
- * - Dividend is S64_MIN and divisor is -1
- *
- * Context: Undefined behavior if divisor is zero or quotient overflows s64.
+ * Context: Undefined behavior if divisor is zero or quotient overflows u64.
  *          Traps with #DE on x64.
  * Return: 64-bit signed quotient
  */
 
+struct div_u128_u64_result {
+	u64 quotient;
+	u64 remainder;
+};
+
 #if defined __x86_64__
 
-// x64: Use idivq directly to avoid missing 128/128 division instruction.
-static inline s64 curves_div_s128_s64(s128 dividend, s64 divisor)
+// x64: Use divq directly to avoid missing 128/128 division instruction.
+static inline struct div_u128_u64_result
+curves_div_u128_u64(unsigned __int128 dividend, u64 divisor)
 {
-	s64 dividend_high = (s64)(dividend >> 64); // RDX
-	s64 dividend_low = (s64)dividend; // RAX
-	s64 quotient;
+	struct div_u128_u64_result result;
 
-	asm("idivq %[divisor]"
-	    : "=a"(quotient), "+d"(dividend_high)
-	    : "a"(dividend_low), [divisor] "rm"(divisor)
-	    : "cc");
+	u64 high = (u64)(dividend >> 64);
+	u64 low = (u64)dividend;
 
-	return quotient;
+	asm volatile("divq %[divisor]"
+		     : "=a"(result.quotient), "=d"(result.remainder)
+		     : "d"(high), "a"(low), [divisor] "rm"(divisor)
+		     : "cc");
+
+	return result;
 }
 
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline s64 curves_div_s128_s64(int128_t dividend, s64 divisor)
+static inline struct div_u128_u64_result
+curves_div_u128_u64(unsigned __int128 dividend, u64 divisor)
 {
-	return (s64)(dividend / divisor);
+	return struct(div_u128_u64_result){ .quotient = dividend / divisor,
+					    .remainder =.dividend % divisor };
 }
 
 #endif
