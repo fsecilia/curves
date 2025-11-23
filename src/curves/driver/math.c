@@ -7,3 +7,4 @@
 #include "math.h"
 
 extern s64 curves_div_s128_s64(s128 dividend, s64 divisor);
+extern s64 curves_fixed_narrow_s128_s64(s128 value);

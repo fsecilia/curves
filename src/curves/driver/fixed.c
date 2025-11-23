@@ -59,7 +59,6 @@ extern s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift);
 extern s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift);
 extern s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 				      unsigned int output_frac_bits);
-extern s64 curves_fixed_narrow_s128_s64(s128 value);
 
 // ----------------------------------------------------------------------------
 // Common API

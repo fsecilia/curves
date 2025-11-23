@@ -25,6 +25,18 @@
 #define CURVES_S128_MAX ((s128)(CURVES_U128_MAX >> 1))
 #define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
 
+// Narrows a 128-bit value to 64-bits, saturating on overflow.
+static inline s64 curves_narrow_s128_s64(s128 value)
+{
+	if (unlikely(value > (s128)S64_MAX))
+		return S64_MAX;
+
+	if (unlikely(value < (s128)S64_MIN))
+		return S64_MIN;
+
+	return (s64)value;
+}
+
 /**
  * curves_div_s128_by_s64() - Divide 128-bit signed integer by 64-bit signed
  * integer
