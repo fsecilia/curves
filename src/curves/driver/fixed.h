@@ -281,11 +281,11 @@ static inline s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
 						       max_frac_bits);
 
 	// Check for saturation.
-	if (intermediate_addend > 0 &&
-	    intermediate_augend > S64_MAX - intermediate_addend)
+	if (unlikely(intermediate_addend > 0 &&
+		     intermediate_augend > S64_MAX - intermediate_addend))
 		return curves_saturate_s64(true);
-	if (intermediate_addend < 0 &&
-	    intermediate_augend < S64_MIN - intermediate_addend)
+	if (unlikely(intermediate_addend < 0 &&
+		     intermediate_augend < S64_MIN - intermediate_addend))
 		return curves_saturate_s64(false);
 
 	// Return sum scaled to output precision.
@@ -333,11 +333,11 @@ static inline s64 curves_fixed_subtract(s64 minuend,
 		subtrahend, subtrahend_frac_bits, max_frac_bits);
 
 	// Check for saturation.
-	if (intermediate_subtrahend < 0 &&
-	    intermediate_minuend > S64_MAX + intermediate_subtrahend)
+	if (unlikely(intermediate_subtrahend < 0 &&
+		     intermediate_minuend > S64_MAX + intermediate_subtrahend))
 		return curves_saturate_s64(true);
-	if (intermediate_subtrahend > 0 &&
-	    intermediate_minuend < S64_MIN + intermediate_subtrahend)
+	if (unlikely(intermediate_subtrahend > 0 &&
+		     intermediate_minuend < S64_MIN + intermediate_subtrahend))
 		return curves_saturate_s64(false);
 
 	// Return sum scaled to output precision.
