@@ -195,7 +195,7 @@ const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
 
     // S64_MAX / 1
     // clz(S64_MAX) = 1. clz(1) = 63.
-    // 64 + 1 - 63 - 1  = 1.
+    // 64 + 1 - 63 - 1 = 1.
     {S64_MAX, 1, 1},
 
     // 1 / S64_MAX
@@ -208,7 +208,7 @@ const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
     {S64_MAX, S64_MAX, 63},
 
     // U64_MAX / U64_MAX
-    // 64 + 0 - 0 - 1  = 63.
+    // 64 + 0 - 0 - 1 = 63.
     {U64_MAX, U64_MAX, 63},
 };
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
