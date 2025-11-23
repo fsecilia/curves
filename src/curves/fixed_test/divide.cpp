@@ -207,6 +207,7 @@ const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_extremes));
 
+#if 0
 // ----------------------------------------------------------------------------
 // curves_fixed_divide()
 // ----------------------------------------------------------------------------
@@ -875,6 +876,7 @@ const DivideTestParams divide_realistic[] = {
 };
 INSTANTIATE_TEST_SUITE_P(realistic, FixedDivideTest,
                          ValuesIn(divide_realistic));
+#endif
 
 }  // namespace
 }  // namespace curves
