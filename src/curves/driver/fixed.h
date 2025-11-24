@@ -621,4 +621,22 @@ static inline s64 curves_fixed_divide(s64 dividend,
 	return curves_apply_sign(quotient, quotient_sign_mask);
 }
 
+// ----------------------------------------------------------------------------
+// Roots
+// ----------------------------------------------------------------------------
+
+/**
+ * __curves_fixed_isqrt_initial_guess() - best initial guess for inverse sqrt
+ * Newton-Raphson iteration.
+ *
+ * Returns: isqrt approximated using half the int log2 of value
+*/
+static inline s64
+__curves_fixed_isqrt_initial_guess(s64 value, unsigned int frac_bits,
+				   unsigned int output_frac_bits)
+{
+	s64 half_log = (curves_int_log2(value) - frac_bits) >> 1;
+	return 1LL << (half_log + output_frac_bits);
+}
+
 #endif /* _CURVES_FIXED_H */
