@@ -252,7 +252,7 @@ static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 static inline s64 curves_fixed_const_1_5(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(1.5*2^62)
-	return curves_fixed_rescale_s64(6917529027641081856ll,
+	return curves_fixed_rescale_s64(6917529027641081856LL,
 					CURVES_FIXED_1_5_FRAC_BITS, frac_bits);
 }
 
@@ -266,7 +266,7 @@ static inline s64 curves_fixed_const_1_5(unsigned int frac_bits)
 static inline s64 curves_fixed_const_e(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(e*2^61)
-	return curves_fixed_rescale_s64(6267931151224907085ll,
+	return curves_fixed_rescale_s64(6267931151224907085LL,
 					CURVES_FIXED_E_FRAC_BITS, frac_bits);
 }
 
@@ -280,7 +280,7 @@ static inline s64 curves_fixed_const_e(unsigned int frac_bits)
 static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return curves_fixed_rescale_s64(3196577161300663915ll,
+	return curves_fixed_rescale_s64(3196577161300663915LL,
 					CURVES_FIXED_LN2_FRAC_BITS, frac_bits);
 }
 
@@ -294,7 +294,7 @@ static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
 static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(pi*2^61)
-	return curves_fixed_rescale_s64(7244019458077122842ll,
+	return curves_fixed_rescale_s64(7244019458077122842LL,
 					CURVES_FIXED_PI_FRAC_BITS, frac_bits);
 }
 
