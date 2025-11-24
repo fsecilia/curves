@@ -214,6 +214,81 @@ const DivideOptimalShiftParams divide_optimal_shift_extremes[] = {
 INSTANTIATE_TEST_SUITE_P(Extremes, DivideOptimalShiftTest,
                          ValuesIn(divide_optimal_shift_extremes));
 
+// ----------------------------------------------------------------------------
+// __curves_fixed_divide_shr_rne()
+// ----------------------------------------------------------------------------
+
+struct DivideShrRneParams {
+  u64 quotient;
+  u64 remainder;
+  unsigned int shift;
+  u64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const DivideShrRneParams& src)
+      -> std::ostream& {
+    return out << "{" << src.quotient << ", " << src.remainder << ", "
+               << src.shift << ", " << src.expected_result << " } ";
+  }
+};
+
+struct DivideShrRneTest : TestWithParam<DivideShrRneParams> {};
+
+TEST_P(DivideShrRneTest, expected_result) {
+  const auto actual_shift = __curves_fixed_divide_shr_rne(
+      GetParam().quotient, GetParam().remainder, GetParam().shift);
+
+  ASSERT_EQ(GetParam().expected_result, actual_shift);
+}
+
+/*
+  Smoke Tests
+
+  Baseline sanity checks.
+*/
+const DivideShrRneParams divide_shr_rne_basics[] = {
+    {36, 0, 4, 2}, {44, 0, 4, 3}, {40, 0, 4, 2}, {56, 0, 4, 4}, {40, 1, 4, 3},
+};
+INSTANTIATE_TEST_SUITE_P(basics, DivideShrRneTest,
+                         ValuesIn(divide_shr_rne_basics));
+
+// ----------------------------------------------------------------------------
+// __curves_fixed_divide_rne_exact()
+// ----------------------------------------------------------------------------
+
+struct DivideRneExactParams {
+  u64 quotient;
+  u64 remainder;
+  u64 divisor;
+  u64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const DivideRneExactParams& src)
+      -> std::ostream& {
+    return out << "{" << src.quotient << ", " << src.remainder << ", "
+               << src.divisor << ", " << src.expected_result << " } ";
+  }
+};
+
+struct DivideRneExactTest : TestWithParam<DivideRneExactParams> {};
+
+TEST_P(DivideRneExactTest, expected_result) {
+  const auto actual_shift = __curves_fixed_divide_rne_exact(
+      GetParam().quotient, GetParam().remainder, GetParam().divisor);
+
+  ASSERT_EQ(GetParam().expected_result, actual_shift);
+}
+
+/*
+  Smoke Tests
+
+  Baseline sanity checks.
+*/
+const DivideRneExactParams divide_rne_exact_basics[] = {
+    {10, 2, 5, 10}, {10, 3, 5, 11},           {10, 2, 4, 10},
+    {11, 2, 4, 12}, {U64_MAX, 3, 4, U64_MAX},
+};
+INSTANTIATE_TEST_SUITE_P(basics, DivideRneExactTest,
+                         ValuesIn(divide_rne_exact_basics));
+
 #if 0
 // ----------------------------------------------------------------------------
 // curves_fixed_divide()

@@ -471,63 +471,157 @@ static inline int __curves_fixed_divide_optimal_shift(u64 dividend, u64 divisor)
 	return total_shift;
 }
 
-/**
- * curves_fixed_divide() - Divides two variable-precision, fixed-point values.
-*/
+/*
+ * Round-Nearest-Even for right shifts.
+ *
+ * Shifts to align binary point then uses remainder to perform rne.
+ *
+ * Returns: quotient shifted right and rounded using rne, U64_MAX on overflow.
+ */
+static inline u64 __curves_fixed_divide_shr_rne(u64 quotient, u64 remainder,
+						unsigned int shift)
+{
+	// Split quotient into int and frac parts.
+	u64 frac_mask = (1ULL << shift) - 1;
+	u64 frac_part = quotient & frac_mask;
+	u64 int_part = quotient >> shift;
+
+	// Decide if tie is possible and tiebreaker is necessary.
+	u64 any_remainder = (remainder | -remainder) >> 63;
+	u64 is_odd = int_part & 1;
+	u64 tiebreaker = is_odd | any_remainder;
+
+	// Apply bias to determine if we need a carry.
+	u64 half = 1ULL << (shift - 1);
+	u64 total_bias = (half - 1) + tiebreaker;
+	u64 carry = (frac_part + total_bias) >> shift;
+
+	// Apply carry.
+	return int_part + carry;
+}
+
+/*
+ * Round-Nearest-Even for exact alignment (shift == 0).
+ *
+ * This implementation starts with the standard rounding threshold,
+ * floor(divisor / 2), then lowers it by 1 if we have a tiebreaker to force
+ * a round-up on exact halves.
+ *
+ * Returns: quotient rounded using rne, U64_MAX on overflow.
+ */
+static inline u64 __curves_fixed_divide_rne_exact(u64 quotient, u64 remainder,
+						  u64 divisor)
+{
+	// Decide if tiebreaker is required.
+	//
+	// A tie is only possible if the divisor is even (~divisor & 1), and a
+	// tiebreaker is then only necessary if the quotient is odd
+	// (quotient & 1).
+	u64 is_tie = (~divisor & 1) & (quotient & 1);
+
+	// Determine if carry is required.
+	//
+	// We need a carry if the remainder is larger than the threshold.
+	u64 threshold = (divisor >> 1) - is_tie;
+	u64 carry = (threshold - remainder) >> 63;
+
+	// Check for saturation.
+	//
+	// If we are already at the limit and need to round up, saturate.
+	if (unlikely(carry && quotient == U64_MAX))
+		return U64_MAX;
+
+	// Apply carry.
+	return quotient + carry;
+}
+
+static inline u64 __curves_fixed_divide(u64 u_dividend,
+					unsigned int dividend_frac_bits,
+					u64 u_divisor,
+					unsigned int divisor_frac_bits,
+					unsigned int output_frac_bits)
+{
+	struct div_u128_u64_result div_res;
+	u64 final_res;
+	int optimal_left_shift, shift_correction, net_scale;
+	u128 shifted_dividend;
+
+	// Determine bit budget.
+	optimal_left_shift =
+		__curves_fixed_divide_optimal_shift(u_dividend, u_divisor);
+
+	// Apply hardware division.
+	shifted_dividend = (u128)u_dividend << optimal_left_shift;
+	div_res = curves_div_u128_u64(shifted_dividend, u_divisor);
+
+	// Rescale to output_frac_bits.
+	net_scale = (int)output_frac_bits - (int)dividend_frac_bits +
+		    (int)divisor_frac_bits;
+	shift_correction = optimal_left_shift - net_scale;
+
+	// Range check before rounding.
+	if (unlikely(shift_correction < 0)) {
+		// Negative shift implies left shift -> Result > U64_MAX
+		return U64_MAX;
+	}
+
+	if (unlikely(shift_correction >= 64)) {
+		// Shifted out all bits -> Result is 0
+		return 0;
+	}
+
+	// Apply rne.
+	if (likely(shift_correction > 0)) {
+		final_res = __curves_fixed_divide_shr_rne(
+			div_res.quotient, div_res.remainder,
+			(unsigned int)shift_correction);
+	} else {
+		// shift_correction == 0
+		final_res = __curves_fixed_divide_rne_exact(
+			div_res.quotient, div_res.remainder, u_divisor);
+	}
+
+	return final_res;
+}
+
 static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int dividend_frac_bits,
 				      s64 divisor,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
-	int optimal_shift, quotient_frac_bits, remaining_shift;
-	s64 sign_mask = (divisor ^ dividend) >> 63;
-	u64 u_dividend = (u64)(curves_abs64(dividend));
-	u64 u_divisor = (u64)(curves_abs64(divisor));
-	s64 quotient;
+	u64 limit, u_dividend, u_divisor, final_res;
+	bool sign;
 
 	// Validate inputs.
 	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
 		     output_frac_bits >= 64 || divisor == 0))
 		return __curves_fixed_divide_error(dividend, divisor);
 
-	if (dividend == 0)
+	if (unlikely(dividend == 0))
 		return 0;
 
-	// Find maximum shift to apply before division to avoid overflow.
-	optimal_shift =
-		__curves_fixed_divide_optimal_shift(u_dividend, u_divisor);
-	if (unlikely(optimal_shift < 0))
-		return curves_saturate_s64((dividend ^ divisor) >= 0);
+	// Convert to unsigned.
+	sign = (dividend < 0) ^ (divisor < 0);
+	u_dividend = (dividend < 0) ? -(u64)dividend : (u64)dividend;
+	u_divisor = (divisor < 0) ? -(u64)divisor : (u64)divisor;
 
-	// Calculate the precision we'll have after division.
-	quotient_frac_bits = (int)dividend_frac_bits + optimal_shift -
-			     (int)divisor_frac_bits;
+	// Forward to unsigned implementation.
+	final_res = __curves_fixed_divide(u_dividend, dividend_frac_bits,
+					  u_divisor, divisor_frac_bits,
+					  output_frac_bits);
 
-	// Check if the remaining shift is within the valid range.
-	remaining_shift = (int)output_frac_bits - quotient_frac_bits;
-	if (unlikely(remaining_shift > 63)) {
-		return curves_saturate_s64((dividend ^ divisor) >= 0);
-	} else if (unlikely(remaining_shift < -63)) {
-		return 0;
+	// Saturation Check
+	//
+	// Check against the signed positive max, plus one if the result is
+	// negative (because |S64_MIN| is S64_MAX + 1).
+	limit = (u64)S64_MAX + (sign ? 1 : 0);
+	if (unlikely(final_res > limit)) {
+		return sign ? S64_MIN : S64_MAX;
 	}
 
-	// Divide with optimal shift to maximize intermediate precision.
-	quotient = sign_mask *
-		   (s64)curves_div_u128_u64((u128)u_dividend << optimal_shift,
-					    u_divisor)
-			   .quotient;
-
-	// Apply remaining shift to reach target precision.
-	if (remaining_shift > 0) {
-		return __curves_fixed_shl_sat_s64(
-			quotient, (unsigned int)remaining_shift);
-	} else if (remaining_shift < 0) {
-		return __curves_fixed_shr_rtz_s64(
-			quotient, (unsigned int)-remaining_shift);
-	} else {
-		return quotient;
-	}
+	// Apply sign.
+	return sign ? -(s64)final_res : (s64)final_res;
 }
 
 #endif /* _CURVES_FIXED_H */
