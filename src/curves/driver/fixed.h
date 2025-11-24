@@ -552,16 +552,14 @@ static inline u64 __curves_fixed_divide(u64 dividend,
 					unsigned int divisor_frac_bits,
 					unsigned int output_frac_bits)
 {
+	struct div_u128_u64_result div_res;
+
 	// Determine shift budget.
 	int final_shift = (int)output_frac_bits - (int)dividend_frac_bits +
 			  (int)divisor_frac_bits;
 	int initial_shift =
 		__curves_fixed_divide_optimal_shift(dividend, divisor);
 	int remaining_shift = final_shift - initial_shift;
-
-	// Shift as far left as possible and divide.
-	struct div_u128_u64_result div_res =
-		curves_div_u128_u64((u128)dividend << initial_shift, divisor);
 
 	// Range check shifts.
 	if (unlikely(remaining_shift > 0)) {
@@ -573,6 +571,9 @@ static inline u64 __curves_fixed_divide(u64 dividend,
 		// Right shifting all bits is always zero.
 		return 0;
 	}
+
+	// Shift as far left as possible and divide.
+	div_res = curves_div_u128_u64((u128)dividend << initial_shift, divisor);
 
 	// Shift right what remains and apply rne.
 	if (likely(remaining_shift < 0)) {
