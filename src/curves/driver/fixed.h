@@ -432,21 +432,20 @@ curves_fixed_fma(s64 multiplicand, unsigned int multiplicand_frac_bits,
 		 s64 multiplier, unsigned int multiplier_frac_bits, s64 addend,
 		 unsigned int addend_frac_bits, unsigned int output_frac_bits)
 {
-	s128 product = (s128)multiplicand * (s128)multiplier;
-	unsigned int product_frac_bits =
-		multiplicand_frac_bits + multiplier_frac_bits;
+	u32 product_frac_bits = multiplicand_frac_bits + multiplier_frac_bits;
+	s32 frac_bits_delta = (s32)product_frac_bits - (s32)addend_frac_bits;
 
-	s128 wide_addend = (s128)addend;
+	s32 sign_mask = frac_bits_delta >> 31;
+	u32 addend_shift = (u32)(frac_bits_delta & ~sign_mask);
+	u32 product_shift = (u32)(-frac_bits_delta & sign_mask);
 
-	if (product_frac_bits > addend_frac_bits) {
-		wide_addend <<= (product_frac_bits - addend_frac_bits);
-	} else if (addend_frac_bits > product_frac_bits) {
-		product <<= (addend_frac_bits - product_frac_bits);
-		product_frac_bits = addend_frac_bits;
-	}
+	u32 max_frac_bits = product_frac_bits + product_shift;
+
+	s128 product = ((s128)multiplicand * (s128)multiplier) << product_shift;
+	s128 wide_addend = (s128)addend << addend_shift;
 
 	return curves_narrow_s128_s64(curves_fixed_rescale_s128(
-		product + wide_addend, product_frac_bits, output_frac_bits));
+		product + wide_addend, max_frac_bits, output_frac_bits));
 }
 
 // ----------------------------------------------------------------------------
