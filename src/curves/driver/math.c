@@ -15,5 +15,5 @@ extern s64 curves_narrow_s128_s64(s128 value);
 extern s64 curves_add_saturate(s64 augend, s64 addend);
 extern s64 curves_subtract_saturate(s64 minuend, s64 subtrahend);
 
-extern struct div_u128_u64_result
-curves_div_u128_u64(unsigned __int128 dividend, u64 divisor);
+extern struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
+						      u64 divisor);

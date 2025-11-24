@@ -110,8 +110,8 @@ struct div_u128_u64_result {
 #if defined __x86_64__
 
 // x64: Use divq directly to avoid missing 128/128 division instruction.
-static inline struct div_u128_u64_result
-curves_div_u128_u64(unsigned __int128 dividend, u64 divisor)
+static inline struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
+							     u64 divisor)
 {
 	struct div_u128_u64_result result;
 
@@ -129,11 +129,14 @@ curves_div_u128_u64(unsigned __int128 dividend, u64 divisor)
 #else
 
 // Generic case: Use compiler's existing 128-bit division operator.
-static inline struct div_u128_u64_result
-curves_div_u128_u64(unsigned __int128 dividend, u64 divisor)
+static inline struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
+							     u64 divisor)
 {
-	return struct(div_u128_u64_result){ .quotient = dividend / divisor,
-					    .remainder =.dividend % divisor };
+	struct div_u128_u64_result result = {
+		.quotient = (u64)(dividend / divisor),
+		.remainder = (u64)(dividend % divisor)
+	};
+	return result;
 }
 
 #endif
