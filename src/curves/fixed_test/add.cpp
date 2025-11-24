@@ -423,19 +423,6 @@ INSTANTIATE_TEST_SUITE_P(realistic, FixedAddTest, ValuesIn(add_realistic));
 // Intermediate Saturation Tests
 // ----------------------------------------------------------------------------
 
-// This test suite does not use commutation.
-struct FixedAddIntermediateSaturationTest : FixedAddTest {};
-
-TEST_P(FixedAddIntermediateSaturationTest, expected_result) {
-  const auto expected_result = GetParam().expected_result;
-
-  const auto actual_result = curves_fixed_add(
-      GetParam().augend, GetParam().augend_frac_bits, GetParam().addend,
-      GetParam().addend_frac_bits, GetParam().output_frac_bits);
-
-  ASSERT_EQ(expected_result, actual_result);
-}
-
 /*
   Category 1A: First Argument Overflows -> S64_MAX During Upscale
 
@@ -456,8 +443,7 @@ const AddTestParams add_first_overflow_small_pos[] = {
 
     {S64_MAX >> 15, 0, 1000LL << 16, 16, 16, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(first_overflow_small_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_overflow_small_pos, FixedAddTest,
                          ValuesIn(add_first_overflow_small_pos));
 
 // Augend overflows to S64_MAX, addend is small negative
@@ -471,8 +457,7 @@ const AddTestParams add_first_overflow_small_neg[] = {
     {S64_MAX >> 15, 16, -(50LL << 32), 32, 32, S64_MAX},
     {S64_MAX >> 7, 8, -(200LL << 48), 48, 48, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(first_overflow_small_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_overflow_small_neg, FixedAddTest,
                          ValuesIn(add_first_overflow_small_neg));
 
 // Augend overflows to S64_MAX, addend is large negative (no saturation in add)
@@ -487,8 +472,7 @@ const AddTestParams add_first_overflow_large_neg[] = {
     // sum: S64_MAX - (2^62) = positive
     {S64_MAX >> 10, 0, -(1LL << 62), 32, 32, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(first_overflow_large_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_overflow_large_neg, FixedAddTest,
                          ValuesIn(add_first_overflow_large_neg));
 
 /*
@@ -508,8 +492,7 @@ const AddTestParams add_first_underflow_small_pos[] = {
     {S64_MIN >> 15, 16, 50LL << 32, 32, 32, S64_MIN},
     {S64_MIN >> 7, 8, 200LL << 48, 48, 48, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(first_underflow_small_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_underflow_small_pos, FixedAddTest,
                          ValuesIn(add_first_underflow_small_pos));
 
 // Augend underflows to S64_MIN, addend is large positive (no saturation)
@@ -524,8 +507,7 @@ const AddTestParams add_first_underflow_large_pos[] = {
     // sum: S64_MIN + 2^62 = negative
     {S64_MIN >> 10, 0, 1LL << 62, 32, 32, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(first_underflow_large_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_underflow_large_pos, FixedAddTest,
                          ValuesIn(add_first_underflow_large_pos));
 
 // Augend underflows to S64_MIN, addend is small negative (saturates in add)
@@ -538,8 +520,7 @@ const AddTestParams add_first_underflow_small_neg[] = {
     {S64_MIN >> 15, 16, -(50LL << 32), 32, 32, S64_MIN},
     {S64_MIN >> 7, 8, -(200LL << 48), 48, 48, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(first_underflow_small_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(first_underflow_small_neg, FixedAddTest,
                          ValuesIn(add_first_underflow_small_neg));
 
 /*
@@ -558,8 +539,7 @@ const AddTestParams add_second_overflow_small_pos[] = {
     {50LL << 32, 32, S64_MAX >> 15, 16, 32, S64_MAX},
     {200LL << 48, 48, S64_MAX >> 7, 8, 48, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(second_overflow_small_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_overflow_small_pos, FixedAddTest,
                          ValuesIn(add_second_overflow_small_pos));
 
 // Addend overflows to S64_MAX, augend is small negative
@@ -571,8 +551,7 @@ const AddTestParams add_second_overflow_small_neg[] = {
 
     {-(50LL << 32), 32, S64_MAX >> 15, 16, 32, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(second_overflow_small_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_overflow_small_neg, FixedAddTest,
                          ValuesIn(add_second_overflow_small_neg));
 
 // Addend overflows to S64_MAX, augend is large negative
@@ -587,8 +566,7 @@ const AddTestParams add_second_overflow_large_neg[] = {
     // sum: -(2^62) + S64_MAX = positive
     {-(1LL << 62), 32, S64_MAX >> 10, 0, 32, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(second_overflow_large_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_overflow_large_neg, FixedAddTest,
                          ValuesIn(add_second_overflow_large_neg));
 
 /*
@@ -606,8 +584,7 @@ const AddTestParams add_second_underflow_small_pos[] = {
 
     {50LL << 32, 32, S64_MIN >> 15, 16, 32, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(second_underflow_small_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_underflow_small_pos, FixedAddTest,
                          ValuesIn(add_second_underflow_small_pos));
 
 // Addend underflows to S64_MIN, augend is large positive
@@ -622,8 +599,7 @@ const AddTestParams add_second_underflow_large_pos[] = {
     // sum: 2^62 + S64_MIN = negative
     {1LL << 62, 32, S64_MIN >> 10, 0, 32, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(second_underflow_large_pos,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_underflow_large_pos, FixedAddTest,
                          ValuesIn(add_second_underflow_large_pos));
 
 // Addend underflows to S64_MIN, augend is small negative (saturates in add)
@@ -635,8 +611,7 @@ const AddTestParams add_second_underflow_small_neg[] = {
 
     {-(50LL << 32), 32, S64_MIN >> 15, 16, 32, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(second_underflow_small_neg,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(second_underflow_small_neg, FixedAddTest,
                          ValuesIn(add_second_underflow_small_neg));
 
 /*
@@ -653,7 +628,7 @@ const AddTestParams add_both_overflow[] = {
     {S64_MAX >> 15, 16, S64_MAX >> 7, 8, 32, S64_MAX},
     {S64_MAX >> 20, 0, S64_MAX >> 10, 10, 48, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(both_overflow, FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(both_overflow, FixedAddTest,
                          ValuesIn(add_both_overflow));
 
 // Both underflow to S64_MIN
@@ -665,7 +640,7 @@ const AddTestParams add_both_underflow[] = {
     {S64_MIN >> 15, 16, S64_MIN >> 7, 8, 32, S64_MIN},
     {S64_MIN >> 20, 0, S64_MIN >> 10, 10, 48, S64_MIN},
 };
-INSTANTIATE_TEST_SUITE_P(both_underflow, FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(both_underflow, FixedAddTest,
                          ValuesIn(add_both_underflow));
 
 // One overflows, one underflows
@@ -682,8 +657,7 @@ const AddTestParams add_opposite_saturation[] = {
     {S64_MAX >> 15, 16, S64_MIN >> 7, 8, 32, S64_MIN},
     {S64_MIN >> 20, 10, S64_MAX >> 10, 20, 48, S64_MIN >> 35},
 };
-INSTANTIATE_TEST_SUITE_P(opposite_saturation,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(opposite_saturation, FixedAddTest,
                          ValuesIn(add_opposite_saturation));
 
 /*
@@ -709,8 +683,7 @@ const AddTestParams add_intermediate_saturation_only[] = {
      S64_MAX},  // Already at max, but check
     {S64_MAX >> 10, 0, S64_MAX >> 15, 16, 33, S64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(intermediate_then_output_upscale,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(intermediate_then_output_upscale, FixedAddTest,
                          ValuesIn(add_intermediate_saturation_only));
 
 /*
@@ -738,8 +711,7 @@ const AddTestParams add_intermediate_then_downscale[] = {
     // Opposite saturation -> -1, then downscale
     {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 16, S64_MIN >> 47},
 };
-INSTANTIATE_TEST_SUITE_P(intermediate_then_downscale,
-                         FixedAddIntermediateSaturationTest,
+INSTANTIATE_TEST_SUITE_P(intermediate_then_downscale, FixedAddTest,
                          ValuesIn(add_intermediate_then_downscale));
 
 }  // namespace
