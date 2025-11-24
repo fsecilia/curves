@@ -38,19 +38,21 @@ static inline unsigned int curves_clz64(u64 x)
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef int32_t s32;
+typedef uint32_t u32;
 typedef int64_t s64;
 typedef uint64_t u64;
 __extension__ typedef __int128 s128;
 __extension__ typedef unsigned __int128 u128;
 
-#define S64_MIN INT64_MIN
-#define S64_MAX INT64_MAX
 #define S32_MIN INT32_MIN
 #define S32_MAX INT32_MAX
-#define U64_MIN UINT64_MIN
-#define U64_MAX UINT64_MAX
+#define S64_MIN INT64_MIN
+#define S64_MAX INT64_MAX
 #define U32_MIN UINT32_MIN
 #define U32_MAX UINT32_MAX
+#define U64_MIN UINT64_MIN
+#define U64_MAX UINT64_MAX
 
 #define __cold
 
