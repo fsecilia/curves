@@ -245,11 +245,11 @@ TEST_P(DivideShrRneTest, expected_result) {
 
   Baseline sanity checks.
 */
-const DivideShrRneParams divide_shr_rne_basics[] = {
+const DivideShrRneParams divide_shr_rne_smoke_tests[] = {
     {36, 0, 4, 2}, {44, 0, 4, 3}, {40, 0, 4, 2}, {56, 0, 4, 4}, {40, 1, 4, 3},
 };
-INSTANTIATE_TEST_SUITE_P(basics, DivideShrRneTest,
-                         ValuesIn(divide_shr_rne_basics));
+INSTANTIATE_TEST_SUITE_P(smoke_tests, DivideShrRneTest,
+                         ValuesIn(divide_shr_rne_smoke_tests));
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_divide_rne_exact()
@@ -282,12 +282,12 @@ TEST_P(DivideRneExactTest, expected_result) {
 
   Baseline sanity checks.
 */
-const DivideRneExactParams divide_rne_exact_basics[] = {
+const DivideRneExactParams divide_rne_exact_smoke_tests[] = {
     {10, 2, 5, 10}, {10, 3, 5, 11},           {10, 2, 4, 10},
     {11, 2, 4, 12}, {U64_MAX, 3, 4, U64_MAX},
 };
-INSTANTIATE_TEST_SUITE_P(basics, DivideRneExactTest,
-                         ValuesIn(divide_rne_exact_basics));
+INSTANTIATE_TEST_SUITE_P(smoke_tests, DivideRneExactTest,
+                         ValuesIn(divide_rne_exact_smoke_tests));
 
 // ----------------------------------------------------------------------------
 // curves_fixed_divide()
