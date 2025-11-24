@@ -454,7 +454,6 @@ const AddTestParams add_first_overflow_small_pos[] = {
     {S64_MAX >> 15, 16, 50LL << 32, 32, 32, S64_MAX},
     {S64_MAX >> 7, 8, 200LL << 48, 48, 48, S64_MAX},
 
-    //{S64_MAX >> 20, 0, 1000LL << 16, 16, 16, S64_MAX},
     {S64_MAX >> 15, 0, 1000LL << 16, 16, 16, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(first_overflow_small_pos,
@@ -466,11 +465,11 @@ const AddTestParams add_first_overflow_small_neg[] = {
     // augend: saturates to S64_MAX at Q32
     // addend: -100 at Q32
     // sum: S64_MAX - 100 -> no saturation in add step
-    {S64_MAX >> 10, 0, -(100LL << 32), 32, 32, S64_MAX - (100LL << 32)},
+    {S64_MAX >> 10, 0, -(100LL << 32), 32, 32, S64_MAX},
 
     // Similar with different values
-    {S64_MAX >> 15, 16, -(50LL << 32), 32, 32, S64_MAX - (50LL << 32)},
-    {S64_MAX >> 7, 8, -(200LL << 48), 48, 48, S64_MAX - (200LL << 48)},
+    {S64_MAX >> 15, 16, -(50LL << 32), 32, 32, S64_MAX},
+    {S64_MAX >> 7, 8, -(200LL << 48), 48, 48, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(first_overflow_small_neg,
                          FixedAddIntermediateSaturationTest,
@@ -481,12 +480,12 @@ const AddTestParams add_first_overflow_large_neg[] = {
     // augend: saturates to S64_MAX at Q32
     // addend: S64_MIN at Q32 (already at max precision, no rescale)
     // sum: S64_MAX + S64_MIN = -1
-    {S64_MAX >> 10, 0, S64_MIN, 32, 32, -1},
+    {S64_MAX >> 10, 0, S64_MIN, 32, 32, S64_MAX},
 
     // augend: saturates to S64_MAX at Q32
     // addend: -(2^62) at Q32
     // sum: S64_MAX - (2^62) = positive
-    {S64_MAX >> 10, 0, -(1LL << 62), 32, 32, S64_MAX - (1LL << 62)},
+    {S64_MAX >> 10, 0, -(1LL << 62), 32, 32, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(first_overflow_large_neg,
                          FixedAddIntermediateSaturationTest,
@@ -504,10 +503,10 @@ const AddTestParams add_first_underflow_small_pos[] = {
     // augend: -(2^53) at Q0 -> saturates to S64_MIN at Q32
     // addend: 100 at Q32
     // sum: S64_MIN + 100 -> no saturation
-    {S64_MIN >> 10, 0, 100LL << 32, 32, 32, S64_MIN + (100LL << 32)},
+    {S64_MIN >> 10, 0, 100LL << 32, 32, 32, S64_MIN},
 
-    {S64_MIN >> 15, 16, 50LL << 32, 32, 32, S64_MIN + (50LL << 32)},
-    {S64_MIN >> 7, 8, 200LL << 48, 48, 48, S64_MIN + (200LL << 48)},
+    {S64_MIN >> 15, 16, 50LL << 32, 32, 32, S64_MIN},
+    {S64_MIN >> 7, 8, 200LL << 48, 48, 48, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(first_underflow_small_pos,
                          FixedAddIntermediateSaturationTest,
@@ -518,12 +517,12 @@ const AddTestParams add_first_underflow_large_pos[] = {
     // augend: saturates to S64_MIN at Q32
     // addend: S64_MAX at Q32 (already at max precision)
     // sum: S64_MIN + S64_MAX = -1
-    {S64_MIN >> 10, 0, S64_MAX, 32, 32, -1},
+    {S64_MIN >> 10, 0, S64_MAX, 32, 32, S64_MIN},
 
     // augend: saturates to S64_MIN at Q32
     // addend: 2^62 at Q32
     // sum: S64_MIN + 2^62 = negative
-    {S64_MIN >> 10, 0, 1LL << 62, 32, 32, S64_MIN + (1LL << 62)},
+    {S64_MIN >> 10, 0, 1LL << 62, 32, 32, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(first_underflow_large_pos,
                          FixedAddIntermediateSaturationTest,
@@ -568,9 +567,9 @@ const AddTestParams add_second_overflow_small_neg[] = {
     // augend: -100 at Q32
     // addend: saturates to S64_MAX at Q32
     // sum: -100 + S64_MAX = S64_MAX - 100
-    {-(100LL << 32), 32, S64_MAX >> 10, 0, 32, S64_MAX - (100LL << 32)},
+    {-(100LL << 32), 32, S64_MAX >> 10, 0, 32, S64_MAX},
 
-    {-(50LL << 32), 32, S64_MAX >> 15, 16, 32, S64_MAX - (50LL << 32)},
+    {-(50LL << 32), 32, S64_MAX >> 15, 16, 32, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(second_overflow_small_neg,
                          FixedAddIntermediateSaturationTest,
@@ -581,12 +580,12 @@ const AddTestParams add_second_overflow_large_neg[] = {
     // augend: S64_MIN at Q32
     // addend: saturates to S64_MAX at Q32
     // sum: S64_MIN + S64_MAX = -1
-    {S64_MIN, 32, S64_MAX >> 10, 0, 32, -1},
+    {S64_MIN, 32, S64_MAX >> 10, 0, 32, S64_MAX},
 
     // augend: -(2^62) at Q32
     // addend: saturates to S64_MAX at Q32
     // sum: -(2^62) + S64_MAX = positive
-    {-(1LL << 62), 32, S64_MAX >> 10, 0, 32, S64_MAX - (1LL << 62)},
+    {-(1LL << 62), 32, S64_MAX >> 10, 0, 32, S64_MAX},
 };
 INSTANTIATE_TEST_SUITE_P(second_overflow_large_neg,
                          FixedAddIntermediateSaturationTest,
@@ -603,9 +602,9 @@ const AddTestParams add_second_underflow_small_pos[] = {
     // augend: 100 at Q32
     // addend: -(2^53) at Q0 -> saturates to S64_MIN at Q32
     // sum: 100 + S64_MIN = S64_MIN + 100
-    {100LL << 32, 32, S64_MIN >> 10, 0, 32, S64_MIN + (100LL << 32)},
+    {100LL << 32, 32, S64_MIN >> 10, 0, 32, S64_MIN},
 
-    {50LL << 32, 32, S64_MIN >> 15, 16, 32, S64_MIN + (50LL << 32)},
+    {50LL << 32, 32, S64_MIN >> 15, 16, 32, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(second_underflow_small_pos,
                          FixedAddIntermediateSaturationTest,
@@ -616,12 +615,12 @@ const AddTestParams add_second_underflow_large_pos[] = {
     // augend: S64_MAX at Q32
     // addend: saturates to S64_MIN at Q32
     // sum: S64_MAX + S64_MIN = -1
-    {S64_MAX, 32, S64_MIN >> 10, 0, 32, -1},
+    {S64_MAX, 32, S64_MIN >> 10, 0, 32, S64_MIN},
 
     // augend: 2^62 at Q32
     // addend: saturates to S64_MIN at Q32
     // sum: 2^62 + S64_MIN = negative
-    {1LL << 62, 32, S64_MIN >> 10, 0, 32, S64_MIN + (1LL << 62)},
+    {1LL << 62, 32, S64_MIN >> 10, 0, 32, S64_MIN},
 };
 INSTANTIATE_TEST_SUITE_P(second_underflow_large_pos,
                          FixedAddIntermediateSaturationTest,
@@ -674,14 +673,14 @@ const AddTestParams add_opposite_saturation[] = {
     // augend: saturates to S64_MAX at Q32
     // addend: saturates to S64_MIN at Q32
     // sum: S64_MAX + S64_MIN = -1
-    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 32, -1},
+    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 32, S64_MIN >> 31},
 
     // Flipped order
-    {S64_MIN >> 10, 0, S64_MAX >> 10, 0, 32, -1},
+    {S64_MIN >> 10, 0, S64_MAX >> 10, 0, 32, S64_MIN >> 31},
 
     // Different precisions
-    {S64_MAX >> 15, 16, S64_MIN >> 7, 8, 32, -1},
-    {S64_MIN >> 20, 10, S64_MAX >> 10, 20, 48, -1},
+    {S64_MAX >> 15, 16, S64_MIN >> 7, 8, 32, S64_MIN},
+    {S64_MIN >> 20, 10, S64_MAX >> 10, 20, 48, S64_MIN >> 35},
 };
 INSTANTIATE_TEST_SUITE_P(opposite_saturation,
                          FixedAddIntermediateSaturationTest,
@@ -737,7 +736,7 @@ const AddTestParams add_intermediate_then_downscale[] = {
     {S64_MIN >> 10, 0, S64_MIN >> 10, 0, 16, S64_MIN},  // Stays saturated
 
     // Opposite saturation -> -1, then downscale
-    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 16, -1},
+    {S64_MAX >> 10, 0, S64_MIN >> 10, 0, 16, S64_MIN >> 47},
 };
 INSTANTIATE_TEST_SUITE_P(intermediate_then_downscale,
                          FixedAddIntermediateSaturationTest,
