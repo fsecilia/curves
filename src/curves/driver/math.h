@@ -26,6 +26,29 @@
 #define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
 
 /*
+ * Generates a sign mask of 0 or -1.
+ *
+ * This copies the sign bit over all lower bits.
+ */
+static inline s64 curves_sign_mask(s64 value)
+{
+	return value >> 63;
+}
+
+// Convert signed -> unsigned magnitude.
+static inline u64 curves_strip_sign(s64 value)
+{
+	s64 mask = curves_sign_mask(value);
+	return (u64)((value + mask) ^ mask);
+}
+
+// Convert unsigned magnitude -> signed.
+static inline s64 curves_apply_sign(u64 value, s64 mask)
+{
+	return (s64)((value + (u64)mask) ^ (u64)mask);
+}
+
+/*
  * Purely arithmetic max() for small integers.
  */
 static inline u32 curves_max_u32(u32 a, u32 b)
