@@ -289,7 +289,6 @@ const DivideRneExactParams divide_rne_exact_basics[] = {
 INSTANTIATE_TEST_SUITE_P(basics, DivideRneExactTest,
                          ValuesIn(divide_rne_exact_basics));
 
-#if 0
 // ----------------------------------------------------------------------------
 // curves_fixed_divide()
 // ----------------------------------------------------------------------------
@@ -525,7 +524,7 @@ const DivideTestParams divide_precision_upscale[] = {
 
     // Mixed input precisions, high output
     {100, 0, 1LL << 16, 16, 32, 100LL << 32},
-    {1LL << 16, 16, 100, 0, 32, (1LL << 32) / 100},
+    {1LL << 16, 16, 100, 0, 32, (1LL << 32) / 100 + 1},
 };
 INSTANTIATE_TEST_SUITE_P(precision_upscale, FixedDivideTest,
                          ValuesIn(divide_precision_upscale));
@@ -540,8 +539,8 @@ INSTANTIATE_TEST_SUITE_P(precision_upscale, FixedDivideTest,
 const DivideTestParams divide_precision_downscale[] = {
     // High precision to integer
     {100LL << 32, 32, 10LL << 32, 32, 0, 10},
-    {(1LL << 32) / 2, 32, 1LL << 32, 32, 0, 0},  // 0.5 truncates to 0
-    {(3LL << 32) / 2, 32, 1LL << 32, 32, 0, 1},  // 1.5 truncates to 1
+    {(1LL << 32) / 2, 32, 1LL << 32, 32, 0, 0},  // 0.5 rounds 0
+    {(3LL << 32) / 2, 32, 1LL << 32, 32, 0, 2},  // 1.5 rounds to 2
 
     // High to mid precision
     {100LL << 48, 48, 10LL << 48, 48, 32, 10LL << 32},
@@ -647,7 +646,7 @@ const DivideTestParams divide_optimal_shift_maximum[] = {
 
     // Precise small divisions
     {1, 0, 3, 0, 62, 1537228672809129301LL},  // 1/3 in Q62
-    {1, 0, 7, 0, 62, 658812288346769700LL},   // 1/7 in Q62, rounded toward 0
+    {1, 0, 7, 0, 62, 658812288346769701LL},   // 1/7 in Q62, rounded toward 0
 };
 INSTANTIATE_TEST_SUITE_P(optimal_shift_maximum, FixedDivideTest,
                          ValuesIn(divide_optimal_shift_maximum));
@@ -705,23 +704,23 @@ const DivideTestParams divide_rtz_positive[] = {
 
     // 2 / 3 = 0.666...
     {2, 0, 3, 0, 0, 0},
-    {2, 0, 3, 0, 16, 43690},
+    {2, 0, 3, 0, 16, 43691},
 
     // 7 / 4 = 1.75
-    {7, 0, 4, 0, 0, 1},
+    {7, 0, 4, 0, 0, 2},
     {7, 0, 4, 0, 16, 114688},
 
     // 99 / 100 = 0.99
     {99, 0, 100, 0, 0, 0},
-    {99, 0, 100, 0, 16, 64880},
+    {99, 0, 100, 0, 16, 64881},
 
     // 1001 / 1000 = 1.001
     {1001, 0, 1000, 0, 0, 1},
-    {1001, 0, 1000, 0, 16, 65601},
+    {1001, 0, 1000, 0, 16, 65602},
 
     // Very small fractions
     {1, 0, 1000000, 0, 0, 0},
-    {1, 0, 1000000, 0, 32, 4294},
+    {1, 0, 1000000, 0, 32, 4295},
 };
 INSTANTIATE_TEST_SUITE_P(rtz_positive, FixedDivideTest,
                          ValuesIn(divide_rtz_positive));
@@ -740,20 +739,20 @@ const DivideTestParams divide_rtz_negative[] = {
 
     // -2 / 3 = -0.666...
     {-2, 0, 3, 0, 0, 0},
-    {-2, 0, 3, 0, 16, -43690},
-    {2, 0, -3, 0, 16, -43690},
+    {-2, 0, 3, 0, 16, -43691},
+    {2, 0, -3, 0, 16, -43691},
 
     // -7 / 4 = -1.75
-    {-7, 0, 4, 0, 0, -1},
+    {-7, 0, 4, 0, 0, -2},
     {-7, 0, 4, 0, 16, -114688},
 
     // -99 / 100 = -0.99
     {-99, 0, 100, 0, 0, 0},
-    {-99, 0, 100, 0, 16, -64880},
+    {-99, 0, 100, 0, 16, -64881},
 
     // -1001 / 1000 = -1.001
     {-1001, 0, 1000, 0, 0, -1},
-    {-1001, 0, 1000, 0, 16, -65601},
+    {-1001, 0, 1000, 0, 16, -65602},
 };
 INSTANTIATE_TEST_SUITE_P(rtz_negative, FixedDivideTest,
                          ValuesIn(divide_rtz_negative));
@@ -885,8 +884,8 @@ const DivideTestParams divide_s64_max_cases[] = {
     {S64_MAX, 0, -1, 0, 0, -S64_MAX},
 
     // S64_MAX / 2
-    {S64_MAX, 0, 2, 0, 0, S64_MAX >> 1},
-    {S64_MAX, 32, 2LL << 32, 32, 32, (S64_MAX >> 1)},
+    {S64_MAX, 0, 2, 0, 0, (S64_MAX >> 1) + 1},
+    {S64_MAX, 32, 2LL << 32, 32, 32, (S64_MAX >> 1) + 1},
 
     // S64_MAX / S64_MAX = 1
     {S64_MAX, 0, S64_MAX, 0, 0, 1},
@@ -944,7 +943,7 @@ const DivideTestParams divide_realistic[] = {
     {1000LL << 32, 32, 16LL << 32, 32, 32, (1000LL << 32) / 16},  // 62.5
 
     // Physics calculations (Q24.40)
-    {98LL << 40, 40, 10LL << 40, 40, 40, (98LL << 40) / 10},  // 9.8 m/s^2
+    {98LL << 40, 40, 10LL << 40, 40, 40, (98LL << 40) / 10 + 1},  // 9.8 m/s^2
 
     // Financial (Q16.48)
     {100LL << 48, 48, 3LL << 48, 48, 48, (100LL << 48) / 3},  // 33.333...
@@ -958,7 +957,6 @@ const DivideTestParams divide_realistic[] = {
 };
 INSTANTIATE_TEST_SUITE_P(realistic, FixedDivideTest,
                          ValuesIn(divide_realistic));
-#endif
 
 }  // namespace
 }  // namespace curves
