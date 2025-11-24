@@ -106,6 +106,11 @@ extern s64 curves_fixed_multiply(s64 multiplicand,
 				 unsigned int multiplier_frac_bits,
 				 unsigned int output_frac_bits);
 
+static inline s64
+curves_fixed_fma(s64 multiplicand, unsigned int multiplicand_frac_bits,
+		 s64 multiplier, unsigned int multiplier_frac_bits, s64 addend,
+		 unsigned int addend_frac_bits, unsigned int output_frac_bits);
+
 s64 __cold __curves_fixed_divide_error(s64 dividend, s64 divisor)
 {
 	// 0 dividend always produces 0.

@@ -423,6 +423,32 @@ static inline s64 curves_fixed_multiply(s64 multiplicand,
 		output_frac_bits));
 }
 
+/*
+ * Fused Multiply-Add: (multiplicand * multiplier) + addend
+ * Performs the addition in full 128-bit precision before rounding.
+ */
+static inline s64
+curves_fixed_fma(s64 multiplicand, unsigned int multiplicand_frac_bits,
+		 s64 multiplier, unsigned int multiplier_frac_bits, s64 addend,
+		 unsigned int addend_frac_bits, unsigned int output_frac_bits)
+{
+	s128 product = (s128)multiplicand * (s128)multiplier;
+	unsigned int product_frac_bits =
+		multiplicand_frac_bits + multiplier_frac_bits;
+
+	s128 wide_addend = (s128)addend;
+
+	if (product_frac_bits > addend_frac_bits) {
+		wide_addend <<= (product_frac_bits - addend_frac_bits);
+	} else if (addend_frac_bits > product_frac_bits) {
+		product <<= (addend_frac_bits - product_frac_bits);
+		product_frac_bits = addend_frac_bits;
+	}
+
+	return curves_narrow_s128_s64(curves_fixed_rescale_s128(
+		product + wide_addend, product_frac_bits, output_frac_bits));
+}
+
 // ----------------------------------------------------------------------------
 // Division
 // ----------------------------------------------------------------------------
