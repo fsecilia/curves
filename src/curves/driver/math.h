@@ -70,6 +70,24 @@ static inline s64 curves_narrow_s128_s64(s128 value)
 	return (s64)value;
 }
 
+static inline s64 curves_add_saturate(s64 augend, s64 addend)
+{
+	s64 result;
+	if (check_add_overflow(augend, addend, &result)) {
+		return (augend > 0) ? S64_MAX : S64_MIN;
+	}
+	return result;
+}
+
+static inline s64 curves_subtract_saturate(s64 minuend, s64 subtrahend)
+{
+	s64 result;
+	if (check_sub_overflow(minuend, subtrahend, &result)) {
+		return (minuend > 0) ? S64_MAX : S64_MIN;
+	}
+	return result;
+}
+
 /**
  * curves_div_u128_by_u64() - Divide 128-bit signed integer by 64-bit signed
  * integer
