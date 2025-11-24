@@ -141,4 +141,12 @@ static inline struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
 
 #endif
 
+static inline s64 curves_int_log2(s64 value)
+{
+	if (likely(value > 0LL))
+		return 63 - curves_clz64((u64)value);
+
+	return S64_MIN;
+}
+
 #endif /* _CURVES_MATH64_H */
