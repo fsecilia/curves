@@ -333,8 +333,8 @@ static inline s64 curves_fixed_subtract(s64 minuend,
 					unsigned int subtrahend_frac_bits,
 					unsigned int output_frac_bits)
 {
-	s64 intermediate_minuend, intermediate_subtrahend;
 	unsigned int max_frac_bits;
+	s128 wide_minuend, wide_subtrahend;
 
 	// Validate inputs.
 	if (unlikely(minuend_frac_bits >= 64 || subtrahend_frac_bits >= 64 ||
@@ -344,31 +344,19 @@ static inline s64 curves_fixed_subtract(s64 minuend,
 						     output_frac_bits);
 	}
 
-	// Choose greater intermediate precision.
-	max_frac_bits = output_frac_bits;
-	if (max_frac_bits < minuend_frac_bits)
-		max_frac_bits = minuend_frac_bits;
-	if (max_frac_bits < subtrahend_frac_bits)
-		max_frac_bits = subtrahend_frac_bits;
+	// Use max of 3 to determine highest precision.
+	max_frac_bits = curves_max_u32(minuend_frac_bits, subtrahend_frac_bits);
+	max_frac_bits = curves_max_u32(max_frac_bits, output_frac_bits);
 
-	// Promote both summands to greater intermediate precision.
-	intermediate_minuend = curves_fixed_rescale_s64(
-		minuend, minuend_frac_bits, max_frac_bits);
-	intermediate_subtrahend = curves_fixed_rescale_s64(
-		subtrahend, subtrahend_frac_bits, max_frac_bits);
+	// Promote and align.
+	wide_minuend = (s128)minuend << (max_frac_bits - minuend_frac_bits);
+	wide_subtrahend = (s128)subtrahend
+			  << (max_frac_bits - subtrahend_frac_bits);
 
-	// Check for saturation.
-	if (unlikely(intermediate_subtrahend < 0 &&
-		     intermediate_minuend > S64_MAX + intermediate_subtrahend))
-		return curves_saturate_s64(true);
-	if (unlikely(intermediate_subtrahend > 0 &&
-		     intermediate_minuend < S64_MIN + intermediate_subtrahend))
-		return curves_saturate_s64(false);
-
-	// Return sum scaled to output precision.
-	return curves_fixed_rescale_s64(intermediate_minuend -
-						intermediate_subtrahend,
-					max_frac_bits, output_frac_bits);
+	// Sum, rescale, and narrow.
+	return curves_narrow_s128_s64(
+		curves_fixed_rescale_s128(wide_minuend - wide_subtrahend,
+					  max_frac_bits, output_frac_bits));
 }
 
 // ----------------------------------------------------------------------------
