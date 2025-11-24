@@ -546,53 +546,44 @@ static inline u64 __curves_fixed_divide_rne_exact(u64 quotient, u64 remainder,
 	return quotient + carry;
 }
 
-static inline u64 __curves_fixed_divide(u64 u_dividend,
+static inline u64 __curves_fixed_divide(u64 dividend,
 					unsigned int dividend_frac_bits,
-					u64 u_divisor,
+					u64 divisor,
 					unsigned int divisor_frac_bits,
 					unsigned int output_frac_bits)
 {
-	struct div_u128_u64_result div_res;
-	u64 final_res;
-	int optimal_left_shift, shift_correction, net_scale;
-	u128 shifted_dividend;
-
 	// Determine bit budget.
-	optimal_left_shift =
-		__curves_fixed_divide_optimal_shift(u_dividend, u_divisor);
+	int final_shift = (int)output_frac_bits - (int)dividend_frac_bits +
+			  (int)divisor_frac_bits;
+	int initial_shift =
+		__curves_fixed_divide_optimal_shift(dividend, divisor);
+	int remaining_shift = initial_shift - final_shift;
 
-	// Apply hardware division.
-	shifted_dividend = (u128)u_dividend << optimal_left_shift;
-	div_res = curves_div_u128_u64(shifted_dividend, u_divisor);
-
-	// Rescale to output_frac_bits.
-	net_scale = (int)output_frac_bits - (int)dividend_frac_bits +
-		    (int)divisor_frac_bits;
-	shift_correction = optimal_left_shift - net_scale;
+	// Shift as far left as possible and divide.
+	struct div_u128_u64_result div_res =
+		curves_div_u128_u64((u128)dividend << initial_shift, divisor);
 
 	// Range check before rounding.
-	if (unlikely(shift_correction < 0)) {
+	if (unlikely(remaining_shift < 0)) {
 		// Negative shift implies left shift -> Result > U64_MAX
 		return U64_MAX;
 	}
 
-	if (unlikely(shift_correction >= 64)) {
+	if (unlikely(remaining_shift >= 64)) {
 		// Shifted out all bits -> Result is 0
 		return 0;
 	}
 
-	// Apply rne.
-	if (likely(shift_correction > 0)) {
-		final_res = __curves_fixed_divide_shr_rne(
+	// Shift right remaining and apply rne.
+	if (likely(remaining_shift > 0)) {
+		return __curves_fixed_divide_shr_rne(
 			div_res.quotient, div_res.remainder,
-			(unsigned int)shift_correction);
+			(unsigned int)remaining_shift);
 	} else {
-		// shift_correction == 0
-		final_res = __curves_fixed_divide_rne_exact(
-			div_res.quotient, div_res.remainder, u_divisor);
+		// remaining_shift == 0
+		return __curves_fixed_divide_rne_exact(
+			div_res.quotient, div_res.remainder, divisor);
 	}
-
-	return final_res;
 }
 
 static inline s64 curves_fixed_divide(s64 dividend,
@@ -601,38 +592,30 @@ static inline s64 curves_fixed_divide(s64 dividend,
 				      unsigned int divisor_frac_bits,
 				      unsigned int output_frac_bits)
 {
-	u64 limit, u_dividend, u_divisor, final_res;
-	bool sign;
+	u64 range_max, quotient;
+	s64 quotient_sign_mask;
 
 	// Validate inputs.
 	if (unlikely(dividend_frac_bits >= 64 || divisor_frac_bits >= 64 ||
 		     output_frac_bits >= 64 || divisor == 0))
 		return __curves_fixed_divide_error(dividend, divisor);
 
-	if (unlikely(dividend == 0))
-		return 0;
-
-	// Convert to unsigned.
-	sign = (dividend < 0) ^ (divisor < 0);
-	u_dividend = (dividend < 0) ? -(u64)dividend : (u64)dividend;
-	u_divisor = (divisor < 0) ? -(u64)divisor : (u64)divisor;
-
 	// Forward to unsigned implementation.
-	final_res = __curves_fixed_divide(u_dividend, dividend_frac_bits,
-					  u_divisor, divisor_frac_bits,
-					  output_frac_bits);
+	quotient_sign_mask = curves_sign_mask(dividend ^ divisor);
+	quotient = __curves_fixed_divide(curves_strip_sign(dividend),
+					 dividend_frac_bits,
+					 curves_strip_sign(divisor),
+					 divisor_frac_bits, output_frac_bits);
 
-	// Saturation Check
+	// Range check before converting back to signed.
 	//
-	// Check against the signed positive max, plus one if the result is
-	// negative (because |S64_MIN| is S64_MAX + 1).
-	limit = (u64)S64_MAX + (sign ? 1 : 0);
-	if (unlikely(final_res > limit)) {
-		return sign ? S64_MIN : S64_MAX;
-	}
+	// range_max is S64_MAX when quotient >= 0, -S64_MIN otherwise.
+	range_max = (u64)S64_MAX - (u64)quotient_sign_mask;
+	if (unlikely(quotient > range_max))
+		return quotient_sign_mask ? S64_MIN : S64_MAX;
 
-	// Apply sign.
-	return (s64)(sign ? -final_res : final_res);
+	// Apply sign to quotient.
+	return curves_apply_sign(quotient, quotient_sign_mask);
 }
 
 #endif /* _CURVES_FIXED_H */
