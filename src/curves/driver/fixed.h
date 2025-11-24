@@ -236,10 +236,11 @@ static inline s64 curves_fixed_to_integer(s64 value, unsigned int frac_bits)
  *
  * Return: Constant value 1 with specified precision.
  */
+#define CURVES_FIXED_1 1
 #define CURVES_FIXED_1_FRAC_BITS 62
 static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 {
-	return curves_fixed_from_integer(1, frac_bits);
+	return curves_fixed_from_integer(CURVES_FIXED_1, frac_bits);
 }
 
 /**
@@ -248,11 +249,12 @@ static inline s64 curves_fixed_const_1(unsigned int frac_bits)
  *
  * Return: Constant value e with specified precision.
  */
+#define CURVES_FIXED_1_5 6917529027641081856LL
 #define CURVES_FIXED_1_5_FRAC_BITS 62
 static inline s64 curves_fixed_const_1_5(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(1.5*2^62)
-	return curves_fixed_rescale_s64(6917529027641081856LL,
+	return curves_fixed_rescale_s64(CURVES_FIXED_1_5,
 					CURVES_FIXED_1_5_FRAC_BITS, frac_bits);
 }
 
@@ -262,11 +264,12 @@ static inline s64 curves_fixed_const_1_5(unsigned int frac_bits)
  *
  * Return: Constant value e with specified precision.
  */
+#define CURVES_FIXED_E 6267931151224907085LL
 #define CURVES_FIXED_E_FRAC_BITS 61
 static inline s64 curves_fixed_const_e(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(e*2^61)
-	return curves_fixed_rescale_s64(6267931151224907085LL,
+	return curves_fixed_rescale_s64(CURVES_FIXED_E,
 					CURVES_FIXED_E_FRAC_BITS, frac_bits);
 }
 
@@ -276,11 +279,12 @@ static inline s64 curves_fixed_const_e(unsigned int frac_bits)
  *
  * Return: Constant value ln(2) with specified precision.
  */
+#define CURVES_FIXED_LN2 3196577161300663915LL
 #define CURVES_FIXED_LN2_FRAC_BITS 62
 static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(log(2)*2^62)
-	return curves_fixed_rescale_s64(3196577161300663915LL,
+	return curves_fixed_rescale_s64(CURVES_FIXED_LN2,
 					CURVES_FIXED_LN2_FRAC_BITS, frac_bits);
 }
 
@@ -290,11 +294,12 @@ static inline s64 curves_fixed_const_ln2(unsigned int frac_bits)
  *
  * Return: Constant value pi with specified precision.
  */
+#define CURVES_FIXED_PI 7244019458077122842LL
 #define CURVES_FIXED_PI_FRAC_BITS 61
 static inline s64 curves_fixed_const_pi(unsigned int frac_bits)
 {
 	// This value was generated using wolfram alpha: round(pi*2^61)
-	return curves_fixed_rescale_s64(7244019458077122842LL,
+	return curves_fixed_rescale_s64(CURVES_FIXED_PI,
 					CURVES_FIXED_PI_FRAC_BITS, frac_bits);
 }
 
