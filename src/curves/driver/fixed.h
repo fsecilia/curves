@@ -512,7 +512,7 @@ static inline u64 __curves_fixed_divide_shr_rne(u64 quotient, u64 remainder,
 }
 
 /*
- * Round-Nearest-Even for exact alignment (shift == 0).
+ * Round-Nearest-Even for exact alignment.
  *
  * This implementation starts with the standard rounding threshold,
  * floor(divisor / 2), then lowers it by 1 if we have a tiebreaker to force
@@ -525,7 +525,7 @@ static inline u64 __curves_fixed_divide_rne_exact(u64 quotient, u64 remainder,
 {
 	// Decide if tiebreaker is required.
 	//
-	// A tie is only possible if the divisor is even (~divisor & 1), and a
+	// A tie is only possible if the divisor is even (~divisor & 1), then a
 	// tiebreaker is then only necessary if the quotient is odd
 	// (quotient & 1).
 	u64 is_tie = (~divisor & 1) & (quotient & 1);
