@@ -539,7 +539,7 @@ static inline u64 __curves_fixed_divide_rne_exact(u64 quotient, u64 remainder,
 	// Check for saturation.
 	//
 	// If we are already at the limit and need to round up, saturate.
-	if (unlikely(carry && quotient == U64_MAX))
+	if (unlikely(quotient == U64_MAX && carry))
 		return U64_MAX;
 
 	// Apply carry.
