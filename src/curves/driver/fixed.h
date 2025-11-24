@@ -243,6 +243,20 @@ static inline s64 curves_fixed_const_1(unsigned int frac_bits)
 }
 
 /**
+ * curves_fixed_const_1_5() - Fixed-point constant 1.5.
+ * @frac_bits: Fractional bit precision, [0 to CURVES_1_5_FRAC_BITS].
+ *
+ * Return: Constant value e with specified precision.
+ */
+#define CURVES_FIXED_1_5_FRAC_BITS 62
+static inline s64 curves_fixed_const_1_5(unsigned int frac_bits)
+{
+	// This value was generated using wolfram alpha: round(1.5*2^62)
+	return curves_fixed_rescale_s64(6917529027641081856ll,
+					CURVES_FIXED_1_5_FRAC_BITS, frac_bits);
+}
+
+/**
  * curves_fixed_const_e() - Fixed-point constant e.
  * @frac_bits: Fractional bit precision, [0 to CURVES_E_FRAC_BITS].
  *

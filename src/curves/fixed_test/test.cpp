@@ -471,6 +471,15 @@ const ConstantsTestParam constants_1[] = {
 INSTANTIATE_TEST_SUITE_P(constants_1, FixedConstantsTest,
                          ValuesIn(constants_1));
 
+// 1.5
+const ConstantsTestParam constants_1_5[] = {
+    {curves_fixed_const_1_5, 1.5, CURVES_FIXED_1_5_FRAC_BITS, 0.0},
+    {curves_fixed_const_1_5, 1.5, CURVES_FIXED_1_5_FRAC_BITS / 2, 0.0},
+    {curves_fixed_const_1_5, 1.5, 1, 0.0},
+};
+INSTANTIATE_TEST_SUITE_P(constants_1_5, FixedConstantsTest,
+                         ValuesIn(constants_1_5));
+
 // e
 const ConstantsTestParam constants_e[] = {
     {curves_fixed_const_e, M_E, CURVES_FIXED_E_FRAC_BITS, 0.0},
