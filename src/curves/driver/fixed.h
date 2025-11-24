@@ -632,7 +632,7 @@ static inline s64 curves_fixed_divide(s64 dividend,
 	}
 
 	// Apply sign.
-	return sign ? -(s64)final_res : (s64)final_res;
+	return (s64)(sign ? -final_res : final_res);
 }
 
 #endif /* _CURVES_FIXED_H */
