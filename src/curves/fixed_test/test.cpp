@@ -499,5 +499,65 @@ const ConstantsTestParam constants_pi[] = {
 INSTANTIATE_TEST_SUITE_P(constants_pi, FixedConstantsTest,
                          ValuesIn(constants_pi));
 
+// ----------------------------------------------------------------------------
+// curves_fixed_fma()
+// ----------------------------------------------------------------------------
+
+struct FmaParams {
+  s64 multiplicand;
+  unsigned int multiplicand_frac_bits;
+  s64 multiplier;
+  unsigned int multiplier_frac_bits;
+  s64 addend;
+  unsigned int addend_frac_bits;
+  unsigned int output_frac_bits;
+  s64 expected_result;
+
+  friend auto operator<<(std::ostream& out, const FmaParams& src)
+      -> std::ostream& {
+    return out << "{" << src.multiplicand << ", " << src.multiplicand_frac_bits
+               << ", " << src.multiplier << ", " << src.multiplier_frac_bits
+               << ", " << src.addend << ", " << src.addend_frac_bits << ", "
+               << src.expected_result << " } ";
+  }
+};
+
+struct FmaTest : TestWithParam<FmaParams> {};
+
+TEST_P(FmaTest, expected_result) {
+  const auto actual_result = curves_fixed_fma(
+      GetParam().multiplicand, GetParam().multiplicand_frac_bits,
+      GetParam().multiplier, GetParam().multiplier_frac_bits, GetParam().addend,
+      GetParam().addend_frac_bits, GetParam().output_frac_bits);
+
+  ASSERT_EQ(GetParam().expected_result, actual_result);
+}
+
+/*
+  Smoke Tests
+
+  Baseline sanity checks.
+*/
+const FmaParams fma_smoke_tests[] = {
+    // 2.0*3.0 + 1.0 = 7.0
+    {2LL << 32, 32, 3LL << 32, 32, 1LL << 32, 32, 32, 7LL << 32},
+
+    // 1.5*1.5 + 2.0 = 4.25 in Q16.16
+    {1610612736LL, 30, 1610612736LL, 30, 2LL << 32, 32, 16, 278528LL},
+
+    // 2.0*4.0 + 1/2^32 = 8.0 + 1/2^32, at Q59.4, this round back to 8.
+    {2LL << 4, 4, 4LL << 4, 4, 1LL, 32, 4, 128LL},
+
+    // 2.0*4.0 + 1/2^32 = 8.0 + 1/2^32.
+    {2LL << 4, 4, 4LL << 4, 4, 1LL, 32, 32, (8LL << 32) + 1},
+
+    // 2.5*1.0 + 0.0 = 2.5, tie breaker rounds down to 2
+    {5LL, 1, 1LL, 0, 0LL, 0, 0, 2LL},
+
+    // 3.5*1.0 + 0.0 = 3.5, tie breaker rounds up to 4
+    {7LL, 1, 1LL, 0, 0LL, 0, 0, 4LL},
+};
+INSTANTIATE_TEST_SUITE_P(smoke_tests, FmaTest, ValuesIn(fma_smoke_tests));
+
 }  // namespace
 }  // namespace curves
