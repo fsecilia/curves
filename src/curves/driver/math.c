@@ -13,6 +13,7 @@ extern s64 curves_sign_mask(s64 value);
 extern u64 curves_strip_sign(s64 value);
 extern s64 curves_apply_sign(u64 value, s64 mask);
 extern u32 curves_max_u32(u32 a, u32 b);
+extern u32 curves_min_u32(u32 a, u32 b);
 
 extern s64 curves_narrow_s128_s64(s128 value);
 

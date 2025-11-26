@@ -70,6 +70,16 @@ static inline u32 curves_max_u32(u32 a, u32 b)
 	return a - (u32)(delta & mask);
 }
 
+/*
+ * Purely arithmetic min() for small integers.
+ */
+static inline u32 curves_min_u32(u32 a, u32 b)
+{
+	s64 delta = (s64)a - (s64)b;
+	s64 mask = delta >> 63;
+	return a - (u32)(delta & ~mask);
+}
+
 // Narrows a 128-bit value to 64 bits, saturating on overflow.
 static inline s64 curves_narrow_s128_s64(s128 value)
 {
