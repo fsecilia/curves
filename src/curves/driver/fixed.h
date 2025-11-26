@@ -152,6 +152,66 @@ static inline s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 }
 
 // ----------------------------------------------------------------------------
+// u128 rescaler
+// ----------------------------------------------------------------------------
+
+u128 __cold __curves_fixed_rescale_error_u128(u128 value,
+					      unsigned int frac_bits,
+					      unsigned int output_frac_bits);
+
+// Shifts right, rounding towards nearest even (rne).
+// Preconditions:
+//   - shift must be in range [1, 127]
+//   - caller is responsible for validating shift ranges
+static inline u128 __curves_fixed_shr_rne_u128(u128 value, unsigned int shift)
+{
+	u128 half = (u128)1 << (shift - 1);
+	u128 frac_mask = ((u128)1 << shift) - 1;
+
+	u128 int_part = value >> shift;
+	u128 frac_part = value & frac_mask;
+
+	u128 is_odd = int_part & 1;
+
+	u128 bias = half - 1 + is_odd;
+	u128 carry = (frac_part + bias) >> shift;
+
+	return int_part + carry;
+}
+
+// Shifts left, saturating if the value overflows.
+static inline u128 __curves_fixed_shl_sat_u128(u128 value, unsigned int shift)
+{
+	u128 max_safe_val;
+
+	// Find the maximum value that doesn't overflow.
+	max_safe_val = CURVES_U128_MAX >> shift;
+	if (unlikely(value > max_safe_val))
+		return CURVES_U128_MAX;
+
+	// The value is safe to shift.
+	return value << shift;
+}
+
+// Shifts binary point from frac_bits to output_frac_bits, truncating or
+// saturating as necessary.
+static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits,
+					     unsigned int output_frac_bits)
+{
+	// Handle invalid scales.
+	if (unlikely(frac_bits >= 128 || output_frac_bits >= 128))
+		return __curves_fixed_rescale_error_u128(value, frac_bits,
+							 output_frac_bits);
+
+	if (output_frac_bits < frac_bits)
+		return __curves_fixed_shr_rne_u128(
+			value, frac_bits - output_frac_bits);
+	else
+		return __curves_fixed_shl_sat_u128(value, output_frac_bits -
+								  frac_bits);
+}
+
+// ----------------------------------------------------------------------------
 // Conversions
 // ----------------------------------------------------------------------------
 
