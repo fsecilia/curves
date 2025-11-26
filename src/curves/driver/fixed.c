@@ -16,7 +16,7 @@
 #include "fixed.h"
 
 // ----------------------------------------------------------------------------
-// 64-bit API
+// s64 rescaler
 // ----------------------------------------------------------------------------
 
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
@@ -36,7 +36,7 @@ extern s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 				    unsigned int output_frac_bits);
 
 // ----------------------------------------------------------------------------
-// 128-bit API
+// s128 rescaler
 // ----------------------------------------------------------------------------
 
 s128 __cold __curves_fixed_rescale_error_s128(s128 value,
