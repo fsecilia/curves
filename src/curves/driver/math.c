@@ -23,4 +23,4 @@ extern s64 curves_subtract_saturate(s64 minuend, s64 subtrahend);
 extern struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
 						      u64 divisor);
 
-extern s64 curves_int_log2(s64 value);
+extern s64 curves_log2_s64(s64 value);
