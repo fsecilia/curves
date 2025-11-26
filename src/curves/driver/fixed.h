@@ -23,25 +23,6 @@
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits);
 
-// Shifts right, rounding towards zero.
-// Preconditions:
-//   - shift must be in range [0, 63]
-//   - caller is responsible for validating shift range
-static inline s64 __curves_fixed_shr_rtz_s64(s64 value, unsigned int shift)
-{
-	// To round up during division, bias dividend by divisor - 1.
-	s64 divisor = 1LL << shift;
-	s64 bias = divisor - 1;
-
-	// Positive numbers already round towards zero.
-	// Apply bias only when value is negative.
-	s64 sign_mask = value >> 63;
-	s64 biased_value = value + (bias & sign_mask);
-
-	// Perform division.
-	return biased_value >> shift;
-}
-
 // Shifts right, rounding towards nearest even (rne).
 // Preconditions:
 //   - shift must be in range [1, 63]
@@ -111,22 +92,6 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 s128 __cold __curves_fixed_rescale_error_s128(s128 value,
 					      unsigned int frac_bits,
 					      unsigned int output_frac_bits);
-
-// Shifts right, rounding towards zero.
-static inline s128 __curves_fixed_shr_rtz_s128(s128 value, unsigned int shift)
-{
-	// To round up during division, bias dividend by divisor - 1.
-	s128 divisor = (s128)1 << shift;
-	s128 bias = divisor - 1;
-
-	// Positive numbers already round towards zero.
-	// Apply bias only when value is negative.
-	s128 sign_mask = value >> 127;
-	s128 biased_value = value + (bias & sign_mask);
-
-	// Perform division.
-	return biased_value >> shift;
-}
 
 // Shifts right, rounding towards nearest even (rne).
 // Preconditions:

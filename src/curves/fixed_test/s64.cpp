@@ -104,6 +104,7 @@ const FixedRescaleErrorS64TestParam rescale_error_s64_shl_sat[] = {
 INSTANTIATE_TEST_SUITE_P(left_shift_saturation, FixedRescaleErrorS64Test,
                          ValuesIn(rescale_error_s64_shl_sat));
 
+#if 0
 // ----------------------------------------------------------------------------
 // __curves_fixed_shr_rtz_s64
 // ----------------------------------------------------------------------------
@@ -314,6 +315,7 @@ FixedShrRtzS64EdgeCasesTestParam shr_rtz_s64_shift_63[] = {
 };
 INSTANTIATE_TEST_SUITE_P(shift_63, FixedShrRtzS64EdgeCasesTest,
                          ValuesIn(shr_rtz_s64_shift_63));
+#endif
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_shl_sat_s64

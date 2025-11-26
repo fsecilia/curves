@@ -108,6 +108,7 @@ const FixedRescaleErrorS128TestParam rescale_error_s128_shl_sat[] = {
 INSTANTIATE_TEST_SUITE_P(left_shift_saturation, FixedRescaleErrorS128Test,
                          ValuesIn(rescale_error_s128_shl_sat));
 
+#if 0
 // ----------------------------------------------------------------------------
 // __curves_fixed_shr_rtz_s128
 // ----------------------------------------------------------------------------
@@ -328,6 +329,7 @@ FixedShrRtzS128EdgeCasesTestParam shr_rtz_s128_shift_127[] = {
 };
 INSTANTIATE_TEST_SUITE_P(shift_127, FixedShrRtzS128EdgeCasesTest,
                          ValuesIn(shr_rtz_s128_shift_127));
+#endif
 
 // ----------------------------------------------------------------------------
 // __curves_fixed_shl_sat_s128
