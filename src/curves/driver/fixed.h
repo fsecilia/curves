@@ -20,12 +20,6 @@
 // 64-bit API
 // ----------------------------------------------------------------------------
 
-// Saturates based on sign.
-static inline s64 curves_saturate_s64(bool positive)
-{
-	return positive ? S64_MAX : S64_MIN;
-}
-
 s64 __cold __curves_fixed_rescale_error_s64(s64 value, unsigned int frac_bits,
 					    unsigned int output_frac_bits);
 
@@ -113,12 +107,6 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 // ----------------------------------------------------------------------------
 // 128-bit API
 // ----------------------------------------------------------------------------
-
-// Saturates based on sign.
-static inline s128 curves_saturate_s128(bool positive)
-{
-	return positive ? CURVES_S128_MAX : CURVES_S128_MIN;
-}
 
 s128 __cold __curves_fixed_rescale_error_s128(s128 value,
 					      unsigned int frac_bits,

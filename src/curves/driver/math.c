@@ -6,6 +6,9 @@
 
 #include "math.h"
 
+extern s64 curves_saturate_s64(bool result_positive);
+extern s128 curves_saturate_s128(bool result_positive);
+
 extern s64 curves_sign_mask(s64 value);
 extern u64 curves_strip_sign(s64 value);
 extern s64 curves_apply_sign(u64 value, s64 mask);

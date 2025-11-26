@@ -25,6 +25,18 @@
 #define CURVES_S128_MAX ((s128)(CURVES_U128_MAX >> 1))
 #define CURVES_S128_MIN (-CURVES_S128_MAX - 1)
 
+// Saturates based on sign.
+static inline s64 curves_saturate_s64(bool positive)
+{
+	return positive ? S64_MAX : S64_MIN;
+}
+
+// Saturates based on sign.
+static inline s128 curves_saturate_s128(bool positive)
+{
+	return positive ? CURVES_S128_MAX : CURVES_S128_MIN;
+}
+
 /*
  * Generates a sign mask of 0 or -1.
  *
