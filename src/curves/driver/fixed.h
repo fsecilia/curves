@@ -95,7 +95,7 @@ s128 __cold __curves_fixed_rescale_error_s128(s128 value,
 
 // Shifts right, rounding towards nearest even (rne).
 // Preconditions:
-//   - shift must be in range [1, 63]
+//   - shift must be in range [1, 127]
 //   - caller is responsible for validating shift ranges
 static inline s128 __curves_fixed_shr_rne_s128(s128 value, unsigned int shift)
 {
