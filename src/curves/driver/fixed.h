@@ -643,4 +643,127 @@ static inline s64 curves_fixed_divide(s64 dividend,
 // Roots
 // ----------------------------------------------------------------------------
 
+struct curves_isqrt_bit_allocation {
+	int x_parity_shl; // Left shift for even parity.
+	int x_reduction_shr; // Right shift to reduce precision.
+	int x_bits; // Number of bits needed to represent x.
+	int x_frac_bits; // Precision of x.
+	int y_frac_bits; // Precision of y.
+};
+
+// pre: x > 0
+static inline struct curves_isqrt_bit_allocation
+__curves_isqrt_allocate_bits(u64 x, unsigned int frac_bits)
+{
+	struct curves_isqrt_bit_allocation alloc;
+
+	int x_bits = (int)curves_log2_u64(x);
+	int x_frac_bits = (int)frac_bits;
+	int odd, reduction = 0;
+	int y_bits, y_int_bits;
+
+	/* 2. Parity Alignment */
+	odd = x_frac_bits & 1;
+	x_frac_bits += odd;
+	x_bits += odd;
+
+	/* 3. Reduction Logic */
+	if (x_bits > 32) {
+		reduction = x_bits - 32;
+		reduction += (reduction & 1); // Round to even
+
+		x_bits -= reduction;
+		x_frac_bits -= reduction; // Becomes negative here (e.g., -30)
+	}
+
+	alloc.x_bits = x_bits;
+	alloc.x_frac_bits = x_frac_bits;
+
+	/* 4. Physical Shifts */
+	if (reduction > 0) {
+		alloc.x_parity_shl = 0;
+		// reduction is even and >= 2, odd is 0 or 1. Result always > 0.
+		alloc.x_reduction_shr = reduction - odd;
+	} else {
+		alloc.x_parity_shl = odd;
+		alloc.x_reduction_shr = 0;
+	}
+
+	/* 5. Y Allocation (Original Logic) */
+	y_bits = (126 - x_bits) >> 1;
+	y_int_bits = ((-x_bits) >> 1) + 1; // (-x_bits) works correctly now!
+
+	if (y_int_bits < 0)
+		y_int_bits = 0;
+
+	alloc.y_frac_bits = y_bits - y_int_bits;
+
+	return alloc;
+}
+
+static inline u128 __curves_isqrt_initial_guess(int x_bits, int y_frac_bits)
+{
+	// Guesses y0 to be approx x^(-0.5).
+	// x_bits *must* be negated inside of the shift so it floors.
+	// Negating the result of the shift would ceiling and overestimate.
+	return (u128)1 << ((-x_bits >> 1) + y_frac_bits);
+}
+
+// pre: x > 0
+static inline u64
+__curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
+		     u128 initial_guess, unsigned int output_frac_bits)
+{
+	u128 y;
+
+	// Position x based on bit allocation.
+	//
+	// This shifts left to even parity when x is small.
+	// It shifts right to reduce the precision of x when x is large enough
+	// to interfere with the number of bits necessary for y in xyy.
+	x <<= bit_allocation.x_parity_shl;
+	x >>= bit_allocation.x_reduction_shr;
+
+	// Newton-Raphson: y' = y(3 - xy^2)
+
+	// 2147483648
+	y = initial_guess;
+	for (int i = 0; i < 16; ++i) {
+		u128 yy = y * y;
+		u128 xyy = (u128)x * yy;
+
+		u128 factor = ((u128)3 << bit_allocation.y_frac_bits) -
+			      (xyy >> bit_allocation.y_frac_bits);
+		u128 y_new = (y * factor) >> (bit_allocation.y_frac_bits + 1);
+
+		if (y == y_new)
+			break;
+		y = y_new;
+	}
+
+	return curves_narrow_u128_u64(curves_fixed_rescale_u128(
+		y,
+		(unsigned int)(bit_allocation.y_frac_bits -
+			       (bit_allocation.x_frac_bits >> 1)),
+		output_frac_bits));
+}
+
+// saturates if x == 0
+static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
+				     unsigned int output_frac_bits)
+{
+	struct curves_isqrt_bit_allocation bit_allocation;
+	u128 initial_guess;
+
+	if (x == 0)
+		return U64_MAX;
+
+	bit_allocation = __curves_isqrt_allocate_bits(x, frac_bits);
+	initial_guess = __curves_isqrt_initial_guess(
+		bit_allocation.x_bits, bit_allocation.y_frac_bits);
+
+	return __curves_fixed_isqrt(x, bit_allocation, initial_guess,
+				    output_frac_bits);
+}
+
 #endif /* _CURVES_FIXED_H */

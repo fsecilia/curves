@@ -15,67 +15,6 @@ namespace {
 // curves_fixed_isqrt()
 // ----------------------------------------------------------------------------
 
-// #define trace(x) std::cout << #x << " = " << x << std::endl
-// #define trace(x)
-static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
-                                     unsigned int output_frac_bits) {
-  int x_bits, y_bits, x_frac_bits_odd, y_int_bits, y_frac_bits,
-      initial_guess_exp;
-  int x_frac_bits = (int)frac_bits;
-  u64 result;
-  u128 y, yy, xyy, term, y_new;
-
-  if (x == 0) return U64_MAX;
-
-  x_bits = (int)curves_log2_u64(x);
-
-  // x_frac_bits must be even.
-  x_frac_bits_odd = x_frac_bits & 1;
-  x_frac_bits += x_frac_bits_odd;
-  x_bits += x_frac_bits_odd;
-  x <<= x_frac_bits_odd;
-
-  // Linearly reduce precision of x when it interferes with yy.
-  if (x_bits > 32) {
-    int reduction = x_bits - 32;
-
-    // Reduction must be even.
-    int reduction_odd = reduction & 1;
-    reduction += reduction_odd;
-
-    x_bits -= reduction;
-    x_frac_bits -= reduction;
-    x >>= reduction;
-  }
-
-  y_bits = (126 - x_bits) >> 1;
-  y_int_bits = ((-x_bits) >> 1) + 1;
-  if (y_int_bits < 0) y_int_bits = 0;
-  y_frac_bits = y_bits - y_int_bits;
-
-  initial_guess_exp = (-x_bits >> 1) + y_frac_bits;
-
-  y = 1LL << initial_guess_exp;
-  // y = (y * 15) >> 4;  // Start at 15/16ths, so we always underestimate.
-
-  for (int i = 0; i < 16; ++i) {
-    yy = (u128)y * (u128)y;
-    xyy = (u128)x * yy;
-    term = ((u128)3 << y_frac_bits) - (xyy >> y_frac_bits);
-    y_new = (y * term) >> (y_frac_bits + 1);
-    if (y == y_new) {
-      std::cout << "converged after " << i << std::endl;
-      break;
-    }
-    y = y_new;
-  }
-
-  result = curves_narrow_u128_u64(curves_fixed_rescale_u128(
-      y, (unsigned int)(y_frac_bits - (x_frac_bits >> 1)), output_frac_bits));
-
-  return result;
-}
-
 struct IsqrtParam {
   u64 value;
   unsigned int frac_bits;
@@ -129,7 +68,6 @@ auto isqrt_gamut_param(unsigned int value_bits, unsigned int frac_bits,
 
 #if 1
 const IsqrtParam isqrt_smoke_test[] = {
-#if 1
     // Identity Case
     // isqrt(1.0) == 1.0.
     // Basic baseline check.
@@ -228,7 +166,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // MIN MOUSE VECTOR
     // round(2^32/sqrt(2*2^30))
     {(2LL << 30), 0, 32, 0, 92682},
-#endif
 };
 INSTANTIATE_TEST_SUITE_P(smoke_tests, IsqrtTest, ValuesIn(isqrt_smoke_test));
 #endif

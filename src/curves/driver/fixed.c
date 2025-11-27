@@ -149,3 +149,12 @@ extern u64 __curves_fixed_divide_rne_exact(u64 quotient, u64 remainder,
 extern s64 curves_fixed_divide(s64 dividend, unsigned int dividend_frac_bits,
 			       s64 divisor, unsigned int divisor_frac_bits,
 			       unsigned int output_frac_bits);
+
+extern struct curves_isqrt_bit_allocation
+__curves_isqrt_allocate_bits(u64 x, unsigned int frac_bits);
+extern u128 __curves_isqrt_initial_guess(int x_bits, int y_frac_bits);
+extern u64
+__curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
+		     u128 initial_guess, unsigned int output_frac_bits);
+extern u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
+			      unsigned int output_frac_bits);
