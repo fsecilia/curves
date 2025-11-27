@@ -20,6 +20,7 @@ list(APPEND lib_files
 list(APPEND test_files
   fixed_test/add.cpp
   fixed_test/divide.cpp
+  fixed_test/isqrt.cpp
   fixed_test/multiply.cpp
   fixed_test/s128.cpp
   fixed_test/s64.cpp
