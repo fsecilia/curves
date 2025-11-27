@@ -16,6 +16,7 @@ extern u32 curves_max_u32(u32 a, u32 b);
 extern u32 curves_min_u32(u32 a, u32 b);
 
 extern s64 curves_narrow_s128_s64(s128 value);
+extern u64 curves_narrow_u128_u64(u128 value);
 
 extern s64 curves_add_saturate(s64 augend, s64 addend);
 extern s64 curves_subtract_saturate(s64 minuend, s64 subtrahend);

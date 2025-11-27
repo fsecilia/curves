@@ -92,6 +92,15 @@ static inline s64 curves_narrow_s128_s64(s128 value)
 	return (s64)value;
 }
 
+// Narrows a 128-bit value to 64 bits, saturating on overflow.
+static inline u64 curves_narrow_u128_u64(u128 value)
+{
+	if (unlikely(value > (u128)U64_MAX))
+		return U64_MAX;
+
+	return (u64)value;
+}
+
 static inline s64 curves_add_saturate(s64 augend, s64 addend)
 {
 	s64 result;
