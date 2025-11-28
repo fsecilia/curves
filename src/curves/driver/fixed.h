@@ -662,32 +662,37 @@ __curves_isqrt_allocate_bits(u64 x, unsigned int frac_bits)
 	int odd, reduction = 0;
 	int y_bits, y_int_bits;
 
-	/* 2. Parity Alignment */
+	// Transform odd x exponent parity to even.
+	//
+	// Sqrt divides the exponent by 2. An odd exponent would truncate one
+	// bit. Here, we mark that x should be shifted left by 1 before
+	// taking the root.
 	odd = x_frac_bits & 1;
 	x_frac_bits += odd;
 	x_bits += odd;
 
-	/* 3. Reduction Logic */
+	// Reduce x precision if it interferes with yy.
+	//
+	// One of the later NR steps is the product of 3 64-bit values, x*y*y.
+	// Nominally, this would require 192 bits. Since we only have 128, and
+	// the whole product must fit, something has to give. We reduce the
+	// precision of x linearly above 32 bits to make room.
 	if (x_bits > 32) {
 		reduction = x_bits - 32;
-		reduction += (reduction & 1); // Round to even
+		reduction += (reduction & 1);
 
 		x_bits -= reduction;
-		x_frac_bits -= reduction; // Becomes negative here (e.g., -30)
-	}
+		x_frac_bits -= reduction;
 
-	alloc.x_bits = x_bits;
-	alloc.x_frac_bits = x_frac_bits;
-
-	/* 4. Physical Shifts */
-	if (reduction > 0) {
 		alloc.x_parity_shl = 0;
-		// reduction is even and >= 2, odd is 0 or 1. Result always > 0.
 		alloc.x_reduction_shr = reduction - odd;
 	} else {
 		alloc.x_parity_shl = odd;
 		alloc.x_reduction_shr = 0;
 	}
+
+	alloc.x_bits = x_bits;
+	alloc.x_frac_bits = x_frac_bits;
 
 	/* 5. Y Allocation (Original Logic) */
 	y_bits = (126 - x_bits) >> 1;
