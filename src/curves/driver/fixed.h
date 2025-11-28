@@ -765,8 +765,6 @@ __curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
 	x >>= bit_allocation.x_reduction_shr;
 
 	// Newton-Raphson: y' = y(3 - xy^2)
-
-	// 2147483648
 	y = initial_guess;
 	for (int i = 0; i < 16; ++i) {
 		u128 yy = y * y;
