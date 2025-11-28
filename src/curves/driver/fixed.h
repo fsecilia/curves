@@ -709,7 +709,42 @@ static inline u128 __curves_isqrt_initial_guess(int x_bits, int y_frac_bits)
 	return (u128)1 << ((-x_bits >> 1) + y_frac_bits);
 }
 
-// pre: x > 0
+/**
+ * __curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
+ *
+ * This function solves `y = 1/sqrt(x)` using Newton-Raphson. We define a
+ * function, `f(y)`, with the same roots as y, start with an initial guess near
+ * the solution, then iterate using the recurrence relation:
+ *
+ *     `y[n + 1] = y[n] - f(y[n])/f'(y[n])`
+ *
+ * Each step finds the line tangent to `f(y[n])`, finds the horizontal
+ * intercept of that tangent, then repeats with `y[n + 1]` set to that
+ * intercept. With a good initial guess for `y[0]`, this converges
+ * quadratically to the root of `f(y)`.
+ *
+ * In the case of `y = 1/sqrt(x)`, we choose `f(y) = y^-2 - x`:
+ *
+ *   y = 1/sqrt(x)   // given
+ *   y^2 = 1/x       // square both sides
+ *   xy^2 = 1        // multiply both sides by x
+ *   x = y^-2        // divide both sides by y^2
+ *   0 = y^-2 - x    // find root
+ *
+ * There are other choices, but this has an important property. Given
+ * `f'(y) = -2y^-3`:
+ *
+ *   y + f(y)/f'(y) = y - (y^-2 - x)/(-2y^-3)   // given
+ *                  = y + y^3(y^-2 - x)/2       // move -y^3 to denominator
+ *                  = y + y(1 - xy^2)/2         // distribute y^2
+ *                  = y(1 + (1 - xy^2)/2)       // factor out common y
+ *                  = y(3 - xy^2)/2             // combine constants
+ *
+ * This form allows calculating isqrt using only multiplication, subtraction,
+ * and a shift.
+ *
+ * Returns: inverse sqrt
+ */
 static inline u64
 __curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
 		     u128 initial_guess, unsigned int output_frac_bits)
