@@ -786,7 +786,10 @@ __curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
 		output_frac_bits));
 }
 
-// saturates if x == 0
+/**
+ * curves_fixed_isqrt() - Accurate, fixed-point inverse sqrt.
+ * Return: inverse sqrt of x at Q<output_frac_bits>; saturates if x == 0
+*/
 static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 				     unsigned int output_frac_bits)
 {
