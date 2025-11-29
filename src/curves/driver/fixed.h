@@ -722,7 +722,7 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 
 	// Newton-Raphson: y[n + 1] = y[n](3 - x*y[n]^2)
 	// 5 is chosen based on how many gamut tests needed tolerances.
-	for (int i = 0; i < 6; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		yy = (u64)(((u128)y * y) >> Y_FRAC_BITS);
 		factor = ((u128)x_norm * yy) >> X_NORM_FRAC_BITS;
 		y = (u64)(((u128)y * (THREE - factor)) >> (Y_FRAC_BITS + 1));
