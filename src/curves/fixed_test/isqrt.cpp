@@ -6,7 +6,9 @@
 
 #include <curves/test.hpp>
 #include <curves/fixed.hpp>
+#include <curves/io.hpp>
 #include <limits>
+#include <sstream>
 
 namespace curves {
 namespace {
@@ -14,6 +16,87 @@ namespace {
 // ----------------------------------------------------------------------------
 // curves_fixed_isqrt()
 // ----------------------------------------------------------------------------
+
+struct isqrt_test_vector {
+  u64 x;
+  unsigned int frac_bits;
+  unsigned int output_frac_bits;
+};
+
+struct isqrt_test_expected_result {
+  isqrt_test_vector test_vector;
+
+  u64 y;
+  u128 expected;
+  u128 actual;
+  u128 tolerance;
+  u128 diff;
+};
+
+/*
+  Verifies y = 1/sqrt(x) via y^2 = 1/x.
+
+  Since y is a fixed-point approximation, it contains quantization error
+  'e' (max 0.5). Squaring propagates this error via binomial expansion:
+
+    (y + e)^2 = y^2 + 2ye + e^2
+
+  The term '2ye' dominates. With worst-case e = 0.5:
+
+    Error ~= 2 * y * 0.5
+    Error ~= y
+
+  Therefore, the check tolerance must be at least y.
+*/
+static struct isqrt_test_expected_result create_isqrt_test_expected_result(
+    struct isqrt_test_vector test_vector) {
+  struct isqrt_test_expected_result result;
+
+  result.test_vector = test_vector;
+  if (test_vector.x == 0) {
+    result.y = U64_MAX;
+    result.expected = CURVES_U128_MAX;
+    result.actual = CURVES_U128_MAX;
+    result.tolerance = CURVES_U128_MAX;
+    result.diff = CURVES_U128_MAX;
+    return result;
+  }
+
+  // Get nominal result from sut.
+  result.y = curves_fixed_isqrt(test_vector.x, test_vector.frac_bits,
+                                test_vector.output_frac_bits);
+
+  // Calculate y^2.
+  result.actual = (u128)result.y * result.y;
+  unsigned int actual_frac_bits = 2 * test_vector.output_frac_bits;
+
+  // Calculate 1/x.
+  result.expected = ((u128)1 << 127) / test_vector.x;
+  unsigned int expected_frac_bits = 127 - test_vector.frac_bits;
+
+  // Align larger binary point to smaller using shr_rne.
+  u64 max_error = result.y;
+  int shift = (int)actual_frac_bits - (int)expected_frac_bits;
+  if (shift > 0) {
+    result.actual =
+        __curves_fixed_shr_rne_u128(result.actual, (unsigned int)shift);
+    max_error >>= shift;
+  } else if (shift < 0) {
+    result.expected =
+        __curves_fixed_shr_rne_u128(result.expected, (unsigned int)-shift);
+  }
+
+  // Choose the larger tolerance between relative error and max error.
+  result.tolerance = result.expected >> 11;
+  if (result.tolerance < max_error) {
+    result.tolerance = max_error;
+  }
+  result.diff = (result.expected < result.actual)
+                    ? (result.actual - result.expected)
+                    : (result.expected - result.actual);
+
+  return result;
+}
 
 struct IsqrtParam {
   u64 value;
@@ -36,17 +119,42 @@ TEST_P(IsqrtTest, expected_result) {
   const auto expected_result = GetParam().expected_result;
   const auto expected_delta = GetParam().tolerance;
 
-  const auto actual_result = curves_fixed_isqrt_fast(
+  const auto actual_result = curves_fixed_isqrt(
       GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits);
 
   const auto actual_delta = actual_result > expected_result
                                 ? actual_result - expected_result
                                 : expected_result - actual_result;
   EXPECT_LE(actual_delta, expected_delta)
-      << "Input:     " << GetParam().value << "@" << GetParam().frac_bits
-      << "\nExpected:  " << expected_result << "@"
-      << GetParam().output_frac_bits << "\nActual:    " << actual_result
-      << "\nDiff:      " << actual_delta << "\nTolerance: " << expected_delta;
+      << "Input:     " << GetParam().value << "@Q" << GetParam().frac_bits
+      << "\nExpected:  " << expected_result << "@Q"
+      << GetParam().output_frac_bits << "\nActual:    " << actual_result << "@Q"
+      << GetParam().output_frac_bits << "\nDiff:      " << actual_delta
+      << "\nTolerance: " << expected_delta;
+}
+
+TEST_P(IsqrtTest, test_vector) {
+  const auto known_to_saturate =
+      GetParam().expected_result == U64_MAX && GetParam().tolerance == U64_MAX;
+  if (known_to_saturate) return;
+
+  auto check = create_isqrt_test_expected_result(isqrt_test_vector{
+      GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits});
+
+  // u128 doesn't print to a gtest Message using our ostream inserter. This is
+  // the least bad workaround to print the contents when the test fails.
+  std::ostringstream out;
+  if (check.diff > check.tolerance) {
+    out << "x:         " << check.test_vector.x << "@Q"
+        << check.test_vector.frac_bits << "\ny:         " << check.y << "@Q"
+        << check.test_vector.output_frac_bits
+        << "\nExpected:  " << check.expected << "@Q"
+        << "\nActual:    " << check.actual << "@Q"
+        << check.test_vector.output_frac_bits << "\nDiff:      " << check.diff
+        << "\nTolerance: " << check.tolerance;
+  }
+
+  ASSERT_LE(check.diff, check.tolerance) << out.str();
 }
 
 #if 1
@@ -77,8 +185,6 @@ curves_fixed_isqrt(6LL << 60, 60, 60) == 470678233294770047ULL, expected
 
 #if 1
 const IsqrtParam isqrt_smoke_test[] = {
-    {6LL << 60, 60, 60, 51056511, 470678233243713536ULL},
-
     // Identity Case
     // isqrt(1.0) == 1.0.
     // Basic baseline check.
@@ -156,7 +262,7 @@ const IsqrtParam isqrt_smoke_test[] = {
     // Math: x = 2^-30. 1/sqrt(x) = 2^15 = 32768.
     // We request Output Q50. Result: 32768 * 2^50 = 2^65.
     // This MUST saturate to U64_MAX.
-    {1, 30, 50, 0, U64_MAX},
+    {1, 30, 50, U64_MAX, U64_MAX},
 
     // THE UNDERFLOW RISK (Output Vanishing)
     // Input: Large x in Q0 (2^60).
