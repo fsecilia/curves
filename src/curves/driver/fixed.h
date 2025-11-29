@@ -680,26 +680,22 @@ static inline s64 curves_fixed_divide(s64 dividend,
  * Returns: inverse sqrt
  */
 
-static inline unsigned int curves_clz128(u128 val)
-{
-	u64 hi = (u64)(val >> 64);
-	return hi ? curves_clz64(hi) : 64 + curves_clz64((u64)val);
-}
-
 static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 				     unsigned int output_frac_bits)
 {
 	int x_bits, y_bits, y_int_bits, y_frac_bits, initial_guess_exp;
 	int x_frac_bits = (int)frac_bits;
-	int lz_x;
+	int lz_x, yy_msb_bit, lz_yy_case0, lz_yy_case1;
+	int shift0, shift1, shift_back_case0, shift_back_case1;
 	u64 x_norm;
-	u128 y, y_prev = 0;
+	u128 y, y_prev = 0, three_scaled;
 
 	if (x == 0)
 		return U64_MAX;
 
 	x_bits = (int)curves_log2_u64(x);
 
+	// Handle edge cases to ensure x_frac_bits is even
 	if (x_bits == 63) {
 		x_frac_bits--;
 		x_bits--;
@@ -710,6 +706,7 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		x <<= 1;
 	}
 
+	// Compute y format parameters
 	y_bits = 128 - x_bits;
 	if (y_bits > 64)
 		y_bits = 64;
@@ -720,46 +717,73 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 
 	y_frac_bits = y_bits - y_int_bits;
 
+	// Initial guess: establishes the floor of log2(result)
+	// Throughout all iterations, y remains in [2^initial_guess_exp, 2^(initial_guess_exp+1))
 	initial_guess_exp = y_frac_bits + (x_frac_bits >> 1) + (-x_bits >> 1);
 	y = (u128)1 << initial_guess_exp;
 
-	// Normalize X (Block Float)
-	// Shift x left so the MSB is at bit 63.
-	lz_x = __builtin_clzll(x);
+	// Normalize x (Block Float) - MSB at bit 63
+	lz_x = (int)curves_clz64(x);
 	x_norm = x << lz_x;
 
-	// Newton-Raphson: y' = y(3 - xy^2)
+	// PRECOMPUTE INVARIANTS FOR THE LOOP
+	// Since y is bounded in [2^k, 2^(k+1)) where k = initial_guess_exp,
+	// y² is bounded in [2^(2k), 2^(2k+2)), meaning the MSB of yy can only
+	// be at bit position (2k+1) or (2k). This gives us only two possible
+	// values for lz_yy across all iterations.
+
+	yy_msb_bit = 2 * initial_guess_exp + 1; // Position of potential MSB
+	lz_yy_case0 = 127 - yy_msb_bit; // lz when MSB is at higher position
+	lz_yy_case1 = lz_yy_case0 + 1; // lz when MSB is at lower position
+
+	// Precompute extraction shifts for both cases
+	// We're extracting the top 64 significant bits of yy
+	if (lz_yy_case0 >= 64)
+		shift0 = -(lz_yy_case0 - 64); // left shift (negative value)
+	else
+		shift0 = 64 - lz_yy_case0; // right shift
+
+	if (lz_yy_case1 >= 64)
+		shift1 = -(lz_yy_case1 - 64);
+	else
+		shift1 = 64 - lz_yy_case1;
+
+	// Precompute the rescaling shifts for both cases
+	// These account for: x normalization (lz_x), yy normalization (lz_yy),
+	// extraction of top 64 bits (-64), and fixed-point scale adjustments
+	shift_back_case0 =
+		(lz_x + x_frac_bits) + (lz_yy_case0 + y_frac_bits) - 64;
+	shift_back_case1 =
+		(lz_x + x_frac_bits) + (lz_yy_case1 + y_frac_bits) - 64;
+
+	// Precompute the scaled value of 3 in Q(y_frac_bits)
+	three_scaled = (u128)3 << y_frac_bits;
+
+	// NR loop
 	for (int i = 0; i < 6; ++i) {
-		u128 prod_norm, xyy, factor, y_new, yy = y * y;
-		int lz_yy, shift_back;
+		u128 prod_norm, xyy, factor, y_new;
+		u128 yy = y * y;
 		u64 yy_norm;
+		int is_case0, yy_shift, shift_back;
 
-		// Normalize y^2 dynamically
-		lz_yy = (int)curves_clz128(yy);
+		// Determine which case we're in by checking if the MSB is at the higher position
+		// This check replaces the dynamic clz operation with a simple bit test
+		is_case0 = (yy >> yy_msb_bit) != 0;
 
-		// Extract the top 64 significant bits of yy.
-		// If lz_yy >= 64, the data is in the lower u64, so we shift left.
-		// If lz_yy < 64, data spans the boundary, so we shift right.
-		if (lz_yy >= 64)
-			yy_norm = (u64)yy << (lz_yy - 64);
+		// Select the appropriate shifts (compiler can optimize this with conditional moves)
+		yy_shift = is_case0 ? shift0 : shift1;
+		shift_back = is_case0 ? shift_back_case0 : shift_back_case1;
+
+		// Extract normalized yy using selected shift
+		if (yy_shift >= 0)
+			yy_norm = (u64)(yy >> yy_shift);
 		else
-			yy_norm = (u64)(yy >> (64 - lz_yy));
+			yy_norm = (u64)yy << (-yy_shift);
 
-		// Multiply High-Halves (64x64 -> 128)
+		// Multiply high-halves: x_norm (Q0.64) * yy_norm (top 64 bits of normalized yy)
 		prod_norm = (u128)x_norm * yy_norm;
 
-		// Rescale
-		// We normalized x by shifting left `lz_x`.
-		// We normalized yy by shifting left `lz_yy` then shifting right 64.
-		// Total virtual left shift applied = lz_x + lz_yy - 64.
-		//
-		// We also need to adjust for the fixed-point scales:
-		// x was Q(x_frac_bits), yy was Q(2*y_frac_bits).
-		// We want the result to be Q(y_frac_bits).
-		// Scale correction = x_frac_bits + y_frac_bits.
-
-		shift_back = (lz_x + x_frac_bits) + (lz_yy + y_frac_bits) - 64;
-
+		// Rescale to Q(y_frac_bits) using selected shift
 		if (shift_back >= 128)
 			xyy = 0;
 		else if (shift_back >= 0)
@@ -767,11 +791,11 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		else
 			xyy = prod_norm << -shift_back;
 
-		// D. Update Step: y_new = y * (3 - xyy) / 2
-		// The term (3 - xyy) is calculated in Q(y_frac_bits)
-		factor = ((u128)3 << y_frac_bits) - xyy;
+		// Update step: y' = y(3 - xy²)/2
+		factor = three_scaled - xyy;
 		y_new = (y * factor) >> (y_frac_bits + 1);
 
+		// Exit early on convergence or oscillation.
 		if (y_new == y || y_new == y_prev)
 			break;
 
