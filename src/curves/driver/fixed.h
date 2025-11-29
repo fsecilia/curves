@@ -823,7 +823,10 @@ static inline u64 curves_fixed_isqrt_fast(u64 x, unsigned int frac_bits,
 {
 	const u64 THREE_Q62 = 3ULL << 62;
 	const u64 SQRT2_Q62 = 0x5A827999FCEF3242ULL;
-	const u64 GUESS_C = 0xBA597F3333333333ULL;
+
+	// This constant was calculated by sollya:
+	// src/curves/tools/isqrt_initial_guess.sollya
+	const u64 GUESS_C = 0xAD413CCCFE779921ULL; // 2.70710678@62
 
 	int lz, effective_exponent, current_frac_bits;
 	u64 x_norm, y, term;
@@ -840,7 +843,7 @@ static inline u64 curves_fixed_isqrt_fast(u64 x, unsigned int frac_bits,
 	y = GUESS_C - (x_norm >> 1);
 
 	/* Newton-Raphson Solver */
-	for (int i = 0; i < 7; ++i) {
+	for (int i = 0; i < 6; ++i) {
 		y_sq = (u128)y * y;
 
 		/* term = x * y^2 (Keep 62 fractional bits) */

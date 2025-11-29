@@ -1,0 +1,26 @@
+/*
+  SPDX-License-Identifier: MIT
+
+  This script generates the magic constant used in the linear approximation to
+  find the isqrt initial guess. This is the value `C` that minimizes the
+  maximum error of the linear approximation `y = C - 2x` of `1/sqrt(x)` over
+  the range `[0.5, 1.0]`.
+
+  We want to minimize the maximum absolute error of `f(x) - (C - 2x)`. This
+  occurs when the error at the endpoints equals the error at the extrema.
+  Practically, we want to center the line between the curve's sag.
+
+  To get the constant in hex, run:
+
+    sollya isqrt_initial_guess.sollya \
+      | grep "^int:" | cut -d: -f2 | xargs printf "0x%016x\n"
+*/
+
+f = 1/sqrt(x);
+dom = [0.5, 1];
+
+c_real = remez(f + 2*x, 0, dom);
+print("real:", c_real);
+
+c_int = nearestint(c_real * 2^62);
+print("int:", c_int);
