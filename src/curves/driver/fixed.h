@@ -679,59 +679,63 @@ static inline s64 curves_fixed_divide(s64 dividend,
  *
  * Returns: inverse sqrt
  */
+
+// Literal constant 3 in Q2.62.
+#define CURVES_THREE_Q62 (3ULL << 62)
+
+// Literal constant sqrt(2) in Q2.62
+#define CURVES_SQRT2_Q62 0x5A827999FCEF3242UL
+
+// fast isqrt magic constant
+//
+// This constant comes from sollya: src/curves/tools/isqrt_initial_guess.sollya
+// More information about how it was generated and why is there. The value
+// represents 2.70710678 in Q2.62 and it is used in the linear approximation of
+// 1/sqrt(x) to determine the optimal initial guess.
+#define CURVES_ISQRT_GUESS_C_Q62 0xAD413CCCFE779921ULL
+
+#define CURVES_ISQRT_X_NORM_FRAC_BITS 64
+#define CURVES_ISQRT_Y_FRAC_BITS 62
+
 static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 				     unsigned int output_frac_bits)
 {
-	const u64 THREE_Q62 = 3ULL << 62;
-	const u64 SQRT2_Q62 = 0x5A827999FCEF3242ULL;
+	unsigned int X_NORM_FRAC_BITS = CURVES_ISQRT_X_NORM_FRAC_BITS;
+	unsigned int Y_FRAC_BITS = CURVES_ISQRT_Y_FRAC_BITS;
+	u64 GUESS_C = CURVES_ISQRT_GUESS_C_Q62;
+	u64 THREE = CURVES_THREE_Q62;
+	u64 SQRT2 = CURVES_SQRT2_Q62;
 
-	// This constant was calculated by sollya:
-	// src/curves/tools/isqrt_initial_guess.sollya
-	const u64 GUESS_C = 0xAD413CCCFE779921ULL; // 2.70710678@62
+	unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
+	u64 x_norm, y, yy, factor;
 
-	int lz, effective_exponent, current_frac_bits;
-	u64 x_norm, y, term;
-	u128 y_sq;
-
-	if (x == 0)
+	if (unlikely(x == 0))
 		return U64_MAX;
 
-	/* Normalize to Q0.64 [0.5, 1.0) */
-	lz = (int)curves_clz64(x);
-	x_norm = x << lz;
+	// Normalize to Q0.64 [0.5, 1.0).
+	x_lz = curves_clz64(x);
+	x_norm = x << x_lz;
+	x_norm_exponent = x_lz + frac_bits;
 
-	/* Linear Approximation Guess */
+	// Use linear approximation of 1/sqrt(x) to determine initial guess.
 	y = GUESS_C - (x_norm >> 1);
 
-	/*
-	 * Guarantees:
-	 * - Constant execution time (unrolled loop, no data-dependent branches).
-	 * - Safe internal headroom (Q2.62 format handles results < 4.0).
-	 */
-
-	/* Newton-Raphson Solver */
+	// Newton-Raphson: y[n + 1] = y[n](3 - x*y[n]^2)
+	// 5 is chosen based on how many gamut tests needed tolerances.
 	for (int i = 0; i < 6; ++i) {
-		y_sq = (u128)y * y;
-
-		/* term = x * y^2 (Keep 62 fractional bits) */
-		term = ((u128)x_norm * (u64)(y_sq >> 62)) >> 64;
-
-		/* y = y * (3 - term) / 2 */
-		y = (u64)(((u128)y * (THREE_Q62 - term)) >> 63);
+		yy = (u64)(((u128)y * y) >> Y_FRAC_BITS);
+		factor = ((u128)x_norm * yy) >> X_NORM_FRAC_BITS;
+		y = (u64)(((u128)y * (THREE - factor)) >> (Y_FRAC_BITS + 1));
 	}
 
-	/* Denormalize */
-	effective_exponent = lz + (int)frac_bits;
-
-	if (effective_exponent & 1) {
-		y = (u64)(((u128)y * SQRT2_Q62) >> 62);
-	}
-
-	// Q62 (base) + 32 (half of the 64-bit norm shift) - half_exp.
-	current_frac_bits = 94 - (effective_exponent >> 1);
+	// Denormalize.
+	if (x_norm_exponent & 1)
+		y = (u64)(((u128)y * SQRT2) >> Y_FRAC_BITS);
+	y_denorm_frac_bits =
+		Y_FRAC_BITS + (X_NORM_FRAC_BITS >> 1) - (x_norm_exponent >> 1);
 
 	return curves_narrow_u128_u64(curves_fixed_rescale_u128(
-		(u128)y, (unsigned int)current_frac_bits, output_frac_bits));
+		(u128)y, y_denorm_frac_bits, output_frac_bits));
 }
 
 #endif /* _CURVES_FIXED_H */
