@@ -703,6 +703,12 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 	/* Linear Approximation Guess */
 	y = GUESS_C - (x_norm >> 1);
 
+	/*
+	 * Guarantees:
+	 * - Constant execution time (unrolled loop, no data-dependent branches).
+	 * - Safe internal headroom (Q2.62 format handles results < 4.0).
+	 */
+
 	/* Newton-Raphson Solver */
 	for (int i = 0; i < 6; ++i) {
 		y_sq = (u128)y * y;
