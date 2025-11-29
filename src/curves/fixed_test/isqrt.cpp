@@ -66,6 +66,15 @@ auto isqrt_gamut_param(unsigned int value_bits, unsigned int frac_bits,
           isqrt_gamut_expected_result(value_bits, frac_bits, output_frac_bits)};
 }
 
+/*
+```
+curves_fixed_isqrt(6LL << 60, 60, 60) == 470678233294770047ULL, expected
+470678233243713536ULL curves_fixed_isqrt(2LL << 61, 61, 61) ==
+2305843009208415933ULL, expected 1630477228166597777ULL curves_fixed_isqrt(1LL
+<< 60, 61, 61) == 4611686018416831867ULL, expected 3260954456333195553ULL
+```
+*/
+
 #if 1
 const IsqrtParam isqrt_smoke_test[] = {
     {6LL << 60, 60, 60, 51056511, 470678233243713536ULL},
@@ -79,13 +88,13 @@ const IsqrtParam isqrt_smoke_test[] = {
     // isqrt(2.0) at Q61. Result is ~0.707.
     // This fails if internal precision doesn't have guard bits for RNE.
     // Expected: round(2^61/sqrt(2))
-    {2LL << 61, 61, 61, 524012689, 1630477228166597777ULL},
+    {2LL << 61, 61, 61, 1, 1630477228166597777ULL},
 
     // The "Overflow" Risk Case (High Precision Over-unity result)
     // isqrt(0.5) at Q61. Result is sqrt(2) (~1.414).
     // Error: ~200k
     // Expected: round(2^61/sqrt(0.5))
-    {1LL << 60, 61, 61, 1048025377, 3260954456333195553ULL},
+    {1LL << 60, 61, 61, 0, 3260954456333195553ULL},
 
     // Pure Integer Input
     // isqrt(100) == 0.1
