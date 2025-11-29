@@ -98,6 +98,78 @@ static struct isqrt_test_expected_result create_isqrt_test_expected_result(
   return result;
 }
 
+static void isqrt_test_verify_result(
+    struct isqrt_test_expected_result expected_result) {
+  // u128 doesn't print to a gtest Message using our ostream inserter. This is
+  // the least bad workaround to print the contents when the test fails.
+  std::ostringstream out;
+  if (expected_result.diff > expected_result.tolerance) {
+    out << "x:         " << expected_result.test_vector.x << "@Q"
+        << expected_result.test_vector.frac_bits
+        << "\ny:         " << expected_result.y << "@Q"
+        << expected_result.test_vector.output_frac_bits
+        << "\nExpected:  " << expected_result.expected << "@Q"
+        << "\nActual:    " << expected_result.actual << "@Q"
+        << expected_result.test_vector.output_frac_bits
+        << "\nDiff:      " << expected_result.diff
+        << "\nTolerance: " << expected_result.tolerance;
+  }
+
+  ASSERT_LE(expected_result.diff, expected_result.tolerance) << out.str();
+}
+
+static void isqrt_test_verify_test_vector(
+    struct isqrt_test_vector test_vector) {
+  isqrt_test_verify_result(create_isqrt_test_expected_result(test_vector));
+}
+
+static void isqrt_test_verify(u64 x, unsigned int frac_bits,
+                              unsigned int output_frac_bits) {
+  struct isqrt_test_vector test_vector{x, frac_bits, output_frac_bits};
+  isqrt_test_verify_test_vector(test_vector);
+}
+
+TEST(isqrt_automated_tests, run_automated_tests) {
+  // Small integer, exhaustive.
+  //
+  // Test every integer from 1 to 1000000.
+  for (u64 x = 1; x < 1000000; ++x) {
+    isqrt_test_verify(x, 0, 32);
+  }
+
+  // Power of 2 seams.
+  //
+  // Test the transition points for all 64 bits.
+  // TODO: parameterize this instead
+  for (int i = 1; i < 63; ++i) {
+    u64 power = 1ULL << i;
+
+    // Test on, one above, and one below.
+    isqrt_test_verify(power - 1, 0, 32);
+    isqrt_test_verify(power, 0, 32);
+    isqrt_test_verify(power + 1, 0, 32);
+
+    // Also verify with odd fractional bits to test the parity shift.
+    isqrt_test_verify(power, 15, 32);
+  }
+
+  // Monotonicity sweep.
+  //
+  // Pick a start, check the next 1000 numbers for strictly decreasing
+  // order. Do this 1000 times.
+  for (u64 i = 0; i < 1000; ++i) {
+    u64 start = 7001 * i + 1;
+    u64 x = start;
+    u64 prev = curves_fixed_isqrt(x++, 0, 32);
+    for (u64 j = 0; j < 1000; ++j) {
+      u64 cur = curves_fixed_isqrt(x, 0, 32);
+      ASSERT_GE(prev, cur) << "Monotonicity violated at " << x;
+      ++x;
+      prev = cur;
+    }
+  }
+}
+
 struct IsqrtParam {
   u64 value;
   unsigned int frac_bits;
@@ -137,24 +209,8 @@ TEST_P(IsqrtTest, test_vector) {
   const auto known_to_saturate =
       GetParam().expected_result == U64_MAX && GetParam().tolerance == U64_MAX;
   if (known_to_saturate) return;
-
-  auto check = create_isqrt_test_expected_result(isqrt_test_vector{
+  isqrt_test_verify_test_vector(isqrt_test_vector{
       GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits});
-
-  // u128 doesn't print to a gtest Message using our ostream inserter. This is
-  // the least bad workaround to print the contents when the test fails.
-  std::ostringstream out;
-  if (check.diff > check.tolerance) {
-    out << "x:         " << check.test_vector.x << "@Q"
-        << check.test_vector.frac_bits << "\ny:         " << check.y << "@Q"
-        << check.test_vector.output_frac_bits
-        << "\nExpected:  " << check.expected << "@Q"
-        << "\nActual:    " << check.actual << "@Q"
-        << check.test_vector.output_frac_bits << "\nDiff:      " << check.diff
-        << "\nTolerance: " << check.tolerance;
-  }
-
-  ASSERT_LE(check.diff, check.tolerance) << out.str();
 }
 
 #if 1
@@ -174,15 +230,6 @@ auto isqrt_gamut_param(unsigned int value_bits, unsigned int frac_bits,
           isqrt_gamut_expected_result(value_bits, frac_bits, output_frac_bits)};
 }
 
-/*
-```
-curves_fixed_isqrt(6LL << 60, 60, 60) == 470678233294770047ULL, expected
-470678233243713536ULL curves_fixed_isqrt(2LL << 61, 61, 61) ==
-2305843009208415933ULL, expected 1630477228166597777ULL curves_fixed_isqrt(1LL
-<< 60, 61, 61) == 4611686018416831867ULL, expected 3260954456333195553ULL
-```
-*/
-
 #if 1
 const IsqrtParam isqrt_smoke_test[] = {
     // Identity Case
@@ -198,7 +245,6 @@ const IsqrtParam isqrt_smoke_test[] = {
 
     // The "Overflow" Risk Case (High Precision Over-unity result)
     // isqrt(0.5) at Q61. Result is sqrt(2) (~1.414).
-    // Error: ~200k
     // Expected: round(2^61/sqrt(0.5))
     {1LL << 60, 61, 61, 0, 3260954456333195553ULL},
 
