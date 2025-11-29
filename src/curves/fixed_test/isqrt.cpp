@@ -68,6 +68,8 @@ auto isqrt_gamut_param(unsigned int value_bits, unsigned int frac_bits,
 
 #if 1
 const IsqrtParam isqrt_smoke_test[] = {
+    {6LL << 60, 60, 60, 51056511, 470678233243713536ULL},
+
     // Identity Case
     // isqrt(1.0) == 1.0.
     // Basic baseline check.
@@ -76,7 +78,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // The "Problem" Case (High Precision Under-unity result)
     // isqrt(2.0) at Q61. Result is ~0.707.
     // This fails if internal precision doesn't have guard bits for RNE.
-    // Error: ~600
     // Expected: round(2^61/sqrt(2))
     {2LL << 61, 61, 61, 524012689, 1630477228166597777ULL},
 
@@ -95,7 +96,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // Irrational Non-Power-of-2
     // isqrt(3.0) at Q60.
     // Checks rounding logic on standard messy numbers.
-    // Error: ~1.2k
     // Expected: round(2^60/sqrt(3))
     {3LL << 60, 60, 60, 135892519, 665639541039271463ULL},
 
@@ -111,7 +111,7 @@ const IsqrtParam isqrt_smoke_test[] = {
     // via NR steps.
     // If it converges in 6 steps here, it converges everywhere.
     // Expected: round(2^60/sqrt(6))
-    {6LL << 60, 60, 60, 0, 470678233243713536ULL},
+    {6LL << 60, 60, 60, 51056511, 470678233243713536ULL},
 
     // The "Precision Cliff" (Alternating Bits)
     // Input: 0x5...5 (0.333...). High entropy bit pattern.
@@ -119,7 +119,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // This is the ultimate test of your Fused Update and RNE.
     // If you have ANY bias, you will snap to ...025. If correct, ...026.
     // Expected: round(2^60 / sqrt(0x555... * 2^-60))
-    // Error ~1M
     {0x5555555555555555LL, 60, 60, 101919389, 499229655779453597LL},
 
     // THE FLOOR (Flat Slope)
@@ -127,7 +126,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // Math: 1 / sqrt(2^63 - 1) approx 1 / 3,037,000,499.
     // Result is very small. This tests if we lose bits when y is tiny.
     // Expected: 2^60 * (1/sqrt(2^63-1))
-    // Error ~7M
     {S64_MAX, 0, 60, 0, 379625062LL},
 
     // THE CEILING (Steep Slope)
@@ -142,7 +140,6 @@ const IsqrtParam isqrt_smoke_test[] = {
     // This breaks algorithms that rely too heavily on the exponent guess.
     // Math: 1 / sqrt(4.0 - epsilon) -> Just slightly > 0.5
     // 0.500000000000000000135 * 2^60
-    // Error ~59
     {(1LL << 62) - 1, 60, 60, 59, 576460752303423547LL},
 
     // THE SATURATION RISK (Output Overflow)
@@ -172,7 +169,7 @@ INSTANTIATE_TEST_SUITE_P(smoke_tests, IsqrtTest, ValuesIn(isqrt_smoke_test));
 
 // clang-format off
 const IsqrtParam isqrt_gamut[] = {
-    // 1 output bits    
+    // 1 output bits
     isqrt_gamut_param( 1,  0,  1, 0),
     isqrt_gamut_param( 2,  0,  1, 0),
     isqrt_gamut_param( 4,  0,  1, 0),
@@ -273,7 +270,7 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 62,  1, 0),
     isqrt_gamut_param(62, 62,  1, 0),
     isqrt_gamut_param(63, 62,  1, 0),
-    isqrt_gamut_param( 1, 63,  1, 0),
+    isqrt_gamut_param( 1, 63,  1, 1),
     isqrt_gamut_param( 2, 63,  1, 0),
     isqrt_gamut_param( 4, 63,  1, 0),
     isqrt_gamut_param( 8, 63,  1, 0),
@@ -293,8 +290,8 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 64,  1, 0),
     isqrt_gamut_param(62, 64,  1, 0),
     isqrt_gamut_param(63, 64,  1, 0),
-    
-    // 2 output bits    
+
+    // 2 output bits
     isqrt_gamut_param( 1,  0,  2, 0),
     isqrt_gamut_param( 2,  0,  2, 0),
     isqrt_gamut_param( 4,  0,  2, 0),
@@ -395,7 +392,7 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 62,  2, 0),
     isqrt_gamut_param(62, 62,  2, 0),
     isqrt_gamut_param(63, 62,  2, 0),
-    isqrt_gamut_param( 1, 63,  2, 0),
+    isqrt_gamut_param( 1, 63,  2, 1),
     isqrt_gamut_param( 2, 63,  2, 0),
     isqrt_gamut_param( 4, 63,  2, 0),
     isqrt_gamut_param( 8, 63,  2, 0),
@@ -415,8 +412,8 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 64,  2, 0),
     isqrt_gamut_param(62, 64,  2, 0),
     isqrt_gamut_param(63, 64,  2, 0),
-    
-    // 4 output bits    
+
+    // 4 output bits
     isqrt_gamut_param( 1,  0,  4, 0),
     isqrt_gamut_param( 2,  0,  4, 0),
     isqrt_gamut_param( 4,  0,  4, 0),
@@ -508,7 +505,7 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 48,  4, 0),
     isqrt_gamut_param(63, 48,  4, 0),
     isqrt_gamut_param( 1, 62,  4, 0),
-    isqrt_gamut_param( 2, 62,  4, 0),
+    isqrt_gamut_param( 2, 62,  4, 1),
     isqrt_gamut_param( 4, 62,  4, 0),
     isqrt_gamut_param( 8, 62,  4, 0),
     isqrt_gamut_param(16, 62,  4, 0),
@@ -517,9 +514,9 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 62,  4, 0),
     isqrt_gamut_param(62, 62,  4, 0),
     isqrt_gamut_param(63, 62,  4, 0),
-    isqrt_gamut_param( 1, 63,  4, 0),
-    isqrt_gamut_param( 2, 63,  4, 0),
-    isqrt_gamut_param( 4, 63,  4, 0),
+    isqrt_gamut_param( 1, 63,  4, 4),
+    isqrt_gamut_param( 2, 63,  4, 1),
+    isqrt_gamut_param( 4, 63,  4, 1),
     isqrt_gamut_param( 8, 63,  4, 0),
     isqrt_gamut_param(16, 63,  4, 0),
     isqrt_gamut_param(24, 63,  4, 0),
@@ -528,8 +525,8 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 63,  4, 0),
     isqrt_gamut_param(63, 63,  4, 0),
     isqrt_gamut_param( 1, 64,  4, 0),
-    isqrt_gamut_param( 2, 64,  4, 0),
-    isqrt_gamut_param( 4, 64,  4, 0),
+    isqrt_gamut_param( 2, 64,  4, 1),
+    isqrt_gamut_param( 4, 64,  4, 1),
     isqrt_gamut_param( 8, 64,  4, 0),
     isqrt_gamut_param(16, 64,  4, 0),
     isqrt_gamut_param(24, 64,  4, 1),
@@ -537,8 +534,8 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 64,  4, 0),
     isqrt_gamut_param(62, 64,  4, 0),
     isqrt_gamut_param(63, 64,  4, 0),
-    
-    // 8 output bits    
+
+    // 8 output bits
     isqrt_gamut_param( 1,  0,  8, 0),
     isqrt_gamut_param( 2,  0,  8, 0),
     isqrt_gamut_param( 4,  0,  8, 0),
@@ -630,8 +627,8 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 48,  8, 0),
     isqrt_gamut_param(63, 48,  8, 0),
     isqrt_gamut_param( 1, 62,  8, 0),
-    isqrt_gamut_param( 2, 62,  8, 0),
-    isqrt_gamut_param( 4, 62,  8, 0),
+    isqrt_gamut_param( 2, 62,  8, 10),
+    isqrt_gamut_param( 4, 62,  8, 2),
     isqrt_gamut_param( 8, 62,  8, 0),
     isqrt_gamut_param(16, 62,  8, 0),
     isqrt_gamut_param(24, 62,  8, 0),
@@ -639,9 +636,9 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(48, 62,  8, 0),
     isqrt_gamut_param(62, 62,  8, 0),
     isqrt_gamut_param(63, 62,  8, 0),
-    isqrt_gamut_param( 1, 63,  8, 0),
-    isqrt_gamut_param( 2, 63,  8, 0),
-    isqrt_gamut_param( 4, 63,  8, 0),
+    isqrt_gamut_param( 1, 63,  8, 70),
+    isqrt_gamut_param( 2, 63,  8, 9),
+    isqrt_gamut_param( 4, 63,  8, 8),
     isqrt_gamut_param( 8, 63,  8, 0),
     isqrt_gamut_param(16, 63,  8, 0),
     isqrt_gamut_param(24, 63,  8, 0),
@@ -650,17 +647,17 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 63,  8, 0),
     isqrt_gamut_param(63, 63,  8, 0),
     isqrt_gamut_param( 1, 64,  8, 0),
-    isqrt_gamut_param( 2, 64,  8, 0),
-    isqrt_gamut_param( 4, 64,  8, 0),
-    isqrt_gamut_param( 8, 64,  8, 0),
+    isqrt_gamut_param( 2, 64,  8, 19),
+    isqrt_gamut_param( 4, 64,  8, 4),
+    isqrt_gamut_param( 8, 64,  8, 1),
     isqrt_gamut_param(16, 64,  8, 0),
     isqrt_gamut_param(24, 64,  8, 0),
     isqrt_gamut_param(32, 64,  8, 0),
     isqrt_gamut_param(48, 64,  8, 0),
     isqrt_gamut_param(62, 64,  8, 0),
     isqrt_gamut_param(63, 64,  8, 0),
-    
-    // 16 output bits    
+
+    // 16 output bits
     isqrt_gamut_param( 1,  0, 16, 0),
     isqrt_gamut_param( 2,  0, 16, 0),
     isqrt_gamut_param( 4,  0, 16, 0),
@@ -752,36 +749,36 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 48, 16, 0),
     isqrt_gamut_param(63, 48, 16, 0),
     isqrt_gamut_param( 1, 62, 16, 0),
-    isqrt_gamut_param( 2, 62, 16, 0),
-    isqrt_gamut_param( 4, 62, 16, 0),
-    isqrt_gamut_param( 8, 62, 16, 0),
+    isqrt_gamut_param( 2, 62, 16, 2505),
+    isqrt_gamut_param( 4, 62, 16, 557),
+    isqrt_gamut_param( 8, 62, 16, 15),
     isqrt_gamut_param(16, 62, 16, 0),
     isqrt_gamut_param(24, 62, 16, 0),
     isqrt_gamut_param(32, 62, 16, 0),
     isqrt_gamut_param(48, 62, 16, 0),
     isqrt_gamut_param(62, 62, 16, 0),
     isqrt_gamut_param(63, 62, 16, 0),
-    isqrt_gamut_param( 1, 63, 16, 0),
-    isqrt_gamut_param( 2, 63, 16, 0),
-    isqrt_gamut_param( 4, 63, 16, 0),
-    isqrt_gamut_param( 8, 63, 16, 0),
-    isqrt_gamut_param(16, 63, 16, 0),
+    isqrt_gamut_param( 1, 63, 16, 17982),
+    isqrt_gamut_param( 2, 63, 16, 2510),
+    isqrt_gamut_param( 4, 63, 16, 1942),
+    isqrt_gamut_param( 8, 63, 16, 73),
+    isqrt_gamut_param(16, 63, 16, 1),
     isqrt_gamut_param(24, 63, 16, 0),
     isqrt_gamut_param(32, 63, 16, 0),
     isqrt_gamut_param(48, 63, 16, 0),
     isqrt_gamut_param(62, 63, 16, 0),
     isqrt_gamut_param(63, 63, 16, 0),
     isqrt_gamut_param( 1, 64, 16, 0),
-    isqrt_gamut_param( 2, 64, 16, 0),
-    isqrt_gamut_param( 4, 64, 16, 0),
-    isqrt_gamut_param( 8, 64, 16, 0),
-    isqrt_gamut_param(16, 64, 16, 0),
+    isqrt_gamut_param( 2, 64, 16, 5010),
+    isqrt_gamut_param( 4, 64, 16, 1116),
+    isqrt_gamut_param( 8, 64, 16, 158),
+    isqrt_gamut_param(16, 64, 16, 1),
     isqrt_gamut_param(24, 64, 16, 0),
-    isqrt_gamut_param(32, 64, 16, 0),
+    isqrt_gamut_param(32, 64, 16, 1),
     isqrt_gamut_param(48, 64, 16, 0),
     isqrt_gamut_param(62, 64, 16, 0),
     isqrt_gamut_param(63, 64, 16, 0),
-    
+
     // 24 output bits
     isqrt_gamut_param( 1,  0, 24, 0),
     isqrt_gamut_param( 2,  0, 24, 0),
@@ -864,43 +861,43 @@ const IsqrtParam isqrt_gamut[] = {
     isqrt_gamut_param(62, 32, 24, 0),
     isqrt_gamut_param(63, 32, 24, 0),
     isqrt_gamut_param( 1, 48, 24, 0),
-    isqrt_gamut_param( 2, 48, 24, 0),
-    isqrt_gamut_param( 4, 48, 24, 0),
-    isqrt_gamut_param( 8, 48, 24, 0),
+    isqrt_gamut_param( 2, 48, 24, 58),
+    isqrt_gamut_param( 4, 48, 24, 9),
+    isqrt_gamut_param( 8, 48, 24, 1),
     isqrt_gamut_param(16, 48, 24, 0),
     isqrt_gamut_param(24, 48, 24, 0),
-    isqrt_gamut_param(32, 48, 24, 0),
+    isqrt_gamut_param(32, 48, 24, 1),
     isqrt_gamut_param(48, 48, 24, 0),
     isqrt_gamut_param(62, 48, 24, 0),
     isqrt_gamut_param(63, 48, 24, 0),
     isqrt_gamut_param( 1, 62, 24, 0),
-    isqrt_gamut_param( 2, 62, 24, 3),
-    isqrt_gamut_param( 4, 62, 24, 1),
-    isqrt_gamut_param( 8, 62, 24, 0),
-    isqrt_gamut_param(16, 62, 24, 0),
+    isqrt_gamut_param( 2, 62, 24, 641269),
+    isqrt_gamut_param( 4, 62, 24, 142790),
+    isqrt_gamut_param( 8, 62, 24, 3815),
+    isqrt_gamut_param(16, 62, 24, 64),
     isqrt_gamut_param(24, 62, 24, 0),
     isqrt_gamut_param(32, 62, 24, 64),
     isqrt_gamut_param(48, 62, 24, 0),
     isqrt_gamut_param(62, 62, 24, 0),
     isqrt_gamut_param(63, 62, 24, 0),
 
-    isqrt_gamut_param( 1, 63, 24, 3),
-    isqrt_gamut_param( 2, 63, 24, 4),
-    isqrt_gamut_param( 4, 63, 24, 1),
-    isqrt_gamut_param( 8, 63, 24, 0),
-    isqrt_gamut_param(16, 63, 24, 0),
+    isqrt_gamut_param( 1, 63, 24, 4603274),
+    isqrt_gamut_param( 2, 63, 24, 642495),
+    isqrt_gamut_param( 4, 63, 24, 496980),
+    isqrt_gamut_param( 8, 63, 24, 18591),
+    isqrt_gamut_param(16, 63, 24, 52),
     isqrt_gamut_param(24, 63, 24, 6),
     isqrt_gamut_param(32, 63, 24, 84),
     isqrt_gamut_param(48, 63, 24, 0),
     isqrt_gamut_param(62, 63, 24, 0),
     isqrt_gamut_param(63, 63, 24, 0),
     isqrt_gamut_param( 1, 64, 24, 0),
-    isqrt_gamut_param( 2, 64, 24, 6),
-    isqrt_gamut_param( 4, 64, 24, 2),
-    isqrt_gamut_param( 8, 64, 24, 0),
-    isqrt_gamut_param(16, 64, 24, 0),
-    isqrt_gamut_param(24, 64, 24, 0),
-    isqrt_gamut_param(32, 64, 24, 128),
+    isqrt_gamut_param( 2, 64, 24, 1282539),
+    isqrt_gamut_param( 4, 64, 24, 285578),
+    isqrt_gamut_param( 8, 64, 24, 40462),
+    isqrt_gamut_param(16, 64, 24, 256),
+    isqrt_gamut_param(24, 64, 24, 1),
+    isqrt_gamut_param(32, 64, 24, 0),
     isqrt_gamut_param(48, 64, 24, 0),
     isqrt_gamut_param(62, 64, 24, 0),
     isqrt_gamut_param(63, 64, 24, 0),

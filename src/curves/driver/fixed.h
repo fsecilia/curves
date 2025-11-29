@@ -643,79 +643,8 @@ static inline s64 curves_fixed_divide(s64 dividend,
 // Roots
 // ----------------------------------------------------------------------------
 
-struct curves_isqrt_bit_allocation {
-	int x_parity_shl; // Left shift for even parity.
-	int x_reduction_shr; // Right shift to reduce precision.
-	int x_bits; // Number of bits needed to represent x.
-	int x_frac_bits; // Precision of x.
-	int y_frac_bits; // Precision of y.
-};
-
-// pre: x > 0
-static inline struct curves_isqrt_bit_allocation
-__curves_isqrt_allocate_bits(u64 x, unsigned int frac_bits)
-{
-	struct curves_isqrt_bit_allocation alloc;
-
-	int x_bits = (int)curves_log2_u64(x);
-	int x_frac_bits = (int)frac_bits;
-	int odd, reduction = 0;
-	int y_bits, y_int_bits;
-
-	// Transform odd x exponent parity to even.
-	//
-	// Sqrt divides the exponent by 2. An odd exponent would truncate one
-	// bit. Here, we mark that x should be shifted left by 1 before
-	// taking the root.
-	odd = x_frac_bits & 1;
-	x_frac_bits += odd;
-	x_bits += odd;
-
-	// Reduce x precision if it interferes with yy.
-	//
-	// One of the later NR steps is the product of 3 64-bit values, x*y*y.
-	// Nominally, this would require 192 bits. Since we only have 128, and
-	// the whole product must fit, something has to give. We reduce the
-	// precision of x linearly above 32 bits to make room.
-	if (x_bits > 32) {
-		reduction = x_bits - 32;
-		reduction += (reduction & 1);
-
-		x_bits -= reduction;
-		x_frac_bits -= reduction;
-
-		alloc.x_parity_shl = 0;
-		alloc.x_reduction_shr = reduction - odd;
-	} else {
-		alloc.x_parity_shl = odd;
-		alloc.x_reduction_shr = 0;
-	}
-
-	alloc.x_bits = x_bits;
-	alloc.x_frac_bits = x_frac_bits;
-
-	/* 5. Y Allocation (Original Logic) */
-	y_bits = (126 - x_bits) >> 1;
-	y_int_bits = ((-x_bits) >> 1) + 1; // (-x_bits) works correctly now!
-
-	if (y_int_bits < 0)
-		y_int_bits = 0;
-
-	alloc.y_frac_bits = y_bits - y_int_bits;
-
-	return alloc;
-}
-
-static inline u128 __curves_isqrt_initial_guess(int x_bits, int y_frac_bits)
-{
-	// Guesses y0 to be approx x^(-0.5).
-	// x_bits *must* be negated inside of the shift so it floors.
-	// Negating the result of the shift would ceiling and overestimate.
-	return (u128)1 << ((-x_bits >> 1) + y_frac_bits);
-}
-
 /**
- * __curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
+ * curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
  *
  * This function solves `y = 1/sqrt(x)` using Newton-Raphson. We define a
  * function, `f(y)`, with the same roots as y, start with an initial guess near
@@ -750,9 +679,95 @@ static inline u128 __curves_isqrt_initial_guess(int x_bits, int y_frac_bits)
  *
  * Returns: inverse sqrt
  */
-static inline u64
-__curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
-		     u128 initial_guess, unsigned int output_frac_bits)
+
+#if 1
+
+static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
+				     unsigned int output_frac_bits)
+{
+	int x_bits, y_bits, y_int_bits, y_frac_bits, initial_guess_exp;
+	int x_frac_bits = (int)frac_bits;
+	u64 result;
+	u128 y, y_prev = 0;
+
+	if (x == 0)
+		return U64_MAX;
+
+	x_bits = (int)curves_log2_u64(x);
+
+	if (x_bits == 63) {
+		// x_frac_bits must be even, but we also can't overflow.
+		--x_frac_bits;
+		--x_bits;
+		x >>= 1;
+	} else {
+		// x_frac_bits must be even.
+		int x_frac_bits_odd = x_frac_bits & 1;
+		x_frac_bits += x_frac_bits_odd;
+		x_bits += x_frac_bits_odd;
+		x <<= x_frac_bits_odd;
+	}
+
+	y_bits = 128 - x_bits;
+	if (y_bits > 64)
+		y_bits = 64;
+
+	y_int_bits = ((x_frac_bits - x_bits) >> 1) + 1;
+	if (y_int_bits < 1)
+		y_int_bits = 1;
+
+	y_frac_bits = y_bits - y_int_bits;
+
+	initial_guess_exp = y_frac_bits + (x_frac_bits >> 1) + (-x_bits >> 1);
+
+	y = (u128)1 << initial_guess_exp;
+
+	for (int i = 0; i < 6; ++i) {
+		// Compute y^2 - this is 128 bits with 2*y_frac_bits fractional bits
+		u128 yy = y * y;
+
+		// Split yy into high and low 64-bit parts for the multiplication
+		u64 yy_lo = (u64)yy;
+		u64 yy_hi = (u64)(yy >> 64);
+
+		// Compute the two products that make up x*yy
+		// prod_lo contains bits [0:127] of the full 192-bit product
+		// prod_hi contains bits [64:191] of the full 192-bit product
+		u128 prod_lo = (u128)x * yy_lo;
+		u128 prod_hi = (u128)x * yy_hi;
+
+		// Now we need to extract the portion of the 192-bit product that
+		// corresponds to shifting right by (x_frac_bits + y_frac_bits)
+		// to get a value at the y_frac_bits scale
+		int total_shift = x_frac_bits + y_frac_bits;
+		u128 xyy, factor, y_new;
+
+		if (total_shift < 64) {
+			// The bits we need span the boundary between prod_lo and prod_hi
+			xyy = (prod_lo >> total_shift) |
+			      (prod_hi << (64 - total_shift));
+		} else {
+			// We're shifting by 64 or more, so we need the higher bits
+			xyy = prod_hi >> (total_shift - 64);
+		}
+
+		factor = ((u128)3 << y_frac_bits) - xyy;
+		y_new = (y * factor) >> (y_frac_bits + 1);
+
+		if (y_new == y || y_new == y_prev)
+			break;
+		y_prev = y;
+		y = y_new;
+	}
+
+	result = curves_narrow_u128_u64(curves_fixed_rescale_u128(
+		y, (unsigned int)y_frac_bits, output_frac_bits));
+
+	return result;
+}
+
+#else
+static inline u64 __curves_fixed_isqrt(u64 x, unsigned int output_frac_bits)
 {
 	u128 y;
 
@@ -767,11 +782,10 @@ __curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
 	// Newton-Raphson: y' = y(3 - xy^2)
 	y = initial_guess;
 	for (int i = 0; i < 16; ++i) {
-		u128 yy = y * y;
+		u128 yy = (y * y) >> bit_allocation.y_frac_bits;
 		u128 xyy = (u128)x * yy;
 
-		u128 factor = ((u128)3 << bit_allocation.y_frac_bits) -
-			      (xyy >> bit_allocation.y_frac_bits);
+		u128 factor = ((u128)3 << bit_allocation.y_frac_bits) - xyy;
 		u128 y_new = (y * factor) >> (bit_allocation.y_frac_bits + 1);
 
 		if (y == y_new)
@@ -793,18 +807,61 @@ __curves_fixed_isqrt(u64 x, struct curves_isqrt_bit_allocation bit_allocation,
 static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 				     unsigned int output_frac_bits)
 {
-	struct curves_isqrt_bit_allocation bit_allocation;
+	struct curves_isqrt_bit_allocation alloc;
 	u128 initial_guess;
+	int x_bits;
+	int x_frac_bits = (int)frac_bits;
+	int y_bits, y_int_bits;
 
 	if (x == 0)
 		return U64_MAX;
 
-	bit_allocation = __curves_isqrt_allocate_bits(x, frac_bits);
-	initial_guess = __curves_isqrt_initial_guess(
-		bit_allocation.x_bits, bit_allocation.y_frac_bits);
+	x_bits = (int)curves_log2_u64(x);
 
-	return __curves_fixed_isqrt(x, bit_allocation, initial_guess,
-				    output_frac_bits);
+	if (x_frac_bits == 63) {
+		--x_frac_bits;
+		--x_bits;
+		alloc.x_parity_shl = 0;
+	} else {
+		// Transform odd x exponent parity to even.
+		//
+		// Sqrt divides the exponent by 2. An odd exponent would truncate one
+		// bit. Here, we mark that x should be shifted left by 1 before
+		// taking the root.
+		int odd = x_frac_bits & 1;
+		x_frac_bits += odd;
+		x_bits += odd;
+		alloc.x_parity_shl = odd;
+	}
+
+	// Reduce x precision if it interferes with yy.
+	//
+	// One of the later NR steps is the product of 3 64-bit values, x*y*y.
+	// Nominally, this would require 192 bits. Since we only have 128, and
+	// the whole product must fit, something has to give. We reduce the
+	// precision of x linearly above 32 bits to make room.
+	alloc.x_reduction_shr = 0;
+
+	alloc.x_bits = x_bits;
+	alloc.x_frac_bits = x_frac_bits;
+
+	/* 5. Y Allocation (Original Logic) */
+	y_bits = (126 - x_bits);
+	y_int_bits = ((-x_bits) >> 1) + 1;
+
+	if (y_int_bits < 0)
+		y_int_bits = 0;
+
+	alloc.y_frac_bits = y_bits - y_int_bits;
+
+	// Guesses y0 to be approx x^(-0.5).
+	//
+	// x_bits *must* be negated inside of the shift so it floors.
+	// Negating the result of the shift would ceiling and overestimate.
+	initial_guess = (u128)1 << ((-x_bits >> 1) + alloc.y_frac_bits);
+
+	return __curves_fixed_isqrt(x, alloc, initial_guess, output_frac_bits);
 }
+#endif
 
 #endif /* _CURVES_FIXED_H */
