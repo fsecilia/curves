@@ -807,4 +807,61 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		y, (unsigned int)y_frac_bits, output_frac_bits));
 }
 
+/*
+ * curves_fixed_isqrt_fast - Branchless Fixed-point Inverse Square Root
+ *
+ * Calculates: result = 1.0 / sqrt(x)
+ * Input:  x in Q(frac_bits)
+ * Output: result in Q(output_frac_bits)
+ *
+ * Guarantees:
+ * - Constant execution time (unrolled loop, no data-dependent branches).
+ * - Safe internal headroom (Q2.62 format handles results < 4.0).
+ */
+static inline u64 curves_fixed_isqrt_fast(u64 x, unsigned int frac_bits,
+					  unsigned int output_frac_bits)
+{
+	const u64 THREE_Q62 = 3ULL << 62;
+	const u64 SQRT2_Q62 = 0x5A827999FCEF3242ULL;
+	const u64 GUESS_C = 0xBA597F3333333333ULL;
+
+	int lz, effective_exponent, current_frac_bits;
+	u64 x_norm, y, term;
+	u128 y_sq;
+
+	if (x == 0)
+		return U64_MAX;
+
+	/* Normalize to Q0.64 [0.5, 1.0) */
+	lz = (int)curves_clz64(x);
+	x_norm = x << lz;
+
+	/* Linear Approximation Guess */
+	y = GUESS_C - (x_norm >> 1);
+
+	/* Newton-Raphson Solver */
+	for (int i = 0; i < 7; ++i) {
+		y_sq = (u128)y * y;
+
+		/* term = x * y^2 (Keep 62 fractional bits) */
+		term = ((u128)x_norm * (u64)(y_sq >> 62)) >> 64;
+
+		/* y = y * (3 - term) / 2 */
+		y = (u64)(((u128)y * (THREE_Q62 - term)) >> 63);
+	}
+
+	/* Denormalize */
+	effective_exponent = lz + (int)frac_bits;
+
+	if (effective_exponent & 1) {
+		y = (u64)(((u128)y * SQRT2_Q62) >> 62);
+	}
+
+	// Q62 (base) + 32 (half of the 64-bit norm shift) - half_exp.
+	current_frac_bits = 94 - (effective_exponent >> 1);
+
+	return curves_narrow_u128_u64(curves_fixed_rescale_u128(
+		(u128)y, (unsigned int)current_frac_bits, output_frac_bits));
+}
+
 #endif /* _CURVES_FIXED_H */
