@@ -51,7 +51,7 @@ static inline s64 curves_sign_mask(s64 value)
 static inline u64 curves_strip_sign(s64 value)
 {
 	s64 mask = curves_sign_mask(value);
-	return (u64)((value + mask) ^ mask);
+	return ((u64)value + (u64)mask) ^ (u64)mask;
 }
 
 // Convert unsigned magnitude -> signed.
