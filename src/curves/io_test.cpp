@@ -5,7 +5,7 @@
 */
 
 #include "io.hpp"
-#include <curves/test.hpp>
+#include <curves/test/test.hpp>
 #include <sstream>
 #include <string>
 

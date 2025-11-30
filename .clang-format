@@ -4,7 +4,7 @@ IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: \"
     Priority: 1
-  - Regex: <curves/(bin|lib|test).hpp>
+  - Regex: <curves/(bin|lib|test/test).hpp>
     Priority: 2
   - Regex: <curves/
     Priority: 3

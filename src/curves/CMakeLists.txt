@@ -17,7 +17,7 @@ list(APPEND lib_files
   lib.hpp
 )
 
-list(APPEND test_files
+list(APPEND unit_tests_files
   fixed_test/add.cpp
   fixed_test/divide.cpp
   fixed_test/isqrt.cpp
@@ -28,8 +28,6 @@ list(APPEND test_files
   fixed_test/test.cpp
   io_test.cpp
   math_test.cpp
-  test.cpp
-  test.hpp
 )
 
 # The Kbuild is the source of truth for the files in the driver. CMake asks the
@@ -218,19 +216,18 @@ install(TARGETS lib
 # -----------------------------------------------------------------------------
 
 if (enable_testing)
-  add_executable(test ${test_files})
-  target_link_libraries(test PUBLIC
+  add_subdirectory(test)
+
+  add_executable(unit_tests ${unit_tests_files})
+  target_link_libraries(unit_tests PUBLIC
     lib
-    GTest::gmock_main
-    GTest::gtest_main
-    GTest::gmock
-    GTest::gtest
+    testing_lib
   )
-  configure_test_target_warnings(test)
-  gtest_discover_tests(test)
+  configure_test_target_warnings(unit_tests)
+  gtest_discover_tests(unit_tests)
 
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(test PUBLIC
+    target_compile_options(unit_tests PUBLIC
       -Wno-unused-function
     )
   endif()
