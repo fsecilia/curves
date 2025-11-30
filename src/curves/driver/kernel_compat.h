@@ -26,6 +26,11 @@ static inline s64 curves_abs64(s64 x)
 	return abs(x);
 }
 
+static inline unsigned int curves_clz32(u32 x)
+{
+	return 32 - fls(x);
+}
+
 static inline unsigned int curves_clz64(u64 x)
 {
 	return 64 - fls64(x);
@@ -86,6 +91,11 @@ __extension__ typedef unsigned __int128 u128;
 static inline s64 curves_abs64(s64 x)
 {
 	return llabs(x);
+}
+
+static inline unsigned int curves_clz32(u32 x)
+{
+	return x ? (unsigned int)__builtin_clzll(x) : (unsigned int)32;
 }
 
 static inline unsigned int curves_clz64(u64 x)
