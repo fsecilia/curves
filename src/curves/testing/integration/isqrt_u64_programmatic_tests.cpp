@@ -23,7 +23,6 @@ TEST(isqrt_u64_automated_tests, run_automated_tests) {
   // Power of 2 seams.
   //
   // Test the transition points for all 64 bits.
-  // TODO: parameterize this instead
   for (int i = 1; i < 63; ++i) {
     u64 power = 1ULL << i;
 

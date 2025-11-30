@@ -149,20 +149,5 @@ const IsqrtU64Param isqrt_u64_smoke_test[] = {
 INSTANTIATE_TEST_SUITE_P(smoke_tests, IsqrtU64Test,
                          ValuesIn(isqrt_u64_smoke_test));
 
-// Tests seams at each power of 2, +/- 1
-// clang-format off
-const IsqrtU64Param isqrt_u64_power_of_2_seams[] = {
-    {(1LL << 1) - 1, 0, 0, 0, 1}, 
-    {(1LL << 1) + 0, 0, 0, 0, 1},
-    {(1LL << 1) + 1, 0, 0, 0, 1},
-
-    {(1LL << 2) - 1, 0, 0, 0, 1}, 
-    {(1LL << 2) + 0, 0, 0, 0, 0},
-    {(1LL << 2) + 1, 0, 0, 0, 0},
-};
-INSTANTIATE_TEST_SUITE_P(power_of_2_seams, IsqrtU64Test,
-                         ValuesIn(isqrt_u64_power_of_2_seams));
-// clang-format on
-
 }  // namespace
 }  // namespace curves
