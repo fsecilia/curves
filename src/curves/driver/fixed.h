@@ -86,6 +86,69 @@ static inline s64 curves_fixed_rescale_s64(s64 value, unsigned int frac_bits,
 }
 
 // ----------------------------------------------------------------------------
+// u64 rescaler
+// ----------------------------------------------------------------------------
+
+u64 __cold __curves_fixed_rescale_error_u64(u64 value, unsigned int frac_bits,
+					    unsigned int output_frac_bits);
+
+// Shifts right, rounding towards nearest even (rne).
+// Preconditions:
+//   - shift must be in range [1, 63]
+//   - caller is responsible for validating shift ranges
+static inline u64 __curves_fixed_shr_rne_u64(u64 value, unsigned int shift)
+{
+	u64 half = 1ULL << (shift - 1);
+	u64 frac_mask = (1ULL << shift) - 1;
+
+	u64 int_part = value >> shift;
+	u64 frac_part = (u64)value & frac_mask;
+
+	u64 is_odd = int_part & 1;
+
+	u64 bias = (half - 1) + (u64)is_odd;
+	u64 carry = (u64)((frac_part + bias) >> shift);
+
+	return int_part + carry;
+}
+
+// Shifts left, saturating if the value overflows.
+// Preconditions:
+//   - shift must be in range [0, 64]
+//   - caller is responsible for validating shift range
+static inline u64 __curves_fixed_shl_sat_u64(u64 value, unsigned int shift)
+{
+	u64 max_safe_val;
+
+	// Find the maximum value that doesn't overflow.
+	max_safe_val = U64_MAX >> shift;
+	if (unlikely(value > max_safe_val))
+		return U64_MAX;
+
+	// The value is safe to shift.
+	return value << shift;
+}
+
+// Shifts binary point from frac_bits to output_frac_bits, truncating or
+// saturating as necessary.
+static inline u64 curves_fixed_rescale_u64(u64 value, unsigned int frac_bits,
+					   unsigned int output_frac_bits)
+{
+	// Handle invalid scales
+	if (unlikely(frac_bits >= 64 || output_frac_bits >= 64))
+		return __curves_fixed_rescale_error_u64(value, frac_bits,
+							output_frac_bits);
+
+	// Shift into final place.
+	if (output_frac_bits < frac_bits)
+		return __curves_fixed_shr_rne_u64(value,
+						  frac_bits - output_frac_bits);
+	else
+		return __curves_fixed_shl_sat_u64(value,
+						  output_frac_bits - frac_bits);
+}
+
+// ----------------------------------------------------------------------------
 // s128 rescaler
 // ----------------------------------------------------------------------------
 

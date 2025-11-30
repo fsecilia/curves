@@ -57,6 +57,25 @@ extern s128 curves_fixed_rescale_s128(s128 value, unsigned int frac_bits,
 				      unsigned int output_frac_bits);
 
 // ----------------------------------------------------------------------------
+// u64 rescaler
+// ----------------------------------------------------------------------------
+
+u64 __cold __curves_fixed_rescale_error_u64(u64 value, unsigned int frac_bits,
+					    unsigned int output_frac_bits)
+{
+	// Zero values and right shifts return 0.
+	if (value == 0 || output_frac_bits < frac_bits)
+		return 0;
+
+	return U64_MAX;
+}
+
+extern u64 __curves_fixed_shr_rtz_u64(u64 value, unsigned int shift);
+extern u64 __curves_fixed_shl_sat_u64(u64 value, unsigned int shift);
+extern u64 curves_fixed_rescale_u64(u64 value, unsigned int frac_bits,
+				    unsigned int output_frac_bits);
+
+// ----------------------------------------------------------------------------
 // u128 rescaler
 // ----------------------------------------------------------------------------
 

@@ -1,44 +1,60 @@
-// Step 1: Use remez to get floating-point coefficients
-f = 2^x;
-domain = [0; 1];
+/*
+  SPDX-License-Identifier: MIT
+
+  This script generates both the coefficients and their frac_bits for exp2 in
+  Q0.64.
+*/
+
+// Use high precision internals.
 prec = 512!;
 
+// Approximating 2^x over [0, 1].
+f = 2^x;
+domain = [0;1];
+
+// Determine degree based on accuracy.
 target_accuracy = 1b-61;
 degree_interval = guessdegree(f, domain, target_accuracy, 1, 25);
 poly_degree = sup(degree_interval);
 
+// Use remez() to get initial floating-point coefficients.
 poly_remez = remez(f, poly_degree, domain);
 
-// Step 2: Analyze coefficients to determine optimal fixed-point formats
-// For each coefficient, figure out how many integer bits we need
-// and allocate the rest to fractional bits (up to Q63 total)
+// Analyze coefficients to determine optimal fixed-point formats. Figure out
+// how many integer bits we need for each and allocate the rest to fractional
+// bits (up to Q64 total).
 formats = [||];
-
 for i from 0 to poly_degree do {
   c = coeff(poly_remez, i);
 
-  // Find the magnitude - how many bits before the decimal point?
+  // Find coefficient's magnitude.
   if (c == 0) then {
     int_bits = 0;
   } else {
-    int_bits = ceil(log2(abs(c))) + 1; // +1 for sign
+    int_bits = ceil(log2(abs(c)));
   };
 
   // Allocate remaining bits to fractional part
-  // For Q format: Q(int_bits).(63-int_bits)
-  frac_bits = 63 - int_bits;
+  frac_bits = 64 - int_bits;
 
+  // Append optimal format to list of formats.
   formats = formats :. frac_bits;
-
-  print("Coefficient ", i, ": value=", c, ", int_bits=", int_bits, ", frac_bits=", frac_bits);
 };
 
-// Step 3: Now call fpminimax with optimized formats
+// Call fpminimax() with optimal formats.
 poly_fixed = fpminimax(f, poly_degree, formats, domain, fixed, absolute);
 
-print("\nOptimized fixed-point coefficients:");
+print("int exp2_num_coefs =", poly_degree, ";");
+print("u64 exp2_coefs[] = {");
 for i from 0 to poly_degree do {
   c = coeff(poly_fixed, i);
   c_rounded = nearestint(c*2^formats[i]);
-  print("a[", i, "] = ", c_rounded, " (Q", 63-formats[i], ".", formats[i], ")");
+  print(c_rounded, ",");
 };
+print("};");
+
+print("unsigned int exp2_frac_bits[] = {");
+for i from 0 to poly_degree do {
+  print(formats[i], ",");
+};
+print("};");
