@@ -1,26 +1,31 @@
 /*
   SPDX-License-Identifier: MIT
 
-  This script generates the magic constant used in the linear approximation to
-  find the isqrt initial guess. This is the value `C` that minimizes the
-  maximum error of the linear approximation `y = C - 2x` of `1/sqrt(x)` over
-  the range `[0.5, 1.0]`.
-
-  We want to minimize the maximum absolute error of `f(x) - (C - 2x)`. This
-  occurs when the error at the endpoints equals the error at the extrema.
-  Practically, we want to center the line between the curve's sag.
-
-  To get the constant in hex, run:
-
-    sollya isqrt_initial_guess.sollya \
-      | grep "^int:" | cut -d: -f2 | xargs printf "0x%016x\n"
+  This script generates the magic constants used in the linear approximation to
+  find the isqrt initial guess. These are the values `C0` and `C1` that
+  minimize the maximum error of the linear approximation `y = C1*x + C0` of
+  `1/sqrt(x)` over the range `[0.5, 1.0]`.
 */
 
 f = 1/sqrt(x);
 dom = [0.5, 1];
+p = remez(f, 1, dom);
+print(p);
 
-c_real = remez(f + 2*x, 0, dom);
-print("real:", c_real);
+/* Extract coefficients so we can print them individually in fixed-point. */
+c0_real = coeff(p, 0);
+c1_real = coeff(p, 1);
 
-c_int = nearestint(c_real * 2^62);
-print("int:", c_int);
+/*
+  Over that range, the slope of the approximation is negative. Since the code
+  uses u64, we express the approximation as `y = C0 - C1 * x`. This means we
+  need unsigned constants, so we take abs of the negative slope.
+*/
+c1_real_abs = abs(c1_real);
+
+/*
+  The implementation stores these constants in Q2.62, so we scale the values by
+  2^62 and round before printing.
+*/
+print("C0_Q62 (Intercept):", nearestint(c0_real * 2^62));
+print("C1_Q62 (Slope):    ", nearestint(c1_real_abs * 2^62));
