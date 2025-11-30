@@ -171,3 +171,6 @@ extern s64 curves_fixed_divide(s64 dividend, unsigned int dividend_frac_bits,
 
 extern u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 			      unsigned int output_frac_bits);
+
+extern u64 curves_fixed_exp2(s64 x, unsigned int frac_bits,
+			     unsigned int output_frac_bits);

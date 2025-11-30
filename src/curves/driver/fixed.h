@@ -802,4 +802,39 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		(u128)y, y_denorm_frac_bits, output_frac_bits));
 }
 
+static inline u64 curves_fixed_exp2(s64 x, unsigned int frac_bits,
+				    unsigned int output_frac_bits)
+{
+	int POLY_DEGREE = 12;
+	u64 COEFFS[] = {
+		9223372036854775809ULL,	 12786308645202655203ULL,
+		17725587574383041906ULL, 16381921401261540299ULL,
+		11355082631786253471ULL, 12593189599434484850ULL,
+		11638579126942535220ULL, 18439395033312365335ULL,
+		12781686105372208973ULL, 15740085723622738413ULL,
+		17608227533117276839ULL, 16306190281335833172ULL,
+		11548001989246909982ULL,
+	};
+	unsigned int FRAC_BITS[] = {
+		63, 64, 66, 68, 70, 73, 76, 80, 83, 87, 91, 95, 98,
+	};
+
+	u64 result;
+
+	s64 int_part = x >> frac_bits;
+	u64 frac_part_norm = (u64)x << (64 - frac_bits);
+
+	u64 acc = COEFFS[POLY_DEGREE];
+
+	for (int i = POLY_DEGREE; i > 0; --i) {
+		u128 prod = (u128)acc * frac_part_norm;
+		int shift = FRAC_BITS[i] - FRAC_BITS[i - 1];
+		acc = (u64)(prod >> (64 + shift)) + COEFFS[i - 1];
+	}
+
+	result = curves_fixed_rescale_u64(acc, 64 - int_part, output_frac_bits);
+
+	return result;
+}
+
 #endif /* _CURVES_FIXED_H */
