@@ -3,8 +3,8 @@
 #
 
 add_executable(integration_tests
-  isqrt_u64_gamut_tests.cpp
-  isqrt_u64_programmatic_tests.cpp
+  isqrt_gamut_tests.cpp
+  isqrt_programmatic_tests.cpp
 )
 target_link_libraries(integration_tests PUBLIC
   lib
