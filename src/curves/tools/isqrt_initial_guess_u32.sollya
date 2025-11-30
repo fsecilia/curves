@@ -1,0 +1,23 @@
+/*
+  SPDX-License-Identifier: MIT
+
+  This script generates the coefficients used in isqrt_u32's fixed-slope linear
+  approximation to `y = 1/sqrt(x) ~= y = C - 2x` to find the initial
+  Newton-Raphson guess. These values minimize the maximum error of the
+  approximation over the range `[0.5, 1.0]`.
+*/
+
+f = 1/sqrt(x);
+dom = [0.5, 1];
+p = remez(f + 2*x, 0, dom);
+print(p);
+
+/* Extract coefficient so we can print it in fixed-point. */
+c0 = coeff(p, 0);
+
+/*
+  The implementation stores the constant in Q2.62, so we scale the value by
+  2^62 and round before printing. We print the absolute value because we're
+  using unsigned types.
+*/
+print("C0_Q62 =", nearestint(abs(c0) * 2^62));
