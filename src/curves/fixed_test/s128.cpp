@@ -7,7 +7,7 @@
   version.
 */
 
-#include <curves/test/test.hpp>
+#include <curves/testing/test.hpp>
 #include <curves/fixed.hpp>
 #include <curves/io.hpp>
 

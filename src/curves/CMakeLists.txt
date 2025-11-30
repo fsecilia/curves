@@ -216,7 +216,7 @@ install(TARGETS lib
 # -----------------------------------------------------------------------------
 
 if (enable_testing)
-  add_subdirectory(test)
+  add_subdirectory(testing)
 
   add_executable(unit_tests ${unit_tests_files})
   target_link_libraries(unit_tests PUBLIC

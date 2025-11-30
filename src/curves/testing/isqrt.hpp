@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <curves/test/test.hpp>
+#include <curves/testing/test.hpp>
 #include <curves/fixed.hpp>
 
 namespace curves {

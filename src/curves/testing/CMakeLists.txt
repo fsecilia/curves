@@ -17,4 +17,3 @@ target_link_libraries(testing_lib PUBLIC
     GTest::gmock
     GTest::gtest
 )
-

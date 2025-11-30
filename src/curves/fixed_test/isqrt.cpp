@@ -4,10 +4,10 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include <curves/test/test.hpp>
+#include <curves/testing/test.hpp>
 #include <curves/fixed.hpp>
 #include <curves/io.hpp>
-#include <curves/test/isqrt.hpp>
+#include <curves/testing/isqrt.hpp>
 #include <limits>
 #include <sstream>
 

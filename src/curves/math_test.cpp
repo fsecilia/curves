@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include <curves/test/test.hpp>
+#include <curves/testing/test.hpp>
 #include <curves/io.hpp>
 
 #pragma GCC diagnostic push
