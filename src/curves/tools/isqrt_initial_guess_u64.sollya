@@ -1,0 +1,27 @@
+/*
+  SPDX-License-Identifier: MIT
+
+  This script generates the coefficients used in isqrt_u64's quadratic
+  approximation to `y = 1/sqrt(x) ~= C0 + -C1*x + C2*x^2` to find the initial
+  Newton-Raphson guess. These values minimize the maximum error of the
+  approximation over the range `[0.5, 1.0]`.
+*/
+
+f = 1/sqrt(x);
+dom = [0.5, 1];
+p = remez(f, 2, dom);
+print(p);
+
+/* Extract coefficients so we can print them in fixed-point. */
+c0 = coeff(p, 0);
+c1 = coeff(p, 1);
+c2 = coeff(p, 2);
+
+/*
+  The implementation stores these constants in Q2.62, so we scale the values by
+  2^62 and round before printing. We print the absolute values because we're
+  using unsigned types.
+*/
+print("C0_Q62 =", nearestint(abs(c0) * 2^62));
+print("C1_Q62 =", nearestint(abs(c1) * 2^62));
+print("C2_Q62 =", nearestint(abs(c2) * 2^62));
