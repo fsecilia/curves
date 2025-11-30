@@ -16,14 +16,14 @@ namespace {
 // curves_fixed_isqrt()
 // ----------------------------------------------------------------------------
 
-struct IsqrtU64Param {
+struct ISqrtParam {
   u64 value;
   unsigned int frac_bits;
   unsigned int output_frac_bits;
   u64 tolerance;
   u64 expected_result;
 
-  friend auto operator<<(std::ostream& out, const IsqrtU64Param& src)
+  friend auto operator<<(std::ostream& out, const ISqrtParam& src)
       -> std::ostream& {
     return out << "{" << src.value << ", " << src.frac_bits << ", "
                << src.output_frac_bits << ", " << src.tolerance << ", "
@@ -31,13 +31,13 @@ struct IsqrtU64Param {
   }
 };
 
-struct IsqrtU64Test : TestWithParam<IsqrtU64Param> {};
+struct ISqrtTest : TestWithParam<ISqrtParam> {};
 
-TEST_P(IsqrtU64Test, expected_result) {
+TEST_P(ISqrtTest, expected_result) {
   const auto expected_result = GetParam().expected_result;
   const auto expected_delta = GetParam().tolerance;
 
-  const auto actual_result = curves_fixed_isqrt_u64(
+  const auto actual_result = curves_fixed_isqrt(
       GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits);
 
   const auto actual_delta = actual_result > expected_result
@@ -51,7 +51,7 @@ TEST_P(IsqrtU64Test, expected_result) {
       << "\nTolerance: " << expected_delta;
 }
 
-const IsqrtU64Param isqrt_u64_smoke_test[] = {
+const ISqrtParam isqrt_smoke_test[] = {
     // Identity Case
     // isqrt(1.0) == 1.0.
     // Basic baseline check.
@@ -146,8 +146,7 @@ const IsqrtU64Param isqrt_u64_smoke_test[] = {
     // round(2^32/sqrt(2*2^30))
     {(2LL << 30), 0, 32, 0, 92682},
 };
-INSTANTIATE_TEST_SUITE_P(smoke_tests, IsqrtU64Test,
-                         ValuesIn(isqrt_u64_smoke_test));
+INSTANTIATE_TEST_SUITE_P(smoke_tests, ISqrtTest, ValuesIn(isqrt_smoke_test));
 
 }  // namespace
 }  // namespace curves

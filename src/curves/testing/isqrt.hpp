@@ -13,14 +13,14 @@
 
 namespace curves {
 
-struct isqrt_u64_test_vector {
+struct isqrt_test_vector {
   u64 x;
   unsigned int frac_bits;
   unsigned int output_frac_bits;
 };
 
-struct isqrt_u64_test_expected_result {
-  isqrt_u64_test_vector test_vector;
+struct isqrt_test_expected_result {
+  isqrt_test_vector test_vector;
 
   u64 y;
   u128 expected;
@@ -29,14 +29,13 @@ struct isqrt_u64_test_expected_result {
   u128 diff;
 };
 
-struct isqrt_u64_test_expected_result create_isqrt_u64_test_expected_result(
-    struct isqrt_u64_test_vector test_vector);
+struct isqrt_test_expected_result create_isqrt_test_expected_result(
+    struct isqrt_test_vector test_vector);
 
-void isqrt_u64_test_verify_result(
-    struct isqrt_u64_test_expected_result expected_result);
+void isqrt_test_verify_result(
+    struct isqrt_test_expected_result expected_result);
 
-void isqrt_u64_test_verify_test_vector(
-    struct isqrt_u64_test_vector test_vector);
+void isqrt_test_verify_test_vector(struct isqrt_test_vector test_vector);
 
 void isqrt_test_verify_u64(u64 x, unsigned int frac_bits,
                            unsigned int output_frac_bits);

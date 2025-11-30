@@ -12,7 +12,7 @@
 namespace curves {
 namespace {
 
-TEST(isqrt_u64_automated_tests, run_automated_tests) {
+TEST(isqrt_automated_tests, run_automated_tests) {
   // Small integer, exhaustive.
   //
   // Test every integer from 1 to 1000000.
@@ -42,9 +42,9 @@ TEST(isqrt_u64_automated_tests, run_automated_tests) {
   for (u64 i = 0; i < 1000; ++i) {
     u64 start = 7001 * i + 1;
     u64 x = start;
-    u64 prev = curves_fixed_isqrt_u64(x++, 0, 32);
+    u64 prev = curves_fixed_isqrt(x++, 0, 32);
     for (u64 j = 0; j < 1000; ++j) {
-      u64 cur = curves_fixed_isqrt_u64(x, 0, 32);
+      u64 cur = curves_fixed_isqrt(x, 0, 32);
       ASSERT_GE(prev, cur) << "Monotonicity violated at " << x;
       ++x;
       prev = cur;

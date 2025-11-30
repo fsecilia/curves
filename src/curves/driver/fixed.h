@@ -644,7 +644,7 @@ static inline s64 curves_fixed_divide(s64 dividend,
 // ----------------------------------------------------------------------------
 
 /**
- * curves_fixed_isqrt_u64() - Newton-Raphson solver for inverse sqrt.
+ * curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
  *
  * This function solves `y = 1/sqrt(x)` using Newton-Raphson. We define a
  * function, `f(y)`, with the same roots as y, start with an initial guess near
@@ -688,8 +688,8 @@ static inline s64 curves_fixed_divide(s64 dividend,
  *
  * Returns: inverse sqrt
  */
-static inline u64 curves_fixed_isqrt_u64(u64 x, unsigned int frac_bits,
-					 unsigned int output_frac_bits)
+static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
+				     unsigned int output_frac_bits)
 {
 	// Quadratic approximation coefficients.
 	//

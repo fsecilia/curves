@@ -25,9 +25,9 @@ namespace curves {
 
   Therefore, the check tolerance must be at least y.
 */
-struct isqrt_u64_test_expected_result create_isqrt_u64_test_expected_result(
-    struct isqrt_u64_test_vector test_vector) {
-  struct isqrt_u64_test_expected_result result;
+struct isqrt_test_expected_result create_isqrt_test_expected_result(
+    struct isqrt_test_vector test_vector) {
+  struct isqrt_test_expected_result result;
 
   result.test_vector = test_vector;
   if (test_vector.x == 0) {
@@ -40,8 +40,8 @@ struct isqrt_u64_test_expected_result create_isqrt_u64_test_expected_result(
   }
 
   // Get nominal result from sut.
-  result.y = curves_fixed_isqrt_u64(test_vector.x, test_vector.frac_bits,
-                                    test_vector.output_frac_bits);
+  result.y = curves_fixed_isqrt(test_vector.x, test_vector.frac_bits,
+                                test_vector.output_frac_bits);
 
   // Calculate y^2.
   result.actual = (u128)result.y * result.y;
@@ -75,8 +75,8 @@ struct isqrt_u64_test_expected_result create_isqrt_u64_test_expected_result(
   return result;
 }
 
-void isqrt_u64_test_verify_result(
-    struct isqrt_u64_test_expected_result expected_result) {
+void isqrt_test_verify_result(
+    struct isqrt_test_expected_result expected_result) {
   // u128 doesn't print to a gtest Message using our ostream inserter. This is
   // the least bad workaround to print the contents when the test fails.
   std::ostringstream out;
@@ -95,16 +95,14 @@ void isqrt_u64_test_verify_result(
   ASSERT_LE(expected_result.diff, expected_result.tolerance) << out.str();
 }
 
-void isqrt_u64_test_verify_test_vector(
-    struct isqrt_u64_test_vector test_vector) {
-  isqrt_u64_test_verify_result(
-      create_isqrt_u64_test_expected_result(test_vector));
+void isqrt_test_verify_test_vector(struct isqrt_test_vector test_vector) {
+  isqrt_test_verify_result(create_isqrt_test_expected_result(test_vector));
 }
 
 void isqrt_test_verify_u64(u64 x, unsigned int frac_bits,
                            unsigned int output_frac_bits) {
-  struct isqrt_u64_test_vector test_vector{x, frac_bits, output_frac_bits};
-  isqrt_u64_test_verify_test_vector(test_vector);
+  struct isqrt_test_vector test_vector{x, frac_bits, output_frac_bits};
+  isqrt_test_verify_test_vector(test_vector);
 }
 
 }  // namespace curves
