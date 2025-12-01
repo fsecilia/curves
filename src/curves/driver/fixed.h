@@ -802,37 +802,54 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		(u128)y, y_denorm_frac_bits, output_frac_bits));
 }
 
-static inline u64 curves_fixed_exp2(s64 x, unsigned int frac_bits,
+static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 				    unsigned int output_frac_bits)
 {
 	int POLY_DEGREE = 12;
 	u64 COEFFS[] = {
-		9223372036854775809ULL,	 12786308645202655203ULL,
-		17725587574383041906ULL, 16381921401261540299ULL,
-		11355082631786253471ULL, 12593189599434484850ULL,
-		11638579126942535220ULL, 18439395033312365335ULL,
-		12781686105372208973ULL, 15740085723622738413ULL,
-		17608227533117276839ULL, 16306190281335833172ULL,
-		11548001989246909982ULL,
+		4611686018427387904ULL, 6393154322601327706ULL,
+		8862793787191508053ULL, 8190960700631508079ULL,
+		5677541315869497503ULL, 6296594800652510755ULL,
+		5819289539290670308ULL, 9219698356951991307ULL,
+		6390833165122234360ULL, 7870198308678324976ULL,
+		8802550243955206649ULL, 8162192809866154575ULL,
+		5762355121894017757ULL,
 	};
 	unsigned int FRAC_BITS[] = {
-		63, 64, 66, 68, 70, 73, 76, 80, 83, 87, 91, 95, 98,
+		62, 63, 65, 67, 69, 72, 75, 79, 82, 86, 90, 94, 97,
 	};
 
-	u64 result;
+	u64 result, frac_part_norm, poly_res;
+	s64 int_part = x >> x_frac_bits;
+	s64 total_shift;
 
-	s64 int_part = x >> frac_bits;
-	u64 frac_part_norm = (u64)x << (64 - frac_bits);
-
-	u64 acc = COEFFS[POLY_DEGREE];
-
-	for (int i = POLY_DEGREE; i > 0; --i) {
-		u128 prod = (u128)acc * frac_part_norm;
-		int shift = FRAC_BITS[i] - FRAC_BITS[i - 1];
-		acc = (u64)(prod >> (64 + shift)) + COEFFS[i - 1];
+	if (likely(x_frac_bits > 0)) {
+		frac_part_norm = (u64)x << (64 - x_frac_bits);
+	} else {
+		frac_part_norm = 0;
 	}
 
-	result = curves_fixed_rescale_u64(acc, 64 - int_part, output_frac_bits);
+	poly_res = COEFFS[POLY_DEGREE];
+	for (int i = POLY_DEGREE; i > 0; --i) {
+		u128 prod = (u128)poly_res * frac_part_norm;
+		int shift = FRAC_BITS[i] - FRAC_BITS[i - 1];
+		poly_res = (u64)(prod >> (64 + shift)) + COEFFS[i - 1];
+	}
+
+	total_shift = (s64)output_frac_bits - FRAC_BITS[0] + int_part;
+	if (total_shift > 0) {
+		if (unlikely(total_shift >= 64))
+			return U64_MAX;
+		result = __curves_fixed_shl_sat_u64(poly_res,
+						    (unsigned int)total_shift);
+	} else if (total_shift < 0) {
+		unsigned int rshift = (unsigned int)(-total_shift);
+		if (unlikely(rshift >= 64))
+			return 0;
+		result = __curves_fixed_shr_rne_u64(poly_res, rshift);
+	} else {
+		result = poly_res;
+	}
 
 	return result;
 }
