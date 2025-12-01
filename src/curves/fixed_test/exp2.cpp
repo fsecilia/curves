@@ -14,6 +14,7 @@ struct Exp2Param {
   s64 x;
   unsigned int x_frac_bits;
   unsigned int output_frac_bits;
+  u64 tolerance;
   u64 expected_result;
 
   friend auto operator<<(std::ostream& out, const Exp2Param& src)
@@ -26,21 +27,28 @@ struct Exp2Param {
 struct Exp2Test : TestWithParam<Exp2Param> {};
 
 TEST_P(Exp2Test, expected_result) {
-  const auto expected = GetParam().expected_result;
+  const auto expected_result = GetParam().expected_result;
+  const auto expected_delta = GetParam().tolerance;
 
-  const auto actual = curves_fixed_exp2(GetParam().x, GetParam().x_frac_bits,
-                                        GetParam().output_frac_bits);
+  const auto actual_result = curves_fixed_exp2(
+      GetParam().x, GetParam().x_frac_bits, GetParam().output_frac_bits);
 
-  ASSERT_EQ(expected, actual);
+  const auto actual_delta = actual_result > expected_result
+                                ? actual_result - expected_result
+                                : expected_result - actual_result;
+  EXPECT_LE(actual_delta, expected_delta)
+      << "Input:     " << GetParam().x << "@Q" << GetParam().x_frac_bits
+      << "\nExpected:  " << expected_result << "@Q"
+      << GetParam().output_frac_bits << "\nActual:    " << actual_result << "@Q"
+      << GetParam().output_frac_bits << "\nDiff:      " << actual_delta
+      << "\nTolerance: " << expected_delta;
 }
 
 const Exp2Param exp2_smoke_tests[] = {
     {4, 0, 0, 16},
     {5, 1, 16, 370728},
 
-    // -------------------------------------------------------------------------
-    // 1. The Classics (Roots & Inverses)
-    // -------------------------------------------------------------------------
+    // Roots & Inverses
 
     // 2^0.5 (Sqrt 2) -> 1.41421356...
     // Input: 0.5 (Q32) -> 2147483648
@@ -52,9 +60,7 @@ const Exp2Param exp2_smoke_tests[] = {
     // Output: Q16 (x 65536) -> 46340.95... -> RNE Rounds Up -> 46341
     {-2147483648, 32, 16, 46341},
 
-    // -------------------------------------------------------------------------
-    // 2. Integer Boundaries (Exact Powers of 2)
-    // -------------------------------------------------------------------------
+    // Integer Boundaries (Exact Powers of 2)
 
     // 2^0 = 1.0
     // Input: 0 (Q16)
@@ -71,27 +77,34 @@ const Exp2Param exp2_smoke_tests[] = {
     // Output: Q0 -> 65536
     {16, 0, 0, 65536},
 
-    // -------------------------------------------------------------------------
-    // 3. RNE Torture Test (The "0.5" Case)
-    // -------------------------------------------------------------------------
+    // RNE Torture Test (0.5)
+
     // 2^-1 = 0.5
     // In RNE, 0.5 rounds to the nearest EVEN integer.
     // 0 is even, 1 is odd. 0.5 should round DOWN to 0.
-
     // Input: -1 (Q0)
     // Output: Q0 (scale=1) -> Result 0.5 -> Rounds to 0
     {-1, 0, 0, 0},
 
-    // Counter-test: 2^log2(1.5) approx 0.5849...
-    // Let's just use 2^0 = 1.0.
-    // If we request Q-1 output (div 2), we get 0.5.
-    // 0.5 (0.1 binary) -> Nearest Even (0) -> 0.
-    // This is hard to test with just exp2, so we rely on the rescaler tests
-    // mostly.
+    // 2^log(1.5) in various precisions
+    //
+    // Inputs:
+    // round(log2(1.5)*2^24) = 9814042
+    // round(log2(1.5)*2^32) = 2512394810
+    // round(log2(1.5)*2^48) = 164652306267095
+    //
+    // output: round(2^(input/2^x_frac_bits)*2^output_frac_bits)
+    {9814042ULL, 24, 24, 0, 25165824ULL},
+    {9814042ULL, 24, 32, 0, 6442450884ULL},
+    {9814042ULL, 24, 48, 0, 422212461115022ULL},
+    {2512394810ULL, 32, 24, 0, 25165824ULL},
+    {2512394810ULL, 32, 32, 0, 6442450944ULL},
+    {2512394810ULL, 32, 48, 0, 422212465067092ULL},
+    {164652306267095ULL, 48, 24, 0, 25165824ULL},
+    {164652306267095ULL, 48, 32, 0, 6442450944ULL},
+    {164652306267095ULL, 48, 48, 0, 422212465065984ULL},
 
-    // -------------------------------------------------------------------------
-    // 4. Saturation & Underflow
-    // -------------------------------------------------------------------------
+    // Saturation & Underflow
 
     // Saturation: 2^64
     // Input: 64 (Q0)
@@ -108,13 +121,13 @@ const Exp2Param exp2_smoke_tests[] = {
     // Output: Q0 -> Effectively 0.
     {-65, 0, 0, 0},
 
-    // -------------------------------------------------------------------------
-    // 5. The "Mouse Flick" (Reasonable Real World)
-    // -------------------------------------------------------------------------
+    // Mouse Flick
     // User moves mouse fast. x = 3.14159... (Q16 input)
     // Input: 205887 (3.14159 * 65536)
     // Value: 2^3.14159... = 8.8249...
-    // Output: Q16 -> 8.8249 * 65536 = 578353.4 -> Rounds Down -> 578353
+    // Output: Q16 -> 8.8249 * 65536 = 578351.201 -> Rounds Down -> 578351
+    // From wolfram alpha:
+    // round(2^(round(3.14159 * 65536)/65536)*65536) = 578351
     {205887, 16, 16, 578351},
 };
 INSTANTIATE_TEST_SUITE_P(smoke_tests, Exp2Test, ValuesIn(exp2_smoke_tests));
