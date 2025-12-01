@@ -808,11 +808,23 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 		(u128)y, y_denorm_frac_bits, output_frac_bits));
 }
 
+/*
+ * curves_fixed_exp2() - minimax approximation of 2^x.
+ *
+ * Input: s64 in variable-precision Q format.
+ * Range: [-inf, +inf], saturates to 0 or U64_MAX outside of (-64, 64)
+ *
+ * Returns 2^x with requested precision.
+ */
 static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 				    unsigned int output_frac_bits)
 {
+	u64 result, frac_part_norm;
+	s64 int_part, final_shift;
+
+	// Output from tools/exp2.sollya.
 	int poly_degree = 12;
-	u64 poly_coefs[] = {
+	static const u64 poly_coeffs[] = {
 		4611686018427387904ULL, 6393154322601327706ULL,
 		8862793787191508053ULL, 8190960700631508079ULL,
 		5677541315869497503ULL, 6296594800652510755ULL,
@@ -821,43 +833,68 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 		8802550243955206649ULL, 8162192809866154575ULL,
 		5762355121894017757ULL,
 	};
-	unsigned int poly_frac_bits[] = {
+	static const unsigned int poly_frac_bits[] = {
 		62, 63, 65, 67, 69, 72, 75, 79, 82, 86, 90, 94, 97,
 	};
 
-	u64 result, frac_part_norm, poly_res;
-	s64 int_part = x >> x_frac_bits;
-	s64 total_shift;
+	// Validate.
 
+	if (unlikely(x_frac_bits >= 64 || output_frac_bits >= 64)) {
+		// Result overflows for all inputs.
+		if (output_frac_bits >= 64)
+			return U64_MAX;
+
+		// Result would be 2^0 for all inputs.
+		return 1ULL << output_frac_bits;
+	}
+
+	// Reduce.
+
+	// Save int part in Q64.0. This is part of the final shift.
+	int_part = x >> x_frac_bits;
+	if (unlikely(int_part > 65))
+		return U64_MAX;
+	if (unlikely(int_part < -65))
+		return 0;
+
+	// Normalize frac part into a Q0.64. The range is strictly [0, 1).
 	if (likely(x_frac_bits > 0)) {
 		frac_part_norm = (u64)x << (64 - x_frac_bits);
 	} else {
 		frac_part_norm = 0;
 	}
 
-	poly_res = poly_coefs[poly_degree];
+	// Approximate.
+
+	// Apply Horner's method, but since the precision varies per
+	// coefficient, shift the difference between them after each step.
+	result = poly_coeffs[poly_degree];
 	for (int i = poly_degree; i > 0; --i) {
-		u128 prod = (u128)poly_res * frac_part_norm;
-		int shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
-		poly_res = (u64)(prod >> (64 + shift)) + poly_coefs[i - 1];
+		u128 product = (u128)result * frac_part_norm;
+		int relative_shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
+		int total_shift = relative_shift + 64;
+		result = (u64)(product >> total_shift) + poly_coeffs[i - 1];
 	}
 
-	total_shift = (s64)output_frac_bits - poly_frac_bits[0] + int_part;
-	if (total_shift > 0) {
-		if (unlikely(total_shift >= 64))
+	// Restore.
+
+	// At the end of the Horner's loop, the number of fractional bits in
+	// result is the number of fractional bits of coefficient 0. Shift
+	// the remaining int part, then shift into the final output precision.
+	final_shift = (s64)output_frac_bits - (s64)poly_frac_bits[0] + int_part;
+	if (final_shift > 0) {
+		unsigned int shl = (unsigned int)final_shift;
+		if (unlikely(shl >= 64))
 			return U64_MAX;
-		result = __curves_fixed_shl_sat_u64(poly_res,
-						    (unsigned int)total_shift);
-	} else if (total_shift < 0) {
-		unsigned int rshift = (unsigned int)(-total_shift);
-		if (unlikely(rshift >= 64))
+		return __curves_fixed_shl_sat_u64(result, final_shift);
+	} else if (final_shift < 0) {
+		unsigned int shr = (unsigned int)(-final_shift);
+		if (unlikely(shr >= 64))
 			return 0;
-		result = __curves_fixed_shr_rne_u64(poly_res, rshift);
+		return __curves_fixed_shr_rne_u64(result, shr);
 	} else {
-		result = poly_res;
+		return result;
 	}
-
-	return result;
 }
 
 #endif /* _CURVES_FIXED_H */
