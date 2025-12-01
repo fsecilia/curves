@@ -44,8 +44,8 @@ for i from 0 to poly_degree do {
 // Call fpminimax() with optimal formats.
 poly_fixed = fpminimax(f, poly_degree, formats, domain, fixed, absolute);
 
-print("int POLY_DEGREE =", poly_degree, ";");
-print("u64 COEFFS[] = {");
+print("int poly_degree =", poly_degree, ";");
+print("u64 poly_coeffs[] = {");
 for i from 0 to poly_degree do {
   c = coeff(poly_fixed, i);
   c_rounded = nearestint(c*2^formats[i]);
@@ -53,7 +53,7 @@ for i from 0 to poly_degree do {
 };
 print("};");
 
-print("unsigned int FRAC_BITS[] = {");
+print("unsigned int poly_frac_bits[] = {");
 for i from 0 to poly_degree do {
   print(formats[i], ",");
 };

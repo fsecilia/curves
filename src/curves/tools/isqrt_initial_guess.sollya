@@ -22,6 +22,6 @@ c2 = coeff(p, 2);
   2^62 and round before printing. We print the absolute values because we're
   using unsigned types.
 */
-print("C0_Q62 =", nearestint(abs(c0) * 2^62));
-print("C1_Q62 =", nearestint(abs(c1) * 2^62));
-print("C2_Q62 =", nearestint(abs(c2) * 2^62));
+print("c0_q62 =", nearestint(abs(c0) * 2^62));
+print("c1_q62 =", nearestint(abs(c1) * 2^62));
+print("c2_q62 =", nearestint(abs(c2) * 2^62));

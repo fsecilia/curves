@@ -765,14 +765,14 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 	// The constants are in Q2.62, so they're scaled by 2^62 and rounded.
 	// See src/curves/tools/isqrt_initial_guess.sollya for more information
 	// about how these values are generated.
-	u64 C0_Q62 = 10354071711462988194ULL;
-	u64 C1_Q62 = 9674659108971248202ULL;
-	u64 C2_Q62 = 3949952137299739940ULL;
+	u64 c0_q62 = 10354071711462988194ULL;
+	u64 c1_q62 = 9674659108971248202ULL;
+	u64 c2_q62 = 3949952137299739940ULL;
 
-	unsigned int X_NORM_FRAC_BITS = 64;
-	unsigned int Y_FRAC_BITS = 62;
-	u64 THREE_Q62 = 3ULL << 62;
-	u64 SQRT2_Q62 = 0x5A827999FCEF3242ULL;
+	unsigned int x_norm_frac_bits = 64;
+	unsigned int y_frac_bits = 62;
+	u64 three_q62 = 3ULL << 62;
+	u64 sqrt2_q62 = 0x5A827999FCEF3242ULL;
 
 	unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
 	u64 c1, c2, x_norm, y, yy, factor;
@@ -786,23 +786,23 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 	x_norm_exponent = x_lz + frac_bits;
 
 	// Approximate 1/sqrt for initial guess using Horner's method.
-	c2 = (u64)(((u128)x_norm * C2_Q62) >> X_NORM_FRAC_BITS);
-	c1 = (u64)(((u128)x_norm * (C1_Q62 - c2)) >> X_NORM_FRAC_BITS);
-	y = C0_Q62 - c1;
+	c2 = (u64)(((u128)x_norm * c2_q62) >> x_norm_frac_bits);
+	c1 = (u64)(((u128)x_norm * (c1_q62 - c2)) >> x_norm_frac_bits);
+	y = c0_q62 - c1;
 
 	// Newton-Raphson.
 	for (int i = 0; i < 3; ++i) {
-		yy = (u64)(((u128)y * y) >> Y_FRAC_BITS);
-		factor = ((u128)x_norm * yy) >> X_NORM_FRAC_BITS;
-		y = (u64)(((u128)y * (THREE_Q62 - factor)) >>
-			  (Y_FRAC_BITS + 1));
+		yy = (u64)(((u128)y * y) >> y_frac_bits);
+		factor = ((u128)x_norm * yy) >> x_norm_frac_bits;
+		y = (u64)(((u128)y * (three_q62 - factor)) >>
+			  (y_frac_bits + 1));
 	}
 
 	// Denormalize.
 	if (x_norm_exponent & 1)
-		y = (u64)(((u128)y * SQRT2_Q62) >> Y_FRAC_BITS);
+		y = (u64)(((u128)y * sqrt2_q62) >> y_frac_bits);
 	y_denorm_frac_bits =
-		Y_FRAC_BITS + (X_NORM_FRAC_BITS >> 1) - (x_norm_exponent >> 1);
+		y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
 
 	return curves_narrow_u128_u64(curves_fixed_rescale_u128(
 		(u128)y, y_denorm_frac_bits, output_frac_bits));
@@ -811,8 +811,8 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 				    unsigned int output_frac_bits)
 {
-	int POLY_DEGREE = 12;
-	u64 COEFFS[] = {
+	int poly_degree = 12;
+	u64 poly_coefs[] = {
 		4611686018427387904ULL, 6393154322601327706ULL,
 		8862793787191508053ULL, 8190960700631508079ULL,
 		5677541315869497503ULL, 6296594800652510755ULL,
@@ -821,7 +821,7 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 		8802550243955206649ULL, 8162192809866154575ULL,
 		5762355121894017757ULL,
 	};
-	unsigned int FRAC_BITS[] = {
+	unsigned int poly_frac_bits[] = {
 		62, 63, 65, 67, 69, 72, 75, 79, 82, 86, 90, 94, 97,
 	};
 
@@ -835,14 +835,14 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 		frac_part_norm = 0;
 	}
 
-	poly_res = COEFFS[POLY_DEGREE];
-	for (int i = POLY_DEGREE; i > 0; --i) {
+	poly_res = poly_coefs[poly_degree];
+	for (int i = poly_degree; i > 0; --i) {
 		u128 prod = (u128)poly_res * frac_part_norm;
-		int shift = FRAC_BITS[i] - FRAC_BITS[i - 1];
-		poly_res = (u64)(prod >> (64 + shift)) + COEFFS[i - 1];
+		int shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
+		poly_res = (u64)(prod >> (64 + shift)) + poly_coefs[i - 1];
 	}
 
-	total_shift = (s64)output_frac_bits - FRAC_BITS[0] + int_part;
+	total_shift = (s64)output_frac_bits - poly_frac_bits[0] + int_part;
 	if (total_shift > 0) {
 		if (unlikely(total_shift >= 64))
 			return U64_MAX;
