@@ -857,7 +857,9 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 	if (unlikely(int_part < -65))
 		return 0;
 
-	// Normalize frac part into a Q0.64. The range is strictly [0, 1).
+	// Normalize frac part into a Q0.64.
+	// The input domain is now strictly [0, 1), and the output range
+	// is now [1, 2).
 	if (likely(x_frac_bits > 0)) {
 		frac_part_norm = (u64)x << (64 - x_frac_bits);
 	} else {
