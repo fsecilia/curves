@@ -1,8 +1,7 @@
 /*
   SPDX-License-Identifier: MIT
 
-  This script generates both the coefficients and their frac_bits for exp2 in
-  Q0.64.
+  This script generates both the coefficients and their frac_bits for exp2.
 */
 
 // Use high precision internals.
