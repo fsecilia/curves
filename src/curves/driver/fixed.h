@@ -114,7 +114,7 @@ static inline u64 __curves_fixed_shr_rne_u64(u64 value, unsigned int shift)
 
 // Shifts left, saturating if the value overflows.
 // Preconditions:
-//   - shift must be in range [0, 64]
+//   - shift must be in range [0, 63]
 //   - caller is responsible for validating shift range
 static inline u64 __curves_fixed_shl_sat_u64(u64 value, unsigned int shift)
 {
@@ -177,6 +177,9 @@ static inline s128 __curves_fixed_shr_rne_s128(s128 value, unsigned int shift)
 }
 
 // Shifts left, saturating if the value overflows.
+// Preconditions:
+//   - shift must be in range [0, 127]
+//   - caller is responsible for validating shift range
 static inline s128 __curves_fixed_shl_sat_s128(s128 value, unsigned int shift)
 {
 	s128 max_safe_val;
@@ -243,6 +246,9 @@ static inline u128 __curves_fixed_shr_rne_u128(u128 value, unsigned int shift)
 }
 
 // Shifts left, saturating if the value overflows.
+// Preconditions:
+//   - shift must be in range [0, 127]
+//   - caller is responsible for validating shift range
 static inline u128 __curves_fixed_shl_sat_u128(u128 value, unsigned int shift)
 {
 	u128 max_safe_val;
