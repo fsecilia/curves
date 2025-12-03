@@ -899,4 +899,133 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 	}
 }
 
+static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
+				    unsigned int output_frac_bits)
+{
+	s128 final_product, frac_part_128;
+	int final_relative_shift, final_total_shift;
+	s64 result, int_part;
+	u64 frac_part_norm;
+	unsigned int lz;
+	const s64 *poly_coeffs;
+	const unsigned int *poly_frac_bits;
+
+	// Output from tools/log2.sollya.
+	int poly_degree = 16;
+	u64 partition_location_q0_64 = 7640891576956012809ULL;
+	s64 left_partition_coeffs[] = {
+		6093175947598492447LL,	6653256548922160305LL,
+		-6653256548921715911LL, 8871008731812708132LL,
+		-6653256544795756153LL, 5322605115185017382LL,
+		-8871003807772005685LL, 7603653516810783527LL,
+		-6652572204271887663LL, 5908921139061546528LL,
+		-5294165767244507089LL, 4717864194583224913LL,
+		-8086856981939546874LL, 6244735177374604414LL,
+		-7833608412584114077LL, 6806730242932753973LL,
+		-5940500300231843286LL
+	};
+	unsigned int left_partition_frac_bits[] = {
+		125, 62, 63, 64, 64, 64, 65, 65, 65,
+		65,  65, 65, 66, 66, 67, 68, 70,
+	};
+	s64 right_partition_coeffs[] = {
+		6739100023368204010LL,	6653253798875020049LL,
+		-6653185699310360866LL, 8869866778197197101LL,
+		-6646795447753137798LL, 5295295920437174688LL,
+		-8691753944558715263LL, 7134625931877251836LL,
+		-5654501978753014392LL, 8307489851422077469LL,
+		-5418666455166496471LL, 6012963751398638582LL,
+		-5429313523954138885LL, 7576323199933782421LL,
+		-7607609101430545080LL, 4867229744634216229LL,
+		-5940572177251666521LL,
+	};
+	unsigned int right_partition_frac_bits[] = {
+		88, 62, 63, 64, 64, 64, 65, 65, 65,
+		66, 66, 67, 68, 70, 72, 74, 78,
+	};
+
+	// Validate.
+
+	if (unlikely(x == 0 || x_frac_bits >= 64 || output_frac_bits >= 64)) {
+		if (x == 0)
+			// Result is undefined, but approaches -infinity.
+			return S64_MIN;
+
+		if (x_frac_bits >= 64)
+			// Input overflowed.
+			return S64_MAX;
+
+		// Result overflows for all inputs.
+		return S64_MAX;
+	}
+
+	// Reduce.
+
+	lz = curves_clz64(x);
+
+	// Extract int part.
+	int_part = 63LL - (s64)lz - (s64)x_frac_bits;
+
+	// Shift MSB all the way to the left to normalize mantissa to [1, 2),
+	// then subtract 1 for [0, 1).
+	frac_part_norm = ((x << lz) - (1LL << 63)) << 1;
+
+	// Approximate.
+
+	// Choose partition.
+	if (frac_part_norm < partition_location_q0_64) {
+		poly_coeffs = left_partition_coeffs;
+		poly_frac_bits = left_partition_frac_bits;
+	} else {
+		poly_coeffs = right_partition_coeffs;
+		poly_frac_bits = right_partition_frac_bits;
+	}
+
+	// Apply Horner's method, but since the precision varies per
+	// coefficient, shift the difference between them after each step.
+	// Stop before the final iteration so we can keep it in 128 bits.
+	result = poly_coeffs[poly_degree];
+	for (int i = poly_degree; i > 1; --i) {
+		s128 product = (s128)result * (s128)frac_part_norm;
+		int relative_shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
+		int total_shift = relative_shift + 64;
+		result = (s64)(product >> total_shift) + poly_coeffs[i - 1];
+	}
+
+	// Final iteration in 128-bit space
+	final_product = (s128)result * (s128)frac_part_norm;
+	final_relative_shift = poly_frac_bits[1] - poly_frac_bits[0];
+	final_total_shift = final_relative_shift + 64;
+	frac_part_128 =
+		(final_product >> final_total_shift) + (s128)poly_coeffs[0];
+
+	// Restore.
+
+	// Scale integer part to output precision.
+	s64 int_scaled = __curves_fixed_shl_sat_s64(int_part, output_frac_bits);
+
+	// If the integer part saturated, the result must also saturate
+	// Don't add the fractional part as it would move away from the limit
+	if (unlikely(int_scaled == S64_MAX || int_scaled == S64_MIN)) {
+		// Check if saturation actually occurred by comparing to the
+		// unshifted bound int_part << output_frac_bits would saturate
+		// if:
+		//   int_part > S64_MAX >> output_frac_bits, or
+		//   int_part < S64_MIN >> output_frac_bits
+		s64 max_safe = S64_MAX >> output_frac_bits;
+		s64 min_safe = S64_MIN >> output_frac_bits;
+
+		if (int_part > max_safe || int_part < min_safe) {
+			// Saturation occurred, return the saturated value
+			return int_scaled;
+		}
+	}
+
+	s64 frac_scaled = (s64)curves_fixed_rescale_s128(
+		frac_part_128, poly_frac_bits[0], output_frac_bits);
+
+	// Combine with saturating add
+	return curves_add_saturate(int_scaled, frac_scaled);
+}
+
 #endif /* _CURVES_FIXED_H */

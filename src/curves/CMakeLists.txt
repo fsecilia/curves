@@ -22,6 +22,7 @@ list(APPEND unit_tests_files
   fixed_test/divide.cpp
   fixed_test/exp2.cpp
   fixed_test/isqrt.cpp
+  fixed_test/log2.cpp
   fixed_test/multiply.cpp
   fixed_test/s128.cpp
   fixed_test/s64.cpp
