@@ -55,7 +55,7 @@ procedure print_poly(poly_fixed, formats, coeffs_label, frac_bits_label) {
 
   poly_degree = degree(poly_fixed);
 
-  print("s64", coeffs_label, "[] = {");
+  print("static const s64", coeffs_label, "[] = {");
   for i from 0 to poly_degree do {
     c = coeff(poly_fixed, i);
     c_rounded = nearestint(c*2^formats[i]);
@@ -63,7 +63,7 @@ procedure print_poly(poly_fixed, formats, coeffs_label, frac_bits_label) {
   };
   print("};");
 
-  print("unsigned int", frac_bits_label, "[] = {");
+  print("static const unsigned int", frac_bits_label, "[] = {");
   for i from 0 to poly_degree do {
     print(formats[i], ",");
   };

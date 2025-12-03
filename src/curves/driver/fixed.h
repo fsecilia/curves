@@ -950,7 +950,7 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 	// Output from tools/log2.sollya.
 	int poly_degree = 16;
 	u64 partition_location_q0_64 = 7640891576956012809ULL;
-	s64 left_partition_coeffs[] = {
+	static const s64 left_partition_coeffs[] = {
 		6093175947598492447LL,	6653256548922160305LL,
 		-6653256548921715911LL, 8871008731812708132LL,
 		-6653256544795756153LL, 5322605115185017382LL,
@@ -961,11 +961,11 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 		-7833608412584114077LL, 6806730242932753973LL,
 		-5940500300231843286LL
 	};
-	unsigned int left_partition_coeff_frac_bits[] = {
+	static const unsigned int left_partition_coeff_frac_bits[] = {
 		125, 62, 63, 64, 64, 64, 65, 65, 65,
 		65,  65, 65, 66, 66, 67, 68, 70,
 	};
-	s64 right_partition_coeffs[] = {
+	static const s64 right_partition_coeffs[] = {
 		6739100023368204010LL,	6653253798875020049LL,
 		-6653185699310360866LL, 8869866778197197101LL,
 		-6646795447753137798LL, 5295295920437174688LL,
@@ -976,7 +976,7 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 		-7607609101430545080LL, 4867229744634216229LL,
 		-5940572177251666521LL,
 	};
-	unsigned int right_partition_coeff_frac_bits[] = {
+	static const unsigned int right_partition_coeff_frac_bits[] = {
 		88, 62, 63, 64, 64, 64, 65, 65, 65,
 		66, 66, 67, 68, 70, 72, 74, 78,
 	};

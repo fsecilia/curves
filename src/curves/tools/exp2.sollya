@@ -44,7 +44,7 @@ for i from 0 to poly_degree do {
 poly_fixed = fpminimax(f, poly_degree, formats, domain, fixed, absolute);
 
 print("int poly_degree =", poly_degree, ";");
-print("u64 poly_coeffs[] = {");
+print("static const u64 poly_coeffs[] = {");
 for i from 0 to poly_degree do {
   c = coeff(poly_fixed, i);
   c_rounded = nearestint(c*2^formats[i]);
@@ -52,7 +52,7 @@ for i from 0 to poly_degree do {
 };
 print("};");
 
-print("unsigned int poly_frac_bits[] = {");
+print("static const unsigned int poly_frac_bits[] = {");
 for i from 0 to poly_degree do {
   print(formats[i], ",");
 };
