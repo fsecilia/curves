@@ -90,5 +90,5 @@ if (degree(left_partition) != degree(right_partition)) then {
 print("int poly_degree =", degree(left_partition), ";");
 
 print("u64 partition_location_q0_64 =", nearestint(partition_location*2^64), ";");
-print_poly(left_partition, left_partition_formats, "left_partition_coeffs", "left_partition_frac_bits");
-print_poly(right_partition, right_partition_formats, "right_partition_coeffs", "right_partition_frac_bits");
+print_poly(left_partition, left_partition_formats, "left_partition_coeffs", "left_partition_coeff_frac_bits");
+print_poly(right_partition, right_partition_formats, "right_partition_coeffs", "right_partition_coeff_frac_bits");
