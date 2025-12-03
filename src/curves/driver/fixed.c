@@ -174,3 +174,11 @@ extern u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 
 extern u64 curves_fixed_exp2(s64 x, unsigned int frac_bits,
 			     unsigned int output_frac_bits);
+
+extern s64
+__curves_fixed_log2_eval_poly(unsigned int output_frac_bits, int poly_degree,
+			      s64 int_scaled, u64 frac_part_norm,
+			      const s64 *poly_coeffs,
+			      const unsigned int *poly_coeff_frac_bits);
+extern s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
+			     unsigned int output_frac_bits);

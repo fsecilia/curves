@@ -996,11 +996,9 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 		return S64_MAX;
 	}
 
-	// Reduce.
-
 	lz = curves_clz64(x);
 
-	// Extract int part.
+	// Extract and range-check int part.
 	int_part = 63LL - (s64)lz - (s64)x_frac_bits;
 	int_scaled = __curves_fixed_shl_sat_s64(int_part, output_frac_bits);
 	if (unlikely(int_scaled == S64_MAX || int_scaled == S64_MIN)) {
@@ -1018,6 +1016,7 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 		}
 	}
 
+	// Reduce frac part.
 	// Shift MSB all the way to the left to normalize mantissa to [1, 2),
 	// then subtract 1 for [0, 1).
 	frac_part_norm = ((x << lz) - (1LL << 63)) << 1;
