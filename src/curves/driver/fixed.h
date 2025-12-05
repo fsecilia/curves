@@ -1000,21 +1000,8 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 
 	// Extract and range-check int part.
 	int_part = 63LL - (s64)lz - (s64)x_frac_bits;
-	int_scaled = __curves_fixed_shl_sat_s64(int_part, output_frac_bits);
-	if (unlikely(int_scaled == S64_MAX || int_scaled == S64_MIN)) {
-		// Check if saturation actually occurred by comparing to the
-		// unshifted bound int_part << output_frac_bits would saturate
-		// if:
-		//   int_part > S64_MAX >> output_frac_bits, or
-		//   int_part < S64_MIN >> output_frac_bits
-		s64 max_safe = S64_MAX >> output_frac_bits;
-		s64 min_safe = S64_MIN >> output_frac_bits;
-
-		if (int_part > max_safe || int_part < min_safe) {
-			// Saturation occurred, return the saturated value
-			return int_scaled;
-		}
-	}
+	if (check_shl_overflow_s64(int_part, output_frac_bits, &int_scaled))
+		return (int_part < 0) ? S64_MIN : S64_MAX;
 
 	// Reduce frac part.
 	// Shift MSB all the way to the left to normalize mantissa to [1, 2),
