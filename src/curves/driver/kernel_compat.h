@@ -31,6 +31,16 @@ static inline bool curves_shl_sat_s64(s64 value, unsigned int shift,
 	return false;
 }
 
+static inline bool curves_shl_sat_u64(u64 value, unsigned int shift,
+				      u64 *result)
+{
+	if (unlikely(check_shl_overflow(value, shift, result))) {
+		*result = U64_MAX;
+		return true;
+	}
+	return false;
+}
+
 static inline s64 curves_abs64(s64 x)
 {
 	return abs(x);
@@ -98,6 +108,24 @@ static inline bool curves_shl_sat_s64(s64 value, unsigned int shift,
 
 	if (unlikely(value < (S64_MIN >> shift))) {
 		*result = S64_MIN;
+		return true;
+	}
+
+	*result = value << shift;
+
+	return false;
+}
+
+static inline bool curves_shl_sat_u64(u64 value, unsigned int shift,
+				      u64 *result)
+{
+	if (unlikely(shift >= 64)) {
+		*result = U64_MAX;
+		return true;
+	}
+
+	if (unlikely(value > (U64_MAX >> shift))) {
+		*result = U64_MAX;
 		return true;
 	}
 
