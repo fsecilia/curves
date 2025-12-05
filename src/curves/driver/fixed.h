@@ -726,7 +726,7 @@ static inline s64 curves_fixed_divide(s64 dividend,
  * `f'(y) = -2y^-3`:
  *
  *   y + f(y)/f'(y) = y - (y^-2 - x)/(-2y^-3)   // given
- *                  = y + y^3(y^-2 - x)/2       // move -y^3 to denominator
+ *                  = y + y^3(y^-2 - x)/2       // multiply right by -y^3/-y^3
  *                  = y + y(1 - xy^2)/2         // distribute y^2
  *                  = y(1 + (1 - xy^2)/2)       // factor out common y
  *                  = y(3 - xy^2)/2             // combine constants
