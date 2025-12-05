@@ -6,4 +6,6 @@
 
 #include "kernel_compat.h"
 
+extern s64 curves_abs64(s64 x);
+extern unsigned int curves_clz32(u32 x);
 extern unsigned int curves_clz64(u64 x);
