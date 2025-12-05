@@ -106,15 +106,9 @@ static inline u64 __curves_fixed_shr_rne_u64(u64 value, unsigned int shift)
 //   - caller is responsible for validating shift range
 static inline u64 __curves_fixed_shl_sat_u64(u64 value, unsigned int shift)
 {
-	u64 max_safe_val;
-
-	// Find the maximum value that doesn't overflow.
-	max_safe_val = U64_MAX >> shift;
-	if (unlikely(value > max_safe_val))
-		return U64_MAX;
-
-	// The value is safe to shift.
-	return value << shift;
+	u64 result;
+	curves_shl_sat_u64(value, shift, &result);
+	return result;
 }
 
 // Shifts binary point from frac_bits to output_frac_bits, truncating or
