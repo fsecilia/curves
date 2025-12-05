@@ -2,7 +2,7 @@ config INPUT_CURVES_MOUSE_ACCEL
 	tristate "Curves mouse acceleration"
 	depends on INPUT
 	depends on 64BIT
-	depends on X86_64 || ARM64
+	depends on X86_64
 	help
 	  Modern mouse acceleration driver.
 	  Turns mouse sensitivity into a function of mouse movement speed.
