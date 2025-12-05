@@ -59,13 +59,13 @@ procedure print_poly(poly_fixed, formats, coeffs_label, frac_bits_label) {
   for i from 0 to poly_degree do {
     c = coeff(poly_fixed, i);
     c_rounded = nearestint(c*2^formats[i]);
-    print(c_rounded, ",");
+    print("\t" @ c_rounded @ "LL,");
   };
   print("};");
 
   print("static const unsigned int", frac_bits_label, "[] = {");
   for i from 0 to poly_degree do {
-    print(formats[i], ",");
+    print("\t" @ formats[i] @ ",");
   };
   print("};");
 };
@@ -87,8 +87,8 @@ if (degree(left_partition) != degree(right_partition)) then {
   print("Partition poly degrees do not match!");
   error;
 };
-print("int poly_degree =", degree(left_partition), ";");
+print("int poly_degree =", degree(left_partition) @ ";");
 
-print("u64 partition_location_q0_64 =", nearestint(partition_location*2^64), ";");
+print("u64 partition_location_q0_64 =", nearestint(partition_location*2^64) @ ";");
 print_poly(left_partition, left_partition_formats, "left_partition_coeffs", "left_partition_coeff_frac_bits");
 print_poly(right_partition, right_partition_formats, "right_partition_coeffs", "right_partition_coeff_frac_bits");
