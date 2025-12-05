@@ -49,21 +49,9 @@ static inline s64 __curves_fixed_shr_rne_s64(s64 value, unsigned int shift)
 //   - caller is responsible for validating shift range
 static inline s64 __curves_fixed_shl_sat_s64(s64 value, unsigned int shift)
 {
-	s64 max_safe_val;
-	s64 min_safe_val;
-
-	// Find the maximum value that doesn't overflow.
-	max_safe_val = S64_MAX >> shift;
-	if (unlikely(value > max_safe_val))
-		return S64_MAX;
-
-	// Find the minimum value that doesn't overflow.
-	min_safe_val = S64_MIN >> shift;
-	if (unlikely(value < min_safe_val))
-		return S64_MIN;
-
-	// The value is safe to shift.
-	return value << shift;
+	s64 result;
+	curves_shl_sat_s64(value, shift, &result);
+	return result;
 }
 
 // Shifts binary point from frac_bits to output_frac_bits, truncating or
@@ -1000,8 +988,9 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 
 	// Extract and range-check int part.
 	int_part = 63LL - (s64)lz - (s64)x_frac_bits;
-	if (check_shl_overflow_s64(int_part, output_frac_bits, &int_scaled))
-		return (int_part < 0) ? S64_MIN : S64_MAX;
+	if (unlikely(curves_shl_sat_s64(int_part, output_frac_bits,
+					&int_scaled)))
+		return int_scaled;
 
 	// Reduce frac part.
 	// Shift MSB all the way to the left to normalize mantissa to [1, 2),
