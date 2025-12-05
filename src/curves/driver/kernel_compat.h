@@ -21,7 +21,15 @@
 #include <asm/bug.h>
 #include <linux/bitops.h>
 
-#define check_shl_overflow_s64 check_shl_overflow
+static inline bool curves_shl_sat_s64(s64 value, unsigned int shift,
+				      s64 *result)
+{
+	if (unlikely(check_shl_overflow(value, shift, result))) {
+		*result = (value < 0) ? S64_MIN : S64_MAX;
+		return true;
+	}
+	return false;
+}
 
 static inline s64 curves_abs64(s64 x)
 {
@@ -75,18 +83,25 @@ __extension__ typedef unsigned __int128 u128;
 #define check_sub_overflow(a, b, d) __builtin_sub_overflow(a, b, d)
 #define check_mul_overflow(a, b, d) __builtin_mul_overflow(a, b, d)
 
-static inline bool check_shl_overflow_s64(s64 a, s64 s, s64 *d)
+static inline bool curves_shl_sat_s64(s64 value, unsigned int shift,
+				      s64 *result)
 {
-	if (unlikely(s >= 64 || s < 0))
+	if (unlikely(shift >= 64)) {
+		*result = (value < 0) ? S64_MIN : S64_MAX;
 		return true;
+	}
 
-	if (a > (S64_MAX >> s))
+	if (unlikely(value > (S64_MAX >> shift))) {
+		*result = S64_MAX;
 		return true;
+	}
 
-	if (a < (S64_MIN >> s))
+	if (unlikely(value < (S64_MIN >> shift))) {
+		*result = S64_MIN;
 		return true;
+	}
 
-	*d = a << s;
+	*result = value << shift;
 
 	return false;
 }
