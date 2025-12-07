@@ -138,6 +138,7 @@ function(configure_test_target_warnings target)
     target_compile_options(${target} PUBLIC
       -Wno-changes-meaning
       -Wno-missing-field-initializers
+      -Wno-psabi
       -Wno-unused-local-typedefs
     )
   endif()

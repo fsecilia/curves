@@ -10,8 +10,11 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace curves {
 
-//
+using int_t = std::intptr_t;
+using uint_t = std::uintptr_t;
 
 }  // namespace curve/
