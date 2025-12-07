@@ -59,7 +59,7 @@ f'(0)x²/2 + O(x³), then: sensitivity(x) = f(0) + f'(0)x/2 + O(x²)
 template <typename Sensitivity>
 auto generate_table_from_sensitivity(Sensitivity s, long double x_max)
     -> curves_spline_table {
-  const auto frac_bits = 32;
+  const auto frac_bits = 16;
 
   curves_spline_table result;
   result.max.x = to_fixed(x_max, frac_bits);
