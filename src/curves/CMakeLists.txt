@@ -15,6 +15,7 @@ list(APPEND lib_files
   io.hpp
   lib.cpp
   lib.hpp
+  spline.hpp
 )
 
 list(APPEND unit_tests_files
@@ -30,6 +31,7 @@ list(APPEND unit_tests_files
   fixed_test/test.cpp
   io_test.cpp
   math_test.cpp
+  spline_test.cpp
 )
 
 # The Kbuild is the source of truth for the files in the driver. CMake asks the
