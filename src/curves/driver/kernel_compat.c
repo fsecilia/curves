@@ -11,3 +11,4 @@ extern bool curves_shl_sat_u64(u64 value, unsigned int shift, u64 *result);
 extern s64 curves_abs64(s64 x);
 extern unsigned int curves_clz32(u32 x);
 extern unsigned int curves_clz64(u64 x);
+extern u64 curves_int_sqrt(u64 x);

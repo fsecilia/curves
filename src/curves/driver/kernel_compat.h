@@ -20,6 +20,7 @@
 #include <linux/types.h>
 #include <asm/bug.h>
 #include <linux/bitops.h>
+#include <linux/math.h>
 
 static inline bool curves_shl_sat_s64(s64 value, unsigned int shift,
 				      s64 *result)
@@ -56,12 +57,18 @@ static inline unsigned int curves_clz64(u64 x)
 	return 64 - fls64(x);
 }
 
+static inline u64 curves_int_sqrt(u64 x)
+{
+	return int_sqrt64(x);
+}
+
 #else
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 typedef int32_t s32;
 typedef uint32_t u32;
@@ -162,6 +169,11 @@ static inline unsigned int curves_clz32(u32 x)
 static inline unsigned int curves_clz64(u64 x)
 {
 	return x ? (unsigned int)__builtin_clzll(x) : (unsigned int)64;
+}
+
+static inline u64 curves_int_sqrt(u64 x)
+{
+	return (u64)sqrt((long double)x);
 }
 
 #endif
