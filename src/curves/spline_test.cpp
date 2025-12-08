@@ -19,7 +19,7 @@ TEST(spline_coefs, synchronous_as_sensitivity) {
   const auto x_max = 100.0L;
   const auto table = generate_table_from_sensitivity(sensitivity, x_max);
 
-  const auto frac_bits = 16;
+  const auto frac_bits = 32;
   const auto dx_fixed = to_fixed(1.0e-2L, frac_bits);
   const auto x_max_fixed = to_fixed(x_max, frac_bits);
   auto x_fixed = s64{0};
