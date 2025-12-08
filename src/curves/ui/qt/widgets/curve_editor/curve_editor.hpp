@@ -18,9 +18,9 @@ struct Theme {
   QColor grid_major = QColor(60, 60, 60);
   QColor grid_minor = QColor(40, 40, 40);
   QColor text = QColor(200, 200, 200);
-  QColor curve_sensitivity = Qt::cyan;
+  QColor curve_sensitivity = Qt::magenta;
   QColor curve_derivative = Qt::yellow;
-  QColor curve_gain = Qt::magenta;
+  QColor curve_gain = Qt::cyan;
 };
 
 class CurveEditor : public QWidget {
@@ -50,14 +50,14 @@ class CurveEditor : public QWidget {
   QPointF m_last_mouse_pos;
 
   QPointF screenToLogical(QPointF screen);
-  QPointF logicalToScreen(double logical_x, double logical_y);
+  QPointF logicalToScreen(QPointF);
   void drawGrid(QPainter& painter);
   void drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
 
-  double calculateStep(double visible_range, int target_num_ticks);
+  double calculateGridStep(double visible_range, int target_num_ticks);
   void drawCurves(QPainter& painter);
 };
 

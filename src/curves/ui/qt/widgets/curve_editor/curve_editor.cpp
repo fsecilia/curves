@@ -80,12 +80,12 @@ QPointF CurveEditor::screenToLogical(QPointF screen) {
   return QPointF(x, y);
 }
 
-QPointF CurveEditor::logicalToScreen(double logical_x, double logical_y) {
-  const auto screen_x =
-      (logical_x - m_visible_range.left()) / m_visible_range.width() * width();
-  const auto screen_y = (m_visible_range.bottom() - logical_y) /
-                        m_visible_range.height() * height();
-  return QPointF(screen_x, screen_y);
+QPointF CurveEditor::logicalToScreen(QPointF logical) {
+  const auto x = (logical.x() - m_visible_range.left()) /
+                 m_visible_range.width() * width();
+  const auto y = (m_visible_range.bottom() - logical.y()) /
+                 m_visible_range.height() * height();
+  return QPointF(x, y);
 }
 
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
@@ -93,8 +93,8 @@ void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
     if (x < m_visible_range.left()) continue;
 
-    const auto top = logicalToScreen(x, m_visible_range.top());
-    const auto bottom = logicalToScreen(x, m_visible_range.bottom());
+    const auto top = logicalToScreen(QPointF{x, m_visible_range.top()});
+    const auto bottom = logicalToScreen(QPointF{x, m_visible_range.bottom()});
 
     // Draw line.
     painter.setPen(std::abs(x) < 1e-9 ? pen_axis : pen);
@@ -112,8 +112,8 @@ void CurveEditor::drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen,
   for (double y = start; y <= m_visible_range.bottom() + step; y += step) {
     if (y < std::min(m_visible_range.top(), m_visible_range.bottom())) continue;
 
-    QPointF pLeft = logicalToScreen(m_visible_range.left(), y);
-    QPointF pRight = logicalToScreen(m_visible_range.right(), y);
+    QPointF pLeft = logicalToScreen(QPointF{m_visible_range.left(), y});
+    QPointF pRight = logicalToScreen(QPointF{m_visible_range.right(), y});
 
     // Draw line.
     painter.setPen(std::abs(y) < 1e-9 ? pen_axis : pen);
@@ -139,13 +139,13 @@ void CurveEditor::drawGrid(QPainter& painter) {
   pen_minor.setWidth(0);
 
   // Draw vertical grid lines.
-  const auto major_step_x = calculateStep(m_visible_range.width(), 10);
+  const auto major_step_x = calculateGridStep(m_visible_range.width(), 10);
   const auto major_start_x =
       std::floor(m_visible_range.left() / major_step_x) * major_step_x;
   drawGridX(painter, pen_axis, pen_major, major_start_x, major_step_x);
 
   // Draw horizontal grid lines.
-  const auto major_step_y = calculateStep(m_visible_range.height(), 10);
+  const auto major_step_y = calculateGridStep(m_visible_range.height(), 10);
   const auto major_start_y =
       std::floor(std::min(m_visible_range.top(), m_visible_range.bottom()) /
                  major_step_y) *
@@ -153,7 +153,8 @@ void CurveEditor::drawGrid(QPainter& painter) {
   drawGridY(painter, pen_axis, pen_major, major_start_y, major_step_y);
 }
 
-double CurveEditor::calculateStep(double visible_range, int target_num_ticks) {
+double CurveEditor::calculateGridStep(double visible_range,
+                                      int target_num_ticks) {
   const auto size = visible_range / target_num_ticks;
   const auto magnitude = std::pow(10.0, std::floor(std::log10(size)));
   const auto normalized = size / magnitude;
@@ -171,4 +172,46 @@ double CurveEditor::calculateStep(double visible_range, int target_num_ticks) {
   return snapped_fraction * magnitude;
 }
 
-void CurveEditor::drawCurves(QPainter& /*painter*/) {}
+void CurveEditor::drawCurves(QPainter& painter) {
+  auto pen_sensitivity = QPen{m_theme.curve_sensitivity};
+  pen_sensitivity.setWidthF(1.0);
+
+  auto pen_derivative = QPen{m_theme.curve_derivative};
+  pen_derivative.setWidthF(1.1);
+
+  const auto frac_bits = 32;
+  const auto dx = (11.33 / width()) * m_visible_range.width();
+
+  bool color = false;
+  painter.setPen(pen_sensitivity);
+
+  auto p = QPointF{std::max(m_visible_range.x(), 0.0), 0.0};
+  auto x_fixed = curves::to_fixed(p.x(), frac_bits);
+  if (x_fixed >= m_spline_table->max.x) return;
+
+  auto y_fixed =
+      curves_eval_spline_table(m_spline_table.get(), x_fixed, frac_bits);
+  p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
+
+  while (p.x() < m_visible_range.right()) {
+    auto p0 = p;
+
+    p.setX(p.x() + dx);
+
+    x_fixed = curves::to_fixed(p.x(), frac_bits);
+    if (x_fixed >= m_spline_table->max.x) break;
+
+    y_fixed =
+        curves_eval_spline_table(m_spline_table.get(), x_fixed, frac_bits);
+    p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
+
+    painter.drawLine(logicalToScreen(p0), logicalToScreen(p));
+
+    if (color)
+      painter.setPen(pen_sensitivity);
+    else
+      painter.setPen(pen_derivative);
+
+    color = !color;
+  }
+}

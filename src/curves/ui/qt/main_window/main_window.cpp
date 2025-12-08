@@ -1,6 +1,7 @@
 #include "main_window.hpp"
 #include "curve_parameter/curve_parameter.hpp"
 #include "ui_main_window.h"
+#include <utility>
 
 #include <iostream>
 
@@ -30,6 +31,11 @@ auto MainWindow::prepopulateCurveParameterWidgets(int numWidgets) -> void {
     connect(curve_parameter, &CurveParameter::spinBoxValueChanged, this,
             &MainWindow::onSpinBoxValueChanged);
   }
+}
+
+auto MainWindow::setSpline(
+    std::shared_ptr<const curves_spline_table> spline_table) -> void {
+  m_ui->curve_editor->setSpline(std::move(spline_table));
 }
 
 void MainWindow::onSpinBoxValueChanged(int parameter_index,

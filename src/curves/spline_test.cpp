@@ -32,7 +32,7 @@ TEST(spline_coefs, synchronous_as_sensitivity) {
     ++num_samples;
     const auto x_float = to_float<long double>(x_fixed, frac_bits);
     const auto y_curve = sensitivity(x_float);
-    const auto y_table = curves_eval_spline_table(table, x_fixed, frac_bits);
+    const auto y_table = curves_eval_spline_table(&table, x_fixed, frac_bits);
     x_fixed += dx_fixed;
 
     const auto expected = y_curve;

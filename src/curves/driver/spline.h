@@ -38,13 +38,13 @@ struct curves_spline_table {
 };
 
 static inline s64
-curves_eval_spline_table(const struct curves_spline_table table, s64 x,
+curves_eval_spline_table(const struct curves_spline_table *table, s64 x,
 			 unsigned int x_frac_bits)
 {
-	s128 x_scaled = ((s128)x * table.max.scale) >> x_frac_bits;
+	s128 x_scaled = ((s128)x * table->max.scale) >> x_frac_bits;
 	s64 x_index = (s64)(x_scaled >> x_frac_bits);
 	s64 x_eval = x_scaled & ((1LL << x_frac_bits) - 1);
-	return curves_eval_spline(table.coeffs[x_index], x_eval, x_frac_bits);
+	return curves_eval_spline(table->coeffs[x_index], x_eval, x_frac_bits);
 }
 
 #endif /* _CURVES_SPLINE_H */
