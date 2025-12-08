@@ -38,19 +38,29 @@ class CurveEditor : public QWidget {
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void paintEvent(QPaintEvent*) override;
+  void resizeEvent(QResizeEvent* event) override;
 
  private:
   std::unique_ptr<Ui::CurveEditor> m_ui;
-  std::shared_ptr<const curves_spline_table> m_spline_table;
 
   Theme m_theme;
+
+  static const int frac_bits = 32;
+  constexpr static const qreal pixels_per_curve_step_x = 1.875;
+  qreal m_curve_step_x;
+  QPolygonF m_curve_polygon;
+  std::shared_ptr<const curves_spline_table> m_spline_table;
+  bool m_reallocate_curve_queued = false;
+  void queueReallocateCurve();
+  void tryReallocateCurve();
+  void reallocateCurve();
+
+  bool m_dragging = false;
+  QPointF m_last_mouse_pos;
 
   QRectF m_visible_range;
   QPointF screenToLogical(QPointF screen);
   QPointF logicalToScreen(QPointF);
-
-  bool m_dragging = false;
-  QPointF m_last_mouse_pos;
 
   double calcGridStep(double visible_range, int target_num_ticks);
   void drawGrid(QPainter& painter);

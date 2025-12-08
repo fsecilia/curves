@@ -59,12 +59,10 @@ f'(0)x²/2 + O(x³), then: sensitivity(x) = f(0) + f'(0)x/2 + O(x²)
 template <typename Sensitivity>
 auto generate_table_from_sensitivity(Sensitivity s, long double x_max)
     -> curves_spline_table {
-  const auto frac_bits = 32;
-
+  long double x_scale = CURVES_SPLINE_TABLE_SIZE / x_max;
   curves_spline_table result;
-  result.max.x = to_fixed(x_max, frac_bits);
-  result.max.scale =
-      (s64)(((s128)CURVES_SPLINE_TABLE_SIZE << (2 * frac_bits)) / result.max.x);
+  result.x_max = to_fixed(x_max, CURVES_SPLINE_FRAC_BITS);
+  result.x_scale = to_fixed(x_scale, CURVES_SPLINE_FRAC_BITS);
 
   const auto dx = x_max / CURVES_SPLINE_TABLE_SIZE;
   const auto eps = dx / 100;
@@ -89,15 +87,16 @@ auto generate_table_from_sensitivity(Sensitivity s, long double x_max)
     long double float_coeffs[] = {y0, m0, 3 * (y - y0) - 2 * m0 - m,
                                   2 * (y0 - y) + m0 + m};
     for (auto coeff = 0; coeff < CURVES_SPLINE_NUM_COEFS; ++coeff) {
-      fixed_coeffs[coeff] = to_fixed(float_coeffs[coeff], frac_bits);
+      fixed_coeffs[coeff] =
+          to_fixed(float_coeffs[coeff], CURVES_SPLINE_FRAC_BITS);
     }
   }
 
   x += dx;
   y = s(x);
   m = (s(x + eps) - s(x - eps)) * dx / (2 * eps);
-  result.max.y = y;
-  result.max.m = m;
+  result.y_max = to_fixed(y * x_scale, CURVES_SPLINE_FRAC_BITS);
+  result.m_max = to_fixed(m * x_scale, CURVES_SPLINE_FRAC_BITS);
 
   return result;
 }

@@ -7,6 +7,7 @@ CurveEditor::CurveEditor(QWidget* parent)
   m_ui->setupUi(this);
 
   m_visible_range = QRectF(0, 0, 100, 10);
+  reallocateCurve();
   setMouseTracking(true);
 }
 
@@ -20,6 +21,7 @@ void CurveEditor::setSpline(
 
 void CurveEditor::wheelEvent(QWheelEvent* event) {
   const auto factor = std::pow(1.001, event->angleDelta().y());
+
   const auto logical = screenToLogical(event->position());
 
   const auto new_width = m_visible_range.width() / factor;
@@ -35,6 +37,8 @@ void CurveEditor::wheelEvent(QWheelEvent* event) {
   const auto new_bottom = logical.y() - new_height * ratio_y;
   const auto new_top = new_bottom - new_height;
   m_visible_range.setRect(new_left, new_top, new_width, new_height);
+
+  queueReallocateCurve();
 
   update();
 }
@@ -57,6 +61,7 @@ void CurveEditor::mouseMoveEvent(QMouseEvent* event) {
     m_visible_range.translate(-delta.x() * scale_x, delta.y() * scale_y);
 
     m_last_mouse_pos = event->pos();
+
     update();
   }
 }
@@ -70,6 +75,25 @@ void CurveEditor::paintEvent(QPaintEvent*) {
 
   drawGrid(painter);
   drawCurves(painter);
+}
+
+void CurveEditor::resizeEvent(QResizeEvent*) { queueReallocateCurve(); }
+
+void CurveEditor::queueReallocateCurve() { m_reallocate_curve_queued = true; }
+
+void CurveEditor::tryReallocateCurve() {
+  if (!m_reallocate_curve_queued) return;
+  m_reallocate_curve_queued = false;
+
+  reallocateCurve();
+}
+
+void CurveEditor::reallocateCurve() {
+  const auto num_pixels = width();
+  const auto num_samples = std::max(
+      1, static_cast<int>(std::ceil(num_pixels / pixels_per_curve_step_x)));
+  m_curve_step_x = static_cast<qreal>(m_visible_range.width()) / num_samples;
+  m_curve_polygon.resizeForOverwrite(num_samples);
 }
 
 QPointF CurveEditor::screenToLogical(QPointF screen) {
@@ -172,45 +196,35 @@ void CurveEditor::drawGrid(QPainter& painter) {
 }
 
 void CurveEditor::drawCurves(QPainter& painter) {
+  tryReallocateCurve();
+
   auto pen_sensitivity = QPen{m_theme.curve_sensitivity};
-  pen_sensitivity.setWidthF(1.0);
+  pen_sensitivity.setWidthF(1.1);
 
   auto pen_derivative = QPen{m_theme.curve_derivative};
   pen_derivative.setWidthF(1.1);
 
-  const auto frac_bits = 32;
-  const auto dx = (11.33 / width()) * m_visible_range.width();
-
-  bool color = false;
   painter.setPen(pen_sensitivity);
 
   auto p = QPointF{std::max(m_visible_range.x(), 0.0), 0.0};
   auto x_fixed = curves::to_fixed(p.x(), frac_bits);
-  if (x_fixed >= m_spline_table->max.x) return;
 
-  auto y_fixed =
-      curves_eval_spline_table(m_spline_table.get(), x_fixed, frac_bits);
+  auto y_fixed = curves_eval_spline_table(m_spline_table.get(), x_fixed);
   p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
+  auto sample = std::begin(m_curve_polygon);
+  *sample++ = logicalToScreen(p);
 
-  while (p.x() < m_visible_range.right()) {
-    auto p0 = p;
-
-    p.setX(p.x() + dx);
+  const auto samples_end = std::end(m_curve_polygon);
+  while (sample != samples_end) {
+    p.setX(p.x() + m_curve_step_x);
 
     x_fixed = curves::to_fixed(p.x(), frac_bits);
-    if (x_fixed >= m_spline_table->max.x) break;
 
-    y_fixed =
-        curves_eval_spline_table(m_spline_table.get(), x_fixed, frac_bits);
+    y_fixed = curves_eval_spline_table(m_spline_table.get(), x_fixed);
     p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
 
-    painter.drawLine(logicalToScreen(p0), logicalToScreen(p));
-
-    if (color)
-      painter.setPen(pen_sensitivity);
-    else
-      painter.setPen(pen_derivative);
-
-    color = !color;
+    *sample++ = logicalToScreen(p);
   }
+
+  painter.drawPolyline(m_curve_polygon);
 }

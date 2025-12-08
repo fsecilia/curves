@@ -19,9 +19,8 @@ TEST(spline_coefs, synchronous_as_sensitivity) {
   const auto x_max = 100.0L;
   const auto table = generate_table_from_sensitivity(sensitivity, x_max);
 
-  const auto frac_bits = 32;
-  const auto dx_fixed = to_fixed(1.0e-2L, frac_bits);
-  const auto x_max_fixed = to_fixed(x_max, frac_bits);
+  const auto dx_fixed = to_fixed(1.0e-2L, CURVES_SPLINE_FRAC_BITS);
+  const auto x_max_fixed = to_fixed(x_max, CURVES_SPLINE_FRAC_BITS);
   auto x_fixed = s64{0};
   auto max_abs_err = 0.0L;
   auto max_rel_err = 0.0L;
@@ -30,13 +29,14 @@ TEST(spline_coefs, synchronous_as_sensitivity) {
   auto num_samples = 0;
   while (x_fixed < x_max_fixed) {
     ++num_samples;
-    const auto x_float = to_float<long double>(x_fixed, frac_bits);
+    const auto x_float =
+        to_float<long double>(x_fixed, CURVES_SPLINE_FRAC_BITS);
     const auto y_curve = sensitivity(x_float);
-    const auto y_table = curves_eval_spline_table(&table, x_fixed, frac_bits);
+    const auto y_table = curves_eval_spline_table(&table, x_fixed);
     x_fixed += dx_fixed;
 
     const auto expected = y_curve;
-    const auto actual = to_float<long double>(y_table, frac_bits);
+    const auto actual = to_float<long double>(y_table, CURVES_SPLINE_FRAC_BITS);
 
     const auto abs_err = std::abs(actual - expected);
     max_abs_err = std::max(max_abs_err, abs_err);
