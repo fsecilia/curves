@@ -13,12 +13,15 @@
 #include "math.h"
 
 #define CURVES_SPLINE_NUM_COEFS 4
-#if 0
-static inline u64 curves_eval_spline(struct curves_spline_coeffs coeffs,
-				     struct curves_spline_frac_bits, u64 x)
+static inline s64 curves_eval_spline(const s64 *coeffs, s64 x,
+				     unsigned int x_frac_bits)
 {
+	s128 acc = coeffs[3];
+	acc = coeffs[2] + ((acc * (s128)x) >> x_frac_bits);
+	acc = coeffs[1] + ((acc * (s128)x) >> x_frac_bits);
+	acc = coeffs[0] + ((acc * (s128)x) >> x_frac_bits);
+	return (s64)acc;
 }
-#endif
 
 struct curves_spline_max {
 	s64 scale;
@@ -34,20 +37,14 @@ struct curves_spline_table {
 		__attribute__((aligned(64)));
 };
 
-static inline s64 curves_eval_spline_table(struct curves_spline_table table,
-					   s64 x, unsigned int x_frac_bits)
+static inline s64
+curves_eval_spline_table(const struct curves_spline_table table, s64 x,
+			 unsigned int x_frac_bits)
 {
 	s128 x_scaled = ((s128)x * table.max.scale) >> x_frac_bits;
 	s64 x_index = (s64)(x_scaled >> x_frac_bits);
 	s64 x_eval = x_scaled & ((1LL << x_frac_bits) - 1);
-
-	s64 *coeffs = table.coeffs[x_index];
-
-	s128 acc = coeffs[3];
-	acc = coeffs[2] + ((acc * (s128)x_eval) >> x_frac_bits);
-	acc = coeffs[1] + ((acc * (s128)x_eval) >> x_frac_bits);
-	acc = coeffs[0] + ((acc * (s128)x_eval) >> x_frac_bits);
-	return (s64)acc;
+	return curves_eval_spline(table.coeffs[x_index], x_eval, x_frac_bits);
 }
 
 #endif /* _CURVES_SPLINE_H */
