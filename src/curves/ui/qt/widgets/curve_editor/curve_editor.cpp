@@ -88,6 +88,24 @@ QPointF CurveEditor::logicalToScreen(QPointF logical) {
   return QPointF(x, y);
 }
 
+double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {
+  const auto size = visible_range / target_num_ticks;
+  const auto magnitude = std::pow(10.0, std::floor(std::log10(size)));
+  const auto normalized = size / magnitude;
+
+  double snapped_fraction;
+  if (normalized < 1.5)
+    snapped_fraction = 1.0;
+  else if (normalized < 3.0)
+    snapped_fraction = 2.0;
+  else if (normalized < 7.0)
+    snapped_fraction = 5.0;
+  else
+    snapped_fraction = 10.0;
+
+  return snapped_fraction * magnitude;
+}
+
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
                             double start, double step) {
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
@@ -139,37 +157,18 @@ void CurveEditor::drawGrid(QPainter& painter) {
   pen_minor.setWidth(0);
 
   // Draw vertical grid lines.
-  const auto major_step_x = calculateGridStep(m_visible_range.width(), 10);
+  const auto major_step_x = calcGridStep(m_visible_range.width(), 10);
   const auto major_start_x =
       std::floor(m_visible_range.left() / major_step_x) * major_step_x;
   drawGridX(painter, pen_axis, pen_major, major_start_x, major_step_x);
 
   // Draw horizontal grid lines.
-  const auto major_step_y = calculateGridStep(m_visible_range.height(), 10);
+  const auto major_step_y = calcGridStep(m_visible_range.height(), 10);
   const auto major_start_y =
       std::floor(std::min(m_visible_range.top(), m_visible_range.bottom()) /
                  major_step_y) *
       major_step_y;
   drawGridY(painter, pen_axis, pen_major, major_start_y, major_step_y);
-}
-
-double CurveEditor::calculateGridStep(double visible_range,
-                                      int target_num_ticks) {
-  const auto size = visible_range / target_num_ticks;
-  const auto magnitude = std::pow(10.0, std::floor(std::log10(size)));
-  const auto normalized = size / magnitude;
-
-  double snapped_fraction;
-  if (normalized < 1.5)
-    snapped_fraction = 1.0;
-  else if (normalized < 3.0)
-    snapped_fraction = 2.0;
-  else if (normalized < 7.0)
-    snapped_fraction = 5.0;
-  else
-    snapped_fraction = 10.0;
-
-  return snapped_fraction * magnitude;
 }
 
 void CurveEditor::drawCurves(QPainter& painter) {

@@ -43,21 +43,22 @@ class CurveEditor : public QWidget {
   std::unique_ptr<Ui::CurveEditor> m_ui;
   std::shared_ptr<const curves_spline_table> m_spline_table;
 
-  QRectF m_visible_range;
   Theme m_theme;
+
+  QRectF m_visible_range;
+  QPointF screenToLogical(QPointF screen);
+  QPointF logicalToScreen(QPointF);
 
   bool m_dragging = false;
   QPointF m_last_mouse_pos;
 
-  QPointF screenToLogical(QPointF screen);
-  QPointF logicalToScreen(QPointF);
+  double calcGridStep(double visible_range, int target_num_ticks);
   void drawGrid(QPainter& painter);
   void drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
 
-  double calculateGridStep(double visible_range, int target_num_ticks);
   void drawCurves(QPainter& painter);
 };
 
