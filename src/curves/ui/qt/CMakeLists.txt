@@ -24,6 +24,9 @@ qt_add_executable(curves_config
     main_window/curve_parameter/curve_parameter.hpp
     main_window/curve_parameter/curve_parameter.cpp
     main_window/curve_parameter/curve_parameter.ui
+    widgets/curve_editor/curve_editor.hpp
+    widgets/curve_editor/curve_editor.cpp
+    widgets/curve_editor/curve_editor.ui
 )
 
 target_include_directories(curves_config PRIVATE

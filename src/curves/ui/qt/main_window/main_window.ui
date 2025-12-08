@@ -150,7 +150,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="curve_editor" native="true">
+        <widget class="CurveEditor" name="curve_editor" native="true">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>1</horstretch>
@@ -220,6 +220,14 @@ QListWidget::item:selected:!active {
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CurveEditor</class>
+   <extends>QWidget</extends>
+   <header location="global">widgets/curve_editor/curve_editor.hpp</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

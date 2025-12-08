@@ -157,8 +157,8 @@ auto generate_table_from_gain(Gain g, long double x_max)
   return result;
 }
 
-auto synchronous(long double x, long double s, long double p, long double m,
-                 long double g, long double k) {
+inline auto synchronous(long double x, long double s, long double p,
+                        long double m, long double g, long double k) {
   // clang-format off
   return s * std::exp(
     sign(x - p) * std::log(m) *
