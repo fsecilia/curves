@@ -24,7 +24,7 @@ static inline s64 curves_eval_spline(const s64 *coeffs, s64 x)
 	return (s64)acc;
 }
 
-#define CURVES_SPLINE_TABLE_SIZE 256LL
+#define CURVES_SPLINE_TABLE_SIZE 100LL
 struct curves_spline_table {
 	s64 x_scale;
 	s64 x_max;
