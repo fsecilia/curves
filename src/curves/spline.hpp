@@ -179,8 +179,8 @@ class SynchronousCurve {
   auto motivity() const noexcept -> real_t { return motivity_; }
 
   auto operator()(real_t x) const noexcept -> CurveResult {
-    if (x == p) {
-      return {1.0, 0.0};
+    if (std::abs(x - p) <= std::numeric_limits<real_t>::epsilon()) {
+      return {1.0, L * g / p};
     }
 
     if (x > p) {
