@@ -231,7 +231,7 @@ class SynchronousCurve {
 template <typename Curve>
 struct TransferAdapterTraits {
   auto eval_at_0(const Curve& curve) const noexcept -> CurveResult {
-    return curve(0.0);
+    return {0, curve(0.0).f};
   }
 };
 
