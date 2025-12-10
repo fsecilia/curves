@@ -65,6 +65,7 @@ list(APPEND common_headers
   driver/fixed.h
   driver/kernel_compat.h
   driver/math.h
+  driver/spline.h
 )
 
 list(APPEND kbuild_files

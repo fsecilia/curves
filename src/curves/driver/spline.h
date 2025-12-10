@@ -14,7 +14,17 @@
 
 #define CURVES_SPLINE_FRAC_BITS 32
 
-#define CURVES_SPLINE_NUM_COEFS 4
+#define CURVES_SPLINE_NUM_COEFFS 4
+
+#define CURVES_SPLINE_SEGMENT_BITS 8
+#define CURVES_SPLINE_NUM_SEGMENTS (1LL << CURVES_SPLINE_SEGMENT_BITS)
+
+struct curves_spline {
+	s64 inv_segment_width;
+	s64 x_max;
+	s64 coeffs[CURVES_SPLINE_NUM_SEGMENTS][CURVES_SPLINE_NUM_COEFFS];
+};
+
 static inline s64 curves_eval_spline(const s64 *coeffs, s64 x)
 {
 	s128 acc = coeffs[3];
@@ -24,13 +34,12 @@ static inline s64 curves_eval_spline(const s64 *coeffs, s64 x)
 	return (s64)acc;
 }
 
-#define CURVES_SPLINE_TABLE_SIZE 100LL
 struct curves_spline_table {
 	s64 x_scale;
 	s64 x_max;
 	s64 y_max;
 	s64 m_max;
-	s64 coeffs[CURVES_SPLINE_TABLE_SIZE][CURVES_SPLINE_NUM_COEFS]
+	s64 coeffs[CURVES_SPLINE_NUM_SEGMENTS][CURVES_SPLINE_NUM_COEFFS]
 		__attribute__((aligned(64)));
 };
 

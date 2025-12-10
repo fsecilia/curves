@@ -8,13 +8,6 @@
 
 #pragma once
 
-#include <curves/lib.hpp>
-#include <algorithm>
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <vector>
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -24,7 +17,17 @@ extern "C" {
 
 #pragma GCC diagnostic pop
 
+#include <curves/lib.hpp>
+#include <curves/fixed.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <concepts>
+#include <cstdint>
 #include <iostream>
+#include <limits>
+#include <optional>
+#include <vector>
 
 namespace curves {
 
@@ -55,8 +58,6 @@ auto to_float(s64 fixed, int_t frac_bits) -> float_t {
   return static_cast<float_t>(fixed) / static_cast<float_t>(1LL << frac_bits);
 }
 
-using real_t = long double;
-
 /*
 The limit at 0 comes from L'Hopital, since v(0) = 0 and v'(x) = f(x):
   sensitivity(0) = lim_{x->0} v(x)/x = f(0)
@@ -69,15 +70,15 @@ then:
 template <typename Sensitivity>
 auto generate_table_from_sensitivity(Sensitivity s, real_t x_max)
     -> curves_spline_table {
-  real_t x_scale = CURVES_SPLINE_TABLE_SIZE / x_max;
+  real_t x_scale = CURVES_SPLINE_NUM_SEGMENTS / x_max;
   curves_spline_table result;
   result.x_max = to_fixed(x_max, CURVES_SPLINE_FRAC_BITS);
   result.x_scale = to_fixed(x_scale, CURVES_SPLINE_FRAC_BITS);
 
-  const auto dx = x_max / CURVES_SPLINE_TABLE_SIZE;
+  const auto dx = x_max / CURVES_SPLINE_NUM_SEGMENTS;
   auto x = 0.0L;
 
-  for (auto entry = 0; entry < CURVES_SPLINE_TABLE_SIZE; ++entry) {
+  for (auto entry = 0; entry < CURVES_SPLINE_NUM_SEGMENTS; ++entry) {
     auto [y0, m0] = s(x);
     m0 *= dx;  // Tangent is derivative scaled to interval width.
 
@@ -89,7 +90,7 @@ auto generate_table_from_sensitivity(Sensitivity s, real_t x_max)
     const real_t float_coeffs[] = {y0, m0, 3 * (y1 - y0) - 2 * m0 - m1,
                                    2 * (y0 - y1) + m0 + m1};
 
-    for (auto coeff = 0; coeff < CURVES_SPLINE_NUM_COEFS; ++coeff) {
+    for (auto coeff = 0; coeff < CURVES_SPLINE_NUM_COEFFS; ++coeff) {
       fixed_coeffs[coeff] =
           to_fixed(float_coeffs[coeff], CURVES_SPLINE_FRAC_BITS);
     }
@@ -109,7 +110,7 @@ template <typename Gain>
 auto generate_table_from_gain(Gain g, real_t x_max) -> curves_spline_table {
   curves_spline_table result;
 
-  auto dx = x_max / CURVES_SPLINE_TABLE_SIZE;
+  auto dx = x_max / CURVES_SPLINE_NUM_SEGMENTS;
   auto x = 0.0L;
   auto y = g(x);
   auto v = 0.0L;
@@ -119,10 +120,10 @@ auto generate_table_from_gain(Gain g, real_t x_max) -> curves_spline_table {
   // second order forward difference.
   auto m = (-g(2 * dx) + 4 * g(dx) - 3 * y) * dx / (2 * dx);
 
-  int_t min_frac_bits[CURVES_SPLINE_NUM_COEFS] = {64, 64, 64, 64};
-  int_t max_frac_bits[CURVES_SPLINE_NUM_COEFS] = {0, 0, 0, 0};
+  int_t min_frac_bits[CURVES_SPLINE_NUM_COEFFS] = {64, 64, 64, 64};
+  int_t max_frac_bits[CURVES_SPLINE_NUM_COEFFS] = {0, 0, 0, 0};
 
-  for (auto entry = 0; entry < CURVES_SPLINE_TABLE_SIZE; ++entry) {
+  for (auto entry = 0; entry < CURVES_SPLINE_NUM_SEGMENTS; ++entry) {
     const auto y0 = y;
     const auto s0 = s;
     const auto m0 = m;
@@ -139,7 +140,7 @@ auto generate_table_from_gain(Gain g, real_t x_max) -> curves_spline_table {
     auto& fixed_coeffs = result.coeffs[entry];
     real_t float_coeffs[] = {s0, m0, 3 * (s - s0) - 2 * m0 - m,
                              2 * (s0 - s) + m0 + m};
-    for (auto coeff = 0; coeff < CURVES_SPLINE_NUM_COEFS; ++coeff) {
+    for (auto coeff = 0; coeff < CURVES_SPLINE_NUM_COEFFS; ++coeff) {
       const auto frac_bits = calc_max_frac_bits(float_coeffs[coeff]);
       min_frac_bits[coeff] = std::min(min_frac_bits[coeff], frac_bits);
       max_frac_bits[coeff] = std::max(max_frac_bits[coeff], frac_bits);
@@ -159,25 +160,27 @@ auto generate_table_from_gain(Gain g, real_t x_max) -> curves_spline_table {
   return result;
 }
 
+struct CurveResult {
+  real_t f;
+  real_t df_dx;
+};
+
 class SynchronousCurve {
  public:
-  SynchronousCurve(real_t scale, real_t motivity, real_t gamma,
-                   real_t sync_speed, real_t smooth)
-      : s(scale),
-        L(std::log(motivity)),
-        g(gamma / L),
-        p(sync_speed),
-        k(smooth == 0 ? 16.0 : 0.5 / smooth),
-        r(1.0 / k) {}
+  SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
+                   real_t smooth)
+      : motivity_{motivity},
+        L{std::log(motivity)},
+        g{gamma / L},
+        p{sync_speed},
+        k{smooth == 0 ? 16.0 : 0.5 / smooth},
+        r{1.0 / k} {}
 
-  struct Result {
-    real_t f;      // function value
-    real_t df_dx;  // derivative
-  };
+  auto motivity() const noexcept -> real_t { return motivity_; }
 
-  Result operator()(real_t x) const {
+  auto operator()(real_t x) const noexcept -> CurveResult {
     if (x == p) {
-      return {s, 0.0};
+      return {1.0, 0.0};
     }
 
     if (x > p) {
@@ -187,8 +190,13 @@ class SynchronousCurve {
     }
   }
 
+  auto cusp() const noexcept -> std::optional<real_t> {
+    return std::make_optional(p);
+  }
+
  private:
-  real_t s;  // final output scale
+  real_t motivity_;
+
   real_t L;  // log(motivity)
   real_t g;  // gamma / L
   real_t p;  // sync_speed
@@ -198,7 +206,7 @@ class SynchronousCurve {
   // 'sign' is +1 for x > p, -1 for x < p.
   // It only affects the exponent of f; the derivative formula is invariant.
   template <int sign>
-  Result evaluate(real_t u, real_t x) const {
+  auto evaluate(real_t u, real_t x) const noexcept -> CurveResult {
     // Shared intermediate terms
     real_t u_pow_k_minus_1 = std::pow(u, k - 1);
     real_t u_pow_k = u_pow_k_minus_1 * u;  // v = u^k
@@ -210,7 +218,7 @@ class SynchronousCurve {
     real_t sech_sq = 1 - w * w;  // sech(v)^2
 
     // Forward: f = exp((+/-)L * z)
-    real_t f = s * std::exp(sign * L * w_pow_r);
+    real_t f = std::exp(sign * L * w_pow_r);
 
     // Derivative: df/dx = (f * L * g / x) * u^(k-1) * w^(r-1) * sech(v)^2
     real_t df_dx =
@@ -220,36 +228,230 @@ class SynchronousCurve {
   }
 };
 
-// Simple container for Hermite node data
+template <typename Curve>
+struct TransferAdapterTraits {
+  auto eval_at_0(const Curve& curve) const noexcept -> CurveResult {
+    return curve(0.0);
+  }
+};
+
+template <typename Curve, typename Traits = TransferAdapterTraits<Curve>>
+class TransferAdapterCurve {
+ public:
+  auto operator()(real_t x) const noexcept -> CurveResult {
+    if (x < std::numeric_limits<real_t>::epsilon()) {
+      return traits_.eval_at_0(curve_);
+    }
+
+    const auto curve_result = curve_(x);
+    return {x * curve_result.f_x, curve_result.f_x + x * curve_result.df_dx};
+  }
+
+  auto cusp() const noexcept -> std::optional<real_t> { return curve_.cusp(); }
+
+  explicit TransferAdapterCurve(Curve curve, Traits traits = {}) noexcept
+      : curve_{std::move(curve)}, traits_{std::move(traits)} {}
+
+ private:
+  Curve curve_;
+  Traits traits_;
+};
+
+template <>
+struct TransferAdapterTraits<SynchronousCurve> {
+  auto eval_at_0(const SynchronousCurve& curve) const noexcept -> CurveResult {
+    /*
+      This comes from the limit definition of the derivative of the transfer
+      function.
+    */
+    return {0.0, 1.0 / curve.motivity()};
+  }
+};
+
+struct Knot {
+  real_t x;
+  real_t y;
+  real_t m;
+};
+
+struct SplineKnots {
+  std::vector<Knot> knots;
+
+  auto find_nearest(real_t x) const noexcept -> int_t {
+    if (knots.empty()) return -1;
+
+    const auto begin = std::begin(knots);
+    const auto end = std::end(knots);
+
+    // Find where a node with value x would be inserted.
+    auto insertion_location = std::lower_bound(
+        begin, end, x,
+        [](const auto& knot, const auto x) noexcept { return knot.x < x; });
+
+    // Range-check result.
+    if (insertion_location == begin) return 0;
+    if (insertion_location == end) return std::ssize(knots) - 1;
+
+    // Choose closer of nearby pair.
+    const auto prev = std::prev(insertion_location);
+    return std::abs(prev->x - x) < std::abs(insertion_location->x - x)
+               ? std::distance(begin, prev)
+               : std::distance(begin, insertion_location);
+  }
+
+  /*
+    Applies Catmull-Rom to a node's tangent to fix a cusp where the analytical
+    solution breaks.
+  */
+  auto remove_analytical_cusp(int_t i) noexcept -> void {
+    assert(std::ssize(knots) >= 3 && i > 0 && i < std::ssize(knots) - 1);
+    const auto dx = knots[i + 1].x - knots[i - 1].x;
+    const auto dy = knots[i + 1].y - knots[i - 1].y;
+    knots[i].m = dy / dx;
+  }
+
+  static auto create(const auto& curve, real_t dx, int_t num_knots)
+      -> SplineKnots {
+    if (!num_knots) return SplineKnots{};
+
+    auto knots = std::vector<Knot>{};
+    knots.reserve(num_knots);
+
+    auto x = real_t{0};
+    for (auto i = 0; i < num_knots; ++i) {
+      auto result = curve(x);
+      knots.emplace_back({x, result.f_x, result.df_dx});
+      x += dx;
+    }
+
+    auto result = SplineKnots{std::move(knots)};
+
+    auto cusp = curve.cusp();
+    if (!cusp) return result;
+
+    auto nearest = result.find_nearest(*cusp);
+    if (nearest < 0) return result;
+
+    result.remove_analytical_cusp(nearest);
+    return result;
+  }
+};
+
+// Ideal x_max is 128, but we let it float a little so curves with cusps can
+// align a knot to the cusp.
+const int_t x_max_ideal = 128;
+
+struct SegmentLayout {
+  real_t segment_width;
+  real_t x_max;
+};
+
+inline auto create_segment_layout(real_t crossover) noexcept -> SegmentLayout {
+  const auto ideal_cusp_index = static_cast<int_t>(
+      std::round(crossover * CURVES_SPLINE_NUM_SEGMENTS / x_max_ideal));
+  const auto clamped_ideal_cusp_index =
+      std::clamp<int_t>(ideal_cusp_index, 1, CURVES_SPLINE_NUM_SEGMENTS - 1);
+
+  const auto segment_width = crossover / clamped_ideal_cusp_index;
+  const auto x_max = segment_width * CURVES_SPLINE_NUM_SEGMENTS;
+  return {segment_width, x_max};
+}
+
+inline auto create_spline(const auto& curve, real_t crossover) noexcept
+    -> curves_spline {
+  curves_spline result;
+
+  const auto segment_layout = create_segment_layout(crossover);
+  result.inv_segment_width = Fixed(1.0 / segment_layout.segment_width).value;
+  result.x_max = Fixed(segment_layout.x_max).value;
+
+  const auto spline_knots = SplineKnots::create(TransferAdapterCurve{curve},
+                                                segment_layout.segment_width,
+                                                CURVES_SPLINE_NUM_SEGMENTS);
+
+  const auto* p0 = spline_knots.knots;
+  const auto* p1 = p0;
+  for (auto segment = 0; segment < CURVES_SPLINE_NUM_SEGMENTS; ++segment) {
+    p0 = p1++;
+
+    const auto dx = p1->x - p0->x;
+    real_t m0 = p0->m * dx;
+    real_t m1 = p1->m * dx;
+    real_t y0 = p0->y;
+    real_t y1 = p1->y;
+
+    s64* coeffs = result.coeffs[segment];
+    coeffs[0] = Fixed{2 * y0 - 2 * y1 + m0 + m1}.value;
+    coeffs[1] = Fixed{-3 * y0 + 3 * y1 - 2 * m0 - m1}.value;
+    coeffs[2] = Fixed{m0}.value;
+    coeffs[3] = Fixed{y0}.value;
+  }
+
+  return result;
+}
+
+static inline s64 curves_spline_eval(const struct curves_spline* spline,
+                                     s64 x) {
+  // Validate parameters.
+  if (unlikely(x < 0)) x = 0;
+  if (x >= spline->x_max) {
+    // Extend final tangent.
+
+    // Extract named cubic coefs.
+    const s64* coeff = spline->coeffs[CURVES_SPLINE_NUM_SEGMENTS - 1];
+    s64 a = *coeff++;
+    s64 b = *coeff++;
+    s64 c = *coeff++;
+    s64 d = *coeff++;
+
+    // Calc slope and y at x_max.
+    s64 m = (s64)(((s128)(3 * a + 2 * b + c) * spline->inv_segment_width) >>
+                  CURVES_SPLINE_FRAC_BITS);
+    s64 y_max = a + b + c + d;
+
+    // y = m(x - x_max) + y_max
+    return (s64)(((s128)m * (x - spline->x_max)) >> CURVES_SPLINE_FRAC_BITS) +
+           y_max;
+  }
+
+  // Index into segment with normalized t.
+  s64 x_segment =
+      (s64)(((s128)x * spline->inv_segment_width) >> CURVES_SPLINE_FRAC_BITS);
+  s64 segment_index = x_segment >> CURVES_SPLINE_FRAC_BITS;
+  s64 t = x_segment & ((1LL << CURVES_SPLINE_FRAC_BITS) - 1);
+
+  // Horner's loop.
+  const s64* coeff = spline->coeffs[segment_index];
+  s64 result = *coeff++;
+  for (int i = 1; i < CURVES_SPLINE_NUM_COEFFS; ++i) {
+    result = (s64)(((s128)result * t) >> CURVES_SPLINE_FRAC_BITS);
+    result += *coeff++;
+  }
+
+  return result;
+}
+
 struct Node {
   real_t x;
-  real_t y;  // Transfer function value (output velocity)
-  real_t m;  // Gain (slope of transfer function)
+  real_t y;  // Transfer function result, velocity
+  real_t m;  // Slope of transfer function, gain
 };
 
-// Kernel-compatible coefficient structure (Fixed Point Q32.32)
 struct CubicSegment {
-  int64_t a, b, c, d;
-};
-
-// The complete data blob for the kernel
-struct SplineSet {
-  uint64_t inv_p_scalar;  // Multiplier to normalize input relative to p
-  int32_t min_k;  // The 'fls' index corresponding to the zero bucket limit
-  int32_t max_k;  // The maximum supported 'fls' index
-  int32_t subdiv_bits;  // power of 2 number of subdivisions per octave
-  std::vector<CubicSegment> segments;
+  s64 a;
+  s64 b;
+  s64 c;
+  s64 d;
 };
 
 /**
  * \brief Converts floating point coefficients to fixed-point kernel format.
  *
- * The kernel evaluates: y = ((a*t + b)*t + c)*t + d
+ * evaluates: y = ((a*t + b)*t + c)*t + d
  * Where 't' is normalized to [0, 1.0) in Q32.32
  */
 inline CubicSegment pack_cubic(real_t a, real_t b, real_t c, real_t d) {
-  // Scaling factor for Q32.32 fixed point
-  const real_t scale = 4294967296.0;
+  const auto scale = static_cast<real_t>(1LL << CURVES_SPLINE_FRAC_BITS);
   return CubicSegment{
       static_cast<int64_t>(a * scale), static_cast<int64_t>(b * scale),
       static_cast<int64_t>(c * scale), static_cast<int64_t>(d * scale)};
@@ -280,6 +482,14 @@ inline CubicSegment solve_hermite_unit(const Node& p0, const Node& p1) {
   return pack_cubic(a, b, c, d);
 }
 
+struct SplineSet {
+  uint64_t inv_p_scalar;  // Multiplier to normalize input relative to p
+  int32_t min_k;          // fls of bucket 0
+  int32_t max_k;          // fls of bucket n
+  int32_t subdiv_bits;  // binary exponent of number of subdivisions per octave
+  std::vector<CubicSegment> segments;
+};
+
 // Samples the Transfer Function
 auto sample_node(real_t x, auto curve) -> Node {
   if (x <= 0) return {0.0, 0.0, 0.0};  // At 0, T=0, G=finite (handled below)
@@ -295,6 +505,15 @@ auto sample_node(real_t x, auto curve) -> Node {
   return {x, y, m};
 };
 
+// #define use_analytical_tangents
+
+/*
+  Technically, this is a piecewise cubic Hermite interpolant (PCHIP) on a
+  geometrically refined mesh, using centered difference tangents and quadratic
+  end conditions. You could describe it as a custom Catmull-Rom LUT with
+  geometric LOD.
+*/
+
 /**
  * \brief Generates a P-Centered Geometric Spline Set for the kernel.
  * * \param curve         Functor returning {f, df_dx} (Sensitivity, not
@@ -309,67 +528,116 @@ template <typename CurveT>
 SplineSet generate_transfer_splines(const CurveT& curve, real_t sync_speed,
                                     real_t max_speed,
                                     int min_resolution_bits = 1,
-                                    int subdiv_bits = 9) {
+                                    int subdiv_bits = 6) {
   SplineSet result;
 
-  // 1. Calculate Grid Scalar
-  // We map 'sync_speed' to 2^32. This puts 'p' at the 32nd bit.
-  // Normalized x = input * inv_p_scalar
-  real_t p = sync_speed;
-  real_t inv_p_scalar = std::pow(2.0, 32.0) / p;
-  result.inv_p_scalar = static_cast<uint64_t>(inv_p_scalar);
+  // 1. Setup
+  result.inv_p_scalar = static_cast<uint64_t>(std::pow(2.0, 32.0) / sync_speed);
   result.subdiv_bits = subdiv_bits;
-  int sub_steps = 1 << subdiv_bits;
-
-  // 2. Define Bounds
   result.min_k = (32 - min_resolution_bits) + 1;
 
-  // Calculate max_k based on max_speed
-  // max_norm = max_speed * scalar
+  real_t p = sync_speed;
+  real_t inv_p_scalar = std::pow(2.0, 32.0) / p;
+
+  // Calc max_k...
   real_t max_norm = max_speed * inv_p_scalar;
   int max_fls = 0;
-  if (max_norm > 0) {
+  if (max_norm > 0)
     max_fls = static_cast<int>(std::floor(std::log2(max_norm))) + 1;
-  }
   result.max_k = std::max(max_fls, result.min_k + 1);
 
-  // Range [0, 2^min_k]
+  // 2. Buffer ALL points first
+  // We need a continuous list of (x, y) to calculate neighbor-based tangents
+  std::vector<Node> nodes;
+
+  // A. Start Point (0,0)
+  // Note: We ignore the analytical derivative gain_limit here.
+  // We will calculate the slope from 0 to the first point numerically.
+  nodes.push_back({0.0, 0.0, 0.0});
+
+  // B. Zero Bucket Points
+  int sub_steps = 1 << subdiv_bits;
   real_t zero_bucket_width = std::pow(2.0, result.min_k);
 
-  // We need the special start node at 0
-  real_t eps = std::numeric_limits<real_t>::epsilon();
-  auto val_lim = curve(eps);
-  real_t gain_limit = val_lim.f;
-  Node n_prev = {0.0, 0.0, gain_limit};
-
   for (int i = 0; i < sub_steps; ++i) {
-    // Linear interpolation of the bucket range
     real_t t_end = (real_t)(i + 1) / sub_steps;
-    real_t norm_end = zero_bucket_width * t_end;
+    real_t norm_x = zero_bucket_width * t_end;
 
-    Node n_next = sample_node(norm_end / inv_p_scalar, curve);
-    result.segments.push_back(solve_hermite_unit(n_prev, n_next));
-    n_prev = n_next;
+    // Only calculate x and y. Ignore m for now.
+    real_t x = norm_x / inv_p_scalar;
+
+#if defined use_analytical_tangents
+    nodes.push_back(sample_node(x, curve));
+#else
+    // y = S(x)
+    auto val = curve(x);
+
+    // T(x) = x * S(x)
+    nodes.push_back({x, x * val.f, 0.0});
+#endif
   }
 
-  // 5. Generate Geometric Buckets
-  // Iterate from min_k up to max_k
-  // Each bucket 'k' covers [2^(k-1), 2^k] in normalized space
+  // C. Geometric Bucket Points
   for (int k = result.min_k + 1; k <= result.max_k; ++k) {
-    real_t norm_start_base = std::pow(2.0, k - 1);
-    real_t width = norm_start_base;  // Width of octave k is 2^(k-1)
-
-    // Ensure continuity: Start where the previous bucket ended
-    // (n_prev is already set from the previous loop iteration)
+    real_t norm_start = std::pow(2.0, k - 1);
+    real_t width = norm_start;
 
     for (int i = 0; i < sub_steps; ++i) {
-      real_t sub_t_end = (real_t)(i + 1) / sub_steps;
-      real_t norm_current = norm_start_base + (width * sub_t_end);
+      real_t sub_t = (real_t)(i + 1) / sub_steps;
+      real_t norm_x = norm_start + (width * sub_t);
 
-      Node n_next = sample_node(norm_current / inv_p_scalar, curve);
-      result.segments.push_back(solve_hermite_unit(n_prev, n_next));
-      n_prev = n_next;
+      real_t x = norm_x / inv_p_scalar;
+#if defined use_analytical_tangents
+      nodes.push_back(sample_node(x, curve));
+#else
+      auto val = curve(x);
+      nodes.push_back({x, x * val.f, 0.0});
+#endif
     }
+  }
+
+#if !defined use_analytical_tangents
+  // 3. Compute Numerical Tangents
+  // (Catmull-Rom / Central Difference, Robust 2nd Order)
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    real_t m;
+
+    // Check if we have enough points for 3-point stencils
+    if (nodes.size() < 3) {
+      // Fallback for extremely low resolution (unlikely)
+      if (i < nodes.size() - 1)
+        m = (nodes[i + 1].y - nodes[i].y) / (nodes[i + 1].x - nodes[i].x);
+      else
+        m = (nodes[i].y - nodes[i - 1].y) / (nodes[i].x - nodes[i - 1].x);
+    } else if (i == 0) {
+      // Start: 3-Point Forward Difference
+      // Assumes uniform spacing h between x0, x1, x2 (guaranteed by zero
+      // bucket) f'(x0) ≈ (-3y0 + 4y1 - y2) / 2h
+      real_t h = nodes[1].x - nodes[0].x;
+      m = (-3.0 * nodes[0].y + 4.0 * nodes[1].y - nodes[2].y) / (2.0 * h);
+    } else if (i == nodes.size() - 1) {
+      // End: 3-Point Backward Difference
+      // Assumes uniform spacing h between x(n-2), x(n-1), x(n)
+      // f'(xn) ≈ (3yn - 4y(n-1) + y(n-2)) / 2h
+      real_t h = nodes[i].x - nodes[i - 1].x;
+      m = (3.0 * nodes[i].y - 4.0 * nodes[i - 1].y + nodes[i - 2].y) /
+          (2.0 * h);
+    } else {
+      // Interior: Central Difference
+      // Even if adjacent intervals differ slightly in size (at geometric
+      // boundaries), the weighted central difference is safer. However, since
+      // we are doing uniform subdivisions, simple central is usually fine.
+      // Standard Central: (y_next - y_prev) / (x_next - x_prev)
+      m = (nodes[i + 1].y - nodes[i - 1].y) / (nodes[i + 1].x - nodes[i - 1].x);
+    }
+
+    nodes[i].m = m;
+  }
+#endif
+
+  // 4. Generate Segments
+  for (size_t i = 0; i < nodes.size() - 1; ++i) {
+    result.segments.push_back(solve_hermite_unit(nodes[i], nodes[i + 1]));
   }
 
   return result;
@@ -494,12 +762,6 @@ static inline s64 eval_transfer_curve(const struct SplineSet* set,
 
   // The new 't' is the remaining bits, shifted up to fill Q32.32
   u64 t = (t_octave << set->subdiv_bits) & 0xFFFFFFFFULL;
-
-#if 0
-  std::cout << "segment_base_idx: " << segment_base_idx
-            << " sub_idx: " << sub_idx << " t: " << t
-            << " t_octave: " << t_octave << std::endl;
-#endif
 
   /* 5. Horner's Method
    * y = ((a*t + b)*t + c)*t + d
