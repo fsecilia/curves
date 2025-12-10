@@ -317,36 +317,43 @@ struct SplineKnots {
     auto knots = std::vector<Knot>{};
     knots.reserve(num_knots);
 
-    auto x = real_t{0};
     for (auto i = 0; i < num_knots; ++i) {
+      const auto x = i * dx;
       auto result = curve(x);
-      knots.emplace_back({x, result.f_x, result.df_dx});
-      x += dx;
+      knots.emplace_back(x, result.f, result.df_dx);
     }
 
     auto result = SplineKnots{std::move(knots)};
 
+#if 0
     auto cusp = curve.cusp();
     if (!cusp) return result;
 
     auto nearest = result.find_nearest(*cusp);
-    if (nearest < 0) return result;
+    if (nearest <= 0 || nearest >= std::ssize(result.knots) - 1) return result;
 
     result.remove_analytical_cusp(nearest);
+#endif
+
     return result;
   }
 };
 
 // Ideal x_max is 128, but we let it float a little so curves with cusps can
 // align a knot to the cusp.
-const int_t x_max_ideal = 128;
+constexpr int_t x_max_ideal = 128;
 
 struct SegmentLayout {
   real_t segment_width;
   real_t x_max;
 };
 
-inline auto create_segment_layout(real_t crossover) noexcept -> SegmentLayout {
+inline auto create_segment_layout(real_t /*crossover*/) noexcept
+    -> SegmentLayout {
+#if 1
+  return {0.5, 128};
+#else
+  assert(crossover > 0);
   const auto ideal_cusp_index = static_cast<int_t>(
       std::round(crossover * CURVES_SPLINE_NUM_SEGMENTS / x_max_ideal));
   const auto clamped_ideal_cusp_index =
@@ -355,10 +362,13 @@ inline auto create_segment_layout(real_t crossover) noexcept -> SegmentLayout {
   const auto segment_width = crossover / clamped_ideal_cusp_index;
   const auto x_max = segment_width * CURVES_SPLINE_NUM_SEGMENTS;
   return {segment_width, x_max};
+#endif
 }
 
 inline auto create_spline(const auto& curve, real_t crossover) noexcept
     -> curves_spline {
+  assert(crossover > 0);
+
   curves_spline result;
 
   const auto segment_layout = create_segment_layout(crossover);
@@ -367,10 +377,10 @@ inline auto create_spline(const auto& curve, real_t crossover) noexcept
 
   const auto spline_knots = SplineKnots::create(TransferAdapterCurve{curve},
                                                 segment_layout.segment_width,
-                                                CURVES_SPLINE_NUM_SEGMENTS);
+                                                CURVES_SPLINE_NUM_SEGMENTS + 1);
 
-  const auto* p0 = spline_knots.knots;
-  const auto* p1 = p0;
+  auto* p0 = spline_knots.knots.data();
+  auto* p1 = p0;
   for (auto segment = 0; segment < CURVES_SPLINE_NUM_SEGMENTS; ++segment) {
     p0 = p1++;
 
@@ -380,11 +390,16 @@ inline auto create_spline(const auto& curve, real_t crossover) noexcept
     real_t y0 = p0->y;
     real_t y1 = p1->y;
 
+    auto a = 2 * y0 - 2 * y1 + m0 + m1;
+    auto b = 3 * (y1 - y0) - 2 * m0 - m1;
+    auto c = m0;
+    auto d = y0;
+
     s64* coeffs = result.coeffs[segment];
-    coeffs[0] = Fixed{2 * y0 - 2 * y1 + m0 + m1}.value;
-    coeffs[1] = Fixed{-3 * y0 + 3 * y1 - 2 * m0 - m1}.value;
-    coeffs[2] = Fixed{m0}.value;
-    coeffs[3] = Fixed{y0}.value;
+    coeffs[0] = Fixed{a}.value;
+    coeffs[1] = Fixed{b}.value;
+    coeffs[2] = Fixed{c}.value;
+    coeffs[3] = Fixed{d}.value;
   }
 
   return result;
@@ -505,7 +520,7 @@ auto sample_node(real_t x, auto curve) -> Node {
   return {x, y, m};
 };
 
-// #define use_analytical_tangents
+#define use_analytical_tangents
 
 /*
   Technically, this is a piecewise cubic Hermite interpolant (PCHIP) on a
