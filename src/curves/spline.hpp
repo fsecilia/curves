@@ -244,7 +244,7 @@ class TransferAdapterCurve {
     }
 
     const auto curve_result = curve_(x);
-    return {x * curve_result.f_x, curve_result.f_x + x * curve_result.df_dx};
+    return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
   }
 
   auto cusp() const noexcept -> std::optional<real_t> { return curve_.cusp(); }
