@@ -11,7 +11,7 @@
 #include <QMainWindow>
 #include <memory>
 
-struct curves_spline_table;
+struct curves_spline;
 
 namespace Ui {
 class MainWindow;
@@ -26,7 +26,7 @@ class MainWindow : public QMainWindow {
   ~MainWindow() override;
 
   auto prepopulateCurveParameterWidgets(int numWidgets) -> void;
-  auto setSpline(std::shared_ptr<const curves_spline_table> spline_table)
+  auto setSpline(std::shared_ptr<const curves_spline> spline)
       -> void;
 
  private slots:

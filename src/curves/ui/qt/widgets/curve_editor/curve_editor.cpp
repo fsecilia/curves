@@ -14,8 +14,8 @@ CurveEditor::CurveEditor(QWidget* parent)
 CurveEditor::~CurveEditor() = default;
 
 void CurveEditor::setSpline(
-    std::shared_ptr<const curves_spline_table> spline_table) {
-  m_spline_table = spline_table;
+    std::shared_ptr<const curves_spline> spline) {
+  m_spline = spline;
   update();
 }
 
@@ -207,10 +207,10 @@ void CurveEditor::drawCurves(QPainter& painter) {
   painter.setPen(pen_sensitivity);
 
   auto p = QPointF{std::max(m_visible_range.x(), 0.0), 0.0};
-  auto x_fixed = curves::to_fixed(p.x(), frac_bits);
+  auto x_fixed = curves::Fixed(p.x() + m_curve_step_x);
 
-  auto y_fixed = curves_eval_spline_table(m_spline_table.get(), x_fixed);
-  p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
+  auto y_fixed = curves_spline_eval(m_spline.get(), x_fixed.value);
+  p.setY((curves::Fixed::literal(y_fixed) / x_fixed).to_real());
   auto sample = std::begin(m_curve_polygon);
   *sample++ = logicalToScreen(p);
 
@@ -218,10 +218,10 @@ void CurveEditor::drawCurves(QPainter& painter) {
   while (sample != samples_end) {
     p.setX(p.x() + m_curve_step_x);
 
-    x_fixed = curves::to_fixed(p.x(), frac_bits);
+    x_fixed = curves::Fixed(p.x());
 
-    y_fixed = curves_eval_spline_table(m_spline_table.get(), x_fixed);
-    p.setY(curves::to_float<qreal>(y_fixed, frac_bits));
+    y_fixed = curves_spline_eval(m_spline.get(), x_fixed.value);
+    p.setY((curves::Fixed::literal(y_fixed) / x_fixed).to_real());
 
     *sample++ = logicalToScreen(p);
   }

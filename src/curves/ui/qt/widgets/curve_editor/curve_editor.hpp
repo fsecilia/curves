@@ -6,7 +6,7 @@
 #include <QWidget>
 #include <memory>
 
-struct curves_spline_table;
+struct curves_spline;
 
 namespace Ui {
 class CurveEditor;
@@ -30,7 +30,7 @@ class CurveEditor : public QWidget {
   explicit CurveEditor(QWidget* parent = nullptr);
   ~CurveEditor();
 
-  void setSpline(std::shared_ptr<const curves_spline_table> spline_table);
+  void setSpline(std::shared_ptr<const curves_spline> spline);
 
  protected:
   void wheelEvent(QWheelEvent* event) override;
@@ -45,11 +45,10 @@ class CurveEditor : public QWidget {
 
   Theme m_theme;
 
-  static const int frac_bits = 32;
   constexpr static const qreal pixels_per_curve_step_x = 1.875;
   qreal m_curve_step_x;
   QPolygonF m_curve_polygon;
-  std::shared_ptr<const curves_spline_table> m_spline_table;
+  std::shared_ptr<const curves_spline> m_spline;
   bool m_reallocate_curve_queued = false;
   void queueReallocateCurve();
   void tryReallocateCurve();

@@ -34,8 +34,8 @@ auto MainWindow::prepopulateCurveParameterWidgets(int numWidgets) -> void {
 }
 
 auto MainWindow::setSpline(
-    std::shared_ptr<const curves_spline_table> spline_table) -> void {
-  m_ui->curve_editor->setSpline(std::move(spline_table));
+    std::shared_ptr<const curves_spline> spline) -> void {
+  m_ui->curve_editor->setSpline(std::move(spline));
 }
 
 void MainWindow::onSpinBoxValueChanged(int parameter_index,
