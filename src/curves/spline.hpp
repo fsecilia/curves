@@ -141,14 +141,36 @@ struct Knot {
 
 using Knots = std::vector<Knot>;
 
-auto create_knots(const auto& curve, real_t dx, int_t num_knots) -> Knots {
+/*!
+  Knots are sampled piecewise-uniform, where each piece is follows a geometric
+  progression starting from 1/8 width, 1/4, 1, and 2.
+*/
+inline real_t knot_sample_location(int i) {
+  // Boundaries at i = 128, 192, 224
+  s64 excess128 = i - 128;
+  s64 excess192 = i - 192;
+  s64 excess224 = i - 224;
+
+  excess128 &= ~(excess128 >> 63);
+  excess192 &= ~(excess192 >> 63);
+  excess224 &= ~(excess224 >> 63);
+
+  // Region 0: x = i * 0.125
+  // Region 1: x = 16 + (i - 128) * 0.25
+  // Region 2: x = 32 + (i - 192) * 1.0
+  // Region 3: x = 64 + (i - 224) * 2.0
+  //
+  // Unified: x = (i + excess128 + 6*excess192 + 8*excess224) * 0.125
+  return (i + excess128 + 6 * excess192 + 8 * excess224) * 0.125;
+}
+
+auto create_knots(const auto& curve, int_t num_knots) -> Knots {
   if (!num_knots) return {};
 
   auto knots = Knots{};
   knots.reserve(num_knots);
-
   for (auto i = 0; i < num_knots; ++i) {
-    const auto x = i * dx;
+    const auto x = knot_sample_location(i);
     auto result = curve(x);
     knots.emplace_back(x, result.f, result.df_dx);
   }
@@ -159,10 +181,8 @@ auto create_knots(const auto& curve, real_t dx, int_t num_knots) -> Knots {
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
   curves_spline result;
 
-  const auto dx =
-      real_t{CURVES_SPLINE_DOMAIN_END_INT} / CURVES_SPLINE_NUM_SEGMENTS;
-  const auto knots = create_knots(TransferAdapterCurve{curve}, dx,
-                                  CURVES_SPLINE_NUM_SEGMENTS + 1);
+  const auto knots =
+      create_knots(TransferAdapterCurve{curve}, CURVES_SPLINE_NUM_SEGMENTS + 1);
 
   auto* p0 = knots.data();
   auto* p1 = p0;

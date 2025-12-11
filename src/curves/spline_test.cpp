@@ -21,8 +21,7 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   const auto dx = Fixed{1.0e-4L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
 
-  // const auto x_cusp = Fixed{crossover};
-  auto x_fixed = dx * 0;
+  auto x_fixed = Fixed{0};
   std::cout << "x0: " << x_fixed << " (" << x_fixed.value << " fixed)"
             << std::endl;
 
