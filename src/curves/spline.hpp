@@ -133,51 +133,6 @@ struct TransferAdapterTraits<SynchronousCurve> {
   }
 };
 
-// C++ version of the kernel's approximate log2, for use during knot generation
-inline double approx_log2_corrected(double x) {
-  if (x <= 0) return 0;
-
-  int n = static_cast<int>(std::floor(std::log2(x)));
-  double normalized = x / std::exp2(n);  // In range [1, 2)
-  double f = normalized - 1.0;           // In range [0, 1)
-
-  // Minimax polynomial from Sollya
-  // double f_corrected = f * (1.4116228283382952 + f * (-0.43316044507082552));
-
-  // Must match kernel coefficients exactly
-  constexpr double coeff_a = 1.4426950408889634;  // 1/ln(2)
-  constexpr double coeff_b = 0.4426950408889634;  // 1/ln(2) - 1
-  double f_corrected = f * (coeff_a - f * coeff_b);
-
-  return n + f_corrected;
-}
-
-inline double approx_log2_as_kernel(double x) {
-  s64 x_q32 = static_cast<s64>(x * (1LL << 32));
-  s64 result_q32 = approx_log2_q32_q32(x_q32);
-  return static_cast<double>(result_q32) / (1LL << 32);
-}
-
-inline double approx_warp(double x, double alpha, double inv_log_range,
-                          double log2_alpha) {
-  return (approx_log2_as_kernel(alpha + x) - log2_alpha) * inv_log_range;
-}
-
-// Find x such that approx_warp(x) = target, using bisection
-inline double invert_approx_warp(double target, double alpha, double x_max,
-                                 double inv_log_range, double log2_alpha) {
-  double lo = 0, hi = x_max;
-  for (int iter = 0; iter < 64;
-       ++iter) {  // 64 iterations gives ~18 decimal digits
-    double mid = (lo + hi) / 2;
-    if (approx_warp(mid, alpha, inv_log_range, log2_alpha) < target)
-      lo = mid;
-    else
-      hi = mid;
-  }
-  return (lo + hi) / 2;
-}
-
 struct Knot {
   real_t x;
   real_t y;
@@ -186,22 +141,14 @@ struct Knot {
 
 using Knots = std::vector<Knot>;
 
-auto create_knots(const auto& curve, real_t x_max, real_t alpha,
-                  int_t num_knots) -> Knots {
+auto create_knots(const auto& curve, real_t dx, int_t num_knots) -> Knots {
   if (!num_knots) return {};
-
-  // Precompute constants using the SAME approximate log2
-  const auto log2_alpha = approx_log2_as_kernel(alpha);
-  const auto log2_alpha_plus_xmax = approx_log2_as_kernel(alpha + x_max);
-  const auto log_range = log2_alpha_plus_xmax - log2_alpha;
-  const auto inv_log_range = (num_knots - 1) / log_range;
 
   auto knots = Knots{};
   knots.reserve(num_knots);
 
   for (auto i = 0; i < num_knots; ++i) {
-    const auto x =
-        invert_approx_warp(i, alpha, x_max, inv_log_range, log2_alpha);
+    const auto x = i * dx;
     auto result = curve(x);
     knots.emplace_back(x, result.f, result.df_dx);
   }
@@ -212,11 +159,10 @@ auto create_knots(const auto& curve, real_t x_max, real_t alpha,
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
   curves_spline result;
 
-  static constexpr auto x_max = real_t{CURVES_SPLINE_DOMAIN_END_INT};
-  static constexpr auto alpha = x_max / 4;
-  const auto num_knots = CURVES_SPLINE_NUM_SEGMENTS + 1;
-  const auto knots =
-      create_knots(TransferAdapterCurve{curve}, x_max, alpha, num_knots);
+  const auto dx =
+      real_t{CURVES_SPLINE_DOMAIN_END_INT} / CURVES_SPLINE_NUM_SEGMENTS;
+  const auto knots = create_knots(TransferAdapterCurve{curve}, dx,
+                                  CURVES_SPLINE_NUM_SEGMENTS + 1);
 
   auto* p0 = knots.data();
   auto* p1 = p0;
@@ -240,16 +186,6 @@ inline auto create_spline(const auto& curve) noexcept -> curves_spline {
     coeffs[2] = Fixed{c}.value;
     coeffs[3] = Fixed{d}.value;
   }
-
-  const auto log2_alpha = approx_log2_as_kernel(alpha);
-  const auto log2_alpha_plus_xmax = approx_log2_as_kernel(alpha + x_max);
-  const auto log_range = log2_alpha_plus_xmax - log2_alpha;
-
-  result.alpha = Fixed{alpha}.value;
-  result.log2_alpha = Fixed{log2_alpha}.value;
-  result.inv_log_range = Fixed{CURVES_SPLINE_NUM_SEGMENTS / log_range}.value;
-  result.x_max = Fixed{x_max}.value;
-  result.final_segment_inv_width = Fixed{1.0 / (p1->x - p0->x)}.value;
 
   return result;
 }

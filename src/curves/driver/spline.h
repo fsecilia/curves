@@ -32,13 +32,6 @@
 	       CURVES_SPLINE_DOMAIN_END_FIXED))
 
 struct curves_spline {
-	s64 alpha; // gentleness of progressive growth
-	s64 log2_alpha; // precomputed log2(alpha)
-	s64 inv_log_range; // scaling factor N/log2(1 + x_max/a)
-	s64 x_max; // after x_max, extend final tangent
-	s64 final_segment_inv_width; // 1/(width of final segment)
-
-	// coefficients by segment
 	s64 coeffs[CURVES_SPLINE_NUM_SEGMENTS][CURVES_SPLINE_NUM_COEFFS];
 };
 
@@ -47,7 +40,7 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	// Validate parameters.
 	if (unlikely(x < 0))
 		x = 0;
-	if (x >= spline->x_max) {
+	if (x >= CURVES_SPLINE_DOMAIN_END_FIXED) {
 		// Extend final tangent.
 
 		// Extract named cubic coefs.
@@ -60,29 +53,22 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 
 		// Calc slope and y at x_max.
 		s64 m = (s64)(((s128)(3 * a + 2 * b + c) *
-			       spline->final_segment_inv_width) >>
+			       CURVES_SPLINE_INV_SEGMENT_WIDTH) >>
 			      CURVES_SPLINE_FRAC_BITS);
 		s64 y_max = a + b + c + d;
 
 		// y = m(x - x_max) + y_max
-		return (s64)(((s128)m * (x - spline->x_max)) >>
+		return (s64)(((s128)m * (x - CURVES_SPLINE_DOMAIN_END_FIXED)) >>
 			     CURVES_SPLINE_FRAC_BITS) +
 		       y_max;
 	}
 
-	// W(x) = N*log2(1 + x/a)/log2(1 + x_max/a)
-	//      = N*(log2(a + x) - log2(a))/(log2(1 + x_max/a))
-	//      = (log2(a + x) - log2(a))*inv_log_range
+	s64 width = CURVES_SPLINE_INV_SEGMENT_WIDTH;
 
-	s64 log2_alpha_plus_x = approx_log2_q32_q32(spline->alpha + x);
-	s64 log2_diff = log2_alpha_plus_x - spline->log2_alpha;
-	s64 w = (s64)(((s128)log2_diff * spline->inv_log_range) >>
-		      CURVES_SPLINE_FRAC_BITS);
-	s64 segment_index = w >> CURVES_SPLINE_FRAC_BITS;
-	s64 t = w & ((1LL << CURVES_SPLINE_FRAC_BITS) - 1);
-
-	if (unlikely(segment_index >= CURVES_SPLINE_NUM_SEGMENTS))
-		segment_index = CURVES_SPLINE_NUM_SEGMENTS - 1;
+	// Index into segment with normalized t.
+	s64 x_segment = (s64)(((s128)x * width) >> CURVES_SPLINE_FRAC_BITS);
+	s64 segment_index = x_segment >> CURVES_SPLINE_FRAC_BITS;
+	s64 t = x_segment & ((1LL << CURVES_SPLINE_FRAC_BITS) - 1);
 
 	// Horner's loop.
 	const s64 *coeff = spline->coeffs[segment_index];

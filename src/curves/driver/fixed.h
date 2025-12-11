@@ -1041,48 +1041,6 @@ static inline s64 approx_log2_q32(s64 x)
 	// Shift right by 31 moves bits [62:31] -> [31:0].
 	// The cast to u32 discards bit 32 (the leading 1 we don't want).
 	u32 f = (u32)(normalized >> 31);
-	u32 ff = ((u64)f * f) >> 32;
-
-	// static s64 inv_ln2_q32 = 6062873881;
-	// static s64 inv_2ln2_q32 = 1860409944;
-	static s64 coeff_a = 6196328019; // 1.4427 * 2^32
-	static s64 coeff_b = 1901956854; // 0.4427 * 2^32
-	f = (u32)(((u64)f * coeff_a - (u64)ff * coeff_b) >> 32);
-
-	// Q32 result: n*2^32 + f
-	return ((s64)n << 32) | f;
-}
-
-static inline s64 approx_log2_q32_q32(s64 x)
-{
-	if (x <= 0)
-		return 0;
-
-	// Extract integer part.
-	int lz = curves_clz64(x);
-	int n = 63 - lz - 32;
-
-	// Normalize: shift x so the leading 1 sits at bit 63.
-	// In binary, the value looks like 1.ffff....
-	u64 normalized = (u64)x << lz;
-
-	// Extract fractional part.
-	// f is the 32 bits after the leading bit, the ".ffff..." part.
-	// Shift right by 31 moves bits [62:31] -> [31:0].
-	// The cast to u32 discards bit 32 (the leading 1 we don't want).
-	u32 f = (u32)(normalized >> 31);
-	u32 ff = ((u64)f * f) >> 32;
-
-	// static s64 inv_ln2_q32 = 6062873881;
-	// static s64 inv_2ln2_q32 = 1860409944;
-	// static s64 coeff_a = 6196328019; // 1.4427 * 2^32
-	// static s64 coeff_b = 1901956854; // 0.4427 * 2^32
-
-	static const s64 coeff_a = 6196328019; // 1/ln(2)*2^32
-	static const s64 coeff_b =
-		coeff_a - (1LL << 32); // Force a - b = 1.0 exactly
-
-	f = (u32)(((u64)f * coeff_a - (u64)ff * coeff_b) >> 32);
 
 	// Q32 result: n*2^32 + f
 	return ((s64)n << 32) | f;
