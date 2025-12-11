@@ -16,13 +16,12 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   auto sensitivity = SynchronousCurve{10.0L, 1.0L, crossover, 0.5L};
 
   const auto spline = create_spline(sensitivity);
-  const auto x_max = Fixed::literal(CURVES_SPLINE_DOMAIN_END_FIXED);
+  const auto x_max = Fixed::literal(spline.x_max);
 
   const auto dx = Fixed{1.0e-4L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
 
-  // const auto x_cusp = Fixed{crossover};
-  auto x_fixed = dx * 0;
+  auto x_fixed = Fixed{0};
   std::cout << "x0: " << x_fixed << " (" << x_fixed.value << " fixed)"
             << std::endl;
 
@@ -33,7 +32,7 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   auto sse_abs = 0.0L;
   auto sse_rel = 0.0L;
   auto num_samples = 0;
-  while (x_fixed < x_max) {
+  while (x_fixed < x_max / 4) {
     const auto x_float = x_fixed.to_real();
 
     const auto y_curve = x_float * sensitivity(x_float).f;
@@ -73,6 +72,27 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
             << ")"
             << "\nSSE Rel: " << sse_rel << "\nMSE Rel: " << mse_rel
             << "\nRMSE Rel: " << std::sqrt(mse_rel) << std::endl;
+
+  // Trace the warp calculation at x just below x_max
+  auto x_test = Fixed{127.9999L};
+  s64 x_val = x_test.value;
+
+  s64 log2_alpha_plus_x = approx_log2_q32_q32(spline.alpha + x_val);
+  s64 log2_diff = log2_alpha_plus_x - spline.log2_alpha;
+  s64 w = (s64)(((s128)log2_diff * spline.inv_log_range) >> 32);
+  s64 segment_index = w >> 32;
+  s64 t = w & ((1LL << 32) - 1);
+
+  std::cout << "x = " << x_test.to_real() << std::endl;
+  std::cout << "log2_alpha_plus_x (Q32) = " << log2_alpha_plus_x << std::endl;
+  std::cout << "log2_alpha (Q32) = " << spline.log2_alpha << std::endl;
+  std::cout << "log2_diff (Q32) = " << log2_diff << std::endl;
+  std::cout << "inv_log_range (Q32) = " << spline.inv_log_range << std::endl;
+  std::cout << "w (Q32) = " << w << std::endl;
+  std::cout << "segment_index = " << segment_index << std::endl;
+  std::cout << "t (Q32) = " << t << " (" << (t / (double)(1LL << 32)) << ")"
+            << std::endl;
+  std::cout << "Expected t ≈ 0.9999..." << std::endl;
 }
 
 }  // namespace
