@@ -16,7 +16,8 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   auto sensitivity = SynchronousCurve{10.0L, 1.0L, crossover, 0.5L};
 
   const auto spline = create_spline(sensitivity);
-  const auto x_max = Fixed::literal(CURVES_SPLINE_DOMAIN_END_FIXED);
+  const auto x_max =
+      Fixed::literal(curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS));
 
   const auto dx = Fixed{1.0e-4L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;

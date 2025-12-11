@@ -141,7 +141,10 @@ struct Knot {
 
 using Knots = std::vector<Knot>;
 
+#if 0
 /*!
+  We create 256 segments from 257 knots over the domain [0, 256). We have N+1
+  knots over the domain [0, D). We sample them in a geometric progression.
   Knots are sampled piecewise-uniform, where each piece is follows a geometric
   progression starting from 1/8 width, 1/4, 1, and 2.
 */
@@ -164,7 +167,66 @@ inline real_t knot_sample_location(int i) {
   return (i + excess128 + 6 * excess192 + 8 * excess224) * 0.125;
 }
 
-auto create_knots(const auto& curve, int_t num_knots) -> Knots {
+// Calculates the x value for the start of the i-th segment.
+inline double knot_sample_location(int i) {
+  const int M = CURVES_GRID_MANTISSA_LOG2;
+  const int B = CURVES_GRID_EXPONENT_BIAS;
+  const int segments_per_octave = 1 << M;
+  const double frac_scale = 1.0 / (1ULL << CURVES_SPLINE_FRAC_BITS);
+
+  // 1. Determine Region and Offset
+  // The "Linear" region (Region 0) technically covers indices [0,
+  // segments_per_octave). However, due to the implicit 1 in the geometric
+  // formula, the math unifies nicely. We can reverse the index formula: Index =
+  // (E' - B)*2^M + (x >> shift)
+
+  // Reverse engineer the exponent E_effective
+  // We determine which "block" of 2^M indices we are in.
+  int block = i >> M;
+
+  // Base case: Linear Region logic applies if we are in the 0th block.
+  if (block == 0) {
+    // In the linear region, exponent is clamped to B.
+    // Width of one segment is 2^(B - M).
+    int shift = B - M;
+    // x = index * width
+    double width = std::ldexp(1.0, shift);
+    return i * width * frac_scale;
+  }
+
+  // Geometric Region
+  // If block > 0, we are in a geometric octave.
+  // The effective exponent E' increases by 1 for every block.
+  // Note: Block 1 corresponds to E'=B, Block 2 to E'=B+1, etc.
+  int e_effective = B + (block - 1);
+
+  // The "mantissa" part of the index is the lower M bits.
+  // However, in the geometric zone, the stored value implies a leading 1.
+  // The 'mantissa' bits from the index represent the fraction *above* the power
+  // of 2.
+  int mantissa_bits = i & (segments_per_octave - 1);
+
+  // We reconstruct the integer fixed-point value:
+  // Value = (1.mantissa) * 2^E
+  // In integer terms: (2^M + mantissa) << (E - M)
+  // The (2^M) represents the implicit leading bit.
+
+  int shift = e_effective - M;
+  double value_mantissa = (double)(segments_per_octave + mantissa_bits);
+  double x_fixed = std::ldexp(value_mantissa, shift);
+
+  return x_fixed * frac_scale;
+}
+
+#else
+
+inline double knot_sample_location(int i) {
+  return Fixed::literal(curves_spline_calc_knot_x(i)).to_real();
+}
+
+#endif
+
+inline auto create_knots(const auto& curve, int_t num_knots) -> Knots {
   if (!num_knots) return {};
 
   auto knots = Knots{};

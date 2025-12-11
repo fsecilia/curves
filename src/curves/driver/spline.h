@@ -12,30 +12,115 @@
 #include "fixed.h"
 #include "math.h"
 
+// ----------------------------------------------------------------------------
+// Tunable Parameters
+// ----------------------------------------------------------------------------
+// These are only slightly tunable, but the are not derived constants. Be very
+// wary of modifying them.
+// ----------------------------------------------------------------------------
+
+// Fractional bits of the fixed-point format.
 #define CURVES_SPLINE_FRAC_BITS 32
 
+// Max Speed: domain actually covered by segments
+//
+// This is the max speed we have curves for. Above this is a linear extension
+// of the final tangent of the final cubic.
+//
+// The value is tunable, but not really useful to change because it is
+// dictated by the physics of hands and mice.
+#define CURVES_DOMAIN_MAX_LOG2 7
+
+// Min Resolution: width of smallest segments
+//
+// Below this is the subnormal zone, where everything is linear, just like
+// floating point. It sets the floor where the geometric progression stops and
+// the linear grid begins.
+//
+// This value is tunable, but not very useful to change. Every +1 you add here
+// adds an entire octave of segments as determined by
+// CURVES_GRID_MANTISSA_LOG2. Decreasing it makes the smallest segments of the
+// grid wider, making the grid coarser, but reducing the total number of
+// segments. Increasing it makes them smaller, increasing the resolution of the
+// grid, but increasing the number of segments.
+#define CURVES_DOMAIN_MIN_LOG2 -8
+
+// Density: segments per octave
+//
+// Density describes how many cubics we stuff into a single octave. Lower
+// values give wider dynamic range but faster growth. Higher values give less
+// dynamic range but slower growth.
+//
+// This value is coarsely tunable:
+// 3 = 8/octave: less accurate, fewer segments
+// 4 = 16/octave: balances accuracy, number of segments
+// 5 = 32/octave: more accurate, more segments
+#define CURVES_GRID_MANTISSA_LOG2 4
+
+// ----------------------------------------------------------------------------
+// Derived Parameters
+// ----------------------------------------------------------------------------
+// These are not tunable.
+// ----------------------------------------------------------------------------
+
+// Unit conversion from CURVES_DOMAIN_MIN_LOG2 to our fixed-point format.
+#define CURVES_GRID_EXPONENT_BIAS \
+	(CURVES_SPLINE_FRAC_BITS + CURVES_DOMAIN_MIN_LOG2)
+
+// Total octaves needed to span span min to max.
+#define CURVES_GRID_TOTAL_OCTAVES \
+	(CURVES_DOMAIN_MAX_LOG2 - CURVES_DOMAIN_MIN_LOG2)
+
+// Total segments needed to cover all octaves.
+#define CURVES_SPLINE_NUM_SEGMENTS \
+	(CURVES_GRID_TOTAL_OCTAVES << CURVES_GRID_MANTISSA_LOG2)
+
+// Spline is composed of cubic curves.
 #define CURVES_SPLINE_NUM_COEFFS 4
 
-#define CURVES_SPLINE_NUM_SEGMENTS_BITS 8
-#define CURVES_SPLINE_NUM_SEGMENTS (1LL << CURVES_SPLINE_NUM_SEGMENTS_BITS)
-
-#define CURVES_SPLINE_DOMAIN_END_BITS 7
-#define CURVES_SPLINE_DOMAIN_END_INT (1LL << CURVES_SPLINE_DOMAIN_END_BITS)
-#define CURVES_SPLINE_DOMAIN_END_FIXED \
-	((s64)CURVES_SPLINE_DOMAIN_END_INT << CURVES_SPLINE_FRAC_BITS)
-
-#define CURVES_SPLINE_SEGMENT_WIDTH \
-	(CURVES_SPLINE_DOMAIN_END_FIXED / CURVES_SPLINE_NUM_SEGMENTS)
-#define CURVES_SPLINE_INV_SEGMENT_WIDTH             \
-	(s64)((((s128)CURVES_SPLINE_NUM_SEGMENTS    \
-		<< (2 * CURVES_SPLINE_FRAC_BITS)) / \
-	       CURVES_SPLINE_DOMAIN_END_FIXED))
+// ----------------------------------------------------------------------------
+// Spline
+// ----------------------------------------------------------------------------
 
 struct curves_spline {
 	s64 coeffs[CURVES_SPLINE_NUM_SEGMENTS][CURVES_SPLINE_NUM_COEFFS];
 };
 
-// Finds segment and interpolation input for x in piecewise sampling grid.
+// Calculates the x location for a given segment index.
+static inline s64 curves_spline_calc_knot_x(int index)
+{
+	if (index == 0)
+		return 0;
+
+	const int m = CURVES_GRID_MANTISSA_LOG2;
+	const int b = CURVES_GRID_EXPONENT_BIAS;
+
+	int block = index >> m;
+
+	// If Block == 0 (N << (B - M))
+	// Else          ((1<<M) + Rem) << (B + Block - 1 - M)
+
+	// Linear Region (Block 0)
+	// Note: The math forces Block 1 (First Octave) to share this width
+	// to maintain alignment, so this branch handles both implicitly
+	// if you view index simply as a linear counter up to 2^(M+1).
+	if (block == 0) {
+		return (s64)index << (b - m);
+	}
+
+	// Geometric Region
+	// Reconstruct 1.mantissa * 2^E
+	int mantissa = index & ((1 << m) - 1);
+	s64 val = (1ULL << m) | mantissa;
+
+	// Shift = E - M = (B + block - 1) - M
+	int shift = (b + block - 1) - m;
+
+	return val << shift;
+}
+
+// Finds segment and interpolation input for x in piecewise geometric grid.
+#if 0
 static inline void
 curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 {
@@ -58,34 +143,96 @@ curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 	s64 frac = offset & mask;
 	*t = (frac << 3) >> (shift - 29);
 }
+#else
+static inline void
+curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
+{
+	// Ensure the grid bias doesn't create negative shifts.
+	BUILD_BUG_ON(CURVES_GRID_EXPONENT_BIAS < CURVES_GRID_MANTISSA_LOG2);
+
+	// Calculate the Effective Exponent (E')
+	// The clamp to BIAS handles the "linear" region near zero.
+	int e_raw = curves_log2_u64((u64)x);
+	int e_clamped = (e_raw > CURVES_GRID_EXPONENT_BIAS) ?
+				e_raw :
+				CURVES_GRID_EXPONENT_BIAS;
+
+	// Calculate Shift amount for this region
+	// We want to map the segment width (2^shift) to 1.0 in t-space.
+	int shift = e_clamped - CURVES_GRID_MANTISSA_LOG2;
+
+	// Calculate Segment Index, Base_Region_Offset + Mantissa_Offset
+	// The (x >> shift) part inherently handles the "linear" indexing
+	// (where x is small) AND the "geometric" indexing (where x includes
+	// the implicit leading 1).
+	*segment_index = ((s64)(e_clamped - CURVES_GRID_EXPONENT_BIAS)
+			  << CURVES_GRID_MANTISSA_LOG2) +
+			 (x >> shift);
+
+	// Calculate t (interpolation factor)
+	// t is the remaining fraction of x scaled to the spline's fixed-point
+	// format. We calc it using a shift to avoid division.
+	// Mask out the bits consumed by the segment index.
+	u64 mask = (1ULL << shift) - 1;
+	u64 remainder = x & mask;
+
+	// Normalize remainder to fixed-point 0..1.
+	if (shift < CURVES_SPLINE_FRAC_BITS)
+		*t = remainder << (CURVES_SPLINE_FRAC_BITS - shift);
+	else
+		*t = remainder >> (shift - CURVES_SPLINE_FRAC_BITS);
+}
+#endif
+
+// Calculates linear extension for x >= x_max.
+static inline s64
+curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
+{
+	s64 x_max = curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS);
+	int last_idx = CURVES_SPLINE_NUM_SEGMENTS - 1;
+
+	// Calc shift (width) of that last segment to scale the slope.
+	// We can infer it from the index.
+	int m_bits = CURVES_GRID_MANTISSA_LOG2;
+	int b_bias = CURVES_GRID_EXPONENT_BIAS;
+	int block = last_idx >> m_bits;
+	int last_shift = (block == 0) ? (b_bias - m_bits) :
+					(b_bias + block - 1 - m_bits);
+
+	// Extract coefficients
+	const s64 *coeff = spline->coeffs[last_idx];
+	s64 a = *coeff++;
+	s64 b = *coeff++;
+	s64 c = *coeff++;
+	s64 d = *coeff++;
+
+	// Calculate Slope
+	// dy/dt = 3a + 2b + c
+	// m = dy/dt / width = dy/dt / 2^last_shift
+	s128 dy_dt = (s128)3 * a + (s128)2 * b + c;
+
+	int scale = CURVES_SPLINE_FRAC_BITS - last_shift;
+	s64 slope;
+
+	if (scale >= 0)
+		slope = (s64)(dy_dt << scale);
+	else
+		slope = (s64)(dy_dt >> (-scale));
+
+	// result = slope * (x - x_max) + y_max
+	s64 y_max = a + b + c + d;
+	return (s64)(((s128)slope * (x - x_max)) >> CURVES_SPLINE_FRAC_BITS) +
+	       y_max;
+}
 
 static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 {
 	// Validate parameters.
 	if (unlikely(x < 0))
 		x = 0;
-	if (x >= CURVES_SPLINE_DOMAIN_END_FIXED) {
-		// Extend final tangent.
-
-		// Extract named cubic coefs.
-		const s64 *coeff =
-			spline->coeffs[CURVES_SPLINE_NUM_SEGMENTS - 1];
-		s64 a = *coeff++;
-		s64 b = *coeff++;
-		s64 c = *coeff++;
-		s64 d = *coeff++;
-
-		// Calc slope and y at x_max.
-		// We shift +2 because thef final bin is 1/4 the width.
-		s64 m = (s64)(((s128)(3 * a + 2 * b + c) *
-			       CURVES_SPLINE_INV_SEGMENT_WIDTH) >>
-			      (CURVES_SPLINE_FRAC_BITS + 2));
-		s64 y_max = a + b + c + d;
-
-		// y = m(x - x_max) + y_max
-		return (s64)(((s128)m * (x - CURVES_SPLINE_DOMAIN_END_FIXED)) >>
-			     CURVES_SPLINE_FRAC_BITS) +
-		       y_max;
+	if (unlikely(x >=
+		     curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS))) {
+		return curves_spline_extend_linear(spline, x);
 	}
 
 	s64 segment_index;
