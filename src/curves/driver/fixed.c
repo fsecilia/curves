@@ -182,3 +182,5 @@ __curves_fixed_log2_eval_poly(unsigned int output_frac_bits, int poly_degree,
 			      const unsigned int *poly_coeff_frac_bits);
 extern s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 			     unsigned int output_frac_bits);
+
+extern s64 approx_log2_q32(s64 x);
