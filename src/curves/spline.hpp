@@ -61,10 +61,6 @@ class SynchronousCurve {
     }
   }
 
-  auto cusp() const noexcept -> std::optional<real_t> {
-    return std::make_optional(p);
-  }
-
  private:
   real_t motivity_;
 
@@ -117,8 +113,6 @@ class TransferAdapterCurve {
     const auto curve_result = curve_(x);
     return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
   }
-
-  auto cusp() const noexcept -> std::optional<real_t> { return curve_.cusp(); }
 
   explicit TransferAdapterCurve(Curve curve, Traits traits = {}) noexcept
       : curve_{std::move(curve)}, traits_{std::move(traits)} {}
