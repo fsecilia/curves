@@ -64,6 +64,7 @@ static inline u64 curves_int_sqrt(u64 x)
 
 #else
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -155,6 +156,14 @@ static inline bool curves_shl_sat_u64(u64 value, unsigned int shift,
 
 #define WARN_ON_ONCE(condition) \
 	WARN_ONCE(condition, "WARNING at %s:%d\n", __FILE__, __LINE__)
+
+#ifdef __cplusplus
+#define BUILD_BUG_ON(condition) \
+	static_assert(!(condition), "BUILD_BUG_ON: " #condition)
+#else
+#define BUILD_BUG_ON(condition) \
+	_Static_assert(!(condition), "BUILD_BUG_ON: " #condition)
+#endif
 
 static inline s64 curves_abs64(s64 x)
 {
