@@ -15,7 +15,7 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   const auto crossover = 8.3L;
   auto sensitivity = SynchronousCurve{10.0L, 1.0L, crossover, 0.5L};
 
-  const auto spline = create_spline(sensitivity);
+  const auto spline = spline::create_spline(TransferAdapterCurve{sensitivity});
   const auto x_max =
       Fixed::literal(curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS));
 

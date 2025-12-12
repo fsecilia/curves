@@ -82,8 +82,12 @@
 // Spline
 // ----------------------------------------------------------------------------
 
+struct curves_spline_segment {
+	s64 coeffs[CURVES_SPLINE_NUM_COEFFS];
+};
+
 struct curves_spline {
-	s64 coeffs[CURVES_SPLINE_NUM_SEGMENTS][CURVES_SPLINE_NUM_COEFFS];
+	struct curves_spline_segment segments[CURVES_SPLINE_NUM_SEGMENTS];
 };
 
 // Calculates the x location for a given segment index.
@@ -175,7 +179,7 @@ curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 					(b_bias + block - 1 - m_bits);
 
 	// Extract coefficients
-	const s64 *coeff = spline->coeffs[last_idx];
+	const s64 *coeff = spline->segments[last_idx].coeffs;
 	s64 a = *coeff++;
 	s64 b = *coeff++;
 	s64 c = *coeff++;
@@ -215,7 +219,7 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	curves_spline_piecewise_uniform_index(x, &segment_index, &t);
 
 	// Horner's loop.
-	const s64 *coeff = spline->coeffs[segment_index];
+	const s64 *coeff = spline->segments[segment_index].coeffs;
 	s64 result = *coeff++;
 	for (int i = 1; i < CURVES_SPLINE_NUM_COEFFS; ++i) {
 		result = (s64)(((s128)result * t) >> CURVES_SPLINE_FRAC_BITS);

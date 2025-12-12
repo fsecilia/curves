@@ -20,6 +20,7 @@ extern "C" {
 #include <curves/lib.hpp>
 #include <curves/fixed.hpp>
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <concepts>
@@ -133,65 +134,101 @@ struct TransferAdapterTraits<SynchronousCurve> {
   }
 };
 
+namespace spline {
+
+// Knot to form cubic hermite splines, {x, y, dy/dx}.
 struct Knot {
   real_t x;
   real_t y;
   real_t m;
 };
 
-using Knots = std::vector<Knot>;
+/*
+  Converts from Hermite form in floating-point:
+    H(t) = (2t^3 - 3t^2 + 1)y0 + (t^3 - 2t^2 + t)m0
+         + (-2t^3 + 3t^2)y1 + (t^3 - t^2)m1
 
-inline real_t knot_sample_location(int i) {
-  return Fixed::literal(curves_spline_calc_knot_x(i)).to_real();
-}
+  To monomial form in fixed-point:
+    P(t) = at^3 + bt^2 + ct + d
+*/
+class SegmentConverter {
+ public:
+  auto operator()(const Knot& k0, const Knot& k1) const noexcept
+      -> curves_spline_segment {
+    const auto dx = k1.x - k0.x;
+    const auto dy = k1.y - k0.y;
+    const auto m0 = k0.m * dx;
+    const auto m1 = k1.m * dx;
 
-inline auto create_knots(const auto& curve, int_t num_knots) -> Knots {
-  if (!num_knots) return {};
+    return {.coeffs = {Fixed{-2 * dy + m0 + m1}.value,
+                       Fixed{3 * dy - 2 * m0 - m1}.value, Fixed{m0}.value,
+                       Fixed{k0.y}.value}};
+  }
+};
 
-  auto knots = Knots{};
-  knots.reserve(num_knots);
-  for (auto i = 0; i < num_knots; ++i) {
-    const auto x = knot_sample_location(i);
-    auto result = curve(x);
-    knots.emplace_back(x, result.f, result.df_dx);
+// Encapsulates how knots are located.
+struct KnotLocator {
+  auto operator()(int i) const noexcept -> real_t {
+    return Fixed::literal(curves_spline_calc_knot_x(i)).to_real();
+  }
+};
+
+// Samples a curve to create a knot.
+template <typename KnotLocator = KnotLocator>
+class KnotSampler {
+ public:
+  explicit KnotSampler(KnotLocator locator) noexcept
+      : locator_{std::move(locator)} {}
+
+  KnotSampler() = default;
+
+  auto operator()(const auto& curve, int_t knot) const -> Knot {
+    const auto x = locator_(knot);
+    const auto [f, df_dx] = curve(x);
+    return {x, f, df_dx};
   }
 
-  return knots;
-}
+ private:
+  KnotLocator locator_;
+};
 
-// Evaluates a pair of hermite knots to create a cubic segment between them.
-inline auto convert_segment(const auto& p0, const auto& p1,
-                            s64* coeffs) noexcept -> void {
-  const auto dx = p1->x - p0->x;
-  const auto dy = p1->y - p0->y;
-  const auto m0 = p0->m * dx;
-  const auto m1 = p1->m * dx;
+/*
+  Builds a spline by sampling a curve for knots, then building segments
+  between the knots.
+*/
+template <int_t num_segments, typename KnotSampler = KnotSampler<>,
+          typename SegmentConverter = SegmentConverter>
+class SplineBuilder {
+ public:
+  SplineBuilder(KnotSampler knot_sampler,
+                SegmentConverter segment_converter) noexcept
+      : knot_sampler_{std::move(knot_sampler)},
+        segment_converter_{std::move(segment_converter)} {}
 
-  const auto a = -2 * dy + m0 + m1;
-  const auto b = 3 * dy - 2 * m0 - m1;
-  const auto c = m0;
-  const auto d = p0->y;
+  SplineBuilder() = default;
 
-  coeffs[0] = Fixed{a}.value;
-  coeffs[1] = Fixed{b}.value;
-  coeffs[2] = Fixed{c}.value;
-  coeffs[3] = Fixed{d}.value;
-}
+  auto operator()(const auto& curve) const noexcept -> curves_spline {
+    curves_spline result;
+
+    auto k0 = knot_sampler_(curve, 0);
+    for (auto segment = 0; segment < num_segments; ++segment) {
+      const auto k1 = knot_sampler_(curve, segment + 1);
+      result.segments[segment] = segment_converter_(k0, k1);
+      k0 = k1;
+    }
+
+    return result;
+  }
+
+ private:
+  KnotSampler knot_sampler_;
+  SegmentConverter segment_converter_;
+};
 
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
-  curves_spline result;
-
-  const auto knots =
-      create_knots(TransferAdapterCurve{curve}, CURVES_SPLINE_NUM_SEGMENTS + 1);
-
-  auto* p0 = knots.data();
-  auto* p1 = p0;
-  for (auto segment = 0; segment < CURVES_SPLINE_NUM_SEGMENTS; ++segment) {
-    p0 = p1++;
-    convert_segment(*p0, *p1, result.coeffs[segment]);
-  }
-
-  return result;
+  return SplineBuilder<CURVES_SPLINE_NUM_SEGMENTS, KnotSampler<>,
+                       SegmentConverter>{}(curve);
 }
 
+}  // namespace spline
 }  // namespace curves
