@@ -195,25 +195,17 @@ void CurveEditor::drawGrid(QPainter& painter) {
   drawGridY(painter, pen_axis, pen_major, major_start_y, major_step_y);
 }
 
-void CurveEditor::drawCurves(QPainter& painter) {
-  tryReallocateCurve();
-
-  auto pen_sensitivity = QPen{m_theme.curve_sensitivity};
-  pen_sensitivity.setWidthF(1.1);
-
-  auto pen_derivative = QPen{m_theme.curve_derivative};
-  pen_derivative.setWidthF(1.1);
-
+void CurveEditor::drawSpline(QPainter& painter, const curves_spline& spline) {
   auto sample = std::begin(m_curve_polygon);
   const auto samples_end = std::end(m_curve_polygon);
 
-  painter.setPen(pen_sensitivity);
   auto p = QPointF{std::max(m_visible_range.x(), 0.0), 0.0};
 
   const auto dx_first_segment =
       curves::Fixed::literal(curves_spline_locate_knot(1)).to_real();
+
   if (p.x() < dx_first_segment) {
-    const auto* coeffs = m_spline->segments[0].coeffs;
+    const auto* coeffs = spline.segments[0].coeffs;
 
     const auto a = curves::Fixed::literal(coeffs[0]).to_real();
     const auto b = curves::Fixed::literal(coeffs[1]).to_real();
@@ -233,7 +225,7 @@ void CurveEditor::drawCurves(QPainter& painter) {
     // segment with 0 noise and the real, noisy segment. The blend cancels
     // out the envelope exactly.
 
-    const auto* coeffs = m_spline->segments[0].coeffs;
+    const auto* coeffs = spline.segments[0].coeffs;
     const auto a = curves::Fixed::literal(coeffs[0]).to_real();
     const auto b = curves::Fixed::literal(coeffs[1]).to_real();
     const auto c = curves::Fixed::literal(coeffs[2]).to_real();
@@ -242,8 +234,8 @@ void CurveEditor::drawCurves(QPainter& painter) {
     const auto ideal_sensitivity = d_dt / dx_first_segment;
 
     const auto x_fixed = curves::Fixed{p.x()};
-    const auto y_fixed = curves::Fixed::literal(
-        curves_spline_eval(m_spline.get(), x_fixed.value));
+    const auto y_fixed =
+        curves::Fixed::literal(curves_spline_eval(&spline, x_fixed.value));
     const auto x_real = x_fixed.to_real();
     const auto y_real = y_fixed.to_real();
     const auto sensitivity = y_real / x_real;
@@ -258,8 +250,8 @@ void CurveEditor::drawCurves(QPainter& painter) {
   // The remaining segments are rendered directly.
   while (sample != samples_end) {
     const auto x_fixed = curves::Fixed{p.x()};
-    const auto y_fixed = curves::Fixed::literal(
-        curves_spline_eval(m_spline.get(), x_fixed.value));
+    const auto y_fixed =
+        curves::Fixed::literal(curves_spline_eval(&spline, x_fixed.value));
 
     const auto x_real = x_fixed.to_real();
     const auto y_real = y_fixed.to_real();
@@ -271,4 +263,16 @@ void CurveEditor::drawCurves(QPainter& painter) {
   }
 
   painter.drawPolyline(m_curve_polygon);
+}
+
+void CurveEditor::drawCurves(QPainter& painter) {
+  tryReallocateCurve();
+
+  auto pen_sensitivity = QPen{m_theme.curve_sensitivity};
+  pen_sensitivity.setWidthF(1.1);
+  painter.setPen(pen_sensitivity);
+  drawSpline(painter, *m_spline);
+
+  // auto pen_derivative = QPen{m_theme.curve_derivative};
+  // pen_derivative.setWidthF(1.1);
 }

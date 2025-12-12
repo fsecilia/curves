@@ -68,6 +68,7 @@ class CurveEditor : public QWidget {
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
 
+  void drawSpline(QPainter& painter, const curves_spline& spline);
   void drawCurves(QPainter& painter);
 };
 
