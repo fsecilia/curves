@@ -204,6 +204,20 @@ curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 	       y_max;
 }
 
+static inline s64
+curves_spline_eval_segment(const struct curves_spline_segment *segment, s64 t)
+{
+	// Horner's loop.
+	const s64 *coeff = segment->coeffs;
+	s64 result = *coeff++;
+	for (int i = 1; i < CURVES_SPLINE_NUM_COEFFS; ++i) {
+		result = (s64)(((s128)result * t) >> CURVES_SPLINE_FRAC_BITS);
+		result += *coeff++;
+	}
+
+	return result;
+}
+
 static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 {
 	// Validate parameters.
@@ -218,15 +232,7 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	s64 t;
 	curves_spline_piecewise_uniform_index(x, &segment_index, &t);
 
-	// Horner's loop.
-	const s64 *coeff = spline->segments[segment_index].coeffs;
-	s64 result = *coeff++;
-	for (int i = 1; i < CURVES_SPLINE_NUM_COEFFS; ++i) {
-		result = (s64)(((s128)result * t) >> CURVES_SPLINE_FRAC_BITS);
-		result += *coeff++;
-	}
-
-	return result;
+	return curves_spline_eval_segment(&spline->segments[segment_index], t);
 }
 
 #endif /* _CURVES_SPLINE_H */
