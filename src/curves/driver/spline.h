@@ -201,14 +201,16 @@ curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 	return (s64)(((s128)slope * (x - x_max)) >> SPLINE_FRAC_BITS) + y_max;
 }
 
+#define SPLINE_FRAC_HALF (1LL << (SPLINE_FRAC_BITS - 1))
 static inline s64
 curves_spline_eval_segment(const struct curves_spline_segment *segment, s64 t)
 {
-	// Horner's loop.
+	// Horner's loop with round-half-up after multiply, before the shift.
 	const s64 *coeff = segment->coeffs;
 	s64 result = *coeff++;
 	for (int i = 1; i < SPLINE_NUM_COEFFS; ++i) {
-		result = (s64)(((s128)result * t) >> SPLINE_FRAC_BITS);
+		result = (s64)(((s128)result * t + SPLINE_FRAC_HALF) >>
+			       SPLINE_FRAC_BITS);
 		result += *coeff++;
 	}
 
