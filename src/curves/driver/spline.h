@@ -120,30 +120,6 @@ static inline s64 curves_spline_calc_knot_x(int index)
 }
 
 // Finds segment and interpolation input for x in piecewise geometric grid.
-#if 0
-static inline void
-curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
-{
-	s64 bit36 = (x >> 36) & 1;
-	s64 bit37 = (x >> 37) & 1;
-	s64 bit38 = (x >> 38) & 1;
-
-	s64 ge16 = bit36 | bit37 | bit38;
-	s64 ge32 = bit37 | bit38;
-	s64 ge64 = bit38;
-
-	s64 base = (ge16 << 7) + (ge32 << 6) + (ge64 << 5);
-	s64 shift = 29 + ge16 + (ge32 << 1) + ge64;
-	s64 region_start = (ge16 + ge32 + (ge64 << 1)) << 36;
-
-	s64 offset = x - region_start;
-	*segment_index = base + (offset >> shift);
-
-	s64 mask = (1LL << shift) - 1;
-	s64 frac = offset & mask;
-	*t = (frac << 3) >> (shift - 29);
-}
-#else
 static inline void
 curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 {
@@ -182,7 +158,6 @@ curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 	else
 		*t = remainder >> (shift - CURVES_SPLINE_FRAC_BITS);
 }
-#endif
 
 // Calculates linear extension for x >= x_max.
 static inline s64
