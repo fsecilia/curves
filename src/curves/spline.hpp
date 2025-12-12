@@ -159,6 +159,25 @@ inline auto create_knots(const auto& curve, int_t num_knots) -> Knots {
   return knots;
 }
 
+// Evaluates a pair of hermite knots to create a cubic segment between them.
+inline auto convert_segment(const auto& p0, const auto& p1,
+                            s64* coeffs) noexcept -> void {
+  const auto dx = p1->x - p0->x;
+  const auto dy = p1->y - p0->y;
+  const auto m0 = p0->m * dx;
+  const auto m1 = p1->m * dx;
+
+  const auto a = -2 * dy + m0 + m1;
+  const auto b = 3 * dy - 2 * m0 - m1;
+  const auto c = m0;
+  const auto d = p0->y;
+
+  coeffs[0] = Fixed{a}.value;
+  coeffs[1] = Fixed{b}.value;
+  coeffs[2] = Fixed{c}.value;
+  coeffs[3] = Fixed{d}.value;
+}
+
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
   curves_spline result;
 
@@ -169,23 +188,7 @@ inline auto create_spline(const auto& curve) noexcept -> curves_spline {
   auto* p1 = p0;
   for (auto segment = 0; segment < CURVES_SPLINE_NUM_SEGMENTS; ++segment) {
     p0 = p1++;
-
-    const auto dx = p1->x - p0->x;
-    real_t m0 = p0->m * dx;
-    real_t m1 = p1->m * dx;
-    real_t y0 = p0->y;
-    real_t y1 = p1->y;
-
-    auto a = 2 * y0 - 2 * y1 + m0 + m1;
-    auto b = 3 * (y1 - y0) - 2 * m0 - m1;
-    auto c = m0;
-    auto d = y0;
-
-    s64* coeffs = result.coeffs[segment];
-    coeffs[0] = Fixed{a}.value;
-    coeffs[1] = Fixed{b}.value;
-    coeffs[2] = Fixed{c}.value;
-    coeffs[3] = Fixed{d}.value;
+    convert_segment(*p0, *p1, result.coeffs[segment]);
   }
 
   return result;
