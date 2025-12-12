@@ -227,8 +227,8 @@ class SplineBuilder {
 };
 
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
-  return SplineBuilder<CURVES_SPLINE_NUM_SEGMENTS, KnotSampler<>,
-                       SegmentConverter>{}(curve);
+  return SplineBuilder<SPLINE_NUM_SEGMENTS, KnotSampler<>, SegmentConverter>{}(
+      curve);
 }
 
 }  // namespace spline

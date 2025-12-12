@@ -14,11 +14,6 @@
 extern "C" {
 
 #include <curves/driver/fixed.h>
-
-/*
-  The frac bits used by spline is currently the source of truth. This is
-  temporary until we sort out the UAPI.
-*/
 #include <curves/driver/spline.h>
 
 }  // extern "C"
@@ -48,7 +43,13 @@ struct Fixed {
   Value value;
 
   using WideValue = int128_t;
-  inline static const int_t frac_bits = CURVES_SPLINE_FRAC_BITS;
+
+  /*
+    The frac bits used by spline is currently the source of truth. This is
+    temporary until we sort out the UAPI. Since the only fixed point we do
+    on the usermode side is generating the spline, this may hold.
+  */
+  inline static const int_t frac_bits = SPLINE_FRAC_BITS;
 
   constexpr Fixed(std::signed_integral auto integer) noexcept
       : value{static_cast<Value>(integer) << frac_bits} {}
