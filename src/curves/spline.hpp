@@ -169,7 +169,8 @@ class SegmentConverter {
 // Encapsulates how knots are located.
 struct KnotLocator {
   auto operator()(int i) const noexcept -> real_t {
-    return Fixed::literal(curves_spline_calc_knot_x(i)).to_real();
+    // Call out to shared c implementation.
+    return Fixed::literal(curves_spline_locate_knot(i)).to_real();
   }
 };
 

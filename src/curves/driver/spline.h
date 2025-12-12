@@ -91,7 +91,7 @@ struct curves_spline {
 };
 
 // Calculates the x location for a given segment index.
-static inline s64 curves_spline_calc_knot_x(int index)
+static inline s64 curves_spline_locate_knot(int index)
 {
 	if (index == 0)
 		return 0;
@@ -167,7 +167,7 @@ curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 static inline s64
 curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 {
-	s64 x_max = curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS);
+	s64 x_max = curves_spline_locate_knot(CURVES_SPLINE_NUM_SEGMENTS);
 	int last_idx = CURVES_SPLINE_NUM_SEGMENTS - 1;
 
 	// Calc shift (width) of that last segment to scale the slope.
@@ -224,7 +224,7 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	if (unlikely(x < 0))
 		x = 0;
 	if (unlikely(x >=
-		     curves_spline_calc_knot_x(CURVES_SPLINE_NUM_SEGMENTS))) {
+		     curves_spline_locate_knot(CURVES_SPLINE_NUM_SEGMENTS))) {
 		return curves_spline_extend_linear(spline, x);
 	}
 
