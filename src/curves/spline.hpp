@@ -39,15 +39,17 @@ struct CurveResult {
 
 class SynchronousCurve {
  public:
-  SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
-                   real_t smooth)
-      : motivity_{motivity},
+  SynchronousCurve(real_t scale, real_t motivity, real_t gamma,
+                   real_t sync_speed, real_t smooth)
+      : scale_{scale},
+        motivity_{motivity},
         L{std::log(motivity)},
         g{gamma / L},
         p{sync_speed},
         k{smooth == 0 ? 16.0 : 0.5 / smooth},
         r{1.0 / k} {}
 
+  auto scale() const noexcept -> real_t { return scale_; }
   auto motivity() const noexcept -> real_t { return motivity_; }
 
   auto operator()(real_t x) const noexcept -> CurveResult {
@@ -63,6 +65,7 @@ class SynchronousCurve {
   }
 
  private:
+  real_t scale_;
   real_t motivity_;
 
   real_t L;  // log(motivity)
@@ -86,7 +89,7 @@ class SynchronousCurve {
     real_t sech_sq = 1 - w * w;  // sech(v)^2
 
     // Forward: f = exp((+/-)L * z)
-    real_t f = std::exp(sign * L * w_pow_r);
+    real_t f = scale_ * std::exp(sign * L * w_pow_r);
 
     // Derivative: df/dx = (f * L * g / x) * u^(k-1) * w^(r-1) * sech(v)^2
     real_t df_dx =
@@ -130,7 +133,7 @@ struct TransferAdapterTraits<SynchronousCurve> {
       This comes from the limit definition of the derivative of the transfer
       function.
     */
-    return {0.0, 1.0 / curve.motivity()};
+    return {0.0, curve.scale() / curve.motivity()};
   }
 };
 
