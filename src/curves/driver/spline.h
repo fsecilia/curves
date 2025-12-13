@@ -15,57 +15,54 @@
 // ----------------------------------------------------------------------------
 // Tunable Parameters
 // ----------------------------------------------------------------------------
-// These are only slightly tunable, but the are not derived constants. Be very
-// wary of modifying them.
+// These are only slightly tunable, but the are not derived constants. Be wary
+// of modifying them.
 // ----------------------------------------------------------------------------
 
 // Fractional bits of the fixed-point format.
 #define SPLINE_FRAC_BITS 32
 
-// Min Resolution: width of smallest segments
+// Domain minimum.
 //
-// Below this is the subnormal zone, where everything is linear, just like
-// floating point. It sets the floor where the geometric progression stops and
-// the linear grid begins.
+// Smallest input the spline handles with full geometric resolution. Below
+// this, segments have constant, minimum width.
 //
-// This value is tunable, but not very useful to change. Every +1 you add here
-// adds an entire octave of segments as determined by
-// CURVES_GRID_MANTISSA_LOG2. Decreasing it makes the smallest segments of the
-// grid wider, making the grid coarser, but reducing the total number of
-// segments. Increasing it makes them smaller, increasing the resolution of the
-// grid, but increasing the number of segments.
+// Increasing it makes the smallest segments of the grid wider, making the grid
+// coarser, but reducing the total number of segments. Decreasing it makes them
+// smaller, increasing the resolution of the grid, but increasing the number of
+// segments. Every -1 adds a whole octave's worth of segments.
 #define SPLINE_DOMAIN_MIN_LOG2 -8
 
-// Max Speed: domain actually covered by segments
+// Domain maximum.
 //
-// This is the max speed we have curves for. Above this is a linear extension
-// of the final tangent of the final cubic.
+// Largest input covered by spline segments. Above this, output extrapolates
+// linearly using the final segment's slope.
 //
-// The value is tunable, but not really useful to change because it is
-// dictated by the physics of hands and mice.
+// 2^7 = 128 exceeds typical mouse velocity. 2^6 = 64 does not.
 #define SPLINE_DOMAIN_MAX_LOG2 7
 
-// Density: segments per octave
+// Segments per octave.
 //
-// Density describes how many cubics we stuff into a single octave. Lower
-// values give wider dynamic range but faster growth. Higher values give less
-// dynamic range but slower growth.
+// How finely each octave is subdivided.
 //
-// This value is coarsely tunable:
+// Empirically, given SPLINE_DOMAIN_MIN_LOG2 == -8,
 // 3 = 8/octave: less accurate, fewer segments
 // 4 = 16/octave: balances accuracy, number of segments
 // 5 = 32/octave: more accurate, more segments
 #define SPLINE_SEGMENTS_PER_OCTAVE_LOG2 4
+#define SPLINE_SEGMENTS_PER_OCTAVE (1ULL << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 
 // ----------------------------------------------------------------------------
 // Derived Parameters
 // ----------------------------------------------------------------------------
-// These are not tunable.
-// ----------------------------------------------------------------------------
 
-// Origin: bit position where octave 0 begins in fixed-point
-// log2(x) below this falls in the linear (subnormal) zone.
-#define SPLINE_ORIGIN_SHIFT (SPLINE_FRAC_BITS + SPLINE_DOMAIN_MIN_LOG2)
+// Bit position of DOMAIN_MIN in fixed-point representation.
+#define SPLINE_DOMAIN_MIN_SHIFT (SPLINE_FRAC_BITS + SPLINE_DOMAIN_MIN_LOG2)
+
+// Width of smallest segments.
+// Octave 0 (linear) and octave 1 share this width; doubling starts at octave 2.
+#define SPLINE_MIN_SEGMENT_WIDTH_LOG2 \
+	(SPLINE_DOMAIN_MIN_SHIFT - SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 
 // Total octaves needed to span span min to max.
 #define SPLINE_NUM_OCTAVES (SPLINE_DOMAIN_MAX_LOG2 - SPLINE_DOMAIN_MIN_LOG2)
@@ -89,51 +86,71 @@ struct curves_spline {
 	struct curves_spline_segment segments[SPLINE_NUM_SEGMENTS];
 };
 
-// Calculates the x location for a given segment index.
-static inline s64 curves_spline_locate_knot(int index)
+// Calculates sample location for a given knot index.
+static inline s64 curves_spline_locate_knot(int knot)
 {
-	if (index == 0)
+	int octave, segment_width_log2, segment_within_octave;
+	s64 segment;
+
+	// Origin must be in octave 0.
+	BUILD_BUG_ON(SPLINE_DOMAIN_MIN_SHIFT < SPLINE_SEGMENTS_PER_OCTAVE_LOG2);
+
+	// Sample location of knot 0 is 0.
+	if (!knot)
 		return 0;
 
-	const int m = SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
-	const int b = SPLINE_ORIGIN_SHIFT;
+	// Determine octave containing knot.
+	//
+	// The octave is contained in the high bits:
+	//     octave = knot/SPLINE_SEGMENTS_PER_OCTAVE
+	octave = knot >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
 
-	int block = index >> m;
-
-	// If Block == 0 (N << (B - M))
-	// Else          ((1<<M) + Rem) << (B + Block - 1 - M)
-
-	// Linear Region (Block 0)
-	// Note: The math forces Block 1 (First Octave) to share this width
-	// to maintain alignment, so this branch handles both implicitly
-	// if you view index simply as a linear counter up to 2^(M+1).
-	if (block == 0) {
-		return (s64)index << (b - m);
+	if (octave == 0) {
+		// Handle linear zone.
+		//
+		// Octave 0 must extend all the way to actual 0, so it is the
+		// whole linear range up to octave 1. All segments here have
+		// minimum width.
+		//
+		// Here, segment == knot:
+		//     x = segment*min_segment_width
+		return (s64)knot << SPLINE_MIN_SEGMENT_WIDTH_LOG2;
 	}
 
-	// Geometric Region
-	// Reconstruct 1.mantissa * 2^E
-	int mantissa = index & ((1 << m) - 1);
-	s64 val = (1ULL << m) | mantissa;
+	// Determine segment width.
+	//
+	// Octave 1 has min width; width doubles per octave after.
+	segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave - 1;
 
-	// Shift = E - M = (B + block - 1) - M
-	int shift = (b + block - 1) - m;
+	// Locate segment within octave.
+	//
+	// The location of the segment within the octave is contained in the
+	// low bits:
+	//     segment_within_octave = knot % SPLINE_SEGMENTS_PER_OCTAVE
+	segment_within_octave = knot & (SPLINE_SEGMENTS_PER_OCTAVE - 1);
 
-	return val << shift;
+	// Locate segment globally.
+	//
+	// The sum total size of all previous octaves is the same as the
+	// current octave size, so we offset the global location by 1 octave's
+	// worth of segments:
+	//     segment = (1 octave)*segments_per_octave + segment_within_octave
+	segment = SPLINE_SEGMENTS_PER_OCTAVE | segment_within_octave;
+
+	// x = segment*segment_width.
+	return segment << segment_width_log2;
 }
 
 // Finds segment and interpolation input for x in piecewise geometric grid.
 static inline void
 curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 {
-	// Ensure the grid bias doesn't create negative shifts.
-	BUILD_BUG_ON(SPLINE_ORIGIN_SHIFT < SPLINE_SEGMENTS_PER_OCTAVE_LOG2);
-
 	// Calculate the Effective Exponent (E')
 	// The clamp to BIAS handles the "linear" region near zero.
 	int e_raw = curves_log2_u64((u64)x);
-	int e_clamped = (e_raw > SPLINE_ORIGIN_SHIFT) ? e_raw :
-							SPLINE_ORIGIN_SHIFT;
+	int e_clamped = (e_raw > SPLINE_DOMAIN_MIN_SHIFT) ?
+				e_raw :
+				SPLINE_DOMAIN_MIN_SHIFT;
 
 	// Calculate Shift amount for this region
 	// We want to map the segment width (2^shift) to 1.0 in t-space.
@@ -143,7 +160,7 @@ curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
 	// The (x >> shift) part inherently handles the "linear" indexing
 	// (where x is small) AND the "geometric" indexing (where x includes
 	// the implicit leading 1).
-	*segment_index = ((s64)(e_clamped - SPLINE_ORIGIN_SHIFT)
+	*segment_index = ((s64)(e_clamped - SPLINE_DOMAIN_MIN_SHIFT)
 			  << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
 			 (x >> shift);
 
@@ -171,7 +188,7 @@ curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 	// Calc shift (width) of that last segment to scale the slope.
 	// We can infer it from the index.
 	int m_bits = SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
-	int b_bias = SPLINE_ORIGIN_SHIFT;
+	int b_bias = SPLINE_DOMAIN_MIN_SHIFT;
 	int block = last_idx >> m_bits;
 	int last_shift = (block == 0) ? (b_bias - m_bits) :
 					(b_bias + block - 1 - m_bits);
@@ -201,11 +218,16 @@ curves_spline_extend_linear(const struct curves_spline *spline, s64 x)
 	return (s64)(((s128)slope * (x - x_max)) >> SPLINE_FRAC_BITS) + y_max;
 }
 
+// 1/2 in fixed point; used when rounding after multiplication.
 #define SPLINE_FRAC_HALF (1LL << (SPLINE_FRAC_BITS - 1))
+
 static inline s64
 curves_spline_eval_segment(const struct curves_spline_segment *segment, s64 t)
 {
-	// Horner's loop with round-half-up after multiply, before the shift.
+	// Horner's method: ((a*t + b)*t + c)*t + d
+	//
+	// Each multiplication truncates. Adding half before the shift rounds
+	// to nearest, reducing worst-case relative error by about 3x.
 	const s64 *coeff = segment->coeffs;
 	s64 result = *coeff++;
 	for (int i = 1; i < SPLINE_NUM_COEFFS; ++i) {
