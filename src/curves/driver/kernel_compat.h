@@ -144,17 +144,19 @@ static inline bool curves_shl_sat_u64(u64 value, unsigned int shift,
 	return false;
 }
 
-#define WARN_ONCE(condition, format, ...)                           \
-	do {                                                        \
-		if (condition) {                                    \
-			static bool _warned_once = false;           \
-			if (unlikely(!_warned_once)) {              \
-				_warned_once = true;                \
-				fprintf(stderr, "WARNING: " format, \
-					##__VA_ARGS__);             \
-			}                                           \
-		}                                                   \
-	} while (0)
+#define WARN_ONCE(condition, format, ...)                             \
+	({                                                            \
+		bool __ret = (condition);                             \
+		if (__ret) {                                          \
+			static bool _warned_once = false;             \
+			if (!_warned_once) {                          \
+				_warned_once = true;                  \
+				fprintf(stderr, "WARNING at %s:%d\n", \
+					__FILE__, __LINE__);          \
+			}                                             \
+		}                                                     \
+		__ret;                                                \
+	})
 
 #define WARN_ON_ONCE(condition) \
 	WARN_ONCE(condition, "WARNING at %s:%d\n", __FILE__, __LINE__)
