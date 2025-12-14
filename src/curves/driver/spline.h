@@ -27,10 +27,10 @@
 // Smallest input the spline handles with full geometric resolution. Below
 // this, segments have constant, minimum width.
 //
-// Increasing it makes the smallest segments of the grid wider, making the grid
-// coarser, but reducing the total number of segments. Decreasing it makes them
-// smaller, increasing the resolution of the grid, but increasing the number of
-// segments. Every -1 adds a whole octave's worth of segments.
+// Increasing it makes the smallest segments of the wider, making the
+// resolution coarser, but reducing the total number of segments. Decreasing it
+// makes them smaller, making the resolution finer, but increasing the number
+// of segments. Every -1 adds a whole octave's worth of segments.
 #define SPLINE_DOMAIN_MIN_LOG2 -8
 
 // Domain maximum.
@@ -89,56 +89,48 @@ struct curves_spline {
 // Calculates sample location for a given knot index.
 static inline s64 curves_spline_locate_knot(int knot)
 {
-	int octave, segment_width_log2, segment_within_octave;
+	int octave, octave_segment_width_log2, segment_within_octave;
 	s64 segment;
 
-	// Origin must be in octave 0.
+	// Origin must be below octave 0.
 	BUILD_BUG_ON(SPLINE_DOMAIN_MIN_SHIFT < SPLINE_SEGMENTS_PER_OCTAVE_LOG2);
 
-	// Sample location of knot 0 is 0.
+	// Check for knot 0.
 	if (!knot)
+		// Sample location of knot 0 is 0.
 		return 0;
 
-	// Determine octave containing knot.
-	//
-	// The octave is contained in the high bits:
-	//     octave = knot/SPLINE_SEGMENTS_PER_OCTAVE
-	octave = knot >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
-
-	if (octave == 0) {
-		// Handle linear zone.
-		//
-		// Octave 0 must extend all the way to actual 0, so it is the
-		// whole linear range up to octave 1. All segments here have
-		// minimum width.
-		//
-		// Here, segment == knot:
-		//     x = segment*min_segment_width
+	// Check for subnormal zone.
+	if (knot < SPLINE_SEGMENTS_PER_OCTAVE) {
+		// This zone covers [0, DOMAIN_MIN) and exists to extend the
+		// geometric indexing scheme all the way to zero with uniform
+		// resolution. All segments here have minimum width.
 		return (s64)knot << SPLINE_MIN_SEGMENT_WIDTH_LOG2;
 	}
 
-	// Determine segment width.
+	// Determine octave containing knot.
 	//
-	// Octave 1 has min width; width doubles per octave after.
-	segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave - 1;
+	// After the subnormal zone, knots are grouped into octaves of
+	// SEGMENTS_PER_OCTAVE knots each. The value is contained in the high
+	// bits, then we subtract out the subnormal zone indices.
+	octave = (knot >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2) - 1;
 
-	// Locate segment within octave.
-	//
-	// The location of the segment within the octave is contained in the
-	// low bits:
-	//     segment_within_octave = knot % SPLINE_SEGMENTS_PER_OCTAVE
+	// Locate segment containing knot relative to current octave.
 	segment_within_octave = knot & (SPLINE_SEGMENTS_PER_OCTAVE - 1);
 
-	// Locate segment globally.
+	// Locate segment containing knot globally.
 	//
 	// The sum total size of all previous octaves is the same as the
 	// current octave size, so we offset the global location by 1 octave's
-	// worth of segments:
-	//     segment = (1 octave)*segments_per_octave + segment_within_octave
+	// worth of segments.
 	segment = SPLINE_SEGMENTS_PER_OCTAVE | segment_within_octave;
 
-	// x = segment*segment_width.
-	return segment << segment_width_log2;
+	// Determine width of segment in octave.
+	//
+	// Segments in octave 0 have min width; width doubles per octave after.
+	octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+
+	return segment << octave_segment_width_log2;
 }
 
 // Finds segment and interpolation input for x in piecewise geometric grid.
