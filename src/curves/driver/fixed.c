@@ -107,9 +107,10 @@ extern s64 curves_fixed_const_e(unsigned int frac_bits);
 extern s64 curves_fixed_const_ln2(unsigned int frac_bits);
 extern s64 curves_fixed_const_pi(unsigned int frac_bits);
 
-s64 __cold __curves_fixed_add_error(unsigned int augend_frac_bits,
-				    unsigned int addend_frac_bits,
-				    unsigned int output_frac_bits)
+s64 __cold
+__curves_fixed_add_error(unsigned int augend_frac_bits __maybe_unused,
+			 unsigned int addend_frac_bits __maybe_unused,
+			 unsigned int output_frac_bits __maybe_unused)
 {
 	WARN_ONCE(1,
 		  "curves_fixed_add: invalid frac_bits "
@@ -123,9 +124,10 @@ extern s64 curves_fixed_add(s64 augend, unsigned int augend_frac_bits,
 			    s64 addend, unsigned int addend_frac_bits,
 			    unsigned int output_frac_bits);
 
-s64 __cold __curves_fixed_subtract_error(unsigned int minuend_frac_bits,
-					 unsigned int subtrahend_frac_bits,
-					 unsigned int output_frac_bits)
+s64 __cold
+__curves_fixed_subtract_error(unsigned int minuend_frac_bits __maybe_unused,
+			      unsigned int subtrahend_frac_bits __maybe_unused,
+			      unsigned int output_frac_bits __maybe_unused)
 {
 	WARN_ONCE(1,
 		  "curves_fixed_subtract: invalid frac_bits "
