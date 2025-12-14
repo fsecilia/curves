@@ -195,6 +195,130 @@ void CurveEditor::drawGrid(QPainter& painter) {
   drawGridY(painter, pen_axis, pen_major, major_start_y, major_step_y);
 }
 
+void CurveEditor::drawPolyline(QPainter& painter, const QColor& color,
+                               const QPolygonF& polyline) {
+  auto pen = QPen{color};
+  pen.setWidthF(1.1);
+  painter.setPen(pen);
+  painter.drawPolyline(polyline);
+}
+
+void CurveEditor::drawCurves(QPainter& painter) {
+  const auto total_pixels = width();
+
+  m_buffers.clear();
+  m_buffers.reserve(total_pixels);
+
+  const double dx_pixel = m_visible_range.width() / double(total_pixels);
+  const double x_start_view = m_visible_range.left();
+
+  int current_pixel_idx = 0;
+
+  const double x_knot_1 =
+      curves::Fixed::literal(curves::locate_knot(1)).to_real();
+
+  for (int i = 0; i < SPLINE_NUM_SEGMENTS; ++i) {
+    if (current_pixel_idx >= total_pixels) break;
+
+    // --- A. Segment Bounds ---
+    const double x_seg_start =
+        curves::Fixed::literal(curves::locate_knot(i)).to_real();
+    const double x_seg_end =
+        curves::Fixed::literal(curves::locate_knot(i + 1)).to_real();
+    const double seg_width = x_seg_end - x_seg_start;
+
+    if (x_seg_end < x_start_view) continue;
+
+    // Calculate which screen pixels cover this segment.
+    // Project the segment's end into pixel space.
+    const double end_pixel_float = (x_seg_end - x_start_view) / dx_pixel;
+    const int end_pixel_idx =
+        std::min(total_pixels, (int)std::ceil(end_pixel_float));
+
+    // If this segment is visible, load its data.
+    if (end_pixel_idx > current_pixel_idx) {
+      // We do this once per segment, not per sample.
+      const auto* coeffs = m_spline->segments[i].coeffs;
+      const double a = curves::Fixed::literal(coeffs[0]).to_real();
+      const double b = curves::Fixed::literal(coeffs[1]).to_real();
+      const double c = curves::Fixed::literal(coeffs[2]).to_real();
+      const double d = curves::Fixed::literal(coeffs[3]).to_real();
+
+      // Pre-calc inverse width for normalizing t.
+      const double inv_width = (seg_width > 0) ? (1.0 / seg_width) : 0.0;
+      const double inv_width_sq = inv_width * inv_width;
+
+      for (; current_pixel_idx < end_pixel_idx; ++current_pixel_idx) {
+        // Determine logical X for this pixel center.
+        const double x_screen = current_pixel_idx;
+        const double x_logical = x_start_view + (x_screen * dx_pixel);
+
+        // Calculate t (normalized 0..1 within segment).
+        // x_logical = x_seg_start + t * seg_width
+        const double t = (x_logical - x_seg_start) * inv_width;
+
+        // Transfer Function T(x) = at^3 + bt^2 + ct + d
+        const double transfer = ((a * t + b) * t + c) * t + d;
+
+        // Gain G(x) = T'(x) (w.r.t logical x, not local)
+        // dy/dx = (dy/dt) * (dt/dx) = P'(t) * (1/width)
+        // P'(t) = 3at^2 + 2bt + c
+        const double p_prime = (3.0 * a * t + 2.0 * b) * t + c;
+        const double gain = p_prime * inv_width;
+
+        // Gain Slope G'(x) = T''(x)
+        // d2y/dx2 = P''(t) * (1/width)^2
+        // P''(t) = 6at + 2b
+        const double p_double_prime = 6.0 * a * t + 2.0 * b;
+        const double gain_deriv = p_double_prime * inv_width_sq;
+
+        double sens = 0.0;
+        double sens_deriv = 0.0;
+
+        if (i == 0) {
+          // Scale segment 0 by x to cancel infinite 1/x noise near 0.
+          // Ideal sensitivity near 0 is roughly the slope at 0: (c_term /
+          // width) But strictly following your code: d_dt / dx_first_segment
+          const double ideal_sens = p_prime / x_knot_1;
+
+          // Avoid div/0
+          const double raw_sens =
+              (x_logical > 1e-9) ? (transfer / x_logical) : ideal_sens;
+
+          const double blend = x_logical / x_knot_1;
+          sens = ideal_sens + blend * (raw_sens - ideal_sens);
+
+          // For derivative in the blend region, we can approximate or use the
+          // raw formula. The raw formula usually holds up okay unless x is
+          // extremely close to 0.
+          if (x_logical < 1e-9)
+            sens_deriv = 0;  // Flat at origin
+          else
+            sens_deriv = (gain - sens) / x_logical;
+
+        } else {
+          // Standard definition
+          sens = transfer / x_logical;
+          sens_deriv = (gain - sens) / x_logical;
+        }
+
+        // --- F. Store ---
+        m_buffers.addSample(logicalToScreen({x_screen, sens}),
+                            logicalToScreen({x_screen, sens_deriv}),
+                            logicalToScreen({x_screen, gain}),
+                            logicalToScreen({x_screen, gain_deriv}));
+      }
+    }
+  }
+
+  drawPolyline(painter, m_theme.curve_sensitivity, m_buffers.sens);
+  drawPolyline(painter, m_theme.curve_sensitivity_derivative,
+               m_buffers.sens_deriv);
+  drawPolyline(painter, m_theme.curve_gain, m_buffers.gain);
+  drawPolyline(painter, m_theme.curve_gain_derivative, m_buffers.gain_deriv);
+}
+
+#if 0
 void CurveEditor::drawSpline(QPainter& painter, const curves_spline& spline) {
   auto sample = std::begin(m_curve_polygon);
   const auto samples_end = std::end(m_curve_polygon);
@@ -235,7 +359,7 @@ void CurveEditor::drawSpline(QPainter& painter, const curves_spline& spline) {
 
     const auto x_fixed = curves::Fixed{p.x()};
     const auto y_fixed =
-        curves::Fixed::literal(curves_spline_eval(&spline, x_fixed.value));
+        curves::Fixed::literal(curves::eval(&spline, x_fixed.value));
     const auto x_real = x_fixed.to_real();
     const auto y_real = y_fixed.to_real();
     const auto sensitivity = y_real / x_real;
@@ -251,7 +375,7 @@ void CurveEditor::drawSpline(QPainter& painter, const curves_spline& spline) {
   while (sample != samples_end) {
     const auto x_fixed = curves::Fixed{p.x()};
     const auto y_fixed =
-        curves::Fixed::literal(curves_spline_eval(&spline, x_fixed.value));
+        curves::Fixed::literal(curves::eval(&spline, x_fixed.value));
 
     const auto x_real = x_fixed.to_real();
     const auto y_real = y_fixed.to_real();
@@ -264,15 +388,4 @@ void CurveEditor::drawSpline(QPainter& painter, const curves_spline& spline) {
 
   painter.drawPolyline(m_curve_polygon);
 }
-
-void CurveEditor::drawCurves(QPainter& painter) {
-  tryReallocateCurve();
-
-  auto pen_sensitivity = QPen{m_theme.curve_sensitivity};
-  pen_sensitivity.setWidthF(1.1);
-  painter.setPen(pen_sensitivity);
-  drawSpline(painter, *m_spline);
-
-  // auto pen_derivative = QPen{m_theme.curve_derivative};
-  // pen_derivative.setWidthF(1.1);
-}
+#endif

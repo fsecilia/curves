@@ -18,9 +18,11 @@ struct Theme {
   QColor grid_major = QColor(60, 60, 60);
   QColor grid_minor = QColor(40, 40, 40);
   QColor text = QColor(200, 200, 200);
-  QColor curve_sensitivity = Qt::magenta;
-  QColor curve_derivative = Qt::yellow;
-  QColor curve_gain = Qt::cyan;
+
+  QColor curve_sensitivity = Qt::red;
+  QColor curve_sensitivity_derivative = Qt::green;
+  QColor curve_gain = Qt::magenta;
+  QColor curve_gain_derivative = Qt::cyan;
 };
 
 class CurveEditor : public QWidget {
@@ -59,7 +61,7 @@ class CurveEditor : public QWidget {
 
   QRectF m_visible_range;
   QPointF screenToLogical(QPointF screen);
-  QPointF logicalToScreen(QPointF);
+  QPointF logicalToScreen(QPointF logical);
 
   double calcGridStep(double visible_range, int target_num_ticks);
   void drawGrid(QPainter& painter);
@@ -68,7 +70,37 @@ class CurveEditor : public QWidget {
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
 
-  void drawSpline(QPainter& painter, const curves_spline& spline);
+  struct CurveBuffers {
+    QPolygonF sens;
+    QPolygonF sens_deriv;
+    QPolygonF gain;
+    QPolygonF gain_deriv;
+
+    auto clear() noexcept -> void {
+      sens.clear();
+      sens_deriv.clear();
+      gain.clear();
+      gain_deriv.clear();
+    }
+
+    void reserve(int size) {
+      sens.reserve(size);
+      sens_deriv.reserve(size);
+      gain.reserve(size);
+      gain_deriv.reserve(size);
+    }
+
+    void addSample(QPointF s, QPointF ds, QPointF g, QPointF dg) {
+      sens.append(s);
+      sens_deriv.append(ds);
+      gain.append(g);
+      gain_deriv.append(dg);
+    }
+  };
+  CurveBuffers m_buffers;
+
+  void drawPolyline(QPainter& painter, const QColor& color,
+                    const QPolygonF& polyline);
   void drawCurves(QPainter& painter);
 };
 
