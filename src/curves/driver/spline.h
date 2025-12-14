@@ -133,41 +133,68 @@ static inline s64 curves_spline_locate_knot(int knot)
 	return segment << octave_segment_width_log2;
 }
 
-// Finds segment and interpolation input for x in piecewise geometric grid.
-static inline void
-curves_spline_piecewise_uniform_index(s64 x, s64 *segment_index, s64 *t)
+// Finds segment index and interpolation for input x.
+//
+// Given input x, determines:
+//   - segment_index: which spline segment contains x
+//   - t: position within segment, normalized to [0, 1) in fixed-point
+static inline void curves_spline_locate_segment(s64 x, s64 *segment_index,
+						s64 *t)
 {
-	// Calculate the Effective Exponent (E')
-	// The clamp to BIAS handles the "linear" region near zero.
-	int e_raw = curves_log2_u64((u64)x);
-	int e_clamped = (e_raw > SPLINE_DOMAIN_MIN_SHIFT) ?
-				e_raw :
-				SPLINE_DOMAIN_MIN_SHIFT;
+	int x_log2, octave_segment_width_log2;
+	u64 mask, remainder;
 
-	// Calculate Shift amount for this region
-	// We want to map the segment width (2^shift) to 1.0 in t-space.
-	int shift = e_clamped - SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
+	if (WARN_ON_ONCE(!segment_index || !t))
+		return;
 
-	// Calculate Segment Index, Base_Region_Offset + Mantissa_Offset
-	// The (x >> shift) part inherently handles the "linear" indexing
-	// (where x is small) AND the "geometric" indexing (where x includes
-	// the implicit leading 1).
-	*segment_index = ((s64)(e_clamped - SPLINE_DOMAIN_MIN_SHIFT)
-			  << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
-			 (x >> shift);
+	if (WARN_ON_ONCE(x < 0)) {
+		*segment_index = 0;
+		*t = 0;
+		return;
+	}
 
-	// Calculate t (interpolation factor)
-	// t is the remaining fraction of x scaled to the spline's fixed-point
-	// format. We calc it using a shift to avoid division.
-	// Mask out the bits consumed by the segment index.
-	u64 mask = (1ULL << shift) - 1;
-	u64 remainder = x & mask;
+	// Determine whether x is in the subnormal zone or an octave.
+	x_log2 = curves_log2_u64((u64)x);
+	if (x_log2 < SPLINE_DOMAIN_MIN_SHIFT) {
+		// Subnormal zone.
+		//
+		// This region is linear. All values below use minimum-width
+		// segments.
+		octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2;
+		*segment_index = x >> octave_segment_width_log2;
+	} else {
+		// Geometric octave.
+		//
+		// Octave 0 covers [DOMAIN_MIN, 2*DOMAIN_MIN) with min width.
+		// Each subsequent octave doubles in width.
+		int segment_within_octave;
 
-	// Normalize remainder to fixed-point 0..1.
-	if (shift < SPLINE_FRAC_BITS)
-		*t = remainder << (SPLINE_FRAC_BITS - shift);
+		int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
+
+		s64 first_segment_in_octave =
+			((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
+			SPLINE_SEGMENTS_PER_OCTAVE;
+		octave_segment_width_log2 =
+			SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+		segment_within_octave = (x >> octave_segment_width_log2) -
+					SPLINE_SEGMENTS_PER_OCTAVE;
+		*segment_index =
+			first_segment_in_octave + segment_within_octave;
+	}
+
+	// Interpolation parameter, t.
+	//
+	// t is the fractional position within the segment, scaled to
+	// SPLINE_FRAC_BITS precision. Extract the bits below the segment
+	// boundary
+	mask = (1ULL << octave_segment_width_log2) - 1;
+	remainder = x & mask;
+	if (octave_segment_width_log2 < SPLINE_FRAC_BITS)
+		*t = remainder
+		     << (SPLINE_FRAC_BITS - octave_segment_width_log2);
 	else
-		*t = remainder >> (shift - SPLINE_FRAC_BITS);
+		*t = remainder >>
+		     (octave_segment_width_log2 - SPLINE_FRAC_BITS);
 }
 
 // Calculates linear extension for x >= x_max.
@@ -242,7 +269,7 @@ static inline s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 
 	s64 segment_index;
 	s64 t;
-	curves_spline_piecewise_uniform_index(x, &segment_index, &t);
+	curves_spline_locate_segment(x, &segment_index, &t);
 
 	return curves_spline_eval_segment(&spline->segments[segment_index], t);
 }
