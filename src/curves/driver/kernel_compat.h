@@ -97,6 +97,8 @@ __extension__ typedef unsigned __int128 u128;
 #define unlikely(x) (x)
 #endif
 
+#define __maybe_unused __attribute__((unused))
+
 #define check_add_overflow(a, b, d) __builtin_add_overflow(a, b, d)
 #define check_sub_overflow(a, b, d) __builtin_sub_overflow(a, b, d)
 #define check_mul_overflow(a, b, d) __builtin_mul_overflow(a, b, d)
