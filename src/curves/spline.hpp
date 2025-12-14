@@ -8,14 +8,9 @@
 
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
 extern "C" {
 #include <curves/driver/spline.h>
 }  // extern "C"
-
-#pragma GCC diagnostic pop
 
 #include <curves/lib.hpp>
 #include <curves/fixed.hpp>
