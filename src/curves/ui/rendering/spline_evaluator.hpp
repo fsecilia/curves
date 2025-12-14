@@ -19,16 +19,15 @@
 namespace curves {
 
 struct CurveValues {
-  real_t sensitivity;
-  real_t sensitivity_deriv;
-  real_t gain;
-  real_t gain_deriv;
+  double sensitivity;
+  double sensitivity_deriv;
+  double gain;
+  double gain_deriv;
 };
 
 class CurveEvaluator {
  public:
-  static auto compute(const SplineSample& sample, real_t x_logical)
-      -> CurveValues {
+  auto compute(const SplineSample& sample, real_t x_logical) -> CurveValues {
     // P'(t) = 3at^2 + 2bt + c
     const double p_prime =
         (3.0 * sample.a * sample.t + 2.0 * sample.b) * sample.t + sample.c;
