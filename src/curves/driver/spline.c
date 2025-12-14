@@ -7,8 +7,13 @@
 #include "math.h"
 #include "spline.h"
 
+struct segment_params {
+	s64 index;
+	int width_log2;
+};
+
 // Calculates sample location for a given knot index.
-s64 curves_spline_locate_knot(int knot)
+static s64 locate_knot(int knot)
 {
 	int octave, octave_segment_width_log2, segment_within_octave;
 	s64 segment;
@@ -54,74 +59,95 @@ s64 curves_spline_locate_knot(int knot)
 	return segment << octave_segment_width_log2;
 }
 
-// Finds segment index and interpolation for input x.
-//
-// Given input x, determines:
-//   - segment_index: which spline segment contains x
-//   - t: position within segment, normalized to [0, 1) in fixed-point
-void curves_spline_locate_segment(s64 x, s64 *segment_index, s64 *t)
+/*
+ * Subnormal Zone: Linear mapping.
+ * All segments have constant, minimum width.
+ * Index is x divided by that width.
+ */
+static inline struct segment_params subnormal_segment(s64 x)
 {
-	int x_log2, octave_segment_width_log2;
-	u64 mask, remainder;
+	return (struct segment_params){
+		.index = x >> SPLINE_MIN_SEGMENT_WIDTH_LOG2,
+		.width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2
+	};
+}
+
+/*
+ * Geometric Octave: Logarithmic mapping.
+ * Segment width doubles every octave.
+ * Index = (start of octave) + (x_normalized - segments_per_octave).
+ *
+ * The offset is calculated by normalizing x to the current octave's
+ * segment width, then masking out the leading implicit 1.
+ */
+static inline struct segment_params octave_segment(s64 x, int x_log2)
+{
+	int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
+
+	// Base index starts after the linear subnormal zone plus all previous
+	// geometric octaves.
+	s64 first_segment = ((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
+			    SPLINE_SEGMENTS_PER_OCTAVE;
+
+	// Width scales with octave index.
+	int width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+
+	// Normalize x to octave width to find offset.
+	int segment_within_octave =
+		(x >> width_log2) - SPLINE_SEGMENTS_PER_OCTAVE;
+
+	return (struct segment_params){ .index = first_segment +
+						 segment_within_octave,
+					.width_log2 = width_log2 };
+}
+
+/*
+ * Calculates t: The position of x within the segment, normalized to [0, 1).
+ * t = (x % width) / width
+ * Scaled to SPLINE_FRAC_BITS fixed-point.
+ */
+static inline s64 calc_t(s64 x, int width_log2)
+{
+	u64 mask = (1ULL << width_log2) - 1;
+	u64 remainder = x & mask;
+
+	// Shift to normalize remainder to SPLINE_FRAC_BITS
+	if (width_log2 < SPLINE_FRAC_BITS)
+		return remainder << (SPLINE_FRAC_BITS - width_log2);
+	else
+		return remainder >> (width_log2 - SPLINE_FRAC_BITS);
+}
+
+// Finds segment index and interpolation for input x.
+static inline void locate_segment(s64 x, s64 *segment_index, s64 *t)
+{
+	struct segment_params params;
+	int x_log2;
 
 	if (WARN_ON_ONCE(!segment_index || !t))
 		return;
 
-	if (WARN_ON_ONCE(x < 0)) {
+	if (unlikely(x < 0)) {
 		*segment_index = 0;
 		*t = 0;
 		return;
 	}
 
-	// Determine whether x is in the subnormal zone or an octave.
 	x_log2 = curves_log2_u64((u64)x);
-	if (x_log2 < SPLINE_DOMAIN_MIN_SHIFT) {
-		// Subnormal zone.
-		//
-		// This region is linear. All values below use minimum-width
-		// segments.
-		octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2;
-		*segment_index = x >> octave_segment_width_log2;
-	} else {
-		// Geometric octave.
-		//
-		// Octave 0 covers [DOMAIN_MIN, 2*DOMAIN_MIN) with min width.
-		// Each subsequent octave doubles in width.
-		int segment_within_octave;
 
-		int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
-
-		s64 first_segment_in_octave =
-			((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
-			SPLINE_SEGMENTS_PER_OCTAVE;
-		octave_segment_width_log2 =
-			SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
-		segment_within_octave = (x >> octave_segment_width_log2) -
-					SPLINE_SEGMENTS_PER_OCTAVE;
-		*segment_index =
-			first_segment_in_octave + segment_within_octave;
-	}
-
-	// Interpolation parameter, t.
-	//
-	// t is the fractional position within the segment, scaled to
-	// SPLINE_FRAC_BITS precision. Extract the bits below the segment
-	// boundary
-	mask = (1ULL << octave_segment_width_log2) - 1;
-	remainder = x & mask;
-	if (octave_segment_width_log2 < SPLINE_FRAC_BITS)
-		*t = remainder
-		     << (SPLINE_FRAC_BITS - octave_segment_width_log2);
+	if (x_log2 < SPLINE_DOMAIN_MIN_SHIFT)
+		params = subnormal_segment(x);
 	else
-		*t = remainder >>
-		     (octave_segment_width_log2 - SPLINE_FRAC_BITS);
+		params = octave_segment(x, x_log2);
+
+	*segment_index = params.index;
+	*t = calc_t(x, params.width_log2);
 }
 
 // Calculates linear extension for x >= x_max.
-static s64 curves_spline_extend_linear(const struct curves_spline *spline,
-				       s64 x)
+static s64 extend_linear(const struct curves_spline *spline, s64 x)
 {
-	s64 x_max = curves_spline_locate_knot(SPLINE_NUM_SEGMENTS);
+	s64 x_max = locate_knot(SPLINE_NUM_SEGMENTS);
 	int last_idx = SPLINE_NUM_SEGMENTS - 1;
 
 	// Calc shift (width) of that last segment to scale the slope.
@@ -157,8 +183,7 @@ static s64 curves_spline_extend_linear(const struct curves_spline *spline,
 	return (s64)(((s128)slope * (x - x_max)) >> SPLINE_FRAC_BITS) + y_max;
 }
 
-static s64
-curves_spline_eval_segment(const struct curves_spline_segment *segment, s64 t)
+static s64 eval_segment(const struct curves_spline_segment *segment, s64 t)
 {
 	// Horner's method: ((a*t + b)*t + c)*t + d
 	//
@@ -180,13 +205,13 @@ s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	// Validate parameters.
 	if (unlikely(x < 0))
 		x = 0;
-	if (unlikely(x >= curves_spline_locate_knot(SPLINE_NUM_SEGMENTS))) {
-		return curves_spline_extend_linear(spline, x);
+	if (unlikely(x >= locate_knot(SPLINE_NUM_SEGMENTS))) {
+		return extend_linear(spline, x);
 	}
 
 	s64 segment_index;
 	s64 t;
-	curves_spline_locate_segment(x, &segment_index, &t);
+	locate_segment(x, &segment_index, &t);
 
-	return curves_spline_eval_segment(&spline->segments[segment_index], t);
+	return eval_segment(&spline->segments[segment_index], t);
 }

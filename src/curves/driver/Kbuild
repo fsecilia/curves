@@ -6,10 +6,9 @@ obj-m := curves.o
 curves-common-objs := \
   fixed.o \
   kernel_compat.o \
-  math.o \
-  spline.o
+  math.o
 
-curves-driver-objs := entry_point.o
+curves-driver-objs := entry_point.o spline.o
 
 curves-objs := $(curves-common-objs) $(curves-driver-objs)
 

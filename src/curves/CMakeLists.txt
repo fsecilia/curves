@@ -16,6 +16,7 @@ list(APPEND lib_files
   lib.cpp
   lib.hpp
   spline.hpp
+  spline.cpp
 )
 
 list(APPEND unit_tests_files

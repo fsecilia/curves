@@ -27,6 +27,10 @@ extern "C" {
 
 namespace curves {
 
+auto locate_knot(int knot) noexcept -> s64;
+auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
+auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64;
+
 struct CurveResult {
   real_t f;
   real_t df_dx;
@@ -168,7 +172,7 @@ class SegmentConverter {
 struct KnotLocator {
   auto operator()(int i) const noexcept -> real_t {
     // Call out to shared c implementation.
-    return Fixed::literal(curves_spline_locate_knot(i)).to_real();
+    return Fixed::literal(locate_knot(i)).to_real();
   }
 };
 

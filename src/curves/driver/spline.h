@@ -88,8 +88,6 @@ struct curves_spline {
 	struct curves_spline_segment segments[SPLINE_NUM_SEGMENTS];
 };
 
-s64 curves_spline_locate_knot(int knot);
-void curves_spline_locate_segment(s64 x, s64 *segment_index, s64 *t);
 s64 curves_spline_eval(const struct curves_spline *spline, s64 x);
 
 #endif /* _CURVES_SPLINE_H */
