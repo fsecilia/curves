@@ -8,6 +8,10 @@
 #include <curves/io.hpp>
 #include <curves/spline.hpp>
 
+extern "C" {
+#include <curves/driver/spline.c>
+}  // extern "C"
+
 namespace curves {
 namespace {
 
