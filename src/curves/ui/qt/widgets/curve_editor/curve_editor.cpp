@@ -200,7 +200,7 @@ void CurveEditor::drawGrid(QPainter& painter) {
 void CurveEditor::drawPolyline(QPainter& painter, const QColor& color,
                                const QPolygonF& polyline) {
   auto pen = QPen{color};
-  pen.setWidthF(1.1);
+  pen.setWidthF(2.13);
   painter.setPen(pen);
   painter.drawPolyline(polyline);
 }
