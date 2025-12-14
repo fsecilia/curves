@@ -8,11 +8,13 @@
 # -----------------------------------------------------------------------------
 
 list(APPEND ui_files
+  rendering/spline_evaluator.hpp
   rendering/spline_sampler.hpp
   ui.hpp
 )
 
 list(APPEND ui_unit_tests_files
+  rendering/spline_evaluator_test.cpp
   rendering/spline_sampler_test.cpp
 )
 
