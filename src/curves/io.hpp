@@ -9,9 +9,12 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/driver/math.h>
 #include <array>
 #include <ostream>
+
+extern "C" {
+#include <curves/driver/math.h>
+}  // extern "C"
 
 namespace curves {
 
