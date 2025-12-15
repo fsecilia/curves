@@ -238,4 +238,15 @@ auto CurveEditor::drawCurves(QPainter& painter) -> void {
                m_buffers.sens_deriv);
   drawPolyline(painter, m_theme.curve_gain, m_buffers.gain);
   drawPolyline(painter, m_theme.curve_gain_derivative, m_buffers.gain_deriv);
+
+#if 0
+  auto segment_pen = QPen{Qt::darkBlue};
+  painter.setPen(segment_pen);
+  for (auto knot = 0; knot < SPLINE_NUM_SEGMENTS; ++knot) {
+    const auto knot_x =
+        curves::Fixed::literal(curves::spline::locate_knot(knot)).to_real();
+    painter.drawLine(logicalToScreen(QPointF(knot_x, -10000)),
+                     logicalToScreen(QPointF(knot_x, 10000)));
+  }
+#endif
 }
