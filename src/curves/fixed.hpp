@@ -47,7 +47,7 @@ struct Fixed {
   constexpr Fixed(std::signed_integral auto integer) noexcept
       : value{static_cast<Value>(integer) << frac_bits} {}
   explicit constexpr Fixed(std::floating_point auto real) noexcept
-      : value{static_cast<Value>(real * (1LL << frac_bits))} {}
+      : value{static_cast<Value>(std::round(real * (1LL << frac_bits)))} {}
 
   struct LiteralTag {};
   constexpr Fixed(Value value, LiteralTag) noexcept : value{value} {}
