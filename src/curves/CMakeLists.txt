@@ -184,6 +184,7 @@ target_include_directories(lib PUBLIC
   "$<BUILD_INTERFACE:${config_gen_root}>"
   "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
 )
+target_link_libraries(lib PUBLIC tomlplusplus::tomlplusplus)
 
 set_target_properties(lib
   PROPERTIES

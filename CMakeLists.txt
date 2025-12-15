@@ -30,6 +30,13 @@ if (GTEST_FOUND)
   set(enable_testing True)
 endif()
 
+option(USE_SYSTEM_DEPS
+  "Default to using system dependencies for all libraries" OFF)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+include(AddTomlPlusPlus)
+
 # -----------------------------------------------------------------------------
 # Warnings
 # -----------------------------------------------------------------------------
