@@ -12,7 +12,7 @@ extern "C" {
 #include <curves/driver/spline.c>
 }  // extern "C"
 
-namespace curves {
+namespace curves::spline {
 
 auto locate_knot(int knot) noexcept -> s64 { return ::locate_knot(knot); }
 
@@ -24,4 +24,4 @@ auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64 {
   return ::curves_spline_eval(spline, x);
 }
 
-}  // namespace curves
+}  // namespace curves::spline

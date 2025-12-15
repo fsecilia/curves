@@ -15,7 +15,8 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   auto sensitivity = SynchronousCurve{0.433012701892L, 10.0L, 1.0L, 8.3L, 0.5L};
 
   const auto spline = spline::create_spline(TransferAdapterCurve{sensitivity});
-  const auto x_max = Fixed::literal(locate_knot(SPLINE_NUM_SEGMENTS));
+  const auto x_max =
+      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1));
 
   const auto dx = Fixed{1.0e-4L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
@@ -35,7 +36,7 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
     const auto x_float = x_fixed.to_real();
 
     const auto y_curve = x_float * sensitivity(x_float).f;
-    const auto y_table = eval(&spline, x_fixed.value);
+    const auto y_table = spline::eval(&spline, x_fixed.value);
     x_fixed += dx;
 
     const auto expected = y_curve;

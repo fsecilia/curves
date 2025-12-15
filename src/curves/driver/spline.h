@@ -66,9 +66,9 @@
 // Total octaves needed to span span min to max.
 #define SPLINE_NUM_OCTAVES (SPLINE_DOMAIN_MAX_LOG2 - SPLINE_DOMAIN_MIN_LOG2)
 
-// Total segments needed to cover all octaves.
+// Total segments needed to cover all octaves, plus 1 for the runout segment.
 #define SPLINE_NUM_SEGMENTS \
-	((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
+	((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) + 1
 
 // Spline is composed of cubic curves.
 #define SPLINE_NUM_COEFFS 4

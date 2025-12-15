@@ -27,10 +27,6 @@ extern "C" {
 
 namespace curves {
 
-auto locate_knot(int knot) noexcept -> s64;
-auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
-auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64;
-
 struct CurveResult {
   real_t f;
   real_t df_dx;
@@ -138,6 +134,10 @@ struct TransferAdapterTraits<SynchronousCurve> {
 
 namespace spline {
 
+auto locate_knot(int knot) noexcept -> s64;
+auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
+auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64;
+
 // Knot to form cubic hermite splines, {x, y, dy/dx}.
 struct Knot {
   real_t x;
@@ -214,11 +214,57 @@ class SplineBuilder {
     curves_spline result;
 
     auto k0 = knot_sampler_(curve, 0);
-    for (auto segment = 0; segment < num_segments; ++segment) {
+    for (auto segment = 0; segment < num_segments - 1; ++segment) {
       const auto k1 = knot_sampler_(curve, segment + 1);
       result.segments[segment] = segment_converter_(k0, k1);
       k0 = k1;
     }
+
+    const auto k_prev_end = knot_sampler_(curve, num_segments - 1);
+    const auto k_prev_start = knot_sampler_(curve, num_segments - 2);
+    const double w_prev = k_prev_end.x - k_prev_start.x;
+
+    // Fetch previous segment coefficients (raw s64 fixed-point values)
+    const auto& prev = result.segments[num_segments - 2];
+    const auto prev_a = Fixed::literal(prev.coeffs[0]).to_real();
+    const auto prev_b = Fixed::literal(prev.coeffs[1]).to_real();
+    const auto prev_c = Fixed::literal(prev.coeffs[2]).to_real();
+    const auto prev_d = Fixed::literal(prev.coeffs[3]).to_real();
+
+    double y_start = prev_a + prev_b + prev_c + prev_d;
+    double m_start_norm =
+        3.0 * prev_a + 2.0 * prev_b + prev_c;           // Normalized slope
+    double k_start_norm = 6.0 * prev_a + 2.0 * prev_b;  // Normalized curvature
+
+    // 2. Un-normalize derivatives to real units
+    double m_real = m_start_norm / w_prev;
+    double k_real = k_start_norm / (w_prev * w_prev);
+
+    // 3. Define new segment width (start of new octave = 2x width)
+    double w_new = w_prev * 2.0;
+
+    // 4. Calculate d (Position)
+    double next_d = y_start;
+
+    // 5. Calculate c (Velocity match)
+    // Renormalize real slope to new width
+    double next_c = m_real * w_new;
+
+    // 6. Calculate b (Curvature match)
+    // We want the curvature at t=0 to match k_real.
+    // y''(0) = 2b / w_new^2 = k_real
+    double next_b = (k_real * w_new * w_new) / 2.0;
+
+    // 7. Calculate a (Zero curvature target)
+    // We want y''(1) = 0.
+    // 6a + 2b = 0  ->  a = -b / 3
+    double next_a = -next_b / 3.0;
+
+    auto& next = result.segments[num_segments - 1];
+    next.coeffs[0] = Fixed{next_a}.value;
+    next.coeffs[1] = Fixed{next_b}.value;
+    next.coeffs[2] = Fixed{next_c}.value;
+    next.coeffs[3] = Fixed{next_d}.value;
 
     return result;
   }

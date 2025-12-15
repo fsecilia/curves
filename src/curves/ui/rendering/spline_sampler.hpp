@@ -42,18 +42,12 @@ class SplineSampler {
   auto sample(real_t x_logical) const -> SplineSample {
     if (x_logical < 0) x_logical = 0;
 
-    const auto x_fixed = Fixed{x_logical};
-
-    const auto max_domain = Fixed{1LL << SPLINE_DOMAIN_MAX_LOG2};
-    const auto extend_linearly_from_input = x_fixed >= max_domain;
-    if (extend_linearly_from_input) return extend_linearly(x_logical);
-
     s64 segment;
     s64 t_fixed;
-    curves::locate_segment(x_fixed.value, &segment, &t_fixed);
+    const auto x_fixed = Fixed{x_logical};
+    curves::spline::locate_segment(x_fixed.value, &segment, &t_fixed);
 
-    const auto extend_linearly_from_rounding = segment >= SPLINE_NUM_SEGMENTS;
-    if (extend_linearly_from_rounding) return extend_linearly(x_logical);
+    if (segment >= SPLINE_NUM_SEGMENTS) return extend_linearly(x_logical);
 
     return convert(segment, t_fixed);
   }
@@ -65,8 +59,8 @@ class SplineSampler {
     const auto& seg = m_spline->segments[segment];
 
     // Calculate width in domain units.
-    const s64 x_start = curves::locate_knot(segment);
-    const s64 x_end = curves::locate_knot(segment + 1);
+    const s64 x_start = curves::spline::locate_knot(segment);
+    const s64 x_end = curves::spline::locate_knot(segment + 1);
     const double width = curves::Fixed::literal(x_end - x_start).to_real();
 
     return SplineSample{.a = Fixed::literal(seg.coeffs[0]).to_real(),
@@ -92,7 +86,7 @@ class SplineSampler {
     const auto last_value = frame.a + frame.b + frame.c + frame.d;
 
     // Synthesize a Linear Segment.
-    const auto x_end_fixed = curves::locate_knot(SPLINE_NUM_SEGMENTS);
+    const auto x_end_fixed = curves::spline::locate_knot(SPLINE_NUM_SEGMENTS);
     const auto x_end_logical = curves::Fixed::literal(x_end_fixed).to_real();
     const auto dx = x_logical - x_end_logical;
 
