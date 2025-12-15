@@ -220,12 +220,30 @@ class SplineBuilder {
       k0 = k1;
     }
 
+    construct_runout_segment(curve, result.segments[num_segments - 2],
+                             result.segments[num_segments - 1]);
+
+    return result;
+  }
+
+ private:
+  KnotSampler knot_sampler_;
+  SegmentConverter segment_converter_;
+
+  /*
+    Bleeds off curvature before straightening out so final tangent can be
+    linearly extended without a kink in gain when evaluating beyond the final
+    segment.
+  */
+  auto construct_runout_segment(const auto& curve,
+                                const curves_spline_segment& prev,
+                                curves_spline_segment& next) const noexcept
+      -> void {
     const auto k_prev_end = knot_sampler_(curve, num_segments - 1);
     const auto k_prev_start = knot_sampler_(curve, num_segments - 2);
     const double w_prev = k_prev_end.x - k_prev_start.x;
 
     // Fetch previous segment coefficients (raw s64 fixed-point values)
-    const auto& prev = result.segments[num_segments - 2];
     const auto prev_a = Fixed::literal(prev.coeffs[0]).to_real();
     const auto prev_b = Fixed::literal(prev.coeffs[1]).to_real();
     const auto prev_c = Fixed::literal(prev.coeffs[2]).to_real();
@@ -260,18 +278,11 @@ class SplineBuilder {
     // 6a + 2b = 0  ->  a = -b / 3
     double next_a = -next_b / 3.0;
 
-    auto& next = result.segments[num_segments - 1];
     next.coeffs[0] = Fixed{next_a}.value;
     next.coeffs[1] = Fixed{next_b}.value;
     next.coeffs[2] = Fixed{next_c}.value;
     next.coeffs[3] = Fixed{next_d}.value;
-
-    return result;
   }
-
- private:
-  KnotSampler knot_sampler_;
-  SegmentConverter segment_converter_;
 };
 
 inline auto create_spline(const auto& curve) noexcept -> curves_spline {
