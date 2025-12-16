@@ -3,7 +3,7 @@
 #
 # This script defines qt-specific part of the ui.
 
-# Let qt know not to expect repeated librarys on build command lines.
+# Let qt know not to expect repeated libraries on build command lines.
 set(QT_FORCE_CMP0156_TO_VALUE NEW)
 
 # Find Qt.
