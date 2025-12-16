@@ -15,6 +15,8 @@ list(APPEND lib_files
   io.hpp
   lib.cpp
   lib.hpp
+  rendering/spline_evaluator.hpp
+  rendering/spline_sampler.hpp
   spline.hpp
   spline.cpp
 )
@@ -32,6 +34,8 @@ list(APPEND unit_tests_files
   fixed_test/test.cpp
   io_test.cpp
   math_test.cpp
+  rendering/spline_evaluator_test.cpp
+  rendering/spline_sampler_test.cpp
   spline_test.cpp
 )
 

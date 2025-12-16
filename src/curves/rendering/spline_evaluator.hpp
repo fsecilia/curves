@@ -13,8 +13,8 @@
 
 #include <curves/lib.hpp>
 #include <curves/fixed.hpp>
+#include <curves/rendering/spline_sampler.hpp>
 #include <curves/spline.hpp>
-#include <curves/ui/rendering/spline_sampler.hpp>
 
 namespace curves {
 

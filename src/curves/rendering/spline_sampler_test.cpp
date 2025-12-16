@@ -5,7 +5,7 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/ui/rendering/spline_sampler.hpp>
+#include <curves/rendering/spline_sampler.hpp>
 
 namespace curves {
 namespace {

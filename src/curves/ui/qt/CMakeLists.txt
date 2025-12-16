@@ -35,7 +35,6 @@ target_include_directories(curves_config PRIVATE
 
 target_link_libraries(curves_config PRIVATE
     lib
-    ui
     Qt6::Widgets
 )
 
