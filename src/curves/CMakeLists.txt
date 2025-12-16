@@ -23,18 +23,18 @@ list(APPEND lib_files
 )
 
 list(APPEND unit_tests_files
-  fixed_test/add.cpp
-  fixed_test/divide.cpp
-  fixed_test/exp2.cpp
-  fixed_test/isqrt.cpp
-  fixed_test/log2.cpp
-  fixed_test/multiply.cpp
-  fixed_test/s128.cpp
-  fixed_test/s64.cpp
-  fixed_test/subtract.cpp
-  fixed_test/test.cpp
+  driver_tests/fixed/add.cpp
+  driver_tests/fixed/divide.cpp
+  driver_tests/fixed/exp2.cpp
+  driver_tests/fixed/isqrt.cpp
+  driver_tests/fixed/log2.cpp
+  driver_tests/fixed/multiply.cpp
+  driver_tests/fixed/s128.cpp
+  driver_tests/fixed/s64.cpp
+  driver_tests/fixed/subtract.cpp
+  driver_tests/fixed/test.cpp
+  driver_tests/math_test.cpp
   io_test.cpp
-  math_test.cpp
   param_test.cpp
   rendering/spline_evaluator_test.cpp
   rendering/spline_sampler_test.cpp
