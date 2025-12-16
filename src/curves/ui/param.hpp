@@ -10,6 +10,7 @@
 
 #include <curves/lib.hpp>
 #include <algorithm>
+#include <format>
 #include <string_view>
 
 namespace curves {
@@ -19,6 +20,17 @@ concept CanReportClamp =
     requires(Visitor&& visitor, std::string_view name, Value value) {
       visitor.on_clamp(name, value, value, value, value);
     };
+
+template <typename Visitor, typename Value>
+concept CanReportError = requires(Visitor&& visitor, std::string_view message) {
+  visitor.report_error(message);
+};
+
+template <typename T>
+concept Enum = std::is_enum_v<T>;
+
+template <typename T>
+concept Mutable = !std::is_const_v<std::remove_reference_t<T>>;
 
 template <typename Value>
 class Param {
@@ -52,6 +64,54 @@ class Param {
   Value value_;
   Value min_;
   Value max_;
+};
+
+template <typename>
+struct EnumTraits;
+
+template <Enum Value>
+class Param<Value> {
+ public:
+  Param(std::string_view name, Value value) noexcept
+      : name_{name}, value_{value} {}
+
+  auto name() const noexcept -> std::string_view { return name_; }
+  auto value() const noexcept -> Value { return value_; }
+
+  auto reflect(this auto&& self, auto&& visitor) -> void {
+    // Proxy the enum into a string_view with the same constness as self.
+    using Proxy = std::conditional_t<Mutable<decltype(self)>, std::string_view,
+                                     const std::string_view>;
+    Proxy proxy{EnumTraits<Value>::to_string(self.value_)};
+
+    // Visit string instead of enum value.
+    visitor(self.name_, proxy);
+
+    if constexpr (Mutable<decltype(self)>) {
+      // Convert contents of proxy back to enum.
+      const auto value = EnumTraits<Value>::from_string(proxy);
+
+      if (value) {
+        // Conversion was successful; proxy matches an enum string.
+        self.value_ = *value;
+      } else {
+        /*
+          Conversion was unsuccessful.
+          Report unrecognized enum string if visitor supports it.
+        */
+        if constexpr (CanReportError<decltype(visitor), Value>) {
+          visitor.report_error(std::format("Invalid enum value: {}", proxy));
+        }
+      }
+    }
+  }
+
+  template <typename Visitor = std::nullptr_t>
+  auto validate(Visitor&& = nullptr) -> void {}
+
+ private:
+  std::string_view name_;
+  Value value_;
 };
 
 }  // namespace curves
