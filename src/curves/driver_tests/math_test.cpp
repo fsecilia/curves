@@ -5,7 +5,7 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/io.hpp>
+#include <curves/math/io.hpp>
 
 extern "C" {
 #include <curves/driver/math.h>

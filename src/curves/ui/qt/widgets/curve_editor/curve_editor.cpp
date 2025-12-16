@@ -1,8 +1,8 @@
 #include "curve_editor.hpp"
 #include "ui_curve_editor.h"
+#include <curves/math/spline.hpp>
 #include <curves/rendering/spline_evaluator.hpp>
 #include <curves/rendering/spline_sampler.hpp>
-#include <curves/spline.hpp>
 
 CurveEditor::CurveEditor(QWidget* parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::CurveEditor>()) {

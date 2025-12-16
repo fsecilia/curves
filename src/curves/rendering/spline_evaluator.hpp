@@ -12,9 +12,9 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/fixed.hpp>
+#include <curves/math/fixed.hpp>
+#include <curves/math/spline.hpp>
 #include <curves/rendering/spline_sampler.hpp>
-#include <curves/spline.hpp>
 
 namespace curves {
 

@@ -5,7 +5,7 @@
 */
 
 #include "isqrt.hpp"
-#include <curves/io.hpp>
+#include <curves/math/io.hpp>
 #include <ostream>
 
 namespace curves {

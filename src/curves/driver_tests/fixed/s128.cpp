@@ -8,8 +8,8 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/fixed.hpp>
-#include <curves/io.hpp>
+#include <curves/math/fixed.hpp>
+#include <curves/math/io.hpp>
 
 #define S128_MAX CURVES_S128_MAX
 #define S128_MIN CURVES_S128_MIN

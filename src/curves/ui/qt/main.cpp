@@ -7,7 +7,7 @@
 */
 
 #include "main_window/main_window.hpp"
-#include <curves/spline.hpp>
+#include <curves/math/spline.hpp>
 #include <QApplication>
 
 auto main(int argc, char* argv[]) -> int {

@@ -5,8 +5,8 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/fixed.hpp>
-#include <curves/io.hpp>
+#include <curves/math/fixed.hpp>
+#include <curves/math/io.hpp>
 #include <curves/testing/isqrt.hpp>
 
 namespace curves {

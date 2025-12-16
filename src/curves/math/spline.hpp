@@ -13,7 +13,7 @@ extern "C" {
 }  // extern "C"
 
 #include <curves/lib.hpp>
-#include <curves/fixed.hpp>
+#include <curves/math/fixed.hpp>
 #include <algorithm>
 #include <array>
 #include <cassert>

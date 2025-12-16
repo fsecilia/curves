@@ -11,15 +11,15 @@
 # -----------------------------------------------------------------------------
 
 list(APPEND lib_files
-  fixed.hpp
-  io.hpp
   lib.cpp
   lib.hpp
   param.hpp
+  math/fixed.hpp
+  math/io.hpp
+  math/spline.hpp
+  math/spline.cpp
   rendering/spline_evaluator.hpp
   rendering/spline_sampler.hpp
-  spline.hpp
-  spline.cpp
 )
 
 list(APPEND unit_tests_files
@@ -34,11 +34,11 @@ list(APPEND unit_tests_files
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
   driver_tests/math_test.cpp
-  io_test.cpp
+  math/io_test.cpp
+  math/spline_test.cpp
   param_test.cpp
   rendering/spline_evaluator_test.cpp
   rendering/spline_sampler_test.cpp
-  spline_test.cpp
 )
 
 # The Kbuild is the source of truth for the files in the driver. CMake asks the
