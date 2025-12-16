@@ -91,14 +91,14 @@ class SynchronousCurve {
 };
 
 template <typename Curve>
-struct TransferAdapterTraits {
+struct TransferFunctionTraits {
   auto eval_at_0(const Curve& curve) const noexcept -> CurveResult {
     return {0, curve(0.0).f};
   }
 };
 
-template <typename Curve, typename Traits = TransferAdapterTraits<Curve>>
-class TransferAdapterCurve {
+template <typename Curve, typename Traits = TransferFunctionTraits<Curve>>
+class TransferFunctionCurve {
  public:
   auto operator()(real_t x) const noexcept -> CurveResult {
     if (x < std::numeric_limits<real_t>::epsilon()) {
@@ -109,7 +109,7 @@ class TransferAdapterCurve {
     return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
   }
 
-  explicit TransferAdapterCurve(Curve curve, Traits traits = {}) noexcept
+  explicit TransferFunctionCurve(Curve curve, Traits traits = {}) noexcept
       : curve_{std::move(curve)}, traits_{std::move(traits)} {}
 
  private:
@@ -118,7 +118,7 @@ class TransferAdapterCurve {
 };
 
 template <>
-struct TransferAdapterTraits<SynchronousCurve> {
+struct TransferFunctionTraits<SynchronousCurve> {
   auto eval_at_0(const SynchronousCurve& curve) const noexcept -> CurveResult {
     /*
       This comes from the limit definition of the derivative of the transfer
