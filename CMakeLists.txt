@@ -55,6 +55,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   add_compile_options(
     -Weverything
 
+    -Wno-c++2b-compat
+    -Wno-c++23-compat
     -Wno-c++20-compat
     -Wno-c++98-compat
     -Wno-c++98-compat-pedantic
@@ -81,7 +83,7 @@ endif()
 
 set(CMAKE_CXX_EXTENSIONS FALSE)
 set(CMAKE_CXX_SCAN_FOR_MODULES FALSE)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
