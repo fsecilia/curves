@@ -13,6 +13,7 @@ extern "C" {
 }  // extern "C"
 
 #include <curves/lib.hpp>
+#include <curves/math/curve.hpp>
 #include <curves/math/fixed.hpp>
 #include <algorithm>
 #include <array>
@@ -26,11 +27,6 @@ extern "C" {
 #include <vector>
 
 namespace curves {
-
-struct CurveResult {
-  real_t f;
-  real_t df_dx;
-};
 
 class SynchronousCurve {
  public:

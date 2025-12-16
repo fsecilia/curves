@@ -14,6 +14,7 @@ list(APPEND lib_files
   config/param.hpp
   lib.cpp
   lib.hpp
+  math/curve.hpp
   math/fixed.hpp
   math/io.hpp
   math/spline.hpp
