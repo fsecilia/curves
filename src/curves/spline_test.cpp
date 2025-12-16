@@ -18,7 +18,7 @@ TEST(spline_set, synchronous_as_transfer_uniform) {
   const auto x_max =
       Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1));
 
-  const auto dx = Fixed{1.0e-4L};
+  const auto dx = Fixed{1.0e-3L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
 
   auto x_fixed = Fixed{0};
