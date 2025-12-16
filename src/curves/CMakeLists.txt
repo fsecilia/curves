@@ -11,9 +11,9 @@
 # -----------------------------------------------------------------------------
 
 list(APPEND lib_files
+  config/param.hpp
   lib.cpp
   lib.hpp
-  param.hpp
   math/fixed.hpp
   math/io.hpp
   math/spline.hpp
@@ -23,6 +23,7 @@ list(APPEND lib_files
 )
 
 list(APPEND unit_tests_files
+  config/param_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp
@@ -36,7 +37,6 @@ list(APPEND unit_tests_files
   driver_tests/math_test.cpp
   math/io_test.cpp
   math/spline_test.cpp
-  param_test.cpp
   rendering/spline_evaluator_test.cpp
   rendering/spline_sampler_test.cpp
 )
