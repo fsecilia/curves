@@ -4,8 +4,8 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
+#include "param.hpp"
 #include <curves/testing/test.hpp>
-#include <curves/ui/param.hpp>
 
 namespace curves {
 namespace {
