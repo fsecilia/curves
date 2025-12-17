@@ -22,7 +22,7 @@
 #include <filesystem>
 #include <fstream>
 
-using namespace curves;
+namespace curves {
 
 auto get_config_dir_path() -> std::filesystem::path {
   return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
@@ -118,3 +118,7 @@ auto main(int argc, char* argv[]) -> int {
 
   return app.exec();
 }
+
+}  // namespace curves
+
+auto main(int argc, char* argv[]) -> int { return curves::main(argc, argv); }
