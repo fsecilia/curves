@@ -29,9 +29,8 @@ class Writer {
   template <typename VisitSectionFunc>
   auto visit_section(std::string_view section_name,
                      VisitSectionFunc&& visit_section) -> void {
-    auto section_adapter = adapter_.create_section(section_name);
-    auto section_visitor = Writer{std::move(section_adapter)};
-    std::invoke(std::forward<VisitSectionFunc>(visit_section), section_visitor);
+    std::invoke(std::forward<VisitSectionFunc>(visit_section),
+                Writer{adapter_.create_section(section_name)});
   }
 
  private:

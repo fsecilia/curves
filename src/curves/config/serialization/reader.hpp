@@ -31,9 +31,8 @@ class Reader {
   auto visit_section(std::string_view section_name,
                      VisitSectionFunc&& visit_section) -> void {
     if (auto section_adapter = adapter_.get_section(section_name)) {
-      auto section_visitor = Reader{*section_adapter, error_reporter_};
       std::invoke(std::forward<VisitSectionFunc>(visit_section),
-                  section_visitor);
+                  Reader{std::move(*section_adapter), error_reporter_});
     }
   }
 
