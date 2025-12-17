@@ -9,6 +9,7 @@
 #include "main_window/main_window.hpp"
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
+#include <curves/modes/synchronous.hpp>
 #include <QApplication>
 #include <QStandardPaths>
 
@@ -28,8 +29,8 @@ auto main(int argc, char* argv[]) -> int {
 
   main_window.prepopulateCurveParameterWidgets(10);
 
-  auto sensitivity = curves::SynchronousCurve{0.433012701892L, 17.3205080757L,
-                                              5.33L, 28.3L, 0.5L};
+  auto sensitivity = curves::modes::synchronous::Curve{
+      0.433012701892L, 17.3205080757L, 5.33L, 28.3L, 0.5L};
   main_window.setSpline(std::make_shared<curves_spline>(
       curves::spline::create_spline(curves::TransferFunction{sensitivity})));
 

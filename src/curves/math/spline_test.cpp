@@ -8,12 +8,14 @@
 #include <curves/math/io.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
+#include <curves/modes/synchronous.hpp>
 
 namespace curves {
 namespace {
 
 TEST(spline_set, synchronous_as_transfer_uniform) {
-  auto sensitivity = SynchronousCurve{0.433012701892L, 10.0L, 1.0L, 8.3L, 0.5L};
+  auto sensitivity =
+      modes::synchronous::Curve{0.433012701892L, 10.0L, 1.0L, 8.3L, 0.5L};
 
   const auto spline = spline::create_spline(TransferFunction{sensitivity});
   const auto x_max =

@@ -20,6 +20,7 @@ list(APPEND lib_files
   math/spline.hpp
   math/spline.cpp
   math/transfer_function.hpp
+  modes/synchronous.hpp
   rendering/spline_evaluator.hpp
   rendering/spline_sampler.hpp
 )
@@ -40,6 +41,7 @@ list(APPEND unit_tests_files
   math/io_test.cpp
   math/spline_test.cpp
   math/transfer_function_test.cpp
+  modes/synchronous_test.cpp
   rendering/spline_evaluator_test.cpp
   rendering/spline_sampler_test.cpp
 )
