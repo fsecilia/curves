@@ -7,6 +7,7 @@
 */
 
 #include "main_window/main_window.hpp"
+#include <curves/config/profile.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
 #include <curves/modes/synchronous.hpp>
@@ -18,12 +19,18 @@ auto get_config_dir_path() -> std::string {
       .toStdString();
 }
 
+auto create_default_profile() -> curves::Profile {
+  auto profile = curves::Profile{};
+  return profile;
+}
+
 auto main(int argc, char* argv[]) -> int {
   auto app = QApplication{argc, argv};
   QApplication::setApplicationName("curves");
   QApplication::setOrganizationName("");
 
   const auto config_dir_path = get_config_dir_path();
+  auto default_profile = create_default_profile();
 
   auto main_window = MainWindow{};
 
