@@ -12,6 +12,8 @@
 
 auto main(int argc, char* argv[]) -> int {
   auto app = QApplication{argc, argv};
+  QApplication::setApplicationName("curves");
+  QApplication::setOrganizationName("");
 
   auto main_window = MainWindow{};
 
