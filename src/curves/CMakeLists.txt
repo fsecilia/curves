@@ -14,6 +14,7 @@ list(APPEND lib_files
   config/curve.hpp
   config/param.hpp
   config/profile.hpp
+  config/serialization/toml/error_reporter.hpp
   lib.cpp
   lib.hpp
   math/curve.hpp
@@ -31,6 +32,7 @@ list(APPEND unit_tests_files
   config/curve_test.cpp
   config/param_test.cpp
   config/profile_test.cpp
+  config/serialization/toml/error_reporter_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp
