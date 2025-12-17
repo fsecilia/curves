@@ -25,7 +25,7 @@ class Curve {
         L{std::log(motivity)},
         g{gamma / L},
         p{sync_speed},
-        k{smooth == 0 ? 16.0 : 0.5 / smooth},
+        k{smooth == 0 ? 64.0 : 0.5 / smooth},
         r{1.0 / k} {}
 
   auto scale() const noexcept -> real_t { return scale_; }
