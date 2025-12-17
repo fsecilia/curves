@@ -11,16 +11,16 @@
 # -----------------------------------------------------------------------------
 
 list(APPEND lib_files
-  config/profile.hpp
   config/curve.hpp
   config/param.hpp
+  config/profile.hpp
   lib.cpp
   lib.hpp
   math/curve.hpp
   math/fixed.hpp
   math/io.hpp
-  math/spline.hpp
   math/spline.cpp
+  math/spline.hpp
   math/transfer_function.hpp
   modes/synchronous.hpp
   rendering/spline_evaluator.hpp
@@ -28,9 +28,9 @@ list(APPEND lib_files
 )
 
 list(APPEND unit_tests_files
-  config/profile_test.cpp
   config/curve_test.cpp
   config/param_test.cpp
+  config/profile_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp
