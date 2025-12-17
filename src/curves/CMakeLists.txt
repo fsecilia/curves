@@ -11,6 +11,7 @@
 # -----------------------------------------------------------------------------
 
 list(APPEND lib_files
+  config/profile.hpp
   config/curve.hpp
   config/param.hpp
   lib.cpp
@@ -27,6 +28,7 @@ list(APPEND lib_files
 )
 
 list(APPEND unit_tests_files
+  config/profile_test.cpp
   config/curve_test.cpp
   config/param_test.cpp
   driver_tests/fixed/add.cpp
