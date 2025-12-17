@@ -32,8 +32,7 @@ struct IntParamTest : Test {
                 (const, noexcept));
     MOCK_METHOD(void, on_call_value, (std::string_view, Value),
                 (const, noexcept));
-    MOCK_METHOD(void, on_clamp, (std::string_view, Value, Value, Value, Value),
-                (const, noexcept));
+    MOCK_METHOD(void, report_warning, (std::string), (const, noexcept));
 
     virtual ~MockVisitor() = default;
   };
@@ -80,7 +79,8 @@ TEST_F(IntParamTest, validate_clamps_min_and_reports) {
   const auto unclamped = min - 1;
   auto sut = Sut{name, unclamped, min, max};
 
-  EXPECT_CALL(mock_visitor, on_clamp(name, unclamped, min, max, min));
+  const auto expected_substring = std::format("{}", unclamped);
+  EXPECT_CALL(mock_visitor, report_warning(HasSubstr(expected_substring)));
 
   sut.validate(mock_visitor);
 
@@ -91,7 +91,8 @@ TEST_F(IntParamTest, validate_clamps_max_and_reports) {
   const auto unclamped = max + 1;
   auto sut = Sut{name, unclamped, min, max};
 
-  EXPECT_CALL(mock_visitor, on_clamp(name, unclamped, min, max, max));
+  const auto expected_substring = std::format("{}", unclamped);
+  EXPECT_CALL(mock_visitor, report_warning(HasSubstr(expected_substring)));
 
   sut.validate(mock_visitor);
 

@@ -16,14 +16,13 @@
 namespace curves {
 
 template <typename Visitor, typename Value>
-concept CanReportClamp =
-    requires(Visitor&& visitor, std::string_view name, Value value) {
-      visitor.on_clamp(name, value, value, value, value);
-    };
+concept CanReportError = requires(Visitor&& visitor, std::string message) {
+  visitor.report_error(message);
+};
 
 template <typename Visitor, typename Value>
-concept CanReportError = requires(Visitor&& visitor, std::string_view message) {
-  visitor.report_error(message);
+concept CanReportWarning = requires(Visitor&& visitor, std::string message) {
+  visitor.report_warning(message);
 };
 
 template <typename T>
@@ -53,8 +52,10 @@ class Param {
       const auto unclamped = value_;
       value_ = std::clamp(value_, min_, max_);
 
-      if constexpr (CanReportClamp<Visitor, Value>) {
-        visitor.on_clamp(name_, unclamped, min_, max_, value_);
+      if constexpr (CanReportWarning<decltype(visitor), Value>) {
+        visitor.report_warning(
+            std::format("{} was out of range [{}, {}): clamped from {} to {}",
+                        name_, min_, max_, unclamped, value_));
       }
     }
   }
