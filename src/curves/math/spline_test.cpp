@@ -14,7 +14,7 @@ namespace {
 TEST(spline_set, synchronous_as_transfer_uniform) {
   auto sensitivity = SynchronousCurve{0.433012701892L, 10.0L, 1.0L, 8.3L, 0.5L};
 
-  const auto spline = spline::create_spline(TransferFunctionCurve{sensitivity});
+  const auto spline = spline::create_spline(TransferFunction{sensitivity});
   const auto x_max =
       Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1));
 

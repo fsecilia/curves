@@ -98,7 +98,7 @@ struct TransferFunctionTraits {
 };
 
 template <typename Curve, typename Traits = TransferFunctionTraits<Curve>>
-class TransferFunctionCurve {
+class TransferFunction {
  public:
   auto operator()(real_t x) const noexcept -> CurveResult {
     if (x < std::numeric_limits<real_t>::epsilon()) {
@@ -109,7 +109,7 @@ class TransferFunctionCurve {
     return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
   }
 
-  explicit TransferFunctionCurve(Curve curve, Traits traits = {}) noexcept
+  explicit TransferFunction(Curve curve, Traits traits = {}) noexcept
       : curve_{std::move(curve)}, traits_{std::move(traits)} {}
 
  private:

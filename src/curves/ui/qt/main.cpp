@@ -29,9 +29,8 @@ auto main(int argc, char* argv[]) -> int {
 
   auto sensitivity = curves::SynchronousCurve{0.433012701892L, 17.3205080757L,
                                               5.33L, 28.3L, 0.5L};
-  main_window.setSpline(
-      std::make_shared<curves_spline>(curves::spline::create_spline(
-          curves::TransferFunctionCurve{sensitivity})));
+  main_window.setSpline(std::make_shared<curves_spline>(
+      curves::spline::create_spline(curves::TransferFunction{sensitivity})));
 
   main_window.show();
 
