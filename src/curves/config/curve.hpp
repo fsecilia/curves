@@ -19,13 +19,17 @@ namespace curves {
 struct Curve {
   std::string_view name;
 
+  using DoubleParams = std::vector<Param<double>>;
+  DoubleParams double_params;
+
   enum Interpretation {
     kGain,
     kSensitivity,
   };
-  Param<Interpretation> interpretation;
+  Param<Interpretation> interpretation{"Interpretation", Interpretation::kGain};
 
-  std::vector<Param<double>> double_params;
+  Curve(std::string_view name, DoubleParams double_params) noexcept
+      : name{std::move(name)}, double_params{std::move(double_params)} {}
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
     self.interpretation.reflect(visitor);

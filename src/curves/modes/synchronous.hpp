@@ -9,12 +9,29 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/config/curve.hpp>
+#include <curves/config/param.hpp>
 #include <curves/math/curve.hpp>
 #include <curves/math/transfer_function.hpp>
 #include <cmath>
 
 namespace curves {
 namespace modes::synchronous {
+
+struct Config {
+  enum class Params { kScale, kMotivity, kGamma, kSmooth, kSyncSpeed };
+
+  static auto create() -> Curve {
+    return Curve{"Synchronous",  //
+                 Curve::DoubleParams{
+                     {"Scale", 1.0, 1.0e-3, 1.0e3},
+                     {"Motivity", 1.5, 1.0, 1.0e3},
+                     {"Gamma", 1, 1.0, 1.0e3},
+                     {"Smooth", 0.5, 0.0, 1.0},
+                     {"SyncSpeed", 5, 1.0e-3, 1.0e3},
+                 }};
+  }
+};
 
 class Curve {
  public:

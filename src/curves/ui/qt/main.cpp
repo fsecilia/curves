@@ -21,6 +21,7 @@ auto get_config_dir_path() -> std::string {
 
 auto create_default_profile() -> curves::Profile {
   auto profile = curves::Profile{};
+  profile.curves.emplace_back(curves::modes::synchronous::Config::create());
   return profile;
 }
 
