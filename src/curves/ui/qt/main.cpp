@@ -24,7 +24,7 @@
 
 using namespace curves;
 
-auto get_config_dir_path() -> std::string {
+auto get_config_dir_path() -> std::filesystem::path {
   return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
       .toStdString();
 }
@@ -35,8 +35,9 @@ auto create_default_profile() -> Profile {
   return profile;
 }
 
-auto save_profile(const Profile& profile, const std::filesystem::path& path)
-    -> void {
+auto save_profile(const Profile& profile,
+                  const std::filesystem::path& config_dir_path,
+                  const std::filesystem::path& config_file_path) -> void {
   toml::table root;
 
   using TomlWriterVisitor = Writer<TomlWriterAdapter>;
@@ -44,18 +45,20 @@ auto save_profile(const Profile& profile, const std::filesystem::path& path)
 
   profile.reflect(visitor);
 
-  std::ofstream file(path);
+  std::filesystem::create_directories(config_dir_path);
+  std::ofstream file(config_file_path);
   file << root;
 }
 
-auto load_profile(Profile& profile, const std::filesystem::path& path) -> void {
+auto load_profile(Profile& profile,
+                  const std::filesystem::path& config_file_path) -> void {
   /*
     This is technically toctou, but we'll refactor and handle file io ourselves
     once we get a curve hooked up.
   */
-  if (!std::filesystem::exists(path)) return;
+  if (!std::filesystem::exists(config_file_path)) return;
 
-  auto root = toml::parse_file(path.string());
+  auto root = toml::parse_file(config_file_path.string());
 
   auto error_reporter = ErrorReporter{};
   using TomlReaderVisitor = Reader<TomlReaderAdapter, ErrorReporter>;
@@ -86,9 +89,8 @@ auto main(int argc, char* argv[]) -> int {
   QApplication::setOrganizationName("");
 
   const auto config_dir_path = get_config_dir_path();
-  std::filesystem::create_directories(config_dir_path);
 
-  const auto config_file_path = config_dir_path + "/config.toml";
+  const auto config_file_path = config_dir_path / "config.toml";
   auto profile = create_default_profile();
 
   try {
@@ -98,7 +100,7 @@ auto main(int argc, char* argv[]) -> int {
     return EXIT_FAILURE;
   }
 
-  save_profile(profile, config_file_path);
+  save_profile(profile, config_dir_path, config_file_path);
 
   auto main_window = MainWindow{};
 
