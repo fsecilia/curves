@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief User mode additions to the kernel spline module.
+  \brief Data-driven config param.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
