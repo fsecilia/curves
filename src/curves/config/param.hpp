@@ -54,7 +54,7 @@ class Param {
 
       if constexpr (CanReportWarning<decltype(visitor), Value>) {
         visitor.report_warning(
-            std::format("{} was out of range [{}, {}): clamped from {} to {}",
+            std::format("{} was out of range [{}, {}]: clamped from {} to {}",
                         name_, min_, max_, unclamped, value_));
       }
     }
