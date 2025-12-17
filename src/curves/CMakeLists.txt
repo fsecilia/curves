@@ -14,7 +14,11 @@ list(APPEND lib_files
   config/curve.hpp
   config/param.hpp
   config/profile.hpp
+  config/serialization/reader.hpp
   config/serialization/toml/error_reporter.hpp
+  config/serialization/toml/reader_adapter.hpp
+  config/serialization/toml/writer_adapter.hpp
+  config/serialization/writer.hpp
   lib.cpp
   lib.hpp
   math/curve.hpp
@@ -32,7 +36,11 @@ list(APPEND unit_tests_files
   config/curve_test.cpp
   config/param_test.cpp
   config/profile_test.cpp
+  config/serialization/reader_test.cpp
   config/serialization/toml/error_reporter_test.cpp
+  config/serialization/toml/reader_adapter_test.cpp
+  config/serialization/toml/writer_adapter_test.cpp
+  config/serialization/writer_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp

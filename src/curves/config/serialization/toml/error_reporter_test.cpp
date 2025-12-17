@@ -29,7 +29,7 @@ TEST_F(ErrorReporterTest, location_is_recorded) {
   // Location is only readable from the exception after throwing.
   auto actual_source_path = SrcPath{};
   try {
-    sut.emit_error("");
+    sut.report_error("");
   } catch (const toml::parse_error& err) {
     actual_source_path = err.source().path;
   }
@@ -43,7 +43,7 @@ TEST_F(ErrorReporterTest, message) {
   // Message is only recorded in thrown exception.
   auto actual_message = std::string_view{};
   try {
-    sut.emit_error(expected_message);
+    sut.report_error(expected_message);
   } catch (const toml::parse_error& err) {
     actual_message = err.description();
   }

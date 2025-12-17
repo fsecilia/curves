@@ -22,7 +22,7 @@ class ErrorReporter {
   /*!
     \brief Throws a parse error using the recorded location with given message.
   */
-  [[noreturn]] auto emit_error(std::string_view message) const -> void {
+  [[noreturn]] auto report_error(std::string_view message) const -> void {
     throw toml::parse_error{message.data(), location_};
   }
 
