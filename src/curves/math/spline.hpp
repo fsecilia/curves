@@ -15,16 +15,11 @@ extern "C" {
 #include <curves/lib.hpp>
 #include <curves/math/curve.hpp>
 #include <curves/math/fixed.hpp>
+#include <curves/math/transfer_function.hpp>
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cmath>
-#include <concepts>
-#include <cstdint>
-#include <iostream>
 #include <limits>
-#include <optional>
-#include <vector>
 
 namespace curves {
 
@@ -88,33 +83,6 @@ class SynchronousCurve {
 
     return {f, df_dx};
   }
-};
-
-template <typename Curve>
-struct TransferFunctionTraits {
-  auto eval_at_0(const Curve& curve) const noexcept -> CurveResult {
-    return {0, curve(0.0).f};
-  }
-};
-
-template <typename Curve, typename Traits = TransferFunctionTraits<Curve>>
-class TransferFunction {
- public:
-  auto operator()(real_t x) const noexcept -> CurveResult {
-    if (x < std::numeric_limits<real_t>::epsilon()) {
-      return traits_.eval_at_0(curve_);
-    }
-
-    const auto curve_result = curve_(x);
-    return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
-  }
-
-  explicit TransferFunction(Curve curve, Traits traits = {}) noexcept
-      : curve_{std::move(curve)}, traits_{std::move(traits)} {}
-
- private:
-  Curve curve_;
-  Traits traits_;
 };
 
 template <>

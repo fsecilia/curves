@@ -8,6 +8,7 @@
 
 #include "main_window/main_window.hpp"
 #include <curves/math/spline.hpp>
+#include <curves/math/transfer_function.hpp>
 #include <QApplication>
 #include <QStandardPaths>
 
