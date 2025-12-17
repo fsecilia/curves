@@ -50,25 +50,27 @@ auto save_profile(const Profile& profile,
   file << root;
 }
 
-auto load_profile(Profile& profile,
-                  const std::filesystem::path& config_file_path) -> void {
+auto load_or_create_profile(const std::filesystem::path& config_file_path)
+    -> Profile {
+  auto result = create_default_profile();
+
   /*
     This is technically toctou, but we'll refactor and handle file io ourselves
     once we get a curve hooked up.
   */
-  if (!std::filesystem::exists(config_file_path)) return;
+  if (!std::filesystem::exists(config_file_path)) return result;
 
   auto root = toml::parse_file(config_file_path.string());
-
   auto error_reporter = ErrorReporter{};
+
   using TomlReaderVisitor = Reader<TomlReaderAdapter, ErrorReporter>;
   auto visitor = TomlReaderVisitor{TomlReaderAdapter{root}, error_reporter};
+  result.reflect(visitor);
 
-  // Reflect the visitor into the config
-  profile.reflect(visitor);
+  // Validate after loading external data.
+  result.validate();
 
-  // Always validate after loading external data!
-  profile.validate();
+  return result;
 }
 
 auto report_config_file_parse_error(const toml::parse_error& err) -> void {
@@ -91,10 +93,11 @@ auto main(int argc, char* argv[]) -> int {
   const auto config_dir_path = get_config_dir_path();
 
   const auto config_file_path = config_dir_path / "config.toml";
-  auto profile = create_default_profile();
+
+  auto profile = Profile{};
 
   try {
-    load_profile(profile, config_file_path);
+    profile = load_or_create_profile(config_file_path);
   } catch (const toml::parse_error& err) {
     report_config_file_parse_error(err);
     return EXIT_FAILURE;
