@@ -10,7 +10,7 @@
 
 #include <curves/lib.hpp>
 #include <curves/config/param.hpp>
-#include <ranges>
+#include <string>
 #include <string_view>
 #include <vector>
 
