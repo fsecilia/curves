@@ -9,11 +9,19 @@
 #include "main_window/main_window.hpp"
 #include <curves/math/spline.hpp>
 #include <QApplication>
+#include <QStandardPaths>
+
+auto get_config_dir_path() -> std::string {
+  return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+      .toStdString();
+}
 
 auto main(int argc, char* argv[]) -> int {
   auto app = QApplication{argc, argv};
   QApplication::setApplicationName("curves");
   QApplication::setOrganizationName("");
+
+  const auto config_dir_path = get_config_dir_path();
 
   auto main_window = MainWindow{};
 
