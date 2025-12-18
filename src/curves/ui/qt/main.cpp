@@ -8,11 +8,7 @@
 
 #include "main_window/main_window.hpp"
 #include <curves/config/profile.hpp>
-#include <curves/config/serialization/reader.hpp>
-#include <curves/config/serialization/toml/error_reporter.hpp>
-#include <curves/config/serialization/toml/reader_adapter.hpp>
-#include <curves/config/serialization/toml/writer_adapter.hpp>
-#include <curves/config/serialization/writer.hpp>
+#include <curves/config/profile_store.hpp>
 #include <curves/curves/synchronous.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
@@ -20,51 +16,12 @@
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <filesystem>
-#include <fstream>
 
 namespace curves {
 
 auto get_config_dir_path() -> std::filesystem::path {
   return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
       .toStdString();
-}
-
-auto save_profile(const Profile& profile,
-                  const std::filesystem::path& config_dir_path,
-                  const std::filesystem::path& config_file_path) -> void {
-  toml::table root;
-
-  using TomlWriterVisitor = Writer<TomlWriterAdapter>;
-  auto visitor = TomlWriterVisitor{TomlWriterAdapter{root}};
-
-  profile.reflect(visitor);
-
-  std::filesystem::create_directories(config_dir_path);
-  std::ofstream file(config_file_path);
-  file << root;
-}
-
-auto load_or_create_profile(const std::filesystem::path& config_file_path)
-    -> Profile {
-  auto result = Profile{};
-
-  /*
-    This is technically toctou, but we'll refactor and handle file io ourselves
-    once we get a curve hooked up.
-  */
-  if (!std::filesystem::exists(config_file_path)) return result;
-
-  auto root = toml::parse_file(config_file_path.string());
-  auto error_reporter = ErrorReporter{};
-
-  using TomlReaderVisitor = Reader<TomlReaderAdapter, ErrorReporter>;
-  auto visitor = TomlReaderVisitor{TomlReaderAdapter{root}, error_reporter};
-  result.reflect(visitor);
-
-  // Validate after loading external data.
-  result.validate();
-
-  return result;
 }
 
 auto report_config_file_parse_error(const toml::parse_error& err) -> void {
@@ -84,19 +41,16 @@ auto main(int argc, char* argv[]) -> int {
   QApplication::setApplicationName("curves");
   QApplication::setOrganizationName("");
 
-  const auto config_dir_path = get_config_dir_path();
-
-  const auto config_file_path = config_dir_path / "config.toml";
+  auto profile_store = ProfileStore{get_config_dir_path() / "config.toml"};
 
   auto profile = Profile{};
-
   try {
-    profile = load_or_create_profile(config_file_path);
+    profile = profile_store.find_or_create();
   } catch (const toml::parse_error& err) {
     report_config_file_parse_error(err);
     return EXIT_FAILURE;
   }
-  save_profile(profile, config_dir_path, config_file_path);
+  profile_store.save(profile);
 
   auto main_window = MainWindow{};
 

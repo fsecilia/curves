@@ -15,6 +15,7 @@ list(APPEND lib_files
   config/enum.hpp
   config/param.hpp
   config/profile.hpp
+  config/profile_store.hpp
   config/serialization/reader.hpp
   config/serialization/toml/error_reporter.hpp
   config/serialization/toml/reader_adapter.hpp
@@ -37,6 +38,7 @@ list(APPEND unit_tests_files
   config/curve_test.cpp
   config/enum_test.cpp
   config/param_test.cpp
+  config/profile_store_test.cpp
   config/profile_test.cpp
   config/serialization/reader_test.cpp
   config/serialization/toml/error_reporter_test.cpp
