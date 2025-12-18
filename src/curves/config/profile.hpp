@@ -13,6 +13,7 @@
 #include <curves/config/enum.hpp>
 #include <curves/config/param.hpp>
 #include <curves/curves/synchronous.hpp>
+#include <functional>
 #include <string_view>
 
 namespace curves {
@@ -41,6 +42,17 @@ struct Profile {
     template <typename Visitor = std::nullptr_t>
     auto validate(Visitor&& visitor = nullptr) -> void {
       synchronous.validate(visitor);
+    }
+
+    // Visits CurveProfileEntry specific to given curve.
+    auto visit_config(this auto&& self, CurveType curve, auto&& visitor)
+        -> void {
+      switch (curve) {
+        case CurveType::kSynchronous:
+          std::invoke(std::forward<decltype(visitor)>(visitor),
+                      std::forward<decltype(self)>(self).synchronous);
+          break;
+      }
     }
   };
   CurveProfileEntries curve_profile_entries;
