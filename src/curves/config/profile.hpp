@@ -14,7 +14,6 @@
 #include <curves/config/param.hpp>
 #include <curves/curves/synchronous.hpp>
 #include <string_view>
-#include <vector>
 
 namespace curves {
 
@@ -49,6 +48,7 @@ struct Profile {
   auto reflect(this auto&& self, auto&& visitor) -> void {
     self.dpi.reflect(visitor);
     self.sensitivity.reflect(visitor);
+    self.curve_type.reflect(visitor);
     self.curve_profile_entries.reflect(visitor);
   }
 
@@ -56,6 +56,7 @@ struct Profile {
   auto validate(Visitor&& visitor = nullptr) -> void {
     dpi.validate(visitor);
     sensitivity.validate(visitor);
+    curve_type.validate(visitor);
     curve_profile_entries.validate(visitor);
   }
 };
