@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Synchronous curve mode.
+  \brief Synchronous curve.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
@@ -16,7 +16,7 @@
 #include <cmath>
 
 namespace curves {
-namespace modes::synchronous {
+namespace synchronous {
 
 struct Config {
   enum class Params { kScale, kMotivity, kGamma, kSmooth, kSyncSpeed };
@@ -95,11 +95,11 @@ class Curve {
   }
 };
 
-}  // namespace modes::synchronous
+}  // namespace synchronous
 
 template <>
-struct TransferFunctionTraits<modes::synchronous::Curve> {
-  auto eval_at_0(const modes::synchronous::Curve& curve) const noexcept
+struct TransferFunctionTraits<synchronous::Curve> {
+  auto eval_at_0(const synchronous::Curve& curve) const noexcept
       -> CurveResult {
     /*
       This comes from the limit definition of the derivative of the transfer

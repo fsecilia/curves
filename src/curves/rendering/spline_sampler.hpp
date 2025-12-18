@@ -45,7 +45,7 @@ class SplineSampler {
     s64 segment;
     s64 t_fixed;
     const auto x_fixed = Fixed{x_logical};
-    curves::spline::locate_segment(x_fixed.value, &segment, &t_fixed);
+    spline::locate_segment(x_fixed.value, &segment, &t_fixed);
 
     if (segment >= SPLINE_NUM_SEGMENTS) return extend_linearly(x_logical);
 
@@ -59,9 +59,9 @@ class SplineSampler {
     const auto& seg = m_spline->segments[segment];
 
     // Calculate width in domain units.
-    const s64 x_start = curves::spline::locate_knot(segment);
-    const s64 x_end = curves::spline::locate_knot(segment + 1);
-    const double width = curves::Fixed::literal(x_end - x_start).to_real();
+    const s64 x_start = spline::locate_knot(segment);
+    const s64 x_end = spline::locate_knot(segment + 1);
+    const double width = Fixed::literal(x_end - x_start).to_real();
 
     return SplineSample{.a = Fixed::literal(seg.coeffs[0]).to_real(),
                         .b = Fixed::literal(seg.coeffs[1]).to_real(),
@@ -86,8 +86,8 @@ class SplineSampler {
     const auto last_value = frame.a + frame.b + frame.c + frame.d;
 
     // Synthesize a Linear Segment.
-    const auto x_end_fixed = curves::spline::locate_knot(SPLINE_NUM_SEGMENTS);
-    const auto x_end_logical = curves::Fixed::literal(x_end_fixed).to_real();
+    const auto x_end_fixed = spline::locate_knot(SPLINE_NUM_SEGMENTS);
+    const auto x_end_logical = Fixed::literal(x_end_fixed).to_real();
     const auto dx = x_logical - x_end_logical;
 
     frame.a = 0;

@@ -13,9 +13,9 @@
 #include <curves/config/serialization/toml/reader_adapter.hpp>
 #include <curves/config/serialization/toml/writer_adapter.hpp>
 #include <curves/config/serialization/writer.hpp>
+#include <curves/curves/synchronous.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
-#include <curves/modes/synchronous.hpp>
 #include <QApplication>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -31,7 +31,7 @@ auto get_config_dir_path() -> std::filesystem::path {
 
 auto create_default_profile() -> Profile {
   auto profile = Profile{};
-  profile.curves.emplace_back(modes::synchronous::Config::create());
+  profile.curves.emplace_back(synchronous::Config::create());
   return profile;
 }
 
@@ -109,8 +109,8 @@ auto main(int argc, char* argv[]) -> int {
 
   main_window.prepopulateCurveParameterWidgets(10);
 
-  auto sensitivity = modes::synchronous::Curve{0.433012701892L, 17.3205080757L,
-                                               5.33L, 28.3L, 0.5L};
+  auto sensitivity =
+      synchronous::Curve{0.433012701892L, 17.3205080757L, 5.33L, 28.3L, 0.5L};
   main_window.setSpline(std::make_shared<curves_spline>(
       spline::create_spline(TransferFunction{sensitivity})));
 
