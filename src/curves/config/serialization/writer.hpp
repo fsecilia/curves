@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/config/param.hpp>
 #include <functional>
 #include <string_view>
 #include <utility>
@@ -22,8 +23,13 @@ class Writer {
   explicit Writer(Adapter adapter) noexcept : adapter_{std::move(adapter)} {}
 
   template <typename T>
-  auto operator()(std::string_view key, const T& value) -> void {
-    adapter_.write_value(key, value);
+  auto operator()(const Param<T>& param) -> void {
+    adapter_.write_value(param.name(), param.value());
+  }
+
+  template <Enumeration Enum>
+  auto operator()(const Param<Enum>& param) -> void {
+    adapter_.write_value(param.name(), to_string(param.value()));
   }
 
   template <typename VisitSectionFunc>

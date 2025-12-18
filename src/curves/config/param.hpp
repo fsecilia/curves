@@ -37,11 +37,13 @@ class Param {
 
   auto name() const noexcept -> std::string_view { return name_; }
   auto value() const noexcept -> Value { return value_; }
+  auto value(Value value) noexcept -> void { value_ = std::move(value); }
   auto min() const noexcept -> Value { return min_; }
   auto max() const noexcept -> Value { return max_; }
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
-    visitor(self.name_, self.value_);
+    std::forward<decltype(visitor)>(visitor)(
+        std::forward<decltype(self)>(self));
   }
 
   template <typename Visitor = std::nullptr_t>
@@ -51,7 +53,7 @@ class Param {
       value_ = std::clamp(value_, min_, max_);
 
       if constexpr (CanReportWarning<decltype(visitor), Value>) {
-        visitor.report_warning(
+        std::forward<Visitor>(visitor).report_warning(
             std::format("{} was out of range [{}, {}]: clamped from {} to {}",
                         name_, min_, max_, unclamped, value_));
       }
@@ -73,33 +75,11 @@ class Param<Enum> {
 
   auto name() const noexcept -> std::string_view { return name_; }
   auto value() const noexcept -> Enum { return value_; }
+  auto value(Enum value) noexcept -> void { value_ = value; }
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
-    // Proxy the enum into a string_view with the same constness as self.
-    using Proxy = std::conditional_t<Mutable<decltype(self)>, std::string_view,
-                                     const std::string_view>;
-    Proxy proxy{to_string(self.value_)};
-
-    // Visit string instead of enum value.
-    visitor(self.name_, proxy);
-
-    if constexpr (Mutable<decltype(self)>) {
-      // Convert contents of proxy back to optional enum.
-      const auto value = from_string<Enum>(proxy);
-
-      if (value) {
-        // Conversion was successful; proxy matches an enum string.
-        self.value_ = *value;
-      } else {
-        /*
-          Conversion was unsuccessful.
-          Report unrecognized enum string if visitor supports it.
-        */
-        if constexpr (CanReportError<decltype(visitor), Enum>) {
-          visitor.report_error(std::format("Invalid enum value: {}", proxy));
-        }
-      }
-    }
+    std::forward<decltype(visitor)>(visitor)(
+        std::forward<decltype(self)>(self));
   }
 
   template <typename Visitor = std::nullptr_t>

@@ -16,29 +16,21 @@ namespace {
 
 struct IntParamTest : Test {
   using Value = int_t;
+  using Sut = Param<Value>;
 
   struct MockVisitor {
-    auto operator()(std::string_view name, Value& value) const noexcept
-        -> void {
-      on_call_reference(name, value);
+    template <typename T>
+    auto operator()(T&& param) const noexcept -> void {
+      on_call(std::forward<T>(param));
     }
 
-    auto operator()(std::string_view name, const Value& value) const noexcept
-        -> void {
-      on_call_value(name, value);
-    }
-
-    MOCK_METHOD(void, on_call_reference, (std::string_view, Value&),
-                (const, noexcept));
-    MOCK_METHOD(void, on_call_value, (std::string_view, Value),
-                (const, noexcept));
-    MOCK_METHOD(void, report_warning, (std::string), (const, noexcept));
+    MOCK_METHOD(void, on_call, (Sut&), (const, noexcept));
+    MOCK_METHOD(void, on_call, (const Sut&), (const, noexcept));
+    MOCK_METHOD(void, report_warning, (std::string), (const));
 
     virtual ~MockVisitor() = default;
   };
   StrictMock<MockVisitor> mock_visitor;
-
-  using Sut = Param<Value>;
 
   const std::string_view name = std::string_view{"name"};
   const Value value = 3;
@@ -55,24 +47,20 @@ TEST_F(IntParamTest, properties_initialized_correctly) {
   ASSERT_EQ(max, sut.max());
 }
 
-TEST_F(IntParamTest, const_reflect_passes_correct_values) {
+TEST_F(IntParamTest, const_reflect_passes_const_self) {
   const auto sut = Sut{name, value, min, max};
 
-  EXPECT_CALL(mock_visitor, on_call_value(name, value));
+  EXPECT_CALL(mock_visitor, on_call(An<const Sut&>()));
 
   sut.reflect(mock_visitor);
 }
 
-TEST_F(IntParamTest, mutable_reflect_allows_mutation) {
+TEST_F(IntParamTest, mutable_reflect_passes_mutable_self) {
   auto sut = Sut{name, value, min, max};
 
-  const Value new_value = 17;
-  EXPECT_CALL(mock_visitor, on_call_reference(name, Eq(value)))
-      .WillOnce(SetArgReferee<1>(new_value));
+  EXPECT_CALL(mock_visitor, on_call(An<Sut&>()));
 
   sut.reflect(mock_visitor);
-
-  ASSERT_EQ(new_value, sut.value());
 }
 
 TEST_F(IntParamTest, validate_clamps_min_and_reports) {
@@ -125,45 +113,23 @@ enum ParamTestEnum {
   value_2,
 };
 
-}  // namespace
-
-template <>
-struct EnumReflection<ParamTestEnum> {
-  static constexpr auto map =
-      sequential_name_map<ParamTestEnum>("value_0", "value_1", "value_2");
-};
-
-namespace {
-
 struct EnumParamTest : Test {
   using Value = ParamTestEnum;
-
-  static inline const auto invalid_enum_value_string =
-      "773ed36c01c54b06b13e4bb835b1da59";
+  using Sut = Param<Value>;
 
   struct MockVisitor {
-    auto operator()(std::string_view name,
-                    std::string_view& value_string) const noexcept -> void {
-      on_call_reference(name, value_string);
+    template <typename T>
+    auto operator()(T&& param) const noexcept -> void {
+      on_call(std::forward<T>(param));
     }
 
-    auto operator()(std::string_view name,
-                    const std::string_view& value_string) const noexcept
-        -> void {
-      on_call_value(name, value_string);
-    }
-
-    MOCK_METHOD(void, on_call_reference, (std::string_view, std::string_view&),
-                (const, noexcept));
-    MOCK_METHOD(void, on_call_value, (std::string_view, std::string_view),
-                (const, noexcept));
+    MOCK_METHOD(void, on_call, (Sut&), (const, noexcept));
+    MOCK_METHOD(void, on_call, (const Sut&), (const, noexcept));
     MOCK_METHOD(void, report_error, (std::string_view), (const, noexcept));
 
     virtual ~MockVisitor() = default;
   };
   StrictMock<MockVisitor> mock_visitor;
-
-  using Sut = Param<Value>;
 
   const std::string_view name = std::string_view{"name"};
   const Value value = Value::value_1;
@@ -176,50 +142,20 @@ TEST_F(EnumParamTest, properties_initialized_correctly) {
   ASSERT_EQ(value, sut.value());
 }
 
-TEST_F(EnumParamTest, const_reflect_passes_correct_values) {
+TEST_F(EnumParamTest, const_reflect_passes_const_self) {
   const auto sut = Sut{name, value};
 
-  EXPECT_CALL(mock_visitor, on_call_value(name, to_string(value)));
+  EXPECT_CALL(mock_visitor, on_call(An<const Sut&>()));
 
   sut.reflect(mock_visitor);
 }
 
-TEST_F(EnumParamTest, mutable_reflect_allows_mutation_with_valid_string) {
+TEST_F(EnumParamTest, mutable_reflect_passes_mutable_self) {
   auto sut = Sut{name, value};
 
-  const Value new_value = Value::value_2;
-  EXPECT_CALL(mock_visitor, on_call_reference(name, Eq(to_string(value))))
-      .WillOnce(SetArgReferee<1>(to_string(new_value)));
+  EXPECT_CALL(mock_visitor, on_call(An<Sut&>()));
 
   sut.reflect(mock_visitor);
-
-  ASSERT_EQ(new_value, sut.value());
-}
-
-TEST_F(EnumParamTest,
-       mutable_reflect_reports_invalid_string_when_callback_available) {
-  auto sut = Sut{name, value};
-
-  // Set proxy to a string that doesn't correspond to any enum value.
-  EXPECT_CALL(mock_visitor, on_call_reference(name, Eq(to_string(value))))
-      .WillOnce(SetArgReferee<1>(invalid_enum_value_string));
-
-  // Error callback will be called.
-  EXPECT_CALL(mock_visitor, report_error(HasSubstr(invalid_enum_value_string)));
-
-  sut.reflect(mock_visitor);
-
-  // Value remains unchanged.
-  ASSERT_EQ(value, sut.value());
-}
-
-TEST_F(EnumParamTest,
-       mutable_reflect_ignores_invalid_string_when_callback_unavailable) {
-  auto sut = Sut{name, value};
-
-  sut.reflect([&](auto, auto& proxy) { proxy = invalid_enum_value_string; });
-
-  ASSERT_EQ(value, sut.value());
 }
 
 TEST_F(EnumParamTest, validate_no_op) {

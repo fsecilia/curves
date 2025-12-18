@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/config/param.hpp>
 #include <functional>
 #include <string_view>
 #include <utility>
@@ -23,8 +24,24 @@ class Reader {
       : adapter_{std::move(adapter)}, error_reporter_{error_reporter} {}
 
   template <typename T>
-  auto operator()(std::string_view key, T& value) -> void {
-    adapter_.read_value(key, error_reporter_, value);
+  auto operator()(Param<T>& param) -> void {
+    T value = param.value();
+    adapter_.read_value(param.name(), error_reporter_, value);
+    param.value(value);
+  }
+
+  template <Enumeration Enum>
+  auto operator()(Param<Enum>& param) -> void {
+    auto as_string = to_string(param.value());
+
+    adapter_.read_value(param.name(), error_reporter_, as_string);
+
+    if (auto val = from_string<Enum>(as_string)) {
+      param.value(*val);
+    } else if constexpr (CanReportError<decltype(error_reporter_), Enum>) {
+      error_reporter_.report_error(
+          std::format("Invalid enum value: {}", as_string));
+    }
   }
 
   template <typename VisitSectionFunc>
