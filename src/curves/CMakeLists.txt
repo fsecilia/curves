@@ -12,6 +12,7 @@
 
 list(APPEND lib_files
   config/curve.hpp
+  config/enum.hpp
   config/param.hpp
   config/profile.hpp
   config/serialization/reader.hpp
@@ -34,6 +35,7 @@ list(APPEND lib_files
 
 list(APPEND unit_tests_files
   config/curve_test.cpp
+  config/enum_test.cpp
   config/param_test.cpp
   config/profile_test.cpp
   config/serialization/reader_test.cpp
