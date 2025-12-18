@@ -10,35 +10,53 @@
 
 #include <curves/lib.hpp>
 #include <curves/config/curve.hpp>
+#include <curves/config/enum.hpp>
 #include <curves/config/param.hpp>
+#include <curves/curves/synchronous.hpp>
 #include <string_view>
 #include <vector>
 
 namespace curves {
 
+enum CurveType {
+  kSynchronous,
+};
+
+template <>
+struct EnumReflection<CurveType> {
+  static constexpr auto map = sequential_name_map<CurveType>("synchronous");
+};
+
 struct Profile {
   Param<int_t> dpi{"DPI", 0, 0, 256000};
   Param<double> sensitivity{"Sensitivity", 1.0, 1.0e-3, 1.0e3};
+  Param<CurveType> curve_type{"Curve", CurveType::kSynchronous};
 
-  std::vector<Curve> curves;
+  struct CurveProfileEntries {
+    CurveProfileEntry<SynchronousCurveConfig> synchronous{"synchronous"};
+
+    auto reflect(this auto&& self, auto&& visitor) -> void {
+      self.synchronous.reflect(visitor);
+    }
+
+    template <typename Visitor = std::nullptr_t>
+    auto validate(Visitor&& visitor = nullptr) -> void {
+      synchronous.validate(visitor);
+    }
+  };
+  CurveProfileEntries curve_profile_entries;
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
     self.dpi.reflect(visitor);
     self.sensitivity.reflect(visitor);
-
-    for (auto&& curve : self.curves) {
-      visitor.visit_section(curve.name, [&](auto&& section_visitor) {
-        curve.reflect(section_visitor);
-      });
-    }
+    self.curve_profile_entries.reflect(visitor);
   }
 
   template <typename Visitor = std::nullptr_t>
   auto validate(Visitor&& visitor = nullptr) -> void {
     dpi.validate(visitor);
     sensitivity.validate(visitor);
-
-    for (auto& curve : curves) curve.validate(visitor);
+    curve_profile_entries.validate(visitor);
   }
 };
 

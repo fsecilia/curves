@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/config/enum.hpp>
 #include <algorithm>
 #include <format>
 #include <string_view>
@@ -24,9 +25,6 @@ template <typename Visitor, typename Value>
 concept CanReportWarning = requires(Visitor&& visitor, std::string message) {
   visitor.report_warning(message);
 };
-
-template <typename T>
-concept Enum = std::is_enum_v<T>;
 
 template <typename T>
 concept Mutable = !std::is_const_v<std::remove_reference_t<T>>;
@@ -67,30 +65,27 @@ class Param {
   Value max_;
 };
 
-template <typename>
-struct EnumTraits;
-
-template <Enum Value>
-class Param<Value> {
+template <Enumeration Enum>
+class Param<Enum> {
  public:
-  Param(std::string_view name, Value value) noexcept
+  Param(std::string_view name, Enum value) noexcept
       : name_{name}, value_{value} {}
 
   auto name() const noexcept -> std::string_view { return name_; }
-  auto value() const noexcept -> Value { return value_; }
+  auto value() const noexcept -> Enum { return value_; }
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
     // Proxy the enum into a string_view with the same constness as self.
     using Proxy = std::conditional_t<Mutable<decltype(self)>, std::string_view,
                                      const std::string_view>;
-    Proxy proxy{EnumTraits<Value>::to_string(self.value_)};
+    Proxy proxy{to_string(self.value_)};
 
     // Visit string instead of enum value.
     visitor(self.name_, proxy);
 
     if constexpr (Mutable<decltype(self)>) {
-      // Convert contents of proxy back to enum.
-      const auto value = EnumTraits<Value>::from_string(proxy);
+      // Convert contents of proxy back to optional enum.
+      const auto value = from_string<Enum>(proxy);
 
       if (value) {
         // Conversion was successful; proxy matches an enum string.
@@ -100,7 +95,7 @@ class Param<Value> {
           Conversion was unsuccessful.
           Report unrecognized enum string if visitor supports it.
         */
-        if constexpr (CanReportError<decltype(visitor), Value>) {
+        if constexpr (CanReportError<decltype(visitor), Enum>) {
           visitor.report_error(std::format("Invalid enum value: {}", proxy));
         }
       }
@@ -112,7 +107,7 @@ class Param<Value> {
 
  private:
   std::string_view name_;
-  Value value_;
+  Enum value_;
 };
 
 }  // namespace curves

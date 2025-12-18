@@ -29,12 +29,6 @@ auto get_config_dir_path() -> std::filesystem::path {
       .toStdString();
 }
 
-auto create_default_profile() -> Profile {
-  auto profile = Profile{};
-  profile.curves.emplace_back(synchronous::Config::create());
-  return profile;
-}
-
 auto save_profile(const Profile& profile,
                   const std::filesystem::path& config_dir_path,
                   const std::filesystem::path& config_file_path) -> void {
@@ -52,7 +46,7 @@ auto save_profile(const Profile& profile,
 
 auto load_or_create_profile(const std::filesystem::path& config_file_path)
     -> Profile {
-  auto result = create_default_profile();
+  auto result = Profile{};
 
   /*
     This is technically toctou, but we'll refactor and handle file io ourselves
@@ -102,7 +96,6 @@ auto main(int argc, char* argv[]) -> int {
     report_config_file_parse_error(err);
     return EXIT_FAILURE;
   }
-
   save_profile(profile, config_dir_path, config_file_path);
 
   auto main_window = MainWindow{};
@@ -110,7 +103,7 @@ auto main(int argc, char* argv[]) -> int {
   main_window.prepopulateCurveParameterWidgets(10);
 
   auto sensitivity =
-      synchronous::Curve{0.433012701892L, 17.3205080757L, 5.33L, 28.3L, 0.5L};
+      SynchronousCurve{0.433012701892L, 17.3205080757L, 5.33L, 28.3L, 0.5L};
   main_window.setSpline(std::make_shared<curves_spline>(
       spline::create_spline(TransferFunction{sensitivity})));
 

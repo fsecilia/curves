@@ -128,30 +128,9 @@ enum ParamTestEnum {
 }  // namespace
 
 template <>
-struct EnumTraits<ParamTestEnum> {
-  static constexpr std::string_view names[] = {
-      "value_0",
-      "value_1",
-      "value_2",
-  };
-
-  static constexpr std::string_view to_string(ParamTestEnum value) {
-    const auto index = static_cast<size_t>(value);
-    if (index < std::size(names)) {
-      return names[index];
-    }
-    return "unknown";
-  }
-
-  static constexpr std::optional<ParamTestEnum> from_string(
-      std::string_view s) {
-    for (size_t i = 0; i < std::size(names); ++i) {
-      if (names[i] == s) {
-        return static_cast<ParamTestEnum>(i);
-      }
-    }
-    return std::nullopt;
-  }
+struct EnumReflection<ParamTestEnum> {
+  static constexpr auto map =
+      sequential_name_map<ParamTestEnum>("value_0", "value_1", "value_2");
 };
 
 namespace {
@@ -200,8 +179,7 @@ TEST_F(EnumParamTest, properties_initialized_correctly) {
 TEST_F(EnumParamTest, const_reflect_passes_correct_values) {
   const auto sut = Sut{name, value};
 
-  EXPECT_CALL(mock_visitor,
-              on_call_value(name, EnumTraits<Value>::to_string(value)));
+  EXPECT_CALL(mock_visitor, on_call_value(name, to_string(value)));
 
   sut.reflect(mock_visitor);
 }
@@ -210,9 +188,8 @@ TEST_F(EnumParamTest, mutable_reflect_allows_mutation_with_valid_string) {
   auto sut = Sut{name, value};
 
   const Value new_value = Value::value_2;
-  EXPECT_CALL(mock_visitor,
-              on_call_reference(name, Eq(EnumTraits<Value>::to_string(value))))
-      .WillOnce(SetArgReferee<1>(EnumTraits<Value>::to_string(new_value)));
+  EXPECT_CALL(mock_visitor, on_call_reference(name, Eq(to_string(value))))
+      .WillOnce(SetArgReferee<1>(to_string(new_value)));
 
   sut.reflect(mock_visitor);
 
@@ -224,8 +201,7 @@ TEST_F(EnumParamTest,
   auto sut = Sut{name, value};
 
   // Set proxy to a string that doesn't correspond to any enum value.
-  EXPECT_CALL(mock_visitor,
-              on_call_reference(name, Eq(EnumTraits<Value>::to_string(value))))
+  EXPECT_CALL(mock_visitor, on_call_reference(name, Eq(to_string(value))))
       .WillOnce(SetArgReferee<1>(invalid_enum_value_string));
 
   // Error callback will be called.

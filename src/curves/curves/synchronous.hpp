@@ -16,27 +16,13 @@
 #include <cmath>
 
 namespace curves {
-namespace synchronous {
 
-struct Config {
-  enum class Params { kScale, kMotivity, kGamma, kSmooth, kSyncSpeed };
-
-  static auto create() -> Curve {
-    return Curve{"Synchronous",  //
-                 Curve::DoubleParams{
-                     {"Scale", 1.0, 1.0e-3, 1.0e3},
-                     {"Motivity", 1.5, 1.0, 1.0e3},
-                     {"Gamma", 1, 1.0, 1.0e3},
-                     {"Smooth", 0.5, 0.0, 1.0},
-                     {"SyncSpeed", 5, 1.0e-3, 1.0e3},
-                 }};
-  }
-};
-
-class Curve {
+class SynchronousCurve {
  public:
-  Curve(real_t scale, real_t motivity, real_t gamma, real_t sync_speed,
-        real_t smooth)
+  SynchronousCurve() noexcept : SynchronousCurve(1.0, 1.5, 1.0, 5.0, 0.5) {}
+
+  SynchronousCurve(real_t scale, real_t motivity, real_t gamma,
+                   real_t sync_speed, real_t smooth) noexcept
       : scale_{scale},
         motivity_{motivity},
         L{std::log(motivity)},
@@ -95,12 +81,38 @@ class Curve {
   }
 };
 
-}  // namespace synchronous
+struct SynchronousCurveConfig {
+  Param<double> scale{"Scale", 1.0, 1.0e-3, 1.0e3};
+  Param<double> motivity{"Motivity", 1.5, 1.0, 1.0e3};
+  Param<double> gamma{"Gamma", 1, 1.0, 1.0e3};
+  Param<double> smooth{"Smooth", 0.5, 0.0, 1.0};
+  Param<double> sync_speed{"SyncSpeed", 5, 1.0e-3, 1.0e3};
+
+  auto reflect(this auto&& self, auto&& visitor) -> void {
+    self.scale.reflect(visitor);
+    self.motivity.reflect(visitor);
+    self.gamma.reflect(visitor);
+    self.smooth.reflect(visitor);
+    self.sync_speed.reflect(visitor);
+  }
+
+  auto validate(auto&& visitor) -> void {
+    scale.validate(visitor);
+    motivity.validate(visitor);
+    gamma.validate(visitor);
+    smooth.validate(visitor);
+    sync_speed.validate(visitor);
+  }
+
+  auto create() const -> SynchronousCurve {
+    return SynchronousCurve{scale.value(), motivity.value(), gamma.value(),
+                            smooth.value(), sync_speed.value()};
+  }
+};
 
 template <>
-struct TransferFunctionTraits<synchronous::Curve> {
-  auto eval_at_0(const synchronous::Curve& curve) const noexcept
-      -> CurveResult {
+struct TransferFunctionTraits<SynchronousCurve> {
+  auto eval_at_0(const SynchronousCurve& curve) const noexcept -> CurveResult {
     /*
       This comes from the limit definition of the derivative of the transfer
       function.
