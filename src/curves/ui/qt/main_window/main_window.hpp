@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <curves/config/profile_store.hpp>
+#include <curves/ui/model/view_model.hpp>
 #include <QMainWindow>
 #include <memory>
 
@@ -17,21 +19,45 @@ namespace Ui {
 class MainWindow;
 }
 
+class CurveParameter;
+
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
  public:
-  explicit MainWindow(QWidget* parent = nullptr);
+  explicit MainWindow(std::shared_ptr<curves::ViewModel> view_model,
+                      std::shared_ptr<curves::ProfileStore> store,
+                      QWidget* parent = nullptr);
 
   ~MainWindow() override;
 
-  auto prepopulateCurveParameterWidgets(int numWidgets) -> void;
-  auto setSpline(std::shared_ptr<const curves_spline> spline)
-      -> void;
-
  private slots:
-  void onSpinBoxValueChanged(int parameter_index, double value) const;
+  //! Called when a parameter value changes in any widget.
+  void onParameterChanged();
+
+  //! Called when user selects a different curve in the curve list.
+  void onCurveSelectionChanged(int index);
+
+  //! Called when user clicks the Apply button.
+  void onApplyClicked();
 
  private:
+  //! Populates curve selector list from CurveType enum values.
+  void populateCurveSelector();
+
+  //! Rebuilds the parameter widget list for the given curve type.
+  void rebuildParameterWidgets(curves::CurveType curve);
+
+  //! Clears all parameter widgets from the list.
+  void clearParameterWidgets();
+
+  //! Creates the spline from current parameters and updates the graph.
+  void updateCurveDisplay();
+
   std::unique_ptr<Ui::MainWindow> m_ui;
+  std::shared_ptr<curves::ViewModel> m_view_model;
+  std::shared_ptr<curves::ProfileStore> m_store;
+
+  //! Keeps track of created parameter widgets for cleanup.
+  std::vector<CurveParameter*> m_parameter_widgets;
 };

@@ -1,6 +1,19 @@
+// SPDX-License-Identifier: MIT
+/*!
+  \file
+  \brief Widget for editing a single curve parameter.
+
+  CurveParameter displays a labeled QDoubleSpinBox for editing a Param<double>.
+  It reads min/max/value from the Param and writes changes through the
+  ViewModel.
+
+  \copyright Copyright (C) 2025 Frank Secilia
+*/
 #ifndef CURVE_PARAMETER_HPP
 #define CURVE_PARAMETER_HPP
 
+#include <curves/config/param.hpp>
+#include <curves/ui/model/view_model.hpp>
 #include <QWidget>
 #include <memory>
 
@@ -12,7 +25,17 @@ class CurveParameter : public QWidget {
   Q_OBJECT
 
  public:
-  explicit CurveParameter(QWidget* parent = nullptr);
+  /*!
+    \brief Constructs a parameter editor widget.
+
+    \param viewmodel ViewModel to write changes through.
+    \param param Parameter to display and edit (must outlive this widget).
+    \param parent Optional parent widget.
+  */
+  explicit CurveParameter(std::shared_ptr<curves::ViewModel> viewmodel,
+                          curves::Param<double>& param,
+                          QWidget* parent = nullptr);
+
   ~CurveParameter() override;
 
   auto parameterIndex() const -> int;
@@ -24,14 +47,15 @@ class CurveParameter : public QWidget {
   auto setSpinBoxValue(double value) -> void;
 
  signals:
-  void spinBoxValueChanged(int parameter_index, double value) const;
+  void valueChanged() const;
 
  private slots:
   void onSpinBoxValueChanged(double value) const;
 
  private:
   std::unique_ptr<Ui::CurveParameter> ui;
-  int m_parameter_index{};
+  std::shared_ptr<curves::ViewModel> m_view_model;
+  curves::Param<double>* m_param;
 };
 
 #endif  // CURVE_PARAMETER_HPP

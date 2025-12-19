@@ -6,6 +6,8 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
+#pragma once
+
 #include <curves/config/profile.hpp>
 #include <curves/config/serialization/reader.hpp>
 #include <curves/config/serialization/toml/error_reporter.hpp>

@@ -9,9 +9,7 @@
 #include "main_window/main_window.hpp"
 #include <curves/config/profile.hpp>
 #include <curves/config/profile_store.hpp>
-#include <curves/curves/synchronous.hpp>
-#include <curves/math/spline.hpp>
-#include <curves/math/transfer_function.hpp>
+#include <curves/ui/model/view_model.hpp>
 #include <QApplication>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -41,26 +39,21 @@ auto main(int argc, char* argv[]) -> int {
   QApplication::setApplicationName("curves");
   QApplication::setOrganizationName("");
 
-  auto profile_store = ProfileStore{get_config_dir_path() / "config.toml"};
+  auto profile_store_path = get_config_dir_path() / "config.toml";
+  auto profile_store = std::make_shared<ProfileStore>(profile_store_path);
 
   auto profile = Profile{};
   try {
-    profile = profile_store.find_or_create();
+    profile = profile_store->find_or_create();
   } catch (const toml::parse_error& err) {
     report_config_file_parse_error(err);
     return EXIT_FAILURE;
   }
-  profile_store.save(profile);
+  profile_store->save(profile);
 
-  auto main_window = MainWindow{};
-
-  main_window.prepopulateCurveParameterWidgets(10);
-
-  auto sensitivity =
-      SynchronousCurve{0.433012701892L, 17.3205080757L, 5.33L, 28.3L, 0.5L};
-  main_window.setSpline(std::make_shared<curves_spline>(
-      spline::create_spline(TransferFunction{sensitivity})));
-
+  // Create the ViewModel - it owns the working copy of the profile
+  auto view_model = std::make_shared<ViewModel>(std::move(profile));
+  auto main_window = MainWindow{view_model, profile_store};
   main_window.show();
 
   return app.exec();

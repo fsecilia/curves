@@ -36,7 +36,7 @@ class SynchronousCurve {
 
   auto operator()(real_t x) const noexcept -> CurveResult {
     if (std::abs(x - p) <= std::numeric_limits<real_t>::epsilon()) {
-      return {1.0, L * g / p};
+      return {scale_, scale_ * L * g / p};
     }
 
     if (x > p) {
@@ -106,7 +106,7 @@ struct SynchronousCurveConfig {
 
   auto create() const -> SynchronousCurve {
     return SynchronousCurve{scale.value(), motivity.value(), gamma.value(),
-                            smooth.value(), sync_speed.value()};
+                            sync_speed.value(), smooth.value()};
   }
 };
 
