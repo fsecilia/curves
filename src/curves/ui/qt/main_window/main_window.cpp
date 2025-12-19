@@ -25,13 +25,7 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
       m_store{std::move(store)} {
   m_ui->setupUi(this);
 
-  // Wire up Apply button
-  connect(m_ui->pushButton, &QPushButton::clicked, this,
-          &MainWindow::onApplyClicked);
-
-  // Wire up curve selector.
-  connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
-          &MainWindow::onCurveSelectionChanged);
+  wireUpControls();
 
   // Apply programtic css to curve selector.
   applyTabViewCss(*m_ui->curveSelector);
@@ -53,6 +47,14 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
 }
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::wireUpControls() {
+  connect(m_ui->pushButton, &QPushButton::clicked, this,
+          &MainWindow::onApplyClicked);
+
+  connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
+          &MainWindow::onCurveSelectionChanged);
+}
 
 void MainWindow::populateCurveSelector() {
   // For now, we manually iterate the known curve types.

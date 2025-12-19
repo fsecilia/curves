@@ -50,6 +50,9 @@ class MainWindow : public QMainWindow {
   std::vector<CurveParameter*> m_parameter_widgets;
   static const std::string_view tabViewCss;
 
+  //! Wires up control signals.
+  void wireUpControls();
+
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
