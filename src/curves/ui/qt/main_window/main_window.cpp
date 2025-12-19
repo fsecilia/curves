@@ -42,6 +42,8 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
   // curve_parameters.
   setListMinHeight(*m_ui->curveConfig, minVisibleParameters);
 
+  connectSensitivity();
+
   // Render first curve.
   updateCurveDisplay();
 }
@@ -69,6 +71,20 @@ void MainWindow::populateCurveSelector() {
   // Future curves would be added here:
   // m_ui->curveSelector->addItem(
   //     QString::fromUtf8(curves::to_string(curves::CurveType::kLinear)));
+}
+
+void MainWindow::connectSensitivity() {
+  // Sync sensitivity control with param value.
+  // Sensitivity is a special case because it works like a curve param, but
+  // it's global.
+  auto& sensitivityParam = m_view_model->sensitivity_param();
+  m_ui->sensitivityLabel->setText(QString::fromUtf8(sensitivityParam.name()) +
+                                  ":");
+  m_ui->sensitivityDoubleSpinBox->setMinimum(sensitivityParam.min());
+  m_ui->sensitivityDoubleSpinBox->setMaximum(sensitivityParam.max());
+  m_ui->sensitivityDoubleSpinBox->setValue(sensitivityParam.value());
+  connect(m_ui->sensitivityDoubleSpinBox, &QDoubleSpinBox::valueChanged, this,
+          &MainWindow::onSensitivityChanged);
 }
 
 void MainWindow::onCurveSelectionChanged(int index) {
@@ -118,6 +134,11 @@ void MainWindow::clearParameterWidgets() {
 void MainWindow::onParameterChanged() {
   // A parameter value changed - update the curve display
   updateCurveDisplay();
+}
+
+void MainWindow::onSensitivityChanged(double value) {
+  m_view_model->set_value(m_view_model->sensitivity_param(), value);
+  onParameterChanged();
 }
 
 void MainWindow::onApplyClicked() {
