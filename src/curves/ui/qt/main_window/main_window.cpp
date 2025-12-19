@@ -25,26 +25,30 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
       m_store{std::move(store)} {
   m_ui->setupUi(this);
 
-  applyTabViewCss(*m_ui->selected_curve);
-
-  // Wire up the Apply button
+  // Wire up Apply button
   connect(m_ui->pushButton, &QPushButton::clicked, this,
           &MainWindow::onApplyClicked);
 
-  // Wire up the curve selector
+  // Wire up curve selector.
   connect(m_ui->selected_curve, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
 
-  // Populate the curve selector with available curve types
+  // Apply programtic css to curve selector.
+  applyTabViewCss(*m_ui->selected_curve);
+
+  // Populate curve selector with available curve types.
   populateCurveSelector();
 
-  // Select the curve that's in the profile (triggers widget rebuild)
+  // Select the curve that's in the profile. This triggers rebuilding
+  // curve_parameters.
   auto selected = static_cast<int>(m_view_model->selected_curve());
   m_ui->selected_curve->setCurrentRow(selected);
 
+  // Programmatically determine min height to not show scroll bars on
+  // curve_parameters.
   setListMinHeight(*m_ui->curve_parameters, minVisibleParameters);
 
-  // Initial curve display
+  // Render first curve.
   updateCurveDisplay();
 }
 
