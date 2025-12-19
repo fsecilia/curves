@@ -30,11 +30,11 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
           &MainWindow::onApplyClicked);
 
   // Wire up curve selector.
-  connect(m_ui->selected_curve, &QListWidget::currentRowChanged, this,
+  connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
 
   // Apply programtic css to curve selector.
-  applyTabViewCss(*m_ui->selected_curve);
+  applyTabViewCss(*m_ui->curveSelector);
 
   // Populate curve selector with available curve types.
   populateCurveSelector();
@@ -42,7 +42,7 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
   // Select the curve that's in the profile. This triggers rebuilding
   // curve_parameters.
   auto selected = static_cast<int>(m_view_model->selected_curve());
-  m_ui->selected_curve->setCurrentRow(selected);
+  m_ui->curveSelector->setCurrentRow(selected);
 
   // Programmatically determine min height to not show scroll bars on
   // curve_parameters.
@@ -57,15 +57,15 @@ MainWindow::~MainWindow() = default;
 void MainWindow::populateCurveSelector() {
   // For now, we manually iterate the known curve types.
   // When we add more curves, we add them here and to the enum.
-  m_ui->selected_curve->clear();
+  m_ui->curveSelector->clear();
 
   // Add each curve type to the list widget
   // The row index corresponds to the enum value
-  m_ui->selected_curve->addItem(
+  m_ui->curveSelector->addItem(
       QString::fromUtf8(curves::to_string(curves::CurveType::kSynchronous)));
 
   // Future curves would be added here:
-  // m_ui->selected_curve->addItem(
+  // m_ui->curveSelector->addItem(
   //     QString::fromUtf8(curves::to_string(curves::CurveType::kLinear)));
 }
 
@@ -73,7 +73,7 @@ void MainWindow::onCurveSelectionChanged(int index) {
   if (index < 0) return;
 
   auto curve = static_cast<curves::CurveType>(index);
-  m_view_model->set_selected_curve(curve);
+  m_view_model->set_curveSelector(curve);
   rebuildParameterWidgets(curve);
   updateCurveDisplay();
 }
