@@ -4,11 +4,11 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 #include "main_window.hpp"
-#include "curve_parameter/curve_parameter.hpp"
 #include "ui_main_window.h"
 #include <curves/config/enum.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
+#include <curves/ui/qt/widgets/curve_parameter/curve_parameter.hpp>
 #include <utility>
 
 MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
