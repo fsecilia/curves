@@ -210,7 +210,7 @@ QListWidget::item:selected:!active {
      </widget>
     </item>
     <item>
-     <widget class="QWidget" name="footer" native="true">
+     <widget class="QFrame" name="footer">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
         <horstretch>0</horstretch>
@@ -222,6 +222,9 @@ QListWidget::item:selected:!active {
         <width>0</width>
         <height>0</height>
        </size>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::Shape::StyledPanel</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
