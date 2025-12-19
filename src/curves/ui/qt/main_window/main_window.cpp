@@ -41,6 +41,14 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
 
 MainWindow::~MainWindow() = default;
 
+void MainWindow::setDarkBackground(QWidget& widget) {
+  QPalette pal = widget.palette();
+  QColor bgColor = pal.color(QPalette::Window);
+  pal.setColor(QPalette::Window, bgColor.darker(200));
+  widget.setAutoFillBackground(true);
+  widget.setPalette(pal);
+}
+
 void MainWindow::populateCurveSelector() {
   // For now, we manually iterate the known curve types.
   // When we add more curves, we add them here and to the enum.

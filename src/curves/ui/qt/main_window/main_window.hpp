@@ -42,6 +42,8 @@ class MainWindow : public QMainWindow {
   void onApplyClicked();
 
  private:
+  void setDarkBackground(QWidget& widget);
+
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
