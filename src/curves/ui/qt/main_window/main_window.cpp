@@ -50,27 +50,40 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
 
 MainWindow::~MainWindow() = default;
 
+// ----------------------------------------------------------------------------
+
+void MainWindow::onParameterChanged() {
+  // A parameter value changed - update the curve display
+  updateCurveDisplay();
+}
+
+void MainWindow::onSensitivityChanged(double value) {
+  m_view_model->set_value(m_view_model->sensitivity_param(), value);
+  onParameterChanged();
+}
+
+void MainWindow::onCurveSelectionChanged(int index) {
+  if (index < 0) return;
+
+  auto curve = static_cast<curves::CurveType>(index);
+  m_view_model->selected_curve(curve);
+  rebuildParameterWidgets(curve);
+  updateCurveDisplay();
+}
+
+void MainWindow::onApplyClicked() {
+  // Save current profile to disk
+  m_view_model->apply(*m_store);
+}
+
+// ----------------------------------------------------------------------------
+
 void MainWindow::wireUpControls() {
   connect(m_ui->pushButton, &QPushButton::clicked, this,
           &MainWindow::onApplyClicked);
 
   connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
-}
-
-void MainWindow::populateCurveSelector() {
-  // For now, we manually iterate the known curve types.
-  // When we add more curves, we add them here and to the enum.
-  m_ui->curveSelector->clear();
-
-  // Add each curve type to the list widget
-  // The row index corresponds to the enum value
-  m_ui->curveSelector->addItem(
-      QString::fromUtf8(curves::to_string(curves::CurveType::kSynchronous)));
-
-  // Future curves would be added here:
-  // m_ui->curveSelector->addItem(
-  //     QString::fromUtf8(curves::to_string(curves::CurveType::kLinear)));
 }
 
 void MainWindow::connectSensitivity() {
@@ -87,13 +100,19 @@ void MainWindow::connectSensitivity() {
           &MainWindow::onSensitivityChanged);
 }
 
-void MainWindow::onCurveSelectionChanged(int index) {
-  if (index < 0) return;
+void MainWindow::populateCurveSelector() {
+  // For now, we manually iterate the known curve types.
+  // When we add more curves, we add them here and to the enum.
+  m_ui->curveSelector->clear();
 
-  auto curve = static_cast<curves::CurveType>(index);
-  m_view_model->selected_curve(curve);
-  rebuildParameterWidgets(curve);
-  updateCurveDisplay();
+  // Add each curve type to the list widget
+  // The row index corresponds to the enum value
+  m_ui->curveSelector->addItem(
+      QString::fromUtf8(curves::to_string(curves::CurveType::kSynchronous)));
+
+  // Future curves would be added here:
+  // m_ui->curveSelector->addItem(
+  //     QString::fromUtf8(curves::to_string(curves::CurveType::kLinear)));
 }
 
 void MainWindow::rebuildParameterWidgets(curves::CurveType curve) {
@@ -129,21 +148,6 @@ void MainWindow::clearParameterWidgets() {
   // The QListWidget owns the items and widgets, so clearing it deletes them
   m_ui->curveConfig->clear();
   m_parameter_widgets.clear();
-}
-
-void MainWindow::onParameterChanged() {
-  // A parameter value changed - update the curve display
-  updateCurveDisplay();
-}
-
-void MainWindow::onSensitivityChanged(double value) {
-  m_view_model->set_value(m_view_model->sensitivity_param(), value);
-  onParameterChanged();
-}
-
-void MainWindow::onApplyClicked() {
-  // Save current profile to disk
-  m_view_model->apply(*m_store);
 }
 
 void MainWindow::updateCurveDisplay() {
