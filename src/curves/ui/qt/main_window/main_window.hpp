@@ -12,6 +12,7 @@
 #include <curves/ui/model/view_model.hpp>
 #include <QMainWindow>
 #include <memory>
+#include <string_view>
 
 struct curves_spline;
 
@@ -42,8 +43,6 @@ class MainWindow : public QMainWindow {
   void onApplyClicked();
 
  private:
-  void setDarkBackground(QWidget& widget);
-
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
@@ -62,4 +61,7 @@ class MainWindow : public QMainWindow {
 
   //! Keeps track of created parameter widgets for cleanup.
   std::vector<CurveParameter*> m_parameter_widgets;
+
+  static const std::string_view tabViewCss;
+  void applyTabViewCss(QWidget& widget);
 };

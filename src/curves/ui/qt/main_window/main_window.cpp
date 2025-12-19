@@ -20,6 +20,8 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
       m_store{std::move(store)} {
   m_ui->setupUi(this);
 
+  applyTabViewCss(*m_ui->selected_curve);
+
   // Wire up the Apply button
   connect(m_ui->pushButton, &QPushButton::clicked, this,
           &MainWindow::onApplyClicked);
@@ -40,14 +42,6 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
 }
 
 MainWindow::~MainWindow() = default;
-
-void MainWindow::setDarkBackground(QWidget& widget) {
-  QPalette pal = widget.palette();
-  QColor bgColor = pal.color(QPalette::Window);
-  pal.setColor(QPalette::Window, bgColor.darker(200));
-  widget.setAutoFillBackground(true);
-  widget.setPalette(pal);
-}
 
 void MainWindow::populateCurveSelector() {
   // For now, we manually iterate the known curve types.
@@ -121,3 +115,50 @@ void MainWindow::onApplyClicked() {
 void MainWindow::updateCurveDisplay() {
   m_ui->curve_editor->setSpline(m_view_model->create_spline());
 }
+
+void MainWindow::applyTabViewCss(QWidget& widget) {
+  const auto standardPalette = QApplication::palette();
+  const auto window = standardPalette.color(QPalette::Window);
+  const auto windowText = standardPalette.color(QPalette::WindowText);
+  const auto highlight = standardPalette.color(QPalette::Highlight);
+  const auto highlightText = standardPalette.color(QPalette::HighlightedText);
+
+  const auto darkBackground = window.darker(200);
+  const auto hoverBackground = darkBackground.lighter(150);
+
+  const auto replacedTabViewCss = QString{tabViewCss.data()}.arg(
+      darkBackground.name(), windowText.name(), hoverBackground.name(),
+      highlight.name(), highlightText.name());
+
+  widget.setStyleSheet(replacedTabViewCss);
+}
+
+const std::string_view MainWindow::tabViewCss = R"(
+    QListWidget {
+      border: none;
+      outline: 0px;
+      background-color: %1;
+    }
+
+    QListWidget::item {
+      padding: 10px 12px;
+      margin: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      color: %2;
+    }
+
+    QListWidget::item:hover {
+      background-color: %3;
+    }
+
+    QListWidget::item:selected {
+      background-color: %4;
+      color: %5;
+    }
+
+    QListWidget::item:selected:!active {
+      background-color: %4;
+      color: %5;
+    }
+)";
