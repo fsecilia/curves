@@ -6,7 +6,17 @@
 
 #include "curve_parameter.hpp"
 #include "ui_curve_parameter.h"
+#include <QDoubleSpinBox>
+#include <QLabel>
 #include <utility>
+
+void sync_param_to_ui(QLabel& label, QDoubleSpinBox& spinbox,
+                      const curves::Param<double>& param) {
+  label.setText(QString::fromUtf8(param.name()) + ":");
+  spinbox.setMinimum(param.min());
+  spinbox.setMaximum(param.max());
+  spinbox.setValue(param.value());
+}
 
 CurveParameter::CurveParameter(std::shared_ptr<curves::ViewModel> view_model,
                                curves::Param<double>& param, QWidget* parent)
@@ -16,11 +26,7 @@ CurveParameter::CurveParameter(std::shared_ptr<curves::ViewModel> view_model,
       m_param{&param} {
   ui->setupUi(this);
 
-  setLabelText(QString::fromUtf8(m_param->name()) + ":");
-
-  ui->doubleSpinBox->setMinimum(m_param->min());
-  ui->doubleSpinBox->setMaximum(m_param->max());
-  setSpinBoxValue(m_param->value());
+  sync_param_to_ui(*ui->label, *ui->doubleSpinBox, *m_param);
 
   connect(ui->doubleSpinBox, &QDoubleSpinBox::valueChanged, this,
           &CurveParameter::onSpinBoxValueChanged);

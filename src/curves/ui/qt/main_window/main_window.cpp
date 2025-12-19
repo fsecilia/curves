@@ -87,15 +87,8 @@ void MainWindow::wireUpControls() {
 }
 
 void MainWindow::connectSensitivity() {
-  // Sync sensitivity control with param value.
-  // Sensitivity is a special case because it works like a curve param, but
-  // it's global.
-  auto& sensitivityParam = m_view_model->sensitivity_param();
-  m_ui->sensitivityLabel->setText(QString::fromUtf8(sensitivityParam.name()) +
-                                  ":");
-  m_ui->sensitivityDoubleSpinBox->setMinimum(sensitivityParam.min());
-  m_ui->sensitivityDoubleSpinBox->setMaximum(sensitivityParam.max());
-  m_ui->sensitivityDoubleSpinBox->setValue(sensitivityParam.value());
+  sync_param_to_ui(*m_ui->sensitivityLabel, *m_ui->sensitivityDoubleSpinBox,
+                   m_view_model->sensitivity_param());
   connect(m_ui->sensitivityDoubleSpinBox, &QDoubleSpinBox::valueChanged, this,
           &MainWindow::onSensitivityChanged);
 }
