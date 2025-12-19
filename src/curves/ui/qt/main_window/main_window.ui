@@ -10,6 +10,9 @@
     <height>600</height>
    </rect>
   </property>
+  <property name="acceptDrops">
+   <bool>false</bool>
+  </property>
   <property name="windowTitle">
    <string>Curves Config</string>
   </property>
@@ -217,10 +220,425 @@ QListWidget::item:selected:!active {
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>50</height>
+        <height>0</height>
        </size>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QWidget" name="sensitivityParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QLabel" name="sensitivityLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Sensitivity</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="sensitivityDoubleSpinBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="accelerated">
+             <bool>true</bool>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="dpiParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <widget class="QLabel" name="dpiLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>DPI</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="dpiDoubleSpinBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="accelerated">
+             <bool>true</bool>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="anisotropyParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_7">
+          <item>
+           <widget class="QLabel" name="anisotropyLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Y/X Scaling</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="anisotropyDoubleSpinBox">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="accelerated">
+             <bool>true</bool>
+            </property>
+            <property name="decimals">
+             <number>3</number>
+            </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="rotationParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <widget class="QLabel" name="rotationLabel">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Rotation</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="rotationValue" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QDoubleSpinBox" name="rotationDoubleSpinBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="accelerated">
+                <bool>true</bool>
+               </property>
+               <property name="decimals">
+                <number>3</number>
+               </property>
+               <property name="stepType">
+                <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="rotationUnitsLabel">
+               <property name="text">
+                <string>°</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>875</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QWidget" name="filterSpeedParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_10">
+          <item>
+           <widget class="QCheckBox" name="filterSpeedCheckBox">
+            <property name="text">
+             <string>Filter Speed</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="filterSpeedValue" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QDoubleSpinBox" name="filterSpeedDoubleSpinBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="accelerated">
+                <bool>true</bool>
+               </property>
+               <property name="decimals">
+                <number>3</number>
+               </property>
+               <property name="stepType">
+                <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="filterSpeedUnitsLabel">
+               <property name="text">
+                <string>ms</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="filterScaleParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_12">
+          <item>
+           <widget class="QCheckBox" name="filterScaleCheckBox">
+            <property name="text">
+             <string>Filter Scale</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="filterScaleValue" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QDoubleSpinBox" name="filterScaleDoubleSpinBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="accelerated">
+                <bool>true</bool>
+               </property>
+               <property name="decimals">
+                <number>3</number>
+               </property>
+               <property name="stepType">
+                <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="filterScaleUnitsLabel">
+               <property name="text">
+                <string>ms</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="filterOutputParameter" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_11">
+          <item>
+           <widget class="QCheckBox" name="filterOutputCheckBox">
+            <property name="text">
+             <string>Filter Output</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QWidget" name="filterOutputValue" native="true">
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QDoubleSpinBox" name="filterOutputDoubleSpinBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="accelerated">
+                <bool>true</bool>
+               </property>
+               <property name="decimals">
+                <number>3</number>
+               </property>
+               <property name="stepType">
+                <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="filterOutputUnitsLabel">
+               <property name="text">
+                <string>ms</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
        <item>
         <spacer name="horizontalSpacer">
          <property name="orientation">
@@ -239,6 +657,12 @@ QListWidget::item:selected:!active {
        </item>
        <item>
         <widget class="QPushButton" name="pushButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>Apply</string>
          </property>
