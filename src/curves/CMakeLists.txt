@@ -31,6 +31,7 @@ list(APPEND lib_files
   math/spline.hpp
   math/transfer_function.hpp
   ui/model/flat_visitor.hpp
+  ui/model/view_model.hpp
   ui/rendering/spline_evaluator.hpp
   ui/rendering/spline_sampler.hpp
 )
@@ -62,6 +63,7 @@ list(APPEND unit_tests_files
   math/spline_test.cpp
   math/transfer_function_test.cpp
   ui/model/flat_visitor_test.cpp
+  ui/model/view_model_test.cpp
   ui/rendering/spline_evaluator_test.cpp
   ui/rendering/spline_sampler_test.cpp
 )
