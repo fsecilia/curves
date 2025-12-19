@@ -169,7 +169,7 @@ const std::string_view MainWindow::tabViewCss = R"(
 
     QListWidget::item {
       padding: 10px 12px;
-      margin: 4px 8px;
+      margin: 4px 4px;
       border-radius: 5px;
       border: 1px solid transparent;
       color: %2;
