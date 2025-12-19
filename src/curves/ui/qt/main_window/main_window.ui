@@ -132,7 +132,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <widget class="QFrame" name="frame">
+        <widget class="QFrame" name="curveConfigFrame">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -182,7 +182,7 @@ QListWidget::item:selected:!active {
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="curve_parameters">
+           <widget class="QListWidget" name="curveConfig">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
               <horstretch>0</horstretch>

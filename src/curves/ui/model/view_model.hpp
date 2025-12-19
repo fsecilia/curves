@@ -72,7 +72,7 @@ class ViewModel {
   }
 
   //! Sets selected curve type.
-  auto set_curveSelector(CurveType curve) -> void {
+  auto selected_curve(CurveType curve) -> void {
     set_value(profile_.curve_type, curve);
   }
 

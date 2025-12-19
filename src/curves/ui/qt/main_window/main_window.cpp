@@ -46,7 +46,7 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
 
   // Programmatically determine min height to not show scroll bars on
   // curve_parameters.
-  setListMinHeight(*m_ui->curve_parameters, minVisibleParameters);
+  setListMinHeight(*m_ui->curveConfig, minVisibleParameters);
 
   // Render first curve.
   updateCurveDisplay();
@@ -73,7 +73,7 @@ void MainWindow::onCurveSelectionChanged(int index) {
   if (index < 0) return;
 
   auto curve = static_cast<curves::CurveType>(index);
-  m_view_model->set_curveSelector(curve);
+  m_view_model->selected_curve(curve);
   rebuildParameterWidgets(curve);
   updateCurveDisplay();
 }
@@ -94,10 +94,10 @@ void MainWindow::rebuildParameterWidgets(curves::CurveType curve) {
               &MainWindow::onParameterChanged);
 
       // Add to the list widget
-      auto* item = new QListWidgetItem(m_ui->curve_parameters);
+      auto* item = new QListWidgetItem(m_ui->curveConfig);
       item->setSizeHint(widget->sizeHint());
-      m_ui->curve_parameters->addItem(item);
-      m_ui->curve_parameters->setItemWidget(item, widget);
+      m_ui->curveConfig->addItem(item);
+      m_ui->curveConfig->setItemWidget(item, widget);
 
       m_parameter_widgets.push_back(widget);
     }
@@ -109,7 +109,7 @@ void MainWindow::rebuildParameterWidgets(curves::CurveType curve) {
 
 void MainWindow::clearParameterWidgets() {
   // The QListWidget owns the items and widgets, so clearing it deletes them
-  m_ui->curve_parameters->clear();
+  m_ui->curveConfig->clear();
   m_parameter_widgets.clear();
 }
 
