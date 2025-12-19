@@ -14,7 +14,7 @@
 
 // This should be determined programmatically by walking the set of curve
 // configs.
-static constexpr auto minVisibleParameters = 5;
+static constexpr auto minVisibleParameters = 4;
 
 MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
                        std::shared_ptr<curves::ProfileStore> store,

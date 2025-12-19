@@ -19,24 +19,22 @@ namespace curves {
 
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.0, 1.5, 1.0, 5.0, 0.5) {}
+  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0, 5.0, 0.5) {}
 
-  SynchronousCurve(real_t scale, real_t motivity, real_t gamma,
-                   real_t sync_speed, real_t smooth) noexcept
-      : scale_{scale},
-        motivity_{motivity},
+  SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
+                   real_t smooth) noexcept
+      : motivity_{motivity},
         L{std::log(motivity)},
         g{gamma / L},
         p{sync_speed},
         k{smooth == 0 ? 64.0 : 0.5 / smooth},
         r{1.0 / k} {}
 
-  auto scale() const noexcept -> real_t { return scale_; }
   auto motivity() const noexcept -> real_t { return motivity_; }
 
   auto operator()(real_t x) const noexcept -> CurveResult {
     if (std::abs(x - p) <= std::numeric_limits<real_t>::epsilon()) {
-      return {scale_, scale_ * L * g / p};
+      return {1.0L, 1.0L * L * g / p};
     }
 
     if (x > p) {
@@ -47,7 +45,6 @@ class SynchronousCurve {
   }
 
  private:
-  real_t scale_;
   real_t motivity_;
 
   real_t L;  // log(motivity)
@@ -71,7 +68,7 @@ class SynchronousCurve {
     real_t sech_sq = 1 - w * w;  // sech(v)^2
 
     // Forward: f = exp((+/-)L * z)
-    real_t f = scale_ * std::exp(sign * L * w_pow_r);
+    real_t f = std::exp(sign * L * w_pow_r);
 
     // Derivative: df/dx = (f * L * g / x) * u^(k-1) * w^(r-1) * sech(v)^2
     real_t df_dx =
@@ -82,14 +79,12 @@ class SynchronousCurve {
 };
 
 struct SynchronousCurveConfig {
-  Param<double> scale{"scale", 1.0, 1.0e-3, 1.0e3};
   Param<double> motivity{"motivity", 1.5, 1.0, 1.0e3};
   Param<double> gamma{"gamma", 1, 1.0, 1.0e3};
   Param<double> smooth{"smooth", 0.5, 0.0, 1.0};
   Param<double> sync_speed{"sync_speed", 5, 1.0e-3, 1.0e3};
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
-    self.scale.reflect(visitor);
     self.motivity.reflect(visitor);
     self.gamma.reflect(visitor);
     self.smooth.reflect(visitor);
@@ -97,7 +92,6 @@ struct SynchronousCurveConfig {
   }
 
   auto validate(auto&& visitor) -> void {
-    scale.validate(visitor);
     motivity.validate(visitor);
     gamma.validate(visitor);
     smooth.validate(visitor);
@@ -105,8 +99,8 @@ struct SynchronousCurveConfig {
   }
 
   auto create() const -> SynchronousCurve {
-    return SynchronousCurve{scale.value(), motivity.value(), gamma.value(),
-                            sync_speed.value(), smooth.value()};
+    return SynchronousCurve{motivity.value(), gamma.value(), sync_speed.value(),
+                            smooth.value()};
   }
 };
 
@@ -117,7 +111,7 @@ struct TransferFunctionTraits<SynchronousCurve> {
       This comes from the limit definition of the derivative of the transfer
       function.
     */
-    return {0.0, curve.scale() / curve.motivity()};
+    return {0.0, 1.0L / curve.motivity()};
   }
 };
 

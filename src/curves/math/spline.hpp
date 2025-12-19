@@ -70,10 +70,11 @@ class KnotSampler {
 
   KnotSampler() = default;
 
-  auto operator()(const auto& curve, int_t knot) const -> Knot {
+  auto operator()(const auto& curve, real_t sensitivity, int_t knot) const
+      -> Knot {
     const auto x = locator_(knot);
     const auto [f, df_dx] = curve(x);
-    return {x, f, df_dx};
+    return {x, f * sensitivity, df_dx * sensitivity};
   }
 
  private:
@@ -95,17 +96,19 @@ class SplineBuilder {
 
   SplineBuilder() = default;
 
-  auto operator()(const auto& curve) const noexcept -> curves_spline {
+  auto operator()(const auto& curve, real_t sensitivity) const noexcept
+      -> curves_spline {
     curves_spline result;
 
-    auto k0 = knot_sampler_(curve, 0);
+    auto k0 = knot_sampler_(curve, sensitivity, 0);
     for (auto segment = 0; segment < num_segments - 1; ++segment) {
-      const auto k1 = knot_sampler_(curve, segment + 1);
+      const auto k1 = knot_sampler_(curve, sensitivity, segment + 1);
       result.segments[segment] = segment_converter_(k0, k1);
       k0 = k1;
     }
 
-    construct_runout_segment(curve, result.segments[num_segments - 2],
+    construct_runout_segment(curve, sensitivity,
+                             result.segments[num_segments - 2],
                              result.segments[num_segments - 1]);
 
     return result;
@@ -120,12 +123,13 @@ class SplineBuilder {
     linearly extended without a kink in gain when evaluating beyond the final
     segment.
   */
-  auto construct_runout_segment(const auto& curve,
+  auto construct_runout_segment(const auto& curve, real_t sensitivity,
                                 const curves_spline_segment& prev,
                                 curves_spline_segment& next) const noexcept
       -> void {
-    const auto k_prev_end = knot_sampler_(curve, num_segments - 1);
-    const auto k_prev_start = knot_sampler_(curve, num_segments - 2);
+    const auto k_prev_end = knot_sampler_(curve, sensitivity, num_segments - 1);
+    const auto k_prev_start =
+        knot_sampler_(curve, sensitivity, num_segments - 2);
     const double w_prev = k_prev_end.x - k_prev_start.x;
 
     // Fetch previous segment coefficients (raw s64 fixed-point values)
@@ -170,9 +174,10 @@ class SplineBuilder {
   }
 };
 
-inline auto create_spline(const auto& curve) noexcept -> curves_spline {
+inline auto create_spline(const auto& curve, real_t sensitivity) noexcept
+    -> curves_spline {
   return SplineBuilder<SPLINE_NUM_SEGMENTS, KnotSampler<>, SegmentConverter>{}(
-      curve);
+      curve, sensitivity);
 }
 
 }  // namespace spline

@@ -102,8 +102,10 @@ class ViewModel {
           // curve_profile_entry.interpretation.
 
           const auto curve = curve_profile_entry.config.create();
-          result = std::make_unique<curves_spline>(
-              curves::spline::create_spline(curves::TransferFunction{curve}));
+          const auto sensitivity = profile_.sensitivity.value();
+          result =
+              std::make_unique<curves_spline>(curves::spline::create_spline(
+                  curves::TransferFunction{curve}, sensitivity));
         });
     return result;
   }
