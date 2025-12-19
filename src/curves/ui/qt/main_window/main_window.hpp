@@ -10,6 +10,7 @@
 
 #include <curves/config/profile_store.hpp>
 #include <curves/ui/model/view_model.hpp>
+#include <QListWidget>
 #include <QMainWindow>
 #include <memory>
 #include <string_view>
@@ -43,6 +44,12 @@ class MainWindow : public QMainWindow {
   void onApplyClicked();
 
  private:
+  std::unique_ptr<Ui::MainWindow> m_ui;
+  std::shared_ptr<curves::ViewModel> m_view_model;
+  std::shared_ptr<curves::ProfileStore> m_store;
+  std::vector<CurveParameter*> m_parameter_widgets;
+  static const std::string_view tabViewCss;
+
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
@@ -55,13 +62,9 @@ class MainWindow : public QMainWindow {
   //! Creates the spline from current parameters and updates the graph.
   void updateCurveDisplay();
 
-  std::unique_ptr<Ui::MainWindow> m_ui;
-  std::shared_ptr<curves::ViewModel> m_view_model;
-  std::shared_ptr<curves::ProfileStore> m_store;
-
-  //! Keeps track of created parameter widgets for cleanup.
-  std::vector<CurveParameter*> m_parameter_widgets;
-
-  static const std::string_view tabViewCss;
+  //! Applies generated css from tabViewCss and system palette.
   void applyTabViewCss(QWidget& widget);
+
+  //! Sets list min height to multiple of the height size hint.
+  void setListMinHeight(QListWidget& list, int minVisibleItems);
 };

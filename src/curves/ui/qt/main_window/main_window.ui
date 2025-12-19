@@ -177,7 +177,7 @@ QListWidget::item:selected:!active {
           <item>
            <widget class="QListWidget" name="curve_parameters">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+             <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>

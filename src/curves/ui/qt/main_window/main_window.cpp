@@ -9,7 +9,12 @@
 #include <curves/math/spline.hpp>
 #include <curves/math/transfer_function.hpp>
 #include <curves/ui/qt/widgets/curve_parameter/curve_parameter.hpp>
+#include <cassert>
 #include <utility>
+
+// This should be determined programmatically by walking the set of curve
+// configs.
+static constexpr auto minVisibleParameters = 5;
 
 MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
                        std::shared_ptr<curves::ProfileStore> store,
@@ -36,6 +41,8 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
   // Select the curve that's in the profile (triggers widget rebuild)
   auto selected = static_cast<int>(m_view_model->selected_curve());
   m_ui->selected_curve->setCurrentRow(selected);
+
+  setListMinHeight(*m_ui->curve_parameters, minVisibleParameters);
 
   // Initial curve display
   updateCurveDisplay();
@@ -131,6 +138,26 @@ void MainWindow::applyTabViewCss(QWidget& widget) {
       highlight.name(), highlightText.name());
 
   widget.setStyleSheet(replacedTabViewCss);
+}
+
+void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {
+  // Get item height from size hint.
+  const auto sizeHintRole = list.model()->index(0, 0).data(Qt::SizeHintRole);
+  const auto itemHeight = sizeHintRole.toSize().height();
+
+  // Get vertical spacing between items.
+  int spacing = list.spacing();
+
+  // Calc total content height needed.
+  int contentHeight =
+      itemHeight * minVisibleItems + (spacing * std::max(0, minVisibleItems));
+
+  // Add the list's own borders/frame.
+  // frameWidth covers top and bottom, so we multiply by 2
+  int borderHeight = list.frameWidth() * 2;
+
+  // Apply.
+  list.setMinimumHeight(contentHeight + borderHeight);
 }
 
 const std::string_view MainWindow::tabViewCss = R"(
