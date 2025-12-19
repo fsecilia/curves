@@ -18,6 +18,9 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>9</number>
+    </property>
     <item>
      <widget class="QWidget" name="main_content" native="true">
       <property name="sizePolicy">
@@ -27,6 +30,9 @@
        </sizepolicy>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="spacing">
+        <number>9</number>
+       </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
@@ -151,6 +157,18 @@ QListWidget::item:selected:!active {
           </size>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QGroupBox" name="curveTypeGroupBox">
             <property name="title">
@@ -239,6 +257,9 @@ QListWidget::item:selected:!active {
        <enum>QFrame::Shape::StyledPanel</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="spacing">
+        <number>9</number>
+       </property>
        <property name="leftMargin">
         <number>0</number>
        </property>
