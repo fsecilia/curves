@@ -82,11 +82,11 @@ class SynchronousCurve {
 };
 
 struct SynchronousCurveConfig {
-  Param<double> scale{"Scale", 1.0, 1.0e-3, 1.0e3};
-  Param<double> motivity{"Motivity", 1.5, 1.0, 1.0e3};
-  Param<double> gamma{"Gamma", 1, 1.0, 1.0e3};
-  Param<double> smooth{"Smooth", 0.5, 0.0, 1.0};
-  Param<double> sync_speed{"SyncSpeed", 5, 1.0e-3, 1.0e3};
+  Param<double> scale{"scale", 1.0, 1.0e-3, 1.0e3};
+  Param<double> motivity{"motivity", 1.5, 1.0, 1.0e3};
+  Param<double> gamma{"gamma", 1, 1.0, 1.0e3};
+  Param<double> smooth{"smooth", 0.5, 0.0, 1.0};
+  Param<double> sync_speed{"sync_speed", 5, 1.0e-3, 1.0e3};
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
     self.scale.reflect(visitor);

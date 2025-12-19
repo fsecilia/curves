@@ -90,4 +90,27 @@ class Param<Enum> {
   Enum value_;
 };
 
+template <>
+class Param<bool> {
+ public:
+  Param(std::string_view name, bool value) noexcept
+      : name_{name}, value_{value} {}
+
+  auto name() const noexcept -> std::string_view { return name_; }
+  auto value() const noexcept -> bool { return value_; }
+  auto value(bool value) noexcept -> void { value_ = value; }
+
+  auto reflect(this auto&& self, auto&& visitor) -> void {
+    std::forward<decltype(visitor)>(visitor)(
+        std::forward<decltype(self)>(self));
+  }
+
+  template <typename Visitor = std::nullptr_t>
+  auto validate(Visitor&& = nullptr) -> void {}
+
+ private:
+  std::string_view name_;
+  bool value_;
+};
+
 }  // namespace curves

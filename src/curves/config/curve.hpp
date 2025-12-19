@@ -31,7 +31,7 @@ struct CurveProfileEntry {
   std::string_view name;
   CurveConfig config;
 
-  Param<CurveInterpretation> interpretation{"Interpretation",
+  Param<CurveInterpretation> interpretation{"interpretation",
                                             CurveInterpretation::kGain};
 
   CurveProfileEntry(std::string_view name, CurveConfig config = {}) noexcept
