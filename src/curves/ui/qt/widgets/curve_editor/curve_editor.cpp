@@ -97,7 +97,7 @@ void CurveEditor::paintEvent(QPaintEvent*) {
 }
 
 void CurveEditor::resizeEvent(QResizeEvent* event) {
-  QWidget::resizeEvent(event);  // Call base
+  QWidget::resizeEvent(event);
   m_legendRenderer.updateLayout(m_traces, font(), size());
 }
 
