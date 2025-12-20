@@ -24,9 +24,8 @@ class TomlWriterAdapter {
   }
 
   auto create_section(std::string_view key) -> TomlWriterAdapter {
-    auto& node = *table_.insert_or_assign(key, toml::table{}).first;
-    toml::table* sub_table = node.second.as_table();
-    return TomlWriterAdapter{*sub_table};
+    auto [it, inserted] = table_.insert_or_assign(key, toml::table{});
+    return TomlWriterAdapter{*it->second.as_table()};
   }
 
  private:
