@@ -48,10 +48,10 @@ class MainWindow : public QMainWindow {
   std::shared_ptr<curves::ViewModel> m_view_model;
   std::shared_ptr<curves::ProfileStore> m_store;
   std::vector<CurveParameter*> m_parameter_widgets;
-  static const std::string_view tabViewCss;
+  static const std::string_view curveSelectorCssTemplate;
 
-  //! Wires up control signals.
-  void wireUpControls();
+  //! Wires up control signals, syncs contents with config.
+  void connectControls();
 
   template <bool triggersRedraw, typename SpinBox, typename Value>
   void connectFooterSpinBox(auto& label, SpinBox& spinBox,
@@ -66,6 +66,12 @@ class MainWindow : public QMainWindow {
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
+  //! Selects curve specified by profile, triggering curveConfig rebuild.
+  void selectConfiguredCurve();
+
+  //! Sets min height to not show scroll bars on curveConfig.
+  void constrainConfigHeight();
+
   //! Rebuilds the parameter widget list for the given curve type.
   void rebuildParameterWidgets(curves::CurveType curve);
 
@@ -75,9 +81,9 @@ class MainWindow : public QMainWindow {
   //! Creates the spline from current parameters and updates the graph.
   void updateCurveDisplay();
 
-  //! Applies generated css from tabViewCss and system palette.
-  void applyTabViewCss(QWidget& widget);
-
   //! Sets list min height to multiple of the height size hint.
   void setListMinHeight(QListWidget& list, int minVisibleItems);
+
+  //! Applies generated css from tabViewCss and system palette.
+  void applyGeneratedCss(QWidget& widget, std::string_view cssTemplate);
 };

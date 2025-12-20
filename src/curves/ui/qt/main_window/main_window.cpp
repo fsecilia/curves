@@ -26,24 +26,11 @@ MainWindow::MainWindow(std::shared_ptr<ViewModel> view_model,
       m_store{std::move(store)} {
   m_ui->setupUi(this);
 
-  wireUpControls();
+  connectControls();
 
-  // Apply programtic css to curve selector.
-  applyTabViewCss(*m_ui->curveSelector);
-
-  // Populate curve selector with available curve types.
   populateCurveSelector();
-
-  // Select the curve that's in the profile. This triggers rebuilding
-  // curve_parameters.
-  auto selected = static_cast<int>(m_view_model->selected_curve());
-  m_ui->curveSelector->setCurrentRow(selected);
-
-  // Programmatically determine min height to not show scroll bars on
-  // curve_parameters.
-  setListMinHeight(*m_ui->curveConfig, minVisibleParameters);
-
-  connectFooterControls();
+  selectConfiguredCurve();
+  constrainConfigHeight();
 
   // Render first curve.
   updateCurveDisplay();
@@ -74,12 +61,14 @@ void MainWindow::onApplyClicked() {
 
 // ----------------------------------------------------------------------------
 
-void MainWindow::wireUpControls() {
+void MainWindow::connectControls() {
   connect(m_ui->pushButton, &QPushButton::clicked, this,
           &MainWindow::onApplyClicked);
 
   connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
+
+  connectFooterControls();
 }
 
 template <bool triggersRedraw, typename SpinBox, typename Value>
@@ -144,6 +133,8 @@ void MainWindow::connectFooterControls() {
 }
 
 void MainWindow::populateCurveSelector() {
+  applyGeneratedCss(*m_ui->curveSelector, curveSelectorCssTemplate);
+
   // For now, we manually iterate the known curve types.
   // When we add more curves, we add them here and to the enum.
   m_ui->curveSelector->clear();
@@ -156,6 +147,15 @@ void MainWindow::populateCurveSelector() {
   // Future curves would be added here:
   // m_ui->curveSelector->addItem(
   //     QString::fromUtf8(to_string(CurveType::kLinear)));
+}
+
+void MainWindow::selectConfiguredCurve() {
+  auto selected = static_cast<int>(m_view_model->selected_curve());
+  m_ui->curveSelector->setCurrentRow(selected);
+}
+
+void MainWindow::constrainConfigHeight() {
+  setListMinHeight(*m_ui->curveConfig, minVisibleParameters);
 }
 
 void MainWindow::rebuildParameterWidgets(CurveType curve) {
@@ -197,23 +197,6 @@ void MainWindow::updateCurveDisplay() {
   m_ui->curve_editor->setSpline(m_view_model->create_spline());
 }
 
-void MainWindow::applyTabViewCss(QWidget& widget) {
-  const auto standardPalette = QApplication::palette();
-  const auto window = standardPalette.color(QPalette::Window);
-  const auto windowText = standardPalette.color(QPalette::WindowText);
-  const auto highlight = standardPalette.color(QPalette::Highlight);
-  const auto highlightText = standardPalette.color(QPalette::HighlightedText);
-
-  const auto darkBackground = window.darker(200);
-  const auto hoverBackground = darkBackground.lighter(150);
-
-  const auto replacedTabViewCss = QString{tabViewCss.data()}.arg(
-      darkBackground.name(), windowText.name(), hoverBackground.name(),
-      highlight.name(), highlightText.name());
-
-  widget.setStyleSheet(replacedTabViewCss);
-}
-
 void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {
   // Get item height from size hint.
   const auto sizeHintRole = list.model()->index(0, 0).data(Qt::SizeHintRole);
@@ -234,7 +217,25 @@ void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {
   list.setMinimumHeight(contentHeight + borderHeight);
 }
 
-const std::string_view MainWindow::tabViewCss = R"(
+void MainWindow::applyGeneratedCss(QWidget& widget,
+                                   std::string_view cssTemplate) {
+  const auto standardPalette = QApplication::palette();
+  const auto window = standardPalette.color(QPalette::Window);
+  const auto windowText = standardPalette.color(QPalette::WindowText);
+  const auto highlight = standardPalette.color(QPalette::Highlight);
+  const auto highlightText = standardPalette.color(QPalette::HighlightedText);
+
+  const auto darkBackground = window.darker(200);
+  const auto hoverBackground = darkBackground.lighter(150);
+
+  const auto replacedTabViewCss = QString{cssTemplate.data()}.arg(
+      darkBackground.name(), windowText.name(), hoverBackground.name(),
+      highlight.name(), highlightText.name());
+
+  widget.setStyleSheet(replacedTabViewCss);
+}
+
+const std::string_view MainWindow::curveSelectorCssTemplate = R"(
     QListWidget {
       border: none;
       outline: 0px;
