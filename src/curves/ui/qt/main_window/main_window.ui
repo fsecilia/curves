@@ -291,11 +291,14 @@ QListWidget::item:selected:!active {
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+            </property>
             <property name="accelerated">
              <bool>true</bool>
             </property>
             <property name="decimals">
-             <number>3</number>
+             <number>6</number>
             </property>
             <property name="stepType">
              <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
@@ -328,21 +331,15 @@ QListWidget::item:selected:!active {
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="dpiDoubleSpinBox">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QSpinBox" name="dpiSpinBox">
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
             </property>
             <property name="accelerated">
              <bool>true</bool>
             </property>
-            <property name="decimals">
-             <number>3</number>
-            </property>
-            <property name="stepType">
-             <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+            <property name="maximum">
+             <number>256000</number>
             </property>
            </widget>
           </item>
@@ -379,11 +376,14 @@ QListWidget::item:selected:!active {
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+            </property>
             <property name="accelerated">
              <bool>true</bool>
             </property>
             <property name="decimals">
-             <number>3</number>
+             <number>6</number>
             </property>
             <property name="stepType">
              <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
@@ -441,11 +441,14 @@ QListWidget::item:selected:!active {
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
                <property name="accelerated">
                 <bool>true</bool>
                </property>
                <property name="decimals">
-                <number>3</number>
+                <number>6</number>
                </property>
                <property name="stepType">
                 <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
@@ -466,7 +469,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer_2">
+        <spacer name="footerLeftHorizontalSpacer">
          <property name="orientation">
           <enum>Qt::Orientation::Horizontal</enum>
          </property>
@@ -479,7 +482,7 @@ QListWidget::item:selected:!active {
         </spacer>
        </item>
        <item>
-        <widget class="QWidget" name="filterSpeedParameter" native="true">
+        <widget class="QWidget" name="speedFilterParameter" native="true">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -495,7 +498,7 @@ QListWidget::item:selected:!active {
            </widget>
           </item>
           <item>
-           <widget class="QWidget" name="filterSpeedValue" native="true">
+           <widget class="QWidget" name="speedFilterHalflifeValue" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_6">
              <property name="spacing">
               <number>4</number>
@@ -513,12 +516,15 @@ QListWidget::item:selected:!active {
               <number>0</number>
              </property>
              <item>
-              <widget class="QDoubleSpinBox" name="filterSpeedDoubleSpinBox">
+              <widget class="QDoubleSpinBox" name="speedFilterHalflifeDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                </property>
                <property name="accelerated">
                 <bool>true</bool>
@@ -532,7 +538,7 @@ QListWidget::item:selected:!active {
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="filterSpeedUnitsLabel">
+              <widget class="QLabel" name="speedFilterHalflifeUnitsLabel">
                <property name="text">
                 <string>ms</string>
                </property>
@@ -545,7 +551,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="filterScaleParameter" native="true">
+        <widget class="QWidget" name="scaleFilterParameter" native="true">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -561,7 +567,7 @@ QListWidget::item:selected:!active {
            </widget>
           </item>
           <item>
-           <widget class="QWidget" name="filterScaleValue" native="true">
+           <widget class="QWidget" name="scaleFilterHalflifeValue" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <property name="spacing">
               <number>4</number>
@@ -579,12 +585,15 @@ QListWidget::item:selected:!active {
               <number>0</number>
              </property>
              <item>
-              <widget class="QDoubleSpinBox" name="filterScaleDoubleSpinBox">
+              <widget class="QDoubleSpinBox" name="scaleFilterHalflifeDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                </property>
                <property name="accelerated">
                 <bool>true</bool>
@@ -598,7 +607,7 @@ QListWidget::item:selected:!active {
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="filterScaleUnitsLabel">
+              <widget class="QLabel" name="scaleFilterHalflifeUnitsLabel">
                <property name="text">
                 <string>ms</string>
                </property>
@@ -611,7 +620,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="filterOutputParameter" native="true">
+        <widget class="QWidget" name="outputFilterParameter" native="true">
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -627,7 +636,7 @@ QListWidget::item:selected:!active {
            </widget>
           </item>
           <item>
-           <widget class="QWidget" name="filterOutputValue" native="true">
+           <widget class="QWidget" name="outputFilterHalflifeValue" native="true">
             <layout class="QHBoxLayout" name="horizontalLayout_7">
              <property name="spacing">
               <number>4</number>
@@ -645,12 +654,15 @@ QListWidget::item:selected:!active {
               <number>0</number>
              </property>
              <item>
-              <widget class="QDoubleSpinBox" name="filterOutputDoubleSpinBox">
+              <widget class="QDoubleSpinBox" name="outputFilterHalflifeDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                </property>
                <property name="accelerated">
                 <bool>true</bool>
@@ -664,7 +676,7 @@ QListWidget::item:selected:!active {
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="filterOutputUnitsLabel">
+              <widget class="QLabel" name="outputFilterHalflifeUnitsLabel">
                <property name="text">
                 <string>ms</string>
                </property>
@@ -677,7 +689,7 @@ QListWidget::item:selected:!active {
         </widget>
        </item>
        <item>
-        <spacer name="horizontalSpacer">
+        <spacer name="footerRightHorizontalSpacer">
          <property name="orientation">
           <enum>Qt::Orientation::Horizontal</enum>
          </property>

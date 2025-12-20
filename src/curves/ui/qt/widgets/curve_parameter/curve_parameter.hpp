@@ -17,15 +17,16 @@
 #include <QWidget>
 #include <memory>
 
-class QLabel;
-class QDoubleSpinBox;
-
 namespace Ui {
 class CurveParameter;
 }
 
-void sync_param_to_ui(QLabel& label, QDoubleSpinBox& spinbox,
-                      const curves::Param<double>& param);
+void syncParamToUi(auto& label, auto& spinbox, const auto& param) {
+  label.setText(QString::fromUtf8(param.name()) + ":");
+  spinbox.setMinimum(param.min());
+  spinbox.setMaximum(param.max());
+  spinbox.setValue(param.value());
+}
 
 class CurveParameter : public QWidget {
   Q_OBJECT

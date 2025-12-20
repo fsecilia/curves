@@ -37,9 +37,6 @@ class MainWindow : public QMainWindow {
   //! Called when a parameter value changes in any widget.
   void onParameterChanged();
 
-  //! Called when specifically the global sensitivity changes.
-  void onSensitivityChanged(double);
-
   //! Called when user selects a different curve in the curve list.
   void onCurveSelectionChanged(int index);
 
@@ -56,8 +53,15 @@ class MainWindow : public QMainWindow {
   //! Wires up control signals.
   void wireUpControls();
 
-  //! Connects and syncs sensitivity widget with param.
-  void connectSensitivity();
+  template <bool triggersRedraw, typename SpinBox, typename Value>
+  void connectFooterSpinBox(auto& label, SpinBox& spinBox,
+                            curves::Param<Value>& param);
+  template <typename CheckBox, typename SpinBox, typename Value>
+  void connectFooterFilterParams(CheckBox& checkbox,
+                                 curves::Param<bool>& checkboxParam,
+                                 SpinBox& spinbox,
+                                 curves::Param<Value>& spinBoxParam);
+  void connectFooterControls();
 
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();

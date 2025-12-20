@@ -12,13 +12,14 @@
 #include <cassert>
 #include <utility>
 
+using namespace curves;
+
 // This should be determined programmatically by walking the set of curve
 // configs.
 static constexpr auto minVisibleParameters = 4;
 
-MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
-                       std::shared_ptr<curves::ProfileStore> store,
-                       QWidget* parent)
+MainWindow::MainWindow(std::shared_ptr<ViewModel> view_model,
+                       std::shared_ptr<ProfileStore> store, QWidget* parent)
     : QMainWindow(parent),
       m_ui(std::make_unique<Ui::MainWindow>()),
       m_view_model{std::move(view_model)},
@@ -42,7 +43,7 @@ MainWindow::MainWindow(std::shared_ptr<curves::ViewModel> view_model,
   // curve_parameters.
   setListMinHeight(*m_ui->curveConfig, minVisibleParameters);
 
-  connectSensitivity();
+  connectFooterControls();
 
   // Render first curve.
   updateCurveDisplay();
@@ -57,15 +58,10 @@ void MainWindow::onParameterChanged() {
   updateCurveDisplay();
 }
 
-void MainWindow::onSensitivityChanged(double value) {
-  m_view_model->set_value(m_view_model->sensitivity_param(), value);
-  onParameterChanged();
-}
-
 void MainWindow::onCurveSelectionChanged(int index) {
   if (index < 0) return;
 
-  auto curve = static_cast<curves::CurveType>(index);
+  auto curve = static_cast<CurveType>(index);
   m_view_model->selected_curve(curve);
   rebuildParameterWidgets(curve);
   updateCurveDisplay();
@@ -86,11 +82,65 @@ void MainWindow::wireUpControls() {
           &MainWindow::onCurveSelectionChanged);
 }
 
-void MainWindow::connectSensitivity() {
-  sync_param_to_ui(*m_ui->sensitivityLabel, *m_ui->sensitivityDoubleSpinBox,
-                   m_view_model->sensitivity_param());
-  connect(m_ui->sensitivityDoubleSpinBox, &QDoubleSpinBox::valueChanged, this,
-          &MainWindow::onSensitivityChanged);
+template <bool triggersRedraw, typename SpinBox, typename Value>
+void MainWindow::connectFooterSpinBox(auto& label, SpinBox& spinBox,
+                                      Param<Value>& param) {
+  syncParamToUi(label, spinBox, param);
+  connect(&spinBox, &SpinBox::valueChanged, this, [&](Value value) {
+    m_view_model->set_value(param, value);
+    if (triggersRedraw) onParameterChanged();
+  });
+}
+
+template <typename CheckBox, typename SpinBox, typename Value>
+void MainWindow::connectFooterFilterParams(CheckBox& checkBox,
+                                           Param<bool>& checkBoxParam,
+                                           SpinBox& spinbox,
+                                           Param<Value>& spinBoxParam) {
+  checkBox.setText(QString::fromUtf8(checkBoxParam.name()) + ":");
+  checkBox.setCheckState(checkBoxParam.value() ? Qt::Checked : Qt::Unchecked);
+  connect(&checkBox, &CheckBox::checkStateChanged, this,
+          [&](Qt::CheckState checkState) {
+            m_view_model->set_value(checkBoxParam, Qt::Unchecked != checkState);
+          });
+
+  spinbox.setMinimum(spinBoxParam.min());
+  spinbox.setMaximum(spinBoxParam.max());
+  spinbox.setValue(spinBoxParam.value());
+  connect(&spinbox, &SpinBox::valueChanged, this,
+          [&](Value value) { m_view_model->set_value(spinBoxParam, value); });
+}
+
+void MainWindow::connectFooterControls() {
+  connectFooterSpinBox<true>(*m_ui->sensitivityLabel,
+                             *m_ui->sensitivityDoubleSpinBox,
+                             m_view_model->sensitivity_param());
+
+  connectFooterSpinBox<false>(*m_ui->dpiLabel, *m_ui->dpiSpinBox,
+                              m_view_model->dpi_param());
+
+  connectFooterSpinBox<false>(*m_ui->anisotropyLabel,
+                              *m_ui->anisotropyDoubleSpinBox,
+                              m_view_model->anisotropy_param());
+
+  connectFooterSpinBox<false>(*m_ui->rotationLabel,
+                              *m_ui->rotationDoubleSpinBox,
+                              m_view_model->rotation_param());
+
+  connectFooterFilterParams(*m_ui->filterSpeedCheckBox,
+                            m_view_model->filter_speed_param(),
+                            *m_ui->speedFilterHalflifeDoubleSpinBox,
+                            m_view_model->speed_filter_halflife_param());
+
+  connectFooterFilterParams(*m_ui->filterScaleCheckBox,
+                            m_view_model->filter_scale_param(),
+                            *m_ui->scaleFilterHalflifeDoubleSpinBox,
+                            m_view_model->scale_filter_halflife_param());
+
+  connectFooterFilterParams(*m_ui->filterOutputCheckBox,
+                            m_view_model->filter_output_param(),
+                            *m_ui->outputFilterHalflifeDoubleSpinBox,
+                            m_view_model->output_filter_halflife_param());
 }
 
 void MainWindow::populateCurveSelector() {
@@ -101,14 +151,14 @@ void MainWindow::populateCurveSelector() {
   // Add each curve type to the list widget
   // The row index corresponds to the enum value
   m_ui->curveSelector->addItem(
-      QString::fromUtf8(curves::to_string(curves::CurveType::kSynchronous)));
+      QString::fromUtf8(to_string(CurveType::kSynchronous)));
 
   // Future curves would be added here:
   // m_ui->curveSelector->addItem(
-  //     QString::fromUtf8(curves::to_string(curves::CurveType::kLinear)));
+  //     QString::fromUtf8(to_string(CurveType::kLinear)));
 }
 
-void MainWindow::rebuildParameterWidgets(curves::CurveType curve) {
+void MainWindow::rebuildParameterWidgets(CurveType curve) {
   clearParameterWidgets();
 
   // Use the ViewModel to iterate all parameters for this curve
@@ -116,7 +166,7 @@ void MainWindow::rebuildParameterWidgets(curves::CurveType curve) {
     // Check if this is a Param<double> - those get spinbox widgets
     using ParamType = std::decay_t<decltype(param)>;
 
-    if constexpr (std::is_same_v<ParamType, curves::Param<double>>) {
+    if constexpr (std::is_same_v<ParamType, Param<double>>) {
       auto* widget = new CurveParameter(m_view_model, param);
 
       // Connect the widget's changed signal to our handler

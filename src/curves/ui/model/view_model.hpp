@@ -91,6 +91,38 @@ class ViewModel {
     return profile_.sensitivity;
   }
 
+  [[nodiscard]] auto anisotropy_param() noexcept -> Param<double>& {
+    return profile_.anisotropy;
+  }
+
+  [[nodiscard]] auto rotation_param() noexcept -> Param<double>& {
+    return profile_.rotation;
+  }
+
+  [[nodiscard]] auto filter_speed_param() noexcept -> Param<bool>& {
+    return profile_.filter_speed;
+  }
+
+  [[nodiscard]] auto speed_filter_halflife_param() noexcept -> Param<double>& {
+    return profile_.speed_filter_halflife;
+  }
+
+  [[nodiscard]] auto filter_scale_param() noexcept -> Param<bool>& {
+    return profile_.filter_scale;
+  }
+
+  [[nodiscard]] auto scale_filter_halflife_param() noexcept -> Param<double>& {
+    return profile_.scale_filter_halflife;
+  }
+
+  [[nodiscard]] auto filter_output_param() noexcept -> Param<bool>& {
+    return profile_.filter_output;
+  }
+
+  [[nodiscard]] auto output_filter_halflife_param() noexcept -> Param<double>& {
+    return profile_.output_filter_halflife;
+  }
+
   /*!
     \brief Creates spline for currently selected curve.
   */

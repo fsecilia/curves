@@ -10,14 +10,6 @@
 #include <QLabel>
 #include <utility>
 
-void sync_param_to_ui(QLabel& label, QDoubleSpinBox& spinbox,
-                      const curves::Param<double>& param) {
-  label.setText(QString::fromUtf8(param.name()) + ":");
-  spinbox.setMinimum(param.min());
-  spinbox.setMaximum(param.max());
-  spinbox.setValue(param.value());
-}
-
 CurveParameter::CurveParameter(std::shared_ptr<curves::ViewModel> view_model,
                                curves::Param<double>& param, QWidget* parent)
     : QWidget(parent),
@@ -26,7 +18,7 @@ CurveParameter::CurveParameter(std::shared_ptr<curves::ViewModel> view_model,
       m_param{&param} {
   ui->setupUi(this);
 
-  sync_param_to_ui(*ui->label, *ui->doubleSpinBox, *m_param);
+  syncParamToUi(*ui->label, *ui->doubleSpinBox, *m_param);
 
   connect(ui->doubleSpinBox, &QDoubleSpinBox::valueChanged, this,
           &CurveParameter::onSpinBoxValueChanged);
