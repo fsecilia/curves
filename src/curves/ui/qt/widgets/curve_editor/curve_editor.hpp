@@ -2,6 +2,7 @@
 #define CURVE_EDITOR_HPP
 
 #include <curves/config/curve.hpp>
+#include <curves/ui/qt/rendering/legend_renderer.hpp>
 #include <curves/ui/qt/rendering/trace.hpp>
 #include <QPainter>
 #include <QWheelEvent>
@@ -21,11 +22,12 @@ struct Theme {
   QColor grid_minor = QColor(40, 40, 40);
   QColor text = QColor(200, 200, 200);
 
-  curves::TraceTheme traceThemes[curves::num_trace_types] = {
-      {"Sensitivity", Qt::red},
-      {"Sensitivity Derivative", Qt::yellow},
-      {"Gain", Qt::magenta},
-      {"Gain Derivative", Qt::cyan}};
+  curves::TraceTheme traceThemes[curves::kTraceType] = {
+      {Qt::magenta},
+      {Qt::cyan},
+      {Qt::red},
+      {Qt::yellow},
+  };
 };
 
 class CurveEditor : public QWidget {
@@ -43,6 +45,7 @@ class CurveEditor : public QWidget {
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
   void paintEvent(QPaintEvent*) override;
 
  private:
@@ -68,10 +71,11 @@ class CurveEditor : public QWidget {
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
                  double step);
 
-  curves::Traces m_traces{{curves::Trace{m_theme.traceThemes[0]},
-                           curves::Trace{m_theme.traceThemes[1]},
-                           curves::Trace{m_theme.traceThemes[2]},
-                           curves::Trace{m_theme.traceThemes[3]}}};
+  curves::Traces m_traces{{curves::Trace{"gain", m_theme.traceThemes[0]},
+                           curves::Trace{"d/dx gain", m_theme.traceThemes[1]},
+                           curves::Trace{"sens", m_theme.traceThemes[2]},
+                           curves::Trace{"d/dx sens", m_theme.traceThemes[3]}}};
+  curves::LegendRenderer m_legendRenderer;
 
   void drawTraces(QPainter& painter);
 };

@@ -10,7 +10,7 @@ CurveEditor::CurveEditor(QWidget* parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::CurveEditor>()) {
   m_ui->setupUi(this);
 
-  m_visible_range = QRectF(0, 0, 100, 10);
+  m_visible_range = QRectF{0, 0, 100, 10};
   setMouseTracking(true);
 }
 
@@ -58,6 +58,11 @@ void CurveEditor::wheelEvent(QWheelEvent* event) {
 
 void CurveEditor::mousePressEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
+    if (m_legendRenderer.onMousePress(event->pos(), m_traces)) {
+      update();
+      return;
+    }
+
     m_dragging = true;
     m_last_mouse_pos = event->pos();
   }
@@ -88,6 +93,12 @@ void CurveEditor::paintEvent(QPaintEvent*) {
 
   drawGrid(painter);
   drawTraces(painter);
+  m_legendRenderer.paint(painter, m_traces);
+}
+
+void CurveEditor::resizeEvent(QResizeEvent* event) {
+  QWidget::resizeEvent(event);  // Call base
+  m_legendRenderer.updateLayout(m_traces, font(), size());
 }
 
 QPointF CurveEditor::screenToLogical(QPointF screen) {
@@ -210,11 +221,12 @@ auto CurveEditor::drawTraces(QPainter& painter) -> void {
     const auto sample = sampler.sample(x_logical);
     const auto values = CurveEvaluator{}.compute(sample, x_logical);
 
-    m_traces.append(
-        {logicalToScreen(QPointF{x_logical, values.sensitivity}),
-         logicalToScreen(QPointF{x_logical, values.sensitivity_deriv}),
-         logicalToScreen(QPointF{x_logical, values.gain}),
-         logicalToScreen(QPointF{x_logical, values.gain_deriv})});
+    m_traces.append({
+        logicalToScreen(QPointF{x_logical, values.gain}),
+        logicalToScreen(QPointF{x_logical, values.gain_deriv}),
+        logicalToScreen(QPointF{x_logical, values.sensitivity}),
+        logicalToScreen(QPointF{x_logical, values.sensitivity_deriv}),
+    });
   }
 
   m_traces.draw(painter);

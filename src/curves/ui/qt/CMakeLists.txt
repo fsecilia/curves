@@ -23,6 +23,7 @@ qt_add_executable(curves_config
     main_window/main_window.ui
 
     rendering/trace.hpp
+    rendering/legend_renderer.hpp
 
     widgets/curve_editor/curve_editor.hpp
     widgets/curve_editor/curve_editor.cpp
