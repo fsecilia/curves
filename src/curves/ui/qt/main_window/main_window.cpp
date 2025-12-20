@@ -224,7 +224,8 @@ void MainWindow::clearParameterWidgets() {
 }
 
 void MainWindow::updateCurveDisplay() {
-  m_ui->curve_editor->setSpline(m_view_model->create_spline());
+  m_ui->curve_editor->setSpline(m_view_model->create_spline(),
+                                m_curveInterpretationParam->value());
 }
 
 void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {

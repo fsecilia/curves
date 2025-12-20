@@ -4,20 +4,33 @@
 #include <curves/ui/rendering/spline_evaluator.hpp>
 #include <curves/ui/rendering/spline_sampler.hpp>
 
+using namespace curves;
+
 CurveEditor::CurveEditor(QWidget* parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::CurveEditor>()) {
   m_ui->setupUi(this);
 
   m_visible_range = QRectF(0, 0, 100, 10);
-  reallocateCurve();
   setMouseTracking(true);
 }
 
 CurveEditor::~CurveEditor() = default;
 
-void CurveEditor::setSpline(
-    std::shared_ptr<const curves_spline> spline) {
+void CurveEditor::setSpline(std::shared_ptr<const curves_spline> spline,
+                            CurveInterpretation curveInterpretation) {
   m_spline = spline;
+
+  switch (curveInterpretation) {
+    case CurveInterpretation::kGain:
+      m_traces.selected = TraceType::gain_f;
+      break;
+
+    case CurveInterpretation::kSensitivity:
+      m_traces.selected = TraceType::sensitivity_f;
+      break;
+  };
+
+  m_curveInterpretation = curveInterpretation;
   update();
 }
 
@@ -39,8 +52,6 @@ void CurveEditor::wheelEvent(QWheelEvent* event) {
   const auto new_bottom = logical.y() - new_height * ratio_y;
   const auto new_top = new_bottom - new_height;
   m_visible_range.setRect(new_left, new_top, new_width, new_height);
-
-  queueReallocateCurve();
 
   update();
 }
@@ -76,26 +87,7 @@ void CurveEditor::paintEvent(QPaintEvent*) {
   painter.fillRect(rect(), m_theme.background);
 
   drawGrid(painter);
-  drawCurves(painter);
-}
-
-void CurveEditor::resizeEvent(QResizeEvent*) { queueReallocateCurve(); }
-
-void CurveEditor::queueReallocateCurve() { m_reallocate_curve_queued = true; }
-
-void CurveEditor::tryReallocateCurve() {
-  if (!m_reallocate_curve_queued) return;
-  m_reallocate_curve_queued = false;
-
-  reallocateCurve();
-}
-
-void CurveEditor::reallocateCurve() {
-  const auto num_pixels = width();
-  const auto num_samples = std::max(
-      1, static_cast<int>(std::ceil(num_pixels / pixels_per_curve_step_x)));
-  m_curve_step_x = static_cast<qreal>(m_visible_range.width()) / num_samples;
-  m_curve_polygon.resizeForOverwrite(num_samples);
+  drawTraces(painter);
 }
 
 QPointF CurveEditor::screenToLogical(QPointF screen) {
@@ -197,15 +189,7 @@ void CurveEditor::drawGrid(QPainter& painter) {
   drawGridY(painter, pen_axis, pen_major, major_start_y, major_step_y);
 }
 
-void CurveEditor::drawPolyline(QPainter& painter, const QColor& color,
-                               const QPolygonF& polyline) {
-  auto pen = QPen{color};
-  pen.setWidthF(2.13);
-  painter.setPen(pen);
-  painter.drawPolyline(polyline);
-}
-
-auto CurveEditor::drawCurves(QPainter& painter) -> void {
+auto CurveEditor::drawTraces(QPainter& painter) -> void {
   const int total_pixels = width();
   if (total_pixels <= 0) return;
 
@@ -213,10 +197,10 @@ auto CurveEditor::drawCurves(QPainter& painter) -> void {
   const double view_width = m_visible_range.width();
   const double dx_pixel = view_width / double(total_pixels);
 
-  m_buffers.clear();
-  m_buffers.reserve(total_pixels);
+  m_traces.clear();
+  m_traces.reserve(total_pixels);
 
-  curves::SplineSampler sampler(m_spline.get());
+  SplineSampler sampler(m_spline.get());
 
   for (int i = 0; i < total_pixels; ++i) {
     const double x_screen = i;
@@ -224,27 +208,23 @@ auto CurveEditor::drawCurves(QPainter& painter) -> void {
     if (x_logical < 0) continue;
 
     const auto sample = sampler.sample(x_logical);
-    const auto values = curves::CurveEvaluator{}.compute(sample, x_logical);
+    const auto values = CurveEvaluator{}.compute(sample, x_logical);
 
-    m_buffers.addSample(
-        logicalToScreen(QPointF{x_logical, values.sensitivity}),
-        logicalToScreen(QPointF{x_logical, values.sensitivity_deriv}),
-        logicalToScreen(QPointF{x_logical, values.gain}),
-        logicalToScreen(QPointF{x_logical, values.gain_deriv}));
+    m_traces.append(
+        {logicalToScreen(QPointF{x_logical, values.sensitivity}),
+         logicalToScreen(QPointF{x_logical, values.sensitivity_deriv}),
+         logicalToScreen(QPointF{x_logical, values.gain}),
+         logicalToScreen(QPointF{x_logical, values.gain_deriv})});
   }
 
-  drawPolyline(painter, m_theme.curve_sensitivity, m_buffers.sens);
-  drawPolyline(painter, m_theme.curve_sensitivity_derivative,
-               m_buffers.sens_deriv);
-  drawPolyline(painter, m_theme.curve_gain, m_buffers.gain);
-  drawPolyline(painter, m_theme.curve_gain_derivative, m_buffers.gain_deriv);
+  m_traces.draw(painter);
 
 #if 0
   auto segment_pen = QPen{Qt::darkBlue};
   painter.setPen(segment_pen);
   for (auto knot = 0; knot < SPLINE_NUM_SEGMENTS; ++knot) {
     const auto knot_x =
-        curves::Fixed::literal(curves::spline::locate_knot(knot)).to_real();
+        Fixed::literal(spline::locate_knot(knot)).to_real();
     painter.drawLine(logicalToScreen(QPointF(knot_x, -10000)),
                      logicalToScreen(QPointF(knot_x, 10000)));
   }
