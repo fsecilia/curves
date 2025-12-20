@@ -40,6 +40,10 @@ class MainWindow : public QMainWindow {
   //! Called when user selects a different curve in the curve list.
   void onCurveSelectionChanged(int index);
 
+  //! Called when user changes the curve's interpretation.
+  void onCurveInterpretation(bool checked,
+                             curves::CurveInterpretation interpretation);
+
   //! Called when user clicks the Apply button.
   void onApplyClicked();
 
@@ -48,10 +52,14 @@ class MainWindow : public QMainWindow {
   std::shared_ptr<curves::ViewModel> m_view_model;
   std::shared_ptr<curves::ProfileStore> m_store;
   std::vector<CurveParameter*> m_parameter_widgets;
+  curves::Param<curves::CurveInterpretation>* m_curveInterpretationParam{
+      nullptr};
   static const std::string_view curveSelectorCssTemplate;
 
   //! Wires up control signals, syncs contents with config.
   void connectControls();
+
+  void connectCurveInterpretation();
 
   template <bool triggersRedraw, typename SpinBox, typename Value>
   void connectFooterSpinBox(auto& label, SpinBox& spinBox,

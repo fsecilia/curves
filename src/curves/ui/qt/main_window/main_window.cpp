@@ -54,6 +54,13 @@ void MainWindow::onCurveSelectionChanged(int index) {
   updateCurveDisplay();
 }
 
+void MainWindow::onCurveInterpretation(bool checked,
+                                       CurveInterpretation interpretation) {
+  if (!checked) return;
+  m_view_model->set_value(*m_curveInterpretationParam, interpretation);
+  onParameterChanged();
+}
+
 void MainWindow::onApplyClicked() {
   // Save current profile to disk
   m_view_model->apply(*m_store);
@@ -68,7 +75,19 @@ void MainWindow::connectControls() {
   connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
 
+  connectCurveInterpretation();
   connectFooterControls();
+}
+
+void MainWindow::connectCurveInterpretation() {
+  connect(m_ui->curveTypeGainRadioButton, &QRadioButton::clicked, this,
+          [&](bool checked) {
+            onCurveInterpretation(checked, CurveInterpretation::kGain);
+          });
+  connect(m_ui->curveTypeSensitivityRadioButton, &QRadioButton::clicked, this,
+          [&](bool checked) {
+            onCurveInterpretation(checked, CurveInterpretation::kSensitivity);
+          });
 }
 
 template <bool triggersRedraw, typename SpinBox, typename Value>
@@ -180,10 +199,21 @@ void MainWindow::rebuildParameterWidgets(CurveType curve) {
       m_ui->curveConfig->setItemWidget(item, widget);
 
       m_parameter_widgets.push_back(widget);
-    }
+    } else if constexpr (std::is_same_v<ParamType,
+                                        Param<CurveInterpretation>>) {
+      m_curveInterpretationParam = &param;
+      switch (param.value()) {
+        case CurveInterpretation::kGain:
+          m_ui->curveTypeGainRadioButton->setChecked(true);
+          m_ui->curveTypeSensitivityRadioButton->setChecked(false);
+          break;
 
-    // For enum params (like Interpretation), we'd create a combo box.
-    // Skipping for MVP - can add later.
+        case CurveInterpretation::kSensitivity:
+          m_ui->curveTypeGainRadioButton->setChecked(false);
+          m_ui->curveTypeSensitivityRadioButton->setChecked(true);
+          break;
+      }
+    }
   });
 }
 
