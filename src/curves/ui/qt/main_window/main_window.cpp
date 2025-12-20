@@ -57,6 +57,10 @@ void MainWindow::onCurveSelectionChanged(int index) {
 void MainWindow::onCurveInterpretation(bool checked,
                                        CurveInterpretation interpretation) {
   if (!checked) return;
+
+  const auto prevInterpretation = m_curveInterpretationParam->value();
+  if (interpretation == prevInterpretation) return;
+
   m_view_model->set_value(*m_curveInterpretationParam, interpretation);
   onParameterChanged();
 }
