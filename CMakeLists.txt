@@ -113,6 +113,16 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 # -----------------------------------------------------------------------------
+# Debugging
+# -----------------------------------------------------------------------------
+
+option(ENABLE_ASAN "Enable AddressSanitizer (ASan) for debug builds." OFF)
+if (ENABLE_ASAN)
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
+endif()
+
+# -----------------------------------------------------------------------------
 # Installation
 # -----------------------------------------------------------------------------
 
