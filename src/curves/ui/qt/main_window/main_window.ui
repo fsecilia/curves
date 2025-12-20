@@ -159,20 +159,20 @@ QListWidget::item:selected:!active {
            <number>0</number>
           </property>
           <item>
-           <widget class="QGroupBox" name="curveTypeGroupBox">
+           <widget class="QGroupBox" name="curveInterpretationGroupBox">
             <property name="title">
-             <string>Curve Type</string>
+             <string>Curve Interpretation</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_2">
              <item>
-              <widget class="QRadioButton" name="curveTypeGainRadioButton">
+              <widget class="QRadioButton" name="curveInterpretationGainRadioButton">
                <property name="text">
                 <string>Gain</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QRadioButton" name="curveTypeSensitivityRadioButton">
+              <widget class="QRadioButton" name="curveInterpretationSensitivityRadioButton">
                <property name="text">
                 <string>Sensitivity</string>
                </property>

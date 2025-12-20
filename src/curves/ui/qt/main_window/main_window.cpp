@@ -80,12 +80,12 @@ void MainWindow::connectControls() {
 }
 
 void MainWindow::connectCurveInterpretation() {
-  connect(m_ui->curveTypeGainRadioButton, &QRadioButton::clicked, this,
-          [&](bool checked) {
+  connect(m_ui->curveInterpretationGainRadioButton, &QRadioButton::clicked,
+          this, [&](bool checked) {
             onCurveInterpretation(checked, CurveInterpretation::kGain);
           });
-  connect(m_ui->curveTypeSensitivityRadioButton, &QRadioButton::clicked, this,
-          [&](bool checked) {
+  connect(m_ui->curveInterpretationSensitivityRadioButton,
+          &QRadioButton::clicked, this, [&](bool checked) {
             onCurveInterpretation(checked, CurveInterpretation::kSensitivity);
           });
 }
@@ -204,13 +204,13 @@ void MainWindow::rebuildParameterWidgets(CurveType curve) {
       m_curveInterpretationParam = &param;
       switch (param.value()) {
         case CurveInterpretation::kGain:
-          m_ui->curveTypeGainRadioButton->setChecked(true);
-          m_ui->curveTypeSensitivityRadioButton->setChecked(false);
+          m_ui->curveInterpretationGainRadioButton->setChecked(true);
+          m_ui->curveInterpretationSensitivityRadioButton->setChecked(false);
           break;
 
         case CurveInterpretation::kSensitivity:
-          m_ui->curveTypeGainRadioButton->setChecked(false);
-          m_ui->curveTypeSensitivityRadioButton->setChecked(true);
+          m_ui->curveInterpretationGainRadioButton->setChecked(false);
+          m_ui->curveInterpretationSensitivityRadioButton->setChecked(true);
           break;
       }
     }
