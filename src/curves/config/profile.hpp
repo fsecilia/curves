@@ -24,7 +24,7 @@ enum CurveType {
 
 template <>
 struct EnumReflection<CurveType> {
-  static constexpr auto map = sequential_name_map<CurveType>("synchronous");
+  static constexpr auto map = sequential_name_map<CurveType>("Synchronous");
 };
 
 struct Profile {

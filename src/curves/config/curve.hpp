@@ -23,7 +23,7 @@ enum CurveInterpretation {
 template <>
 struct EnumReflection<CurveInterpretation> {
   static constexpr auto map =
-      sequential_name_map<CurveInterpretation>("gain", "sensitivity");
+      sequential_name_map<CurveInterpretation>("Gain", "Sensitivity");
 };
 
 template <typename CurveConfig>
@@ -31,7 +31,7 @@ struct CurveProfileEntry {
   std::string_view name;
   CurveConfig config;
 
-  Param<CurveInterpretation> interpretation{"interpretation",
+  Param<CurveInterpretation> interpretation{"Interpretation",
                                             CurveInterpretation::kGain};
 
   CurveProfileEntry(std::string_view name, CurveConfig config = {}) noexcept
