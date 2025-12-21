@@ -5,6 +5,7 @@
 # various integration tests.
 
 add_library(testing_lib
+  error_metrics.hpp
   isqrt.cpp
   isqrt.hpp
   test.cpp
