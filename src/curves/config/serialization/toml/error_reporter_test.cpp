@@ -41,7 +41,7 @@ TEST_F(ErrorReporterTest, message) {
   const auto expected_message = std::string{"expected_message"};
 
   // Message is only recorded in thrown exception.
-  auto actual_message = std::string_view{};
+  auto actual_message = std::string{};
   try {
     sut.report_error(expected_message);
   } catch (const toml::parse_error& err) {
