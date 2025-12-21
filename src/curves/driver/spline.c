@@ -205,9 +205,16 @@ s64 curves_spline_eval(const struct curves_spline *spline, s64 x)
 	// Validate parameters.
 	if (unlikely(x < 0))
 		x = 0;
-	if (unlikely(x >= locate_knot(SPLINE_NUM_SEGMENTS))) {
+
+	// For some curves, we sink a knot right into a cusp. This means we
+	// must align the whole grid so the knot that was nearest the cusp now
+	// goes through it. We do that by scaling the whole grid domain. This
+	// means we must scale x by the inverse before indexing into the grid.
+	x = (s64)(((s128)x * spline->velocity_to_grid + SPLINE_FRAC_HALF) >>
+		  SPLINE_FRAC_BITS);
+
+	if (x >= locate_knot(SPLINE_NUM_SEGMENTS))
 		return extend_linear(spline, x);
-	}
 
 	s64 segment_index;
 	s64 t;

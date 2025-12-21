@@ -44,10 +44,13 @@ class SplineSampler {
 
     s64 segment;
     s64 t_fixed;
-    const auto x_fixed = Fixed{x_logical};
+    const auto x_fixed =
+        Fixed{x_logical} * Fixed::literal(m_spline->velocity_to_grid);
     spline::locate_segment(x_fixed.value, &segment, &t_fixed);
 
-    if (segment >= SPLINE_NUM_SEGMENTS) return extend_linearly(x_logical);
+    if (segment >= SPLINE_NUM_SEGMENTS) {
+      return extend_linearly(x_fixed.to_real());
+    }
 
     return convert(segment, t_fixed);
   }
@@ -59,9 +62,10 @@ class SplineSampler {
     const auto& seg = m_spline->segments[segment];
 
     // Calculate width in domain units.
-    const s64 x_start = spline::locate_knot(segment);
-    const s64 x_end = spline::locate_knot(segment + 1);
-    const double width = Fixed::literal(x_end - x_start).to_real();
+    const auto x_start = Fixed::literal(spline::locate_knot(segment));
+    const auto x_end = Fixed::literal(spline::locate_knot(segment + 1));
+    const auto velocity_to_grid = Fixed::literal(m_spline->velocity_to_grid);
+    const auto width = ((x_end - x_start) / velocity_to_grid).to_real();
 
     return SplineSample{.a = Fixed::literal(seg.coeffs[0]).to_real(),
                         .b = Fixed::literal(seg.coeffs[1]).to_real(),

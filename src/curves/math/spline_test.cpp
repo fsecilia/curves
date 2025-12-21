@@ -14,12 +14,18 @@ namespace curves {
 namespace {
 
 TEST(spline_set, synchronous_as_transfer_uniform) {
-  auto sensitivity = SynchronousCurve{10.0L, 10.0L, 27.5L, 0.5L};
+  auto sensitivity = SynchronousCurve{10.0L, 10.0L, 27.55L, 0.5L};
 
   const auto spline =
       spline::create_spline(TransferFunction{sensitivity}, 1.0L);
+  const auto velocity_to_grid = Fixed::literal(spline.velocity_to_grid);
+
+  std::cout << "spline.velocity_to_grid ~= " << velocity_to_grid.to_real()
+            << " (" << velocity_to_grid.value << " fixed)" << std::endl;
+
   const auto x_max =
-      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1));
+      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1)) /
+      velocity_to_grid;
 
   const auto dx = Fixed{1.0e-3L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;

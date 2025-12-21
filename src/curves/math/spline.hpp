@@ -15,6 +15,9 @@ extern "C" {
 #include <curves/lib.hpp>
 #include <curves/math/curve.hpp>
 #include <curves/math/fixed.hpp>
+#include <algorithm>
+#include <ostream>
+#include <ranges>
 
 namespace curves {
 namespace spline {
@@ -28,6 +31,10 @@ struct Knot {
   real_t x;
   real_t y;
   real_t m;
+
+  friend auto operator<<(std::ostream& out, const Knot& src) -> std::ostream& {
+    return out << src.x << ", " << src.y << ", " << src.m;
+  }
 };
 
 /*
@@ -70,9 +77,32 @@ class KnotSampler {
 
   KnotSampler() = default;
 
-  auto operator()(const auto& curve, real_t sensitivity, int_t knot) const
-      -> Knot {
-    const auto x = locator_(knot);
+  auto find_nearest(real_t x) const noexcept -> real_t {
+    const auto count = SPLINE_NUM_SEGMENTS;
+
+    // Iterate over indices, but project knots via this->operator().
+    const auto indices = std::views::iota(0, count);
+    const auto lower_bound = std::ranges::lower_bound(
+        indices, x, {}, [&](int_t knot_index) { return locator_(knot_index); });
+
+    // Handle boundary conditions.
+    if (lower_bound == indices.begin()) return 0;
+    if (lower_bound == indices.end()) return count - 1;
+
+    // Check neighbors to find the closest.
+    const auto next_index = *lower_bound;
+    const auto next_location = locator_(next_index);
+    const auto prev_index = next_index - 1;
+    const auto prev_location = locator_(prev_index);
+
+    return std::abs(prev_location - x) < std::abs(next_location - x)
+               ? prev_location
+               : next_location;
+  }
+
+  auto operator()(const auto& curve, real_t sensitivity,
+                  real_t grid_to_velocity, int_t knot) const -> Knot {
+    const auto x = locator_(knot) * grid_to_velocity;
     const auto [f, df_dx] = curve(x);
     return {x, f * sensitivity, df_dx * sensitivity};
   }
@@ -100,14 +130,29 @@ class SplineBuilder {
       -> curves_spline {
     curves_spline result;
 
-    auto k0 = knot_sampler_(curve, sensitivity, 0);
+    auto grid_to_velocity = 1.0L;
+    if constexpr (HasCusp<decltype(curve)>) {
+      // Scale grid to fit a knot right in the cusp.
+      const auto cusp_location_velocity = curve.cusp_location();
+      const auto cusp_location_grid =
+          knot_sampler_.find_nearest(cusp_location_velocity);
+      grid_to_velocity = cusp_location_velocity / cusp_location_grid;
+      result.velocity_to_grid =
+          Fixed{cusp_location_grid / cusp_location_velocity}.value;
+    } else {
+      result.velocity_to_grid = Fixed{1}.value;
+    }
+
+    auto k0 = knot_sampler_(curve, sensitivity, grid_to_velocity, 0);
     for (auto segment = 0; segment < num_segments - 1; ++segment) {
-      const auto k1 = knot_sampler_(curve, sensitivity, segment + 1);
+      const auto k1 =
+          knot_sampler_(curve, sensitivity, grid_to_velocity, segment + 1);
       result.segments[segment] = segment_converter_(k0, k1);
+
       k0 = k1;
     }
 
-    construct_runout_segment(curve, sensitivity,
+    construct_runout_segment(curve, sensitivity, grid_to_velocity,
                              result.segments[num_segments - 2],
                              result.segments[num_segments - 1]);
 
@@ -120,52 +165,54 @@ class SplineBuilder {
 
   /*
     Bleeds off curvature before straightening out so final tangent can be
-    linearly extended without a kink in gain when evaluating beyond the final
-    segment.
+    linearly extended without a kink in gain when evaluating beyond the
+    final segment.
   */
   auto construct_runout_segment(const auto& curve, real_t sensitivity,
+                                real_t grid_to_velocity,
                                 const curves_spline_segment& prev,
                                 curves_spline_segment& next) const noexcept
       -> void {
-    const auto k_prev_end = knot_sampler_(curve, sensitivity, num_segments - 1);
+    // Fetch previous knots.
+    const auto k_prev_end =
+        knot_sampler_(curve, sensitivity, grid_to_velocity, num_segments - 1);
     const auto k_prev_start =
-        knot_sampler_(curve, sensitivity, num_segments - 2);
+        knot_sampler_(curve, sensitivity, grid_to_velocity, num_segments - 2);
     const double w_prev = k_prev_end.x - k_prev_start.x;
 
-    // Fetch previous segment coefficients (raw s64 fixed-point values)
+    // Fetch previous segment coefficients.
     const auto prev_a = Fixed::literal(prev.coeffs[0]).to_real();
     const auto prev_b = Fixed::literal(prev.coeffs[1]).to_real();
     const auto prev_c = Fixed::literal(prev.coeffs[2]).to_real();
     const auto prev_d = Fixed::literal(prev.coeffs[3]).to_real();
 
-    double y_start = prev_a + prev_b + prev_c + prev_d;
-    double m_start_norm =
-        3.0 * prev_a + 2.0 * prev_b + prev_c;           // Normalized slope
-    double k_start_norm = 6.0 * prev_a + 2.0 * prev_b;  // Normalized curvature
+    const auto y_start = prev_a + prev_b + prev_c + prev_d;
+    const auto m_start_norm = 3.0 * prev_a + 2.0 * prev_b + prev_c;
+    const auto k_start_norm = 6.0 * prev_a + 2.0 * prev_b;
 
-    // 2. Un-normalize derivatives to real units
-    double m_real = m_start_norm / w_prev;
-    double k_real = k_start_norm / (w_prev * w_prev);
+    // Un-normalize derivatives to real units
+    const auto m_real = m_start_norm / w_prev;
+    const auto k_real = k_start_norm / (w_prev * w_prev);
 
-    // 3. Define new segment width (start of new octave = 2x width)
-    double w_new = w_prev * 2.0;
+    // Define new segment width (start of new octave = 2x width)
+    const auto w_new = w_prev * 2.0;
 
-    // 4. Calculate d (Position)
-    double next_d = y_start;
+    // Calculate d (Position)
+    const auto next_d = y_start;
 
-    // 5. Calculate c (Velocity match)
+    // Calculate c (Velocity match)
     // Renormalize real slope to new width
-    double next_c = m_real * w_new;
+    const auto next_c = m_real * w_new;
 
-    // 6. Calculate b (Curvature match)
+    // Calculate b (Curvature match)
     // We want the curvature at t=0 to match k_real.
     // y''(0) = 2b / w_new^2 = k_real
-    double next_b = (k_real * w_new * w_new) / 2.0;
+    const auto next_b = (k_real * w_new * w_new) / 2.0;
 
-    // 7. Calculate a (Zero curvature target)
+    // Calculate a (Zero curvature target)
     // We want y''(1) = 0.
     // 6a + 2b = 0  ->  a = -b / 3
-    double next_a = -next_b / 3.0;
+    const auto next_a = -next_b / 3.0;
 
     next.coeffs[0] = Fixed{next_a}.value;
     next.coeffs[1] = Fixed{next_b}.value;

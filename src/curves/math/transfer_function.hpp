@@ -34,6 +34,12 @@ class TransferFunction {
     return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
   }
 
+  auto cusp_location() const noexcept -> real_t
+    requires HasCusp<Curve>
+  {
+    return curve_.cusp_location();
+  }
+
   explicit TransferFunction(Curve curve, Traits traits = {}) noexcept
       : curve_{std::move(curve)}, traits_{std::move(traits)} {}
 

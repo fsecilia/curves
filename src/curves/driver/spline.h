@@ -85,6 +85,7 @@ struct curves_spline_segment {
 };
 
 struct curves_spline {
+	s64 velocity_to_grid;
 	struct curves_spline_segment segments[SPLINE_NUM_SEGMENTS];
 };
 
