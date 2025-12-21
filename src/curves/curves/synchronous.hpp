@@ -30,11 +30,16 @@ class SynchronousCurve {
         k{smooth == 0 ? 64.0 : 0.5 / smooth},
         r{1.0 / k} {}
 
+  auto cusp_location() const noexcept -> real_t { return p; }
   auto motivity() const noexcept -> real_t { return motivity_; }
 
   auto operator()(real_t x) const noexcept -> CurveResult {
-    if (std::abs(x - p) <= std::numeric_limits<real_t>::epsilon()) {
-      return {1.0L, 1.0L * L * g / p};
+    // Patch cusp with a linear taylor expansion to kill NaNs near it.
+    static constexpr auto cusp_approximation_distance = 1e-7L;
+    const auto displacement_from_cusp = x - cusp_location();
+    if (std::abs(displacement_from_cusp) <= cusp_approximation_distance) {
+      const auto slope_at_p = L * g / p;
+      return {1.0L + slope_at_p * displacement_from_cusp, slope_at_p};
     }
 
     if (x > p) {
