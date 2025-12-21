@@ -15,6 +15,12 @@
 
 namespace curves {
 
+template <typename Traits, typename Curve>
+concept HasAntiderivative =
+    requires(const Traits& t, const Curve& c, real_t x) {
+      { t.antiderivative(c, x) } -> std::convertible_to<real_t>;
+    };
+
 template <typename Curve>
 struct TransferFunctionTraits {
   auto eval_at_0(const Curve& curve) const noexcept -> CurveResult {
