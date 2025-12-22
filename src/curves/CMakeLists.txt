@@ -26,6 +26,7 @@ list(APPEND lib_files
   lib.hpp
   math/curve.hpp
   math/fixed.hpp
+  math/integration.hpp
   math/io.hpp
   math/spline.cpp
   math/spline.hpp
@@ -59,6 +60,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
   driver_tests/math_test.cpp
+  math/integration_test.cpp
   math/io_test.cpp
   math/spline_test.cpp
   math/transfer_function_test.cpp
