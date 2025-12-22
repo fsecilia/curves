@@ -5,6 +5,7 @@
 add_executable(integration_tests
   isqrt_gamut_tests.cpp
   isqrt_programmatic_tests.cpp
+  synchronous_curve_asymptote_search.cpp
 )
 target_link_libraries(integration_tests PUBLIC
   lib
