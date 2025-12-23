@@ -12,7 +12,6 @@
 #include <curves/config/curve.hpp>
 #include <curves/config/param.hpp>
 #include <curves/math/curve.hpp>
-#include <curves/math/transfer_function.hpp>
 #include <cmath>
 
 namespace curves {

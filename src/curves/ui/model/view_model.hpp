@@ -21,6 +21,7 @@
 
 #include <curves/config/profile.hpp>
 #include <curves/config/profile_store.hpp>
+#include <curves/curves/transfer_function/curve.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/ui/model/flat_visitor.hpp>
 #include <memory>

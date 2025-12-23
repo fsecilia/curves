@@ -8,7 +8,7 @@
 #include <curves/curves/synchronous.hpp>
 #include <curves/math/io.hpp>
 #include <curves/math/spline.hpp>
-#include <curves/math/transfer_function.hpp>
+#include <curves/curves/transfer_function/curve.hpp>
 
 namespace curves {
 namespace {

@@ -22,6 +22,7 @@ list(APPEND lib_files
   config/serialization/toml/writer_adapter.hpp
   config/serialization/writer.hpp
   curves/synchronous.hpp
+  curves/transfer_function/curve.hpp
   lib.cpp
   lib.hpp
   math/curve.hpp
@@ -30,7 +31,6 @@ list(APPEND lib_files
   math/io.hpp
   math/spline.cpp
   math/spline.hpp
-  math/transfer_function.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
   ui/rendering/spline_evaluator.hpp
@@ -49,6 +49,7 @@ list(APPEND unit_tests_files
   config/serialization/toml/writer_adapter_test.cpp
   config/serialization/writer_test.cpp
   curves/synchronous_test.cpp
+  curves/transfer_function/curve_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp
@@ -63,7 +64,6 @@ list(APPEND unit_tests_files
   math/integration_test.cpp
   math/io_test.cpp
   math/spline_test.cpp
-  math/transfer_function_test.cpp
   ui/model/flat_visitor_test.cpp
   ui/model/view_model_test.cpp
   ui/rendering/spline_evaluator_test.cpp

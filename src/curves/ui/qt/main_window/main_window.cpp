@@ -7,7 +7,7 @@
 #include "ui_main_window.h"
 #include <curves/config/enum.hpp>
 #include <curves/math/spline.hpp>
-#include <curves/math/transfer_function.hpp>
+#include <curves/curves/transfer_function/curve.hpp>
 #include <curves/ui/qt/widgets/curve_parameter/curve_parameter.hpp>
 #include <cassert>
 #include <utility>

@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "transfer_function.hpp"
+#include "curve.hpp"
 #include <curves/testing/test.hpp>
 
 namespace curves {
