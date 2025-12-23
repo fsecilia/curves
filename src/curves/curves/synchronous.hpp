@@ -19,67 +19,71 @@ namespace curves {
 
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0, 5.0, 0.5) {}
+  SynchronousCurve() noexcept : SynchronousCurve(1.5L, 1.0L, 5.0L, 0.5L) {}
 
   SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
                    real_t smooth) noexcept
       : motivity_{motivity},
-        L{std::log(motivity)},
-        g{gamma / L},
-        p{sync_speed},
-        k{smooth == 0 ? 64.0 : 0.5 / smooth},
-        r{1.0 / k} {}
+        L_{std::log(motivity)},
+        g_{gamma / L_},
+        p_{sync_speed},
+        k_{smooth == 0 ? 64.0L : 0.5L / smooth},
+        r_{1.0L / k_} {}
 
-  auto cusp_location() const noexcept -> real_t { return p; }
+  auto cusp_location() const noexcept -> real_t { return p_; }
   auto motivity() const noexcept -> real_t { return motivity_; }
 
-  auto operator()(real_t x) const noexcept -> Jet {
-    // Patch cusp with a linear taylor expansion to kill NaNs near it.
-    static constexpr auto cusp_approximation_distance = 1e-7L;
-    const auto displacement_from_cusp = x - cusp_location();
-    if (std::abs(displacement_from_cusp) <= cusp_approximation_distance) {
-      const auto slope_at_p = L * g / p;
-      return {1.0L + slope_at_p * displacement_from_cusp, slope_at_p};
+  auto value(real_t x) const noexcept -> real_t {
+    // Use limit definition near 0.
+    if (x < std::numeric_limits<real_t>::epsilon()) {
+      return 1.0L / motivity_;
     }
 
-    if (x > p) {
-      return evaluate<+1>(g * (std::log(x) - std::log(p)), x);
-    } else {
-      return evaluate<-1>(g * (std::log(p) - std::log(x)), x);
+    // Use linear taylor approximation (very) near to cusp.
+    const auto displacement = x - p_;
+    if (std::abs(displacement) <= kCuspApproximationDistance) {
+      return 1.0L + (L_ * g_ / p_) * displacement;
     }
+
+    const auto u = g_ * std::log(x / p_);
+    const auto w = std::tanh(std::pow(std::abs(u), k_));
+    return std::exp(std::copysign(L_, u) * std::pow(w, r_));
+  }
+
+  auto operator()(real_t x) const noexcept -> Jet {
+    // Use linear taylor approximation (very) near to cusp.
+    const auto displacement = x - p_;
+    if (std::abs(displacement) <= kCuspApproximationDistance) {
+      const auto slope = L_ * g_ / p_;
+      return {1.0L + slope * displacement, slope};
+    }
+
+    const auto u = g_ * std::log(x / p_);
+    const auto sign = std::copysign(1.0L, u);
+    const auto u_abs = std::abs(u);
+
+    const auto u_km1 = std::pow(u_abs, k_ - 1);
+    const auto u_k = u_km1 * u_abs;
+    const auto w = std::tanh(u_k);
+    const auto w_rm1 = std::pow(w, r_ - 1);
+    const auto w_r = w_rm1 * w;
+
+    const auto f = std::exp(sign * L_ * w_r);
+    const auto sech2 = 1.0L - w * w;
+    const auto fp = (f * L_ * g_ / x) * u_km1 * w_rm1 * sech2;
+
+    return {f, fp};
   }
 
  private:
+  static constexpr auto kCuspApproximationDistance = 1e-7L;
+
   real_t motivity_;
-
-  real_t L;  // log(motivity)
-  real_t g;  // gamma / L
-  real_t p;  // sync_speed
-  real_t k;  // sharpness = 0.5 / smooth
-  real_t r;  // 1 / sharpness
-
-  // 'sign' is +1 for x > p, -1 for x < p.
-  // It only affects the exponent of f; the derivative formula is invariant.
-  template <int sign>
-  auto evaluate(real_t u, real_t x) const noexcept -> Jet {
-    // Shared intermediate terms
-    real_t u_pow_k_minus_1 = std::pow(u, k - 1);
-    real_t u_pow_k = u_pow_k_minus_1 * u;  // v = u^k
-
-    real_t w = std::tanh(u_pow_k);  // w = tanh(v)
-    real_t w_pow_r_minus_1 = std::pow(w, r - 1);
-    real_t w_pow_r = w_pow_r_minus_1 * w;  // z = w^r
-
-    real_t sech_sq = 1 - w * w;  // sech(v)^2
-
-    // Forward: f = exp((+/-)L * z)
-    real_t f = std::exp(sign * L * w_pow_r);
-
-    // Derivative: df/dx = (f * L * g / x) * u^(k-1) * w^(r-1) * sech(v)^2
-    real_t df = (f * L * g / x) * u_pow_k_minus_1 * w_pow_r_minus_1 * sech_sq;
-
-    return {f, df};
-  }
+  real_t L_;
+  real_t g_;
+  real_t p_;
+  real_t k_;
+  real_t r_;
 };
 
 template <>
