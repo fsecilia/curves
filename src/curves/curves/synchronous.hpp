@@ -31,7 +31,6 @@ class SynchronousCurve {
         r_{1.0L / k_} {}
 
   auto cusp_location() const noexcept -> real_t { return p_; }
-  auto motivity() const noexcept -> real_t { return motivity_; }
 
   auto value(real_t x) const noexcept -> real_t {
     // Use limit definition near 0.
@@ -84,17 +83,6 @@ class SynchronousCurve {
   real_t p_;
   real_t k_;
   real_t r_;
-};
-
-template <>
-struct TransferFunctionTraits<SynchronousCurve> {
-  auto eval_at_0(const SynchronousCurve& curve) const noexcept -> Jet {
-    /*
-      This comes from the limit definition of the derivative of the transfer
-      function.
-    */
-    return {0.0, 1.0L / curve.motivity()};
-  }
 };
 
 struct SynchronousCurveConfig {
