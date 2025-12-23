@@ -24,13 +24,21 @@ concept HasAntiderivative =
 template <typename Curve>
 struct TransferFunctionTraits {
   auto eval_at_0(const Curve& curve) const noexcept -> Jet {
-    return {0, curve(0.0).f};
+    return {0.0L, curve.value(0.0L)};
   }
 };
 
 template <typename Curve, typename Traits = TransferFunctionTraits<Curve>>
 class TransferFunction {
  public:
+  auto value(real_t x) const noexcept -> real_t {
+    if (x < std::numeric_limits<real_t>::epsilon()) {
+      return 0.0L;
+    }
+
+    return x * curve_.value(x);
+  }
+
   auto operator()(real_t x) const noexcept -> Jet {
     if (x < std::numeric_limits<real_t>::epsilon()) {
       return traits_.eval_at_0(curve_);
