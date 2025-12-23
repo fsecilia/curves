@@ -37,7 +37,7 @@ class TransferFunction {
     }
 
     const auto curve_result = curve_(x);
-    return {x * curve_result.f, curve_result.f + x * curve_result.df_dx};
+    return {x * curve_result.f, curve_result.f + x * curve_result.df};
   }
 
   auto cusp_location() const noexcept -> real_t

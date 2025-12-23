@@ -17,9 +17,9 @@ namespace curves {
 
 enum class TraceType {
   gain_f,
-  gain_df_dx,
+  gain_df,
   sensitivity_f,
-  sensitivity_df_dx,
+  sensitivity_df,
   count_
 };
 static constexpr auto kTraceType = static_cast<int>(TraceType::count_);

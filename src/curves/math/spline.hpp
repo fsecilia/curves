@@ -103,8 +103,8 @@ class KnotSampler {
   auto operator()(const auto& curve, real_t sensitivity,
                   real_t grid_to_velocity, int_t knot) const -> Knot {
     const auto x = locator_(knot) * grid_to_velocity;
-    const auto [f, df_dx] = curve(x);
-    return {x, f * sensitivity, df_dx * sensitivity};
+    const auto [f, df] = curve(x);
+    return {x, f * sensitivity, df * sensitivity};
   }
 
  private:

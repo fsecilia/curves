@@ -76,10 +76,9 @@ class SynchronousCurve {
     real_t f = std::exp(sign * L * w_pow_r);
 
     // Derivative: df/dx = (f * L * g / x) * u^(k-1) * w^(r-1) * sech(v)^2
-    real_t df_dx =
-        (f * L * g / x) * u_pow_k_minus_1 * w_pow_r_minus_1 * sech_sq;
+    real_t df = (f * L * g / x) * u_pow_k_minus_1 * w_pow_r_minus_1 * sech_sq;
 
-    return {f, df_dx};
+    return {f, df};
   }
 };
 

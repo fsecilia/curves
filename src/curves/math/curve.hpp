@@ -15,7 +15,7 @@ namespace curves {
 
 struct CurveResult {
   real_t f;
-  real_t df_dx;
+  real_t df;
 };
 
 template <typename Curve>
