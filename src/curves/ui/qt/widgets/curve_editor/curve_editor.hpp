@@ -20,6 +20,7 @@ struct Theme {
   QColor grid_axis = QColor(180, 180, 180);
   QColor grid_major = QColor(60, 60, 60);
   QColor grid_minor = QColor(40, 40, 40);
+  QColor grid_geometric_limit = QColor(0, 255, 0);
   QColor text = QColor(200, 200, 200);
 
   curves::TraceTheme traceThemes[curves::kTraceType] = {

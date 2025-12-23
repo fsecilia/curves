@@ -137,8 +137,12 @@ double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {
 
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
                             double start, double step) {
+  const auto x_geometric_limit =
+      Fixed::literal(m_spline->x_geometric_limit).to_real();
+
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
     if (x < m_visible_range.left()) continue;
+    if (std::abs(x - x_geometric_limit) < 1e-3) continue;
 
     const auto top = logicalToScreen(QPointF{x, m_visible_range.top()});
     const auto bottom = logicalToScreen(QPointF{x, m_visible_range.bottom()});
@@ -152,6 +156,14 @@ void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
     QString label = QString::number(x, 'g', 4);
     painter.drawText(bottom.x() + 5, height() - 5, label);
   }
+
+  // Draw vertical line at geometric limit.
+  // This way, uses can see where the table ends so they can have their curve
+  // straightened out before that, because there be dragons here.
+  const auto pen_geometric_limit = QPen{m_theme.grid_geometric_limit};
+  painter.setPen(pen_geometric_limit);
+  painter.drawLine(logicalToScreen(QPointF(x_geometric_limit, -10000)),
+                   logicalToScreen(QPointF(x_geometric_limit, 10000)));
 }
 
 void CurveEditor::drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen,
