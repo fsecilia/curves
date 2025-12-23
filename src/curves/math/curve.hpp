@@ -13,7 +13,13 @@
 
 namespace curves {
 
-struct CurveResult {
+/*!
+  Results of f(x) and f'(x).
+
+  This will eventually support autodifferentiation using dual numbers, but for
+  now, it's just the function and its derivative.
+*/
+struct Jet {
   real_t f;
   real_t df;
 };

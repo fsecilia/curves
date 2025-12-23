@@ -33,7 +33,7 @@ class SynchronousCurve {
   auto cusp_location() const noexcept -> real_t { return p; }
   auto motivity() const noexcept -> real_t { return motivity_; }
 
-  auto operator()(real_t x) const noexcept -> CurveResult {
+  auto operator()(real_t x) const noexcept -> Jet {
     // Patch cusp with a linear taylor expansion to kill NaNs near it.
     static constexpr auto cusp_approximation_distance = 1e-7L;
     const auto displacement_from_cusp = x - cusp_location();
@@ -61,7 +61,7 @@ class SynchronousCurve {
   // 'sign' is +1 for x > p, -1 for x < p.
   // It only affects the exponent of f; the derivative formula is invariant.
   template <int sign>
-  auto evaluate(real_t u, real_t x) const noexcept -> CurveResult {
+  auto evaluate(real_t u, real_t x) const noexcept -> Jet {
     // Shared intermediate terms
     real_t u_pow_k_minus_1 = std::pow(u, k - 1);
     real_t u_pow_k = u_pow_k_minus_1 * u;  // v = u^k
@@ -84,7 +84,7 @@ class SynchronousCurve {
 
 template <>
 struct TransferFunctionTraits<SynchronousCurve> {
-  auto eval_at_0(const SynchronousCurve& curve) const noexcept -> CurveResult {
+  auto eval_at_0(const SynchronousCurve& curve) const noexcept -> Jet {
     /*
       This comes from the limit definition of the derivative of the transfer
       function.

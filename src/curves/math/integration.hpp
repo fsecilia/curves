@@ -9,20 +9,10 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/curve.hpp>
 #include <array>
 
 namespace curves {
-
-/*!
-  Results of f(x) and f'(x).
-
-  This will eventually support autodifferentiation using dual numbers, but for
-  now, it's just the function and its derivative.
-*/
-struct Jet {
-  real_t f;
-  real_t fp;
-};
 
 // ----------------------------------------------------------------------------
 // Hermite-based quadrature (uses endpoint derivatives)
@@ -51,7 +41,7 @@ inline auto corrected_trapezoid(real_t h, const Jet& a, const Jet& b) noexcept
     -> real_t {
   constexpr auto c0 = 0.5L;
   constexpr auto c1 = 1.0L / 12.0L;
-  return (c0 * (a.f + b.f) + c1 * (a.fp - b.fp) * h) * h;
+  return (c0 * (a.f + b.f) + c1 * (a.df - b.df) * h) * h;
 }
 
 /*!
