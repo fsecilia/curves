@@ -23,6 +23,7 @@ list(APPEND lib_files
   config/serialization/writer.hpp
   curves/synchronous.hpp
   curves/transfer_function/curve.hpp
+  curves/transfer_function/from_gain.hpp
   curves/transfer_function/from_sensitivity.hpp
   lib.cpp
   lib.hpp
@@ -51,6 +52,7 @@ list(APPEND unit_tests_files
   config/serialization/writer_test.cpp
   curves/synchronous_test.cpp
   curves/transfer_function/curve_test.cpp
+  curves/transfer_function/from_gain_test.cpp
   curves/transfer_function/from_sensitivity_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
