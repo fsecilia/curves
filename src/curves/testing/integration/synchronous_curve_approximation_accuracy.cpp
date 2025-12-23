@@ -18,14 +18,13 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
 
   const auto spline =
       spline::create_spline(TransferFunction{sensitivity}, 1.0L);
-  const auto velocity_to_grid = Fixed::literal(spline.velocity_to_grid);
+  const auto v_to_x = Fixed::literal(spline.v_to_x);
 
-  std::cout << "spline.velocity_to_grid ~= " << velocity_to_grid.to_real()
-            << " (" << velocity_to_grid.value << " fixed)" << std::endl;
+  std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.value
+            << " fixed)" << std::endl;
 
   const auto x_max =
-      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1)) /
-      velocity_to_grid;
+      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1)) / v_to_x;
 
   const auto dx = Fixed{1.0e-3L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;

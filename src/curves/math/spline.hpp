@@ -22,6 +22,7 @@ extern "C" {
 namespace curves {
 namespace spline {
 
+// Imports from c.
 auto locate_knot(int knot) noexcept -> s64;
 auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
 auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64;
@@ -100,9 +101,9 @@ class KnotSampler {
                : next_location;
   }
 
-  auto operator()(const auto& curve, real_t sensitivity,
-                  real_t grid_to_velocity, int_t knot) const -> Knot {
-    const auto x = locator_(knot) * grid_to_velocity;
+  auto operator()(const auto& curve, real_t sensitivity, real_t x_to_v,
+                  int_t knot) const -> Knot {
+    const auto x = locator_(knot) * x_to_v;
     const auto [f, df] = curve(x);
     return {x, f * sensitivity, df * sensitivity};
   }
@@ -130,29 +131,27 @@ class SplineBuilder {
       -> curves_spline {
     curves_spline result;
 
-    auto grid_to_velocity = 1.0L;
+    auto x_to_v = 1.0L;
     if constexpr (HasCusp<decltype(curve)>) {
       // Scale grid to fit a knot right in the cusp.
       const auto cusp_location_velocity = curve.cusp_location();
       const auto cusp_location_grid =
           knot_sampler_.find_nearest(cusp_location_velocity);
-      grid_to_velocity = cusp_location_velocity / cusp_location_grid;
-      result.velocity_to_grid =
-          Fixed{cusp_location_grid / cusp_location_velocity}.value;
+      x_to_v = cusp_location_velocity / cusp_location_grid;
+      result.v_to_x = Fixed{cusp_location_grid / cusp_location_velocity}.value;
     } else {
-      result.velocity_to_grid = Fixed{1}.value;
+      result.v_to_x = Fixed{1}.value;
     }
 
-    auto k0 = knot_sampler_(curve, sensitivity, grid_to_velocity, 0);
+    auto k0 = knot_sampler_(curve, sensitivity, x_to_v, 0);
     for (auto segment = 0; segment < num_segments - 1; ++segment) {
-      const auto k1 =
-          knot_sampler_(curve, sensitivity, grid_to_velocity, segment + 1);
+      const auto k1 = knot_sampler_(curve, sensitivity, x_to_v, segment + 1);
       result.segments[segment] = segment_converter_(k0, k1);
 
       k0 = k1;
     }
 
-    construct_runout_segment(curve, sensitivity, grid_to_velocity,
+    construct_runout_segment(curve, sensitivity, x_to_v,
                              result.segments[num_segments - 2],
                              result.segments[num_segments - 1]);
 
@@ -169,15 +168,15 @@ class SplineBuilder {
     final segment.
   */
   auto construct_runout_segment(const auto& curve, real_t sensitivity,
-                                real_t grid_to_velocity,
+                                real_t x_to_v,
                                 const curves_spline_segment& prev,
                                 curves_spline_segment& next) const noexcept
       -> void {
     // Fetch previous knots.
     const auto k_prev_end =
-        knot_sampler_(curve, sensitivity, grid_to_velocity, num_segments - 1);
+        knot_sampler_(curve, sensitivity, x_to_v, num_segments - 1);
     const auto k_prev_start =
-        knot_sampler_(curve, sensitivity, grid_to_velocity, num_segments - 2);
+        knot_sampler_(curve, sensitivity, x_to_v, num_segments - 2);
     const double w_prev = k_prev_end.x - k_prev_start.x;
 
     // Fetch previous segment coefficients.

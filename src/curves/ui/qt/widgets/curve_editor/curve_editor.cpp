@@ -236,7 +236,7 @@ auto CurveEditor::drawTraces(QPainter& painter) -> void {
   painter.setPen(segment_pen);
   for (auto knot = 0; knot < SPLINE_NUM_SEGMENTS; ++knot) {
     const auto knot_x = (Fixed::literal(spline::locate_knot(knot)) /
-                         Fixed::literal(m_spline->velocity_to_grid))
+                         Fixed::literal(m_spline->v_to_x))
                             .to_real();
     painter.drawLine(logicalToScreen(QPointF(knot_x, -10000)),
                      logicalToScreen(QPointF(knot_x, 10000)));

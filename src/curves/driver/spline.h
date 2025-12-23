@@ -85,10 +85,14 @@ struct curves_spline_segment {
 };
 
 struct curves_spline {
-	s64 velocity_to_grid;
+	// Scale factor of coordinate transform to convert from velocities in
+	// physical space to position in reference space.
+	s64 v_to_x;
+
+	// Cubic spline segments in ABCD order.
 	struct curves_spline_segment segments[SPLINE_NUM_SEGMENTS];
 };
 
-s64 curves_spline_eval(const struct curves_spline *spline, s64 x);
+s64 curves_spline_eval(const struct curves_spline *spline, s64 v);
 
 #endif /* _CURVES_SPLINE_H */
