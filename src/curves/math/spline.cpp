@@ -14,14 +14,14 @@ extern "C" {
 
 namespace curves::spline {
 
-auto locate_knot(int knot) noexcept -> s64 { return ::locate_knot(knot); }
+auto calc_t(s64 x, int width_log2) -> s64 { return ::calc_t(x, width_log2); }
 
 auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void {
   return ::locate_segment(x, segment_index, t);
 }
 
-auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64 {
-  return ::curves_spline_eval(spline, x);
+auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64 {
+  return ::curves_spline_eval(spline, v);
 }
 
 }  // namespace curves::spline

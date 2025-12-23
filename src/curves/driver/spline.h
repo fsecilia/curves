@@ -66,9 +66,9 @@
 // Total octaves needed to span span min to max.
 #define SPLINE_NUM_OCTAVES (SPLINE_DOMAIN_MAX_LOG2 - SPLINE_DOMAIN_MIN_LOG2)
 
-// Total segments needed to cover all octaves, plus 1 for the runout segment.
+// Total segments needed to cover all octaves.
 #define SPLINE_NUM_SEGMENTS \
-	((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) + 1
+	((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 
 // Spline is composed of cubic curves.
 #define SPLINE_NUM_COEFFS 4
@@ -89,10 +89,23 @@ struct curves_spline {
 	// physical space to position in reference space.
 	s64 v_to_x;
 
+	// End of geometric progression, start of runout.
+	s64 x_geometric_limit;
+
+	// End of runout, start of linear extension.
+	s64 x_runout_limit;
+
+	// Power-of-2 width for the runout.
+	s64 runout_width_log2;
+
+	// Final runout segment to bleed off curavture before linear extension.
+	struct curves_spline_segment runout_segment;
+
 	// Cubic spline segments in ABCD order.
 	struct curves_spline_segment segments[SPLINE_NUM_SEGMENTS];
 };
 
+// Evaluates spline given input velocity.
 s64 curves_spline_eval(const struct curves_spline *spline, s64 v);
 
 #endif /* _CURVES_SPLINE_H */

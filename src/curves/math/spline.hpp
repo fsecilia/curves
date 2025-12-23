@@ -22,19 +22,22 @@ extern "C" {
 namespace curves {
 namespace spline {
 
+// Origin must be below octave 0.
+static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <= SPLINE_DOMAIN_MIN_SHIFT);
+
 // Imports from c.
-auto locate_knot(int knot) noexcept -> s64;
+auto calc_t(s64 x, int width_log2) -> s64;
 auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
-auto eval(const struct curves_spline* spline, s64 x) noexcept -> s64;
+auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64;
 
 // Knot to form cubic hermite splines, {x, y, dy/dx}.
 struct Knot {
-  real_t x;
+  real_t v;
   real_t y;
   real_t m;
 
   friend auto operator<<(std::ostream& out, const Knot& src) -> std::ostream& {
-    return out << src.x << ", " << src.y << ", " << src.m;
+    return out << src.v << ", " << src.y << ", " << src.m;
   }
 };
 
@@ -48,12 +51,11 @@ struct Knot {
 */
 class SegmentConverter {
  public:
-  auto operator()(const Knot& k0, const Knot& k1) const noexcept
+  auto operator()(const Knot& k0, const Knot& k1, real_t dv) const noexcept
       -> curves_spline_segment {
-    const auto dx = k1.x - k0.x;
     const auto dy = k1.y - k0.y;
-    const auto m0 = k0.m * dx;
-    const auto m1 = k1.m * dx;
+    const auto m0 = k0.m * dv;
+    const auto m1 = k1.m * dv;
 
     return {.coeffs = {Fixed{-2 * dy + m0 + m1}.value,
                        Fixed{3 * dy - 2 * m0 - m1}.value, Fixed{m0}.value,
@@ -63,9 +65,89 @@ class SegmentConverter {
 
 // Encapsulates how knots are located.
 struct KnotLocator {
-  auto operator()(int i) const noexcept -> real_t {
+  // Calculates sample location for a given knot index.
+  static s64 locate_knot(int knot) {
+    int octave, octave_segment_width_log2, segment_within_octave;
+    s64 segment;
+
+    // Check for knot 0.
+    if (!knot)
+      // Sample location of knot 0 is 0.
+      return 0;
+
+    // Check for subnormal zone.
+    if (knot < SPLINE_SEGMENTS_PER_OCTAVE) {
+      // This zone covers [0, DOMAIN_MIN) and exists to extend the
+      // geometric indexing scheme all the way to zero with uniform
+      // resolution. All segments here have minimum width.
+      return (s64)knot << SPLINE_MIN_SEGMENT_WIDTH_LOG2;
+    }
+
+    // Determine octave containing knot.
+    //
+    // After the subnormal zone, knots are grouped into octaves of
+    // SEGMENTS_PER_OCTAVE knots each. The value is contained in the high
+    // bits, then we subtract out the subnormal zone indices.
+    octave = (knot >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2) - 1;
+
+    // Locate segment containing knot relative to current octave.
+    segment_within_octave = knot & (SPLINE_SEGMENTS_PER_OCTAVE - 1);
+
+    // Locate segment containing knot globally.
+    //
+    // The sum total size of all previous octaves is the same as the
+    // current octave size, so we offset the global location by 1 octave's
+    // worth of segments.
+    segment = SPLINE_SEGMENTS_PER_OCTAVE | segment_within_octave;
+
+    // Determine width of segment in octave.
+    //
+    // Segments in octave 0 have min width; width doubles per octave after.
+    octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+
+    return segment << octave_segment_width_log2;
+  }
+
+  auto operator()(int i) const noexcept -> s64 {
     // Call out to shared c implementation.
-    return Fixed::literal(locate_knot(i)).to_real();
+    return locate_knot(i);
+  }
+
+  /*!
+    Finds the knot location x, in reference space, that is numerically closest
+    to the target velocity v, in physical space.
+  */
+  auto find_nearest_x(real_t v) const noexcept -> real_t {
+    const auto count = SPLINE_NUM_SEGMENTS;
+    const auto indices = std::views::iota(0, count);
+
+    // Project index -> knot location in reference space.
+    const auto project = [&](int index) {
+      return Fixed::literal((*this)(index)).to_real();
+    };
+
+    /*
+      Find first x not smaller than v.
+
+      Since x and v are in different domains, this is comparing apples to
+      oranges, but it's to find which apple is most similar to which orange, so
+      the comparison is useful.
+    */
+    const auto lower_bound = std::ranges::lower_bound(indices, v, {}, project);
+
+    // Handle boundary conditions.
+    if (lower_bound == indices.begin()) return project(0);
+    if (lower_bound == indices.end()) return project(count - 1);
+
+    /*
+      Find x closest to v.
+
+      The transition between v < x and v >= x happens between lower_bound and
+      the iterator before it, so check both.
+    */
+    const auto next_x = project(*lower_bound);
+    const auto prev_x = project(*lower_bound - 1);
+    return std::abs(prev_x - v) < std::abs(next_x - v) ? prev_x : next_x;
   }
 };
 
@@ -78,34 +160,16 @@ class KnotSampler {
 
   KnotSampler() = default;
 
-  auto find_nearest(real_t x) const noexcept -> real_t {
-    const auto count = SPLINE_NUM_SEGMENTS;
+  /*
+    Samples curve at a specific physical location.
 
-    // Iterate over indices, but project knots via this->operator().
-    const auto indices = std::views::iota(0, count);
-    const auto lower_bound = std::ranges::lower_bound(
-        indices, x, {}, [&](int_t knot_index) { return locator_(knot_index); });
-
-    // Handle boundary conditions.
-    if (lower_bound == indices.begin()) return 0;
-    if (lower_bound == indices.end()) return count - 1;
-
-    // Check neighbors to find the closest.
-    const auto next_index = *lower_bound;
-    const auto next_location = locator_(next_index);
-    const auto prev_index = next_index - 1;
-    const auto prev_location = locator_(prev_index);
-
-    return std::abs(prev_location - x) < std::abs(next_location - x)
-               ? prev_location
-               : next_location;
-  }
-
-  auto operator()(const auto& curve, real_t sensitivity, real_t x_to_v,
-                  int_t knot) const -> Knot {
-    const auto x = locator_(knot) * x_to_v;
-    const auto [f, df] = curve(x);
-    return {x, f * sensitivity, df * sensitivity};
+    \param v sample location in physical space, as velocity.
+    \returns Knot at sampled location.
+  */
+  auto operator()(const auto& curve, real_t sensitivity, real_t v) const
+      -> Knot {
+    const auto [f, df] = curve(v);
+    return {v, f * sensitivity, df * sensitivity};
   }
 
  private:
@@ -116,13 +180,15 @@ class KnotSampler {
   Builds a spline by sampling a curve for knots, then building segments
   between the knots.
 */
-template <int_t num_segments, typename KnotSampler = KnotSampler<>,
+template <int_t num_segments, typename KnotLocator = KnotLocator,
+          typename KnotSampler = KnotSampler<>,
           typename SegmentConverter = SegmentConverter>
 class SplineBuilder {
  public:
-  SplineBuilder(KnotSampler knot_sampler,
+  SplineBuilder(KnotLocator knot_locator, KnotSampler knot_sampler,
                 SegmentConverter segment_converter) noexcept
-      : knot_sampler_{std::move(knot_sampler)},
+      : knot_locator_{std::move(knot_locator)},
+        knot_sampler_{std::move(knot_sampler)},
         segment_converter_{std::move(segment_converter)} {}
 
   SplineBuilder() = default;
@@ -133,32 +199,56 @@ class SplineBuilder {
 
     auto x_to_v = 1.0L;
     if constexpr (HasCusp<decltype(curve)>) {
-      // Scale grid to fit a knot right in the cusp.
-      const auto cusp_location_velocity = curve.cusp_location();
-      const auto cusp_location_grid =
-          knot_sampler_.find_nearest(cusp_location_velocity);
-      x_to_v = cusp_location_velocity / cusp_location_grid;
-      result.v_to_x = Fixed{cusp_location_grid / cusp_location_velocity}.value;
+      const auto cusp_v = curve.cusp_location();
+      const auto cusp_x = knot_locator_.find_nearest_x(cusp_v);
+      x_to_v = cusp_v / cusp_x;
+      result.v_to_x = Fixed{cusp_x / cusp_v}.value;
     } else {
       result.v_to_x = Fixed{1}.value;
     }
 
-    auto k0 = knot_sampler_(curve, sensitivity, x_to_v, 0);
-    for (auto segment = 0; segment < num_segments - 1; ++segment) {
-      const auto k1 = knot_sampler_(curve, sensitivity, x_to_v, segment + 1);
-      result.segments[segment] = segment_converter_(k0, k1);
+    // Start at index 0.
+    s64 x0_fixed = knot_locator_(0);
+    real_t x0_ref = Fixed::literal(x0_fixed).to_real();
+    real_t v0 = x0_ref * x_to_v;
 
+    // Pass physical v0 to sampler.
+    auto k0 = knot_sampler_(curve, sensitivity, v0);
+
+    for (auto i = 0; i < num_segments; ++i) {
+      // Calculate next position.
+      const s64 x1_fixed = knot_locator_(i + 1);
+      const real_t x1_ref = Fixed::literal(x1_fixed).to_real();
+      const real_t v1 = x1_ref * x_to_v;
+
+      // Sample next knot.
+      const auto k1 = knot_sampler_(curve, sensitivity, v1);
+
+      // Calculate physical width, dv
+      // We still use the integer difference, dx, for precision.
+      const s64 width_fixed = x1_fixed - x0_fixed;
+      const real_t dx_ref = Fixed::literal(width_fixed).to_real();
+
+      // dv = dx * scalar
+      const real_t dv = dx_ref * x_to_v;
+
+      // Converter uses knots and physical width.dd
+      result.segments[i] = segment_converter_(k0, k1, dv);
+
+      // Advance.
       k0 = k1;
+      x0_fixed = x1_fixed;
     }
 
-    construct_runout_segment(curve, sensitivity, x_to_v,
-                             result.segments[num_segments - 2],
-                             result.segments[num_segments - 1]);
+    result.x_geometric_limit = x0_fixed;
+
+    construct_runout_segment(x_to_v, result.segments[num_segments - 1], result);
 
     return result;
   }
 
  private:
+  KnotLocator knot_locator_;
   KnotSampler knot_sampler_;
   SegmentConverter segment_converter_;
 
@@ -166,64 +256,134 @@ class SplineBuilder {
     Bleeds off curvature before straightening out so final tangent can be
     linearly extended without a kink in gain when evaluating beyond the
     final segment.
-  */
-  auto construct_runout_segment(const auto& curve, real_t sensitivity,
-                                real_t x_to_v,
-                                const curves_spline_segment& prev,
-                                curves_spline_segment& next) const noexcept
-      -> void {
-    // Fetch previous knots.
-    const auto k_prev_end =
-        knot_sampler_(curve, sensitivity, x_to_v, num_segments - 1);
-    const auto k_prev_start =
-        knot_sampler_(curve, sensitivity, x_to_v, num_segments - 2);
-    const double w_prev = k_prev_end.x - k_prev_start.x;
 
-    // Fetch previous segment coefficients.
+    For some curve parameterizations, this can be very difficult. We have to
+    handle curves that cross the boundary with negative gain without the
+    bleed-out segment going below zero. Since the max curvature it can bleed
+    off over distance is a function of that distance, we use an adaptive
+    strategy.
+
+    If we notice the final value has negative slope, we cut the width of the
+    final segment in half, giving it the same amount of curvature to cover in a
+    shorter distance. This means it can curve more overall locally, so it pulls
+    out of a dive sooner. If it still can't pull up fast enough, we halve the
+    width again. We keep doing this until it pulls out of the dive, or hits the
+    minimum segment width, which is very small. This adaptation tries to
+    maintain y''(1) = 0.
+
+    If we get through all loop iterations and still didn't pull up in time, we
+    force a hard corner with y'(1) = 0.
+  */
+  void construct_runout_segment(real_t x_to_v,
+                                const curves_spline_segment& prev,
+                                curves_spline& result) const noexcept {
+    // Establish baselines.
+    const int last_idx = num_segments - 1;
+    const int prev_width_log2 =
+        SPLINE_MIN_SEGMENT_WIDTH_LOG2 +
+        ((last_idx >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2) - 1);
+
+    // Fetch previous coefficients for continuity.
     const auto prev_a = Fixed::literal(prev.coeffs[0]).to_real();
     const auto prev_b = Fixed::literal(prev.coeffs[1]).to_real();
     const auto prev_c = Fixed::literal(prev.coeffs[2]).to_real();
     const auto prev_d = Fixed::literal(prev.coeffs[3]).to_real();
 
     const auto y_start = prev_a + prev_b + prev_c + prev_d;
+
+    // Calculate normalized derivatives at the boundary.
     const auto m_start_norm = 3.0 * prev_a + 2.0 * prev_b + prev_c;
     const auto k_start_norm = 6.0 * prev_a + 2.0 * prev_b;
 
-    // Un-normalize derivatives to real units
-    const auto m_real = m_start_norm / w_prev;
-    const auto k_real = k_start_norm / (w_prev * w_prev);
+    // Get previous physical width (dv_prev) to un-normalize.
+    const s64 prev_len_fixed = 1ULL << prev_width_log2;
+    const real_t dv_prev = Fixed::literal(prev_len_fixed).to_real() * x_to_v;
 
-    // Define new segment width (start of new octave = 2x width)
-    const auto w_new = w_prev * 2.0;
+    // real slope, gain
+    const auto m_real = m_start_norm / dv_prev;
 
-    // Calculate d (Position)
+    // real curvature, gain slope
+    const auto k_real = k_start_norm / (dv_prev * dv_prev);
+
+    // Start with the ideal "1 Octave" runout.
+    const int max_log2 = prev_width_log2 + SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
+    int runout_log2 = max_log2;
+
+    // Track whether we found a safe parameterization and the diminishing width.
+    bool is_safe = false;
+    real_t dv_final = 0;
+
+    // Safety floor nominally 0.
+    const real_t kMinSlope = 0.0;
+
+    // Adaptive loop.
+    //
+    // Search for the widest smooth segment that doesn't dive.
+    for (; runout_log2 >= SPLINE_MIN_SEGMENT_WIDTH_LOG2; --runout_log2) {
+      // Calculate candidate width.
+      const s64 runout_len_fixed = 1ULL << runout_log2;
+      dv_final = Fixed::literal(runout_len_fixed).to_real() * x_to_v;
+
+      // Predict end slope (assuming standard y''(1)=0 constraint)
+      // slope_end = slope_start + 0.5*curvature_start*width
+      const real_t projected_slope = m_real + 0.5 * k_real * dv_final;
+
+      if (projected_slope >= kMinSlope) {
+        is_safe = true;
+        break;
+      }
+    }
+
+    // Panic fallback.
+    //
+    // If we exited the loop and are still unsafe, we are at min segment width
+    // and the standard logic still results in a negative slope. Clamp to
+    // exactly minimum width.
+    if (!is_safe) {
+      // Force use of minimum width
+      runout_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2;
+      const s64 min_len = 1ULL << runout_log2;
+      dv_final = Fixed::literal(min_len).to_real() * x_to_v;
+    }
+
+    // Commit runout length.
+    result.runout_width_log2 = runout_log2;
+    result.x_runout_limit = result.x_geometric_limit + (1ULL << runout_log2);
+
+    // Calc constant segment coefficients.
+    //
+    // These don't change with the constraint. We just have to normalize them
+    // to the final chosen width, dv_final.
     const auto next_d = y_start;
+    const auto next_c = m_real * dv_final;
+    const auto next_b = (k_real * dv_final * dv_final) / 2.0;
 
-    // Calculate c (Velocity match)
-    // Renormalize real slope to new width
-    const auto next_c = m_real * w_new;
+    // Calc cubic segment coefficient.
+    real_t next_a;
+    if (is_safe) {
+      // We found a safe width that pulls out of the dive and ends with zero
+      // curvature (y'' = 0). This is a smooth bleed-off and it maintains C2
+      // continuity.
+      next_a = -next_b / 3.0;
+    } else {
+      // [PANIC MODE]
+      // We did not find a safe width that pulls out ofthe dive.
+      // Force the curve to flatten. Breaks C2 with a jerk spike, but preserves
+      // monotonicity. Derived from 3a + 2b + c = 0, when y' = 0.
+      next_a = -(2.0 * next_b + next_c) / 3.0;
+    }
 
-    // Calculate b (Curvature match)
-    // We want the curvature at t=0 to match k_real.
-    // y''(0) = 2b / w_new^2 = k_real
-    const auto next_b = (k_real * w_new * w_new) / 2.0;
-
-    // Calculate a (Zero curvature target)
-    // We want y''(1) = 0.
-    // 6a + 2b = 0  ->  a = -b / 3
-    const auto next_a = -next_b / 3.0;
-
-    next.coeffs[0] = Fixed{next_a}.value;
-    next.coeffs[1] = Fixed{next_b}.value;
-    next.coeffs[2] = Fixed{next_c}.value;
-    next.coeffs[3] = Fixed{next_d}.value;
+    result.runout_segment.coeffs[0] = Fixed{next_a}.value;
+    result.runout_segment.coeffs[1] = Fixed{next_b}.value;
+    result.runout_segment.coeffs[2] = Fixed{next_c}.value;
+    result.runout_segment.coeffs[3] = Fixed{next_d}.value;
   }
 };
 
 inline auto create_spline(const auto& curve, real_t sensitivity) noexcept
     -> curves_spline {
-  return SplineBuilder<SPLINE_NUM_SEGMENTS, KnotSampler<>, SegmentConverter>{}(
-      curve, sensitivity);
+  return SplineBuilder<SPLINE_NUM_SEGMENTS, KnotLocator, KnotSampler<>,
+                       SegmentConverter>{}(curve, sensitivity);
 }
 
 }  // namespace spline

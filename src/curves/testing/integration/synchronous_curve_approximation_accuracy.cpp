@@ -23,8 +23,7 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
   std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.value
             << " fixed)" << std::endl;
 
-  const auto x_max =
-      Fixed::literal(spline::locate_knot(SPLINE_NUM_SEGMENTS - 1)) / v_to_x;
+  const auto x_max = Fixed::literal(spline.x_geometric_limit);
 
   const auto dx = Fixed{1.0e-3L};
   std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
