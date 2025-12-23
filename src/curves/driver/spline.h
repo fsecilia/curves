@@ -38,7 +38,7 @@
 // linearly using the final segment's slope.
 //
 // 2^7 = 128 exceeds typical mouse velocity. 2^6 = 64 does not.
-#define SPLINE_DOMAIN_MAX_LOG2 7
+#define SPLINE_DOMAIN_MAX_LOG2 8
 
 // Segments per octave.
 //
