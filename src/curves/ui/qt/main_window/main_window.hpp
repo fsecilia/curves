@@ -44,6 +44,9 @@ class MainWindow : public QMainWindow {
   void onCurveInterpretation(bool checked,
                              curves::CurveInterpretation interpretation);
 
+  //! Called when user changes dpi.
+  void onDpiChanged(int dpi);
+
   //! Called when user clicks the Apply button.
   void onApplyClicked();
 
@@ -54,6 +57,7 @@ class MainWindow : public QMainWindow {
   std::vector<CurveParameter*> m_parameter_widgets;
   curves::Param<curves::CurveInterpretation>* m_curveInterpretationParam{
       nullptr};
+  QPalette m_defaultDpiSpinBoxPalette;
   static const std::string_view curveSelectorCssTemplate;
 
   //! Wires up control signals, syncs contents with config.
@@ -70,6 +74,9 @@ class MainWindow : public QMainWindow {
                                  SpinBox& spinbox,
                                  curves::Param<Value>& spinBoxParam);
   void connectFooterControls();
+
+  //! Enters or exits error state when dpi is not set.
+  void setDpiErrorState(bool enabled);
 
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();

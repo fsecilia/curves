@@ -25,12 +25,16 @@ MainWindow::MainWindow(std::shared_ptr<ViewModel> view_model,
       m_view_model{std::move(view_model)},
       m_store{std::move(store)} {
   m_ui->setupUi(this);
+  m_defaultDpiSpinBoxPalette = m_ui->dpiSpinBox->palette();
 
   connectControls();
 
   populateCurveSelector();
   selectConfiguredCurve();
   constrainConfigHeight();
+
+  // Manually sync ui where necessary.
+  onDpiChanged(m_ui->dpiSpinBox->value());
 
   // Render first curve.
   updateCurveDisplay();
@@ -65,6 +69,8 @@ void MainWindow::onCurveInterpretation(bool checked,
   onParameterChanged();
 }
 
+void MainWindow::onDpiChanged(int dpi) { setDpiErrorState(dpi == 0); }
+
 void MainWindow::onApplyClicked() {
   // Save current profile to disk
   m_view_model->apply(*m_store);
@@ -78,6 +84,9 @@ void MainWindow::connectControls() {
 
   connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
           &MainWindow::onCurveSelectionChanged);
+
+  connect(m_ui->dpiSpinBox, &QSpinBox::valueChanged, this,
+          &MainWindow::onDpiChanged);
 
   connectCurveInterpretation();
   connectFooterControls();
@@ -154,6 +163,26 @@ void MainWindow::connectFooterControls() {
                             m_view_model->filter_output_param(),
                             *m_ui->outputFilterHalflifeDoubleSpinBox,
                             m_view_model->output_filter_halflife_param());
+}
+
+void MainWindow::setDpiErrorState(bool enabled) {
+  if (enabled) {
+    auto palette = m_ui->dpiSpinBox->palette();
+
+    const auto darkMode = palette.color(QPalette::Text).lightness() > 128;
+    if (darkMode) {
+      palette.setColor(QPalette::Base, QColor("#7f0000"));
+      palette.setColor(QPalette::Text, Qt::white);
+    } else {
+      palette.setColor(QPalette::Base, QColor("#ffcccc"));
+      palette.setColor(QPalette::Text, Qt::black);
+    }
+
+    m_ui->dpiSpinBox->setPalette(palette);
+  } else {
+    // Restore original palette.
+    m_ui->dpiSpinBox->setPalette(m_defaultDpiSpinBoxPalette);
+  }
 }
 
 void MainWindow::populateCurveSelector() {
