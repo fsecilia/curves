@@ -73,7 +73,7 @@ void MainWindow::onApplyClicked() {
 // ----------------------------------------------------------------------------
 
 void MainWindow::connectControls() {
-  connect(m_ui->pushButton, &QPushButton::clicked, this,
+  connect(m_ui->applyButton, &QPushButton::clicked, this,
           &MainWindow::onApplyClicked);
 
   connect(m_ui->curveSelector, &QListWidget::currentRowChanged, this,
