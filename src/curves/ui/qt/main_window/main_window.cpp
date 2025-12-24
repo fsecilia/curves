@@ -88,6 +88,7 @@ void MainWindow::connectCurveInterpretation() {
           this, [&](bool checked) {
             onCurveInterpretation(checked, CurveInterpretation::kGain);
           });
+
   connect(m_ui->curveInterpretationSensitivityRadioButton,
           &QRadioButton::clicked, this, [&](bool checked) {
             onCurveInterpretation(checked, CurveInterpretation::kSensitivity);
