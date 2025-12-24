@@ -188,7 +188,7 @@ void MainWindow::enableDpiErrorState(bool enable) {
   }
 
   enableWidgetsOnDpiError(!m_dpiErrorStateEnabled);
-  m_ui->curve_editor->enableDpiErrorState(enable);
+  m_ui->curveEditor->enableDpiErrorState(enable);
 }
 
 void MainWindow::enableWidgetsOnDpiError(bool enable) {
@@ -197,8 +197,8 @@ void MainWindow::enableWidgetsOnDpiError(bool enable) {
       m_ui->applyButton,
       m_ui->curveConfig,
       m_ui->curveInterpretationGroupBox,
+      m_ui->curveEditor,
       m_ui->curveSelector,
-      m_ui->curve_editor,
       m_ui->filterOutputCheckBox,
       m_ui->filterScaleCheckBox,
       m_ui->filterSpeedCheckBox,
@@ -284,8 +284,8 @@ void MainWindow::clearParameterWidgets() {
 }
 
 void MainWindow::updateCurveDisplay() {
-  m_ui->curve_editor->setSpline(m_view_model->create_spline(),
-                                m_curveInterpretationParam->value());
+  m_ui->curveEditor->setSpline(m_view_model->create_spline(),
+                               m_curveInterpretationParam->value());
 }
 
 void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {
