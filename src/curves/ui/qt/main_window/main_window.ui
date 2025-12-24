@@ -341,6 +341,9 @@ QListWidget::item:selected:!active {
             <property name="maximum">
              <number>256000</number>
             </property>
+            <property name="stepType">
+             <enum>QAbstractSpinBox::StepType::AdaptiveDecimalStepType</enum>
+            </property>
            </widget>
           </item>
          </layout>
