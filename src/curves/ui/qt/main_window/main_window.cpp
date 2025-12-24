@@ -192,7 +192,7 @@ void MainWindow::enableDpiErrorState(bool enable) {
 }
 
 void MainWindow::enableWidgetsOnDpiError(bool enable) {
-  QWidget* widgets[] = {
+  QWidget* const widgets[] = {
       m_ui->anisotropyDoubleSpinBox,
       m_ui->applyButton,
       m_ui->curveConfig,
