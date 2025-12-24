@@ -35,7 +35,7 @@ class FromSensitivity {
     \param x Position to evaluate.
     \return {T(x), G(x)} where T(x) = xS(x) and G(x) = T'(x).
   */
-  auto advance_to(real_t x) noexcept -> Jet {
+  auto operator()(real_t x) noexcept -> Jet {
     if (x < std::numeric_limits<real_t>::epsilon()) {
       // Evaluate curve indirectly.
       return traits_.at_0(curve_);
@@ -51,6 +51,12 @@ class FromSensitivity {
     const real_t G = S + x * dS;
 
     return {T, G};
+  }
+
+  auto cusp_location() const noexcept -> real_t
+    requires HasCusp<Curve>
+  {
+    return curve_.cusp_location();
   }
 
   //! Access the underlying curve.

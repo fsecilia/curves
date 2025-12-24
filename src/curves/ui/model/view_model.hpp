@@ -22,6 +22,8 @@
 #include <curves/config/profile.hpp>
 #include <curves/config/profile_store.hpp>
 #include <curves/curves/transfer_function/curve.hpp>
+#include <curves/curves/transfer_function/from_gain.hpp>
+#include <curves/curves/transfer_function/from_sensitivity.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/ui/model/flat_visitor.hpp>
 #include <memory>
@@ -131,14 +133,21 @@ class ViewModel {
     std::unique_ptr<curves_spline> result;
     profile_.curve_profile_entries.visit_config(
         selected_curve(), [&](const auto& curve_profile_entry) {
-          // When we support gain curves, the choice is in
-          // curve_profile_entry.interpretation.
-
           const auto curve = curve_profile_entry.config.create();
           const auto sensitivity = profile_.sensitivity.value();
-          result =
-              std::make_unique<curves_spline>(curves::spline::create_spline(
-                  curves::TransferFunction{curve}, sensitivity));
+          switch (curve_profile_entry.interpretation.value()) {
+            case CurveInterpretation::kGain:
+              result =
+                  std::make_unique<curves_spline>(curves::spline::create_spline(
+                      curves::FromGain{curve}, sensitivity));
+              break;
+
+            case CurveInterpretation::kSensitivity:
+              result =
+                  std::make_unique<curves_spline>(curves::spline::create_spline(
+                      curves::FromSensitivity{curve}, sensitivity));
+              break;
+          }
         });
     return result;
   }

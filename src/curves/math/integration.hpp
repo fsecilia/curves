@@ -32,7 +32,7 @@ concept JetCallable = requires(F f, real_t x) {
 
 template <typename F>
 concept ValueCallable = requires(F f, real_t x) {
-  { f(x) } -> std::convertible_to<real_t>;
+  { f.value(x) } -> std::convertible_to<real_t>;
 };
 
 // ----------------------------------------------------------------------------
@@ -270,9 +270,10 @@ inline auto gauss5(real_t a, real_t b, const Gauss5Samples& samples) noexcept
 template <ValueCallable F>
 auto gauss5(F&& f, real_t a, real_t b) noexcept -> real_t {
   const auto nodes = gauss5_nodes(a, b);
-  return gauss5(a, b,
-                Gauss5Samples{f(nodes[0]), f(nodes[1]), f(nodes[2]),
-                              f(nodes[3]), f(nodes[4])});
+  return gauss5(
+      a, b,
+      Gauss5Samples{f.value(nodes[0]), f.value(nodes[1]), f.value(nodes[2]),
+                    f.value(nodes[3]), f.value(nodes[4])});
 }
 
 }  // namespace curves

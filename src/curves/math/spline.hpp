@@ -166,9 +166,8 @@ class KnotSampler {
     \param v sample location in physical space, as velocity.
     \returns Knot at sampled location.
   */
-  auto operator()(const auto& curve, real_t sensitivity, real_t v) const
-      -> Knot {
-    const auto [f, df] = curve(v);
+  auto operator()(auto&& curve, real_t sensitivity, real_t v) const -> Knot {
+    const auto [f, df] = std::forward<decltype(curve)>(curve)(v);
     return {v, f * sensitivity, df * sensitivity};
   }
 
@@ -193,7 +192,7 @@ class SplineBuilder {
 
   SplineBuilder() = default;
 
-  auto operator()(const auto& curve, real_t sensitivity) const noexcept
+  auto operator()(auto&& curve, real_t sensitivity) const noexcept
       -> curves_spline {
     curves_spline result;
 
@@ -213,7 +212,8 @@ class SplineBuilder {
     real_t v0 = x0_ref * x_to_v;
 
     // Pass physical v0 to sampler.
-    auto k0 = knot_sampler_(curve, sensitivity, v0);
+    auto k0 =
+        knot_sampler_(std::forward<decltype(curve)>(curve), sensitivity, v0);
 
     for (auto i = 0; i < num_segments; ++i) {
       // Calculate next position.
@@ -222,7 +222,8 @@ class SplineBuilder {
       const real_t v1 = x1_ref * x_to_v;
 
       // Sample next knot.
-      const auto k1 = knot_sampler_(curve, sensitivity, v1);
+      const auto k1 =
+          knot_sampler_(std::forward<decltype(curve)>(curve), sensitivity, v1);
 
       // Calculate physical width, dv
       // We still use the integer difference, dx, for precision.
@@ -380,10 +381,11 @@ class SplineBuilder {
   }
 };
 
-inline auto create_spline(const auto& curve, real_t sensitivity) noexcept
+inline auto create_spline(auto&& curve, real_t sensitivity) noexcept
     -> curves_spline {
   return SplineBuilder<SPLINE_NUM_SEGMENTS, KnotLocator, KnotSampler<>,
-                       SegmentConverter>{}(curve, sensitivity);
+                       SegmentConverter>{}(std::forward<decltype(curve)>(curve),
+                                           sensitivity);
 }
 
 }  // namespace spline

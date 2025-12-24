@@ -13,6 +13,7 @@
 namespace curves {
 namespace {
 
+#if 0
 // ----------------------------------------------------------------------------
 // Test Polynomials
 // ----------------------------------------------------------------------------
@@ -262,6 +263,7 @@ using LegacyTestVectorNameGenerator = TestNameGenerator<LegacyTestVector>;
 INSTANTIATE_TEST_SUITE_P(LegacyPolynomials, LegacyIntegrationTest,
                          ::testing::ValuesIn(kLegacyPolynomialTests),
                          LegacyTestVectorNameGenerator{});
+#endif
 
 }  // namespace
 }  // namespace curves

@@ -11,7 +11,7 @@
 #include <curves/lib.hpp>
 #include <curves/curves/transfer_function/curve.hpp>
 #include <curves/math/curve.hpp>
-#include <limits>
+#include <curves/math/integration.hpp>
 #include <utility>
 
 namespace curves {
@@ -40,12 +40,18 @@ class FromGain {
     \param x Position to evaluate.
     \return {T(x), G(x)} where T(x) = int[0, x] G(t)dt.
   */
-  auto advance_to(real_t x) noexcept -> Jet {
+  auto operator()(real_t x) noexcept -> Jet {
     if constexpr (TraitsHasAntiderivative<Traits, Curve>) {
       return advance_analytic(x);
     } else {
       return advance_numeric(x);
     }
+  }
+
+  auto cusp_location() const noexcept -> real_t
+    requires HasCusp<Curve>
+  {
+    return curve_.cusp_location();
   }
 
   //! Access to the underlying curve.
@@ -64,17 +70,6 @@ class FromGain {
   // Accumulator state for numeric integration.
   real_t T_ = 0.0L;
   real_t x_ = 0.0L;
-
-  //! Evaluate curve at x, with boundary handling.
-  auto eval_at(real_t x) const noexcept -> Jet {
-    if (x < std::numeric_limits<real_t>::epsilon()) {
-      // Evaluate curve indirectly.
-      return traits_.at_0(curve_);
-    }
-
-    // Evaluate curve directly.
-    return curve_(x);
-  }
 
   //! Compute {T(x), G(x)} using the closed-form antiderivative.
   auto advance_analytic(real_t x) noexcept -> Jet
