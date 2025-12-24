@@ -34,6 +34,11 @@ void CurveEditor::setSpline(std::shared_ptr<const curves_spline> spline,
   update();
 }
 
+void CurveEditor::enableDpiErrorState(bool enable) {
+  m_dpiErrorStateEnabled = enable;
+  update();
+}
+
 void CurveEditor::wheelEvent(QWheelEvent* event) {
   const auto factor = std::pow(1.001, event->angleDelta().y());
 
@@ -91,9 +96,13 @@ void CurveEditor::paintEvent(QPaintEvent*) {
   painter.setRenderHint(QPainter::Antialiasing);
   painter.fillRect(rect(), m_theme.background);
 
-  drawGrid(painter);
-  drawTraces(painter);
-  m_legendRenderer.paint(painter, m_traces);
+  if (m_dpiErrorStateEnabled) {
+    drawDpiErrorState(painter);
+  } else {
+    drawGrid(painter);
+    drawTraces(painter);
+    m_legendRenderer.paint(painter, m_traces);
+  }
 }
 
 void CurveEditor::resizeEvent(QResizeEvent* event) {
@@ -115,6 +124,21 @@ QPointF CurveEditor::logicalToScreen(QPointF logical) {
   const auto y = (m_visible_range.bottom() - logical.y()) /
                  m_visible_range.height() * height();
   return QPointF(x, y);
+}
+
+void CurveEditor::drawDpiErrorState(QPainter& painter) {
+  QFont font = painter.font();
+  font.setPointSize(font.pointSize() * 4);
+  font.setBold(true);
+  painter.setFont(font);
+
+  // Set text color (muted gray or alert color depending on preference)
+  painter.setPen(QPen{m_theme.grid_axis});
+
+  QString text = "Enter Mouse DPI\nTo Begin";
+
+  // Draw centered text.
+  painter.drawText(rect(), Qt::AlignCenter, text);
 }
 
 double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {

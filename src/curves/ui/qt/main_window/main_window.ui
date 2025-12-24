@@ -326,7 +326,7 @@ QListWidget::item:selected:!active {
              </sizepolicy>
             </property>
             <property name="text">
-             <string>DPI</string>
+             <string>Mouse DPI</string>
             </property>
            </widget>
           </item>

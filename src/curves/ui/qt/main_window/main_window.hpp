@@ -58,6 +58,7 @@ class MainWindow : public QMainWindow {
   curves::Param<curves::CurveInterpretation>* m_curveInterpretationParam{
       nullptr};
   QPalette m_defaultDpiSpinBoxPalette;
+  bool m_dpiErrorStateEnabled = false;
   static const std::string_view curveSelectorCssTemplate;
 
   //! Wires up control signals, syncs contents with config.
@@ -76,7 +77,10 @@ class MainWindow : public QMainWindow {
   void connectFooterControls();
 
   //! Enters or exits error state when dpi is not set.
-  void setDpiErrorState(bool enabled);
+  void enableDpiErrorState(bool enable);
+
+  //! Enables or disables set of widgets based on dpi error state.
+  void enableWidgetsOnDpiError(bool enable);
 
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();

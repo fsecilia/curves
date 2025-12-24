@@ -69,7 +69,7 @@ void MainWindow::onCurveInterpretation(bool checked,
   onParameterChanged();
 }
 
-void MainWindow::onDpiChanged(int dpi) { setDpiErrorState(dpi == 0); }
+void MainWindow::onDpiChanged(int dpi) { enableDpiErrorState(dpi == 0); }
 
 void MainWindow::onApplyClicked() {
   // Save current profile to disk
@@ -165,8 +165,11 @@ void MainWindow::connectFooterControls() {
                             m_view_model->output_filter_halflife_param());
 }
 
-void MainWindow::setDpiErrorState(bool enabled) {
-  if (enabled) {
+void MainWindow::enableDpiErrorState(bool enable) {
+  if (m_dpiErrorStateEnabled == enable) return;
+
+  m_dpiErrorStateEnabled = enable;
+  if (m_dpiErrorStateEnabled) {
     auto palette = m_ui->dpiSpinBox->palette();
 
     const auto darkMode = palette.color(QPalette::Text).lightness() > 128;
@@ -183,6 +186,29 @@ void MainWindow::setDpiErrorState(bool enabled) {
     // Restore original palette.
     m_ui->dpiSpinBox->setPalette(m_defaultDpiSpinBoxPalette);
   }
+
+  enableWidgetsOnDpiError(!m_dpiErrorStateEnabled);
+  m_ui->curve_editor->enableDpiErrorState(enable);
+}
+
+void MainWindow::enableWidgetsOnDpiError(bool enable) {
+  QWidget* widgets[] = {
+      m_ui->anisotropyDoubleSpinBox,
+      m_ui->applyButton,
+      m_ui->curveConfig,
+      m_ui->curveInterpretationGroupBox,
+      m_ui->curveSelector,
+      m_ui->curve_editor,
+      m_ui->filterOutputCheckBox,
+      m_ui->filterScaleCheckBox,
+      m_ui->filterSpeedCheckBox,
+      m_ui->outputFilterHalflifeDoubleSpinBox,
+      m_ui->rotationDoubleSpinBox,
+      m_ui->scaleFilterHalflifeDoubleSpinBox,
+      m_ui->sensitivityDoubleSpinBox,
+      m_ui->speedFilterHalflifeDoubleSpinBox,
+  };
+  for (auto widget : widgets) widget->setEnabled(enable);
 }
 
 void MainWindow::populateCurveSelector() {

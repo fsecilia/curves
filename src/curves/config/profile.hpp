@@ -35,7 +35,7 @@ struct Profile {
   Param<int_t> version{"Version", 1, 0, std::numeric_limits<int_t>::max()};
 
   Param<CurveType> curve_type{"Curve", CurveType::kSynchronous};
-  Param<int_t> dpi{"DPI", 0, 0, 256000};
+  Param<int_t> dpi{"Mouse DPI", 0, 0, 256000};
   Param<double> sensitivity{"Sensitivity", 1.0, 1.0e-3, 1.0e3};
   Param<double> anisotropy{"Y/X Scaling", 1.0, 1.0e-3, 1.0e3};
   Param<double> rotation{"Rotation", 0.0, -360.0, 360.0};

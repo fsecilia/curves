@@ -17,7 +17,7 @@ class CurveEditor;
 
 struct Theme {
   QColor background = QColor(20, 20, 20);
-  QColor grid_axis = QColor(180, 180, 180);
+  QColor grid_axis = QColor(150, 150, 150);
   QColor grid_major = QColor(60, 60, 60);
   QColor grid_minor = QColor(40, 40, 40);
   QColor grid_geometric_limit = QColor(0, 255, 0);
@@ -41,6 +41,8 @@ class CurveEditor : public QWidget {
   void setSpline(std::shared_ptr<const curves_spline> spline,
                  curves::CurveInterpretation curveInterpretation);
 
+  void enableDpiErrorState(bool enable);
+
  protected:
   void wheelEvent(QWheelEvent* event) override;
   void mousePressEvent(QMouseEvent* event) override;
@@ -58,12 +60,16 @@ class CurveEditor : public QWidget {
   curves::CurveInterpretation m_curveInterpretation{
       curves::CurveInterpretation::kGain};
 
+  bool m_dpiErrorStateEnabled = false;
+
   bool m_dragging = false;
   QPointF m_last_mouse_pos;
 
   QRectF m_visible_range;
   QPointF screenToLogical(QPointF screen);
   QPointF logicalToScreen(QPointF logical);
+
+  void drawDpiErrorState(QPainter& painter);
 
   double calcGridStep(double visible_range, int target_num_ticks);
   void drawGrid(QPainter& painter);
