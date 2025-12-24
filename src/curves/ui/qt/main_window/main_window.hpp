@@ -85,6 +85,9 @@ class MainWindow : public QMainWindow {
   //! Populates curve selector list from CurveType enum values.
   void populateCurveSelector();
 
+  //! Applies styling to curve selector to make it appear as a tab view.
+  void applyCurveSelectorCss();
+
   //! Selects curve specified by profile, triggering curveConfig rebuild.
   void selectConfiguredCurve();
 

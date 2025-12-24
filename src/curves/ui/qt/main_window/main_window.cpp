@@ -18,6 +18,15 @@ using namespace curves;
 // configs.
 static constexpr auto minVisibleParameters = 4;
 
+static auto desaturate(QColor color) noexcept -> QColor {
+  float h;
+  float s;
+  float l;
+  color.getHslF(&h, &s, &l);
+  color.setHslF(h, 0.0f, l);
+  return color;
+}
+
 MainWindow::MainWindow(std::shared_ptr<ViewModel> view_model,
                        std::shared_ptr<ProfileStore> store, QWidget* parent)
     : QMainWindow(parent),
@@ -189,6 +198,7 @@ void MainWindow::enableDpiErrorState(bool enable) {
 
   enableWidgetsOnDpiError(!m_dpiErrorStateEnabled);
   m_ui->curveEditor->enableDpiErrorState(enable);
+  applyCurveSelectorCss();
 }
 
 void MainWindow::enableWidgetsOnDpiError(bool enable) {
@@ -212,7 +222,7 @@ void MainWindow::enableWidgetsOnDpiError(bool enable) {
 }
 
 void MainWindow::populateCurveSelector() {
-  applyGeneratedCss(*m_ui->curveSelector, curveSelectorCssTemplate);
+  applyCurveSelectorCss();
 
   // For now, we manually iterate the known curve types.
   // When we add more curves, we add them here and to the enum.
@@ -226,6 +236,10 @@ void MainWindow::populateCurveSelector() {
   // Future curves would be added here:
   // m_ui->curveSelector->addItem(
   //     QString::fromUtf8(to_string(CurveType::kLinear)));
+}
+
+void MainWindow::applyCurveSelectorCss() {
+  applyGeneratedCss(*m_ui->curveSelector, curveSelectorCssTemplate);
 }
 
 void MainWindow::selectConfiguredCurve() {
@@ -313,8 +327,11 @@ void MainWindow::applyGeneratedCss(QWidget& widget,
   const auto standardPalette = QApplication::palette();
   const auto window = standardPalette.color(QPalette::Window);
   const auto windowText = standardPalette.color(QPalette::WindowText);
-  const auto highlight = standardPalette.color(QPalette::Highlight);
   const auto highlightText = standardPalette.color(QPalette::HighlightedText);
+
+  const auto standardHighlight = standardPalette.color(QPalette::Highlight);
+  const auto highlight =
+      widget.isEnabled() ? standardHighlight : desaturate(standardHighlight);
 
   const auto darkBackground = window.darker(200);
   const auto hoverBackground = darkBackground.lighter(150);
