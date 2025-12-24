@@ -200,18 +200,6 @@ TEST_P(IntegralTest, gauss5_function) {
   EXPECT_NEAR(result, p.expected, p.tol_gauss5) << p.description;
 }
 
-// Name generator for readable test output.
-template <typename TestVector>
-struct TestNameGenerator {
-  auto operator()(const ::testing::TestParamInfo<TestVector>& info)
-      -> std::string {
-    auto s = std::string{info.param.description};
-    std::replace_if(
-        s.begin(), s.end(), [](char c) { return !std::isalnum(c); }, '_');
-    return s;
-  }
-};
-
 using IntegralTestVectorNameGenerator = TestNameGenerator<IntegralTestVector>;
 
 INSTANTIATE_TEST_SUITE_P(Polynomials, IntegralTest,
