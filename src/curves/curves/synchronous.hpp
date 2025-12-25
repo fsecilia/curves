@@ -18,7 +18,7 @@ namespace curves {
 
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.5L, 1.0L, 5.0L, 0.5L) {}
+  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0L, 5.0L, 0.5L) {}
 
   SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
                    real_t smooth) noexcept
