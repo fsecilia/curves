@@ -30,7 +30,7 @@
 // resolution coarser, but reducing the total number of segments. Decreasing it
 // makes them smaller, making the resolution finer, but increasing the number
 // of segments. Every -1 adds a whole octave's worth of segments.
-#define SPLINE_DOMAIN_MIN_LOG2 -8
+#define SPLINE_DOMAIN_MIN_LOG2 -7
 
 // Domain maximum.
 //
