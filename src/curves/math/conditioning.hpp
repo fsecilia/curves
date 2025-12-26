@@ -14,6 +14,7 @@ extern "C" {
 
 #include <curves/lib.hpp>
 #include <curves/math/fixed.hpp>
+#include <curves/math/inverse_function.hpp>
 
 namespace curves {
 
