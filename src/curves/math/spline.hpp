@@ -117,10 +117,9 @@ struct KnotLocator {
   }
 
   /*!
-    Finds the knot location x, in reference space, that is numerically closest
-    to the target velocity v, in physical space.
+    Finds the knot index that is numerically closest to the target velocity.
   */
-  auto find_nearest_x(real_t v) const noexcept -> real_t {
+  auto find_nearest_knot(real_t v) const noexcept -> int {
     const auto count = SPLINE_NUM_SEGMENTS;
     const auto indices = std::views::iota(0, count);
 
@@ -133,14 +132,14 @@ struct KnotLocator {
       Find first x not smaller than v.
 
       Since x and v are in different domains, this is comparing apples to
-      oranges, but it's to find which apple is most similar to which orange, so
-      the comparison is useful.
+      oranges, but it's to find which apple is most similar to which orange,
+      so the comparison is useful.
     */
     const auto lower_bound = std::ranges::lower_bound(indices, v, {}, project);
 
     // Handle boundary conditions.
-    if (lower_bound == indices.begin()) return project(0);
-    if (lower_bound == indices.end()) return project(count - 1);
+    if (lower_bound == indices.begin()) return 0;
+    if (lower_bound == indices.end()) return count - 1;
 
     /*
       Find x closest to v.
@@ -150,7 +149,12 @@ struct KnotLocator {
     */
     const auto next_x = project(*lower_bound);
     const auto prev_x = project(*lower_bound - 1);
-    return std::abs(prev_x - v) < std::abs(next_x - v) ? prev_x : next_x;
+    return std::abs(prev_x - v) < std::abs(next_x - v) ? *lower_bound - 1
+                                                       : *lower_bound;
+  }
+
+  auto find_nearest_x(real_t v) const noexcept -> real_t {
+    return Fixed::literal(locate_knot(find_nearest_knot(v))).to_real();
   }
 };
 
