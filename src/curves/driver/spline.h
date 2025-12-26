@@ -48,7 +48,7 @@
 // 4 = 16/octave: less accurate, fewer segments, 129 segments, ~8kB
 // 5 = 32/octave: balances accuracy, number of segments, 257 segments, ~16kB
 // 6 = 64/octave: more accurate, more segments, 513 segments, ~32kB
-#define SPLINE_SEGMENTS_PER_OCTAVE_LOG2 5
+#define SPLINE_SEGMENTS_PER_OCTAVE_LOG2 4
 #define SPLINE_SEGMENTS_PER_OCTAVE (1LL << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 
 // ----------------------------------------------------------------------------
