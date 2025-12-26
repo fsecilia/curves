@@ -25,6 +25,10 @@ auto transform_v_to_x(const struct curves_spline* spline, s64 v) noexcept
   return ::transform_v_to_x(spline, v);
 }
 
+auto eval(const struct curves_spline_segment* segment, s64 t) noexcept -> s64 {
+  return ::eval_segment(segment, t);
+}
+
 auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64 {
   return ::curves_spline_eval(spline, v);
 }
