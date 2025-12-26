@@ -34,6 +34,7 @@ list(APPEND lib_files
   math/io.hpp
   math/spline.cpp
   math/spline.hpp
+  numeric_cast.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
   ui/rendering/spline_evaluator.hpp
