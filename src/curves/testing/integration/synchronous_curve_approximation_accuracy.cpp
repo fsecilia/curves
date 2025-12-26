@@ -13,11 +13,14 @@
 #include <curves/math/spline.hpp>
 #include <curves/testing/error_metrics.hpp>
 
+#include <iomanip>
+
 namespace curves {
 namespace {
 
 TEST(spline_set, synchronous_accuracy_from_sensitivity) {
-  auto sensitivity = FromSensitivity{SynchronousCurve{8.0L, 0.5L, 10.5L, 0.5L}};
+  auto sensitivity =
+      FromSensitivity{SynchronousCurve{8.0L, 0.5L, 10.55L, 0.5L}};
 
   const auto spline = spline::create_spline(sensitivity, 1.0L);
   const auto v_to_x = Fixed::literal(spline.v_to_x);
@@ -84,7 +87,7 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
 }
 
 TEST(spline_set, synchronous_accuracy_from_gain) {
-  auto spline_gain = FromGain{SynchronousCurve{8.0L, 0.5L, 10.5L, 0.5L}};
+  auto spline_gain = FromGain{SynchronousCurve{8.0L, 0.5L, 10.55L, 0.5L}};
   auto test_gain = spline_gain;  // make copy
 
   const auto spline = spline::create_spline(spline_gain, 1.0L);
