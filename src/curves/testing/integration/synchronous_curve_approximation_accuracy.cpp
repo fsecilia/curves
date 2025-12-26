@@ -13,8 +13,6 @@
 #include <curves/math/spline.hpp>
 #include <curves/testing/error_metrics.hpp>
 
-#include <iomanip>
-
 namespace curves {
 namespace {
 
