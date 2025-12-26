@@ -4,6 +4,7 @@
 obj-m := curves.o
 
 curves-common-objs := \
+  conditioning.o \
   fixed.o \
   kernel_compat.o \
   math.o
