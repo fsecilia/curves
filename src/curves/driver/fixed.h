@@ -1005,4 +1005,26 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 	}
 }
 
+// ----------------------------------------------------------------------------
+// Fixed-Precision
+// ----------------------------------------------------------------------------
+
+/*
+ * During development, the spline stuff settled on a fixed-precision format
+ * of Q31.32. It uses very little of the above. We consolidate it here for now.
+ * Once we have the full math pipeline complete, we will be returning to
+ * variable precision in general and delta-shift encoding for the horner's
+ * loops in particular.
+*/
+
+#define CURVES_FIXED_SHIFT 32
+#define CURVES_FIXED_ONE (1LL << CURVES_FIXED_SHIFT)
+#define CURVES_FIXED_HALF (1LL << (CURVES_FIXED_SHIFT - 1))
+
+static inline s64 curves_fixed_multiply_round(s64 multiplicand, s64 multiplier)
+{
+	return (s64)(((s128)multiplicand * multiplier + CURVES_FIXED_HALF) >>
+		     CURVES_FIXED_SHIFT);
+}
+
 #endif /* _CURVES_FIXED_H */
