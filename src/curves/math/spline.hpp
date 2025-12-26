@@ -280,12 +280,12 @@ class SplineBuilder {
     strategy.
 
     If we notice the final value has negative slope, we cut the width of the
-    final segment in half, giving it the same amount of curvature to cover in a
-    shorter distance. This means it can curve more overall locally, so it pulls
-    out of a dive sooner. If it still can't pull up fast enough, we halve the
-    width again. We keep doing this until it pulls out of the dive, or hits the
-    minimum segment width, which is very small. This adaptation tries to
-    maintain y''(1) = 0.
+    final segment in half, giving it the same amount of curvature to cover in
+    a shorter distance. This means it can curve more overall locally, so it
+    pulls out of a dive sooner. If it still can't pull up fast enough, we
+    halve the width again. We keep doing this until it pulls out of the dive,
+    or hits the minimum segment width, which is very small. This adaptation
+    tries to maintain y''(1) = 0.
 
     If we get through all loop iterations and still didn't pull up in time, we
     force a hard corner with y'(1) = 0.
@@ -325,7 +325,8 @@ class SplineBuilder {
     const int max_log2 = prev_width_log2 + SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
     int runout_log2 = max_log2;
 
-    // Track whether we found a safe parameterization and the diminishing width.
+    // Track whether we found a safe parameterization and the diminishing
+    // width.
     bool is_safe = false;
     real_t dv_final = 0;
 
@@ -384,8 +385,8 @@ class SplineBuilder {
     } else {
       // [PANIC MODE]
       // We did not find a safe width that pulls out ofthe dive.
-      // Force the curve to flatten. Breaks C2 with a jerk spike, but preserves
-      // monotonicity. Derived from 3a + 2b + c = 0, when y' = 0.
+      // Force the curve to flatten. Breaks C2 with a jerk spike, but
+      // preserves monotonicity. Derived from 3a + 2b + c = 0, when y' = 0.
       next_a = -(2.0 * next_b + next_c) / 3.0;
     }
 
