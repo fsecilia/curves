@@ -1005,45 +1005,4 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 	}
 }
 
-/*
- * Approximate log2(x) in Q32 fixed-point.
- *
- * Uses linear interpolation between powers of two:
- *   x = log2(2^n * (1 + f)) = n + log2(1 + f) ~= n + f
- *
- * The algorithm is just: decompose y = 2^n*(1 + f), then return n + f instead
- * of n + log2(1 + f).
- *
- * Maximum error ~= 0.086 (about 8.6% of one integer step):
- *   e(f) = f - log2(1 + f)                     // actual - expected
- *   de/df = 1 - 1/((1 + f)ln2)                 // differentiate
- *   1 - 1/((1 + f)ln2) = 0                     // set to 0 to find extremum
- *   f = 1/ln2 - 1                              // solve for f
- *   e(f) = (1/ln2 - 1) - log2(1 + (1/ln2 - 1)) // substitute back
- *   e(f) = 1/ln2 - 1 - log2(1/ln2)             // cancel terms
- *   e(f) = -0.086071332                        // put in calculator
- */
-static inline s64 approx_log2_q32(s64 x)
-{
-	if (x <= 0)
-		return 0;
-
-	// Extract integer part.
-	int lz = curves_clz64(x);
-	int n = 63 - lz;
-
-	// Normalize: shift x so the leading 1 sits at bit 63.
-	// In binary, the value looks like 1.ffff....
-	u64 normalized = (u64)x << lz;
-
-	// Extract fractional part.
-	// f is the 32 bits after the leading bit, the ".ffff..." part.
-	// Shift right by 31 moves bits [62:31] -> [31:0].
-	// The cast to u32 discards bit 32 (the leading 1 we don't want).
-	u32 f = (u32)(normalized >> 31);
-
-	// Q32 result: n*2^32 + f
-	return ((s64)n << 32) | f;
-}
-
 #endif /* _CURVES_FIXED_H */
