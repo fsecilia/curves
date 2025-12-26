@@ -26,14 +26,14 @@ inline auto curves_fixed_from_double(double value,
   return fixed;
 }
 
-inline auto curves_fixed_to_double(s64 value, unsigned int frac_bits) noexcept
+inline auto curves_fixed_to_double(s64 raw, unsigned int frac_bits) noexcept
     -> double {
-  return static_cast<double>(value) / static_cast<double>(1ll << frac_bits);
+  return static_cast<double>(raw) / static_cast<double>(1ll << frac_bits);
 }
 
 struct Fixed {
-  using Value = int64_t;
-  Value value;
+  using Raw = int64_t;
+  Raw raw;
 
   using WideValue = int128_t;
 
@@ -42,70 +42,70 @@ struct Fixed {
     temporary until we sort out the UAPI. Since the only fixed point we do
     on the usermode side is generating the spline, this may hold.
   */
-  inline static const int_t frac_bits = SPLINE_FRAC_BITS;
+  inline static const int_t kFracBits = SPLINE_FRAC_BITS;
 
   constexpr Fixed() = default;
   constexpr Fixed(std::signed_integral auto integer) noexcept
-      : value{static_cast<Value>(integer) << frac_bits} {}
+      : raw{static_cast<Raw>(integer) << kFracBits} {}
   explicit constexpr Fixed(std::floating_point auto real) noexcept
-      : value{static_cast<Value>(std::round(real * (1LL << frac_bits)))} {}
+      : raw{static_cast<Raw>(std::round(real * (1LL << kFracBits)))} {}
 
   struct LiteralTag {};
-  constexpr Fixed(Value value, LiteralTag) noexcept : value{value} {}
-  static constexpr auto literal(Value value) noexcept -> Fixed {
-    return Fixed{value, LiteralTag{}};
+  constexpr Fixed(Raw raw, LiteralTag) noexcept : raw{raw} {}
+  static constexpr auto from_raw(Raw raw) noexcept -> Fixed {
+    return Fixed{raw, LiteralTag{}};
   }
 
-  constexpr auto to_int() const noexcept -> int_t { return value >> frac_bits; }
+  constexpr auto to_int() const noexcept -> int_t { return raw >> kFracBits; }
   constexpr auto to_real() const noexcept -> real_t {
-    return static_cast<real_t>(value) / (1LL << frac_bits);
+    return static_cast<real_t>(raw) / (1LL << kFracBits);
   }
 
   constexpr Fixed(const Fixed&) noexcept = default;
   constexpr auto operator=(const Fixed&) noexcept -> Fixed& = default;
 
   constexpr auto operator+=(const Fixed& src) noexcept -> Fixed& {
-    value += src.value;
+    raw += src.raw;
     return *this;
   }
 
   constexpr auto operator-=(const Fixed& src) noexcept -> Fixed& {
-    value -= src.value;
+    raw -= src.raw;
     return *this;
   }
 
   constexpr auto operator*=(const Fixed& src) noexcept -> Fixed& {
-    value = (static_cast<WideValue>(value) * src.value) >> frac_bits;
+    raw = (static_cast<WideValue>(raw) * src.raw) >> kFracBits;
     return *this;
   }
 
   constexpr auto operator/=(const Fixed& src) noexcept -> Fixed& {
-    value = (static_cast<WideValue>(value) << frac_bits) / src.value;
+    raw = (static_cast<WideValue>(raw) << kFracBits) / src.raw;
     return *this;
   }
 
   constexpr auto operator&=(const std::integral auto& src) noexcept -> Fixed& {
-    value &= src;
+    raw &= src;
     return *this;
   }
 
   constexpr auto operator|=(const std::integral auto& src) noexcept -> Fixed& {
-    value |= src;
+    raw |= src;
     return *this;
   }
 
   constexpr auto operator^=(const std::integral auto& src) noexcept -> Fixed& {
-    value ^= src;
+    raw ^= src;
     return *this;
   }
 
   constexpr auto operator>>=(const std::integral auto& src) noexcept -> Fixed& {
-    value >>= src;
+    raw >>= src;
     return *this;
   }
 
   constexpr auto operator<<=(const std::integral auto& src) noexcept -> Fixed& {
-    value <<= src;
+    raw <<= src;
     return *this;
   }
 
@@ -168,23 +168,23 @@ struct Fixed {
 
   constexpr auto mul_div(Fixed dividend, Fixed divisor) const noexcept
       -> Fixed {
-    const auto numerator = static_cast<WideValue>(value) * dividend.value;
-    return literal(static_cast<Value>(numerator / divisor.value));
+    const auto numerator = static_cast<WideValue>(raw) * dividend.raw;
+    return from_raw(static_cast<Raw>(numerator / divisor.raw));
   }
 
   constexpr auto fma(Fixed multiplier, Fixed addend) const noexcept -> Fixed {
-    return literal(static_cast<Value>(
-        (static_cast<WideValue>(value) * multiplier.value + addend.value) >>
-        frac_bits));
+    return from_raw(static_cast<Raw>(
+        (static_cast<WideValue>(raw) * multiplier.raw + addend.raw) >>
+        kFracBits));
   }
 
   constexpr auto reciprocal() const noexcept -> Fixed {
-    return literal(static_cast<Value>(
-        (static_cast<WideValue>(1) << (2 * frac_bits)) / value));
+    return from_raw(
+        static_cast<Raw>((static_cast<WideValue>(1) << (2 * kFracBits)) / raw));
   }
 
   constexpr auto floor() const noexcept -> Fixed {
-    return literal(value & ~((1LL << frac_bits) - 1));
+    return from_raw(raw & ~((1LL << kFracBits) - 1));
   }
 };
 

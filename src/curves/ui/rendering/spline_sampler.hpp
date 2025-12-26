@@ -47,26 +47,26 @@ class SplineSampler {
 
     // 1. Transform Physical Space (v) -> Reference Space (x)
     // We use Fixed types to match the kernel's precision exactly.
-    const auto v_to_x = Fixed::literal(m_spline->v_to_x);
+    const auto v_to_x = Fixed::from_raw(m_spline->v_to_x);
     const auto x_fixed = Fixed{v} * v_to_x;
 
     // 2. Check Boundaries (Using the new struct limits)
 
     // Case A: Linear Extension (Beyond Runout)
-    if (x_fixed.value >= m_spline->x_runout_limit) {
+    if (x_fixed.raw >= m_spline->x_runout_limit) {
       return sample_linear_extension(v);
     }
 
     // Case B: Runout Segment (Between Grid and Extension)
-    if (x_fixed.value >= m_spline->x_geometric_limit) {
-      return convert_runout(x_fixed.value, v_to_x);
+    if (x_fixed.raw >= m_spline->x_geometric_limit) {
+      return convert_runout(x_fixed.raw, v_to_x);
     }
 
     // Case C: Geometric Grid
     // We reuse the C kernel's efficient bitwise locator.
     s64 segment_idx;
     s64 t_fixed;
-    spline::locate_segment(x_fixed.value, &segment_idx, &t_fixed);
+    spline::locate_segment(x_fixed.raw, &segment_idx, &t_fixed);
 
     return convert_geometric(segment_idx, t_fixed, v_to_x);
   }
@@ -78,10 +78,10 @@ class SplineSampler {
   // Helper to convert fixed-point coeffs to float struct
   auto make_sample(const s64* coeffs, real_t t, real_t inv_width,
                    bool is_start) const -> SplineSample {
-    return SplineSample{.a = Fixed::literal(coeffs[0]).to_real(),
-                        .b = Fixed::literal(coeffs[1]).to_real(),
-                        .c = Fixed::literal(coeffs[2]).to_real(),
-                        .d = Fixed::literal(coeffs[3]).to_real(),
+    return SplineSample{.a = Fixed::from_raw(coeffs[0]).to_real(),
+                        .b = Fixed::from_raw(coeffs[1]).to_real(),
+                        .c = Fixed::from_raw(coeffs[2]).to_real(),
+                        .d = Fixed::from_raw(coeffs[3]).to_real(),
                         .t = t,
                         .inv_width = inv_width,
                         .is_start_segment = is_start};
@@ -99,12 +99,12 @@ class SplineSampler {
     // Get Width in Reference Space (dx) from Locator
     const s64 x_start = knot_locator_(segment_idx);
     const s64 x_end = knot_locator_(segment_idx + 1);
-    const real_t dx = Fixed::literal(x_end - x_start).to_real();
+    const real_t dx = Fixed::from_raw(x_end - x_start).to_real();
 
     // Convert to Physical Width
     const real_t dv = dx / v_to_x.to_real();
 
-    return make_sample(seg.coeffs, Fixed::literal(t_fixed).to_real(),
+    return make_sample(seg.coeffs, Fixed::from_raw(t_fixed).to_real(),
                        (dv > 0) ? 1.0 / dv : 0.0, segment_idx == 0);
   }
 
@@ -118,11 +118,11 @@ class SplineSampler {
     // Calculate Width
     // width = 1 << log2
     s64 width_fixed = 1ULL << m_spline->runout_width_log2;
-    real_t dx = Fixed::literal(width_fixed).to_real();
+    real_t dx = Fixed::from_raw(width_fixed).to_real();
     real_t dv = dx / v_to_x.to_real();
 
     return make_sample(m_spline->runout_segment.coeffs,
-                       Fixed::literal(t_fixed).to_real(), 1.0 / dv, false);
+                       Fixed::from_raw(t_fixed).to_real(), 1.0 / dv, false);
   }
 
   // Handle linear extrapolation
@@ -132,10 +132,10 @@ class SplineSampler {
 
     // Calculate Physical Slope (m_phys) from Runout Segment
     const auto& r_seg = m_spline->runout_segment;
-    double ra = Fixed::literal(r_seg.coeffs[0]).to_real();
-    double rb = Fixed::literal(r_seg.coeffs[1]).to_real();
-    double rc = Fixed::literal(r_seg.coeffs[2]).to_real();
-    double rd = Fixed::literal(r_seg.coeffs[3]).to_real();
+    double ra = Fixed::from_raw(r_seg.coeffs[0]).to_real();
+    double rb = Fixed::from_raw(r_seg.coeffs[1]).to_real();
+    double rc = Fixed::from_raw(r_seg.coeffs[2]).to_real();
+    double rd = Fixed::from_raw(r_seg.coeffs[3]).to_real();
 
     // Slope at t=1 in Parametric Space
     // P'(1) = 3a + 2b + c
@@ -143,16 +143,16 @@ class SplineSampler {
 
     // Convert to Physical Slope: m_phys = m_param * inv_width_runout
     s64 r_width_fixed = 1ULL << m_spline->runout_width_log2;
-    real_t r_dx = Fixed::literal(r_width_fixed).to_real();
-    real_t r_dv = r_dx / Fixed::literal(m_spline->v_to_x).to_real();
+    real_t r_dx = Fixed::from_raw(r_width_fixed).to_real();
+    real_t r_dv = r_dx / Fixed::from_raw(m_spline->v_to_x).to_real();
     double m_phys = m_param * (1.0 / r_dv);
 
     // Calculate Y Start (Value at runout t=1)
     double y_start = ra + rb + rc + rd;
 
     // Calculate v_start (Physical start of extension)
-    real_t x_runout_end = Fixed::literal(m_spline->x_runout_limit).to_real();
-    real_t v_start = x_runout_end / Fixed::literal(m_spline->v_to_x).to_real();
+    real_t x_runout_end = Fixed::from_raw(m_spline->x_runout_limit).to_real();
+    real_t v_start = x_runout_end / Fixed::from_raw(m_spline->v_to_x).to_real();
 
     // Synthesize Sample
     // We set up a linear polynomial: Y(t) = c*t + d

@@ -162,7 +162,7 @@ double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
                             double start, double step) {
   const auto x_geometric_limit =
-      Fixed::literal(m_spline->x_geometric_limit).to_real();
+      Fixed::from_raw(m_spline->x_geometric_limit).to_real();
 
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
     if (x < m_visible_range.left()) continue;

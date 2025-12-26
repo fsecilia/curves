@@ -21,18 +21,18 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
       FromSensitivity{SynchronousCurve{8.0L, 0.5L, 10.55L, 0.5L}};
 
   const auto spline = spline::create_spline(sensitivity, 1.0L);
-  const auto v_to_x = Fixed::literal(spline.v_to_x);
+  const auto v_to_x = Fixed::from_raw(spline.v_to_x);
 
-  std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.value
+  std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.raw
             << " fixed)" << std::endl;
 
-  const auto x_max = Fixed::literal(spline.x_geometric_limit);
+  const auto x_max = Fixed::from_raw(spline.x_geometric_limit);
 
   const auto dx = Fixed{1.0e-3L};
-  std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
+  std::cout << "dx: " << dx << " (" << dx.raw << " fixed)" << std::endl;
 
   auto x_fixed = Fixed{0};
-  std::cout << "x0: " << x_fixed << " (" << x_fixed.value << " fixed)"
+  std::cout << "x0: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
   auto max_abs_err = 0.0L;
@@ -46,11 +46,11 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
     const auto x_float = x_fixed.to_real();
 
     const auto y_curve = sensitivity(x_float).f;
-    const auto y_table = spline::eval(&spline, x_fixed.value);
+    const auto y_table = spline::eval(&spline, x_fixed.raw);
     x_fixed += dx;
 
     const auto expected = y_curve;
-    const auto actual = Fixed::literal(y_table).to_real();
+    const auto actual = Fixed::from_raw(y_table).to_real();
 
     ++num_samples;
     if (!expected) continue;  // skip near 0 so rel doesn't explode
@@ -69,7 +69,7 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
     }
     sse_rel += rel_err * rel_err;
   }
-  std::cout << "x1: " << x_fixed << " (" << x_fixed.value << " fixed)"
+  std::cout << "x1: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
   const auto mse_abs = sse_abs / num_samples;
@@ -89,18 +89,18 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
   auto test_gain = spline_gain;  // make copy
 
   const auto spline = spline::create_spline(spline_gain, 1.0L);
-  const auto v_to_x = Fixed::literal(spline.v_to_x);
+  const auto v_to_x = Fixed::from_raw(spline.v_to_x);
 
-  std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.value
+  std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.raw
             << " fixed)" << std::endl;
 
-  const auto x_max = Fixed::literal(spline.x_geometric_limit);
+  const auto x_max = Fixed::from_raw(spline.x_geometric_limit);
 
   const auto dx = Fixed{1.0e-3L};
-  std::cout << "dx: " << dx << " (" << dx.value << " fixed)" << std::endl;
+  std::cout << "dx: " << dx << " (" << dx.raw << " fixed)" << std::endl;
 
   auto x_fixed = Fixed{0};
-  std::cout << "x0: " << x_fixed << " (" << x_fixed.value << " fixed)"
+  std::cout << "x0: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
   auto max_abs_err = 0.0L;
@@ -114,11 +114,11 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
     const auto x_float = x_fixed.to_real();
 
     const auto y_curve = test_gain(x_float).f;
-    const auto y_table = spline::eval(&spline, x_fixed.value);
+    const auto y_table = spline::eval(&spline, x_fixed.raw);
     x_fixed += dx;
 
     const auto expected = y_curve;
-    const auto actual = Fixed::literal(y_table).to_real();
+    const auto actual = Fixed::from_raw(y_table).to_real();
 
     ++num_samples;
     if (!expected) continue;  // skip near 0 so rel doesn't explode
@@ -137,7 +137,7 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
     }
     sse_rel += rel_err * rel_err;
   }
-  std::cout << "x1: " << x_fixed << " (" << x_fixed.value << " fixed)"
+  std::cout << "x1: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
   const auto mse_abs = sse_abs / num_samples;
@@ -165,26 +165,26 @@ TEST(spline, sensitivity_vs_gain) {
   ASSERT_EQ(sensitivity_spline.runout_width_log2,
             gain_spline.runout_width_log2);
 
-  const auto x_max = Fixed::literal(sensitivity_spline.x_geometric_limit);
+  const auto x_max = Fixed::from_raw(sensitivity_spline.x_geometric_limit);
 
   const auto dv = Fixed{1.0e-3L};
-  std::cout << "dv: " << dv << " (" << dv.value << " fixed)" << std::endl;
+  std::cout << "dv: " << dv << " (" << dv.raw << " fixed)" << std::endl;
 
   auto v = Fixed(0);
   auto x =
-      Fixed::literal(spline::transform_v_to_x(&sensitivity_spline, v.value));
-  std::cout << "x0: " << x << " (" << x.value << " fixed)" << std::endl;
+      Fixed::from_raw(spline::transform_v_to_x(&sensitivity_spline, v.raw));
+  std::cout << "x0: " << x << " (" << x.raw << " fixed)" << std::endl;
 
   const auto knot_locator = spline::KnotLocator{};
 
   auto accuracy_metrics = AccuracyMetrics{};
   while (v < x_max) {
     const auto xSx_viaTs =
-        Fixed::literal(spline::eval(&sensitivity_spline, x.value));
+        Fixed::from_raw(spline::eval(&sensitivity_spline, x.raw));
 
     s64 segment_index;
     s64 t;
-    spline::locate_segment(x.value, &segment_index, &t);
+    spline::locate_segment(x.raw, &segment_index, &t);
     const auto gain_segment = gain_spline.segments[segment_index];
     const auto* const c = gain_segment.coeffs;
     auto dTg = 3 * c[0];
@@ -192,18 +192,18 @@ TEST(spline, sensitivity_vs_gain) {
           2 * c[1];
     dTg = (s64)(((s128)dTg * t + SPLINE_FRAC_HALF) >> SPLINE_FRAC_BITS) + c[2];
 
-    const auto segment_width = Fixed::literal(knot_locator(segment_index + 1) -
+    const auto segment_width = Fixed::from_raw(knot_locator(segment_index + 1) -
                                               knot_locator(segment_index));
 
-    const auto xSx_viaTg = x * Fixed::literal(dTg) / segment_width;
+    const auto xSx_viaTg = x * Fixed::from_raw(dTg) / segment_width;
 
     accuracy_metrics.sample(x.to_real(), xSx_viaTs.to_real(),
                             xSx_viaTg.to_real());
 
     v += dv;
-    x = Fixed::literal(spline::transform_v_to_x(&sensitivity_spline, v.value));
+    x = Fixed::from_raw(spline::transform_v_to_x(&sensitivity_spline, v.raw));
   }
-  std::cout << "x1: " << x << " (" << x.value << " fixed)" << std::endl;
+  std::cout << "x1: " << x << " (" << x.raw << " fixed)" << std::endl;
 
   std::cout << accuracy_metrics << std::endl;
 }

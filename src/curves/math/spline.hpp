@@ -67,8 +67,8 @@ class SegmentConverter {
     // current segment.
     const auto d = c[0] + c[1] + c[2] + c[3];
 
-    return {.coeffs = {Fixed{-2 * dy + m0 + m1}.value,
-                       Fixed{3 * dy - 2 * m0 - m1}.value, Fixed{m0}.value, d}};
+    return {.coeffs = {Fixed{-2 * dy + m0 + m1}.raw,
+                       Fixed{3 * dy - 2 * m0 - m1}.raw, Fixed{m0}.raw, d}};
   }
 };
 
@@ -131,7 +131,7 @@ struct KnotLocator {
 
     // Project index -> knot location in reference space.
     const auto project = [&](int index) {
-      return Fixed::literal((*this)(index)).to_real();
+      return Fixed::from_raw((*this)(index)).to_real();
     };
 
     /*
@@ -160,7 +160,7 @@ struct KnotLocator {
   }
 
   auto find_nearest_x(real_t v) const noexcept -> real_t {
-    return Fixed::literal(locate_knot(find_nearest_knot(v))).to_real();
+    return Fixed::from_raw(locate_knot(find_nearest_knot(v))).to_real();
   }
 };
 
@@ -214,14 +214,14 @@ class SplineBuilder {
       const auto cusp_v = curve.cusp_location();
       const auto cusp_x = knot_locator_.find_nearest_x(cusp_v);
       x_to_v = cusp_v / cusp_x;
-      result.v_to_x = Fixed{cusp_x / cusp_v}.value;
+      result.v_to_x = Fixed{cusp_x / cusp_v}.raw;
     } else {
-      result.v_to_x = Fixed{1}.value;
+      result.v_to_x = Fixed{1}.raw;
     }
 
     // Start at index 0.
     s64 x0_fixed = knot_locator_(0);
-    real_t x0_ref = Fixed::literal(x0_fixed).to_real();
+    real_t x0_ref = Fixed::from_raw(x0_fixed).to_real();
     real_t v0 = x0_ref * x_to_v;
 
     // Pass physical v0 to sampler.
@@ -231,7 +231,7 @@ class SplineBuilder {
     for (auto i = 0; i < num_segments; ++i) {
       // Calculate next position.
       const s64 x1_fixed = knot_locator_(i + 1);
-      const real_t x1_ref = Fixed::literal(x1_fixed).to_real();
+      const real_t x1_ref = Fixed::from_raw(x1_fixed).to_real();
       const real_t v1 = x1_ref * x_to_v;
 
       // Sample next knot.
@@ -241,7 +241,7 @@ class SplineBuilder {
       // Calculate physical width, dv
       // We still use the integer difference, dx, for precision.
       const s64 width_fixed = x1_fixed - x0_fixed;
-      const real_t dx_ref = Fixed::literal(width_fixed).to_real();
+      const real_t dx_ref = Fixed::from_raw(width_fixed).to_real();
 
       // dv = dx * scalar
       const real_t dv = dx_ref * x_to_v;
@@ -300,10 +300,10 @@ class SplineBuilder {
         ((last_idx >> SPLINE_SEGMENTS_PER_OCTAVE_LOG2) - 1);
 
     // Fetch previous coefficients for continuity.
-    const auto prev_a = Fixed::literal(prev.coeffs[0]).to_real();
-    const auto prev_b = Fixed::literal(prev.coeffs[1]).to_real();
-    const auto prev_c = Fixed::literal(prev.coeffs[2]).to_real();
-    const auto prev_d = Fixed::literal(prev.coeffs[3]).to_real();
+    const auto prev_a = Fixed::from_raw(prev.coeffs[0]).to_real();
+    const auto prev_b = Fixed::from_raw(prev.coeffs[1]).to_real();
+    const auto prev_c = Fixed::from_raw(prev.coeffs[2]).to_real();
+    const auto prev_d = Fixed::from_raw(prev.coeffs[3]).to_real();
 
     const auto y_start = prev_a + prev_b + prev_c + prev_d;
 
@@ -313,7 +313,7 @@ class SplineBuilder {
 
     // Get previous physical width (dv_prev) to un-normalize.
     const s64 prev_len_fixed = 1ULL << prev_width_log2;
-    const real_t dv_prev = Fixed::literal(prev_len_fixed).to_real() * x_to_v;
+    const real_t dv_prev = Fixed::from_raw(prev_len_fixed).to_real() * x_to_v;
 
     // real slope, gain
     const auto m_real = m_start_norm / dv_prev;
@@ -339,7 +339,7 @@ class SplineBuilder {
     for (; runout_log2 >= SPLINE_MIN_SEGMENT_WIDTH_LOG2; --runout_log2) {
       // Calculate candidate width.
       const s64 runout_len_fixed = 1ULL << runout_log2;
-      dv_final = Fixed::literal(runout_len_fixed).to_real() * x_to_v;
+      dv_final = Fixed::from_raw(runout_len_fixed).to_real() * x_to_v;
 
       // Predict end slope (assuming standard y''(1)=0 constraint)
       // slope_end = slope_start + 0.5*curvature_start*width
@@ -360,7 +360,7 @@ class SplineBuilder {
       // Force use of minimum width
       runout_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2;
       const s64 min_len = 1ULL << runout_log2;
-      dv_final = Fixed::literal(min_len).to_real() * x_to_v;
+      dv_final = Fixed::from_raw(min_len).to_real() * x_to_v;
     }
 
     // Commit runout length.
@@ -390,10 +390,10 @@ class SplineBuilder {
       next_a = -(2.0 * next_b + next_c) / 3.0;
     }
 
-    result.runout_segment.coeffs[0] = Fixed{next_a}.value;
-    result.runout_segment.coeffs[1] = Fixed{next_b}.value;
-    result.runout_segment.coeffs[2] = Fixed{next_c}.value;
-    result.runout_segment.coeffs[3] = Fixed{next_d}.value;
+    result.runout_segment.coeffs[0] = Fixed{next_a}.raw;
+    result.runout_segment.coeffs[1] = Fixed{next_b}.raw;
+    result.runout_segment.coeffs[2] = Fixed{next_c}.raw;
+    result.runout_segment.coeffs[3] = Fixed{next_d}.raw;
   }
 };
 
