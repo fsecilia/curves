@@ -265,17 +265,18 @@ auto CurveEditor::drawTraces(QPainter& painter) -> void {
     });
   }
 
-  m_traces.draw(painter);
-
 #if 0
   auto segment_pen = QPen{Qt::darkBlue};
   painter.setPen(segment_pen);
   for (auto knot = 0; knot < SPLINE_NUM_SEGMENTS; ++knot) {
-    const auto knot_x = (Fixed::literal(spline::locate_knot(knot)) /
-                         Fixed::literal(m_spline->v_to_x))
-                            .to_real();
+    const auto knot_x =
+        (Fixed::literal(spline::KnotLocator::locate_knot(knot)) /
+         Fixed::literal(m_spline->v_to_x))
+            .to_real();
     painter.drawLine(logicalToScreen(QPointF(knot_x, -10000)),
                      logicalToScreen(QPointF(knot_x, 10000)));
   }
 #endif
+
+  m_traces.draw(painter);
 }
