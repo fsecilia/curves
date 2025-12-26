@@ -44,6 +44,7 @@ struct Fixed {
   */
   inline static const int_t frac_bits = SPLINE_FRAC_BITS;
 
+  constexpr Fixed() = default;
   constexpr Fixed(std::signed_integral auto integer) noexcept
       : value{static_cast<Value>(integer) << frac_bits} {}
   explicit constexpr Fixed(std::floating_point auto real) noexcept
