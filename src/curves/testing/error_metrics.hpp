@@ -60,7 +60,7 @@ struct AccuracyMetrics {
       << "RMSE Abs: " << src.rmse_abs() << "\n"
       << "Max Rel Error: " << src.max_rel_err 
         << " (x = " << src.max_rel_err_x << ")\n"
-      << "RMSE Rel: " << src.rmse_rel() << std::endl;
+      << "RMSE Rel: " << src.rmse_rel();
     // clang-format on
   }
 };
