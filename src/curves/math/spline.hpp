@@ -54,15 +54,15 @@ struct Knot {
 */
 class SegmentConverter {
  public:
-  auto operator()(const Knot& k0, const Knot& k1, real_t dv) const noexcept
-      -> curves_spline_segment {
+  auto operator()(const Knot& k0, const Knot& k1, real_t dv,
+                  Fixed d_prev) const noexcept -> curves_spline_segment {
     const auto dy = k1.y - k0.y;
     const auto m0 = k0.m * dv;
     const auto m1 = k1.m * dv;
 
     return {.coeffs = {Fixed{-2 * dy + m0 + m1}.value,
                        Fixed{3 * dy - 2 * m0 - m1}.value, Fixed{m0}.value,
-                       Fixed{k0.y}.value}};
+                       d_prev.value}};
   }
 };
 
@@ -218,6 +218,7 @@ class SplineBuilder {
     auto k0 =
         knot_sampler_(std::forward<decltype(curve)>(curve), sensitivity, v0);
 
+    auto d_prev = Fixed{0};
     for (auto i = 0; i < num_segments; ++i) {
       // Calculate next position.
       const s64 x1_fixed = knot_locator_(i + 1);
@@ -237,7 +238,14 @@ class SplineBuilder {
       const real_t dv = dx_ref * x_to_v;
 
       // Converter uses knots and physical width.dd
-      result.segments[i] = segment_converter_(k0, k1, dv);
+      auto& segment = result.segments[i];
+      segment = segment_converter_(k0, k1, dv, d_prev);
+
+      auto* c = segment.coeffs;
+
+      // Calc d for the next segment as *exact* sum of rounded terms of the
+      // current segment.
+      d_prev = Fixed::literal(c[0] + c[1] + c[2] + c[3]);
 
       // Advance.
       k0 = k1;
