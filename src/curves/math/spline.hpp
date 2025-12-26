@@ -28,6 +28,8 @@ static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <= SPLINE_DOMAIN_MIN_SHIFT);
 // Imports from c.
 auto calc_t(s64 x, int width_log2) -> s64;
 auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void;
+auto transform_v_to_x(const struct curves_spline* spline, s64 v) noexcept
+    -> s64;
 auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64;
 
 // Knot to form cubic hermite splines, {x, y, dy/dx}.

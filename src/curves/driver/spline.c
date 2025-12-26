@@ -164,19 +164,24 @@ static s64 eval_runout(const struct curves_spline *spline, s64 x)
 	return eval_segment(&spline->runout_segment, t);
 }
 
+// Transform from v in physical space to x in reference space.
+//
+// We scale the input velocity so that specific features (like cusps)
+// align with the fixed knot locations in our reference domain. Here,
+// we apply the transform and round.
+static s64 transform_v_to_x(const struct curves_spline *spline, s64 v)
+{
+	return (s64)(((s128)v * spline->v_to_x + SPLINE_FRAC_HALF) >>
+		     SPLINE_FRAC_BITS);
+}
+
 s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
 {
 	// Validate parameters.
 	if (unlikely(v < 0))
 		v = 0;
 
-	// Transform from v in physical space to x in reference space.
-	//
-	// We scale the input velocity so that specific features (like cusps)
-	// align with the fixed knot locations in our reference domain. Here,
-	// we apply the transform and round.
-	s64 x = (s64)(((s128)v * spline->v_to_x + SPLINE_FRAC_HALF) >>
-		      SPLINE_FRAC_BITS);
+	s64 x = transform_v_to_x(spline, v);
 
 	// Handle values beyond end of geometric progression.
 	if (x >= spline->x_geometric_limit) {
