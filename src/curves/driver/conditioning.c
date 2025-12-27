@@ -47,13 +47,13 @@ s64 curves_conditioning_apply(
 {
 	s64 v_segment_end;
 
-	// Floor segment.
+	// Floor segment (m = 0).
 	v_segment_end = conditioning->fade.v_begin;
 	if (v < v_segment_end) {
 		return conditioning->u_floor;
 	}
 
-	// Fade segment.
+	// Fade segment (m = 0->1).
 	v_segment_end += conditioning->fade.v_width;
 	if (v < v_segment_end) {
 		s64 u_base = conditioning->u_floor;
@@ -62,13 +62,13 @@ s64 curves_conditioning_apply(
 		return u_base + u_rel;
 	}
 
-	// Linear segment.
+	// Linear segment (m = 1).
 	v_segment_end = conditioning->taper.v_begin;
 	if (v < v_segment_end) {
 		return v - conditioning->u_lag;
 	}
 
-	// Taper segment.
+	// Taper segment (m = 1->0).
 	v_segment_end += conditioning->taper.v_width;
 	if (v < v_segment_end) {
 		s64 u_base = conditioning->taper.v_begin - conditioning->u_lag;
