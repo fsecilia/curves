@@ -7,16 +7,19 @@
 #include "conditioning.h"
 #include "fixed.h"
 
-// Evaluates `P(t) = t^4 * (c4 + t*c5 + t^2*c6)`, with rounding.
+// Evaluates `P(t) = t^4 * (c4 + t*c5 + t^2*c6)`, with rounding, using fma.
 static inline s64
 evaluate_transition_poly(const struct curves_conditioning_transition_poly *p,
 			 s64 t)
 {
+	s64 acc = p->c6;
+	acc = curves_fixed_fma_round(acc, t, p->c5); // (c6 * t) + c5
+	acc = curves_fixed_fma_round(acc, t, p->c4); // (Previous * t) + c4
+
 	s64 t2 = curves_fixed_multiply_round(t, t);
 	s64 t4 = curves_fixed_multiply_round(t2, t2);
-	s64 inner = curves_fixed_multiply_round(t, p->c6) + p->c5;
-	s64 outer = curves_fixed_multiply_round(t, inner) + p->c4;
-	return curves_fixed_multiply_round(t4, outer);
+
+	return curves_fixed_multiply_round(t4, acc);
 }
 
 // Calculates change in `u` relative to the start of transition,
