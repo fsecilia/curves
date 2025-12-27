@@ -42,24 +42,6 @@ apply_transition(const struct curves_conditioning_transition_poly *p, s64 v,
 	return u_begin + u;
 }
 
-// Extrapolates linear extension past the end of taper,
-// `u = u_taper_begin + u_taper_height + m_end*v_rel`
-static inline s64 extrapolate_linear_extension(
-	const struct curves_conditioning_transition_poly *p, s64 v, s64 m_begin,
-	s64 m_end, s64 u_lag)
-{
-	s64 v_taper_end = p->v_begin + p->v_width;
-	s64 v_rel = v - v_taper_end;
-
-	s64 u = curves_fixed_multiply_round(m_end, v_rel);
-
-	s64 u_taper_begin = p->v_begin - u_lag;
-	s64 u_taper_height = apply_transition(p, v_taper_end, m_begin, m_end);
-	s64 u_begin = u_taper_begin + u_taper_height;
-
-	return u_begin + u;
-}
-
 s64 curves_conditioning_apply(
 	s64 v, const struct curves_conditioning_params *conditioning)
 {
@@ -91,14 +73,10 @@ s64 curves_conditioning_apply(
 	if (v < v_segment_end) {
 		s64 u_base = conditioning->taper.v_begin - conditioning->u_lag;
 		s64 u_rel = apply_transition(&conditioning->taper, v,
-					     CURVES_FIXED_ONE,
-					     conditioning->m_limit);
+					     CURVES_FIXED_ONE, 0);
 		return u_base + u_rel;
 	}
 
-	// Extrapolated segment.
-	return extrapolate_linear_extension(&conditioning->taper, v,
-					    CURVES_FIXED_ONE,
-					    conditioning->m_limit,
-					    conditioning->u_lag);
+	// Ceiling segment (m = 0).
+	return conditioning->u_ceiling;
 }

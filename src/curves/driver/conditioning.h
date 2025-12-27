@@ -25,7 +25,7 @@ struct curves_conditioning_params {
 	struct curves_conditioning_transition_poly fade;
 	s64 u_lag; // Vertical shift to keep linear region continuous.
 	struct curves_conditioning_transition_poly taper;
-	s64 m_limit; // Target slope at end of taper.
+	s64 u_ceiling; // Constant output `u` from ceiling region.
 };
 
 s64 curves_conditioning_apply(
