@@ -70,12 +70,12 @@ struct Fixed {
   }
 
   constexpr auto operator*=(const Fixed& src) noexcept -> Fixed& {
-    raw = (static_cast<WideValue>(raw) * src.raw) >> kFracBits;
+    raw = curves_fixed_multiply_round(raw, src.raw);
     return *this;
   }
 
   constexpr auto operator/=(const Fixed& src) noexcept -> Fixed& {
-    raw = (static_cast<WideValue>(raw) << kFracBits) / src.raw;
+    raw = curves_fixed_divide_round(raw, src.raw);
     return *this;
   }
 
@@ -161,15 +161,12 @@ struct Fixed {
   constexpr auto operator==(const Fixed&) const noexcept -> bool = default;
   constexpr auto operator<=>(const Fixed&) const noexcept -> auto = default;
 
-  constexpr auto fma(Fixed multiplier, Fixed addend) const noexcept -> Fixed {
-    return from_raw(static_cast<Raw>(
-        (static_cast<WideValue>(raw) * multiplier.raw + addend.raw) >>
-        kFracBits));
+  constexpr auto fma(Fixed multiplicand, Fixed addend) const noexcept -> Fixed {
+    return from_raw(curves_fixed_fma_round(raw, multiplicand.raw, addend.raw));
   }
 
   constexpr auto reciprocal() const noexcept -> Fixed {
-    return from_raw(
-        static_cast<Raw>((static_cast<WideValue>(1) << (2 * kFracBits)) / raw));
+    return from_raw(curves_fixed_divide_round(kOne, raw));
   }
 
   constexpr auto floor() const noexcept -> Fixed {
