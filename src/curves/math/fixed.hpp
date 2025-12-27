@@ -161,12 +161,6 @@ struct Fixed {
   constexpr auto operator==(const Fixed&) const noexcept -> bool = default;
   constexpr auto operator<=>(const Fixed&) const noexcept -> auto = default;
 
-  constexpr auto mul_div(Fixed dividend, Fixed divisor) const noexcept
-      -> Fixed {
-    const auto numerator = static_cast<WideValue>(raw) * dividend.raw;
-    return from_raw(static_cast<Raw>(numerator / divisor.raw));
-  }
-
   constexpr auto fma(Fixed multiplier, Fixed addend) const noexcept -> Fixed {
     return from_raw(static_cast<Raw>(
         (static_cast<WideValue>(raw) * multiplier.raw + addend.raw) >>
