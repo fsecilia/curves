@@ -37,12 +37,13 @@ struct Fixed {
   using WideValue = int128_t;
 
   inline static const int_t kFracBits = CURVES_FIXED_SHIFT;
+  inline static const int_t kOne = 1LL << kFracBits;
 
   constexpr Fixed() = default;
   constexpr Fixed(std::signed_integral auto integer) noexcept
       : raw{static_cast<Raw>(integer) << kFracBits} {}
   explicit constexpr Fixed(std::floating_point auto real) noexcept
-      : raw{static_cast<Raw>(std::round(real * (1LL << kFracBits)))} {}
+      : raw{static_cast<Raw>(std::round(real * kOne))} {}
 
   struct LiteralTag {};
   constexpr Fixed(Raw raw, LiteralTag) noexcept : raw{raw} {}
@@ -52,7 +53,7 @@ struct Fixed {
 
   constexpr auto to_int() const noexcept -> int_t { return raw >> kFracBits; }
   constexpr auto to_real() const noexcept -> real_t {
-    return static_cast<real_t>(raw) / (1LL << kFracBits);
+    return static_cast<real_t>(raw) / kOne;
   }
 
   constexpr Fixed(const Fixed&) noexcept = default;
@@ -178,7 +179,7 @@ struct Fixed {
   }
 
   constexpr auto floor() const noexcept -> Fixed {
-    return from_raw(raw & ~((1LL << kFracBits) - 1));
+    return from_raw(raw & ~(kOne - 1));
   }
 };
 
