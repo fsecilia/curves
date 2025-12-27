@@ -10,7 +10,6 @@
 
 extern "C" {
 #include <curves/driver/fixed.h>
-#include <curves/driver/spline.h>
 }  // extern "C"
 
 #include <curves/lib.hpp>
@@ -37,12 +36,7 @@ struct Fixed {
 
   using WideValue = int128_t;
 
-  /*
-    The frac bits used by spline is currently the source of truth. This is
-    temporary until we sort out the UAPI. Since the only fixed point we do
-    on the usermode side is generating the spline, this may hold.
-  */
-  inline static const int_t kFracBits = SPLINE_FRAC_BITS;
+  inline static const int_t kFracBits = CURVES_FIXED_SHIFT;
 
   constexpr Fixed() = default;
   constexpr Fixed(std::signed_integral auto integer) noexcept

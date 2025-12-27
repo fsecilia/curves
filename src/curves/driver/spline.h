@@ -10,6 +10,7 @@
 #define _CURVES_SPLINE_H
 
 #include "kernel_compat.h"
+#include "fixed.h"
 
 // ----------------------------------------------------------------------------
 // Tunable Parameters
@@ -19,7 +20,7 @@
 // ----------------------------------------------------------------------------
 
 // Fractional bits of the fixed-point format.
-#define SPLINE_FRAC_BITS 32
+#define SPLINE_FRAC_BITS CURVES_FIXED_SHIFT
 
 // Domain minimum.
 //
