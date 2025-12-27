@@ -1027,4 +1027,31 @@ static inline s64 curves_fixed_multiply_round(s64 multiplicand, s64 multiplier)
 		     CURVES_FIXED_SHIFT);
 }
 
+static inline s64 curves_fixed_fma_round(s64 multiplicand, s64 multiplier,
+					 s64 addend)
+{
+	s128 product = (s128)multiplicand * multiplier;
+	s128 sum = product + ((s128)addend << CURVES_FIXED_SHIFT);
+	return (s64)((sum + CURVES_FIXED_HALF) >> CURVES_FIXED_SHIFT);
+}
+
+static inline s64 curves_fixed_divide_round(s64 dividend, s64 divisor)
+{
+	s64 quotient_sign_mask = curves_sign_mask(dividend ^ divisor);
+
+	u64 u_dividend = curves_strip_sign(dividend);
+	u64 u_divisor = curves_strip_sign(divisor);
+
+	u128 numerator = (u128)u_dividend << CURVES_FIXED_SHIFT;
+
+	struct div_u128_u64_result div_result =
+		curves_div_u128_u64(numerator, u_divisor);
+
+	u64 carry =
+		(div_result.remainder >= (u_divisor - div_result.remainder));
+
+	return curves_apply_sign(div_result.quotient + carry,
+				 quotient_sign_mask);
+}
+
 #endif /* _CURVES_FIXED_H */
