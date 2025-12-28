@@ -35,13 +35,7 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
   std::cout << "x0: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
-  auto max_abs_err = 0.0L;
-  auto max_rel_err = 0.0L;
-  auto max_abs_err_x = 0.0L;
-  auto max_rel_err_x = 0.0L;
-  auto sse_abs = 0.0L;
-  auto sse_rel = 0.0L;
-  auto num_samples = 0;
+  auto accuracy_metrics = AccuracyMetrics{};
   while (x_fixed < x_max) {
     const auto x_float = x_fixed.to_real();
 
@@ -52,36 +46,12 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
     const auto expected = y_curve;
     const auto actual = Fixed::from_raw(y_table).to_real();
 
-    ++num_samples;
-    if (!expected) continue;  // skip near 0 so rel doesn't explode
-
-    const auto abs_err = std::abs(actual - expected);
-    if (max_abs_err < abs_err) {
-      max_abs_err = abs_err;
-      max_abs_err_x = x_float;
-    }
-    sse_abs += abs_err * abs_err;
-
-    const auto rel_err = std::abs(abs_err / expected);
-    if (max_rel_err < rel_err) {
-      max_rel_err = rel_err;
-      max_rel_err_x = x_float;
-    }
-    sse_rel += rel_err * rel_err;
+    accuracy_metrics.sample(x_float, actual, expected);
   }
   std::cout << "x1: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
-  const auto mse_abs = sse_abs / num_samples;
-  const auto mse_rel = sse_rel / num_samples;
-  std::cout << "Max Abs Error: " << max_abs_err << " (x = " << max_abs_err_x
-            << ")"
-            << "\nSSE Abs: " << sse_abs << "\nMSE Abs: " << mse_abs
-            << "\nRMSE Abs: " << std::sqrt(mse_abs)
-            << "\nMax Rel Error: " << max_rel_err << " (x = " << max_rel_err_x
-            << ")"
-            << "\nSSE Rel: " << sse_rel << "\nMSE Rel: " << mse_rel
-            << "\nRMSE Rel: " << std::sqrt(mse_rel) << std::endl;
+  std::cout << accuracy_metrics << std::endl;
 }
 
 TEST(spline_set, synchronous_accuracy_from_gain) {
@@ -103,13 +73,7 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
   std::cout << "x0: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
-  auto max_abs_err = 0.0L;
-  auto max_rel_err = 0.0L;
-  auto max_abs_err_x = 0.0L;
-  auto max_rel_err_x = 0.0L;
-  auto sse_abs = 0.0L;
-  auto sse_rel = 0.0L;
-  auto num_samples = 0;
+  auto accuracy_metrics = AccuracyMetrics{};
   while (x_fixed < x_max) {
     const auto x_float = x_fixed.to_real();
 
@@ -120,36 +84,12 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
     const auto expected = y_curve;
     const auto actual = Fixed::from_raw(y_table).to_real();
 
-    ++num_samples;
-    if (!expected) continue;  // skip near 0 so rel doesn't explode
-
-    const auto abs_err = std::abs(actual - expected);
-    if (max_abs_err < abs_err) {
-      max_abs_err = abs_err;
-      max_abs_err_x = x_float;
-    }
-    sse_abs += abs_err * abs_err;
-
-    const auto rel_err = std::abs(abs_err / expected);
-    if (max_rel_err < rel_err) {
-      max_rel_err = rel_err;
-      max_rel_err_x = x_float;
-    }
-    sse_rel += rel_err * rel_err;
+    accuracy_metrics.sample(x_float, actual, expected);
   }
   std::cout << "x1: " << x_fixed << " (" << x_fixed.raw << " fixed)"
             << std::endl;
 
-  const auto mse_abs = sse_abs / num_samples;
-  const auto mse_rel = sse_rel / num_samples;
-  std::cout << "Max Abs Error: " << max_abs_err << " (x = " << max_abs_err_x
-            << ")"
-            << "\nSSE Abs: " << sse_abs << "\nMSE Abs: " << mse_abs
-            << "\nRMSE Abs: " << std::sqrt(mse_abs)
-            << "\nMax Rel Error: " << max_rel_err << " (x = " << max_rel_err_x
-            << ")"
-            << "\nSSE Rel: " << sse_rel << "\nMSE Rel: " << mse_rel
-            << "\nRMSE Rel: " << std::sqrt(mse_rel) << std::endl;
+  std::cout << accuracy_metrics << std::endl;
 }
 
 TEST(spline, sensitivity_vs_gain) {
