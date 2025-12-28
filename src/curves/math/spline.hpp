@@ -26,10 +26,9 @@ namespace spline {
 static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <= SPLINE_DOMAIN_MIN_SHIFT);
 
 // Imports from c.
-auto calc_t(s64 x, int width_log2) -> s64;
-auto locate_segment(s64 x) noexcept -> curves_located_segment;
-auto transform_v_to_x(const struct curves_spline* spline, s64 v) noexcept
-    -> s64;
+auto map_x_to_t(s64 x, int width_log2) -> s64;
+auto map_v_to_x(const struct curves_spline* spline, s64 v) noexcept -> s64;
+auto resolve_x(s64 x) noexcept -> curves_spline_coords;
 auto eval(const struct curves_spline_segment* segment, s64 t) noexcept -> s64;
 auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64;
 

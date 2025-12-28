@@ -12,9 +12,9 @@
  * All segments have constant, minimum width.
  * Index is x divided by that width.
  */
-static inline struct curves_segment_params subnormal_segment(s64 x)
+static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 {
-	return (struct curves_segment_params){
+	return (struct curves_segment_desc){
 		.index = x >> SPLINE_MIN_SEGMENT_WIDTH_LOG2,
 		.width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2
 	};
@@ -28,32 +28,27 @@ static inline struct curves_segment_params subnormal_segment(s64 x)
  * The offset is calculated by normalizing x to the current octave's
  * segment width, then masking out the leading implicit 1.
  */
-static inline struct curves_segment_params octave_segment(s64 x, int x_log2)
+static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
+								  int x_log2)
 {
 	int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
+	int segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+	s64 first_octave_segment =
+		((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
+		SPLINE_SEGMENTS_PER_OCTAVE;
+	s64 x_uniform = x >> segment_width_log2;
+	s64 segment_within_octave = x_uniform - SPLINE_SEGMENTS_PER_OCTAVE;
 
-	// Base index starts after the linear subnormal zone plus all previous
-	// geometric octaves.
-	s64 first_segment = ((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
-			    SPLINE_SEGMENTS_PER_OCTAVE;
-
-	// Width scales with octave index.
-	int width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
-
-	// Normalize x to octave width to find offset.
-	int segment_within_octave =
-		(x >> width_log2) - SPLINE_SEGMENTS_PER_OCTAVE;
-
-	return (struct curves_segment_params){ .index = first_segment +
-							segment_within_octave,
-					       .width_log2 = width_log2 };
+	return (struct curves_segment_desc){ .index = first_octave_segment +
+						      segment_within_octave,
+					     .width_log2 = segment_width_log2 };
 }
 
 /*
  * Calculates t: The position of x within the segment, normalized to [0, 1).
  * t = (x % width) / width
  */
-static inline s64 calc_t(s64 x, int width_log2)
+static inline s64 map_x_to_t(s64 x, int width_log2)
 {
 	u64 mask = (1ULL << width_log2) - 1;
 	u64 remainder = x & mask;
@@ -65,15 +60,15 @@ static inline s64 calc_t(s64 x, int width_log2)
 		return remainder >> (width_log2 - SPLINE_FRAC_BITS);
 }
 
-// Finds segment index and interpolation for input x.
-static inline struct curves_located_segment locate_segment(s64 x)
+// Finds segment segment_index and interpolation for input x.
+static inline struct curves_spline_coords resolve_x(s64 x)
 {
-	struct curves_segment_params params;
-	struct curves_located_segment result;
+	struct curves_segment_desc segment_geometry;
+	struct curves_spline_coords result;
 	int x_log2;
 
 	if (unlikely(x < 0)) {
-		result.index = 0;
+		result.segment_index = 0;
 		result.t = 0;
 		return result;
 	}
@@ -81,12 +76,12 @@ static inline struct curves_located_segment locate_segment(s64 x)
 	x_log2 = curves_log2_u64((u64)x);
 
 	if (x_log2 < SPLINE_DOMAIN_MIN_SHIFT)
-		params = subnormal_segment(x);
+		segment_geometry = calc_subnormal_segment_desc(x);
 	else
-		params = octave_segment(x, x_log2);
+		segment_geometry = calc_octave_segment_desc(x, x_log2);
 
-	result.index = params.index;
-	result.t = calc_t(x, params.width_log2);
+	result.segment_index = segment_geometry.index;
+	result.t = map_x_to_t(x, segment_geometry.width_log2);
 	return result;
 }
 
@@ -150,7 +145,7 @@ static s64 eval_runout(const struct curves_spline *spline, s64 x)
 	s64 offset = x - spline->x_geometric_limit;
 
 	// Convert x in reference space to t in parametric space.
-	s64 t = calc_t(offset, spline->runout_width_log2);
+	s64 t = map_x_to_t(offset, spline->runout_width_log2);
 
 	// Evaluate segment parametrically.
 	return eval_segment(&spline->runout_segment, t);
@@ -161,7 +156,7 @@ static s64 eval_runout(const struct curves_spline *spline, s64 x)
 // We scale the input velocity so that specific features (like cusps)
 // align with the fixed knot locations in our reference domain. Here,
 // we apply the transform and round.
-static s64 transform_v_to_x(const struct curves_spline *spline, s64 v)
+static s64 map_v_to_x(const struct curves_spline *spline, s64 v)
 {
 	return (s64)(((s128)v * spline->v_to_x + SPLINE_FRAC_HALF) >>
 		     SPLINE_FRAC_BITS);
@@ -169,14 +164,14 @@ static s64 transform_v_to_x(const struct curves_spline *spline, s64 v)
 
 s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
 {
-	struct curves_located_segment located_segment;
+	struct curves_spline_coords spline_coords;
 	s64 x;
 
 	// Validate parameters.
 	if (unlikely(v < 0))
 		v = 0;
 
-	x = transform_v_to_x(spline, v);
+	x = map_v_to_x(spline, v);
 
 	// Handle values beyond end of geometric progression.
 	if (x >= spline->x_geometric_limit) {
@@ -187,9 +182,9 @@ s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
 	}
 
 	// Extract segment index and parameter t from x.
-	located_segment = locate_segment(x);
+	spline_coords = resolve_x(x);
 
 	// Evaluate segment in parametric space.
-	return eval_segment(&spline->segments[located_segment.index],
-			    located_segment.t);
+	return eval_segment(&spline->segments[spline_coords.segment_index],
+			    spline_coords.t);
 }

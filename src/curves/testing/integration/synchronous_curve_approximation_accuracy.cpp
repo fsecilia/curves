@@ -171,8 +171,7 @@ TEST(spline, sensitivity_vs_gain) {
   std::cout << "dv: " << dv << " (" << dv.raw << " fixed)" << std::endl;
 
   auto v = Fixed(0);
-  auto x =
-      Fixed::from_raw(spline::transform_v_to_x(&sensitivity_spline, v.raw));
+  auto x = Fixed::from_raw(spline::map_v_to_x(&sensitivity_spline, v.raw));
   std::cout << "x0: " << x << " (" << x.raw << " fixed)" << std::endl;
 
   const auto knot_locator = spline::KnotLocator{};
@@ -182,20 +181,20 @@ TEST(spline, sensitivity_vs_gain) {
     const auto xSx_viaTs =
         Fixed::from_raw(spline::eval(&sensitivity_spline, x.raw));
 
-    const auto located_segment = spline::locate_segment(x.raw);
-    const auto gain_segment = gain_spline.segments[located_segment.index];
+    const auto spline_coords = spline::resolve_x(x.raw);
+    const auto gain_segment = gain_spline.segments[spline_coords.segment_index];
     const auto* const c = gain_segment.coeffs;
     auto dTg = 3 * c[0];
-    dTg = (s64)(((s128)dTg * located_segment.t + SPLINE_FRAC_HALF) >>
+    dTg = (s64)(((s128)dTg * spline_coords.t + SPLINE_FRAC_HALF) >>
                 SPLINE_FRAC_BITS) +
           2 * c[1];
-    dTg = (s64)(((s128)dTg * located_segment.t + SPLINE_FRAC_HALF) >>
+    dTg = (s64)(((s128)dTg * spline_coords.t + SPLINE_FRAC_HALF) >>
                 SPLINE_FRAC_BITS) +
           c[2];
 
     const auto segment_width =
-        Fixed::from_raw(knot_locator(located_segment.index + 1) -
-                        knot_locator(located_segment.index));
+        Fixed::from_raw(knot_locator(spline_coords.segment_index + 1) -
+                        knot_locator(spline_coords.segment_index));
 
     const auto xSx_viaTg = x * Fixed::from_raw(dTg) / segment_width;
 
@@ -203,7 +202,7 @@ TEST(spline, sensitivity_vs_gain) {
                             xSx_viaTg.to_real());
 
     v += dv;
-    x = Fixed::from_raw(spline::transform_v_to_x(&sensitivity_spline, v.raw));
+    x = Fixed::from_raw(spline::map_v_to_x(&sensitivity_spline, v.raw));
   }
   std::cout << "x1: " << x << " (" << x.raw << " fixed)" << std::endl;
 

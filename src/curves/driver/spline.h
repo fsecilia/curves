@@ -81,13 +81,13 @@
 // Spline
 // ----------------------------------------------------------------------------
 
-struct curves_segment_params {
+struct curves_segment_desc {
 	s64 index;
 	int width_log2;
 };
 
-struct curves_located_segment {
-	s64 index, t;
+struct curves_spline_coords {
+	s64 segment_index, t;
 };
 
 struct curves_spline_segment {

@@ -64,9 +64,10 @@ class SplineSampler {
 
     // Case C: Geometric Grid
     // We reuse the C kernel's efficient bitwise locator.
-    const auto located_segment = spline::locate_segment(x_fixed.raw);
+    const auto spline_coords = spline::resolve_x(x_fixed.raw);
 
-    return convert_geometric(located_segment.index, located_segment.t, v_to_x);
+    return convert_geometric(spline_coords.segment_index, spline_coords.t,
+                             v_to_x);
   }
 
  private:
@@ -111,7 +112,7 @@ class SplineSampler {
     // Calculate t using the struct's optimization
     // t = (x - start) / width
     s64 offset = x_current - m_spline->x_geometric_limit;
-    s64 t_fixed = spline::calc_t(offset, m_spline->runout_width_log2);
+    s64 t_fixed = spline::map_x_to_t(offset, m_spline->runout_width_log2);
 
     // Calculate Width
     // width = 1 << log2
