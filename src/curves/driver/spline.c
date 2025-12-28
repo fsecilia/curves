@@ -41,7 +41,7 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 								  int x_log2)
 {
-	int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
+	int octave = x_log2 - SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT;
 	int segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
 
 	/*
@@ -71,10 +71,10 @@ static inline s64 map_x_to_t(s64 x, int width_log2)
 	u64 remainder = x & mask;
 
 	// Shift to normalize remainder to SPLINE_FRAC_BITS
-	if (width_log2 < SPLINE_FRAC_BITS)
-		return remainder << (SPLINE_FRAC_BITS - width_log2);
+	if (width_log2 < CURVES_FIXED_SHIFT)
+		return remainder << (CURVES_FIXED_SHIFT - width_log2);
 	else
-		return remainder >> (width_log2 - SPLINE_FRAC_BITS);
+		return remainder >> (width_log2 - CURVES_FIXED_SHIFT);
 }
 
 // Finds segment index and interpolation for input x.
@@ -92,7 +92,7 @@ static inline struct curves_spline_coords resolve_x(s64 x)
 
 	x_log2 = curves_log2_u64((u64)x);
 
-	if (x_log2 < SPLINE_DOMAIN_MIN_SHIFT)
+	if (x_log2 < SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT)
 		segment_geometry = calc_subnormal_segment_desc(x);
 	else
 		segment_geometry = calc_octave_segment_desc(x, x_log2);
@@ -120,7 +120,7 @@ static s64 extrapolate_linear(const struct curves_spline *spline, s64 x)
 	s64 t = x - x_start;
 
 	// Transform slope: dy/dx = (dy/dt)/segment_width
-	s64 scale_log2 = SPLINE_FRAC_BITS - spline->runout_width_log2;
+	s64 scale_log2 = CURVES_FIXED_SHIFT - spline->runout_width_log2;
 	s64 slope;
 	if (scale_log2 >= 0)
 		slope = (s64)(dy_dt << scale_log2);
@@ -128,7 +128,8 @@ static s64 extrapolate_linear(const struct curves_spline *spline, s64 x)
 		slope = (s64)(dy_dt >> -scale_log2);
 
 	// result = slope * t + y_start
-	return (s64)(((s128)slope * t + SPLINE_FRAC_HALF) >> SPLINE_FRAC_BITS) +
+	return (s64)(((s128)slope * t + CURVES_FIXED_HALF) >>
+		     CURVES_FIXED_SHIFT) +
 	       y_start;
 }
 

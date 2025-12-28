@@ -23,7 +23,8 @@ namespace curves {
 namespace spline {
 
 // Origin must be below octave 0.
-static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <= SPLINE_DOMAIN_MIN_SHIFT);
+static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <=
+              SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT);
 
 // Imports from c.
 auto map_x_to_t(s64 x, int width_log2) -> s64;
