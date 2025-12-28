@@ -7,7 +7,7 @@
 #include "math.h"
 #include "spline.h"
 
-struct segment_params {
+struct curves_segment_params {
 	s64 index;
 	int width_log2;
 };
@@ -17,9 +17,9 @@ struct segment_params {
  * All segments have constant, minimum width.
  * Index is x divided by that width.
  */
-static inline struct segment_params subnormal_segment(s64 x)
+static inline struct curves_segment_params subnormal_segment(s64 x)
 {
-	return (struct segment_params){
+	return (struct curves_segment_params){
 		.index = x >> SPLINE_MIN_SEGMENT_WIDTH_LOG2,
 		.width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2
 	};
@@ -33,7 +33,7 @@ static inline struct segment_params subnormal_segment(s64 x)
  * The offset is calculated by normalizing x to the current octave's
  * segment width, then masking out the leading implicit 1.
  */
-static inline struct segment_params octave_segment(s64 x, int x_log2)
+static inline struct curves_segment_params octave_segment(s64 x, int x_log2)
 {
 	int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
 
@@ -49,9 +49,9 @@ static inline struct segment_params octave_segment(s64 x, int x_log2)
 	int segment_within_octave =
 		(x >> width_log2) - SPLINE_SEGMENTS_PER_OCTAVE;
 
-	return (struct segment_params){ .index = first_segment +
-						 segment_within_octave,
-					.width_log2 = width_log2 };
+	return (struct curves_segment_params){ .index = first_segment +
+							segment_within_octave,
+					       .width_log2 = width_log2 };
 }
 
 /*
@@ -73,7 +73,7 @@ static inline s64 calc_t(s64 x, int width_log2)
 // Finds segment index and interpolation for input x.
 static inline void locate_segment(s64 x, s64 *segment_index, s64 *t)
 {
-	struct segment_params params;
+	struct curves_segment_params params;
 	int x_log2;
 
 	if (WARN_ON_ONCE(!segment_index || !t))
