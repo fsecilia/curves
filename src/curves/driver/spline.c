@@ -9,14 +9,12 @@
 
 /**
  * calc_subnormal_segment_desc - Compute segment descriptor for subnormal zone
- * @x: Input value in the subnormal zone
+ * @x: Reference domain value known to be in subnormal zone
  *
- * Subnormal zone has a linear mapping. All segments have constant, minimum
- * width. Covers indices [0, SEGMENTS_PER_OCTAVE).
+ * The subnormal zone has a linear mapping; all segments have constant, minimum
+ * width. Covers indices < SEGMENTS_PER_OCTAVE.
  *
- * index = x / segment_width
- *
- * Return: Segment descriptor with index and width_log2.
+ * Return: Descriptor for segment containing x in subnormal region.
  */
 static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 {
@@ -28,15 +26,13 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 
 /**
  * calc_octave_segment_desc - Compute segment descriptor for geometric octave
- * @x: Input value in a geometric octave
+ * @x: Reference domain value known to be in a geometric octave
  * @x_log2: Integer log2 of x
  *
- * Geometric octaves have a logarithmic mapping. Segment width doubles every
- * octave. Covers indices [SEGMENTS_PER_OCTAVE, ...).
+ * Geometric octaves have a logarithmic mapping; segment width doubles every
+ * octave. The geometric octaves cover indices >= SEGMENTS_PER_OCTAVE.
  *
- * index = prior_octave_segments + x / segment_width
- *
- * Return: Segment descriptor with index and width_log2.
+ * Return: Descriptor for segment containing x in an octave.
  */
 static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 								  int x_log2)
@@ -170,9 +166,9 @@ static s64 eval_runout(const struct curves_spline *spline, s64 x)
 
 // Transform from v in physical space to x in reference space.
 //
-// We scale the input velocity so that specific features (like cusps)
-// align with the fixed knot locations in our reference domain. Here,
-// we apply the transform and round.
+// We scale the input velocity so that specific features, like cusps, align
+// with the fixed knot locations in our reference domain. Here, we apply the
+// transform and round.
 static s64 map_v_to_x(const struct curves_spline *spline, s64 v)
 {
 	return curves_fixed_multiply_round(v, spline->v_to_x);
