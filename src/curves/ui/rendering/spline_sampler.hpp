@@ -64,11 +64,9 @@ class SplineSampler {
 
     // Case C: Geometric Grid
     // We reuse the C kernel's efficient bitwise locator.
-    s64 segment_idx;
-    s64 t_fixed;
-    spline::locate_segment(x_fixed.raw, &segment_idx, &t_fixed);
+    const auto located_segment = spline::locate_segment(x_fixed.raw);
 
-    return convert_geometric(segment_idx, t_fixed, v_to_x);
+    return convert_geometric(located_segment.index, located_segment.t, v_to_x);
   }
 
  private:

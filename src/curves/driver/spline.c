@@ -66,18 +66,16 @@ static inline s64 calc_t(s64 x, int width_log2)
 }
 
 // Finds segment index and interpolation for input x.
-static inline void locate_segment(s64 x, s64 *segment_index, s64 *t)
+static inline struct curves_located_segment locate_segment(s64 x)
 {
 	struct curves_segment_params params;
+	struct curves_located_segment result;
 	int x_log2;
 
-	if (WARN_ON_ONCE(!segment_index || !t))
-		return;
-
 	if (unlikely(x < 0)) {
-		*segment_index = 0;
-		*t = 0;
-		return;
+		result.index = 0;
+		result.t = 0;
+		return result;
 	}
 
 	x_log2 = curves_log2_u64((u64)x);
@@ -87,8 +85,9 @@ static inline void locate_segment(s64 x, s64 *segment_index, s64 *t)
 	else
 		params = octave_segment(x, x_log2);
 
-	*segment_index = params.index;
-	*t = calc_t(x, params.width_log2);
+	result.index = params.index;
+	result.t = calc_t(x, params.width_log2);
+	return result;
 }
 
 /*
@@ -170,11 +169,14 @@ static s64 transform_v_to_x(const struct curves_spline *spline, s64 v)
 
 s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
 {
+	struct curves_located_segment located_segment;
+	s64 x;
+
 	// Validate parameters.
 	if (unlikely(v < 0))
 		v = 0;
 
-	s64 x = transform_v_to_x(spline, v);
+	x = transform_v_to_x(spline, v);
 
 	// Handle values beyond end of geometric progression.
 	if (x >= spline->x_geometric_limit) {
@@ -185,10 +187,9 @@ s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
 	}
 
 	// Extract segment index and parameter t from x.
-	s64 segment_index;
-	s64 t;
-	locate_segment(x, &segment_index, &t);
+	located_segment = locate_segment(x);
 
 	// Evaluate segment in parametric space.
-	return eval_segment(&spline->segments[segment_index], t);
+	return eval_segment(&spline->segments[located_segment.index],
+			    located_segment.t);
 }

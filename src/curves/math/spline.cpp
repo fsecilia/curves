@@ -16,8 +16,8 @@ namespace curves::spline {
 
 auto calc_t(s64 x, int width_log2) -> s64 { return ::calc_t(x, width_log2); }
 
-auto locate_segment(s64 x, s64* segment_index, s64* t) noexcept -> void {
-  return ::locate_segment(x, segment_index, t);
+auto locate_segment(s64 x) noexcept -> curves_located_segment {
+  return ::locate_segment(x);
 }
 
 auto transform_v_to_x(const struct curves_spline* spline, s64 v) noexcept

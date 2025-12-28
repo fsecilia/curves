@@ -182,18 +182,20 @@ TEST(spline, sensitivity_vs_gain) {
     const auto xSx_viaTs =
         Fixed::from_raw(spline::eval(&sensitivity_spline, x.raw));
 
-    s64 segment_index;
-    s64 t;
-    spline::locate_segment(x.raw, &segment_index, &t);
-    const auto gain_segment = gain_spline.segments[segment_index];
+    const auto located_segment = spline::locate_segment(x.raw);
+    const auto gain_segment = gain_spline.segments[located_segment.index];
     const auto* const c = gain_segment.coeffs;
     auto dTg = 3 * c[0];
-    dTg = (s64)(((s128)dTg * t + SPLINE_FRAC_HALF) >> SPLINE_FRAC_BITS) +
+    dTg = (s64)(((s128)dTg * located_segment.t + SPLINE_FRAC_HALF) >>
+                SPLINE_FRAC_BITS) +
           2 * c[1];
-    dTg = (s64)(((s128)dTg * t + SPLINE_FRAC_HALF) >> SPLINE_FRAC_BITS) + c[2];
+    dTg = (s64)(((s128)dTg * located_segment.t + SPLINE_FRAC_HALF) >>
+                SPLINE_FRAC_BITS) +
+          c[2];
 
-    const auto segment_width = Fixed::from_raw(knot_locator(segment_index + 1) -
-                                              knot_locator(segment_index));
+    const auto segment_width =
+        Fixed::from_raw(knot_locator(located_segment.index + 1) -
+                        knot_locator(located_segment.index));
 
     const auto xSx_viaTg = x * Fixed::from_raw(dTg) / segment_width;
 
