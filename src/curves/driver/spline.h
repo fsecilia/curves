@@ -60,7 +60,8 @@
 #define SPLINE_DOMAIN_MIN_SHIFT (SPLINE_FRAC_BITS + SPLINE_DOMAIN_MIN_LOG2)
 
 // Width of smallest segments.
-// Octave 0 (linear) and octave 1 share this width; doubling starts at octave 2.
+// The subnormal zone and octave 0 share this width; doubling starts after
+// octave 1.
 #define SPLINE_MIN_SEGMENT_WIDTH_LOG2 \
 	(SPLINE_DOMAIN_MIN_SHIFT - SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 

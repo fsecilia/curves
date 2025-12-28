@@ -10,7 +10,7 @@
 /*
  * Subnormal Zone: Linear mapping.
  * All segments have constant, minimum width.
- * Index is x divided by that width.
+ * index = x/width
  */
 static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 {
@@ -23,10 +23,42 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 /*
  * Geometric Octave: Logarithmic mapping.
  * Segment width doubles every octave.
- * Index = (start of octave) + (x_normalized - segments_per_octave).
+ * index = (start of octave) + (x_uniform - segments_per_octave).
  *
- * The offset is calculated by normalizing x to the current octave's
- * segment width, then masking out the leading implicit 1.
+ * In a geometric progression, the sum total width of all previous octaves is
+ * the same width as the current octave. We can remap the domain logically into
+ * 2 octave's worth of uniform segments at the current octave's segment width.
+ * If we divide x by this segment width, we find its index in this uniform
+ * sequence, placing it in the second octave. Subtract off the first logical
+ * octave's worth of segments, and you have the index of the segment containing
+ * x relative to the first segment in the current octave.
+ *
+ * remap this:
+ *              octave 2        octave 3
+ *      octave 1       |               |
+ *             |       |               |
+ *     ________[][][][][__][__][__][__][______][__x___][______][______]
+ *     |   |
+ *     |   octave 0
+ *     0
+ *
+ * to this:
+ *                              octave 3
+ *                                     |
+ *     [______][______][______][______][______][__x___][______][______]
+ *     |
+ *     0
+ *
+ * 4 octaves per segment, current segment width is 8, x = 43
+ * x/8 = 5, x/8 - 4 = 1. x is in segment 1 of the current octave.
+ *
+ * The geometry of segments is progressive, but they are indexed linearly.
+ * Relative to octave 0, the index of the first segment in an octave is just
+ * `octave*segments_per_octave`. We also have to account for the subnormal zone
+ * at the beginning of the segment array, before octave 0. There is one
+ * octave's worth of segments there, so we add one octave's worth of segments
+ * to the index relative to 0 to find the global index.
+ *
  */
 static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 								  int x_log2)
@@ -60,7 +92,7 @@ static inline s64 map_x_to_t(s64 x, int width_log2)
 		return remainder >> (width_log2 - SPLINE_FRAC_BITS);
 }
 
-// Finds segment segment_index and interpolation for input x.
+// Finds segment index and interpolation for input x.
 static inline struct curves_spline_coords resolve_x(s64 x)
 {
 	struct curves_segment_desc segment_geometry;
@@ -135,8 +167,8 @@ static s64 eval_segment(const struct curves_spline_segment *segment, s64 t)
  *
  * The runout segment does not follow the same geometric progression in width
  * as the segment array does. It is as wide as an octave itself to slowly bleed
- * off curvature at the final segment's final tangent. This way, when we extend 
- * the curve beyond the runout segment by linear extrapolation, it is already 
+ * off curvature at the final segment's final tangent. This way, when we extend
+ * the curve beyond the runout segment by linear extrapolation, it is already
  * straight.
  */
 static s64 eval_runout(const struct curves_spline *spline, s64 x)
