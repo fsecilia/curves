@@ -141,9 +141,8 @@ static s64 eval_segment(const struct curves_spline_segment *segment, s64 t)
 	// Horner's method, with rounding: ((a*t + b)*t + c)*t + d
 	const s64 *coeff = segment->coeffs;
 	s64 result = coeff[0];
-	for (int i = 1; i < SPLINE_NUM_COEFFS; ++i) {
+	for (int i = 1; i < SPLINE_NUM_COEFFS; ++i)
 		result = curves_fixed_fma_round(result, t, coeff[i]);
-	}
 
 	return result;
 }
