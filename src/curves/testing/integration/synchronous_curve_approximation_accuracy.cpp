@@ -183,20 +183,19 @@ TEST(spline, sensitivity_vs_gain) {
 
     const auto spline_coords = spline::resolve_x(x.raw);
     const auto gain_segment = gain_spline.segments[spline_coords.segment_index];
+
+    // Manual horner's.
     const auto* const c = gain_segment.coeffs;
-    auto dTg = 3 * c[0];
-    dTg = (s64)(((s128)dTg * spline_coords.t + SPLINE_FRAC_HALF) >>
-                SPLINE_FRAC_BITS) +
-          2 * c[1];
-    dTg = (s64)(((s128)dTg * spline_coords.t + SPLINE_FRAC_HALF) >>
-                SPLINE_FRAC_BITS) +
-          c[2];
+    auto dTg = 3 * Fixed::from_raw(c[0]);
+    const auto t = Fixed::from_raw(spline_coords.t);
+    dTg = dTg.fma(t, 2 * Fixed::from_raw(c[1]));
+    dTg = dTg.fma(t, Fixed::from_raw(c[2]));
 
     const auto segment_width =
         Fixed::from_raw(knot_locator(spline_coords.segment_index + 1) -
                         knot_locator(spline_coords.segment_index));
 
-    const auto xSx_viaTg = x * Fixed::from_raw(dTg) / segment_width;
+    const auto xSx_viaTg = x * dTg / segment_width;
 
     accuracy_metrics.sample(x.to_real(), xSx_viaTs.to_real(),
                             xSx_viaTg.to_real());
