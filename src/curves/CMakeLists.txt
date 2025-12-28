@@ -115,6 +115,12 @@ list(APPEND common_headers
   driver/spline.h
 )
 
+# Driver .c files manually included in .cpp files.
+list(APPEND included_driver_source_files
+  driver/conditioning.c
+  driver/spline.c
+)
+
 list(APPEND kbuild_files
   driver/Kbuild
   driver/Kconfig
@@ -285,6 +291,35 @@ if (enable_testing)
     )
   endif()
 endif()
+
+# -----------------------------------------------------------------------------
+# Kernel Files Lib
+# -----------------------------------------------------------------------------
+
+# There are some kernel functions that are, within the context of the kernel,
+# private. They are called by only the module they are defined in, so they must
+# be made static. However, some of these are also called from c++. We would
+# normally put their prototypes in a header, but because they are static, they
+# won't be found at link time, prototypes or no.
+#
+# Idiomatically in the kernel, for unit testing, those private functions are
+# made public by #including the .c file. This is about the best we're going to
+# get from c++: include the c file, then wrap it in a namespaced function. Then
+# the static functions remain private to the module, the public functions are
+# exported correctly in both the kernel and user mode. The problem is, IDEs
+# won't see the .c file this way, so clang refactoring and global find and
+# replace stop working.
+#
+# We can't just add the the .c file to the project along side the .cpp that
+# includes it, because the module's public symbols would conflict. The least
+# bad solution I've found to get search working is to also make a separate
+# library containing the .c files that is not linked by anything. Then the
+# kernel is happy because everything not exported is private, c++ is happy
+# becasue it can see the static definitions, and the IDE is happy because we
+# have the .c in compile_commands.json again.
+#
+# This is that library.
+add_library(kernel_lib OBJECT ${included_driver_source_files})
 
 # -----------------------------------------------------------------------------
 # Project Subdirectories
