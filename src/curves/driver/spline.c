@@ -38,7 +38,7 @@ static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 								  int x_log2)
 {
 	int octave = x_log2 - SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT;
-	int segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+	int octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
 
 	/*
 	 * The sum of all prior octaves' widths and the width of the subnormal
@@ -50,11 +50,12 @@ static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 	 */
 	s64 prior_octave_segments = (s64)octave
 				    << SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
-	s64 x_in_segment_widths = x >> segment_width_log2;
+	s64 octave_segment = x >> octave_segment_width_log2;
 
-	return (struct curves_segment_desc){ .index = prior_octave_segments +
-						      x_in_segment_widths,
-					     .width_log2 = segment_width_log2 };
+	return (struct curves_segment_desc){
+		.index = prior_octave_segments + octave_segment,
+		.width_log2 = octave_segment_width_log2
+	};
 }
 
 /*
