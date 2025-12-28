@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief C++ wrappers for kernel-mode c functions.
+  \brief C++ wrappers for kernel-mode c input shaping functions.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "conditioning.hpp"
+#include "input_shaping.hpp"
 
 extern "C" {
-#include <curves/driver/conditioning.c>
+#include <curves/driver/input_shaping.c>
 }  // extern "C"
 
 namespace curves {

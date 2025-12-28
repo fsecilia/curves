@@ -4,7 +4,7 @@
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
-#include "conditioning.h"
+#include "input_shaping.h"
 #include "fixed.h"
 
 // Evaluates `P(t) = t^4 * (c4 + t*c5 + t^2*c6)`, with rounding, using fma.

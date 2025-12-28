@@ -27,8 +27,8 @@ list(APPEND lib_files
   curves/transfer_function/from_sensitivity.hpp
   lib.cpp
   lib.hpp
-  math/conditioning.hpp
-  math/conditioning.cpp
+  math/input_shaping.hpp
+  math/input_shaping.cpp
   math/curve.hpp
   math/fixed.hpp
   math/integration.hpp
@@ -69,7 +69,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
   driver_tests/math_test.cpp
-  math/conditioning_test.cpp
+  math/input_shaping_test.cpp
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
@@ -108,8 +108,8 @@ list(APPEND driver_headers
 )
 
 list(APPEND common_headers
-  driver/conditioning.h
   driver/fixed.h
+  driver/input_shaping.h
   driver/kernel_compat.h
   driver/math.h
   driver/spline.h
@@ -117,7 +117,7 @@ list(APPEND common_headers
 
 # Driver .c files manually included in .cpp files.
 list(APPEND included_driver_source_files
-  driver/conditioning.c
+  driver/input_shaping.c
   driver/spline.c
 )
 

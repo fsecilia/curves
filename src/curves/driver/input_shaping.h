@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*
- * Input conditioning functions to smoothly control entry and exit tangents.
+ * Input shaping functions to smoothly control entry and exit tangents.
  *
  * Copyright (C) 2025 Frank Secilia
  * Author: Frank Secilia <frank.secilia@gmail.com>

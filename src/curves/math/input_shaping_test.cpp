@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "conditioning.hpp"
+#include "input_shaping.hpp"
 #include <curves/testing/test.hpp>
 
 namespace curves {
