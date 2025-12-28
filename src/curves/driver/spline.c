@@ -26,59 +26,38 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 	};
 }
 
-/*
- * Geometric Octave: Logarithmic mapping.
- * Segment width doubles every octave.
- * index = (start of octave) + (x_uniform - segments_per_octave).
+/**
+ * calc_octave_segment_desc - Compute segment descriptor for geometric octave
+ * @x: Input value in a geometric octave
+ * @x_log2: Integer log2 of x
  *
- * In a geometric progression, the sum total width of all previous octaves is
- * the same width as the current octave. We can remap the domain logically into
- * 2 octave's worth of uniform segments at the current octave's segment width.
- * If we divide x by this segment width, we find its index in this uniform
- * sequence, placing it in the second octave. Subtract off the first logical
- * octave's worth of segments, and you have the index of the segment containing
- * x relative to the first segment in the current octave.
+ * Geometric octaves have a logarithmic mapping. Segment width doubles every
+ * octave. Covers indices [SEGMENTS_PER_OCTAVE, ...).
  *
- * remap this:
- *              octave 2        octave 3
- *      octave 1       |               |
- *             |       |               |
- *     ________[][][][][__][__][__][__][______][__x___][______][______]
- *     |   |
- *     |   octave 0
- *     0
+ * index = prior_octave_segments + x / segment_width
  *
- * to this:
- *                              octave 3
- *                                     |
- *     [______][______][______][______][______][__x___][______][______]
- *     |
- *     0
- *
- * 4 octaves per segment, current segment width is 8, x = 43
- * x/8 = 5, x/8 - 4 = 1. x is in segment 1 of the current octave.
- *
- * The geometry of segments is progressive, but they are indexed linearly.
- * Relative to octave 0, the index of the first segment in an octave is just
- * `octave*segments_per_octave`. We also have to account for the subnormal zone
- * at the beginning of the segment array, before octave 0. There is one
- * octave's worth of segments there, so we add one octave's worth of segments
- * to the index relative to 0 to find the global index.
- *
+ * Return: Segment descriptor with index and width_log2.
  */
 static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 								  int x_log2)
 {
 	int octave = x_log2 - SPLINE_DOMAIN_MIN_SHIFT;
 	int segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
-	s64 first_octave_segment =
-		((s64)octave << SPLINE_SEGMENTS_PER_OCTAVE_LOG2) +
-		SPLINE_SEGMENTS_PER_OCTAVE;
-	s64 x_uniform = x >> segment_width_log2;
-	s64 segment_within_octave = x_uniform - SPLINE_SEGMENTS_PER_OCTAVE;
 
-	return (struct curves_segment_desc){ .index = first_octave_segment +
-						      segment_within_octave,
+	/*
+	 * The sum of all prior octaves' widths and the width of the subnormal
+	 * zone is the same as the current octave's width. That puts
+	 * x/segment_width in [SEGMENTS_PER_OCTAVE, 2*SEGMENTS_PER_OCTAVE),
+	 * accounting for the subnormal zone offset naturally:
+	 *   - octave 0: [SEGMENTS_PER_OCTAVE, 2*SEGMENTS_PER_OCTAVE)
+	 *   - octave N: [(N+1)*SEGMENTS_PER_OCTAVE, (N+2)*SEGMENTS_PER_OCTAVE)
+	 */
+	s64 prior_octave_segments = (s64)octave
+				    << SPLINE_SEGMENTS_PER_OCTAVE_LOG2;
+	s64 x_in_segment_widths = x >> segment_width_log2;
+
+	return (struct curves_segment_desc){ .index = prior_octave_segments +
+						      x_in_segment_widths,
 					     .width_log2 = segment_width_log2 };
 }
 
