@@ -6,8 +6,8 @@
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
-#ifndef _CURVES_CONDITIONING_H
-#define _CURVES_CONDITIONING_H
+#ifndef _CURVES_INPUT_SHAPING_H
+#define _CURVES_INPUT_SHAPING_H
 
 #include "kernel_compat.h"
 
@@ -31,4 +31,4 @@ struct curves_conditioning_params {
 s64 curves_conditioning_apply(
 	s64 v, const struct curves_conditioning_params *conditioning);
 
-#endif /* _CURVES_CONDITIONING_H */
+#endif /* _CURVES_INPUT_SHAPING_H */
