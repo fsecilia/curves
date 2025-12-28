@@ -135,9 +135,7 @@ static s64 eval_segment(const struct curves_spline_segment *segment, s64 t)
 	const s64 *coeff = segment->coeffs;
 	s64 result = coeff[0];
 	for (int i = 1; i < SPLINE_NUM_COEFFS; ++i) {
-		result = (s64)(((s128)result * t + SPLINE_FRAC_HALF) >>
-			       SPLINE_FRAC_BITS);
-		result += coeff[i];
+		result = curves_fixed_fma_round(result, t, coeff[i]);
 	}
 
 	return result;
