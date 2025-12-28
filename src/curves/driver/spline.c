@@ -7,10 +7,16 @@
 #include "math.h"
 #include "spline.h"
 
-/*
- * Subnormal Zone: Linear mapping.
- * All segments have constant, minimum width.
- * index = x/width
+/**
+ * calc_subnormal_segment_desc - Compute segment descriptor for subnormal zone
+ * @x: Input value in the subnormal zone
+ *
+ * Subnormal zone has a linear mapping. All segments have constant, minimum
+ * width. Covers indices [0, SEGMENTS_PER_OCTAVE).
+ *
+ * index = x / segment_width
+ *
+ * Return: Segment descriptor with index and width_log2.
  */
 static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 {
