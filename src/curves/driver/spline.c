@@ -190,8 +190,7 @@ static s64 eval_runout(const struct curves_spline *spline, s64 x)
 // we apply the transform and round.
 static s64 map_v_to_x(const struct curves_spline *spline, s64 v)
 {
-	return (s64)(((s128)v * spline->v_to_x + SPLINE_FRAC_HALF) >>
-		     SPLINE_FRAC_BITS);
+	return curves_fixed_multiply_round(v, spline->v_to_x);
 }
 
 s64 curves_spline_eval(const struct curves_spline *spline, s64 v)
