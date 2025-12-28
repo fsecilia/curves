@@ -7,11 +7,6 @@
 #include "math.h"
 #include "spline.h"
 
-struct curves_segment_params {
-	s64 index;
-	int width_log2;
-};
-
 /*
  * Subnormal Zone: Linear mapping.
  * All segments have constant, minimum width.

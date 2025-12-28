@@ -81,6 +81,11 @@
 // Spline
 // ----------------------------------------------------------------------------
 
+struct curves_segment_params {
+	s64 index;
+	int width_log2;
+};
+
 struct curves_spline_segment {
 	s64 coeffs[SPLINE_NUM_COEFFS];
 };
