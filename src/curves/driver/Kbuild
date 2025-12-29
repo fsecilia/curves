@@ -1,11 +1,6 @@
 # SPDX-License-Identifier: GNU
 # Copyright (c) 2025 Frank Secilia
 
-KERNEL_GE_6_11 := $(shell expr $(VERSION) \* 1000 + $(PATCHLEVEL) \>= 6011)
-ifneq ($(KERNEL_GE_6_11),1)
-$(error curves requires kernel 6.11+)
-endif
-
 obj-m := curves.o
 
 curves-common-objs := \
