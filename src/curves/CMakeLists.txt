@@ -29,6 +29,7 @@ list(APPEND lib_files
   lib.hpp
   math/input_shaping.hpp
   math/input_shaping.cpp
+  math/input_shaping_view.hpp
   math/curve.hpp
   math/fixed.hpp
   math/integration.hpp
@@ -70,6 +71,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/test.cpp
   driver_tests/math_test.cpp
   math/input_shaping_test.cpp
+  math/input_shaping_view_test.cpp
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
