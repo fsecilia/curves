@@ -11,7 +11,7 @@
 #include <curves/lib.hpp>
 #include <curves/config/curve.hpp>
 #include <curves/config/param.hpp>
-#include <curves/math/curve.hpp>
+#include <curves/math/jet.hpp>
 #include <cmath>
 
 namespace curves {

@@ -30,7 +30,7 @@ list(APPEND lib_files
   math/input_shaping.hpp
   math/input_shaping.cpp
   math/input_shaping_view.hpp
-  math/curve.hpp
+  math/jet.hpp
   math/curve_view.hpp
   math/fixed.hpp
   math/integration.hpp
