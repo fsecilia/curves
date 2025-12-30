@@ -10,7 +10,7 @@ CurveEditor::CurveEditor(QWidget* parent)
     : QWidget(parent), m_ui(std::make_unique<Ui::CurveEditor>()) {
   m_ui->setupUi(this);
 
-  m_visible_range = QRectF{-2.5, -0.25, 60, 6};
+  m_visible_range = QRectF{-5, -0.5, 120, 12};
   setMouseTracking(true);
 }
 
