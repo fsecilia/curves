@@ -8,8 +8,9 @@
 #include "spline.h"
 
 /**
- * calc_subnormal_segment_desc - Compute segment descriptor for subnormal zone
- * @x: Reference domain value known to be in subnormal zone
+ * calc_subnormal_segment_desc() - Calculates segment descriptor for subnormal
+ * zone.
+ * @x: Reference domain value known to be in subnormal zone.
  *
  * The subnormal zone has a linear mapping; all segments have constant, minimum
  * width. Covers indices < SEGMENTS_PER_OCTAVE.
@@ -25,9 +26,10 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
 }
 
 /**
- * calc_octave_segment_desc - Compute segment descriptor for geometric octave
- * @x: Reference domain value known to be in a geometric octave
- * @x_log2: Integer log2 of x
+ * calc_octave_segment_desc() - Calculates segment descriptor for geometric
+ * octave.
+ * @x: Reference domain value known to be in a geometric octave.
+ * @x_log2: Integer log2 of x.
  *
  * Geometric octaves have a logarithmic mapping; segment width doubles every
  * octave. The geometric octaves cover indices >= SEGMENTS_PER_OCTAVE.
