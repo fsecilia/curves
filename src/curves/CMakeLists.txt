@@ -31,6 +31,7 @@ list(APPEND lib_files
   math/input_shaping.cpp
   math/input_shaping_view.hpp
   math/curve.hpp
+  math/curve_view.hpp
   math/fixed.hpp
   math/integration.hpp
   math/inverse_function.hpp
@@ -71,6 +72,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
   driver_tests/math_test.cpp
+  math/curve_view_test.cpp
   math/input_shaping_test.cpp
   math/input_shaping_view_test.cpp
   math/integration_test.cpp
