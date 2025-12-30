@@ -17,6 +17,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/curve.hpp>
 #include <curves/math/input_shaping_view.hpp>
 #include <curves/math/spline_view.hpp>
 #include <utility>
@@ -32,9 +33,13 @@ struct CurveResult {
 
 class CurveView {
  public:
-  CurveView(InputShapingView shaping, SplineView spline) noexcept
-      : shaping_{std::move(shaping)},
-        spline_{std::move(spline)},
+  explicit CurveView(const Curve* curve) noexcept
+      : CurveView{SplineView{curve ? &curve->spline : nullptr},
+                  InputShapingView{curve ? &curve->shaping : nullptr}} {}
+
+  CurveView(SplineView spline, InputShapingView shaping) noexcept
+      : spline_{std::move(spline)},
+        shaping_{std::move(shaping)},
         u_to_x_{spline_.v_to_x()} {}
 
   auto valid() const noexcept -> bool { return spline_.valid(); }
@@ -99,12 +104,12 @@ class CurveView {
   }
 
   /* Access to component views */
-  auto shaping() const -> const InputShapingView& { return shaping_; }
   auto spline() const -> const SplineView& { return spline_; }
+  auto shaping() const -> const InputShapingView& { return shaping_; }
 
  private:
-  InputShapingView shaping_;
   SplineView spline_;
+  InputShapingView shaping_;
   real_t u_to_x_;
 };
 
