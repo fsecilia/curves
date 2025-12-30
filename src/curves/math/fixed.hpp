@@ -31,8 +31,8 @@ inline auto curves_fixed_to_double(s64 raw, unsigned int frac_bits) noexcept
 }
 
 struct Fixed {
-  using Raw = int64_t;
-  Raw raw;
+  using Value = int64_t;
+  Value raw;
 
   using WideValue = int128_t;
 
@@ -41,13 +41,13 @@ struct Fixed {
 
   constexpr Fixed() = default;
   constexpr Fixed(std::signed_integral auto integer) noexcept
-      : raw{static_cast<Raw>(integer) << kFracBits} {}
+      : raw{static_cast<Value>(integer) << kFracBits} {}
   explicit constexpr Fixed(std::floating_point auto real) noexcept
-      : raw{static_cast<Raw>(std::round(real * kOne))} {}
+      : raw{static_cast<Value>(std::round(real * kOne))} {}
 
   struct LiteralTag {};
-  constexpr Fixed(Raw raw, LiteralTag) noexcept : raw{raw} {}
-  static constexpr auto from_raw(Raw raw) noexcept -> Fixed {
+  constexpr Fixed(Value raw, LiteralTag) noexcept : raw{raw} {}
+  static constexpr auto from_raw(Value raw) noexcept -> Fixed {
     return Fixed{raw, LiteralTag{}};
   }
 
