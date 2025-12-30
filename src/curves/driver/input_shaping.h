@@ -51,7 +51,7 @@
  * To match position and slope, both transitions use the integral of
  * smootherstep, a sextic polynomial:
  *
- *   `P(t) = 2.5*t^4 - 3*t^5 + t^6 = t^4*(2.5 - 3*t + t^2)`
+ *   `P(t) = t^6 - 3*t^5 + 2.5*t^4 = t^4*(t^2 - 3*t + 2.5)`
  *
  * We then translate and scale this segment uniformly to match the adjacent
  * linear segments. Continuity is preserved under uniform scaling because
@@ -142,20 +142,20 @@ static inline s64 curves_shaping_multiply_round(s64 multiplicand,
  * Input:  t in [0, 1)
  * Output: P(t) in [0, 0.5]
  *
- *     `P(t) = ((c6*t + c5)*t + c4)*t^4`
+ *     `P(t) = ((c0*t + c1)*t + c2)*t^4`
  */
 static inline s64 curves_shaping_eval_poly(s64 t)
 {
 	// Coefficients in Q2.61.
-	const s64 c4 = 5764607523034234880LL; // 2.5L
-	const s64 c5 = -6917529027641081856LL; // 3.0L
-	const s64 c6 = curves_shaping_one; // 1.0L
+	const s64 c0 = curves_shaping_one; // 1.0L
+	const s64 c1 = -6917529027641081856LL; // 3.0L
+	const s64 c2 = 5764607523034234880LL; // 2.5L
 
 	s64 inner, t2, t4;
 
-	// Unroll Horner's loop for inner cubic. `inner = (c6*t + c5)*t + c4`
-	inner = curves_shaping_multiply_round(c6, t) + c5;
-	inner = curves_shaping_multiply_round(inner, t) + c4;
+	// Unroll Horner's loop for inner cubic. `inner = (c0*t + c1)*t + c2`
+	inner = curves_shaping_multiply_round(c0, t) + c1;
+	inner = curves_shaping_multiply_round(inner, t) + c2;
 
 	// Combine exponents.
 	t2 = curves_shaping_multiply_round(t, t);

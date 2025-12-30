@@ -44,25 +44,25 @@ namespace curves {
     P''(0) = 0    P''(1) = 0     (curvature continuity)
     P'''(0) = 0   P'''(1) = 0    (jerk continuity)
 
-  This gives C³ continuity when concatenating floor/transition/linear.
+  This gives C^3 continuity when concatenating floor/transition/linear.
   The felt gain (which is what your hand experiences) has continuous jerk.
 */
 struct EasePolynomial {
-  real_t c4;
-  real_t c5;
-  real_t c6;
+  real_t c0;
+  real_t c1;
+  real_t c2;
 
-  constexpr auto area_ratio() const -> real_t { return c4 + c5 + c6; }
+  constexpr auto area_ratio() const -> real_t { return c0 + c1 + c2; }
 
   constexpr auto operator()(real_t t) const -> real_t {
     const auto t2 = t * t;
     const auto t4 = t2 * t2;
-    return t4 * (c4 + t * c5 + t2 * c6);
+    return (c0 * t2 + c1 * t + c2) * t4;
   }
 };
 
 // Integral of smootherstep. C^3 continuous, area ratio 0.5.
-inline constexpr auto kEasePoly = EasePolynomial{2.5, -3.0, 1.0};
+inline constexpr auto kEasePoly = EasePolynomial{1.0, -3.0, 2.5};
 
 //! Domain covered by a transition.
 struct ShapingTransition {
