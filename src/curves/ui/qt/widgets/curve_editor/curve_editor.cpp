@@ -1,13 +1,17 @@
 #include "curve_editor.hpp"
 #include "ui_curve_editor.h"
+#include <curves/math/curve_view.hpp>
+#include <curves/math/input_shaping.hpp>
+#include <curves/math/input_shaping_view.hpp>
 #include <curves/math/spline.hpp>
-#include <curves/ui/rendering/spline_evaluator.hpp>
-#include <curves/ui/rendering/spline_sampler.hpp>
+#include <curves/math/spline_view.hpp>
 
 using namespace curves;
 
 CurveEditor::CurveEditor(QWidget* parent)
-    : QWidget(parent), m_ui(std::make_unique<Ui::CurveEditor>()) {
+    : QWidget(parent),
+      m_ui(std::make_unique<Ui::CurveEditor>()),
+      m_curveView{std::make_unique<CurveView>(nullptr)} {
   m_ui->setupUi(this);
 
   m_visible_range = QRectF{-5, -0.5, 120, 12};
@@ -16,10 +20,13 @@ CurveEditor::CurveEditor(QWidget* parent)
 
 CurveEditor::~CurveEditor() = default;
 
-void CurveEditor::setSpline(std::shared_ptr<const curves_spline> spline,
-                            CurveInterpretation curveInterpretation) {
-  m_spline = spline;
+void CurveEditor::setCurveView(curves::CurveView curveView) {
+  *m_curveView = std::move(curveView);
+  update();
+}
 
+void CurveEditor::setCurveInterpretation(
+    CurveInterpretation curveInterpretation) {
   switch (curveInterpretation) {
     case CurveInterpretation::kGain:
       m_traces.selected = TraceType::gain_f;
@@ -161,12 +168,11 @@ double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {
 
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
                             double start, double step) {
-  const auto x_geometric_limit =
-      Fixed::from_raw(m_spline->x_geometric_limit).to_real();
+  const auto x_end = m_curveView->spline().x_max();
 
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
     if (x < m_visible_range.left()) continue;
-    if (std::abs(x - x_geometric_limit) < 1e-3) continue;
+    if (std::abs(x - x_end) < 1e-3) continue;
 
     const auto top = logicalToScreen(QPointF{x, m_visible_range.top()});
     const auto bottom = logicalToScreen(QPointF{x, m_visible_range.bottom()});
@@ -186,8 +192,8 @@ void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
   // straightened out before that, because there be dragons here.
   const auto pen_geometric_limit = QPen{m_theme.grid_geometric_limit};
   painter.setPen(pen_geometric_limit);
-  painter.drawLine(logicalToScreen(QPointF(x_geometric_limit, -10000)),
-                   logicalToScreen(QPointF(x_geometric_limit, 10000)));
+  painter.drawLine(logicalToScreen(QPointF(x_end, -10000)),
+                   logicalToScreen(QPointF(x_end, 10000)));
 }
 
 void CurveEditor::drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen,
@@ -247,21 +253,18 @@ auto CurveEditor::drawTraces(QPainter& painter) -> void {
   m_traces.clear();
   m_traces.reserve(total_pixels);
 
-  SplineSampler sampler(m_spline.get());
-
   for (int i = 0; i < total_pixels; ++i) {
     const double x_screen = i;
     const double x_logical = x_start_view + (x_screen * dx_pixel);
     if (x_logical < 0) continue;
 
-    const auto sample = sampler.sample(x_logical);
-    const auto values = CurveEvaluator{}.compute(sample, x_logical);
+    const auto values = (*m_curveView)(x_logical);
 
     m_traces.append({
-        logicalToScreen(QPointF{x_logical, values.gain}),
-        logicalToScreen(QPointF{x_logical, values.gain_deriv}),
-        logicalToScreen(QPointF{x_logical, values.sensitivity}),
-        logicalToScreen(QPointF{x_logical, values.sensitivity_deriv}),
+        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.G)}),
+        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.dG)}),
+        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.S)}),
+        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.dS)}),
     });
   }
 

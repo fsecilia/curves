@@ -6,8 +6,10 @@
 #include "main_window.hpp"
 #include "ui_main_window.h"
 #include <curves/config/enum.hpp>
-#include <curves/math/spline.hpp>
 #include <curves/curves/transfer_function/curve.hpp>
+#include <curves/math/curve.hpp>
+#include <curves/math/curve_view.hpp>
+#include <curves/math/input_shaping.hpp>
 #include <curves/ui/qt/widgets/curve_parameter/curve_parameter.hpp>
 #include <cassert>
 #include <utility>
@@ -32,8 +34,10 @@ MainWindow::MainWindow(std::shared_ptr<ViewModel> view_model,
     : QMainWindow(parent),
       m_ui(std::make_unique<Ui::MainWindow>()),
       m_view_model{std::move(view_model)},
-      m_store{std::move(store)} {
+      m_store{std::move(store)},
+      m_curve{std::make_unique<curves::Curve>()} {
   m_ui->setupUi(this);
+  m_ui->curveEditor->setCurveView(curves::CurveView{m_curve.get()});
   m_defaultDpiSpinBoxPalette = m_ui->dpiSpinBox->palette();
 
   connectControls();
@@ -61,9 +65,9 @@ void MainWindow::onParameterChanged() {
 void MainWindow::onCurveSelectionChanged(int index) {
   if (index < 0) return;
 
-  auto curve = static_cast<CurveType>(index);
-  m_view_model->selected_curve(curve);
-  rebuildParameterWidgets(curve);
+  const auto curveType = static_cast<CurveType>(index);
+  m_view_model->selected_curve(curveType);
+  rebuildParameterWidgets(curveType);
   updateCurveDisplay();
 }
 
@@ -298,8 +302,9 @@ void MainWindow::clearParameterWidgets() {
 }
 
 void MainWindow::updateCurveDisplay() {
-  m_ui->curveEditor->setSpline(m_view_model->create_spline(),
-                               m_curveInterpretationParam->value());
+  *m_curve = m_view_model->create_curve();
+  m_ui->curveEditor->setCurveInterpretation(
+      m_curveInterpretationParam->value());
 }
 
 void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {

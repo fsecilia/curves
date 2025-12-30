@@ -11,6 +11,12 @@
 
 struct curves_spline;
 
+namespace curves {
+class SplineView;
+class InputShapingView;
+class CurveView;
+}  // namespace curves
+
 namespace Ui {
 class CurveEditor;
 }
@@ -38,8 +44,8 @@ class CurveEditor : public QWidget {
   explicit CurveEditor(QWidget* parent = nullptr);
   ~CurveEditor();
 
-  void setSpline(std::shared_ptr<const curves_spline> spline,
-                 curves::CurveInterpretation curveInterpretation);
+  void setCurveView(curves::CurveView curveView);
+  void setCurveInterpretation(curves::CurveInterpretation curveInterpretation);
 
   void enableDpiErrorState(bool enable);
 
@@ -56,7 +62,7 @@ class CurveEditor : public QWidget {
 
   Theme m_theme;
 
-  std::shared_ptr<const curves_spline> m_spline;
+  std::unique_ptr<curves::CurveView> m_curveView;
   curves::CurveInterpretation m_curveInterpretation{
       curves::CurveInterpretation::kGain};
 

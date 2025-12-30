@@ -98,8 +98,8 @@ struct EaseInState {
 // ----------------------------------------------------------------------------
 
 struct EaseOutConfig {
-  static auto constexpr begin_default_scale = real_t{0.1};
-  static auto constexpr width_default_scale = real_t{0.8};
+  static auto constexpr begin_default_scale = real_t{0.8};
+  static auto constexpr width_default_scale = real_t{0.1};
   ShapingTransition transition;
 };
 
@@ -130,7 +130,8 @@ struct SolveEaseIn {
   // DisplayCurve: callable as real_t(real_t u), returns S or G at that u.
   template <typename DisplayCurve>
   EaseInState operator()(const EaseInConfig& config,
-                         DisplayCurve&& display_curve, real_t u_max) const {
+                         DisplayCurve&& display_curve,
+                         [[maybe_unused]] real_t u_max) const {
     EaseInState state{};
 
     // Find u_floor by inverting the display curve.
@@ -138,7 +139,7 @@ struct SolveEaseIn {
       state.u_floor = 0.0;
     } else {
       state.u_floor =
-          inverse_via_partition(display_curve, config.y_floor_target, u_max);
+          inverse_via_partition(display_curve, config.y_floor_target);
     }
 
     // Compute reciprocal width for division in eval.
@@ -262,6 +263,23 @@ inline auto default_shaping_config(real_t v_end) noexcept
     -> InputShapingConfig {
   return InputShapingConfig{.ease_in = default_ease_in_config(),
                             .ease_out = default_ease_out_config(v_end)};
+}
+
+inline auto default_shaping(auto&& display_curve, real_t v_end) noexcept
+    -> curves_shaping_params {
+  const auto config = InputShapingConfig{
+      .ease_in = default_ease_in_config(),
+      .ease_out = default_ease_out_config(v_end),
+  };
+
+  const auto state = InputShapingState{
+      .ease_in = solve_ease_in(
+          config.ease_in, std::forward<decltype(display_curve)>(display_curve),
+          v_end),
+      .ease_out = solve_ease_out(config.ease_out),
+  };
+
+  return build_kernel_params(config, state);
 }
 
 }  // namespace curves

@@ -15,7 +15,9 @@
 #include <memory>
 #include <string_view>
 
-struct curves_spline;
+namespace curves {
+class Curve;
+}
 
 namespace Ui {
 class MainWindow;
@@ -55,6 +57,7 @@ class MainWindow : public QMainWindow {
   std::shared_ptr<curves::ViewModel> m_view_model;
   std::shared_ptr<curves::ProfileStore> m_store;
   std::vector<CurveParameter*> m_parameter_widgets;
+  std::unique_ptr<curves::Curve> m_curve;
   curves::Param<curves::CurveInterpretation>* m_curveInterpretationParam{
       nullptr};
   QPalette m_defaultDpiSpinBoxPalette;

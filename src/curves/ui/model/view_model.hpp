@@ -24,7 +24,7 @@
 #include <curves/curves/transfer_function/curve.hpp>
 #include <curves/curves/transfer_function/from_gain.hpp>
 #include <curves/curves/transfer_function/from_sensitivity.hpp>
-#include <curves/math/spline.hpp>
+#include <curves/math/curve.hpp>
 #include <curves/ui/model/flat_visitor.hpp>
 #include <memory>
 
@@ -127,27 +127,31 @@ class ViewModel {
   }
 
   /*!
-    \brief Creates spline for currently selected curve.
+    \brief Creates spline composite for currently selected generating curve.
   */
-  [[nodiscard]] auto create_spline() const -> std::unique_ptr<curves_spline> {
-    std::unique_ptr<curves_spline> result;
+  [[nodiscard]] auto create_curve() const -> Curve {
+    Curve result;
     profile_.curve_profile_entries.visit_config(
         selected_curve(), [&](const auto& curve_profile_entry) {
           const auto curve = curve_profile_entry.config.create();
+
           const auto sensitivity = profile_.sensitivity.value();
           switch (curve_profile_entry.interpretation.value()) {
             case CurveInterpretation::kGain:
-              result =
-                  std::make_unique<curves_spline>(curves::spline::create_spline(
-                      curves::FromGain{curve}, sensitivity));
+              result.spline = curves::spline::create_spline(
+                  curves::FromGain{curve}, sensitivity);
               break;
 
             case CurveInterpretation::kSensitivity:
-              result =
-                  std::make_unique<curves_spline>(curves::spline::create_spline(
-                      curves::FromSensitivity{curve}, sensitivity));
+              result.spline = curves::spline::create_spline(
+                  curves::FromSensitivity{curve}, sensitivity);
               break;
           }
+
+          result.shaping = curves::default_shaping(
+              // This is a temporary adapter to make generator curves work with
+              // the shaping construction.
+              [&](auto x) { return curve.value(x); }, SPLINE_X_END_MAX);
         });
     return result;
   }

@@ -38,24 +38,24 @@ class CurveView {
                   InputShapingView{curve ? &curve->shaping : nullptr}} {}
 
   CurveView(SplineView spline, InputShapingView shaping) noexcept
-      : spline_{std::move(spline)},
-        shaping_{std::move(shaping)},
-        u_to_x_{spline_.v_to_x()} {}
+      : spline_{std::move(spline)}, shaping_{std::move(shaping)} {}
 
   auto valid() const noexcept -> bool { return spline_.valid(); }
 
   // Evaluate all four display curves at raw velocity v.
   auto operator()(real_t v) const noexcept -> CurveResult {
+    const auto u_to_x = fixed_to_real(spline_.v_to_x());
+
     // Shaping: v -> u, u', u''
     const auto [u, du, d2u] = shaping_(v);
 
     // Spline: u -> T, T', T'' (in x-space, need to scale)
-    const auto x = u * u_to_x_;
+    const auto x = u * u_to_x;
     const auto [T, dT_dx, d2T_dx2] = spline_(x);
 
     // Scale spline derivatives to u-space
-    const auto dT_du = dT_dx * u_to_x_;
-    const auto d2T_du2 = d2T_dx2 * u_to_x_ * u_to_x_;
+    const auto dT_du = dT_dx * u_to_x;
+    const auto d2T_du2 = d2T_dx2 * u_to_x * u_to_x;
 
     // Compose: G = (dT/du)(du/dv)
     const auto G = dT_du * du;

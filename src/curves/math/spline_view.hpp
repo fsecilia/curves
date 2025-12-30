@@ -39,10 +39,7 @@ class SplineView {
     The spline pointer must remain valid for the lifetime of this view.
     Passing nullptr creates an empty view where all evaluations return 0.
   */
-  explicit SplineView(const curves_spline* spline)
-      : spline_{spline},
-        v_to_x_{spline ? fixed_to_real(spline->v_to_x) : 0.0L},
-        x_to_v_{std::abs(v_to_x_) > 0.0L ? 1.0L / v_to_x_ : 0.0L} {}
+  explicit SplineView(const curves_spline* spline) : spline_{spline} {}
 
   /* Default constructor creates an empty view. */
   SplineView() = default;
@@ -52,18 +49,20 @@ class SplineView {
   // --------------------------------------------------------------------------
 
   // Conversion factor from velocity to the reference domain of the spline.
-  auto v_to_x() const noexcept -> real_t { return v_to_x_; }
-
-  // Conversion factor from reference domain of the spline to velocity;
-  auto x_to_v() const noexcept -> real_t { return x_to_v_; }
-
-  // End of mapped spline domain. Beyond this is a linear extension.
-  auto x_max() const noexcept -> real_t {
-    return fixed_to_real(SPLINE_X_END_MAX);
+  auto v_to_x() const noexcept -> real_t {
+    return valid() ? spline_->v_to_x : 0.0L;
   }
 
+  // Conversion factor from reference domain of the spline to velocity;
+  auto x_to_v() const noexcept -> real_t {
+    return valid() ? 1.0 / spline_->v_to_x : 0.0L;
+  }
+
+  // End of mapped spline domain. Beyond this is a linear extension.
+  auto x_max() const noexcept -> real_t { return SPLINE_X_END_MAX; }
+
   // End of mapped spline domain in velocity.
-  auto v_max() const noexcept -> real_t { return x_max() * x_to_v_; }
+  auto v_max() const noexcept -> real_t { return x_max() * x_to_v(); }
 
   // Checks if this view points to valid spline data.
   auto valid() const noexcept -> bool { return spline_ != nullptr; }
@@ -77,7 +76,7 @@ class SplineView {
     if (!valid()) return {real_t{0}, real_t{0}, real_t{0}};
 
     x = std::clamp(x, real_t{0}, static_cast<real_t>(SPLINE_X_END_MAX));
-    const auto [seg, t, x_width] = resolve_segment(x);
+    const auto [seg, x_width, t] = resolve_segment(x);
     const auto x_width_inv = 1.0 / x_width;
 
     const auto c0 = fixed_to_real(seg->coeffs[0]);
@@ -108,7 +107,7 @@ class SplineView {
     if (!valid()) return real_t{0};
 
     x = std::clamp(x, real_t{0}, static_cast<real_t>(SPLINE_X_END_MAX));
-    const auto [seg, t, x_width] = resolve_segment(x);
+    const auto [seg, x_width, t] = resolve_segment(x);
 
     auto c0 = fixed_to_real(seg->coeffs[0]);
     auto c1 = fixed_to_real(seg->coeffs[1]);
@@ -126,19 +125,17 @@ class SplineView {
   // --------------------------------------------------------------------------
 
   auto at_u(real_t u) const -> SplineResult {
-    auto x = u * v_to_x_;
+    auto x = u * v_to_x();
     return (*this)(x);
   }
 
   auto eval_at_u(real_t u) const -> real_t {
-    auto x = u * v_to_x_;
+    auto x = u * v_to_x();
     return eval(x);
   }
 
  private:
   const curves_spline* spline_ = nullptr;
-  real_t v_to_x_;
-  real_t x_to_v_;
 
   struct ResolvedSegment {
     const curves_spline_segment* segment;
@@ -160,7 +157,7 @@ class SplineView {
     const auto index = std::min(segment_desc.index, SPLINE_NUM_SEGMENTS);
     const auto t = std::min(1.0L, fixed_to_real(spline::map_x_to_t(
                                       x_fixed, segment_desc.width_log2)));
-    const auto width = static_cast<real_t>(1LL << segment_desc.width_log2);
+    const auto width = fixed_to_real(1LL << segment_desc.width_log2);
     return ResolvedSegment{
         .segment = &spline_->segments[index],
         .width = width,
