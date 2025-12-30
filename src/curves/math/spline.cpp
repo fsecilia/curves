@@ -22,6 +22,10 @@ auto map_v_to_x(const struct curves_spline* spline, s64 v) noexcept -> s64 {
   return ::map_v_to_x(spline, v);
 }
 
+auto calc_segment_desc(s64 x) noexcept -> curves_segment_desc {
+  return ::calc_segment_desc(x);
+}
+
 auto resolve_x(s64 x) noexcept -> curves_spline_coords {
   return ::resolve_x(x);
 }

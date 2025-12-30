@@ -60,6 +60,24 @@ static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
 	};
 }
 
+/**
+ * calc_segment_desc() - Calculates segment descriptor at given location.
+ * @x: Input value in reference domain. Must be non-negative.
+ *
+ * This function calculates the segment index and log2 width for a given
+ * input coordinate.
+ *
+ * Return: A descriptor containing the segment index and width_log2.
+ */
+static inline struct curves_segment_desc calc_segment_desc(s64 x)
+{
+	int x_log2 = curves_log2_u64((u64)x);
+	if (x_log2 < SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT)
+		return calc_subnormal_segment_desc(x);
+	else
+		return calc_octave_segment_desc(x, x_log2);
+}
+
 /*
  * Calculates t: The position of x within the segment, normalized to [0, 1).
  * t = (x % width) / width
@@ -79,26 +97,11 @@ static inline s64 map_x_to_t(s64 x, int width_log2)
 // Finds segment index and interpolation for input x.
 static inline struct curves_spline_coords resolve_x(s64 x)
 {
-	struct curves_segment_desc segment_geometry;
-	struct curves_spline_coords result;
-	int x_log2;
-
-	if (unlikely(x < 0)) {
-		result.segment_index = 0;
-		result.t = 0;
-		return result;
-	}
-
-	x_log2 = curves_log2_u64((u64)x);
-
-	if (x_log2 < SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT)
-		segment_geometry = calc_subnormal_segment_desc(x);
-	else
-		segment_geometry = calc_octave_segment_desc(x, x_log2);
-
-	result.segment_index = segment_geometry.index;
-	result.t = map_x_to_t(x, segment_geometry.width_log2);
-	return result;
+	struct curves_segment_desc segment_desc = calc_segment_desc(x);
+	return (struct curves_spline_coords){
+		.segment_index = segment_desc.index,
+		.t = map_x_to_t(x, segment_desc.width_log2)
+	};
 }
 
 /*

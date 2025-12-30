@@ -29,6 +29,7 @@ static_assert(SPLINE_SEGMENTS_PER_OCTAVE_LOG2 <=
 // Imports from c.
 auto map_x_to_t(s64 x, int width_log2) noexcept -> s64;
 auto map_v_to_x(const struct curves_spline* spline, s64 v) noexcept -> s64;
+auto calc_segment_desc(s64 x) noexcept -> curves_segment_desc;
 auto resolve_x(s64 x) noexcept -> curves_spline_coords;
 auto eval(const struct curves_spline_segment* segment, s64 t) noexcept -> s64;
 auto eval(const struct curves_spline* spline, s64 v) noexcept -> s64;
