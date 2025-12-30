@@ -17,19 +17,6 @@ extern "C" {
 
 namespace curves {
 
-inline auto curves_fixed_from_double(double value,
-                                     unsigned int frac_bits) noexcept -> s64 {
-  const auto scaled_double =
-      static_cast<double>(value) * static_cast<double>(1ll << frac_bits);
-  const auto fixed = static_cast<s64>(scaled_double);
-  return fixed;
-}
-
-inline auto curves_fixed_to_double(s64 raw, unsigned int frac_bits) noexcept
-    -> double {
-  return static_cast<double>(raw) / static_cast<double>(1ll << frac_bits);
-}
-
 struct Fixed {
   using Value = int64_t;
   Value raw;
@@ -173,5 +160,13 @@ struct Fixed {
     return from_raw(raw & ~(kOne - 1));
   }
 };
+
+inline auto fixed_to_real(s64 raw) noexcept -> real_t {
+  return Fixed::from_raw(raw).to_real();
+}
+
+inline auto real_to_fixed(real_t value) noexcept -> s64 {
+  return Fixed{value}.raw;
+}
 
 }  // namespace curves

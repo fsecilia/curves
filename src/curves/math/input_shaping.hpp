@@ -213,24 +213,24 @@ struct BuildKernelParams {
 
     // Stage 1: Ease-in
     p.ease_in = curves_shaping_ease_in{
-        .u_floor = to_fixed(ease_in_state.u_floor),
-        .u_lag = to_fixed(ease_in_state.u_lag),
+        .u_floor = real_to_fixed(ease_in_state.u_floor),
+        .u_lag = real_to_fixed(ease_in_state.u_lag),
         .transition =
             curves_shaping_transition{
-                .v_begin = to_fixed(ease_in_cfg.transition.v_begin),
-                .v_width = to_fixed(ease_in_cfg.transition.v_width),
-                .v_width_inv = to_fixed(ease_in_state.v_width_inv),
+                .v_begin = real_to_fixed(ease_in_cfg.transition.v_begin),
+                .v_width = real_to_fixed(ease_in_cfg.transition.v_width),
+                .v_width_inv = real_to_fixed(ease_in_state.v_width_inv),
             },
     };
 
     // Stage 2: Ease-out
     p.ease_out = curves_shaping_ease_out{
-        .u_ceiling = to_fixed(ease_out_state.u_ceiling),
+        .u_ceiling = real_to_fixed(ease_out_state.u_ceiling),
         .transition =
             curves_shaping_transition{
-                .v_begin = to_fixed(ease_out_cfg.transition.v_begin),
-                .v_width = to_fixed(ease_out_cfg.transition.v_width),
-                .v_width_inv = to_fixed(ease_out_state.v_width_inv),
+                .v_begin = real_to_fixed(ease_out_cfg.transition.v_begin),
+                .v_width = real_to_fixed(ease_out_cfg.transition.v_width),
+                .v_width_inv = real_to_fixed(ease_out_state.v_width_inv),
             },
     };
 
@@ -242,9 +242,6 @@ struct BuildKernelParams {
     return (*this)(config.ease_in, state.ease_in, config.ease_out,
                    state.ease_out);
   }
-
- private:
-  static auto to_fixed(real_t val) noexcept -> s64 { return Fixed{val}.raw; }
 };
 
 inline constexpr BuildKernelParams build_kernel_params{};

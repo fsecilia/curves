@@ -3,10 +3,6 @@
   \file
   \brief Floating-point wrapper for kernel shaping evaluation.
 
-  This module provides a floating-point interface to the kernel's fixed-point
-  input shaping code. It's used for UI rendering to show exactly what the
-  kernel will compute—WYSIWYG for the acceleration curve.
-
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
@@ -22,7 +18,7 @@ namespace curves {
 
   Non-owning view of kernel shaping parameters with floating-point evaluation.
 
-  Calls the actual kernel shaping code. Uses  fixed-point conversion to ensure
+  Calls the actual kernel shaping code. Uses fixed-point conversion to ensure
   the UI shows exactly what the driver calculates.
 */
 class InputShapingView {
@@ -43,36 +39,36 @@ class InputShapingView {
   auto operator()(real_t v) const noexcept -> real_t {
     if (!valid()) return v;
 
-    s64 v_fixed = to_fixed(v);
+    s64 v_fixed = real_to_fixed(v);
     s64 u_fixed = curves_shaping_apply(v_fixed, params_);
-    return to_real(u_fixed);
+    return fixed_to_real(u_fixed);
   }
 
   auto valid() const noexcept -> bool { return params_ != nullptr; }
 
   /* Ease-in parameters */
   auto ease_in_u_floor() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_in.u_floor) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_in.u_floor) : 0.0;
   }
   auto ease_in_transition_v_begin() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_in.transition.v_begin) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_in.transition.v_begin) : 0.0;
   }
   auto ease_in_transition_v_width() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_in.transition.v_width) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_in.transition.v_width) : 0.0;
   }
   auto ease_in_u_lag() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_in.u_lag) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_in.u_lag) : 0.0;
   }
 
   /* Ease-out parameters */
   auto ease_out_transition_v_begin() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_out.transition.v_begin) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_out.transition.v_begin) : 0.0;
   }
   auto ease_out_transition_v_width() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_out.transition.v_width) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_out.transition.v_width) : 0.0;
   }
   auto ease_out_u_ceiling() const noexcept -> real_t {
-    return valid() ? to_real(params_->ease_out.u_ceiling) : 0.0;
+    return valid() ? fixed_to_real(params_->ease_out.u_ceiling) : 0.0;
   }
 
   /* Derived boundaries */
@@ -85,14 +81,6 @@ class InputShapingView {
 
  private:
   const curves_shaping_params* params_;
-
-  static auto to_real(s64 raw) noexcept -> real_t {
-    return Fixed::from_raw(raw).to_real();
-  }
-
-  static auto to_fixed(real_t value) noexcept -> s64 {
-    return Fixed{value}.raw;
-  }
 };
 
 }  // namespace curves
