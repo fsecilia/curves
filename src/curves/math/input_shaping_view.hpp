@@ -27,8 +27,8 @@ struct ShapingResult {
 */
 class InputShapingView {
  public:
-  explicit InputShapingView(const curves_shaping_params& params) noexcept
-      : params_{&params} {}
+  explicit InputShapingView(const curves_shaping_params* params) noexcept
+      : params_{params} {}
 
   InputShapingView() noexcept = default;
 
