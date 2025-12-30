@@ -69,7 +69,7 @@
 
 // Total segments needed to cover all octaves.
 #define SPLINE_NUM_SEGMENTS \
-	((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
+	(s64)((SPLINE_NUM_OCTAVES + 1) << SPLINE_SEGMENTS_PER_OCTAVE_LOG2)
 
 // Spline is composed of cubic curves.
 #define SPLINE_NUM_COEFFS 4
