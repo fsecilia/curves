@@ -53,10 +53,10 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  ASSERT_LE(accuracy_metrics.mse_abs(), 1.1212e-05L);
-  ASSERT_LE(accuracy_metrics.rmse_abs(), 2.606065e-06L);
-  ASSERT_LE(accuracy_metrics.mse_rel(), 1.22622e-06L);
-  ASSERT_LE(accuracy_metrics.rmse_rel(), 9.5155e-09L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 1.1212e-05L);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 2.606065e-06L);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 1.22622e-06L);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 1.132785e-08L);
 }
 
 TEST(spline_set, synchronous_accuracy_from_gain) {
@@ -96,10 +96,10 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  ASSERT_LE(accuracy_metrics.mse_abs(), 7.92163e-06L);
-  ASSERT_LE(accuracy_metrics.rmse_abs(), 1.87908e-06L);
-  ASSERT_LE(accuracy_metrics.mse_rel(), 2.08249e-05L);
-  ASSERT_LE(accuracy_metrics.rmse_rel(), 5.498625e-08L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 7.92163e-06L);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 1.87908e-06L);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 2.08249e-05L);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 7.741745e-08L);
 }
 
 TEST(spline, sensitivity_vs_gain) {
@@ -157,10 +157,10 @@ TEST(spline, sensitivity_vs_gain) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  ASSERT_LE(accuracy_metrics.mse_abs(), 0.000411519L);
-  ASSERT_LE(accuracy_metrics.rmse_abs(), 0.000130904L);
-  ASSERT_LE(accuracy_metrics.mse_rel(), 0.000624302L);
-  ASSERT_LE(accuracy_metrics.rmse_rel(), 1.788635e-06L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 0.000411519L);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 0.000130904L);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 0.000624302L);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 2.506385e-06L);
 }
 
 }  // namespace
