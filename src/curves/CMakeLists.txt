@@ -37,6 +37,9 @@ list(APPEND lib_files
   math/inverse_function.hpp
   math/io.hpp
   math/jet.hpp
+  math/shaped_spline_builder.cpp
+  math/shaped_spline_builder.hpp
+  math/shaped_spline_view.hpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -120,6 +123,7 @@ list(APPEND common_headers
   driver/input_shaping.h
   driver/kernel_compat.h
   driver/math.h
+  driver/shaped_spline.h
   driver/spline.h
 )
 

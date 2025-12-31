@@ -148,10 +148,7 @@ class ViewModel {
               break;
           }
 
-          result.shaping = curves::default_shaping(
-              // This is a temporary adapter to make generator curves work with
-              // the shaping construction.
-              [&](auto x) { return curve.value(x); }, SPLINE_X_END_MAX);
+          result.shaping = solve_input_shaping({});
         });
     return result;
   }
