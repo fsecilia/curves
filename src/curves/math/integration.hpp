@@ -35,6 +35,11 @@ concept ValueCallable = requires(F f, real_t x) {
   { f.value(x) } -> std::convertible_to<real_t>;
 };
 
+template <typename F>
+concept ValueInvocable = requires(F f, real_t x) {
+  { f(x) } -> std::convertible_to<real_t>;
+};
+
 // ----------------------------------------------------------------------------
 // Hermite-Corrected Trapezoidal Rule (uses endpoint derivatives)
 // ----------------------------------------------------------------------------
@@ -274,6 +279,17 @@ auto gauss5(F&& f, real_t a, real_t b) noexcept -> real_t {
       a, b,
       Gauss5Samples{f.value(nodes[0]), f.value(nodes[1]), f.value(nodes[2]),
                     f.value(nodes[3]), f.value(nodes[4])});
+}
+
+/*!
+  5-point Gauss-Legendre with direct invocation
+*/
+template <ValueInvocable F>
+auto gauss5(F&& f, real_t a, real_t b) noexcept -> real_t {
+  const auto nodes = gauss5_nodes(a, b);
+  return gauss5(a, b,
+                Gauss5Samples{f(nodes[0]), f(nodes[1]), f(nodes[2]),
+                              f(nodes[3]), f(nodes[4])});
 }
 
 /*

@@ -49,6 +49,9 @@ list(APPEND lib_files
   math/io.hpp
   math/jet.hpp
   math/kahan_accumulator.hpp
+  math/shaped_spline_builder.cpp
+  math/shaped_spline_builder.hpp
+  math/shaped_spline_view.hpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -148,6 +151,7 @@ list(APPEND common_headers
   driver/kernel_compat.h
   driver/segment/eval.h
   driver/segment/unpacking.h
+  driver/shaped_spline.h
   driver/spline.h
 )
 

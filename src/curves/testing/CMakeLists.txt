@@ -8,8 +8,12 @@ add_library(testing_lib
   error_metrics.hpp
   isqrt.cpp
   isqrt.hpp
+  shaped_spline_accuracy.hpp
   test.cpp
   test.hpp
+)
+target_include_directories(testing_lib PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
 )
 target_link_libraries(testing_lib PUBLIC
     lib

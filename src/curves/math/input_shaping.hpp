@@ -30,256 +30,50 @@ extern "C" {
 
 namespace curves {
 
-// ----------------------------------------------------------------------------
-// Transition Polynomial
-// ----------------------------------------------------------------------------
-
-/*
-  P(t) = t^4 * (2.5 - 3t + t^2) = 2.5t^4 - 3t^5 + t^6
-
-  This is the integral of smootherstep applied to slope. Properties:
-
-    P(0) = 0      P(1) = 0.5     (area ratio)
-    P'(0) = 0     P'(1) = 1      (slope continuity)
-    P''(0) = 0    P''(1) = 0     (curvature continuity)
-    P'''(0) = 0   P'''(1) = 0    (jerk continuity)
-
-  This gives C^3 continuity when concatenating floor/transition/linear.
-  The felt gain (which is what your hand experiences) has continuous jerk.
-*/
-struct EasePolynomial {
-  real_t c0;
-  real_t c1;
-  real_t c2;
-
-  constexpr auto area_ratio() const -> real_t { return c0 + c1 + c2; }
-
-  constexpr auto operator()(real_t t) const -> real_t {
-    const auto t2 = t * t;
-    const auto t4 = t2 * t2;
-    return (c0 * t2 + c1 * t + c2) * t4;
-  }
-};
-
-// Integral of smootherstep. C^3 continuous, area ratio 0.5.
-inline constexpr auto kEasePoly = EasePolynomial{1.0L, -3.0L, 2.5L};
-
-//! Domain covered by a transition.
-struct ShapingTransition {
-  real_t v_begin;  //!< Beginning of transition, velocity.
-  real_t v_width;  //!< Width of transition, velocity.
-};
-
-// ----------------------------------------------------------------------------
-// Stage 1: Ease-In Configuration and State
-// ----------------------------------------------------------------------------
-
-//! Config, as specified by ui.
-struct EaseInConfig {
-  static auto constexpr y_floor_target_default = real_t{0};
-
-  // Floor level in user's chosen display space, sensitivity or gain.
-  real_t y_floor_target = y_floor_target_default;
-
-  static auto constexpr v_width_default = real_t{0};
-  static auto constexpr v_begin_default = real_t{0};
-  ShapingTransition transition{v_width_default, v_begin_default};
-};
-
-//! State, solved for kernel params.
-struct EaseInState {
-  real_t u_floor = 0.0L;
-  real_t v_width_inv = 0.0L;
-  real_t u_lag = 0.0L;
-};
-
-// ----------------------------------------------------------------------------
-// Stage 2: Ease-Out Configuration and State
-// ----------------------------------------------------------------------------
-
-struct EaseOutConfig {
-  static auto constexpr begin_default_scale = real_t{0.8L};
-  static auto constexpr width_default_scale = real_t{0.1L};
-  ShapingTransition transition;
-};
-
-struct EaseOutState {
-  real_t v_width_inv = 0.0L;
-  real_t u_ceiling = 0.0L;
-};
-
-// ----------------------------------------------------------------------------
-// Combined Configuration
-// ----------------------------------------------------------------------------
-
 struct InputShapingConfig {
-  EaseInConfig ease_in;
-  EaseOutConfig ease_out;
+  // Stage 1: Ease-in
+  real_t floor_v_width = 0.0;  // How long floor lasts (v units)
+  real_t ease_in_width = 0.0;  // Transition width (v units)
+
+  // Stage 2: Ease-out
+  real_t ease_out_v_begin = 100;  // Where ceiling transition starts
+  real_t ease_out_width = 10;     // Ceiling transition width
 };
 
-struct InputShapingState {
-  EaseInState ease_in;
-  EaseOutState ease_out;
-};
-
-// ----------------------------------------------------------------------------
-// Stage 1 Solver
-// ----------------------------------------------------------------------------
-
-struct SolveEaseIn {
-  // DisplayCurve: callable as real_t(real_t u), returns S or G at that u.
-  template <typename DisplayCurve>
-  EaseInState operator()(const EaseInConfig& config,
-                         DisplayCurve&& display_curve,
-                         [[maybe_unused]] real_t u_max) const {
-    EaseInState state{};
-
-    // Find u_floor by inverting the display curve.
-    if (config.y_floor_target <= 0.0L) {
-      state.u_floor = 0.0L;
-    } else {
-      state.u_floor =
-          inverse_via_partition(display_curve, config.y_floor_target);
-    }
-
-    // Compute reciprocal width for division in eval.
-    const auto v_width = std::max(0.0L, config.transition.v_width);
-    state.v_width_inv = (v_width > 0.0L) ? (1.0L / v_width) : 0.0L;
-
-    /*
-      Compute lag for continuity at transition end.
-
-      At v = v_begin + v_width:
-        Transition output: u_floor + v_width * 0.5
-        Linear output:     v - u_lag
-
-      Setting equal:
-        u_lag = (v_begin + v_width) - u_floor - v_width * 0.5
-              = v_begin + v_width * 0.5 - u_floor
-    */
-    const auto v_end = config.transition.v_begin + v_width;
-    const auto transition_height = v_width * kEasePoly.area_ratio();
-    state.u_lag = v_end - (state.u_floor + transition_height);
-
-    return state;
-  }
-};
-inline constexpr SolveEaseIn solve_ease_in{};
-
-// ----------------------------------------------------------------------------
-// Stage 2 Solver
-// ----------------------------------------------------------------------------
-
-struct SolveEaseOut {
-  EaseOutState operator()(const EaseOutConfig& config) const {
-    EaseOutState state{};
-
-    const auto v_width = std::max(0.0L, config.transition.v_width);
-    state.v_width_inv = (v_width > 0.0L) ? (1.0L / v_width) : 0.0L;
-    state.u_ceiling =
-        config.transition.v_begin + v_width * kEasePoly.area_ratio();
-
-    return state;
-  }
-};
-inline constexpr SolveEaseOut solve_ease_out{};
-
-// ----------------------------------------------------------------------------
-// Combined Solver
-// ----------------------------------------------------------------------------
-
-struct SolveInputShaping {
-  template <typename DisplayCurve>
-  InputShapingState operator()(const InputShapingConfig& config,
-                               DisplayCurve&& display_curve,
-                               real_t u_max) const {
-    return InputShapingState{
-        .ease_in = solve_ease_in(config.ease_in, display_curve, u_max),
-        .ease_out = solve_ease_out(config.ease_out),
-    };
-  }
-};
-inline constexpr SolveInputShaping solve_input_shaping{};
-
-// ----------------------------------------------------------------------------
-// Kernel Parameter Builder
-// ----------------------------------------------------------------------------
-
-struct BuildKernelParams {
-  curves_shaping_params operator()(const EaseInConfig& ease_in_cfg,
-                                   const EaseInState& ease_in_state,
-                                   const EaseOutConfig& ease_out_cfg,
-                                   const EaseOutState& ease_out_state) const {
-    curves_shaping_params p;
-
-    // Stage 1: Ease-in
-    p.ease_in = curves_shaping_ease_in{
-        .u_floor = real_to_fixed(ease_in_state.u_floor),
-        .u_lag = real_to_fixed(ease_in_state.u_lag),
-        .transition =
-            curves_shaping_transition{
-                .v_begin = real_to_fixed(ease_in_cfg.transition.v_begin),
-                .v_width = real_to_fixed(ease_in_cfg.transition.v_width),
-                .v_width_inv = real_to_fixed(ease_in_state.v_width_inv),
-            },
-    };
-
-    // Stage 2: Ease-out
-    p.ease_out = curves_shaping_ease_out{
-        .u_ceiling = real_to_fixed(ease_out_state.u_ceiling),
-        .transition =
-            curves_shaping_transition{
-                .v_begin = real_to_fixed(ease_out_cfg.transition.v_begin),
-                .v_width = real_to_fixed(ease_out_cfg.transition.v_width),
-                .v_width_inv = real_to_fixed(ease_out_state.v_width_inv),
-            },
-    };
-
-    return p;
-  }
-
-  curves_shaping_params operator()(const InputShapingConfig& config,
-                                   const InputShapingState& state) const {
-    return (*this)(config.ease_in, state.ease_in, config.ease_out,
-                   state.ease_out);
-  }
-};
-
-inline constexpr BuildKernelParams build_kernel_params{};
-
-// ----------------------------------------------------------------------------
-// Default Configurations
-// ----------------------------------------------------------------------------
-
-inline EaseInConfig default_ease_in_config() { return EaseInConfig{}; }
-
-inline auto default_ease_out_config(real_t v_end) noexcept -> EaseOutConfig {
-  return EaseOutConfig{
-      .transition = {.v_begin = v_end * EaseOutConfig::begin_default_scale,
-                     .v_width = v_end * EaseOutConfig::width_default_scale}};
-}
-
-inline auto default_shaping_config(real_t v_end) noexcept
-    -> InputShapingConfig {
-  return InputShapingConfig{.ease_in = default_ease_in_config(),
-                            .ease_out = default_ease_out_config(v_end)};
-}
-
-inline auto default_shaping(auto&& display_curve, real_t v_end) noexcept
+// Solver becomes trivial - just geometry
+inline auto solve_input_shaping(const InputShapingConfig& config)
     -> curves_shaping_params {
-  const auto config = InputShapingConfig{
-      .ease_in = default_ease_in_config(),
-      .ease_out = default_ease_out_config(v_end),
-  };
+  curves_shaping_params p{};
 
-  const auto state = InputShapingState{
-      .ease_in = solve_ease_in(
-          config.ease_in, std::forward<decltype(display_curve)>(display_curve),
-          v_end),
-      .ease_out = solve_ease_out(config.ease_out),
-  };
+  // Stage 1: Ease-in
+  // Floor is at u = 0 always
+  p.ease_in.u_floor = 0;
 
-  return build_kernel_params(config, state);
+  // Transition starts at end of floor
+  const auto v_in_begin = config.floor_v_width;
+  const auto v_in_width = config.ease_in_width;
+  p.ease_in.transition.v_begin = real_to_fixed(v_in_begin);
+  p.ease_in.transition.v_width = real_to_fixed(v_in_width);
+  p.ease_in.transition.v_width_inv =
+      v_in_width ? real_to_fixed(1.0L / v_in_width) : 0LL;
+
+  // Lag for continuity: at v_end, transition outputs v_width * 0.5
+  // Linear outputs v - lag, so lag = v_end - (0 + v_width * 0.5)
+  const auto v_end = v_in_begin + v_in_width;
+  const auto transition_height = v_in_width * 0.5;  // kEasePoly.area_ratio()
+  const auto u_lag = v_end - transition_height;
+  p.ease_in.u_lag = real_to_fixed(u_lag);
+
+  // Stage 2: Ease-out (same as before, no changes needed)
+  const auto v_out_width = config.ease_out_width;
+  p.ease_out.transition.v_begin = real_to_fixed(config.ease_out_v_begin);
+  p.ease_out.transition.v_width = real_to_fixed(v_out_width);
+  p.ease_out.transition.v_width_inv =
+      v_out_width ? real_to_fixed(1.0 / v_out_width) : 0LL;
+  p.ease_out.u_ceiling =
+      real_to_fixed(config.ease_out_v_begin + v_out_width * 0.5);
+
+  return p;
 }
 
 }  // namespace curves
