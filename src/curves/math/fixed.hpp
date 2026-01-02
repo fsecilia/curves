@@ -169,4 +169,12 @@ inline auto real_to_fixed(real_t value) noexcept -> s64 {
   return Fixed{value}.raw;
 }
 
+inline auto to_real(s64 raw, int frac_bits) noexcept -> real_t {
+  return std::ldexp(static_cast<real_t>(raw), -frac_bits);
+}
+
+inline auto to_fixed(real_t raw, int frac_bits) noexcept -> s64 {
+  return static_cast<s64>(std::round(std::ldexp(raw, frac_bits)));
+}
+
 }  // namespace curves

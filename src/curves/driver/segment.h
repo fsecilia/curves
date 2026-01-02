@@ -56,9 +56,6 @@
 #include "kernel_compat.h"
 #include "fixed.h"
 
-// Number of coefficients in a cubic polynomial.
-static const int curves_cubic_poly_coeff_count = 4;
-
 /*
  * Packing Layout Definitions
  *
@@ -67,6 +64,9 @@ static const int curves_cubic_poly_coeff_count = 4;
  * remains. We also derive masks.
  */
 enum {
+	// Number of coefficients in a cubic polynomial.
+	CURVES_CUBIC_COEFF_COUNT = 4,
+
 	CURVES_SHIFT_BITS = 6,
 	CURVES_PAYLOAD_BITS = 3 * CURVES_SHIFT_BITS + 1,
 	CURVES_COEFF_BITS = 64 - CURVES_PAYLOAD_BITS,
@@ -94,7 +94,7 @@ static const u64 CURVES_PAYLOAD_MASK = (1ULL << CURVES_PAYLOAD_BITS) - 1;
  * unsigned.
  */
 struct curves_packed_segment {
-	u64 v[4];
+	u64 v[CURVES_CUBIC_COEFF_COUNT];
 } __attribute__((aligned(32)));
 
 /**
@@ -105,11 +105,45 @@ struct curves_packed_segment {
  * @inv_width_shift: Absolute shift amount for the inverse width.
  */
 struct curves_normalized_segment {
-	s64 coeffs[4];
+	s64 coeffs[CURVES_CUBIC_COEFF_COUNT];
 	u64 inv_width;
-	s8 relative_shifts[4];
+	s8 relative_shifts[CURVES_CUBIC_COEFF_COUNT];
 	u8 inv_width_shift;
 };
+
+static inline s64
+curves_eval_segment(const struct curves_normalized_segment *segment, u64 t)
+{
+	const s64 *coeffs = segment->coeffs;
+	s64 accumulator = coeffs[0];
+
+	for (int i = 0; i < 2; ++i) {
+		s128 product = (s128)accumulator * t;
+		int shift = 64 + segment->relative_shifts[i];
+		product += ((s128)1 << (shift - 1));
+		accumulator = (s64)(product >> shift);
+		accumulator += coeffs[i + 1];
+	}
+
+	s128 product = (s128)accumulator * t;
+
+	int shift_c3 = 64 + segment->relative_shifts[2];
+	int shift_final = segment->relative_shifts[3];
+	int shift_prod = shift_c3 + shift_final;
+
+	product += ((s128)1 << (shift_prod - 1));
+	s64 term_prod = (s64)(product >> shift_prod);
+
+	s64 term_c3;
+	if (likely(shift_final > 0)) {
+		s64 half = 1LL << (shift_final - 1);
+		term_c3 = (coeffs[3] + half) >> shift_final;
+	} else {
+		term_c3 = coeffs[3] << (-shift_final);
+	}
+
+	return term_prod + term_c3;
+}
 
 static inline s8 __curves_sign_extend_shift(u8 value)
 {
