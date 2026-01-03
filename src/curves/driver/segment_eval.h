@@ -30,38 +30,54 @@ struct curves_normalized_segment {
 	u8 inv_width_shift;
 };
 
+// Horner's iteration with relative shifts.
+static inline s64 __curves_eval_segment_relative_horner(
+	const struct curves_normalized_segment *segment, u64 t, s64 accumulator,
+	int i)
+{
+	int shift = 64 + segment->relative_shifts[i - 1];
+	s128 product = (s128)accumulator * t + ((s128)1 << (shift - 1));
+	return (s64)(product >> shift) + segment->coeffs[i];
+}
+
+/*
+ * Final Horner's iteration performs final relative shift at 128 to prevent
+ * shifting right, then shifting left:
+ *	((a*b >> right) + c) << left == (a*b >> (right - left)) + (c << left)
+ */
+static inline s64 __curves_eval_segment_final_horner(
+	const struct curves_normalized_segment *segment, u64 t, s64 accumulator)
+{
+	int shift_final = segment->relative_shifts[3];
+
+	int shift = 64 + segment->relative_shifts[2] + shift_final;
+	s128 product = (s128)accumulator * t + ((s128)1 << (shift - 1));
+	accumulator = (s64)(product >> shift);
+
+	if (likely(shift_final > 0)) {
+		s64 half = 1LL << (shift_final - 1);
+		accumulator += (segment->coeffs[3] + half) >> shift_final;
+	} else {
+		accumulator += segment->coeffs[3] << -shift_final;
+	}
+
+	return accumulator;
+}
+
 static inline s64
 curves_eval_segment(const struct curves_normalized_segment *segment, u64 t)
 {
-	const s64 *coeffs = segment->coeffs;
-	s64 accumulator = coeffs[0];
+	s64 accumulator = segment->coeffs[0];
 
-	for (int i = 0; i < 2; ++i) {
-		s128 product = (s128)accumulator * t;
-		int shift = 64 + segment->relative_shifts[i];
-		product += ((s128)1 << (shift - 1));
-		accumulator = (s64)(product >> shift);
-		accumulator += coeffs[i + 1];
+	// Horner's loop with relative shifts.
+	for (int i = 1; i < CURVES_SEGMENT_COEFF_COUNT - 1; ++i) {
+		accumulator = __curves_eval_segment_relative_horner(
+			segment, t, accumulator, i);
 	}
 
-	s128 product = (s128)accumulator * t;
-
-	int shift_c3 = 64 + segment->relative_shifts[2];
-	int shift_final = segment->relative_shifts[3];
-	int shift_prod = shift_c3 + shift_final;
-
-	product += ((s128)1 << (shift_prod - 1));
-	s64 term_prod = (s64)(product >> shift_prod);
-
-	s64 term_c3;
-	if (likely(shift_final > 0)) {
-		s64 half = 1LL << (shift_final - 1);
-		term_c3 = (coeffs[3] + half) >> shift_final;
-	} else {
-		term_c3 = coeffs[3] << (-shift_final);
-	}
-
-	return term_prod + term_c3;
+	// Unroll final iteration to combine final shift instead of shifting
+	// right, then left.
+	return __curves_eval_segment_final_horner(segment, t, accumulator);
 }
 
 #endif /* _CURVES_SEGMENT_EVAL_H */
