@@ -9,7 +9,7 @@ curves-common-objs := \
   kernel_compat.o \
   math.o
 
-curves-driver-objs := entry_point.o spline.o
+curves-driver-objs := entry_point.o segment_unpacking.o spline.o
 
 curves-objs := $(curves-common-objs) $(curves-driver-objs)
 

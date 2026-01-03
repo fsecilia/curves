@@ -39,6 +39,7 @@ list(APPEND lib_files
   math/jet.hpp
   math/segment_eval.hpp
   math/segment_packing.hpp
+  math/segment_packing.cpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -132,6 +133,7 @@ list(APPEND common_headers
 # Driver .c files manually included in .cpp files.
 list(APPEND included_driver_source_files
   driver/input_shaping.c
+  driver/segment_unpacking.c
   driver/spline.c
 )
 

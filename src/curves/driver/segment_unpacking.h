@@ -35,21 +35,6 @@ enum {
 				      CURVES_SEGMENT_PAYLOAD_TOP_BITS
 };
 
-// Masks coefficients and inv_width.
-static const u64 CURVES_SEGMENT_MASK = (1ULL << CURVES_SEGMENT_FRAC_BITS) - 1;
-
-// Masks whole portion below coefficient.
-static const u64 CURVES_SEGMENT_PAYLOAD_MASK =
-	(1ULL << CURVES_SEGMENT_PAYLOAD_BITS) - 1;
-
-// Masks individual payload fields.
-static const u64 CURVES_SEGMENT_PAYLOAD_FIELD_MASK =
-	(1ULL << CURVES_SEGMENT_PAYLOAD_FIELD_BITS) - 1;
-
-// Masks top payload field.
-static const u64 CURVES_SEGMENT_PAYLOAD_TOP_MASK =
-	(1ULL << CURVES_SEGMENT_PAYLOAD_TOP_BITS) - 1;
-
 /**
  * struct curves_packed_segment - Cubic Hermite segment packed into 32 bytes.
  * @v: Array of 4 words containing packed data.
@@ -88,50 +73,6 @@ struct curves_packed_segment {
 	u64 v[CURVES_SEGMENT_COEFF_COUNT];
 } __attribute__((aligned(32)));
 
-// Extracts coefficient from top of packed element using an arithmetic shift to
-// right align the contents.
-static inline s64 __curves_extract_coefficient(u64 packed)
-{
-	return (s64)packed >> CURVES_SEGMENT_COEFFICIENT_SHIFT;
-}
-
-// Extracts payload from bottom of packed element.
-static inline u64 __curves_extract_payload(u64 packed)
-{
-	return packed & CURVES_SEGMENT_PAYLOAD_MASK;
-}
-
-// Extracts the top 7-bit field from the payload area of a packed element.
-static inline u64 __curves_extract_payload_top(u64 packed)
-{
-	return __curves_extract_payload(packed) >>
-	       2 * CURVES_SEGMENT_PAYLOAD_FIELD_BITS;
-}
-
-// Extracts a 6-bit field from the payload area of a packed element.
-static inline u64 __curves_extract_payload_field(u64 packed, unsigned int index)
-{
-	return (packed >> index * CURVES_SEGMENT_PAYLOAD_FIELD_BITS) &
-	       CURVES_SEGMENT_PAYLOAD_FIELD_MASK;
-}
-
-// Converts an unsigned value to signed by shifting its sign bit into an s8
-// msb, then arithmetic shifting back.
-static inline s8 __curves_sign_extend(u8 value, unsigned int shift_msb)
-{
-	return (s8)(value << shift_msb) >> shift_msb;
-}
-
-// Extracts a 6-bit signed shift.
-static inline s8 __curves_extract_signed_payload_field(u64 packed,
-						       unsigned int index)
-{
-	const unsigned int shift_msb =
-		BITS_PER_BYTE - CURVES_SEGMENT_PAYLOAD_FIELD_BITS;
-	return __curves_sign_extend(
-		__curves_extract_payload_field(packed, index), shift_msb);
-}
-
 /**
  * curves_unpack_segment() - Unpacks a segment into normalized form.
  * @packed: Pointer to the packed segment data.
@@ -141,35 +82,7 @@ static inline s8 __curves_extract_signed_payload_field(u64 packed,
  *
  * Return: Unpacked, normalized segment.
  */
-static inline struct curves_normalized_segment
-curves_unpack_segment(const struct curves_packed_segment *src)
-{
-	struct curves_normalized_segment dst;
-
-	// Coefficients.
-	for (int i = 0; i < 4; ++i)
-		dst.poly.coeffs[i] = __curves_extract_coefficient(src->v[i]);
-
-	// Gather inverse width.
-	dst.inv_width.value = __curves_extract_payload(src->v[0]) |
-			      __curves_extract_payload(src->v[1])
-				      << CURVES_SEGMENT_PAYLOAD_BITS |
-			      __curves_extract_payload_top(src->v[2])
-				      << (2 * CURVES_SEGMENT_PAYLOAD_BITS);
-
-	// Shifts.
-	dst.poly.relative_shifts[0] =
-		__curves_extract_signed_payload_field(src->v[2], 0);
-	dst.poly.relative_shifts[1] =
-		__curves_extract_signed_payload_field(src->v[3], 0);
-	dst.poly.relative_shifts[2] =
-		__curves_extract_signed_payload_field(src->v[3], 1);
-	dst.poly.relative_shifts[3] = __curves_sign_extend(
-		__curves_extract_payload_top(src->v[3]), 1);
-
-	dst.inv_width.shift = __curves_extract_payload_field(src->v[2], 1);
-
-	return dst;
-}
+struct curves_normalized_segment
+curves_unpack_segment(const struct curves_packed_segment *src);
 
 #endif /* _CURVES_SEGMENT_UNPACKING_H */

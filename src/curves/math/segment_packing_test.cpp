@@ -8,7 +8,7 @@
 #include <curves/math/segment_packing.hpp>
 #include <random>
 
-namespace curves {
+namespace curves::segment {
 namespace {
 
 // ----------------------------------------------------------------------------
@@ -70,7 +70,7 @@ struct SegmentPackingTest : Test {
 TEST_F(SegmentPackingTest, RoundTripFuzz) {
   for (auto i = 0; i < 10000; ++i) {
     const auto original = random_segment();
-    const auto packed = curves_pack_segment(original);
+    const auto packed = pack_segment(original);
     const auto unpacked = curves_unpack_segment(&packed);
     expect_segments_eq(original, unpacked);
   }
@@ -81,7 +81,7 @@ TEST_F(SegmentPackingTest, NegativeShiftsPreserved) {
   segment.poly.relative_shifts[0] = -1;   // All 1s
   segment.poly.relative_shifts[1] = -32;  // Min value
 
-  const auto packed = curves_pack_segment(segment);
+  const auto packed = pack_segment(segment);
   const auto unpacked = curves_unpack_segment(&packed);
 
   EXPECT_EQ(unpacked.poly.relative_shifts[0], -1);
@@ -105,7 +105,7 @@ TEST_F(SegmentPackingTest, RelativeShiftsMasked) {
   // The last field is 7 bits. Garbage bit must be 128 (bit 7).
   segment.poly.relative_shifts[3] = static_cast<int8_t>(expected | 128);
 
-  const auto packed = curves_pack_segment(segment);
+  const auto packed = pack_segment(segment);
   const auto unpacked = curves_unpack_segment(&packed);
 
   EXPECT_EQ(unpacked.poly.relative_shifts[0], expected);
@@ -126,7 +126,7 @@ TEST_F(SegmentPackingTest, InvWidthShiftMasked) {
 
   segment.inv_width.shift = expected | garbage_bit;
 
-  const auto packed = curves_pack_segment(segment);
+  const auto packed = pack_segment(segment);
   const auto unpacked = curves_unpack_segment(&packed);
 
   EXPECT_EQ(unpacked.inv_width.shift, expected);
@@ -143,7 +143,7 @@ TEST_F(SegmentPackingTest, InvWidthMasked) {
 
   segment.inv_width.value = expected | garbage_bit;
 
-  const auto packed = curves_pack_segment(segment);
+  const auto packed = pack_segment(segment);
   const auto unpacked = curves_unpack_segment(&packed);
 
   EXPECT_EQ(unpacked.inv_width.value, expected);
@@ -175,10 +175,10 @@ TEST_F(SegmentPackingTest, WalkingBit) {
                                  << nonzero_fields << " fields.";
 
     // Check that repacking only sets the same bit.
-    const auto repacked = curves_pack_segment(unpacked);
+    const auto repacked = pack_segment(unpacked);
     EXPECT_THAT(packed.v, ElementsAreArray(repacked.v));
   }
 }
 
 }  // namespace
-}  // namespace curves
+}  // namespace curves::segment
