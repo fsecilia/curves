@@ -38,6 +38,7 @@ list(APPEND lib_files
   math/io.hpp
   math/jet.hpp
   math/segment_eval.hpp
+  math/segment_packing.hpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -82,6 +83,7 @@ list(APPEND unit_tests_files
   math/inverse_function_test.cpp
   math/io_test.cpp
   math/segment_eval_test.cpp
+  math/segment_packing_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
   ui/model/flat_visitor_test.cpp
@@ -123,6 +125,7 @@ list(APPEND common_headers
   driver/kernel_compat.h
   driver/math.h
   driver/segment_eval.h
+  driver/segment_unpacking.h
   driver/spline.h
 )
 
