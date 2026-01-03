@@ -35,6 +35,13 @@ enum {
 				      CURVES_SEGMENT_PAYLOAD_TOP_BITS
 };
 
+// Masks whole portion below coefficient.
+#define CURVES_SEGMENT_PAYLOAD_MASK ((1ULL << CURVES_SEGMENT_PAYLOAD_BITS) - 1)
+
+// Masks individual payload fields.
+#define CURVES_SEGMENT_PAYLOAD_FIELD_MASK \
+	((1ULL << CURVES_SEGMENT_PAYLOAD_FIELD_BITS) - 1)
+
 /**
  * struct curves_packed_segment - Cubic Hermite segment packed into 32 bytes.
  * @v: Array of 4 words containing packed data.

@@ -8,14 +8,6 @@
 
 #include "segment_unpacking.h"
 
-// Masks whole portion below coefficient.
-static const u64 CURVES_SEGMENT_PAYLOAD_MASK =
-	(1ULL << CURVES_SEGMENT_PAYLOAD_BITS) - 1;
-
-// Masks individual payload fields.
-static const u64 CURVES_SEGMENT_PAYLOAD_FIELD_MASK =
-	(1ULL << CURVES_SEGMENT_PAYLOAD_FIELD_BITS) - 1;
-
 // Converts an unsigned value to signed by shifting its sign bit into an s8
 // msb, then arithmetic shifting back.
 static inline s8 sign_extend(u8 value, unsigned int shift_msb)

@@ -14,13 +14,6 @@ extern "C" {
 
 namespace curves::segment {
 
-// Masks coefficients and inv_width.
-const uint64_t CURVES_SEGMENT_MASK = (1ULL << CURVES_SEGMENT_FRAC_BITS) - 1;
-
-// Masks top payload field.
-const u64 CURVES_SEGMENT_PAYLOAD_TOP_MASK =
-    (1ULL << CURVES_SEGMENT_PAYLOAD_TOP_BITS) - 1;
-
 auto pack_segment(const curves_normalized_segment& src) noexcept
     -> curves_packed_segment {
   auto dst = curves_packed_segment{};
