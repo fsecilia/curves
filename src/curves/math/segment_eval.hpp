@@ -27,10 +27,15 @@ class SegmentView {
   auto inv_width() const noexcept -> real_t {
     if (!valid()) return 0.0L;
 
-    return to_real(segment_->inv_width, segment_->inv_width_shift);
+    return to_real(segment_->inv_width.value, segment_->inv_width.shift);
   }
 
   auto x_to_t(real_t x, real_t x0) const noexcept -> real_t {
+    /*
+      This should use __curves_segment_x_to_t, but we still have to determine
+      how many frac bits it will use. Until the pipeline is fleshed out more,
+      just use float.
+    */
     return (x - x0) * inv_width();
   }
 
@@ -38,7 +43,8 @@ class SegmentView {
   auto eval(real_t t) const noexcept -> real_t {
     if (!valid()) return 0.0L;
 
-    return curves_eval_segment(segment_, to_fixed(t, 64));
+    return __curves_segment_eval_poly(&segment_->poly,
+                                      to_fixed(t, CURVES_SEGMENT_T_FRAC_BITS));
   }
 
  private:

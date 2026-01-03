@@ -57,30 +57,30 @@ struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
 
     const auto float_coeffs = GetParam().coeffs;
     auto current_shift = ideal_shift(float_coeffs[0]);
-    result.coeffs[0] = to_fixed(float_coeffs[0], current_shift);
+    result.poly.coeffs[0] = to_fixed(float_coeffs[0], current_shift);
 
     for (auto coeff = 1; coeff < CURVES_SEGMENT_COEFF_COUNT; ++coeff) {
       const auto next_val = float_coeffs[coeff];
       const auto ideal_next = ideal_shift(next_val);
       const auto shift = current_shift - ideal_next;
       const auto clamped_shift = std::clamp(shift, -32, 31);
-      result.relative_shifts[coeff - 1] = static_cast<s8>(clamped_shift);
+      result.poly.relative_shifts[coeff - 1] = static_cast<s8>(clamped_shift);
       current_shift -= clamped_shift;
-      result.coeffs[coeff] = to_fixed(next_val, current_shift);
+      result.poly.coeffs[coeff] = to_fixed(next_val, current_shift);
     }
 
     const auto final_shift = current_shift - poly_frac_bits;
-    result.relative_shifts[3] =
+    result.poly.relative_shifts[3] =
         static_cast<s8>(std::clamp(final_shift, -64, 63));
 
     const auto width = GetParam().width;
     if (width > 0.0) {
       const auto inv_width = 1.0 / width;
-      result.inv_width_shift = ideal_shift(inv_width);
-      result.inv_width = to_fixed(inv_width, result.inv_width_shift);
+      result.inv_width.shift = ideal_shift(inv_width);
+      result.inv_width.value = to_fixed(inv_width, result.inv_width.shift);
     } else {
-      result.inv_width = 0;
-      result.inv_width_shift = 0;
+      result.inv_width.shift = 0;
+      result.inv_width.value = 0;
     }
 
     return result;

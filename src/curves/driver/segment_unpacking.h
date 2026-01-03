@@ -13,10 +13,6 @@
 #include "segment_eval.h"
 
 enum {
-	// Precision of normalized, segment-local t input parameter when
-	// evaluating, unsigned Q0.64.
-	CURVES_SEGMENT_T_FRAC_BITS = 64,
-
 	// Precision of normalized values, Q0.45. Some values are signed,
 	// some unsigned, but they are all 45 bits wide.
 	CURVES_SEGMENT_FRAC_BITS = 45,
@@ -31,9 +27,6 @@ enum {
 	// Precision of final shift from internal precision to requested output
 	// precision.
 	CURVES_SEGMENT_PAYLOAD_TOP_BITS = 7,
-
-	// Precision of evaluated segments, Q15.48.
-	CURVES_SEGMENT_OUT_FRAC_BITS = 48,
 
 	// The payload of each element in the packed array must have room for
 	// 2, 6-bit shift values, and a 7-bit value, or a single 19-bit value.
@@ -155,26 +148,26 @@ curves_unpack_segment(const struct curves_packed_segment *src)
 
 	// Coefficients.
 	for (int i = 0; i < 4; ++i)
-		dst.coeffs[i] = __curves_extract_coefficient(src->v[i]);
+		dst.poly.coeffs[i] = __curves_extract_coefficient(src->v[i]);
 
 	// Gather inverse width.
-	dst.inv_width = __curves_extract_payload(src->v[0]) |
-			__curves_extract_payload(src->v[1])
-				<< CURVES_SEGMENT_PAYLOAD_BITS |
-			__curves_extract_payload_top(src->v[2])
-				<< (2 * CURVES_SEGMENT_PAYLOAD_BITS);
+	dst.inv_width.value = __curves_extract_payload(src->v[0]) |
+			      __curves_extract_payload(src->v[1])
+				      << CURVES_SEGMENT_PAYLOAD_BITS |
+			      __curves_extract_payload_top(src->v[2])
+				      << (2 * CURVES_SEGMENT_PAYLOAD_BITS);
 
 	// Shifts.
-	dst.relative_shifts[0] =
+	dst.poly.relative_shifts[0] =
 		__curves_extract_signed_payload_field(src->v[2], 0);
-	dst.relative_shifts[1] =
+	dst.poly.relative_shifts[1] =
 		__curves_extract_signed_payload_field(src->v[3], 0);
-	dst.relative_shifts[2] =
+	dst.poly.relative_shifts[2] =
 		__curves_extract_signed_payload_field(src->v[3], 1);
-	dst.relative_shifts[3] = __curves_sign_extend(
+	dst.poly.relative_shifts[3] = __curves_sign_extend(
 		__curves_extract_payload_top(src->v[3]), 1);
 
-	dst.inv_width_shift = __curves_extract_payload_field(src->v[2], 1);
+	dst.inv_width.shift = __curves_extract_payload_field(src->v[2], 1);
 
 	return dst;
 }
