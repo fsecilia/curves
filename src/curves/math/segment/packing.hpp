@@ -9,7 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/math/segment/eval.hpp>
+#include <curves/math/segment/view.hpp>
 
 extern "C" {
 #include <curves/driver/segment/unpacking.h>

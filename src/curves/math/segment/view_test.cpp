@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "eval.hpp"
+#include "view.hpp"
 #include <curves/testing/test.hpp>
 #include <curves/math/segment/construction.hpp>
 
