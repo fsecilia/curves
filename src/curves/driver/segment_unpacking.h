@@ -12,36 +12,6 @@
 #include "kernel_compat.h"
 #include "segment_eval.h"
 
-enum {
-	// Precision of normalized values, Q0.45. Some values are signed,
-	// some unsigned, but they are all 45 bits wide.
-	CURVES_SEGMENT_FRAC_BITS = 45,
-
-	// Shift to right-align coefficients after extraction.
-	CURVES_SEGMENT_COEFFICIENT_SHIFT = 64 - CURVES_SEGMENT_FRAC_BITS,
-
-	// Precision of most shift integer values. Some are signed,
-	// some unsigned, but they are all 6 bits wide.
-	CURVES_SEGMENT_PAYLOAD_FIELD_BITS = 6,
-
-	// Precision of final shift from internal precision to requested output
-	// precision.
-	CURVES_SEGMENT_PAYLOAD_TOP_BITS = 7,
-
-	// The payload of each element in the packed array must have room for
-	// 2, 6-bit shift values, and a 7-bit value, or a single 19-bit value.
-	// The coefficient uses what remains.
-	CURVES_SEGMENT_PAYLOAD_BITS = 2 * CURVES_SEGMENT_PAYLOAD_FIELD_BITS +
-				      CURVES_SEGMENT_PAYLOAD_TOP_BITS
-};
-
-// Masks whole portion below coefficient.
-#define CURVES_SEGMENT_PAYLOAD_MASK ((1ULL << CURVES_SEGMENT_PAYLOAD_BITS) - 1)
-
-// Masks individual payload fields.
-#define CURVES_SEGMENT_PAYLOAD_FIELD_MASK \
-	((1ULL << CURVES_SEGMENT_PAYLOAD_FIELD_BITS) - 1)
-
 /**
  * struct curves_packed_segment - Cubic Hermite segment packed into 32 bytes.
  * @v: Array of 4 words containing packed data.
@@ -80,6 +50,22 @@ struct curves_packed_segment {
 	u64 v[CURVES_SEGMENT_COEFF_COUNT];
 } __attribute__((aligned(32)));
 
+// Unpacks coefficient and restores implicit 1.
+static inline s64 __curves_unpack_coeff(u64 raw_shifted)
+{
+	// Restore implicit 1.
+	u64 abs_val = raw_shifted | (1ULL << CURVES_COEFF_IMPLICIT_BIT_IDX);
+
+	// Extract sign bit.
+	u64 sign_bit = raw_shifted >> CURVES_COEFF_SIGN_BIT_IDX;
+
+	// Arithmetic conditional negation.
+	s64 val = (s64)((abs_val ^ -(s64)sign_bit) + sign_bit);
+
+	// cmov to check against zero.
+	return (raw_shifted == 0) ? 0 : val;
+}
+
 /**
  * curves_unpack_segment() - Unpacks a segment into normalized form.
  * @packed: Pointer to the packed segment data.
@@ -89,7 +75,59 @@ struct curves_packed_segment {
  *
  * Return: Unpacked, normalized segment.
  */
-struct curves_normalized_segment
-curves_unpack_segment(const struct curves_packed_segment *src);
+static inline struct curves_normalized_segment
+curves_unpack_segment(const struct curves_packed_segment *src)
+{
+	struct curves_normalized_segment dst;
+	u64 payload[CURVES_SEGMENT_COEFF_COUNT];
+
+	// 1. Extract Payloads (Bottom 19 bits)
+	for (int i = 0; i < (int)CURVES_SEGMENT_COEFF_COUNT; ++i) {
+		payload[i] = src->v[i] &
+			     ((1ULL << CURVES_SEGMENT_COEFF_SHIFT) - 1);
+	}
+
+	// 2. Reconstruct inverse width (Standard)
+	dst.inv_width.value = payload[0] | (payload[1] << 19) |
+			      ((payload[2] >> 12) << 38) |
+			      ((payload[3] >> 18) << 45);
+	dst.inv_width.value |= (1ULL << CURVES_INV_WIDTH_IMPLICIT_BIT_IDX);
+
+	// 3. Extract Exponents
+	dst.poly.exponents[0] = payload[2] & 0x3F;
+	dst.poly.exponents[1] = payload[3] & 0x3F;
+	dst.poly.exponents[2] = (payload[3] >> 6) & 0x3F;
+	dst.poly.exponents[3] = (payload[3] >> 12) & 0x3F;
+	dst.inv_width.shift = (payload[2] >> 6) & 0x3F;
+
+	// 4. Unpack Coefficients
+	for (int i = 0; i < 4; ++i) {
+		// A. Get Raw Storage Bits directly from the packed struct
+		u64 raw_storage = src->v[i] >> CURVES_SEGMENT_COEFF_SHIFT;
+
+		u8 raw_exp = dst.poly.exponents[i];
+		u64 sign_bit = raw_storage >> 44; // Bit 44 is Sign
+		u64 mantissa = raw_storage & ((1ULL << 44) - 1);
+
+		// B. Detect Denormal (Branchless)
+		u64 is_denorm = (u64)(raw_exp + 1) >> 6;
+
+		// C. Adjust Exponent
+		dst.poly.exponents[i] = raw_exp - (u8)is_denorm;
+
+		// D. Restore Implicit Bit (1ULL to avoid overflow)
+		u64 implicit_val = (is_denorm ^ 1ULL) << 44;
+
+		// E. Combine to Math Format
+		u64 abs_val = mantissa | implicit_val;
+
+		dst.poly.coeffs[i] =
+			(raw_storage == 0) ?
+				0 :
+				(s64)((abs_val ^ -(s64)sign_bit) + sign_bit);
+	}
+
+	return dst;
+}
 
 #endif /* _CURVES_SEGMENT_UNPACKING_H */

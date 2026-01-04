@@ -37,6 +37,7 @@ list(APPEND lib_files
   math/inverse_function.hpp
   math/io.hpp
   math/jet.hpp
+  math/segment_construction.hpp
   math/segment_eval.hpp
   math/segment_packing.hpp
   math/segment_packing.cpp
@@ -83,6 +84,7 @@ list(APPEND unit_tests_files
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
+  math/segment_construction_test.cpp
   math/segment_eval_test.cpp
   math/segment_packing_test.cpp
   math/spline_test.cpp

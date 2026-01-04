@@ -31,20 +31,21 @@ class SegmentView {
   }
 
   auto x_to_t(real_t x, real_t x0) const noexcept -> real_t {
-    /*
-      This should use __curves_segment_x_to_t, but we still have to determine
-      how many frac bits it will use. Until the pipeline is fleshed out more,
-      just use float.
-    */
-    return (x - x0) * inv_width();
+    const auto x_fixed = to_fixed(x, CURVES_SEGMENT_IN_FRAC_BITS);
+    const auto x0_fixed = to_fixed(x0, CURVES_SEGMENT_IN_FRAC_BITS);
+    const auto t_fixed = __curves_segment_x_to_t(
+        &segment_->inv_width, x_fixed, x0_fixed, CURVES_SEGMENT_IN_FRAC_BITS);
+    return to_real(t_fixed, CURVES_SEGMENT_T_FRAC_BITS);
   }
 
   auto operator()(real_t t) const noexcept -> real_t { return eval(t); }
   auto eval(real_t t) const noexcept -> real_t {
     if (!valid()) return 0.0L;
 
-    return __curves_segment_eval_poly(&segment_->poly,
-                                      to_fixed(t, CURVES_SEGMENT_T_FRAC_BITS));
+    const auto t_fixed = to_fixed<u64>(t, CURVES_SEGMENT_T_FRAC_BITS);
+    const auto result_fixed =
+        __curves_segment_eval_poly(&segment_->poly, t_fixed);
+    return to_real(result_fixed, CURVES_SEGMENT_OUT_FRAC_BITS);
   }
 
  private:

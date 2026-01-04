@@ -15,12 +15,27 @@ enum {
 	// Number of coefficients in polynomial.
 	CURVES_SEGMENT_COEFF_COUNT = 4, // cubic
 
+	// Precision of input x, Q15.48.
+	CURVES_SEGMENT_IN_FRAC_BITS = 48,
+
 	// Precision of normalized, segment-local t input parameter when
 	// evaluating, unsigned Q0.64.
 	CURVES_SEGMENT_T_FRAC_BITS = 64,
 
 	// Precision of evaluated segments, Q15.48.
 	CURVES_SEGMENT_OUT_FRAC_BITS = 48,
+
+	// Storage Definition
+	CURVES_SEGMENT_COEFF_STORAGE_BITS = 45,
+	CURVES_SEGMENT_COEFF_SHIFT = 64 - CURVES_SEGMENT_COEFF_STORAGE_BITS,
+
+	// Effective precision definitions
+	CURVES_COEFF_IMPLICIT_BIT_IDX = 44,
+	CURVES_COEFF_SIGN_BIT_IDX = 44,
+	CURVES_INV_WIDTH_IMPLICIT_BIT_IDX = 46,
+	CURVES_INV_WIDTH_STORAGE_BITS = 46,
+	CURVES_INV_WIDTH_STORAGE_MASK =
+		(1ULL << CURVES_INV_WIDTH_STORAGE_BITS) - 1
 };
 
 /**
@@ -36,16 +51,16 @@ enum {
  */
 struct curves_normalized_poly {
 	s64 coeffs[CURVES_SEGMENT_COEFF_COUNT];
-	s8 relative_shifts[CURVES_SEGMENT_COEFF_COUNT];
+	u8 exponents[CURVES_SEGMENT_COEFF_COUNT];
 };
 
 /**
  * struct curves_normalized_inv_width - Used to converts from spline x to 
  * segment t.
- * @value: Reciprocal of segment width, normalized to unsigned Q0.45.
+ * @value: Reciprocal of segment width, normalized to unsigned Q0.47.
  * @shift: Absolute shift amount for the inverse width.
  *
- * This stores value with the msb at bit 45 with full resolution below. The
+ * This stores value with the msb at bit 47 with full resolution below. The
  * absolute shift is how much to right shift to recover the original value 
  * after multiplication.
  */
@@ -63,13 +78,18 @@ struct curves_normalized_segment {
 	struct curves_normalized_inv_width inv_width;
 };
 
-// Horner's iteration with relative shifts.
+// Horner's iteration.
 static inline s64
 __curves_segment_eval_poly_iter(const struct curves_normalized_poly *poly,
-				u64 t, s64 accumulator, int i)
+				u64 t, s64 accumulator, int i, int prev_exp)
 {
-	int shift = CURVES_SEGMENT_T_FRAC_BITS + poly->relative_shifts[i - 1];
+	// Calculate right shift needed to align to next coefficient.
+	int shift = prev_exp + CURVES_SEGMENT_T_FRAC_BITS - poly->exponents[i];
+
+	// Round half up.
 	s128 product = (s128)accumulator * t + ((s128)1 << (shift - 1));
+
+	// Shift and sum.
 	return (s64)(product >> shift) + poly->coeffs[i];
 }
 
@@ -80,22 +100,27 @@ __curves_segment_eval_poly_iter(const struct curves_normalized_poly *poly,
  */
 static inline s64
 __curves_segment_eval_poly_iter_final(const struct curves_normalized_poly *poly,
-				      u64 t, s64 accumulator)
+				      u64 t, s64 accumulator, int prev_exp)
 {
-	int shift_final = poly->relative_shifts[3];
+	int shift = prev_exp + CURVES_SEGMENT_T_FRAC_BITS -
+		    CURVES_SEGMENT_OUT_FRAC_BITS;
 
-	int shift = 64 + poly->relative_shifts[2] + shift_final;
 	s128 product = (s128)accumulator * t + ((s128)1 << (shift - 1));
-	accumulator = (s64)(product >> shift);
+	s64 term = (s64)(product >> shift);
 
-	if (likely(shift_final > 0)) {
-		s64 half = 1LL << (shift_final - 1);
-		accumulator += (poly->coeffs[3] + half) >> shift_final;
+	// 2. Process Coeff 3 -> Output
+	int c3_shift = poly->exponents[3] - CURVES_SEGMENT_OUT_FRAC_BITS;
+	s64 c3 = poly->coeffs[3];
+
+	// Branch on output scaling (Constant per segment)
+	if (c3_shift > 0) {
+		s64 half = 1LL << (c3_shift - 1);
+		c3 = (c3 + half) >> c3_shift;
 	} else {
-		accumulator += poly->coeffs[3] << -shift_final;
+		c3 = c3 << -c3_shift;
 	}
 
-	return accumulator;
+	return term + c3;
 }
 
 // Runs Horner's loop to evaluate poly polynomial.
@@ -103,16 +128,17 @@ static inline s64
 __curves_segment_eval_poly(const struct curves_normalized_poly *poly, u64 t)
 {
 	s64 accumulator = poly->coeffs[0];
+	int exp = poly->exponents[0];
 
-	// Horner's loop with relative shifts.
-	for (int i = 1; i < CURVES_SEGMENT_COEFF_COUNT - 1; ++i) {
-		accumulator = __curves_segment_eval_poly_iter(poly, t,
-							      accumulator, i);
-	}
+	accumulator =
+		__curves_segment_eval_poly_iter(poly, t, accumulator, 1, exp);
+	exp = poly->exponents[1];
 
-	// Unroll final iteration to combine final shift instead of shifting
-	// right, then left.
-	return __curves_segment_eval_poly_iter_final(poly, t, accumulator);
+	accumulator =
+		__curves_segment_eval_poly_iter(poly, t, accumulator, 2, exp);
+	exp = poly->exponents[2];
+
+	return __curves_segment_eval_poly_iter_final(poly, t, accumulator, exp);
 }
 
 // Converts from x in reference frame of spline to local t in reference frame

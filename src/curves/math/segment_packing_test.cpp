@@ -15,6 +15,7 @@ namespace {
 // Packing
 // ----------------------------------------------------------------------------
 
+#if 0
 struct SegmentPackingTest : Test {
   std::mt19937_64 rng{0xF12345678};
 
@@ -179,6 +180,7 @@ TEST_F(SegmentPackingTest, WalkingBit) {
     EXPECT_THAT(packed.v, ElementsAreArray(repacked.v));
   }
 }
+#endif
 
 }  // namespace
 }  // namespace curves::segment

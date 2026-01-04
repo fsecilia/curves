@@ -9,7 +9,6 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/math/fixed.hpp>
 #include <curves/math/segment_eval.hpp>
 
 extern "C" {
@@ -18,14 +17,103 @@ extern "C" {
 
 namespace curves::segment {
 
-// Masks coefficients and inv_width.
-constexpr auto CURVES_SEGMENT_MASK = (1ULL << CURVES_SEGMENT_FRAC_BITS) - 1;
+/*
+ * Helper: Distributes storage-ready components into the packed struct layout.
+ *
+ * @coeff_storage: 4 coeffs, Sign-Magnitude, Implicit 1 stripped.
+ * @iw_storage: InvWidth, Implicit 1 stripped.
+ * @exponents: 4 exponents.
+ * @iw_shift: InvWidth shift.
+ */
+inline curves_packed_segment __curves_pack_segment_layout(
+    const u64* coeff_storage, const u8* exponents, u64 iw_storage,
+    u8 iw_shift) {
+  struct curves_packed_segment dst = {0};
 
-// Masks top payload field.
-constexpr auto CURVES_SEGMENT_PAYLOAD_TOP_MASK =
-    (1ULL << CURVES_SEGMENT_PAYLOAD_TOP_BITS) - 1;
+  // 1. Pack coefficients (Top 45 bits)
+  for (int i = 0; i < CURVES_SEGMENT_COEFF_COUNT; ++i) {
+    dst.v[i] = coeff_storage[i] << CURVES_SEGMENT_COEFF_SHIFT;
+  }
 
-auto pack_segment(const curves_normalized_segment& src) noexcept
-    -> curves_packed_segment;
+  // 2. Prepare Payload Components
+  u64 ish = iw_shift & 0x3F;
+  u64 e0 = exponents[0] & 0x3F;
+  u64 e1 = exponents[1] & 0x3F;
+  u64 e2 = exponents[2] & 0x3F;
+  u64 e3 = exponents[3] & 0x3F;
+
+  // 3. Pack Payloads (Bottom 19 bits)
+
+  // v[0]: IW[0..18]
+  dst.v[0] |= iw_storage & 0x7FFFF;
+
+  // v[1]: IW[19..37]
+  dst.v[1] |= (iw_storage >> 19) & 0x7FFFF;
+
+  // v[2]: Exp0 (6) | InvShift (6) | IW[38..44] (7 bits)
+  u64 v2_payload = e0 | (ish << 6) | (((iw_storage >> 38) & 0x7F) << 12);
+  dst.v[2] |= v2_payload;
+
+  // v[3]: Exp1 (6) | Exp2 (6) | Exp3 (6) | IW[45] (1)
+  u64 v3_payload =
+      e1 | (e2 << 6) | (e3 << 12) | (((iw_storage >> 45) & 1) << 18);
+  dst.v[3] |= v3_payload;
+
+  return dst;
+}
+
+/*
+ * Helper: Converts 2's Comp s64 -> Sign-Mag + Storage Logic
+ * - Handles Normalized (Shift 0-62, Implicit Strip)
+ * - Handles Denormal   (Shift 63,   Explicit)
+ */
+/*
+ * Helper: Converts 2's Comp s64 (Math Format) -> Sign-Mag (Storage Format).
+ * - If Normal: Bit 44 is 1. We mask it off.
+ * - If Denormal: Bit 44 is 0. We mask it off (no-op).
+ */
+static inline u64 __curves_coeff_math_to_storage(s64 val) {
+  if (val == 0) return 0;
+
+  // 1. Extract Sign
+  // If val < 0, we want a 1 at bit 44 (the sign bit position in storage).
+  u64 sign = (val < 0) ? (1ULL << CURVES_COEFF_SIGN_BIT_IDX) : 0ULL;
+
+  // 2. Extract Magnitude
+  u64 mag = (val < 0) ? -val : val;
+
+  // 3. Strip Implicit Bit (Unconditional)
+  // We keep only the bottom 44 bits.
+  // - Normals lose their implicit 1 (good).
+  // - Denormals (which are < 2^44) are untouched (good).
+  u64 stored_mantissa = mag & ((1ULL << CURVES_COEFF_IMPLICIT_BIT_IDX) - 1);
+
+  return sign | stored_mantissa;
+}
+
+/*
+ * Packing: Packs normalized segment into packed, cache-friendly format.
+ * * Layout (19 bit payloads):
+ * v[0]: IW[0..18]
+ * v[1]: IW[19..37]
+ * v[2]: Exp0(6) | InvShift(6) | IW[38..44](7)
+ * v[3]: Exp1(6) | Exp2(6) | Exp3(6) | IW[45](1)
+ */
+inline curves_packed_segment curves_pack_segment(
+    const struct curves_normalized_segment* src) {
+  u64 coeff_storage[CURVES_SEGMENT_COEFF_COUNT];
+
+  // 1. Convert Coeffs to Storage Format
+  for (int i = 0; i < CURVES_SEGMENT_COEFF_COUNT; ++i) {
+    coeff_storage[i] = __curves_coeff_math_to_storage(src->poly.coeffs[i]);
+  }
+
+  // 2. Strip Implicit 1 from Inv Width
+  u64 iw_storage = src->inv_width.value & CURVES_INV_WIDTH_STORAGE_MASK;
+
+  // 3. Delegate to Layout Helper
+  return __curves_pack_segment_layout(coeff_storage, src->poly.exponents,
+                                      iw_storage, src->inv_width.shift);
+}
 
 }  // namespace curves::segment

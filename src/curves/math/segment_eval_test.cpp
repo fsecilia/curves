@@ -5,9 +5,10 @@
 */
 
 #include <curves/testing/test.hpp>
+#include <curves/math/segment_construction.hpp>
 #include <curves/math/segment_eval.hpp>
 
-namespace curves {
+namespace curves::segment {
 namespace {
 
 // ----------------------------------------------------------------------------
@@ -38,52 +39,14 @@ struct EvaluationTestVector {
   }
 };
 
-auto ideal_shift(real_t value) -> int {
-  static const auto mantissa_bits = 63;
-  if (!value) return mantissa_bits;
-
-  int exp;
-  std::frexp(value, &exp);
-  return mantissa_bits - exp;
-}
-
-static const auto poly_frac_bits = 32;
-
 struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
   using Sut = SegmentView;
 
   static auto create_segment() noexcept -> curves_normalized_segment {
-    curves_normalized_segment result;
-
-    const auto float_coeffs = GetParam().coeffs;
-    auto current_shift = ideal_shift(float_coeffs[0]);
-    result.poly.coeffs[0] = to_fixed(float_coeffs[0], current_shift);
-
-    for (auto coeff = 1; coeff < CURVES_SEGMENT_COEFF_COUNT; ++coeff) {
-      const auto next_val = float_coeffs[coeff];
-      const auto ideal_next = ideal_shift(next_val);
-      const auto shift = current_shift - ideal_next;
-      const auto clamped_shift = std::clamp(shift, -32, 31);
-      result.poly.relative_shifts[coeff - 1] = static_cast<s8>(clamped_shift);
-      current_shift -= clamped_shift;
-      result.poly.coeffs[coeff] = to_fixed(next_val, current_shift);
-    }
-
-    const auto final_shift = current_shift - poly_frac_bits;
-    result.poly.relative_shifts[3] =
-        static_cast<s8>(std::clamp(final_shift, -64, 63));
-
-    const auto width = GetParam().width;
-    if (width > 0.0) {
-      const auto inv_width = 1.0 / width;
-      result.inv_width.shift = ideal_shift(inv_width);
-      result.inv_width.value = to_fixed(inv_width, result.inv_width.shift);
-    } else {
-      result.inv_width.shift = 0;
-      result.inv_width.value = 0;
-    }
-
-    return result;
+    SegmentConstructionParams construction_params;
+    std::ranges::copy(GetParam().coeffs, construction_params.coeffs);
+    construction_params.width = GetParam().width;
+    return curves_create_segment(construction_params);
   }
 
   curves_normalized_segment segment = create_segment();
@@ -105,12 +68,13 @@ TEST_P(SegmentEvaluationTest, x_to_t) {
 TEST_P(SegmentEvaluationTest, eval) {
   const auto t = sut.x_to_t(GetParam().x, GetParam().x0);
 
-  const auto actual = to_real(sut.eval(t), poly_frac_bits);
+  const auto actual = sut.eval(t);
   const auto expected = GetParam().expected_eval;
   EXPECT_NEAR(expected, actual, GetParam().tolerance);
 }
 
 const EvaluationTestVector evaluation_test_vectors[] = {
+    // Arbitrary segment from viewed in desmos.
     {
         .coeffs = {9.5, -6.2, 3.1, 0.2},
         .width = 4.9,
@@ -118,7 +82,42 @@ const EvaluationTestVector evaluation_test_vectors[] = {
         .x = 2.5,
         .expected_t = 0.224489795918,
         .expected_eval = 0.6909416994619L,
-        .tolerance = 1.5e-10,
+        .tolerance = 4.2e-14,
+    },
+
+    // Segment with denormal coefficient.
+    {
+        // Coeff[3] is 1.0e-7, which is approx 2^-23.
+        // This must trigger the denormal path, a shift of 63.
+        .coeffs = {0.0, 0.0, 0.0, 1.0e-7},
+        .width = 1.0,
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
+        .expected_eval = 1.0e-7,  // Same constant term
+        .tolerance = 1.2e-15,     // Should be exact or extremely close
+    },
+
+    // Segment with zero coeffficient.
+    {
+        .coeffs = {0.0, 0.0, 0.0, 0.0},
+        .width = 10.0,
+        .x0 = 0.0,
+        .x = 5.0,
+        .expected_t = 0.5,
+        .expected_eval = 0.0,
+        .tolerance = 0.0,
+    },
+
+    // Segment with negative zero coeffficient.
+    {
+        .coeffs = {-0.0, 0.0, 0.0, 0.0},
+        .width = 10.0,
+        .x0 = 0.0,
+        .x = 5.0,
+        .expected_t = 0.5,
+        .expected_eval = 0.0,
+        .tolerance = 0.0,
     },
 };
 
@@ -126,4 +125,4 @@ INSTANTIATE_TEST_SUITE_P(evaluation_test_vectors, SegmentEvaluationTest,
                          ValuesIn(evaluation_test_vectors));
 
 }  // namespace
-}  // namespace curves
+}  // namespace curves::segment
