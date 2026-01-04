@@ -39,7 +39,7 @@ list(APPEND lib_files
   math/jet.hpp
   math/segment/construction.hpp
   math/segment/packing.hpp
-  math/segment/packing.cpp
+  math/segment/segment.hpp
   math/segment/view.hpp
   math/spline.cpp
   math/spline.hpp
@@ -135,7 +135,6 @@ list(APPEND common_headers
 # Driver .c files manually included in .cpp files.
 list(APPEND included_driver_source_files
   driver/input_shaping.c
-  driver/segment/unpacking.c
   driver/spline.c
 )
 
@@ -275,6 +274,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-old-style-cast
     -Wno-reserved-identifier
     -Wno-reserved-macro-identifier
+  )
+endif()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(lib PUBLIC
+    $<$<COMPILE_LANGUAGE:C>:-Wno-sign-compare>
   )
 endif()
 

@@ -42,15 +42,15 @@ struct EvaluationTestVector {
 struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
   using Sut = SegmentView;
 
-  static auto create_segment() noexcept -> curves_normalized_segment {
-    SegmentConstructionParams construction_params;
+  static auto create_segment() noexcept -> NormalizedSegment {
+    SegmentParams construction_params;
     std::ranges::copy(GetParam().coeffs, construction_params.coeffs);
     construction_params.width = GetParam().width;
-    return curves_create_segment(construction_params);
+    return segment::create_segment(construction_params);
   }
 
-  curves_normalized_segment segment = create_segment();
-  Sut sut{&segment};
+  NormalizedSegment segment = create_segment();
+  Sut sut{segment};
 };
 
 TEST_P(SegmentEvaluationTest, inv_width) {
@@ -74,7 +74,9 @@ TEST_P(SegmentEvaluationTest, eval) {
 }
 
 const EvaluationTestVector evaluation_test_vectors[] = {
-    // Arbitrary segment from viewed in desmos.
+    // Arbitrary segment from viewed in desmos. Expected calculated literally
+    // using explicit horner's form in wolfram alpha:
+    // ((9.5*0.224489795918 + -6.2)*0.224489795918 + 3.1)*0.224489795918 + 0.2
     {
         .coeffs = {9.5, -6.2, 3.1, 0.2},
         .width = 4.9,

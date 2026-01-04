@@ -1,55 +1,59 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Floating-point wrapper for kernel spline segments.
+  \brief Floating-point view wrapper for segment evaluation.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
 
-#include <curves/lib.hpp>
 #include <curves/math/fixed.hpp>
+#include <curves/math/segment/segment.hpp>
 
-extern "C" {
-#include <curves/driver/segment/eval.h>
-}  // extern "C"
+#include <cstdint>
 
-namespace curves {
+namespace curves::segment {
 
+/*!
+  Non-owning view for evaluating a normalized segment in floating-point.
+
+  This wrapper converts between floating-point and the kernel's fixed-point
+  evaluation, allowing the frontend to preview results that match the kernel
+  exactly (within floating-point conversion precision).
+*/
 class SegmentView {
  public:
-  SegmentView(const curves_normalized_segment* segment = nullptr) noexcept
-      : segment_{segment} {}
+  /// Constructs a view of the given segment. The segment must outlive the view.
+  explicit SegmentView(const NormalizedSegment& segment) noexcept
+      : segment_{&segment} {}
 
-  auto valid() const noexcept -> bool { return segment_; }
-
+  /// Returns the inverse width as a floating-point value.
   auto inv_width() const noexcept -> real_t {
-    if (!valid()) return 0.0L;
-
     return to_real(segment_->inv_width.value, segment_->inv_width.shift);
   }
 
+  /// Converts spline x to segment-local t in [0, 1].
   auto x_to_t(real_t x, real_t x0) const noexcept -> real_t {
-    const auto x_fixed = to_fixed(x, CURVES_SEGMENT_IN_FRAC_BITS);
-    const auto x0_fixed = to_fixed(x0, CURVES_SEGMENT_IN_FRAC_BITS);
-    const auto t_fixed = __curves_segment_x_to_t(
-        &segment_->inv_width, x_fixed, x0_fixed, CURVES_SEGMENT_IN_FRAC_BITS);
-    return to_real(t_fixed, CURVES_SEGMENT_T_FRAC_BITS);
+    const auto x_fixed = to_fixed(x, kInputFracBits);
+    const auto x0_fixed = to_fixed(x0, kInputFracBits);
+    const auto t_fixed =
+        segment::x_to_t(segment_->inv_width, x_fixed, x0_fixed, kInputFracBits);
+    return to_real(t_fixed, kTFracBits);
   }
 
-  auto operator()(real_t t) const noexcept -> real_t { return eval(t); }
+  /// Evaluates the polynomial at t using the kernel's Horner's method.
   auto eval(real_t t) const noexcept -> real_t {
-    if (!valid()) return 0.0L;
-
-    const auto t_fixed = to_fixed<u64>(t, CURVES_SEGMENT_T_FRAC_BITS);
-    const auto result_fixed =
-        __curves_segment_eval_poly(&segment_->poly, t_fixed);
-    return to_real(result_fixed, CURVES_SEGMENT_OUT_FRAC_BITS);
+    const auto t_fixed = to_fixed<uint64_t>(t, kTFracBits);
+    const auto result = eval_poly(segment_->poly, t_fixed);
+    return to_real(result, kOutputFracBits);
   }
+
+  /// Convenience operator for evaluation.
+  auto operator()(real_t t) const noexcept -> real_t { return eval(t); }
 
  private:
-  const curves_normalized_segment* segment_{};
+  const NormalizedSegment* segment_;
 };
 
-}  // namespace curves
+}  // namespace curves::segment

@@ -1,177 +1,217 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Floating-point segment packing for kernel spline segments.
+  \brief Floating-point to normalized segment construction.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  Handles conversion from floating-point coefficients and width to the
+  normalized segment format. The flow is:
+
+    float -> storage (packed wire format) -> normalized (math format)
+
+  By going through the packed format, we ensure the resulting normalized
+  segment is bit-identical to what the kernel produces when unpacking.
+
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
 
 #include <curves/lib.hpp>
 #include <curves/math/segment/packing.hpp>
-#include <curves/math/segment/view.hpp>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
 
 namespace curves::segment {
 
+// ----------------------------------------------------------------------------
+// Intermediate Result Type
+// ----------------------------------------------------------------------------
+
+/// Result of normalizing a floating-point value for storage.
+struct StorageValue {
+  uint64_t mantissa;  ///< Mantissa with implicit 1 stripped.
+  uint8_t shift;      ///< Right-shift to recover original scale.
+};
+
+// ----------------------------------------------------------------------------
+// Float -> Storage Converters
+// ----------------------------------------------------------------------------
+
 /*!
-  Packs unsigned Inv Width with Implicit 1.
-  Normalizes 'val' such that the MSB is at 'target_bit'.
-  Returns the masked payload (leading 1 stripped).
+  Normalizes a signed coefficient to storage format.
+
+  Places the MSB at the implicit bit position, strips the implicit 1, and
+  packs the sign bit. For very small values that can't be normalized with
+  shift <= 62, uses kDenormalShift (63) as a sentinel to indicate the
+  implicit bit is not present.
+
+  @param val Signed floating-point coefficient.
+  @return Storage format: sign at bit 44, mantissa in [0..43].
 */
-static inline u64 pack_unsigned_implicit(double val, int target_bit,
-                                         u8* out_exp) {
+inline auto pack_signed_coeff(real_t val) noexcept -> StorageValue {
   if (val == 0.0) {
-    *out_exp = 0;
-    return 0;
+    return {0, kDenormalShift};
   }
 
-  int exp;
-  std::frexp(val, &exp);
+  // Extract sign and magnitude.
+  const auto sign = (val < 0) ? 1ULL : 0ULL;
+  const auto mag = std::abs(val);
 
-  // We want: val = (1.mantissa * 2^target_bit) * 2^-shift
-  // shift = target_bit - (log2(val))
-  int ideal_shift = target_bit - (exp - 1);
-
-  // Clamp the shift to the available storage range [0, 63].
-  int actual_shift = std::clamp(ideal_shift, 0, 63);
-  *out_exp = static_cast<u8>(actual_shift);
-
-  // Re-calculate the integer based on the final clamped shift.
-  // norm = val * 2^shift
-  double scaled = std::ldexp(val, actual_shift);
-
-  // Convert to integer.
-  u64 norm = static_cast<u64>(scaled);
-
-  // Strip Implicit 1 (Bit target_bit)
-  return norm & ((1ULL << target_bit) - 1);
-}
-
-/*
- * Helper: Packs signed coefficient with Signed Magnitude + Implicit 1.
- */
-static inline u64 pack_signed_coeff_implicit(double val, int target_bit,
-                                             u8* out_exp) {
-  if (val == 0.0) {
-    *out_exp = 0;
-    return 0;
-  }
-
-  // 1. Sign
-  u64 sign = (val < 0) ? 1ULL : 0ULL;
-  double mag = std::abs(val);
-
-  // 2. Normalize Magnitude
+  // Get exponent: mag = mantissa * 2^exp where mantissa in [0.5, 1.0).
   int exp;
   std::frexp(mag, &exp);
 
-  // Calculate Shift
-  int ideal_shift = target_bit - (exp - 1);
-  int actual_shift = std::clamp(ideal_shift, 0, 62);
-  if (ideal_shift > 62) {
-    *out_exp = 63;
+  // Calculate shift to place MSB at implicit bit position.
+  const auto ideal_shift = kSignedImplicitBit - (exp - 1);
+  int actual_shift;
+  uint8_t stored_shift;
+  const auto is_denormal = ideal_shift >= kDenormalShift;
+  if (is_denormal) {
+    actual_shift = kDenormalShift - 1;
+    stored_shift = kDenormalShift;
   } else {
-    *out_exp = static_cast<u8>(actual_shift);
+    actual_shift = std::max(0, ideal_shift);
+    stored_shift = static_cast<uint8_t>(actual_shift);
   }
 
-  // 3. Re-calculate Integer from Shift
-  double scaled = std::ldexp(mag, actual_shift);
-  u64 norm_mag = static_cast<u64>(scaled);
+  // Scale and convert to integer.
+  const auto scaled = std::ldexp(mag, actual_shift);
+  const auto norm = static_cast<uint64_t>(std::round(scaled));
 
-  // 4. Strip Implicit 1
-  u64 stored_mantissa = norm_mag & ((1ULL << target_bit) - 1);
+  // Strip implicit 1 and pack sign.
+  const auto mantissa = norm & kSignedMantissaMask;
+  const auto storage = (sign << kSignBit) | mantissa;
 
-  // 5. Pack Sign (at target_bit) and Mantissa
-  return (sign << target_bit) | stored_mantissa;
+  return {storage, stored_shift};
 }
 
-/*
- * Helper: Packs unsigned coefficient (Implicit 1 at bit 45).
- */
-static inline u64 pack_unsigned_coeff_implicit(double val, u8* out_exp) {
-  // Safety clamp for monotonicity noise
+/*!
+  Normalizes an unsigned coefficient to storage format.
+
+  Unsigned coefficients (c, d) have implicit 1 at bit 45, giving 46 bits of
+  effective precision. Negative values are clamped to zero.
+
+  @param val Unsigned floating-point coefficient (should be non-negative).
+  @return Storage format: 45-bit mantissa with implicit 1 stripped.
+*/
+inline auto pack_unsigned_coeff(real_t val) noexcept -> StorageValue {
+  // Clamp negative to zero (shouldn't occur for monotonic curves).
   if (val <= 0.0) {
-    *out_exp = 0;
-    return 0;
+    return {0, kDenormalShift};
   }
 
   int exp;
   std::frexp(val, &exp);
 
-  // Target bit is 45 (one higher than signed!)
-  int ideal_shift = 45 - (exp - 1);
-  int actual_shift = std::clamp(ideal_shift, 0, 62);
+  // Implicit 1 at bit 45 for unsigned coefficients.
+  const auto ideal_shift = kUnsignedImplicitBit - (exp - 1);
+  int actual_shift;
+  uint8_t stored_shift;
 
   if (ideal_shift > 62) {
-    *out_exp = 63;  // Denormal sentry
+    actual_shift = 62;
+    stored_shift = kDenormalShift;
   } else {
-    *out_exp = static_cast<u8>(actual_shift);
+    actual_shift = std::max(0, ideal_shift);
+    stored_shift = static_cast<uint8_t>(actual_shift);
   }
 
-  // Scale (using Denormal shift 62 if needed)
-  double scaled = std::ldexp(val, actual_shift);
-  u64 norm = static_cast<u64>(scaled);
+  const auto scaled = std::ldexp(val, actual_shift);
+  const auto norm = static_cast<uint64_t>(std::round(scaled));
 
-  // Strip Implicit 1 (Bit 45)
-  return norm & ((1ULL << 45) - 1);
+  // Strip implicit 1 at bit 45.
+  const auto mantissa = norm & kUnsignedMantissaMask;
+
+  return {mantissa, stored_shift};
 }
 
-struct SegmentConstructionParams {
-  double coeffs[4];
-  double width;
+/*!
+  Normalizes inverse width to storage format.
+
+  Inverse width has implicit 1 at bit 46. Unlike coefficients, inverse width
+  doesn't use a denormal representation - very wide segments that would
+  require denormal are a logic error.
+
+  @param val Inverse of segment width (must be positive).
+  @return Storage format: 46-bit mantissa with implicit 1 stripped.
+*/
+inline auto pack_inv_width(real_t val) noexcept -> StorageValue {
+  if (val <= 0.0) {
+    return {0, 0};
+  }
+
+  int exp;
+  std::frexp(val, &exp);
+
+  const auto ideal_shift = kInvWidthImplicitBit - (exp - 1);
+  const auto actual_shift = std::clamp(ideal_shift, 0, 63);
+
+  // Assert if segment is too wide for normalized representation.
+  // assert(ideal_shift <= 63 && "Segment width exceeds maximum");
+
+  const auto scaled = std::ldexp(val, actual_shift);
+  const auto norm = static_cast<uint64_t>(std::round(scaled));
+
+  // Strip implicit 1 at bit 46.
+  const auto mantissa = norm & kInvWidthStorageMask;
+
+  return {mantissa, static_cast<uint8_t>(actual_shift)};
+}
+
+// ----------------------------------------------------------------------------
+// Segment Construction
+// ----------------------------------------------------------------------------
+
+/// Parameters for constructing a segment from floating-point values.
+struct SegmentParams {
+  real_t coeffs[kCoeffCount];  ///< Polynomial coefficients: a, b, c, d
+  real_t width;                ///< Segment width in x-space
 };
 
-/*
- * Construction: Converts raw doubles to Normalized segment via Packed
- * intermediate.
- */
-inline auto curves_create_segment(const SegmentConstructionParams& params)
-    -> curves_normalized_segment {
-  u64 coeff_storage[CURVES_SEGMENT_COEFF_COUNT];
-  u8 exponents[CURVES_SEGMENT_COEFF_COUNT];
-  u64 iw_storage;
-  u8 iw_shift;
+/*!
+  Constructs a normalized segment from floating-point parameters.
 
-  // 1a. Coefficients a, b Doubles -> Storage Bits (Sign-Mag + Stripped)
+  The construction goes through the packed (wire) format to ensure the
+  resulting normalized segment is bit-identical to what the kernel produces.
+  This guarantees that floating-point evaluation in the frontend matches
+  fixed-point evaluation in the kernel.
+
+  @param params Floating-point coefficients and width.
+  @return Normalized segment ready for evaluation.
+*/
+inline auto create_segment(const SegmentParams& params) noexcept
+    -> NormalizedSegment {
+  uint64_t coeff_storage[kCoeffCount];
+  uint8_t shifts[kCoeffCount];
+
+  // Pack signed coefficients (a, b).
   for (int i = 0; i < 2; ++i) {
-    coeff_storage[i] = pack_signed_coeff_implicit(
-        params.coeffs[i], CURVES_COEFF_IMPLICIT_BIT_IDX, &exponents[i]);
+    const auto [mantissa, shift] = pack_signed_coeff(params.coeffs[i]);
+    coeff_storage[i] = mantissa;
+    shifts[i] = shift;
   }
 
-  // 1b. Coefficients c, d (Unsigned)
-  for (int i = 2; i < 4; ++i) {
-    u64 packed =
-        pack_unsigned_coeff_implicit(params.coeffs[i],  // implicit target 45
-                                     &exponents[i]);
-
-    // Immediate Unpack (Unsigned style)
-    if (packed == 0) {
-      coeff_storage[i] = 0;
-    } else {
-      // Restore implicit 1 at bit 45
-      coeff_storage[i] = (s64)(packed | (1ULL << 45));
-    }
+  // Pack unsigned coefficients (c, d).
+  for (int i = 2; i < kCoeffCount; ++i) {
+    const auto [mantissa, shift] = pack_unsigned_coeff(params.coeffs[i]);
+    coeff_storage[i] = mantissa;
+    shifts[i] = shift;
   }
 
-  // 2. Convert Width Double -> Storage Bits (Stripped)
+  // Pack inverse width.
+  auto inv_width_packed = StorageValue{0, 0};
   if (params.width > 0.0) {
-    double inv = 1.0 / params.width;
-    iw_storage = pack_unsigned_implicit(inv, CURVES_INV_WIDTH_IMPLICIT_BIT_IDX,
-                                        &iw_shift);
-  } else {
-    iw_storage = 0;
-    iw_shift = 0;
+    inv_width_packed = pack_inv_width(1.0 / params.width);
   }
 
-  // 3. Create Packed Segment (The "Wire Format")
-  struct curves_packed_segment packed = __curves_pack_segment_layout(
-      coeff_storage, exponents, iw_storage, iw_shift);
+  // Pack into wire format, then unpack to math format.
+  // This ensures bit-identical representation to kernel unpacking.
+  const auto packed = pack_layout(
+      coeff_storage, shifts, inv_width_packed.mantissa, inv_width_packed.shift);
 
-  // 4. Unpack to get the "Math Format"
-  // This guarantees the struct we use for eval is bit-identical to the
-  // kernel's.
-  return curves_unpack_segment(&packed);
+  return unpack(packed);
 }
 
 }  // namespace curves::segment
