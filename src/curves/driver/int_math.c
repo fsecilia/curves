@@ -4,7 +4,7 @@
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
-#include "math.h"
+#include "int_math.h"
 
 extern s64 curves_saturate_s64(bool result_positive);
 extern s128 curves_saturate_s128(bool result_positive);

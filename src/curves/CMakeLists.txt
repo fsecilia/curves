@@ -75,7 +75,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/s64.cpp
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
-  driver_tests/math_test.cpp
+  driver_tests/int_math_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
   math/input_shaping_test.cpp
@@ -123,8 +123,8 @@ list(APPEND driver_headers
 list(APPEND common_headers
   driver/fixed.h
   driver/input_shaping.h
+  driver/int_math.h
   driver/kernel_compat.h
-  driver/math.h
   driver/segment_eval.h
   driver/segment_unpacking.h
   driver/spline.h

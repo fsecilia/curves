@@ -14,7 +14,7 @@
 #define _CURVES_FIXED_H
 
 #include "kernel_compat.h"
-#include "math.h"
+#include "int_math.h"
 
 // ----------------------------------------------------------------------------
 // s64 rescaler

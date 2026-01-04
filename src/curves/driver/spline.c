@@ -4,7 +4,7 @@
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
-#include "math.h"
+#include "int_math.h"
 #include "spline.h"
 
 /**

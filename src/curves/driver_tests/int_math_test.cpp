@@ -8,7 +8,7 @@
 #include <curves/math/io.hpp>
 
 extern "C" {
-#include <curves/driver/math.h>
+#include <curves/driver/int_math.h>
 }  // extern "C"
 
 namespace curves {

@@ -6,8 +6,8 @@ obj-m := curves.o
 curves-common-objs := \
   fixed.o \
   input_shaping.o \
-  kernel_compat.o \
-  math.o
+  int_math.o \
+  kernel_compat.o
 
 curves-driver-objs := entry_point.o segment_unpacking.o spline.o
 
