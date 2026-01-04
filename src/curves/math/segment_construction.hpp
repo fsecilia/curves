@@ -86,6 +86,37 @@ static inline u64 pack_signed_coeff_implicit(double val, int target_bit,
   return (sign << target_bit) | stored_mantissa;
 }
 
+/*
+ * Helper: Packs unsigned coefficient (Implicit 1 at bit 45).
+ */
+static inline u64 pack_unsigned_coeff_implicit(double val, u8* out_exp) {
+  // Safety clamp for monotonicity noise
+  if (val <= 0.0) {
+    *out_exp = 0;
+    return 0;
+  }
+
+  int exp;
+  std::frexp(val, &exp);
+
+  // Target bit is 45 (one higher than signed!)
+  int ideal_shift = 45 - (exp - 1);
+  int actual_shift = std::clamp(ideal_shift, 0, 62);
+
+  if (ideal_shift > 62) {
+    *out_exp = 63;  // Denormal sentry
+  } else {
+    *out_exp = static_cast<u8>(actual_shift);
+  }
+
+  // Scale (using Denormal shift 62 if needed)
+  double scaled = std::ldexp(val, actual_shift);
+  u64 norm = static_cast<u64>(scaled);
+
+  // Strip Implicit 1 (Bit 45)
+  return norm & ((1ULL << 45) - 1);
+}
+
 struct SegmentConstructionParams {
   double coeffs[4];
   double width;
@@ -102,10 +133,25 @@ inline auto curves_create_segment(const SegmentConstructionParams& params)
   u64 iw_storage;
   u8 iw_shift;
 
-  // 1. Convert Coeff Doubles -> Storage Bits (Sign-Mag + Stripped)
-  for (int i = 0; i < 4; ++i) {
+  // 1a. Coefficients a, b Doubles -> Storage Bits (Sign-Mag + Stripped)
+  for (int i = 0; i < 2; ++i) {
     coeff_storage[i] = pack_signed_coeff_implicit(
         params.coeffs[i], CURVES_COEFF_IMPLICIT_BIT_IDX, &exponents[i]);
+  }
+
+  // 1b. Coefficients c, d (Unsigned)
+  for (int i = 2; i < 4; ++i) {
+    u64 packed =
+        pack_unsigned_coeff_implicit(params.coeffs[i],  // implicit target 45
+                                     &exponents[i]);
+
+    // Immediate Unpack (Unsigned style)
+    if (packed == 0) {
+      coeff_storage[i] = 0;
+    } else {
+      // Restore implicit 1 at bit 45
+      coeff_storage[i] = (s64)(packed | (1ULL << 45));
+    }
   }
 
   // 2. Convert Width Double -> Storage Bits (Stripped)

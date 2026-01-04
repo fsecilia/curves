@@ -100,31 +100,48 @@ curves_unpack_segment(const struct curves_packed_segment *src)
 	dst.poly.exponents[3] = (payload[3] >> 12) & 0x3F;
 	dst.inv_width.shift = (payload[2] >> 6) & 0x3F;
 
-	// 4. Unpack Coefficients
-	for (int i = 0; i < 4; ++i) {
-		// A. Get Raw Storage Bits directly from the packed struct
+	// 4A. Unpack a, b (Signed)
+	for (int i = 0; i < 2; ++i) {
 		u64 raw_storage = src->v[i] >> CURVES_SEGMENT_COEFF_SHIFT;
-
 		u8 raw_exp = dst.poly.exponents[i];
-		u64 sign_bit = raw_storage >> 44; // Bit 44 is Sign
+
+		// Signed Logic (Implicit at 44)
+		u64 sign_bit = raw_storage >> 44;
 		u64 mantissa = raw_storage & ((1ULL << 44) - 1);
 
-		// B. Detect Denormal (Branchless)
 		u64 is_denorm = (u64)(raw_exp + 1) >> 6;
-
-		// C. Adjust Exponent
 		dst.poly.exponents[i] = raw_exp - (u8)is_denorm;
 
-		// D. Restore Implicit Bit (1ULL to avoid overflow)
 		u64 implicit_val = (is_denorm ^ 1ULL) << 44;
-
-		// E. Combine to Math Format
 		u64 abs_val = mantissa | implicit_val;
 
 		dst.poly.coeffs[i] =
 			(raw_storage == 0) ?
 				0 :
 				(s64)((abs_val ^ -(s64)sign_bit) + sign_bit);
+	}
+
+	// 4B. Unpack c, d (Unsigned)
+	for (int i = 2; i < 4; ++i) {
+		u64 raw_storage = src->v[i] >> CURVES_SEGMENT_COEFF_SHIFT;
+		u8 raw_exp = dst.poly.exponents[i];
+
+		// Unsigned Logic (Implicit at 45)
+		// We utilize the full 45 bits (0..44) for mantissa.
+		u64 mantissa = raw_storage; // No sign bit to strip!
+
+		u64 is_denorm = (u64)(raw_exp + 1) >> 6;
+		dst.poly.exponents[i] = raw_exp - (u8)is_denorm;
+
+		// Restore Implicit 1 at bit 45
+		u64 implicit_val = (is_denorm ^ 1ULL) << 45;
+
+		// No sign application needed
+		dst.poly.coeffs[i] = (s64)(mantissa | implicit_val);
+
+		// Handle exact zero
+		if (raw_storage == 0)
+			dst.poly.coeffs[i] = 0;
 	}
 
 	return dst;

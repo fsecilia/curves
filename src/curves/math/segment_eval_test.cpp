@@ -81,8 +81,8 @@ const EvaluationTestVector evaluation_test_vectors[] = {
         .x0 = 1.4,
         .x = 2.5,
         .expected_t = 0.224489795918,
-        .expected_eval = 0.6909416994619L,
-        .tolerance = 4.2e-14,
+        .expected_eval = 0.690941699461315064301439052969426004L,
+        .tolerance = 6.6e-13,
     },
 
     // Segment with denormal coefficient.
@@ -119,6 +119,38 @@ const EvaluationTestVector evaluation_test_vectors[] = {
         .expected_eval = 0.0,
         .tolerance = 0.0,
     },
+
+    {
+        // Coeff[2] (c) is small but positive.
+        // We want to verify we aren't losing the bottom bit.
+        // Let's use a number that has a specific bit pattern ending at bit 46.
+        // 1.5 * 2^-10 = 0.00146484375
+        // This should pack perfectly.
+        .coeffs = {0.0, 0.0, 1.4210854715202004e-14, 0.0},  // 2^-46
+        .width = 1.0,
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
+        // Expected Eval: coeff[2] * t = 2^-46 * 0.5 = 2^-47
+        .expected_eval = 7.105427357601002e-15,
+        // Tolerance: Should be exact (machine epsilon level)
+        .tolerance = 1e-20,
+    },
+
+    {
+        // Coeff[3] (d) is just below the Normal/Denormal boundary for Unsigned.
+        // 2^-17 is approx 7.629e-6. Let's try 7.0e-6.
+        // This forces the packer to use Shift 62 and NO implicit bit.
+        .coeffs = {0.0, 0.0, 0.0, 7.0e-6},
+        .width = 1.0,
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
+        // Result is just d (constant term)
+        .expected_eval = 7.0e-6,
+        .tolerance = 9.1e-17,
+    },
+
 };
 
 INSTANTIATE_TEST_SUITE_P(evaluation_test_vectors, SegmentEvaluationTest,

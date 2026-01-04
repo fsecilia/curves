@@ -92,6 +92,23 @@ static inline u64 __curves_coeff_math_to_storage(s64 val) {
 }
 
 /*
+ * Helper: Converts Unsigned s64 (Math Format) -> Storage Format
+ * - Implicit 1 is at bit 45.
+ * - We store bits 0..44.
+ */
+static inline u64 __curves_coeff_math_to_storage_unsigned(s64 val) {
+  if (val == 0) return 0;
+
+  // This path requires positive values to put into unsigneds.
+  assert(val > 0);
+
+  // Strip Implicit 1 (Bit 45)
+  // We keep the bottom 45 bits (0..44).
+  // Denormals (val < 2^45) are untouched.
+  return static_cast<u64>(val) & ((1ULL << 45) - 1);
+}
+
+/*
  * Packing: Packs normalized segment into packed, cache-friendly format.
  * * Layout (19 bit payloads):
  * v[0]: IW[0..18]
@@ -102,6 +119,17 @@ static inline u64 __curves_coeff_math_to_storage(s64 val) {
 inline curves_packed_segment curves_pack_segment(
     const struct curves_normalized_segment* src) {
   u64 coeff_storage[CURVES_SEGMENT_COEFF_COUNT];
+
+  // Cubic coefficients a and b are signed.
+  coeff_storage[0] = __curves_coeff_math_to_storage(src->poly.coeffs[0]);
+  coeff_storage[1] = __curves_coeff_math_to_storage(src->poly.coeffs[1]);
+
+  // Coefficients c and d are unsigned because the functions we're
+  // approximating are monotonically increasing by design.
+  coeff_storage[2] =
+      __curves_coeff_math_to_storage_unsigned(src->poly.coeffs[2]);
+  coeff_storage[3] =
+      __curves_coeff_math_to_storage_unsigned(src->poly.coeffs[3]);
 
   // 1. Convert Coeffs to Storage Format
   for (int i = 0; i < CURVES_SEGMENT_COEFF_COUNT; ++i) {
