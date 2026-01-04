@@ -10,10 +10,10 @@
 
 #include <curves/lib.hpp>
 #include <curves/math/fixed.hpp>
-#include <curves/math/segment_eval.hpp>
+#include <curves/math/segment/eval.hpp>
 
 extern "C" {
-#include <curves/driver/segment_unpacking.h>
+#include <curves/driver/segment/unpacking.h>
 }  // extern "C"
 
 namespace curves::segment {

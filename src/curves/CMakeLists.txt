@@ -37,9 +37,9 @@ list(APPEND lib_files
   math/inverse_function.hpp
   math/io.hpp
   math/jet.hpp
-  math/segment_eval.hpp
-  math/segment_packing.hpp
-  math/segment_packing.cpp
+  math/segment/eval.hpp
+  math/segment/packing.hpp
+  math/segment/packing.cpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -83,8 +83,8 @@ list(APPEND unit_tests_files
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
-  math/segment_eval_test.cpp
-  math/segment_packing_test.cpp
+  math/segment/eval_test.cpp
+  math/segment/packing_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
   ui/model/flat_visitor_test.cpp
@@ -125,15 +125,15 @@ list(APPEND common_headers
   driver/input_shaping.h
   driver/int_math.h
   driver/kernel_compat.h
-  driver/segment_eval.h
-  driver/segment_unpacking.h
+  driver/segment/eval.h
+  driver/segment/unpacking.h
   driver/spline.h
 )
 
 # Driver .c files manually included in .cpp files.
 list(APPEND included_driver_source_files
   driver/input_shaping.c
-  driver/segment_unpacking.c
+  driver/segment/unpacking.c
   driver/spline.c
 )
 
@@ -250,7 +250,8 @@ add_library(lib
 
 target_include_directories(lib PUBLIC
   "$<BUILD_INTERFACE:${config_gen_root}>"
-  "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>"
+  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
+  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/curves/driver>"
 )
 target_link_libraries(lib PUBLIC tomlplusplus::tomlplusplus)
 
@@ -336,6 +337,7 @@ endif()
 #
 # This is that library.
 add_library(kernel_lib OBJECT ${included_driver_source_files})
+target_link_libraries(kernel_lib PRIVATE lib)
 
 # -----------------------------------------------------------------------------
 # Project Subdirectories

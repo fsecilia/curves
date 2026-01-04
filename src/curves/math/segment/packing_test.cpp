@@ -4,8 +4,8 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
+#include "packing.hpp"
 #include <curves/testing/test.hpp>
-#include <curves/math/segment_packing.hpp>
 #include <random>
 
 namespace curves::segment {

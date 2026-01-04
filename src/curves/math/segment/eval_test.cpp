@@ -5,7 +5,7 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/math/segment_eval.hpp>
+#include <curves/math/segment/eval.hpp>
 
 namespace curves {
 namespace {

@@ -3,13 +3,15 @@
 
 obj-m := curves.o
 
+ccflags-y += -I$(src)
+
 curves-common-objs := \
   fixed.o \
   input_shaping.o \
   int_math.o \
   kernel_compat.o
 
-curves-driver-objs := entry_point.o segment_unpacking.o spline.o
+curves-driver-objs := entry_point.o segment/unpacking.o spline.o
 
 curves-objs := $(curves-common-objs) $(curves-driver-objs)
 

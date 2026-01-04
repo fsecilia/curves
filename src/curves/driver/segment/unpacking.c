@@ -6,7 +6,7 @@
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
-#include "segment_unpacking.h"
+#include "unpacking.h"
 
 // Converts an unsigned value to signed by shifting its sign bit into an s8
 // msb, then arithmetic shifting back.

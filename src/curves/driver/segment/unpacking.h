@@ -10,7 +10,7 @@
 #define _CURVES_SEGMENT_UNPACKING_H
 
 #include "kernel_compat.h"
-#include "segment_eval.h"
+#include "segment/eval.h"
 
 enum {
 	// Precision of normalized values, Q0.45. Some values are signed,
