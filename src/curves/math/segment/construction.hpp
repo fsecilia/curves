@@ -9,8 +9,8 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/math/segment_eval.hpp>
-#include <curves/math/segment_packing.hpp>
+#include <curves/math/segment/eval.hpp>
+#include <curves/math/segment/packing.hpp>
 
 namespace curves::segment {
 

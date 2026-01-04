@@ -6,11 +6,11 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "segment_packing.hpp"
+#include "packing.hpp"
 #include <curves/math/fixed.hpp>
 
 extern "C" {
-#include <curves/driver/segment_unpacking.c>
+#include <curves/driver/segment/unpacking.c>
 }  // extern "C"
 
 namespace curves::segment {

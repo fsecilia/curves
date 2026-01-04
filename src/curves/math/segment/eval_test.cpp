@@ -4,9 +4,9 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
+#include "eval.hpp"
 #include <curves/testing/test.hpp>
-#include <curves/math/segment_construction.hpp>
-#include <curves/math/segment_eval.hpp>
+#include <curves/math/segment/construction.hpp>
 
 namespace curves::segment {
 namespace {

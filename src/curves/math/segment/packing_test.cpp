@@ -5,7 +5,7 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/math/segment_packing.hpp>
+#include <curves/math/segment/packing.hpp>
 #include <random>
 
 namespace curves::segment {

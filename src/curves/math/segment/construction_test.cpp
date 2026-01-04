@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "segment_construction.hpp"
+#include "construction.hpp"
 #include <curves/testing/test.hpp>
 
 namespace curves {

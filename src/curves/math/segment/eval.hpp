@@ -12,7 +12,7 @@
 #include <curves/math/fixed.hpp>
 
 extern "C" {
-#include <curves/driver/segment_eval.h>
+#include <curves/driver/segment/eval.h>
 }  // extern "C"
 
 namespace curves {

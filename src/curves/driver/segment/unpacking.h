@@ -10,7 +10,7 @@
 #define _CURVES_SEGMENT_UNPACKING_H
 
 #include "kernel_compat.h"
-#include "segment_eval.h"
+#include "segment/eval.h"
 
 /**
  * struct curves_packed_segment - Cubic Hermite segment packed into 32 bytes.
