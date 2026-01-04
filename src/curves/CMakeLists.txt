@@ -37,9 +37,10 @@ list(APPEND lib_files
   math/inverse_function.hpp
   math/io.hpp
   math/jet.hpp
-  math/segment/eval.hpp
+  math/segment/construction.hpp
   math/segment/packing.hpp
-  math/segment/packing.cpp
+  math/segment/segment.hpp
+  math/segment/view.hpp
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
@@ -83,8 +84,9 @@ list(APPEND unit_tests_files
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
-  math/segment/eval_test.cpp
+  math/segment/construction_test.cpp
   math/segment/packing_test.cpp
+  math/segment/view_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
   ui/model/flat_visitor_test.cpp
@@ -133,7 +135,6 @@ list(APPEND common_headers
 # Driver .c files manually included in .cpp files.
 list(APPEND included_driver_source_files
   driver/input_shaping.c
-  driver/segment/unpacking.c
   driver/spline.c
 )
 
@@ -273,6 +274,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-old-style-cast
     -Wno-reserved-identifier
     -Wno-reserved-macro-identifier
+  )
+endif()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(lib PUBLIC
+    $<$<COMPILE_LANGUAGE:C>:-Wno-sign-compare>
   )
 endif()
 

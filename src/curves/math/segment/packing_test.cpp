@@ -1,183 +1,163 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "packing.hpp"
 #include <curves/testing/test.hpp>
+#include <curves/math/segment/construction.hpp>
+#include <curves/math/segment/packing.hpp>
+#include <curves/math/segment/segment.hpp>
 #include <random>
+#include <ranges>
 
 namespace curves::segment {
 namespace {
 
 // ----------------------------------------------------------------------------
-// Packing
+// Packing Round-Trip Tests
 // ----------------------------------------------------------------------------
 
 struct SegmentPackingTest : Test {
   std::mt19937_64 rng{0xF12345678};
+  std::uniform_real_distribution<real_t> mantissa_dist{-1.0, 1.0};
+  std::uniform_int_distribution<int> exp_dist{-70, 50};
+  std::uniform_int_distribution<int> width_exp_dist{-20, 20};
 
-  auto random_shift() noexcept -> int8_t {
-    return static_cast<int8_t>(rng() & 63) - 32;
-  }
+  /*!
+    Generates a random normalized segment valid for round-tripping.
+  */
+  auto random_segment(int i) noexcept -> NormalizedSegment {
+    SegmentParams params;
 
-  static auto sign_extend(int64_t value, int bits) -> int64_t {
-    const auto shift = 64 - bits;
-    return (static_cast<int64_t>(value) << shift) >> shift;
-  }
-
-  auto random_segment() noexcept -> curves_normalized_segment {
-    curves_normalized_segment segment;
-
-    for (auto& coeff : segment.poly.coeffs) {
-      coeff =
-          sign_extend(rng() & CURVES_SEGMENT_MASK, CURVES_SEGMENT_FRAC_BITS);
+    // Randomize signed coeffs.
+    for (auto j = 0; j < 2; ++j) {
+      if (i + j % 100 == 0) {
+        params.coeffs[j] = 0.0;
+      } else {
+        params.coeffs[j] = std::ldexp(mantissa_dist(rng), exp_dist(rng));
+      }
     }
 
-    segment.inv_width.value = rng() & CURVES_SEGMENT_MASK;
-
-    // Write random values for internal shifts.
-    for (auto shift = 0; shift < CURVES_SEGMENT_COEFF_COUNT - 1; ++shift) {
-      segment.poly.relative_shifts[shift] = random_shift();
+    // Randomize unsigned coeffs.
+    for (auto j = 2; j < kCoeffCount; ++j) {
+      if (i + j % 100 == 0) {
+        params.coeffs[j] = 0.0;
+      } else {
+        params.coeffs[j] =
+            std::ldexp(std::abs(mantissa_dist(rng)), exp_dist(rng));
+      }
     }
 
-    // Final shift has extra bit.
-    segment.poly.relative_shifts[CURVES_SEGMENT_COEFF_COUNT - 1] =
-        static_cast<int8_t>(rng() & 127) - 64;
+    // Randomize nonzero width.
+    params.width =
+        std::ldexp(std::fabs(mantissa_dist(rng)) + 1e-9, width_exp_dist(rng));
 
-    // inv_width_shift is unsigned.
-    segment.inv_width.shift = rng() & 63;
-
-    return segment;
-  }
-
-  auto expect_segments_eq(const curves_normalized_segment& a,
-                          const curves_normalized_segment& b) const noexcept {
-    for (auto i = 0; i < 4; ++i) {
-      EXPECT_EQ(a.poly.coeffs[i], b.poly.coeffs[i])
-          << "Coeff " << i << " mismatch";
-    }
-    for (auto i = 0; i < 4; ++i) {
-      EXPECT_EQ(a.poly.relative_shifts[i], b.poly.relative_shifts[i])
-          << "Shift " << i << " mismatch";
-    }
-    EXPECT_EQ(a.inv_width.value, b.inv_width.value);
-    EXPECT_EQ(a.inv_width.shift, b.inv_width.shift);
+    return create_segment(params);
   }
 };
 
 TEST_F(SegmentPackingTest, RoundTripFuzz) {
   for (auto i = 0; i < 10000; ++i) {
-    const auto original = random_segment();
-    const auto packed = pack_segment(original);
-    const auto unpacked = curves_unpack_segment(&packed);
-    expect_segments_eq(original, unpacked);
+    const auto original = random_segment(i);
+    const auto packed = pack(original);
+    const auto unpacked = unpack(packed);
+    EXPECT_EQ(original, unpacked);
   }
 }
 
-TEST_F(SegmentPackingTest, NegativeShiftsPreserved) {
-  auto segment = curves_normalized_segment{};
-  segment.poly.relative_shifts[0] = -1;   // All 1s
-  segment.poly.relative_shifts[1] = -32;  // Min value
+TEST_F(SegmentPackingTest, ZeroSegmentRoundTrips) {
+  NormalizedSegment segment = {};
 
-  const auto packed = pack_segment(segment);
-  const auto unpacked = curves_unpack_segment(&packed);
+  const auto packed = pack(segment);
+  const auto unpacked = unpack(packed);
 
-  EXPECT_EQ(unpacked.poly.relative_shifts[0], -1);
-  EXPECT_EQ(unpacked.poly.relative_shifts[1], -32);
+  for (auto i = 0; i < kCoeffCount; ++i) {
+    EXPECT_EQ(unpacked.poly.coeffs[i], 0) << "Coeff " << i << " should be 0";
+  }
 }
 
-TEST_F(SegmentPackingTest, RelativeShiftsMasked) {
-  auto segment = curves_normalized_segment{};
+TEST_F(SegmentPackingTest, ShiftsMaskedTo6Bits) {
+  auto params = SegmentParams{};
+  std::ranges::fill(params.coeffs, 1.0);
+  params.width = 1.0;
 
-  /*
-    Set the first bit outside of the range, taking care not to set the sign
-    bit, and make sure the bit is cleared during packing.
-  */
-  const auto expected = int8_t{10};
-  const auto garbage_bit = int8_t{64};
+  auto segment = create_segment(params);
 
-  segment.poly.relative_shifts[0] = expected | garbage_bit;
-  segment.poly.relative_shifts[1] = expected | garbage_bit;
-  segment.poly.relative_shifts[2] = expected | garbage_bit;
+  // Set shifts with garbage in upper bits.
+  const auto expected = uint8_t{10};
+  const auto garbage = uint8_t{0x80};
+  for (auto i = 0; i < kCoeffCount; ++i) {
+    segment.poly.shifts[i] = expected | garbage;
+  }
+  segment.inv_width.shift = expected | garbage;
 
-  // The last field is 7 bits. Garbage bit must be 128 (bit 7).
-  segment.poly.relative_shifts[3] = static_cast<int8_t>(expected | 128);
+  // Round trip.
+  const auto packed = pack(segment);
+  const auto unpacked = unpack(packed);
 
-  const auto packed = pack_segment(segment);
-  const auto unpacked = curves_unpack_segment(&packed);
-
-  EXPECT_EQ(unpacked.poly.relative_shifts[0], expected);
-  EXPECT_EQ(unpacked.poly.relative_shifts[1], expected);
-  EXPECT_EQ(unpacked.poly.relative_shifts[2], expected);
-  EXPECT_EQ(unpacked.poly.relative_shifts[3], expected);
-
-  // Check garbage didn't spill into neighbors
-  EXPECT_EQ(unpacked.poly.coeffs[3], 0);
-  EXPECT_EQ(unpacked.inv_width.shift, 0);
+  // Verify garbage was stripped.
+  for (auto i = 0; i < kCoeffCount; ++i) {
+    EXPECT_EQ(unpacked.poly.shifts[i], expected)
+        << "Poly shift " << i << " was not masked to 6 bits";
+  }
+  EXPECT_EQ(unpacked.inv_width.shift, expected)
+      << "Inv_width shift was not masked to 6 bits";
 }
 
-TEST_F(SegmentPackingTest, InvWidthShiftMasked) {
-  auto segment = curves_normalized_segment{};
+TEST_F(SegmentPackingTest, InvWidthShiftMaskedTo6Bits) {
+  auto segment = NormalizedSegment{};
 
-  const auto expected = int8_t{10};
-  const auto garbage_bit = int8_t{64};
+  const uint8_t expected = 42;
+  const uint8_t garbage = 0x80;
 
-  segment.inv_width.shift = expected | garbage_bit;
+  segment.inv_width.shift = expected | garbage;
 
-  const auto packed = pack_segment(segment);
-  const auto unpacked = curves_unpack_segment(&packed);
+  const auto packed = pack(segment);
+  const auto unpacked = unpack(packed);
 
   EXPECT_EQ(unpacked.inv_width.shift, expected);
-
-  // Check garbage didn't spill into neighbor.
-  EXPECT_EQ(unpacked.inv_width.value, 0);
 }
 
-TEST_F(SegmentPackingTest, InvWidthMasked) {
-  auto segment = curves_normalized_segment{};
+TEST_F(SegmentPackingTest, SignedCoeffsPreserveSign) {
+  auto segment = NormalizedSegment{};
 
-  const auto expected = uint64_t{10};
-  const auto garbage_bit = uint64_t{1} << CURVES_SEGMENT_FRAC_BITS;
+  // Positive value with implicit 1 at bit 44.
+  segment.poly.coeffs[0] = (1LL << kSignedImplicitBit) | 0x123456789AB;
+  segment.poly.shifts[0] = 30;
 
-  segment.inv_width.value = expected | garbage_bit;
+  // Negative value.
+  segment.poly.coeffs[1] = -((1LL << kSignedImplicitBit) | 0xABCDEF01234);
+  segment.poly.shifts[1] = 25;
 
-  const auto packed = pack_segment(segment);
-  const auto unpacked = curves_unpack_segment(&packed);
+  const auto packed = pack(segment);
+  const auto unpacked = unpack(packed);
 
-  EXPECT_EQ(unpacked.inv_width.value, expected);
+  EXPECT_EQ(unpacked.poly.coeffs[0], segment.poly.coeffs[0]);
+  EXPECT_GT(unpacked.poly.coeffs[0], 0) << "Coeff 0 should be positive";
 
-  // Check garbage didn't spill into neighbor.
-  EXPECT_EQ(unpacked.poly.coeffs[2], 0);
+  EXPECT_EQ(unpacked.poly.coeffs[1], segment.poly.coeffs[1]);
+  EXPECT_LT(unpacked.poly.coeffs[1], 0) << "Coeff 1 should be negative";
 }
 
-TEST_F(SegmentPackingTest, WalkingBit) {
-  for (int bit = 0; bit < 256; ++bit) {
-    auto packed = curves_packed_segment{};
-    packed.v[bit >> 6] = (1ULL << (bit & 63));
+TEST_F(SegmentPackingTest, UnsignedCoeffsAlwaysPositive) {
+  auto segment = NormalizedSegment{};
 
-    const auto unpacked = curves_unpack_segment(&packed);
+  // Set c and d with implicit 1 at bit 45.
+  segment.poly.coeffs[2] = (1LL << kUnsignedImplicitBit) | 0x1FFFFFFFF;
+  segment.poly.shifts[2] = 20;
 
-    auto nonzero_fields = 0;
+  segment.poly.coeffs[3] = (1LL << kUnsignedImplicitBit) | 0x100000000;
+  segment.poly.shifts[3] = 15;
 
-    // Count non-zero fields.
-    for (auto c : unpacked.poly.coeffs) {
-      if (c) ++nonzero_fields;
-    }
-    for (auto s : unpacked.poly.relative_shifts) {
-      if (s) ++nonzero_fields;
-    }
-    if (unpacked.inv_width.value) ++nonzero_fields;
-    if (unpacked.inv_width.shift) ++nonzero_fields;
+  const auto packed = pack(segment);
+  const auto unpacked = unpack(packed);
 
-    EXPECT_EQ(nonzero_fields, 1) << "Setting bit " << bit << " affected "
-                                 << nonzero_fields << " fields.";
+  EXPECT_EQ(unpacked.poly.coeffs[2], segment.poly.coeffs[2]);
+  EXPECT_GT(unpacked.poly.coeffs[2], 0) << "Coeff 2 (c) should be positive";
 
-    // Check that repacking only sets the same bit.
-    const auto repacked = pack_segment(unpacked);
-    EXPECT_THAT(packed.v, ElementsAreArray(repacked.v));
-  }
+  EXPECT_EQ(unpacked.poly.coeffs[3], segment.poly.coeffs[3]);
+  EXPECT_GT(unpacked.poly.coeffs[3], 0) << "Coeff 3 (d) should be positive";
 }
 
 }  // namespace
