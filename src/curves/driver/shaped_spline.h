@@ -37,16 +37,6 @@
  * but we allocate for the worst case. */
 #define SHAPED_SPLINE_MAX_SEGMENTS 256
 
-/* Segments per cache-line-aligned triple. Each segment is 20 bytes, so 3
- * segments occupy 60 bytes, leaving 4 bytes of padding per 64-byte cache line.
- * This ensures that accessing a segment never straddles cache lines. */
-#define SHAPED_SPLINE_SEGS_PER_TRIPLE 3
-
-/* Number of triples needed to hold max segments: ceil(256/3) = 86. */
-#define SHAPED_SPLINE_NUM_TRIPLES                                           \
-	((SHAPED_SPLINE_MAX_SEGMENTS + SHAPED_SPLINE_SEGS_PER_TRIPLE - 1) / \
-	 SHAPED_SPLINE_SEGS_PER_TRIPLE)
-
 /* k-ary search parameters. With fanout 9 (8 separators per level), two levels
  * cover 81 buckets, sufficient for 256 segments with ~3 segments per bucket
  * on average. */
@@ -99,31 +89,13 @@ struct shaped_spline_segment {
 };
 
 /**
- * struct shaped_spline_segment_triple - Cache-line-aligned segment storage.
- * @seg: Array of 3 segments (60 bytes).
- * @_pad: Padding to fill cache line (4 bytes).
- *
- * This structure ensures that accessing any single segment touches exactly
- * one cache line. The indexing overhead (divide and modulo by 3) is far
- * cheaper than a cache miss.
- */
-struct shaped_spline_segment_triple {
-	struct shaped_spline_segment seg[SHAPED_SPLINE_SEGS_PER_TRIPLE];
-	u32 _pad;
-};
-
-/* Compile-time verification that our triple is exactly one cache line. */
-// _Static_assert(sizeof(struct shaped_spline_segment_triple) == 64,
-// 	       "segment triple must be exactly 64 bytes (one cache line)");
-
-/**
  * struct shaped_spline - Complete shaped transfer function spline.
  * @knots: Segment boundary positions in velocity space, Q8.24.
  *         knots[i] is the start of segment i. Length is num_segments + 1.
  * @kary_l0: Level 0 of k-ary index (8 separator values), Q8.24.
  * @kary_l1: Level 1 of k-ary index (9 regions × 8 separators), Q8.24.
  * @kary_base: Starting segment index for each of 81 buckets.
- * @seg_triples: Cache-aligned segment storage.
+ * @segments: Cache-aligned segment array.
  * @num_segments: Number of segments (at most SHAPED_SPLINE_MAX_SEGMENTS).
  * @v_max: Maximum velocity in domain, Q8.24.
  *
@@ -137,8 +109,10 @@ struct shaped_spline_segment_triple {
  * during userland construction. The driver just evaluates T(v).
  */
 struct shaped_spline {
-	/* Segment boundaries for lookup and t computation.
-	 * 16 knots per cache line (u32). */
+	// Cache-aligned segment storage.
+	struct shaped_spline_segment segments[SHAPED_SPLINE_MAX_SEGMENTS];
+
+	// Segment boundaries for lookup and t computation. 16 per cache line
 	u32 knots[SHAPED_SPLINE_MAX_SEGMENTS + 1];
 
 	/* Two-level k-ary search index for O(1) average segment lookup.
@@ -146,10 +120,6 @@ struct shaped_spline {
 	u32 kary_l0[SHAPED_SPLINE_KARY_KEYS];
 	u32 kary_l1[SHAPED_SPLINE_KARY_L1_REGIONS][SHAPED_SPLINE_KARY_KEYS];
 	u8 kary_base[SHAPED_SPLINE_KARY_BUCKETS];
-
-	/* Cache-aligned segment storage. Each triple is one cache line. */
-	struct shaped_spline_segment_triple
-		seg_triples[SHAPED_SPLINE_NUM_TRIPLES];
 
 	/* Metadata. */
 	u16 num_segments;
@@ -173,30 +143,6 @@ struct shaped_spline_hint {
 	u16 last_segment;
 	bool valid;
 };
-
-/* ----------------------------------------------------------------------------
- * Segment Access
- * --------------------------------------------------------------------------*/
-
-/**
- * __shaped_spline_get_segment - Get pointer to segment by index.
- * @spline: Spline containing segment data.
- * @seg_idx: Segment index (0 to num_segments-1).
- *
- * Computes the triple index and inner offset to locate the segment within
- * the cache-aligned storage. The division and modulo by 3 compile to
- * efficient multiply-by-magic-constant operations.
- *
- * Return: Pointer to the requested segment.
- */
-static inline const struct shaped_spline_segment *
-__shaped_spline_get_segment(const struct shaped_spline *spline, int seg_idx)
-{
-	int triple_idx = seg_idx / SHAPED_SPLINE_SEGS_PER_TRIPLE;
-	int inner_idx = seg_idx % SHAPED_SPLINE_SEGS_PER_TRIPLE;
-
-	return &spline->seg_triples[triple_idx].seg[inner_idx];
-}
 
 /* ----------------------------------------------------------------------------
  * Hint Management
@@ -403,7 +349,7 @@ static inline s32 shaped_spline_eval(const struct shaped_spline *spline,
 	seg_idx = shaped_spline_find_segment(spline, hint, v);
 
 	/* Get segment from cache-aligned storage. */
-	seg = __shaped_spline_get_segment(spline, seg_idx);
+	seg = &spline->segments[seg_idx];
 
 	/* Compute local parameter t ∈ [0, 1). */
 	t = __shaped_spline_compute_t(v, spline->knots[seg_idx],

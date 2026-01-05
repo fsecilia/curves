@@ -464,10 +464,7 @@ auto build_shaped_spline(const Curve& curve, const InputShapingView& shaping,
     coeffs.c += offset * width;
     coeffs.d += offset * knot_v;
 
-    const int triple_idx = i / SHAPED_SPLINE_SEGS_PER_TRIPLE;
-    const int inner_idx = i % SHAPED_SPLINE_SEGS_PER_TRIPLE;
-
-    auto& seg = result.seg_triples[triple_idx].seg[inner_idx];
+    auto& seg = result.segments[i];
     seg.a = coeff_to_fixed(coeffs.a);
     seg.b = coeff_to_fixed(coeffs.b);
     seg.c = coeff_to_fixed(coeffs.c);

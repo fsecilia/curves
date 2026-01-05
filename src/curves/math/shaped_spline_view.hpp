@@ -174,9 +174,7 @@ inline ShapedSplineView::ShapedSplineView(const shaped_spline* spline)
   // Convert segments.
   segments_.reserve(num_segments_);
   for (int i = 0; i < num_segments_; ++i) {
-    const int triple_idx = i / SHAPED_SPLINE_SEGS_PER_TRIPLE;
-    const int inner_idx = i % SHAPED_SPLINE_SEGS_PER_TRIPLE;
-    const auto& seg = spline->seg_triples[triple_idx].seg[inner_idx];
+    const auto& seg = spline->segments[i];
 
     const real_t knot_v = knots_[i];
     const real_t next_knot = knots_[i + 1];
