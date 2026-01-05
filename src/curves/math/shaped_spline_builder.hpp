@@ -45,6 +45,11 @@ namespace curves {
 // Concepts
 // ============================================================================
 
+template <typename T>
+concept HasAnalyticalGain = requires(const T& curve, real_t x) {
+  { curve.gain(x) } -> std::convertible_to<real_t>;  // T'(x) = S(x) + x*S'(x)
+};
+
 /*!
   Concept for generating curves (the raw mathematical function).
 
@@ -52,10 +57,11 @@ namespace curves {
   determines how this maps to a transfer function.
 */
 template <typename T>
-concept GeneratingCurve = requires(const T& curve, real_t x) {
-  { curve.value(x) } -> std::convertible_to<real_t>;
-  { curve.derivative(x) } -> std::convertible_to<real_t>;
-};
+concept GeneratingCurve =
+    HasAnalyticalGain<T> && requires(const T& curve, real_t x) {
+      { curve.value(x) } -> std::convertible_to<real_t>;
+      { curve.derivative(x) } -> std::convertible_to<real_t>;
+    };
 
 /*!
   Concept for curves that have known cusp locations.
@@ -177,22 +183,25 @@ class SensitivityShapedEvaluator {
   [[nodiscard]] auto operator()(real_t v) const -> ShapedEval {
     const auto [u, du, d2u] = shaping_(v);
 
-    // Floor region: φ(v) ≈ 0
-    // T'(0) = S(0) for sensitivity mode (via L'Hôpital)
     if (u < kEpsilon) {
       const real_t floor_dT = curve_.value(0);
       return {v * floor_dT, floor_dT};
     }
 
-    // S(u) from the curve, T = v × S
     const real_t S = curve_.value(u);
-    const real_t dS = curve_.derivative(u);
-
-    // T_shaped = v × S(φ(v))
     const real_t T_shaped = v * S;
 
-    // dT_shaped/dv = S + v × S'(φ(v)) × φ'(v)
-    const real_t dT_shaped = S + v * dS * du;
+    real_t dT_shaped;
+    if constexpr (HasAnalyticalGain<Curve>) {
+      // Stable formula: dT = S + (v * du / u) * (G - S)
+      const real_t G = curve_.gain(u);
+      const real_t R = v * du / u;
+      dT_shaped = S + R * (G - S);
+    } else {
+      // Fallback (may be unstable for curves with S'(0) = ∞)
+      const real_t dS = curve_.derivative(u);
+      dT_shaped = S + v * dS * du;
+    }
 
     return {T_shaped, dT_shaped};
   }

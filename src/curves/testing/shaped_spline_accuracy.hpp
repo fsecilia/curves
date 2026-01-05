@@ -87,6 +87,12 @@ struct PowerLaw {
     if (x <= 0) return (gamma == 1) ? scale : 0;
     return scale * gamma * std::pow(x, gamma - 1);
   }
+
+  auto gain(real_t x) const -> real_t {
+    // G(x) = T'(x) = (gamma + 1) * scale * x^gamma
+    if (x <= 0) return 0;
+    return (gamma + 1) * scale * std::pow(x, gamma);
+  }
 };
 
 /// Log curve: f(x) = scale × log(1 + rate × x)
@@ -98,6 +104,15 @@ struct Log1p {
 
   auto derivative(real_t x) const -> real_t {
     return scale * rate / (1 + rate * x);
+  }
+
+  auto gain(real_t x) const -> real_t {
+    // S(x) = scale * log(1 + rate*x)
+    // T(x) = x * S(x) = x * scale * log(1 + rate*x)
+    // G(x) = T'(x) = scale * log(1 + rate*x) + x * scale * rate / (1 + rate*x)
+    //              = scale * (log(1 + rate*x) + x*rate / (1 + rate*x))
+    const real_t rx = rate * x;
+    return scale * (std::log1p(rx) + rx / (1 + rx));
   }
 };
 
