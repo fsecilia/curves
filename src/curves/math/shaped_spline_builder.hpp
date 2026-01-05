@@ -174,7 +174,28 @@ class SensitivityShapedEvaluator {
                              const InputShapingView& shaping)
       : curve_{curve}, shaping_{shaping} {}
 
-  [[nodiscard]] auto operator()(real_t v) const -> ShapedEval;
+  [[nodiscard]] auto operator()(real_t v) const -> ShapedEval {
+    const auto [u, du, d2u] = shaping_(v);
+
+    // Floor region: φ(v) ≈ 0
+    // T'(0) = S(0) for sensitivity mode (via L'Hôpital)
+    if (u < kEpsilon) {
+      const real_t floor_dT = curve_.value(0);
+      return {v * floor_dT, floor_dT};
+    }
+
+    // S(u) from the curve, T = v × S
+    const real_t S = curve_.value(u);
+    const real_t dS = curve_.derivative(u);
+
+    // T_shaped = v × S(φ(v))
+    const real_t T_shaped = v * S;
+
+    // dT_shaped/dv = S + v × S'(φ(v)) × φ'(v)
+    const real_t dT_shaped = S + v * dS * du;
+
+    return {T_shaped, dT_shaped};
+  }
 
  private:
   const Curve& curve_;
@@ -192,9 +213,24 @@ template <GeneratingCurve Curve>
 class GainShapedEvaluator {
  public:
   GainShapedEvaluator(const Curve& curve, const InputShapingView& shaping,
-                      real_t v_max, real_t grid_spacing = 0.1);
+                      real_t v_max, real_t grid_spacing = 0.1)
+      : curve_{curve},
+        shaping_{shaping},
+        cache_{[&curve](real_t x) { return curve.value(x); }, shaping, v_max,
+               grid_spacing} {}
 
-  [[nodiscard]] auto operator()(real_t v) const -> ShapedEval;
+  [[nodiscard]] auto operator()(real_t v) const -> ShapedEval {
+    const auto [u, T, dT] = cache_(v);
+
+    // Floor region: φ(v) ≈ 0
+    // T'(0) = G(0) for gain mode (via L'Hôpital)
+    if (u < kEpsilon) {
+      const real_t floor_dT = curve_.value(0);
+      return {v * floor_dT, floor_dT};
+    }
+
+    return {T, dT};
+  }
 
  private:
   const Curve& curve_;
@@ -324,65 +360,7 @@ template <GeneratingCurve Curve>
                                        const InputShapingView& shaping,
                                        CurveInterpretation interp,
                                        const ShapedSplineConfig& config = {})
-    -> shaped_spline;
-
-// ============================================================================
-// Template Implementations
-// ============================================================================
-
-template <GeneratingCurve Curve>
-auto SensitivityShapedEvaluator<Curve>::operator()(real_t v) const
-    -> ShapedEval {
-  const auto [u, du, d2u] = shaping_(v);
-
-  // Floor region: φ(v) ≈ 0
-  // T'(0) = S(0) for sensitivity mode (via L'Hôpital)
-  if (u < kEpsilon) {
-    const real_t floor_dT = curve_.value(0);
-    return {v * floor_dT, floor_dT};
-  }
-
-  // S(u) from the curve, T = v × S
-  const real_t S = curve_.value(u);
-  const real_t dS = curve_.derivative(u);
-
-  // T_shaped = v × S(φ(v))
-  const real_t T_shaped = v * S;
-
-  // dT_shaped/dv = S + v × S'(φ(v)) × φ'(v)
-  const real_t dT_shaped = S + v * dS * du;
-
-  return {T_shaped, dT_shaped};
-}
-
-template <GeneratingCurve Curve>
-GainShapedEvaluator<Curve>::GainShapedEvaluator(const Curve& curve,
-                                                const InputShapingView& shaping,
-                                                real_t v_max,
-                                                real_t grid_spacing)
-    : curve_{curve},
-      shaping_{shaping},
-      cache_{[&curve](real_t x) { return curve.value(x); }, shaping, v_max,
-             grid_spacing} {}
-
-template <GeneratingCurve Curve>
-auto GainShapedEvaluator<Curve>::operator()(real_t v) const -> ShapedEval {
-  const auto [u, T, dT] = cache_(v);
-
-  // Floor region: φ(v) ≈ 0
-  // T'(0) = G(0) for gain mode (via L'Hôpital)
-  if (u < kEpsilon) {
-    const real_t floor_dT = curve_.value(0);
-    return {v * floor_dT, floor_dT};
-  }
-
-  return {T, dT};
-}
-
-template <GeneratingCurve Curve>
-auto build_shaped_spline(const Curve& curve, const InputShapingView& shaping,
-                         CurveInterpretation interp,
-                         const ShapedSplineConfig& config) -> shaped_spline {
+    -> shaped_spline {
   const real_t v_max = config.subdivision.v_max;
   const real_t offset = config.floor.sensitivity_offset;
 
