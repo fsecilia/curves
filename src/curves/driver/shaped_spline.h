@@ -122,7 +122,7 @@ struct shaped_spline {
  * itself, since the spline may be shared across devices.
  */
 struct shaped_spline_hint {
-	u16 last_segment;
+	int last_segment;
 	bool valid;
 };
 

@@ -86,18 +86,18 @@ void run_accuracy_test(const Curve& curve, const InputShapingView& shaping,
 // ============================================================================
 
 TEST(shaped_spline_accuracy, power_law_sensitivity_gamma_0_5) {
-  PowerLaw curve{.gamma = 0.5, .scale = 1.0};
+  PowerLaw curve{.gamma = 0.5L, .scale = 1.0L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, shaping, CurveInterpretation::kSensitivity, config,
@@ -105,18 +105,18 @@ TEST(shaped_spline_accuracy, power_law_sensitivity_gamma_0_5) {
 }
 
 TEST(shaped_spline_accuracy, power_law_sensitivity_gamma_1_0) {
-  PowerLaw curve{.gamma = 0.5, .scale = 1.0};
+  PowerLaw curve{.gamma = 0.5L, .scale = 1.0L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, InputShapingView{},
@@ -125,18 +125,18 @@ TEST(shaped_spline_accuracy, power_law_sensitivity_gamma_1_0) {
 }
 
 TEST(shaped_spline_accuracy, power_law_gain_gamma_0_5) {
-  PowerLaw curve{.gamma = 0.5, .scale = 1.0};
+  PowerLaw curve{.gamma = 0.5L, .scale = 1.0L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, shaping, CurveInterpretation::kGain, config,
@@ -144,18 +144,18 @@ TEST(shaped_spline_accuracy, power_law_gain_gamma_0_5) {
 }
 
 TEST(shaped_spline_accuracy, power_law_gain_gamma_1_0) {
-  PowerLaw curve{.gamma = 1.0, .scale = 1.0};
+  PowerLaw curve{.gamma = 1.0L, .scale = 1.0L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, shaping, CurveInterpretation::kGain, config,
@@ -163,18 +163,18 @@ TEST(shaped_spline_accuracy, power_law_gain_gamma_1_0) {
 }
 
 TEST(shaped_spline_accuracy, log1p_sensitivity) {
-  Log1p curve{.scale = 1.0, .rate = 0.1};
+  Log1p curve{.scale = 1.0L, .rate = 0.1L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, shaping, CurveInterpretation::kSensitivity, config,
@@ -182,18 +182,18 @@ TEST(shaped_spline_accuracy, log1p_sensitivity) {
 }
 
 TEST(shaped_spline_accuracy, log1p_gain) {
-  Log1p curve{.scale = 1.0, .rate = 0.1};
+  Log1p curve{.scale = 1.0L, .rate = 0.1L};
 
   curves_shaping_params shaping_params = solve_input_shaping(
-      InputShapingConfig{.floor_v_width = 2.0, .ease_in_width = 0.1});
+      InputShapingConfig{.floor_v_width = 2.0L, .ease_in_width = 0.1L});
   InputShapingView shaping{&shaping_params};
 
   ShapedSplineConfig config{
       .floor = {.v_width = shaping.ease_in_transition_v_begin(),
-                .sensitivity_offset = 0.0},
+                .sensitivity_offset = 0.0L},
       .ceiling = {.v_begin = shaping.ease_out_transition_v_begin(),
                   .v_width = shaping.ease_out_transition_v_width()},
-      .subdivision = {.tolerance = 1e-6, .v_max = 128.0},
+      .subdivision = {.tolerance = 1e-6L, .v_max = 128.0L},
   };
 
   run_accuracy_test(curve, shaping, CurveInterpretation::kGain, config,

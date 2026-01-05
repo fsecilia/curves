@@ -30,6 +30,7 @@ extern "C" {
 #include <curves/math/input_shaping_view.hpp>
 #include <curves/math/integration.hpp>
 #include <curves/math/segment/construction.hpp>
+#include <curves/numeric_cast.hpp>
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -92,17 +93,17 @@ struct CeilingConfig {
 
 /// Configuration for the adaptive subdivision.
 struct SubdivisionConfig {
-  real_t tolerance = 1e-8;  ///< Max approximation error per segment.
-  real_t v_max = 128.0;     ///< Domain upper bound.
+  real_t tolerance = 1e-8L;  ///< Max approximation error per segment.
+  real_t v_max = 128.0L;     ///< Domain upper bound.
   int max_segments = SHAPED_SPLINE_MAX_SEGMENTS;
   int error_test_points = 16;  ///< Samples per segment for error check.
   int max_depth = 12;          ///< Max recursion depth.
 
   // this value is too low
-  real_t min_width = (1.0L - 1e-4) / (1ULL << 32);  ///< Min segment width.
+  real_t min_width = (1.0L - 1e-4L) / (1ULL << 32);  ///< Min segment width.
 
   // this is a hack because inv_width doesn't have enough bits.
-  real_t max_width = 16.0;  // Force split if segment wider than this
+  real_t max_width = 16.0L;  // Force split if segment wider than this
 };
 
 /// Full configuration for shaped spline construction.
@@ -110,7 +111,7 @@ struct ShapedSplineConfig {
   FloorConfig floor;
   CeilingConfig ceiling;
   SubdivisionConfig subdivision;
-  real_t transition_width = 1.0;  ///< Width of ease-in/ease-out transitions.
+  real_t transition_width = 1.0L;  ///< Width of ease-in/ease-out transitions.
 };
 
 // ============================================================================
@@ -138,7 +139,7 @@ class GainIntegralCache {
   */
   GainIntegralCache(std::function<real_t(real_t)> G,
                     const InputShapingView& shaping, real_t v_max,
-                    real_t grid_spacing = 0.1);
+                    real_t grid_spacing = 0.1L);
 
   /// Evaluate T_shaped(v) = ∫₀ᵛ G(φ(t)) dt.
   [[nodiscard]] auto T_at(real_t v) const -> real_t;
@@ -209,7 +210,7 @@ class SensitivityShapedEvaluator {
  private:
   const Curve& curve_;
   const InputShapingView& shaping_;
-  static constexpr real_t kEpsilon = 1e-10;
+  static constexpr real_t kEpsilon = 1e-10L;
 };
 
 /*!
@@ -222,7 +223,7 @@ template <GeneratingCurve Curve>
 class GainShapedEvaluator {
  public:
   GainShapedEvaluator(const Curve& curve, const InputShapingView& shaping,
-                      real_t v_max, real_t grid_spacing = 0.1)
+                      real_t v_max, real_t grid_spacing = 0.1L)
       : curve_{curve},
         shaping_{shaping},
         cache_{[&curve](real_t x) { return curve.value(x); }, shaping, v_max,
@@ -245,7 +246,7 @@ class GainShapedEvaluator {
   const Curve& curve_;
   const InputShapingView& shaping_;
   GainIntegralCache cache_;
-  static constexpr real_t kEpsilon = 1e-10;
+  static constexpr real_t kEpsilon = 1e-10L;
 };
 
 // ============================================================================
@@ -411,11 +412,12 @@ template <GeneratingCurve Curve>
   auto knots = subdivider.subdivide(std::move(required_knots));
 
   std::cout << "Boundary knots:\n";
-  for (int i = 0; i < std::min(5, (int)knots.size()); ++i) {
+  for (auto i = 0U; i < std::min<std::size_t>(5U, knots.size()); ++i) {
     std::cout << "  [" << i << "] v=" << knots[i].v << " T=" << knots[i].T
               << " dT=" << knots[i].dT << "\n";
   }
-  for (int i = std::max(0, (int)knots.size() - 5); i < (int)knots.size(); ++i) {
+  for (auto i = std::max<std::size_t>(0U, knots.size() - 5); i < knots.size();
+       ++i) {
     std::cout << "  [" << i << "] v=" << knots[i].v << " T=" << knots[i].T
               << " dT=" << knots[i].dT << "\n";
   }
@@ -428,12 +430,12 @@ template <GeneratingCurve Curve>
   result.v_max = knot_to_fixed(v_max);
 
   // Convert knots to fixed-point.
-  for (int i = 0; i <= num_segments; ++i) {
+  for (auto i = 0U; i <= numeric_cast<std::size_t>(num_segments); ++i) {
     result.knots[i] = knot_to_fixed(knots[i].v);
   }
 
   // Convert segments with offset baked in.
-  for (int i = 0; i < num_segments; ++i) {
+  for (auto i = 0U; i < numeric_cast<std::size_t>(num_segments); ++i) {
     const auto& k0 = knots[i];
     const auto& k1 = knots[i + 1];
     auto coeffs = hermite_to_cubic(k0, k1);

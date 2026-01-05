@@ -32,8 +32,8 @@ namespace curves {
 
 struct InputShapingConfig {
   // Stage 1: Ease-in
-  real_t floor_v_width = 0.0;  // How long floor lasts (v units)
-  real_t ease_in_width = 0.0;  // Transition width (v units)
+  real_t floor_v_width = 0.0L;  // How long floor lasts (v units)
+  real_t ease_in_width = 0.0L;  // Transition width (v units)
 
   // Stage 2: Ease-out
   real_t ease_out_v_begin = 100;  // Where ceiling transition starts
@@ -55,12 +55,12 @@ inline auto solve_input_shaping(const InputShapingConfig& config)
   p.ease_in.transition.v_begin = real_to_fixed(v_in_begin);
   p.ease_in.transition.v_width = real_to_fixed(v_in_width);
   p.ease_in.transition.v_width_inv =
-      v_in_width ? real_to_fixed(1.0L / v_in_width) : 0LL;
+      v_in_width != 0.0L ? real_to_fixed(1.0L / v_in_width) : 0LL;
 
   // Lag for continuity: at v_end, transition outputs v_width * 0.5
   // Linear outputs v - lag, so lag = v_end - (0 + v_width * 0.5)
   const auto v_end = v_in_begin + v_in_width;
-  const auto transition_height = v_in_width * 0.5;  // kEasePoly.area_ratio()
+  const auto transition_height = v_in_width * 0.5L;  // kEasePoly.area_ratio()
   const auto u_lag = v_end - transition_height;
   p.ease_in.u_lag = real_to_fixed(u_lag);
 
@@ -69,9 +69,9 @@ inline auto solve_input_shaping(const InputShapingConfig& config)
   p.ease_out.transition.v_begin = real_to_fixed(config.ease_out_v_begin);
   p.ease_out.transition.v_width = real_to_fixed(v_out_width);
   p.ease_out.transition.v_width_inv =
-      v_out_width ? real_to_fixed(1.0 / v_out_width) : 0LL;
+      v_out_width != 0.0L ? real_to_fixed(1.0L / v_out_width) : 0LL;
   p.ease_out.u_ceiling =
-      real_to_fixed(config.ease_out_v_begin + v_out_width * 0.5);
+      real_to_fixed(config.ease_out_v_begin + v_out_width * 0.5L);
 
   return p;
 }

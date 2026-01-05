@@ -7,6 +7,7 @@
 */
 
 #include "shaped_spline_builder.hpp"
+#include <curves/numeric_cast.hpp>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -29,7 +30,7 @@ GainIntegralCache::GainIntegralCache(std::function<real_t(real_t)> G,
       grid_spacing_{grid_spacing},
       v_max_{v_max} {
   // Number of grid points covering [0, v_max].
-  const int num_points = static_cast<int>(v_max / grid_spacing) + 2;
+  const auto num_points = static_cast<std::size_t>(v_max / grid_spacing) + 2;
   grid_T_.reserve(num_points);
 
   // Stateful integration: accumulate T at each grid point.
@@ -38,7 +39,7 @@ GainIntegralCache::GainIntegralCache(std::function<real_t(real_t)> G,
   real_t v_prev = 0;
   grid_T_.push_back(0);  // T(0) = 0
 
-  for (int i = 1; i < num_points; ++i) {
+  for (auto i = 1U; i < num_points; ++i) {
     const real_t v = std::min(i * grid_spacing, v_max);
     T += integrate_segment(v_prev, v);
     grid_T_.push_back(T);
@@ -57,12 +58,12 @@ auto GainIntegralCache::T_at(real_t v) const -> real_t {
   if (v >= v_max_) v = v_max_;
 
   // Find the grid point at or before v.
-  const int idx = static_cast<int>(v / grid_spacing_);
+  const auto idx = static_cast<std::size_t>(v / grid_spacing_);
   const real_t g = idx * grid_spacing_;
   const real_t T_g = grid_T_[idx];
 
   // Integrate the remainder [g, v].
-  constexpr real_t kEpsilon = 1e-12;
+  constexpr real_t kEpsilon = 1e-12L;
   if (v - g < kEpsilon) return T_g;
 
   return T_g + integrate_segment(g, v);
@@ -95,7 +96,7 @@ auto invert_shaping(const InputShapingView& shaping, real_t u_target)
   if (ceiling_val > 0 && u_target > ceiling_val) return std::nullopt;
 
   // u_target = 0 maps to anywhere in the floor. Return floor start.
-  constexpr real_t kEpsilon = 1e-12;
+  constexpr real_t kEpsilon = 1e-12L;
   if (u_target < kEpsilon) return 0;
 
   // Get shaping boundaries.
@@ -183,7 +184,7 @@ auto compute_required_knots(const InputShapingView& shaping,
 
   // Sort and deduplicate.
   std::sort(knots.begin(), knots.end());
-  constexpr real_t kEpsilon = 1e-10;
+  constexpr real_t kEpsilon = 1e-10L;
   knots.erase(std::unique(knots.begin(), knots.end(),
                           [](real_t a, real_t b) {
                             return std::abs(a - b) < kEpsilon;
@@ -268,7 +269,7 @@ void AdaptiveSubdivider::subdivide_interval(real_t v0, real_t v1,
   // Termination conditions.
   if (width < config_.min_width) return;
   if (depth >= config_.max_depth) return;
-  if (static_cast<int>(result.size()) >= config_.max_segments) return;
+  if (numeric_cast<int>(result.size()) >= config_.max_segments) return;
 
   // Measure error.
   const auto [error, split_pos] = measure_error(v0, v1, k0, k1);
@@ -300,7 +301,7 @@ auto AdaptiveSubdivider::subdivide_breadth_first(
 
   // Initialize with required knots.
   std::vector<SplineKnot> result;
-  result.reserve(config_.max_segments);
+  result.reserve(numeric_cast<std::size_t>(config_.max_segments));
 
   for (const real_t v : required_knots) {
     const ShapedEval e = eval_(v);
@@ -310,12 +311,12 @@ auto AdaptiveSubdivider::subdivide_breadth_first(
   // Subdivide each interval.
 
   bool changed = true;
-  while (changed && static_cast<int>(result.size()) < config_.max_segments) {
+  while (changed && numeric_cast<int>(result.size()) < config_.max_segments) {
     changed = false;
 
     // Single pass over all current intervals
     for (size_t i = 0; i + 1 < result.size(); ++i) {
-      if (static_cast<int>(result.size()) >= config_.max_segments) break;
+      if (numeric_cast<int>(result.size()) >= config_.max_segments) break;
 
       const SplineKnot& k0 = result[i];
       const SplineKnot& k1 = result[i + 1];
@@ -329,7 +330,8 @@ auto AdaptiveSubdivider::subdivide_breadth_first(
       const ShapedEval mid_eval = eval_(split_pos);
       const SplineKnot k_mid{split_pos, mid_eval.T, mid_eval.dT};
 
-      auto insert_pos = result.begin() + i + 1;
+      const auto insert_pos =
+          result.begin() + numeric_cast<std::ptrdiff_t>(i) + 1;
       result.insert(insert_pos, k_mid);
 
       changed = true;
@@ -347,7 +349,7 @@ auto AdaptiveSubdivider::subdivide_depth_first(
 
   // Initialize with required knots.
   std::vector<SplineKnot> result;
-  result.reserve(config_.max_segments);
+  result.reserve(numeric_cast<std::size_t>(config_.max_segments));
 
   for (const real_t v : required_knots) {
     const ShapedEval e = eval_(v);
@@ -357,7 +359,7 @@ auto AdaptiveSubdivider::subdivide_depth_first(
   // Subdivide each interval.
   size_t i = 0;
   while (i + 1 < result.size() &&
-         static_cast<int>(result.size()) < config_.max_segments) {
+         numeric_cast<int>(result.size()) < config_.max_segments) {
     const SplineKnot& k0 = result[i];
     const SplineKnot& k1 = result[i + 1];
 
@@ -418,7 +420,7 @@ auto AdaptiveSubdivider::subdivide_best_first(
 
   // Split highest-error segments
   while (!pq.empty() &&
-         static_cast<int>(knots.size()) < config_.max_segments + 1) {
+         numeric_cast<int>(knots.size()) < config_.max_segments + 1) {
     auto [it, cached_error] = pq.top();
     pq.pop();
 
@@ -509,7 +511,7 @@ auto knot_to_fixed(real_t v) -> u32 {
   if (scaled < 0) return 0;
   if (scaled >= static_cast<real_t>(UINT32_MAX)) return UINT32_MAX;
 
-  return static_cast<u32>(scaled + 0.5);
+  return static_cast<u32>(scaled + 0.5L);
 }
 
 // ============================================================================
@@ -549,7 +551,7 @@ void build_kary_index(shaped_spline& spline) {
       const int bucket = r0 * SHAPED_SPLINE_KARY_FANOUT + r1;
       int seg = seg_start + r1 * region_size / SHAPED_SPLINE_KARY_FANOUT;
       seg = std::min(seg, n - 1);
-      spline.kary_base[bucket] = static_cast<u8>(seg);
+      spline.kary_base[bucket] = numeric_cast<u8>(seg);
     }
   }
 }

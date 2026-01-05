@@ -75,8 +75,8 @@ auto measure_accuracy(const shaped_spline& spline, Oracle& oracle,
 
 /// Power law: f(x) = scale × x^gamma
 struct PowerLaw {
-  real_t gamma = 1.0;
-  real_t scale = 1.0;
+  real_t gamma = 1.0L;
+  real_t scale = 1.0L;
 
   auto value(real_t x) const -> real_t {
     if (x <= 0) return 0;
@@ -84,7 +84,7 @@ struct PowerLaw {
   }
 
   auto derivative(real_t x) const -> real_t {
-    if (x <= 0) return (gamma == 1) ? scale : 0;
+    if (x <= 0) return (gamma == 1.0L) ? scale : 0;
     return scale * gamma * std::pow(x, gamma - 1);
   }
 
@@ -97,8 +97,8 @@ struct PowerLaw {
 
 /// Log curve: f(x) = scale × log(1 + rate × x)
 struct Log1p {
-  real_t scale = 1.0;
-  real_t rate = 1.0;
+  real_t scale = 1.0L;
+  real_t rate = 1.0L;
 
   auto value(real_t x) const -> real_t { return scale * std::log1p(rate * x); }
 

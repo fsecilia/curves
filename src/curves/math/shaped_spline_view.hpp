@@ -23,6 +23,7 @@ extern "C" {
 
 #include <curves/lib.hpp>
 #include <curves/math/segment/view.hpp>
+#include <curves/numeric_cast.hpp>
 #include <cmath>
 #include <vector>
 
@@ -142,7 +143,7 @@ class ShapedSplineView {
   int num_segments_ = 0;
   real_t v_max_ = 0;
 
-  static constexpr real_t kEpsilon = 1e-10;
+  static constexpr real_t kEpsilon = 1e-10L;
 
   [[nodiscard]] static auto knot_to_float(u32 fixed) -> real_t;
   [[nodiscard]] static auto coeff_to_float(s64 fixed, u8 shift) -> real_t;
@@ -167,19 +168,19 @@ inline ShapedSplineView::ShapedSplineView(const shaped_spline* spline)
   v_max_ = knot_to_float(spline->v_max);
 
   // Convert knots.
-  knots_.reserve(num_segments_ + 1);
+  knots_.reserve(numeric_cast<std::size_t>(num_segments_ + 1));
   for (int i = 0; i <= num_segments_; ++i) {
     knots_.push_back(knot_to_float(spline->knots[i]));
   }
 
   // Convert segments.
-  segments_.reserve(num_segments_);
-  for (int i = 0; i < num_segments_; ++i) {
+  segments_.reserve(numeric_cast<std::size_t>(num_segments_));
+  for (auto i = 0; i < num_segments_; ++i) {
     const auto& packed_segment = spline->packed_segments[i];
     const auto& normalized_segment = segment::unpack(packed_segment);
 
-    const real_t knot_v = knots_[i];
-    const real_t next_knot = knots_[i + 1];
+    const real_t knot_v = knots_[numeric_cast<std::size_t>(i)];
+    const real_t next_knot = knots_[numeric_cast<std::size_t>(i + 1)];
     const real_t width = next_knot - knot_v;
 
     segments_.push_back({
@@ -200,7 +201,7 @@ inline ShapedSplineView::ShapedSplineView(const shaped_spline* spline)
 }
 
 inline auto ShapedSplineView::knot_to_float(u32 fixed) -> real_t {
-  constexpr real_t scale = 1.0 / (1UL << SHAPED_SPLINE_KNOT_FRAC_BITS);
+  constexpr real_t scale = 1.0L / (1ULL << SHAPED_SPLINE_KNOT_FRAC_BITS);
   return static_cast<real_t>(fixed) * scale;
 }
 
@@ -216,14 +217,16 @@ inline auto ShapedSplineView::inv_width_to_float(u64 fixed, u8 shift)
 inline auto ShapedSplineView::find_segment(real_t v) const -> int {
   // Binary search for segment containing v.
   if (v <= knots_[0]) return 0;
-  if (v >= knots_[num_segments_]) return num_segments_ - 1;
+  if (v >= knots_[numeric_cast<std::size_t>(num_segments_)]) {
+    return num_segments_ - 1;
+  }
 
-  int lo = 0;
-  int hi = num_segments_;
+  auto lo = 0;
+  auto hi = num_segments_;
 
   while (lo < hi) {
-    const int mid = lo + (hi - lo) / 2;
-    if (knots_[mid + 1] <= v) {
+    const auto mid = lo + (hi - lo) / 2;
+    if (knots_[numeric_cast<std::size_t>(mid + 1)] <= v) {
       lo = mid + 1;
     } else {
       hi = mid;
@@ -235,7 +238,7 @@ inline auto ShapedSplineView::find_segment(real_t v) const -> int {
 
 inline auto ShapedSplineView::eval_cubic(int seg_idx, real_t t) const
     -> ShapedSplineResult {
-  const auto& seg = segments_[seg_idx];
+  const auto& seg = segments_[numeric_cast<std::size_t>(seg_idx)];
 
   // Horner's method for T.
   const real_t T = ((seg.a * t + seg.b) * t + seg.c) * t + seg.d;
@@ -260,7 +263,7 @@ inline auto ShapedSplineView::operator()(real_t v) const -> ShapedSplineResult {
   if (v > v_max_) v = v_max_;
 
   const int seg_idx = find_segment(v);
-  const auto& seg = segments_[seg_idx];
+  const auto& seg = segments_[numeric_cast<std::size_t>(seg_idx)];
 
   real_t t = (seg.width > kEpsilon) ? (v - seg.knot) * seg.inv_width : 0;
   if (t < 0) t = 0;
@@ -276,7 +279,7 @@ inline auto ShapedSplineView::eval(real_t v) const -> real_t {
   if (v > v_max_) v = v_max_;
 
   const int seg_idx = find_segment(v);
-  const auto& seg = segments_[seg_idx];
+  const auto& seg = segments_[numeric_cast<std::size_t>(seg_idx)];
 
   real_t t = (seg.width > kEpsilon) ? (v - seg.knot) * seg.inv_width : 0;
   if (t < 0) t = 0;
@@ -312,7 +315,7 @@ inline auto ShapedSplineView::segment_at(real_t v) const -> int {
 
 inline auto ShapedSplineView::knot(int idx) const -> real_t {
   if (!valid() || idx < 0 || idx > num_segments_) return 0;
-  return knots_[idx];
+  return knots_[numeric_cast<std::size_t>(idx)];
 }
 
 }  // namespace curves
