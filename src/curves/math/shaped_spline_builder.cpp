@@ -12,6 +12,9 @@
 #include <cmath>
 #include <limits>
 
+#include <list>
+#include <queue>
+
 namespace curves {
 
 // ============================================================================
@@ -220,25 +223,40 @@ auto AdaptiveSubdivider::measure_error(real_t v0, real_t v1,
                                        const SplineKnot& k0,
                                        const SplineKnot& k1) const
     -> std::pair<real_t, real_t> {
-  const real_t width = v1 - v0;
   real_t max_error = 0;
-  real_t max_error_pos = (v0 + v1) / 2;
+  real_t worst_v = (v0 + v1) / 2;
 
-  for (int i = 1; i < config_.error_test_points; ++i) {
-    const real_t t = static_cast<real_t>(i) / config_.error_test_points;
+  auto coeffs = hermite_to_cubic(k0, k1);
+  const real_t width = v1 - v0;
+  const real_t inv_width = 1 / width;
+
+  for (int i = 1; i < config_.error_test_points - 1; ++i) {
+    const real_t t = static_cast<real_t>(i) / (config_.error_test_points - 1);
     const real_t v = v0 + t * width;
 
-    const real_t approx = hermite_eval(t, k0.T, k1.T, k0.dT, k1.dT, width);
-    const ShapedEval exact = eval_(v);
-    const real_t error = std::abs(approx - exact.T);
+    auto [T_true, dT_true] = eval_(v);
 
-    if (error > max_error) {
-      max_error = error;
-      max_error_pos = v;
+    // Hermite evaluation
+    const real_t t2 = t * t;
+    const real_t t3 = t2 * t;
+    const real_t T_approx =
+        coeffs.a * t3 + coeffs.b * t2 + coeffs.c * t + coeffs.d;
+    const real_t dT_dt = 3 * coeffs.a * t2 + 2 * coeffs.b * t + coeffs.c;
+    const real_t dT_approx = dT_dt * inv_width;
+
+    // Relative errors
+    const real_t T_err = std::abs(T_true - T_approx) / T_scale_;
+    const real_t dT_err = std::abs(dT_true - dT_approx) / dT_scale_;
+
+    const real_t combined = std::max(T_err, dT_err);
+
+    if (combined > max_error) {
+      max_error = combined;
+      worst_v = v;
     }
   }
 
-  return {max_error, max_error_pos};
+  return {max_error, worst_v};
 }
 
 void AdaptiveSubdivider::subdivide_interval(real_t v0, real_t v1,
@@ -254,7 +272,7 @@ void AdaptiveSubdivider::subdivide_interval(real_t v0, real_t v1,
 
   // Measure error.
   const auto [error, split_pos] = measure_error(v0, v1, k0, k1);
-  if (error <= config_.tolerance && width <= config_.max_width) return;
+  if (error <= config_.tolerance /*&& width <= config_.max_width*/) return;
 
   // Don't create segments below minimum width
   if (split_pos - v0 < config_.min_width) return;
@@ -275,8 +293,55 @@ void AdaptiveSubdivider::subdivide_interval(real_t v0, real_t v1,
   subdivide_interval(split_pos, v1, k_mid, k1, depth + 1, result);
 }
 
-auto AdaptiveSubdivider::subdivide(std::vector<real_t> required_knots)
-    -> std::vector<SplineKnot> {
+auto AdaptiveSubdivider::subdivide_breadth_first(
+    std::vector<real_t> required_knots) -> std::vector<SplineKnot> {
+  assert(!required_knots.empty());
+  assert(std::is_sorted(required_knots.begin(), required_knots.end()));
+
+  // Initialize with required knots.
+  std::vector<SplineKnot> result;
+  result.reserve(config_.max_segments);
+
+  for (const real_t v : required_knots) {
+    const ShapedEval e = eval_(v);
+    result.push_back({v, e.T, e.dT});
+  }
+
+  // Subdivide each interval.
+
+  bool changed = true;
+  while (changed && static_cast<int>(result.size()) < config_.max_segments) {
+    changed = false;
+
+    // Single pass over all current intervals
+    for (size_t i = 0; i + 1 < result.size(); ++i) {
+      if (static_cast<int>(result.size()) >= config_.max_segments) break;
+
+      const SplineKnot& k0 = result[i];
+      const SplineKnot& k1 = result[i + 1];
+      // const real_t width = k1.v - k0.v;
+
+      const auto [error, split_pos] = measure_error(k0.v, k1.v, k0, k1);
+      if (error <= config_.tolerance /*&& width <= config_.max_width*/)
+        continue;
+
+      // Insert one knot (no recursion)
+      const ShapedEval mid_eval = eval_(split_pos);
+      const SplineKnot k_mid{split_pos, mid_eval.T, mid_eval.dT};
+
+      auto insert_pos = result.begin() + i + 1;
+      result.insert(insert_pos, k_mid);
+
+      changed = true;
+      ++i;  // Skip the newly created interval this pass
+    }
+  }
+
+  return result;
+}
+
+auto AdaptiveSubdivider::subdivide_depth_first(
+    std::vector<real_t> required_knots) -> std::vector<SplineKnot> {
   assert(!required_knots.empty());
   assert(std::is_sorted(required_knots.begin(), required_knots.end()));
 
@@ -303,6 +368,101 @@ auto AdaptiveSubdivider::subdivide(std::vector<real_t> required_knots)
       ++i;  // No splits, move to next interval.
     }
     // If splits occurred, recheck from same position.
+  }
+
+  return result;
+}
+
+auto AdaptiveSubdivider::subdivide_best_first(
+    std::vector<real_t> required_knots) -> std::vector<SplineKnot> {
+  struct KnotNode {
+    SplineKnot knot;
+    real_t error;      // Error of segment [this, next)
+    real_t split_pos;  // Where to split this segment
+  };
+
+  std::list<KnotNode> knots;
+
+  // Initialize from required positions
+  for (real_t v : required_knots) {
+    auto [T, dT] = eval_(v);
+    knots.push_back({{v, T, dT}, 0, 0});
+  }
+
+  // Measure initial errors
+  for (auto it = knots.begin(); it != knots.end(); ++it) {
+    auto next = std::next(it);
+    if (next == knots.end()) continue;
+
+    auto [error, split_pos] =
+        measure_error(it->knot.v, next->knot.v, it->knot, next->knot);
+    it->error = error;
+    it->split_pos = split_pos;
+  }
+
+  // Priority queue: (iterator, cached_error)
+  struct PQEntry {
+    std::list<KnotNode>::iterator it;
+    real_t error;
+    bool operator<(const PQEntry& o) const { return error < o.error; }
+  };
+
+  std::priority_queue<PQEntry> pq;
+
+  for (auto it = knots.begin(); std::next(it) != knots.end(); ++it) {
+    real_t width = std::next(it)->knot.v - it->knot.v;
+    if (it->error > config_.tolerance || width > config_.max_width) {
+      pq.push({it, it->error});
+    }
+  }
+
+  // Split highest-error segments
+  while (!pq.empty() &&
+         static_cast<int>(knots.size()) < config_.max_segments + 1) {
+    auto [it, cached_error] = pq.top();
+    pq.pop();
+
+    auto next = std::next(it);
+    real_t split_v = it->split_pos;
+
+    // Check min width
+    if (split_v - it->knot.v < config_.min_width) continue;
+    if (next->knot.v - split_v < config_.min_width) continue;
+
+    // Insert new knot
+    auto [T, dT] = eval_(split_v);
+    auto new_it = knots.insert(next, {{split_v, T, dT}, 0, 0});
+
+    // Recompute left segment [it, new_it)
+    {
+      auto [err, pos] =
+          measure_error(it->knot.v, new_it->knot.v, it->knot, new_it->knot);
+      it->error = err;
+      it->split_pos = pos;
+      real_t w = new_it->knot.v - it->knot.v;
+      if (err > config_.tolerance || w > config_.max_width) {
+        pq.push({it, err});
+      }
+    }
+
+    // Compute right segment [new_it, next)
+    {
+      auto [err, pos] =
+          measure_error(new_it->knot.v, next->knot.v, new_it->knot, next->knot);
+      new_it->error = err;
+      new_it->split_pos = pos;
+      real_t w = next->knot.v - new_it->knot.v;
+      if (err > config_.tolerance || w > config_.max_width) {
+        pq.push({new_it, err});
+      }
+    }
+  }
+
+  // Extract in order (list is already sorted spatially)
+  std::vector<SplineKnot> result;
+  result.reserve(knots.size());
+  for (const auto& node : knots) {
+    result.push_back(node.knot);
   }
 
   return result;

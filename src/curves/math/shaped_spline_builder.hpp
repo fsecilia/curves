@@ -92,14 +92,14 @@ struct CeilingConfig {
 
 /// Configuration for the adaptive subdivision.
 struct SubdivisionConfig {
-  real_t tolerance = 1e-4;  ///< Max approximation error per segment.
+  real_t tolerance = 1e-8;  ///< Max approximation error per segment.
   real_t v_max = 128.0;     ///< Domain upper bound.
   int max_segments = SHAPED_SPLINE_MAX_SEGMENTS;
   int error_test_points = 16;  ///< Samples per segment for error check.
   int max_depth = 12;          ///< Max recursion depth.
 
   // this value is too low
-  real_t min_width = (1.0L - 1e-4) / (1 << 16);  ///< Min segment width.
+  real_t min_width = (1.0L - 1e-4) / (1ULL << 32);  ///< Min segment width.
 
   // this is a hack because inv_width doesn't have enough bits.
   real_t max_width = 16.0;  // Force split if segment wider than this
@@ -270,7 +270,12 @@ class AdaptiveSubdivider {
   using EvalFunc = std::function<ShapedEval(real_t)>;
 
   AdaptiveSubdivider(EvalFunc eval, const SubdivisionConfig& config)
-      : eval_{std::move(eval)}, config_{config} {}
+      : eval_{std::move(eval)}, config_{config} {
+    // Global scale based on max values
+    auto [T_max, dT_max] = eval_(config.v_max);
+    T_scale_ = std::max(std::abs(T_max), 1.0L);
+    dT_scale_ = std::max(std::abs(dT_max), 1.0L);
+  }
 
   /*!
     Subdivide starting from required knots.
@@ -280,11 +285,22 @@ class AdaptiveSubdivider {
     \return All knots after subdivision, sorted by position.
   */
   [[nodiscard]] auto subdivide(std::vector<real_t> required_knots)
-      -> std::vector<SplineKnot>;
+      -> std::vector<SplineKnot> {
+    return subdivide_best_first(std::move(required_knots));
+  }
 
  private:
   EvalFunc eval_;
   SubdivisionConfig config_;
+  real_t T_scale_;
+  real_t dT_scale_;
+
+  [[nodiscard]] auto subdivide_breadth_first(std::vector<real_t> required_knots)
+      -> std::vector<SplineKnot>;
+  [[nodiscard]] auto subdivide_depth_first(std::vector<real_t> required_knots)
+      -> std::vector<SplineKnot>;
+  [[nodiscard]] auto subdivide_best_first(std::vector<real_t> required_knots)
+      -> std::vector<SplineKnot>;
 
   void subdivide_interval(real_t v0, real_t v1, const SplineKnot& k0,
                           const SplineKnot& k1, int depth,
@@ -390,33 +406,15 @@ template <GeneratingCurve Curve>
   auto cusps = get_cusp_locations(curve);
   auto required_knots = compute_required_knots(shaping, cusps, v_max);
 
-#if 0
-  for (const auto& knot : required_knots) {
-    if (knot < 1e-5) continue;
-    static const auto offset_directions = {-1, 0, 1};
-    static const auto offset_magnitude = 1e-7;
-    for (const auto offset_direction : offset_directions) {
-      const auto offset = offset_direction * offset_magnitude;
-      const auto x = knot + offset;
-      const auto offset_eval = eval_func(x);
-      std::cout << "x=" << x << ": {.T=" << offset_eval.T
-                << ", .dT=" << offset_eval.dT << "} ";
-    }
-    std::cout << std::endl;
-  }
-#endif
-
   // Adaptive subdivision.
   AdaptiveSubdivider subdivider{eval_func, config.subdivision};
   auto knots = subdivider.subdivide(std::move(required_knots));
 
-  std::cout << "First 3 knots:\n";
-  for (int i = 0; i < std::min(3, (int)knots.size()); ++i) {
-    std::cout << "  v=" << knots[i].v << " T=" << knots[i].T
+  std::cout << "Boundary knots:\n";
+  for (int i = 0; i < std::min(5, (int)knots.size()); ++i) {
+    std::cout << "  [" << i << "] v=" << knots[i].v << " T=" << knots[i].T
               << " dT=" << knots[i].dT << "\n";
   }
-
-  std::cout << "Last 5 knots:\n";
   for (int i = std::max(0, (int)knots.size() - 5); i < (int)knots.size(); ++i) {
     std::cout << "  [" << i << "] v=" << knots[i].v << " T=" << knots[i].T
               << " dT=" << knots[i].dT << "\n";
@@ -454,13 +452,6 @@ template <GeneratingCurve Curve>
         .coeffs = {coeffs.a, coeffs.b, coeffs.c, coeffs.d}, .width = width};
     auto normalized = segment::create_segment(params);
     result.packed_segments[i] = segment::pack(normalized);
-
-    if (!i) {
-      std::cout << "First segment after baking:\n";
-      std::cout << "  width=" << width << " offset=" << offset << "\n";
-      std::cout << "  c before=" << (coeffs.c - offset * width)
-                << " c after=" << coeffs.c << "\n";
-    }
   }
 
   // Build k-ary index.
