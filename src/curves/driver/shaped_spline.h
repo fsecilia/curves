@@ -11,16 +11,16 @@
  *   - Adaptive curvature-based subdivision (knots placed where needed)
  *   - k-ary search with segment hints for cache-efficient lookup
  *   - Fixed-point arithmetic throughout (no floating point in kernel)
- *   - Cache-line-aligned segment storage (3 segments per 64-byte line)
+ *   - Cache-line-aligned segment storage (2 segments per 64-byte line)
  *
  * Fixed-point formats:
  *   - Knots, k-ary index: u32 Q8.24 (range [0, 256), resolution ~6e-8)
  *   - Coefficients:       s32 Q15.16 (range [-32768, 32768), resolution ~1.5e-5)
  *   - Inverse width:      s32 Q15.16 (range [-32768, 32768), resolution ~1.5e-5, for computing t)
  *   - Local parameter t:  u32 Q0.32 (value in [0, 1))
- *   - Output T(v):        s32 Q15.16
+ *   - Output T(v):        s64 with precision CURVES_SEGMENT_OUT_FRAC_BITS
  *
- * Copyright (C) 2025 Frank Secilia
+ * Copyright (C) 2026 Frank Secilia
  * Author: Frank Secilia <frank.secilia@gmail.com>
  */
 
@@ -28,6 +28,8 @@
 #define _CURVES_SHAPED_SPLINE_H
 
 #include "kernel_compat.h"
+#include "segment/eval.h"
+#include "segment/unpacking.h"
 
 /* ----------------------------------------------------------------------------
  * Configuration
@@ -69,26 +71,6 @@
  * --------------------------------------------------------------------------*/
 
 /**
- * struct shaped_spline_segment - Cubic coefficients and inverse width.
- * @a: Cubic coefficient (t^3 term), Q15.16
- * @b: Cubic coefficient (t^2 term), Q15.16
- * @c: Cubic coefficient (t^1 term), Q15.16
- * @d: Cubic coefficient (t^0 term), Q15.16
- * @inv_width: Reciprocal of segment width, Q0.32
- *
- * Size: 20 bytes. Three of these plus 4 bytes padding fill one 64-byte
- * cache line exactly.
- *
- * The polynomial is evaluated as T(t) = ((a*t + b)*t + c)*t + d using
- * Horner's method. The inverse width is used to compute the local
- * parameter t = (v - knot) * inv_width without division.
- */
-struct shaped_spline_segment {
-	s32 a, b, c, d;
-	u32 inv_width;
-};
-
-/**
  * struct shaped_spline - Complete shaped transfer function spline.
  * @knots: Segment boundary positions in velocity space, Q8.24.
  *         knots[i] is the start of segment i. Length is num_segments + 1.
@@ -110,7 +92,7 @@ struct shaped_spline_segment {
  */
 struct shaped_spline {
 	// Cache-aligned segment storage.
-	struct shaped_spline_segment segments[SHAPED_SPLINE_MAX_SEGMENTS];
+	struct curves_packed_segment packed_segments[SHAPED_SPLINE_MAX_SEGMENTS];
 
 	// Segment boundaries for lookup and t computation. 16 per cache line
 	u32 knots[SHAPED_SPLINE_MAX_SEGMENTS + 1];
@@ -283,46 +265,10 @@ static inline u32 __shaped_spline_compute_t(u32 v, u32 knot, u32 inv_width)
 }
 
 /**
- * __shaped_spline_eval_cubic - Evaluate cubic polynomial at t.
- * @seg: Segment containing coefficients.
- * @t: Local parameter in Q0.32, value in [0, 1).
- *
- * Evaluates T(t) = ((a*t + b)*t + c)*t + d using Horner's method.
- *
- * Fixed-point math for each step:
- *   acc starts as coefficient           (Q15.16, stored in s64)
- *   acc * t                             (Q15.16 × Q0.32 = Q15.48)
- *   (acc * t) >> 32                     (Q15.16)
- *   result + next_coeff                 (Q15.16)
- *
- * We use s64 for the accumulator to avoid overflow during the multiply,
- * since Q15.16 × Q0.32 produces a Q15.48 intermediate that needs 48+ bits.
- *
- * Return: T(t) in Q15.16.
- */
-static inline s32
-__shaped_spline_eval_cubic(const struct shaped_spline_segment *seg, u32 t)
-{
-	s64 acc;
-
-	acc = seg->a;
-	acc = (acc * t) >> SHAPED_SPLINE_T_FRAC_BITS;
-	acc += seg->b;
-
-	acc = (acc * t) >> SHAPED_SPLINE_T_FRAC_BITS;
-	acc += seg->c;
-
-	acc = (acc * t) >> SHAPED_SPLINE_T_FRAC_BITS;
-	acc += seg->d;
-
-	return (s32)acc;
-}
-
-/**
  * shaped_spline_eval - Evaluate shaped transfer function at velocity.
  * @spline: Spline to evaluate.
  * @hint: Per-device segment hint (may be NULL).
- * @v: Input velocity in Q8.24.
+ * @v: Input velocity with precision SHAPED_SPLINE_KNOT_FRAC_BITS.
  *
  * This is the main entry point for the driver. Given a raw mouse velocity,
  * it returns T(v), the shaped transfer function value. The caller can then
@@ -331,32 +277,32 @@ __shaped_spline_eval_cubic(const struct shaped_spline_segment *seg, u32 t)
  * The ceiling transition ensures T(v) is linear near v_max, so clamping
  * to v_max is equivalent to linear extension.
  *
- * Return: T(v) in Q15.16.
+ * Return: T(v) with precision CURVES_SEGMENT_OUT_FRAC_BITS.
  */
-static inline s32 shaped_spline_eval(const struct shaped_spline *spline,
+static inline s64 shaped_spline_eval(const struct shaped_spline *spline,
 				     struct shaped_spline_hint *hint, u32 v)
 {
-	const struct shaped_spline_segment *seg;
-	int seg_idx;
-	u32 t;
+	const struct curves_packed_segment *packed_segment;
+	struct curves_normalized_segment unpacked_segment;
+	int segment;
 
-	/* Clamp to domain. The mandatory ceiling transition ensures
-	 * the curve is linear at v_max, so clamping is correct behavior. */
+	// Clamp to domain. By design the splines flatten out before v_max,
+	// so clamping there is the same as extending the tangent horizontally.
 	if (unlikely(v >= spline->v_max))
 		v = spline->v_max - 1;
 
-	/* Find segment containing v. */
-	seg_idx = shaped_spline_find_segment(spline, hint, v);
+	// Find segment containing v.
+	segment = shaped_spline_find_segment(spline, hint, v);
 
-	/* Get segment from cache-aligned storage. */
-	seg = &spline->segments[seg_idx];
+	// Get segment from cache-aligned storage.
+	packed_segment = &spline->packed_segments[segment];
 
-	/* Compute local parameter t ∈ [0, 1). */
-	t = __shaped_spline_compute_t(v, spline->knots[seg_idx],
-				      seg->inv_width);
+	// Unpack from cold cache once per evaluation.
+	unpacked_segment = curves_unpack_segment(packed_segment);
 
-	/* Evaluate cubic. */
-	return __shaped_spline_eval_cubic(seg, t);
+	// Evaluate unpacked segment relative to the segment's left knot.
+	return curves_segment_eval(&unpacked_segment, v, spline->knots[segment],
+				   SHAPED_SPLINE_KNOT_FRAC_BITS);
 }
 
 #endif /* _CURVES_SHAPED_SPLINE_H */

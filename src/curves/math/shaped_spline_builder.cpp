@@ -3,7 +3,7 @@
   \file
   \brief Implementation of shaped spline construction.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #include "shaped_spline_builder.hpp"
@@ -350,32 +350,6 @@ auto knot_to_fixed(real_t v) -> u32 {
   if (scaled >= static_cast<real_t>(UINT32_MAX)) return UINT32_MAX;
 
   return static_cast<u32>(scaled + 0.5);
-}
-
-auto coeff_to_fixed(real_t c) -> s32 {
-  // Q15.16
-  constexpr real_t scale =
-      static_cast<real_t>(1L << SHAPED_SPLINE_COEFF_FRAC_BITS);
-  const real_t scaled = c * scale;
-
-  if (scaled <= static_cast<real_t>(INT32_MIN)) return INT32_MIN;
-  if (scaled >= static_cast<real_t>(INT32_MAX)) return INT32_MAX;
-
-  return (scaled >= 0) ? static_cast<s32>(scaled + 0.5)
-                       : static_cast<s32>(scaled - 0.5);
-}
-
-auto width_to_inv_fixed(real_t width) -> u32 {
-  if (width <= 0) return INT32_MAX;
-
-  constexpr real_t scale = 65536.0;  // 2¹⁶
-  const real_t inv_scaled = scale / width;
-
-  if (inv_scaled >= static_cast<real_t>(UINT32_MAX)) {
-    return UINT32_MAX;
-  }
-
-  return static_cast<u32>(inv_scaled + 0.5);
 }
 
 // ============================================================================

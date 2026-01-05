@@ -16,7 +16,7 @@
     6. Convert to fixed-point
     7. Build k-ary search index
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
@@ -29,6 +29,7 @@ extern "C" {
 #include <curves/config/curve.hpp>
 #include <curves/math/input_shaping_view.hpp>
 #include <curves/math/integration.hpp>
+#include <curves/math/segment/construction.hpp>
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -295,8 +296,6 @@ struct CubicCoeffs {
 // ============================================================================
 
 [[nodiscard]] auto knot_to_fixed(real_t v) -> u32;
-[[nodiscard]] auto coeff_to_fixed(real_t c) -> s32;
-[[nodiscard]] auto width_to_inv_fixed(real_t width) -> u32;
 
 // ============================================================================
 // k-ary Index Construction
@@ -464,12 +463,10 @@ auto build_shaped_spline(const Curve& curve, const InputShapingView& shaping,
     coeffs.c += offset * width;
     coeffs.d += offset * knot_v;
 
-    auto& seg = result.segments[i];
-    seg.a = coeff_to_fixed(coeffs.a);
-    seg.b = coeff_to_fixed(coeffs.b);
-    seg.c = coeff_to_fixed(coeffs.c);
-    seg.d = coeff_to_fixed(coeffs.d);
-    seg.inv_width = width_to_inv_fixed(width);
+    const auto params = segment::SegmentParams{
+        .coeffs = {coeffs.a, coeffs.b, coeffs.c, coeffs.d}, .width = width};
+    auto normalized = segment::create_segment(params);
+    result.packed_segments[i] = segment::pack(normalized);
 
     if (!i) {
       std::cout << "First segment after baking:\n";

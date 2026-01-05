@@ -141,6 +141,8 @@ __curves_segment_x_to_t(const struct curves_normalized_inv_width *inv_width,
 
 /*
  * Evaluates segment at position x.
+ *
+ * Return: y with precision CURVES_SEGMENT_OUT_FRAC_BITS.
  */
 static inline s64
 curves_segment_eval(const struct curves_normalized_segment *segment, s64 x,

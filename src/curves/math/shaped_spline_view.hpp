@@ -12,7 +12,7 @@
   this view is simpler than the old CurveView which had to compose
   shaping at evaluation time.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
@@ -22,6 +22,7 @@ extern "C" {
 }
 
 #include <curves/lib.hpp>
+#include <curves/math/segment/view.hpp>
 #include <cmath>
 #include <vector>
 
@@ -144,8 +145,8 @@ class ShapedSplineView {
   static constexpr real_t kEpsilon = 1e-10;
 
   [[nodiscard]] static auto knot_to_float(u32 fixed) -> real_t;
-  [[nodiscard]] static auto coeff_to_float(s32 fixed) -> real_t;
-  [[nodiscard]] static auto inv_width_to_float(u32 fixed) -> real_t;
+  [[nodiscard]] static auto coeff_to_float(s64 fixed, u8 shift) -> real_t;
+  [[nodiscard]] static auto inv_width_to_float(u64 fixed, u8 shift) -> real_t;
 
   [[nodiscard]] auto find_segment(real_t v) const -> int;
   [[nodiscard]] auto eval_cubic(int seg_idx, real_t t) const
@@ -174,18 +175,24 @@ inline ShapedSplineView::ShapedSplineView(const shaped_spline* spline)
   // Convert segments.
   segments_.reserve(num_segments_);
   for (int i = 0; i < num_segments_; ++i) {
-    const auto& seg = spline->segments[i];
+    const auto& packed_segment = spline->packed_segments[i];
+    const auto& normalized_segment = segment::unpack(packed_segment);
 
     const real_t knot_v = knots_[i];
     const real_t next_knot = knots_[i + 1];
     const real_t width = next_knot - knot_v;
 
     segments_.push_back({
-        .a = coeff_to_float(seg.a),
-        .b = coeff_to_float(seg.b),
-        .c = coeff_to_float(seg.c),
-        .d = coeff_to_float(seg.d),
-        .inv_width = inv_width_to_float(seg.inv_width),
+        .a = coeff_to_float(normalized_segment.poly.coeffs[0],
+                            normalized_segment.poly.shifts[0]),
+        .b = coeff_to_float(normalized_segment.poly.coeffs[1],
+                            normalized_segment.poly.shifts[1]),
+        .c = coeff_to_float(normalized_segment.poly.coeffs[2],
+                            normalized_segment.poly.shifts[2]),
+        .d = coeff_to_float(normalized_segment.poly.coeffs[3],
+                            normalized_segment.poly.shifts[3]),
+        .inv_width = inv_width_to_float(normalized_segment.inv_width.value,
+                                        normalized_segment.inv_width.shift),
         .knot = knot_v,
         .width = width,
     });
@@ -197,14 +204,13 @@ inline auto ShapedSplineView::knot_to_float(u32 fixed) -> real_t {
   return static_cast<real_t>(fixed) * scale;
 }
 
-inline auto ShapedSplineView::coeff_to_float(s32 fixed) -> real_t {
-  constexpr real_t scale = 1.0 / (1L << SHAPED_SPLINE_COEFF_FRAC_BITS);
-  return static_cast<real_t>(fixed) * scale;
+inline auto ShapedSplineView::coeff_to_float(s64 fixed, u8 shift) -> real_t {
+  return to_real(fixed, shift);
 }
 
-inline auto ShapedSplineView::inv_width_to_float(u32 fixed) -> real_t {
-  constexpr real_t scale = 1.0 / 65536.0;
-  return static_cast<real_t>(fixed) * scale;
+inline auto ShapedSplineView::inv_width_to_float(u64 fixed, u8 shift)
+    -> real_t {
+  return to_real<u64>(fixed, shift);
 }
 
 inline auto ShapedSplineView::find_segment(real_t v) const -> int {
