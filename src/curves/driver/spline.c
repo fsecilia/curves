@@ -36,11 +36,12 @@ static inline struct curves_segment_desc calc_subnormal_segment_desc(s64 x)
  *
  * Return: Descriptor for segment containing x in an octave.
  */
-static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
-								  int x_log2)
+static inline struct curves_segment_desc
+calc_octave_segment_desc(s64 x, unsigned int x_log2)
 {
-	int octave = x_log2 - SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT;
-	int octave_segment_width_log2 = SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
+	unsigned int octave = x_log2 - SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT;
+	unsigned int octave_segment_width_log2 =
+		SPLINE_MIN_SEGMENT_WIDTH_LOG2 + octave;
 
 	/*
 	 * The sum of all prior octaves' widths and the width of the subnormal
@@ -71,7 +72,7 @@ static inline struct curves_segment_desc calc_octave_segment_desc(s64 x,
  */
 static inline struct curves_segment_desc calc_segment_desc(s64 x)
 {
-	int x_log2 = curves_log2_u64((u64)x);
+	unsigned int x_log2 = curves_log2_u64((u64)x);
 	if (x_log2 < SPLINE_OCTAVE_ORIGIN_FIXED_SHIFT)
 		return calc_subnormal_segment_desc(x);
 	else
@@ -82,16 +83,16 @@ static inline struct curves_segment_desc calc_segment_desc(s64 x)
  * Calculates t: The position of x within the segment, normalized to [0, 1).
  * t = (x % width) / width
  */
-static inline s64 map_x_to_t(s64 x, int width_log2)
+static inline s64 map_x_to_t(s64 x, unsigned int width_log2)
 {
 	u64 mask = (1ULL << width_log2) - 1;
-	u64 remainder = x & mask;
+	u64 remainder = (u64)x & mask;
 
 	// Shift to normalize remainder to SPLINE_FRAC_BITS
 	if (width_log2 < CURVES_FIXED_SHIFT)
-		return remainder << (CURVES_FIXED_SHIFT - width_log2);
+		return (s64)(remainder << (CURVES_FIXED_SHIFT - width_log2));
 	else
-		return remainder >> (width_log2 - CURVES_FIXED_SHIFT);
+		return (s64)(remainder >> (width_log2 - CURVES_FIXED_SHIFT));
 }
 
 // Finds segment index and interpolation for input x.

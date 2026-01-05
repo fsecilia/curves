@@ -18,7 +18,7 @@ namespace curves {
 
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0L, 5.0L, 0.5L) {}
+  SynchronousCurve() noexcept : SynchronousCurve(1.5L, 1.0L, 5.0L, 0.5L) {}
 
   SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
                    real_t smooth) noexcept
@@ -26,7 +26,7 @@ class SynchronousCurve {
         L_{std::log(motivity)},
         g_{gamma / L_},
         p_{sync_speed},
-        k_{smooth == 0 ? 64.0L : 0.5L / smooth},
+        k_{smooth == 0.0L ? 64.0L : 0.5L / smooth},
         r_{1.0L / k_} {}
 
   auto cusp_location() const noexcept -> real_t { return p_; }
@@ -105,8 +105,12 @@ struct SynchronousCurveConfig {
   }
 
   auto create() const -> SynchronousCurve {
-    return SynchronousCurve{motivity.value(), gamma.value(), sync_speed.value(),
-                            smooth.value()};
+    return SynchronousCurve{
+        static_cast<real_t>(motivity.value()),
+        static_cast<real_t>(gamma.value()),
+        static_cast<real_t>(sync_speed.value()),
+        static_cast<real_t>(smooth.value()),
+    };
   }
 };
 

@@ -17,12 +17,13 @@
 
 namespace curves {
 
-auto get_config_dir_path() -> std::filesystem::path {
+static inline auto get_config_dir_path() -> std::filesystem::path {
   return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
       .toStdString();
 }
 
-auto report_config_file_parse_error(const toml::parse_error& err) -> void {
+static inline auto report_config_file_parse_error(const toml::parse_error& err)
+    -> void {
   std::ostringstream message;
   message << "Could not parse config file.\n\nIn file " << *err.source().path
           << ",\n"
@@ -34,7 +35,7 @@ auto report_config_file_parse_error(const toml::parse_error& err) -> void {
       .exec();
 }
 
-auto main(int argc, char* argv[]) -> int {
+static inline auto main(int argc, char* argv[]) -> int {
   auto app = QApplication{argc, argv};
   QApplication::setApplicationName("curves");
   QApplication::setOrganizationName("");

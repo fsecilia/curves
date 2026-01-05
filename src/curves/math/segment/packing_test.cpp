@@ -20,7 +20,7 @@ namespace {
 
 struct SegmentPackingTest : Test {
   std::mt19937_64 rng{0xF12345678};
-  std::uniform_real_distribution<real_t> mantissa_dist{-1.0, 1.0};
+  std::uniform_real_distribution<real_t> mantissa_dist{-1.0L, 1.0L};
   std::uniform_int_distribution<int> exp_dist{-70, 50};
   std::uniform_int_distribution<int> width_exp_dist{-20, 20};
 
@@ -33,7 +33,7 @@ struct SegmentPackingTest : Test {
     // Randomize signed coeffs.
     for (auto j = 0; j < 2; ++j) {
       if (i + j % 100 == 0) {
-        params.coeffs[j] = 0.0;
+        params.coeffs[j] = 0.0L;
       } else {
         params.coeffs[j] = std::ldexp(mantissa_dist(rng), exp_dist(rng));
       }
@@ -42,7 +42,7 @@ struct SegmentPackingTest : Test {
     // Randomize unsigned coeffs.
     for (auto j = 2; j < kCoeffCount; ++j) {
       if (i + j % 100 == 0) {
-        params.coeffs[j] = 0.0;
+        params.coeffs[j] = 0.0L;
       } else {
         params.coeffs[j] =
             std::ldexp(std::abs(mantissa_dist(rng)), exp_dist(rng));
@@ -51,7 +51,7 @@ struct SegmentPackingTest : Test {
 
     // Randomize nonzero width.
     params.width =
-        std::ldexp(std::fabs(mantissa_dist(rng)) + 1e-9, width_exp_dist(rng));
+        std::ldexp(std::fabs(mantissa_dist(rng)) + 1e-9L, width_exp_dist(rng));
 
     return create_segment(params);
   }
@@ -79,8 +79,8 @@ TEST_F(SegmentPackingTest, ZeroSegmentRoundTrips) {
 
 TEST_F(SegmentPackingTest, ShiftsMaskedTo6Bits) {
   auto params = SegmentParams{};
-  std::ranges::fill(params.coeffs, 1.0);
-  params.width = 1.0;
+  std::ranges::fill(params.coeffs, 1.0L);
+  params.width = 1.0L;
 
   auto segment = create_segment(params);
 

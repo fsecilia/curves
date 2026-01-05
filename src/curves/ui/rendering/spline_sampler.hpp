@@ -131,37 +131,39 @@ class SplineSampler {
 
     // Calculate Physical Slope (m_phys) from Runout Segment
     const auto& r_seg = m_spline->runout_segment;
-    double ra = Fixed::from_raw(r_seg.coeffs[0]).to_real();
-    double rb = Fixed::from_raw(r_seg.coeffs[1]).to_real();
-    double rc = Fixed::from_raw(r_seg.coeffs[2]).to_real();
-    double rd = Fixed::from_raw(r_seg.coeffs[3]).to_real();
+    const auto ra = Fixed::from_raw(r_seg.coeffs[0]).to_real();
+    const auto rb = Fixed::from_raw(r_seg.coeffs[1]).to_real();
+    const auto rc = Fixed::from_raw(r_seg.coeffs[2]).to_real();
+    const auto rd = Fixed::from_raw(r_seg.coeffs[3]).to_real();
 
     // Slope at t=1 in Parametric Space
     // P'(1) = 3a + 2b + c
-    double m_param = 3.0 * ra + 2.0 * rb + rc;
+    const auto m_param = 3.0L * ra + 2.0L * rb + rc;
 
     // Convert to Physical Slope: m_phys = m_param * inv_width_runout
-    s64 r_width_fixed = 1ULL << m_spline->runout_width_log2;
-    real_t r_dx = Fixed::from_raw(r_width_fixed).to_real();
-    real_t r_dv = r_dx / Fixed::from_raw(m_spline->v_to_x).to_real();
-    double m_phys = m_param * (1.0 / r_dv);
+    const auto r_width_fixed = 1ULL << m_spline->runout_width_log2;
+    const auto r_dx = Fixed::from_raw(r_width_fixed).to_real();
+    const auto r_dv = r_dx / Fixed::from_raw(m_spline->v_to_x).to_real();
+    const auto m_phys = m_param * (1.0L / r_dv);
 
     // Calculate Y Start (Value at runout t=1)
-    double y_start = ra + rb + rc + rd;
+    const auto y_start = ra + rb + rc + rd;
 
     // Calculate v_start (Physical start of extension)
-    real_t x_runout_end = Fixed::from_raw(m_spline->x_runout_limit).to_real();
-    real_t v_start = x_runout_end / Fixed::from_raw(m_spline->v_to_x).to_real();
+    const auto x_runout_end =
+        Fixed::from_raw(m_spline->x_runout_limit).to_real();
+    const auto v_start =
+        x_runout_end / Fixed::from_raw(m_spline->v_to_x).to_real();
 
     // Synthesize Sample
     // We set up a linear polynomial: Y(t) = c*t + d
     // Where t = (v - v_start) and width = 1.0.
     return SplineSample{.a = 0,
                         .b = 0,
-                        .c = m_phys,       // Slope
-                        .d = y_start,      // Intercept
-                        .t = v - v_start,  // Distance from end of spline
-                        .inv_width = 1.0,  // Unit width for 1:1 mapping
+                        .c = m_phys,        // Slope
+                        .d = y_start,       // Intercept
+                        .t = v - v_start,   // Distance from end of spline
+                        .inv_width = 1.0L,  // Unit width for 1:1 mapping
                         .is_start_segment = false};
   }
 };

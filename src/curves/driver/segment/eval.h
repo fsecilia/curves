@@ -133,7 +133,8 @@ static inline u64
 __curves_segment_x_to_t(const struct curves_normalized_inv_width *inv_width,
 			s64 x, s64 x0, unsigned int x_frac_bits)
 {
-	int shift = inv_width->shift + x_frac_bits - CURVES_SEGMENT_T_FRAC_BITS;
+	int shift = inv_width->shift + (int)x_frac_bits -
+		    CURVES_SEGMENT_T_FRAC_BITS;
 	u128 t = (u128)(x - x0) * inv_width->value;
 	return (u64)(shift >= 0 ? (t >> shift) : (t << -shift));
 }

@@ -127,7 +127,8 @@ inline auto pack(const NormalizedSegment& src) noexcept -> PackedSegment {
 
     // Check if this is a Denormal/Zero in Math Format
     // (Shift is 62, but Implicit Bit 44 is NOT set in the value)
-    const auto is_implicit_set = (std::abs(val) & (1ULL << kSignedImplicitBit));
+    const auto is_implicit_set =
+        (static_cast<uint64_t>(std::abs(val)) & (1ULL << kSignedImplicitBit));
     if (!is_implicit_set) {
       shift_storage[i] = kDenormalShift;
     } else {

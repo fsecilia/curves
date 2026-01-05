@@ -135,7 +135,8 @@ class ViewModel {
         selected_curve(), [&](const auto& curve_profile_entry) {
           const auto curve = curve_profile_entry.config.create();
 
-          const auto sensitivity = profile_.sensitivity.value();
+          const auto sensitivity =
+              static_cast<real_t>(profile_.sensitivity.value());
           switch (curve_profile_entry.interpretation.value()) {
             case CurveInterpretation::kGain:
               result.spline = curves::spline::create_spline(

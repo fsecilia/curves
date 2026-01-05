@@ -43,10 +43,10 @@ TEST_P(InverseFunctionTestExp, exp) {
 }
 
 const TestVector exp_vectors[] = {
-    TestVector{"exp(0)", 0.0, 1e-10},
-    TestVector{"exp(e)", M_E, 1e-10},
-    TestVector{"exp(pi)", M_PI, 1e-10},
-    TestVector{"exp(5)", 5.0, 1e-10},
+    TestVector{"exp(0)", 0.0L, 1e-10L},
+    TestVector{"exp(e)", static_cast<real_t>(M_E), 1e-10L},
+    TestVector{"exp(pi)", static_cast<real_t>(M_PI), 1e-10L},
+    TestVector{"exp(5)", 5.0L, 1e-10L},
 };
 
 INSTANTIATE_TEST_SUITE_P(exp_vectors, InverseFunctionTestExp,
@@ -67,10 +67,10 @@ TEST_P(InverseFunctionTestLog, log) {
 }
 
 const TestVector log_vectors[] = {
-    TestVector{"log(1)", 1.0, 1e-10},
-    TestVector{"log(e)", M_E, 1e-10},
-    TestVector{"log(pi)", M_PI, 1e-10},
-    TestVector{"log(5)", 5.0, 1e-10},
+    TestVector{"log(1)", 1.0L, 1e-10L},
+    TestVector{"log(e)", static_cast<real_t>(M_E), 1e-10L},
+    TestVector{"log(pi)", static_cast<real_t>(M_PI), 1e-10L},
+    TestVector{"log(5)", 5.0L, 1e-10L},
 };
 
 INSTANTIATE_TEST_SUITE_P(log_vectors, InverseFunctionTestLog,
@@ -84,16 +84,16 @@ INSTANTIATE_TEST_SUITE_P(log_vectors, InverseFunctionTestLog,
 struct InverseFunctionTestInverseX : InverseFunctionTest {};
 
 TEST_P(InverseFunctionTestInverseX, inverse_x) {
-  ASSERT_NEAR(x,
-              inverse_via_partition([](auto&& x) { return 1.0 / x; }, 1.0 / x),
-              tolerance);
+  ASSERT_NEAR(
+      x, inverse_via_partition([](auto&& x) { return 1.0L / x; }, 1.0L / x),
+      tolerance);
 }
 
 const TestVector inverse_x_vectors[] = {
-    TestVector{"1/1", 1.0, 1e-10},
-    TestVector{"1/e", M_E, 1e-10},
-    TestVector{"1/pi", M_PI, 1e-10},
-    TestVector{"1/5", 5.0, 1e-10},
+    TestVector{"1/1", 1.0L, 1e-10L},
+    TestVector{"1/e", static_cast<real_t>(M_E), 1e-10L},
+    TestVector{"1/pi", static_cast<real_t>(M_PI), 1e-10L},
+    TestVector{"1/5", 5.0L, 1e-10L},
 };
 
 INSTANTIATE_TEST_SUITE_P(inverse_x_vectors, InverseFunctionTestInverseX,
@@ -117,8 +117,8 @@ TEST_P(InverseFunctionTestPowSteep, pow) {
 // Small changes in x = large changes in y.
 // Tests if bracket expansion explodes too fast.
 const TestVector pow_steep_vectors[] = {
-    TestVector{"pow(0.5, 10)", 0.5, 1e-9},  // y is small
-    TestVector{"pow(2.0, 10)", 2.0, 1e-9},  // y is large
+    TestVector{"pow(0.5, 10)", 0.5L, 1e-9L},  // y is small
+    TestVector{"pow(2.0, 10)", 2.0L, 1e-9L},  // y is large
 };
 
 INSTANTIATE_TEST_SUITE_P(pow_steep_vectors, InverseFunctionTestPowSteep,
@@ -142,8 +142,8 @@ TEST_P(InverseFunctionTestPowShallow, pow) {
 // Large changes in x = small changes in y.
 // Tests if binary search terminates when x is wiggling but y is barely moving.
 const TestVector pow_shallow_vectors[] = {
-    TestVector{"pow(100, 0.1)", 100.0, 1e-9},  // y is large
-    TestVector{"pow(0.01, 0.1)", 0.01, 1e-9},  // y is small
+    TestVector{"pow(100, 0.1)", 100.0L, 1e-9L},  // y is large
+    TestVector{"pow(0.01, 0.1)", 0.01L, 1e-9L},  // y is small
 };
 
 INSTANTIATE_TEST_SUITE_P(pow_shallow_vectors, InverseFunctionTestPowShallow,
@@ -164,8 +164,8 @@ TEST_P(InverseFunctionTestLinear, linear) {
 // Small Integers
 // Tests search resolves x for small, distinct integers.
 const TestVector linear_vectors[] = {
-    TestVector{"100.0", 100.0, 1e-9},  // y is large
-    TestVector{"0.01", 0.01, 1e-9},    // y is small
+    TestVector{"100.0", 100.0L, 1e-9L},  // y is large
+    TestVector{"0.01", 0.01L, 1e-9L},    // y is small
 };
 
 INSTANTIATE_TEST_SUITE_P(linear_vectors, InverseFunctionTestLinear,
@@ -186,8 +186,8 @@ TEST_P(InverseFunctionTestOffset, offset) {
 // Small Integers
 // Tests search resolves x for small, distinct integers.
 const TestVector offset_vectors[] = {
-    TestVector{"0 + 10", 0, 1e-9},  // y is large
-    TestVector{"5 + 10", 5, 1e-9},  // y is small
+    TestVector{"0 + 10", 0.0L, 1e-9L},  // y is large
+    TestVector{"5 + 10", 5.0L, 1e-9L},  // y is small
 };
 
 INSTANTIATE_TEST_SUITE_P(offset_vectors, InverseFunctionTestOffset,

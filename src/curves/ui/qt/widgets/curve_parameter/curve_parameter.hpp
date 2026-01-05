@@ -21,11 +21,20 @@ namespace Ui {
 class CurveParameter;
 }
 
-void syncParamToUi(auto& label, auto& spinbox, const auto& param) {
-  label.setText(QString::fromUtf8(param.name()) + ":");
-  spinbox.setMinimum(param.min());
-  spinbox.setMaximum(param.max());
-  spinbox.setValue(param.value());
+class QSpinBox;
+class QDoubleSpinBox;
+
+void syncParamToUi(QSpinBox& spinbox,
+                   const curves::Param<curves::int_t>& param);
+void syncParamToUi(QDoubleSpinBox& spinbox, const curves::Param<double>& param);
+
+template <typename Value>
+void syncParamToUi(auto& label, auto& spinbox,
+                   const curves::Param<Value>& param) {
+  auto param_name = param.name();
+  label.setText(QString::asprintf("%.*s:", static_cast<int>(param_name.size()),
+                                  param_name.data()));
+  syncParamToUi(spinbox, param);
 }
 
 class CurveParameter : public QWidget {

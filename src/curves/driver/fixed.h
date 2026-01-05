@@ -775,7 +775,7 @@ static inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits,
 	// Newton-Raphson.
 	for (int i = 0; i < 3; ++i) {
 		yy = (u64)(((u128)y * y) >> y_frac_bits);
-		factor = ((u128)x_norm * yy) >> x_norm_frac_bits;
+		factor = (u64)(((u128)x_norm * yy) >> x_norm_frac_bits);
 		y = (u64)(((u128)y * (three_q62 - factor)) >>
 			  (y_frac_bits + 1));
 	}
@@ -802,7 +802,8 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 				    unsigned int output_frac_bits)
 {
 	u64 result, frac_part_norm;
-	s64 int_part, final_shift;
+	int final_shift;
+	s64 int_part;
 
 	// Output from tools/exp2.sollya.
 	int poly_degree = 12;
@@ -838,6 +839,7 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 		return U64_MAX;
 	if (unlikely(int_part < -65))
 		return 0;
+	// int_part now fits into a standard int.
 
 	// Normalize frac part into a Q0.64.
 	// The input domain is now strictly [0, 1), and the output range
@@ -855,7 +857,8 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 	result = poly_coeffs[poly_degree];
 	for (int i = poly_degree; i > 0; --i) {
 		u128 product = (u128)result * frac_part_norm;
-		int relative_shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
+		int relative_shift =
+			(int)poly_frac_bits[i] - (int)poly_frac_bits[i - 1];
 		int total_shift = relative_shift + 64;
 		result = (u64)(product >> total_shift) + poly_coeffs[i - 1];
 	}
@@ -865,12 +868,13 @@ static inline u64 curves_fixed_exp2(s64 x, unsigned int x_frac_bits,
 	// At the end of the Horner's loop, the number of fractional bits in
 	// result is the number of fractional bits of coefficient 0. Shift
 	// the remaining int part, then shift into the final output precision.
-	final_shift = (s64)output_frac_bits - (s64)poly_frac_bits[0] + int_part;
+	final_shift =
+		(int)output_frac_bits - (int)poly_frac_bits[0] + (int)int_part;
 	if (final_shift > 0) {
 		unsigned int shl = (unsigned int)final_shift;
 		if (unlikely(shl >= 64))
 			return U64_MAX;
-		return __curves_fixed_shl_sat_u64(result, final_shift);
+		return __curves_fixed_shl_sat_u64(result, shl);
 	} else if (final_shift < 0) {
 		unsigned int shr = (unsigned int)(-final_shift);
 		if (unlikely(shr >= 64))
@@ -899,8 +903,8 @@ __curves_fixed_log2_eval_poly(unsigned int output_frac_bits, int poly_degree,
 	s64 result = poly_coeffs[poly_degree];
 	for (int i = poly_degree; i > 1; --i) {
 		s128 product = (s128)result * (s128)frac_part_norm;
-		int relative_shift =
-			poly_coeff_frac_bits[i] - poly_coeff_frac_bits[i - 1];
+		int relative_shift = (int)poly_coeff_frac_bits[i] -
+				     (int)poly_coeff_frac_bits[i - 1];
 		int total_shift = relative_shift + 64;
 		result = (s64)(product >> total_shift) + poly_coeffs[i - 1];
 	}
@@ -908,7 +912,7 @@ __curves_fixed_log2_eval_poly(unsigned int output_frac_bits, int poly_degree,
 	// Final iteration in 128-bit space
 	final_product = (s128)result * (s128)frac_part_norm;
 	final_relative_shift =
-		poly_coeff_frac_bits[1] - poly_coeff_frac_bits[0];
+		(int)poly_coeff_frac_bits[1] - (int)poly_coeff_frac_bits[0];
 	final_total_shift = final_relative_shift + 64;
 	frac_part_128 =
 		(final_product >> final_total_shift) + (s128)poly_coeffs[0];
@@ -989,7 +993,7 @@ static inline s64 curves_fixed_log2(u64 x, unsigned int x_frac_bits,
 	// Reduce frac part.
 	// Shift MSB all the way to the left to normalize mantissa to [1, 2),
 	// then subtract 1 for [0, 1).
-	frac_part_norm = ((x << lz) - (1LL << 63)) << 1;
+	frac_part_norm = ((x << lz) - (1ULL << 63)) << 1;
 
 	// Choose partition.
 	if (frac_part_norm < partition_location_q0_64) {

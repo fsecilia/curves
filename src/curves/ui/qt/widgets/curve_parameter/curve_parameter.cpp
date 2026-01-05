@@ -10,6 +10,20 @@
 #include <QLabel>
 #include <utility>
 
+void syncParamToUi(QSpinBox& spinbox,
+                   const curves::Param<curves::int_t>& param) {
+  spinbox.setMinimum(static_cast<int>(param.min()));
+  spinbox.setMaximum(static_cast<int>(param.max()));
+  spinbox.setValue(static_cast<int>(param.value()));
+}
+
+void syncParamToUi(QDoubleSpinBox& spinbox,
+                   const curves::Param<double>& param) {
+  spinbox.setMinimum(static_cast<double>(param.min()));
+  spinbox.setMaximum(static_cast<double>(param.max()));
+  spinbox.setValue(static_cast<double>(param.value()));
+}
+
 CurveParameter::CurveParameter(std::shared_ptr<curves::ViewModel> view_model,
                                curves::Param<double>& param, QWidget* parent)
     : QWidget(parent),

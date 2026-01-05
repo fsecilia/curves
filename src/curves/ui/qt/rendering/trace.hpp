@@ -46,7 +46,7 @@ struct Trace {
   }
   auto reserve(int size) -> void {
     if (!visible) return;
-    samples.reserve(static_cast<std::size_t>(size));
+    samples.reserve(size);
   }
   auto append(QPointF sample) -> void {
     if (!visible) return;
@@ -85,7 +85,7 @@ struct Traces {
   }
 
   auto append(const std::array<QPointF, kTraceType>& samples) -> void {
-    for (auto trace_type = 0; trace_type < kTraceType; ++trace_type) {
+    for (auto trace_type = 0U; trace_type < kTraceType; ++trace_type) {
       traces[trace_type].append(samples[trace_type]);
     }
   }

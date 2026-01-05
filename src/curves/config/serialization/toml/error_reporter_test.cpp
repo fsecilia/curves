@@ -16,7 +16,8 @@ struct ErrorReporterTest : Test {
   using SrcPath = toml::source_path_ptr;
   const SrcPath expected_source_path =
       std::make_shared<std::string>("source_path");
-  const toml::source_region location{.path = expected_source_path};
+  const toml::source_region location{
+      .begin = {}, .end = {}, .path = expected_source_path};
 
   using Sut = ErrorReporter;
 

@@ -55,7 +55,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   add_compile_options(
     -Weverything
 
-    -Wno-c++2b-compat
     -Wno-c++23-compat
     -Wno-c++20-compat
     -Wno-c++98-compat
@@ -66,6 +65,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     -Wno-exit-time-destructors
     -Wno-global-constructors
     -Wno-padded
+    -Wno-switch-default
     -Wno-unsafe-buffer-usage
   )
 endif()

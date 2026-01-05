@@ -14,7 +14,7 @@ extern "C" {
 
 namespace curves::spline {
 
-auto map_x_to_t(s64 x, int width_log2) noexcept -> s64 {
+auto map_x_to_t(s64 x, unsigned int width_log2) noexcept -> s64 {
   return ::map_x_to_t(x, width_log2);
 }
 

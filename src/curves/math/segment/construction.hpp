@@ -51,7 +51,7 @@ struct StorageValue {
   @return Storage format: sign at bit 44, mantissa in [0..43].
 */
 inline auto pack_signed_coeff(real_t val) noexcept -> StorageValue {
-  if (val == 0.0) {
+  if (val == 0.0L) {
     return {0, kDenormalShift};
   }
 
@@ -98,7 +98,7 @@ inline auto pack_signed_coeff(real_t val) noexcept -> StorageValue {
 */
 inline auto pack_unsigned_coeff(real_t val) noexcept -> StorageValue {
   // Clamp negative to zero (shouldn't occur for monotonic curves).
-  if (val <= 0.0) {
+  if (val <= 0.0L) {
     return {0, kDenormalShift};
   }
 
@@ -138,7 +138,7 @@ inline auto pack_unsigned_coeff(real_t val) noexcept -> StorageValue {
   @return Storage format: 46-bit mantissa with implicit 1 stripped.
 */
 inline auto pack_inv_width(real_t val) noexcept -> StorageValue {
-  if (val <= 0.0) {
+  if (val <= 0.0L) {
     return {0, 0};
   }
 
@@ -202,8 +202,8 @@ inline auto create_segment(const SegmentParams& params) noexcept
 
   // Pack inverse width.
   auto inv_width_packed = StorageValue{0, 0};
-  if (params.width > 0.0) {
-    inv_width_packed = pack_inv_width(1.0 / params.width);
+  if (params.width > 0.0L) {
+    inv_width_packed = pack_inv_width(1.0L / params.width);
   }
 
   // Pack into wire format, then unpack to math format.

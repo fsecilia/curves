@@ -173,7 +173,7 @@ static inline struct div_u128_u64_result curves_div_u128_u64(u128 dividend,
 #endif
 
 // Integer log2. Returns 0 for 0.
-static inline u64 curves_log2_u64(u64 value)
+static inline unsigned int curves_log2_u64(u64 value)
 {
 	if (value)
 		return 63 - curves_clz64((u64)value);

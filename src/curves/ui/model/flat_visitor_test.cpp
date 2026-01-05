@@ -100,7 +100,7 @@ enum class TestEnum { kFirst, kSecond };
 
 template <>
 struct curves::EnumReflection<curves::TestEnum> {
-  static constexpr auto map =
+  [[maybe_unused]] static constexpr auto map =
       curves::sequential_name_map<curves::TestEnum>("first", "second");
 };
 

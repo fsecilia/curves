@@ -16,7 +16,7 @@
 #include <string_view>
 
 namespace curves {
-class Curve;
+struct Curve;
 }
 
 namespace Ui {

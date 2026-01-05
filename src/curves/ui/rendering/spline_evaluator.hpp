@@ -19,44 +19,44 @@
 namespace curves {
 
 struct CurveValues {
-  double sensitivity;
-  double sensitivity_deriv;
-  double gain;
-  double gain_deriv;
+  real_t sensitivity;
+  real_t sensitivity_deriv;
+  real_t gain;
+  real_t gain_deriv;
 };
 
 class CurveEvaluator {
  public:
   auto compute(const SplineSample& sample, real_t x_logical) -> CurveValues {
     // P'(t) = 3at^2 + 2bt + c
-    const double p_prime =
-        (3.0 * sample.a * sample.t + 2.0 * sample.b) * sample.t + sample.c;
+    const auto p_prime =
+        (3.0L * sample.a * sample.t + 2.0L * sample.b) * sample.t + sample.c;
     // P''(t) = 6at + 2b
-    const double p_double_prime = 6.0 * sample.a * sample.t + 2.0 * sample.b;
+    const auto p_double_prime = 6.0L * sample.a * sample.t + 2.0L * sample.b;
 
-    const double gain = p_prime * sample.inv_width;
+    const auto gain = p_prime * sample.inv_width;
 
     // inv_width_sq = inv_width * inv_width
-    const double gain_deriv =
+    const auto gain_deriv =
         p_double_prime * (sample.inv_width * sample.inv_width);
 
-    double sens = 0.0;
-    double sens_deriv = 0.0;
+    auto sens = 0.0L;
+    auto sens_deriv = 0.0L;
 
     // Sensitivity
     if (sample.is_start_segment) {
       // S(t) = (at^2 + bt + c) * inv_width
-      const double s_poly =
+      const auto s_poly =
           (sample.a * sample.t + sample.b) * sample.t + sample.c;
       sens = s_poly * sample.inv_width;
 
       // S'(t) = (2at + b) * inv_width^2
-      const double s_prime_poly = 2.0 * sample.a * sample.t + sample.b;
+      const auto s_prime_poly = 2.0L * sample.a * sample.t + sample.b;
       sens_deriv = s_prime_poly * (sample.inv_width * sample.inv_width);
 
     } else {
       // T(t) = ((at + b)t + c)t + d
-      const double transfer =
+      const auto transfer =
           ((sample.a * sample.t + sample.b) * sample.t + sample.c) * sample.t +
           sample.d;
 

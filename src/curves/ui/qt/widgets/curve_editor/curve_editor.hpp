@@ -42,7 +42,7 @@ class CurveEditor : public QWidget {
 
  public:
   explicit CurveEditor(QWidget* parent = nullptr);
-  ~CurveEditor();
+  ~CurveEditor() override;
 
   void setCurveView(curves::CurveView curveView);
   void setCurveInterpretation(curves::CurveInterpretation curveInterpretation);
@@ -79,10 +79,10 @@ class CurveEditor : public QWidget {
 
   double calcGridStep(double visible_range, int target_num_ticks);
   void drawGrid(QPainter& painter);
-  void drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
-                 double step);
-  void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, double start,
-                 double step);
+  void drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen, qreal start,
+                 qreal step);
+  void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, qreal start,
+                 qreal step);
 
   curves::Traces m_traces{{curves::Trace{"gain", m_theme.traceThemes[0]},
                            curves::Trace{"d/dx gain", m_theme.traceThemes[1]},

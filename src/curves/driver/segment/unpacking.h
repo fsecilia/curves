@@ -127,16 +127,17 @@ curves_unpack_segment(const struct curves_packed_segment *src)
 
 		// Detect denormal.
 		u8 is_denorm = (raw_shift + 1) >> 6;
-		dst.poly.shifts[i] = raw_shift - is_denorm;
 
 		// Restore implicit 1 if not denormal.
 		u64 implicit = (is_denorm ^ 1ULL)
 			       << CURVES_COEFF_SIGNED_IMPLICIT_BIT;
 		u64 abs_val = mantissa | implicit;
 
+		dst.poly.shifts[i] = raw_shift - is_denorm;
+
 		// Convert sign-magnitude to 2's complement.
 		dst.poly.coeffs[i] =
-				(s64)((abs_val ^ -(s64)sign_bit) + sign_bit);
+			(s64)((abs_val ^ (0 - sign_bit)) + sign_bit);
 	}
 
 	// Unpack unsigned coefficients, (c, d).

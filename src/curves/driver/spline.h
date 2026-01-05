@@ -80,7 +80,7 @@
 
 struct curves_segment_desc {
 	s64 index;
-	int width_log2;
+	unsigned int width_log2;
 };
 
 struct curves_spline_coords {
@@ -103,7 +103,7 @@ struct curves_spline {
 	s64 x_runout_limit;
 
 	// Power-of-2 width for the runout.
-	s64 runout_width_log2;
+	unsigned int runout_width_log2;
 
 	// Final runout segment to bleed off curavture before linear extension.
 	struct curves_spline_segment runout_segment;

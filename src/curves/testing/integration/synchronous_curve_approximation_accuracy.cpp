@@ -141,9 +141,9 @@ TEST(spline, sensitivity_vs_gain) {
     dTg = dTg.fma(t, 2 * Fixed::from_raw(c[1]));
     dTg = dTg.fma(t, Fixed::from_raw(c[2]));
 
-    const auto segment_width =
-        Fixed::from_raw(knot_locator(spline_coords.segment_index + 1) -
-                        knot_locator(spline_coords.segment_index));
+    const auto segment_width = Fixed::from_raw(
+        knot_locator(static_cast<int>(spline_coords.segment_index) + 1) -
+        knot_locator(static_cast<int>(spline_coords.segment_index)));
 
     const auto xSx_viaTg = x * dTg / segment_width;
 

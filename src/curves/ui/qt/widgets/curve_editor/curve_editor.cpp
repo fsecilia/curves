@@ -35,7 +35,7 @@ void CurveEditor::setCurveInterpretation(
     case CurveInterpretation::kSensitivity:
       m_traces.selected = TraceType::sensitivity_f;
       break;
-  };
+  }
 
   m_curveInterpretation = curveInterpretation;
   update();
@@ -167,8 +167,8 @@ double CurveEditor::calcGridStep(double visible_range, int target_num_ticks) {
 }
 
 void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
-                            double start, double step) {
-  const auto x_end = m_curveView->spline().x_max();
+                            qreal start, qreal step) {
+  const auto x_end = static_cast<qreal>(m_curveView->spline().x_max());
 
   for (auto x = start; x <= m_visible_range.right() + step; x += step) {
     if (x < m_visible_range.left()) continue;
@@ -179,12 +179,14 @@ void CurveEditor::drawGridX(QPainter& painter, QPen& pen_axis, QPen& pen,
 
     // Draw line.
     painter.setPen(std::abs(x) < 1e-9 ? pen_axis : pen);
-    painter.drawLine(top.x(), 0, bottom.x(), height());
+    painter.drawLine(QPointF{top.x(), 0},
+                     QPointF{bottom.x(), static_cast<qreal>(height())});
 
     // Draw label.
     painter.setPen(m_theme.text);
     QString label = QString::number(x, 'g', 4);
-    painter.drawText(bottom.x() + 5, height() - 5, label);
+    painter.drawText(QPointF{bottom.x() + 5, static_cast<qreal>(height() - 5)},
+                     label);
   }
 
   // Draw vertical line at geometric limit.
@@ -206,12 +208,13 @@ void CurveEditor::drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen,
 
     // Draw line.
     painter.setPen(std::abs(y) < 1e-9 ? pen_axis : pen);
-    painter.drawLine(0, pLeft.y(), width(), pRight.y());
+    painter.drawLine(QPointF{0, pLeft.y()},
+                     QPointF{static_cast<qreal>(width()), pRight.y()});
 
     // Draw label.
     painter.setPen(m_theme.text);
     QString label = QString::number(y, 'g', 4);
-    painter.drawText(5, pLeft.y() - 5, label);
+    painter.drawText(QPointF{5, pLeft.y() - 5}, label);
   }
 }
 
@@ -246,25 +249,25 @@ auto CurveEditor::drawTraces(QPainter& painter) -> void {
   const int total_pixels = width();
   if (total_pixels <= 0) return;
 
-  const double x_start_view = m_visible_range.left();
-  const double view_width = m_visible_range.width();
-  const double dx_pixel = view_width / double(total_pixels);
+  const real_t x_start_view = static_cast<real_t>(m_visible_range.left());
+  const real_t view_width = static_cast<real_t>(m_visible_range.width());
+  const real_t dx_pixel = view_width / real_t(total_pixels);
 
   m_traces.clear();
   m_traces.reserve(total_pixels);
 
   for (int i = 0; i < total_pixels; ++i) {
-    const double x_screen = i;
-    const double x_logical = x_start_view + (x_screen * dx_pixel);
+    const real_t x_screen = i;
+    const real_t x_logical = x_start_view + (x_screen * dx_pixel);
     if (x_logical < 0) continue;
 
     const auto values = (*m_curveView)(x_logical);
-
+    const auto x = static_cast<qreal>(x_logical);
     m_traces.append({
-        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.G)}),
-        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.dG)}),
-        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.S)}),
-        logicalToScreen(QPointF{x_logical, static_cast<qreal>(values.dS)}),
+        logicalToScreen(QPointF{x, static_cast<qreal>(values.G)}),
+        logicalToScreen(QPointF{x, static_cast<qreal>(values.dG)}),
+        logicalToScreen(QPointF{x, static_cast<qreal>(values.S)}),
+        logicalToScreen(QPointF{x, static_cast<qreal>(values.dS)}),
     });
   }
 

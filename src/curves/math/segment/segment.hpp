@@ -63,11 +63,11 @@ inline constexpr auto kUnsignedMantissaMask =
 // Inverse width: implicit 1 at bit 46.
 inline constexpr int kInvWidthImplicitBit = CURVES_INV_WIDTH_IMPLICIT_BIT;
 inline constexpr int kInvWidthStorageBits = CURVES_INV_WIDTH_STORAGE_BITS;
-inline constexpr auto kInvWidthStorageMask = CURVES_INV_WIDTH_STORAGE_MASK;
+inline constexpr uint64_t kInvWidthStorageMask = CURVES_INV_WIDTH_STORAGE_MASK;
 
 // Shift encoding.
 inline constexpr int kShiftBits = CURVES_SHIFT_BITS;
-inline constexpr auto kShiftMask = CURVES_SHIFT_MASK;
+inline constexpr uint64_t kShiftMask = CURVES_SHIFT_MASK;
 inline constexpr int kDenormalShift = CURVES_DENORMAL_SHIFT;
 
 // ----------------------------------------------------------------------------
@@ -87,7 +87,7 @@ inline auto eval_poly(const NormalizedPoly& poly, uint64_t t) noexcept
 
 /// Converts spline x to segment-local t.
 inline auto x_to_t(const NormalizedInvWidth& inv_width, int64_t x, int64_t x0,
-                   int x_frac_bits) noexcept -> uint64_t {
+                   unsigned int x_frac_bits) noexcept -> uint64_t {
   return __curves_segment_x_to_t(&inv_width, x, x0, x_frac_bits);
 }
 

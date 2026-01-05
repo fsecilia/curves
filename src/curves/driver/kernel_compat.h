@@ -201,7 +201,8 @@ static inline unsigned int curves_clz64(u64 x)
 
 static inline u64 curves_int_sqrt(u64 x)
 {
-	return (u64)sqrt((long double)x);
+	long double result = sqrtl((long double)x);
+	return (u64)result;
 }
 
 #endif
