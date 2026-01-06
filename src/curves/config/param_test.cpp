@@ -6,6 +6,7 @@
 
 #include "param.hpp"
 #include <curves/testing/test.hpp>
+#include <gmock/gmock.h>
 
 namespace curves {
 namespace {
