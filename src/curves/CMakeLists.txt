@@ -84,6 +84,8 @@ list(APPEND unit_tests_files
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
+  math/jet_test.cpp
+  math/jet_nested_test.cpp
   math/segment/construction_test.cpp
   math/segment/packing_test.cpp
   math/segment/view_test.cpp
@@ -269,6 +271,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # This is temporary until we get a few modules populated.
     -Wno-empty-translation-unit
 
+    -Wno-float-equal
     -Wno-gnu-statement-expression-from-macro-expansion
     -Wno-gnu-zero-variadic-macro-arguments
     -Wno-language-extension-token
