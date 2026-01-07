@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <cassert>
 #include <utility>
 
 namespace curves::shaping {
@@ -33,6 +34,8 @@ class Transition {
   */
   template <typename Value>
   constexpr auto operator()(const Value& x) const noexcept -> Value {
+    assert(scale_ != Parameter{0} && "Transition domain error");
+
     // Reduce to [0, 1).
     const auto input = (x - Value{x0_}) * Value{inv_width_};
 
