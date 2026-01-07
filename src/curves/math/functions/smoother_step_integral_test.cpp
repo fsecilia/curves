@@ -37,6 +37,8 @@ TEST_F(SmootherStepIntegralTest, Monotonic) {
   }
 }
 
+TEST_F(SmootherStepIntegralTest, At_1) { EXPECT_DOUBLE_EQ(0.5, sut.at_1()); }
+
 // ----------------------------------------------------------------------------
 // Specific Points
 // ----------------------------------------------------------------------------

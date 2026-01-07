@@ -28,8 +28,12 @@ namespace curves::math {
 */
 template <typename Parameter>
 struct SmootherStepIntegral {
+  static constexpr Parameter kC0 = 1.0;
   static constexpr Parameter kC1 = -3.0;
   static constexpr Parameter kC2 = 2.5;
+
+  // Optimized result without rounding.
+  constexpr auto at_1() const noexcept -> Parameter { return kC0 + kC1 + kC2; }
 
   // \pre t in [0, 1]
   template <typename Value>
