@@ -31,11 +31,11 @@ struct SmootherStepIntegral {
   static constexpr auto kC2 = 2.5;
 
   // \pre t in [0, 1]
-  template <typename Element>
-  constexpr Element operator()(const Element& t) const {
+  template <typename Value>
+  constexpr Value operator()(const Value& t) const {
     const auto t2 = t * t;
     const auto t4 = t2 * t2;
-    return t4 * (t2 + (t * Element{kC1}) + Element{kC2});
+    return t4 * (t2 + (t * Value{kC1}) + Value{kC2});
   }
 };
 
