@@ -43,6 +43,17 @@ class Transition {
     return output * scale_;
   }
 
+  constexpr auto x0() const noexcept -> Parameter { return x0_; }
+
+  constexpr auto width() const noexcept -> Parameter {
+    // Scale is uniform in width and height.
+    return scale_;
+  }
+
+  constexpr auto height() const noexcept -> Parameter {
+    return scale_ * transition_function_.at_1();
+  }
+
  private:
   //! Beginning of transition.
   Parameter x0_;
@@ -50,7 +61,7 @@ class Transition {
   //! Reciprocal of width of transition.
   Parameter inv_width_;
 
-  //! Output scale to match input width 1:1.
+  //! Uniform output scale to match input width 1:1.
   Parameter scale_;
 
   //! Actual easing implementation.

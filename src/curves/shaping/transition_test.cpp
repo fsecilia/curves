@@ -25,24 +25,35 @@ namespace {
     output = x - x0
 */
 struct LinearTransition {
+  static constexpr auto slope = 2.1;
+
+  constexpr auto at_1() const noexcept -> double { return slope; }
+
   template <typename Value>
   constexpr auto operator()(const Value& t) const noexcept -> Value {
-    return t;
+    return slope * t;
   }
 };
 
 struct TransitionTest : Test {
   using Sut = Transition<double, LinearTransition>;
 
-  // x0 = 10, width = 5, so f(x) = x - 10
-  static constexpr Sut sut{10.0, 5.0};
+  static constexpr auto m = LinearTransition::slope;
+  static constexpr auto x0 = 10.0;
+  static constexpr auto width = 5.0;
+
+  static constexpr Sut sut{x0, width};
 };
+
+TEST_F(TransitionTest, x0) { EXPECT_DOUBLE_EQ(x0, sut.x0()); }
+TEST_F(TransitionTest, Width) { EXPECT_DOUBLE_EQ(width, sut.width()); }
+TEST_F(TransitionTest, Height) { EXPECT_DOUBLE_EQ(m * width, sut.height()); }
 
 // Calc scalars using linear transition.
 TEST_F(TransitionTest, LinearTransitionMapsInputToOutputLinearly) {
-  EXPECT_DOUBLE_EQ(0.0, sut(10.0));  // Start
-  EXPECT_DOUBLE_EQ(2.5, sut(12.5));  // Mid
-  EXPECT_DOUBLE_EQ(5.0, sut(15.0));  // End
+  EXPECT_DOUBLE_EQ(m * 0.0, sut(10.0));  // Start
+  EXPECT_DOUBLE_EQ(m * 2.5, sut(12.5));  // Mid
+  EXPECT_DOUBLE_EQ(m * 5.0, sut(15.0));  // End
 }
 
 // Calc jets using linear transition.
@@ -54,8 +65,8 @@ TEST_F(TransitionTest, JetsPropagateDerivative) {
   const auto output = sut(input);
 
   // f(x) = x - x0, f'(x) = 1
-  EXPECT_DOUBLE_EQ(output.a, 2.5);
-  EXPECT_DOUBLE_EQ(output.v, 1.0);
+  EXPECT_DOUBLE_EQ(output.a, m * 2.5);
+  EXPECT_DOUBLE_EQ(output.v, m * 1.0);
 }
 
 }  // namespace
