@@ -474,6 +474,9 @@ struct Jet {
 template <Arithmetic Element>
 Jet(Element) -> Jet<Element>;
 
+template <Arithmetic ElementA, Arithmetic ElementV>
+Jet(ElementA, ElementV) -> Jet<ElementA>;
+
 }  // namespace math
 }  // namespace curves
 
