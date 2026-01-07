@@ -35,7 +35,7 @@ struct TransitionTest : Test {
   using Sut = Transition<double, LinearTransition>;
 
   // x0 = 10, width = 5, so f(x) = x - 10
-  Sut sut{10.0, 5.0};
+  static constexpr Sut sut{10.0, 5.0};
 };
 
 // Calc scalars using linear transition.

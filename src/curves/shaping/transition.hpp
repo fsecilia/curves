@@ -20,8 +20,8 @@ namespace curves::shaping {
 template <typename Parameter, typename TransitionFunction>
 class Transition {
  public:
-  Transition(Parameter x0, Parameter width,
-             TransitionFunction transition_function = {}) noexcept
+  constexpr Transition(Parameter x0, Parameter width,
+                       TransitionFunction transition_function = {}) noexcept
       : x0_{x0},
         inv_width_{Parameter{1} / width},
         scale_{width},
@@ -32,7 +32,7 @@ class Transition {
     \returns value of transition function scaled to this segment.
   */
   template <typename Value>
-  auto operator()(const Value& x) const noexcept -> Value {
+  constexpr auto operator()(const Value& x) const noexcept -> Value {
     // Reduce to [0, 1).
     const auto input = (x - Value{x0_}) * Value{inv_width_};
 
