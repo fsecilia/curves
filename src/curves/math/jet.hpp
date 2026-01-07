@@ -12,12 +12,10 @@
 #include <cassert>
 #include <cmath>
 #include <compare>
+#include <concepts>
 #include <limits>
 #include <ostream>
-
-// This is needed by HasCusp, which should not be here.
-// This module used to be more generic curve abstractions.
-#include <concepts>
+#include <type_traits>
 
 namespace curves {
 
@@ -53,6 +51,13 @@ using std::log1p;
 using std::pow;
 using std::sqrt;
 using std::tanh;
+
+// ----------------------------------------------------------------------------
+// Concepts
+// ----------------------------------------------------------------------------
+
+template <typename T>
+concept Arithmetic = std::is_arithmetic_v<T>;
 
 // ----------------------------------------------------------------------------
 // Scalar Fallbacks
@@ -103,7 +108,8 @@ struct Jet {
 
   Jet() = default;
   constexpr Jet(const Element& a, const Element& v) noexcept : a{a}, v{v} {}
-  constexpr Jet(const Element& s) noexcept : a{s}, v{0} {}
+  constexpr Jet(const Element& s) noexcept : a{s}, v(0) {}
+  explicit constexpr Jet(const Arithmetic auto& s) noexcept : a(s), v(0) {}
 
   // --------------------------------------------------------------------------
   // Conversions
@@ -201,7 +207,7 @@ struct Jet {
   constexpr auto operator/=(const Jet& x) noexcept -> Jet& {
     // This should look suspicious intially, because we modify a then use it
     // to calc v, but it's actually a deliberate optimization.
-    const auto inv = 1.0 / x.a;
+    const auto inv = Element(1.0) / x.a;
     a *= inv;
     v = (v - a * x.v) * inv;
     return *this;
@@ -464,6 +470,9 @@ struct Jet {
     swap(lhs.v, rhs.v);
   }
 };
+
+template <Arithmetic S>
+Jet(S) -> Jet<S>;
 
 }  // namespace math
 }  // namespace curves
