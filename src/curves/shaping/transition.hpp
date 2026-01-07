@@ -40,7 +40,7 @@ class Transition {
     const auto output = transition_function_(input);
 
     // Restore to original range.
-    return output * scale_;
+    return output * Value{scale_};
   }
 
   constexpr auto x0() const noexcept -> Parameter { return x0_; }
