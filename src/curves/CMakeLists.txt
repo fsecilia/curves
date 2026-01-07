@@ -27,13 +27,13 @@ list(APPEND lib_files
   curves/transfer_function/from_sensitivity.hpp
   lib.cpp
   lib.hpp
+  math/curve.hpp
+  math/curve_view.hpp
+  math/fixed.hpp
+  math/functions/smoother_step_integral.hpp
   math/input_shaping.hpp
   math/input_shaping.cpp
   math/input_shaping_view.hpp
-  math/curve.hpp
-  math/curve_view.hpp
-  math/easing.hpp
-  math/fixed.hpp
   math/integration.hpp
   math/inverse_function.hpp
   math/io.hpp
@@ -80,7 +80,7 @@ list(APPEND unit_tests_files
   driver_tests/int_math_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
-  math/easing_test.cpp
+  math/functions/smoother_step_integral_test.cpp
   math/input_shaping_test.cpp
   math/input_shaping_view_test.cpp
   math/integration_test.cpp

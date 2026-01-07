@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Easing function to smoothly transition between piecewise linear
-  segments.
+  \brief Defines the integral of smootherstep.
 
   \copyright Copyright (C) 2026 Frank Secilia
 */
@@ -15,7 +14,8 @@
 namespace curves::math {
 
 /*!
-  This function is the integral of smootherstep.
+  This function is the integral of smootherstep. It gives C^3 continuity when
+  concatenating between horizontal and linear segments.
 
     P(t) = t^6 - 3t^5 + 2.5t^4 = t^4(t^2 - 3t + 2.5)
 
@@ -24,21 +24,18 @@ namespace curves::math {
     P''(0) = 0    P''(1) = 0     (curvature continuity)
     P'''(0) = 0   P'''(1) = 0    (jerk continuity)
 
-  This gives C^3 continuity when concatenating between horizontal and linear
-  segments.
-
   Evaluating this curve at x=1 yields the jet {0.5, 1}, *NOT* {1, 1}!
 */
-struct EasingFunction {
+struct SmootherStepIntegral {
   static constexpr auto kC1 = -3.0;
   static constexpr auto kC2 = 2.5;
 
   // \pre t in [0, 1]
-  template <typename T>
-  constexpr T operator()(const T& t) const {
+  template <typename Element>
+  constexpr Element operator()(const Element& t) const {
     const auto t2 = t * t;
     const auto t4 = t2 * t2;
-    return t4 * (t2 + (t * T(kC1)) + T(kC2));
+    return t4 * (t2 + (t * Element{kC1}) + Element{kC2});
   }
 };
 
