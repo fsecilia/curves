@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: MIT
+/*!
+  \file
+  \brief Smooth transition segment between two linear segments.
+
+  \copyright Copyright (C) 2026 Frank Secilia
+*/
+
+#pragma once
+
+#include <curves/lib.hpp>
+#include <utility>
+
+namespace curves::shaping {
+
+/*!
+  Smooth transition between two linear segments using a normalized transition
+  function.
+*/
+template <typename Parameter, typename TransitionFunction>
+class Transition {
+ public:
+  Transition(Parameter x0, Parameter width,
+             TransitionFunction transition_function = {}) noexcept
+      : x0_{x0},
+        inv_width_{Parameter{1} / width},
+        scale_{width},
+        transition_function_{std::move(transition_function)} {}
+
+  /*!
+    \pre x in [x0, x0 + width).
+    \returns value of transition function scaled to this segment.
+  */
+  template <typename Value>
+  auto operator()(const Value& x) const noexcept -> Value {
+    // Reduce to [0, 1).
+    const auto input = (x - Value{x0_}) * Value{inv_width_};
+
+    // Apply normalized transition.
+    const auto output = transition_function_(input);
+
+    // Restore to original range.
+    return output * scale_;
+  }
+
+ private:
+  //! Beginning of transition.
+  Parameter x0_;
+
+  //! Reciprocal of width of transition.
+  Parameter inv_width_;
+
+  //! Output scale to match input width 1:1.
+  Parameter scale_;
+
+  //! Actual easing implementation.
+  [[no_unique_address]] TransitionFunction transition_function_;
+};
+
+}  // namespace curves::shaping
