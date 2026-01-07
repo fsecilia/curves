@@ -75,5 +75,22 @@ TEST_F(TransitionTest, JetsPropagateDerivative) {
   EXPECT_DOUBLE_EQ(output.v, m * 1.0);
 }
 
+// ----------------------------------------------------------------------------
+// Death Tests
+// ----------------------------------------------------------------------------
+
+#if !defined NDEBUG
+
+struct TransitionDeathTest : Test {
+  using Sut = Transition<double, LinearTransition>;
+  Sut sut{0, 0};
+};
+
+TEST_F(TransitionDeathTest, Evaluate) {
+  EXPECT_DEBUG_DEATH(sut(0.0), "domain error");
+}
+
+#endif
+
 }  // namespace
 }  // namespace curves::shaping
