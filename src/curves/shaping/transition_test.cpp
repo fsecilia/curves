@@ -11,6 +11,10 @@
 namespace curves::shaping {
 namespace {
 
+// ----------------------------------------------------------------------------
+// Test Doubles
+// ----------------------------------------------------------------------------
+
 /*
   Linear Transition Function
 
@@ -34,6 +38,10 @@ struct LinearTransition {
     return slope * t;
   }
 };
+
+// ----------------------------------------------------------------------------
+// Test Fixture
+// ----------------------------------------------------------------------------
 
 struct TransitionTest : Test {
   using Sut = Transition<double, LinearTransition>;
@@ -60,11 +68,9 @@ TEST_F(TransitionTest, LinearTransitionMapsInputToOutputLinearly) {
 TEST_F(TransitionTest, JetsPropagateDerivative) {
   using Jet = math::Jet<double>;
 
-  // Input: Value 12.5, Slope 1.0
   const auto input = Jet{12.5, 1.0};
   const auto output = sut(input);
 
-  // f(x) = x - x0, f'(x) = 1
   EXPECT_DOUBLE_EQ(output.a, m * 2.5);
   EXPECT_DOUBLE_EQ(output.v, m * 1.0);
 }

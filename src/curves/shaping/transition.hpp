@@ -29,7 +29,7 @@ class Transition {
         transition_function_{std::move(transition_function)} {}
 
   /*!
-    \pre x in [x0, x0 + width).
+    \pre width > 0, x in [x0, x0 + width).
     \returns value of transition function scaled to this segment.
   */
   template <typename Value>
