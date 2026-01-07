@@ -21,7 +21,7 @@ struct SmootherStepIntegralTest : Test {
   static constexpr auto kEpsilon = 1e-15;
 
   using Sut = SmootherStepIntegral<Parameter>;
-  Sut sut;
+  static constexpr Sut sut{};
 };
 
 // ----------------------------------------------------------------------------
