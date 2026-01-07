@@ -26,9 +26,10 @@ namespace curves::math {
 
   Evaluating this curve at x=1 yields the jet {0.5, 1}, *NOT* {1, 1}!
 */
+template <typename Parameter>
 struct SmootherStepIntegral {
-  static constexpr auto kC1 = -3.0;
-  static constexpr auto kC2 = 2.5;
+  static constexpr Parameter kC1 = -3.0;
+  static constexpr Parameter kC2 = 2.5;
 
   // \pre t in [0, 1]
   template <typename Value>
