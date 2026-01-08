@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Defines the integral of smootherstep.
+  \brief Defines the integral of smootherstep as a transition function.
 
   \copyright Copyright (C) 2026 Frank Secilia
 */
@@ -10,11 +10,11 @@
 
 #include <curves/lib.hpp>
 
-namespace curves::math {
+namespace curves::shaping {
 
 /*!
-  This function is the integral of smootherstep. It gives C^3 continuity when
-  concatenating between horizontal and linear segments.
+  This transition function is the integral of smootherstep. It gives C^3
+  continuity when concatenating between horizontal and linear segments.
 
     P(t) = t^6 - 3t^5 + 2.5t^4 = t^4(t^2 - 3t + 2.5)
 
@@ -43,4 +43,4 @@ struct SmootherStepIntegral {
   }
 };
 
-}  // namespace curves::math
+}  // namespace curves::shaping

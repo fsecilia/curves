@@ -30,9 +30,8 @@ list(APPEND lib_files
   math/curve.hpp
   math/curve_view.hpp
   math/fixed.hpp
-  math/functions/smoother_step_integral.hpp
-  math/input_shaping.hpp
   math/input_shaping.cpp
+  math/input_shaping.hpp
   math/input_shaping_view.hpp
   math/integration.hpp
   math/inverse_function.hpp
@@ -49,6 +48,7 @@ list(APPEND lib_files
   shaping/ease_in.hpp
   shaping/ease_out.hpp
   shaping/transition.hpp
+  shaping/transition_functions/smoother_step_integral.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
   ui/rendering/spline_evaluator.hpp
@@ -83,14 +83,13 @@ list(APPEND unit_tests_files
   driver_tests/int_math_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
-  math/functions/smoother_step_integral_test.cpp
   math/input_shaping_test.cpp
   math/input_shaping_view_test.cpp
   math/integration_test.cpp
   math/inverse_function_test.cpp
   math/io_test.cpp
-  math/jet_test.cpp
   math/jet_nested_test.cpp
+  math/jet_test.cpp
   math/segment/construction_test.cpp
   math/segment/packing_test.cpp
   math/segment/view_test.cpp
@@ -99,6 +98,7 @@ list(APPEND unit_tests_files
   shaping/ease_in_test.cpp
   shaping/ease_out_test.cpp
   shaping/ease_testing.hpp
+  shaping/transition_functions/smoother_step_integral_test.cpp
   shaping/transition_test.cpp
   ui/model/flat_visitor_test.cpp
   ui/model/view_model_test.cpp

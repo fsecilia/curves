@@ -9,7 +9,7 @@
 #include <curves/math/jet.hpp>
 #include <ostream>
 
-namespace curves::math {
+namespace curves::shaping {
 namespace {
 
 // ============================================================================
@@ -45,8 +45,8 @@ TEST_F(SmootherStepIntegralTest, At_1) { EXPECT_DOUBLE_EQ(0.5, sut.at_1()); }
 // ----------------------------------------------------------------------------
 
 struct SmootherStepIntegralTestVector {
-  Jet<double> t;
-  Jet<double> y;
+  math::Jet<double> t;
+  math::Jet<double> y;
 
   friend auto operator<<(std::ostream& out,
                          const SmootherStepIntegralTestVector& src)
@@ -78,4 +78,4 @@ INSTANTIATE_TEST_SUITE_P(SmootherStepIntegralTest,
                          ValuesIn(easing_function_test_vectors));
 
 }  // namespace
-}  // namespace curves::math
+}  // namespace curves::shaping
