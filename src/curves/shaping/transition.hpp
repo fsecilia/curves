@@ -17,6 +17,10 @@ namespace curves::shaping {
 /*!
   Smooth transition between two linear segments using a normalized transition
   function.
+
+  Transition functions are normalized to the domain [0, 1), but not the range
+  [0, 1). They must go through (0, 0) with slope 0 and have slope 1 at x=1,
+  but may go through any y at x=1.
 */
 template <typename Parameter, typename TransitionFunction>
 class Transition {
