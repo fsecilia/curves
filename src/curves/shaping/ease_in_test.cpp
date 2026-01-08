@@ -8,6 +8,8 @@
 #include <curves/testing/test.hpp>
 #include <curves/math/jet.hpp>
 #include <curves/shaping/ease_testing.hpp>
+#include <curves/shaping/transition.hpp>
+#include <curves/shaping/transition_functions/smoother_step_integral.hpp>
 #include <gmock/gmock.h>
 
 namespace curves::shaping {
@@ -256,6 +258,48 @@ TEST_F(EaseInRequiredKnotsTest, RequiredKnots) {
   const auto actual = sut.required_knots();
 
   ASSERT_EQ(expected, actual);
+}
+
+// ============================================================================
+// Continuity
+// ============================================================================
+
+/*
+  In one sense, this test is an integration test because it pulls in the
+  production transition function instead of using a test double to isolate the
+  test. However, what this test needs is a C3 curve, and rather than trying to
+  make one just for the test, we use the one we already have laying around.
+  It just so happens to be the same one we use in prod, but that's more
+  coincidental than deliberate.
+*/
+
+struct EaseInContinuityTest : Test {
+  using TransitionFunction =
+      transition_functions::SmootherStepIntegral<Parameter>;
+  using Transition = shaping::Transition<Parameter, TransitionFunction>;
+  using Sut = EaseIn<Parameter, Transition>;
+
+  static constexpr auto x0 = Parameter{0.45};
+  static constexpr auto width = Parameter{2.1};
+
+  static constexpr auto transition = Transition{x0, width};
+  static constexpr auto sut = Sut{transition};
+
+  static constexpr auto height = transition.height();
+};
+
+TEST_F(EaseInContinuityTest, AtX0) {
+  const auto y = sut(Jet{x0, 1.0});
+
+  EXPECT_DOUBLE_EQ(0.0, y.a);
+  EXPECT_DOUBLE_EQ(0.0, y.v);
+}
+
+TEST_F(EaseInContinuityTest, AtX0PlusWidth) {
+  const auto y = sut(Jet{x0 + width, 1.0});
+
+  EXPECT_DOUBLE_EQ(height, y.a);
+  EXPECT_DOUBLE_EQ(1.0, y.v);
 }
 
 }  // namespace
