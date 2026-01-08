@@ -96,6 +96,7 @@ list(APPEND unit_tests_files
   math/spline_test.cpp
   math/spline_view_test.cpp
   shaping/ease_in_test.cpp
+  shaping/ease_testing.hpp
   shaping/transition_test.cpp
   ui/model/flat_visitor_test.cpp
   ui/model/view_model_test.cpp
