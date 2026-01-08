@@ -15,8 +15,12 @@ using Parameter = double;
 using Jet = math::Jet<Parameter>;
 
 // ============================================================================
-// Test Doubles
+// operator()
 // ============================================================================
+
+// ----------------------------------------------------------------------------
+// Test Double
+// ----------------------------------------------------------------------------
 
 template <Parameter kX0, Parameter kWidth, Parameter kHeight>
 struct Transition {
@@ -30,22 +34,22 @@ struct Transition {
   }
 };
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Fixture
-// ============================================================================
+// ----------------------------------------------------------------------------
 
-struct TestVector {
+struct CallTestVector {
   Parameter x;
   Jet expected;
 
-  friend auto operator<<(std::ostream& out, const TestVector& src)
+  friend auto operator<<(std::ostream& out, const CallTestVector& src)
       -> std::ostream& {
     return out << "{.x = " << src.x << ", .expected = " << src.expected << "}";
   }
 };
 
 template <typename Transition>
-struct EaseInTest : TestWithParam<TestVector> {
+struct EaseInCallTest : TestWithParam<CallTestVector> {
   using Sut = EaseIn<Parameter, Transition>;
   Sut sut{{}};
 
@@ -59,10 +63,6 @@ struct EaseInTest : TestWithParam<TestVector> {
     EXPECT_NEAR(expected.v, actual.v, 1e-10);
   }
 };
-
-// ============================================================================
-// Parameterized Tests
-// ============================================================================
 
 constexpr auto kEps = 1e-5;
 
@@ -81,11 +81,11 @@ constexpr auto width = Parameter{1.2};
 constexpr auto height = Parameter{2.5};
 constexpr auto slope = height / width;
 
-struct EaseInTestNominal : EaseInTest<Transition<x0, width, height>> {};
+struct EaseInCallTestNominal : EaseInCallTest<Transition<x0, width, height>> {};
 
-TEST_P(EaseInTestNominal, Parameterized) { test(); }
+TEST_P(EaseInCallTestNominal, Parameterized) { test(); }
 
-constexpr TestVector test_vectors[] = {
+constexpr CallTestVector test_vectors[] = {
     // Well out of domain to left.
     {-1, {0, 0}},
 
@@ -110,7 +110,7 @@ constexpr TestVector test_vectors[] = {
     // Linear segment interior.
     {x0 + width + 10, {height + 10, 1}},
 };
-INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInTestNominal,
+INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestNominal,
                          ValuesIn(test_vectors));
 
 }  // namespace nominal
@@ -126,11 +126,11 @@ constexpr auto width = Parameter{2};
 constexpr auto height = Parameter{3};
 constexpr auto slope = height / width;
 
-struct EaseInTestZeroX0 : EaseInTest<Transition<x0, width, height>> {};
+struct EaseInCallTestZeroX0 : EaseInCallTest<Transition<x0, width, height>> {};
 
-TEST_P(EaseInTestZeroX0, Parameterized) { test(); }
+TEST_P(EaseInCallTestZeroX0, Parameterized) { test(); }
 
-constexpr TestVector test_vectors[] = {
+constexpr CallTestVector test_vectors[] = {
     // Before transition. This is out of the domain.
     {-kEps, {0, 0}},
 
@@ -140,7 +140,8 @@ constexpr TestVector test_vectors[] = {
     // After transition.
     {kEps, {kEps * slope, slope}},
 };
-INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInTestZeroX0, ValuesIn(test_vectors));
+INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestZeroX0,
+                         ValuesIn(test_vectors));
 
 }  // namespace zero_x0
 
@@ -166,11 +167,11 @@ struct Transition {
   }
 };
 
-struct EaseInTestZeroWidth : EaseInTest<Transition> {};
+struct EaseInCallTestZeroWidth : EaseInCallTest<Transition> {};
 
-TEST_P(EaseInTestZeroWidth, Parameterized) { test(); }
+TEST_P(EaseInCallTestZeroWidth, Parameterized) { test(); }
 
-constexpr TestVector test_vectors[] = {
+constexpr CallTestVector test_vectors[] = {
     // Flat segment.
     {x0 - kEps, {0, 0}},
 
@@ -180,7 +181,7 @@ constexpr TestVector test_vectors[] = {
     // Linear segment.
     {x0 + kEps, {kEps, 1}},
 };
-INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInTestZeroWidth,
+INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestZeroWidth,
                          ValuesIn(test_vectors));
 
 }  // namespace zero_width
@@ -205,11 +206,11 @@ struct Transition {
   }
 };
 
-struct EaseInTestNullTransition : EaseInTest<Transition> {};
+struct EaseInCallTestNullTransition : EaseInCallTest<Transition> {};
 
-TEST_P(EaseInTestNullTransition, Parameterized) { test(); }
+TEST_P(EaseInCallTestNullTransition, Parameterized) { test(); }
 
-constexpr TestVector test_vectors[] = {
+constexpr CallTestVector test_vectors[] = {
     // Before what would be either the flat segment or the transition.
     {-kEps, {0, 0}},
 
@@ -219,7 +220,7 @@ constexpr TestVector test_vectors[] = {
     // Linear segment.
     {kEps, {kEps, 1}},
 };
-INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInTestNullTransition,
+INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestNullTransition,
                          ValuesIn(test_vectors));
 
 }  // namespace null_transition
