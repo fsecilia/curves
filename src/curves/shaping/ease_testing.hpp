@@ -18,7 +18,7 @@ using Parameter = double;
 using Jet = math::Jet<Parameter>;
 
 template <Parameter kX0, Parameter kWidth, Parameter kHeight>
-struct Transition {
+struct TestingTransition {
   constexpr auto x0() const noexcept -> Parameter { return kX0; }
   constexpr auto width() const noexcept -> Parameter { return kWidth; }
   constexpr auto height() const noexcept -> Parameter { return kHeight; }
@@ -65,7 +65,7 @@ struct MockTransition {
 };
 
 template <Parameter kX0, Parameter kWidth, Parameter kHeight>
-struct Transition : shaping::Transition<kX0, kWidth, kHeight> {
+struct Transition : shaping::TestingTransition<kX0, kWidth, kHeight> {
   auto inverse(Parameter y, const Inverter& inverter) const noexcept
       -> Parameter {
     return mock_transition->inverse(y, inverter);

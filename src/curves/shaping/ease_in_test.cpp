@@ -52,7 +52,8 @@ constexpr auto width = Parameter{1.2};
 constexpr auto height = Parameter{2.5};
 constexpr auto slope = height / width;
 
-struct EaseInCallTestNominal : EaseInCallTest<Transition<x0, width, height>> {};
+struct EaseInCallTestNominal
+    : EaseInCallTest<TestingTransition<x0, width, height>> {};
 
 TEST_P(EaseInCallTestNominal, Parameterized) { test(); }
 
@@ -97,7 +98,8 @@ constexpr auto width = Parameter{2};
 constexpr auto height = Parameter{3};
 constexpr auto slope = height / width;
 
-struct EaseInCallTestZeroX0 : EaseInCallTest<Transition<x0, width, height>> {};
+struct EaseInCallTestZeroX0
+    : EaseInCallTest<TestingTransition<x0, width, height>> {};
 
 TEST_P(EaseInCallTestZeroX0, Parameterized) { test(); }
 
@@ -244,7 +246,7 @@ struct EaseInRequiredKnotsTest : Test {
   static constexpr auto width = Parameter{5};
   static constexpr auto height = Parameter{11};
 
-  using Sut = EaseIn<Parameter, Transition<x0, width, height>>;
+  using Sut = EaseIn<Parameter, TestingTransition<x0, width, height>>;
   Sut sut{{}};
 };
 

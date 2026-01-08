@@ -57,8 +57,8 @@ constexpr auto height = Parameter{2.5};
 constexpr auto slope = height / width;
 constexpr auto ceiling = x0 + height;
 
-struct EaseOutCallTestNominal : EaseOutCallTest<Transition<x0, width, height>> {
-};
+struct EaseOutCallTestNominal
+    : EaseOutCallTest<TestingTransition<x0, width, height>> {};
 
 TEST_P(EaseOutCallTestNominal, Parameterized) { test(); }
 
@@ -101,8 +101,8 @@ constexpr auto width = Parameter{2};
 constexpr auto height = Parameter{3};
 constexpr auto slope = height / width;
 
-struct EaseOutCallTestZeroX0 : EaseOutCallTest<Transition<x0, width, height>> {
-};
+struct EaseOutCallTestZeroX0
+    : EaseOutCallTest<TestingTransition<x0, width, height>> {};
 
 TEST_P(EaseOutCallTestZeroX0, Parameterized) { test(); }
 
@@ -253,7 +253,7 @@ struct EaseOutRequiredKnotsTest : Test {
   static constexpr auto width = Parameter{5};
   static constexpr auto height = Parameter{11};
 
-  using Sut = EaseOut<Parameter, Transition<x0, width, height>>;
+  using Sut = EaseOut<Parameter, TestingTransition<x0, width, height>>;
   Sut sut{{}};
 };
 
