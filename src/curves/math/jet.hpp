@@ -41,6 +41,7 @@ concept HasCusp = requires(Curve curve) {
 namespace math {
 
 using std::abs;
+using std::clamp;
 using std::copysign;
 using std::exp;
 using std::hypot;
@@ -48,6 +49,8 @@ using std::isfinite;
 using std::isnan;
 using std::log;
 using std::log1p;
+using std::max;
+using std::min;
 using std::pow;
 using std::sqrt;
 using std::tanh;
