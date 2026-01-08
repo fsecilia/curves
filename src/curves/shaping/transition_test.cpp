@@ -11,9 +11,20 @@
 namespace curves::shaping {
 namespace {
 
-// ----------------------------------------------------------------------------
+using Parameter = double;
+using Jet = math::Jet<Parameter>;
+
+static constexpr auto m = 2.1;
+static constexpr auto x0 = 10.0;
+static constexpr auto width = 5.0;
+
+const Parameter test_vectors[] = {
+    0.0 / 4, 1.0 / 4, 2.0 / 4, 3.0 / 4, 4.0 / 4,
+};
+
+// ============================================================================
 // Test Doubles
-// ----------------------------------------------------------------------------
+// ============================================================================
 
 /*
   Linear Transition Function
@@ -28,28 +39,21 @@ namespace {
 
     output = x - x0
 */
-struct LinearTransition {
-  static constexpr auto slope = 2.1;
-
-  constexpr auto at_1() const noexcept -> double { return slope; }
+struct LinearTransitionFunction {
+  constexpr auto at_1() const noexcept -> Parameter { return m; }
 
   template <typename Value>
   constexpr auto operator()(const Value& t) const noexcept -> Value {
-    return slope * t;
+    return m * t;
   }
 };
 
-// ----------------------------------------------------------------------------
-// Test Fixture
-// ----------------------------------------------------------------------------
+// ============================================================================
+// Transition
+// ============================================================================
 
 struct TransitionTest : Test {
-  using Sut = Transition<double, LinearTransition>;
-
-  static constexpr auto m = LinearTransition::slope;
-  static constexpr auto x0 = 10.0;
-  static constexpr auto width = 5.0;
-
+  using Sut = Transition<Parameter, LinearTransitionFunction>;
   static constexpr Sut sut{x0, width};
 };
 
@@ -57,23 +61,25 @@ TEST_F(TransitionTest, x0) { EXPECT_DOUBLE_EQ(x0, sut.x0()); }
 TEST_F(TransitionTest, Width) { EXPECT_DOUBLE_EQ(width, sut.width()); }
 TEST_F(TransitionTest, Height) { EXPECT_DOUBLE_EQ(m * width, sut.height()); }
 
-// Calc scalars using linear transition.
-TEST_F(TransitionTest, LinearTransitionMapsInputToOutputLinearly) {
-  EXPECT_DOUBLE_EQ(m * 0.0, sut(10.0));  // Start
-  EXPECT_DOUBLE_EQ(m * 2.5, sut(12.5));  // Mid
-  EXPECT_DOUBLE_EQ(m * 5.0, sut(15.0));  // End
+// ----------------------------------------------------------------------------
+// Parameterized Test
+// ----------------------------------------------------------------------------
+
+struct TransitionParameterizedTest : TransitionTest,
+                                     WithParamInterface<Parameter> {};
+
+TEST_P(TransitionParameterizedTest, evaluate) {
+  const auto x = Jet{GetParam(), 1.0};
+  const auto expected = m * (x - x0);
+
+  const auto actual = sut(x);
+
+  EXPECT_NEAR(expected.a, actual.a, 1e-10);
+  EXPECT_NEAR(expected.v, actual.v, 1e-10);
 }
 
-// Calc jets using linear transition.
-TEST_F(TransitionTest, JetsPropagateDerivative) {
-  using Jet = math::Jet<double>;
-
-  const auto input = Jet{12.5, 1.0};
-  const auto output = sut(input);
-
-  EXPECT_DOUBLE_EQ(output.a, m * 2.5);
-  EXPECT_DOUBLE_EQ(output.v, m * 1.0);
-}
+INSTANTIATE_TEST_SUITE_P(TransitionTest, TransitionParameterizedTest,
+                         ValuesIn(test_vectors));
 
 // ----------------------------------------------------------------------------
 // Death Tests
@@ -82,7 +88,7 @@ TEST_F(TransitionTest, JetsPropagateDerivative) {
 #if !defined NDEBUG
 
 struct TransitionDeathTest : Test {
-  using Sut = Transition<double, LinearTransition>;
+  using Sut = Transition<double, LinearTransitionFunction>;
   Sut sut{0, 0};
 };
 
