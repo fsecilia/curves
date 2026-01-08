@@ -9,7 +9,6 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/math/jet.hpp>
 
 namespace curves::math {
 

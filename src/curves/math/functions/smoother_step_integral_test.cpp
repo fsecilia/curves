@@ -6,6 +6,7 @@
 
 #include "smoother_step_integral.hpp"
 #include <curves/testing/test.hpp>
+#include <curves/math/jet.hpp>
 #include <ostream>
 
 namespace curves::math {
