@@ -48,6 +48,7 @@ list(APPEND lib_files
   shaping/ease_in.hpp
   shaping/ease_out.hpp
   shaping/transition.hpp
+  shaping/transition_functions/reflected.hpp
   shaping/transition_functions/smoother_step_integral.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
@@ -98,6 +99,7 @@ list(APPEND unit_tests_files
   shaping/ease_in_test.cpp
   shaping/ease_out_test.cpp
   shaping/ease_testing.hpp
+  shaping/transition_functions/reflected_test.cpp
   shaping/transition_functions/smoother_step_integral_test.cpp
   shaping/transition_test.cpp
   ui/model/flat_visitor_test.cpp
