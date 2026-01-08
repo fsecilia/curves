@@ -7,6 +7,7 @@
 #include "ease_in.hpp"
 #include <curves/testing/test.hpp>
 #include <curves/math/jet.hpp>
+#include <gmock/gmock.h>
 
 namespace curves::shaping {
 namespace {
@@ -224,6 +225,78 @@ INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestNullTransition,
                          ValuesIn(test_vectors));
 
 }  // namespace null_transition
+
+// ============================================================================
+// inverse()
+// ============================================================================
+
+struct EaseInInverseTest : Test {
+  static constexpr auto x0 = Parameter{1};
+  static constexpr auto width = Parameter{1};
+  static constexpr auto height = Parameter{1};
+
+  struct Inverter {};
+  Inverter inverter;
+
+  struct MockTransition {
+    MOCK_METHOD(Parameter, inverse, (Parameter, const Inverter& inverter),
+                (const, noexcept));
+    virtual ~MockTransition() = default;
+  };
+  StrictMock<MockTransition> mock_transition;
+
+  struct Transition {
+    auto x0() const noexcept -> Parameter { return EaseInInverseTest::x0; }
+
+    auto width() const noexcept -> Parameter {
+      return EaseInInverseTest::width;
+    }
+
+    auto height() const noexcept -> Parameter {
+      return EaseInInverseTest::height;
+    }
+
+    auto inverse(Parameter y, const Inverter& inverter) const noexcept
+        -> Parameter {
+      return mock_transition->inverse(y, inverter);
+    }
+
+    MockTransition* mock_transition = nullptr;
+  };
+
+  using Sut = EaseIn<Parameter, Transition>;
+  Sut sut{Transition{&mock_transition}};
+};
+
+TEST_F(EaseInInverseTest, FlatSegment) {
+  const auto y = 0;
+  const auto expected = x0;
+
+  const auto actual = sut.inverse(y, inverter);
+
+  EXPECT_DOUBLE_EQ(expected, actual);
+}
+
+TEST_F(EaseInInverseTest, LinearSegment) {
+  const auto y = height + 1;
+  const auto lag = x0 + width - height;
+  const auto expected = y + lag;
+
+  const auto actual = sut.inverse(y, inverter);
+
+  EXPECT_DOUBLE_EQ(expected, actual);
+}
+
+TEST_F(EaseInInverseTest, TransitionSegment) {
+  const auto y = height / 2;
+  const auto expected = 17;
+  EXPECT_CALL(mock_transition, inverse(y, Ref(inverter)))
+      .WillOnce(Return(expected));
+
+  const auto actual = sut.inverse(y, inverter);
+
+  EXPECT_DOUBLE_EQ(expected, actual);
+}
 
 }  // namespace
 }  // namespace curves::shaping

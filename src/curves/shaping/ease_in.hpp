@@ -34,6 +34,18 @@ class EaseIn {
     return transition_(x);
   }
 
+  constexpr auto inverse(Parameter y, auto&& inverter) const noexcept
+      -> Parameter {
+    // Flat segment.
+    if (y <= 0) return transition_.x0();
+
+    // Linear segment.
+    if (y >= transition_.height()) return y + lag_;
+
+    // Transition segment.
+    return transition_.inverse(y, std::forward<decltype(inverter)>(inverter));
+  }
+
  private:
   [[no_unique_address]] Transition transition_;
   Parameter lag_;
