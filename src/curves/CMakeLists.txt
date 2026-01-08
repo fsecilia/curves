@@ -47,6 +47,7 @@ list(APPEND lib_files
   math/spline_view.hpp
   numeric_cast.hpp
   shaping/ease_in.hpp
+  shaping/ease_out.hpp
   shaping/transition.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
@@ -96,6 +97,7 @@ list(APPEND unit_tests_files
   math/spline_test.cpp
   math/spline_view_test.cpp
   shaping/ease_in_test.cpp
+  shaping/ease_out_test.cpp
   shaping/ease_testing.hpp
   shaping/transition_test.cpp
   ui/model/flat_visitor_test.cpp
