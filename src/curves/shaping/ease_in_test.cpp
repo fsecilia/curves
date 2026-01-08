@@ -298,5 +298,26 @@ TEST_F(EaseInInverseTest, TransitionSegment) {
   EXPECT_DOUBLE_EQ(expected, actual);
 }
 
+// ============================================================================
+// required_knots()
+// ============================================================================
+
+struct EaseInRequiredKnotsTest : Test {
+  static constexpr auto x0 = Parameter{2};
+  static constexpr auto width = Parameter{5};
+  static constexpr auto height = Parameter{11};
+
+  using Sut = EaseIn<Parameter, Transition<x0, width, height>>;
+  Sut sut{{}};
+};
+
+TEST_F(EaseInRequiredKnotsTest, RequiredKnots) {
+  const auto expected = std::array{x0, x0 + width};
+
+  const auto actual = sut.required_knots();
+
+  ASSERT_EQ(expected, actual);
+}
+
 }  // namespace
 }  // namespace curves::shaping
