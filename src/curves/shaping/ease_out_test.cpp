@@ -8,6 +8,9 @@
 #include <curves/testing/test.hpp>
 #include <curves/math/jet.hpp>
 #include <curves/shaping/ease_testing.hpp>
+#include <curves/shaping/transition.hpp>
+#include <curves/shaping/transition_functions/reflected.hpp>
+#include <curves/shaping/transition_functions/smoother_step_integral.hpp>
 #include <gmock/gmock.h>
 
 namespace curves::shaping {
@@ -265,5 +268,43 @@ TEST_F(EaseOutRequiredKnotsTest, RequiredKnots) {
   ASSERT_EQ(expected, actual);
 }
 
+/// ============================================================================
+// Continuity
+// ============================================================================
+
+/*
+  See EaseInContinuityTest for an explanation why we're using production parts
+  in this unit test, and why it's only coincidentally an integration test.
+*/
+
+struct EaseOutContinuityTest : Test {
+  using TransitionFunction = transition_functions::Reflected<
+      transition_functions::SmootherStepIntegral<Parameter>>;
+  using Transition = shaping::Transition<Parameter, TransitionFunction>;
+  using Sut = EaseOut<Parameter, Transition>;
+
+  static constexpr auto x0 = Parameter{0.45};
+  static constexpr auto width = Parameter{2.1};
+
+  static constexpr auto transition = Transition{x0, width};
+  static constexpr auto sut = Sut{transition};
+
+  static constexpr auto height = transition.height();
+  static constexpr auto ceiling = x0 + height;
+};
+
+TEST_F(EaseOutContinuityTest, AtX0) {
+  const auto y = sut(Jet{x0, 1.0});
+
+  EXPECT_DOUBLE_EQ(x0, y.a);
+  EXPECT_DOUBLE_EQ(1.0, y.v);
+}
+
+TEST_F(EaseOutContinuityTest, AtX0PlusWidth) {
+  const auto y = sut(Jet{x0 + width, 1.0});
+
+  EXPECT_DOUBLE_EQ(ceiling, y.a);
+  EXPECT_DOUBLE_EQ(0.0, y.v);
+}
 }  // namespace
 }  // namespace curves::shaping
