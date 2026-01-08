@@ -35,6 +35,19 @@ struct Transition {
   }
 };
 
+struct DegenerateTransition {
+  constexpr auto width() const noexcept -> Parameter { return 0; }
+  constexpr auto height() const noexcept -> Parameter { return 0; }
+
+  auto fail() const -> void { GTEST_FAIL(); }
+
+  template <typename Value>
+  auto operator()(const Value&) const -> Value {
+    fail();
+    return {};
+  }
+};
+
 // ----------------------------------------------------------------------------
 // Fixture
 // ----------------------------------------------------------------------------
@@ -154,18 +167,8 @@ namespace zero_width {
 
 constexpr auto x0 = Parameter{0.5};
 
-struct Transition {
+struct Transition : DegenerateTransition {
   constexpr auto x0() const noexcept -> Parameter { return zero_width::x0; }
-  constexpr auto width() const noexcept -> Parameter { return 0; }
-  constexpr auto height() const noexcept -> Parameter { return 0; }
-
-  auto fail() const -> void { GTEST_FAIL(); }
-
-  template <typename Value>
-  auto operator()(const Value&) const -> Value {
-    fail();
-    return {};
-  }
 };
 
 struct EaseInCallTestZeroWidth : EaseInCallTest<Transition> {};
@@ -193,18 +196,8 @@ INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestZeroWidth,
 
 namespace null_transition {
 
-struct Transition {
+struct Transition : DegenerateTransition {
   constexpr auto x0() const noexcept -> Parameter { return 0; }
-  constexpr auto width() const noexcept -> Parameter { return 0; }
-  constexpr auto height() const noexcept -> Parameter { return 0; }
-
-  auto fail() const -> void { GTEST_FAIL(); }
-
-  template <typename Value>
-  auto operator()(const Value&) const -> Value {
-    fail();
-    return {};
-  }
 };
 
 struct EaseInCallTestNullTransition : EaseInCallTest<Transition> {};
@@ -245,17 +238,7 @@ struct EaseInInverseTest : Test {
   };
   StrictMock<MockTransition> mock_transition;
 
-  struct Transition {
-    auto x0() const noexcept -> Parameter { return EaseInInverseTest::x0; }
-
-    auto width() const noexcept -> Parameter {
-      return EaseInInverseTest::width;
-    }
-
-    auto height() const noexcept -> Parameter {
-      return EaseInInverseTest::height;
-    }
-
+  struct Transition : shaping::Transition<x0, width, height> {
     auto inverse(Parameter y, const Inverter& inverter) const noexcept
         -> Parameter {
       return mock_transition->inverse(y, inverter);
@@ -265,7 +248,7 @@ struct EaseInInverseTest : Test {
   };
 
   using Sut = EaseIn<Parameter, Transition>;
-  Sut sut{Transition{&mock_transition}};
+  Sut sut{Transition{{}, &mock_transition}};
 };
 
 TEST_F(EaseInInverseTest, FlatSegment) {
