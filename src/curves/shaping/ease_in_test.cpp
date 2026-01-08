@@ -6,6 +6,7 @@
 
 #include "ease_in.hpp"
 #include <curves/testing/test.hpp>
+#include <curves/math/jet.hpp>
 #include <curves/shaping/ease_testing.hpp>
 #include <gmock/gmock.h>
 
