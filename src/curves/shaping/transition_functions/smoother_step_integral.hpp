@@ -10,7 +10,7 @@
 
 #include <curves/lib.hpp>
 
-namespace curves::shaping {
+namespace curves::shaping::transition_functions {
 
 /*!
   This transition function is the integral of smootherstep. It gives C^3
@@ -43,4 +43,4 @@ struct SmootherStepIntegral {
   }
 };
 
-}  // namespace curves::shaping
+}  // namespace curves::shaping::transition_functions

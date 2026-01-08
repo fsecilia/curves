@@ -9,7 +9,7 @@
 #include <curves/math/jet.hpp>
 #include <ostream>
 
-namespace curves::shaping {
+namespace curves::shaping::transition_functions {
 namespace {
 
 // ============================================================================
@@ -78,4 +78,4 @@ INSTANTIATE_TEST_SUITE_P(SmootherStepIntegralTest,
                          ValuesIn(easing_function_test_vectors));
 
 }  // namespace
-}  // namespace curves::shaping
+}  // namespace curves::shaping::transition_functions
