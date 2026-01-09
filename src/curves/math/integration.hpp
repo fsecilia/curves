@@ -276,4 +276,28 @@ auto gauss5(F&& f, real_t a, real_t b) noexcept -> real_t {
                     f.value(nodes[3]), f.value(nodes[4])});
 }
 
+/*
+  Since adding real jets, the new math pipeline just uses operator () instead
+  of having separate evaluation methods for values and derivatives. This whole
+  module will need to be integrated with that eventually, but for now, this
+  struct works with the new pipeline.
+*/
+struct Gauss5 {
+  template <typename Func, typename Value>
+  auto operator()(Func&& f, Value a, Value b) const -> Value {
+    static constexpr Value x[] = {0.0, 0.538469310105683, 0.906179845938664};
+    static constexpr Value w[] = {0.568888888888889, 0.478628670499366,
+                                  0.236926885056189};
+
+    const auto mid = (a + b) / 2;
+    const auto half_width = (b - a) / 2;
+
+    auto sum = w[0] * f(mid);
+    for (auto i = 1; i < 3; ++i) {
+      sum += w[i] * (f(mid + x[i] * half_width) + f(mid - x[i] * half_width));
+    }
+    return sum * half_width;
+  }
+};
+
 }  // namespace curves
