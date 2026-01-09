@@ -27,6 +27,7 @@ list(APPEND lib_files
   curves/transfer_function/from_sensitivity.hpp
   lib.cpp
   lib.hpp
+  math/cached_integral.hpp
   math/curve.hpp
   math/curve_view.hpp
   math/fixed.hpp
@@ -84,6 +85,7 @@ list(APPEND unit_tests_files
   driver_tests/fixed/subtract.cpp
   driver_tests/fixed/test.cpp
   driver_tests/int_math_test.cpp
+  math/cached_integral_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
   math/input_shaping_test.cpp
