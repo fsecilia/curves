@@ -47,7 +47,7 @@ class EaseOut {
                                std::forward<decltype(inverter)>(inverter));
   }
 
-  constexpr auto required_knots() const noexcept -> std::array<Parameter, 2> {
+  constexpr auto critical_points() const noexcept -> std::array<Parameter, 2> {
     const auto x0 = transition_.x0();
     return {x0, x0 + transition_.width()};
   }

@@ -240,10 +240,10 @@ TEST_F(EaseInInverseTest, TransitionSegment) {
 namespace {
 
 // ============================================================================
-// required_knots()
+// critical_points()
 // ============================================================================
 
-struct EaseInRequiredKnotsTest : Test {
+struct EaseInCriticalPointsTest : Test {
   static constexpr auto x0 = Parameter{2};
   static constexpr auto width = Parameter{5};
   static constexpr auto height = Parameter{11};
@@ -252,10 +252,10 @@ struct EaseInRequiredKnotsTest : Test {
   Sut sut{{}};
 };
 
-TEST_F(EaseInRequiredKnotsTest, RequiredKnots) {
+TEST_F(EaseInCriticalPointsTest, CriticalPoints) {
   const auto expected = std::array{x0, x0 + width};
 
-  const auto actual = sut.required_knots();
+  const auto actual = sut.critical_points();
 
   ASSERT_EQ(expected, actual);
 }
