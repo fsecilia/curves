@@ -45,6 +45,7 @@ list(APPEND lib_files
   math/spline.hpp
   math/spline_view.hpp
   numeric_cast.hpp
+  ranges.hpp
   shaping/ease_in.hpp
   shaping/ease_out.hpp
   shaping/transition.hpp
