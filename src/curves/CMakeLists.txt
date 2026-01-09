@@ -35,6 +35,7 @@ list(APPEND lib_files
   math/input_shaping_view.hpp
   math/integration.hpp
   math/inverse_function.hpp
+  math/kahan_accumulator.hpp
   math/io.hpp
   math/jet.hpp
   math/segment/construction.hpp
