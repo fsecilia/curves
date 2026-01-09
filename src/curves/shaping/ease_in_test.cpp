@@ -273,13 +273,14 @@ TEST_F(EaseInCriticalPointsTest, CriticalPoints) {
 struct EaseInContinuityTest : Test {
   using TransitionFunction =
       transition_functions::SmootherStepIntegral<Parameter>;
-  using Transition = shaping::Transition<Parameter, TransitionFunction>;
+  using Transition =
+      shaping::Transition<Parameter, TransitionFunction, Inverter>;
   using Sut = EaseIn<Parameter, Transition, Inverter>;
 
   static constexpr auto x0 = Parameter{0.45};
   static constexpr auto width = Parameter{2.1};
 
-  static constexpr auto transition = Transition{x0, width};
+  static constexpr auto transition = Transition{x0, width, {}, {}};
   static constexpr auto sut = Sut{transition, {}};
 
   static constexpr auto height = transition.height();

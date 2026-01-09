@@ -22,15 +22,17 @@ namespace curves::shaping {
   [0, 1). They must go through (0, 0) with slope 0 and have slope 1 at x=1,
   but may go through any y at x=1.
 */
-template <typename Parameter, typename TransitionFunction>
+template <typename Parameter, typename TransitionFunction, typename Inverter>
 class Transition {
  public:
   constexpr Transition(Parameter x0, Parameter width,
-                       TransitionFunction transition_function = {}) noexcept
+                       TransitionFunction transition_function,
+                       Inverter inverter) noexcept
       : x0_{x0},
         inv_width_{Parameter{1} / width},
         scale_{width},
-        transition_function_{std::move(transition_function)} {}
+        transition_function_{std::move(transition_function)},
+        inverter_{std::move(inverter)} {}
 
   /*!
     \pre width > 0, x in [x0, x0 + width).
@@ -41,13 +43,27 @@ class Transition {
     assert(scale_ != Parameter{0} && "Transition domain error");
 
     // Reduce to [0, 1).
-    const auto input = (x - Value{x0_}) * Value{inv_width_};
+    const auto x_normalized = (x - Value{x0_}) * Value{inv_width_};
 
     // Apply normalized transition.
-    const auto output = transition_function_(input);
+    const auto y_normalized = transition_function_(x_normalized);
 
     // Restore to original range.
-    return output * Value{scale_};
+    return y_normalized * Value{scale_};
+  }
+
+  template <typename Value>
+  constexpr auto inverse(const Value& y) const noexcept -> Value {
+    assert(scale_ != Parameter{0} && "Transition domain error");
+
+    // Reduce to [0, 1).
+    const auto y_normalized = y * Value{inv_width_};
+
+    // Invert normalized transition.
+    const auto x_normalized = inverter_(transition_function_, y_normalized);
+
+    // Restore to original range.
+    return (x_normalized * Value{scale_}) + Value{x0_};
   }
 
   constexpr auto x0() const noexcept -> Parameter { return x0_; }
@@ -59,6 +75,15 @@ class Transition {
 
   constexpr auto height() const noexcept -> Parameter {
     return scale_ * transition_function_.at_1();
+  }
+
+  constexpr auto transition_function() const noexcept
+      -> const TransitionFunction& {
+    return transition_function_;
+  }
+
+  constexpr auto inverter() const noexcept -> const Inverter& {
+    return inverter_;
   }
 
  private:
@@ -73,6 +98,9 @@ class Transition {
 
   //! Actual easing implementation.
   [[no_unique_address]] TransitionFunction transition_function_;
+
+  //! Numerical inverter.
+  [[no_unique_address]] Inverter inverter_;
 };
 
 }  // namespace curves::shaping

@@ -279,13 +279,14 @@ TEST_F(EaseOutCriticalPointsTest, CriticalPoints) {
 struct EaseOutContinuityTest : Test {
   using TransitionFunction = transition_functions::Reflected<
       transition_functions::SmootherStepIntegral<Parameter>>;
-  using Transition = shaping::Transition<Parameter, TransitionFunction>;
+  using Transition =
+      shaping::Transition<Parameter, TransitionFunction, Inverter>;
   using Sut = EaseOut<Parameter, Transition, Inverter>;
 
   static constexpr auto x0 = Parameter{0.45};
   static constexpr auto width = Parameter{2.1};
 
-  static constexpr auto transition = Transition{x0, width};
+  static constexpr auto transition = Transition{x0, width, {}, {}};
   static constexpr auto sut = Sut{transition, {}};
 
   static constexpr auto height = transition.height();
