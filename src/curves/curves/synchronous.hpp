@@ -12,10 +12,66 @@
 #include <curves/config/curve.hpp>
 #include <curves/config/param.hpp>
 #include <curves/math/jet.hpp>
+#include <array>
 #include <cmath>
 
 namespace curves {
 
+template <typename Parameter>
+class Synchronous {
+ public:
+  Synchronous() noexcept
+      : Synchronous{Parameter{1.5}, Parameter{1}, Parameter{5.0},
+                    Parameter{0.5}} {}
+
+  Synchronous(Parameter m, Parameter g, Parameter p, Parameter k) noexcept
+      : m_{m},
+        l_{math::log(m)},
+        g_{g / l_},
+        p_{p},
+        k_{math::min(k == Parameter{0} ? Parameter{32} : Parameter{0.5} / k,
+                     Parameter{32})},
+        r_{Parameter{1} / k_} {}
+
+  template <typename Value>
+  auto operator()(Value x) const noexcept -> Value {
+    using namespace math;
+
+    // Use limit definition near 0.
+    if (x < std::numeric_limits<Value>::epsilon()) {
+      return Value{1} / m_ + Value{0} * x;
+    }
+
+    // Use linear taylor approximation (very) near to cusp.
+    const auto displacement = x - p_;
+    if (abs(primal(displacement)) <= kCuspApproximationDistance) {
+      return Value{1} + (l_ * g_ / p_) * displacement;
+    }
+
+    const auto u = g_ * log(x / p_);
+    const auto w = tanh(pow(abs(u), k_));
+    return exp(copysign(l_, u) * pow(w, r_));
+  }
+
+  auto critical_points() const noexcept -> std::array<Parameter, 1> {
+    return {p_};
+  }
+
+ private:
+  static constexpr auto kCuspApproximationDistance = Parameter{1e-7};
+
+  real_t m_;
+  real_t l_;
+  real_t g_;
+  real_t p_;
+  real_t k_;
+  real_t r_;
+};
+
+/*
+  This is the original version that doesn't work with the new, real jets.
+  It's sticking around for a bit until we're ready to make the transition.
+*/
 class SynchronousCurve {
  public:
   SynchronousCurve() noexcept : SynchronousCurve(1.5L, 1.0L, 5.0L, 0.5L) {}
@@ -87,7 +143,7 @@ class SynchronousCurve {
 struct SynchronousCurveConfig {
   Param<double> motivity{"Motivity", 1.5, 1.0, 1.0e3};
   Param<double> gamma{"Gamma", 1, 1e-3, 1.0e3};
-  Param<double> smooth{"Smooth", 0.5, 0.0, 1.0};
+  Param<double> smooth{"Smooth", 0.5, 1.0 / 32, 1.0};
   Param<double> sync_speed{"Sync Speed", 5, 1.0e-3, 1.0e3};
 
   auto reflect(this auto&& self, auto&& visitor) -> void {
