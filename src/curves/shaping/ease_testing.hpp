@@ -29,6 +29,10 @@ struct TestingTransition {
   }
 };
 
+// Inversion just needs a value to make sure it's not the default.
+using Inverter = int_t;
+constexpr auto inverter = Inverter{17};
+
 struct CallTestVector {
   Parameter x;
   Jet expected;
@@ -55,8 +59,6 @@ struct DegenerateTransition {
 };
 
 namespace inverse {
-
-struct Inverter {};
 
 struct MockTransition {
   MOCK_METHOD(Parameter, inverse, (Parameter, const Inverter& inverter),

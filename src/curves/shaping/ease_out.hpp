@@ -13,12 +13,13 @@
 
 namespace curves::shaping {
 
-template <typename Parameter, typename Transition>
+template <typename Parameter, typename Transition, typename Inverter>
 class EaseOut {
  public:
-  explicit constexpr EaseOut(Transition transition) noexcept
-      : transition_{std::move(transition)},
-        ceiling_{transition_.x0() + transition.height()} {}
+  explicit constexpr EaseOut(Transition transition, Inverter inverter) noexcept
+      : ceiling_{transition.x0() + transition.height()},
+        transition_{std::move(transition)},
+        inverter_{std::move(inverter)} {}
 
   template <typename Value>
   constexpr auto operator()(const Value& x) const noexcept -> Value {
@@ -34,8 +35,7 @@ class EaseOut {
     return transition_(x) + x0;
   }
 
-  constexpr auto inverse(Parameter y, auto&& inverter) const noexcept
-      -> Parameter {
+  constexpr auto inverse(Parameter y) const noexcept -> Parameter {
     // Linear segment.
     if (y <= transition_.x0()) return y;
 
@@ -43,8 +43,7 @@ class EaseOut {
     if (y >= ceiling_) return transition_.x0() + transition_.width();
 
     // Transition segment.
-    return transition_.inverse(y - transition_.x0(),
-                               std::forward<decltype(inverter)>(inverter));
+    return transition_.inverse(y - transition_.x0(), inverter_);
   }
 
   constexpr auto critical_points() const noexcept -> std::array<Parameter, 2> {
@@ -53,8 +52,9 @@ class EaseOut {
   }
 
  private:
-  [[no_unique_address]] Transition transition_;
   Parameter ceiling_;
+  [[no_unique_address]] Transition transition_;
+  [[no_unique_address]] Inverter inverter_;
 };
 
 }  // namespace curves::shaping

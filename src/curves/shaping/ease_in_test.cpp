@@ -25,8 +25,8 @@ namespace {
 
 template <typename Transition>
 struct EaseInCallTest : TestWithParam<CallTestVector> {
-  using Sut = EaseIn<Parameter, Transition>;
-  Sut sut{{}};
+  using Sut = EaseIn<Parameter, Transition, Inverter>;
+  Sut sut{{}, {}};
 
   auto test() const -> void {
     const auto x = Jet{GetParam().x, 1.0};
@@ -194,21 +194,19 @@ struct EaseInInverseTest : Test {
   static constexpr auto width = Parameter{1};
   static constexpr auto height = Parameter{1};
 
-  Inverter inverter;
-
   StrictMock<MockTransition> mock_transition;
 
   using Transition = inverse::Transition<x0, width, height>;
 
-  using Sut = EaseIn<Parameter, Transition>;
-  Sut sut{Transition{{}, &mock_transition}};
+  using Sut = EaseIn<Parameter, Transition, Inverter>;
+  Sut sut{Transition{{}, &mock_transition}, inverter};
 };
 
 TEST_F(EaseInInverseTest, FlatSegment) {
   const auto y = 0;
   const auto expected = x0;
 
-  const auto actual = sut.inverse(y, inverter);
+  const auto actual = sut.inverse(y);
 
   EXPECT_DOUBLE_EQ(expected, actual);
 }
@@ -218,7 +216,7 @@ TEST_F(EaseInInverseTest, LinearSegment) {
   const auto lag = x0 + width - height;
   const auto expected = y + lag;
 
-  const auto actual = sut.inverse(y, inverter);
+  const auto actual = sut.inverse(y);
 
   EXPECT_DOUBLE_EQ(expected, actual);
 }
@@ -226,10 +224,9 @@ TEST_F(EaseInInverseTest, LinearSegment) {
 TEST_F(EaseInInverseTest, TransitionSegment) {
   const auto y = height / 2;
   const auto expected = 17;
-  EXPECT_CALL(mock_transition, inverse(y, Ref(inverter)))
-      .WillOnce(Return(expected));
+  EXPECT_CALL(mock_transition, inverse(y, inverter)).WillOnce(Return(expected));
 
-  const auto actual = sut.inverse(y, inverter);
+  const auto actual = sut.inverse(y);
 
   EXPECT_DOUBLE_EQ(expected, actual);
 }
@@ -248,8 +245,8 @@ struct EaseInCriticalPointsTest : Test {
   static constexpr auto width = Parameter{5};
   static constexpr auto height = Parameter{11};
 
-  using Sut = EaseIn<Parameter, TestingTransition<x0, width, height>>;
-  Sut sut{{}};
+  using Sut = EaseIn<Parameter, TestingTransition<x0, width, height>, Inverter>;
+  Sut sut{{}, {}};
 };
 
 TEST_F(EaseInCriticalPointsTest, CriticalPoints) {
@@ -277,13 +274,13 @@ struct EaseInContinuityTest : Test {
   using TransitionFunction =
       transition_functions::SmootherStepIntegral<Parameter>;
   using Transition = shaping::Transition<Parameter, TransitionFunction>;
-  using Sut = EaseIn<Parameter, Transition>;
+  using Sut = EaseIn<Parameter, Transition, Inverter>;
 
   static constexpr auto x0 = Parameter{0.45};
   static constexpr auto width = Parameter{2.1};
 
   static constexpr auto transition = Transition{x0, width};
-  static constexpr auto sut = Sut{transition};
+  static constexpr auto sut = Sut{transition, {}};
 
   static constexpr auto height = transition.height();
 };
