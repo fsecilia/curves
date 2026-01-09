@@ -29,7 +29,7 @@ struct TestingTransition {
   }
 };
 
-// Inversion just needs a value to make sure it's not the default.
+// Inversion just needs a value to make sure it's not the default. We
 using Inverter = int_t;
 constexpr auto inverter = Inverter{17};
 
@@ -61,16 +61,14 @@ struct DegenerateTransition {
 namespace inverse {
 
 struct MockTransition {
-  MOCK_METHOD(Parameter, inverse, (Parameter, const Inverter& inverter),
-              (const, noexcept));
+  MOCK_METHOD(Parameter, inverse, (Parameter), (const, noexcept));
   virtual ~MockTransition() = default;
 };
 
 template <Parameter kX0, Parameter kWidth, Parameter kHeight>
 struct Transition : shaping::TestingTransition<kX0, kWidth, kHeight> {
-  auto inverse(Parameter y, const Inverter& inverter) const noexcept
-      -> Parameter {
-    return mock_transition->inverse(y, inverter);
+  auto inverse(Parameter y) const noexcept -> Parameter {
+    return mock_transition->inverse(y);
   }
 
   MockTransition* mock_transition = nullptr;

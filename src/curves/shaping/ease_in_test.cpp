@@ -25,8 +25,8 @@ namespace {
 
 template <typename Transition>
 struct EaseInCallTest : TestWithParam<CallTestVector> {
-  using Sut = EaseIn<Parameter, Transition, Inverter>;
-  Sut sut{{}, {}};
+  using Sut = EaseIn<Parameter, Transition>;
+  Sut sut{{}};
 
   auto test() const -> void {
     const auto x = Jet{GetParam().x, 1.0};
@@ -198,8 +198,8 @@ struct EaseInInverseTest : Test {
 
   using Transition = inverse::Transition<x0, width, height>;
 
-  using Sut = EaseIn<Parameter, Transition, Inverter>;
-  Sut sut{Transition{{}, &mock_transition}, inverter};
+  using Sut = EaseIn<Parameter, Transition>;
+  Sut sut{Transition{{}, &mock_transition}};
 };
 
 TEST_F(EaseInInverseTest, FlatSegment) {
@@ -224,7 +224,7 @@ TEST_F(EaseInInverseTest, LinearSegment) {
 TEST_F(EaseInInverseTest, TransitionSegment) {
   const auto y = height / 2;
   const auto expected = 17;
-  EXPECT_CALL(mock_transition, inverse(y, inverter)).WillOnce(Return(expected));
+  EXPECT_CALL(mock_transition, inverse(y)).WillOnce(Return(expected));
 
   const auto actual = sut.inverse(y);
 
@@ -245,8 +245,8 @@ struct EaseInCriticalPointsTest : Test {
   static constexpr auto width = Parameter{5};
   static constexpr auto height = Parameter{11};
 
-  using Sut = EaseIn<Parameter, TestingTransition<x0, width, height>, Inverter>;
-  Sut sut{{}, {}};
+  using Sut = EaseIn<Parameter, TestingTransition<x0, width, height>>;
+  Sut sut{{}};
 };
 
 TEST_F(EaseInCriticalPointsTest, CriticalPoints) {
@@ -275,13 +275,13 @@ struct EaseInContinuityTest : Test {
       transition_functions::SmootherStepIntegral<Parameter>;
   using Transition =
       shaping::Transition<Parameter, TransitionFunction, Inverter>;
-  using Sut = EaseIn<Parameter, Transition, Inverter>;
+  using Sut = EaseIn<Parameter, Transition>;
 
   static constexpr auto x0 = Parameter{0.45};
   static constexpr auto width = Parameter{2.1};
 
   static constexpr auto transition = Transition{x0, width, {}, {}};
-  static constexpr auto sut = Sut{transition, {}};
+  static constexpr auto sut = Sut{transition};
 
   static constexpr auto height = transition.height();
 };
