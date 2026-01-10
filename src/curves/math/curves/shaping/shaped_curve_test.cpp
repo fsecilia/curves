@@ -16,11 +16,11 @@ struct ShapedCurveTest : Test {
   using Value = double;
   using CriticalPoints = std::vector<Scalar>;
 
-  // Simple linear function for testing composition. Models `f(x) = mx + b`.
-  class LinearFunction {
+  // Simple curve for testing composition. Models `f(x) = mx + b`.
+  class LinearCurve {
    public:
-    LinearFunction(Scalar m, Scalar b,
-                   CriticalPoints critical_points = {}) noexcept
+    LinearCurve(Scalar m, Scalar b,
+                CriticalPoints critical_points = {}) noexcept
         : m_{m}, b_{b}, critical_points_{std::move(critical_points)} {}
 
     // Forward: y = mx + b
@@ -39,22 +39,21 @@ struct ShapedCurveTest : Test {
     CriticalPoints critical_points_{};
   };
 
-  auto make_identity(CriticalPoints critical_points = {}) -> LinearFunction {
+  auto make_identity(CriticalPoints critical_points = {}) -> LinearCurve {
     return {1.0, 0.0, std::move(critical_points)};
   }
 
   auto make_shift(Scalar offset, CriticalPoints critical_points = {})
-      -> LinearFunction {
+      -> LinearCurve {
     return {1.0, offset, std::move(critical_points)};
   }
 
   auto make_scale(Scalar slope, CriticalPoints critical_points = {})
-      -> LinearFunction {
+      -> LinearCurve {
     return {slope, 0.0, std::move(critical_points)};
   }
 
-  using Sut =
-      ShapedCurve<Scalar, LinearFunction, LinearFunction, LinearFunction>;
+  using Sut = ShapedCurve<Scalar, LinearCurve, LinearCurve, LinearCurve>;
 };
 
 TEST_F(ShapedCurveTest, IdentityCompositionPreservesCriticalPoints) {
