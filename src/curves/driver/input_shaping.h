@@ -9,7 +9,7 @@
  * See scalar_transform.h for the complete transform.
  *
  * It implements a two-stage cascade that shapes raw input velocity before it
- * is used to evaluate the configured sensitivity curve:
+ * is used to evaluate the configured curve shape:
  *
  *       v --> Stage 1 (Ease-In) --> v' --> Stage 2 (Ease-Out) --> u
  *

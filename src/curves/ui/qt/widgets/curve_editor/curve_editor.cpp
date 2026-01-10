@@ -25,19 +25,18 @@ void CurveEditor::setCurveView(curves::CurveView curveView) {
   update();
 }
 
-void CurveEditor::setCurveInterpretation(
-    CurveInterpretation curveInterpretation) {
-  switch (curveInterpretation) {
-    case CurveInterpretation::kGain:
+void CurveEditor::setCurveDefinition(CurveDefinition curveDefinition) {
+  switch (curveDefinition) {
+    case CurveDefinition::kTransferGradient:
       m_traces.selected = TraceType::gain_f;
       break;
 
-    case CurveInterpretation::kSensitivity:
+    case CurveDefinition::kVelocityScale:
       m_traces.selected = TraceType::sensitivity_f;
       break;
   }
 
-  m_curveInterpretation = curveInterpretation;
+  m_curveDefinition = curveDefinition;
   update();
 }
 

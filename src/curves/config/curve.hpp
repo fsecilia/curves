@@ -15,15 +15,15 @@
 
 namespace curves {
 
-enum CurveInterpretation {
-  kGain,
-  kSensitivity,
+enum CurveDefinition {
+  kTransferGradient,
+  kVelocityScale,
 };
 
 template <>
-struct EnumReflection<CurveInterpretation> {
+struct EnumReflection<CurveDefinition> {
   static constexpr auto map =
-      sequential_name_map<CurveInterpretation>("Gain", "Sensitivity");
+      sequential_name_map<CurveDefinition>("Gradient", "Scale");
 };
 
 template <typename CurveConfig>
@@ -31,8 +31,8 @@ struct CurveProfileEntry {
   std::string_view name;
   CurveConfig config;
 
-  Param<CurveInterpretation> interpretation{"Interpretation",
-                                            CurveInterpretation::kGain};
+  Param<CurveDefinition> definition{"Definition",
+                                    CurveDefinition::kTransferGradient};
 
   CurveProfileEntry(std::string_view name, CurveConfig config = {}) noexcept
       : name{std::move(name)}, config{std::move(config)} {}
@@ -40,14 +40,14 @@ struct CurveProfileEntry {
   auto reflect(this auto&& self, auto&& visitor) -> void {
     visitor.visit_section(self.name, [&](auto&& section_visitor) {
       self.config.reflect(section_visitor);
-      self.interpretation.reflect(section_visitor);
+      self.definition.reflect(section_visitor);
     });
   }
 
   template <typename Visitor = std::nullptr_t>
   auto validate(Visitor&& visitor = nullptr) -> void {
     config.validate(visitor);
-    interpretation.validate(visitor);
+    definition.validate(visitor);
   }
 };
 

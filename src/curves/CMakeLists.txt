@@ -124,8 +124,7 @@ list(APPEND unit_tests_files
 #      CMake in the library.
 #
 # These common sources are c implementations of things like fixed point math
-# and the individual sensitivity curves. They are not anything that crosses the
-# UAPI.
+# and spline evaluation. They are not anything that crosses the UAPI.
 #
 # The CMake custom command that kicks off the Kbuild depends on both driver
 # sources and common sources. If any of these are modified, the Kbuild is run

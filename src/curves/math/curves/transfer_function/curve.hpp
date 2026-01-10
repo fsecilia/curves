@@ -47,16 +47,16 @@ struct TransferFunctionTraits {
   /*!
     Returns the transfer function for the curve at x = 0.
 
-    Both sensitivity and gain interpretations need the curve's output at x = 0
+    Both sensitivity and gain definitions need the curve's output at x = 0
     for the boundary condition. By coincidence, this value is the same
-    regardless of which interpretation we use:
+    regardless of which definition we use:
 
-      Sensitivity interpretation:
+      Sensitivity definition:
         T(x) = x·S(x)
         T'(x) = S(x) + x·S'(x)  (product rule)
         T'(0) = S(0) + 0·S'(0) = S(0) = curve(0).f
 
-      Gain interpretation:
+      Gain definition:
         T(x) = Int[0, x] G(t) dt
         T'(x) = G(x)
         T'(0) = G(0) = curve(0).f

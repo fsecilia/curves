@@ -45,7 +45,7 @@ class CurveEditor : public QWidget {
   ~CurveEditor() override;
 
   void setCurveView(curves::CurveView curveView);
-  void setCurveInterpretation(curves::CurveInterpretation curveInterpretation);
+  void setCurveDefinition(curves::CurveDefinition curveDefinition);
 
   void enableDpiErrorState(bool enable);
 
@@ -63,8 +63,8 @@ class CurveEditor : public QWidget {
   Theme m_theme;
 
   std::unique_ptr<curves::CurveView> m_curveView;
-  curves::CurveInterpretation m_curveInterpretation{
-      curves::CurveInterpretation::kGain};
+  curves::CurveDefinition m_curveDefinition{
+      curves::CurveDefinition::kTransferGradient};
 
   bool m_dpiErrorStateEnabled = false;
 

@@ -71,14 +71,13 @@ void MainWindow::onCurveSelectionChanged(int index) {
   updateCurveDisplay();
 }
 
-void MainWindow::onCurveInterpretation(bool checked,
-                                       CurveInterpretation interpretation) {
+void MainWindow::onCurveDefinition(bool checked, CurveDefinition definition) {
   if (!checked) return;
 
-  const auto prevInterpretation = m_curveInterpretationParam->value();
-  if (interpretation == prevInterpretation) return;
+  const auto prevDefinition = m_curveDefinitionParam->value();
+  if (definition == prevDefinition) return;
 
-  m_view_model->set_value(*m_curveInterpretationParam, interpretation);
+  m_view_model->set_value(*m_curveDefinitionParam, definition);
   onParameterChanged();
 }
 
@@ -101,19 +100,19 @@ void MainWindow::connectControls() {
   connect(m_ui->dpiSpinBox, &QSpinBox::valueChanged, this,
           &MainWindow::onDpiChanged);
 
-  connectCurveInterpretation();
+  connectCurveDefinition();
   connectFooterControls();
 }
 
-void MainWindow::connectCurveInterpretation() {
-  connect(m_ui->curveInterpretationGainRadioButton, &QRadioButton::clicked,
+void MainWindow::connectCurveDefinition() {
+  connect(m_ui->curveDefinitionGradientRadioButton, &QRadioButton::clicked,
           this, [&](bool checked) {
-            onCurveInterpretation(checked, CurveInterpretation::kGain);
+            onCurveDefinition(checked, CurveDefinition::kTransferGradient);
           });
 
-  connect(m_ui->curveInterpretationSensitivityRadioButton,
-          &QRadioButton::clicked, this, [&](bool checked) {
-            onCurveInterpretation(checked, CurveInterpretation::kSensitivity);
+  connect(m_ui->curveDefinitionScaleRadioButton, &QRadioButton::clicked, this,
+          [&](bool checked) {
+            onCurveDefinition(checked, CurveDefinition::kVelocityScale);
           });
 }
 
@@ -210,7 +209,7 @@ void MainWindow::enableWidgetsOnDpiError(bool enable) {
       m_ui->anisotropyDoubleSpinBox,
       m_ui->applyButton,
       m_ui->curveConfig,
-      m_ui->curveInterpretationGroupBox,
+      m_ui->curveDefinitionGroupBox,
       m_ui->curveEditor,
       m_ui->curveSelector,
       m_ui->filterOutputCheckBox,
@@ -277,18 +276,17 @@ void MainWindow::rebuildParameterWidgets(CurveType curve) {
       m_ui->curveConfig->setItemWidget(item, widget);
 
       m_parameter_widgets.push_back(widget);
-    } else if constexpr (std::is_same_v<ParamType,
-                                        Param<CurveInterpretation>>) {
-      m_curveInterpretationParam = &param;
+    } else if constexpr (std::is_same_v<ParamType, Param<CurveDefinition>>) {
+      m_curveDefinitionParam = &param;
       switch (param.value()) {
-        case CurveInterpretation::kGain:
-          m_ui->curveInterpretationGainRadioButton->setChecked(true);
-          m_ui->curveInterpretationSensitivityRadioButton->setChecked(false);
+        case CurveDefinition::kTransferGradient:
+          m_ui->curveDefinitionGradientRadioButton->setChecked(true);
+          m_ui->curveDefinitionScaleRadioButton->setChecked(false);
           break;
 
-        case CurveInterpretation::kSensitivity:
-          m_ui->curveInterpretationGainRadioButton->setChecked(false);
-          m_ui->curveInterpretationSensitivityRadioButton->setChecked(true);
+        case CurveDefinition::kVelocityScale:
+          m_ui->curveDefinitionGradientRadioButton->setChecked(false);
+          m_ui->curveDefinitionScaleRadioButton->setChecked(true);
           break;
       }
     }
@@ -303,8 +301,7 @@ void MainWindow::clearParameterWidgets() {
 
 void MainWindow::updateCurveDisplay() {
   *m_curve = m_view_model->create_curve();
-  m_ui->curveEditor->setCurveInterpretation(
-      m_curveInterpretationParam->value());
+  m_ui->curveEditor->setCurveDefinition(m_curveDefinitionParam->value());
 }
 
 void MainWindow::setListMinHeight(QListWidget& list, int minVisibleItems) {

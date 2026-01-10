@@ -4,10 +4,10 @@
   \brief Composed view of spline and input shaping for curve evaluation.
 
   Composes InputShapingView and SplineView to produce the four display traces:
-    S(v)  = T(u) / v                - sensitivity
-    S'(v) = (G - S) / v             - sensitivity derivative
-    G(v)  = T'(u)u'                 - gain
-    G'(v) = T''(u)(u')^2 + T'(u)u'' - gain derivative
+    S(v)  = T(u) / v                - velocity scale
+    S'(v) = (G - S) / v             - velocity scale derivative
+    G(v)  = T'(u)u'                 - gradient
+    G'(v) = T''(u)(u')^2 + T'(u)u'' - gradient derivative
 
   where u = U(v) is the shaping function.
 

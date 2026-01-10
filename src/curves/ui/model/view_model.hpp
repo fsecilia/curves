@@ -55,7 +55,7 @@ class ViewModel {
     Iterates all parameters for specified curve type.
 
     Callback is invoked once for each Param in the curve's config,
-    including the interpretation enum. Callback should accept `auto&& param`.
+    including the definition enum. Callback should accept `auto&& param`.
 
     \param curve Which curve's parameters to iterate.
     \param callback Callable invoked for each parameter.
@@ -65,7 +65,7 @@ class ViewModel {
     profile_.curve_profile_entries.visit_config(curve, [&](auto& entry) {
       auto visitor = FlatVisitor{callback};
       entry.config.reflect(visitor);
-      entry.interpretation.reflect(visitor);
+      entry.definition.reflect(visitor);
     });
   }
 
@@ -137,13 +137,13 @@ class ViewModel {
 
           const auto sensitivity =
               static_cast<real_t>(profile_.sensitivity.value());
-          switch (curve_profile_entry.interpretation.value()) {
-            case CurveInterpretation::kGain:
+          switch (curve_profile_entry.definition.value()) {
+            case CurveDefinition::kTransferGradient:
               result.spline = curves::spline::create_spline(
                   curves::FromGain{curve}, sensitivity);
               break;
 
-            case CurveInterpretation::kSensitivity:
+            case CurveDefinition::kVelocityScale:
               result.spline = curves::spline::create_spline(
                   curves::FromSensitivity{curve}, sensitivity);
               break;

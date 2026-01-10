@@ -42,9 +42,9 @@ class MainWindow : public QMainWindow {
   //! Called when user selects a different curve in the curve list.
   void onCurveSelectionChanged(int index);
 
-  //! Called when user changes the curve's interpretation.
-  void onCurveInterpretation(bool checked,
-                             curves::CurveInterpretation interpretation);
+  //! Called when user changes the curve's definition.
+  void onCurveDefinition(bool checked,
+                             curves::CurveDefinition definition);
 
   //! Called when user changes dpi.
   void onDpiChanged(int dpi);
@@ -58,7 +58,7 @@ class MainWindow : public QMainWindow {
   std::shared_ptr<curves::ProfileStore> m_store;
   std::vector<CurveParameter*> m_parameter_widgets;
   std::unique_ptr<curves::Curve> m_curve;
-  curves::Param<curves::CurveInterpretation>* m_curveInterpretationParam{
+  curves::Param<curves::CurveDefinition>* m_curveDefinitionParam{
       nullptr};
   QPalette m_defaultDpiSpinBoxPalette;
   bool m_dpiErrorStateEnabled = false;
@@ -67,7 +67,7 @@ class MainWindow : public QMainWindow {
   //! Wires up control signals, syncs contents with config.
   void connectControls();
 
-  void connectCurveInterpretation();
+  void connectCurveDefinition();
 
   template <bool triggersRedraw, typename SpinBox, typename Value>
   void connectFooterSpinBox(auto& label, SpinBox& spinBox,

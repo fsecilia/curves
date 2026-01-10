@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*
- * Cubic Hermite spline interpolation to approximate sensitivity curves.
+ * Cubic Hermite spline interpolation to approximate transfer functions.
  *
  * Copyright (C) 2025 Frank Secilia
  * Author: Frank Secilia <frank.secilia@gmail.com>
