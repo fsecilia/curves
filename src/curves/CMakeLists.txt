@@ -32,6 +32,10 @@ list(APPEND lib_files
   math/curves/shaping/transition.hpp
   math/curves/shaping/transition_functions/reflected.hpp
   math/curves/shaping/transition_functions/smoother_step_integral.hpp
+  math/curves/spline/segment/construction.hpp
+  math/curves/spline/segment/packing.hpp
+  math/curves/spline/segment/segment.hpp
+  math/curves/spline/segment/view.hpp
   math/curves/synchronous.hpp
   math/curves/transfer_function/curve.hpp
   math/curves/transfer_function/from_gain.hpp
@@ -47,10 +51,6 @@ list(APPEND lib_files
   math/kahan_accumulator.hpp
   math/spline.cpp
   math/spline.hpp
-  math/spline/segment/construction.hpp
-  math/spline/segment/packing.hpp
-  math/spline/segment/segment.hpp
-  math/spline/segment/view.hpp
   math/spline_view.hpp
   numeric_cast.hpp
   ranges.hpp
@@ -92,6 +92,9 @@ list(APPEND unit_tests_files
   math/curves/shaping/transition_functions/reflected_test.cpp
   math/curves/shaping/transition_functions/smoother_step_integral_test.cpp
   math/curves/shaping/transition_test.cpp
+  math/curves/spline/segment/construction_test.cpp
+  math/curves/spline/segment/packing_test.cpp
+  math/curves/spline/segment/view_test.cpp
   math/curves/synchronous_test.cpp
   math/curves/transfer_function/curve_test.cpp
   math/curves/transfer_function/from_gain_test.cpp
@@ -103,9 +106,6 @@ list(APPEND unit_tests_files
   math/io_test.cpp
   math/jet_nested_test.cpp
   math/jet_test.cpp
-  math/spline/segment/construction_test.cpp
-  math/spline/segment/packing_test.cpp
-  math/spline/segment/view_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
   ui/model/flat_visitor_test.cpp

@@ -6,8 +6,8 @@
 
 #include "construction.hpp"
 #include <curves/testing/test.hpp>
-#include <curves/math/spline/segment/packing.hpp>
-#include <curves/math/spline/segment/view.hpp>
+#include <curves/math/curves/spline/segment/packing.hpp>
+#include <curves/math/curves/spline/segment/view.hpp>
 #include <ranges>
 
 namespace curves::segment {
