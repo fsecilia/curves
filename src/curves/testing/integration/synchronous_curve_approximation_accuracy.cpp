@@ -5,10 +5,10 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/curves/synchronous.hpp>
-#include <curves/curves/transfer_function/curve.hpp>
-#include <curves/curves/transfer_function/from_gain.hpp>
-#include <curves/curves/transfer_function/from_sensitivity.hpp>
+#include <curves/math/curves/synchronous.hpp>
+#include <curves/math/curves/transfer_function/curve.hpp>
+#include <curves/math/curves/transfer_function/from_gain.hpp>
+#include <curves/math/curves/transfer_function/from_sensitivity.hpp>
 #include <curves/math/io.hpp>
 #include <curves/math/spline.hpp>
 #include <curves/testing/error_metrics.hpp>

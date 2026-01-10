@@ -5,10 +5,10 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/curves/synchronous.hpp>
+#include <curves/math/curves/synchronous.hpp>
+#include <curves/math/curves/transfer_function/curve.hpp>
 #include <curves/math/io.hpp>
 #include <curves/math/spline.hpp>
-#include <curves/curves/transfer_function/curve.hpp>
 
 namespace curves {
 namespace {

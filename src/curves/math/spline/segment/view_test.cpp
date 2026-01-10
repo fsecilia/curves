@@ -6,7 +6,7 @@
 
 #include "view.hpp"
 #include <curves/testing/test.hpp>
-#include <curves/math/segment/construction.hpp>
+#include <curves/math/spline/segment/construction.hpp>
 
 namespace curves::segment {
 namespace {

@@ -21,10 +21,10 @@
 
 #include <curves/config/profile.hpp>
 #include <curves/config/profile_store.hpp>
-#include <curves/curves/transfer_function/curve.hpp>
-#include <curves/curves/transfer_function/from_gain.hpp>
-#include <curves/curves/transfer_function/from_sensitivity.hpp>
 #include <curves/math/curve.hpp>
+#include <curves/math/curves/transfer_function/curve.hpp>
+#include <curves/math/curves/transfer_function/from_gain.hpp>
+#include <curves/math/curves/transfer_function/from_sensitivity.hpp>
 #include <curves/ui/model/flat_visitor.hpp>
 #include <memory>
 

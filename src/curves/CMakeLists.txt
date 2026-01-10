@@ -21,39 +21,39 @@ list(APPEND lib_files
   config/serialization/toml/reader_adapter.hpp
   config/serialization/toml/writer_adapter.hpp
   config/serialization/writer.hpp
-  curves/synchronous.hpp
-  curves/transfer_function/curve.hpp
-  curves/transfer_function/from_gain.hpp
-  curves/transfer_function/from_sensitivity.hpp
   lib.cpp
   lib.hpp
   math/cached_integral.hpp
   math/curve.hpp
   math/curve_view.hpp
+  math/curves/shaping/ease_in.hpp
+  math/curves/shaping/ease_out.hpp
+  math/curves/shaping/shaped_curve.hpp
+  math/curves/shaping/transition.hpp
+  math/curves/shaping/transition_functions/reflected.hpp
+  math/curves/shaping/transition_functions/smoother_step_integral.hpp
+  math/curves/synchronous.hpp
+  math/curves/transfer_function/curve.hpp
+  math/curves/transfer_function/from_gain.hpp
+  math/curves/transfer_function/from_sensitivity.hpp
   math/fixed.hpp
   math/input_shaping.cpp
   math/input_shaping.hpp
   math/input_shaping_view.hpp
   math/integration.hpp
   math/inverse_function.hpp
-  math/kahan_accumulator.hpp
   math/io.hpp
   math/jet.hpp
-  math/segment/construction.hpp
-  math/segment/packing.hpp
-  math/segment/segment.hpp
-  math/segment/view.hpp
+  math/kahan_accumulator.hpp
   math/spline.cpp
   math/spline.hpp
+  math/spline/segment/construction.hpp
+  math/spline/segment/packing.hpp
+  math/spline/segment/segment.hpp
+  math/spline/segment/view.hpp
   math/spline_view.hpp
   numeric_cast.hpp
   ranges.hpp
-  shaping/ease_in.hpp
-  shaping/ease_out.hpp
-  shaping/shaped_curve.hpp
-  shaping/transition.hpp
-  shaping/transition_functions/reflected.hpp
-  shaping/transition_functions/smoother_step_integral.hpp
   ui/model/flat_visitor.hpp
   ui/model/view_model.hpp
   ui/rendering/spline_evaluator.hpp
@@ -71,10 +71,6 @@ list(APPEND unit_tests_files
   config/serialization/toml/reader_adapter_test.cpp
   config/serialization/toml/writer_adapter_test.cpp
   config/serialization/writer_test.cpp
-  curves/synchronous_test.cpp
-  curves/transfer_function/curve_test.cpp
-  curves/transfer_function/from_gain_test.cpp
-  curves/transfer_function/from_sensitivity_test.cpp
   driver_tests/fixed/add.cpp
   driver_tests/fixed/divide.cpp
   driver_tests/fixed/exp2.cpp
@@ -89,6 +85,17 @@ list(APPEND unit_tests_files
   math/cached_integral_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
+  math/curves/shaping/ease_in_test.cpp
+  math/curves/shaping/ease_out_test.cpp
+  math/curves/shaping/ease_testing.hpp
+  math/curves/shaping/shaped_curve_test.cpp
+  math/curves/shaping/transition_functions/reflected_test.cpp
+  math/curves/shaping/transition_functions/smoother_step_integral_test.cpp
+  math/curves/shaping/transition_test.cpp
+  math/curves/synchronous_test.cpp
+  math/curves/transfer_function/curve_test.cpp
+  math/curves/transfer_function/from_gain_test.cpp
+  math/curves/transfer_function/from_sensitivity_test.cpp
   math/input_shaping_test.cpp
   math/input_shaping_view_test.cpp
   math/integration_test.cpp
@@ -96,18 +103,11 @@ list(APPEND unit_tests_files
   math/io_test.cpp
   math/jet_nested_test.cpp
   math/jet_test.cpp
-  math/segment/construction_test.cpp
-  math/segment/packing_test.cpp
-  math/segment/view_test.cpp
+  math/spline/segment/construction_test.cpp
+  math/spline/segment/packing_test.cpp
+  math/spline/segment/view_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
-  shaping/ease_in_test.cpp
-  shaping/ease_out_test.cpp
-  shaping/ease_testing.hpp
-  shaping/shaped_curve_test.cpp
-  shaping/transition_functions/reflected_test.cpp
-  shaping/transition_functions/smoother_step_integral_test.cpp
-  shaping/transition_test.cpp
   ui/model/flat_visitor_test.cpp
   ui/model/view_model_test.cpp
   ui/rendering/spline_evaluator_test.cpp

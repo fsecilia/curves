@@ -12,7 +12,7 @@
 #include <curves/config/curve.hpp>
 #include <curves/config/enum.hpp>
 #include <curves/config/param.hpp>
-#include <curves/curves/synchronous.hpp>
+#include <curves/math/curves/synchronous.hpp>
 #include <cassert>
 #include <functional>
 #include <string_view>

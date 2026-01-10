@@ -6,9 +6,9 @@
 #include "main_window.hpp"
 #include "ui_main_window.h"
 #include <curves/config/enum.hpp>
-#include <curves/curves/transfer_function/curve.hpp>
 #include <curves/math/curve.hpp>
 #include <curves/math/curve_view.hpp>
+#include <curves/math/curves/transfer_function/curve.hpp>
 #include <curves/math/input_shaping.hpp>
 #include <curves/ui/qt/widgets/curve_parameter/curve_parameter.hpp>
 #include <cassert>

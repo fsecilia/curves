@@ -17,7 +17,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/math/segment/packing.hpp>
+#include <curves/math/spline/segment/packing.hpp>
 #include <algorithm>
 #include <cassert>
 #include <cmath>

@@ -9,7 +9,7 @@
 #pragma once
 
 #include <curves/math/fixed.hpp>
-#include <curves/math/segment/segment.hpp>
+#include <curves/math/spline/segment/segment.hpp>
 
 #include <cstdint>
 

@@ -5,7 +5,7 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/curves/synchronous.hpp>
+#include <curves/math/curves/synchronous.hpp>
 
 namespace curves {
 namespace {

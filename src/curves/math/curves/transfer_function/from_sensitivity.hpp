@@ -9,7 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
-#include <curves/curves/transfer_function/curve.hpp>
+#include <curves/math/curves/transfer_function/curve.hpp>
 #include <curves/math/jet.hpp>
 #include <limits>
 #include <utility>

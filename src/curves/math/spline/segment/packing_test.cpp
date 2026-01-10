@@ -5,9 +5,9 @@
 */
 
 #include <curves/testing/test.hpp>
-#include <curves/math/segment/construction.hpp>
-#include <curves/math/segment/packing.hpp>
-#include <curves/math/segment/segment.hpp>
+#include <curves/math/spline/segment/construction.hpp>
+#include <curves/math/spline/segment/packing.hpp>
+#include <curves/math/spline/segment/segment.hpp>
 #include <random>
 #include <ranges>
 
