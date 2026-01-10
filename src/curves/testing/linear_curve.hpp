@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/testing/test.hpp>
+#include <ranges>
 #include <vector>
 
 namespace curves {
@@ -36,6 +37,13 @@ class LinearCurve {
 
   auto critical_points() const noexcept -> const CriticalPoints& {
     return critical_points_;
+  }
+
+  auto critical_points(Scalar domain_max) const noexcept -> auto {
+    return critical_points_ | std::views::filter([=](const auto& element) {
+             return element <= domain_max;
+           }) |
+           std::ranges::to<std::vector>();
   }
 
  private:
