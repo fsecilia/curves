@@ -84,10 +84,10 @@ class CurveEditor : public QWidget {
   void drawGridY(QPainter& painter, QPen& pen_axis, QPen& pen, qreal start,
                  qreal step);
 
-  curves::Traces m_traces{{curves::Trace{"gain", m_theme.traceThemes[0]},
-                           curves::Trace{"d/dx gain", m_theme.traceThemes[1]},
-                           curves::Trace{"sens", m_theme.traceThemes[2]},
-                           curves::Trace{"d/dx sens", m_theme.traceThemes[3]}}};
+  curves::Traces m_traces{{curves::Trace{"slope", m_theme.traceThemes[0]},
+                           curves::Trace{"curvature", m_theme.traceThemes[1]},
+                           curves::Trace{"scale", m_theme.traceThemes[2]},
+                           curves::Trace{"gradient", m_theme.traceThemes[3]}}};
   curves::LegendRenderer m_legendRenderer;
 
   void drawTraces(QPainter& painter);
