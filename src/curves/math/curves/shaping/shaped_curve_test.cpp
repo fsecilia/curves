@@ -126,7 +126,7 @@ TEST_F(ShapedCurveTest, AggregatesPointsFromAllLayers) {
 
 TEST_F(ShapedCurveTest, FiltersPointsOutsideDomain) {
   // 15.0 will be out of bounds.
-  const auto curve = make_identity({5.0, 15.0});
+  const auto curve = make_identity({5.0, 10.0, 11.0, 15.0});
 
   const auto sut = Sut{curve, make_identity(), make_identity()};
 
@@ -134,8 +134,9 @@ TEST_F(ShapedCurveTest, FiltersPointsOutsideDomain) {
   const auto critical_points = sut.critical_points(10.0);
 
   // 15.0 should be gone.
-  ASSERT_EQ(critical_points.size(), 1);
+  ASSERT_EQ(critical_points.size(), 2);
   EXPECT_DOUBLE_EQ(critical_points[0], 5.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 10.0);
 }
 
 TEST_F(ShapedCurveTest, DeduplicatesClosePoints) {

@@ -40,7 +40,7 @@ class ShapedCurve {
   }
 
   using CriticalPoints = std::vector<Scalar>;
-  auto critical_points(Scalar domain_end) const -> CriticalPoints {
+  auto critical_points(Scalar domain_max) const -> CriticalPoints {
     auto result = CriticalPoints{};
 
     /*
@@ -51,18 +51,18 @@ class ShapedCurve {
     result.reserve(7);
 
     for (const auto ease_out_critical_point : ease_out_.critical_points()) {
-      try_add_critical_point(result, ease_out_critical_point, domain_end);
+      try_add_critical_point(result, ease_out_critical_point, domain_max);
     }
 
     for (const auto ease_in_critical_point : ease_in_.critical_points()) {
       try_add_critical_point(result, ease_out_.inverse(ease_in_critical_point),
-                             domain_end);
+                             domain_max);
     }
 
     for (const auto curve_critical_point : curve_.critical_points()) {
       try_add_critical_point(
           result, ease_out_.inverse(ease_in_.inverse(curve_critical_point)),
-          domain_end);
+          domain_max);
     }
 
     // Sort and deduplicate
@@ -80,14 +80,14 @@ class ShapedCurve {
   [[no_unique_address]] EaseIn ease_in_{};
   [[no_unique_address]] EaseOut ease_out_{};
 
-  auto is_in_domain(Scalar x, Scalar domain_end) const noexcept -> bool {
-    return 0 <= x && x < domain_end;
+  auto is_in_domain(Scalar x, Scalar domain_max) const noexcept -> bool {
+    return 0 <= x && x <= domain_max;
   }
 
   auto try_add_critical_point(CriticalPoints& critical_points,
-                              Scalar critical_point, Scalar domain_end) const
+                              Scalar critical_point, Scalar domain_max) const
       -> void {
-    if (!is_in_domain(critical_point, domain_end)) return;
+    if (!is_in_domain(critical_point, domain_max)) return;
     critical_points.push_back(critical_point);
   }
 };
