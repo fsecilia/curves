@@ -6,6 +6,7 @@
 
 #include "shaped_curve.hpp"
 #include <curves/testing/test.hpp>
+#include <curves/testing/linear_curve.hpp>
 #include <gmock/gmock.h>
 
 namespace curves::shaping {
@@ -14,46 +15,14 @@ namespace {
 struct ShapedCurveTest : Test {
   using Scalar = double;
   using Value = double;
-  using CriticalPoints = std::vector<Scalar>;
+  using Curve = LinearCurve<Scalar>;
+  using CriticalPoints = typename Curve::CriticalPoints;
+  using Sut = ShapedCurve<Scalar, Curve, Curve, Curve>;
 
-  // Simple curve for testing composition. Models `f(x) = mx + b`.
-  class LinearCurve {
-   public:
-    LinearCurve(Scalar m, Scalar b,
-                CriticalPoints critical_points = {}) noexcept
-        : m_{m}, b_{b}, critical_points_{std::move(critical_points)} {}
-
-    // Forward: y = mx + b
-    auto operator()(Value x) const noexcept -> Value { return m_ * x + b_; }
-
-    // Inverse: x = (y - b)/m
-    auto inverse(Value y) const noexcept -> Value { return (y - b_) / m_; }
-
-    auto critical_points() const noexcept -> const CriticalPoints& {
-      return critical_points_;
-    }
-
-   private:
-    Scalar m_{1.0};
-    Scalar b_{0.0};
-    CriticalPoints critical_points_{};
-  };
-
-  auto make_identity(CriticalPoints critical_points = {}) -> LinearCurve {
-    return {1.0, 0.0, std::move(critical_points)};
+  static auto make_identity(CriticalPoints critical_points = {}) noexcept
+      -> Curve {
+    return curves::make_identity<Scalar>(std::move(critical_points));
   }
-
-  auto make_shift(Scalar offset, CriticalPoints critical_points = {})
-      -> LinearCurve {
-    return {1.0, offset, std::move(critical_points)};
-  }
-
-  auto make_scale(Scalar slope, CriticalPoints critical_points = {})
-      -> LinearCurve {
-    return {slope, 0.0, std::move(critical_points)};
-  }
-
-  using Sut = ShapedCurve<Scalar, LinearCurve, LinearCurve, LinearCurve>;
 };
 
 TEST_F(ShapedCurveTest, IdentityCompositionPreservesCriticalPoints) {

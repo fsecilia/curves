@@ -8,6 +8,7 @@ add_library(testing_lib
   error_metrics.hpp
   isqrt.cpp
   isqrt.hpp
+  linear_curve.hpp
   test.cpp
   test.hpp
 )
