@@ -13,6 +13,16 @@
 
 namespace curves::shaping {
 
+//
+//                ________
+//            .-''
+//          /
+//        /
+//      /
+//    /
+//    linear |----| flat
+//         transition
+//
 template <typename Parameter, typename Transition>
 class EaseOut {
  public:

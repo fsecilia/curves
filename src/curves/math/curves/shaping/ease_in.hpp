@@ -13,6 +13,15 @@
 
 namespace curves::shaping {
 
+//
+//                        /
+//                      /
+//                    /
+//                  /
+//    _________..-'
+//       flat |----| linear
+//          transition
+//
 template <typename Parameter, typename Transition>
 class EaseIn {
  public:

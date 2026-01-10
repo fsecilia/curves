@@ -3,6 +3,15 @@
   \file
   \brief Composes a curve over ease-in and ease-out domain warps.
 
+                                     |                  ________
+                              /      |              .-''
+                            /        |            /
+           Ease-In        /          |          /      Ease-Out
+                        /            |        /
+          _________..-'              |      /
+             flat |----| linear      |      linear |----| flat
+                transition           |           transition
+
   \copyright Copyright (C) 2026 Frank Secilia
 */
 
