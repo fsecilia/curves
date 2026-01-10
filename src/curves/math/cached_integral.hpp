@@ -71,7 +71,7 @@ class CachedIntegral {
 class CachedIntegralBuilder {
  public:
   /*!
-    Constructs directly from integral.
+    Caches integral in the domain [0, end] to within tolerance.
 
     \pre critical_points in [0, end]
     \pre critical_points sorted
@@ -106,17 +106,21 @@ class CachedIntegralBuilder {
 
     constexpr int kMaxDepth = 64;
 
+    // Run adaptive quadrature.
     auto total_area = KahanAccumulator<Value>{};
     while (!pending_intervals.empty()) {
+      // Get leftmost pending interval.
       const auto [left, right, coarse, depth] =
           std::move(pending_intervals.back());
       pending_intervals.pop_back();
 
+      // Evaluate integrals for both halves.
       const auto midpoint = std::midpoint(left, right);
       const auto left_integral = integral(left, midpoint);
       const auto right_integral = integral(midpoint, right);
       const auto refined = left_integral + right_integral;
 
+      // Accumulate or subdivide.
       const auto converged = std::abs(refined - coarse) < tolerance;
       if (converged || depth >= kMaxDepth) {
         // Value is within tolerance. Accumulate it.
@@ -130,12 +134,11 @@ class CachedIntegralBuilder {
       }
     }
 
-    using ResultType = CachedIntegral<Value, Integrator>;
-    using Cache = typename ResultType::Cache;
-
-    return ResultType{std::move(integral),
-                      Cache{std::sorted_unique, std::move(boundaries),
-                            std::move(cumulative)}};
+    using Result = CachedIntegral<Value, Integrator>;
+    using Cache = typename Result::Cache;
+    return Result{std::move(integral),
+                  Cache{std::sorted_unique, std::move(boundaries),
+                        std::move(cumulative)}};
   }
 };
 
