@@ -26,23 +26,23 @@ namespace curves {
 // ----------------------------------------------------------------------------
 
 //! Calculates integrals using cached samples + residuals.
-template <typename Value, typename Integral>
+template <typename Scalar, typename Integral>
 class CachedIntegral {
  public:
   //! Maps sample locations to prefix sums at those locations.
-  using Cache = std::flat_map<Value, Value>;
+  using Cache = std::flat_map<Scalar, Scalar>;
 
   CachedIntegral(Integral integral, Cache cache) noexcept
       : integral_{std::move(integral)}, cache_{std::move(cache)} {
     assert(!cache_.empty() && "CachedIntegral: empty boundaries");
-    assert(cache_.keys().front() == Value{0} &&
+    assert(cache_.keys().front() == Scalar{0} &&
            "CachedIntegral: sample locations must start at 0");
-    assert(cache_.values().front() == Value{0} &&
+    assert(cache_.values().front() == Scalar{0} &&
            "CachedIntegral: prefix sums must start at 0");
   }
 
   //! \returns integral from 0 to location
-  auto operator()(Value location) const noexcept -> Value {
+  auto operator()(Scalar location) const noexcept -> Scalar {
     assert(cache_.keys().front() <= location &&
            location <= cache_.keys().back() && "CachedIntegral: domain error");
 
@@ -52,7 +52,7 @@ class CachedIntegral {
   }
 
   //! \returns integral from left to right
-  auto operator()(Value left, Value right) const noexcept -> Value {
+  auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
     return operator()(right) - operator()(left);
   }
 
@@ -76,17 +76,17 @@ class CachedIntegralBuilder {
     \pre critical_points in [0, end]
     \pre critical_points sorted
   */
-  template <typename Value, typename Integrator>
-  auto operator()(Integrator integral, Value end, Value tolerance,
+  template <typename Scalar, typename Integrator>
+  auto operator()(Integrator integral, Scalar end, Scalar tolerance,
                   const ScalarRange auto& critical_points) const noexcept
-      -> CachedIntegral<Value, Integrator> {
-    auto boundaries = std::vector<Value>{0};
-    auto cumulative = std::vector<Value>{0};
+      -> CachedIntegral<Scalar, Integrator> {
+    auto boundaries = std::vector<Scalar>{0};
+    auto cumulative = std::vector<Scalar>{0};
 
     struct Interval {
-      Value left;
-      Value right;
-      Value integral_sum;
+      Scalar left;
+      Scalar right;
+      Scalar integral_sum;
       int_t depth;
     };
     auto pending_intervals = std::vector<Interval>{};
@@ -102,12 +102,12 @@ class CachedIntegralBuilder {
       seed_interval_end = critical_point;
     }
     pending_intervals.emplace_back(0, seed_interval_end,
-                                   integral(Value{0}, seed_interval_end), 0);
+                                   integral(Scalar{0}, seed_interval_end), 0);
 
     constexpr int kMaxDepth = 64;
 
     // Run adaptive quadrature.
-    auto total_area = KahanAccumulator<Value>{};
+    auto total_area = KahanAccumulator<Scalar>{};
     while (!pending_intervals.empty()) {
       // Get leftmost pending interval.
       const auto [left, right, coarse, depth] =
@@ -134,7 +134,7 @@ class CachedIntegralBuilder {
       }
     }
 
-    using Result = CachedIntegral<Value, Integrator>;
+    using Result = CachedIntegral<Scalar, Integrator>;
     using Cache = typename Result::Cache;
     return Result{std::move(integral),
                   Cache{std::sorted_unique, std::move(boundaries),

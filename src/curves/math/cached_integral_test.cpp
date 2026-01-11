@@ -11,11 +11,11 @@
 namespace curves {
 namespace {
 
-using Value = double;
+using Scalar = double;
 
-constexpr auto empty_critical_points = std::array<Value, 0>{};
+constexpr auto empty_critical_points = std::array<Scalar, 0>{};
 
-using ScalarFunction = std::function<Value(Value)>;
+using ScalarFunction = std::function<Scalar(Scalar)>;
 
 // Generic Oracle; uses std::function to hold f(x) and F(x).
 struct Oracle {
@@ -35,7 +35,7 @@ struct Oracle {
 struct CachedIntegralTest : Test {
   using Integral = ComposedIntegral<ScalarFunction, Gauss5>;
   using Builder = CachedIntegralBuilder;
-  using Sut = CachedIntegral<Value, Integral>;
+  using Sut = CachedIntegral<Scalar, Integral>;
 };
 
 // ============================================================================
@@ -44,8 +44,8 @@ struct CachedIntegralTest : Test {
 
 struct AnalyticTestVector {
   Oracle oracle;
-  Value range_end;
-  Value tolerance;
+  Scalar range_end;
+  Scalar tolerance;
 };
 
 struct CachedIntegralAnalyticTest : CachedIntegralTest,
@@ -66,7 +66,7 @@ struct CachedIntegralAnalyticTest : CachedIntegralTest,
 
     We need to start testing in ulps.
   */
-  const Value max_error =
+  const Scalar max_error =
       GetParam().tolerance * cached_integral.cache().size() * 100;
 };
 
@@ -91,14 +91,14 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
 }
 
 // Define Oracles
-const Oracle kLinear = {"Linear", [](Value x) { return x; },
-                        [](Value x) { return 0.5 * x * x; }};
+const Oracle kLinear = {"Linear", [](Scalar x) { return x; },
+                        [](Scalar x) { return 0.5 * x * x; }};
 
-const Oracle kCubic = {"Cubic", [](Value x) { return x * x * x; },
-                       [](Value x) { return 0.25 * x * x * x * x; }};
+const Oracle kCubic = {"Cubic", [](Scalar x) { return x * x * x; },
+                       [](Scalar x) { return 0.25 * x * x * x * x; }};
 
-const Oracle kCos = {"Cos", [](Value x) { return std::cos(x); },
-                     [](Value x) { return std::sin(x); }};
+const Oracle kCos = {"Cos", [](Scalar x) { return std::cos(x); },
+                     [](Scalar x) { return std::sin(x); }};
 
 INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
                          Values(AnalyticTestVector{kLinear, 10.0, 1e-16},
@@ -110,12 +110,12 @@ INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
 // ============================================================================
 
 struct CachedIntegralSingularityTest : CachedIntegralTest {
-  static constexpr auto end = Value{1.0};
-  static constexpr auto tol = Value{1e-10};
+  static constexpr auto end = Scalar{1.0};
+  static constexpr auto tol = Scalar{1e-10};
 
   // f(x) = x^0.3 - Has a singularity in derivative at 0.
-  static constexpr auto gamma = Value{0.3};
-  static constexpr auto f = [](Value x) { return std::pow(x, gamma); };
+  static constexpr auto gamma = Scalar{0.3};
+  static constexpr auto f = [](Scalar x) { return std::pow(x, gamma); };
 
   const Sut cached =
       Builder{}(Integral{f, Gauss5{}}, end, tol, empty_critical_points);
