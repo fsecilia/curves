@@ -62,6 +62,9 @@ using std::tanh;
 template <typename T>
 concept Arithmetic = std::is_arithmetic_v<T>;
 
+template <typename Jet>
+concept IsJet = !std::same_as<Jet, decltype(primal(std::declval<const Jet>()))>;
+
 // ----------------------------------------------------------------------------
 // Scalar Fallbacks
 // ----------------------------------------------------------------------------
