@@ -15,7 +15,53 @@ namespace {
 struct FromVelocityScaleTest : Test {
   using Scalar = double;
   using Jet = math::Jet<Scalar>;
+};
 
+// ----------------------------------------------------------------------------
+// Derivative Near 0
+// ----------------------------------------------------------------------------
+
+struct FromVelocityScaleTestDerivativeNear0 : FromVelocityScaleTest {
+  static constexpr auto jet_result = Jet{3, 5};
+  static constexpr auto scalar_result = Scalar{7};
+
+  struct Curve {
+    using Scalar = Scalar;
+
+    auto operator()(Jet) const noexcept -> Jet { return jet_result; }
+    auto operator()(Scalar) const noexcept -> Scalar { return scalar_result; }
+  };
+  Curve curve;
+
+  using Sut = FromVelocityScale<Curve>;
+  const Sut sut{curve};
+};
+
+TEST_F(FromVelocityScaleTestDerivativeNear0,
+       ScalarAwayFrom0UsesScalarEvaluation) {
+  EXPECT_EQ(scalar_result, sut(1.0));
+}
+
+TEST_F(FromVelocityScaleTestDerivativeNear0,
+       ScalarAtFrom0UsesScalarEvaluation) {
+  EXPECT_EQ(0.0, sut(0.0));
+}
+
+TEST_F(FromVelocityScaleTestDerivativeNear0, JetAwayFrom0UsesJetEvaluation) {
+  EXPECT_EQ((Jet{jet_result.a, jet_result.a + jet_result.v}),
+            sut(Jet{1.0, 1.0}));
+}
+
+TEST_F(FromVelocityScaleTestDerivativeNear0, JetAt0UsesLimitDefinition) {
+  const auto derivative = Scalar{3};
+  EXPECT_EQ((Jet{0.0, scalar_result * derivative}), sut(Jet{0.0, derivative}));
+}
+
+// ----------------------------------------------------------------------------
+// Linear Curve
+// ----------------------------------------------------------------------------
+
+struct FromVelocityScaleTestLinear : FromVelocityScaleTest {
   // Arbitrary, nondegenerate curve, y = 3x + 5.
   using Curve = LinearCurve<Scalar>;
   using CriticalPoints = Curve::CriticalPoints;
@@ -27,7 +73,7 @@ struct FromVelocityScaleTest : Test {
   const Sut sut{curve};
 };
 
-TEST_F(FromVelocityScaleTest, PropagatesJet) {
+TEST_F(FromVelocityScaleTestLinear, ExerciseJetAt0) {
   const auto v = Jet{7, 11};
 
   /*
@@ -47,7 +93,27 @@ TEST_F(FromVelocityScaleTest, PropagatesJet) {
   EXPECT_DOUBLE_EQ(expected.v, actual.v);
 }
 
-TEST_F(FromVelocityScaleTest, ForwardsCriticalPoints) {
+TEST_F(FromVelocityScaleTestLinear, PropagatesJet) {
+  const auto v = Jet{7, 11};
+
+  /*
+    v = {7, 11}
+    S(v) = 3v + 5
+    S'(v) = 3v
+    T(v) = vS(v) = v(3v + 5)
+      = 7(3*7 + 5) = 182
+    T'(v) = v'S(v) + vS'(v) = v'(3v + 5) + v(3v') = 6vv' + 5v'
+      = 6*7*11 + 5*11 = 517
+  */
+  const auto expected = Jet{182, 517};
+
+  auto actual = sut(v);
+
+  EXPECT_DOUBLE_EQ(expected.a, actual.a);
+  EXPECT_DOUBLE_EQ(expected.v, actual.v);
+}
+
+TEST_F(FromVelocityScaleTestLinear, ForwardsCriticalPoints) {
   const auto domain_max = 100;  // Includes only knots <= 100.
   const auto expected = CriticalPoints{73, 79};
 
