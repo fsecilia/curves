@@ -26,11 +26,10 @@ namespace curves {
 // ----------------------------------------------------------------------------
 
 //! Calculates integrals using cached samples + residuals.
-template <typename ScalarType, typename IntegralType>
+template <typename Integral>
 class CachedIntegral {
  public:
-  using Scalar = ScalarType;
-  using Integral = IntegralType;
+  using Scalar = Integral::Scalar;
 
   //! Maps sample locations to prefix sums at those locations.
   using Cache = std::flat_map<Scalar, Scalar>;
@@ -79,10 +78,14 @@ class CachedIntegralBuilder {
     \pre critical_points in [0, max]
     \pre critical_points sorted
   */
-  template <typename Scalar, typename Integral>
-  auto operator()(Integral integral, Scalar max, Scalar tolerance,
-                  const CompatibleRange<Scalar> auto& critical_points)
-      const noexcept -> CachedIntegral<Scalar, Integral> {
+  template <typename Integral>
+  auto operator()(Integral integral, Integral::Scalar max,
+                  Integral::Scalar tolerance,
+                  const CompatibleRange<typename Integral::Scalar> auto&
+                      critical_points) const noexcept
+      -> CachedIntegral<Integral> {
+    using Scalar = Integral::Scalar;
+
     auto boundaries = std::vector<Scalar>{0};
     auto cumulative = std::vector<Scalar>{0};
 
@@ -137,7 +140,7 @@ class CachedIntegralBuilder {
       }
     }
 
-    using Result = CachedIntegral<Scalar, Integral>;
+    using Result = CachedIntegral<Integral>;
     using Cache = typename Result::Cache;
     return Result{std::move(integral),
                   Cache{std::sorted_unique, std::move(boundaries),
@@ -152,6 +155,8 @@ class CachedIntegralBuilder {
 //! Adapts a numerical integrator around a function to present an integral.
 template <typename Function, typename Integrator>
 struct ComposedIntegral {
+  using Scalar = Function::Scalar;
+
   Function function;
   Integrator integrator;
 

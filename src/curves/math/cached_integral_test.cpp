@@ -15,10 +15,16 @@ using Scalar = double;
 
 constexpr auto empty_critical_points = std::array<Scalar, 0>{};
 
-using ScalarFunction = std::function<Scalar(Scalar)>;
+struct ScalarFunction {
+  using Scalar = Scalar;
+  std::function<Scalar(Scalar)> function;
+  auto operator()(Scalar x) const noexcept -> Scalar { return function(x); };
+};
 
 // Generic Oracle; uses std::function to hold f(x) and F(x).
 struct Oracle {
+  using Scalar = Scalar;
+
   std::string name;
   ScalarFunction f;  // Function being integrated.
   ScalarFunction F;  // Analytical antiderivative.
@@ -35,7 +41,7 @@ struct Oracle {
 struct CachedIntegralTest : Test {
   using Integral = ComposedIntegral<ScalarFunction, Gauss5>;
   using Builder = CachedIntegralBuilder;
-  using Sut = CachedIntegral<Scalar, Integral>;
+  using Sut = CachedIntegral<Integral>;
 };
 
 // ============================================================================
@@ -91,14 +97,17 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
 }
 
 // Define Oracles
-const Oracle kLinear = {"Linear", [](Scalar x) { return x; },
-                        [](Scalar x) { return 0.5 * x * x; }};
+const Oracle kLinear = {"Linear", {[](Scalar x) { return x; }}, {[](Scalar x) {
+                          return 0.5 * x * x;
+                        }}};
 
-const Oracle kCubic = {"Cubic", [](Scalar x) { return x * x * x; },
-                       [](Scalar x) { return 0.25 * x * x * x * x; }};
+const Oracle kCubic = {"Cubic",
+                       {[](Scalar x) { return x * x * x; }},
+                       {[](Scalar x) { return 0.25 * x * x * x * x; }}};
 
-const Oracle kCos = {"Cos", [](Scalar x) { return std::cos(x); },
-                     [](Scalar x) { return std::sin(x); }};
+const Oracle kCos = {"Cos",
+                     {[](Scalar x) { return std::cos(x); }},
+                     {[](Scalar x) { return std::sin(x); }}};
 
 INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
                          Values(AnalyticTestVector{kLinear, 10.0, 1e-16},
@@ -115,7 +124,8 @@ struct CachedIntegralSingularityTest : CachedIntegralTest {
 
   // f(x) = x^0.3 - Has a singularity in derivative at 0.
   static constexpr auto gamma = Scalar{0.3};
-  static constexpr auto f = [](Scalar x) { return std::pow(x, gamma); };
+  inline static const auto f =
+      ScalarFunction{[](Scalar x) { return std::pow(x, gamma); }};
 
   const Sut cached =
       Builder{}(Integral{f, Gauss5{}}, end, tol, empty_critical_points);
@@ -163,7 +173,7 @@ struct CachedIntegralBehaviorTest : CachedIntegralTest {};
 
 TEST_F(CachedIntegralBehaviorTest, CriticalPointsAreRespected) {
   // Use a simple linear function which won't subdivide much.
-  auto f = [](double x) { return x; };
+  auto f = ScalarFunction{[](double x) { return x; }};
 
   // Force a split at known location.
   const auto critical_point = 0.555;
