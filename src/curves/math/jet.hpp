@@ -103,8 +103,10 @@ constexpr auto derivative(const Element&) noexcept -> Element {
   a jet<jet<T>> introduces a second, distinct infinitesimal unit, and the
   composition represents the original jet and its 2nd derivative.
 */
-template <typename Element = real_t>
+template <typename ElementType = real_t>
 struct Jet {
+  using Element = ElementType;
+
   Element a{0};
   Element v{0};
 
