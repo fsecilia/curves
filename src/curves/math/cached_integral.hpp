@@ -74,13 +74,13 @@ class CachedIntegral {
 class CachedIntegralBuilder {
  public:
   /*!
-    Caches integral in the domain [0, end] to within tolerance.
+    Caches integral in the domain [0, max] to within tolerance.
 
-    \pre critical_points in [0, end]
+    \pre critical_points in [0, max]
     \pre critical_points sorted
   */
   template <typename Scalar, typename Integral>
-  auto operator()(Integral integral, Scalar end, Scalar tolerance,
+  auto operator()(Integral integral, Scalar max, Scalar tolerance,
                   const CompatibleRange<Scalar> auto& critical_points)
       const noexcept -> CachedIntegral<Scalar, Integral> {
     auto boundaries = std::vector<Scalar>{0};
@@ -95,17 +95,17 @@ class CachedIntegralBuilder {
     auto pending_intervals = std::vector<Interval>{};
 
     // Seed pending intervals from critical points.
-    auto seed_interval_end = end;
+    auto seed_interval_max = max;
     for (const auto critical_point : std::views::reverse(critical_points)) {
-      assert(critical_point < seed_interval_end &&
+      assert(critical_point < seed_interval_max &&
              "CachedIntegralBuilder: Critical points must be sorted");
       pending_intervals.emplace_back(
-          critical_point, seed_interval_end,
-          integral(critical_point, seed_interval_end), 0);
-      seed_interval_end = critical_point;
+          critical_point, seed_interval_max,
+          integral(critical_point, seed_interval_max), 0);
+      seed_interval_max = critical_point;
     }
-    pending_intervals.emplace_back(0, seed_interval_end,
-                                   integral(Scalar{0}, seed_interval_end), 0);
+    pending_intervals.emplace_back(0, seed_interval_max,
+                                   integral(Scalar{0}, seed_interval_max), 0);
 
     static constexpr auto kMaxDepth = 64;
 
