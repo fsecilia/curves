@@ -26,9 +26,12 @@ namespace curves {
 // ----------------------------------------------------------------------------
 
 //! Calculates integrals using cached samples + residuals.
-template <typename Scalar, typename Integral>
+template <typename ScalarType, typename IntegralType>
 class CachedIntegral {
  public:
+  using Scalar = ScalarType;
+  using Integral = IntegralType;
+
   //! Maps sample locations to prefix sums at those locations.
   using Cache = std::flat_map<Scalar, Scalar>;
 
