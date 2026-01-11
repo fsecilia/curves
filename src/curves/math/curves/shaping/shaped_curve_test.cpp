@@ -17,7 +17,7 @@ struct ShapedCurveTest : Test {
   using Value = double;
   using Curve = LinearCurve<Scalar>;
   using CriticalPoints = typename Curve::CriticalPoints;
-  using Sut = ShapedCurve<Scalar, Curve, Curve, Curve>;
+  using Sut = ShapedCurve<Curve, Curve, Curve>;
 
   static auto make_identity(CriticalPoints critical_points = {}) noexcept
       -> Curve {

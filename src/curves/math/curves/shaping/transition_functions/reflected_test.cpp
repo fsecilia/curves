@@ -11,13 +11,13 @@
 namespace curves::shaping::transition_functions {
 namespace {
 
-using Parameter = double;
-using Jet = math::Jet<Parameter>;
+using Scalar = double;
+using Jet = math::Jet<Scalar>;
 
 static constexpr auto m = 2.1;
 static constexpr auto x0 = 13.5;
 
-const Parameter test_vectors[] = {
+const Scalar test_vectors[] = {
     0.0 / 4, 1.0 / 4, 2.0 / 4, 3.0 / 4, 4.0 / 4,
 };
 
@@ -26,7 +26,9 @@ const Parameter test_vectors[] = {
 // ============================================================================
 
 struct LinearTransitionFunction {
-  constexpr auto at_1() const noexcept -> Parameter { return m * (1 - x0); }
+  using Scalar = Scalar;
+
+  constexpr auto at_1() const noexcept -> Scalar { return m * (1 - x0); }
 
   template <typename Value>
   constexpr auto operator()(const Value& t) const noexcept -> Value {
@@ -55,7 +57,7 @@ TEST_F(ReflectedTransitionTest, at_1) {
 // ----------------------------------------------------------------------------
 
 struct ReflectedTransitionParameterizedTest : ReflectedTransitionTest,
-                                              WithParamInterface<Parameter> {};
+                                              WithParamInterface<Scalar> {};
 
 TEST_P(ReflectedTransitionParameterizedTest, evaluate) {
   const auto x = Jet{GetParam(), 1.0};

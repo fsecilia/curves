@@ -26,9 +26,11 @@ namespace curves::shaping {
 /*!
   Composes curve over ease-in and ease-out.
 */
-template <typename Scalar, typename Curve, typename EaseIn, typename EaseOut>
+template <typename Curve, typename EaseIn, typename EaseOut>
 class ShapedCurve {
  public:
+  using Scalar = Curve::Scalar;
+
   ShapedCurve(Curve curve, EaseIn ease_in, EaseOut ease_out) noexcept
       : curve_{std::move(curve)},
         ease_in_{std::move(ease_in)},

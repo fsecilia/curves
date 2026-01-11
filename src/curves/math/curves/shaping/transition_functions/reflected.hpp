@@ -18,6 +18,8 @@ namespace curves::shaping::transition_functions {
 */
 template <typename TransitionFunction>
 struct Reflected {
+  using Scalar = TransitionFunction::Scalar;
+
   [[no_unique_address]] TransitionFunction transition_function;
 
   /*!

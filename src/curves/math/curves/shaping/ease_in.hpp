@@ -22,9 +22,11 @@ namespace curves::shaping {
 //       flat |----| linear
 //          transition
 //
-template <typename Parameter, typename Transition>
+template <typename Transition>
 class EaseIn {
  public:
+  using Scalar = Transition::Scalar;
+
   explicit constexpr EaseIn(Transition transition) noexcept
       : lag_{transition.x0() + transition.width() - transition.height()},
         transition_{std::move(transition)} {}
@@ -43,7 +45,7 @@ class EaseIn {
     return transition_(x);
   }
 
-  constexpr auto inverse(Parameter y) const noexcept -> Parameter {
+  constexpr auto inverse(Scalar y) const noexcept -> Scalar {
     // Flat segment.
     if (y <= 0) return transition_.x0();
 
@@ -54,13 +56,13 @@ class EaseIn {
     return transition_.inverse(y);
   }
 
-  constexpr auto critical_points() const noexcept -> std::array<Parameter, 2> {
+  constexpr auto critical_points() const noexcept -> std::array<Scalar, 2> {
     const auto x0 = transition_.x0();
     return {x0, x0 + transition_.width()};
   }
 
  private:
-  Parameter lag_;
+  Scalar lag_;
   [[no_unique_address]] Transition transition_;
 };
 

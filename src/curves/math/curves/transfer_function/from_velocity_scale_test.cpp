@@ -23,7 +23,7 @@ struct FromVelocityScaleTest : Test {
   CriticalPoints critical_points{73, 79, 179, 181};
   Curve curve{3, 5, critical_points};
 
-  using Sut = FromVelocityScale<Scalar, Curve>;
+  using Sut = FromVelocityScale<Curve>;
   const Sut sut{curve};
 };
 

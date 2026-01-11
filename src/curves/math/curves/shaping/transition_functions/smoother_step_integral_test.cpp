@@ -17,11 +17,11 @@ namespace {
 // ============================================================================
 
 struct SmootherStepIntegralTest : Test {
-  using Parameter = double;
+  using Scalar = double;
 
   static constexpr auto kEpsilon = 1e-15;
 
-  using Sut = SmootherStepIntegral<Parameter>;
+  using Sut = SmootherStepIntegral<Scalar>;
   static constexpr Sut sut{};
 };
 

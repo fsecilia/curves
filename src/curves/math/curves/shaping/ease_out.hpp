@@ -23,9 +23,11 @@ namespace curves::shaping {
 //    linear |----| flat
 //         transition
 //
-template <typename Parameter, typename Transition>
+template <typename Transition>
 class EaseOut {
  public:
+  using Scalar = Transition::Scalar;
+
   explicit constexpr EaseOut(Transition transition) noexcept
       : ceiling_{transition.x0() + transition.height()},
         transition_{std::move(transition)} {}
@@ -44,7 +46,7 @@ class EaseOut {
     return transition_(x) + x0;
   }
 
-  constexpr auto inverse(Parameter y) const noexcept -> Parameter {
+  constexpr auto inverse(Scalar y) const noexcept -> Scalar {
     // Linear segment.
     if (y <= transition_.x0()) return y;
 
@@ -55,13 +57,13 @@ class EaseOut {
     return transition_.inverse(y - transition_.x0());
   }
 
-  constexpr auto critical_points() const noexcept -> std::array<Parameter, 2> {
+  constexpr auto critical_points() const noexcept -> std::array<Scalar, 2> {
     const auto x0 = transition_.x0();
     return {x0, x0 + transition_.width()};
   }
 
  private:
-  Parameter ceiling_;
+  Scalar ceiling_;
   [[no_unique_address]] Transition transition_;
 };
 

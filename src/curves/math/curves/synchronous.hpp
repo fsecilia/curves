@@ -17,21 +17,20 @@
 
 namespace curves {
 
-template <typename Parameter>
+template <typename Scalar>
 class Synchronous {
  public:
   Synchronous() noexcept
-      : Synchronous{Parameter{1.5}, Parameter{1}, Parameter{5.0},
-                    Parameter{0.5}} {}
+      : Synchronous{Scalar{1.5}, Scalar{1}, Scalar{5.0}, Scalar{0.5}} {}
 
-  Synchronous(Parameter m, Parameter g, Parameter p, Parameter k) noexcept
+  Synchronous(Scalar m, Scalar g, Scalar p, Scalar k) noexcept
       : m_{m},
         l_{math::log(m)},
         g_{g / l_},
         p_{p},
-        k_{math::min(k == Parameter{0} ? Parameter{32} : Parameter{0.5} / k,
-                     Parameter{32})},
-        r_{Parameter{1} / k_} {}
+        k_{math::min(k == Scalar{0} ? Scalar{32} : Scalar{0.5} / k,
+                     Scalar{32})},
+        r_{Scalar{1} / k_} {}
 
   template <typename Value>
   auto operator()(Value x) const noexcept -> Value {
@@ -53,12 +52,12 @@ class Synchronous {
     return exp(copysign(l_, u) * pow(w, r_));
   }
 
-  auto critical_points() const noexcept -> std::array<Parameter, 1> {
+  auto critical_points() const noexcept -> std::array<Scalar, 1> {
     return {p_};
   }
 
  private:
-  static constexpr auto kCuspApproximationDistance = Parameter{1e-7};
+  static constexpr auto kCuspApproximationDistance = Scalar{1e-7};
 
   real_t m_;
   real_t l_;

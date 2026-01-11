@@ -22,14 +22,16 @@ namespace curves::shaping {
   [0, 1). They must go through (0, 0) with slope 0 and have slope 1 at x=1,
   but may go through any y at x=1.
 */
-template <typename Parameter, typename TransitionFunction, typename Inverter>
+template <typename TransitionFunction, typename Inverter>
 class Transition {
  public:
-  constexpr Transition(Parameter x0, Parameter width,
+  using Scalar = TransitionFunction::Scalar;
+
+  constexpr Transition(Scalar x0, Scalar width,
                        TransitionFunction transition_function,
                        Inverter inverter) noexcept
       : x0_{x0},
-        inv_width_{Parameter{1} / width},
+        inv_width_{Scalar{1} / width},
         scale_{width},
         transition_function_{std::move(transition_function)},
         inverter_{std::move(inverter)} {}
@@ -40,7 +42,7 @@ class Transition {
   */
   template <typename Value>
   constexpr auto operator()(const Value& x) const noexcept -> Value {
-    assert(scale_ != Parameter{0} && "Transition domain error");
+    assert(scale_ != Scalar{0} && "Transition domain error");
 
     // Reduce to [0, 1).
     const auto x_normalized = (x - Value{x0_}) * Value{inv_width_};
@@ -54,7 +56,7 @@ class Transition {
 
   template <typename Value>
   constexpr auto inverse(const Value& y) const noexcept -> Value {
-    assert(scale_ != Parameter{0} && "Transition domain error");
+    assert(scale_ != Scalar{0} && "Transition domain error");
 
     // Reduce to [0, 1).
     const auto y_normalized = y * Value{inv_width_};
@@ -66,14 +68,14 @@ class Transition {
     return (x_normalized * Value{scale_}) + Value{x0_};
   }
 
-  constexpr auto x0() const noexcept -> Parameter { return x0_; }
+  constexpr auto x0() const noexcept -> Scalar { return x0_; }
 
-  constexpr auto width() const noexcept -> Parameter {
+  constexpr auto width() const noexcept -> Scalar {
     // Scale is uniform in width and height.
     return scale_;
   }
 
-  constexpr auto height() const noexcept -> Parameter {
+  constexpr auto height() const noexcept -> Scalar {
     return scale_ * transition_function_.at_1();
   }
 
@@ -88,13 +90,13 @@ class Transition {
 
  private:
   //! Beginning of transition.
-  Parameter x0_;
+  Scalar x0_;
 
   //! Reciprocal of width of transition.
-  Parameter inv_width_;
+  Scalar inv_width_;
 
   //! Uniform output scale to match input width 1:1.
-  Parameter scale_;
+  Scalar scale_;
 
   //! Actual easing implementation.
   [[no_unique_address]] TransitionFunction transition_function_;

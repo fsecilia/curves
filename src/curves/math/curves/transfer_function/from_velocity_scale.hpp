@@ -15,9 +15,11 @@
 namespace curves::transfer_function {
 
 //! Transforms curve to return x*f(x).
-template <typename Scalar, typename Curve>
+template <typename Curve>
 class FromVelocityScale {
  public:
+  using Scalar = Curve::Scalar;
+
   explicit FromVelocityScale(Curve curve) noexcept : curve_{std::move(curve)} {}
 
   template <typename Value>

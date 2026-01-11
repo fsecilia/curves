@@ -12,14 +12,14 @@
 namespace curves::shaping {
 namespace {
 
-using Parameter = double;
-using Jet = math::Jet<Parameter>;
+using Scalar = double;
+using Jet = math::Jet<Scalar>;
 
 static constexpr auto m = 2.1;
 static constexpr auto x0 = 10.0;
 static constexpr auto width = 5.0;
 
-const Parameter test_vectors[] = {
+const Scalar test_vectors[] = {
     0.0 / 4, 1.0 / 4, 2.0 / 4, 3.0 / 4, 4.0 / 4,
 };
 
@@ -29,7 +29,9 @@ const Parameter test_vectors[] = {
 
 struct TransitionTest : Test {
   struct TransitionFunction {
-    constexpr auto at_1() const noexcept -> Parameter { return m; }
+    using Scalar = Scalar;
+
+    constexpr auto at_1() const noexcept -> Scalar { return m; }
 
     template <typename Value>
     constexpr auto operator()(const Value& t) const noexcept -> Value {
@@ -38,7 +40,7 @@ struct TransitionTest : Test {
   };
 
   struct MockInverter {
-    MOCK_METHOD(double, call, (const TransitionFunction&, double y),
+    MOCK_METHOD(Scalar, call, (const TransitionFunction&, Scalar y),
                 (const, noexcept));
     virtual ~MockInverter() = default;
   };
@@ -46,14 +48,14 @@ struct TransitionTest : Test {
 
   struct Inverter {
     auto operator()(const TransitionFunction& transition_function,
-                    double y) const noexcept -> double {
+                    Scalar y) const noexcept -> Scalar {
       return mock->call(transition_function, y);
     }
 
     MockInverter* mock = nullptr;
   };
 
-  using Sut = Transition<Parameter, TransitionFunction, Inverter>;
+  using Sut = Transition<TransitionFunction, Inverter>;
 };
 
 // ============================================================================
@@ -93,7 +95,7 @@ TEST_F(TransitionTestProperties, Inverter) {
 // ----------------------------------------------------------------------------
 
 struct TransitionParameterizedTest : TransitionTestValidInstance,
-                                     WithParamInterface<Parameter> {};
+                                     WithParamInterface<Scalar> {};
 
 TEST_P(TransitionParameterizedTest, Evaluate) {
   const auto x = Jet{GetParam(), 1.0};

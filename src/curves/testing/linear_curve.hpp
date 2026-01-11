@@ -15,9 +15,10 @@
 namespace curves {
 
 // Simple curve for testing composed curves. Models `f(x) = mx + b`.
-template <typename Scalar>
+template <typename ScalarType>
 class LinearCurve {
  public:
+  using Scalar = ScalarType;
   using CriticalPoints = std::vector<Scalar>;
 
   LinearCurve(Scalar m, Scalar b, CriticalPoints critical_points = {}) noexcept
