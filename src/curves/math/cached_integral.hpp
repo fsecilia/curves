@@ -79,10 +79,10 @@ class CachedIntegralBuilder {
     \pre critical_points in [0, end]
     \pre critical_points sorted
   */
-  template <typename Scalar, typename Integrator>
-  auto operator()(Integrator integral, Scalar end, Scalar tolerance,
-                  const ScalarRange auto& critical_points) const noexcept
-      -> CachedIntegral<Scalar, Integrator> {
+  template <typename Scalar, typename Integral>
+  auto operator()(Integral integral, Scalar end, Scalar tolerance,
+                  const CompatibleRange<Scalar> auto& critical_points)
+      const noexcept -> CachedIntegral<Scalar, Integral> {
     auto boundaries = std::vector<Scalar>{0};
     auto cumulative = std::vector<Scalar>{0};
 
@@ -137,7 +137,7 @@ class CachedIntegralBuilder {
       }
     }
 
-    using Result = CachedIntegral<Scalar, Integrator>;
+    using Result = CachedIntegral<Scalar, Integral>;
     using Cache = typename Result::Cache;
     return Result{std::move(integral),
                   Cache{std::sorted_unique, std::move(boundaries),
