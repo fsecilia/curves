@@ -18,4 +18,9 @@ template <typename Range>
 concept ScalarRange = std::ranges::range<Range> &&
                       std::floating_point<std::ranges::range_value_t<Range>>;
 
+template <typename Range, typename Value>
+concept CompatibleRange =
+    std::ranges::range<Range> &&
+    std::convertible_to<Value, std::ranges::range_value_t<Range>>;
+
 }  // namespace curves
