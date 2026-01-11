@@ -153,17 +153,17 @@ class CachedIntegralBuilder {
 // Integrals
 // ----------------------------------------------------------------------------
 
-//! Adapts a numerical integrator around a function to present an integral.
-template <typename Function, typename Integrator>
+//! Adapts a numerical integrator around an integrand to present an integral.
+template <typename Integrand, typename Integrator>
 struct ComposedIntegral {
-  using Scalar = Function::Scalar;
+  using Scalar = Integrand::Scalar;
 
-  Function function;
+  Integrand integrand;
   Integrator integrator;
 
   template <typename Value>
   auto operator()(Value left, Value right) const noexcept -> Value {
-    return integrator(function, left, right);
+    return integrator(integrand, left, right);
   }
 };
 

@@ -100,9 +100,10 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
 }
 
 TEST_P(CachedIntegralAnalyticTest, Integral) {
+  // Make sure integrand matches original function.
   for (const auto x : test_points) {
     const auto expected = f(x);
-    const auto actual = cached_integral.integral().function(x);
+    const auto actual = cached_integral.integral().integrand(x);
     EXPECT_DOUBLE_EQ(expected, actual) << "Failed at x=" << x;
   }
 }
