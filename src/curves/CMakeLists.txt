@@ -26,6 +26,7 @@ list(APPEND lib_files
   math/cached_integral.hpp
   math/curve.hpp
   math/curve_view.hpp
+  math/curves/concepts.hpp
   math/curves/shaping/ease_in.hpp
   math/curves/shaping/ease_out.hpp
   math/curves/shaping/shaped_curve.hpp
@@ -37,7 +38,6 @@ list(APPEND lib_files
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
   math/curves/synchronous.hpp
-  math/curves/transfer_function/concepts.hpp
   math/curves/transfer_function/curve.hpp
   math/curves/transfer_function/from_gain.hpp
   math/curves/transfer_function/from_sensitivity.hpp

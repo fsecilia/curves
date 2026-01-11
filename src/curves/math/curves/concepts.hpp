@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Transfer function concepts.
+  \brief Curve function concepts.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
