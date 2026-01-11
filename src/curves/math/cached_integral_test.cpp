@@ -56,9 +56,13 @@ struct AnalyticTestVector {
 
 struct CachedIntegralAnalyticTest : CachedIntegralTest,
                                     WithParamInterface<AnalyticTestVector> {
-  Sut cached_integral =
-      Builder{}(Integral{GetParam().oracle.f, Gauss5{}}, GetParam().range_end,
-                GetParam().tolerance, empty_critical_points);
+  const ScalarFunction& f = GetParam().oracle.f;
+  const ScalarFunction& F = GetParam().oracle.F;
+  const Scalar range_end = GetParam().range_end;
+  const Scalar tolerance = GetParam().tolerance;
+
+  Sut cached_integral = Builder{}(Integral{f, Gauss5{}}, range_end, tolerance,
+                                  empty_critical_points);
 
   /*
     Since producing the cache sums across intervals, and each interval is
@@ -72,27 +76,26 @@ struct CachedIntegralAnalyticTest : CachedIntegralTest,
 
     We need to start testing in ulps.
   */
-  const Scalar max_error =
-      GetParam().tolerance * cached_integral.cache().size() * 100;
+  const Scalar max_error = tolerance * cached_integral.cache().size() * 100;
+
+  const std::array<Scalar, 3> test_points{
+      range_end * 0.1,
+      range_end * 0.5,
+      range_end * 0.9,
+  };
 };
 
 TEST_P(CachedIntegralAnalyticTest, TotalArea) {
-  const auto& p = GetParam();
-
   // Test total area.
-  const auto expected_total = p.oracle.F(p.range_end) - p.oracle.F(0.0);
-  EXPECT_NEAR(cached_integral(p.range_end), expected_total, max_error);
+  const auto expected_total = F(GetParam().range_end) - F(0.0);
+  EXPECT_NEAR(cached_integral(range_end), expected_total, max_error);
 }
 
 TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
-  const auto& p = GetParam();
-
-  const auto test_points =
-      std::array{p.range_end * 0.1, p.range_end * 0.5, p.range_end * 0.9};
-
-  for (auto x : test_points) {
-    const auto expected = p.oracle.F(x) - p.oracle.F(0.0);
-    EXPECT_NEAR(cached_integral(x), expected, max_error) << "Failed at x=" << x;
+  for (const auto x : test_points) {
+    const auto expected = F(x) - F(0.0);
+    const auto actual = cached_integral(x);
+    EXPECT_NEAR(expected, actual, max_error) << "Failed at x=" << x;
   }
 }
 
