@@ -37,6 +37,7 @@ list(APPEND lib_files
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
   math/curves/synchronous.hpp
+  math/curves/transfer_function/concepts.hpp
   math/curves/transfer_function/curve.hpp
   math/curves/transfer_function/from_gain.hpp
   math/curves/transfer_function/from_sensitivity.hpp
