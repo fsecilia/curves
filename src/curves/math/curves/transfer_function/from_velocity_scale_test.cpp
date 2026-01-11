@@ -28,7 +28,7 @@ struct FromVelocityScaleTest : Test {
 };
 
 TEST_F(FromVelocityScaleTest, PropagatesJet) {
-  const auto x = Jet{7, 11};
+  const auto v = Jet{7, 11};
 
   /*
     v = {7, 11}
@@ -41,7 +41,7 @@ TEST_F(FromVelocityScaleTest, PropagatesJet) {
   */
   const auto expected = Jet{182, 517};
 
-  auto actual = sut(x);
+  auto actual = sut(v);
 
   EXPECT_DOUBLE_EQ(expected.a, actual.a);
   EXPECT_DOUBLE_EQ(expected.v, actual.v);

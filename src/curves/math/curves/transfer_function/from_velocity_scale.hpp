@@ -23,8 +23,8 @@ class FromVelocityScale {
   explicit FromVelocityScale(Curve curve) noexcept : curve_{std::move(curve)} {}
 
   template <typename Value>
-  auto operator()(const Value& x) const noexcept -> Value {
-    return x * curve_(x);
+  auto operator()(const Value& v) const noexcept -> Value {
+    return v * curve_(v);
   }
 
   auto critical_points(Scalar domain_max) const -> std::vector<Scalar> {
