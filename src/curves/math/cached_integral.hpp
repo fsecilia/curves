@@ -58,6 +58,7 @@ class CachedIntegral {
     return operator()(right) - operator()(left);
   }
 
+  auto integral() const noexcept -> const Integral& { return integral_; }
   auto cache() const noexcept -> const Cache& { return cache_; }
 
  private:

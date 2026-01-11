@@ -99,6 +99,14 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
   }
 }
 
+TEST_P(CachedIntegralAnalyticTest, Integral) {
+  for (const auto x : test_points) {
+    const auto expected = f(x);
+    const auto actual = cached_integral.integral().function(x);
+    EXPECT_DOUBLE_EQ(expected, actual) << "Failed at x=" << x;
+  }
+}
+
 // Define Oracles
 const Oracle kLinear = {"Linear", {[](Scalar x) { return x; }}, {[](Scalar x) {
                           return 0.5 * x * x;
