@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/jet.hpp>
 #include <curves/math/kahan_accumulator.hpp>
 #include <curves/ranges.hpp>
 #include <algorithm>
@@ -44,12 +45,19 @@ class CachedIntegral {
   }
 
   //! \returns integral from 0 to location
-  auto operator()(Scalar location) const noexcept -> Scalar {
-    assert(cache_.keys().front() <= location &&
-           location <= cache_.keys().back() && "CachedIntegral: domain error");
+  template <typename Value>
+  auto operator()(Value location) const noexcept -> Value {
+    using math::primal;
 
-    const auto right_boundary = cache_.upper_bound(location);
+    const auto location_primal = primal(location);
+    assert(cache_.keys().front() <= location_primal &&
+           location_primal <= cache_.keys().back() &&
+           "CachedIntegral: domain error");
+
+    const auto right_boundary = cache_.upper_bound(location_primal);
     const auto left_boundary = std::ranges::prev(right_boundary);
+
+    // If location is a jet, this passes the jet as the right boundary verbatim.
     return left_boundary->second + integral_(left_boundary->first, location);
   }
 
@@ -161,9 +169,34 @@ struct ComposedIntegral {
   Integrand integrand;
   Integrator integrator;
 
+  // Standard scalar path.
   template <typename Value>
   auto operator()(Value left, Value right) const noexcept -> Value {
     return integrator(integrand, left, right);
+  }
+
+  /*
+    Jet path. The left is anchored, the right is a jet. We crack the jet to
+    integrate the range normally, then invoke the integrand directly and apply
+    the chain rule to calculate the derivative.
+  */
+  template <typename Scalar>
+  auto operator()(Scalar left, const math::Jet<Scalar>& right_jet) const
+      -> math::Jet<Scalar> {
+    const auto right_primal = primal(right_jet);
+    const auto right_derivative = derivative(right_jet);
+
+    // Integrate normally using the jet's primal.
+    const auto integral = integrator(integrand, left, right_primal);
+
+    /*
+      By the Fundamental Theorem of Calculus, the integrand of an integral is
+      the integral's derivative: `d/dx Int[0->x] f(t) dt = f(x)`
+      Evaluate it directly and apply the chain rule.
+    */
+    const auto integral_derivative = integrand(right_primal);
+
+    return math::Jet<Scalar>{integral, integral_derivative * right_derivative};
   }
 };
 

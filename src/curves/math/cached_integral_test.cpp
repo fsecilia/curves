@@ -99,6 +99,16 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
   }
 }
 
+TEST_P(CachedIntegralAnalyticTest, InteriorPointsJet) {
+  const auto derivative = 3.1;
+  for (const auto x : test_points) {
+    const auto expected = math::Jet{F(x) - F(0.0), f(x) * derivative};
+    const auto actual = cached_integral(math::Jet{x, derivative});
+    EXPECT_NEAR(expected.a, actual.a, max_error) << "Failed .a at x=" << x;
+    EXPECT_NEAR(expected.v, actual.v, max_error) << "Failed .v at x=" << x;
+  }
+}
+
 TEST_P(CachedIntegralAnalyticTest, Integral) {
   // Make sure integrand matches original function.
   for (const auto x : test_points) {
