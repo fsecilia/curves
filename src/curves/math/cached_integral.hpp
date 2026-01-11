@@ -107,7 +107,7 @@ class CachedIntegralBuilder {
     pending_intervals.emplace_back(0, seed_interval_end,
                                    integral(Scalar{0}, seed_interval_end), 0);
 
-    constexpr int kMaxDepth = 64;
+    static constexpr auto kMaxDepth = 64;
 
     // Run adaptive quadrature.
     auto total_area = KahanAccumulator<Scalar>{};
