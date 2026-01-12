@@ -11,6 +11,7 @@
 #include <curves/lib.hpp>
 #include <curves/config/curve.hpp>
 #include <curves/math/jet.hpp>
+#include <curves/ranges.hpp>
 
 namespace curves {
 
@@ -75,6 +76,41 @@ class TransferFunction<CurveDefinition::kVelocityScale, Curve> {
 
  private:
   Curve curve_;
+};
+
+template <typename AntiderivativeBuilder>
+struct TransferFunctionBuilder {
+  [[no_unique_address]] AntiderivativeBuilder antiderivative_builder;
+
+  /*
+    Since the transfer function type varies with the enum, this uses a
+    CPS-style visitor that is invoked with the completed transfer function.
+    This way, the spline builder doesn't need to know anything about how the
+    transfer function is built.
+  */
+  template <typename Curve, typename Visitor>
+  auto operator()(CurveDefinition curve_definition, Curve curve,
+                  Curve::Scalar max, Curve::Scalar tolerance,
+                  CompatibleRange<typename Curve::Scalar> auto critical_points,
+                  Visitor&& visitor) -> decltype(auto) {
+    switch (curve_definition) {
+      case CurveDefinition::kTransferGradient: {
+        // Create an antiderivative wrapper for the curve.
+        auto antiderivative = antiderivative_builder(
+            std::move(curve), max, tolerance, critical_points);
+        using Antiderivative = decltype(antiderivative);
+        return visitor(
+            TransferFunction<CurveDefinition::kTransferGradient,
+                             Antiderivative>{std::move(antiderivative)});
+      }
+
+      case CurveDefinition::kVelocityScale: {
+        // Use the curve directly;
+        return visitor(TransferFunction<CurveDefinition::kVelocityScale, Curve>(
+            std::move(curve)));
+      }
+    };
+  }
 };
 
 }  // namespace curves
