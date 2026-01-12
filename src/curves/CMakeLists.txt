@@ -39,10 +39,10 @@ list(APPEND lib_files
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
   math/curves/synchronous.hpp
+  math/curves/transfer_function.hpp
   math/curves/transfer_function/curve.hpp
   math/curves/transfer_function/from_gain.hpp
   math/curves/transfer_function/from_sensitivity.hpp
-  math/curves/transfer_function/from_velocity_scale.hpp
   math/fixed.hpp
   math/input_shaping.cpp
   math/input_shaping.hpp
@@ -103,7 +103,7 @@ list(APPEND unit_tests_files
   math/curves/transfer_function/curve_test.cpp
   math/curves/transfer_function/from_gain_test.cpp
   math/curves/transfer_function/from_sensitivity_test.cpp
-  math/curves/transfer_function/from_velocity_scale_test.cpp
+  math/curves/transfer_function_test.cpp
   math/input_shaping_test.cpp
   math/input_shaping_view_test.cpp
   math/integration_test.cpp

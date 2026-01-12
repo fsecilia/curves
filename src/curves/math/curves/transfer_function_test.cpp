@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2025 Frank Secilia
 */
 
-#include "from_velocity_scale.hpp"
+#include "transfer_function.hpp"
 #include <curves/testing/test.hpp>
 #include <curves/math/jet.hpp>
 #include <curves/testing/linear_curve.hpp>
