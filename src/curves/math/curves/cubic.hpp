@@ -10,6 +10,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/jet.hpp>
 #include <ostream>
 #include <type_traits>
 
@@ -53,5 +54,35 @@ struct Monomial {
     return out;
   }
 };
+
+// ----------------------------------------------------------------------------
+// Hermite Form
+// ----------------------------------------------------------------------------
+
+/*!
+  Converts a cubic Hermite segment to monomial form.
+
+  We represent Hermite segments with jets of their endpoints sampled directly
+  from a curve. These jets have value and derivative with respect to the
+  domain variable of the curve, (e.g., dy/dx). Since the resulting monomial
+  form is normalized to the parameter t in [0, 1], we must apply the chain rule
+  (dy/dt = dy/dx*dx/dt) to scale the input derivatives by the segment width.
+*/
+template <typename Scalar>
+auto hermite_to_monomial(const math::Jet<Scalar>& left,
+                         const math::Jet<Scalar>& right,
+                         Scalar segment_width) noexcept -> Monomial<Scalar> {
+  // Normalize slopes via chain rule.
+  const auto m0 = left.v * segment_width;
+  const auto m1 = right.v * segment_width;
+
+  // Transform basis.
+  return {
+      2 * left.a - 2 * right.a + m0 + m1,       // t^3
+      -3 * left.a + 3 * right.a - 2 * m0 - m1,  // t^2
+      m0,                                       // t
+      left.a                                    // 1
+  };
+}
 
 }  // namespace curves::cubic
