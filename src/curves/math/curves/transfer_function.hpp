@@ -18,6 +18,27 @@ template <CurveDefinition kDefinition, typename Curve>
 class TransferFunction;
 
 /*!
+  This specialization expects to parameterize on an antiderivative of a curve,
+  which it invokes directly.
+*/
+template <typename Antiderivative>
+class TransferFunction<CurveDefinition::kTransferGradient, Antiderivative> {
+ public:
+  using Scalar = Antiderivative::Scalar;
+
+  explicit TransferFunction(Antiderivative antiderivative) noexcept
+      : antiderivative_{std::move(antiderivative)} {}
+
+  template <typename Value>
+  auto operator()(Value v) const noexcept -> Value {
+    return antiderivative_(v);
+  }
+
+ private:
+  Antiderivative antiderivative_;
+};
+
+/*!
   Transforms curve to return x*f(x).
 */
 template <typename Curve>

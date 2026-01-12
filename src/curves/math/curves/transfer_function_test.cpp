@@ -12,14 +12,39 @@
 namespace curves::transfer_function {
 namespace {
 
+struct TransferFunctionTest : Test {
+  using Scalar = double;
+  using Jet = math::Jet<Scalar>;
+
+  static constexpr auto jet_result = Jet{3, 5};
+};
+
+// ============================================================================
+// TransferGradient Specialization
+// ============================================================================
+
+struct TransferFunctionTransferGradientTest : TransferFunctionTest {
+  struct Antiderivative {
+    using Scalar = Scalar;
+
+    auto operator()(Jet jet) const noexcept -> Jet { return jet; }
+  };
+  Antiderivative antiderivative;
+
+  using Sut =
+      TransferFunction<CurveDefinition::kTransferGradient, Antiderivative>;
+  const Sut sut{antiderivative};
+};
+
+TEST_F(TransferFunctionTransferGradientTest, JetForwardedCorrectly) {
+  ASSERT_EQ(jet_result, sut(jet_result));
+}
+
 // ============================================================================
 // VelocityScale Specialization
 // ============================================================================
 
-struct TransferFunctionVelocityScaleTest : Test {
-  using Scalar = double;
-  using Jet = math::Jet<Scalar>;
-};
+struct TransferFunctionVelocityScaleTest : TransferFunctionTest {};
 
 // ----------------------------------------------------------------------------
 // Derivative Near 0
@@ -27,7 +52,6 @@ struct TransferFunctionVelocityScaleTest : Test {
 
 struct TransferFunctionVelocityScaleTestDerivativeNear0
     : TransferFunctionVelocityScaleTest {
-  static constexpr auto jet_result = Jet{3, 5};
   static constexpr auto scalar_result = Scalar{7};
 
   struct Curve {
