@@ -50,18 +50,20 @@ class TransferFunction<CurveDefinition::kVelocityScale, Curve> {
 
   template <typename Value>
   auto operator()(Value v) const noexcept -> Value {
-    // Use limit definition of the derivative near v = 0.
-    //
-    // For T(v) = v * S(v), the product rule gives:
-    //   T'(v) = S(v) + v * S'(v)
-    //
-    // `S'(v)` may diverge at 0 (e.g. for root functions), but the divergence
-    // for our specific set of curves is strictly slower than `O(1/v)`. The
-    // linear scaling `v` damps the singularity, causing the term to vanish:
-    //   lim[v->0] (v * S'(v)) = 0
-    //
-    // This leaves a finite limit for the derivative:
-    //   T'(0) = S(0) + 0 = S(0)
+    /*
+      Use limit definition of the derivative near v = 0.
+
+      For T(v) = v * S(v), the product rule gives:
+        T'(v) = S(v) + v * S'(v)
+
+      `S'(v)` may diverge at 0 (e.g. for root functions), but the divergence
+      for our specific set of curves is strictly slower than `O(1/v)`. The
+      linear scaling `v` damps the singularity, causing the term to vanish:
+        lim[v->0] (v * S'(v)) = 0
+
+      This leaves a finite limit for the derivative:
+        T'(0) = S(0) + 0 = S(0)
+    */
     if constexpr (math::IsJet<Value>) {
       if (v < std::numeric_limits<Value>::epsilon()) {
         return Value{0.0, curve_(0.0) * derivative(v)};
