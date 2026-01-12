@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Transfer function defined by velocity scale.
+  \brief Top-level transfer function. This is what the spline approximates.
 
   \copyright Copyright (C) 2025 Frank Secilia
 */
@@ -9,23 +9,26 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/config/curve.hpp>
 #include <curves/math/jet.hpp>
-#include <limits>
-#include <utility>
-#include <vector>
 
-namespace curves::transfer_function {
+namespace curves {
 
-//! Transforms curve to return x*f(x).
+template <CurveDefinition kDefinition, typename Curve>
+class TransferFunction;
+
+/*!
+  Transforms curve to return x*f(x).
+*/
 template <typename Curve>
-class FromVelocityScale {
+class TransferFunction<CurveDefinition::kVelocityScale, Curve> {
  public:
   using Scalar = Curve::Scalar;
 
-  explicit FromVelocityScale(Curve curve) noexcept : curve_{std::move(curve)} {}
+  explicit TransferFunction(Curve curve) noexcept : curve_{std::move(curve)} {}
 
   template <typename Value>
-  auto operator()(const Value& v) const noexcept -> Value {
+  auto operator()(Value v) const noexcept -> Value {
     // Use limit definition of the derivative near v = 0.
     //
     // For T(v) = v * S(v), the product rule gives:
@@ -47,12 +50,8 @@ class FromVelocityScale {
     return v * curve_(v);
   }
 
-  auto critical_points(Scalar domain_max) const -> std::vector<Scalar> {
-    return curve_.critical_points(domain_max);
-  }
-
  private:
   Curve curve_;
 };
 
-}  // namespace curves::transfer_function
+}  // namespace curves

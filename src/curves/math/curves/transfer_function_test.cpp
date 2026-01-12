@@ -12,7 +12,11 @@
 namespace curves::transfer_function {
 namespace {
 
-struct FromVelocityScaleTest : Test {
+// ============================================================================
+// VelocityScale Specialization
+// ============================================================================
+
+struct TransferFunctionVelocityScaleTest : Test {
   using Scalar = double;
   using Jet = math::Jet<Scalar>;
 };
@@ -21,7 +25,8 @@ struct FromVelocityScaleTest : Test {
 // Derivative Near 0
 // ----------------------------------------------------------------------------
 
-struct FromVelocityScaleTestDerivativeNear0 : FromVelocityScaleTest {
+struct TransferFunctionVelocityScaleTestDerivativeNear0
+    : TransferFunctionVelocityScaleTest {
   static constexpr auto jet_result = Jet{3, 5};
   static constexpr auto scalar_result = Scalar{7};
 
@@ -33,26 +38,28 @@ struct FromVelocityScaleTestDerivativeNear0 : FromVelocityScaleTest {
   };
   Curve curve;
 
-  using Sut = FromVelocityScale<Curve>;
+  using Sut = TransferFunction<CurveDefinition::kVelocityScale, Curve>;
   const Sut sut{curve};
 };
 
-TEST_F(FromVelocityScaleTestDerivativeNear0,
+TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
        ScalarAwayFrom0UsesScalarEvaluation) {
   EXPECT_EQ(scalar_result, sut(1.0));
 }
 
-TEST_F(FromVelocityScaleTestDerivativeNear0,
+TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
        ScalarAtFrom0UsesScalarEvaluation) {
   EXPECT_EQ(0.0, sut(0.0));
 }
 
-TEST_F(FromVelocityScaleTestDerivativeNear0, JetAwayFrom0UsesJetEvaluation) {
+TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
+       JetAwayFrom0UsesJetEvaluation) {
   EXPECT_EQ((Jet{jet_result.a, jet_result.a + jet_result.v}),
             sut(Jet{1.0, 1.0}));
 }
 
-TEST_F(FromVelocityScaleTestDerivativeNear0, JetAt0UsesLimitDefinition) {
+TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
+       JetAt0UsesLimitDefinition) {
   const auto derivative = Scalar{3};
   EXPECT_EQ((Jet{0.0, scalar_result * derivative}), sut(Jet{0.0, derivative}));
 }
@@ -61,7 +68,8 @@ TEST_F(FromVelocityScaleTestDerivativeNear0, JetAt0UsesLimitDefinition) {
 // Linear Curve
 // ----------------------------------------------------------------------------
 
-struct FromVelocityScaleTestLinear : FromVelocityScaleTest {
+struct TransferFunctionVelocityScaleTestLinear
+    : TransferFunctionVelocityScaleTest {
   // Arbitrary, nondegenerate curve, y = 3x + 5.
   using Curve = LinearCurve<Scalar>;
   using CriticalPoints = Curve::CriticalPoints;
@@ -69,11 +77,11 @@ struct FromVelocityScaleTestLinear : FromVelocityScaleTest {
   CriticalPoints critical_points{73, 79, 179, 181};
   Curve curve{3, 5, critical_points};
 
-  using Sut = FromVelocityScale<Curve>;
+  using Sut = TransferFunction<CurveDefinition::kVelocityScale, Curve>;
   const Sut sut{curve};
 };
 
-TEST_F(FromVelocityScaleTestLinear, ExerciseJetAt0) {
+TEST_F(TransferFunctionVelocityScaleTestLinear, ExerciseJetAt0) {
   const auto v = Jet{7, 11};
 
   /*
@@ -93,7 +101,7 @@ TEST_F(FromVelocityScaleTestLinear, ExerciseJetAt0) {
   EXPECT_DOUBLE_EQ(expected.v, actual.v);
 }
 
-TEST_F(FromVelocityScaleTestLinear, PropagatesJet) {
+TEST_F(TransferFunctionVelocityScaleTestLinear, PropagatesJet) {
   const auto v = Jet{7, 11};
 
   /*
@@ -111,15 +119,6 @@ TEST_F(FromVelocityScaleTestLinear, PropagatesJet) {
 
   EXPECT_DOUBLE_EQ(expected.a, actual.a);
   EXPECT_DOUBLE_EQ(expected.v, actual.v);
-}
-
-TEST_F(FromVelocityScaleTestLinear, ForwardsCriticalPoints) {
-  const auto domain_max = 100;  // Includes only knots <= 100.
-  const auto expected = CriticalPoints{73, 79};
-
-  const auto actual = sut.critical_points(domain_max);
-
-  ASSERT_EQ(expected, actual);
 }
 
 }  // namespace
