@@ -90,7 +90,7 @@ class CachedIntegralBuilder {
   template <typename Integral>
   auto operator()(Integral integral, Integral::Scalar max,
                   Integral::Scalar tolerance,
-                  const CompatibleRange<typename Integral::Scalar> auto&
+                  CompatibleRange<typename Integral::Scalar> auto
                       critical_points) const noexcept
       -> CachedIntegral<Integral> {
     using Scalar = Integral::Scalar;
