@@ -26,6 +26,7 @@ list(APPEND lib_files
   math/cached_integral.hpp
   math/curve.hpp
   math/curve_view.hpp
+  math/curves/antiderivative.hpp
   math/curves/concepts.hpp
   math/curves/shaping/ease_in.hpp
   math/curves/shaping/ease_out.hpp
@@ -87,6 +88,7 @@ list(APPEND unit_tests_files
   math/cached_integral_test.cpp
   math/curve_test.cpp
   math/curve_view_test.cpp
+  math/curves/antiderivative_test.cpp
   math/curves/shaping/ease_in_test.cpp
   math/curves/shaping/ease_out_test.cpp
   math/curves/shaping/ease_testing.hpp
