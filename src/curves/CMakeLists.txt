@@ -28,6 +28,7 @@ list(APPEND lib_files
   math/curve_view.hpp
   math/curves/antiderivative.hpp
   math/curves/concepts.hpp
+  math/curves/cubic.hpp
   math/curves/shaping/ease_in.hpp
   math/curves/shaping/ease_out.hpp
   math/curves/shaping/shaped_curve.hpp
@@ -89,6 +90,7 @@ list(APPEND unit_tests_files
   math/curve_test.cpp
   math/curve_view_test.cpp
   math/curves/antiderivative_test.cpp
+  math/curves/cubic_test.cpp
   math/curves/shaping/ease_in_test.cpp
   math/curves/shaping/ease_out_test.cpp
   math/curves/shaping/ease_testing.hpp
