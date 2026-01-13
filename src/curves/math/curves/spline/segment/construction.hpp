@@ -17,6 +17,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/curves/cubic.hpp>
 #include <curves/math/curves/spline/segment/packing.hpp>
 #include <algorithm>
 #include <cassert>
@@ -166,8 +167,14 @@ inline auto pack_inv_width(real_t val) noexcept -> StorageValue {
 
 /// Parameters for constructing a segment from floating-point values.
 struct SegmentParams {
-  real_t coeffs[kCoeffCount];  ///< Polynomial coefficients: a, b, c, d
-  real_t width;                ///< Segment width in x-space
+  cubic::Monomial<real_t> poly;  ///< Polynomial coefficients: a, b, c, d
+  real_t width;                  ///< Segment width in x-space
+
+  friend auto operator<<(std::ostream& out, const SegmentParams& src)
+      -> std::ostream& {
+    return out << "SegmentParams{.poly = " << src.poly
+               << ", .width = " << src.width << "}";
+  }
 };
 
 /*!
@@ -188,14 +195,14 @@ inline auto create_segment(const SegmentParams& params) noexcept
 
   // Pack signed coefficients (a, b).
   for (int i = 0; i < 2; ++i) {
-    const auto [mantissa, shift] = pack_signed_coeff(params.coeffs[i]);
+    const auto [mantissa, shift] = pack_signed_coeff(params.poly.coeffs[i]);
     coeff_storage[i] = mantissa;
     shifts[i] = shift;
   }
 
   // Pack unsigned coefficients (c, d).
   for (int i = 2; i < kCoeffCount; ++i) {
-    const auto [mantissa, shift] = pack_unsigned_coeff(params.coeffs[i]);
+    const auto [mantissa, shift] = pack_unsigned_coeff(params.poly.coeffs[i]);
     coeff_storage[i] = mantissa;
     shifts[i] = shift;
   }

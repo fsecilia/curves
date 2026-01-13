@@ -16,8 +16,7 @@ namespace {
 // ----------------------------------------------------------------------------
 
 struct EvaluationTestVector {
-  std::array<real_t, CURVES_SEGMENT_COEFF_COUNT> coeffs;
-  real_t width;
+  SegmentParams segment_params;
   real_t x0;
   real_t x;
   real_t expected_t;
@@ -26,11 +25,7 @@ struct EvaluationTestVector {
 
   friend auto operator<<(std::ostream& out, const EvaluationTestVector& src)
       -> std::ostream& {
-    out << "{.coeffs = {" << src.coeffs[0];
-    for (auto coeff = 1U; coeff < CURVES_SEGMENT_COEFF_COUNT; ++coeff) {
-      out << ", " << src.coeffs[coeff];
-    }
-    out << "}, .width = " << src.width << ", .x0 = " << src.x0
+    out << "{.segment_params = " << src.segment_params << ", .x0 = " << src.x0
         << ", .x = " << src.x << ", .expected_t = " << src.expected_t
         << ", .expected_eval = " << src.expected_eval
         << ", .tolerance = " << src.tolerance << "}";
@@ -43,10 +38,7 @@ struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
   using Sut = SegmentView;
 
   static auto create_segment() noexcept -> NormalizedSegment {
-    SegmentParams construction_params;
-    std::ranges::copy(GetParam().coeffs, construction_params.coeffs);
-    construction_params.width = GetParam().width;
-    return segment::create_segment(construction_params);
+    return segment::create_segment(GetParam().segment_params);
   }
 
   NormalizedSegment segment = create_segment();
@@ -55,7 +47,7 @@ struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
 
 TEST_P(SegmentEvaluationTest, inv_width) {
   const auto actual = sut.inv_width();
-  const auto expected = 1.0L / GetParam().width;
+  const auto expected = 1.0L / GetParam().segment_params.width;
   EXPECT_NEAR(actual, expected, 1e-15L);
 }
 
@@ -74,12 +66,11 @@ TEST_P(SegmentEvaluationTest, eval) {
 }
 
 const EvaluationTestVector evaluation_test_vectors[] = {
-    // Arbitrary segment from viewed in desmos. Expected calculated literally
+    // Arbitrary segment viewed in desmos. Expected calculated literally
     // using explicit horner's form in wolfram alpha:
     // ((9.5*0.224489795918 + -6.2)*0.224489795918 + 3.1)*0.224489795918 + 0.2
     {
-        .coeffs = {9.5L, -6.2L, 3.1L, 0.2L},
-        .width = 4.9L,
+        .segment_params = {.poly = {9.5L, -6.2L, 3.1L, 0.2L}, .width = 4.9L},
         .x0 = 1.4L,
         .x = 2.5L,
         .expected_t = 0.224489795918L,
@@ -91,8 +82,7 @@ const EvaluationTestVector evaluation_test_vectors[] = {
     {
         // Coeff[3] is 1.0e-7, which is approx 2^-23.
         // This must trigger the denormal path, a shift of 63.
-        .coeffs = {0.0L, 0.0L, 0.0L, 1.0e-7L},
-        .width = 1.0L,
+        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 1.0e-7L}, .width = 1.0L},
         .x0 = 0.0L,
         .x = 0.5L,
         .expected_t = 0.5L,
@@ -102,8 +92,7 @@ const EvaluationTestVector evaluation_test_vectors[] = {
 
     // Segment with zero coeffficient.
     {
-        .coeffs = {0.0L, 0.0L, 0.0L, 0.0L},
-        .width = 10.0L,
+        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 0.0L}, .width = 10.0L},
         .x0 = 0.0L,
         .x = 5.0L,
         .expected_t = 0.5L,
@@ -113,8 +102,7 @@ const EvaluationTestVector evaluation_test_vectors[] = {
 
     // Segment with negative zero coeffficient.
     {
-        .coeffs = {-0.0L, 0.0L, 0.0L, 0.0L},
-        .width = 10.0L,
+        .segment_params = {.poly = {-0.0L, 0.0L, 0.0L, 0.0L}, .width = 10.0L},
         .x0 = 0.0L,
         .x = 5.0L,
         .expected_t = 0.5L,
@@ -122,14 +110,13 @@ const EvaluationTestVector evaluation_test_vectors[] = {
         .tolerance = 0.0L,
     },
 
+    // Verify we aren't losing the bottom bit.
     {
-        // Coeff[2] (c) is small but positive.
-        // We want to verify we aren't losing the bottom bit.
-        // Let's use a number that has a specific bit pattern ending at bit 46.
-        // 1.5 * 2^-10 = 0.00146484375
-        // This should pack perfectly.
-        .coeffs = {0.0L, 0.0L, 1.4210854715202004e-14L, 0.0L},  // 2^-46
-        .width = 1.0L,
+        // Coeff[2] is small but positive with a specific bit pattern ending
+        // at bit 46: 2^-46 = 1.4210854715202004e-14L
+        .segment_params = {.poly = {0.0L, 0.0L, 1.4210854715202004e-14L, 0.0L},
+                           .width = 1.0L},
+
         .x0 = 0.0L,
         .x = 0.5L,
         .expected_t = 0.5L,
@@ -139,16 +126,12 @@ const EvaluationTestVector evaluation_test_vectors[] = {
         .tolerance = 1e-20L,
     },
 
+    // Test denormal uses shift 62 but no implicit bit.
     {
-        // Coeff[3] (d) is just below the Normal/Denormal boundary for Unsigned.
-        // 2^-17 is approx 7.629e-6. Let's try 7.0e-6.
-        // This forces the packer to use Shift 62 and NO implicit bit.
-        .coeffs = {0.0L, 0.0L, 0.0L, 7.0e-6L},
-        .width = 1.0L,
+        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 7.0e-6L}, .width = 1.0L},
         .x0 = 0.0L,
         .x = 0.5L,
         .expected_t = 0.5L,
-        // Result is just d (constant term)
         .expected_eval = 7.0e-6L,
         .tolerance = 9.1e-17L,
     },

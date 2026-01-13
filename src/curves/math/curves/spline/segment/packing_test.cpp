@@ -33,18 +33,18 @@ struct SegmentPackingTest : Test {
     // Randomize signed coeffs.
     for (auto j = 0; j < 2; ++j) {
       if (i + j % 100 == 0) {
-        params.coeffs[j] = 0.0L;
+        params.poly.coeffs[j] = 0.0L;
       } else {
-        params.coeffs[j] = std::ldexp(mantissa_dist(rng), exp_dist(rng));
+        params.poly.coeffs[j] = std::ldexp(mantissa_dist(rng), exp_dist(rng));
       }
     }
 
     // Randomize unsigned coeffs.
     for (auto j = 2; j < kCoeffCount; ++j) {
       if (i + j % 100 == 0) {
-        params.coeffs[j] = 0.0L;
+        params.poly.coeffs[j] = 0.0L;
       } else {
-        params.coeffs[j] =
+        params.poly.coeffs[j] =
             std::ldexp(std::abs(mantissa_dist(rng)), exp_dist(rng));
       }
     }
@@ -79,7 +79,7 @@ TEST_F(SegmentPackingTest, ZeroSegmentRoundTrips) {
 
 TEST_F(SegmentPackingTest, ShiftsMaskedTo6Bits) {
   auto params = SegmentParams{};
-  std::ranges::fill(params.coeffs, 1.0L);
+  params.poly.coeffs.fill(1.0L);
   params.width = 1.0L;
 
   auto segment = create_segment(params);
