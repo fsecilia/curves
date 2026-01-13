@@ -10,6 +10,7 @@
 
 #include <curves/lib.hpp>
 #include <curves/math/curves/cubic.hpp>
+#include <curves/static_vector.hpp>
 #include <cassert>
 #include <ostream>
 
@@ -62,7 +63,9 @@ struct ErrorCandidates {
 template <typename ScalarType>
 struct ErrorCandidateLocator {
   using Scalar = ScalarType;
-  using Result = ErrorCandidates<Scalar>;
+
+  static constexpr auto max_candidates = 3;
+  using Result = StaticVector<Scalar, max_candidates>;
 
   /*!
     Applies the first derivative test to the deviation function (zeroth-order)
@@ -113,11 +116,11 @@ struct ErrorCandidateLocator {
       const auto t2 = (-qb + sqrt_d) / (2 * qa);
 
       if (boundary_margin < t1 && t1 < 1.0 - boundary_margin) {
-        result.candidates[result.count++] = t1;
+        result.push_back(t1);
       }
 
       if (boundary_margin < t2 && t2 < 1.0 - boundary_margin) {
-        result.candidates[result.count++] = t2;
+        result.push_back(t2);
       }
     } else {
       // The derivative is not quadratic. See if it's linear.
@@ -126,7 +129,7 @@ struct ErrorCandidateLocator {
         // One parallel location exists.
         const auto t = -qc / qb;
         if (boundary_margin < t && t < 1.0 - boundary_margin) {
-          result.candidates[result.count++] = t;
+          result.push_back(t);
         }
       }
     }
@@ -145,7 +148,7 @@ struct ErrorCandidateLocator {
       const auto t_inflection = -b / (3 * a);
       if (boundary_margin < t_inflection &&
           t_inflection < 1.0 - boundary_margin) {
-        result.candidates[result.count++] = t_inflection;
+        result.push_back(t_inflection);
       }
     }
 

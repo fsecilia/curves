@@ -14,12 +14,14 @@ namespace curves {
 namespace {
 
 using Scalar = double;
+using Sut = ErrorCandidateLocator<Scalar>;
+using Result = Sut::Result;
 
 struct ErrorCandidateLocatorTestVector {
   std::string description;
   cubic::Monomial<Scalar> monomial;
   Scalar boundary_margin;
-  ErrorCandidates<Scalar> expected_result;
+  Result expected_result;
   Scalar tolerance = 1e-10;
 
   friend auto operator<<(std::ostream& out,
@@ -37,20 +39,18 @@ struct CubicErrorCandidateLocatorTest
     : TestWithParam<ErrorCandidateLocatorTestVector> {
   const cubic::Monomial<Scalar>& monomial = GetParam().monomial;
   const Scalar boundary_margin = GetParam().boundary_margin;
-  const ErrorCandidates<Scalar> expected_result = GetParam().expected_result;
+  const Result expected_result = GetParam().expected_result;
   const Scalar tolerance = GetParam().tolerance;
 
-  using Sut = ErrorCandidateLocator<Scalar>;
   Sut sut;
 };
 
 TEST_P(CubicErrorCandidateLocatorTest, Call) {
   const auto actual_result = sut(monomial, boundary_margin);
 
-  ASSERT_EQ(expected_result.count, actual_result.count);
-  for (auto candidate = 0; candidate < expected_result.count; ++candidate) {
-    EXPECT_NEAR(expected_result.candidates[candidate],
-                actual_result.candidates[candidate], tolerance)
+  ASSERT_EQ(expected_result.size(), actual_result.size());
+  for (auto candidate = 0u; candidate < expected_result.size(); ++candidate) {
+    EXPECT_NEAR(expected_result[candidate], actual_result[candidate], tolerance)
         << "Mismatch at index " << candidate;
   }
 }
@@ -72,15 +72,8 @@ auto make_monomial(Scalar a, Scalar b) noexcept -> cubic::Monomial<Scalar> {
 /*
   Simplifies initializing fixed array with variable number of arguments.
 */
-auto make_candidates(std::initializer_list<Scalar> inputs) noexcept
-    -> ErrorCandidates<Scalar> {
-  auto result = ErrorCandidates<Scalar>{};
-  for (auto t : inputs) {
-    if (result.count < ErrorCandidates<Scalar>::max_candidates) {
-      result.candidates[result.count++] = t;
-    }
-  }
-  return result;
+auto make_candidates(std::initializer_list<Scalar> inputs) noexcept -> Result {
+  return Result{inputs};
 }
 
 const ErrorCandidateLocatorTestVector test_vectors[] = {
