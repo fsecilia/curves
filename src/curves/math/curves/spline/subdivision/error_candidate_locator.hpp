@@ -33,6 +33,7 @@ namespace curves {
 template <typename ScalarType>
 struct ErrorCandidateLocator {
   using Scalar = ScalarType;
+  using Segment = cubic::Monomial<Scalar>;
 
   static constexpr auto max_candidates = 3;
   using Result = StaticVector<Scalar, max_candidates>;
@@ -41,14 +42,14 @@ struct ErrorCandidateLocator {
     Applies the first derivative test to the deviation function (zeroth-order)
     and its derivative (first-order) to locate error extrema.
   */
-  auto operator()(const cubic::Monomial<Scalar>& p) const noexcept -> Result {
+  auto operator()(const Segment& segment) const noexcept -> Result {
     using namespace curves::math;
 
     Result result;
 
     // Alias the cubic coefficients we use.
-    const auto a = p.coeffs[0];
-    const auto b = p.coeffs[1];
+    const auto a = segment.coeffs[0];
+    const auto b = segment.coeffs[1];
 
     /*
       Candidates 1 & 2: Zeroth-order error extrema.
