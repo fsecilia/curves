@@ -40,6 +40,7 @@ list(APPEND lib_files
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
   math/curves/spline/subdivision/error_candidate_locator.hpp
+  math/curves/spline/subdivision/knot.hpp
   math/curves/synchronous.hpp
   math/curves/transfer_function.hpp
   math/curves/transfer_function/curve.hpp
