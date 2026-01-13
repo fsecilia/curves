@@ -11,6 +11,7 @@
 
 #include <curves/lib.hpp>
 #include <curves/math/jet.hpp>
+#include <array>
 #include <ostream>
 #include <type_traits>
 
@@ -35,7 +36,7 @@ template <typename ScalarType>
 struct Monomial {
   using Scalar = ScalarType;
 
-  Scalar coeffs[coeff_count];
+  std::array<Scalar, coeff_count> coeffs;
 
   template <typename T>
   constexpr auto operator()(const T& t) const noexcept -> T {
