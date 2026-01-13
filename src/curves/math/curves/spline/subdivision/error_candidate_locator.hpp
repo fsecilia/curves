@@ -71,8 +71,7 @@ struct ErrorCandidateLocator {
     Applies the first derivative test to the deviation function (zeroth-order)
     and its derivative (first-order) to locate error extrema.
   */
-  auto operator()(const cubic::Monomial<Scalar>& p,
-                  Scalar boundary_margin) const noexcept -> Result {
+  auto operator()(const cubic::Monomial<Scalar>& p) const noexcept -> Result {
     using namespace curves::math;
 
     Result result;
@@ -115,22 +114,16 @@ struct ErrorCandidateLocator {
       const auto t1 = (-qb - sqrt_d) / (2 * qa);
       const auto t2 = (-qb + sqrt_d) / (2 * qa);
 
-      if (boundary_margin < t1 && t1 < 1.0 - boundary_margin) {
-        result.push_back(t1);
-      }
-
-      if (boundary_margin < t2 && t2 < 1.0 - boundary_margin) {
-        result.push_back(t2);
-      }
+      // Only include locations within the segment.
+      if (0.0 < t1 && t1 < 1.0) result.push_back(t1);
+      if (0.0 < t2 && t2 < 1.0) result.push_back(t2);
     } else {
       // The derivative is not quadratic. See if it's linear.
       const auto is_linear = abs(qb) > 1e-7f;
       if (is_linear) {
         // One parallel location exists.
         const auto t = -qc / qb;
-        if (boundary_margin < t && t < 1.0 - boundary_margin) {
-          result.push_back(t);
-        }
+        if (0.0 < t && t < 1.0) result.push_back(t);
       }
     }
 
@@ -146,8 +139,7 @@ struct ErrorCandidateLocator {
     const auto has_inflection_point = abs(a) > 1e-7f;
     if (has_inflection_point) {
       const auto t_inflection = -b / (3 * a);
-      if (boundary_margin < t_inflection &&
-          t_inflection < 1.0 - boundary_margin) {
+      if (0.0 < t_inflection && t_inflection < 1.0) {
         result.push_back(t_inflection);
       }
     }
