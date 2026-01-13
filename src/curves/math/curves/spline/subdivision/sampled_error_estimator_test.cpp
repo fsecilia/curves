@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #include "sampled_error_estimator.hpp"

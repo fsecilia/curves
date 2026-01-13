@@ -3,7 +3,7 @@
   \file
   \brief Estimates segment error from a set of candidates.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once

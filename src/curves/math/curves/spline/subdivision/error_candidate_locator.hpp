@@ -3,7 +3,7 @@
   \file
   \brief Locates maximal error candidate parameters for adaptive subdivision.
 
-  \copyright Copyright (C) 2025 Frank Secilia
+  \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
