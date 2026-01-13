@@ -17,36 +17,6 @@
 namespace curves {
 
 /*!
-  Candidate locations to check for maximum error in a cubic segment.
-
-  This type contains candidate locations that are algorithmically determined to
-  contain the maximum error across the segment. These are places to check, not
-  the error values themselves.
-*/
-template <typename Scalar>
-struct ErrorCandidates {
-  // Number of possible locations.
-  static const auto max_candidates = 3;
-
-  // Locations to check.
-  std::array<Scalar, max_candidates> candidates;
-
-  // Number of locations that were found.
-  int count = 0;
-
-  friend auto operator<<(std::ostream& out, const ErrorCandidates& src)
-      -> std::ostream& {
-    out << "{.t_values = {" << src.candidates[0];
-    for (auto location = 1; location < max_candidates; ++location) {
-      out << ", " << src.candidates[location];
-    }
-    out << "}, .count = " << src.count << "}";
-
-    return out;
-  }
-};
-
-/*!
   Finds locations in a cubic segment to check for maximum error.
 
   This type is a compile-time strategy to find the most likely locations of
