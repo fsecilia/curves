@@ -6,7 +6,6 @@
 
 #include "sampled_error_estimator.hpp"
 #include <curves/testing/test.hpp>
-#include <cmath>
 #include <gmock/gmock.h>
 #include <ostream>
 #include <string>
@@ -17,6 +16,10 @@ namespace {
 
 using Scalar = double;
 using SegmentErrorEstimate = SegmentErrorEstimate<Scalar>;
+
+// ----------------------------------------------------------------------------
+// Test Sample
+// ----------------------------------------------------------------------------
 
 struct Sample {
   Scalar t_candidate;
@@ -33,6 +36,10 @@ struct Sample {
   }
 };
 using Samples = std::vector<Sample>;
+
+// ----------------------------------------------------------------------------
+// Test Vector
+// ----------------------------------------------------------------------------
 
 struct TestVector {
   std::string description;
@@ -60,6 +67,10 @@ struct TestVector {
     return out;
   }
 };
+
+// ----------------------------------------------------------------------------
+// Test Fixture
+// ----------------------------------------------------------------------------
 
 struct SegmentErrorEstimatorTest : TestWithParam<TestVector> {
   const Samples& samples = GetParam().samples;
@@ -102,6 +113,10 @@ struct SegmentErrorEstimatorTest : TestWithParam<TestVector> {
   Sut sut;
 };
 
+// ----------------------------------------------------------------------------
+// Test Case
+// ----------------------------------------------------------------------------
+
 TEST_P(SegmentErrorEstimatorTest, Call) {
   EXPECT_CALL(sut.locate_error_candidates, call(Ref(mock_segment)))
       .WillOnce(Return(create_candidates()));
@@ -119,65 +134,76 @@ TEST_P(SegmentErrorEstimatorTest, Call) {
   EXPECT_NEAR(expected_result.error, actual_result.error, tolerance);
 }
 
+// ----------------------------------------------------------------------------
+// Case Builder
+// ----------------------------------------------------------------------------
+
+// Small DSL to tame gnarly test vectors.
+struct CaseBuilder {
+  TestVector result;
+
+  Scalar max_err = -1.0;
+  Scalar best_v = 0.0;
+
+  explicit CaseBuilder(std::string description) {
+    result.description = std::move(description);
+    with_interval(0.0, 1.0);
+  }
+
+  auto with_interval(Scalar v0, Scalar width) -> CaseBuilder& {
+    result.v0 = v0;
+    result.segment_width = width;
+
+    // Reset default midpoint expectation in case no samples are added
+    best_v = v0 + 0.5 * width;
+    max_err = 0.0;
+
+    return *this;
+  }
+
+  auto with_candidate(Scalar t, Scalar y_approx, Scalar y_true)
+      -> CaseBuilder& {
+    const Scalar v_t = result.v0 + t * result.segment_width;
+    const Scalar err = std::abs(y_approx - y_true);
+
+    // Add sample with calculated expected_v_t.
+    result.samples.push_back({.t_candidate = t,
+                              .y_approximation = y_approx,
+                              .expected_v_t = v_t,
+                              .y_true = y_true});
+
+    // Update expected winner (argmax).
+    if (err > max_err) {
+      max_err = err;
+      best_v = v_t;
+    }
+
+    return *this;
+  }
+
+  operator TestVector() const {
+    auto final_vector = result;
+    final_vector.expected_result = {.v = best_v, .error = max_err};
+    return final_vector;
+  }
+};
+
+// ----------------------------------------------------------------------------
+// Test Vectors
+// ----------------------------------------------------------------------------
+
 const TestVector test_vectors[] = {
-    {
-        .description = "0 samples",
-        .samples = {},
-        .v0 = 1.3,
-        .segment_width = 2.2,
-        .expected_result = {.v = 1.3 + 0.5 * 2.2, .error = 0.0},
-    },
+    CaseBuilder("0 samples").with_interval(1.3, 2.2),
 
-    {
-        .description = "1 sample",
-        .samples =
-            {
-                {
-                    .t_candidate = 0.15,
-                    .y_approximation = 3.1,
-                    .expected_v_t = 1.7 + 0.15 * 2.8,
-                    .y_true = 4.5,
-                },
-            },
-        .v0 = 1.7,
-        .segment_width = 2.8,
-        .expected_result = {.v = 1.7 + 0.15 * 2.8, .error = 4.5 - 3.1},
-    },
+    CaseBuilder("1 sample")
+        .with_interval(1.7, 2.8)
+        .with_candidate(0.15, 3.1, 4.5),
 
-    {
-        .description = "3 samples",
-        .samples =
-            {
-                /*
-                  Same slot and value as the sample in 1 sample vector to make
-                  sure it isn't being chosen unduly.
-                */
-                {
-                    .t_candidate = 0.15,
-                    .y_approximation = 3.1,
-                    .expected_v_t = 2.1 + 0.15 * 2.5,
-                    .y_true = 4.5,
-                },
-
-                // This sample wins because it has the largest error.
-                {
-                    .t_candidate = 0.45,
-                    .y_approximation = 0.5,
-                    .expected_v_t = 2.1 + 0.45 * 2.5,
-                    .y_true = 21.2,
-                },
-
-                {
-                    .t_candidate = 0.95,
-                    .y_approximation = 3.2,
-                    .expected_v_t = 2.1 + 0.95 * 2.5,
-                    .y_true = 4.4,
-                },
-            },
-        .v0 = 2.1,
-        .segment_width = 2.5,
-        .expected_result = {.v = 2.1 + 0.45 * 2.5, .error = 21.2 - 0.5},
-    },
+    CaseBuilder("3 samples (middle wins)")
+        .with_interval(2.1, 2.5)
+        .with_candidate(0.15, 3.1, 4.5)   // error: 1.4
+        .with_candidate(0.45, 0.5, 21.2)  // error: 20.7, winner
+        .with_candidate(0.95, 3.2, 4.4),  // error: 1.2
 };
 INSTANTIATE_TEST_SUITE_P(test_vectors, SegmentErrorEstimatorTest,
                          ValuesIn(test_vectors));
