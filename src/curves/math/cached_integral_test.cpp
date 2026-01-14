@@ -13,6 +13,62 @@ namespace {
 
 using Scalar = double;
 
+// ============================================================================
+// ComposedIntegral
+// ============================================================================
+
+struct ComposedIntegralTest : Test {
+  static constexpr auto kIntegrandScale = Scalar{5.6};
+  struct Integrand {
+    using Scalar = Scalar;
+
+    Scalar scale = 0.0;
+
+    auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
+      return scale * (right - left);
+    }
+  };
+
+  static constexpr auto kIntegratorOffset = Scalar{7.9};
+  struct Integrator {
+    Scalar offset = 0.0;
+
+    auto operator()(const Integrand& integrand, Scalar left,
+                    Scalar right) const noexcept -> Scalar {
+      return offset + integrand(left, right);
+    }
+  };
+
+  static constexpr auto kRight = Scalar{3.4};
+
+  using Sut = ComposedIntegral<Integrand, Integrator>;
+  Sut sut = ComposedIntegralFactory{Integrator{kIntegratorOffset}}(
+      Integrand{kIntegrandScale});
+};
+
+TEST_F(ComposedIntegralTest, integrand) {
+  EXPECT_DOUBLE_EQ(kIntegrandScale, sut.integrand().scale);
+}
+
+TEST_F(ComposedIntegralTest, integrator) {
+  EXPECT_DOUBLE_EQ(kIntegratorOffset, sut.integrator().offset);
+}
+
+TEST_F(ComposedIntegralTest, eval_single_value) {
+  const auto expected = kIntegratorOffset + kIntegrandScale * kRight;
+  EXPECT_DOUBLE_EQ(expected, sut(kRight));
+}
+
+TEST_F(ComposedIntegralTest, eval_range) {
+  const auto kLeft = 1.2;
+  const auto expected = kIntegratorOffset + kIntegrandScale * (kRight - kLeft);
+  EXPECT_DOUBLE_EQ(expected, sut(kLeft, kRight));
+}
+
+// ============================================================================
+// CachedIntegral
+// ============================================================================
+
 constexpr auto empty_critical_points = std::array<Scalar, 0>{};
 
 struct ScalarFunction {
@@ -34,9 +90,9 @@ struct Oracle {
   }
 };
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Common Fixture
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 struct CachedIntegralTest : Test {
   using Integral = ComposedIntegral<ScalarFunction, Gauss5>;
@@ -44,9 +100,9 @@ struct CachedIntegralTest : Test {
   using Sut = CachedIntegral<Integral>;
 };
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Analytic Accuracy
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 struct AnalyticTestVector {
   Oracle oracle;
@@ -99,21 +155,11 @@ TEST_P(CachedIntegralAnalyticTest, InteriorPoints) {
   }
 }
 
-TEST_P(CachedIntegralAnalyticTest, InteriorPointsJet) {
-  const auto derivative = 3.1;
-  for (const auto x : test_points) {
-    const auto expected = math::Jet{F(x) - F(0.0), f(x) * derivative};
-    const auto actual = cached_integral(math::Jet{x, derivative});
-    EXPECT_NEAR(expected.a, actual.a, max_error) << "Failed .a at x=" << x;
-    EXPECT_NEAR(expected.v, actual.v, max_error) << "Failed .v at x=" << x;
-  }
-}
-
 TEST_P(CachedIntegralAnalyticTest, Integral) {
   // Make sure integrand matches original function.
   for (const auto x : test_points) {
     const auto expected = f(x);
-    const auto actual = cached_integral.integral().integrand(x);
+    const auto actual = cached_integral.integral().integrand()(x);
     EXPECT_DOUBLE_EQ(expected, actual) << "Failed at x=" << x;
   }
 }
@@ -136,9 +182,9 @@ INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
                                 AnalyticTestVector{kCubic, 2.0, 1e-16},
                                 AnalyticTestVector{kCos, 6.28, 1e-16}));
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Singularity Test
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 struct CachedIntegralSingularityTest : CachedIntegralTest {
   static constexpr auto end = Scalar{1.0};
@@ -187,9 +233,9 @@ TEST_F(CachedIntegralSingularityTest, PowerLawSingularityAdaptivity) {
   EXPECT_NEAR(actual, expected, tol);
 }
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Critical Points Test
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 struct CachedIntegralBehaviorTest : CachedIntegralTest {};
 

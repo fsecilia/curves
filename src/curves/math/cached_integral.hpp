@@ -23,6 +23,49 @@
 namespace curves {
 
 // ----------------------------------------------------------------------------
+// Integrals
+// ----------------------------------------------------------------------------
+
+//! Composes an integral from an integrand and integrator.
+template <typename IntegrandType, typename IntegratorType>
+class ComposedIntegral {
+ public:
+  using Integrand = IntegrandType;
+  using Integrator = IntegratorType;
+  using Scalar = Integrand::Scalar;
+
+  ComposedIntegral(Integrand integrand, Integrator integrator) noexcept
+      : integrand_{std::move(integrand)}, integrator_{std::move(integrator)} {}
+
+  auto integrand() const noexcept -> const Integrand& { return integrand_; }
+  auto integrator() const noexcept -> const Integrator& { return integrator_; }
+
+  auto operator()(Scalar right) const noexcept -> Scalar {
+    return operator()(Scalar{0}, right);
+  }
+
+  auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
+    return integrator_(integrand_, left, right);
+  }
+
+ private:
+  Integrand integrand_;
+  Integrator integrator_;
+};
+
+//! Creates ComposedIntegrals from an integrand and integrator.
+template <typename Integrator>
+struct ComposedIntegralFactory {
+  Integrator integrator;
+
+  template <typename Integrand>
+  auto operator()(Integrand integrand) const {
+    return ComposedIntegral<Integrand, Integrator>{std::move(integrand),
+                                                   integrator};
+  }
+};
+
+// ----------------------------------------------------------------------------
 // Cached Integral
 // ----------------------------------------------------------------------------
 
@@ -47,18 +90,15 @@ class CachedIntegral {
   //! \returns integral from 0 to location
   template <typename Value>
   auto operator()(Value location) const noexcept -> Value {
-    using math::primal;
+    assert(cache_.keys().front() <= location &&
+           location <= cache_.keys().back() && "CachedIntegral: domain error");
 
-    const auto location_primal = primal(location);
-    assert(cache_.keys().front() <= location_primal &&
-           location_primal <= cache_.keys().back() &&
-           "CachedIntegral: domain error");
-
-    const auto right_boundary = cache_.upper_bound(location_primal);
+    const auto right_boundary = cache_.upper_bound(location);
     const auto left_boundary = std::ranges::prev(right_boundary);
 
-    // If location is a jet, this passes the jet as the right boundary verbatim.
-    return left_boundary->second + integral_(left_boundary->first, location);
+    const auto cached_sample = left_boundary->second;
+    const auto residual = integral_(left_boundary->first, location);
+    return cached_sample + residual;
   }
 
   //! \returns integral from left to right
@@ -154,49 +194,6 @@ class CachedIntegralBuilder {
     return Result{std::move(integral),
                   Cache{std::sorted_unique, std::move(boundaries),
                         std::move(cumulative)}};
-  }
-};
-
-// ----------------------------------------------------------------------------
-// Integrals
-// ----------------------------------------------------------------------------
-
-//! Adapts a numerical integrator around an integrand to present an integral.
-template <typename Integrand, typename Integrator>
-struct ComposedIntegral {
-  using Scalar = Integrand::Scalar;
-
-  Integrand integrand;
-  Integrator integrator;
-
-  // Standard scalar path.
-  template <typename Value>
-  auto operator()(Value left, Value right) const noexcept -> Value {
-    return integrator(integrand, left, right);
-  }
-
-  /*
-    Jet path. The left is anchored, the right is a jet. We crack the jet to
-    integrate the range normally, then invoke the integrand directly and apply
-    the chain rule to calculate the derivative.
-  */
-  template <typename Scalar>
-  auto operator()(Scalar left, const math::Jet<Scalar>& right_jet) const
-      -> math::Jet<Scalar> {
-    const auto right_primal = primal(right_jet);
-    const auto right_derivative = derivative(right_jet);
-
-    // Integrate normally using the jet's primal.
-    const auto integral = integrator(integrand, left, right_primal);
-
-    /*
-      By the Fundamental Theorem of Calculus, the integrand of an integral is
-      the integral's derivative: `d/dx Int[0->x] f(t) dt = f(x)`
-      Evaluate it directly and apply the chain rule.
-    */
-    const auto integral_derivative = integrand(right_primal);
-
-    return math::Jet<Scalar>{integral, integral_derivative * right_derivative};
   }
 };
 
