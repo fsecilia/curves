@@ -39,6 +39,7 @@ list(APPEND lib_files
   math/curves/spline/segment/packing.hpp
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
+  math/curves/spline/subdivision/adaptive_subdivider.hpp
   math/curves/spline/subdivision/error_candidate_locator.hpp
   math/curves/spline/subdivision/knot.hpp
   math/curves/spline/subdivision/sampled_error_estimator.hpp
@@ -105,6 +106,7 @@ list(APPEND unit_tests_files
   math/curves/spline/segment/construction_test.cpp
   math/curves/spline/segment/packing_test.cpp
   math/curves/spline/segment/view_test.cpp
+  math/curves/spline/subdivision/adaptive_subdivider_test.cpp
   math/curves/spline/subdivision/error_candidate_locator_test.cpp
   math/curves/spline/subdivision/sampled_error_estimator_test.cpp
   math/curves/synchronous_test.cpp
