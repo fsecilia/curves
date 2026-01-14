@@ -19,24 +19,24 @@ template <CurveDefinition kDefinition, typename Curve>
 class TransferFunction;
 
 /*!
-  This specialization expects to parameterize on an antiderivative of a curve,
+  This specialization expects to parameterize on the integral of a curve,
   which it invokes directly.
 */
-template <typename Antiderivative>
-class TransferFunction<CurveDefinition::kTransferGradient, Antiderivative> {
+template <typename Integral>
+class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
  public:
-  using Scalar = Antiderivative::Scalar;
+  using Scalar = Integral::Scalar;
 
-  explicit TransferFunction(Antiderivative antiderivative) noexcept
-      : antiderivative_{std::move(antiderivative)} {}
+  explicit TransferFunction(Integral integral) noexcept
+      : integral_{std::move(integral)} {}
 
   template <typename Value>
   auto operator()(Value v) const noexcept -> Value {
-    return antiderivative_(v);
+    return integral_(v);
   }
 
  private:
-  Antiderivative antiderivative_;
+  Integral integral_;
 };
 
 /*!

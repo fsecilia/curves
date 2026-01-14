@@ -24,16 +24,15 @@ struct TransferFunctionTest : Test {
 // ============================================================================
 
 struct TransferFunctionTransferGradientTest : TransferFunctionTest {
-  struct Antiderivative {
+  struct Integral {
     using Scalar = Scalar;
 
     auto operator()(Jet jet) const noexcept -> Jet { return jet; }
   };
-  Antiderivative antiderivative;
+  Integral integral;
 
-  using Sut =
-      TransferFunction<CurveDefinition::kTransferGradient, Antiderivative>;
-  const Sut sut{antiderivative};
+  using Sut = TransferFunction<CurveDefinition::kTransferGradient, Integral>;
+  const Sut sut{integral};
 };
 
 TEST_F(TransferFunctionTransferGradientTest, JetForwardedCorrectly) {
