@@ -65,6 +65,9 @@ concept Arithmetic = std::is_arithmetic_v<T>;
 template <typename Jet>
 concept IsJet = !std::same_as<Jet, decltype(primal(std::declval<const Jet>()))>;
 
+template <typename Jet>
+concept IsNotJet = !IsJet<Jet>;
+
 // ----------------------------------------------------------------------------
 // Scalar Fallbacks
 // ----------------------------------------------------------------------------
