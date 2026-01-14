@@ -78,38 +78,43 @@ class TransferFunction<CurveDefinition::kVelocityScale, Curve> {
   Curve curve_;
 };
 
-template <typename AntiderivativeBuilder>
+template <typename CachedIntegralBuilder, typename NumericalIntegralFactory>
 struct TransferFunctionBuilder {
-  [[no_unique_address]] AntiderivativeBuilder antiderivative_builder;
+  [[no_unique_address]] CachedIntegralBuilder cached_integral_builder;
+  [[no_unique_address]] NumericalIntegralFactory numerical_integral_factory;
 
   /*
     Since the transfer function type varies with the enum, this uses a
     CPS-style visitor that is invoked with the completed transfer function.
-    This way, the spline builder doesn't need to know anything about how the
-    transfer function is built.
   */
   template <typename Curve, typename Visitor>
   auto operator()(CurveDefinition curve_definition, Curve curve,
-                  Curve::Scalar max, Curve::Scalar tolerance,
+                  typename Curve::Scalar max, typename Curve::Scalar tolerance,
                   CompatibleRange<typename Curve::Scalar> auto critical_points,
-                  Visitor&& visitor) -> decltype(auto) {
+                  Visitor&& visitor) const -> decltype(auto) {
     switch (curve_definition) {
       case CurveDefinition::kTransferGradient: {
-        // Create an antiderivative wrapper for the curve.
-        auto antiderivative = antiderivative_builder(
-            std::move(curve), max, tolerance, critical_points);
-        using Antiderivative = decltype(antiderivative);
+        // Compose curve with numerical integrator in a single callable.
+        auto integral_adapter = numerical_integral_factory(std::move(curve));
+
+        // Compose callable integral with adaptive quadrature cache.
+        auto cached_integral = cached_integral_builder(
+            std::move(integral_adapter), max, tolerance, critical_points);
+
+        // Compose TransferFunction over cached integral.
+        using CachedIntegral = decltype(cached_integral);
         return visitor(
             TransferFunction<CurveDefinition::kTransferGradient,
-                             Antiderivative>{std::move(antiderivative)});
+                             CachedIntegral>{std::move(cached_integral)});
       }
 
       case CurveDefinition::kVelocityScale: {
-        // Use the curve directly;
-        return visitor(TransferFunction<CurveDefinition::kVelocityScale, Curve>(
-            std::move(curve)));
+        // No integration needed. Pass the curve directly.
+        return visitor(TransferFunction<CurveDefinition::kVelocityScale, Curve>{
+            std::move(curve)});
       }
-    };
+    }
+    std::unreachable();
   }
 };
 
