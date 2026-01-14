@@ -12,6 +12,7 @@
 #include <curves/math/curves/cubic.hpp>
 #include <curves/math/jet.hpp>
 #include <ostream>
+#include <vector>
 
 namespace curves {
 
@@ -24,5 +25,8 @@ struct Knot {
     return out << "Knot{.v = " << src.v << ", y = " << src.y << "}";
   }
 };
+
+template <typename Scalar>
+using Knots = std::vector<Knot<Scalar>>;
 
 }  // namespace curves
