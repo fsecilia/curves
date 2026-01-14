@@ -702,6 +702,32 @@ const MathFuncVector abs_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(Abs, JetTestAbs, ValuesIn(abs_vectors));
 
 // ----------------------------------------------------------------------------
+// cos
+// ----------------------------------------------------------------------------
+
+// d(cos(x)) = -sin(x)*dx
+struct JetTestCos : JetTest, WithParamInterface<MathFuncVector> {};
+
+TEST_P(JetTestCos, Derivative) {
+  const auto [a, f_a, df_a] = GetParam();
+
+  const auto result = cos(seed(a));
+
+  EXPECT_NEAR(primal(result), f_a, kEps);
+  EXPECT_NEAR(derivative(result), df_a, kEps);
+}
+
+const MathFuncVector cos_vectors[] = {
+    {0.0, 1.0, 0.0},
+    {M_PI / 3, cos(M_PI / 3), -sin(M_PI / 3)},
+    {M_PI / 5, cos(M_PI / 5), -sin(M_PI / 5)},
+    {M_PI_2, 0.0, -1.0},
+    {M_PI, -1.0, 0.0},
+    {-M_PI_2, 0.0, 1.0},
+};
+INSTANTIATE_TEST_SUITE_P(Cos, JetTestCos, ValuesIn(cos_vectors));
+
+// ----------------------------------------------------------------------------
 // exp
 // ----------------------------------------------------------------------------
 
@@ -778,6 +804,32 @@ const MathFuncVector log1p_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(Log1p, JetTestLog1p, ValuesIn(log1p_vectors));
 
 // ----------------------------------------------------------------------------
+// sin
+// ----------------------------------------------------------------------------
+
+// d(sin(x)) = cos(x)*dx
+struct JetTestSin : JetTest, WithParamInterface<MathFuncVector> {};
+
+TEST_P(JetTestSin, Derivative) {
+  const auto [a, f_a, df_a] = GetParam();
+
+  const auto result = sin(seed(a));
+
+  EXPECT_NEAR(primal(result), f_a, kEps);
+  EXPECT_NEAR(derivative(result), df_a, kEps);
+}
+
+const MathFuncVector sin_vectors[] = {
+    {0.0, 0.0, 1.0},
+    {M_PI / 3, sin(M_PI / 3), cos(M_PI / 3)},
+    {M_PI / 5, sin(M_PI / 5), cos(M_PI / 5)},
+    {M_PI_2, 1.0, 0.0},
+    {M_PI, 0.0, -1.0},
+    {-M_PI_2, -1.0, 0.0},
+};
+INSTANTIATE_TEST_SUITE_P(Sin, JetTestSin, ValuesIn(sin_vectors));
+
+// ----------------------------------------------------------------------------
 // sqrt
 // ----------------------------------------------------------------------------
 
@@ -811,6 +863,31 @@ const MathFuncVector sqrt_vectors[] = {
 };
 INSTANTIATE_TEST_SUITE_P(Sqrt, JetTestSqrtParameterized,
                          ValuesIn(sqrt_vectors));
+
+// ----------------------------------------------------------------------------
+// tan
+// ----------------------------------------------------------------------------
+
+// d(tan(x)) = (1 + tan(x)^2)*dx
+struct JetTestTan : JetTest, WithParamInterface<MathFuncVector> {};
+
+TEST_P(JetTestTan, Derivative) {
+  const auto [a, f_a, df_a] = GetParam();
+
+  const auto result = tan(seed(a));
+
+  EXPECT_NEAR(primal(result), f_a, kEps);
+  EXPECT_NEAR(derivative(result), df_a, kEps);
+}
+
+const MathFuncVector tan_vectors[] = {
+    {0.0, 0.0, 1.0},
+    {M_PI / 3, tan(M_PI / 3), (1 + tan(M_PI / 3) * tan(M_PI / 3))},
+    {M_PI / 5, tan(M_PI / 5), (1 + tan(M_PI / 5) * tan(M_PI / 5))},
+    {M_PI_4, 1.0, 2.0},
+    {-M_PI_4, -1.0, 2.0},
+};
+INSTANTIATE_TEST_SUITE_P(Tan, JetTestTan, ValuesIn(tan_vectors));
 
 // ----------------------------------------------------------------------------
 // tanh

@@ -43,6 +43,7 @@ namespace math {
 using std::abs;
 using std::clamp;
 using std::copysign;
+using std::cos;
 using std::exp;
 using std::hypot;
 using std::isfinite;
@@ -52,7 +53,9 @@ using std::log1p;
 using std::max;
 using std::min;
 using std::pow;
+using std::sin;
 using std::sqrt;
+using std::tan;
 using std::tanh;
 
 // ----------------------------------------------------------------------------
@@ -337,6 +340,13 @@ struct Jet {
     return {copysign(mag.a, sgn.a), v_mag + v_sgn};
   }
 
+  // d(cos(x)) = -sin(x)*dx
+  friend constexpr auto cos(const Jet& x) noexcept -> Jet {
+    using math::cos;
+    using math::sin;
+    return {cos(x.a), -sin(x.a) * x.v};
+  }
+
   // d(exp(x)) = exp(x)*dx
   friend constexpr auto exp(const Jet& x) noexcept -> Jet {
     using math::exp;
@@ -446,6 +456,13 @@ struct Jet {
     return {power, power * log(x.a) * y.v + pm1 * y.a * x.v};
   }
 
+  // d(sin(x)) = cos(x)*dx
+  friend constexpr auto sin(const Jet& x) noexcept -> Jet {
+    using math::cos;
+    using math::sin;
+    return {sin(x.a), cos(x.a) * x.v};
+  }
+
   // d(sqrt(x)) = dx / (2 * sqrt(x))
   friend constexpr auto sqrt(const Jet& x) noexcept -> Jet {
     using math::sqrt;
@@ -458,6 +475,15 @@ struct Jet {
     }
 
     return {root, x.v / (Element{2} * root)};
+  }
+
+  // d(tan(x)) = (1 + tan(x)^2)*dx
+  friend constexpr auto tan(const Jet& x) noexcept -> Jet {
+    using math::cos;
+    using math::tan;
+
+    const auto tan_a = tan(x.a);
+    return {tan_a, (Element{1} + tan_a * tan_a) * x.v};
   }
 
   // d(tanh(x)) = (1 - tanh(x)^2)*dx
