@@ -15,14 +15,26 @@
 
 namespace curves {
 
+template <typename Integral>
+concept IsIntegral =
+    requires(const Integral integral, Integral::Scalar scalar) {
+      { integral(scalar) } -> std::convertible_to<typename Integral::Scalar>;
+      {
+        integral.integrand()(scalar)
+      } -> std::convertible_to<typename Integral::Scalar>;
+    };
+
 template <CurveDefinition kDefinition, typename Curve>
 class TransferFunction;
 
 /*!
-  This specialization expects to parameterize on the integral of a curve,
-  which it invokes directly.
+  Parameterize on an integral.
+
+  This specialization invokes the integral directly on the scalar path. On the
+  jet path, it cracks the jet to evaluate the integral as a scalar, then uses
+  the integral's original integrand to calculate the derivative.
 */
-template <typename Integral>
+template <IsIntegral Integral>
 class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
  public:
   using Scalar = Integral::Scalar;
@@ -30,9 +42,33 @@ class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
   explicit TransferFunction(Integral integral) noexcept
       : integral_{std::move(integral)} {}
 
-  template <typename Value>
+  // Scalar path returns integral sum directly.
+  template <math::IsNotJet Value>
   auto operator()(Value v) const noexcept -> Value {
     return integral_(v);
+  }
+
+  // Jet path applies chain rule using ftoc.
+  template <math::IsJet Jet>
+  auto operator()(const Jet& v) const -> Jet {
+    using math::derivative;
+    using math::primal;
+
+    const auto v_primal = primal(v);
+    const auto v_derivative = derivative(v);
+
+    // Integrate normally using the jet's primal.
+    const auto integral = integral_(v_primal);
+
+    /*
+      By the Fundamental Theorem of Calculus, the integrand of an integral is
+      the integral's derivative: `d/dx Int[0->x] f(t) dt = f(x)`
+      Evaluate it directly and apply the chain rule.
+    */
+    const auto integrand = integral_.integrand();
+    const auto integral_derivative = integrand(v_primal);
+
+    return math::Jet<Scalar>{integral, integral_derivative * v_derivative};
   }
 
  private:

@@ -24,19 +24,50 @@ struct TransferFunctionTest : Test {
 // ============================================================================
 
 struct TransferFunctionTransferGradientTest : TransferFunctionTest {
+  static constexpr auto kIntegrandScale = Scalar{7.1};
+  struct Integrand {
+    Scalar scale = 0.0;
+
+    constexpr auto operator()(Scalar v) const noexcept -> Scalar {
+      return scale * v;
+    }
+  };
+
+  static constexpr auto kIntegralOffset = Scalar{11.2};
   struct Integral {
     using Scalar = Scalar;
 
-    auto operator()(Jet jet) const noexcept -> Jet { return jet; }
+    Scalar offset = 0.0;
+
+    Integrand integrand_;
+    constexpr auto integrand() const noexcept -> const Integrand& {
+      return integrand_;
+    }
+
+    auto operator()(Scalar v) const noexcept -> Scalar { return v + offset; }
+    auto operator()(Jet jet) const noexcept -> Jet { return jet + offset; }
   };
-  Integral integral;
+  Integral integral{
+      .offset = kIntegralOffset,
+      .integrand_ = Integrand{.scale = kIntegrandScale},
+  };
 
   using Sut = TransferFunction<CurveDefinition::kTransferGradient, Integral>;
   const Sut sut{integral};
 };
 
-TEST_F(TransferFunctionTransferGradientTest, JetForwardedCorrectly) {
-  ASSERT_EQ(jet_result, sut(jet_result));
+TEST_F(TransferFunctionTransferGradientTest, Scalar) {
+  const auto scalar = Scalar{3.1};
+  EXPECT_EQ(kIntegralOffset + scalar, sut(scalar));
+}
+
+TEST_F(TransferFunctionTransferGradientTest, Jet) {
+  const auto jet = Jet{5.2, 6.9};
+  const auto expected =
+      Jet{kIntegralOffset + jet.a, kIntegrandScale * jet.a * jet.v};
+  const auto actual = sut(jet);
+  EXPECT_NEAR(expected.a, actual.a, 1e-10);
+  EXPECT_NEAR(expected.v, actual.v, 1e-10);
 }
 
 // ============================================================================
