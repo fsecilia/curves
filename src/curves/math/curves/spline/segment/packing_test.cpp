@@ -108,7 +108,7 @@ TEST_F(SegmentPackingTest, ShiftsMaskedTo6Bits) {
 TEST_F(SegmentPackingTest, InvWidthShiftMaskedTo6Bits) {
   auto segment = NormalizedSegment{};
 
-  const uint8_t expected = 42;
+  const uint8_t expected = 37;
   const uint8_t garbage = 0x80;
 
   segment.inv_width.shift = expected | garbage;

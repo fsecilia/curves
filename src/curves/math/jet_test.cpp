@@ -28,8 +28,8 @@ struct JetTest : Test {
   static constexpr auto seed(E a) -> J { return {a, 1.0}; }
 
   // Common constants
-  static constexpr E a = 42.0;  // arbitrary
-  static constexpr E v = 31.0;  // arbitrary
+  static constexpr E a = 37.0;  // arbitrary
+  static constexpr E v = 23.0;  // arbitrary
   static constexpr J x{a, v};
 
   // Edge values
@@ -54,9 +54,9 @@ TEST_F(JetTestConstruction, Default) {
 }
 
 TEST_F(JetTestConstruction, Element) {
-  constexpr auto j = J{42.0};
+  constexpr auto j = J{29.0};
 
-  EXPECT_EQ(primal(j), 42.0);
+  EXPECT_EQ(primal(j), 29.0);
   EXPECT_EQ(derivative(j), 0.0);
 }
 
