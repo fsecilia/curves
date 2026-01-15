@@ -36,7 +36,8 @@ template <typename ScalarType>
 struct Monomial {
   using Scalar = ScalarType;
 
-  std::array<Scalar, coeff_count> coeffs;
+  static constexpr auto count = coeff_count;
+  std::array<Scalar, count> coeffs;
 
   template <typename T>
   constexpr auto operator()(const T& t) const noexcept -> T {
@@ -48,7 +49,7 @@ struct Monomial {
   friend auto operator<<(std::ostream& out, const Monomial& src)
       -> std::ostream& {
     out << "Monomial{" << src.coeffs[0];
-    for (auto coeff = 1; coeff < coeff_count; ++coeff) {
+    for (auto coeff = 1; coeff < count; ++coeff) {
       out << ", " << src.coeffs[coeff];
     }
     out << "}";
