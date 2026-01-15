@@ -26,7 +26,13 @@ namespace curves {
 // Integrals
 // ----------------------------------------------------------------------------
 
-//! Composes an integral from an integrand and integrator.
+/*!
+  Composes an integral from an integrand and integrator.
+
+  This type is the live integral. It uses an integrator like Gauss5 to
+  calculate a single interval by evaluating the integrand multiple times. It
+  becomes less accurate with wider intervals.
+*/
 template <typename IntegrandType, typename IntegratorType>
 class ComposedIntegral {
  public:
@@ -69,7 +75,15 @@ struct ComposedIntegralFactory {
 // Cached Integral
 // ----------------------------------------------------------------------------
 
-//! Calculates integrals using cached samples + residuals.
+/*!
+  Calculates integrals using cached samples + residuals.
+
+  This type uses a cache to look up a nearby result, then calls out to the
+  integral to calculate the rest of the interval, and returns the sum. It
+  still costs an integration per bound, but it is guaranteed to be within
+  whatever accuracy was specified with building the cache, since it only runs
+  over the residual interval.
+*/
 template <typename Integral>
 class CachedIntegral {
  public:
@@ -87,7 +101,7 @@ class CachedIntegral {
            "CachedIntegral: prefix sums must start at 0");
   }
 
-  //! \returns integral from 0 to location
+  //! \returns integral from 0 to location; integrates once
   template <typename Value>
   auto operator()(Value location) const noexcept -> Value {
     assert(cache_.keys().front() <= location &&
@@ -101,7 +115,7 @@ class CachedIntegral {
     return cached_sample + residual;
   }
 
-  //! \returns integral from left to right
+  //! \returns integral from left to right; integrates twice
   auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
     return operator()(right) - operator()(left);
   }
@@ -118,7 +132,17 @@ class CachedIntegral {
 // Cached Integral Builder
 // ----------------------------------------------------------------------------
 
-//! Constructs integral cache using adaptive quadrature.
+/*!
+  Constructs integral cache using adaptive quadrature.
+
+  This implementation takes a set of critical points, then splits the intervals
+  between them until the integrals across them are below a certain tolerance.
+
+  It is also has a simple constraint that it won't split an interval more than
+  64 times. A region that is that difficult to integrate will be less accurate,
+  but it won't consume the entire heap. It's just a contingency and shouldn't
+  happen in normal usage.
+*/
 class CachedIntegralBuilder {
  public:
   /*!
@@ -159,6 +183,10 @@ class CachedIntegralBuilder {
     pending_intervals.emplace_back(0, seed_interval_max,
                                    integral(Scalar{0}, seed_interval_max), 0);
 
+    /*
+      The contingency should be more flexible in the future, but since it also
+      should never fire, configuring it locally is arguably not terrible.
+    */
     static constexpr auto kMaxDepth = 64;
 
     // Run adaptive quadrature.
@@ -167,6 +195,7 @@ class CachedIntegralBuilder {
       // Get leftmost pending interval.
       const auto [left, right, coarse, depth] =
           std::move(pending_intervals.back());
+
       pending_intervals.pop_back();
 
       // Evaluate integrals for both halves.
@@ -178,6 +207,14 @@ class CachedIntegralBuilder {
       // Accumulate or subdivide.
       const auto converged = std::abs(refined - coarse) < tolerance;
       if (converged || depth >= kMaxDepth) {
+        /*
+          The contingency is only there because we can't predict all curve
+          parameterizations. It shouldn't happen, but if it does, make sure
+          someone knows.
+        */
+        assert(depth < kMaxDepth &&
+               "CachedIntegralBuilder: max depth exceeded");
+
         // Value is within tolerance. Accumulate it.
         boundaries.push_back(right);
         total_area += refined;
