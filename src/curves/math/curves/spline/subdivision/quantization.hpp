@@ -17,8 +17,6 @@
 
 #pragma once
 
-#pragma once
-
 #include <curves/lib.hpp>
 #include <curves/math/curves/cubic.hpp>
 #include <curves/math/curves/spline/subdivision/knot.hpp>
