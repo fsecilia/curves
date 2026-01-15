@@ -98,7 +98,7 @@ inline auto operator==(const curves::segment::NormalizedSegment& a,
   if (a.inv_width.value != b.inv_width.value) return false;
   if (a.inv_width.shift != b.inv_width.shift) return false;
 
-  for (auto i = 0; i < 4; ++i) {
+  for (auto i = 0; i < curves::segment::kCoeffCount; ++i) {
     // kDenormalShift should never be >= kDenormalShift in a normalized segment.
     assert(a.poly.shifts[i] != curves::segment::kDenormalShift);
     assert(b.poly.shifts[i] != curves::segment::kDenormalShift);
