@@ -22,32 +22,32 @@ struct SuccessorMapTest : Test {
   Sut sut{};
 };
 
-TEST_F(SuccessorMapTest, ResetAfterInitialConstruction) {
-  const auto root = sut.reset(capacity);
+TEST_F(SuccessorMapTest, PrepareAfterInitialConstruction) {
+  const auto root = sut.prepare(capacity);
   EXPECT_EQ(0u, std::to_underlying(root));  // always starts at 0.
   EXPECT_EQ(SegmentIndex::Null, sut.successor(root));
 }
 
 TEST_F(SuccessorMapTest, FirstInsertion) {
-  const auto root = sut.reset(capacity);
+  const auto root = sut.prepare(capacity);
   const auto result = sut.insert_after(root);
   EXPECT_EQ(1u, std::to_underlying(result));
   EXPECT_EQ(result, sut.successor(root));
   EXPECT_EQ(SegmentIndex::Null, sut.successor(result));
 }
 
-TEST_F(SuccessorMapTest, ResetAfterFirstInsertion) {
+TEST_F(SuccessorMapTest, PrepareAfterFirstInsertion) {
   {
-    const auto original_root = sut.reset(capacity);
+    const auto original_root = sut.prepare(capacity);
     [[maybe_unused]] const auto first_insertion =
         sut.insert_after(original_root);
   }
-  const auto result = sut.reset(capacity);
+  const auto result = sut.prepare(capacity);
   EXPECT_EQ(SegmentIndex::Null, sut.successor(result));
 }
 
 TEST_F(SuccessorMapTest, InsertionBefore) {
-  const auto root = sut.reset(capacity);
+  const auto root = sut.prepare(capacity);
   const auto tail = sut.insert_after(root);
   const auto result = sut.insert_after(root);
   EXPECT_EQ(2u, std::to_underlying(result));
@@ -57,7 +57,7 @@ TEST_F(SuccessorMapTest, InsertionBefore) {
 }
 
 TEST_F(SuccessorMapTest, InsertionAfter) {
-  const auto root = sut.reset(capacity);
+  const auto root = sut.prepare(capacity);
   const auto middle = sut.insert_after(root);
   const auto end = sut.insert_after(middle);
 
@@ -85,7 +85,7 @@ TEST_F(SuccessorMapDeathTest, insert_after_empty_map) {
 }
 
 TEST_F(SuccessorMapDeathTest, insert_after_bad_index) {
-  [[maybe_unused]] const auto root = sut.reset(capacity);
+  [[maybe_unused]] const auto root = sut.prepare(capacity);
   EXPECT_DEATH(insert(capacity), "index out of range");
 }
 
@@ -94,7 +94,7 @@ TEST_F(SuccessorMapDeathTest, successor_bad_index) {
 }
 
 TEST_F(SuccessorMapDeathTest, insert_after_full) {
-  [[maybe_unused]] const auto root = sut.reset(capacity);
+  [[maybe_unused]] const auto root = sut.prepare(capacity);
 
   for (auto safe_iteration = 1u; safe_iteration < capacity; ++safe_iteration) {
     insert(0);

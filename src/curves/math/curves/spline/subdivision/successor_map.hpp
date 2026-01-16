@@ -24,7 +24,8 @@ namespace curves::spline::segment {
 class SuccessorMap {
  public:
   /*!
-    Resets to a single root segment, index 0.
+    Prepares map for a refinement pass, resetting to a single root segment,
+    index 0, with given capacity.
 
     This function preallocates the array of successor indices. Because in our
     usage the maximum number of segments is small and known beforehand, we
@@ -34,7 +35,7 @@ class SuccessorMap {
     \param capcity maximum possible subdivisions
     \returns index of the root segment
   */
-  [[nodiscard]] auto reset(std::size_t capacity) -> SegmentIndex {
+  [[nodiscard]] auto prepare(std::size_t capacity) -> SegmentIndex {
     next_map_.clear();
     next_map_.reserve(capacity);
     next_map_.push_back(SegmentIndex::Null);
