@@ -29,22 +29,23 @@ class SuccessorMap {
   }
 
   /*!
-    Prepares map for a refinement pass, resetting to a single root segment,
-    index 0, with given capacity.
+    Prepares map for a refinement pass; empty with given capacity.
 
     This function preallocates the array of successor indices. Because in our
     usage the maximum number of segments is small and known beforehand, we
     preallocate the entire array and assert if an attempt is made to grow it
     later.
 
-    \param capcity maximum possible subdivisions
-    \returns index of the root segment
+    The return value is the initial insertion sentinel used to insert the first
+    successor. It can only be used once.
+
+    \param capacity maximum possible subdivisions
+    \returns initial insertion sentinel
   */
   [[nodiscard]] auto prepare(std::size_t capacity) -> SegmentIndex {
     next_map_.clear();
     next_map_.reserve(capacity);
-    next_map_.push_back(SegmentIndex::Null);
-    return SegmentIndex{0};
+    return SegmentIndex::Null;
   }
 
   /*!
@@ -53,18 +54,27 @@ class SuccessorMap {
     \pre size < capacity
   */
   [[nodiscard]] auto insert_after(SegmentIndex predecessor) -> SegmentIndex {
+    // Standard bounds check.
     assert(next_map_.size() < next_map_.capacity() &&
            "SuccessorMap: insert on full map");
 
+    // The initial insertion sentinel can only be used once.
+    assert((predecessor != SegmentIndex::Null || next_map_.empty()) &&
+           "SuccessorMap: initial insertion sentinel reused");
+
     // Place segment physically at end of vector.
-    const auto result = static_cast<SegmentIndex>(next_map_.size());
+    const auto new_index = static_cast<SegmentIndex>(next_map_.size());
+    if (predecessor != SegmentIndex::Null) {
+      // Wire it in logically after predecessor. Standard list insertion.
+      auto& prev_next = next_map_[to_map_index(predecessor)];
+      next_map_.push_back(prev_next);  // cur.next = prev.next
+      prev_next = new_index;           // prev.next = cur
+    } else {
+      // This is the first segment added. It has no successor or predecessor.
+      next_map_.push_back(SegmentIndex::Null);  // cur.next = null
+    }
 
-    // Wire it in logically after predecessor. Standard list insertion.
-    auto& prev_next = next_map_[to_map_index(predecessor)];
-    next_map_.push_back(prev_next);  // cur.next = prev.next;
-    prev_next = result;              // prev.next = cur;
-
-    return result;
+    return new_index;
   }
 
   //! \returns index of segment's successor
