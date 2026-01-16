@@ -23,35 +23,6 @@
 namespace curves {
 
 // ============================================================================
-// Configuration
-// ============================================================================
-
-struct SubdivisionConfig {
-  int_t segments_max = 256;
-  real_t segment_width_min = 1.0 / (1 << 16);  // 2^-16
-  real_t error_tolerance = 1e-6;
-};
-
-// ============================================================================
-// Subdivision Result
-// ============================================================================
-
-/*!
-  Output of adaptive subdivision, ready for spline construction.
-
-  Contains parallel arrays of knot positions and segment polynomials.
-  knots.size() == segments.size() + 1.
-*/
-struct SubdivisionResult {
-  std::vector<real_t> knots;           // Quantized positions, Q8.24
-  std::vector<cubic::Monomial> polys;  // Quantized coefficients
-
-  auto segment_count() const noexcept -> int_t {
-    return numeric_cast<int_t>(polys.size());
-  }
-};
-
-// ============================================================================
 // Subdivider
 // ============================================================================
 
@@ -64,7 +35,7 @@ class Subdivider {
 
   template <typename Curve>
   auto operator()(const Curve& curve, ScalarRange auto&& critical_points) const
-      -> SubdivisionResult {
+      -> QuantizedSpline {
     assert(std::ranges::size(critical_points) >= 2 &&
            "Need at least two critical points");
 
@@ -97,7 +68,7 @@ class Subdivider {
     }
 
     template <typename Range>
-    auto operator()(Range&& critical_points) -> SubdivisionResult {
+    auto operator()(Range&& critical_points) -> QuantizedSpline {
       initialize(std::forward<Range>(critical_points));
       subdivide();
       return result();
@@ -151,7 +122,7 @@ class Subdivider {
     }
 
     //! Extracts the final result.
-    auto result() -> SubdivisionResult {
+    auto result() -> QuantizedSpline {
       sort_by_position();
       return extract_result();
     }
@@ -235,8 +206,8 @@ class Subdivider {
       });
     }
 
-    auto extract_result() const -> SubdivisionResult {
-      SubdivisionResult out;
+    auto extract_result() const -> QuantizedSpline {
+      QuantizedSpline out;
       out.knots.reserve(finalized_.size() + 1);
       out.polys.reserve(finalized_.size());
 
