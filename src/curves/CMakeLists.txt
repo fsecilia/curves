@@ -64,6 +64,7 @@ list(APPEND lib_files
   math/spline.cpp
   math/spline.hpp
   math/spline_view.hpp
+  math/shaped_spline_view.hpp
   numeric_cast.hpp
   ranges.hpp
   static_vector.hpp
@@ -132,6 +133,7 @@ list(APPEND unit_tests_files
   math/jet_test.cpp
   math/spline_test.cpp
   math/spline_view_test.cpp
+  math/shaped_spline_view_test.cpp
   static_vector_test.cpp
   ui/model/flat_visitor_test.cpp
   ui/model/view_model_test.cpp
