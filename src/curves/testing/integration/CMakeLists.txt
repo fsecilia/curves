@@ -5,6 +5,7 @@
 add_executable(integration_tests
   isqrt_gamut_tests.cpp
   isqrt_programmatic_tests.cpp
+  shaped_spline_accuracy_test.cpp
   synchronous_curve_approximation_accuracy.cpp
   synchronous_curve_asymptote_search.cpp
 )

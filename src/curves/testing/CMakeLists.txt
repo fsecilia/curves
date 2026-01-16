@@ -9,6 +9,7 @@ add_library(testing_lib
   isqrt.cpp
   isqrt.hpp
   linear_curve.hpp
+  shaped_spline_accuracy.hpp
   test.cpp
   test.hpp
 )

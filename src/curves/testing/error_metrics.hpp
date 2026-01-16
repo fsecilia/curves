@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/testing/test.hpp>
+#include <cmath>
 #include <ostream>
 
 namespace curves {
