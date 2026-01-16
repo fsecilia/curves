@@ -8,152 +8,100 @@
 #include <curves/testing/test.hpp>
 #include <gmock/gmock.h>
 
-namespace curves {
+namespace curves::spline::segment {
 namespace {
 
 // ----------------------------------------------------------------------------
-// Common Fixture
+// Standard Tests
 // ----------------------------------------------------------------------------
 
-struct SegmentListTest : Test {
-  struct Segment {
-    int value;
-    auto operator<=>(const Segment&) const = default;
-  };
+struct SuccessorMapTest : Test {
+  static constexpr auto capacity = std::size_t{5};
 
-  using Sut = SegmentList<Segment>;
-  Sut list = Sut(10);
+  using Sut = SuccessorMap;
+  Sut sut{};
 };
 
-TEST_F(SegmentListTest, BeginEndEqualInEmptyList) {
-  EXPECT_EQ(list.begin(), list.end());
+TEST_F(SuccessorMapTest, ResetAfterInitialConstruction) {
+  const auto root = sut.reset(capacity);
+  EXPECT_EQ(0u, std::to_underlying(root));  // always starts at 0.
+  EXPECT_EQ(SegmentIndex::Null, sut.successor(root));
 }
 
-TEST_F(SegmentListTest, ConstIteratorsEqualMutableIterators) {
-  list.push_back({10});
-
-  const auto mutable_begin = list.begin();
-  const auto const_begin = static_cast<const Sut&>(list).begin();
-  const auto mutable_end = list.end();
-  const auto const_end = static_cast<const Sut&>(list).end();
-
-  EXPECT_EQ(mutable_begin.list, const_begin.list);
-  EXPECT_EQ(mutable_begin.current, const_begin.current);
-  EXPECT_EQ(mutable_end.list, const_end.list);
-  EXPECT_EQ(mutable_end.current, const_end.current);
+TEST_F(SuccessorMapTest, FirstInsertion) {
+  const auto root = sut.reset(capacity);
+  const auto result = sut.insert_after(root);
+  EXPECT_EQ(1u, std::to_underlying(result));
+  EXPECT_EQ(result, sut.successor(root));
+  EXPECT_EQ(SegmentIndex::Null, sut.successor(result));
 }
 
-TEST_F(SegmentListTest, PushBackMaintainsOrder) {
-  const auto id1 = list.push_back({10});
-  const auto id2 = list.push_back({20});
-  const auto id3 = list.push_back({30});
-
-  // Head and tail matches, size is correct.
-  EXPECT_EQ(list.head(), id1);
-  EXPECT_EQ(list.tail(), id3);
-  EXPECT_EQ(list.size(), 3);
-
-  // Topology is correct.
-  EXPECT_EQ(list.next(id1), id2);
-  EXPECT_EQ(list.next(id2), id3);
-  EXPECT_EQ(list.next(id3), SegmentIndex::Null);
-
-  // Data is correct.
-  EXPECT_EQ(list[id1].value, 10);
-  EXPECT_EQ(list[id2].value, 20);
-  EXPECT_EQ(list[id3].value, 30);
+TEST_F(SuccessorMapTest, ResetAfterFirstInsertion) {
+  {
+    const auto original_root = sut.reset(capacity);
+    [[maybe_unused]] const auto first_insertion =
+        sut.insert_after(original_root);
+  }
+  const auto result = sut.reset(capacity);
+  EXPECT_EQ(SegmentIndex::Null, sut.successor(result));
 }
 
-TEST_F(SegmentListTest, InsertAfterSplicesMiddle) {
-  const auto id_a = list.push_back({1});  // A
-  const auto id_b = list.push_back({3});  // B
-
-  // Insert '2' after '1'.
-  const auto id_c = list.insert_after(id_a, {2});
-
-  // Topology is correct: A -> C -> B
-  EXPECT_EQ(list.next(id_a), id_c);
-  EXPECT_EQ(list.next(id_c), id_b);
-  EXPECT_EQ(list.next(id_b), SegmentIndex::Null);
-
-  // Tail is still B.
-  EXPECT_EQ(list.tail(), id_b);
+TEST_F(SuccessorMapTest, InsertionBefore) {
+  const auto root = sut.reset(capacity);
+  const auto tail = sut.insert_after(root);
+  const auto result = sut.insert_after(root);
+  EXPECT_EQ(2u, std::to_underlying(result));
+  EXPECT_EQ(result, sut.successor(root));
+  EXPECT_EQ(tail, sut.successor(result));
+  EXPECT_EQ(SegmentIndex::Null, sut.successor(tail));
 }
 
-TEST_F(SegmentListTest, InsertAfterTailUpdatesTailPointer) {
-  const auto id1 = list.push_back({10});
+TEST_F(SuccessorMapTest, InsertionAfter) {
+  const auto root = sut.reset(capacity);
+  const auto middle = sut.insert_after(root);
+  const auto end = sut.insert_after(middle);
 
-  // Insert after current tail.
-  const auto id2 = list.insert_after(id1, {20});
+  EXPECT_EQ(1u, std::to_underlying(middle));
+  EXPECT_EQ(2u, std::to_underlying(end));
 
-  // Topology is correct.
-  EXPECT_EQ(list.next(id1), id2);
-  EXPECT_EQ(list.tail(), id2);
-  EXPECT_EQ(list.next(id2), SegmentIndex::Null);
-
-  // Push_back attaches to new tail.
-  const auto id3 = list.push_back({30});
-  EXPECT_EQ(list.next(id2), id3);
-  EXPECT_EQ(list.tail(), id3);
+  EXPECT_EQ(middle, sut.successor(root));
+  EXPECT_EQ(end, sut.successor(middle));
+  EXPECT_EQ(SegmentIndex::Null, sut.successor(end));
 }
 
-TEST_F(SegmentListTest, EnforcesCapacity) {
-  // Reduce capacity drastically.
-  list = Sut(2);
+// ----------------------------------------------------------------------------
+// Death Tests
+// ----------------------------------------------------------------------------
 
-  list.push_back({1});
-  list.push_back({2});
+struct SuccessorMapDeathTest : SuccessorMapTest {
+  auto insert(std::size_t index) -> void {
+    [[maybe_unused]] const auto result =
+        sut.insert_after(static_cast<SegmentIndex>(index));
+  }
+};
 
-  // Once full, pushing fails fail.
-  const auto id_fail = list.push_back({3});
-  EXPECT_EQ(id_fail, SegmentIndex::Null);
-  EXPECT_EQ(list.size(), 2);
-
-  // Reset clears everything.
-  list.reset(5);
-  EXPECT_TRUE(list.empty());
-  EXPECT_EQ(list.head(), SegmentIndex::Null);
-  EXPECT_EQ(list.tail(), SegmentIndex::Null);
-
-  // Pushing works again.
-  EXPECT_NE(list.push_back({1}), SegmentIndex::Null);
+TEST_F(SuccessorMapDeathTest, insert_after_empty_map) {
+  EXPECT_DEATH(insert(capacity), "insert on full map");
 }
 
-TEST_F(SegmentListTest, IterateMutableList) {
-  list.push_back({10});
-  list.push_back({20});
-  list.push_back({30});
-
-  EXPECT_THAT(list,
-              testing::ElementsAre(Segment{10}, Segment{20}, Segment{30}));
+TEST_F(SuccessorMapDeathTest, insert_after_bad_index) {
+  [[maybe_unused]] const auto root = sut.reset(capacity);
+  EXPECT_DEATH(insert(capacity), "index out of range");
 }
 
-TEST_F(SegmentListTest, IterateConstList) {
-  list.push_back({10});
-  list.push_back({20});
-  list.push_back({30});
-
-  EXPECT_THAT(static_cast<const Sut&>(list),
-              testing::ElementsAre(Segment{10}, Segment{20}, Segment{30}));
+TEST_F(SuccessorMapDeathTest, successor_bad_index) {
+  EXPECT_DEATH(sut.successor(SegmentIndex{capacity}), "index out of range");
 }
 
-TEST_F(SegmentListTest, IteratorFollowsLogicalOrderNotPhysicalOrder) {
-  // Start with physical [A, B] and logical A -> B.
-  const auto id_a = list.push_back({10});
-  list.push_back({30});
+TEST_F(SuccessorMapDeathTest, insert_after_full) {
+  [[maybe_unused]] const auto root = sut.reset(capacity);
 
-  // Insert C between A and B.
-  // Physical: [A, B, C]
-  // Logical:  A -> C -> B
-  list.insert_after(id_a, {20});
+  for (auto safe_iteration = 1u; safe_iteration < capacity; ++safe_iteration) {
+    insert(0);
+  }
 
-  // Collect via iterator.
-  auto values = std::vector<int>{};
-  for (const auto& item : list) values.push_back(item.value);
-
-  // Verify logical order (10, 20, 30), not physical order (10, 30, 20).
-  EXPECT_THAT(values, testing::ElementsAre(10, 20, 30));
+  EXPECT_DEATH(insert(0), "insert on full map");
 }
 
 }  // namespace
-}  // namespace curves
+}  // namespace curves::spline::segment

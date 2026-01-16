@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Segment adjacency list, the topology of a spline.
+  \brief Map of segment successors, ordered by index.
 
   \copyright Copyright (C) 2026 Frank Secilia
 */
@@ -11,141 +11,70 @@
 #include <curves/lib.hpp>
 #include <curves/math/curves/spline/subdivision/subdivision.hpp>
 #include <cassert>
-#include <utility>
 #include <vector>
 
-namespace curves {
+namespace curves::spline::segment {
 
 /*!
-  Montonic index-based list over a vector.
+  Map of segment successors, ordered by index.
 
-  This type maintains a vector of segments that are linked internally by index.
-  It supports reset(), but grows monotonically.
+  This type represents the topology of a spline, mapping from a given segment
+  index to its successor's index.
 */
-template <typename Segment>
-class SegmentList {
+class SuccessorMap {
  public:
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
-  using value_type = Segment;
-  using pointer = value_type*;
-  using const_pointer = const value_type*;
-  using reference = value_type&;
-  using const_reference = const value_type&;
+  /*!
+    Resets to a single root segment, index 0.
 
-  template <typename List, typename Reference>
-  struct ListIterator {
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::ptrdiff_t;
-    using value_type = std::remove_cvref_t<Reference>;
-    using pointer = value_type*;
-    using reference = Reference;
+    This function preallocates the array of successor indices. Because in our
+    usage the maximum number of segments is small and known beforehand, we
+    preallocate the entire array and assert if an attempt is made to grow it
+    later.
 
-    List* list;
-    SegmentIndex current;
-
-    auto operator*() const noexcept -> Reference { return (*list)[current]; }
-
-    auto operator++() noexcept -> ListIterator& {
-      current = list->next(current);
-      return *this;
-    }
-
-    auto operator++(int) -> ListIterator {
-      auto result = *this;
-      ++*this;
-      return result;
-    }
-
-    auto operator==(const ListIterator& other) const noexcept -> bool {
-      return current == other.current;
-    }
-  };
-  using iterator = ListIterator<SegmentList, reference>;
-  using const_iterator = ListIterator<const SegmentList, const_reference>;
-
-  explicit SegmentList(std::size_t capacity) { nodes_.reserve(capacity); }
-
-  auto head() const noexcept -> SegmentIndex { return head_; }
-  auto tail() const noexcept -> SegmentIndex { return tail_; }
-  auto size() const noexcept -> size_t { return nodes_.size(); }
-  auto capacity() const noexcept -> size_t { return nodes_.capacity(); }
-  auto empty() const noexcept -> bool { return nodes_.empty(); }
-
-  auto begin() const -> const_iterator { return {this, head_}; }
-  auto end() const -> const_iterator { return {this, SegmentIndex::Null}; }
-  auto begin() -> iterator { return {this, head_}; }
-  auto end() -> iterator { return {this, SegmentIndex::Null}; }
-
-  template <typename Self>
-  auto operator[](this Self&& self, SegmentIndex id) noexcept
-      -> decltype(auto) {
-    assert(static_cast<std::size_t>(id) < self.nodes_.size());
-    return (std::forward<Self>(self).nodes_[static_cast<std::size_t>(id)].data);
+    \param capcity maximum possible subdivisions
+    \returns index of the root segment
+  */
+  [[nodiscard]] auto reset(std::size_t capacity) -> SegmentIndex {
+    next_map_.clear();
+    next_map_.reserve(capacity);
+    next_map_.push_back(SegmentIndex::Null);
+    return SegmentIndex{0};
   }
 
-  auto next(SegmentIndex id) const noexcept -> SegmentIndex {
-    return nodes_[static_cast<size_t>(id)].next;
+  /*!
+    Links a new segment immediately after the predecessor.
+    \returns index of newly created segment
+    \pre size < capacity
+  */
+  [[nodiscard]] auto insert_after(SegmentIndex predecessor) -> SegmentIndex {
+    assert(next_map_.size() < next_map_.capacity() &&
+           "SuccessorMap: insert on full map");
+
+    // Place segment physically at end of vector.
+    const auto result = static_cast<SegmentIndex>(next_map_.size());
+
+    // Wire it in logically after predecessor. Standard list insertion.
+    auto& prev_next = next_map_[to_map_index(predecessor)];
+    next_map_.push_back(prev_next);  // cur.next = prev.next;
+    prev_next = result;              // prev.next = cur;
+
+    return result;
   }
 
-  auto reset(size_t capacity) -> void {
-    nodes_.clear();
-    if (nodes_.capacity() < capacity) nodes_.reserve(capacity);
-
-    head_ = SegmentIndex::Null;
-    tail_ = SegmentIndex::Null;
-  }
-
-  //! Appends after tail. Returns Null if capacity is full.
-  auto push_back(Segment&& value) noexcept -> SegmentIndex {
-    if (nodes_.size() == nodes_.capacity()) return SegmentIndex::Null;
-
-    // Create new node.
-    const auto new_id = allocate(std::move(value));
-
-    // Wire it in.
-    if (head_ == SegmentIndex::Null) {
-      head_ = new_id;
-      tail_ = new_id;
-    } else {
-      nodes_[static_cast<size_t>(tail_)].next = new_id;
-      tail_ = new_id;
-    }
-
-    return new_id;
-  }
-
-  //! Inserts after parent_id. Returns Null if capacity is full.
-  auto insert_after(SegmentIndex parent_id, Segment&& value) -> SegmentIndex {
-    if (nodes_.size() == nodes_.capacity()) return SegmentIndex::Null;
-
-    // Create new node.
-    auto new_id = allocate(std::move(value));
-    auto& new_node = nodes_.back();
-
-    // Wire it in.
-    auto& parent_node = nodes_[static_cast<size_t>(parent_id)];
-    new_node.next = parent_node.next;
-    parent_node.next = new_id;
-    if (parent_id == tail_) tail_ = new_id;
-
-    return new_id;
+  //! \returns index of segment's successor
+  auto successor(SegmentIndex index) const noexcept -> SegmentIndex {
+    return next_map_[to_map_index(index)];
   }
 
  private:
-  struct Node {
-    Segment data;
-    SegmentIndex next{SegmentIndex::Null};
-  };
+  std::vector<SegmentIndex> next_map_{};
 
-  auto allocate(Segment&& value) -> SegmentIndex {
-    nodes_.push_back({std::move(value), SegmentIndex::Null});
-    return static_cast<SegmentIndex>(nodes_.size() - 1);
+  // Converts from enum type to index type, asserting on range.
+  auto to_map_index(SegmentIndex segment_index) const noexcept -> std::size_t {
+    const auto index = static_cast<std::size_t>(segment_index);
+    assert(index < next_map_.size() && "SuccessorMap: index out of range");
+    return index;
   }
-
-  std::vector<Node> nodes_;
-  SegmentIndex head_{SegmentIndex::Null};
-  SegmentIndex tail_{SegmentIndex::Null};
 };
 
-}  // namespace curves
+}  // namespace curves::spline::segment
