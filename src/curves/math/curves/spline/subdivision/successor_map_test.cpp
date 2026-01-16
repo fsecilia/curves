@@ -80,20 +80,25 @@ struct SuccessorMapDeathTest : SuccessorMapTest {
   }
 };
 
-TEST_F(SuccessorMapDeathTest, insert_after_empty_map) {
+TEST_F(SuccessorMapDeathTest, DefaultInitializedInsert) {
   EXPECT_DEATH(insert(capacity), "insert on full map");
 }
 
-TEST_F(SuccessorMapDeathTest, insert_after_bad_index) {
+TEST_F(SuccessorMapDeathTest, DefaultInitializedSuccessor) {
+  EXPECT_DEATH(sut.successor(SegmentIndex{0}), "index out of range");
+}
+
+TEST_F(SuccessorMapDeathTest, InsertAfterOutOfRange) {
   [[maybe_unused]] const auto root = sut.prepare(capacity);
   EXPECT_DEATH(insert(capacity), "index out of range");
 }
 
-TEST_F(SuccessorMapDeathTest, successor_bad_index) {
+TEST_F(SuccessorMapDeathTest, SuccessorOutOfRange) {
+  [[maybe_unused]] const auto root = sut.prepare(capacity);
   EXPECT_DEATH(sut.successor(SegmentIndex{capacity}), "index out of range");
 }
 
-TEST_F(SuccessorMapDeathTest, insert_after_full) {
+TEST_F(SuccessorMapDeathTest, InsertOnFull) {
   [[maybe_unused]] const auto root = sut.prepare(capacity);
 
   for (auto safe_iteration = 1u; safe_iteration < capacity; ++safe_iteration) {
