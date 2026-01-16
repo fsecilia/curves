@@ -56,7 +56,7 @@ TEST_F(SegmentListTest, PushBackMaintainsOrder) {
   // Topology is correct.
   EXPECT_EQ(list.next(id1), id2);
   EXPECT_EQ(list.next(id2), id3);
-  EXPECT_EQ(list.next(id3), NodeId::Null);
+  EXPECT_EQ(list.next(id3), SegmentIndex::Null);
 
   // Data is correct.
   EXPECT_EQ(list[id1].value, 10);
@@ -74,7 +74,7 @@ TEST_F(SegmentListTest, InsertAfterSplicesMiddle) {
   // Topology is correct: A -> C -> B
   EXPECT_EQ(list.next(id_a), id_c);
   EXPECT_EQ(list.next(id_c), id_b);
-  EXPECT_EQ(list.next(id_b), NodeId::Null);
+  EXPECT_EQ(list.next(id_b), SegmentIndex::Null);
 
   // Tail is still B.
   EXPECT_EQ(list.tail(), id_b);
@@ -89,7 +89,7 @@ TEST_F(SegmentListTest, InsertAfterTailUpdatesTailPointer) {
   // Topology is correct.
   EXPECT_EQ(list.next(id1), id2);
   EXPECT_EQ(list.tail(), id2);
-  EXPECT_EQ(list.next(id2), NodeId::Null);
+  EXPECT_EQ(list.next(id2), SegmentIndex::Null);
 
   // Push_back attaches to new tail.
   const auto id3 = list.push_back({30});
@@ -106,17 +106,17 @@ TEST_F(SegmentListTest, EnforcesCapacity) {
 
   // Once full, pushing fails fail.
   const auto id_fail = list.push_back({3});
-  EXPECT_EQ(id_fail, NodeId::Null);
+  EXPECT_EQ(id_fail, SegmentIndex::Null);
   EXPECT_EQ(list.size(), 2);
 
   // Reset clears everything.
   list.reset(5);
   EXPECT_TRUE(list.empty());
-  EXPECT_EQ(list.head(), NodeId::Null);
-  EXPECT_EQ(list.tail(), NodeId::Null);
+  EXPECT_EQ(list.head(), SegmentIndex::Null);
+  EXPECT_EQ(list.tail(), SegmentIndex::Null);
 
   // Pushing works again.
-  EXPECT_NE(list.push_back({1}), NodeId::Null);
+  EXPECT_NE(list.push_back({1}), SegmentIndex::Null);
 }
 
 TEST_F(SegmentListTest, IterateMutableList) {

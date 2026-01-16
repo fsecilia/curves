@@ -42,7 +42,7 @@ class SegmentList {
     using reference = Reference;
 
     List* list;
-    NodeId current;
+    SegmentIndex current;
 
     auto operator*() const noexcept -> Reference { return (*list)[current]; }
 
@@ -66,24 +66,25 @@ class SegmentList {
 
   explicit SegmentList(std::size_t capacity) { nodes_.reserve(capacity); }
 
-  auto head() const noexcept -> NodeId { return head_; }
-  auto tail() const noexcept -> NodeId { return tail_; }
+  auto head() const noexcept -> SegmentIndex { return head_; }
+  auto tail() const noexcept -> SegmentIndex { return tail_; }
   auto size() const noexcept -> size_t { return nodes_.size(); }
   auto capacity() const noexcept -> size_t { return nodes_.capacity(); }
   auto empty() const noexcept -> bool { return nodes_.empty(); }
 
   auto begin() const -> const_iterator { return {this, head_}; }
-  auto end() const -> const_iterator { return {this, NodeId::Null}; }
+  auto end() const -> const_iterator { return {this, SegmentIndex::Null}; }
   auto begin() -> iterator { return {this, head_}; }
-  auto end() -> iterator { return {this, NodeId::Null}; }
+  auto end() -> iterator { return {this, SegmentIndex::Null}; }
 
   template <typename Self>
-  auto operator[](this Self&& self, NodeId id) noexcept -> decltype(auto) {
+  auto operator[](this Self&& self, SegmentIndex id) noexcept
+      -> decltype(auto) {
     assert(static_cast<std::size_t>(id) < self.nodes_.size());
     return (std::forward<Self>(self).nodes_[static_cast<std::size_t>(id)].data);
   }
 
-  auto next(NodeId id) const noexcept -> NodeId {
+  auto next(SegmentIndex id) const noexcept -> SegmentIndex {
     return nodes_[static_cast<size_t>(id)].next;
   }
 
@@ -91,19 +92,19 @@ class SegmentList {
     nodes_.clear();
     if (nodes_.capacity() < capacity) nodes_.reserve(capacity);
 
-    head_ = NodeId::Null;
-    tail_ = NodeId::Null;
+    head_ = SegmentIndex::Null;
+    tail_ = SegmentIndex::Null;
   }
 
   //! Appends after tail. Returns Null if capacity is full.
-  auto push_back(Segment&& value) noexcept -> NodeId {
-    if (nodes_.size() == nodes_.capacity()) return NodeId::Null;
+  auto push_back(Segment&& value) noexcept -> SegmentIndex {
+    if (nodes_.size() == nodes_.capacity()) return SegmentIndex::Null;
 
     // Create new node.
     const auto new_id = allocate(std::move(value));
 
     // Wire it in.
-    if (head_ == NodeId::Null) {
+    if (head_ == SegmentIndex::Null) {
       head_ = new_id;
       tail_ = new_id;
     } else {
@@ -115,8 +116,8 @@ class SegmentList {
   }
 
   //! Inserts after parent_id. Returns Null if capacity is full.
-  auto insert_after(NodeId parent_id, Segment&& value) -> NodeId {
-    if (nodes_.size() == nodes_.capacity()) return NodeId::Null;
+  auto insert_after(SegmentIndex parent_id, Segment&& value) -> SegmentIndex {
+    if (nodes_.size() == nodes_.capacity()) return SegmentIndex::Null;
 
     // Create new node.
     auto new_id = allocate(std::move(value));
@@ -134,17 +135,17 @@ class SegmentList {
  private:
   struct Node {
     Segment data;
-    NodeId next{NodeId::Null};
+    SegmentIndex next{SegmentIndex::Null};
   };
 
-  auto allocate(Segment&& value) -> NodeId {
-    nodes_.push_back({std::move(value), NodeId::Null});
-    return static_cast<NodeId>(nodes_.size() - 1);
+  auto allocate(Segment&& value) -> SegmentIndex {
+    nodes_.push_back({std::move(value), SegmentIndex::Null});
+    return static_cast<SegmentIndex>(nodes_.size() - 1);
   }
 
   std::vector<Node> nodes_;
-  NodeId head_{NodeId::Null};
-  NodeId tail_{NodeId::Null};
+  SegmentIndex head_{SegmentIndex::Null};
+  SegmentIndex tail_{SegmentIndex::Null};
 };
 
 }  // namespace curves
