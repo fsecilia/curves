@@ -47,7 +47,7 @@ class RefinementQueue {
     This function clears the clears any current items and pre-allocates to
     avoid reallocations.
   */
-  auto prepare(std::size_t capacity) {
+  auto prepare(std::size_t capacity) -> void {
     work_items_.clear();
     work_items_.reserve(capacity);
   }
