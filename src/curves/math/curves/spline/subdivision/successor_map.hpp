@@ -23,6 +23,11 @@ namespace curves::spline::segment {
 */
 class SuccessorMap {
  public:
+  //! \returns Index of first valid segment, or Null if empty.
+  [[nodiscard]] auto head() const noexcept -> SegmentIndex {
+    return next_map_.empty() ? SegmentIndex::Null : SegmentIndex{0};
+  }
+
   /*!
     Prepares map for a refinement pass, resetting to a single root segment,
     index 0, with given capacity.
