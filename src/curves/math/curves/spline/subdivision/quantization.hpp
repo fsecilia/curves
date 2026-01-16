@@ -19,7 +19,7 @@
 
 #include <curves/lib.hpp>
 #include <curves/math/curves/cubic.hpp>
-#include <curves/math/curves/spline/subdivision/knot.hpp>
+#include <curves/math/curves/spline/subdivision/subdivision.hpp>
 #include <curves/math/jet.hpp>
 #include <curves/ranges.hpp>
 #include <algorithm>

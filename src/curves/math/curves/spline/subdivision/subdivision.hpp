@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Estimates segment error from a set of candidates.
+  \brief Definitions common to subdivision.
 
   \copyright Copyright (C) 2026 Frank Secilia
 */

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <curves/math/curves/spline/subdivision/subdivision.hpp>
 #include <cassert>
 #include <cstdint>
 #include <utility>
