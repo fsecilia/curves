@@ -43,6 +43,7 @@ list(APPEND lib_files
   math/curves/spline/subdivision/refinement_queue.hpp
   math/curves/spline/subdivision/sampled_error_estimator.hpp
   math/curves/spline/subdivision/subdivision.hpp
+  math/curves/spline/subdivision/subdivision_context.hpp
   math/curves/spline/subdivision/successor_map.hpp
   math/curves/synchronous.hpp
   math/curves/transfer_function.hpp
@@ -111,6 +112,7 @@ list(APPEND unit_tests_files
   math/curves/spline/subdivision/quantization_test.cpp
   math/curves/spline/subdivision/refinement_queue_test.cpp
   math/curves/spline/subdivision/sampled_error_estimator_test.cpp
+  math/curves/spline/subdivision/subdivision_context_test.cpp
   math/curves/spline/subdivision/successor_map_test.cpp
   math/curves/synchronous_test.cpp
   math/curves/transfer_function/curve_test.cpp
