@@ -14,12 +14,12 @@
 namespace curves {
 
 struct AccuracyMetrics {
-  real_t max_abs_err = 0.0L;
-  real_t max_rel_err = 0.0L;
-  real_t max_abs_err_x = 0.0L;
-  real_t max_rel_err_x = 0.0L;
-  real_t sse_abs = 0.0L;
-  real_t sse_rel = 0.0L;
+  real_t max_abs_err = 0.0;
+  real_t max_rel_err = 0.0;
+  real_t max_abs_err_x = 0.0;
+  real_t max_rel_err_x = 0.0;
+  real_t sse_abs = 0.0;
+  real_t sse_rel = 0.0;
   int num_samples = 0;
 
   auto mse_abs() const -> real_t { return sse_abs / num_samples; }
@@ -31,7 +31,7 @@ struct AccuracyMetrics {
     ++num_samples;
 
     // Skip near zero so rel doesn't explode.
-    if (std::abs(expected) < 1e-12L) return;
+    if (std::abs(expected) < 1e-12) return;
 
     // Accumulate absolute error.
     const auto abs_err = std::abs(actual - expected);

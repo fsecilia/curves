@@ -52,7 +52,7 @@ struct InverseViaPartition {
       const auto y_upper = f(x_upper);
       if (is_increasing ? (y_upper >= y) : (y_upper <= y)) break;
       x_lower = x_upper;
-      x_upper *= 2.0L;
+      x_upper *= 2.0;
     }
 
     // Run standard binary search within the bracket.

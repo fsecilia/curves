@@ -50,10 +50,10 @@ template <int ImplicitBit, bool IsSigned = true>
 auto coefficient(real_t value) noexcept -> real_t {
   // Handle zero and negative (for unsigned).
   if constexpr (IsSigned) {
-    if (value == 0.0L) return 0.0L;
+    if (value == 0.0) return 0.0;
   } else {
     assert(value >= 0.0);
-    if (value <= 0.0L) return 0.0L;
+    if (value <= 0.0) return 0.0;
   }
 
   int exp;

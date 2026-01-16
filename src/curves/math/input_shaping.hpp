@@ -62,7 +62,7 @@ struct EasePolynomial {
 };
 
 // Integral of smootherstep. C^3 continuous, area ratio 0.5.
-inline constexpr auto kEasePoly = EasePolynomial{1.0L, -3.0L, 2.5L};
+inline constexpr auto kEasePoly = EasePolynomial{1.0, -3.0, 2.5};
 
 //! Domain covered by a transition.
 struct ShapingTransition {
@@ -88,9 +88,9 @@ struct EaseInConfig {
 
 //! State, solved for kernel params.
 struct EaseInState {
-  real_t u_floor = 0.0L;
-  real_t v_width_inv = 0.0L;
-  real_t u_lag = 0.0L;
+  real_t u_floor = 0.0;
+  real_t v_width_inv = 0.0;
+  real_t u_lag = 0.0;
 };
 
 // ----------------------------------------------------------------------------
@@ -98,14 +98,14 @@ struct EaseInState {
 // ----------------------------------------------------------------------------
 
 struct EaseOutConfig {
-  static auto constexpr begin_default_scale = real_t{0.8L};
-  static auto constexpr width_default_scale = real_t{0.1L};
+  static auto constexpr begin_default_scale = real_t{0.8};
+  static auto constexpr width_default_scale = real_t{0.1};
   ShapingTransition transition;
 };
 
 struct EaseOutState {
-  real_t v_width_inv = 0.0L;
-  real_t u_ceiling = 0.0L;
+  real_t v_width_inv = 0.0;
+  real_t u_ceiling = 0.0;
 };
 
 // ----------------------------------------------------------------------------
@@ -135,16 +135,16 @@ struct SolveEaseIn {
     EaseInState state{};
 
     // Find u_floor by inverting the display curve.
-    if (config.y_floor_target <= 0.0L) {
-      state.u_floor = 0.0L;
+    if (config.y_floor_target <= 0.0) {
+      state.u_floor = 0.0;
     } else {
       state.u_floor =
           inverse_via_partition(display_curve, config.y_floor_target);
     }
 
     // Compute reciprocal width for division in eval.
-    const auto v_width = std::max(0.0L, config.transition.v_width);
-    state.v_width_inv = (v_width > 0.0L) ? (1.0L / v_width) : 0.0L;
+    const auto v_width = std::max(0.0, config.transition.v_width);
+    state.v_width_inv = (v_width > 0.0) ? (1.0 / v_width) : 0.0;
 
     /*
       Compute lag for continuity at transition end.
@@ -174,8 +174,8 @@ struct SolveEaseOut {
   EaseOutState operator()(const EaseOutConfig& config) const {
     EaseOutState state{};
 
-    const auto v_width = std::max(0.0L, config.transition.v_width);
-    state.v_width_inv = (v_width > 0.0L) ? (1.0L / v_width) : 0.0L;
+    const auto v_width = std::max(0.0, config.transition.v_width);
+    state.v_width_inv = (v_width > 0.0) ? (1.0 / v_width) : 0.0;
     state.u_ceiling =
         config.transition.v_begin + v_width * kEasePoly.area_ratio();
 

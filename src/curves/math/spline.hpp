@@ -210,7 +210,7 @@ class SplineBuilder {
       -> curves_spline {
     curves_spline result;
 
-    auto x_to_v = 1.0L;
+    auto x_to_v = 1.0;
     if constexpr (HasCusp<decltype(curve)>) {
       const auto cusp_v = curve.cusp_location();
       const auto cusp_x = knot_locator_.find_nearest_x(cusp_v);
@@ -309,8 +309,8 @@ class SplineBuilder {
     const auto y_start = prev_a + prev_b + prev_c + prev_d;
 
     // Calculate normalized derivatives at the boundary.
-    const auto m_start_norm = 3.0L * prev_a + 2.0L * prev_b + prev_c;
-    const auto k_start_norm = 6.0L * prev_a + 2.0L * prev_b;
+    const auto m_start_norm = 3.0 * prev_a + 2.0 * prev_b + prev_c;
+    const auto k_start_norm = 6.0 * prev_a + 2.0 * prev_b;
 
     // Get previous physical width (dv_prev) to un-normalize.
     const s64 prev_len_fixed = 1ULL << prev_width_log2;
@@ -332,7 +332,7 @@ class SplineBuilder {
     real_t dv_final = 0;
 
     // Safety floor nominally 0.
-    const real_t kMinSlope = 0.0L;
+    const real_t kMinSlope = 0.0;
 
     // Adaptive loop.
     //
@@ -344,7 +344,7 @@ class SplineBuilder {
 
       // Predict end slope (assuming standard y''(1)=0 constraint)
       // slope_end = slope_start + 0.5*curvature_start*width
-      const real_t projected_slope = m_real + 0.5L * k_real * dv_final;
+      const real_t projected_slope = m_real + 0.5 * k_real * dv_final;
 
       if (projected_slope >= kMinSlope) {
         is_safe = true;
@@ -374,7 +374,7 @@ class SplineBuilder {
     // to the final chosen width, dv_final.
     const auto next_d = y_start;
     const auto next_c = m_real * dv_final;
-    const auto next_b = (k_real * dv_final * dv_final) / 2.0L;
+    const auto next_b = (k_real * dv_final * dv_final) / 2.0;
 
     // Calc cubic segment coefficient.
     real_t next_a;
@@ -382,13 +382,13 @@ class SplineBuilder {
       // We found a safe width that pulls out of the dive and ends with zero
       // curvature (y'' = 0). This is a smooth bleed-off and it maintains C2
       // continuity.
-      next_a = -next_b / 3.0L;
+      next_a = -next_b / 3.0;
     } else {
       // [PANIC MODE]
       // We did not find a safe width that pulls out ofthe dive.
       // Force the curve to flatten. Breaks C2 with a jerk spike, but
       // preserves monotonicity. Derived from 3a + 2b + c = 0, when y' = 0.
-      next_a = -(2.0L * next_b + next_c) / 3.0L;
+      next_a = -(2.0 * next_b + next_c) / 3.0;
     }
 
     result.runout_segment.coeffs[0] = Fixed{next_a}.raw;

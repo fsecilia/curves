@@ -30,9 +30,9 @@ class CurveEvaluator {
   auto compute(const SplineSample& sample, real_t x_logical) -> CurveValues {
     // P'(t) = 3at^2 + 2bt + c
     const auto p_prime =
-        (3.0L * sample.a * sample.t + 2.0L * sample.b) * sample.t + sample.c;
+        (3.0 * sample.a * sample.t + 2.0 * sample.b) * sample.t + sample.c;
     // P''(t) = 6at + 2b
-    const auto p_double_prime = 6.0L * sample.a * sample.t + 2.0L * sample.b;
+    const auto p_double_prime = 6.0 * sample.a * sample.t + 2.0 * sample.b;
 
     const auto gain = p_prime * sample.inv_width;
 
@@ -40,8 +40,8 @@ class CurveEvaluator {
     const auto gain_deriv =
         p_double_prime * (sample.inv_width * sample.inv_width);
 
-    auto sens = 0.0L;
-    auto sens_deriv = 0.0L;
+    auto sens = 0.0;
+    auto sens_deriv = 0.0;
 
     // Sensitivity
     if (sample.is_start_segment) {
@@ -51,7 +51,7 @@ class CurveEvaluator {
       sens = s_poly * sample.inv_width;
 
       // S'(t) = (2at + b) * inv_width^2
-      const auto s_prime_poly = 2.0L * sample.a * sample.t + sample.b;
+      const auto s_prime_poly = 2.0 * sample.a * sample.t + sample.b;
       sens_deriv = s_prime_poly * (sample.inv_width * sample.inv_width);
 
     } else {

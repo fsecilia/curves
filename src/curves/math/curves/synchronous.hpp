@@ -73,7 +73,7 @@ class Synchronous {
 */
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.5L, 1.0L, 5.0L, 0.5L) {}
+  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0, 5.0, 0.5) {}
 
   SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
                    real_t smooth) noexcept
@@ -81,21 +81,21 @@ class SynchronousCurve {
         L_{std::log(motivity)},
         g_{gamma / L_},
         p_{sync_speed},
-        k_{smooth == 0.0L ? 64.0L : 0.5L / smooth},
-        r_{1.0L / k_} {}
+        k_{smooth == 0.0 ? 64.0 : 0.5 / smooth},
+        r_{1.0 / k_} {}
 
   auto cusp_location() const noexcept -> real_t { return p_; }
 
   auto value(real_t x) const noexcept -> real_t {
     // Use limit definition near 0.
     if (x < std::numeric_limits<real_t>::epsilon()) {
-      return 1.0L / motivity_;
+      return 1.0 / motivity_;
     }
 
     // Use linear taylor approximation (very) near to cusp.
     const auto displacement = x - p_;
     if (std::abs(displacement) <= kCuspApproximationDistance) {
-      return 1.0L + (L_ * g_ / p_) * displacement;
+      return 1.0 + (L_ * g_ / p_) * displacement;
     }
 
     const auto u = g_ * std::log(x / p_);
@@ -108,11 +108,11 @@ class SynchronousCurve {
     const auto displacement = x - p_;
     if (std::abs(displacement) <= kCuspApproximationDistance) {
       const auto slope = L_ * g_ / p_;
-      return {1.0L + slope * displacement, slope};
+      return {1.0 + slope * displacement, slope};
     }
 
     const auto u = g_ * std::log(x / p_);
-    const auto sign = std::copysign(1.0L, u);
+    const auto sign = std::copysign(1.0, u);
     const auto u_abs = std::abs(u);
 
     const auto u_km1 = std::pow(u_abs, k_ - 1);
@@ -122,14 +122,14 @@ class SynchronousCurve {
     const auto w_r = w_rm1 * w;
 
     const auto f = std::exp(sign * L_ * w_r);
-    const auto sech2 = 1.0L - w * w;
+    const auto sech2 = 1.0 - w * w;
     const auto fp = (f * L_ * g_ / x) * u_km1 * w_rm1 * sech2;
 
     return {f, fp};
   }
 
  private:
-  static constexpr auto kCuspApproximationDistance = 1e-7L;
+  static constexpr auto kCuspApproximationDistance = 1e-7;
 
   real_t motivity_;
   real_t L_;

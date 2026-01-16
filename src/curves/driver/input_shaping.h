@@ -147,9 +147,9 @@ static inline s64 curves_shaping_multiply_round(s64 multiplicand,
 static inline s64 curves_shaping_eval_poly(s64 t)
 {
 	// Coefficients in Q2.61.
-	const s64 c0 = curves_shaping_one; // 1.0L
-	const s64 c1 = -6917529027641081856LL; // 3.0L
-	const s64 c2 = 5764607523034234880LL; // 2.5L
+	const s64 c0 = curves_shaping_one; // 1.0
+	const s64 c1 = -6917529027641081856LL; // 3.0
+	const s64 c2 = 5764607523034234880LL; // 2.5
 
 	s64 inner, t2, t4;
 

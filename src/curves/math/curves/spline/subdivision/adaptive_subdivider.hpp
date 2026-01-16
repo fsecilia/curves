@@ -30,8 +30,8 @@ namespace curves {
 
 struct SubdivisionConfig {
   int_t segments_max = 256;
-  real_t segment_width_min = 1.0L / (1 << 16);  // 2^-16
-  real_t error_tolerance = 1e-6L;
+  real_t segment_width_min = 1.0 / (1 << 16);  // 2^-16
+  real_t error_tolerance = 1e-6;
 };
 
 // ============================================================================

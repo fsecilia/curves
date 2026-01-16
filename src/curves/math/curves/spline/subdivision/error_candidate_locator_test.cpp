@@ -54,10 +54,10 @@ TEST_P(CubicErrorCandidateLocatorTest, Call) {
 }
 
 // Global constants for test clarity
-const auto sqrt_3 = Scalar(std::sqrt(3.0L));
-const auto sqrt_7 = Scalar(std::sqrt(7.0L));
-const auto sqrt_12 = Scalar(std::sqrt(12.0L));
-const auto sqrt_19 = Scalar(std::sqrt(19.0L));
+const auto sqrt_3 = Scalar(std::sqrt(3.0));
+const auto sqrt_7 = Scalar(std::sqrt(7.0));
+const auto sqrt_12 = Scalar(std::sqrt(12.0));
+const auto sqrt_19 = Scalar(std::sqrt(19.0));
 
 /*
     Helper to create a segment monomial. We only care about a and b for these

@@ -68,8 +68,8 @@ class FromGain {
   Traits traits_;
 
   // Accumulator state for numeric integration.
-  real_t T_ = 0.0L;
-  real_t x_ = 0.0L;
+  real_t T_ = 0.0;
+  real_t x_ = 0.0;
 
   //! Compute {T(x), G(x)} using the closed-form antiderivative.
   auto advance_analytic(real_t x) noexcept -> Jet
@@ -77,7 +77,7 @@ class FromGain {
   {
     // T(x) = F(x) - F(0) where F' = G
     const auto T = traits_.antiderivative(curve_, x) -
-                   traits_.antiderivative(curve_, 0.0L);
+                   traits_.antiderivative(curve_, 0.0);
     const auto G = curve_.value(x);
     return {T, G};
   }

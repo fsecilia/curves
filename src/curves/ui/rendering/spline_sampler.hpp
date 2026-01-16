@@ -138,13 +138,13 @@ class SplineSampler {
 
     // Slope at t=1 in Parametric Space
     // P'(1) = 3a + 2b + c
-    const auto m_param = 3.0L * ra + 2.0L * rb + rc;
+    const auto m_param = 3.0 * ra + 2.0 * rb + rc;
 
     // Convert to Physical Slope: m_phys = m_param * inv_width_runout
     const auto r_width_fixed = 1ULL << m_spline->runout_width_log2;
     const auto r_dx = Fixed::from_raw(r_width_fixed).to_real();
     const auto r_dv = r_dx / Fixed::from_raw(m_spline->v_to_x).to_real();
-    const auto m_phys = m_param * (1.0L / r_dv);
+    const auto m_phys = m_param * (1.0 / r_dv);
 
     // Calculate Y Start (Value at runout t=1)
     const auto y_start = ra + rb + rc + rd;
@@ -163,7 +163,7 @@ class SplineSampler {
                         .c = m_phys,        // Slope
                         .d = y_start,       // Intercept
                         .t = v - v_start,   // Distance from end of spline
-                        .inv_width = 1.0L,  // Unit width for 1:1 mapping
+                        .inv_width = 1.0,  // Unit width for 1:1 mapping
                         .is_start_segment = false};
   }
 };

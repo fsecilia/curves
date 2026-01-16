@@ -50,12 +50,12 @@ class SplineView {
 
   // Conversion factor from velocity to the reference domain of the spline.
   auto v_to_x() const noexcept -> real_t {
-    return valid() ? fixed_to_real(spline_->v_to_x) : 0.0L;
+    return valid() ? fixed_to_real(spline_->v_to_x) : 0.0;
   }
 
   // Conversion factor from reference domain of the spline to velocity;
   auto x_to_v() const noexcept -> real_t {
-    return valid() ? 1.0L / v_to_x() : 0.0L;
+    return valid() ? 1.0 / v_to_x() : 0.0;
   }
 
   // End of mapped spline domain. Beyond this is a linear extension.
@@ -77,7 +77,7 @@ class SplineView {
 
     x = std::clamp(x, real_t{0}, static_cast<real_t>(SPLINE_X_END_MAX));
     const auto [seg, x_width, t] = resolve_segment(x);
-    const auto x_width_inv = 1.0L / x_width;
+    const auto x_width_inv = 1.0 / x_width;
 
     const auto c0 = fixed_to_real(seg->coeffs[0]);
     const auto c1 = fixed_to_real(seg->coeffs[1]);
@@ -155,7 +155,7 @@ class SplineView {
     const auto x_fixed = real_to_fixed(x);
     const auto segment_desc = spline::calc_segment_desc(x_fixed);
     const auto index = std::min(segment_desc.index, SPLINE_NUM_SEGMENTS);
-    const auto t = std::min(1.0L, fixed_to_real(spline::map_x_to_t(
+    const auto t = std::min(1.0, fixed_to_real(spline::map_x_to_t(
                                       x_fixed, segment_desc.width_log2)));
     const auto width = fixed_to_real(1LL << segment_desc.width_log2);
     return ResolvedSegment{

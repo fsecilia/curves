@@ -69,7 +69,7 @@ struct TransferFunctionTraits {
     \return curve(0).f, or its limit if the curve is singular at 0.
   */
   auto at_0(const Curve& curve) const noexcept -> Jet {
-    return {0.0L, curve.value(0.0L)};
+    return {0.0, curve.value(0.0)};
   }
 
   /*!
@@ -90,7 +90,7 @@ class TransferFunction {
  public:
   auto value(real_t x) const noexcept -> real_t {
     if (x < std::numeric_limits<real_t>::epsilon()) {
-      return 0.0L;
+      return 0.0;
     }
 
     return x * curve_.value(x);

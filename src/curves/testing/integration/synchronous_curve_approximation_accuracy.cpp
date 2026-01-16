@@ -17,10 +17,9 @@ namespace curves {
 namespace {
 
 TEST(spline_set, synchronous_accuracy_from_sensitivity) {
-  auto sensitivity =
-      FromSensitivity{SynchronousCurve{8.0L, 0.5L, 10.55L, 0.5L}};
+  auto sensitivity = FromSensitivity{SynchronousCurve{8.0, 0.5, 10.55, 0.5}};
 
-  const auto spline = spline::create_spline(sensitivity, 1.0L);
+  const auto spline = spline::create_spline(sensitivity, 1.0);
   const auto v_to_x = Fixed::from_raw(spline.v_to_x);
 
   std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.raw
@@ -28,7 +27,7 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
 
   const auto x_max = Fixed::from_raw(spline.x_geometric_limit);
 
-  const auto dx = Fixed{1.0e-3L};
+  const auto dx = Fixed{1.0e-3};
   std::cout << "dx: " << dx << " (" << dx.raw << " fixed)" << std::endl;
 
   auto x_fixed = Fixed{0};
@@ -53,17 +52,17 @@ TEST(spline_set, synchronous_accuracy_from_sensitivity) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  EXPECT_LE(accuracy_metrics.mse_abs(), 1.1212e-05L);
-  EXPECT_LE(accuracy_metrics.rmse_abs(), 2.606065e-06L);
-  EXPECT_LE(accuracy_metrics.mse_rel(), 1.22622e-06L);
-  EXPECT_LE(accuracy_metrics.rmse_rel(), 1.132785e-08L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 1.1212e-05);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 2.606065e-06);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 1.22622e-06);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 1.132785e-08);
 }
 
 TEST(spline_set, synchronous_accuracy_from_gain) {
-  auto spline_gain = FromGain{SynchronousCurve{8.0L, 0.5L, 10.55L, 0.5L}};
+  auto spline_gain = FromGain{SynchronousCurve{8.0, 0.5, 10.55, 0.5}};
   auto test_gain = spline_gain;  // make copy
 
-  const auto spline = spline::create_spline(spline_gain, 1.0L);
+  const auto spline = spline::create_spline(spline_gain, 1.0);
   const auto v_to_x = Fixed::from_raw(spline.v_to_x);
 
   std::cout << "spline.v_to_x ~= " << v_to_x.to_real() << " (" << v_to_x.raw
@@ -71,7 +70,7 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
 
   const auto x_max = Fixed::from_raw(spline.x_geometric_limit);
 
-  const auto dx = Fixed{1.0e-3L};
+  const auto dx = Fixed{1.0e-3};
   std::cout << "dx: " << dx << " (" << dx.raw << " fixed)" << std::endl;
 
   auto x_fixed = Fixed{0};
@@ -96,17 +95,17 @@ TEST(spline_set, synchronous_accuracy_from_gain) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  EXPECT_LE(accuracy_metrics.mse_abs(), 7.92163e-06L);
-  EXPECT_LE(accuracy_metrics.rmse_abs(), 1.87908e-06L);
-  EXPECT_LE(accuracy_metrics.mse_rel(), 2.08249e-05L);
-  EXPECT_LE(accuracy_metrics.rmse_rel(), 7.741745e-08L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 7.92163e-06);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 1.87908e-06);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 2.08249e-05);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 7.741745e-08);
 }
 
 TEST(spline, sensitivity_vs_gain) {
-  const auto curve = SynchronousCurve{8.0L, 0.5L, 10.5L, 0.5L};
+  const auto curve = SynchronousCurve{8.0, 0.5, 10.5, 0.5};
   const auto sensitivity_spline =
-      spline::create_spline(FromSensitivity{curve}, 1.0L);
-  const auto gain_spline = spline::create_spline(FromGain{curve}, 1.0L);
+      spline::create_spline(FromSensitivity{curve}, 1.0);
+  const auto gain_spline = spline::create_spline(FromGain{curve}, 1.0);
 
   ASSERT_EQ(sensitivity_spline.v_to_x, gain_spline.v_to_x);
   ASSERT_EQ(sensitivity_spline.x_geometric_limit,
@@ -117,7 +116,7 @@ TEST(spline, sensitivity_vs_gain) {
 
   const auto x_max = Fixed::from_raw(sensitivity_spline.x_geometric_limit);
 
-  const auto dv = Fixed{1.0e-3L};
+  const auto dv = Fixed{1.0e-3};
   std::cout << "dv: " << dv << " (" << dv.raw << " fixed)" << std::endl;
 
   auto v = Fixed(0);
@@ -157,10 +156,10 @@ TEST(spline, sensitivity_vs_gain) {
 
   std::cout << accuracy_metrics << std::endl;
 
-  EXPECT_LE(accuracy_metrics.mse_abs(), 0.000411519L);
-  EXPECT_LE(accuracy_metrics.rmse_abs(), 0.000130904L);
-  EXPECT_LE(accuracy_metrics.mse_rel(), 0.000624302L);
-  EXPECT_LE(accuracy_metrics.rmse_rel(), 2.506385e-06L);
+  EXPECT_LE(accuracy_metrics.mse_abs(), 0.000411519);
+  EXPECT_LE(accuracy_metrics.rmse_abs(), 0.000130904);
+  EXPECT_LE(accuracy_metrics.mse_rel(), 0.000624302);
+  EXPECT_LE(accuracy_metrics.rmse_rel(), 2.506385e-06);
 }
 
 }  // namespace

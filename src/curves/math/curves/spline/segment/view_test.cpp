@@ -47,14 +47,14 @@ struct SegmentEvaluationTest : TestWithParam<EvaluationTestVector> {
 
 TEST_P(SegmentEvaluationTest, inv_width) {
   const auto actual = sut.inv_width();
-  const auto expected = 1.0L / GetParam().segment_params.width;
-  EXPECT_NEAR(actual, expected, 1e-15L);
+  const auto expected = 1.0 / GetParam().segment_params.width;
+  EXPECT_NEAR(actual, expected, 1e-15);
 }
 
 TEST_P(SegmentEvaluationTest, x_to_t) {
   const auto actual = sut.x_to_t(GetParam().x, GetParam().x0);
   const auto expected = GetParam().expected_t;
-  EXPECT_NEAR(actual, expected, 1e-12L);
+  EXPECT_NEAR(actual, expected, 1e-12);
 }
 
 TEST_P(SegmentEvaluationTest, eval) {
@@ -70,70 +70,70 @@ const EvaluationTestVector evaluation_test_vectors[] = {
     // using explicit horner's form in wolfram alpha:
     // ((9.5*0.224489795918 + -6.2)*0.224489795918 + 3.1)*0.224489795918 + 0.2
     {
-        .segment_params = {.poly = {9.5L, -6.2L, 3.1L, 0.2L}, .width = 4.9L},
-        .x0 = 1.4L,
-        .x = 2.5L,
-        .expected_t = 0.224489795918L,
-        .expected_eval = 0.690941699461315064301439052969426004L,
-        .tolerance = 6.6e-13L,
+        .segment_params = {.poly = {9.5, -6.2, 3.1, 0.2}, .width = 4.9},
+        .x0 = 1.4,
+        .x = 2.5,
+        .expected_t = 0.224489795918,
+        .expected_eval = 0.690941699461315064301439052969426004,
+        .tolerance = 6.6e-13,
     },
 
     // Segment with denormal coefficient.
     {
         // Coeff[3] is 1.0e-7, which is approx 2^-23.
         // This must trigger the denormal path, a shift of 63.
-        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 1.0e-7L}, .width = 1.0L},
-        .x0 = 0.0L,
-        .x = 0.5L,
-        .expected_t = 0.5L,
-        .expected_eval = 1.0e-7L,  // Same constant term
-        .tolerance = 1.2e-15L,     // Should be exact or extremely close
+        .segment_params = {.poly = {0.0, 0.0, 0.0, 1.0e-7}, .width = 1.0},
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
+        .expected_eval = 1.0e-7,  // Same constant term
+        .tolerance = 1.2e-15,     // Should be exact or extremely close
     },
 
     // Segment with zero coeffficient.
     {
-        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 0.0L}, .width = 10.0L},
-        .x0 = 0.0L,
-        .x = 5.0L,
-        .expected_t = 0.5L,
-        .expected_eval = 0.0L,
-        .tolerance = 0.0L,
+        .segment_params = {.poly = {0.0, 0.0, 0.0, 0.0}, .width = 10.0},
+        .x0 = 0.0,
+        .x = 5.0,
+        .expected_t = 0.5,
+        .expected_eval = 0.0,
+        .tolerance = 0.0,
     },
 
     // Segment with negative zero coeffficient.
     {
-        .segment_params = {.poly = {-0.0L, 0.0L, 0.0L, 0.0L}, .width = 10.0L},
-        .x0 = 0.0L,
-        .x = 5.0L,
-        .expected_t = 0.5L,
-        .expected_eval = 0.0L,
-        .tolerance = 0.0L,
+        .segment_params = {.poly = {-0.0, 0.0, 0.0, 0.0}, .width = 10.0},
+        .x0 = 0.0,
+        .x = 5.0,
+        .expected_t = 0.5,
+        .expected_eval = 0.0,
+        .tolerance = 0.0,
     },
 
     // Verify we aren't losing the bottom bit.
     {
         // Coeff[2] is small but positive with a specific bit pattern ending
-        // at bit 46: 2^-46 = 1.4210854715202004e-14L
-        .segment_params = {.poly = {0.0L, 0.0L, 1.4210854715202004e-14L, 0.0L},
-                           .width = 1.0L},
+        // at bit 46: 2^-46 = 1.4210854715202004e-14
+        .segment_params = {.poly = {0.0, 0.0, 1.4210854715202004e-14, 0.0},
+                           .width = 1.0},
 
-        .x0 = 0.0L,
-        .x = 0.5L,
-        .expected_t = 0.5L,
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
         // Expected Eval: coeff[2] * t = 2^-46 * 0.5 = 2^-47
-        .expected_eval = 7.105427357601002e-15L,
+        .expected_eval = 7.105427357601002e-15,
         // Tolerance: Should be exact (machine epsilon level)
-        .tolerance = 1e-20L,
+        .tolerance = 1e-20,
     },
 
     // Test denormal uses shift 62 but no implicit bit.
     {
-        .segment_params = {.poly = {0.0L, 0.0L, 0.0L, 7.0e-6L}, .width = 1.0L},
-        .x0 = 0.0L,
-        .x = 0.5L,
-        .expected_t = 0.5L,
-        .expected_eval = 7.0e-6L,
-        .tolerance = 9.1e-17L,
+        .segment_params = {.poly = {0.0, 0.0, 0.0, 7.0e-6}, .width = 1.0},
+        .x0 = 0.0,
+        .x = 0.5,
+        .expected_t = 0.5,
+        .expected_eval = 7.0e-6,
+        .tolerance = 9.1e-17,
     },
 
 };

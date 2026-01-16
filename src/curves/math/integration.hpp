@@ -52,8 +52,8 @@ concept ValueCallable = requires(F f, real_t x) {
 */
 inline auto trapezoid4(real_t a, real_t b,
                        const Trapezoid4Samples& samples) noexcept -> real_t {
-  constexpr auto c0 = 0.5L;
-  constexpr auto c1 = 1.0L / 12.0L;
+  constexpr auto c0 = 0.5;
+  constexpr auto c1 = 1.0 / 12.0;
   const auto h = b - a;
   const auto& [ja, jb] = samples;
   return (c0 * (ja.f + jb.f) + c1 * (ja.df - jb.df) * h) * h;
@@ -90,26 +90,26 @@ inline auto trapezoid8(real_t a, real_t b,
   const auto I_h = trapezoid4(a, b, {samples[0], samples[4]});
 
   // Half steps: I_{h/2}
-  const auto mid = 0.5L * (a + b);
+  const auto mid = 0.5 * (a + b);
   const auto I_h2 = trapezoid4(a, mid, {samples[0], samples[2]}) +
                     trapezoid4(mid, b, {samples[2], samples[4]});
 
   // Quarter steps: I_{h/4}
-  const auto q1 = a + 0.25L * h;
-  const auto q3 = a + 0.75L * h;
+  const auto q1 = a + 0.25 * h;
+  const auto q3 = a + 0.75 * h;
   const auto I_h4 = trapezoid4(a, q1, {samples[0], samples[1]}) +
                     trapezoid4(q1, mid, {samples[1], samples[2]}) +
                     trapezoid4(mid, q3, {samples[2], samples[3]}) +
                     trapezoid4(q3, b, {samples[3], samples[4]});
 
   // First Richardson: O(h^4) -> O(h^6)
-  constexpr auto c_r1 = 1.0L / 15.0L;
-  const auto R1_h = c_r1 * (16.0L * I_h2 - I_h);
-  const auto R1_h2 = c_r1 * (16.0L * I_h4 - I_h2);
+  constexpr auto c_r1 = 1.0 / 15.0;
+  const auto R1_h = c_r1 * (16.0 * I_h2 - I_h);
+  const auto R1_h2 = c_r1 * (16.0 * I_h4 - I_h2);
 
   // Second Richardson: O(h^6) -> O(h^8)
-  constexpr auto c_r2 = 1.0L / 63.0L;
-  return c_r2 * (64.0L * R1_h2 - R1_h);
+  constexpr auto c_r2 = 1.0 / 63.0;
+  return c_r2 * (64.0 * R1_h2 - R1_h);
 }
 
 /*!
@@ -125,9 +125,9 @@ inline auto trapezoid8(real_t a, real_t b,
 template <JetCallable F>
 auto trapezoid8(F&& f, real_t a, real_t b) noexcept -> real_t {
   const auto h = b - a;
-  const auto q1 = a + 0.25L * h;
-  const auto mid = a + 0.5L * h;
-  const auto q3 = a + 0.75L * h;
+  const auto q1 = a + 0.25 * h;
+  const auto mid = a + 0.5 * h;
+  const auto q3 = a + 0.75 * h;
 
   return trapezoid8(a, b, Trapezoid8Samples{f(a), f(q1), f(mid), f(q3), f(b)});
 }
@@ -140,15 +140,15 @@ auto trapezoid8(F&& f, real_t a, real_t b) noexcept -> real_t {
 namespace gauss_nodes {
 
 // 3-point: +/- sqrt(3/5), 0
-constexpr auto g3_outer = 0.7745966692414833770L;
+constexpr auto g3_outer = 0.7745966692414833770;
 
 // 4-point
-constexpr auto g4_outer = 0.8611363115940525752L;
-constexpr auto g4_inner = 0.3399810435848562648L;
+constexpr auto g4_outer = 0.8611363115940525752;
+constexpr auto g4_inner = 0.3399810435848562648;
 
 // 5-point
-constexpr auto g5_outer = 0.9061798459386639928L;
-constexpr auto g5_inner = 0.5384693101056830910L;
+constexpr auto g5_outer = 0.9061798459386639928;
+constexpr auto g5_inner = 0.5384693101056830910;
 
 }  // namespace gauss_nodes
 
@@ -159,8 +159,8 @@ constexpr auto g5_inner = 0.5384693101056830910L;
   Order in array: [left, center, right]
 */
 inline auto gauss3_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 3> {
-  const auto mid = 0.5L * (a + b);
-  const auto half = 0.5L * (b - a);
+  const auto mid = 0.5 * (a + b);
+  const auto half = 0.5 * (b - a);
   return {mid - gauss_nodes::g3_outer * half, mid,
           mid + gauss_nodes::g3_outer * half};
 }
@@ -178,10 +178,10 @@ inline auto gauss3_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 3> {
 */
 inline auto gauss3(real_t a, real_t b, const Gauss3Samples& samples) noexcept
     -> real_t {
-  constexpr auto w_outer = 5.0L / 9.0L;
-  constexpr auto w_center = 8.0L / 9.0L;
+  constexpr auto w_outer = 5.0 / 9.0;
+  constexpr auto w_center = 8.0 / 9.0;
 
-  const auto half = 0.5L * (b - a);
+  const auto half = 0.5 * (b - a);
   return half *
          (w_outer * samples[0] + w_center * samples[1] + w_outer * samples[2]);
 }
@@ -204,8 +204,8 @@ auto gauss3(F&& f, real_t a, real_t b) noexcept -> real_t {
   Compute 4-point Gauss-Legendre sample locations for interval [a, b].
 */
 inline auto gauss4_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 4> {
-  const auto mid = 0.5L * (a + b);
-  const auto half = 0.5L * (b - a);
+  const auto mid = 0.5 * (a + b);
+  const auto half = 0.5 * (b - a);
   return {
       mid - gauss_nodes::g4_outer * half, mid - gauss_nodes::g4_inner * half,
       mid + gauss_nodes::g4_inner * half, mid + gauss_nodes::g4_outer * half};
@@ -218,10 +218,10 @@ inline auto gauss4_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 4> {
 */
 inline auto gauss4(real_t a, real_t b, const Gauss4Samples& samples) noexcept
     -> real_t {
-  constexpr auto w_outer = 0.3478548451374538574L;
-  constexpr auto w_inner = 0.6521451548625461426L;
+  constexpr auto w_outer = 0.3478548451374538574;
+  constexpr auto w_inner = 0.6521451548625461426;
 
-  const auto half = 0.5L * (b - a);
+  const auto half = 0.5 * (b - a);
   return half * (w_outer * (samples[0] + samples[3]) +
                  w_inner * (samples[1] + samples[2]));
 }
@@ -240,8 +240,8 @@ auto gauss4(F&& f, real_t a, real_t b) noexcept -> real_t {
   Compute 5-point Gauss-Legendre sample locations for interval [a, b].
 */
 inline auto gauss5_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 5> {
-  const auto mid = 0.5L * (a + b);
-  const auto half = 0.5L * (b - a);
+  const auto mid = 0.5 * (a + b);
+  const auto half = 0.5 * (b - a);
   return {mid - gauss_nodes::g5_outer * half,
           mid - gauss_nodes::g5_inner * half, mid,
           mid + gauss_nodes::g5_inner * half,
@@ -255,11 +255,11 @@ inline auto gauss5_nodes(real_t a, real_t b) noexcept -> std::array<real_t, 5> {
 */
 inline auto gauss5(real_t a, real_t b, const Gauss5Samples& samples) noexcept
     -> real_t {
-  constexpr auto w_outer = 0.2369268850561890875L;
-  constexpr auto w_inner = 0.4786286704993664680L;
-  constexpr auto w_center = 0.5688888888888888889L;
+  constexpr auto w_outer = 0.2369268850561890875;
+  constexpr auto w_inner = 0.4786286704993664680;
+  constexpr auto w_center = 0.5688888888888888889;
 
-  const auto half = 0.5L * (b - a);
+  const auto half = 0.5 * (b - a);
   return half * (w_outer * (samples[0] + samples[4]) +
                  w_inner * (samples[1] + samples[3]) + w_center * samples[2]);
 }

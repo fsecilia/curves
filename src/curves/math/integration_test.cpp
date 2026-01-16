@@ -22,21 +22,21 @@ namespace {
 // test vectors. Each returns a Jet for Hermite methods; for Gauss, we
 // extract just .f.
 
-inline auto poly_constant(real_t /*x*/) -> Jet { return {2.0L, 0.0L}; }
-inline auto poly_linear(real_t x) -> Jet { return {x, 1.0L}; }
-inline auto poly_quadratic(real_t x) -> Jet { return {x * x, 2.0L * x}; }
-inline auto poly_cubic(real_t x) -> Jet { return {x * x * x, 3.0L * x * x}; }
+inline auto poly_constant(real_t /*x*/) -> Jet { return {2.0, 0.0}; }
+inline auto poly_linear(real_t x) -> Jet { return {x, 1.0}; }
+inline auto poly_quadratic(real_t x) -> Jet { return {x * x, 2.0 * x}; }
+inline auto poly_cubic(real_t x) -> Jet { return {x * x * x, 3.0 * x * x}; }
 inline auto poly_quartic(real_t x) -> Jet {
-  return {x * x * x * x, 4.0L * x * x * x};
+  return {x * x * x * x, 4.0 * x * x * x};
 }
 inline auto poly_quintic(real_t x) -> Jet {
-  return {x * x * x * x * x, 5.0L * x * x * x * x};
+  return {x * x * x * x * x, 5.0 * x * x * x * x};
 }
 
 // Arbitrary cubic: f(x) = x^3 - 2x^2 + 4x + 1
 inline auto poly_arbitrary_cubic(real_t x) -> Jet {
-  return {x * x * x - 2.0L * x * x + 4.0L * x + 1.0L,
-          3.0L * x * x - 4.0L * x + 4.0L};
+  return {x * x * x - 2.0 * x * x + 4.0 * x + 1.0,
+          3.0 * x * x - 4.0 * x + 4.0};
 }
 
 // Transcendental functions for convergence testing.
@@ -66,48 +66,48 @@ struct IntegralTestVector {
 // Creates test vectors with uniform tight tolerance.
 constexpr auto exact_test(std::string_view desc, JetFn f, real_t a, real_t b,
                           real_t expected) -> IntegralTestVector {
-  return {desc, f, a, b, expected, 1e-15L, 1e-15L, 1e-15L, 1e-15L};
+  return {desc, f, a, b, expected, 1e-15, 1e-15, 1e-15, 1e-15};
 }
 
 const IntegralTestVector kPolynomialTests[] = {
     // Corrected trapezoidal is exact up to cubic.
     // Gauss-3 is exact up to degree 5, Gauss-5 up to degree 9.
 
-    exact_test("Constant", poly_constant, 0.0L, 1.0L, 2.0L),
-    exact_test("Linear", poly_linear, 0.0L, 1.0L, 0.5L),
-    exact_test("Quadratic [0,1]", poly_quadratic, 0.0L, 1.0L, 1.0L / 3.0L),
-    exact_test("Quadratic [0,2]", poly_quadratic, 0.0L, 2.0L, 8.0L / 3.0L),
-    exact_test("Cubic [0,1]", poly_cubic, 0.0L, 1.0L, 0.25L),
-    exact_test("Arbitrary Cubic [0,3]", poly_arbitrary_cubic, 0.0L, 3.0L,
-               23.25L),
+    exact_test("Constant", poly_constant, 0.0, 1.0, 2.0),
+    exact_test("Linear", poly_linear, 0.0, 1.0, 0.5),
+    exact_test("Quadratic [0,1]", poly_quadratic, 0.0, 1.0, 1.0 / 3.0),
+    exact_test("Quadratic [0,2]", poly_quadratic, 0.0, 2.0, 8.0 / 3.0),
+    exact_test("Cubic [0,1]", poly_cubic, 0.0, 1.0, 0.25),
+    exact_test("Arbitrary Cubic [0,3]", poly_arbitrary_cubic, 0.0, 3.0,
+               23.25),
     exact_test(
-        "Negative Linear", [](real_t x) -> Jet { return {-x, -1.0L}; }, 0.0L,
-        1.0L, -0.5L),
+        "Negative Linear", [](real_t x) -> Jet { return {-x, -1.0}; }, 0.0,
+        1.0, -0.5),
 
     // Quartic: trapezoid4 is approximate, trapezoid8/gauss are exact.
     IntegralTestVector{
         .description = "Quartic [0,1]",
         .f = poly_quartic,
-        .a = 0.0L,
-        .b = 1.0L,
-        .expected = 1.0L / 5.0L,
-        .tol_trapezoid4 = 4e-2L,
-        .tol_trapezoid8 = 1e-15L,
-        .tol_gauss3 = 1e-15L,
-        .tol_gauss5 = 1e-15L,
+        .a = 0.0,
+        .b = 1.0,
+        .expected = 1.0 / 5.0,
+        .tol_trapezoid4 = 4e-2,
+        .tol_trapezoid8 = 1e-15,
+        .tol_gauss3 = 1e-15,
+        .tol_gauss5 = 1e-15,
     },
 
     // Quintic: only gauss3+ are exact.
     IntegralTestVector{
         .description = "Quintic [0,1]",
         .f = poly_quintic,
-        .a = 0.0L,
-        .b = 1.0L,
-        .expected = 1.0L / 6.0L,
-        .tol_trapezoid4 = 1e-1L,
-        .tol_trapezoid8 = 1e-4L,
-        .tol_gauss3 = 1e-15L,
-        .tol_gauss5 = 1e-15L,
+        .a = 0.0,
+        .b = 1.0,
+        .expected = 1.0 / 6.0,
+        .tol_trapezoid4 = 1e-1,
+        .tol_trapezoid8 = 1e-4,
+        .tol_gauss3 = 1e-15,
+        .tol_gauss5 = 1e-15,
     },
 };
 
@@ -116,26 +116,26 @@ const IntegralTestVector kTranscendentalTests[] = {
     IntegralTestVector{
         .description = "sin [0,pi]",
         .f = func_sin,
-        .a = 0.0L,
-        .b = 3.14159265358979323846L,
-        .expected = 2.0L,
-        .tol_trapezoid4 = 4e-1L,
-        .tol_trapezoid8 = 1.7e-5L,
-        .tol_gauss3 = 1.8e-3L,
-        .tol_gauss5 = 1.4e-7L,
+        .a = 0.0,
+        .b = 3.14159265358979323846,
+        .expected = 2.0,
+        .tol_trapezoid4 = 4e-1,
+        .tol_trapezoid8 = 1.7e-5,
+        .tol_gauss3 = 1.8e-3,
+        .tol_gauss5 = 1.4e-7,
     },
 
     // exp(x) from 0 to 1: exact = e - 1
     IntegralTestVector{
         .description = "exp [0,1]",
         .f = func_exp,
-        .a = 0.0L,
-        .b = 1.0L,
-        .expected = 1.71828182845904523536L,
-        .tol_trapezoid4 = 1e-2L,
-        .tol_trapezoid8 = 1.05e-9L,
-        .tol_gauss3 = 1e-5L,
-        .tol_gauss5 = 1e-10L,
+        .a = 0.0,
+        .b = 1.0,
+        .expected = 1.71828182845904523536,
+        .tol_trapezoid4 = 1e-2,
+        .tol_trapezoid8 = 1.05e-9,
+        .tol_gauss3 = 1e-5,
+        .tol_gauss5 = 1e-10,
     },
 };
 
@@ -229,21 +229,21 @@ TEST_P(LegacyIntegrationTest, trapezoid4_legacy) {
   const auto& p = GetParam();
 
   // Reconstruct a and b from h (assumes a = 0).
-  const auto a = 0.0L;
+  const auto a = 0.0;
   const auto b = p.h;
 
   const auto result = trapezoid4(a, b, Trapezoid4Samples{p.start, p.end});
-  EXPECT_NEAR(result, p.expected, 1e-15L) << p.description;
+  EXPECT_NEAR(result, p.expected, 1e-15) << p.description;
 }
 
 const LegacyTestVector kLegacyPolynomialTests[] = {
-    {"Constant Function", 1.0L, {2.0L, 0.0L}, {2.0L, 0.0L}, 2.0L},
-    {"Linear Function", 1.0L, {0.0L, 1.0L}, {1.0L, 1.0L}, 0.5L},
-    {"Quadratic", 1.0L, {0.0L, 0.0L}, {1.0L, 2.0L}, 1.0L / 3.0L},
-    {"Cubic", 1.0L, {0.0L, 0.0L}, {1.0L, 3.0L}, 0.25L},
-    {"Quadratic [0,2]", 2.0L, {0.0L, 0.0L}, {4.0L, 4.0L}, 8.0L / 3.0L},
-    {"Negative Slope", 1.0L, {0.0L, -1.0L}, {-1.0L, -1.0L}, -0.5L},
-    {"Arbitrary Cubic", 3.0L, {1.0L, 4.0L}, {22.0L, 19.0L}, 23.25L},
+    {"Constant Function", 1.0, {2.0, 0.0}, {2.0, 0.0}, 2.0},
+    {"Linear Function", 1.0, {0.0, 1.0}, {1.0, 1.0}, 0.5},
+    {"Quadratic", 1.0, {0.0, 0.0}, {1.0, 2.0}, 1.0 / 3.0},
+    {"Cubic", 1.0, {0.0, 0.0}, {1.0, 3.0}, 0.25},
+    {"Quadratic [0,2]", 2.0, {0.0, 0.0}, {4.0, 4.0}, 8.0 / 3.0},
+    {"Negative Slope", 1.0, {0.0, -1.0}, {-1.0, -1.0}, -0.5},
+    {"Arbitrary Cubic", 3.0, {1.0, 4.0}, {22.0, 19.0}, 23.25},
 };
 
 using LegacyTestVectorNameGenerator = TestNameGenerator<LegacyTestVector>;
