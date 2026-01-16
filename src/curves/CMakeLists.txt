@@ -37,6 +37,7 @@ list(APPEND lib_files
   math/curves/spline/segment/packing.hpp
   math/curves/spline/segment/segment.hpp
   math/curves/spline/segment/view.hpp
+  math/curves/spline/subdivision/adaptive_subdivision_strategy.hpp
   math/curves/spline/subdivision/error_candidate_locator.hpp
   math/curves/spline/subdivision/quantization.hpp
   math/curves/spline/subdivision/refinement_queue.hpp
@@ -107,6 +108,7 @@ list(APPEND unit_tests_files
   math/curves/spline/segment/construction_test.cpp
   math/curves/spline/segment/packing_test.cpp
   math/curves/spline/segment/view_test.cpp
+  math/curves/spline/subdivision/adaptive_subdivision_strategy_test.cpp
   math/curves/spline/subdivision/error_candidate_locator_test.cpp
   math/curves/spline/subdivision/quantization_test.cpp
   math/curves/spline/subdivision/refinement_queue_test.cpp
