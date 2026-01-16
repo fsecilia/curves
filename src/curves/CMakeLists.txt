@@ -170,6 +170,7 @@ list(APPEND common_headers
   driver/kernel_compat.h
   driver/segment/eval.h
   driver/segment/unpacking.h
+  driver/shaped_spline.h
   driver/spline.h
 )
 
