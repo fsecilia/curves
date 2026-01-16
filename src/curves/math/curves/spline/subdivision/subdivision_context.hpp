@@ -17,10 +17,18 @@
 namespace curves::spline::segment {
 
 //! Mutable context used in subdivision algorithm.
+template <typename RefinementQueue, typename SuccessorMap>
 struct SubdivisionContext {
   std::vector<Segment> segments;
-  RefinementQueue<SegmentError> refinement_queue;
+  RefinementQueue refinement_queue;
   SuccessorMap successor_map;
+
+  auto prepare(std::size_t capacity) -> SegmentIndex {
+    segments.clear();
+    segments.reserve(capacity);
+    refinement_queue.prepare(capacity);
+    return successor_map.prepare(capacity);
+  }
 };
 
 }  // namespace curves::spline::segment
