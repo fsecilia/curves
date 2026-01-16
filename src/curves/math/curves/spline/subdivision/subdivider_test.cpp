@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "adaptive_subdivider.hpp"
+#include "subdivider.hpp"
 #include <curves/testing/test.hpp>
 #include <curves/math/curves/spline/subdivision/error_candidate_locator.hpp>
 #include <curves/math/curves/spline/subdivision/sampled_error_estimator.hpp>
