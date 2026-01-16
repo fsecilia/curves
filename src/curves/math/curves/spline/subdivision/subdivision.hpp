@@ -31,4 +31,18 @@ struct Knot {
 
 using Knots = std::vector<Knot>;
 
+struct Segment {
+  Knot start;
+  Knot end;
+  cubic::Monomial poly;
+  real_t max_error;
+  real_t v_split;
+
+  auto width() const noexcept -> real_t { return end.v - start.v; }
+
+  auto operator<(const Segment& other) const noexcept -> bool {
+    return max_error < other.max_error;
+  }
+};
+
 }  // namespace curves

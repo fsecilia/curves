@@ -33,29 +33,6 @@ struct SubdivisionConfig {
 };
 
 // ============================================================================
-// Subdivision Types
-// ============================================================================
-
-struct QuantizedKnot {
-  real_t v;
-  math::Jet<real_t> y;
-};
-
-struct Segment {
-  QuantizedKnot start;
-  QuantizedKnot end;
-  cubic::Monomial poly;
-  real_t max_error;
-  real_t v_split;
-
-  auto width() const noexcept -> real_t { return end.v - start.v; }
-
-  auto operator<(const Segment& other) const noexcept -> bool {
-    return max_error < other.max_error;
-  }
-};
-
-// ============================================================================
 // Subdivision Result
 // ============================================================================
 
@@ -106,7 +83,6 @@ class AdaptiveSubdivider {
   template <typename Curve>
   class Subdivider {
    public:
-    using Knot = QuantizedKnot;
     using Segment = Segment;
     using Queue = std::priority_queue<Segment>;
 
