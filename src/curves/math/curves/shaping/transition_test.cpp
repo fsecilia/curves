@@ -12,14 +12,13 @@
 namespace curves::shaping {
 namespace {
 
-using Scalar = double;
-using Jet = math::Jet<Scalar>;
+using Jet = math::Jet<real_t>;
 
 static constexpr auto m = 2.1;
 static constexpr auto x0 = 10.0;
 static constexpr auto width = 5.0;
 
-const Scalar test_vectors[] = {
+const real_t test_vectors[] = {
     0.0 / 4, 1.0 / 4, 2.0 / 4, 3.0 / 4, 4.0 / 4,
 };
 
@@ -29,9 +28,7 @@ const Scalar test_vectors[] = {
 
 struct TransitionTest : Test {
   struct TransitionFunction {
-    using Scalar = Scalar;
-
-    constexpr auto at_1() const noexcept -> Scalar { return m; }
+    constexpr auto at_1() const noexcept -> real_t { return m; }
 
     template <typename Value>
     constexpr auto operator()(const Value& t) const noexcept -> Value {
@@ -40,7 +37,7 @@ struct TransitionTest : Test {
   };
 
   struct MockInverter {
-    MOCK_METHOD(Scalar, call, (const TransitionFunction&, Scalar y),
+    MOCK_METHOD(real_t, call, (const TransitionFunction&, real_t y),
                 (const, noexcept));
     virtual ~MockInverter() = default;
   };
@@ -48,7 +45,7 @@ struct TransitionTest : Test {
 
   struct Inverter {
     auto operator()(const TransitionFunction& transition_function,
-                    Scalar y) const noexcept -> Scalar {
+                    real_t y) const noexcept -> real_t {
       return mock->call(transition_function, y);
     }
 
@@ -95,7 +92,7 @@ TEST_F(TransitionTestProperties, Inverter) {
 // ----------------------------------------------------------------------------
 
 struct TransitionParameterizedTest : TransitionTestValidInstance,
-                                     WithParamInterface<Scalar> {};
+                                     WithParamInterface<real_t> {};
 
 TEST_P(TransitionParameterizedTest, Evaluate) {
   const auto x = Jet{GetParam(), 1.0};

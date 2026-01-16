@@ -38,21 +38,19 @@ struct SubdivisionConfig {
 // Subdivision Types
 // ============================================================================
 
-template <typename Scalar>
 struct QuantizedKnot {
-  Scalar v;
-  math::Jet<Scalar> y;
+  real_t v;
+  math::Jet<real_t> y;
 };
 
-template <typename Scalar>
 struct Segment {
-  QuantizedKnot<Scalar> start;
-  QuantizedKnot<Scalar> end;
-  cubic::Monomial<Scalar> poly;
-  Scalar max_error;
-  Scalar v_split;
+  QuantizedKnot start;
+  QuantizedKnot end;
+  cubic::Monomial poly;
+  real_t max_error;
+  real_t v_split;
 
-  auto width() const noexcept -> Scalar { return end.v - start.v; }
+  auto width() const noexcept -> real_t { return end.v - start.v; }
 
   auto operator<(const Segment& other) const noexcept -> bool {
     return max_error < other.max_error;
@@ -69,10 +67,9 @@ struct Segment {
   Contains parallel arrays of knot positions and segment polynomials.
   knots.size() == segments.size() + 1.
 */
-template <typename Scalar>
 struct SubdivisionResult {
-  std::vector<Scalar> knots;                   // Quantized positions, Q8.24
-  std::vector<cubic::Monomial<Scalar>> polys;  // Quantized coefficients
+  std::vector<real_t> knots;           // Quantized positions, Q8.24
+  std::vector<cubic::Monomial> polys;  // Quantized coefficients
 
   auto segment_count() const noexcept -> int_t {
     return numeric_cast<int_t>(polys.size());
@@ -91,10 +88,8 @@ class AdaptiveSubdivider {
       : estimate_error_{std::move(estimate_error)}, config_{config} {}
 
   template <typename Curve>
-  auto operator()(
-      const Curve& curve,
-      CompatibleRange<typename Curve::Scalar> auto&& critical_points) const
-      -> SubdivisionResult<typename Curve::Scalar> {
+  auto operator()(const Curve& curve, ScalarRange auto&& critical_points) const
+      -> SubdivisionResult {
     assert(std::ranges::size(critical_points) >= 2 &&
            "Need at least two critical points");
 
@@ -113,9 +108,8 @@ class AdaptiveSubdivider {
   template <typename Curve>
   class Subdivider {
    public:
-    using Scalar = typename Curve::Scalar;
-    using Knot = QuantizedKnot<Scalar>;
-    using Segment = Segment<Scalar>;
+    using Knot = QuantizedKnot;
+    using Segment = Segment;
     using Queue = std::priority_queue<Segment>;
 
     Subdivider(const Curve& curve, const ErrorEstimator& estimator,
@@ -128,7 +122,7 @@ class AdaptiveSubdivider {
     }
 
     template <typename Range>
-    auto operator()(Range&& critical_points) -> SubdivisionResult<Scalar> {
+    auto operator()(Range&& critical_points) -> SubdivisionResult {
       initialize(std::forward<Range>(critical_points));
       subdivide();
       return result();
@@ -138,7 +132,7 @@ class AdaptiveSubdivider {
     const Curve& curve_;
     const ErrorEstimator& estimator_;
     const SubdivisionConfig& config_;
-    const Scalar min_width_;
+    const real_t min_width_;
 
     Queue queue_;
     std::vector<Segment> finalized_;
@@ -182,7 +176,7 @@ class AdaptiveSubdivider {
     }
 
     //! Extracts the final result.
-    auto result() -> SubdivisionResult<Scalar> {
+    auto result() -> SubdivisionResult {
       sort_by_position();
       return extract_result();
     }
@@ -191,9 +185,9 @@ class AdaptiveSubdivider {
     // Knot and Segment Creation
     // -----------------------------------------------------------------------
 
-    auto make_knot(Scalar v) const -> Knot {
+    auto make_knot(real_t v) const -> Knot {
       const auto v_q = quantize::knot_position(v);
-      const auto jet = curve_(math::Jet<Scalar>{v_q, Scalar{1}});
+      const auto jet = curve_(math::Jet<real_t>{v_q, 1});
       return Knot{v_q, jet};
     }
 
@@ -266,8 +260,8 @@ class AdaptiveSubdivider {
       });
     }
 
-    auto extract_result() const -> SubdivisionResult<Scalar> {
-      SubdivisionResult<Scalar> out;
+    auto extract_result() const -> SubdivisionResult {
+      SubdivisionResult out;
       out.knots.reserve(finalized_.size() + 1);
       out.polys.reserve(finalized_.size());
 

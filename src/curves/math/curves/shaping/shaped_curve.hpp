@@ -29,8 +29,6 @@ namespace curves::shaping {
 template <typename Curve, typename EaseIn, typename EaseOut>
 class ShapedCurve {
  public:
-  using Scalar = Curve::Scalar;
-
   ShapedCurve(Curve curve, EaseIn ease_in, EaseOut ease_out) noexcept
       : curve_{std::move(curve)},
         ease_in_{std::move(ease_in)},
@@ -41,8 +39,8 @@ class ShapedCurve {
     return curve_(ease_in_(ease_out_(value)));
   }
 
-  using CriticalPoints = std::vector<Scalar>;
-  auto critical_points(Scalar domain_max) const -> CriticalPoints {
+  using CriticalPoints = std::vector<real_t>;
+  auto critical_points(real_t domain_max) const -> CriticalPoints {
     auto result = CriticalPoints{};
 
     /*
@@ -70,7 +68,7 @@ class ShapedCurve {
     // Sort and deduplicate
     std::ranges::sort(result);
     const auto last = std::ranges::unique(result, [](auto a, auto b) {
-                        return std::abs(a - b) < Scalar{1e-9};
+                        return std::abs(a - b) < 1e-9;
                       }).begin();
     result.erase(last, result.end());
 
@@ -82,12 +80,12 @@ class ShapedCurve {
   [[no_unique_address]] EaseIn ease_in_{};
   [[no_unique_address]] EaseOut ease_out_{};
 
-  auto is_in_domain(Scalar x, Scalar domain_max) const noexcept -> bool {
+  auto is_in_domain(real_t x, real_t domain_max) const noexcept -> bool {
     return 0 <= x && x <= domain_max;
   }
 
   auto try_add_critical_point(CriticalPoints& critical_points,
-                              Scalar critical_point, Scalar domain_max) const
+                              real_t critical_point, real_t domain_max) const
       -> void {
     if (!is_in_domain(critical_point, domain_max)) return;
     critical_points.push_back(critical_point);

@@ -25,13 +25,11 @@ namespace curves::shaping {
 template <typename TransitionFunction, typename Inverter>
 class Transition {
  public:
-  using Scalar = TransitionFunction::Scalar;
-
-  constexpr Transition(Scalar x0, Scalar width,
+  constexpr Transition(real_t x0, real_t width,
                        TransitionFunction transition_function,
                        Inverter inverter) noexcept
       : x0_{x0},
-        inv_width_{Scalar{1} / width},
+        inv_width_{1.0 / width},
         scale_{width},
         transition_function_{std::move(transition_function)},
         inverter_{std::move(inverter)} {}
@@ -42,7 +40,7 @@ class Transition {
   */
   template <typename Value>
   constexpr auto operator()(const Value& x) const noexcept -> Value {
-    assert(scale_ != Scalar{0} && "Transition domain error");
+    assert(scale_ != 0.0 && "Transition domain error");
 
     // Reduce to [0, 1).
     const auto x_normalized = (x - Value{x0_}) * Value{inv_width_};
@@ -56,7 +54,7 @@ class Transition {
 
   template <typename Value>
   constexpr auto inverse(const Value& y) const noexcept -> Value {
-    assert(scale_ != Scalar{0} && "Transition domain error");
+    assert(scale_ != 0.0 && "Transition domain error");
 
     // Reduce to [0, 1).
     const auto y_normalized = y * Value{inv_width_};
@@ -68,14 +66,14 @@ class Transition {
     return (x_normalized * Value{scale_}) + Value{x0_};
   }
 
-  constexpr auto x0() const noexcept -> Scalar { return x0_; }
+  constexpr auto x0() const noexcept -> real_t { return x0_; }
 
-  constexpr auto width() const noexcept -> Scalar {
+  constexpr auto width() const noexcept -> real_t {
     // Scale is uniform in width and height.
     return scale_;
   }
 
-  constexpr auto height() const noexcept -> Scalar {
+  constexpr auto height() const noexcept -> real_t {
     return scale_ * transition_function_.at_1();
   }
 
@@ -90,13 +88,13 @@ class Transition {
 
  private:
   //! Beginning of transition.
-  Scalar x0_;
+  real_t x0_;
 
   //! Reciprocal of width of transition.
-  Scalar inv_width_;
+  real_t inv_width_;
 
   //! Uniform output scale to match input width 1:1.
-  Scalar scale_;
+  real_t scale_;
 
   //! Actual easing implementation.
   [[no_unique_address]] TransitionFunction transition_function_;

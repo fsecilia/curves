@@ -24,4 +24,4 @@ using real_t = double;
 using wide_real_t = long double;
 using ssize_t = std::ptrdiff_t;
 
-}  // namespace curve/
+}  // namespace curves

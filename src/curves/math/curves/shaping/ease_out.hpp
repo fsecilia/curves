@@ -9,6 +9,7 @@
 #pragma once
 
 #include <curves/lib.hpp>
+#include <array>
 #include <utility>
 
 namespace curves::shaping {
@@ -26,8 +27,6 @@ namespace curves::shaping {
 template <typename Transition>
 class EaseOut {
  public:
-  using Scalar = Transition::Scalar;
-
   explicit constexpr EaseOut(Transition transition) noexcept
       : ceiling_{transition.x0() + transition.height()},
         transition_{std::move(transition)} {}
@@ -46,7 +45,7 @@ class EaseOut {
     return transition_(x) + x0;
   }
 
-  constexpr auto inverse(Scalar y) const noexcept -> Scalar {
+  constexpr auto inverse(real_t y) const noexcept -> real_t {
     // Linear segment.
     if (y <= transition_.x0()) return y;
 
@@ -57,13 +56,13 @@ class EaseOut {
     return transition_.inverse(y - transition_.x0());
   }
 
-  constexpr auto critical_points() const noexcept -> std::array<Scalar, 2> {
+  constexpr auto critical_points() const noexcept -> std::array<real_t, 2> {
     const auto x0 = transition_.x0();
     return {x0, x0 + transition_.width()};
   }
 
  private:
-  Scalar ceiling_;
+  real_t ceiling_;
   [[no_unique_address]] Transition transition_;
 };
 

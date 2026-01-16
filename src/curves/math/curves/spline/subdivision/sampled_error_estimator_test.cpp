@@ -14,18 +14,15 @@
 namespace curves {
 namespace {
 
-using Scalar = double;
-using SegmentErrorEstimate = SegmentErrorEstimate<Scalar>;
-
 // ----------------------------------------------------------------------------
 // Test Sample
 // ----------------------------------------------------------------------------
 
 struct Sample {
-  Scalar t_candidate;
-  Scalar y_approximation;
-  Scalar expected_v_t;
-  Scalar y_true;
+  real_t t_candidate;
+  real_t y_approximation;
+  real_t expected_v_t;
+  real_t y_true;
 
   friend auto operator<<(std::ostream& out, const Sample& src)
       -> std::ostream& {
@@ -44,10 +41,10 @@ using Samples = std::vector<Sample>;
 struct TestVector {
   std::string description;
   Samples samples;
-  Scalar v0;
-  Scalar segment_width;
+  real_t v0;
+  real_t segment_width;
   SegmentErrorEstimate expected_result;
-  Scalar tolerance = 1e-10;
+  real_t tolerance = 1e-10;
 
   friend auto operator<<(std::ostream& out, const TestVector& src)
       -> std::ostream& {
@@ -74,27 +71,26 @@ struct TestVector {
 
 struct SegmentErrorEstimatorTest : TestWithParam<TestVector> {
   const Samples& samples = GetParam().samples;
-  const Scalar segment_width = GetParam().segment_width;
-  const Scalar v0 = GetParam().v0;
+  const real_t segment_width = GetParam().segment_width;
+  const real_t v0 = GetParam().v0;
   const SegmentErrorEstimate expected_result = GetParam().expected_result;
-  const Scalar tolerance = GetParam().tolerance;
+  const real_t tolerance = GetParam().tolerance;
 
   struct MockCurve {
-    using Scalar = Scalar;
-    MOCK_METHOD(Scalar, call, (Scalar v), (const, noexcept));
-    auto operator()(Scalar v) const noexcept -> Scalar { return call(v); }
+    MOCK_METHOD(real_t, call, (real_t v), (const, noexcept));
+    auto operator()(real_t v) const noexcept -> real_t { return call(v); }
     virtual ~MockCurve() = default;
   };
   StrictMock<MockCurve> mock_curve;
 
   struct MockSegment {
-    MOCK_METHOD(Scalar, call, (Scalar t), (const, noexcept));
-    auto operator()(Scalar t) const noexcept -> Scalar { return call(t); }
+    MOCK_METHOD(real_t, call, (real_t t), (const, noexcept));
+    auto operator()(real_t t) const noexcept -> real_t { return call(t); }
     virtual ~MockSegment() = default;
   };
   StrictMock<MockSegment> mock_segment;
 
-  using Candidates = std::vector<Scalar>;
+  using Candidates = std::vector<real_t>;
   struct MockErrorCandidateLocator {
     MOCK_METHOD(Candidates, call, (const MockSegment&), (const, noexcept));
     auto operator()(const MockSegment& segment) const noexcept -> Candidates {
@@ -142,15 +138,15 @@ TEST_P(SegmentErrorEstimatorTest, Call) {
 struct CaseBuilder {
   TestVector result;
 
-  Scalar max_err = -1.0;
-  Scalar best_v = 0.0;
+  real_t max_err = -1.0;
+  real_t best_v = 0.0;
 
   explicit CaseBuilder(std::string description) {
     result.description = std::move(description);
     with_interval(0.0, 1.0);
   }
 
-  auto with_interval(Scalar v0, Scalar width) -> CaseBuilder& {
+  auto with_interval(real_t v0, real_t width) -> CaseBuilder& {
     result.v0 = v0;
     result.segment_width = width;
 
@@ -161,10 +157,10 @@ struct CaseBuilder {
     return *this;
   }
 
-  auto with_candidate(Scalar t, Scalar y_approx, Scalar y_true)
+  auto with_candidate(real_t t, real_t y_approx, real_t y_true)
       -> CaseBuilder& {
-    const Scalar v_t = result.v0 + t * result.segment_width;
-    const Scalar err = std::abs(y_approx - y_true);
+    const real_t v_t = result.v0 + t * result.segment_width;
+    const real_t err = std::abs(y_approx - y_true);
 
     // Add sample with calculated expected_v_t.
     result.samples.push_back({.t_candidate = t,

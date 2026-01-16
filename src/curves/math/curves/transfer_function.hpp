@@ -16,13 +16,10 @@
 namespace curves {
 
 template <typename Integral>
-concept IsIntegral =
-    requires(const Integral integral, Integral::Scalar scalar) {
-      { integral(scalar) } -> std::convertible_to<typename Integral::Scalar>;
-      {
-        integral.integrand()(scalar)
-      } -> std::convertible_to<typename Integral::Scalar>;
-    };
+concept IsIntegral = requires(const Integral integral, real_t scalar) {
+  { integral(scalar) } -> std::convertible_to<real_t>;
+  { integral.integrand()(scalar) } -> std::convertible_to<real_t>;
+};
 
 template <CurveDefinition kDefinition, typename Curve>
 class TransferFunction;
@@ -37,8 +34,6 @@ class TransferFunction;
 template <IsIntegral Integral>
 class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
  public:
-  using Scalar = Integral::Scalar;
-
   explicit TransferFunction(Integral integral) noexcept
       : integral_{std::move(integral)} {}
 
@@ -68,7 +63,7 @@ class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
     const auto integrand = integral_.integrand();
     const auto integral_derivative = integrand(v_primal);
 
-    return math::Jet<Scalar>{integral, integral_derivative * v_derivative};
+    return math::Jet<real_t>{integral, integral_derivative * v_derivative};
   }
 
  private:
@@ -81,8 +76,6 @@ class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
 template <typename Curve>
 class TransferFunction<CurveDefinition::kVelocityScale, Curve> {
  public:
-  using Scalar = Curve::Scalar;
-
   explicit TransferFunction(Curve curve) noexcept : curve_{std::move(curve)} {}
 
   template <typename Value>
@@ -124,9 +117,8 @@ struct TransferFunctionBuilder {
     CPS-style visitor that is invoked with the completed transfer function.
   */
   template <typename Curve, typename Visitor>
-  auto operator()(CurveDefinition curve_definition, Curve curve,
-                  typename Curve::Scalar max, typename Curve::Scalar tolerance,
-                  CompatibleRange<typename Curve::Scalar> auto critical_points,
+  auto operator()(CurveDefinition curve_definition, Curve curve, real_t max,
+                  real_t tolerance, ScalarRange auto critical_points,
                   Visitor&& visitor) const -> decltype(auto) {
     switch (curve_definition) {
       case CurveDefinition::kTransferGradient: {

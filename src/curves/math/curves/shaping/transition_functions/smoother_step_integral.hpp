@@ -25,16 +25,13 @@ namespace curves::shaping::transition_functions {
 
   Evaluating this curve at x=1 yields the jet {0.5, 1}, *NOT* {1, 1}!
 */
-template <typename ScalarType>
 struct SmootherStepIntegral {
-  using Scalar = ScalarType;
-
-  static constexpr Scalar kC0 = 1.0;
-  static constexpr Scalar kC1 = -3.0;
-  static constexpr Scalar kC2 = 2.5;
+  static constexpr real_t kC0 = 1.0;
+  static constexpr real_t kC1 = -3.0;
+  static constexpr real_t kC2 = 2.5;
 
   // Optimized result without rounding.
-  constexpr auto at_1() const noexcept -> Scalar { return kC0 + kC1 + kC2; }
+  constexpr auto at_1() const noexcept -> real_t { return kC0 + kC1 + kC2; }
 
   // \pre t in [0, 1]
   template <typename Value>

@@ -49,9 +49,9 @@ namespace nominal {
   These values end up being discontinuous at the end of the transition, but the
   math still works if you sample segment by segment.
 */
-constexpr auto x0 = Scalar{0.1};
-constexpr auto width = Scalar{1.2};
-constexpr auto height = Scalar{2.5};
+constexpr auto x0 = 0.1;
+constexpr auto width = 1.2;
+constexpr auto height = 2.5;
 constexpr auto slope = height / width;
 
 struct EaseInCallTestNominal
@@ -95,9 +95,9 @@ INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestNominal,
 
 namespace zero_x0 {
 
-constexpr auto x0 = Scalar{0};
-constexpr auto width = Scalar{2};
-constexpr auto height = Scalar{3};
+constexpr auto x0 = 0.0;
+constexpr auto width = 2.0;
+constexpr auto height = 3.0;
 constexpr auto slope = height / width;
 
 struct EaseInCallTestZeroX0
@@ -126,11 +126,10 @@ INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestZeroX0,
 
 namespace zero_width {
 
-constexpr auto x0 = Scalar{0.5};
+constexpr auto x0 = 0.5;
 
 struct Transition : DegenerateTransition {
-  using Scalar = Scalar;
-  constexpr auto x0() const noexcept -> Scalar { return zero_width::x0; }
+  constexpr auto x0() const noexcept -> real_t { return zero_width::x0; }
 };
 
 struct EaseInCallTestZeroWidth : EaseInCallTest<Transition> {};
@@ -159,8 +158,7 @@ INSTANTIATE_TEST_SUITE_P(TestVectors, EaseInCallTestZeroWidth,
 namespace null_transition {
 
 struct Transition : DegenerateTransition {
-  using Scalar = Scalar;
-  constexpr auto x0() const noexcept -> Scalar { return 0; }
+  constexpr auto x0() const noexcept -> real_t { return 0; }
 };
 
 struct EaseInCallTestNullTransition : EaseInCallTest<Transition> {};
@@ -192,9 +190,9 @@ namespace inverse {
 namespace {
 
 struct EaseInInverseTest : Test {
-  static constexpr auto x0 = Scalar{1};
-  static constexpr auto width = Scalar{1};
-  static constexpr auto height = Scalar{1};
+  static constexpr auto x0 = 1.0;
+  static constexpr auto width = 1.0;
+  static constexpr auto height = 1.0;
 
   StrictMock<MockTransition> mock_transition;
 
@@ -243,9 +241,9 @@ namespace {
 // ============================================================================
 
 struct EaseInCriticalPointsTest : Test {
-  static constexpr auto x0 = Scalar{2};
-  static constexpr auto width = Scalar{5};
-  static constexpr auto height = Scalar{11};
+  static constexpr auto x0 = 2.0;
+  static constexpr auto width = 5.0;
+  static constexpr auto height = 11.0;
 
   using Sut = EaseIn<TestingTransition<x0, width, height>>;
   Sut sut{{}};
@@ -273,12 +271,12 @@ TEST_F(EaseInCriticalPointsTest, CriticalPoints) {
 */
 
 struct EaseInContinuityTest : Test {
-  using TransitionFunction = transition_functions::SmootherStepIntegral<Scalar>;
+  using TransitionFunction = transition_functions::SmootherStepIntegral;
   using Transition = shaping::Transition<TransitionFunction, Inverter>;
   using Sut = EaseIn<Transition>;
 
-  static constexpr auto x0 = Scalar{0.45};
-  static constexpr auto width = Scalar{2.1};
+  static constexpr auto x0 = 0.45;
+  static constexpr auto width = 2.1;
 
   static constexpr auto transition = Transition{x0, width, {}, {}};
   static constexpr auto sut = Sut{transition};

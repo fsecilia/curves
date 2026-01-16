@@ -13,8 +13,7 @@
 namespace curves {
 namespace {
 
-using Scalar = double;
-using Sut = ErrorCandidateLocator<Scalar>;
+using Sut = ErrorCandidateLocator;
 using Segment = Sut::Segment;
 using Result = Sut::Result;
 
@@ -22,7 +21,7 @@ struct ErrorCandidateLocatorTestVector {
   std::string description;
   Segment segment;
   Result expected_result;
-  Scalar tolerance = 1e-10;
+  real_t tolerance = 1e-10;
 
   friend auto operator<<(std::ostream& out,
                          const ErrorCandidateLocatorTestVector& src)
@@ -38,7 +37,7 @@ struct CubicErrorCandidateLocatorTest
     : TestWithParam<ErrorCandidateLocatorTestVector> {
   const Segment& segment = GetParam().segment;
   const Result expected_result = GetParam().expected_result;
-  const Scalar tolerance = GetParam().tolerance;
+  const real_t tolerance = GetParam().tolerance;
 
   Sut sut;
 };
@@ -54,24 +53,24 @@ TEST_P(CubicErrorCandidateLocatorTest, Call) {
 }
 
 // Global constants for test clarity
-const auto sqrt_3 = Scalar(std::sqrt(3.0));
-const auto sqrt_7 = Scalar(std::sqrt(7.0));
-const auto sqrt_12 = Scalar(std::sqrt(12.0));
-const auto sqrt_19 = Scalar(std::sqrt(19.0));
+const auto sqrt_3 = std::sqrt(3.0);
+const auto sqrt_7 = std::sqrt(7.0);
+const auto sqrt_12 = std::sqrt(12.0);
+const auto sqrt_19 = std::sqrt(19.0);
 
 /*
     Helper to create a segment monomial. We only care about a and b for these
     tests. c and d are initialized to distinct values to ensure the SUT ignores
     them.
 */
-auto make_segment(Scalar a, Scalar b) noexcept -> Segment {
-  return {{a, b, Scalar{100.0}, Scalar{-50.0}}};
+auto make_segment(real_t a, real_t b) noexcept -> Segment {
+  return {{a, b, 100.0, -50.0}};
 }
 
 /*
   Simplifies initializing fixed array with variable number of arguments.
 */
-auto make_candidates(std::initializer_list<Scalar> inputs) noexcept -> Result {
+auto make_candidates(std::initializer_list<real_t> inputs) noexcept -> Result {
   return Result{inputs};
 }
 

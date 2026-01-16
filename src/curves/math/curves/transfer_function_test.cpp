@@ -13,8 +13,7 @@ namespace curves::transfer_function {
 namespace {
 
 struct TransferFunctionTest : Test {
-  using Scalar = double;
-  using Jet = math::Jet<Scalar>;
+  using Jet = math::Jet<real_t>;
 
   static constexpr auto jet_result = Jet{3, 5};
 };
@@ -24,27 +23,25 @@ struct TransferFunctionTest : Test {
 // ============================================================================
 
 struct TransferFunctionTransferGradientTest : TransferFunctionTest {
-  static constexpr auto kIntegrandScale = Scalar{7.1};
+  static constexpr auto kIntegrandScale = 7.1;
   struct Integrand {
-    Scalar scale = 0.0;
+    real_t scale = 0.0;
 
-    constexpr auto operator()(Scalar v) const noexcept -> Scalar {
+    constexpr auto operator()(real_t v) const noexcept -> real_t {
       return scale * v;
     }
   };
 
-  static constexpr auto kIntegralOffset = Scalar{11.2};
+  static constexpr auto kIntegralOffset = 11.2;
   struct Integral {
-    using Scalar = Scalar;
-
-    Scalar offset = 0.0;
+    real_t offset = 0.0;
 
     Integrand integrand_;
     constexpr auto integrand() const noexcept -> const Integrand& {
       return integrand_;
     }
 
-    auto operator()(Scalar v) const noexcept -> Scalar { return v + offset; }
+    auto operator()(real_t v) const noexcept -> real_t { return v + offset; }
     auto operator()(Jet jet) const noexcept -> Jet { return jet + offset; }
   };
   Integral integral{
@@ -57,7 +54,7 @@ struct TransferFunctionTransferGradientTest : TransferFunctionTest {
 };
 
 TEST_F(TransferFunctionTransferGradientTest, Scalar) {
-  const auto scalar = Scalar{3.1};
+  const auto scalar = 3.1;
   EXPECT_EQ(kIntegralOffset + scalar, sut(scalar));
 }
 
@@ -82,13 +79,11 @@ struct TransferFunctionVelocityScaleTest : TransferFunctionTest {};
 
 struct TransferFunctionVelocityScaleTestDerivativeNear0
     : TransferFunctionVelocityScaleTest {
-  static constexpr auto scalar_result = Scalar{7};
+  static constexpr auto scalar_result = 7.0;
 
   struct Curve {
-    using Scalar = Scalar;
-
     auto operator()(Jet) const noexcept -> Jet { return jet_result; }
-    auto operator()(Scalar) const noexcept -> Scalar { return scalar_result; }
+    auto operator()(real_t) const noexcept -> real_t { return scalar_result; }
   };
   Curve curve;
 
@@ -114,7 +109,7 @@ TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
 
 TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
        JetAt0UsesLimitDefinition) {
-  const auto derivative = Scalar{3};
+  const auto derivative = 3.0;
   EXPECT_EQ((Jet{0.0, scalar_result * derivative}), sut(Jet{0.0, derivative}));
 }
 
@@ -125,7 +120,7 @@ TEST_F(TransferFunctionVelocityScaleTestDerivativeNear0,
 struct TransferFunctionVelocityScaleTestLinear
     : TransferFunctionVelocityScaleTest {
   // Arbitrary, nondegenerate curve, y = 3x + 5.
-  using Curve = LinearCurve<Scalar>;
+  using Curve = LinearCurve;
   using CriticalPoints = Curve::CriticalPoints;
 
   CriticalPoints critical_points{73, 79, 179, 181};

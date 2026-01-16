@@ -89,9 +89,9 @@ inline auto inv_width(real_t value) noexcept -> real_t {
   return coefficient<46, false>(value);
 }
 
-inline auto polynomial(const cubic::Monomial<real_t>& poly) noexcept
-    -> cubic::Monomial<real_t> {
-  return cubic::Monomial<real_t>{
+inline auto polynomial(const cubic::Monomial& poly) noexcept
+    -> cubic::Monomial {
+  return cubic::Monomial{
       signed_coeff(poly.coeffs[0]),
       signed_coeff(poly.coeffs[1]),
       unsigned_coeff(poly.coeffs[2]),

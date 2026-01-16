@@ -76,13 +76,13 @@ struct ShapingTransition {
 
 //! Config, as specified by ui.
 struct EaseInConfig {
-  static auto constexpr y_floor_target_default = real_t{0};
+  static auto constexpr y_floor_target_default = 0.0;
 
   // Floor level in user's chosen display space, sensitivity or gain.
   real_t y_floor_target = y_floor_target_default;
 
-  static auto constexpr v_width_default = real_t{0};
-  static auto constexpr v_begin_default = real_t{0};
+  static auto constexpr v_width_default = 0.0;
+  static auto constexpr v_begin_default = 0.0;
   ShapingTransition transition{v_width_default, v_begin_default};
 };
 
@@ -98,8 +98,8 @@ struct EaseInState {
 // ----------------------------------------------------------------------------
 
 struct EaseOutConfig {
-  static auto constexpr begin_default_scale = real_t{0.8};
-  static auto constexpr width_default_scale = real_t{0.1};
+  static auto constexpr begin_default_scale = 0.8;
+  static auto constexpr width_default_scale = 0.1;
   ShapingTransition transition;
 };
 

@@ -17,20 +17,17 @@
 
 namespace curves {
 
-template <typename Scalar>
 class Synchronous {
  public:
-  Synchronous() noexcept
-      : Synchronous{Scalar{1.5}, Scalar{1}, Scalar{5.0}, Scalar{0.5}} {}
+  Synchronous() noexcept : Synchronous{1.5, 1.0, 5.0, 0.5} {}
 
-  Synchronous(Scalar m, Scalar g, Scalar p, Scalar k) noexcept
+  Synchronous(real_t m, real_t g, real_t p, real_t k) noexcept
       : m_{m},
         l_{math::log(m)},
         g_{g / l_},
         p_{p},
-        k_{math::min(k == Scalar{0} ? Scalar{32} : Scalar{0.5} / k,
-                     Scalar{32})},
-        r_{Scalar{1} / k_} {}
+        k_{1.0 / 64 < k ? 0.5 / k : 32.0},
+        r_{1.0 / k_} {}
 
   template <typename Value>
   auto operator()(Value x) const noexcept -> Value {
@@ -38,13 +35,13 @@ class Synchronous {
 
     // Use limit definition near 0.
     if (x < std::numeric_limits<Value>::epsilon()) {
-      return Value{1} / m_ + Value{0} * x;
+      return 1.0 / m_ + 0.0 * x;
     }
 
     // Use linear taylor approximation (very) near to cusp.
     const auto displacement = x - p_;
     if (abs(primal(displacement)) <= kCuspApproximationDistance) {
-      return Value{1} + (l_ * g_ / p_) * displacement;
+      return 1.0 + (l_ * g_ / p_) * displacement;
     }
 
     const auto u = g_ * log(x / p_);
@@ -52,12 +49,12 @@ class Synchronous {
     return exp(copysign(l_, u) * pow(w, r_));
   }
 
-  auto critical_points() const noexcept -> std::array<Scalar, 1> {
+  auto critical_points() const noexcept -> std::array<real_t, 1> {
     return {p_};
   }
 
  private:
-  static constexpr auto kCuspApproximationDistance = Scalar{1e-7};
+  static constexpr auto kCuspApproximationDistance = 1e-7;
 
   real_t m_;
   real_t l_;
@@ -73,7 +70,7 @@ class Synchronous {
 */
 class SynchronousCurve {
  public:
-  SynchronousCurve() noexcept : SynchronousCurve(1.5, 1.0, 5.0, 0.5) {}
+  SynchronousCurve() noexcept : SynchronousCurve{1.5, 1.0, 5.0, 0.5} {}
 
   SynchronousCurve(real_t motivity, real_t gamma, real_t sync_speed,
                    real_t smooth) noexcept

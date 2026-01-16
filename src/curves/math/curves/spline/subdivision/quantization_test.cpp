@@ -250,7 +250,7 @@ struct QuantizePolynomialTest : Test {};
 
 TEST_F(QuantizePolynomialTest, AppliesCorrectQuantizerToEachCoeff) {
   // Construct a polynomial with known values.
-  const auto poly = cubic::Monomial<real_t>{
+  const auto poly = cubic::Monomial{
       1.23456789012345,   // a - signed
       -9.87654321098765,  // b - signed
       0.111111111111111,  // c - unsigned
@@ -267,7 +267,7 @@ TEST_F(QuantizePolynomialTest, AppliesCorrectQuantizerToEachCoeff) {
 }
 
 TEST_F(QuantizePolynomialTest, PreservesZeroCoefficients) {
-  const auto poly = cubic::Monomial<real_t>{0.0, 0.0, 0.0, 0.0};
+  const auto poly = cubic::Monomial{0.0, 0.0, 0.0, 0.0};
   const auto quantized = quantize::polynomial(poly);
 
   for (auto i = 0; i < poly.count; ++i) {

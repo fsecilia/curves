@@ -20,17 +20,15 @@ namespace curves {
 //! Strongly typed node id to prevent arbitrary indexing.
 enum class SegmentIndex : uint16_t { Null = 0xFFFF };
 
-template <typename Scalar>
 struct Knot {
-  Scalar v;
-  math::Jet<Scalar> y;
+  real_t v;
+  math::Jet<real_t> y;
 
   friend auto operator<<(std::ostream& out, const Knot& src) -> std::ostream& {
     return out << "Knot{.v = " << src.v << ", y = " << src.y << "}";
   }
 };
 
-template <typename Scalar>
-using Knots = std::vector<Knot<Scalar>>;
+using Knots = std::vector<Knot>;
 
 }  // namespace curves

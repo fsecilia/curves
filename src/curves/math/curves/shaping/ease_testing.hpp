@@ -14,16 +14,13 @@
 
 namespace curves::shaping {
 
-using Scalar = double;
-using Jet = math::Jet<Scalar>;
+using Jet = math::Jet<real_t>;
 
-template <Scalar kX0, Scalar kWidth, Scalar kHeight>
+template <real_t kX0, real_t kWidth, real_t kHeight>
 struct TestingTransition {
-  using Scalar = Scalar;
-
-  constexpr auto x0() const noexcept -> Scalar { return kX0; }
-  constexpr auto width() const noexcept -> Scalar { return kWidth; }
-  constexpr auto height() const noexcept -> Scalar { return kHeight; }
+  constexpr auto x0() const noexcept -> real_t { return kX0; }
+  constexpr auto width() const noexcept -> real_t { return kWidth; }
+  constexpr auto height() const noexcept -> real_t { return kHeight; }
 
   template <typename Value>
   constexpr auto operator()(const Value& x) const noexcept -> Value {
@@ -36,7 +33,7 @@ using Inverter = int_t;
 constexpr auto inverter = Inverter{17};
 
 struct CallTestVector {
-  Scalar x;
+  real_t x;
   Jet expected;
 
   friend auto operator<<(std::ostream& out, const CallTestVector& src)
@@ -48,8 +45,8 @@ struct CallTestVector {
 constexpr auto kEps = 1e-5;
 
 struct DegenerateTransition {
-  constexpr auto width() const noexcept -> Scalar { return 0; }
-  constexpr auto height() const noexcept -> Scalar { return 0; }
+  constexpr auto width() const noexcept -> real_t { return 0; }
+  constexpr auto height() const noexcept -> real_t { return 0; }
 
   auto fail() const -> void { GTEST_FAIL(); }
 
@@ -63,13 +60,13 @@ struct DegenerateTransition {
 namespace inverse {
 
 struct MockTransition {
-  MOCK_METHOD(Scalar, inverse, (Scalar), (const, noexcept));
+  MOCK_METHOD(real_t, inverse, (real_t), (const, noexcept));
   virtual ~MockTransition() = default;
 };
 
-template <Scalar kX0, Scalar kWidth, Scalar kHeight>
+template <real_t kX0, real_t kWidth, real_t kHeight>
 struct Transition : shaping::TestingTransition<kX0, kWidth, kHeight> {
-  auto inverse(Scalar y) const noexcept -> Scalar {
+  auto inverse(real_t y) const noexcept -> real_t {
     return mock_transition->inverse(y);
   }
 

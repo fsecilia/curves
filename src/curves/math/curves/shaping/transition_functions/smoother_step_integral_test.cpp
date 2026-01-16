@@ -17,11 +17,9 @@ namespace {
 // ============================================================================
 
 struct SmootherStepIntegralTest : Test {
-  using Scalar = double;
-
   static constexpr auto kEpsilon = 1e-15;
 
-  using Sut = SmootherStepIntegral<Scalar>;
+  using Sut = SmootherStepIntegral;
   static constexpr Sut sut{};
 };
 
@@ -45,8 +43,8 @@ TEST_F(SmootherStepIntegralTest, At_1) { EXPECT_DOUBLE_EQ(0.5, sut.at_1()); }
 // ----------------------------------------------------------------------------
 
 struct SmootherStepIntegralTestVector {
-  math::Jet<double> t;
-  math::Jet<double> y;
+  math::Jet<real_t> t;
+  math::Jet<real_t> y;
 
   friend auto operator<<(std::ostream& out,
                          const SmootherStepIntegralTestVector& src)

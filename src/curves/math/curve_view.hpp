@@ -64,7 +64,7 @@ class CurveView {
     const auto dG = d2T_du2 * du * du + dT_du * d2u;
 
     // S = T/v, S' = (G - S)/v
-    constexpr auto kEpsilon = real_t{1e-10};
+    constexpr auto kEpsilon = 1e-10;
     if (v < kEpsilon) {
       // At origin: S -> T'(0), S' -> T''(0)/2
       const auto S = dT_du;
@@ -94,7 +94,7 @@ class CurveView {
     auto x = u * u_to_x_;
     auto T = spline_.eval(x);
 
-    constexpr auto kEpsilon = real_t{1e-10};
+    constexpr auto kEpsilon = 1e-10;
     if (v < kEpsilon) {
       auto [T_full, dT_dx, d2T_dx2] = spline_(x);
       return dT_dx * u_to_x_;

@@ -15,10 +15,9 @@
 namespace curves {
 
 //! Maximum estimated error and its curve location.
-template <typename Scalar>
 struct SegmentErrorEstimate {
-  Scalar v;
-  Scalar error;
+  real_t v;
+  real_t error;
 
   friend auto operator<<(std::ostream& out, const SegmentErrorEstimate& src)
       -> std::ostream& {
@@ -40,16 +39,13 @@ struct SampledErrorEstimator {
   ErrorCandidateLocator locate_error_candidates;
 
   template <typename Curve, typename Segment>
-  auto operator()(const Curve& curve, const Segment& segment, Curve::Scalar v0,
-                  Curve::Scalar segment_width) const noexcept
-      -> SegmentErrorEstimate<typename Curve::Scalar> {
-    using Scalar = Curve::Scalar;
-
+  auto operator()(const Curve& curve, const Segment& segment, real_t v0,
+                  real_t segment_width) const noexcept -> SegmentErrorEstimate {
     const auto candidates = locate_error_candidates(segment);
 
     // Argmax candidates to find max err and the v that produces it.
-    auto max_err = Scalar{0};
-    auto v_max_err = Scalar{v0 + 0.5 * segment_width};  // Default to midpoint.
+    auto max_err = 0.0;
+    auto v_max_err = v0 + 0.5 * segment_width;  // Default to midpoint.
     for (const auto t_candidate : candidates) {
       const auto y_approximation = segment(t_candidate);
       const auto v_t = v0 + t_candidate * segment_width;

@@ -29,13 +29,11 @@ namespace curves {
   checking these places causes subdivision to converge more quickly than
   spliting by halves.
 */
-template <typename ScalarType>
 struct ErrorCandidateLocator {
-  using Scalar = ScalarType;
-  using Segment = cubic::Monomial<Scalar>;
+  using Segment = cubic::Monomial;
 
   static constexpr auto max_candidates = 3;
-  using Result = StaticVector<Scalar, max_candidates>;
+  using Result = StaticVector<real_t, max_candidates>;
 
   /*!
     Applies the first derivative test to the deviation function (zeroth-order)

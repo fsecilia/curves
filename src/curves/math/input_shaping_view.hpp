@@ -57,7 +57,7 @@ class InputShapingView {
    * Derivatives computed in floating-point.
    */
   auto operator()(real_t v) const noexcept -> ShapingResult {
-    if (!params_) return {v, real_t{1}, real_t{0}};
+    if (!params_) return {v, 1.0, 0.0};
 
     // Get parameters in floating-point.
     const auto v_begin_in = fixed_to_real(params_->ease_in.transition.v_begin);
@@ -81,7 +81,7 @@ class InputShapingView {
     const auto v_end_in = v_begin_in + v_width_in;
     if (v_width_in > 0 && v < v_begin_in) {
       // Floor segment.
-      return {u, real_t{0}, real_t{0}};
+      return {u, 0.0, 0.0};
     }
 
     if (v_width_in > 0 && v < v_end_in) {
@@ -97,7 +97,7 @@ class InputShapingView {
     const auto v_end_out = v_begin_out + v_width_out;
     if (v < v_begin_out) {
       // Linear segment.
-      return {u, real_t{1}, real_t{0}};
+      return {u, 1.0, 0.0};
     }
 
     if (v < v_end_out) {
@@ -110,7 +110,7 @@ class InputShapingView {
     }
 
     // Ceiling segment.
-    return {u, real_t{0}, real_t{0}};
+    return {u, 0.0, 0.0};
   }
 
   // Ease-in parameters.

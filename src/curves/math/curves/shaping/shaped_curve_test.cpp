@@ -13,16 +13,10 @@ namespace curves::shaping {
 namespace {
 
 struct ShapedCurveTest : Test {
-  using Scalar = double;
-  using Value = double;
-  using Curve = LinearCurve<Scalar>;
+  using Value = real_t;
+  using Curve = LinearCurve;
   using CriticalPoints = typename Curve::CriticalPoints;
   using Sut = ShapedCurve<Curve, Curve, Curve>;
-
-  static auto make_identity(CriticalPoints critical_points = {}) noexcept
-      -> Curve {
-    return curves::make_identity<Scalar>(std::move(critical_points));
-  }
 };
 
 TEST_F(ShapedCurveTest, IdentityCompositionPreservesCriticalPoints) {

@@ -11,35 +11,31 @@
 namespace curves {
 namespace {
 
-using Scalar = double;
-
 // ============================================================================
 // ComposedIntegral
 // ============================================================================
 
 struct ComposedIntegralTest : Test {
-  static constexpr auto kIntegrandScale = Scalar{5.6};
+  static constexpr auto kIntegrandScale = 5.6;
   struct Integrand {
-    using Scalar = Scalar;
+    real_t scale = 0.0;
 
-    Scalar scale = 0.0;
-
-    auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
+    auto operator()(real_t left, real_t right) const noexcept -> real_t {
       return scale * (right - left);
     }
   };
 
-  static constexpr auto kIntegratorOffset = Scalar{7.9};
+  static constexpr auto kIntegratorOffset = 7.9;
   struct Integrator {
-    Scalar offset = 0.0;
+    real_t offset = 0.0;
 
-    auto operator()(const Integrand& integrand, Scalar left,
-                    Scalar right) const noexcept -> Scalar {
+    auto operator()(const Integrand& integrand, real_t left,
+                    real_t right) const noexcept -> real_t {
       return offset + integrand(left, right);
     }
   };
 
-  static constexpr auto kRight = Scalar{3.4};
+  static constexpr auto kRight = 3.4;
 
   using Sut = ComposedIntegral<Integrand, Integrator>;
   Sut sut = ComposedIntegralFactory{Integrator{kIntegratorOffset}}(
@@ -69,18 +65,15 @@ TEST_F(ComposedIntegralTest, eval_range) {
 // CachedIntegral
 // ============================================================================
 
-constexpr auto empty_critical_points = std::array<Scalar, 0>{};
+constexpr auto empty_critical_points = std::array<real_t, 0>{};
 
 struct ScalarFunction {
-  using Scalar = Scalar;
-  std::function<Scalar(Scalar)> function;
-  auto operator()(Scalar x) const noexcept -> Scalar { return function(x); };
+  std::function<real_t(real_t)> function;
+  auto operator()(real_t x) const noexcept -> real_t { return function(x); };
 };
 
 // Generic Oracle; uses std::function to hold f(x) and F(x).
 struct Oracle {
-  using Scalar = Scalar;
-
   std::string name;
   ScalarFunction f;  // Function being integrated.
   ScalarFunction F;  // Analytical antiderivative.
@@ -106,16 +99,16 @@ struct CachedIntegralTest : Test {
 
 struct AnalyticTestVector {
   Oracle oracle;
-  Scalar range_end;
-  Scalar tolerance;
+  real_t range_end;
+  real_t tolerance;
 };
 
 struct CachedIntegralAnalyticTest : CachedIntegralTest,
                                     WithParamInterface<AnalyticTestVector> {
   const ScalarFunction& f = GetParam().oracle.f;
   const ScalarFunction& F = GetParam().oracle.F;
-  const Scalar range_end = GetParam().range_end;
-  const Scalar tolerance = GetParam().tolerance;
+  const real_t range_end = GetParam().range_end;
+  const real_t tolerance = GetParam().tolerance;
 
   Sut cached_integral = Builder{}(Integral{f, Gauss5{}}, range_end, tolerance,
                                   empty_critical_points);
@@ -132,9 +125,9 @@ struct CachedIntegralAnalyticTest : CachedIntegralTest,
 
     We need to start testing in ulps.
   */
-  const Scalar max_error = tolerance * cached_integral.cache().size() * 100;
+  const real_t max_error = tolerance * cached_integral.cache().size() * 100;
 
-  const std::array<Scalar, 3> test_points{
+  const std::array<real_t, 3> test_points{
       range_end * 0.1,
       range_end * 0.5,
       range_end * 0.9,
@@ -165,17 +158,17 @@ TEST_P(CachedIntegralAnalyticTest, Integral) {
 }
 
 // Define Oracles
-const Oracle kLinear = {"Linear", {[](Scalar x) { return x; }}, {[](Scalar x) {
+const Oracle kLinear = {"Linear", {[](real_t x) { return x; }}, {[](real_t x) {
                           return 0.5 * x * x;
                         }}};
 
 const Oracle kCubic = {"Cubic",
-                       {[](Scalar x) { return x * x * x; }},
-                       {[](Scalar x) { return 0.25 * x * x * x * x; }}};
+                       {[](real_t x) { return x * x * x; }},
+                       {[](real_t x) { return 0.25 * x * x * x * x; }}};
 
 const Oracle kCos = {"Cos",
-                     {[](Scalar x) { return std::cos(x); }},
-                     {[](Scalar x) { return std::sin(x); }}};
+                     {[](real_t x) { return std::cos(x); }},
+                     {[](real_t x) { return std::sin(x); }}};
 
 INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
                          Values(AnalyticTestVector{kLinear, 10.0, 1e-16},
@@ -187,13 +180,13 @@ INSTANTIATE_TEST_SUITE_P(StandardFunctions, CachedIntegralAnalyticTest,
 // ----------------------------------------------------------------------------
 
 struct CachedIntegralSingularityTest : CachedIntegralTest {
-  static constexpr auto end = Scalar{1.0};
-  static constexpr auto tol = Scalar{1e-10};
+  static constexpr auto end = 1.0;
+  static constexpr auto tol = 1.0e-10;
 
   // f(x) = x^0.3 - Has a singularity in derivative at 0.
-  static constexpr auto gamma = Scalar{0.3};
+  static constexpr auto gamma = 0.3;
   inline static const auto f =
-      ScalarFunction{[](Scalar x) { return std::pow(x, gamma); }};
+      ScalarFunction{[](real_t x) { return std::pow(x, gamma); }};
 
   const Sut cached =
       Builder{}(Integral{f, Gauss5{}}, end, tol, empty_critical_points);

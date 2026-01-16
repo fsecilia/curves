@@ -14,16 +14,16 @@
 namespace curves {
 namespace {
 
+const auto kPi = std::numbers::pi_v<real_t>;
+
 // ============================================================================
 // Test Curves
 // ============================================================================
 
 //! Linear curve: f(v) = m*v + b
-template <typename ScalarType>
 struct LinearCurve {
-  using Scalar = ScalarType;
-  Scalar m = 1.0;
-  Scalar b = 0.0;
+  real_t m = 1.0;
+  real_t b = 0.0;
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
@@ -32,12 +32,10 @@ struct LinearCurve {
 };
 
 //! Quadratic curve: f(v) = a*v^2 + b*v + c
-template <typename ScalarType>
 struct QuadraticCurve {
-  using Scalar = ScalarType;
-  Scalar a = 1.0;
-  Scalar b = 0.0;
-  Scalar c = 0.0;
+  real_t a = 1.0;
+  real_t b = 0.0;
+  real_t c = 0.0;
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
@@ -46,13 +44,11 @@ struct QuadraticCurve {
 };
 
 //! Cubic curve: f(v) = a*v^3 + b*v^2 + c*v + d
-template <typename ScalarType>
 struct CubicCurve {
-  using Scalar = ScalarType;
-  Scalar a = 1.0;
-  Scalar b = 0.0;
-  Scalar c = 0.0;
-  Scalar d = 0.0;
+  real_t a = 1.0;
+  real_t b = 0.0;
+  real_t c = 0.0;
+  real_t d = 0.0;
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
@@ -66,17 +62,15 @@ struct CubicCurve {
   Defaults to just under a quarter wave over 2*pi to keep it increasing and
   positive.
 */
-template <typename ScalarType>
 struct TrigCurve {
-  using Scalar = ScalarType;
-  Scalar frequency = 0.24;  // Just under a quarter.
+  real_t frequency = 0.24;  // Just under a quarter.
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
     using math::cos;
     const auto arg = frequency * v;
-    assert(arg <= std::numbers::pi_v<Scalar> / 2);
-    return Scalar{2} - cos(arg);
+    assert(arg <= kPi / 2);
+    return 2.0 - cos(arg);
   }
 };
 
@@ -87,11 +81,9 @@ struct TrigCurve {
   y > 1 does the opposite.
   A corner at v=0 when y < 1 is particularly difficult for subdivision.
 */
-template <typename ScalarType>
 struct PowerLawCurve {
-  using Scalar = ScalarType;
-  Scalar gamma = 0.5;
-  Scalar epsilon = 1e-10;
+  real_t gamma = 0.5;
+  real_t epsilon = 1e-10;
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
@@ -109,11 +101,9 @@ struct PowerLawCurve {
   Creates a sigmoid shape that transitions from 0 to 1 around v0.
   Higher k means sharper transition, requiring more segments to approximate.
 */
-template <typename ScalarType>
 struct SigmoidCurve {
-  using Scalar = ScalarType;
-  Scalar steepness = 10.0;  // k
-  Scalar center = 0.5;      // v0
+  real_t steepness = 10.0;  // k
+  real_t center = 0.5;      // v0
 
   template <typename Value>
   auto operator()(const Value& v) const noexcept -> Value {
@@ -127,8 +117,6 @@ struct SigmoidCurve {
 // ============================================================================
 // Error Estimator
 // ============================================================================
-
-using SegmentErrorEstimate = SegmentErrorEstimate<real_t>;
 
 /*!
   An error estimator test double that returns controlled values for testing the
@@ -160,8 +148,6 @@ struct StubErrorEstimator {
 // ============================================================================
 
 struct AdaptiveSubdividerTest : Test {
-  using Scalar = real_t;
-
   // Default configuration for most tests.
   SubdivisionConfig config{
       .segments_max = 64,
@@ -170,11 +156,11 @@ struct AdaptiveSubdividerTest : Test {
   };
 
   // Simple domain [0, 1].
-  std::array<Scalar, 2> unit_domain{0.0, 1.0};
+  std::array<real_t, 2> unit_domain{0.0, 1.0};
 
   // Helper to create a real error estimator.
   auto make_real_estimator() const {
-    return SampledErrorEstimator{ErrorCandidateLocator<Scalar>{}};
+    return SampledErrorEstimator{ErrorCandidateLocator{}};
   }
 };
 
@@ -186,7 +172,7 @@ struct ExactRepresentationTest : AdaptiveSubdividerTest {};
 
 TEST_F(ExactRepresentationTest, LinearCurveProducesSingleSegment) {
   // A linear function is exactly representable by one Hermite segment.
-  const auto curve = LinearCurve<Scalar>{.m = 2.5, .b = 1.0};
+  const auto curve = LinearCurve{.m = 2.5, .b = 1.0};
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
 
@@ -202,7 +188,7 @@ TEST_F(ExactRepresentationTest, LinearCurveProducesSingleSegment) {
 }
 
 TEST_F(ExactRepresentationTest, QuadraticCurveProducesSingleSegment) {
-  const auto curve = QuadraticCurve<Scalar>{.a = 1.0, .b = 2.0, .c = 1.0};
+  const auto curve = QuadraticCurve{.a = 1.0, .b = 2.0, .c = 1.0};
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
 
@@ -212,7 +198,7 @@ TEST_F(ExactRepresentationTest, QuadraticCurveProducesSingleSegment) {
 }
 
 TEST_F(ExactRepresentationTest, CubicCurveProducesSingleSegment) {
-  const auto curve = CubicCurve<Scalar>{.a = 1.0, .b = 0.0, .c = 1.0, .d = 0.0};
+  const auto curve = CubicCurve{.a = 1.0, .b = 0.0, .c = 1.0, .d = 0.0};
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
 
@@ -228,8 +214,8 @@ TEST_F(ExactRepresentationTest, CubicCurveProducesSingleSegment) {
 struct SubdivisionBehaviorTest : AdaptiveSubdividerTest {};
 
 TEST_F(SubdivisionBehaviorTest, TrigCurveRequiresMultipleSegments) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -244,9 +230,9 @@ TEST_F(SubdivisionBehaviorTest, TrigCurveRequiresMultipleSegments) {
 }
 
 TEST_F(SubdivisionBehaviorTest, HigherFrequencyNeedsMoreSegments) {
-  const auto high_freq = TrigCurve<Scalar>{};
-  const auto low_freq = TrigCurve<Scalar>{.frequency = high_freq.frequency / 4};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto high_freq = TrigCurve{};
+  const auto low_freq = TrigCurve{.frequency = high_freq.frequency / 4};
+  const auto domain = std::array{0.0, kPi};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -259,8 +245,8 @@ TEST_F(SubdivisionBehaviorTest, HigherFrequencyNeedsMoreSegments) {
 }
 
 TEST_F(SubdivisionBehaviorTest, TighterToleranceNeedsMoreSegments) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   auto loose_config = config;
   loose_config.error_tolerance = 1e-4;
@@ -286,8 +272,8 @@ TEST_F(SubdivisionBehaviorTest, TighterToleranceNeedsMoreSegments) {
 struct CapacityTest : AdaptiveSubdividerTest {};
 
 TEST_F(CapacityTest, RespectsSegmentLimit) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   // Use very low tolerance but limit max segments.
   auto limited_config = config;
@@ -313,7 +299,7 @@ TEST_F(CapacityTest, RespectsMinimumWidth) {
   narrow_config.segment_width_min = 0.1;  // Can't go narrower than 0.1
   narrow_config.segments_max = 1000;  // High limit so width is the constraint
 
-  const auto curve = LinearCurve<Scalar>{};
+  const auto curve = LinearCurve{};
   const auto subdivider = make_adaptive_subdivider(always_bad, narrow_config);
 
   const auto result = subdivider(curve, unit_domain);
@@ -333,8 +319,8 @@ TEST_F(CapacityTest, RespectsMinimumWidth) {
 struct StructuralInvariantTest : AdaptiveSubdividerTest {};
 
 TEST_F(StructuralInvariantTest, KnotsAreStrictlyIncreasing) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -348,11 +334,10 @@ TEST_F(StructuralInvariantTest, KnotsAreStrictlyIncreasing) {
 }
 
 TEST_F(StructuralInvariantTest, DomainEndpointsPreserved) {
-  const auto curve = TrigCurve<Scalar>{.frequency = 2.0};
-  const auto v_start = Scalar{0.25};
-  const auto v_end =
-      std::numbers::pi_v<Scalar> / (2 * curve.frequency + 1) - 0.125;
-  const auto domain = std::vector<Scalar>{v_start, v_end};
+  const auto curve = TrigCurve{.frequency = 2.0};
+  const auto v_start = 0.25;
+  const auto v_end = kPi / (2 * curve.frequency + 1) - 0.125;
+  const auto domain = std::vector<real_t>{v_start, v_end};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -367,11 +352,10 @@ TEST_F(StructuralInvariantTest, DomainEndpointsPreserved) {
 }
 
 TEST_F(StructuralInvariantTest, CriticalPointsBecomeKnots) {
-  const auto curve = TrigCurve<Scalar>{};
+  const auto curve = TrigCurve{};
 
   // Critical points at 0, 1, 2, 3.
-  const auto step =
-      0.25 * std::numbers::pi_v<Scalar> / (2 * curve.frequency + 1);
+  const auto step = 0.25 * kPi / (2 * curve.frequency + 1);
   const auto critical_points =
       std::array{0.0 * step, 1.0 * step, 2.0 * step, 3.0 * step};
 
@@ -385,7 +369,7 @@ TEST_F(StructuralInvariantTest, CriticalPointsBecomeKnots) {
     const auto quantized_cp = quantize::knot_position(critical_point);
     const auto found = std::find_if(
         result.knots.begin(), result.knots.end(),
-        [&](Scalar k) { return std::abs(k - quantized_cp) < 1e-10; });
+        [&](real_t k) { return std::abs(k - quantized_cp) < 1e-10; });
 
     EXPECT_NE(found, result.knots.end())
         << "Critical point " << critical_point
@@ -394,8 +378,8 @@ TEST_F(StructuralInvariantTest, CriticalPointsBecomeKnots) {
 }
 
 TEST_F(StructuralInvariantTest, KnotsAreQuantized) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -414,8 +398,8 @@ TEST_F(StructuralInvariantTest, KnotsAreQuantized) {
 }
 
 TEST_F(StructuralInvariantTest, SegmentCountMatchesKnotCount) {
-  const auto curve = TrigCurve<Scalar>{};
-  const auto domain = std::array{Scalar{0.0}, std::numbers::pi_v<Scalar>};
+  const auto curve = TrigCurve{};
+  const auto domain = std::array{0.0, kPi};
 
   const auto subdivider =
       make_adaptive_subdivider(make_real_estimator(), config);
@@ -452,7 +436,7 @@ TEST_F(PriorityBehaviorTest, WorstErrorSplitFirst) {
   test_config.error_tolerance = 1e-9;
   test_config.segments_max = 10;
 
-  const auto curve = LinearCurve<Scalar>{};
+  const auto curve = LinearCurve{};
   const auto subdivider =
       make_adaptive_subdivider(tracking_estimator, test_config);
 
@@ -480,7 +464,7 @@ TEST_F(PriorityBehaviorTest, WorstErrorSplitFirst) {
 struct EdgeCaseTest : AdaptiveSubdividerTest {};
 
 TEST_F(EdgeCaseTest, MinimalDomainTwoPoints) {
-  const auto curve = LinearCurve<Scalar>{};
+  const auto curve = LinearCurve{};
   const auto minimal_domain = std::array{0.0, 0.001};
 
   const auto subdivider =
@@ -494,15 +478,15 @@ TEST_F(EdgeCaseTest, MinimalDomainTwoPoints) {
 }
 
 TEST_F(EdgeCaseTest, ManyCriticalPoints) {
-  const auto curve = TrigCurve<Scalar>{};
+  const auto curve = TrigCurve{};
 
   // Many critical points.
   const auto critical_point_count = 20;
-  const auto domain_max = std::numbers::pi_v<Scalar>;
-  std::array<Scalar, critical_point_count> critical_points;
+  const auto domain_max = kPi;
+  std::array<real_t, critical_point_count> critical_points;
   for (auto i = 0; i < critical_point_count; ++i) {
     critical_points[i] =
-        domain_max * static_cast<Scalar>(i) / critical_point_count;
+        domain_max * static_cast<real_t>(i) / critical_point_count;
   }
 
   const auto subdivider =
@@ -515,14 +499,14 @@ TEST_F(EdgeCaseTest, ManyCriticalPoints) {
 }
 
 TEST_F(EdgeCaseTest, ZeroWidthCriticalPointsCollapse) {
-  const auto curve = LinearCurve<Scalar>{};
+  const auto curve = LinearCurve{};
 
   // Two critical points that quantize to the same value.
-  const auto quantum = Scalar{1.0} / (1 << 24);
+  const auto quantum = 1.0 / (1 << 24);
   const auto near_points = std::array{
-      Scalar{0.0},
+      0.0,
       quantum * 0.3,  // Rounds to 0
-      Scalar{1.0},
+      1.0,
   };
 
   const auto subdivider =
@@ -551,7 +535,7 @@ TEST_F(StressTest, PowerLawWithSmallGamma) {
   // gamma = 0.3 creates a sharp corner near zero. This is challenging because
   // the curvature is very high near v=0, requiring many segments there.
 
-  const auto curve = PowerLawCurve<Scalar>{.gamma = 0.3, .epsilon = 1e-6};
+  const auto curve = PowerLawCurve{.gamma = 0.3, .epsilon = 1e-6};
   const auto domain = std::array{1e-4, 10.0};
 
   auto stress_config = config;
@@ -573,7 +557,7 @@ TEST_F(StressTest, PowerLawWithSmallGamma) {
 
 TEST_F(StressTest, SteepSigmoid) {
   // Very steep sigmoid - nearly a step function.
-  const auto curve = SigmoidCurve<Scalar>{.steepness = 50.0, .center = 0.5};
+  const auto curve = SigmoidCurve{.steepness = 50.0, .center = 0.5};
   const auto domain = std::array{0.0, 1.0};
 
   auto stress_config = config;

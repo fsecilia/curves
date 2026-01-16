@@ -32,16 +32,13 @@ constexpr auto coeff_count = 4;
 
   This form is most expedient for evaluation using Horner's method.
 */
-template <typename ScalarType>
 struct Monomial {
-  using Scalar = ScalarType;
-
   static constexpr auto count = coeff_count;
-  std::array<Scalar, count> coeffs;
+  std::array<real_t, count> coeffs;
 
   template <typename T>
   constexpr auto operator()(const T& t) const noexcept -> T {
-    using CommonType = std::common_type_t<T, Scalar>;
+    using CommonType = std::common_type_t<T, real_t>;
     auto result = static_cast<CommonType>(coeffs[0]);
     return ((result * t + coeffs[1]) * t + coeffs[2]) * t + coeffs[3];
   }
@@ -70,10 +67,9 @@ struct Monomial {
   form is normalized to the parameter t in [0, 1], we must apply the chain rule
   (dy/dt = dy/dx*dx/dt) to scale the input derivatives by the segment width.
 */
-template <typename Scalar>
-auto hermite_to_monomial(const math::Jet<Scalar>& left,
-                         const math::Jet<Scalar>& right,
-                         Scalar segment_width) noexcept -> Monomial<Scalar> {
+inline auto hermite_to_monomial(const math::Jet<real_t>& left,
+                                const math::Jet<real_t>& right,
+                                real_t segment_width) noexcept -> Monomial {
   // Normalize slopes via chain rule.
   const auto m0 = left.v * segment_width;
   const auto m1 = right.v * segment_width;

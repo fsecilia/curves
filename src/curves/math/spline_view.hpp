@@ -73,9 +73,9 @@ class SplineView {
 
   // Evaluate T(x), T'(x), T''(x) at position x in spline's reference domain.
   auto operator()(real_t x) const -> SplineResult {
-    if (!valid()) return {real_t{0}, real_t{0}, real_t{0}};
+    if (!valid()) return {0.0, 0.0, 0.0};
 
-    x = std::clamp(x, real_t{0}, static_cast<real_t>(SPLINE_X_END_MAX));
+    x = std::clamp(x, 0.0, static_cast<real_t>(SPLINE_X_END_MAX));
     const auto [seg, x_width, t] = resolve_segment(x);
     const auto x_width_inv = 1.0 / x_width;
 
@@ -104,9 +104,9 @@ class SplineView {
 
   // Evaluate T(x) only.
   auto eval(real_t x) const -> real_t {
-    if (!valid()) return real_t{0};
+    if (!valid()) return 0.0;
 
-    x = std::clamp(x, real_t{0}, static_cast<real_t>(SPLINE_X_END_MAX));
+    x = std::clamp(x, 0.0, static_cast<real_t>(SPLINE_X_END_MAX));
     const auto [seg, x_width, t] = resolve_segment(x);
 
     auto c0 = fixed_to_real(seg->coeffs[0]);

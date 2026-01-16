@@ -15,13 +15,11 @@
 namespace curves {
 
 // Simple curve for testing composed curves. Models `f(x) = mx + b`.
-template <typename ScalarType>
 class LinearCurve {
  public:
-  using Scalar = ScalarType;
-  using CriticalPoints = std::vector<Scalar>;
+  using CriticalPoints = std::vector<real_t>;
 
-  LinearCurve(Scalar m, Scalar b, CriticalPoints critical_points = {}) noexcept
+  LinearCurve(real_t m, real_t b, CriticalPoints critical_points = {}) noexcept
       : m_{m}, b_{b}, critical_points_{std::move(critical_points)} {}
 
   // Forward: y = mx + b
@@ -40,7 +38,7 @@ class LinearCurve {
     return critical_points_;
   }
 
-  auto critical_points(Scalar domain_max) const noexcept -> auto {
+  auto critical_points(real_t domain_max) const noexcept -> auto {
     return critical_points_ | std::views::filter([=](const auto& element) {
              return element <= domain_max;
            }) |
@@ -48,27 +46,25 @@ class LinearCurve {
   }
 
  private:
-  Scalar m_{1.0};
-  Scalar b_{0.0};
+  real_t m_{1.0};
+  real_t b_{0.0};
   CriticalPoints critical_points_{};
 };
 
-template <typename Scalar>
-auto make_identity(std::vector<Scalar> critical_points = {}) noexcept
-    -> LinearCurve<Scalar> {
+inline auto make_identity(std::vector<real_t> critical_points = {}) noexcept
+    -> LinearCurve {
   return {1.0, 0.0, std::move(critical_points)};
 }
 
-template <typename Scalar>
-auto make_shift(Scalar offset,
-                std::vector<Scalar> critical_points = {}) noexcept
-    -> LinearCurve<Scalar> {
+inline auto make_shift(real_t offset,
+                       std::vector<real_t> critical_points = {}) noexcept
+    -> LinearCurve {
   return {1.0, offset, std::move(critical_points)};
 }
 
-template <typename Scalar>
-auto make_scale(Scalar slope, std::vector<Scalar> critical_points = {}) noexcept
-    -> LinearCurve<Scalar> {
+inline auto make_scale(real_t slope,
+                       std::vector<real_t> critical_points = {}) noexcept
+    -> LinearCurve {
   return {slope, 0.0, std::move(critical_points)};
 }
 

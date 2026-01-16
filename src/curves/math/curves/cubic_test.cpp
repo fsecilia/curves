@@ -12,8 +12,7 @@
 namespace curves::cubic {
 namespace {
 
-using Scalar = double;
-using Jet = math::Jet<Scalar>;
+using Jet = math::Jet<real_t>;
 
 // ----------------------------------------------------------------------------
 // Monomial Form
@@ -21,10 +20,10 @@ using Jet = math::Jet<Scalar>;
 
 struct MonomialTestVector {
   std::string description;
-  Monomial<Scalar> monomial;
-  Scalar t;
-  Scalar expected_result;
-  Scalar tolerance = 1e-10;
+  Monomial monomial;
+  real_t t;
+  real_t expected_result;
+  real_t tolerance = 1e-10;
 
   friend auto operator<<(std::ostream& out, const MonomialTestVector& src)
       -> std::ostream& {
@@ -36,10 +35,10 @@ struct MonomialTestVector {
 };
 
 struct CubicMonomialTest : TestWithParam<MonomialTestVector> {
-  const Monomial<Scalar>& monomial = GetParam().monomial;
-  const Scalar t = GetParam().t;
-  const Scalar expected_result = GetParam().expected_result;
-  const Scalar tolerance = GetParam().tolerance;
+  const Monomial& monomial = GetParam().monomial;
+  const real_t t = GetParam().t;
+  const real_t expected_result = GetParam().expected_result;
+  const real_t tolerance = GetParam().tolerance;
 };
 
 TEST_P(CubicMonomialTest, Eval) {
@@ -79,9 +78,9 @@ struct HermiteTestVector {
   std::string description;
   Jet left;
   Jet right;
-  Scalar segment_width;
-  Monomial<Scalar> expected_monomial;
-  Scalar tolerance = 1e-10;
+  real_t segment_width;
+  Monomial expected_monomial;
+  real_t tolerance = 1e-10;
 
   friend auto operator<<(std::ostream& out, const HermiteTestVector& src)
       -> std::ostream& {
@@ -97,9 +96,9 @@ struct HermiteTestVector {
 struct CubicHermiteTest : TestWithParam<HermiteTestVector> {
   const Jet& left = GetParam().left;
   const Jet& right = GetParam().right;
-  const Scalar segment_width = GetParam().segment_width;
-  const Monomial<Scalar>& expected_monomial = GetParam().expected_monomial;
-  const Scalar tolerance = GetParam().tolerance;
+  const real_t segment_width = GetParam().segment_width;
+  const Monomial& expected_monomial = GetParam().expected_monomial;
+  const real_t tolerance = GetParam().tolerance;
 };
 
 TEST_P(CubicHermiteTest, Eval) {

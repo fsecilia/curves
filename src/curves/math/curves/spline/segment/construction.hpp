@@ -167,7 +167,7 @@ inline auto pack_inv_width(real_t val) noexcept -> StorageValue {
 
 /// Parameters for constructing a segment from floating-point values.
 struct SegmentParams {
-  cubic::Monomial<real_t> poly;  ///< Polynomial coefficients: a, b, c, d
+  cubic::Monomial poly;  ///< Polynomial coefficients: a, b, c, d
   real_t width;                  ///< Segment width in x-space
 
   friend auto operator<<(std::ostream& out, const SegmentParams& src)

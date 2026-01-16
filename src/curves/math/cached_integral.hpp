@@ -38,7 +38,6 @@ class ComposedIntegral {
  public:
   using Integrand = IntegrandType;
   using Integrator = IntegratorType;
-  using Scalar = Integrand::Scalar;
 
   ComposedIntegral(Integrand integrand, Integrator integrator) noexcept
       : integrand_{std::move(integrand)}, integrator_{std::move(integrator)} {}
@@ -46,11 +45,11 @@ class ComposedIntegral {
   auto integrand() const noexcept -> const Integrand& { return integrand_; }
   auto integrator() const noexcept -> const Integrator& { return integrator_; }
 
-  auto operator()(Scalar right) const noexcept -> Scalar {
-    return operator()(Scalar{0}, right);
+  auto operator()(real_t right) const noexcept -> real_t {
+    return operator()(0.0, right);
   }
 
-  auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
+  auto operator()(real_t left, real_t right) const noexcept -> real_t {
     return integrator_(integrand_, left, right);
   }
 
@@ -87,17 +86,15 @@ struct ComposedIntegralFactory {
 template <typename Integral>
 class CachedIntegral {
  public:
-  using Scalar = Integral::Scalar;
-
   //! Maps sample locations to prefix sums at those locations.
-  using Cache = std::flat_map<Scalar, Scalar>;
+  using Cache = std::flat_map<real_t, real_t>;
 
   CachedIntegral(Integral integral, Cache cache) noexcept
       : integral_{std::move(integral)}, cache_{std::move(cache)} {
     assert(!cache_.empty() && "CachedIntegral: empty boundaries");
-    assert(cache_.keys().front() == Scalar{0} &&
+    assert(cache_.keys().front() == 0.0 &&
            "CachedIntegral: sample locations must start at 0");
-    assert(cache_.values().front() == Scalar{0} &&
+    assert(cache_.values().front() == 0.0 &&
            "CachedIntegral: prefix sums must start at 0");
   }
 
@@ -116,7 +113,7 @@ class CachedIntegral {
   }
 
   //! \returns integral from left to right; integrates twice
-  auto operator()(Scalar left, Scalar right) const noexcept -> Scalar {
+  auto operator()(real_t left, real_t right) const noexcept -> real_t {
     return operator()(right) - operator()(left);
   }
 
@@ -152,20 +149,16 @@ class CachedIntegralBuilder {
     \pre critical_points sorted
   */
   template <typename Integral>
-  auto operator()(Integral integral, Integral::Scalar max,
-                  Integral::Scalar tolerance,
-                  CompatibleRange<typename Integral::Scalar> auto
-                      critical_points) const noexcept
+  auto operator()(Integral integral, real_t max, real_t tolerance,
+                  ScalarRange auto critical_points) const noexcept
       -> CachedIntegral<Integral> {
-    using Scalar = Integral::Scalar;
-
-    auto boundaries = std::vector<Scalar>{0};
-    auto cumulative = std::vector<Scalar>{0};
+    auto boundaries = std::vector<real_t>{0};
+    auto cumulative = std::vector<real_t>{0};
 
     struct Interval {
-      Scalar left;
-      Scalar right;
-      Scalar integral_sum;
+      real_t left;
+      real_t right;
+      real_t integral_sum;
       int_t depth;
     };
     auto pending_intervals = std::vector<Interval>{};
@@ -181,7 +174,7 @@ class CachedIntegralBuilder {
       seed_interval_max = critical_point;
     }
     pending_intervals.emplace_back(0, seed_interval_max,
-                                   integral(Scalar{0}, seed_interval_max), 0);
+                                   integral(0.0, seed_interval_max), 0);
 
     /*
       The contingency should be more flexible in the future, but since it also
@@ -190,7 +183,7 @@ class CachedIntegralBuilder {
     static constexpr auto kMaxDepth = 64;
 
     // Run adaptive quadrature.
-    auto total_area = KahanAccumulator<Scalar>{};
+    auto total_area = KahanAccumulator<real_t>{};
     while (!pending_intervals.empty()) {
       // Get leftmost pending interval.
       const auto [left, right, coarse, depth] =
