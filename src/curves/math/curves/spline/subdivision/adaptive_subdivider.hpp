@@ -68,8 +68,8 @@ class AdaptiveSubdivider {
     assert(std::ranges::size(critical_points) >= 2 &&
            "Need at least two critical points");
 
-    auto subdivider = Subdivider<Curve>{curve, estimate_error_, config_};
-    return subdivider(std::forward<decltype(critical_points)>(critical_points));
+    auto impl = Impl<Curve>{curve, estimate_error_, config_};
+    return impl(std::forward<decltype(critical_points)>(critical_points));
   }
 
  private:
@@ -80,14 +80,15 @@ class AdaptiveSubdivider {
   // Stateful Implementation
   // -------------------------------------------------------------------------
 
+  // Mutable method object so surrounding type can be const.
   template <typename Curve>
-  class Subdivider {
+  class Impl {
    public:
     using Segment = Segment;
     using Queue = std::priority_queue<Segment>;
 
-    Subdivider(const Curve& curve, const ErrorEstimator& estimator,
-               const SubdivisionConfig& config) noexcept
+    Impl(const Curve& curve, const ErrorEstimator& estimator,
+         const SubdivisionConfig& config) noexcept
         : curve_{curve},
           estimator_{estimator},
           config_{config},
