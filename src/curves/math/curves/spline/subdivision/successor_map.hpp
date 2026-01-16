@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Index-based list over a vector.
+  \brief Segment adjacency list, the topology of a spline.
 
   \copyright Copyright (C) 2026 Frank Secilia
 */

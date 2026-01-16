@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "segment_list.hpp"
+#include "successor_map.hpp"
 #include <curves/testing/test.hpp>
 #include <gmock/gmock.h>
 

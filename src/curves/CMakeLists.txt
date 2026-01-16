@@ -41,8 +41,8 @@ list(APPEND lib_files
   math/curves/spline/subdivision/error_candidate_locator.hpp
   math/curves/spline/subdivision/quantization.hpp
   math/curves/spline/subdivision/sampled_error_estimator.hpp
-  math/curves/spline/subdivision/segment_list.hpp
   math/curves/spline/subdivision/subdivision.hpp
+  math/curves/spline/subdivision/successor_map.hpp
   math/curves/synchronous.hpp
   math/curves/transfer_function.hpp
   math/curves/transfer_function/curve.hpp
@@ -109,7 +109,7 @@ list(APPEND unit_tests_files
   math/curves/spline/subdivision/error_candidate_locator_test.cpp
   math/curves/spline/subdivision/quantization_test.cpp
   math/curves/spline/subdivision/sampled_error_estimator_test.cpp
-  math/curves/spline/subdivision/segment_list_test.cpp
+  math/curves/spline/subdivision/successor_map_test.cpp
   math/curves/synchronous_test.cpp
   math/curves/transfer_function/curve_test.cpp
   math/curves/transfer_function/from_gain_test.cpp
