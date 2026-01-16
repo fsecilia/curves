@@ -34,9 +34,11 @@ TEST_F(ShapedCurveTest, IdentityCompositionPreservesCriticalPoints) {
   const auto critical_points = sut.critical_points(10.0);
 
   // Critical points should come out exactly as they went in.
-  ASSERT_EQ(critical_points.size(), 2);
-  EXPECT_DOUBLE_EQ(critical_points[0], 1.0);
-  EXPECT_DOUBLE_EQ(critical_points[1], 2.0);
+  ASSERT_EQ(critical_points.size(), 4);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 1.0);
+  EXPECT_DOUBLE_EQ(critical_points[2], 2.0);
+  EXPECT_DOUBLE_EQ(critical_points[3], 10.0);
 }
 
 TEST_F(ShapedCurveTest, EaseInDelayShiftsPointsRight) {
@@ -51,8 +53,10 @@ TEST_F(ShapedCurveTest, EaseInDelayShiftsPointsRight) {
   const auto sut = Sut{curve, ease_in, make_identity()};
 
   const auto critical_points = sut.critical_points(10.0);
-  ASSERT_EQ(critical_points.size(), 1);
-  EXPECT_DOUBLE_EQ(critical_points[0], 7.0);  // 5.0 - (-2.0)
+  ASSERT_EQ(critical_points.size(), 3);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 7.0);  // 5.0 - (-2.0)
+  EXPECT_DOUBLE_EQ(critical_points[2], 10.0);
 }
 
 TEST_F(ShapedCurveTest, EaseOutScalingSquashesPoints) {
@@ -67,8 +71,10 @@ TEST_F(ShapedCurveTest, EaseOutScalingSquashesPoints) {
   const auto sut = Sut{curve, make_identity(), ease_out};
 
   const auto critical_points = sut.critical_points(10.0);
-  ASSERT_EQ(critical_points.size(), 1);
-  EXPECT_DOUBLE_EQ(critical_points[0], 2.0);  // 4.0/2.0
+  ASSERT_EQ(critical_points.size(), 3);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 2.0);  // 4.0/2.0
+  EXPECT_DOUBLE_EQ(critical_points[2], 10.0);
 }
 
 TEST_F(ShapedCurveTest, FullCompositionChain) {
@@ -86,8 +92,10 @@ TEST_F(ShapedCurveTest, FullCompositionChain) {
   const auto sut = Sut{curve, ease_in, ease_out};
 
   const auto critical_points = sut.critical_points(100.0);
-  ASSERT_EQ(critical_points.size(), 1);
-  EXPECT_DOUBLE_EQ(critical_points[0], 6.5);
+  ASSERT_EQ(critical_points.size(), 3);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 6.5);
+  EXPECT_DOUBLE_EQ(critical_points[2], 100.0);
 }
 
 TEST_F(ShapedCurveTest, AggregatesPointsFromAllLayers) {
@@ -112,10 +120,12 @@ TEST_F(ShapedCurveTest, AggregatesPointsFromAllLayers) {
 
   const auto critical_points = sut.critical_points(10.0);
 
-  ASSERT_EQ(critical_points.size(), 3);
-  EXPECT_DOUBLE_EQ(critical_points[0], 0.5);
-  EXPECT_DOUBLE_EQ(critical_points[1], 1.0);
-  EXPECT_DOUBLE_EQ(critical_points[2], 3.5);
+  ASSERT_EQ(critical_points.size(), 5);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 0.5);
+  EXPECT_DOUBLE_EQ(critical_points[2], 1.0);
+  EXPECT_DOUBLE_EQ(critical_points[3], 3.5);
+  EXPECT_DOUBLE_EQ(critical_points[4], 10.0);
 }
 
 TEST_F(ShapedCurveTest, FiltersPointsOutsideDomain) {
@@ -128,9 +138,10 @@ TEST_F(ShapedCurveTest, FiltersPointsOutsideDomain) {
   const auto critical_points = sut.critical_points(10.0);
 
   // 15.0 should be gone.
-  ASSERT_EQ(critical_points.size(), 2);
-  EXPECT_DOUBLE_EQ(critical_points[0], 5.0);
-  EXPECT_DOUBLE_EQ(critical_points[1], 10.0);
+  ASSERT_EQ(critical_points.size(), 3);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 5.0);
+  EXPECT_DOUBLE_EQ(critical_points[2], 10.0);
 }
 
 TEST_F(ShapedCurveTest, DeduplicatesClosePoints) {
@@ -140,8 +151,10 @@ TEST_F(ShapedCurveTest, DeduplicatesClosePoints) {
   const auto sut = Sut{curve, make_identity(), make_identity()};
 
   const auto critical_points = sut.critical_points(10.0);
-  ASSERT_EQ(critical_points.size(), 1);
-  EXPECT_DOUBLE_EQ(critical_points[0], 1.0);
+  ASSERT_EQ(critical_points.size(), 3);
+  EXPECT_DOUBLE_EQ(critical_points[0], 0.0);
+  EXPECT_DOUBLE_EQ(critical_points[1], 1.0);
+  EXPECT_DOUBLE_EQ(critical_points[2], 10.0);
 }
 
 }  // namespace

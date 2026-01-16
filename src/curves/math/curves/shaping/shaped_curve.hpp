@@ -45,10 +45,12 @@ class ShapedCurve {
 
     /*
       For our current set of curves, the largest number of possible critical
-      points after composition is 7. 2 each from input shaping, and synchronous
-      has up to 3 if linear clamping is on.
+      points after composition is 9. 2 each from input shaping, and synchronous
+      has up to 3 if linear clamping is on. That's 7. Add begin and end, and
+      that's 9;
     */
-    result.reserve(7);
+    result.reserve(9);
+    result.push_back(0);
 
     for (const auto ease_out_critical_point : ease_out_.critical_points()) {
       try_add_critical_point(result, ease_out_critical_point, domain_max);
@@ -64,6 +66,8 @@ class ShapedCurve {
           result, ease_out_.inverse(ease_in_.inverse(curve_critical_point)),
           domain_max);
     }
+
+    result.push_back(domain_max);
 
     // Sort and deduplicate
     std::ranges::sort(result);
