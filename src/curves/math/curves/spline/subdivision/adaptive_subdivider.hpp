@@ -52,14 +52,14 @@ struct SubdivisionResult {
 };
 
 // ============================================================================
-// Adaptive Subdivider
+// Subdivider
 // ============================================================================
 
 template <typename ErrorEstimator>
-class AdaptiveSubdivider {
+class Subdivider {
  public:
-  explicit AdaptiveSubdivider(ErrorEstimator estimate_error,
-                              SubdivisionConfig config = {}) noexcept
+  explicit Subdivider(ErrorEstimator estimate_error,
+                      SubdivisionConfig config = {}) noexcept
       : estimate_error_{std::move(estimate_error)}, config_{config} {}
 
   template <typename Curve>
@@ -261,8 +261,8 @@ class AdaptiveSubdivider {
 template <typename ErrorEstimator>
 auto make_adaptive_subdivider(ErrorEstimator estimator,
                               SubdivisionConfig config = {})
-    -> AdaptiveSubdivider<ErrorEstimator> {
-  return AdaptiveSubdivider<ErrorEstimator>{std::move(estimator), config};
+    -> Subdivider<ErrorEstimator> {
+  return Subdivider<ErrorEstimator>{std::move(estimator), config};
 }
 
 }  // namespace curves

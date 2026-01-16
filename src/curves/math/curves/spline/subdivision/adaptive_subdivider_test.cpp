@@ -147,7 +147,7 @@ struct StubErrorEstimator {
 // Test Fixture
 // ============================================================================
 
-struct AdaptiveSubdividerTest : Test {
+struct SubdividerTest : Test {
   // Default configuration for most tests.
   SubdivisionConfig config{
       .segments_max = 64,
@@ -168,7 +168,7 @@ struct AdaptiveSubdividerTest : Test {
 // Canary Tests: Exact Representation
 // ============================================================================
 
-struct ExactRepresentationTest : AdaptiveSubdividerTest {};
+struct ExactRepresentationTest : SubdividerTest {};
 
 TEST_F(ExactRepresentationTest, LinearCurveProducesSingleSegment) {
   // A linear function is exactly representable by one Hermite segment.
@@ -211,7 +211,7 @@ TEST_F(ExactRepresentationTest, CubicCurveProducesSingleSegment) {
 // Subdivision Behavior Tests
 // ============================================================================
 
-struct SubdivisionBehaviorTest : AdaptiveSubdividerTest {};
+struct SubdivisionBehaviorTest : SubdividerTest {};
 
 TEST_F(SubdivisionBehaviorTest, TrigCurveRequiresMultipleSegments) {
   const auto curve = TrigCurve{};
@@ -269,7 +269,7 @@ TEST_F(SubdivisionBehaviorTest, TighterToleranceNeedsMoreSegments) {
 // Capacity and Limits Tests
 // ============================================================================
 
-struct CapacityTest : AdaptiveSubdividerTest {};
+struct CapacityTest : SubdividerTest {};
 
 TEST_F(CapacityTest, RespectsSegmentLimit) {
   const auto curve = TrigCurve{};
@@ -316,7 +316,7 @@ TEST_F(CapacityTest, RespectsMinimumWidth) {
 // Structural Invariant Tests
 // ============================================================================
 
-struct StructuralInvariantTest : AdaptiveSubdividerTest {};
+struct StructuralInvariantTest : SubdividerTest {};
 
 TEST_F(StructuralInvariantTest, KnotsAreStrictlyIncreasing) {
   const auto curve = TrigCurve{};
@@ -414,7 +414,7 @@ TEST_F(StructuralInvariantTest, SegmentCountMatchesKnotCount) {
 // Priority Queue Behavior Tests
 // ============================================================================
 
-struct PriorityBehaviorTest : AdaptiveSubdividerTest {};
+struct PriorityBehaviorTest : SubdividerTest {};
 
 TEST_F(PriorityBehaviorTest, WorstErrorSplitFirst) {
   // Create an estimator where the left half has high error, right half has low.
@@ -461,7 +461,7 @@ TEST_F(PriorityBehaviorTest, WorstErrorSplitFirst) {
 // Edge Cases
 // ============================================================================
 
-struct EdgeCaseTest : AdaptiveSubdividerTest {};
+struct EdgeCaseTest : SubdividerTest {};
 
 TEST_F(EdgeCaseTest, MinimalDomainTwoPoints) {
   const auto curve = LinearCurve{};
@@ -529,7 +529,7 @@ TEST_F(EdgeCaseTest, ZeroWidthCriticalPointsCollapse) {
 // Stress Tests
 // ============================================================================
 
-struct StressTest : AdaptiveSubdividerTest {};
+struct StressTest : SubdividerTest {};
 
 TEST_F(StressTest, PowerLawWithSmallGamma) {
   // gamma = 0.3 creates a sharp corner near zero. This is challenging because
