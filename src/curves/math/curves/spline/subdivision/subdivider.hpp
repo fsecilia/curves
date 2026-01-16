@@ -10,15 +10,16 @@
 
 #include <curves/lib.hpp>
 #include <curves/math/curves/cubic.hpp>
+#include <curves/math/curves/spline/subdivision/adaptive_subdivision_strategy.hpp>
 #include <curves/math/curves/spline/subdivision/quantization.hpp>
 #include <curves/math/curves/spline/subdivision/subdivision.hpp>
+#include <curves/math/curves/spline/subdivision/subdivision_context.hpp>
 #include <curves/math/jet.hpp>
 #include <curves/numeric_cast.hpp>
 #include <curves/ranges.hpp>
 #include <algorithm>
 #include <cassert>
-#include <queue>
-#include <vector>
+#include <utility>
 
 namespace curves {
 
@@ -26,12 +27,11 @@ namespace curves {
 // Subdivider
 // ============================================================================
 
-template <typename ErrorEstimator>
+template <typename Context, typename Strategy>
 class Subdivider {
  public:
-  explicit Subdivider(ErrorEstimator estimate_error,
-                      SubdivisionConfig config = {}) noexcept
-      : estimate_error_{std::move(estimate_error)}, config_{config} {}
+  explicit Subdivider(Context context, Strategy strategy) noexcept
+      : context_{std::move(context)}, strategy_{std::move(strategy)} {}
 
   template <typename Curve>
   auto operator()(const Curve& curve, ScalarRange auto&& critical_points) const
@@ -39,190 +39,37 @@ class Subdivider {
     assert(std::ranges::size(critical_points) >= 2 &&
            "Need at least two critical points");
 
-    auto impl = Impl<Curve>{curve, estimate_error_, config_};
-    return impl(std::forward<decltype(critical_points)>(critical_points));
+    strategy_(context_, curve,
+              std::forward<decltype(critical_points)>(critical_points));
+
+    return extract_result();
   }
 
  private:
-  ErrorEstimator estimate_error_;
-  SubdivisionConfig config_;
+  mutable Context context_;
+  Strategy strategy_;
 
-  // -------------------------------------------------------------------------
-  // Stateful Implementation
-  // -------------------------------------------------------------------------
+  auto extract_result() const -> QuantizedSpline {
+    QuantizedSpline out;
+    out.knots.reserve(context_.segments.size() + 1);
+    out.polys.reserve(context_.segments.size());
 
-  // Mutable method object so surrounding type can be const.
-  template <typename Curve>
-  class Impl {
-   public:
-    using Segment = Segment;
-    using Queue = std::priority_queue<Segment>;
+    auto id = context_.successor_map.head();
+    if (id != SegmentIndex::Null) {
+      // Push first knot.
+      auto index = std::to_underlying(id);
+      out.knots.push_back(context_.segments[index].start.v);
 
-    Impl(const Curve& curve, const ErrorEstimator& estimator,
-         const SubdivisionConfig& config) noexcept
-        : curve_{curve},
-          estimator_{estimator},
-          config_{config},
-          min_width_{quantize::knot_position(config.segment_width_min)} {
-      finalized_.reserve(config.segments_max);
-    }
-
-    template <typename Range>
-    auto operator()(Range&& critical_points) -> QuantizedSpline {
-      initialize(std::forward<Range>(critical_points));
-      subdivide();
-      return result();
-    }
-
-   private:
-    const Curve& curve_;
-    const ErrorEstimator& estimator_;
-    const SubdivisionConfig& config_;
-    const real_t min_width_;
-
-    Queue queue_;
-    std::vector<Segment> finalized_;
-
-    //! Seeds the queue from critical points.
-    template <typename Range>
-    void initialize(Range&& critical_points) {
-      auto it = std::ranges::begin(critical_points);
-      const auto end = std::ranges::end(critical_points);
-
-      auto prev = make_knot(*it);
-      ++it;
-
-      while (it != end) {
-        auto curr = make_knot(*it++);
-
-        // Skip degenerate segments where critical points quantized together.
-        if (curr.v <= prev.v) {
-          continue;
-        }
-
-        queue_.push(make_segment(prev, curr));
-        prev = curr;
-      }
-    }
-
-    //! Runs the subdivision loop until done or at capacity.
-    void subdivide() {
-      while (!queue_.empty() && has_capacity()) {
-        auto seg = queue_.top();
-        queue_.pop();
-
-        if (should_accept(seg)) {
-          finalized_.push_back(std::move(seg));
-        } else {
-          split(std::move(seg));
-        }
-      }
-
-      drain_remaining();
-    }
-
-    //! Extracts the final result.
-    auto result() -> QuantizedSpline {
-      sort_by_position();
-      return extract_result();
-    }
-
-    // -----------------------------------------------------------------------
-    // Knot and Segment Creation
-    // -----------------------------------------------------------------------
-
-    auto make_knot(real_t v) const -> Knot {
-      const auto v_q = quantize::knot_position(v);
-      const auto jet = curve_(math::Jet<real_t>{v_q, 1});
-      return Knot{v_q, jet};
-    }
-
-    auto make_segment(const Knot& start, const Knot& end) const -> Segment {
-      const auto width = end.v - start.v;
-
-      // Fit Hermite polynomial and quantize coefficients.
-      const auto poly_raw = cubic::hermite_to_monomial(start.y, end.y, width);
-      const auto poly = quantize::polynomial(poly_raw);
-
-      // Estimate error of the quantized polynomial against the curve.
-      const auto [v_split, max_error] =
-          estimator_(curve_, poly, start.v, width);
-
-      return Segment{start, end, poly, max_error, v_split};
-    }
-
-    // -----------------------------------------------------------------------
-    // Decision Logic
-    // -----------------------------------------------------------------------
-
-    auto has_capacity() const noexcept -> bool {
-      // Need room for two children if we split.
-      return queue_.size() + finalized_.size() + 1 <
-             numeric_cast<size_t>(config_.segments_max);
-    }
-
-    auto should_accept(const Segment& seg) const noexcept -> bool {
-      // Accept if error is tolerable.
-      if (seg.max_error <= config_.error_tolerance) {
-        return true;
-      }
-      // Accept if too narrow to split.
-      if (seg.width() < 2 * min_width_) {
-        return true;
-      }
-      return false;
-    }
-
-    // -----------------------------------------------------------------------
-    // Splitting
-    // -----------------------------------------------------------------------
-
-    void split(Segment seg) {
-      // Quantize split point and clamp to ensure valid children.
-      auto v_mid = quantize::knot_position(seg.v_split);
-      v_mid =
-          std::clamp(v_mid, seg.start.v + min_width_, seg.end.v - min_width_);
-
-      const auto mid = make_knot(v_mid);
-
-      queue_.push(make_segment(seg.start, mid));
-      queue_.push(make_segment(mid, seg.end));
-    }
-
-    void drain_remaining() {
-      while (!queue_.empty()) {
-        finalized_.push_back(queue_.top());
-        queue_.pop();
-      }
-    }
-
-    // -----------------------------------------------------------------------
-    // Result Extraction
-    // -----------------------------------------------------------------------
-
-    void sort_by_position() {
-      std::ranges::sort(finalized_, [](const Segment& a, const Segment& b) {
-        return a.start.v < b.start.v;
-      });
-    }
-
-    auto extract_result() const -> QuantizedSpline {
-      QuantizedSpline out;
-      out.knots.reserve(finalized_.size() + 1);
-      out.polys.reserve(finalized_.size());
-
-      for (const auto& seg : finalized_) {
-        out.knots.push_back(seg.start.v);
+      while (id != SegmentIndex::Null) {
+        const auto& seg = context_.segments[index];
         out.polys.push_back(seg.poly);
+        out.knots.push_back(seg.end.v);
+        id = context_.successor_map.successor(id);
+        index = std::to_underlying(id);
       }
-
-      if (!finalized_.empty()) {
-        out.knots.push_back(finalized_.back().end.v);
-      }
-
-      return out;
     }
-  };
+    return out;
+  }
 };
 
 // ============================================================================
@@ -231,9 +78,16 @@ class Subdivider {
 
 template <typename ErrorEstimator>
 auto make_adaptive_subdivider(ErrorEstimator estimator,
-                              SubdivisionConfig config = {})
-    -> Subdivider<ErrorEstimator> {
-  return Subdivider<ErrorEstimator>{std::move(estimator), config};
+                              SubdivisionConfig config = {}) -> auto {
+  using Queue = spline::segment::RefinementQueue<spline::segment::SegmentError>;
+  using Map = spline::segment::SuccessorMap;
+  using Context = spline::segment::SubdivisionContext<Queue, Map>;
+  using Strat = spline::segment::AdaptiveSubdivisionStrategy<ErrorEstimator>;
+
+  return Subdivider<Context, Strat>{
+      Context{
+          .segments = {}, .refinement_queue = Queue{}, .successor_map = Map{}},
+      Strat{std::move(estimator), std::move(config)}};
 }
 
 }  // namespace curves

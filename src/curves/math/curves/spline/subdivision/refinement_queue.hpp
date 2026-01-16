@@ -21,8 +21,12 @@ struct SegmentError {
   SegmentIndex index;
 
   //! Orders by increasing segment error.
-  auto operator<(const SegmentError& other) const noexcept -> bool {
-    return error < other.error;
+  auto operator<=>(const SegmentError& other) const noexcept -> auto {
+    return error <=> other.error;
+  }
+
+  auto operator==(const SegmentError& other) const noexcept -> bool {
+    return error == other.error;
   }
 };
 

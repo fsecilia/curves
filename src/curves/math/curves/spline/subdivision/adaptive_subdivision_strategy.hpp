@@ -28,7 +28,7 @@ class AdaptiveSubdivisionStrategy {
 
   template <typename Context, typename Curve, ScalarRange Range>
   auto operator()(Context& context, const Curve& curve,
-                  Range&& critical_points) const {
+                  Range&& critical_points) const -> void {
     assert(std::ranges::size(critical_points) >= 2 &&
            "AdaptiveSubdivisionStrategy: Need at least two critical points");
 
@@ -69,8 +69,8 @@ class AdaptiveSubdivisionStrategy {
 
       // Add to work queue.
       if (should_split(segment)) {
-        context.queue.push(SegmentError{.error = segment.max_error,
-                                        .index = tail_segment_index});
+        context.refinement_queue.push(SegmentError{
+            .error = segment.max_error, .index = tail_segment_index});
       }
 
       prev_knot = curr_knot;
@@ -88,8 +88,10 @@ class AdaptiveSubdivisionStrategy {
       }
 
       // Pop worst segment.
-      const auto parent_id = context.refinement_queue.pop();
-      auto& parent_seg = context.segments[parent_id];
+      auto segment_error = context.refinement_queue.pop();
+      const auto parent_id = segment_error.index;
+      const auto parent_index = std::to_underlying(parent_id);
+      auto& parent_seg = context.segments[parent_index];
       if (!should_split(parent_seg)) continue;
 
       // Find where to split.
@@ -102,8 +104,8 @@ class AdaptiveSubdivisionStrategy {
       const auto right_seg = make_segment(curve, split_knot, parent_seg.end);
 
       // Add segments to pool.
-      context.segments[parent_id] = left_seg;  // Reuse parent slot.
-      context.segments.push_back(right_seg);   // Add right to new slot.
+      context.segments[parent_index] = left_seg;  // Reuse parent slot.
+      context.segments.push_back(right_seg);      // Add right to new slot.
 
       // Update topology.
       const auto right_id = context.successor_map.insert_after(parent_id);
