@@ -10,9 +10,9 @@
   \copyright Copyright (C) 2026 Frank Secilia
 */
 
+#include "quantization.hpp"
 #include <curves/testing/test.hpp>
 #include <curves/math/curves/spline/segment/construction.hpp>
-#include <curves/math/curves/spline/subdivision/adaptive_subdivider.hpp>
 #include <cmath>
 #include <random>
 
