@@ -12,7 +12,6 @@
 #include <curves/math/curves/cubic.hpp>
 #include <curves/static_vector.hpp>
 #include <cassert>
-#include <ostream>
 
 namespace curves {
 
