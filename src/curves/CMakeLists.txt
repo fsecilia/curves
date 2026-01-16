@@ -388,7 +388,7 @@ endif()
 # bad solution I've found to get search working is to also make a separate
 # library containing the .c files that is not linked by anything. Then the
 # kernel is happy because everything not exported is private, c++ is happy
-# becasue it can see the static definitions, and the IDE is happy because we
+# because it can see the static definitions, and the IDE is happy because we
 # have the .c in compile_commands.json again.
 #
 # This is that library.
