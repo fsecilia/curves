@@ -11,10 +11,14 @@
 #include <curves/lib.hpp>
 #include <curves/math/curves/cubic.hpp>
 #include <curves/math/jet.hpp>
+#include <cstdint>
 #include <ostream>
 #include <vector>
 
 namespace curves {
+
+//! Strongly typed node id to prevent arbitrary indexing.
+enum class NodeId : uint16_t { Null = 0xFFFF };
 
 template <typename Scalar>
 struct Knot {

@@ -11,14 +11,10 @@
 #include <curves/lib.hpp>
 #include <curves/math/curves/spline/subdivision/subdivision.hpp>
 #include <cassert>
-#include <cstdint>
 #include <utility>
 #include <vector>
 
 namespace curves {
-
-//! Strongly typed node id to prevent arbitrary indexing.
-enum class NodeId : uint16_t { Null = 0xFFFF };
 
 /*!
   Montonic index-based list over a vector.
