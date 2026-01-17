@@ -33,6 +33,7 @@ struct ShapedSplineAccuracyTest : Test {
   using NumericIntegralFactory = ComposedIntegralFactory<Integrator>;
   using TransferFunctionBuilder =
       TransferFunctionBuilder<CachedIntegralBuilder, NumericIntegralFactory>;
+  TransferFunctionBuilder transition_function_builder;
 
   using Inverter = InverseViaPartition;
 
@@ -55,6 +56,7 @@ struct ShapedSplineAccuracyTest : Test {
 
   AccuracyMetrics accuracy_metrics;
 
+  static constexpr auto tolerance = 1e-5;
   static constexpr auto domain_max = 256;
   static constexpr auto dx = 0.1;
 
@@ -63,20 +65,24 @@ struct ShapedSplineAccuracyTest : Test {
     auto x = 0.0;
     const auto iter_count = static_cast<int_t>(std::round(domain_max / dx));
     for (auto i = 0; i < iter_count; ++i) {
-      std::cout << curve(math::Jet{x, 5.0}).a << std::endl;
+      std::cout << curve(math::Jet{x, 1.0}).a / x << std::endl;
       x += dx;
     }
   }
 };
 
 TEST_F(ShapedSplineAccuracyTest, linear_curve) {
-  const auto generating_curve = Log1p{1.0, 1.0};
+  const auto generating_curve = LinearCurve{1.0, 0.0};
 
   const auto shaped_curve =
       ShapedCurve{generating_curve, EaseIn{EaseInTransition{0, 5, {}, {}}},
-                  EaseOut{EaseOutTransition{200, 50, {}, {}}}};
+                  EaseOut{EaseOutTransition{50, 5, {}, {}}}};
+  const auto critical_points = shaped_curve.critical_points(domain_max);
 
-  run_accuracy_test(shaped_curve);
+  transition_function_builder(
+      CurveDefinition::kTransferGradient, shaped_curve, domain_max, tolerance,
+      critical_points,
+      [&](auto&& transfer_function) { run_accuracy_test(transfer_function); });
 }
 
 #if 0

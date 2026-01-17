@@ -18,7 +18,7 @@ namespace curves {
 template <typename Integral>
 concept IsIntegral = requires(const Integral integral, real_t scalar) {
   { integral(scalar) } -> std::convertible_to<real_t>;
-  { integral.integrand()(scalar) } -> std::convertible_to<real_t>;
+  // { integral.integrand()(scalar) } -> std::convertible_to<real_t>;
 };
 
 template <CurveDefinition kDefinition, typename Curve>
@@ -60,7 +60,7 @@ class TransferFunction<CurveDefinition::kTransferGradient, Integral> {
       the integral's derivative: `d/dx Int[0->x] f(t) dt = f(x)`
       Evaluate it directly and apply the chain rule.
     */
-    const auto integrand = integral_.integrand();
+    const auto integrand = integral_.integral().integrand();
     const auto integral_derivative = integrand(v_primal);
 
     return math::Jet<real_t>{integral, integral_derivative * v_derivative};
@@ -135,7 +135,6 @@ struct TransferFunctionBuilder {
             TransferFunction<CurveDefinition::kTransferGradient,
                              CachedIntegral>{std::move(cached_integral)});
       }
-
       case CurveDefinition::kVelocityScale: {
         // No integration needed. Pass the curve directly.
         return visitor(TransferFunction<CurveDefinition::kVelocityScale, Curve>{

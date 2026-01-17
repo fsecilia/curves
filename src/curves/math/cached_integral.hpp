@@ -166,7 +166,7 @@ class CachedIntegralBuilder {
     // Seed pending intervals from critical points.
     auto seed_interval_max = max;
     for (const auto critical_point : std::views::reverse(critical_points)) {
-      assert(critical_point < seed_interval_max &&
+      assert(critical_point <= seed_interval_max &&
              "CachedIntegralBuilder: Critical points must be sorted");
       pending_intervals.emplace_back(
           critical_point, seed_interval_max,

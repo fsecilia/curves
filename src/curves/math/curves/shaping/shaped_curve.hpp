@@ -61,10 +61,12 @@ class ShapedCurve {
                              domain_max);
     }
 
-    for (const auto curve_critical_point : curve_.critical_points()) {
-      try_add_critical_point(
-          result, ease_out_.inverse(ease_in_.inverse(curve_critical_point)),
-          domain_max);
+    if constexpr (requires { curve_.critical_points(); }) {
+      for (const auto curve_critical_point : curve_.critical_points()) {
+        try_add_critical_point(
+            result, ease_out_.inverse(ease_in_.inverse(curve_critical_point)),
+            domain_max);
+      }
     }
 
     result.push_back(domain_max);
