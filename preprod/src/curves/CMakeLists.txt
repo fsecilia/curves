@@ -266,8 +266,8 @@ add_custom_target(driver ALL DEPENDS "${driver_output}")
 
 # Add named target for cleaning the Kbuild.
 add_custom_target(clean_driver
-  COMMAND ${driver_make_command} clean
-  WORKING_DIRECTORY "${driver_bin_dir}"
+  COMMAND [ -d "${driver_bin_dir}" ] && ${driver_make_command} clean || true
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   COMMENT "Cleaning driver..."
   VERBATIM
   USES_TERMINAL
@@ -297,8 +297,8 @@ add_library(lib
 
 target_include_directories(lib PUBLIC
   "$<BUILD_INTERFACE:${config_gen_root}>"
-  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
-  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src/curves/driver>"
+  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/preprod/src>"
+  "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/preprod/src/curves/driver>"
 )
 target_link_libraries(lib PUBLIC tomlplusplus::tomlplusplus)
 
