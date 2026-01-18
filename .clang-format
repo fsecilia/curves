@@ -9,14 +9,18 @@ AccessModifierOffset: -4
 IndentCaseLabels: true
 
 # alignment
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: None
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
 PointerAlignment: Left
 ReferenceAlignment: Pointer
-AlignAfterOpenBracket: BlockIndent
-AlignArrayOfStructures: None
-AlignEscapedNewlines: DontAlign
-AlignOperands: DontAlign
-AlignTrailingComments:
-  Kind: Never
 
 # brace wrapping
 BreakBeforeBraces: Custom
