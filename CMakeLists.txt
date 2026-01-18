@@ -167,4 +167,5 @@ endfunction()
 # Project Subdirectories
 # -----------------------------------------------------------------------------
 
-add_subdirectory(preprod)
+set(enable_testing False)
+add_subdirectory(preprod EXCLUDE_FROM_ALL)
