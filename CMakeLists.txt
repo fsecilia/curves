@@ -14,10 +14,10 @@ cmake_policy(SET CMP0156 NEW)
 # Use ccache, if available.
 find_program(ccache ccache)
 if (ccache)
-  set(CMAKE_C_COMPILER_LAUNCHER "${ccache}")
-  set(CMAKE_CXX_COMPILER_LAUNCHER "${ccache}")
-  set(CMAKE_C_LINKER_LAUNCHER "${ccache}")
-  set(CMAKE_CXX_LINKER_LAUNCHER "${ccache}")
+    set(CMAKE_C_COMPILER_LAUNCHER "${ccache}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${ccache}")
+    set(CMAKE_C_LINKER_LAUNCHER "${ccache}")
+    set(CMAKE_CXX_LINKER_LAUNCHER "${ccache}")
 endif()
 
 # Find system threading library.
@@ -27,11 +27,11 @@ find_package(Threads REQUIRED)
 # Find gtest and enable testing if found.
 find_package(GTest)
 if (GTEST_FOUND)
-  set(enable_testing True)
+    set(enable_testing True)
 endif()
 
 option(USE_SYSTEM_DEPS
-  "Default to using system dependencies for all libraries." OFF)
+        "Default to using system dependencies for all libraries." OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -43,39 +43,39 @@ include(AddDink)
 # -----------------------------------------------------------------------------
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(
-    -Wall
-    -Werror
-    -Wextra
-    -Wstrict-aliasing=2
-    -Wswitch-enum
-  )
+    add_compile_options(
+        -Wall
+        -Werror
+        -Wextra
+        -Wstrict-aliasing=2
+        -Wswitch-enum
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  add_compile_options(
-    -Weverything
+    add_compile_options(
+        -Weverything
 
-    -Wno-c++23-compat
-    -Wno-c++20-compat
-    -Wno-c++98-compat
-    -Wno-c++98-compat-pedantic
-    -Wno-c99-extensions
-    -Wno-documentation
-    -Wno-documentation-unknown-command
-    -Wno-exit-time-destructors
-    -Wno-global-constructors
-    -Wno-padded
-    -Wno-switch-default
-    -Wno-unsafe-buffer-usage
-  )
+        -Wno-c++23-compat
+        -Wno-c++20-compat
+        -Wno-c++98-compat
+        -Wno-c++98-compat-pedantic
+        -Wno-c99-extensions
+        -Wno-documentation
+        -Wno-documentation-unknown-command
+        -Wno-exit-time-destructors
+        -Wno-global-constructors
+        -Wno-padded
+        -Wno-switch-default
+        -Wno-unsafe-buffer-usage
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  add_compile_options(-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS
-                      /WX /W4 /wd4201 /wd4250 /wd4251 /wd4275 /wd4458 /wd4459
-                      /wd4576)
-  add_link_options(/WX)
+    add_compile_options(-D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS
+        /WX /W4 /wd4201 /wd4250 /wd4251 /wd4275 /wd4458 /wd4459
+        /wd4576)
+    add_link_options(/WX)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -92,25 +92,25 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  add_compile_options(
-    -fstrict-aliasing
-    $<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>
-  )
+    add_compile_options(
+        -fstrict-aliasing
+        $<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  add_compile_options(-fsafe-buffer-usage-suggestions)
+    add_compile_options(-fsafe-buffer-usage-suggestions)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(
-    $<$<COMPILE_LANGUAGE:CXX>:-fconcepts-diagnostics-depth=10>
-  )
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX>:-fconcepts-diagnostics-depth=10>
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  add_compile_options(/utf-8 "$<$<CONFIG:RELEASE>:/GS;/Gy;/Zc:inline>")
-  add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:ICF;/OPT:REF>")
+    add_compile_options(/utf-8 "$<$<CONFIG:RELEASE>:/GS;/Gy;/Zc:inline>")
+    add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:ICF;/OPT:REF>")
 endif()
 
 # -----------------------------------------------------------------------------
@@ -119,8 +119,8 @@ endif()
 
 option(ENABLE_ASAN "Enable AddressSanitizer (ASan) for debug builds." OFF)
 if (ENABLE_ASAN)
-  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address)
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -140,27 +140,27 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 
 # Disables a few warnings generated when using gtest.
 function(configure_test_target_warnings target)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(${target} PUBLIC
-      -Wno-ctad-maybe-unsupported
-      -Wno-global-constructors
-      -Wno-padded
-      -Wno-shadow
-      -Wno-shadow-field-in-constructor
-      -Wno-unneeded-member-function
-      -Wno-unused-member-function
-      -Wno-unused-template
-    )
-  endif()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(${target} PUBLIC
+            -Wno-ctad-maybe-unsupported
+            -Wno-global-constructors
+            -Wno-padded
+            -Wno-shadow
+            -Wno-shadow-field-in-constructor
+            -Wno-unneeded-member-function
+            -Wno-unused-member-function
+            -Wno-unused-template
+        )
+    endif()
 
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(${target} PUBLIC
-      -Wno-changes-meaning
-      -Wno-missing-field-initializers
-      -Wno-psabi
-      -Wno-unused-local-typedefs
-    )
-  endif()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${target} PUBLIC
+            -Wno-changes-meaning
+            -Wno-missing-field-initializers
+            -Wno-psabi
+            -Wno-unused-local-typedefs
+        )
+    endif()
 endfunction()
 
 # -----------------------------------------------------------------------------
