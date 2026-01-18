@@ -16,14 +16,11 @@ message(CHECK_START "Finding Dink")
 
 if (USE_SYSTEM_DINK)
   # Maintainer mode depends strongly on system library. Uses REQUIRED.
-  find_package(DINK
-    ${DINK_MIN_VERSION}...<${DINK_MAX_VERSION} CONFIG REQUIRED)
+  find_package(DINK ${DINK_MIN_VERSION}...<${DINK_MAX_VERSION} CONFIG REQUIRED)
   message(CHECK_PASS "System (Found v${DINK_VERSION})")
 else()
-  # Developer mode. Uses submodule if configured. Falls back to it if system
-  # library not found.
-  find_package(DINK
-    ${DINK_MIN_VERSION}...<${DINK_MAX_VERSION} CONFIG QUIET)
+  # Developer mode uses submodule if configured. Falls back to it if system library not found.
+  find_package(DINK ${DINK_MIN_VERSION}...<${DINK_MAX_VERSION} CONFIG QUIET)
 
   if(DINK_FOUND)
     message(CHECK_PASS "System (Found v${DINK_VERSION})")
@@ -44,7 +41,6 @@ else()
     set(DINK_INSTALL OFF CACHE BOOL "" FORCE)
 
     # Add subdirectory.
-    add_subdirectory(${DINK_SUBMODULE_PATH}
-      "${CMAKE_BINARY_DIR}/external/dink")
+    add_subdirectory(${DINK_SUBMODULE_PATH} "${CMAKE_BINARY_DIR}/external/dink")
   endif()
 endif()
