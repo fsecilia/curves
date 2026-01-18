@@ -1,5 +1,6 @@
 # ide noise
 .cache/
+.idea/
 .qtcreator/
 .vs/
 .vscode/
