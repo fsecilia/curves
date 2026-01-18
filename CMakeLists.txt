@@ -36,6 +36,7 @@ option(USE_SYSTEM_DEPS
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(AddTomlPlusPlus)
+include(AddDink)
 
 # -----------------------------------------------------------------------------
 # Warnings
