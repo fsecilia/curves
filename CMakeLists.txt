@@ -167,6 +167,4 @@ endfunction()
 # Project Subdirectories
 # -----------------------------------------------------------------------------
 
-#add_subdirectory(src/curves)
-
 add_subdirectory(preprod)
