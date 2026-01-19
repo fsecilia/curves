@@ -15,7 +15,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # Main executable.
-qt_add_executable(curves_config
+qt_add_executable(preprod_curves_config
     main.cpp
 
     main_window/main_window.hpp
@@ -34,17 +34,17 @@ qt_add_executable(curves_config
     widgets/curve_parameter/curve_parameter.ui
 )
 
-target_include_directories(curves_config PRIVATE
+target_include_directories(preprod_curves_config PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(curves_config PRIVATE
-    lib
+target_link_libraries(preprod_curves_config PRIVATE
+    preprod_lib
     Qt6::Widgets
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(curves_config PUBLIC
+  target_compile_options(preprod_curves_config PUBLIC
     -Wno-ctad-maybe-unsupported
     -Wno-unsafe-buffer-usage
     -Wno-unsafe-buffer-usage-in-libc-call

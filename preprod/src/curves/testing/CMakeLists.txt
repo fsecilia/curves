@@ -4,7 +4,7 @@
 # This script defines common testing utilities used by both the unit tests and
 # various integration tests.
 
-add_library(testing_lib
+add_library(preprod_testing_lib
   error_metrics.hpp
   isqrt.cpp
   isqrt.hpp
@@ -13,8 +13,8 @@ add_library(testing_lib
   test.cpp
   test.hpp
 )
-target_link_libraries(testing_lib PUBLIC
-    lib
+target_link_libraries(preprod_testing_lib PUBLIC
+    preprod_lib
     GTest::gmock_main
     GTest::gtest_main
     GTest::gmock

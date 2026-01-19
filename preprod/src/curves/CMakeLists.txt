@@ -262,10 +262,10 @@ add_custom_command(
 )
 
 # Add named target to kick off Kbuild.
-add_custom_target(driver ALL DEPENDS "${driver_output}")
+add_custom_target(preprod_driver ALL DEPENDS "${driver_output}")
 
 # Add named target for cleaning the Kbuild.
-add_custom_target(clean_driver
+add_custom_target(preprod_clean_driver
   COMMAND [ -d "${driver_bin_dir}" ] && ${driver_make_command} clean || true
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   COMMENT "Cleaning driver..."
@@ -287,7 +287,7 @@ configure_file("${config_template_file}" "${config_gen_file}")
 # Library Project
 # -----------------------------------------------------------------------------
 
-add_library(lib
+add_library(preprod_lib
   ${common_sources}
   ${common_headers}
   ${lib_files}
@@ -295,14 +295,14 @@ add_library(lib
   "${config_gen_file}"
 )
 
-target_include_directories(lib PUBLIC
+target_include_directories(preprod_lib PUBLIC
   "$<BUILD_INTERFACE:${config_gen_root}>"
   "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/preprod/src>"
   "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/preprod/src/curves/driver>"
 )
-target_link_libraries(lib PUBLIC tomlplusplus::tomlplusplus)
+target_link_libraries(preprod_lib PUBLIC tomlplusplus::tomlplusplus)
 
-set_target_properties(lib
+set_target_properties(preprod_lib
   PROPERTIES
     OUTPUT_NAME curves
     VERSION ${PROJECT_VERSION}
@@ -311,7 +311,7 @@ set_target_properties(lib
 
 # Disable warnings from building kernel C files in C++ mode.
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  target_compile_options(lib PUBLIC
+  target_compile_options(preprod_lib PUBLIC
     # This is temporary until we get a few modules populated.
     -Wno-empty-translation-unit
 
@@ -327,12 +327,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(lib PUBLIC
+  target_compile_options(preprod_lib PUBLIC
     $<$<COMPILE_LANGUAGE:C>:-Wno-sign-compare>
   )
 endif()
 
-install(TARGETS lib
+install(TARGETS preprod_lib
   # Install .a or .lib, if configured.
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 
@@ -350,16 +350,16 @@ install(TARGETS lib
 if (enable_testing)
   add_subdirectory(testing)
 
-  add_executable(unit_tests ${unit_tests_files})
-  target_link_libraries(unit_tests PUBLIC
-    lib
-    testing_lib
+  add_executable(preprod_unit_tests ${unit_tests_files})
+  target_link_libraries(preprod_unit_tests PUBLIC
+    preprod_lib
+    preprod_testing_lib
   )
-  configure_test_target_warnings(unit_tests)
-  gtest_discover_tests(unit_tests)
+  configure_test_target_warnings(preprod_unit_tests)
+  gtest_discover_tests(preprod_unit_tests)
 
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(unit_tests PUBLIC
+    target_compile_options(preprod_unit_tests PUBLIC
       -Wno-unused-function
     )
   endif()
@@ -392,8 +392,8 @@ endif()
 # have the .c in compile_commands.json again.
 #
 # This is that library.
-add_library(kernel_lib OBJECT ${included_driver_source_files})
-target_link_libraries(kernel_lib PRIVATE lib)
+add_library(preprod_kernel_lib OBJECT ${included_driver_source_files})
+target_link_libraries(preprod_kernel_lib PRIVATE lib)
 
 # -----------------------------------------------------------------------------
 # Project Subdirectories
