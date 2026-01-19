@@ -42,7 +42,7 @@ include(AddDink)
 # ---------------------------------------------------------------------------------------------------------------------
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(
+    list(APPEND c_flags
         -Wall
         -Werror
         -Wextra
@@ -52,7 +52,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_compile_options(
+    list(APPEND c_flags
         -Weverything
 
         -Wno-c++23-compat
@@ -71,7 +71,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    add_compile_options(
+    list(APPEND c_flags
         -D_SCL_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS
 
         /WX /W4 /wd4201 /wd4250 /wd4251 /wd4275 /wd4458 /wd4459 /wd4576)
@@ -92,26 +92,20 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(
-        -fstrict-aliasing
-        $<$<COMPILE_LANGUAGE:CXX>:-fsized-deallocation>
-    )
+    list(APPEND c_flags -fstrict-aliasing)
+    list(APPEND cxx_flags -fsized-deallocation)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    add_compile_options(-fsafe-buffer-usage-suggestions)
-endif()
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    add_compile_options(
-        $<$<COMPILE_LANGUAGE:CXX>:-fconcepts-diagnostics-depth=10>
-    )
+    list(APPEND c_flags -fsafe-buffer-usage-suggestions)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    add_compile_options(/utf-8 "$<$<CONFIG:RELEASE>:/GS;/Gy;/Zc:inline>")
+    list(APPEND c_flags /utf-8 "$<$<CONFIG:RELEASE>:/GS;/Gy;/Zc:inline>")
     add_link_options("$<$<CONFIG:RELEASE>:/LTCG;/OPT:ICF;/OPT:REF>")
 endif()
+
+add_compile_options(${c_flags} $<$<COMPILE_LANGUAGE:CXX>:${cxx_flags}>)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Debugging
