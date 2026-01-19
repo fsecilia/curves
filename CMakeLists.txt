@@ -161,5 +161,7 @@ endfunction()
 # Project Subdirectories
 # ---------------------------------------------------------------------------------------------------------------------
 
+add_subdirectory(src/crv)
+
 set(enable_testing False)
 add_subdirectory(preprod EXCLUDE_FROM_ALL)
