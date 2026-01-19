@@ -118,6 +118,12 @@ set(shadow_root ${CMAKE_BINARY_DIR}/shadow)
 set(staging_root ${shadow_root}/staging)
 set(pkg_root ${staging_root}/pkg)
 
+# configure dkms
+set(dkms dkms.conf)
+set(dkms_staged ${staging_root}/${dkms})
+configure_file(${dkms}.in ${dkms_staged} @ONLY)
+set(dkms_dest ${CMAKE_INSTALL_PREFIX}/usr/src/${driver_name}-${PROJECT_VERSION})
+
 # symlink static content
 set(srcs_shadow ${hdrs_driver} ${srcs_driver_lib} ${srcs_driver_lib_float} ${srcs_driver} Makefile)
 foreach(src ${srcs_shadow})
