@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Frank Secilia
+
+obj-m += @kbuild_output@
+
+c_flags_to_filter := -std=gnu% \
+                     -Wdesignated-init \
+                     -Wimplicit- \
+                     -Wimplicit-function-declaration \
+                     -Wimplicit-int \
+                     -Wincompatible-pointer-types \
+                     -Wmissing-prototypes \
+                     -Wno-override-init \
+                     -Wno-pointer-sign \
+                     -Wno-unterminated-string-initialization \
+                     -Wstrict-prototypes \
+                     -Werror=implicit-function-declaration \
+                     -Werror=implicit-int \
+                     -Werror=strict-prototypes \
+                     -Werror=incompatible-pointer-types \
+                     -Werror=designated-init
+
+# filter c flags for conflicts with c++
+common_flags = $(filter-out $(c_flags_to_filter), $(KBUILD_CFLAGS))
+
+# combine c++ flags
+cxx_flags = $(common_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
+
+# add standard c++ compile rule
+quiet_cmd_cxx_o_cpp = CXX [M]  $@
+cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -c -o $@ $<
+
+# add standard c++ pattern rule
+$(obj)/%.o: $(src)/%.cpp FORCE
+	$(call if_changed,cxx_o_cpp)
+
+# configure floating point sources
+srcs_float := @srcs_kbuild_float@
+float_flags_remove = -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx $(CC_FLAGS_NO_FPU)
+float_flags_add    = -msse -msse2 -mno-red-zone -fhard-float $(CC_FLAGS_FPU)
+$(foreach obj,$(srcs_float),$(eval CFLAGS_REMOVE_$(obj) += $(float_flags_remove)))
+$(foreach obj,$(srcs_float),$(eval CFLAGS_$(obj)        += $(float_flags_add)))
+
+@driver_name@-y := @srcs_kbuild@ $(srcs_float)
+
+ccflags-y += -I$(src) -DCRV_DRIVER_VERSION="@PROJECT_VERSION@-@git_hash@"
