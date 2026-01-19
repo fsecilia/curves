@@ -124,6 +124,14 @@ set(dkms_staged ${staging_root}/${dkms})
 configure_file(${dkms}.in ${dkms_staged} @ONLY)
 set(dkms_dest ${CMAKE_INSTALL_PREFIX}/usr/src/${driver_name}-${PROJECT_VERSION})
 
+# configure udev
+set(udev udev.rules)
+set(udev_staged ${driver_name})
+string(REPLACE "_" "-" udev_staged ${udev_staged})
+set(udev_staged ${staging_root}/99-${udev_staged}.rules)
+configure_file(${udev}.in ${udev_staged} @ONLY)
+set(udev_dest ${CMAKE_INSTALL_PREFIX}/etc/udev/rules.d)
+
 # symlink static content
 set(srcs_shadow ${hdrs_driver} ${srcs_driver_lib} ${srcs_driver_lib_float} ${srcs_driver} Makefile)
 foreach(src ${srcs_shadow})
