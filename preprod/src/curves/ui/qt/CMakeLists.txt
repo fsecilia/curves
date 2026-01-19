@@ -43,11 +43,6 @@ target_link_libraries(curves_config PRIVATE
     Qt6::Widgets
 )
 
-set_target_properties(lib
-  PROPERTIES
-    OUTPUT_NAME curves
-)
-
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(curves_config PUBLIC
     -Wno-ctad-maybe-unsupported
