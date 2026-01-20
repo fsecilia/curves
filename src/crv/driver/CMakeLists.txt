@@ -182,6 +182,9 @@ configure_file(${kbuild}.in ${kbuild_staged} @ONLY)
 # Generated Files
 # ---------------------------------------------------------------------------------------------------------------------
 
+# some files use dashes instead of underscores.
+string(REPLACE "_" "-" driver_name_with_dashes ${driver_name})
+
 # dkms
 set(dkms dkms.conf)
 set(dkms_staged ${staging_root}/${dkms})
@@ -189,8 +192,7 @@ configure_file(${dkms}.in ${dkms_staged} @ONLY)
 
 # udev rules
 set(udev udev.rules)
-string(REPLACE "_" "-" udev_rule_name ${driver_name})
-set(udev_staged ${staging_root}/99-${udev_rule_name}.rules)
+set(udev_staged ${staging_root}/99-${driver_name_with_dashes}.rules)
 configure_file(${udev}.in ${udev_staged} @ONLY)
 
 # ---------------------------------------------------------------------------------------------------------------------
