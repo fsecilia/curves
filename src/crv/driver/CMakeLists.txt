@@ -119,6 +119,12 @@ else()
 endif()
 set(kbuild_root /lib/modules/${kernel_version}/build)
 
+# handle clang builds
+set(kbuild_flags "")
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    list(APPEND kbuild_flags "LLVM=1")
+endif()
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Shadow Build
 # ---------------------------------------------------------------------------------------------------------------------
@@ -201,7 +207,7 @@ configure_file(${kbuild}.in ${kbuild_staged} @ONLY)
 
 # define kbuild commandline
 set(kbuild_make_command
-    make -sC ${kbuild_root} V=1
+    make -sC ${kbuild_root} ${kbuild_flags} V=1
     CC="${CMAKE_C_COMPILER}"
     CXX="${CMAKE_CXX_COMPILER}"
     M=${shadow_root}
