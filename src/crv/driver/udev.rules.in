@@ -1,1 +1,1 @@
-KERNEL=="@driver_name@", TAG+="uaccess"
+SUBSYSTEM=="misc", KERNEL=="@driver_name@", MODE="0660", GROUP="input", TAG+="uaccess"
