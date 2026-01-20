@@ -190,6 +190,11 @@ set(load_module load-module.conf.in)
 set(load_module_staged ${staging_root}/${project_name_dashes}.conf)
 configure_file(${load_module} ${load_module_staged} @ONLY)
 
+# systemd one-shot boot time restore to configure driver
+set(restore_service restore.service.in)
+set(restore_service_staged ${staging_root}/${project_name_dashes}-restore.service)
+configure_file(${restore_service} ${restore_service_staged} @ONLY)
+
 # udev rules
 set(udev udev.rules)
 set(udev_staged ${staging_root}/99-${project_name_dashes}.rules)
@@ -234,12 +239,14 @@ endforeach()
 set(dkms_dst_dir src/${project_name_dashes}-${PROJECT_VERSION})
 set(load_module_dst_dir lib/modules-load.d)
 set(udev_dst_dir lib/udev/rules.d)
+set(restore_service_dst lib/systemd/system)
 set(kernel_dst_dir src/kernel)
 
 # install generated files
 install(FILES ${dkms_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
 install(FILES ${load_module_staged} DESTINATION ${load_module_dst_dir} COMPONENT dkms)
 install(FILES ${udev_staged} DESTINATION ${udev_dst_dir} COMPONENT dkms)
+install(FILES ${restore_service_staged} DESTINATION ${restore_service_dst} COMPONENT dkms)
 install(FILES ${kbuild_staged} DESTINATION ${kernel_dst_dir} COMPONENT dkms)
 
 # install source files
