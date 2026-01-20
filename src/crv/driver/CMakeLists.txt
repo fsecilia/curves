@@ -147,6 +147,7 @@ set(staging_root ${CMAKE_BINARY_DIR}/staging)
 set(dkms dkms.conf)
 set(dkms_staged ${staging_root}/${dkms})
 configure_file(${dkms}.in ${dkms_staged} @ONLY)
+install(FILES ${dkms_staged} DESTINATION src/${driver_name}-${PROJECT_VERSION} COMPONENT dkms)
 
 # configure udev
 set(udev udev.rules)
@@ -154,6 +155,7 @@ set(udev_staged ${driver_name})
 string(REPLACE "_" "-" udev_staged ${udev_staged})
 set(udev_staged ${staging_root}/99-${udev_staged}.rules)
 configure_file(${udev}.in ${udev_staged} @ONLY)
+install(FILES ${udev_staged} DESTINATION lib/udev/rules.d COMPONENT dkms)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Static Content
@@ -183,6 +185,9 @@ foreach(src_rel ${srcs_staging})
         COMMENT "Symlinking ${src} to ${dst}..."
         VERBATIM
     )
+
+    # install source to dkms driver
+    install(FILES ${src} DESTINATION ${kernel_dst} COMPONENT dkms)
 endforeach()
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -214,6 +219,7 @@ list(JOIN srcs_kbuild_float " " srcs_kbuild_float)
 
 # generate kbuild file
 configure_file(${kbuild}.in ${kbuild_staged} @ONLY)
+install(FILES ${kbuild_staged} DESTINATION ${kernel_dst} COMPONENT dkms)
 
 # define kbuild commandline
 set(kbuild_make_command

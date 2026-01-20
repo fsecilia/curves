@@ -4,4 +4,7 @@
 add_executable(ui main.cpp)
 target_link_libraries(ui PUBLIC driver_lib)
 
-install(TARGETS ui RUNTIME DESTINATION bin)
+install(TARGETS ui RUNTIME
+    DESTINATION bin
+    COMPONENT ui
+)
