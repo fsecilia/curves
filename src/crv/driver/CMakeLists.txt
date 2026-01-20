@@ -240,19 +240,18 @@ set(dkms_dst_dir src/${project_name_dashes}-${PROJECT_VERSION})
 set(load_module_dst_dir lib/modules-load.d)
 set(udev_dst_dir lib/udev/rules.d)
 set(restore_service_dst lib/systemd/system)
-set(kernel_dst_dir src/kernel)
 
 # install generated files
 install(FILES ${dkms_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
 install(FILES ${load_module_staged} DESTINATION ${load_module_dst_dir} COMPONENT dkms)
 install(FILES ${udev_staged} DESTINATION ${udev_dst_dir} COMPONENT dkms)
 install(FILES ${restore_service_staged} DESTINATION ${restore_service_dst} COMPONENT dkms)
-install(FILES ${kbuild_staged} DESTINATION ${kernel_dst_dir} COMPONENT dkms)
+install(FILES ${kbuild_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
 
-# install source files
+# install source files to dkms
 foreach(src_rel IN LISTS srcs_staging)
-    get_filename_component(src_abs ${src_rel} ABSOLUTE)
-    install(FILES ${src_abs} DESTINATION ${kernel_dst_dir} COMPONENT dkms)
+    get_filename_component(dst_dir "${src_rel}" DIRECTORY)
+    install(FILES "${src_rel}" DESTINATION "${dkms_dst_dir}/${dst_dir}" COMPONENT dkms)
 endforeach()
 
 # =====================================================================================================================
