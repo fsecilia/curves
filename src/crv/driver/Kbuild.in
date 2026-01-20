@@ -41,10 +41,8 @@ $(obj)/%.o: $(src)/%.cpp FORCE
 
 # configure floating point sources
 srcs_float := @srcs_kbuild_float@
-float_flags_remove = -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx $(CC_FLAGS_NO_FPU)
-float_flags_add    = -msse -msse2 -mno-red-zone -fhard-float $(CC_FLAGS_FPU)
-$(foreach obj,$(srcs_float),$(eval CFLAGS_REMOVE_$(obj) += $(float_flags_remove)))
-$(foreach obj,$(srcs_float),$(eval CFLAGS_$(obj)        += $(float_flags_add)))
+$(foreach obj,$(srcs_float),$(eval CFLAGS_REMOVE_$(obj) += $(CC_FLAGS_NO_FPU)))
+$(foreach obj,$(srcs_float),$(eval CFLAGS_$(obj)        += $(CC_FLAGS_FPU)))
 
 @driver_name@-y := @srcs_kbuild@ $(srcs_float)
 
