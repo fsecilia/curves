@@ -25,6 +25,7 @@ set(THREADS_PREFER_PTHREAD_FLAG True)
 find_package(Threads REQUIRED)
 
 # Find gtest and enable testing if found.
+set(INSTALL_GTEST OFF)
 if(NOT TARGET GTest::gtest)
     # Try finding system package normally.
     find_package(GTest QUIET)
@@ -32,7 +33,7 @@ endif()
 if(NOT TARGET GTest::gtest)
     # Look where debian puts the source build.
     if (EXISTS /usr/src/googletest)
-        add_subdirectory(/usr/src/googletest ${CMAKE_BINARY_DIR}/external/googletest)
+        add_subdirectory(/usr/src/googletest ${CMAKE_BINARY_DIR}/external/googletest EXCLUDE_FROM_ALL)
     endif()
 endif()
 if(TARGET GTest::gtest)
