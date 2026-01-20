@@ -1,1 +1,3 @@
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
+
 #include "fpu_guard.hpp"

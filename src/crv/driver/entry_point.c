@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
 /**
  * Curves kernel module entry point.
  *
@@ -27,7 +27,7 @@ static void __exit crv_exit(void)
 module_init(crv_init);
 module_exit(crv_exit);
 
-MODULE_LICENSE("MIT");
+MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Frank Secilia");
 MODULE_DESCRIPTION("Curves Mouse Acceleration Input Handler");
 MODULE_VERSION(__stringify(CRV_DRIVER_VERSION));

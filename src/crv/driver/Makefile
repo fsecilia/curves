@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2025 Frank Secilia
 
 KERNEL_RELEASE ?= $(shell uname -r)
