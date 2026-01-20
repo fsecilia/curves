@@ -232,13 +232,13 @@ endforeach()
 
 # define destinations
 set(dkms_dst_dir src/${project_name_dashes}-${PROJECT_VERSION})
-set(load_module lib/modules-load.d)
+set(load_module_dst_dir lib/modules-load.d)
 set(udev_dst_dir lib/udev/rules.d)
 set(kernel_dst_dir src/kernel)
 
 # install generated files
 install(FILES ${dkms_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
-install(FILES ${load_module_staged} DESTINATION ${load_module} COMPONENT dkms)
+install(FILES ${load_module_staged} DESTINATION ${load_module_dst_dir} COMPONENT dkms)
 install(FILES ${udev_staged} DESTINATION ${udev_dst_dir} COMPONENT dkms)
 install(FILES ${kbuild_staged} DESTINATION ${kernel_dst_dir} COMPONENT dkms)
 
