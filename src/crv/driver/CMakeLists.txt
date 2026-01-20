@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# This module builds the driver, a usermode object library containing files shared between usermode and the driver,
-# and unit tests. The driver is built using the native Kbuild. Kbuild has bad tree hygine, so it is built using a
-# shadow build in the build tree rather than directly in the source.
+# This module manages staging the driver for packaging or dkms, building and loading the driver for local testing, a
+# usermode object library containing files shared between usermode and the driver, and unit tests for the library. The
+# driver is built using the native Kbuild. Kbuild has bad tree hygine, so it is built using a staging directory in the
+# build tree rather than directly in the source.
 
 # ---------------------------------------------------------------------------------------------------------------------
 # File Lists
@@ -127,26 +128,25 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     list(APPEND kbuild_flags "LLVM=1")
 endif()
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Shadow Build
-# ---------------------------------------------------------------------------------------------------------------------
-# The shadow build is an out-of-tree, modified copy of the source tree where the Kbuild can find everything and write
-# its output locally. We symlink static content, like source files, and write generated files, like the Kbuild file
-# itself.
-#
-# This also serves as the staging area for the dkms package.
-# ---------------------------------------------------------------------------------------------------------------------
+# =====================================================================================================================
+# Build Staging
+# =====================================================================================================================
+# The driver build is staged for installation. It contains the driver source, the generated Kbuild and its makefile,
+# generated dkms.conf, and generates udev.rules. From here, it can be built from cmake to smoke test that it compiles,
+# installed directly for testing in a vm, or installed to a destdir to build packages.
+# =====================================================================================================================
 
 # specify locations
-set(shadow_root ${CMAKE_BINARY_DIR}/shadow)
-set(staging_root ${shadow_root}/staging)
-set(pkg_root ${staging_root}/pkg)
+set(staging_root ${CMAKE_BINARY_DIR}/staging)
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Generated Files
+# ---------------------------------------------------------------------------------------------------------------------
 
 # configure dkms
 set(dkms dkms.conf)
 set(dkms_staged ${staging_root}/${dkms})
 configure_file(${dkms}.in ${dkms_staged} @ONLY)
-set(dkms_dest ${CMAKE_INSTALL_PREFIX}/usr/src/${driver_name}-${PROJECT_VERSION})
 
 # configure udev
 set(udev udev.rules)
@@ -154,25 +154,33 @@ set(udev_staged ${driver_name})
 string(REPLACE "_" "-" udev_staged ${udev_staged})
 set(udev_staged ${staging_root}/99-${udev_staged}.rules)
 configure_file(${udev}.in ${udev_staged} @ONLY)
-set(udev_dest ${CMAKE_INSTALL_PREFIX}/etc/udev/rules.d)
 
-# symlink static content
-set(srcs_shadow ${hdrs_driver} ${srcs_driver_lib} ${srcs_driver_lib_float} ${srcs_driver} Makefile)
-foreach(src ${srcs_shadow})
-    # src is relative; extract it and convert to abs dst
-    get_filename_component(dst_dir ${src} DIRECTORY)
-    get_filename_component(dst_dir ${shadow_root}/${dst_dir} ABSOLUTE)
+# ---------------------------------------------------------------------------------------------------------------------
+# Static Content
+# ---------------------------------------------------------------------------------------------------------------------
 
-    # get abs src
-    get_filename_component(src_dir ${src} ABSOLUTE)
-    get_filename_component(src_dir ${src_dir} DIRECTORY)
+set(kernel_dst src/kernel)
 
+# symlink source files and the makefile
+set(srcs_staging ${hdrs_driver} ${srcs_driver_lib} ${srcs_driver_lib_float} ${srcs_driver} Makefile)
+foreach(src_rel ${srcs_staging})
+    # resolve dst
+    get_filename_component(dst_rel ${src_rel} DIRECTORY)
+    get_filename_component(dst_dir ${staging_root}/${dst_rel} ABSOLUTE)
+    set(dst ${dst_dir}/${src_rel})
+
+    # resolve src
+    get_filename_component(src_abs ${src_rel} ABSOLUTE)
+    get_filename_component(src_dir ${src_abs} DIRECTORY)
+    set(src ${src_dir}/${src_rel})
+
+    # symlink file
     add_custom_command(
-        OUTPUT ${dst_dir}/${src}
+        OUTPUT ${dst}
         COMMAND ${CMAKE_COMMAND} -E make_directory ${dst_dir}
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_dir}/${src} ${dst_dir}/${src}
-        DEPENDS ${src_dir}/${src}
-        COMMENT "Symlinking ${src_dir}/${src} to ${dst_dir}/${src}..."
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${src} ${dst}
+        DEPENDS ${src}
+        COMMENT "Symlinking ${src} to ${dst}..."
         VERBATIM
     )
 endforeach()
@@ -192,7 +200,7 @@ list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 # configure Kbuild
 set(kbuild Kbuild)
 set(kbuild_output ${driver_name}.o)
-set(kbuild_staged ${shadow_root}/${kbuild})
+set(kbuild_staged ${staging_root}/${kbuild})
 
 # collect source files that don't need float
 set(srcs_kbuild ${srcs_driver_lib} ${srcs_driver})
@@ -212,25 +220,25 @@ set(kbuild_make_command
     make -sC ${kbuild_root} ${kbuild_flags} V=1
     CC="${CMAKE_C_COMPILER}"
     CXX="${CMAKE_CXX_COMPILER}"
-    M=${shadow_root}
+    M=${staging_root}
 )
 
 # kick off kbuild
 add_custom_command(
-    OUTPUT ${shadow_root}/${kbuild_output}
+    OUTPUT ${staging_root}/${kbuild_output}
     COMMAND ${kbuild_make_command} modules
-    WORKING_DIRECTORY ${shadow_root}
-    DEPENDS ${srcs_shadow} ${kbuild_staged}
+    WORKING_DIRECTORY ${staging_root}
+    DEPENDS ${srcs_staging} ${kbuild_staged}
     COMMENT "Building kernel module... ${kbuild_output}"
     VERBATIM
     USES_TERMINAL
 )
-add_custom_target(kbuild ALL DEPENDS ${shadow_root}/${kbuild_output})
+add_custom_target(kbuild ALL DEPENDS ${staging_root}/${kbuild_output})
 
 # clean kbuild
 add_custom_target(clean_kbuild
     COMMAND ${kbuild_make_command} clean
-    WORKING_DIRECTORY ${shadow_root}
+    WORKING_DIRECTORY ${staging_root}
     COMMENT "Cleaning kernel module..."
     VERBATIM
     USES_TERMINAL
