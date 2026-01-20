@@ -136,7 +136,6 @@ include(GNUInstallDirs)
 # Suppress "Up-to-date" message cmake prints for every installed file.
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Project Functions
 # ---------------------------------------------------------------------------------------------------------------------
