@@ -190,6 +190,11 @@ set(dkms dkms.conf)
 set(dkms_staged ${staging_root}/${dkms})
 configure_file(${dkms}.in ${dkms_staged} @ONLY)
 
+# boot-time module loader
+set(load_module load-module.conf.in)
+set(load_module_staged ${staging_root}/${driver_name_with_dashes}.conf)
+configure_file(${load_module} ${load_module_staged} @ONLY)
+
 # udev rules
 set(udev udev.rules)
 set(udev_staged ${staging_root}/99-${driver_name_with_dashes}.rules)
@@ -232,11 +237,13 @@ endforeach()
 
 # define destinations
 set(dkms_dst_dir src/${driver_name}-${PROJECT_VERSION})
+set(load_module lib/modules-load.d)
 set(udev_dst_dir lib/udev/rules.d)
 set(kernel_dst_dir src/kernel)
 
 # install generated files
 install(FILES ${dkms_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
+install(FILES ${load_module_staged} DESTINATION ${load_module} COMPONENT dkms)
 install(FILES ${udev_staged} DESTINATION ${udev_dst_dir} COMPONENT dkms)
 install(FILES ${kbuild_staged} DESTINATION ${kernel_dst_dir} COMPONENT dkms)
 
