@@ -3,25 +3,30 @@
 
 obj-m += @kbuild_output@
 
-c_flags_to_filter := -std=gnu% \
-                     -Wdesignated-init \
-                     -Wimplicit- \
-                     -Wimplicit-function-declaration \
-                     -Wimplicit-int \
-                     -Wincompatible-pointer-types \
-                     -Wmissing-prototypes \
-                     -Wno-override-init \
-                     -Wno-pointer-sign \
-                     -Wno-unterminated-string-initialization \
-                     -Wstrict-prototypes \
-                     -Werror=implicit-function-declaration \
-                     -Werror=implicit-int \
-                     -Werror=strict-prototypes \
-                     -Werror=incompatible-pointer-types \
-                     -Werror=designated-init
+# find relative c++ compiler
+ifeq ($(CXX),)
+    CXX := $(patsubst %cc,%g++,$(patsubst %gcc,%g++,$(patsubst %clang,%clang++,$(CC))))
+endif
 
 # filter c flags for conflicts with c++
-common_flags = $(filter-out $(c_flags_to_filter), $(KBUILD_CFLAGS))
+filtered_c_flags := -std=gnu% \
+                    -Wdesignated-init \
+                    -Werror=designated-init \
+                    -Werror=implicit-function-declaration \
+                    -Werror=implicit-int \
+                    -Werror=incompatible-pointer-types \
+                    -Werror=strict-prototypes \
+                    -Wimplicit- \
+                    -Wimplicit-function-declaration \
+                    -Wimplicit-int \
+                    -Wincompatible-pointer-types \
+                    -Wmissing-prototypes \
+                    -Wno-override-init \
+                    -Wno-pointer-sign \
+                    -Wno-unterminated-string-initialization \
+                    -Wno-unused-const-variable \
+                    -Wstrict-prototypes
+common_flags = $(filter-out $(filtered_c_flags), $(KBUILD_CFLAGS))
 
 # combine c++ flags
 cxx_flags = $(common_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
