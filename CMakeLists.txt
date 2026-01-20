@@ -7,6 +7,10 @@ project(curves VERSION 0.1.0)
 # Don't repeat libraries on build command lines.
 cmake_policy(SET CMP0156 NEW)
 
+# Define long names for build ouput.
+set(project_name_underscores ${PROJECT_NAME}_mouse_acceleration)        # internal filenames, like the .ko
+string(REPLACE "_" "-" project_name_dashes ${project_name_underscores}) # external filenames, like the config ui
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------------------------------------------------

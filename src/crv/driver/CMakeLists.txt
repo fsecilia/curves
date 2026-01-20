@@ -87,8 +87,6 @@ set(srcs_lib
 # Build Configuration
 # =====================================================================================================================
 
-set(driver_name_underscores ${PROJECT_NAME}_mouse_acceleration)
-
 # kernel-compatible C flags
 list(APPEND driver_c_flags ${c_flags}
     -ffreestanding
@@ -132,7 +130,7 @@ add_dependencies(driver kbuild)
 target_compile_definitions(driver PRIVATE
     __KERNEL__
     MODULE
-    KBUILD_MODNAME=${driver_name_underscores}
+    KBUILD_MODNAME=${project_name_underscores}
 )
 target_include_directories(driver PRIVATE
     ${kbuild_root}/include
@@ -174,16 +172,13 @@ list(JOIN srcs_kbuild_float " " srcs_kbuild_float)
 
 # generate
 set(kbuild Kbuild)
-set(kbuild_output ${driver_name_underscores}.o)
+set(kbuild_output ${project_name_underscores}.o)
 set(kbuild_staged ${staging_root}/${kbuild})
 configure_file(${kbuild}.in ${kbuild_staged} @ONLY)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Generated Files
 # ---------------------------------------------------------------------------------------------------------------------
-
-# some files use dashes instead of underscores.
-string(REPLACE "_" "-" driver_name_dashes ${driver_name_underscores})
 
 # dkms
 set(dkms dkms.conf)
@@ -192,12 +187,12 @@ configure_file(${dkms}.in ${dkms_staged} @ONLY)
 
 # boot-time module loader
 set(load_module load-module.conf.in)
-set(load_module_staged ${staging_root}/${driver_name_dashes}.conf)
+set(load_module_staged ${staging_root}/${project_name_dashes}.conf)
 configure_file(${load_module} ${load_module_staged} @ONLY)
 
 # udev rules
 set(udev udev.rules)
-set(udev_staged ${staging_root}/99-${driver_name_dashes}.rules)
+set(udev_staged ${staging_root}/99-${project_name_dashes}.rules)
 configure_file(${udev}.in ${udev_staged} @ONLY)
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -236,7 +231,7 @@ endforeach()
 # =====================================================================================================================
 
 # define destinations
-set(dkms_dst_dir src/${driver_name_dashes}-${PROJECT_VERSION})
+set(dkms_dst_dir src/${project_name_dashes}-${PROJECT_VERSION})
 set(load_module lib/modules-load.d)
 set(udev_dst_dir lib/udev/rules.d)
 set(kernel_dst_dir src/kernel)
