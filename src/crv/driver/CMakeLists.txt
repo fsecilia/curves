@@ -28,11 +28,13 @@ set(srcs_driver_lib_float
 
 # shared source files that do not require floating point
 set(srcs_driver_lib
-    fpu_guard.cpp
 )
 
 # source files exclusive to driver
-set(srcs_driver entry_point.c)
+set(srcs_driver
+    entry_point.c
+    fpu_guard.cpp
+)
 
 # source files exclusive to lib
 set(srcs_lib

@@ -7,3 +7,14 @@
 */
 
 #pragma once
+
+namespace crv {
+
+class fpu_guard_t
+{
+public:
+    fpu_guard_t() noexcept;
+    ~fpu_guard_t();
+};
+
+} // namespace crv

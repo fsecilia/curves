@@ -12,6 +12,21 @@
 #include <linux/module.h>
 #include <linux/stringify.h>
 
+#if 1
+void fpu_begin(void);
+void fpu_end(void);
+
+void fpu_begin(void)
+{
+    kernel_fpu_begin();
+}
+
+void fpu_end(void)
+{
+    kernel_fpu_end();
+}
+#endif
+
 static int __init crv_init(void)
 {
     printk("crv_init\n");
