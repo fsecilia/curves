@@ -1,12 +1,19 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
+#
+# This module builds the driver, a usermode object library containing files shared between usermode and the driver,
+# and unit tests. The driver is built using the native Kbuild. Kbuild has bad tree hygine, so it is built using a
+# shadow build in the build tree rather than directly in the source.
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Configuration
+# File Lists
 # ---------------------------------------------------------------------------------------------------------------------
-
-# base name of driver
-set(driver_name ${PROJECT_NAME}_mouse_acceleration)
+# File lists are separated into a few categories:
+#  - Headers can't go in Kbuild source lists.
+#  - Some files are exclusive to the driver, some to the library, and some are shared.
+#  - Source files requiring the fpu require special build flags.
+# Instead of filtering for these contextually, they're just kept separate and combined when they can be.
+# ---------------------------------------------------------------------------------------------------------------------
 
 # driver headers
 set(hdrs_driver
@@ -14,12 +21,12 @@ set(hdrs_driver
     math.hpp
 )
 
-# source files shared by driver and lib requiring floating point
+# shared source files that require floating point
 set(srcs_driver_lib_float
     math.cpp
 )
 
-# source files shared by driver and lib not requiring floating point
+# shared source files that do not require floating point
 set(srcs_driver_lib
     fpu_guard.cpp
 )
@@ -33,6 +40,13 @@ set(srcs_lib
     shim/linux/printk.h
     shim/linux/types.h
 )
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------------------------------------------------
+
+# base name of driver
+set(driver_name ${PROJECT_NAME}_mouse_acceleration)
 
 # driver build flags
 list(APPEND driver_c_flags ${c_flags} -ffreestanding)
@@ -108,12 +122,14 @@ set(kbuild_root /lib/modules/${kernel_version}/build)
 # ---------------------------------------------------------------------------------------------------------------------
 # Shadow Build
 # ---------------------------------------------------------------------------------------------------------------------
-
-# configure shadow build
-#
 # The shadow build is an out-of-tree, modified copy of the source tree where the Kbuild can find everything and write
 # its output locally. We symlink static content, like source files, and write generated files, like the Kbuild file
 # itself.
+#
+# This also serves as the staging area for the dkms package.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# specify locations
 set(shadow_root ${CMAKE_BINARY_DIR}/shadow)
 set(staging_root ${shadow_root}/staging)
 set(pkg_root ${staging_root}/pkg)
