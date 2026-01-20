@@ -1,5 +1,5 @@
-PACKAGE_NAME="@driver_name@"
+PACKAGE_NAME="@driver_name_dashes@"
 PACKAGE_VERSION="@PROJECT_VERSION@"
-BUILT_MODULE_NAME[0]="@driver_name@"
+BUILT_MODULE_NAME[0]="@driver_name_underscores@"
 DEST_MODULE_LOCATION[0]="/updates"
 AUTOINSTALL="yes"

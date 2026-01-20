@@ -44,6 +44,6 @@ srcs_float := @srcs_kbuild_float@
 $(foreach obj,$(srcs_float),$(eval CFLAGS_REMOVE_$(obj) += $(CC_FLAGS_NO_FPU)))
 $(foreach obj,$(srcs_float),$(eval CFLAGS_$(obj)        += $(CC_FLAGS_FPU)))
 
-@driver_name@-y := @srcs_kbuild@ $(srcs_float)
+@driver_name_underscores@-y := @srcs_kbuild@ $(srcs_float)
 
 ccflags-y += -I$(src) -DCRV_DRIVER_VERSION="@PROJECT_VERSION@-@git_hash@"
