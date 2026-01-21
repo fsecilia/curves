@@ -4,8 +4,8 @@
 # Kernel Driver Build Module
 #
 # This module serves two distinct purposes:
-#   - Stages source in the build tree and invokes Kbuild for testing local builds.
-#   - Installs source, Kbuild, dkms.conf, and udev rules for dkms.
+#   - Symlinks source to build tree and invokes Kbuild for testing local builds.
+#   - Installs source and Kbuild to dkms root.
 
 # transforms a list of source files into a list of object files for kbuild
 function(src_to_obj result)
@@ -142,13 +142,17 @@ target_compile_options(driver PRIVATE
 )
 
 # =====================================================================================================================
-# Staging
+# Kbuild
 # =====================================================================================================================
-# Generated files are staged. All builds use the generated Kbuild. Packaging builds use generated dkms.conf and udev
-# rules. For local builds, we also symlink driver source into the staging directory and run the Kbuild there.
+# The kernel module is built using Kbuild. The Kbuild file is generated here. All builds require the Kbuild file
+# eventually. Packaging builds install it next to the kernel source files, staging the kernel module for dkms. Binary
+# builds symlink the source next to it and build there to keep its output in the build tree. Since the Kbuild may be
+# part of a shadow build, its is always generated in a shadow subdir.
+
+set(kbuild_shadow_root ${CMAKE_CURRENT_BINARY_DIR}/shadow)
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Kbuild
+# Generated File
 # ---------------------------------------------------------------------------------------------------------------------
 
 # extract c++ standard flag from cmake target
@@ -170,15 +174,15 @@ list(JOIN objs_kbuild_float " " objs_kbuild_float)
 # generate
 set(kbuild Kbuild)
 set(kbuild_output ${project_name_underscores}.o)
-set(kbuild_staged ${staging_root}/${kbuild})
-configure_file(${kbuild}.in ${kbuild_staged} @ONLY)
+set(kbuild_gen ${kbuild_shadow_root}/${kbuild})
+configure_file(${kbuild}.in ${kbuild_gen} @ONLY)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Source Symlinks
 # ---------------------------------------------------------------------------------------------------------------------
 
-# collect files to stage
-set(srcs_staging
+# collect files to shadow
+set(srcs_shadow_rel
     ${hdrs_driver}
     ${srcs_shared}
     ${srcs_shared_fpu}
@@ -186,12 +190,12 @@ set(srcs_staging
     Makefile
 )
 
-foreach(src_rel IN LISTS srcs_staging)
+foreach(src_rel IN LISTS srcs_shadow_rel)
     # resolve absolute paths
     get_filename_component(src_abs ${src_rel} ABSOLUTE)
     get_filename_component(subdir ${src_rel} DIRECTORY)
-    set(dst_dir ${staging_root}/${subdir})
-    set(dst ${staging_root}/${src_rel})
+    set(dst_dir ${kbuild_shadow_root}/${subdir})
+    set(dst ${kbuild_shadow_root}/${src_rel})
 
     # create symlink
     add_custom_command(
@@ -199,7 +203,7 @@ foreach(src_rel IN LISTS srcs_staging)
         COMMAND ${CMAKE_COMMAND} -E make_directory ${dst_dir}
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${src_abs} ${dst}
         DEPENDS ${src_abs}
-        COMMENT "Staging ${src_rel}"
+        COMMENT "Shadowing ${src_rel}"
         VERBATIM
     )
 endforeach()
@@ -208,10 +212,10 @@ endforeach()
 # Installation
 # =====================================================================================================================
 
-install(FILES ${kbuild_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
+install(FILES ${kbuild_gen} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
 
 # install source files to dkms
-foreach(src_rel IN LISTS srcs_staging)
+foreach(src_rel IN LISTS srcs_shadow_rel)
     get_filename_component(dst_dir "${src_rel}" DIRECTORY)
     install(FILES "${src_rel}" DESTINATION "${dkms_dst_dir}/${dst_dir}" COMPONENT dkms)
 endforeach()
@@ -221,13 +225,13 @@ endforeach()
 # =====================================================================================================================
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Kbuild
+# Build Target
 # ---------------------------------------------------------------------------------------------------------------------
 
 # collect all staged files as dependencies
-set(staged_files ${kbuild_staged})
-foreach(src_rel IN LISTS srcs_staging)
-    list(APPEND staged_files ${staging_root}/${src_rel})
+set(srcs_shadow_abs ${kbuild_gen})
+foreach(src_rel IN LISTS srcs_shadow_rel)
+    list(APPEND srcs_shadow_abs ${kbuild_shadow_root}/${src_rel})
 endforeach()
 
 # configure clang builds
@@ -241,22 +245,22 @@ set(kbuild_make_command
     make -sC ${kbuild_root} ${kbuild_flags} V=1
     CC="${CMAKE_C_COMPILER}"
     CXX="${CMAKE_CXX_COMPILER}"
-    M=${staging_root}
+    M=${kbuild_shadow_root}
 )
 
 # run make modules
 add_custom_command(
-    OUTPUT ${staging_root}/${kbuild_output}
+    OUTPUT ${kbuild_shadow_root}/${kbuild_output}
     COMMAND ${kbuild_make_command} modules
-    WORKING_DIRECTORY ${staging_root}
-    DEPENDS ${staged_files}
+    WORKING_DIRECTORY ${kbuild_shadow_root}
+    DEPENDS ${srcs_shadow_abs}
     COMMENT "Building kernel module"
     VERBATIM
     USES_TERMINAL
 )
 
 # kick off kbuild
-add_custom_target(kbuild DEPENDS ${staging_root}/${kbuild_output})
+add_custom_target(kbuild DEPENDS ${kbuild_shadow_root}/${kbuild_output})
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Clean
@@ -265,7 +269,7 @@ add_custom_target(kbuild DEPENDS ${staging_root}/${kbuild_output})
 # run make clean
 add_custom_target(clean_kbuild
     COMMAND ${kbuild_make_command} clean
-    WORKING_DIRECTORY ${staging_root}
+    WORKING_DIRECTORY ${kbuild_shadow_root}
     COMMENT "Cleaning kernel module"
     VERBATIM
     USES_TERMINAL
