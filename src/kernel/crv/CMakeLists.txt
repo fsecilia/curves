@@ -162,10 +162,10 @@ list(JOIN kbuild_c_flags " " kbuild_c_flags)
 list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 
 # compose object file lists
-src_to_obj(srcs_kbuild ${srcs_shared} ${srcs_driver})
-src_to_obj(srcs_kbuild_float ${srcs_shared_fpu})
-list(JOIN srcs_kbuild " " srcs_kbuild)
-list(JOIN srcs_kbuild_float " " srcs_kbuild_float)
+src_to_obj(objs_kbuild ${srcs_shared} ${srcs_driver})
+src_to_obj(objs_kbuild_float ${srcs_shared_fpu})
+list(JOIN objs_kbuild " " objs_kbuild)
+list(JOIN objs_kbuild_float " " objs_kbuild_float)
 
 # generate
 set(kbuild Kbuild)
