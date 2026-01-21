@@ -171,11 +171,12 @@ src_to_obj(objs_kbuild_float ${srcs_shared_fpu})
 list(JOIN objs_kbuild " " objs_kbuild)
 list(JOIN objs_kbuild_float " " objs_kbuild_float)
 
-# generate
+# generate and install
 set(kbuild Kbuild)
 set(kbuild_output ${project_name_underscores}.o)
 set(kbuild_gen ${kbuild_shadow_root}/${kbuild})
 configure_file(${kbuild}.in ${kbuild_gen} @ONLY)
+install(FILES ${kbuild_gen} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Source Symlinks
@@ -190,12 +191,15 @@ set(srcs_shadow_rel
     Makefile
 )
 
+# symlink each, collect result paths, and spec install
+set(srcs_shadow_abs ${kbuild_gen})
 foreach(src_rel IN LISTS srcs_shadow_rel)
     # resolve absolute paths
     get_filename_component(src_abs ${src_rel} ABSOLUTE)
     get_filename_component(subdir ${src_rel} DIRECTORY)
     set(dst_dir ${kbuild_shadow_root}/${subdir})
     set(dst ${kbuild_shadow_root}/${src_rel})
+    list(APPEND srcs_shadow_abs ${dst})
 
     # create symlink
     add_custom_command(
@@ -206,33 +210,15 @@ foreach(src_rel IN LISTS srcs_shadow_rel)
         COMMENT "Shadowing ${src_rel}"
         VERBATIM
     )
-endforeach()
 
-# =====================================================================================================================
-# Installation
-# =====================================================================================================================
-
-install(FILES ${kbuild_gen} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
-
-# install source files to dkms
-foreach(src_rel IN LISTS srcs_shadow_rel)
+    # install to dkms
     get_filename_component(dst_dir "${src_rel}" DIRECTORY)
     install(FILES "${src_rel}" DESTINATION "${dkms_dst_dir}/${dst_dir}" COMPONENT dkms)
 endforeach()
 
-# =====================================================================================================================
-# Build Targets
-# =====================================================================================================================
-
 # ---------------------------------------------------------------------------------------------------------------------
 # Build Target
 # ---------------------------------------------------------------------------------------------------------------------
-
-# collect all staged files as dependencies
-set(srcs_shadow_abs ${kbuild_gen})
-foreach(src_rel IN LISTS srcs_shadow_rel)
-    list(APPEND srcs_shadow_abs ${kbuild_shadow_root}/${src_rel})
-endforeach()
 
 # configure clang builds
 set(kbuild_flags "")
