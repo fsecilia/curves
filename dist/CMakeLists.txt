@@ -5,29 +5,31 @@
 #
 # This file manages system integration, like running dkms, loading the module at startup, and running a one shot config.
 
+set(dist_gen_root ${CMAKE_CURRENT_BINARY_DIR})
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Generated Files
 # ---------------------------------------------------------------------------------------------------------------------
 
 # dkms
 set(dkms dkms.conf)
-set(dkms_staged ${staging_root}/${dkms})
-configure_file(${dkms}.in ${dkms_staged} @ONLY)
+set(dkms_gen ${dist_gen_root}/${dkms})
+configure_file(${dkms}.in ${dkms_gen} @ONLY)
 
 # boot-time module loader
 set(load_module load-module.conf.in)
-set(load_module_staged ${staging_root}/${project_name_dashes}.conf)
-configure_file(${load_module} ${load_module_staged} @ONLY)
+set(load_module_gen ${dist_gen_root}/${project_name_dashes}.conf)
+configure_file(${load_module} ${load_module_gen} @ONLY)
 
 # systemd one-shot boot time restore to configure driver
 set(restore_service restore.service.in)
-set(restore_service_staged ${staging_root}/${project_name_dashes}-restore.service)
-configure_file(${restore_service} ${restore_service_staged} @ONLY)
+set(restore_service_gen ${dist_gen_root}/${project_name_dashes}-restore.service)
+configure_file(${restore_service} ${restore_service_gen} @ONLY)
 
 # udev rules
 set(udev udev.rules)
-set(udev_staged ${staging_root}/99-${project_name_dashes}.rules)
-configure_file(${udev}.in ${udev_staged} @ONLY)
+set(udev_gen ${dist_gen_root}/99-${project_name_dashes}.rules)
+configure_file(${udev}.in ${udev_gen} @ONLY)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Installation
@@ -39,8 +41,8 @@ set(udev_dst_dir lib/udev/rules.d)
 set(restore_service_dst lib/systemd/system)
 
 # install generated files
-install(FILES ${dkms_staged} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
-install(FILES ${load_module_staged} DESTINATION ${load_module_dst_dir} COMPONENT dkms)
-install(FILES ${udev_staged} DESTINATION ${udev_dst_dir} COMPONENT dkms)
-install(FILES ${restore_service_staged} DESTINATION ${restore_service_dst} COMPONENT dkms)
+install(FILES ${dkms_gen} DESTINATION ${dkms_dst_dir} COMPONENT dkms)
+install(FILES ${load_module_gen} DESTINATION ${load_module_dst_dir} COMPONENT dkms)
+install(FILES ${udev_gen} DESTINATION ${udev_dst_dir} COMPONENT dkms)
+install(FILES ${restore_service_gen} DESTINATION ${restore_service_dst} COMPONENT dkms)
 
