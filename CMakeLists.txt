@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Frank Secilia
 
 cmake_minimum_required(VERSION 3.31)
-project(curves VERSION 0.1.0)
+project(curves VERSION 0.0.1)
 
 # Don't repeat libraries on build command lines.
 cmake_policy(SET CMP0156 NEW)
