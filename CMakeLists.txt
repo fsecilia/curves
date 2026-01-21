@@ -174,7 +174,8 @@ endfunction()
 # Project Subdirectories
 # ---------------------------------------------------------------------------------------------------------------------
 
-add_subdirectory(src/crv)
+add_subdirectory(src/kernel/crv)
+add_subdirectory(src/user/crv)
 
 set(enable_testing False)
 add_subdirectory(preprod EXCLUDE_FROM_ALL)
