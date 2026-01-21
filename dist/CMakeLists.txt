@@ -17,14 +17,14 @@ set(dkms_gen ${dist_gen_root}/${dkms})
 configure_file(${dkms}.in ${dkms_gen} @ONLY)
 
 # boot-time module loader
-set(load_module load-module.conf.in)
+set(load_module load-module.conf)
 set(load_module_gen ${dist_gen_root}/${project_name_dashes}.conf)
-configure_file(${load_module} ${load_module_gen} @ONLY)
+configure_file(${load_module}.in ${load_module_gen} @ONLY)
 
 # systemd one-shot boot time restore to configure driver
-set(restore_service restore.service.in)
+set(restore_service restore.service)
 set(restore_service_gen ${dist_gen_root}/${project_name_dashes}-restore.service)
-configure_file(${restore_service} ${restore_service_gen} @ONLY)
+configure_file(${restore_service}.in ${restore_service_gen} @ONLY)
 
 # udev rules
 set(udev udev.rules)
