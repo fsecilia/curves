@@ -3,4 +3,4 @@
 	url = https://github.com/marzer/tomlplusplus.git
 [submodule "external/dink"]
 	path = external/dink
-	url = git@github.com:fsecilia/dink.git
+	url = https://github.com/fsecilia/dink.git
