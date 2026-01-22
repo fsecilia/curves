@@ -141,6 +141,9 @@ set(CMAKE_INSTALL_MESSAGE NEVER)
 set(project_name_underscores ${PROJECT_NAME}_mouse_acceleration)        # internal filenames, like the .ko
 string(REPLACE "_" "-" project_name_dashes ${project_name_underscores}) # external filenames, like the config ui
 
+# Define name of ui project so it is visible both to ui and to packaging.
+set(ui_project_name ${project_name_dashes}-ui)
+
 # dkms relative install path
 set(dkms_dst_dir src/${project_name_dashes}-${PROJECT_VERSION})
 

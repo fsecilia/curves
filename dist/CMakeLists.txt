@@ -46,3 +46,8 @@ install(FILES ${load_module_gen} DESTINATION ${load_module_dst_dir} COMPONENT dk
 install(FILES ${udev_gen} DESTINATION ${udev_dst_dir} COMPONENT dkms)
 install(FILES ${restore_service_gen} DESTINATION ${restore_service_dst} COMPONENT dkms)
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Subdirectories
+# ---------------------------------------------------------------------------------------------------------------------
+
+add_subdirectory(packaging)

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+label="@project_name_dashes@-@PROJECT_VERSION@"
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        echo "Removing $label... from DKMS"
+        dkms remove -m "@project_name_dashes@" -v "@PROJECT_VERSION@" --all || true
+    ;;
+esac

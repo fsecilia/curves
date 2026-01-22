@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+label="@project_name_dashes@-@PROJECT_VERSION@"
+
+case "$1" in
+    configure)
+        echo "Adding $label to DKMS..."
+        dkms add -m "@project_name_dashes@" -v "@PROJECT_VERSION@"
+
+        echo "Building $label... for DKMS"
+        dkms build -m "@project_name_dashes@" -v "@PROJECT_VERSION@"
+
+        echo "Installing $label... from DKMS"
+        dkms install -m "@project_name_dashes@" -v "@PROJECT_VERSION@"
+
+        # Trigger udev to pick up the new rule immediately
+        udevadm control --reload-rules && udevadm trigger
+    ;;
+esac

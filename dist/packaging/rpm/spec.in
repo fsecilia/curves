@@ -1,0 +1,38 @@
+Name:           @project_name_dashes@
+Version:        @PROJECT_VERSION@
+Release:        0
+Summary:        Curves mouse acceleration driver
+License:        MIT
+URL:            https://github.com/fsecilia/curves
+Source0:        %{name}-%{version}.tar.gz
+
+BuildRequires:  cmake
+BuildRequires:  gcc-c++
+BuildRequires:  dkms
+
+%description
+Kernel module for custom mouse acceleration curves, managed via DKMS.
+
+%prep
+%setup -q
+
+%build
+%cmake
+%cmake_build
+
+%install
+%cmake_install
+
+%post
+# DKMS install
+dkms add -m %{name} -v %{version} || :
+dkms build -m %{name} -v %{version} || :
+dkms install -m %{name} -v %{version} || :
+
+%preun
+# DKMS uninstall
+dkms remove -m %{name} -v %{version} --all || :
+
+%files
+/usr/bin/@ui_project_name@
+/usr/src/%{name}-%{version}/

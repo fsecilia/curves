@@ -1,0 +1,71 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Frank Secilia
+#
+# This script runs dpkg-deb.
+#
+# Expects -DCONFIG="$<CONFIG>" to be set on the commandline. Defaults to Release otherwise.
+
+# Snapshot variables during configure_file.
+set(project_name_underscores "@project_name_underscores@")
+set(PROJECT_VERSION          "@PROJECT_VERSION@")
+set(CMAKE_BINARY_DIR         "@CMAKE_BINARY_DIR@")
+set(CMAKE_SOURCE_DIR         "@CMAKE_SOURCE_DIR@")
+set(deb_gen_root             "@deb_gen_root@")
+
+set(STAGING_DIR   "${CMAKE_BINARY_DIR}/staging")
+set(DEB_FILE_NAME "${project_name_underscores}_${PROJECT_VERSION}_amd64.deb")
+
+# Choose build type.
+if(DEFINED BUILD_CONFIG AND NOT BUILD_CONFIG STREQUAL "")
+    # If the script was passed a valid CONFIG, use that.
+    set(target_config "${CONFIG}")
+else()
+    # If CONFIG was not passed, or it was empty, default to release.
+    set(target_config "Release")
+endif()
+
+message(STATUS "Cleaning staging directory: ${STAGING_DIR}")
+file(REMOVE_RECURSE "${STAGING_DIR}")
+file(MAKE_DIRECTORY "${STAGING_DIR}")
+
+# --- 3. Install Payload (The DESTDIR Trick) ---
+# We use the CMake that configured this project to run the install
+message(STATUS "Staging payload to ${STAGING_DIR}...")
+
+# We set the environment variable for DESTDIR locally for this command
+set(ENV{DESTDIR} "${STAGING_DIR}")
+
+execute_process(
+    COMMAND "@CMAKE_COMMAND@" --install "${CMAKE_BINARY_DIR}" --prefix "/usr" --config Debug
+    RESULT_VARIABLE ret
+)
+if(NOT ret EQUAL 0)
+    message(FATAL_ERROR "Install step failed!")
+endif()
+
+# --- 4. Install Metadata (Control Scripts) ---
+# We assume these are sitting in your build folder's dist/deb location
+message(STATUS "Copying control files...")
+set(CONTROL_SRC "${deb_staging_root}")
+set(CONTROL_DST "${STAGING_DIR}/DEBIAN")
+
+file(MAKE_DIRECTORY "${CONTROL_DST}")
+
+# Copy the generated control files (control, postinst, prerm)
+file(GLOB CONTROL_FILES "${CONTROL_SRC}/*")
+file(COPY ${CONTROL_FILES} DESTINATION "${CONTROL_DST}")
+
+# --- 5. Build the Package ---
+message(STATUS "Building ${DEB_FILE_NAME}...")
+
+execute_process(
+    COMMAND dpkg-deb --root-owner-group --build "${STAGING_DIR}" "${DEB_FILE_NAME}"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RESULT_VARIABLE ret
+)
+
+if(NOT ret EQUAL 0)
+    message(FATAL_ERROR "dpkg-deb failed!")
+else()
+    message(STATUS "Package created successfully: ${CMAKE_BINARY_DIR}/${DEB_FILE_NAME}")
+endif()

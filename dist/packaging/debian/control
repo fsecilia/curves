@@ -1,0 +1,13 @@
+Source: curves-mouse-acceleration
+Section: kernel
+Priority: optional
+Maintainer: Frank Secilia <frank.secilia@gmail.com>
+Build-Depends: debhelper (>= 13), cmake, linux-headers-generic | linux-headers-amd64
+, dkms
+Standards-Version: 4.6.0
+Rules-Requires-Root: no
+Package: curves-mouse-acceleration
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Curves Mouse Acceleration Driver
+ Kernel module for custom mouse acceleration curves, managed via DKMS.

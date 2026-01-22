@@ -1,0 +1,26 @@
+<services>
+    <!-- spec where to get tarball and how to version it -->
+    <service name="tar_scm">
+        <!-- repo to pull from -->
+        <param name="scm">git</param>
+        <param name="url">https://github.com/fsecilia/curves.git</param>
+
+        <!-- branch or commitish to pull -->
+        <param name="revision">main</param>
+
+        <!-- generate changelogs by walking tag to tag -->
+        <param name="changesgenerate">enable</param>
+
+        <!-- generate versions with offset from most recent tag -->
+        <param name="versionformat">@PARENT_TAG@+git@TAG_OFFSET@</param>
+    </service>
+
+    <!-- recompress to .tar.gz, debian standard -->
+    <service name="recompress">
+        <param name="file">*.tar</param>
+        <param name="compression">gz</param>
+    </service>
+
+    <!-- write version to .spec and .dsc files -->
+    <service name="set_version"/>
+</services>

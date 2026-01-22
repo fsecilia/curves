@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+# vector off to cmake
+%:
+    dh $@ --buildsystem=cmake
+
+# place generated install scripts after compilation, but before packaging
+override_dh_installdeb:
+    echo "override_dh_installdeb pwd: $(pwd)"
+    cp obj-*/*.postinst debian/
+    cp obj-*/*.prerm    debian/
+    dh_installdeb
+
+# replace generic control file with one generated from actual build parameters
+override_dh_gencontrol:
+    echo "override_dh_gencontrol pwd: $(pwd)"
+    cp obj-*/debian/control debian/control
