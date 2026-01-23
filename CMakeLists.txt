@@ -14,4 +14,4 @@ include(Dependencies)
 include(Installation)
 
 add_subdirectory(src/user/crv/ui)
-add_subdirectory(src/kernel)
+add_subdirectory(src/kernel/crv)
