@@ -1,0 +1,5 @@
+PACKAGE_NAME="@project_name_dashes@"
+PACKAGE_VERSION="@PROJECT_VERSION@"
+BUILT_MODULE_NAME[0]="@project_name_underscores@"
+DEST_MODULE_LOCATION[0]="/updates"
+AUTOINSTALL="yes"
