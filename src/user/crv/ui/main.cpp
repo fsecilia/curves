@@ -9,11 +9,25 @@
 #include <dink/container.hpp>
 #include <QApplication>
 #include <QMessageBox>
+#include <utility>
 
 namespace curves {
 
+struct message_box_params_t
+{
+    QMessageBox::Icon icon  = QMessageBox::Information;
+    QString           title = "Curves Configuration";
+    QString           text  = "Package installed successfully!";
+};
+
 struct default_message_box_t
 {
+    message_box_params_t message_box_params;
+
+    explicit default_message_box_t(message_box_params_t message_box_params) noexcept
+        : message_box_params{std::move(message_box_params)}
+    {}
+
     auto exec() const noexcept -> int
     {
         return QMessageBox{QMessageBox::Information, "Curves Configuration", "Package installed successfully!"}.exec();
@@ -28,6 +42,7 @@ static inline auto main(int argc, char* argv[]) -> int
     QApplication::setApplicationName("curves");
     QApplication::setOrganizationName("");
 
+    // This isn't how you'd normally use a container, but it proves that it works.
     return container.resolve<default_message_box_t>().exec();
 }
 
