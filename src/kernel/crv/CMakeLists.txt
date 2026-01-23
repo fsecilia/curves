@@ -94,6 +94,7 @@ add_library(driver_lib OBJECT
     ${srcs_lib}
     ${hdrs_driver}
 )
+set_target_properties(driver_lib PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(driver_lib PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shim>"
