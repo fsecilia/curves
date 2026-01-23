@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+#DEBHELPER#
+
+if [ "$1" = "configure" ]; then
+    modprobe curves_mouse_acceleration || true
+fi
+
+exit 0
