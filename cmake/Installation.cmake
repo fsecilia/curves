@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
+#
+# This file declares common installation metadata needed by both project installers in src and packaging ops in dist.
+# These are the naming contracts they share to ensure they refer to the same paths and files.
 
 # determine install dirs a configure time
 include(GNUInstallDirs)
