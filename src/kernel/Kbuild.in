@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-2.0+ OR MIT
+# Copyright (c) 2026 Frank Secilia
+#
+# This file runs the actual kernel module build using the native Kbuild.
+
+# final kernel module output, the .ko itself
+obj-m += @kbuild_output@
+
+# flags to build c files
+ccflags-y += -I$(src) -DCRV_DRIVER_VERSION="@PROJECT_VERSION@-@git_hash@"
+
+# c warnings that conflict with c++
+conflicting_c_warnings := designated-init \
+                          implicit-function-declaration \
+                          implicit-int \
+                          incompatible-pointer-types \
+                          missing-prototypes \
+                          no-override-init \
+                          no-pointer-sign \
+                          no-unterminated-string-initialization \
+                          no-unused-const-variable \
+                          strict-prototypes
+
+# c flags that conflict with c++
+#
+# The warnings may be prefixed with either `-W` or `-Werror=`, so use addprefix to filter both.
+conflicted_c_flags := -std=gnu% \
+                      $(addprefix -W, $(conflicting_c_warnings)) \
+                      $(addprefix -Werror=, $(conflicting_c_warnings)) \
+
+# c flags, filtered for conflicts
+filtered_c_flags = $(filter-out $(conflicted_c_flags), $(ccflags-y) $(KBUILD_CFLAGS))
+
+# combine c++ flags
+cxx_flags = $(filtered_c_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
+
+# find relative c++ compiler
+ifeq ($(CXX),)
+    CXX := $(patsubst %cc,%g++,$(patsubst %gcc,%g++,$(patsubst %clang,%clang++,$(CC))))
+endif
+
+# add standard c++ compile rule
+quiet_cmd_cxx_o_cpp = CXX [M]  $@
+cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -c -o $@ $<
+
+# add standard c++ pattern
+$(obj)/%.o: $(src)/%.cpp FORCE
+	$(call if_changed,cxx_o_cpp)
+
+# list of object files to build
+@project_name_underscores@-y := @objs_kbuild@
