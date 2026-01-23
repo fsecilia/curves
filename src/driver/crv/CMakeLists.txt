@@ -189,7 +189,7 @@ foreach(src_rel IN LISTS srcs_shadow_rel)
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${dst_dir}"
         COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs} ${dst}"
         DEPENDS "${src_abs}"
-        COMMENT "Shadowing ${src_rel}"
+        COMMENT "shadowing ${src_rel}"
         VERBATIM
     )
 
@@ -222,7 +222,7 @@ add_custom_command(
     COMMAND "${kbuild_make_command}" modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     DEPENDS "${srcs_shadow_abs}"
-    COMMENT "Building kernel module"
+    COMMENT "building kernel module"
     VERBATIM
     USES_TERMINAL
 )
@@ -238,7 +238,7 @@ add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}")
 add_custom_target(clean_kbuild
     COMMAND "${kbuild_make_command}" clean
     WORKING_DIRECTORY "${kbuild_shadow_root}"
-    COMMENT "Cleaning kernel module"
+    COMMENT "cleaning kernel module"
     VERBATIM
     USES_TERMINAL
 )
