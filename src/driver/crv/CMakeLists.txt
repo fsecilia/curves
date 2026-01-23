@@ -26,7 +26,7 @@ endif()
 # find kernel version for kbuild location
 if("$ENV{KVER}" STREQUAL "")
     execute_process(
-        COMMAND "uname -r"
+        COMMAND uname -r
         OUTPUT_VARIABLE kernel_version
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
@@ -100,8 +100,8 @@ target_include_directories(driver_lib PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shim>"
 )
 target_compile_options(driver_lib PRIVATE
-    "${driver_c_flags}"
-    "$<$<COMPILE_LANGUAGE:CXX>:${driver_cxx_flags}>"
+    ${driver_c_flags}
+    $<$<COMPILE_LANGUAGE:CXX>:${driver_cxx_flags}>
 )
 
 # driver entry points with kernel headers for ide nav
@@ -133,7 +133,7 @@ target_compile_options(driver PRIVATE
 # builds symlink the source next to it and build there to keep its output in the build tree. Since the Kbuild may be
 # part of a shadow build, its is always generated in a shadow subdir.
 
-set(kbuild_shadow_root ${CMAKE_CURRENT_BINARY_DIR}/shadow)
+set(kbuild_shadow_root "${CMAKE_CURRENT_BINARY_DIR}/shadow")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Generated File
@@ -187,7 +187,7 @@ foreach(src_rel IN LISTS srcs_shadow_rel)
     add_custom_command(
         OUTPUT "${dst}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${dst_dir}"
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs} ${dst}"
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs}" "${dst}"
         DEPENDS "${src_abs}"
         COMMENT "shadowing ${src_rel}"
         VERBATIM
@@ -211,15 +211,15 @@ endif()
 # define external make command
 set(kbuild_make_command
     make -sC "${kbuild_root}" ${kbuild_flags} V=1
-    CC="${CMAKE_C_COMPILER}"
-    CXX="${CMAKE_CXX_COMPILER}"
+    "CC=${CMAKE_C_COMPILER}"
+    "CXX=${CMAKE_CXX_COMPILER}"
     "M=${kbuild_shadow_root}"
 )
 
 # run make modules
 add_custom_command(
     OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
-    COMMAND "${kbuild_make_command}" modules
+    COMMAND ${kbuild_make_command} modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     DEPENDS "${srcs_shadow_abs}"
     COMMENT "building kernel module"
