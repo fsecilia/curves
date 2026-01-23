@@ -71,3 +71,5 @@ macro(find_or_bundle NAME VERSION)
         add_subdirectory(external/${NAME} EXCLUDE_FROM_ALL)
     endif()
 endmacro()
+
+find_or_bundle(dink "0.1.0...<1.0.0")
