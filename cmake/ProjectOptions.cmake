@@ -34,10 +34,6 @@ list(APPEND link_options_user_mode)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     list(APPEND compile_options_common
-        -ffp-contract=fast
-        -fno-math-errno
-        -funsafe-math-optimizations
-
         -Wall
         -Werror
         -Wextra
