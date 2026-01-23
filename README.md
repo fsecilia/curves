@@ -14,7 +14,7 @@ The install will place the config binary in `bin`, prep a dkms build of the driv
 
 This project uses a dual-license model:
     - Everything is released under the MIT license. See LICENSE.
-    - Alternatively, the kernel module is also released under GPLv2-or-later. This includes src/kernel.
-    See src/kernel/COPYING.
+    - Alternatively, the kernel module is also released under GPLv2-or-later. This includes src/driver.
+    See src/driver/COPYING.
 
 An SPDX-License-Identifier identifies files appropriately.
