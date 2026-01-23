@@ -12,3 +12,5 @@ include(ProjectPolicies)
 include(ProjectOptions)
 include(Dependencies)
 include(Installation)
+
+add_subdirectory(src/user/crv/ui)
