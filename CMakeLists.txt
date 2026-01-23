@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
+#
+# Root cmake; establishes build environment, global toolchain settings, dependencies, and naming contracts shared
+# between packaging, kernel modules, and user-space targets.
 
 cmake_minimum_required(VERSION 3.28)
 project(curves VERSION 0.0.1)
