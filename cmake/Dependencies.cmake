@@ -1,5 +1,12 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
+#
+# This file describes how to find external dependencies.
+#
+# For bundled deps, it prefers the host version when it is recent enough, falling back to the vendored version
+# otherwise. This can be controlled both globally or per dep:
+#   - Set USE_HOST_DEPS to True to require all host deps.
+#   - Set USE_HOST_${NAME} to True to require a specific host dep.
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Host Dependencies
