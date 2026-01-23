@@ -227,7 +227,7 @@ add_custom_command(
 )
 
 # kick off kbuild
-add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}"
+add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Clean
