@@ -73,3 +73,4 @@ macro(find_or_bundle NAME VERSION)
 endmacro()
 
 find_or_bundle(dink "0.1.0...<1.0.0")
+find_or_bundle(tomlplusplus "3.4.0...<4.0.0")
