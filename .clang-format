@@ -1,0 +1,87 @@
+---
+BasedOnStyle: LLVM
+
+# indentation and width
+ColumnLimit: 120
+IndentWidth: 4
+TabWidth: 4
+AccessModifierOffset: -4
+IndentCaseLabels: true
+
+# alignment
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: None
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 1
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+
+# brace wrapping
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# breaking and spacing
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLambdasOnASingleLine: All
+BreakBeforeBinaryOperators: All
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+
+# includes
+IncludeCategories:
+  - Regex: '"'
+    Priority: 1
+  - Regex: '<crv/(bin|lib|test).hpp>'
+    Priority: 2
+  - Regex: '<crv/'
+    Priority: 3
+  - Regex: '/(bin|lib|test).hpp>'
+    Priority: 4
+  - Regex: '<dink/'
+    Priority: 5
+  - Regex: '.*'
+    Priority: 63
+IncludeIsMainRegex: '(_test|_integration_test)?$'
+
+# misc
+CommentPragmas: "^ IWYU pragma:"
+ForEachMacros:
+  - foreach
+  - Q_FOREACH
+  - BOOST_FOREACH
+IfMacros:
+  - KJ_IF_MAYBE
+StatementAttributeLikeMacros:
+  - Q_EMIT
+StatementMacros:
+  - Q_UNUSED
+  - QT_REQUIRE_VERSION
+WhitespaceSensitiveMacros:
+  - BOOST_PP_STRINGIZE
+  - CF_SWIFT_NAME
+  - NS_SWIFT_NAME
+  - PP_STRINGIZE
+  - STRINGIZE
