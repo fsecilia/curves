@@ -5,7 +5,9 @@ cmake_minimum_required(VERSION 3.28)
 project(curves VERSION 0.0.1)
 
 # Don't repeat libraries on build command lines.
-cmake_policy(SET CMP0156 NEW)
+if (POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Dependencies
