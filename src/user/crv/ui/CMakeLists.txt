@@ -18,7 +18,7 @@ set(CMAKE_AUTORCC ON)
 qt_add_executable(ui main.cpp)
 set_target_properties(ui PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
 target_include_directories(ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ui PRIVATE Qt6::Widgets)
+target_link_libraries(ui PRIVATE dink Qt6::Widgets)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(ui PRIVATE
