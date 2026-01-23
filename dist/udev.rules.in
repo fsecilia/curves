@@ -1,0 +1,1 @@
+SUBSYSTEM=="misc", KERNEL=="@project_name_dashes@", MODE="0660", GROUP="input", TAG+="uaccess"
