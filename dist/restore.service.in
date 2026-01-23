@@ -1,0 +1,13 @@
+[Unit]
+Description=Load Mouse Acceleration Configuration
+Requires=dev-@project_name_dashes@.device
+After=dev-@project_name_dashes@.device
+
+[Service]
+Type=oneshot
+ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/@project_name_dashes@-config --restore-config
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
