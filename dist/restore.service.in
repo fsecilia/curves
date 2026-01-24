@@ -1,5 +1,5 @@
 [Unit]
-Description=Load Mouse Acceleration Configuration
+Description=Restore @project_name_dashes@ configuration
 Requires=dev-@project_name_dashes@.device
 After=dev-@project_name_dashes@.device
 
