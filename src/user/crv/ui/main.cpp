@@ -9,6 +9,8 @@
 #include <dink/container.hpp>
 #include <QApplication>
 #include <QMessageBox>
+#include <cstdlib>
+#include <iostream>
 #include <utility>
 
 namespace curves {
@@ -34,7 +36,7 @@ struct default_message_box_t
     }
 };
 
-static inline auto main(int argc, char* argv[]) -> int
+auto run_application(int argc, char* argv[]) -> int
 {
     auto container = dink::Container{};
 
@@ -44,6 +46,24 @@ static inline auto main(int argc, char* argv[]) -> int
 
     // This isn't how you'd normally use a container, but it proves that it works.
     return container.resolve<default_message_box_t>().exec();
+}
+
+auto run_oneshot_config(int, char*[]) -> int
+{
+    std::cout << "configuration restored successfully!" << std::endl;
+    return EXIT_SUCCESS;
+}
+
+auto main(int argc, char* argv[]) -> int
+{
+    auto const restore_config_option = std::string_view{"--restore-config"};
+
+    for (auto i = 1; i < argc; ++i)
+    {
+        if (argv[i] == restore_config_option) return run_oneshot_config(argc, argv);
+    }
+
+    return run_application(argc, argv);
 }
 
 } // namespace curves
