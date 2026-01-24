@@ -7,6 +7,10 @@
 
 set(dist_gen_root "${CMAKE_CURRENT_BINARY_DIR}")
 
+# Get configurable target paths to system executables.
+set(modprobe_path "${CMAKE_INSTALL_FULL_SBINDIR}/modprobe" CACHE STRING "path to modprobe")
+set(udevadm_path "${CMAKE_INSTALL_FULL_BINDIR}/udevadm" CACHE STRING "path to udevadm")
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Generated Files
 # ---------------------------------------------------------------------------------------------------------------------
