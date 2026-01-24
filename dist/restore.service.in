@@ -1,7 +1,10 @@
 [Unit]
 Description=Restore @project_name_dashes@ configuration
-Requires=dev-@project_name_dashes@.device
-After=dev-@project_name_dashes@.device
+
+# When development gets far enough along that the driver creates its misc character device, uncomment these to wait
+# for it.
+# BindsTo=/dev/@project_name_dashes@
+# After=/dev/@project_name_dashes@
 
 [Service]
 Type=oneshot
