@@ -9,18 +9,12 @@ UPSTREAM_VERSION := $(shell dpkg-parsechangelog -S Version | sed 's/-[^-]*$$//')
 override_dh_auto_configure:
 	dh_auto_configure -- -DCMAKE_BUILD_TYPE=Release
 
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/tmp
+
 override_dh_installsystemd:
 	dh_installsystemd --name=curves-mouse-acceleration-restore
 
-override_dh_install:
-	dh_install
-	mkdir -p debian/$(PACKAGE)/usr/src/$(PACKAGE)-$(VERSION)
-	rsync -a . debian/$(PACKAGE)/usr/src/$(PACKAGE)-$(VERSION) \
-		--exclude debian \
-		--exclude .git \
-		--exclude build \
-		--exclude .gitignore
-        
 override_dh_dkms:
 	dh_dkms -- debian/tmp/usr/src/curves-mouse-acceleration-$(UPSTREAM_VERSION)/dkms.conf
 
