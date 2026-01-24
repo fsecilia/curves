@@ -5,6 +5,7 @@ After=dev-@project_name_dashes@.device
 
 [Service]
 Type=oneshot
+RemainAfterExit=yes
 
 ExecStartPre=@modprobe_path@ @project_name_underscores@
 ExecStartPre=@udevadm_path@ settle
