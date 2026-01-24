@@ -10,6 +10,8 @@ BuildRequires:  cmake
 BuildRequires:  dkms
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
+BuildRequires:  pkgconfig(Qt6Core)
+BuildRequires:  pkgconfig(Qt6Gui)
 BuildRequires:  systemd
 BuildRequires:  systemd-rpm-macros
 
