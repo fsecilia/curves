@@ -13,5 +13,6 @@ include(ProjectOptions)
 include(Dependencies)
 include(Installation)
 
-add_subdirectory(src/user/crv/ui)
+add_subdirectory(dist)
 add_subdirectory(src/driver/crv)
+add_subdirectory(src/user/crv/ui)
