@@ -27,3 +27,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-unsafe-buffer-usage-in-libc-call
     )
 endif()
+
+install(TARGETS ui RUNTIME
+    DESTINATION bin
+    COMPONENT ui
+)
