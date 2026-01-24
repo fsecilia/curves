@@ -1,0 +1,5 @@
+usr/bin/curves-mouse-acceleration-config
+usr/lib/modules-load.d/curves-mouse-acceleration.conf
+usr/lib/systemd/system/curves-mouse-acceleration-restore.service
+usr/lib/udev/rules.d/99-curves-mouse-acceleration.rules
+usr/src/curves-mouse-acceleration-*
