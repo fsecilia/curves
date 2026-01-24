@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
-PACKAGE := curves-mouse-acceleration
-VERSION := $(shell dpkg-parsechangelog -S Version)
+# CMake stages to a path without the revision suffix. Strip that so dh_dkms finds the right path and config.
+UPSTREAM_VERSION := $(shell dpkg-parsechangelog -S Version | sed 's/-[^-]*$$//')
 
 %:
 	dh $@ --with dkms
@@ -20,5 +20,8 @@ override_dh_install:
 		--exclude .git \
 		--exclude build \
 		--exclude .gitignore
+        
+override_dh_dkms:
+	dh_dkms -- debian/tmp/usr/src/curves-mouse-acceleration-$(UPSTREAM_VERSION)/dkms.conf
 
 override_dh_auto_test:
