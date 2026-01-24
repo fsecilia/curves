@@ -155,7 +155,7 @@ list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")
 list(JOIN objs_kbuild " " objs_kbuild)
 
 # generate and install
-set(kbuild Kbuild)
+set(kbuild "Kbuild")
 set(kbuild_output "${project_name_underscores}.o")
 set(kbuild_gen "${kbuild_shadow_root}/${kbuild}")
 configure_file("${kbuild}.in" "${kbuild_gen}" @ONLY)
