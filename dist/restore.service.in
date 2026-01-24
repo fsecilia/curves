@@ -5,7 +5,13 @@ After=dev-@project_name_dashes@.device
 
 [Service]
 Type=oneshot
+
+ExecStartPre=@modprobe_path@ @project_name_underscores@
+ExecStartPre=@udevadm_path@ settle
 ExecStart=@CMAKE_INSTALL_FULL_BINDIR@/@project_name_dashes@-config --restore-config
+
+ExecStop=@modprobe_path@ -r @project_name_underscores@
+
 ProtectSystem=full
 ProtectHome=true
 

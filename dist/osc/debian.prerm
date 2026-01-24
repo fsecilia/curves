@@ -1,8 +1,0 @@
-#!/bin/sh
-set -e
-
-rmmod curves_mouse_acceleration 2>/dev/null || true
-
-#DEBHELPER#
-
-exit 0
