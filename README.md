@@ -2,7 +2,7 @@
 
 Control Mouse Sensitivity with Speed
 
-Curves is a kernel-mode input handler/filter driver that controls your mouse sensitivity by how fast you move it. When moving the mouse slowly, it has low sensitivity. When moving it quickly, it has high sensitivity. The transition between them is smooth. This gives you high precision at low speed while still being able to cover 3 monitors without lifting your hand. The feeling is unique, but intuitive.
+Curves is a kernel-mode input handler that controls your mouse sensitivity with mouse velocity. When moving the mouse slowly, it has low sensitivity. When moving it quickly, it has high sensitivity. The transition between them is smooth. This gives high precision at low speed while still being able to cover 3 monitors using only a few inches of desk space. The feeling is unique, but intuitive.
 
 ## Building
 
