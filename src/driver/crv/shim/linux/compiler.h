@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*!
     \file
-    \brief Shim header for compiler.h
+    \brief shim header for linux/compiler.h
 
     \copyright Copyright (C) 2026 Frank Secilia
 */

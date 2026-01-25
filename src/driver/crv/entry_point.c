@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*!
     \file
-    \brief Curves kernel module entry point.
+    \brief kernel module entry point
 
     \copyright Copyright (C) 2026 Frank Secilia
 */

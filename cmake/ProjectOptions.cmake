@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# This file declares compile and link options and an interface library containing them that other targets can link to.
+# declares compile and link options and an interface library containing them
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Standardized Build Settings

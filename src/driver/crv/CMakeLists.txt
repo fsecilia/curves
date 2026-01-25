@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# Kernel Driver Build Module
+# kernel driver build
 #
-# This module serves two distinct purposes:
+# This file serves two distinct purposes:
 #   - Symlinks source to build tree and invokes Kbuild for testing local builds.
 #   - Installs source and Kbuild to dkms root.
 

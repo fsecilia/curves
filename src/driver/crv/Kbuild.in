@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# This file runs the actual kernel module build using the native Kbuild.
+# runs the actual kernel module build using the native Kbuild
 
 # final kernel module output, the .ko itself
 obj-m += @kbuild_output@

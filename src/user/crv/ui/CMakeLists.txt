@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# This file contains the qt6-specific ui.
+# contains the qt6-specific ui
 
 # Let qt know not to expect repeated libraries on build command lines.
 set(QT_FORCE_CMP0156_TO_VALUE NEW)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief Config app qt entry point.
+  \brief config app qt entry point
 
   \copyright Copyright (C) 2026 Frank Secilia
 */

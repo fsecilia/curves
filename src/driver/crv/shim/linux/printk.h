@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 /*!
     \file
-    \brief Shim header for printk.h.
+    \brief shim header for linux/printk.h
 
     \copyright Copyright (C) 2026 Frank Secilia
 */
