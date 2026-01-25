@@ -17,5 +17,5 @@ include(KernelManifest)
 include(Installation)
 
 add_subdirectory(dist)
-add_subdirectory(src/crv/driver)
+add_subdirectory(src/crv/kernel)
 add_subdirectory(src/crv/ui)

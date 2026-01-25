@@ -8,7 +8,7 @@ Curves is a kernel-mode input handler that controls your mouse sensitivity with 
 
 The build is standard cmake. Presets for debug and release using clang and gcc are provided. The build directory defaults to ./builds, but shadow builds are supported, as is overriding the path in CMakeUserPresets.json.
 
-The install will place the config binary in `bin`, prep a dkms build of the driver in `usr/src`, place supporting udev rules in `lib/udev/rules.d`, systemd integration in `lib/systemd/system`, and the initial module load in `lib/modules-load.d`, all relative to `CMAKE_INSTALL_PREFIX`. Packages can be staged using DESTDIR.
+The install will place the config binary in `bin`, prep a dkms build of the kernel module in `usr/src`, place supporting udev rules in `lib/udev/rules.d`, systemd integration in `lib/systemd/system`, and the initial module load in `lib/modules-load.d`, all relative to `CMAKE_INSTALL_PREFIX`. Packages can be staged using DESTDIR.
 
 ## Packages
 

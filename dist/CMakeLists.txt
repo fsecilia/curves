@@ -25,7 +25,7 @@ set(load_module "load-module.conf")
 set(load_module_gen "${dist_gen_root}/${project_name_dashes}.conf")
 configure_file("${load_module}.in" "${load_module_gen}" @ONLY)
 
-# systemd one-shot at boot time restore to configure driver
+# systemd one-shot at boot time restore to configure kernel module
 set(restore_service "restore.service")
 set(restore_service_gen "${dist_gen_root}/${project_name_dashes}-restore.service")
 configure_file("${restore_service}.in" "${restore_service_gen}" @ONLY)
@@ -49,4 +49,3 @@ install(FILES "${dkms_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 install(FILES "${load_module_gen}" DESTINATION "${load_module_dst_dir}" COMPONENT dkms)
 install(FILES "${udev_gen}" DESTINATION "${udev_dst_dir}" COMPONENT dkms)
 install(FILES "${restore_service_gen}" DESTINATION "${restore_service_dst}" COMPONENT dkms)
-

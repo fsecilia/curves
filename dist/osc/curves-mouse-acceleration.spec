@@ -1,7 +1,7 @@
 Name:           curves-mouse-acceleration
 Version:        0.0.0
 Release:        0
-Summary:        Curves mouse acceleration driver
+Summary:        Curves mouse acceleration input handler
 License:        MIT AND (GPL-2.0-or-later OR MIT)
 URL:            https://github.com/fsecilia/curves
 Source0:        %{name}-%{version}.tar.gz

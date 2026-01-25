@@ -1,7 +1,7 @@
 [Unit]
 Description=Restore @project_name_dashes@ configuration
 
-# When development gets far enough along that the driver creates its misc character device, uncomment these to wait
+# When development gets far enough along that the kernel module creates its misc character device, uncomment these to
 # for it.
 # BindsTo=/dev/@project_name_dashes@
 # After=/dev/@project_name_dashes@

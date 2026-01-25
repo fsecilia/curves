@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# kernel driver build
+# kernel module build
 #
 # This file serves two distinct purposes:
 #   - Symlinks source to build tree and invokes Kbuild for testing local builds.
@@ -40,20 +40,20 @@ set(kbuild_root "/lib/modules/${kernel_version}/build")
 # =====================================================================================================================
 # Files are categorized by:
 #   - type: headers vs source, because headers can't go in Kbuild source lists
-#   - scope: driver-only, library-only, or shared
+#   - scope: kernel-only, library-only, or shared
 #
 # These are kept separate and combined rather than filtered.
 
 # headers
-set(hdrs_driver
+set(hdrs_kernel
 )
 
 # shared source files
 set(srcs_shared
 )
 
-# driver-only source
-set(srcs_driver
+# kernel-only source
+set(srcs_kernel
     entry_point.c
 )
 
@@ -69,12 +69,12 @@ set(srcs_lib
 # =====================================================================================================================
 
 # kernel-compatible c flags
-list(APPEND driver_c_flags
+list(APPEND kernel_c_flags
     -ffreestanding
 )
 
 # kernel-compatible c++ flags
-list(APPEND driver_cxx_flags ${compile_options_common}
+list(APPEND kernel_cxx_flags ${compile_options_common}
     -fno-builtin
     -fno-exceptions
     -fno-rtti
@@ -89,31 +89,31 @@ list(APPEND driver_cxx_flags ${compile_options_common}
 # =====================================================================================================================
 
 # bare object library containing shared files
-add_library(driver_lib OBJECT
+add_library(kernel_lib OBJECT
     ${srcs_shared}
     ${srcs_lib}
-    ${hdrs_driver}
+    ${hdrs_kernel}
 )
-set_target_properties(driver_lib PROPERTIES LINKER_LANGUAGE CXX)
-target_include_directories(driver_lib PUBLIC
+set_target_properties(kernel_lib PROPERTIES LINKER_LANGUAGE CXX)
+target_include_directories(kernel_lib PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shim>"
 )
-target_compile_options(driver_lib PRIVATE
-    ${driver_c_flags}
-    $<$<COMPILE_LANGUAGE:CXX>:${driver_cxx_flags}>
+target_compile_options(kernel_lib PRIVATE
+    ${kernel_c_flags}
+    $<$<COMPILE_LANGUAGE:CXX>:${kernel_cxx_flags}>
 )
 
-# driver entry points with kernel headers for ide nav
-add_library(driver OBJECT EXCLUDE_FROM_ALL ${srcs_driver})
-target_link_libraries(driver PRIVATE driver_lib)
-add_dependencies(driver kbuild)
-target_compile_definitions(driver PRIVATE
+# fake library for kernel-only source and headers to support ide nav
+add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${srcs_kernel})
+target_link_libraries(kernel_nav PRIVATE kernel_lib)
+add_dependencies(kernel_nav kbuild)
+target_compile_definitions(kernel_nav PRIVATE
     __KERNEL__
     MODULE
     "KBUILD_MODNAME=${project_name_underscores}"
 )
-target_include_directories(driver PRIVATE
+target_include_directories(kernel_nav PRIVATE
     "${kbuild_root}/include"
     "${kbuild_root}/arch/x86/include"
     "${kbuild_root}/arch/x86/include/generated"
@@ -121,7 +121,7 @@ target_include_directories(driver PRIVATE
     "${kbuild_root}/arch/x86/include/uapi"
     "${kbuild_root}/include/generated/uapi"
 )
-target_compile_options(driver PRIVATE
+target_compile_options(kernel_nav PRIVATE
     -include "${kbuild_root}/include/linux/kconfig.h"
 )
 
@@ -140,17 +140,17 @@ set(kbuild_shadow_root "${CMAKE_CURRENT_BINARY_DIR}/shadow")
 # ---------------------------------------------------------------------------------------------------------------------
 
 # extract c++ standard flag from cmake target
-get_target_property(driver_lib_std_version driver_lib CXX_STANDARD)
-set(driver_lib_std_version_flag "${CMAKE_CXX${driver_lib_std_version}_STANDARD_COMPILE_OPTION}")
+get_target_property(kernel_lib_std_version kernel_lib CXX_STANDARD)
+set(kernel_lib_std_version_flag "${CMAKE_CXX${kernel_lib_std_version}_STANDARD_COMPILE_OPTION}")
 
 # format flags for Kbuild
-set(kbuild_c_flags ${driver_c_flags})
-set(kbuild_cxx_flags ${driver_lib_std_version_flag} ${driver_cxx_flags})
+set(kbuild_c_flags ${kernel_c_flags})
+set(kbuild_cxx_flags ${kernel_lib_std_version_flag} ${kernel_cxx_flags})
 list(JOIN kbuild_c_flags " " kbuild_c_flags)
 list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 
 # compose object file lists
-set(objs_kbuild ${srcs_shared} ${srcs_driver})
+set(objs_kbuild ${srcs_shared} ${srcs_kernel})
 list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")
 list(JOIN objs_kbuild " " objs_kbuild)
 
@@ -167,9 +167,9 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 
 # collect files to shadow
 set(srcs_shadow_rel
-    ${hdrs_driver}
+    ${hdrs_kernel}
     ${srcs_shared}
-    ${srcs_driver}
+    ${srcs_kernel}
     Makefile
 )
 
