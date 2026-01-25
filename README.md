@@ -20,7 +20,7 @@ Prebuilt packages are available from [OBS](https://download.opensuse.org/reposit
 
 This project uses a dual-license model:
     - Everything is released under the MIT license. See LICENSE.
-    - Alternatively, the kernel module is also released under GPLv2-or-later. This includes src/driver.
-    See src/driver/COPYING.
+    - Alternatively, the kernel module is also released under GPLv2-or-later.
+    See COPYING.
 
 An SPDX-License-Identifier identifies files appropriately.

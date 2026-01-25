@@ -67,7 +67,7 @@ dkms remove -m %{name} -v %{version} --all --rpm_safe_upgrade || :
 
 %files
 %license LICENSE
-%license src/driver/crv/COPYING
+%license COPYING
 %{_bindir}/curves-mouse-acceleration-config
 %{_modulesloaddir}/curves-mouse-acceleration.conf
 %{_prefix}/src/%{name}-%{version}/
