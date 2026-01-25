@@ -53,6 +53,11 @@ udevadm control --reload || :
 
 %preun
 %systemd_preun curves-mouse-acceleration-restore.service
+
+if [ $1 -eq 0 ]; then
+    %{_sbindir}/modprobe -r curves_mouse_acceleration >/dev/null 2>&1 || :
+fi
+
 dkms remove -m %{name} -v %{version} --all --rpm_safe_upgrade || :
 
 %postun
