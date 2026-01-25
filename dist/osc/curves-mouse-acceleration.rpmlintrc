@@ -1,0 +1,9 @@
+# dkms packages must install source code to /usr/src
+addFilter("filelist-forbidden-fhs23 /usr/src/.*")
+addFilter("devel-file-in-non-devel-package .*")
+
+# dkms packages must depend on kernel headers
+addFilter("devel-dependency kernel-devel")
+
+# use standard systemd macros, not SUSE-specific ones
+addFilter("systemd-service-without-service_.*")
