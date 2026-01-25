@@ -41,28 +41,25 @@ set(kbuild_root "/lib/modules/${kernel_version}/build")
 # Files are categorized by:
 #   - type: headers vs source, because headers can't go in Kbuild source lists
 #   - scope: kernel-only, library-only, or shared
-#
-# These are kept separate and combined rather than filtered.
 
-# headers
+get_property(manifest_files GLOBAL PROPERTY kernel_manifest)
+
+# kernel-only headers must be symlinked
 set(hdrs_kernel
 )
 
-# shared source files
-set(srcs_shared
-)
-
-# kernel-only source
+# kernel-only source must be symlinked and passed to kbuild
 set(srcs_kernel
     entry_point.c
 )
 
-# library-only source
-set(srcs_lib
-    shim/linux/compiler.h
-    shim/linux/printk.h
-    shim/linux/types.h
-)
+# shared headers must be symlinked and included in user-mode library
+set(hdrs_shared ${manifest_files})
+list(FILTER hdrs_shared INCLUDE REGEX "\\.(h|hpp)$")
+
+# shared source must be symlinked, passed to kbuild, and included in user-mode library
+set(srcs_shared ${manifest_files})
+list(FILTER srcs_shared INCLUDE REGEX "\\.(c|cpp)$")
 
 # =====================================================================================================================
 # Build Configuration
@@ -88,11 +85,14 @@ list(APPEND kernel_cxx_flags ${compile_options_common}
 # Build Targets
 # =====================================================================================================================
 
-# bare object library containing shared files
+# bare user-mode object library containing shared source
 add_library(kernel_lib OBJECT
     ${srcs_shared}
-    ${srcs_lib}
-    ${hdrs_kernel}
+    ${hdrs_shared}
+
+    shim/linux/compiler.h
+    shim/linux/printk.h
+    shim/linux/types.h
 )
 set_target_properties(kernel_lib PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(kernel_lib PUBLIC
@@ -105,7 +105,7 @@ target_compile_options(kernel_lib PRIVATE
 )
 
 # fake library for kernel-only source and headers to support ide nav
-add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${srcs_kernel})
+add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${hdrs_kernel} ${srcs_kernel})
 target_link_libraries(kernel_nav PRIVATE kernel_lib)
 add_dependencies(kernel_nav kbuild)
 target_compile_definitions(kernel_nav PRIVATE
@@ -150,7 +150,7 @@ list(JOIN kbuild_c_flags " " kbuild_c_flags)
 list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 
 # compose object file lists
-set(objs_kbuild ${srcs_shared} ${srcs_kernel})
+set(objs_kbuild ${srcs_kernel} ${srcs_shared})
 list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")
 list(JOIN objs_kbuild " " objs_kbuild)
 
@@ -168,8 +168,9 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # collect files to shadow
 set(srcs_shadow_rel
     ${hdrs_kernel}
-    ${srcs_shared}
     ${srcs_kernel}
+    ${hdrs_shared}
+    ${srcs_shared}
     Makefile
 )
 
