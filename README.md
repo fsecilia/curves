@@ -12,7 +12,7 @@ The install will place the config binary in `bin`, prep a dkms build of the driv
 
 ## Packages
 
-Prebuilt packages are available from [OBS](https://build.opensuse.org/package/show/home:fsecilia/curves).
+Prebuilt packages are available from [OBS](https://download.opensuse.org/repositories/home:/fsecilia/).
 
 [![build result](https://build.opensuse.org/projects/home:fsecilia/packages/curves/badge.svg?type=default)](https://build.opensuse.org/package/show/home:fsecilia/curves)
 
