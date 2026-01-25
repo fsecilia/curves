@@ -16,6 +16,8 @@ BuildRequires:  systemd-rpm-macros
 
 Requires:       dkms
 Requires:       kernel-devel
+Requires:       gcc
+Requires:       gcc-c++
 Requires:       make
 Requires:       systemd
 Requires:       udev
