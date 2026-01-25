@@ -236,7 +236,7 @@ add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}")
 
 # run make clean
 add_custom_target(clean_kbuild
-    COMMAND "${kbuild_make_command}" clean
+    COMMAND ${kbuild_make_command} clean
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     COMMENT "cleaning kernel module"
     VERBATIM
