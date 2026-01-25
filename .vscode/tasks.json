@@ -1,0 +1,112 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "all"
+            ],
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc",
+        },
+        {
+            "label": "kbuild",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "kbuild"
+            ],
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "all + kbuild",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "all",
+                "kbuild"
+            ],
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "clean",
+            "type": "cmake",
+            "command": "clean",
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "group": "clean",
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "clean kbuild",
+            "type": "cmake",
+            "command": "build",
+            "targets": [
+                "clean_kbuild"
+            ],
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "group": "clean",
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "clean all",
+            "dependsOn": [
+                "clean kbuild",
+                "clean"
+            ],
+            "dependsOrder": "sequence",
+            "presentation": {
+                "clear": false,
+                "echo": false,
+                "focus": false,
+                "group": "clean",
+                "panel": "shared",
+                "reveal": "always",
+                "showReuseMessage": false
+            },
+            "problemMatcher": "$gcc"
+        }
+    ]
+}
