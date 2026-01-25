@@ -49,12 +49,12 @@ dkms add -m %{name} -v %{version} --rpm_safe_upgrade || :
 dkms build -m %{name} -v %{version} || :
 dkms install -m %{name} -v %{version} || :
 
-%systemd_post curves-mouse-acceleration-restore.service
+%systemd_post %{name}-restore.service
 
 udevadm control --reload || :
 
 %preun
-%systemd_preun curves-mouse-acceleration-restore.service
+%systemd_preun %{name}-restore.service
 
 if [ $1 -eq 0 ]; then
     %{_sbindir}/modprobe -r curves_mouse_acceleration >/dev/null 2>&1 || :
@@ -63,13 +63,13 @@ fi
 dkms remove -m %{name} -v %{version} --all --rpm_safe_upgrade || :
 
 %postun
-%systemd_postun_with_restart curves-mouse-acceleration-restore.service
+%systemd_postun_with_restart %{name}-restore.service
 
 %files
 %license LICENSE
 %license COPYING
-%{_bindir}/curves-mouse-acceleration-config
-%{_modulesloaddir}/curves-mouse-acceleration.conf
+%{_bindir}/%{name}-config
+%{_modulesloaddir}/%{name}.conf
 %{_prefix}/src/%{name}-%{version}/
-%{_udevrulesdir}/99-curves-mouse-acceleration.rules
-%{_unitdir}/curves-mouse-acceleration-restore.service
+%{_udevrulesdir}/99-%{name}.rules
+%{_unitdir}/%{name}-restore.service
