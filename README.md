@@ -18,9 +18,10 @@ Prebuilt packages are available from [OBS](https://download.opensuse.org/reposit
 
 ## Licensing
 
-This project uses a dual-license model:
-    - Everything is released under the MIT license. See LICENSE.
-    - Alternatively, the kernel module is also released under GPLv2-or-later.
-    See COPYING.
+This repository contains code available under the MIT License (see LICENSE) or dual-licensed as MIT/GPL-2.0-or-later
+(see COPYING).
+ - All code exclusive to user mode, such as the config app and libraries, are distributed strictly as MIT.
+ - All code used in the kernel module build, including code exclusive to the kernel module and code shared between
+   the kernel module and user mode, are distributed as dual MIT/GPL. The kernel module binary is GPL-compliant.
 
-An SPDX-License-Identifier identifies files appropriately.
+Individual source files contain SPDX-License-Identifier tag indicating their specific license.
