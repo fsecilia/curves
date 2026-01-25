@@ -13,6 +13,7 @@ BuildRequires:  gcc-c++
 BuildRequires:  pkgconfig(Qt6Core)
 BuildRequires:  pkgconfig(Qt6Gui)
 BuildRequires:  pkgconfig(Qt6Widgets)
+BuildRequires:  systemd
 BuildRequires:  systemd-rpm-macros
 
 Requires:       dkms
