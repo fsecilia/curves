@@ -13,6 +13,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectPolicies)
 include(ProjectOptions)
 include(Dependencies)
+include(KernelManifest)
 include(Installation)
 
 add_subdirectory(dist)
