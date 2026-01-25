@@ -7,3 +7,6 @@ addFilter("devel-dependency kernel-devel")
 
 # use standard systemd macros, not SUSE-specific ones
 addFilter("systemd-service-without-service_.*")
+
+# binaries are initially unstripped
+addFilter("unstripped-binary-or-object .*")
