@@ -10,6 +10,12 @@ The build is standard cmake. Presets for debug and release using clang and gcc a
 
 The install will place the config binary in `bin`, prep a dkms build of the driver in `usr/src`, place supporting udev rules in `lib/udev/rules.d`, systemd integration in `lib/systemd/system`, and the initial module load in `lib/modules-load.d`, all relative to `CMAKE_INSTALL_PREFIX`. Packages can be staged using DESTDIR.
 
+## Packages
+
+Prebuilt packages are available from [OBS](https://build.opensuse.org/package/show/home:fsecilia/curves).
+
+[![build result](https://build.opensuse.org/projects/home:fsecilia/packages/curves/badge.svg?type=default)](https://build.opensuse.org/package/show/home:fsecilia/curves)
+
 ## Licensing
 
 This project uses a dual-license model:
