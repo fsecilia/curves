@@ -2,7 +2,7 @@ Name:           curves-mouse-acceleration
 Version:        0.0.0
 Release:        0
 Summary:        Curves mouse acceleration driver
-License:        MIT
+License:        MIT AND (GPL-2.0-or-later OR MIT)
 URL:            https://github.com/fsecilia/curves
 Source0:        %{name}-%{version}.tar.gz
 
@@ -58,6 +58,7 @@ dkms remove -m %{name} -v %{version} --all --rpm_safe_upgrade || :
 
 %files
 %license LICENSE
+%license src/driver/crv/COPYING
 %{_bindir}/curves-mouse-acceleration-config
 %{_modulesloaddir}/curves-mouse-acceleration.conf
 %{_prefix}/src/%{name}-%{version}/
