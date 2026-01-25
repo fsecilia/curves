@@ -36,8 +36,8 @@ Kernel module for custom mouse acceleration curves, managed via DKMS.
 cmake -B build \
     -DCMAKE_INSTALL_PREFIX=%{_prefix} \
     -DCMAKE_BUILD_TYPE=Release \
-    -DMODPROBE_PATH=%{_sbindir}/modprobe \
-    -DUDEVADM_PATH=%{_bindir}/udevadm
+    -Dmodprobe_path=%{_sbindir}/modprobe \
+    -Dudevadm_path=%{_bindir}/udevadm
 
 cmake --build build
 
