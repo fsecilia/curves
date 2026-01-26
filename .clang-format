@@ -7,6 +7,8 @@ IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4
 IndentCaseLabels: true
+IndentRequiresClause: false
+IndentWrappedFunctionNames: false
 
 # alignment
 AlignAfterOpenBracket: Align
@@ -20,6 +22,7 @@ AlignTrailingComments:
   Kind: Always
   OverEmptyLines: 1
 PointerAlignment: Left
+QualifierAlignment: Right
 ReferenceAlignment: Pointer
 
 # brace wrapping
@@ -75,6 +78,14 @@ ForEachMacros:
   - BOOST_FOREACH
 IfMacros:
   - KJ_IF_MAYBE
+InsertNewlineAtEOF: true
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: true
+  AtStartOfFile: true
+SortIncludes: CaseSensitive
+SortUsingDeclarations: LexicographicNumeric
+Standard: Latest
 StatementAttributeLikeMacros:
   - Q_EMIT
 StatementMacros:
