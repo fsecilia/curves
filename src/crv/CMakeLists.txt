@@ -11,6 +11,9 @@ target_sources(lib PRIVATE
     lib.cpp
     math/int_cast.hpp
 )
+target_sources_kernel(lib
+    math/fixed.hpp
+)
 target_link_libraries(lib user_mode_kernel_shim)
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
 set_target_properties(lib
@@ -22,6 +25,16 @@ set_target_properties(lib
 
 if (enable_testing)
     add_subdirectory(test)
+
+    add_executable(unit_tests)
+    target_sources(unit_tests PRIVATE
+        math/fixed_test.cpp
+    )
+    target_link_libraries(unit_tests PUBLIC
+        lib
+        test
+    )
+    gtest_discover_tests(unit_tests)
 endif()
 
 add_subdirectory(kernel)
