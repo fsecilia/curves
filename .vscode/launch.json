@@ -6,9 +6,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "--restore-config"
-            ],
+            "args": [],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "CMake: build"
         }
