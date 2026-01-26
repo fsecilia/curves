@@ -52,6 +52,8 @@ template <typename value_type, int_t t_frac_bits> struct fixed_t
         : fixed_t{convert_value<other_value_t, other_frac_bits>(other.value)}
     {}
 
+    explicit constexpr operator bool() const noexcept { return !!value; }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Comparison
     // ----------------------------------------------------------------------------------------------------------------

@@ -82,6 +82,16 @@ static_assert(fixed_t<int8_t, 5>{fixed_t<int16_t, 7>{40}}.value == 10, "decrease
 // decrease precision and narrow type requiring conversion at wider range
 static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64, "decrease precision and narrow late failed");
 
+// --------------------------------------------------------------------------------------------------------------------
+// Bool
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(fixed_t<int8_t, 5>{-128}, "operator bool -128 failed");
+static_assert(fixed_t<int8_t, 5>{-1}, "operator bool -1 failed");
+static_assert(!fixed_t<int8_t, 5>{0}, "operator bool 0 failed");
+static_assert(fixed_t<int8_t, 5>{1}, "operator bool 1 failed");
+static_assert(fixed_t<int8_t, 5>{127}, "operator bool 127 failed");
+
 } // namespace conversions
 
 } // namespace
