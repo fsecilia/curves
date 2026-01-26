@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-/*!
+/**
   \file
   \brief fixed point integer type
 
