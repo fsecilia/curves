@@ -17,6 +17,4 @@ include(KernelManifest)
 include(Installation)
 
 add_subdirectory(dist)
-add_subdirectory(src/crv/kernel)
-add_subdirectory(src/crv/test)
-add_subdirectory(src/crv/ui)
+add_subdirectory(src/crv)
