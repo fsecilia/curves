@@ -34,5 +34,55 @@ static_assert(sut_t{0xF1234}.value == 0xF1234, "value initialization failed");
 
 } // namespace construction
 
+// ====================================================================================================================
+// Conversions
+// ====================================================================================================================
+
+namespace conversions {
+
+// --------------------------------------------------------------------------------------------------------------------
+// Size Conversions
+// --------------------------------------------------------------------------------------------------------------------
+
+// widen type
+static_assert(fixed_t<int16_t, 5>{fixed_t<int8_t, 5>{10}}.value == 10, "widen type failed");
+
+// narrow type
+static_assert(fixed_t<int8_t, 5>{fixed_t<int16_t, 5>{10}}.value == 10, "narrow type failed");
+
+// --------------------------------------------------------------------------------------------------------------------
+// Precision Conversions
+// --------------------------------------------------------------------------------------------------------------------
+
+// increase precision
+static_assert(fixed_t<int8_t, 7>{fixed_t<int8_t, 5>{10}}.value == 40, "increase precision failed");
+
+// decrease precision
+static_assert(fixed_t<int8_t, 5>{fixed_t<int8_t, 7>{40}}.value == 10, "decrease precision failed");
+
+// --------------------------------------------------------------------------------------------------------------------
+// Size and Precision Conversions
+// --------------------------------------------------------------------------------------------------------------------
+
+// increase precision and widen type
+static_assert(fixed_t<int16_t, 7>{fixed_t<int8_t, 5>{10}}.value == 40, "increase precision and widen failed");
+
+// increase precision and widen type requiring conversion at wider range
+static_assert(fixed_t<int16_t, 9>{fixed_t<int8_t, 7>{64}}.value == 256, "increase precision and widen early failed");
+
+// increase precision and narrow type
+static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 5>{10}}.value == 40, "increase precision and narrow failed");
+
+// decrease precision and widen type
+static_assert(fixed_t<int16_t, 5>{fixed_t<int8_t, 7>{40}}.value == 10, "decrease precision and widen failed");
+
+// decrease precision and narrow type
+static_assert(fixed_t<int8_t, 5>{fixed_t<int16_t, 7>{40}}.value == 10, "decrease precision and narrow failed");
+
+// decrease precision and narrow type requiring conversion at wider range
+static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64, "decrease precision and narrow late failed");
+
+} // namespace conversions
+
 } // namespace
 } // namespace crv

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <type_traits>
 
 namespace crv {
 
@@ -43,11 +44,39 @@ template <typename value_type, int_t t_frac_bits> struct fixed_t
     constexpr auto operator=(fixed_t const& other) noexcept -> fixed_t& = default;
 
     // ----------------------------------------------------------------------------------------------------------------
+    // Conversions
+    // ----------------------------------------------------------------------------------------------------------------
+
+    template <typename other_value_t, int_t other_frac_bits>
+    explicit constexpr fixed_t(fixed_t<other_value_t, other_frac_bits> const& other) noexcept
+        : fixed_t{convert_value<other_value_t, other_frac_bits>(other.value)}
+    {}
+
+    // ----------------------------------------------------------------------------------------------------------------
     // Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr auto operator==(fixed_t const&) const noexcept -> bool  = default;
     constexpr auto operator<=>(fixed_t const&) const noexcept -> auto = default;
+
+private:
+    template <typename other_value_t, int_t other_frac_bits>
+    static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
+    {
+        using wider_t = std::conditional_t<sizeof(value_t) < sizeof(other_value_t), other_value_t, value_t>;
+        if constexpr (frac_bits > other_frac_bits)
+        {
+            return static_cast<value_t>(static_cast<wider_t>(other_value) << (frac_bits - other_frac_bits));
+        }
+        else if constexpr (other_frac_bits > frac_bits)
+        {
+            return static_cast<value_t>(static_cast<wider_t>(other_value) >> (other_frac_bits - frac_bits));
+        }
+        else
+        {
+            return static_cast<value_t>(other_value);
+        }
+    }
 };
 
 } // namespace crv
