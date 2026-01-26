@@ -54,7 +54,6 @@ set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 # these exist only for the kernel module and aren't shared with user-mode code
 
 set(hdrs_kernel
-    cxx/cstdint
     input/handler.h
 )
 
