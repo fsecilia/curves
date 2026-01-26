@@ -125,10 +125,6 @@ target_include_directories(user_mode_kernel_shim PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shim>"
 )
-target_compile_options(user_mode_kernel_shim PRIVATE
-    ${kernel_c_flags}
-    $<$<COMPILE_LANGUAGE:CXX>:${kernel_cxx_flags}>
-)
 
 # ---------------------------------------------------------------------------------------------------------------------
 # kernel_nav
