@@ -8,6 +8,34 @@
 #   - Installs source and Kbuild to dkms root.
 
 # =====================================================================================================================
+# File Lists
+# =====================================================================================================================
+# Files are categorized by:
+#   - type: headers vs source, because headers can't go in Kbuild source lists
+#   - scope: kernel-only, library-only, or shared
+
+get_property(manifest_files GLOBAL PROPERTY kernel_manifest)
+
+# kernel-only headers must be symlinked
+set(hdrs_kernel
+    input/handler.h
+)
+
+# kernel-only source must be symlinked and passed to kbuild
+set(srcs_kernel
+    input/handler.c
+    entry_point.c
+)
+
+# shared headers must be symlinked and included in user-mode library
+set(hdrs_shared_abs ${manifest_files})
+list(FILTER hdrs_shared_abs INCLUDE REGEX "\\.(h|hpp)$")
+
+# shared source must be symlinked, passed to kbuild, and included in user-mode library
+set(srcs_shared_abs ${manifest_files})
+list(FILTER srcs_shared_abs INCLUDE REGEX "\\.(c|cpp)$")
+
+# =====================================================================================================================
 # Environment
 # =====================================================================================================================
 
@@ -36,32 +64,6 @@ endif()
 set(kbuild_root "/lib/modules/${kernel_version}/build")
 
 # =====================================================================================================================
-# File Lists
-# =====================================================================================================================
-# Files are categorized by:
-#   - type: headers vs source, because headers can't go in Kbuild source lists
-#   - scope: kernel-only, library-only, or shared
-
-get_property(manifest_files GLOBAL PROPERTY kernel_manifest)
-
-# kernel-only headers must be symlinked
-set(hdrs_kernel
-)
-
-# kernel-only source must be symlinked and passed to kbuild
-set(srcs_kernel
-    entry_point.c
-)
-
-# shared headers must be symlinked and included in user-mode library
-set(hdrs_shared ${manifest_files})
-list(FILTER hdrs_shared INCLUDE REGEX "\\.(h|hpp)$")
-
-# shared source must be symlinked, passed to kbuild, and included in user-mode library
-set(srcs_shared ${manifest_files})
-list(FILTER srcs_shared INCLUDE REGEX "\\.(c|cpp)$")
-
-# =====================================================================================================================
 # Build Configuration
 # =====================================================================================================================
 
@@ -82,17 +84,17 @@ list(APPEND kernel_cxx_flags ${compile_options_common}
 )
 
 # =====================================================================================================================
-# Build Targets
+# Kernel Lib
 # =====================================================================================================================
 
 # bare user-mode object library containing shared source
 add_library(kernel_lib OBJECT
-    ${srcs_shared}
-    ${hdrs_shared}
-
     shim/linux/compiler.h
     shim/linux/printk.h
     shim/linux/types.h
+
+    ${hdrs_shared_abs}
+    ${srcs_shared_abs}
 )
 set_target_properties(kernel_lib PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(kernel_lib PUBLIC
@@ -103,6 +105,10 @@ target_compile_options(kernel_lib PRIVATE
     ${kernel_c_flags}
     $<$<COMPILE_LANGUAGE:CXX>:${kernel_cxx_flags}>
 )
+
+# =====================================================================================================================
+# Kernel Nav
+# =====================================================================================================================
 
 # fake library for kernel-only source and headers to support ide nav
 add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${hdrs_kernel} ${srcs_kernel})
@@ -133,10 +139,71 @@ target_compile_options(kernel_nav PRIVATE
 # builds symlink the source next to it and build there to keep its output in the build tree. Since the Kbuild may be
 # part of a shadow build, its is always generated in a shadow subdir.
 
-set(kbuild_shadow_root "${CMAKE_CURRENT_BINARY_DIR}/shadow")
+set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Generated File
+# Source Symlinks
+# ---------------------------------------------------------------------------------------------------------------------
+
+# collect abs files to shadow
+list(APPEND srcs_abs
+    ${hdrs_shared_abs}
+    ${srcs_shared_abs}
+)
+
+# collect rel files to shadow
+set(srcs_rel
+    ${hdrs_kernel}
+    ${srcs_kernel}
+)
+foreach(src_rel IN LISTS srcs_rel)
+    # resolve absolute paths
+    get_filename_component(src_abs "${src_rel}" ABSOLUTE)
+    list(APPEND srcs_abs "${src_abs}")
+endforeach()
+
+# symlink shadowed files
+foreach(src_abs IN LISTS srcs_abs)
+    # get path relative to root src directory
+    file(RELATIVE_PATH src_rel "${PROJECT_SOURCE_DIR}/src" "${src_abs}")
+
+    # get just path relative to root
+    get_filename_component(subdir "${src_rel}" DIRECTORY)
+
+    # create symlink relative to shadow root
+    set(dst_dir "${kbuild_shadow_root}/${subdir}")
+    set(dst "${kbuild_shadow_root}/${src_rel}")
+    message("src_abs = ${src_abs}, src_rel = ${src_rel}, subdir = ${subdir}, dst_dir = ${dst_dir}, dst = ${dst}")
+    list(APPEND srcs_kbuild_rel "${src_rel}")
+    list(APPEND srcs_kbuild_abs "${dst}")
+    add_custom_command(
+        OUTPUT "${dst}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${dst_dir}"
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs}" "${dst}"
+        DEPENDS "${src_abs}"
+        COMMENT "shadowing ${src_rel}"
+        VERBATIM
+    )
+
+    # install to dkms
+    install(FILES "${src_abs}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
+endforeach()
+
+# symlink makefile
+set(makefile "Makefile")
+set(makefile_src_abs "${CMAKE_CURRENT_SOURCE_DIR}/${makefile}")
+set(makefile_dst "${kbuild_shadow_root}/${makefile}")
+add_custom_command(
+    OUTPUT "${makefile_dst}"
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink "${makefile_src_abs}" "${makefile_dst}"
+    DEPENDS "${makefile_src_abs}"
+    COMMENT "shadowing ${makefile}"
+    VERBATIM
+)
+install(FILES "${makefile}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Generated Kbuild
 # ---------------------------------------------------------------------------------------------------------------------
 
 # extract c++ standard flag from cmake target
@@ -150,7 +217,7 @@ list(JOIN kbuild_c_flags " " kbuild_c_flags)
 list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 
 # compose object file lists
-set(objs_kbuild ${srcs_kernel} ${srcs_shared})
+set(objs_kbuild ${srcs_kbuild_rel})
 list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")
 list(JOIN objs_kbuild " " objs_kbuild)
 
@@ -160,44 +227,6 @@ set(kbuild_output "${project_name_underscores}.o")
 set(kbuild_gen "${kbuild_shadow_root}/${kbuild}")
 configure_file("${kbuild}.in" "${kbuild_gen}" @ONLY)
 install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Source Symlinks
-# ---------------------------------------------------------------------------------------------------------------------
-
-# collect files to shadow
-set(srcs_shadow_rel
-    ${hdrs_kernel}
-    ${srcs_kernel}
-    ${hdrs_shared}
-    ${srcs_shared}
-    Makefile
-)
-
-# symlink each, collect result paths, and spec install
-set(srcs_shadow_abs "${kbuild_gen}")
-foreach(src_rel IN LISTS srcs_shadow_rel)
-    # resolve absolute paths
-    get_filename_component(src_abs "${src_rel}" ABSOLUTE)
-    get_filename_component(subdir "${src_rel}" DIRECTORY)
-    set(dst_dir "${kbuild_shadow_root}/${subdir}")
-    set(dst "${kbuild_shadow_root}/${src_rel}")
-    list(APPEND srcs_shadow_abs "${dst}")
-
-    # create symlink
-    add_custom_command(
-        OUTPUT "${dst}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${dst_dir}"
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs}" "${dst}"
-        DEPENDS "${src_abs}"
-        COMMENT "shadowing ${src_rel}"
-        VERBATIM
-    )
-
-    # install to dkms
-    get_filename_component(dst_dir "${src_rel}" DIRECTORY)
-    install(FILES "${src_rel}" DESTINATION "${dkms_dst_dir}/${dst_dir}" COMPONENT dkms)
-endforeach()
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Build Target
@@ -222,7 +251,7 @@ add_custom_command(
     OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
     COMMAND ${kbuild_make_command} modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
-    DEPENDS "${srcs_shadow_abs}"
+    DEPENDS "${srcs_kbuild_abs}" "${makefile_dst}" "${kbuild_gen}"
     COMMENT "building kernel module"
     VERBATIM
     USES_TERMINAL
