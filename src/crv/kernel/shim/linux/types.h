@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include_next <linux/types.h>
+
 #include <stdbool.h>
 #include <stdint.h>
 
