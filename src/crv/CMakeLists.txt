@@ -9,6 +9,7 @@ add_library(lib)
 target_sources(lib PRIVATE
     lib.hpp
     lib.cpp
+    math/int_cast.hpp
 )
 target_link_libraries(lib user_mode_kernel_shim)
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
