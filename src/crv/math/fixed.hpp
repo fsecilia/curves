@@ -8,17 +8,17 @@
 
 #pragma once
 
-#include <linux/types.h>
+#include <crv/lib.hpp>
 
 namespace crv {
 
-template <typename value_type, int t_frac_bits> struct fixed_t;
-using fixed_q15_0_t  = fixed_t<s16, 0>;
-using fixed_q32_32_t = fixed_t<s64, 32>;
-using fixed_q0_64_t  = fixed_t<u64, 64>;
+template <typename value_type, int_t t_frac_bits> struct fixed_t;
+using fixed_q15_0_t  = fixed_t<int16_t, 0>;
+using fixed_q32_32_t = fixed_t<int64_t, 32>;
+using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
 
 /// fixed-point arithmetic type with statically-configurable precision
-template <typename value_type, int t_frac_bits> struct fixed_t
+template <typename value_type, int_t t_frac_bits> struct fixed_t
 {
     using value_t = value_type;
     value_t value;

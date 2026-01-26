@@ -1,3 +1,10 @@
 CompileFlags:
-  Remove:
-    - -mno-direct-extern-access
+  Remove: [-mno-direct-extern-access]
+
+---
+
+If:
+  PathMatch: .*/kernel/cxx/.*
+
+CompileFlags:
+  Add: [-x, c++-header]

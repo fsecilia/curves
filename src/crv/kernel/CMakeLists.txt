@@ -4,7 +4,6 @@
 # kernel module build
 #
 # This file serves these purposes:
-#  - provides a user-mode library that shims the kernel headers
 #  - collects files listed in the global kernel manifest
 #  - generates the Kbuild necessary to build the kernel module
 #  - manages the kernel module cmake install to stage dkms for packaging
@@ -55,6 +54,7 @@ set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 # these exist only for the kernel module and aren't shared with user-mode code
 
 set(hdrs_kernel
+    cxx/cstdint
     input/handler.h
 )
 
@@ -77,29 +77,19 @@ list(FILTER hdrs_shared_abs INCLUDE REGEX "\\.(h|hpp)$")
 set(srcs_shared_abs ${manifest_files})
 list(FILTER srcs_shared_abs INCLUDE REGEX "\\.(c|cpp)$")
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Shim Headers
-# ---------------------------------------------------------------------------------------------------------------------
-# these provide kernel-like types and macros for user-mode builds
-
-set(srcs_shim
-    shim/linux/compiler.h
-    shim/linux/printk.h
-    shim/linux/types.h
-)
-
 # =====================================================================================================================
 # Compiler Flags
 # =====================================================================================================================
 # flags that make user-mode compilation kernel-compatible
 #
-# These apply to user_mode_kernel_shim and are also forwarded to the Kbuild for c++ files.
+# These are also forwarded to the Kbuild for c++ files.
 
 set(kernel_c_flags
     -ffreestanding
 )
 
 set(kernel_cxx_flags
+    "${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}"
     ${compile_options_common}
     -fno-builtin
     -fno-exceptions
@@ -115,18 +105,6 @@ set(kernel_cxx_flags
 # =====================================================================================================================
 
 # ---------------------------------------------------------------------------------------------------------------------
-# user_mode_kernel_shim
-# ---------------------------------------------------------------------------------------------------------------------
-# shims kernel headers and provides kernel-compatible flags to user-mode targets
-
-add_library(user_mode_kernel_shim OBJECT ${srcs_shim})
-set_target_properties(user_mode_kernel_shim PROPERTIES LINKER_LANGUAGE CXX)
-target_include_directories(user_mode_kernel_shim PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/shim>"
-)
-
-# ---------------------------------------------------------------------------------------------------------------------
 # kernel_nav
 # ---------------------------------------------------------------------------------------------------------------------
 # fake target for kernel-only files to provide ide navigation
@@ -134,7 +112,6 @@ target_include_directories(user_mode_kernel_shim PUBLIC
 # This target uses the real kernel headers. It is never actually linked into anything.
 
 add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${hdrs_kernel} ${srcs_kernel})
-target_link_libraries(kernel_nav PRIVATE user_mode_kernel_shim)
 add_dependencies(kernel_nav kbuild)
 target_compile_definitions(kernel_nav PRIVATE
     __KERNEL__
@@ -196,12 +173,12 @@ endmacro()
 # kbuild_shadow_root and build from there. This way, the real source stays in place and build artifacts land in the
 # build tree.
 
-# shadow shared files (already absolute)
+# shadow shared files
 foreach(src_abs IN LISTS hdrs_shared_abs srcs_shared_abs)
     add_to_kbuild("${src_abs}")
 endforeach()
 
-# shadow kernel-only files (relative, need conversion)
+# shadow kernel-only files
 foreach(src_rel IN LISTS hdrs_kernel srcs_kernel)
     get_filename_component(src_abs "${src_rel}" ABSOLUTE)
     add_to_kbuild("${src_abs}")
@@ -224,21 +201,17 @@ install(FILES "Makefile" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # ---------------------------------------------------------------------------------------------------------------------
 # generate the actual Kbuild file
 
-# extract c++ standard from cmake
-get_target_property(user_mode_kernel_shim_std_version user_mode_kernel_shim CXX_STANDARD)
-set(user_mode_kernel_shim_std_version_flag "${CMAKE_CXX${user_mode_kernel_shim_std_version}_STANDARD_COMPILE_OPTION}")
-
 # format flags for Kbuild template
 set(kbuild_c_flags ${kernel_c_flags})
-set(kbuild_cxx_flags ${user_mode_kernel_shim_std_version_flag} ${kernel_cxx_flags})
+set(kbuild_cxx_flags ${kernel_cxx_flags})
 list(JOIN kbuild_c_flags " " kbuild_c_flags)
 list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
 
 # convert source list to object list
 set(objs_kbuild ${srcs_kbuild_rel})
-list(FILTER objs_kbuild EXCLUDE REGEX "\\.(h|hpp)$") # filter headers
-list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o") # replace extension
-list(JOIN objs_kbuild " " objs_kbuild)               # delimit with space instead of ;
+list(FILTER objs_kbuild EXCLUDE REGEX "(\\.(h|hpp)$)|^crv/kernel/cxx/") # filter headers
+list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")                    # replace extension
+list(JOIN objs_kbuild " " objs_kbuild)                                  # delimit with space instead of ;
 
 # generate file
 set(kbuild_output "${project_name_underscores}.o")
