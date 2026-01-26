@@ -5,7 +5,7 @@ CompileFlags:
 ---
 
 If:
-  PathMatch: .*/kernel/cxx/.*
+  PathMatch: .*/crv/kernel/cxx/.*
 
 CompileFlags:
   Add: [-x, c++-header]
