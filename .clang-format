@@ -24,6 +24,7 @@ ReferenceAlignment: Pointer
 
 # brace wrapping
 BreakBeforeBraces: Custom
+BreakTemplateDeclarations: MultiLine
 BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
