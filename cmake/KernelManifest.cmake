@@ -23,5 +23,11 @@ function(target_sources_kernel target)
         # add abs path to kernel manifest
         get_filename_component(abs_path "${source_file}" ABSOLUTE)
         set_property(GLOBAL APPEND PROPERTY kernel_manifest "${abs_path}")
+
+        # restrict to using kernel-compatible compile options
+        set_source_files_properties(${source_file}
+            PROPERTIES
+            COMPILE_OPTIONS "${kernel_c_flags};$<$<COMPILE_LANGUAGE:CXX>:${kernel_cxx_flags}>"
+        )
     endforeach()
 endfunction()
