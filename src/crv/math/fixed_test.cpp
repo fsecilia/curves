@@ -96,5 +96,16 @@ static_assert(fixed_t<int8_t, 5>{127}, "fixed_t: operator bool 127 failed");
 
 } // namespace conversions
 
+// ====================================================================================================================
+// Unary Arithmetic
+// ====================================================================================================================
+
+namespace unary_arithmetic {
+
+static_assert(+fixed_t<int_t, 5>{10}.value == 10, "fixed_t: unary plus failed");
+static_assert(-fixed_t<int_t, 5>{10}.value == -10, "fixed_t: unary minus failed");
+
+} // namespace unary_arithmetic
+
 } // namespace
 } // namespace crv

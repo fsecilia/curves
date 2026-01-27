@@ -61,6 +61,13 @@ template <typename value_type, int_t t_frac_bits> struct fixed_t
     constexpr auto operator==(fixed_t const&) const noexcept -> bool  = default;
     constexpr auto operator<=>(fixed_t const&) const noexcept -> auto = default;
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // Unary Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto operator+(fixed_t const& src) noexcept -> fixed_t { return src; }
+    friend constexpr auto operator-(fixed_t const& src) noexcept -> fixed_t { return fixed_t{-src.value}; }
+
 private:
     template <typename other_value_t, int_t other_frac_bits>
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
