@@ -4,6 +4,10 @@ Control Mouse Sensitivity with Speed
 
 Curves is a kernel-mode input handler that controls your mouse sensitivity with mouse velocity. When moving the mouse slowly, it has low sensitivity. When moving it quickly, it has high sensitivity. The transition between them is smooth. This gives high precision at low speed while still being able to cover 3 monitors using only a few inches of desk space. The feeling is unique, but intuitive.
 
+## Requirements
+
+This project uses c++23. It must be built with g++ >= 14 or clang >= 18. The frontend config ui can be built with either, but the backend kernel module builds with the same compiler that was used to build the kernel.
+
 ## Building
 
 The build is standard cmake. Presets for debug and release using clang and gcc are provided. The build directory defaults to ./builds, but shadow builds are supported, as is overriding the path in CMakeUserPresets.json.

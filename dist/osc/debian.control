@@ -3,10 +3,12 @@ Section: misc
 Priority: optional
 Maintainer: Frank Secilia <frank.secilia@gmail.com>
 Standards-Version: 4.7.3.0
-Build-Depends: debhelper-compat (= 13), cmake, dh-dkms, g++
+Build-Depends: debhelper-compat (= 13), cmake, dh-dkms,
+               gcc (>= 4:14) | clang (>= 1:18), g++ (>= 4:14) | clang (>= 1:18)
 
 Package: curves-mouse-acceleration
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, dkms, build-essential, linux-headers-generic | linux-headers-amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, build-essential, dkms, linux-headers-generic | linux-headers-amd64,
+         gcc (>= 4:14) | clang (>= 1:18), g++ (>= 4:14) | clang (>= 1:18)
 Description: Curves mouse acceleration input handler
  Kernel module for custom mouse acceleration curves, managed via DKMS.

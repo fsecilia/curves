@@ -8,8 +8,7 @@ Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  cmake
 BuildRequires:  dkms
-BuildRequires:  gcc
-BuildRequires:  gcc-c++
+BuildRequires:  ((gcc >= 14.0.0 and gcc-c++ >= 14.0.0) or clang >= 18.0.0)
 BuildRequires:  pkgconfig(Qt6Core)
 BuildRequires:  pkgconfig(Qt6Gui)
 BuildRequires:  pkgconfig(Qt6Widgets)
@@ -18,8 +17,7 @@ BuildRequires:  systemd-rpm-macros
 
 Requires:       dkms
 Requires:       kernel-devel
-Requires:       gcc
-Requires:       gcc-c++
+Requires:       ((gcc >= 14.0.0 and gcc-c++ >= 14.0.0) or clang >= 18.0.0)
 Requires:       make
 Requires:       systemd
 Requires:       udev
