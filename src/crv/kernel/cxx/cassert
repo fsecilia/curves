@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: GPL-2.0+ OR MIT
+/*!
+    \file
+    \brief kernel shim for cassert
+
+    \copyright Copyright (C) 2026 Frank Secilia
+*/
+
+#include <source_location>
+
+extern "C" {
+void panic(char const* fmt, ...);
+}
+
+namespace crv {
+
+inline auto kernel_assert(bool expression, char const* expression_string,
+                          std::source_location const source_location = std::source_location::current()) -> void
+{
+    if (expression) [[likely]] { return; }
+
+    panic("%s:%u: %s: Assertion `%s' failed.", source_location.file_name(), source_location.line(),
+          source_location.function_name(), expression_string);
+}
+
+} // namespace crv
+
+#define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
