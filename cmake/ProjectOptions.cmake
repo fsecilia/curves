@@ -25,12 +25,11 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 # Build Options
 # ---------------------------------------------------------------------------------------------------------------------
 
+# targets link to this library to get common and user mode options
+add_library(project_options INTERFACE)
+
 # collects options common to user mode and kernel mode
 list(APPEND compile_options_common)
-
-# collects specific to user mode
-list(APPEND compile_options_user_mode)
-list(APPEND link_options_user_mode)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     list(APPEND compile_options_common
@@ -39,7 +38,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -Wextra
         -Wswitch-enum
     )
-    list(APPEND compile_options_user_mode
+    target_compile_options(project_options INTERFACE
         -fsized-deallocation
         -fstrict-aliasing
         -Wstrict-aliasing=2
@@ -88,24 +87,21 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     )
 
     set(msvc_link_flags_release /LTCG /OPT:ICF/OPT:REF)
-    list(APPEND link_options_user_mode
+    target_link_options(project_options INTERFACE
         $<$<CONFIG:RELEASE>:${msvc_link_flags_release}>
 
         /WX
     )
 endif()
 
+target_compile_options(project_options INTERFACE ${compile_options_common})
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Asan
+# ---------------------------------------------------------------------------------------------------------------------
+
 option(ENABLE_ASAN "Enable AddressSanitizer (ASan) for debug builds." OFF)
 if (ENABLE_ASAN)
-    list(APPEND compile_options_user_mode -fsanitize=address -fno-omit-frame-pointer)
-    list(APPEND link_options_user_mode -fsanitize=address)
+    target_compile_options(project_options INTERFACE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(project_options INTERFACE link_options_user_mode -fsanitize=address)
 endif()
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Options Library
-# ---------------------------------------------------------------------------------------------------------------------
-
-# targets link to this library to get common and user mode options
-add_library(project_options INTERFACE)
-target_compile_options(project_options INTERFACE ${compile_options_common} ${compile_options_user_mode})
-target_link_options(project_options INTERFACE ${link_options_user_mode})
