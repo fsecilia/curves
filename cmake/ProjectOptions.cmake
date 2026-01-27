@@ -43,6 +43,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -fstrict-aliasing
         -Wstrict-aliasing=2
     )
+    target_link_options(project_options INTERFACE
+        "LINKER:-z,relro"
+        "LINKER:-z,now"
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
