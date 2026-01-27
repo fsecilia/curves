@@ -18,3 +18,6 @@ string(REPLACE "_" "-" project_name_dashes "${project_name_underscores}") # exte
 
 # define dkms relative install path
 set(dkms_dst_dir "src/${project_name_dashes}-${PROJECT_VERSION}")
+
+# install root licenses
+install(FILES "COPYING" "LICENSE" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
