@@ -64,8 +64,8 @@ dkms remove -m %{name} -v %{version} --all --rpm_safe_upgrade || :
 %systemd_postun_with_restart %{name}-restore.service
 
 %files
-%license LICENSE
 %license COPYING
+%license LICENSE
 %{_bindir}/%{name}-config
 %{_modulesloaddir}/%{name}.conf
 %{_prefix}/src/%{name}-%{version}/
