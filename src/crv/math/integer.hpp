@@ -9,7 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/int128.hpp>
+#include <crv/math/int_traits.hpp>
 #include <cassert>
 #include <utility>
 

@@ -4,7 +4,7 @@
   \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include <crv/math/int128.hpp>
+#include <crv/math/int_traits.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv {
