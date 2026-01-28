@@ -6,9 +6,48 @@
 
 #include <crv/math/integer.hpp>
 #include <crv/test/test.hpp>
+#include <limits>
 
 namespace crv {
 namespace {
+
+// --------------------------------------------------------------------------------------------------------------------
+// int_cast
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(int_cast<int8_t>(int16_t{std::numeric_limits<int8_t>::min()}) == std::numeric_limits<int8_t>::min());
+static_assert(int_cast<int8_t>(int16_t{-1}) == -1);
+static_assert(int_cast<int8_t>(int16_t{0}) == 0);
+static_assert(int_cast<int8_t>(int16_t{1}) == 1);
+static_assert(int_cast<int8_t>(int16_t{std::numeric_limits<int8_t>::max()}) == std::numeric_limits<int8_t>::max());
+
+static_assert(int_cast<int8_t>(uint16_t{0}) == 0);
+static_assert(int_cast<int8_t>(uint16_t{1}) == 1);
+static_assert(int_cast<int8_t>(uint16_t{std::numeric_limits<int8_t>::max()}) == std::numeric_limits<int8_t>::max());
+
+static_assert(int_cast<int16_t>(int8_t{std::numeric_limits<int8_t>::min()}) == std::numeric_limits<int8_t>::min());
+static_assert(int_cast<int16_t>(int8_t{-1}) == -1);
+static_assert(int_cast<int16_t>(int8_t{0}) == 0);
+static_assert(int_cast<int16_t>(int8_t{1}) == 1);
+static_assert(int_cast<int16_t>(int8_t{std::numeric_limits<int8_t>::max()}) == std::numeric_limits<int8_t>::max());
+
+static_assert(int_cast<int16_t>(uint8_t{0}) == 0);
+static_assert(int_cast<int16_t>(uint8_t{1}) == 1);
+static_assert(int_cast<int16_t>(uint8_t{std::numeric_limits<int8_t>::max()}) == std::numeric_limits<int8_t>::max());
+
+#if !defined NDEBUG
+
+TEST(int_cast, asserts_casting_negative_to_unsigned)
+{
+    EXPECT_DEATH(int_cast<uint8_t>(-1), "out of range integer cast");
+}
+
+TEST(int_cast, asserts_casting_oor)
+{
+    EXPECT_DEATH(int_cast<int8_t>(std::numeric_limits<int8_t>::max() + 1), "out of range integer cast");
+}
+
+#endif
 
 // --------------------------------------------------------------------------------------------------------------------
 // to_unsigned_abs
