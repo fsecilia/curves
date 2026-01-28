@@ -67,5 +67,34 @@ static_assert(typed_equal<unsigned>(to_unsigned_abs(1), static_cast<unsigned>(1)
 static_assert(typed_equal<uint32_t>(to_unsigned_abs(INT32_MAX), static_cast<uint32_t>(INT32_MAX)));
 static_assert(typed_equal<uint64_t>(to_unsigned_abs(INT64_MAX), static_cast<uint64_t>(INT64_MAX)));
 
+// --------------------------------------------------------------------------------------------------------------------
+// to_signed_copysign
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(typed_equal<int64_t>(to_signed_copysign(static_cast<uint64_t>(INT64_MAX) + 1, -1), INT64_MIN));
+static_assert(typed_equal<int64_t>(to_signed_copysign(static_cast<uint64_t>(INT64_MAX), -2), -INT64_MAX));
+static_assert(typed_equal<int32_t>(to_signed_copysign(static_cast<uint32_t>(INT32_MAX) + 1, -3), INT32_MIN));
+static_assert(typed_equal<int32_t>(to_signed_copysign(static_cast<uint32_t>(INT32_MAX), -5), -INT32_MAX));
+static_assert(typed_equal<int>(to_signed_copysign(static_cast<unsigned>(1), -7), -1));
+static_assert(typed_equal<int>(to_signed_copysign(static_cast<unsigned>(0), -11), 0));
+static_assert(typed_equal<int>(to_signed_copysign(static_cast<unsigned>(0), 0), 0));
+static_assert(typed_equal<int>(to_signed_copysign(static_cast<unsigned>(1), 1), 1));
+static_assert(typed_equal<int32_t>(to_signed_copysign(static_cast<uint32_t>(INT32_MAX), 2), INT32_MAX));
+static_assert(typed_equal<int64_t>(to_signed_copysign(static_cast<uint64_t>(INT64_MAX), 5), INT64_MAX));
+
+#if !defined NDEBUG
+
+TEST(to_signed_copysign, asserts_casting_below_min)
+{
+    EXPECT_DEATH(to_signed_copysign<uint8_t>(INT8_MAX + 2, -1), "to_signed_copysign: input out of range");
+}
+
+TEST(to_signed_copysign, asserts_casting_above_max)
+{
+    EXPECT_DEATH(to_signed_copysign<uint8_t>(INT8_MAX + 1, 1), "to_signed_copysign: input out of range");
+}
+
+#endif
+
 } // namespace
 } // namespace crv

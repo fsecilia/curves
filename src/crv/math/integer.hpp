@@ -11,6 +11,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/int_traits.hpp>
 #include <cassert>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -37,6 +38,24 @@ constexpr auto to_unsigned_abs(signed_t src) noexcept -> std::make_unsigned_t<si
 {
     using unsigned_t = std::make_unsigned_t<signed_t>;
     return src < 0 ? -static_cast<unsigned_t>(src) : static_cast<unsigned_t>(src);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// to_signed_copysign
+// --------------------------------------------------------------------------------------------------------------------
+
+//! converts to signed type, applying sign of sign to result
+template <unsigned_integral unsigned_t>
+constexpr auto to_signed_copysign(unsigned_t src, signed_integral auto sign) noexcept -> std::make_signed_t<unsigned_t>
+{
+    using dst_t = std::make_signed_t<unsigned_t>;
+
+    // The result must be within [min(), max()] for the signed range.
+    assert(src <= (sign < 0 ? static_cast<unsigned_t>(std::numeric_limits<dst_t>::min())
+                            : static_cast<unsigned_t>(std::numeric_limits<dst_t>::max()))
+           && "to_signed_copysign: input out of range");
+
+    return sign < 0 ? static_cast<dst_t>(-src) : static_cast<dst_t>(src);
 }
 
 } // namespace crv
