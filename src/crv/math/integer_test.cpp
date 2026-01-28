@@ -7,7 +7,6 @@
 #include <crv/math/integer.hpp>
 #include <crv/test/test.hpp>
 #include <crv/test/typed_equal.hpp>
-#include <limits>
 
 namespace crv {
 namespace {
