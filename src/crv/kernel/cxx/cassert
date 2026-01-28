@@ -14,8 +14,9 @@ void panic(char const* fmt, ...);
 
 namespace crv {
 
-inline auto kernel_assert(bool expression, char const* expression_string,
-                          std::source_location const source_location = std::source_location::current()) -> void
+inline constexpr auto kernel_assert(bool expression, char const* expression_string,
+                                    std::source_location const source_location = std::source_location::current())
+    -> void
 {
     if (expression) [[likely]] { return; }
 
