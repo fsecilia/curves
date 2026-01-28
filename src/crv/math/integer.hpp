@@ -36,6 +36,23 @@ template <typename value_t>
 concept integral = is_integral_v<value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
+// arithmetic
+// --------------------------------------------------------------------------------------------------------------------
+
+/*
+    gcc's implementation of std::is_arithmetic is not specialized for 128-bit types. This defers to
+    std::is_arithmetic_v, extending it to include 128-bit types.
+*/
+template <typename value_t>
+struct is_arithmetic : std::bool_constant<is_integral_v<value_t> || std::is_floating_point_v<value_t>>
+{};
+
+template <typename value_t> constexpr auto is_arithmetic_v = is_arithmetic<value_t>::value;
+
+template <typename value_t>
+concept arithmetic = is_arithmetic_v<value_t>;
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 

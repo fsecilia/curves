@@ -36,6 +36,31 @@ static_assert(!integral<nonintegral_t>);
 } // namespace is_integral_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// is_arithmetic
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace is_arithmetic_tests {
+
+static_assert(arithmetic<int8_t>);
+static_assert(arithmetic<int64_t>);
+static_assert(arithmetic<int128_t>);
+
+static_assert(arithmetic<uint8_t>);
+static_assert(arithmetic<uint64_t>);
+static_assert(arithmetic<uint128_t>);
+
+static_assert(arithmetic<float>);
+static_assert(arithmetic<double>);
+static_assert(arithmetic<long double>);
+
+struct nonarithmetic_t
+{};
+
+static_assert(!arithmetic<nonarithmetic_t>);
+
+} // namespace is_arithmetic_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 
