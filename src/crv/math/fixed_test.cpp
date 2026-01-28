@@ -139,5 +139,33 @@ static_assert(-fixed_t<int_t, 5>{10}.value == -10);
 
 } // namespace unary_arithmetic
 
+// ====================================================================================================================
+// Binary Arithmetic
+// ====================================================================================================================
+
+namespace binary_arithmetic {
+
+static_assert(fixed_t<int_t, 5>{3} + fixed_t<int_t, 5>{7} == fixed_t<int_t, 5>{10});
+static_assert(fixed_t<int_t, 5>{3} - fixed_t<int_t, 5>{7} == fixed_t<int_t, 5>{-4});
+
+struct fixed_test_compound_assignment_t : Test
+{
+    using sut_t = fixed_t<int_t, 5>;
+    sut_t expected{3};
+    sut_t rhs{7};
+};
+
+TEST_F(fixed_test_compound_assignment_t, addition)
+{
+    ASSERT_EQ(&expected, &(expected += rhs));
+}
+
+TEST_F(fixed_test_compound_assignment_t, subtraction)
+{
+    ASSERT_EQ(&expected, &(expected -= rhs));
+}
+
+} // namespace binary_arithmetic
+
 } // namespace
 } // namespace crv

@@ -69,6 +69,25 @@ template <integral value_type, int_t t_frac_bits> struct fixed_t
     friend constexpr auto operator+(fixed_t const& src) noexcept -> fixed_t { return src; }
     friend constexpr auto operator-(fixed_t const& src) noexcept -> fixed_t { return fixed_t{-src.value}; }
 
+    // ----------------------------------------------------------------------------------------------------------------
+    // Binary Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    constexpr auto operator+=(fixed_t const& src) noexcept -> fixed_t&
+    {
+        value += src.value;
+        return *this;
+    }
+
+    constexpr auto operator-=(fixed_t const& src) noexcept -> fixed_t&
+    {
+        value -= src.value;
+        return *this;
+    }
+
+    friend constexpr auto operator+(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs += rhs; }
+    friend constexpr auto operator-(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs -= rhs; }
+
 private:
     template <integral other_value_t, int_t other_frac_bits>
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
