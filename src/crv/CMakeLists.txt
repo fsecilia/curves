@@ -12,6 +12,7 @@ target_sources_kernel(lib
     lib.hpp
     lib.cpp
     math/fixed.hpp
+    math/int128.hpp
     math/integer.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -28,6 +29,7 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         math/fixed_test.cpp
+        math/int128_test.cpp
         math/integer_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
