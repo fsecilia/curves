@@ -9,17 +9,17 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <type_traits>
+#include <crv/math/int_traits.hpp>
 
 namespace crv {
 
-template <typename value_type, int_t t_frac_bits> struct fixed_t;
+template <integral value_type, int_t t_frac_bits> struct fixed_t;
 using fixed_q15_0_t  = fixed_t<int16_t, 0>;
 using fixed_q32_32_t = fixed_t<int64_t, 32>;
 using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
 
 /// fixed-point arithmetic type with statically-configurable precision
-template <typename value_type, int_t t_frac_bits> struct fixed_t
+template <integral value_type, int_t t_frac_bits> struct fixed_t
 {
     using value_t                   = value_type;
     static constexpr auto frac_bits = t_frac_bits;
@@ -69,7 +69,7 @@ template <typename value_type, int_t t_frac_bits> struct fixed_t
     friend constexpr auto operator-(fixed_t const& src) noexcept -> fixed_t { return fixed_t{-src.value}; }
 
 private:
-    template <typename other_value_t, int_t other_frac_bits>
+    template <integral other_value_t, int_t other_frac_bits>
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
     {
         using wider_t = std::conditional_t<sizeof(value_t) < sizeof(other_value_t), other_value_t, value_t>;
