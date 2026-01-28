@@ -11,18 +11,35 @@ namespace crv {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
+// is_integral
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace is_integral_tests {
+
+static_assert(integral<int8_t>);
+static_assert(integral<int64_t>);
+static_assert(integral<int128_t>);
+
+static_assert(integral<uint8_t>);
+static_assert(integral<uint64_t>);
+static_assert(integral<uint128_t>);
+
+static_assert(!integral<float>);
+static_assert(!integral<double>);
+static_assert(!integral<long double>);
+
+struct nonintegral_t
+{};
+
+static_assert(!integral<nonintegral_t>);
+
+} // namespace is_integral_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace sized_integer_tests {
-
-/*
-    gcc's implementation of std::is_integral is not specialized for 128-bit types. This defers to std::is_integral_v,
-    extending it to include the 128-bit types.
-*/
-template <typename value_t>
-constexpr auto is_integral_v = std::is_integral_v<value_t> || std::is_same_v<std::remove_cv_t<value_t>, int128_t>
-                               || std::is_same_v<std::remove_cv_t<value_t>, uint128_t>;
 
 /*
     gcc's implementation of std::is_signed is conditional on std::is_arithmetic. int128 is not arithmetic, so checking
@@ -36,7 +53,7 @@ template <int_t expected_size, bool expected_is_signed> constexpr auto test_size
 {
     using actual_t = sized_integer_t<expected_size, expected_is_signed>;
 
-    static_assert(is_integral_v<actual_t>, "sized_integer_t: result was not integral");
+    static_assert(integral<actual_t>, "sized_integer_t: result was not integral");
     static_assert(expected_size == sizeof(actual_t), "sized_integer_t: size did not match");
     static_assert(expected_is_signed == is_signed_v<actual_t>, "sized_integer_t: is_signed did not match");
 };
