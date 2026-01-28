@@ -42,7 +42,7 @@ constexpr auto to_signed_copysign(unsigned_t src, signed_integral auto sign) noe
 {
     using dst_t = std::make_signed_t<unsigned_t>;
 
-    // The result must be within [min(), max()] for the signed range.
+    // result must be within [min(), max()] for signed range
     assert(src <= (sign < 0 ? static_cast<unsigned_t>(std::numeric_limits<dst_t>::min())
                             : static_cast<unsigned_t>(std::numeric_limits<dst_t>::max()))
            && "to_signed_copysign: input out of range");
