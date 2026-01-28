@@ -17,10 +17,14 @@ namespace {
 namespace is_integral_tests {
 
 static_assert(integral<int8_t>);
+static_assert(integral<int16_t const>);
+static_assert(integral<int32_t volatile>);
 static_assert(integral<int64_t>);
 static_assert(integral<int128_t>);
 
 static_assert(integral<uint8_t>);
+static_assert(integral<uint16_t const>);
+static_assert(integral<uint32_t volatile>);
 static_assert(integral<uint64_t>);
 static_assert(integral<uint128_t>);
 
@@ -42,10 +46,14 @@ static_assert(!integral<nonintegral_t>);
 namespace is_arithmetic_tests {
 
 static_assert(arithmetic<int8_t>);
+static_assert(arithmetic<int16_t const>);
+static_assert(arithmetic<int32_t volatile>);
 static_assert(arithmetic<int64_t>);
 static_assert(arithmetic<int128_t>);
 
 static_assert(arithmetic<uint8_t>);
+static_assert(arithmetic<uint16_t const>);
+static_assert(arithmetic<uint32_t volatile>);
 static_assert(arithmetic<uint64_t>);
 static_assert(arithmetic<uint128_t>);
 
@@ -67,10 +75,14 @@ static_assert(!arithmetic<nonarithmetic_t>);
 namespace is_signed_tests {
 
 static_assert(signed_integral<int8_t>);
+static_assert(signed_integral<int16_t const>);
+static_assert(signed_integral<int32_t volatile>);
 static_assert(signed_integral<int64_t>);
 static_assert(signed_integral<int128_t>);
 
 static_assert(!signed_integral<uint8_t>);
+static_assert(!signed_integral<uint16_t const>);
+static_assert(!signed_integral<uint32_t volatile>);
 static_assert(!signed_integral<uint64_t>);
 static_assert(!signed_integral<uint128_t>);
 
@@ -79,10 +91,14 @@ static_assert(!signed_integral<double>);
 static_assert(!signed_integral<long double>);
 
 static_assert(!unsigned_integral<int8_t>);
+static_assert(!unsigned_integral<int16_t const>);
+static_assert(!unsigned_integral<int32_t volatile>);
 static_assert(!unsigned_integral<int64_t>);
 static_assert(!unsigned_integral<int128_t>);
 
 static_assert(unsigned_integral<uint8_t>);
+static_assert(unsigned_integral<uint16_t const>);
+static_assert(unsigned_integral<uint32_t volatile>);
 static_assert(unsigned_integral<uint64_t>);
 static_assert(unsigned_integral<uint128_t>);
 
