@@ -51,6 +51,28 @@ template <typename value_t>
 concept arithmetic = is_arithmetic_v<value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
+// signed
+// --------------------------------------------------------------------------------------------------------------------
+
+/*
+    The standard family of signed traits uses std:is_arithmetic and std::is_integral, which exclude 128-bit types.
+*/
+template <typename value_t>
+constexpr auto is_signed_v = [] {
+    if constexpr (is_arithmetic_v<value_t>) { return value_t(-1) < value_t{0}; }
+    else return false;
+}();
+
+template <typename value_t> struct is_signed : std::bool_constant<is_signed_v<value_t>>
+{};
+
+template <typename value_t>
+concept signed_integral = integral<value_t> && is_signed_v<value_t>;
+
+template <typename value_t>
+concept unsigned_integral = integral<value_t> && !signed_integral<value_t>;
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 

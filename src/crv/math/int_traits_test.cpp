@@ -61,17 +61,48 @@ static_assert(!arithmetic<nonarithmetic_t>);
 } // namespace is_arithmetic_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// is_signed
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace is_signed_tests {
+
+static_assert(signed_integral<int8_t>);
+static_assert(signed_integral<int64_t>);
+static_assert(signed_integral<int128_t>);
+
+static_assert(!signed_integral<uint8_t>);
+static_assert(!signed_integral<uint64_t>);
+static_assert(!signed_integral<uint128_t>);
+
+static_assert(!signed_integral<float>);
+static_assert(!signed_integral<double>);
+static_assert(!signed_integral<long double>);
+
+static_assert(!unsigned_integral<int8_t>);
+static_assert(!unsigned_integral<int64_t>);
+static_assert(!unsigned_integral<int128_t>);
+
+static_assert(unsigned_integral<uint8_t>);
+static_assert(unsigned_integral<uint64_t>);
+static_assert(unsigned_integral<uint128_t>);
+
+static_assert(!unsigned_integral<float>);
+static_assert(!unsigned_integral<double>);
+static_assert(!unsigned_integral<long double>);
+
+struct nonsigned_t
+{};
+
+static_assert(!signed_integral<nonsigned_t>);
+static_assert(!unsigned_integral<nonsigned_t>);
+
+} // namespace is_signed_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace sized_integer_tests {
-
-/*
-    gcc's implementation of std::is_signed is conditional on std::is_arithmetic. int128 is not arithmetic, so checking
-    it against is_signed fails. This implementation does the same check as is_signed, without being obstructed by
-    is_arithmetic.
-*/
-template <typename value_t> constexpr auto is_signed_v = value_t(-1) < value_t(0);
 
 // tests is_integral, is_signed, and size for the given sized_integer_t
 template <int_t expected_size, bool expected_is_signed> constexpr auto test_size() noexcept -> void
