@@ -10,12 +10,19 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/int_traits.hpp>
+#include <bit>
 #include <cassert>
 #include <limits>
 #include <type_traits>
 #include <utility>
 
 namespace crv {
+
+template <unsigned_integral value_t> constexpr auto log2(value_t value) noexcept -> value_t
+{
+    assert(value != 0 && "log2: domain error");
+    return std::bit_width(value) - 1;
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 // Conversions
