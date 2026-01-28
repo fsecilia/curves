@@ -88,11 +88,11 @@ static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64,
 // Bool
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(fixed_t<int8_t, 5>{-128}, "fixed_t: operator bool -128 failed");
-static_assert(fixed_t<int8_t, 5>{-1}, "fixed_t: operator bool -1 failed");
-static_assert(!fixed_t<int8_t, 5>{0}, "fixed_t: operator bool 0 failed");
-static_assert(fixed_t<int8_t, 5>{1}, "fixed_t: operator bool 1 failed");
-static_assert(fixed_t<int8_t, 5>{127}, "fixed_t: operator bool 127 failed");
+static_assert(fixed_t<int8_t, 5>{-128});
+static_assert(fixed_t<int8_t, 5>{-1});
+static_assert(!fixed_t<int8_t, 5>{0});
+static_assert(fixed_t<int8_t, 5>{1});
+static_assert(fixed_t<int8_t, 5>{127});
 
 } // namespace conversions
 
@@ -102,8 +102,8 @@ static_assert(fixed_t<int8_t, 5>{127}, "fixed_t: operator bool 127 failed");
 
 namespace unary_arithmetic {
 
-static_assert(+fixed_t<int_t, 5>{10}.value == 10, "fixed_t: unary plus failed");
-static_assert(-fixed_t<int_t, 5>{10}.value == -10, "fixed_t: unary minus failed");
+static_assert(+fixed_t<int_t, 5>{10}.value == 10);
+static_assert(-fixed_t<int_t, 5>{10}.value == -10);
 
 } // namespace unary_arithmetic
 
