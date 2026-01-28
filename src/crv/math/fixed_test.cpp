@@ -85,6 +85,38 @@ static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64,
               "fixed_t: decrease precision and narrow late failed");
 
 // --------------------------------------------------------------------------------------------------------------------
+// Rounding
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-107}}.value == -27);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-106}}.value == -26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-103}}.value == -26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-102}}.value == -25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-101}}.value == -25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-100}}.value == -25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-99}}.value == -25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-98}}.value == -24);
+
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-4}}.value == -1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-3}}.value == -1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-2}}.value == 0);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-1}}.value == 0);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{0}}.value == 0);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{1}}.value == 0);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{2}}.value == 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{3}}.value == 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{4}}.value == 1);
+
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{97}}.value == 24);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{98}}.value == 25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{100}}.value == 25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{101}}.value == 25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{102}}.value == 26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{105}}.value == 26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{106}}.value == 27);
+
+// --------------------------------------------------------------------------------------------------------------------
 // Bool
 // --------------------------------------------------------------------------------------------------------------------
 

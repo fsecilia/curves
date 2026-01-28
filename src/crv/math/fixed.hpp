@@ -10,6 +10,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/int_traits.hpp>
+#include <algorithm>
 
 namespace crv {
 
@@ -72,14 +73,19 @@ private:
     template <integral other_value_t, int_t other_frac_bits>
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
     {
-        using wider_t = std::conditional_t<sizeof(value_t) < sizeof(other_value_t), other_value_t, value_t>;
+        static constexpr auto max_type_size = std::max(sizeof(value_t), sizeof(other_value_t));
+        using wider_t                       = sized_integer_t<max_type_size, signed_integral<other_value_t>>;
+
         if constexpr (frac_bits > other_frac_bits)
         {
+            // shift left using wider type
             return static_cast<value_t>(static_cast<wider_t>(other_value) << (frac_bits - other_frac_bits));
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
-            return static_cast<value_t>(static_cast<wider_t>(other_value) >> (other_frac_bits - frac_bits));
+            constexpr auto shift = other_frac_bits - frac_bits;
+            auto const     wider = static_cast<wider_t>(other_value);
+            return static_cast<value_t>((wider >> shift) + ((wider >> (shift - 1)) & static_cast<wider_t>(1)));
         }
         else
         {
