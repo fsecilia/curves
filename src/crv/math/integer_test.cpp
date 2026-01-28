@@ -11,6 +11,12 @@
 namespace crv {
 namespace {
 
+template <typename expected_t> constexpr auto typed_equal(auto&& lhs, auto&& rhs) noexcept -> bool
+{
+    return std::same_as<expected_t, std::remove_cvref_t<decltype(lhs)>>
+           && std::same_as<expected_t, std::remove_cvref_t<decltype(rhs)>> && lhs == rhs;
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // int_cast
 // --------------------------------------------------------------------------------------------------------------------
@@ -53,13 +59,13 @@ TEST(int_cast, asserts_casting_oor)
 // to_unsigned_abs
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(to_unsigned_abs(INT64_MIN) == static_cast<uint64_t>(INT64_MAX) + 1);
-static_assert(to_unsigned_abs(INT32_MIN) == static_cast<uint32_t>(INT32_MAX) + 1);
-static_assert(to_unsigned_abs(-1) == 1);
-static_assert(to_unsigned_abs(0) == 0);
-static_assert(to_unsigned_abs(1) == 1);
-static_assert(to_unsigned_abs(INT32_MAX) == static_cast<uint32_t>(INT32_MAX));
-static_assert(to_unsigned_abs(INT64_MAX) == static_cast<uint64_t>(INT64_MAX));
+static_assert(typed_equal<uint64_t>(to_unsigned_abs(INT64_MIN), static_cast<uint64_t>(INT64_MAX) + 1));
+static_assert(typed_equal<uint32_t>(to_unsigned_abs(INT32_MIN), static_cast<uint32_t>(INT32_MAX) + 1));
+static_assert(typed_equal<unsigned>(to_unsigned_abs(-1), static_cast<unsigned>(1)));
+static_assert(typed_equal<unsigned>(to_unsigned_abs(0), static_cast<unsigned>(0)));
+static_assert(typed_equal<unsigned>(to_unsigned_abs(1), static_cast<unsigned>(1)));
+static_assert(typed_equal<uint32_t>(to_unsigned_abs(INT32_MAX), static_cast<uint32_t>(INT32_MAX)));
+static_assert(typed_equal<uint64_t>(to_unsigned_abs(INT64_MAX), static_cast<uint64_t>(INT64_MAX)));
 
 } // namespace
 } // namespace crv
