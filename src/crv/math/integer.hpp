@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
   \file
-  \brief fundamental integer type traits
+  \brief integer fundamentals
 
   \copyright Copyright (C) 2026 Frank Secilia
 */
