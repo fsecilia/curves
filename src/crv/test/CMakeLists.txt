@@ -6,6 +6,7 @@
 add_library(test
     test.cpp
     test.hpp
+    typed_equal.hpp
 )
 target_link_libraries(test PUBLIC
     GTest::gmock_main

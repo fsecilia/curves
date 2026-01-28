@@ -6,6 +6,7 @@
 
 #include <crv/math/integer.hpp>
 #include <crv/test/test.hpp>
+#include <crv/test/typed_equal.hpp>
 #include <limits>
 
 namespace crv {
@@ -19,12 +20,6 @@ template <typename value_t> constexpr auto min() noexcept -> value_t
 template <typename value_t> constexpr auto max() noexcept -> value_t
 {
     return std::numeric_limits<value_t>::max();
-}
-
-template <typename expected_t> constexpr auto typed_equal(auto&& lhs, auto&& rhs) noexcept -> bool
-{
-    return std::same_as<expected_t, std::remove_cvref_t<decltype(lhs)>>
-           && std::same_as<expected_t, std::remove_cvref_t<decltype(rhs)>> && lhs == rhs;
 }
 
 // --------------------------------------------------------------------------------------------------------------------
