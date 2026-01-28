@@ -45,12 +45,12 @@ static_assert(int_cast<int16_t>(uint8_t{std::numeric_limits<int8_t>::max()}) == 
 
 TEST(int_cast, asserts_casting_negative_to_unsigned)
 {
-    EXPECT_DEATH(int_cast<uint8_t>(-1), "out of range integer cast");
+    EXPECT_DEATH(int_cast<uint8_t>(-1), "int_cast: input out of range");
 }
 
 TEST(int_cast, asserts_casting_oor)
 {
-    EXPECT_DEATH(int_cast<int8_t>(std::numeric_limits<int8_t>::max() + 1), "out of range integer cast");
+    EXPECT_DEATH(int_cast<int8_t>(std::numeric_limits<int8_t>::max() + 1), "int_cast: input out of range");
 }
 
 #endif

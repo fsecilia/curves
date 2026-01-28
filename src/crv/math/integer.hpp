@@ -23,7 +23,7 @@ namespace crv {
 //! asserts that from is in the representable range of to_t
 template <integral to_t, integral from_t> constexpr auto int_cast(from_t from) noexcept -> to_t
 {
-    assert(std::in_range<to_t>(from) && "out of range integer cast");
+    assert(std::in_range<to_t>(from) && "int_cast: input out of range");
     return static_cast<to_t>(from);
 }
 
