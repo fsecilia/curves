@@ -15,6 +15,10 @@
 
 namespace crv {
 
+// --------------------------------------------------------------------------------------------------------------------
+// sized_integer_t
+// --------------------------------------------------------------------------------------------------------------------
+
 namespace detail::integer {
 
 template <int_t size, bool is_signed> struct sized_integer_f;
@@ -36,6 +40,10 @@ template <> struct sized_integer_f<16, true> { using type = int128_t; };
 } // namespace detail::integer
 
 template <int_t size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_f<size, is_signed>::type;
+
+// --------------------------------------------------------------------------------------------------------------------
+// int_cast
+// --------------------------------------------------------------------------------------------------------------------
 
 //! asserts that from is in the representable range of to_t
 template <std::integral to_t, std::integral from_t> constexpr auto int_cast(from_t from) noexcept -> to_t
