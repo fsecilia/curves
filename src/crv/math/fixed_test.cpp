@@ -12,7 +12,7 @@
 namespace crv {
 namespace {
 
-using value_t            = int;
+using value_t            = int_t;
 constexpr auto frac_bits = 21;
 using sut_t              = fixed_t<value_t, frac_bits>;
 
