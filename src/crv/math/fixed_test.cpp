@@ -90,6 +90,10 @@ static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64,
 // Rounding
 // --------------------------------------------------------------------------------------------------------------------
 
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>()}}.value == min<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 1}}.value == min<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 2}}.value == min<int8_t>() / 4 + 1);
+
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-107}}.value == -27);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-106}}.value == -26);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-103}}.value == -26);
@@ -118,6 +122,10 @@ static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 26);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{105}}.value == 26);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{106}}.value == 27);
 
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 2}}.value == max<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 1}}.value == max<int8_t>() / 4 + 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>()}}.value == max<int8_t>() / 4 + 1);
+
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{0}}.value == 0);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{1}}.value == 0);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{2}}.value == 1);
@@ -125,6 +133,10 @@ static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{3}}.value == 1);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{4}}.value == 1);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{5}}.value == 1);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{6}}.value == 2);
+
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 2}}.value == max<uint8_t>() / 4);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 1}}.value == max<uint8_t>() / 4 + 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>()}}.value == max<uint8_t>() / 4 + 1);
 
 // --------------------------------------------------------------------------------------------------------------------
 // Bool
