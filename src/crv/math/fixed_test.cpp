@@ -118,6 +118,14 @@ static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 26);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{105}}.value == 26);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{106}}.value == 27);
 
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{0}}.value == 0);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{1}}.value == 0);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{2}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{3}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{4}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{5}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{6}}.value == 2);
+
 // --------------------------------------------------------------------------------------------------------------------
 // Bool
 // --------------------------------------------------------------------------------------------------------------------
