@@ -34,7 +34,7 @@ TEST_P(math_io_uint128_test_t, result)
     out << GetParam().number;
     auto const actual = out.str();
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 uint128_param_t const uint128_t_test_params[] = {
@@ -74,7 +74,7 @@ TEST_P(math_io_int128_test_t, result)
     out << GetParam().number;
     auto const actual = out.str();
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 int128_param_t const s128_test_params[] = {
@@ -125,7 +125,7 @@ TEST_P(math_io_div_u128_u64_test_t, result)
     out << GetParam().sut;
     auto const actual = out.str();
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 div_u128_u64_param_t const div_u128_u64_test_params[] = {

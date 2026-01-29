@@ -296,19 +296,19 @@ struct fixed_test_compound_assignment_t : Test
 
 TEST_F(fixed_test_compound_assignment_t, addition)
 {
-    ASSERT_EQ(&lhs, &(lhs += rhs));
+    EXPECT_EQ(&lhs, &(lhs += rhs));
 }
 
 TEST_F(fixed_test_compound_assignment_t, subtraction)
 {
-    ASSERT_EQ(&lhs, &(lhs -= rhs));
+    EXPECT_EQ(&lhs, &(lhs -= rhs));
 }
 
 TEST_F(fixed_test_compound_assignment_t, multiplication)
 {
     auto const expected_product = lhs_value * rhs_value << frac_bits;
-    ASSERT_EQ(&lhs, &(lhs *= rhs));
-    ASSERT_EQ(expected_product, lhs.value);
+    EXPECT_EQ(&lhs, &(lhs *= rhs));
+    EXPECT_EQ(expected_product, lhs.value);
 }
 
 } // namespace binary_arithmetic
