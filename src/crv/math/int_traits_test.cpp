@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
-  \file
-  \copyright Copyright (C) 2026 Frank Secilia
+    \file
+    \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #include <crv/math/int_traits.hpp>

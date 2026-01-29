@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*!
-  \file
-  \brief integer fundamentals
+    \file
+    \brief integer fundamentals
 
-  \copyright Copyright (C) 2026 Frank Secilia
+    \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once

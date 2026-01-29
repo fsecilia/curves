@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*!
-  \file
-  \brief config app qt entry point
+    \file
+    \brief config app qt entry point
 
-  \copyright Copyright (C) 2026 Frank Secilia
+    \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #include <dink/container.hpp>

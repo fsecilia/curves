@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 /*!
-  \file
-  \brief integer traits that include 128-bit types
+    \file
+    \brief integer traits that include 128-bit types
 
-  This module contains traits for integers. Much of it is dedicated to 128-bit types that are not included in the
-  equivalent standard library traits.
+    This module contains traits for integers. Much of it is dedicated to 128-bit types that are not included in the
+    equivalent standard library traits.
 
-  \copyright Copyright (C) 2026 Frank Secilia
+    \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once

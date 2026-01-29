@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 /*!
-  \file
-  \brief main user-mode library header
+    \file
+    \brief main user-mode library header
 
-  This file is included by every file in the user-mode library.
+    This file is included by every file in the user-mode library.
 
-  \copyright Copyright (C) 2026 Frank Secilia
+    \copyright Copyright (C) 2026 Frank Secilia
 */
 
 #pragma once
