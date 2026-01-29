@@ -171,11 +171,11 @@ static_assert(sut_t{-3} < sut_t{3});
 
 namespace unary_arithmetic {
 
-static_assert(+fixed_t<int_t, 5>{10}.value == 10);
-static_assert(+fixed_t<int_t, 5>{-10}.value == -10);
+static_assert(+sut_t{10}.value == 10);
+static_assert(+sut_t{-10}.value == -10);
 
-static_assert(-fixed_t<int_t, 5>{10}.value == -10);
-static_assert(-fixed_t<int_t, 5>{-10}.value == 10);
+static_assert(-sut_t{10}.value == -10);
+static_assert(-sut_t{-10}.value == 10);
 
 } // namespace unary_arithmetic
 
@@ -185,8 +185,8 @@ static_assert(-fixed_t<int_t, 5>{-10}.value == 10);
 
 namespace binary_arithmetic {
 
-static_assert(fixed_t<int_t, 5>{3} + fixed_t<int_t, 5>{7} == fixed_t<int_t, 5>{10});
-static_assert(fixed_t<int_t, 5>{3} - fixed_t<int_t, 5>{7} == fixed_t<int_t, 5>{-4});
+static_assert(sut_t{3} + sut_t{7} == sut_t{10});
+static_assert(sut_t{3} - sut_t{7} == sut_t{-4});
 
 // mixed types, zeros
 static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{-11 << 3} * fixed_t<int16_t, 5>{0},
@@ -282,9 +282,7 @@ struct fixed_test_compound_assignment_t : Test
 {
     static constexpr auto lhs_value = 3;
     static constexpr auto rhs_value = 7;
-    static constexpr auto frac_bits = 5;
 
-    using sut_t = fixed_t<int32_t, frac_bits>;
     sut_t lhs{lhs_value << frac_bits};
     sut_t rhs{rhs_value << frac_bits};
 };
