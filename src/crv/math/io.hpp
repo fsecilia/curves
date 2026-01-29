@@ -9,15 +9,13 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/integer.hpp>
 #include <ostream>
 
 namespace crv {
 
-// --------------------------------------------------------------------------------------------------------------------
-// 128-bit types
-// --------------------------------------------------------------------------------------------------------------------
-
 auto operator<<(std::ostream& out, uint128_t src) -> std::ostream&;
 auto operator<<(std::ostream& out, int128_t src) -> std::ostream&;
+auto operator<<(std::ostream& out, div_u128_u64_t const& src) -> std::ostream&;
 
 } // namespace crv

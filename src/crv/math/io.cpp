@@ -5,13 +5,10 @@
 */
 
 #include "io.hpp"
+#include "crv/math/integer.hpp"
 #include <array>
 
 namespace crv {
-
-// --------------------------------------------------------------------------------------------------------------------
-// 128-bit types
-// --------------------------------------------------------------------------------------------------------------------
 
 auto operator<<(std::ostream& out, uint128_t src) -> std::ostream&
 {
@@ -35,6 +32,11 @@ auto operator<<(std::ostream& out, int128_t src) -> std::ostream&
 {
     if (src < 0) { return out << "-" << -static_cast<uint128_t>(src); }
     else return out << static_cast<uint128_t>(src);
+}
+
+auto operator<<(std::ostream& out, div_u128_u64_t const& src) -> std::ostream&
+{
+    return out << "{.quotient = " << src.quotient << ", .remainder = " << src.remainder << "}";
 }
 
 } // namespace crv
