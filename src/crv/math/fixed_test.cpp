@@ -142,11 +142,11 @@ static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>()}}.value ==
 // Bool
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(fixed_t<int8_t, 5>{-128});
+static_assert(fixed_t<int8_t, 5>{min<int8_t>()});
 static_assert(fixed_t<int8_t, 5>{-1});
 static_assert(!fixed_t<int8_t, 5>{0});
 static_assert(fixed_t<int8_t, 5>{1});
-static_assert(fixed_t<int8_t, 5>{127});
+static_assert(fixed_t<int8_t, 5>{max<int8_t>()});
 
 } // namespace conversions
 
