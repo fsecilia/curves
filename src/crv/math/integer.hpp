@@ -10,9 +10,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/limits.hpp>
 #include <bit>
 #include <cassert>
-#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -50,8 +50,7 @@ constexpr auto to_signed_copysign(unsigned_t src, signed_integral auto sign) noe
     using dst_t = std::make_signed_t<unsigned_t>;
 
     // result must be within [min(), max()] for signed range
-    assert(src <= (sign < 0 ? static_cast<unsigned_t>(std::numeric_limits<dst_t>::min())
-                            : static_cast<unsigned_t>(std::numeric_limits<dst_t>::max()))
+    assert(src <= (sign < 0 ? static_cast<unsigned_t>(min<dst_t>()) : static_cast<unsigned_t>(max<dst_t>()))
            && "to_signed_copysign: input out of range");
 
     return sign < 0 ? static_cast<dst_t>(-src) : static_cast<dst_t>(src);

@@ -5,21 +5,12 @@
 */
 
 #include <crv/math/integer.hpp>
+#include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <crv/test/typed_equal.hpp>
 
 namespace crv {
 namespace {
-
-template <typename value_t> constexpr auto min() noexcept -> value_t
-{
-    return std::numeric_limits<value_t>::min();
-}
-
-template <typename value_t> constexpr auto max() noexcept -> value_t
-{
-    return std::numeric_limits<value_t>::max();
-}
 
 // --------------------------------------------------------------------------------------------------------------------
 // log2
