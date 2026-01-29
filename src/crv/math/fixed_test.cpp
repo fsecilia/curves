@@ -186,7 +186,14 @@ static_assert(-sut_t{-10}.value == 10);
 namespace binary_arithmetic {
 
 static_assert(sut_t{3} + sut_t{7} == sut_t{10});
+static_assert(sut_t{-3} + sut_t{7} == sut_t{4});
+static_assert(sut_t{3} + sut_t{-7} == sut_t{-4});
+static_assert(sut_t{-3} + sut_t{-7} == sut_t{-10});
+
 static_assert(sut_t{3} - sut_t{7} == sut_t{-4});
+static_assert(sut_t{-3} - sut_t{7} == sut_t{-10});
+static_assert(sut_t{3} - sut_t{-7} == sut_t{10});
+static_assert(sut_t{-3} - sut_t{-7} == sut_t{4});
 
 // mixed types, zeros
 static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{-11 << 3} * fixed_t<int16_t, 5>{0},
