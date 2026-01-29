@@ -7,6 +7,8 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
+    math/io.hpp
+    math/io.cpp
 )
 target_sources_kernel(lib
     lib.hpp
@@ -30,6 +32,7 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         math/fixed_test.cpp
+        math/io_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
