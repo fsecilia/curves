@@ -26,4 +26,8 @@ inline constexpr auto kernel_assert(bool expression, char const* expression_stri
 
 } // namespace crv
 
+#ifndef CRV_ENABLE_ASSERTS
 #define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
+#else
+#define assert(expr) ((void)0)
+#endif
