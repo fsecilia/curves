@@ -150,7 +150,10 @@ static_assert(sut_t{-3} < sut_t{3});
 namespace unary_arithmetic {
 
 static_assert(+fixed_t<int_t, 5>{10}.value == 10);
+static_assert(+fixed_t<int_t, 5>{-10}.value == -10);
+
 static_assert(-fixed_t<int_t, 5>{10}.value == -10);
+static_assert(-fixed_t<int_t, 5>{-10}.value == 10);
 
 } // namespace unary_arithmetic
 
