@@ -127,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(cases, math_division_test_t, ValuesIn(division_params),
 static_assert(log2<uint8_t>(1) == 0);
 static_assert(log2<uint8_t>(max<uint8_t>()) == 7);
 
-// Bottom of valid range.
+// bottom of valid range
 static_assert(log2<uint64_t>((1ULL << 0) + 0) == 0);
 static_assert(log2<uint64_t>((1ULL << 0) + 1) == 1);
 
@@ -143,7 +143,7 @@ static_assert(log2<uint64_t>((1ULL << 3) - 1) == 2);
 static_assert(log2<uint64_t>((1ULL << 3) + 0) == 3);
 static_assert(log2<uint64_t>((1ULL << 3) + 1) == 3);
 
-// Top of valid range.
+// top of valid range
 static_assert(log2<uint64_t>((1ULL << 62) - 1) == 61);
 static_assert(log2<uint64_t>((1ULL << 62) + 0) == 62);
 static_assert(log2<uint64_t>((1ULL << 62) + 1) == 62);
@@ -152,7 +152,7 @@ static_assert(log2<uint64_t>((1ULL << 63) - 1) == 62);
 static_assert(log2<uint64_t>((1ULL << 63) + 0) == 63);
 static_assert(log2<uint64_t>((1ULL << 63) + 1) == 63);
 
-// Max boundary.
+// max boundary
 static_assert(log2<uint64_t>(max<uint64_t>()) == 63);
 
 #if !defined NDEBUG
