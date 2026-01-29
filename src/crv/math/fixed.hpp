@@ -10,6 +10,8 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/integer.hpp>
+#include <crv/math/limits.hpp>
 #include <algorithm>
 
 namespace crv {
@@ -146,6 +148,37 @@ constexpr auto operator*(fixed_t<lhs_value_t, lhs_frac_bits>        lhs,
     auto const product = static_cast<result_t::value_t>(static_cast<result_t::value_t>(lhs.value) * rhs.value);
 
     return result_t{product};
+}
+
+/**
+    division, stripped down for pipeline
+
+    This is not a general implementation. The pipeline has one big divide, and this implementation considers its
+    constraints:
+        - all values are unsigned
+        - all values are 64-bit
+        - the output precision is at least as high as the dividend
+    This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
+*/
+template <int_t out_frac_bits, int_t lhs_frac_bits, int_t rhs_frac_bits>
+auto divide(fixed_t<uint64_t, lhs_frac_bits> const& lhs, fixed_t<uint64_t, rhs_frac_bits> const& rhs) noexcept
+    -> fixed_t<uint64_t, out_frac_bits>
+{
+    constexpr auto total_shift = rhs_frac_bits + out_frac_bits - lhs_frac_bits;
+
+    auto const divisor         = rhs.value;
+    auto const divides_by_zero = 0 == divisor;
+    if (divides_by_zero) [[unlikely]] { return {max<uint64_t>()}; }
+
+    auto const dividend           = static_cast<uint128_t>(lhs.value) << total_shift;
+    auto const quotient_overflows = (dividend >> 64) >= divisor;
+    if (quotient_overflows) [[unlikely]] { return {max<uint64_t>()}; }
+
+    auto [quotient, remainder] = div_u128_u64(dividend, divisor);
+
+    quotient += remainder >= (divisor - remainder);
+
+    return {quotient};
 }
 
 } // namespace crv

@@ -4,7 +4,9 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
+#include "gtest/gtest.h"
 #include <crv/math/fixed.hpp>
+#include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <crv/test/typed_equal.hpp>
@@ -296,6 +298,106 @@ static_assert(typed_equal<fixed_t<uint128_t, 128>>(
                   fixed_t<uint64_t, 64>{max<uint64_t>()} * fixed_t<uint64_t, 64>{max<uint64_t>()},
                   fixed_t<uint128_t, 128>{uint128_t{max<uint64_t>()} * max<uint64_t>()}),
               "fixed_t: max unsigned fraction*fraction failed");
+
+// --------------------------------------------------------------------------------------------------------------------
+// Division
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace division {
+
+template <int_t t_out_frac_bits, int_t t_lhs_frac_bits, int_t t_rhs_frac_bits> struct vector_t
+{
+    static constexpr auto out_frac_bits = t_out_frac_bits;
+    static constexpr auto lhs_frac_bits = t_lhs_frac_bits;
+    static constexpr auto rhs_frac_bits = t_rhs_frac_bits;
+
+    std::string name;
+    uint64_t    lhs;
+    uint64_t    rhs;
+    uint64_t    expected;
+
+    friend auto operator<<(std::ostream& out, vector_t const& src) -> std::ostream&
+    {
+        return out << "{.name = \"" << src.name << "\", .lhs = " << src.lhs << "@" << lhs_frac_bits
+                   << ", .rhs = " << src.rhs << "@" << rhs_frac_bits << ", .expected = " << src.expected << "@"
+                   << out_frac_bits << "}";
+    }
+};
+
+struct fixed_division_test_t : Test
+{
+    template <typename vector_t> void test(vector_t const& vector)
+    {
+        auto const lhs      = fixed_t<uint64_t, vector_t::lhs_frac_bits>{vector.lhs};
+        auto const rhs      = fixed_t<uint64_t, vector_t::rhs_frac_bits>{vector.rhs};
+        auto const expected = fixed_t<uint64_t, vector_t::out_frac_bits>{vector.expected};
+
+        auto const actual = divide<vector_t::out_frac_bits>(lhs, rhs);
+
+        EXPECT_EQ(actual.value, expected.value) << "failed for " << vector;
+    };
+};
+
+TEST_F(fixed_division_test_t, limits)
+{
+    // (2^64 - 1) / 1 = max<uint64_t>()
+    test(vector_t<0, 0, 0>{"safe max", max<uint64_t>(), 1, max<uint64_t>()});
+
+    // 2^64/2 = 2^63
+    test(vector_t<60, 0, 0>{"valid high bit", 16, 2, 1ULL << 63});
+
+    // 2^64/1 = 2^64
+    test(vector_t<60, 0, 0>{"saturates 16 << 60", 16, 1, max<uint64_t>()});
+    test(vector_t<64, 0, 0>{"saturates 1 << 64", 1, 1, max<uint64_t>()});
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+static constexpr auto lhs_frac_bits = 3;
+static constexpr auto rhs_frac_bits = 5;
+static constexpr auto out_frac_bits = 20;
+using specialized_vector_t          = vector_t<out_frac_bits, lhs_frac_bits, rhs_frac_bits>;
+
+struct fixed_division_vector_test_t : fixed_division_test_t, WithParamInterface<specialized_vector_t>
+{};
+
+TEST_P(fixed_division_vector_test_t, result)
+{
+    test(GetParam());
+}
+
+specialized_vector_t const vectors[] = {
+    // basics up to 5 to cover rounding
+    {"0/1", 0 << lhs_frac_bits, 1 << rhs_frac_bits, (0 << out_frac_bits) / 1 + 0},
+    {"1/1", 1 << lhs_frac_bits, 1 << rhs_frac_bits, (1 << out_frac_bits) / 1 + 0},
+    {"2/1", 2 << lhs_frac_bits, 1 << rhs_frac_bits, (2 << out_frac_bits) / 1 + 0},
+    {"0/2", 0 << lhs_frac_bits, 2 << rhs_frac_bits, (0 << out_frac_bits) / 2 + 0},
+    {"1/2", 1 << lhs_frac_bits, 2 << rhs_frac_bits, (1 << out_frac_bits) / 2 + 0},
+    {"2/2", 2 << lhs_frac_bits, 2 << rhs_frac_bits, (2 << out_frac_bits) / 2 + 0},
+    {"3/2", 3 << lhs_frac_bits, 2 << rhs_frac_bits, (3 << out_frac_bits) / 2 + 0},
+    {"0/3", 0 << lhs_frac_bits, 3 << rhs_frac_bits, (0 << out_frac_bits) / 3 + 0},
+    {"1/3", 1 << lhs_frac_bits, 3 << rhs_frac_bits, (1 << out_frac_bits) / 3 + 0},
+    {"2/3", 2 << lhs_frac_bits, 3 << rhs_frac_bits, (2 << out_frac_bits) / 3 + 1},
+    {"3/3", 3 << lhs_frac_bits, 3 << rhs_frac_bits, (3 << out_frac_bits) / 3 + 0},
+    {"4/3", 4 << lhs_frac_bits, 3 << rhs_frac_bits, (4 << out_frac_bits) / 3 + 0},
+    {"0/4", 0 << lhs_frac_bits, 4 << rhs_frac_bits, (0 << out_frac_bits) / 4 + 0},
+    {"1/4", 1 << lhs_frac_bits, 4 << rhs_frac_bits, (1 << out_frac_bits) / 4 + 0},
+    {"2/4", 2 << lhs_frac_bits, 4 << rhs_frac_bits, (2 << out_frac_bits) / 4 + 0},
+    {"3/4", 3 << lhs_frac_bits, 4 << rhs_frac_bits, (3 << out_frac_bits) / 4 + 0},
+    {"4/4", 4 << lhs_frac_bits, 4 << rhs_frac_bits, (4 << out_frac_bits) / 4 + 0},
+    {"5/4", 5 << lhs_frac_bits, 4 << rhs_frac_bits, (5 << out_frac_bits) / 4 + 0},
+    {"0/5", 0 << lhs_frac_bits, 5 << rhs_frac_bits, (0 << out_frac_bits) / 5 + 0},
+    {"1/5", 1 << lhs_frac_bits, 5 << rhs_frac_bits, (1 << out_frac_bits) / 5 + 0},
+    {"2/5", 2 << lhs_frac_bits, 5 << rhs_frac_bits, (2 << out_frac_bits) / 5 + 0},
+    {"3/5", 3 << lhs_frac_bits, 5 << rhs_frac_bits, (3 << out_frac_bits) / 5 + 1},
+    {"4/5", 4 << lhs_frac_bits, 5 << rhs_frac_bits, (4 << out_frac_bits) / 5 + 1},
+    {"5/5", 5 << lhs_frac_bits, 5 << rhs_frac_bits, (5 << out_frac_bits) / 5 + 0},
+    {"6/5", 6 << lhs_frac_bits, 5 << rhs_frac_bits, (6 << out_frac_bits) / 5 + 0},
+};
+INSTANTIATE_TEST_SUITE_P(cases, fixed_division_vector_test_t, ValuesIn(vectors),
+                         test_name_generator_t<specialized_vector_t>{});
+
+} // namespace division
 
 // --------------------------------------------------------------------------------------------------------------------
 // Compound Assignment
