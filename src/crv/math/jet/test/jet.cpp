@@ -281,5 +281,34 @@ TEST_F(jet_test_scalar_addition_t, scalar_plus_det)
     static_assert(sut == sut_t{4.5, 5.0});
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Subtraction
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_scalar_subtraction_t : jet_test_t
+{};
+
+TEST_F(jet_test_scalar_subtraction_t, compound_assign)
+{
+    auto sut = sut_t{3.0, 5.0};
+
+    EXPECT_EQ(&sut, &(sut -= 1.25));
+    EXPECT_EQ(sut, (sut_t{1.75, 5.0}));
+}
+
+TEST_F(jet_test_scalar_subtraction_t, jet_minus_scalar)
+{
+    constexpr auto sut = sut_t{3.0, 5.0} - 1.25;
+
+    static_assert(sut == sut_t{1.75, 5.0});
+}
+
+TEST_F(jet_test_scalar_subtraction_t, scalar_minus_jet)
+{
+    constexpr auto sut = 1.25 - sut_t{3.0, 5.0};
+
+    static_assert(sut == sut_t{-1.75, -5.0});
+}
+
 } // namespace
 } // namespace crv

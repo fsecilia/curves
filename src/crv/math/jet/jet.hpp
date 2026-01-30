@@ -154,6 +154,18 @@ template <typename t_scalar_t> struct jet_t
         // commute
         return rhs += lhs;
     }
+
+    constexpr auto operator-=(scalar_t const& rhs) noexcept -> jet_t&
+    {
+        f -= rhs;
+        return *this;
+    }
+
+    friend constexpr auto operator-(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
+    friend constexpr auto operator-(scalar_t const& lhs, jet_t const& rhs) noexcept -> jet_t
+    {
+        return jet_t{lhs - rhs.f, -rhs.df};
+    }
 };
 
 } // namespace crv
