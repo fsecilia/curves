@@ -110,6 +110,16 @@ TEST_F(jet_test_construction_t, pair)
     EXPECT_EQ(x.df, df);
 }
 
+TEST_F(jet_test_construction_t, broadcast)
+{
+    constexpr auto sut = jet_t<jet_t<double>>{f};
+
+    EXPECT_EQ(sut.f.f, f);
+    EXPECT_EQ(sut.f.df, 0);
+    EXPECT_EQ(sut.df.f, 0);
+    EXPECT_EQ(sut.df.df, 0);
+}
+
 // ====================================================================================================================
 // Accessors
 // ====================================================================================================================
