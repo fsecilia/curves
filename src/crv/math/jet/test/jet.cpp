@@ -117,6 +117,50 @@ TEST_F(jet_test_construction_t, broadcast)
 }
 
 // ====================================================================================================================
+// Conversion
+// ====================================================================================================================
+
+struct jet_test_conversion_t : jet_test_t
+{
+    static constexpr int_t f_int  = 7;
+    static constexpr int_t df_int = 11;
+};
+
+TEST_F(jet_test_conversion_t, ctor)
+{
+    constexpr auto jet_int = jet_t{f_int, df_int};
+    constexpr auto sut     = sut_t{jet_int};
+
+    EXPECT_DOUBLE_EQ(primal(sut), static_cast<scalar_t>(f_int));
+    EXPECT_DOUBLE_EQ(derivative(sut), static_cast<scalar_t>(df_int));
+}
+
+TEST_F(jet_test_conversion_t, assign)
+{
+    constexpr auto jet_int = jet_t{f_int, df_int};
+    auto           sut     = sut_t{};
+
+    sut = jet_int;
+
+    EXPECT_DOUBLE_EQ(primal(sut), static_cast<scalar_t>(f_int));
+    EXPECT_DOUBLE_EQ(derivative(sut), static_cast<scalar_t>(df_int));
+}
+
+TEST_F(jet_test_conversion_t, to_bool_true)
+{
+    EXPECT_TRUE(static_cast<bool>(sut_t{1.0, 0.0}));
+    EXPECT_TRUE(static_cast<bool>(sut_t{-1.0, 0.0}));
+    EXPECT_TRUE(static_cast<bool>(sut_t{0.001, 0.0}));
+    EXPECT_TRUE(static_cast<bool>(sut_t{1.0, 999.0}));
+}
+
+TEST_F(jet_test_conversion_t, to_bool_false)
+{
+    EXPECT_FALSE(static_cast<bool>(sut_t{0.0, 0.0}));
+    EXPECT_FALSE(static_cast<bool>(sut_t{0.0, 999.0}));
+}
+
+// ====================================================================================================================
 // Accessors
 // ====================================================================================================================
 

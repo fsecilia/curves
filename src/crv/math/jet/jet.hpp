@@ -75,6 +75,28 @@ template <typename t_scalar_t> struct jet_t
     constexpr jet_t(arithmetic auto const& s) noexcept : f(s), df(0) {}
 
     // ----------------------------------------------------------------------------------------------------------------
+    // Conversions
+    // ----------------------------------------------------------------------------------------------------------------
+
+    template <typename other_scalar_t>
+    explicit constexpr jet_t(jet_t<other_scalar_t> const& other) noexcept
+        : f{static_cast<scalar_t>(other.f)}, df{static_cast<scalar_t>(other.df)}
+    {}
+
+    template <typename other_scalar_t> constexpr auto operator=(jet_t<other_scalar_t> const& rhs) noexcept -> jet_t&
+    {
+        f  = static_cast<scalar_t>(rhs.f);
+        df = static_cast<scalar_t>(rhs.df);
+        return *this;
+    }
+
+    explicit constexpr operator bool() const noexcept
+    {
+        // ignore derivative
+        return f != scalar_t{0};
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
     // Accessors
     // ----------------------------------------------------------------------------------------------------------------
 
