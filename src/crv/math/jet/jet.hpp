@@ -57,6 +57,7 @@ template <typename t_scalar_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr jet_t() noexcept = default;
+    constexpr jet_t(scalar_t const& s) noexcept : f{s}, df{} {}
     constexpr jet_t(scalar_t const& f, scalar_t const& df) noexcept : f{f}, df{df} {}
 
     // ----------------------------------------------------------------------------------------------------------------

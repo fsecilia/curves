@@ -86,6 +86,24 @@ TEST_F(jet_test_construction_t, default_construction)
     EXPECT_EQ(sut.df, 0.0);
 }
 
+TEST_F(jet_test_construction_t, scalar)
+{
+    constexpr auto sut = jet_t{f};
+
+    EXPECT_EQ(sut.f, f);
+    EXPECT_EQ(sut.df, 0.0);
+}
+
+TEST_F(jet_test_construction_t, nested_scalar)
+{
+    constexpr auto sut = jet_t<jet_t<double>>{x};
+
+    EXPECT_EQ(sut.f.f, x.f);
+    EXPECT_EQ(sut.f.df, x.df);
+    EXPECT_EQ(sut.df.f, 0);
+    EXPECT_EQ(sut.df.df, 0);
+}
+
 TEST_F(jet_test_construction_t, pair)
 {
     EXPECT_EQ(x.f, f);
