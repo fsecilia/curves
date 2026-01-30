@@ -5,7 +5,6 @@
 */
 
 #include "fixed.hpp"
-#include "gtest/gtest.h"
 #include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>

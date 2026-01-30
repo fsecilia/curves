@@ -4,8 +4,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "gtest/gtest.h"
-#include <crv/math/integer.hpp>
+#include "integer.hpp"
 #include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>

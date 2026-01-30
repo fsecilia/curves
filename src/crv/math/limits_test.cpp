@@ -4,7 +4,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include <crv/math/limits.hpp>
+#include "limits.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv {
