@@ -44,6 +44,13 @@ template <typename t_scalar_t> struct jet_t
 
     scalar_t f{};
     scalar_t df{};
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Accessors
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
+    friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
 };
 
 } // namespace crv

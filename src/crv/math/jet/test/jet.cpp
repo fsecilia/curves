@@ -66,5 +66,22 @@ TEST_F(jet_test_construction_t, default_construction)
     EXPECT_EQ(sut.df, 0.0);
 }
 
+// ====================================================================================================================
+// Accessors
+// ====================================================================================================================
+
+struct jet_test_accessors_t : jet_test_t
+{};
+
+TEST_F(jet_test_construction_t, primal)
+{
+    EXPECT_EQ(x.f, primal(x));
+}
+
+TEST_F(jet_test_construction_t, derivative)
+{
+    EXPECT_EQ(x.df, derivative(x));
+}
+
 } // namespace
 } // namespace crv
