@@ -161,23 +161,6 @@ TEST_F(jet_test_conversion_t, to_bool_false)
 }
 
 // ====================================================================================================================
-// Accessors
-// ====================================================================================================================
-
-struct jet_test_accessors_t : jet_test_t
-{};
-
-TEST_F(jet_test_construction_t, primal)
-{
-    static_assert(x.f == primal(x));
-}
-
-TEST_F(jet_test_construction_t, derivative)
-{
-    static_assert(x.df == derivative(x));
-}
-
-// ====================================================================================================================
 // Comparison
 // ====================================================================================================================
 
@@ -223,6 +206,23 @@ TEST_F(jet_test_comparison_t, jet_ordering)
     static_assert(jet_t{4.0, 1.0} != jet_t{4.0, 2.0});
     static_assert(jet_t{4.0, 1.0} <= jet_t{4.0, 2.0});
     static_assert(jet_t{4.0, 2.0} >= jet_t{4.0, 1.0});
+}
+
+// ====================================================================================================================
+// Accessors
+// ====================================================================================================================
+
+struct jet_test_accessors_t : jet_test_t
+{};
+
+TEST_F(jet_test_construction_t, primal)
+{
+    static_assert(x.f == primal(x));
+}
+
+TEST_F(jet_test_construction_t, derivative)
+{
+    static_assert(x.df == derivative(x));
 }
 
 } // namespace

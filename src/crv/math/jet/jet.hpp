@@ -97,13 +97,6 @@ template <typename t_scalar_t> struct jet_t
     }
 
     // ----------------------------------------------------------------------------------------------------------------
-    // Accessors
-    // ----------------------------------------------------------------------------------------------------------------
-
-    friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
-    friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
-
-    // ----------------------------------------------------------------------------------------------------------------
     // Element Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
@@ -122,7 +115,7 @@ template <typename t_scalar_t> struct jet_t
     // Vector Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
-    // jet_t ignores the derivative for ordering, so impose a weak ordering at best.
+    // jet_t ignores the derivative for ordering, so impose a weak ordering at best
     constexpr auto operator<=>(jet_t const& other) const noexcept
         -> std::common_comparison_category_t<decltype(f <=> other.f), std::weak_ordering>
     {
@@ -130,6 +123,13 @@ template <typename t_scalar_t> struct jet_t
     }
 
     constexpr auto operator==(jet_t const&) const noexcept -> bool = default;
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Accessors
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
+    friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
 };
 
 } // namespace crv
