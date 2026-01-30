@@ -130,6 +130,13 @@ template <typename t_scalar_t> struct jet_t
 
     friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
     friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Unary Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto operator+(jet_t const& x) noexcept -> jet_t { return x; }
+    friend constexpr auto operator-(jet_t const& x) noexcept -> jet_t { return {-x.f, -x.df}; }
 };
 
 } // namespace crv

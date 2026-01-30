@@ -225,5 +225,28 @@ TEST_F(jet_test_construction_t, derivative)
     static_assert(x.df == derivative(x));
 }
 
+// ====================================================================================================================
+// Unary Arithmetic
+// ====================================================================================================================
+
+struct jet_test_unary_arithmetic_t : jet_test_t
+{};
+
+TEST_F(jet_test_unary_arithmetic_t, plus)
+{
+    constexpr auto sut = +x;
+
+    static_assert(primal(sut) == primal(x));
+    static_assert(derivative(sut) == derivative(x));
+}
+
+TEST_F(jet_test_unary_arithmetic_t, minus)
+{
+    constexpr auto sut = -x;
+
+    static_assert(primal(sut) == -primal(x));
+    static_assert(derivative(sut) == -derivative(x));
+}
+
 } // namespace
 } // namespace crv
