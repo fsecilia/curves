@@ -5,7 +5,6 @@
 */
 
 #include "io.hpp"
-#include "crv/math/integer.hpp"
 #include <array>
 
 namespace crv {
