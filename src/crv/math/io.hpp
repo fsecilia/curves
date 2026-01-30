@@ -9,7 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/fixed.hpp>
+#include <crv/math/fixed/fixed.hpp>
 #include <crv/math/integer.hpp>
 #include <ostream>
 

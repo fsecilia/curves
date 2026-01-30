@@ -13,7 +13,7 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     lib.hpp
     lib.cpp
-    math/fixed.hpp
+    math/fixed/fixed.hpp
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
@@ -31,7 +31,7 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
-        math/fixed_test.cpp
+        math/fixed/test.cpp
         math/io_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
