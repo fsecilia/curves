@@ -248,5 +248,38 @@ TEST_F(jet_test_unary_arithmetic_t, minus)
     static_assert(derivative(sut) == -derivative(x));
 }
 
+// ====================================================================================================================
+// Scalar Arithmetic
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// Addition
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_scalar_addition_t : jet_test_t
+{};
+
+TEST_F(jet_test_scalar_addition_t, compound_assign)
+{
+    auto sut = sut_t{3.0, 5.0};
+
+    EXPECT_EQ(&sut, &(sut += 1.5));
+    EXPECT_EQ(sut, (sut_t{4.5, 5.0}));
+}
+
+TEST_F(jet_test_scalar_addition_t, jet_plus_scalar)
+{
+    constexpr auto sut = sut_t{3.0, 5.0} + 1.5;
+
+    static_assert(sut == sut_t{4.5, 5.0});
+}
+
+TEST_F(jet_test_scalar_addition_t, scalar_plus_det)
+{
+    constexpr auto sut = 1.5 + sut_t{3.0, 5.0};
+
+    static_assert(sut == sut_t{4.5, 5.0});
+}
+
 } // namespace
 } // namespace crv

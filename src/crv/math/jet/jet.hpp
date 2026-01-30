@@ -137,6 +137,23 @@ template <typename t_scalar_t> struct jet_t
 
     friend constexpr auto operator+(jet_t const& x) noexcept -> jet_t { return x; }
     friend constexpr auto operator-(jet_t const& x) noexcept -> jet_t { return {-x.f, -x.df}; }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Scalar Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    constexpr auto operator+=(scalar_t const& rhs) noexcept -> jet_t&
+    {
+        f += rhs;
+        return *this;
+    }
+
+    friend constexpr auto operator+(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
+    friend constexpr auto operator+(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    {
+        // commute
+        return rhs += lhs;
+    }
 };
 
 } // namespace crv
