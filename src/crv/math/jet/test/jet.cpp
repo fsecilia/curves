@@ -13,9 +13,11 @@ namespace {
 struct jet_test_t : Test
 {
     using scalar_t = real_t;
+    using sut_t    = jet_t<scalar_t>;
 
     static constexpr scalar_t f  = 37.2; // arbitrary
     static constexpr scalar_t df = 26.3; // arbitrary
+    static constexpr sut_t    x{f, df};
 };
 
 // ====================================================================================================================
@@ -34,6 +36,21 @@ TEST_F(jet_test_t, derivative)
     static_assert(scalar_t{} == derivative(f));
     static_assert(scalar_t{} == derivative(-f));
     static_assert(scalar_t{} == derivative(df));
+}
+
+// ====================================================================================================================
+// Construction
+// ====================================================================================================================
+
+struct jet_test_construction_t : jet_test_t
+{};
+
+TEST_F(jet_test_construction_t, default_construction)
+{
+    constexpr auto sut = sut_t{};
+
+    EXPECT_EQ(sut.f, 0.0);
+    EXPECT_EQ(sut.df, 0.0);
 }
 
 } // namespace

@@ -26,4 +26,16 @@ template <typename scalar_t> constexpr auto derivative(scalar_t const&) noexcept
     return scalar_t{};
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Jet
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename t_scalar_t> struct jet_t
+{
+    using scalar_t = t_scalar_t;
+
+    scalar_t f{};
+    scalar_t df{};
+};
+
 } // namespace crv
