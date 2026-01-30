@@ -8,6 +8,8 @@
 add_library(lib)
 target_sources(lib PRIVATE
     math/fixed/io.hpp
+    math/jet/jet.hpp
+    math/jet/io.hpp
     math/io.hpp
     math/io.cpp
 )
@@ -33,6 +35,8 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         math/fixed/test.cpp
+        math/jet/test/jet.cpp
+        math/jet/test/nested.cpp
         math/io_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
