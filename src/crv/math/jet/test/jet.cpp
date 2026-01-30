@@ -25,15 +25,29 @@ struct jet_test_t : Test
 // ====================================================================================================================
 
 struct jet_test_concepts_t : jet_test_t
-{};
+{
+    struct nonarithmetic_t;
+    struct nonjet_t;
+};
 
 TEST_F(jet_test_concepts_t, arithmetic)
 {
     static_assert(arithmetic<int_t>);
     static_assert(arithmetic<real_t>);
 
-    struct nonarithmetic_t;
     static_assert(!arithmetic<nonarithmetic_t>);
+}
+
+TEST_F(jet_test_concepts_t, is_jet)
+{
+    static_assert(is_jet<sut_t>);
+    static_assert(!is_jet<nonjet_t>);
+}
+
+TEST_F(jet_test_concepts_t, is_not_jet)
+{
+    static_assert(!is_not_jet<sut_t>);
+    static_assert(is_not_jet<nonjet_t>);
 }
 
 // ====================================================================================================================

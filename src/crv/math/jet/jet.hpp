@@ -9,6 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <concepts>
 #include <type_traits>
 
 namespace crv {
@@ -19,6 +20,12 @@ namespace crv {
 
 template <typename scalar_t>
 concept arithmetic = std::is_arithmetic_v<scalar_t>;
+
+template <typename jet_t>
+concept is_jet = !std::same_as<jet_t, decltype(primal(std::declval<jet_t const>()))>;
+
+template <typename jet_t>
+concept is_not_jet = !is_jet<jet_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Scalar Fallbacks
