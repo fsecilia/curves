@@ -98,10 +98,8 @@ TEST_F(jet_test_construction_t, nested_scalar)
 {
     constexpr auto sut = jet_t<jet_t<double>>{x};
 
-    EXPECT_EQ(sut.f.f, x.f);
-    EXPECT_EQ(sut.f.df, x.df);
-    EXPECT_EQ(sut.df.f, 0);
-    EXPECT_EQ(sut.df.df, 0);
+    EXPECT_EQ(sut.f, x);
+    EXPECT_EQ(sut.df, jet_t{0.0});
 }
 
 TEST_F(jet_test_construction_t, pair)
@@ -114,10 +112,8 @@ TEST_F(jet_test_construction_t, broadcast)
 {
     constexpr auto sut = jet_t<jet_t<double>>{f};
 
-    EXPECT_EQ(sut.f.f, f);
-    EXPECT_EQ(sut.f.df, 0);
-    EXPECT_EQ(sut.df.f, 0);
-    EXPECT_EQ(sut.df.df, 0);
+    EXPECT_EQ(sut.f, jet_t{f});
+    EXPECT_EQ(sut.df, jet_t{0.0});
 }
 
 // ====================================================================================================================
@@ -135,6 +131,54 @@ TEST_F(jet_test_construction_t, primal)
 TEST_F(jet_test_construction_t, derivative)
 {
     EXPECT_EQ(x.df, derivative(x));
+}
+
+// ====================================================================================================================
+// Comparison
+// ====================================================================================================================
+
+struct jet_test_comparison_t : jet_test_t
+{};
+
+TEST_F(jet_test_comparison_t, element_equality)
+{
+    // equal only if primal matches AND derivative is zero
+    EXPECT_TRUE((jet_t{5.0, 0.0} == 5.0));
+    EXPECT_FALSE((jet_t{5.0, 1.0} == 5.0));
+    EXPECT_FALSE((jet_t{5.1, 0.0} == 5.0));
+}
+
+TEST_F(jet_test_comparison_t, element_ordering)
+{
+    EXPECT_TRUE((jet_t{3.0, 999.0} != 4.0));
+    EXPECT_TRUE((jet_t{3.0, 999.0} < 4.0));
+
+    EXPECT_TRUE((jet_t{5.0, 999.0} != 4.0));
+    EXPECT_TRUE((jet_t{5.0, 999.0} > 4.0));
+
+    EXPECT_TRUE((jet_t{4.0, 999.0} != 4.0));
+    EXPECT_TRUE((jet_t{4.0, 999.0} <= 4.0));
+    EXPECT_TRUE((jet_t{4.0, 999.0} >= 4.0));
+}
+
+TEST_F(jet_test_comparison_t, jet_equality)
+{
+    EXPECT_TRUE((jet_t{3.0, 2.0} == jet_t{3.0, 2.0}));
+    EXPECT_FALSE((jet_t{3.0, 2.0} == jet_t{3.0, 3.0}));
+    EXPECT_FALSE((jet_t{3.0, 2.0} == jet_t{4.0, 2.0}));
+}
+
+TEST_F(jet_test_comparison_t, jet_ordering)
+{
+    EXPECT_TRUE((jet_t{3.0, 999.0} != jet_t{4.0, 0.0}));
+    EXPECT_TRUE((jet_t{3.0, 999.0} < jet_t{4.0, 0.0}));
+
+    EXPECT_TRUE((jet_t{5.0, 0.0} != jet_t{4.0, 999.0}));
+    EXPECT_TRUE((jet_t{5.0, 0.0} > jet_t{4.0, 999.0}));
+
+    EXPECT_TRUE((jet_t{4.0, 1.0} != jet_t{4.0, 2.0}));
+    EXPECT_TRUE((jet_t{4.0, 1.0} <= jet_t{4.0, 2.0}));
+    EXPECT_TRUE((jet_t{4.0, 2.0} >= jet_t{4.0, 1.0}));
 }
 
 } // namespace

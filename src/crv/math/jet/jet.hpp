@@ -9,6 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <compare>
 #include <concepts>
 #include <type_traits>
 
@@ -79,6 +80,34 @@ template <typename t_scalar_t> struct jet_t
 
     friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
     friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Element Comparison
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto operator<=>(jet_t const& lhs, scalar_t const& rhs) noexcept
+        -> std::common_comparison_category_t<decltype(lhs.f <=> rhs), std::weak_ordering>
+    {
+        return lhs.f <=> rhs;
+    }
+
+    friend constexpr auto operator==(jet_t const& lhs, scalar_t const& rhs) noexcept -> bool
+    {
+        return lhs.f == rhs && lhs.df == scalar_t{0};
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Vector Comparison
+    // ----------------------------------------------------------------------------------------------------------------
+
+    // jet_t ignores the derivative for ordering, so impose a weak ordering at best.
+    constexpr auto operator<=>(jet_t const& other) const noexcept
+        -> std::common_comparison_category_t<decltype(f <=> other.f), std::weak_ordering>
+    {
+        return f <=> other.f;
+    }
+
+    constexpr auto operator==(jet_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv
