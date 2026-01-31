@@ -109,12 +109,28 @@ TEST_F(jet_test_construction_t, pair)
     static_assert(x.df == df);
 }
 
-TEST_F(jet_test_construction_t, broadcast)
+TEST_F(jet_test_construction_t, broadcast_level_1)
 {
     constexpr auto sut = jet_t<jet_t<double>>{f};
 
     static_assert(sut.f == jet_t{f});
     static_assert(sut.df == jet_t{0.0});
+}
+
+TEST_F(jet_test_construction_t, broadcast_level_2)
+{
+    constexpr auto sut = jet_t<jet_t<jet_t<double>>>{f};
+
+    static_assert(sut.f == jet_t<jet_t<double>>{f});
+    static_assert(sut.df == jet_t<jet_t<double>>{0.0});
+}
+
+TEST_F(jet_test_construction_t, broadcast_level_3)
+{
+    constexpr auto sut = jet_t<jet_t<jet_t<jet_t<double>>>>{f};
+
+    static_assert(sut.f == jet_t<jet_t<jet_t<double>>>{f});
+    static_assert(sut.df == jet_t<jet_t<jet_t<double>>>{0.0});
 }
 
 // ====================================================================================================================
