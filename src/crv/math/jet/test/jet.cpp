@@ -11,11 +11,11 @@
 namespace crv {
 namespace {
 
+using scalar_t = real_t;
+using sut_t    = jet_t<scalar_t>;
+
 struct jet_test_t : Test
 {
-    using scalar_t = real_t;
-    using sut_t    = jet_t<scalar_t>;
-
     static constexpr scalar_t f  = 37.2; // arbitrary
     static constexpr scalar_t df = 26.3; // arbitrary
     static constexpr sut_t    x{f, df};
@@ -271,9 +271,6 @@ TEST_F(jet_test_unary_arithmetic_t, minus)
 
 struct jet_scalar_op_vector_t
 {
-    using scalar_t = jet_test_t::scalar_t;
-    using sut_t    = jet_test_t::sut_t;
-
     std::string name;
     sut_t       jet;
     scalar_t    scalar;
@@ -465,8 +462,6 @@ INSTANTIATE_TEST_SUITE_P(scalar_division, jet_test_scalar_division_t, ValuesIn(s
 
 struct jet_vector_op_vector_t
 {
-    using sut_t = jet_test_t::sut_t;
-
     std::string name;
     sut_t       lhs;
     sut_t       rhs;
@@ -670,8 +665,6 @@ INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(v
 
 struct selection_min_max_vector_t
 {
-    using sut_t = jet_test_t::sut_t;
-
     std::string name;
     sut_t       x;
     sut_t       y;
