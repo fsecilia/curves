@@ -981,5 +981,33 @@ const math_func_test_vector_x_t cos_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// exp
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(exp(x)) = exp(x)*dx
+struct jet_test_exp_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_exp_t, result)
+{
+    auto const actual = exp(x);
+
+    EXPECT_NEAR(expected.f, actual.f, 4 * eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+const math_func_test_vector_x_t exp_vectors[] = {
+    {"-1", {-1.0, 1.3}, {1.0 / M_E, 1.3 / M_E}},
+    {"0", {0.0, 1.3}, {1.0, 1.3}},
+    {"0.5", {0.5, 1.3}, {sqrt(M_E), 1.3*sqrt(M_E)}},
+    {"1", {1.0, 1.3}, {M_E, 1.3*M_E}},
+    {"2", {2.0, 1.3}, {M_E*M_E, M_E*M_E*1.3}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(exp, jet_test_exp_t, ValuesIn(exp_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 } // namespace
 } // namespace crv

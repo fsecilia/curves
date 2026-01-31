@@ -22,12 +22,14 @@ using std::abs;
 using std::clamp;
 using std::copysign;
 using std::cos;
+using std::exp;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
 using std::max;
 using std::min;
 using std::sin;
+using std::sqrt;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
@@ -350,6 +352,15 @@ template <typename t_scalar_t> struct jet_t
         using crv::sin;
 
         return {cos(x.f), -sin(x.f) * x.df};
+    }
+
+    // d(exp(x)) = exp(x)*dx
+    friend constexpr auto exp(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::exp;
+
+        auto const exp_xf = exp(x.f);
+        return {exp_xf, exp_xf * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
