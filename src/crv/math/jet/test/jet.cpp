@@ -314,7 +314,7 @@ jet_scalar_op_vector_t const scalar_addition_vectors[] = {
     {"mixed zeros", {5.0, 0.0}, 0.0, {5.0, 0.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(addition, jet_test_scalar_addition_t, ValuesIn(scalar_addition_vectors),
+INSTANTIATE_TEST_SUITE_P(scalar_addition, jet_test_scalar_addition_t, ValuesIn(scalar_addition_vectors),
                          test_name_generator_t<jet_scalar_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -355,7 +355,7 @@ jet_scalar_op_vector_t const scalar_subtraction_vectors[] = {
     {"mixed zeros", {5.0, 0.0}, 0.0, {5.0, 0.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_scalar_subtraction_t, ValuesIn(scalar_subtraction_vectors),
+INSTANTIATE_TEST_SUITE_P(scalar_subtraction, jet_test_scalar_subtraction_t, ValuesIn(scalar_subtraction_vectors),
                          test_name_generator_t<jet_scalar_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -398,8 +398,8 @@ jet_scalar_op_vector_t const scalar_multiplication_vectors[] = {
     {"0*0", {0.0, 0.0}, 0.0, {0.0, 0.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(multiplication, jet_test_scalar_multiplication_t, ValuesIn(scalar_multiplication_vectors),
-                         test_name_generator_t<jet_scalar_op_vector_t>{});
+INSTANTIATE_TEST_SUITE_P(scalar_multiplication, jet_test_scalar_multiplication_t,
+                         ValuesIn(scalar_multiplication_vectors), test_name_generator_t<jet_scalar_op_vector_t>{});
 
 // ====================================================================================================================
 // Vector Arithmetic
@@ -431,10 +431,10 @@ struct jet_test_vector_op_t : jet_test_t, WithParamInterface<jet_vector_op_vecto
 // Addition
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_addition_t : jet_test_vector_op_t
+struct jet_test_vector_addition_t : jet_test_vector_op_t
 {};
 
-TEST_P(jet_test_addition_t, compound_assign)
+TEST_P(jet_test_vector_addition_t, compound_assign)
 {
     auto const& actual = lhs += rhs;
 
@@ -442,37 +442,37 @@ TEST_P(jet_test_addition_t, compound_assign)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_addition_t, binary_op)
+TEST_P(jet_test_vector_addition_t, binary_op)
 {
     auto const actual = lhs + rhs;
 
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_addition_t, binary_op_commuted)
+TEST_P(jet_test_vector_addition_t, binary_op_commuted)
 {
     auto const actual = rhs + lhs;
 
     EXPECT_EQ(expected, actual);
 }
 
-jet_vector_op_vector_t const addition_vectors[] = {
+jet_vector_op_vector_t const vector_addition_vectors[] = {
     {"positve + positive", {1.0, 2.0}, {3.0, 4.0}, {4.0, 6.0}},
     {"mixed signs", {-1.0, 2.0}, {3.0, -4.0}, {2.0, -2.0}},
     {"zeros", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}},
     {"mixed zeros", {5.0, 0.0}, {0.0, 3.0}, {5.0, 3.0}},
 };
-INSTANTIATE_TEST_SUITE_P(addition, jet_test_addition_t, ValuesIn(addition_vectors),
+INSTANTIATE_TEST_SUITE_P(vector_addition, jet_test_vector_addition_t, ValuesIn(vector_addition_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Subtraction
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_subtraction_t : jet_test_vector_op_t
+struct jet_test_vector_subtraction_t : jet_test_vector_op_t
 {};
 
-TEST_P(jet_test_subtraction_t, compound_assign)
+TEST_P(jet_test_vector_subtraction_t, compound_assign)
 {
     auto const& actual = lhs -= rhs;
 
@@ -480,38 +480,38 @@ TEST_P(jet_test_subtraction_t, compound_assign)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_subtraction_t, binary_op)
+TEST_P(jet_test_vector_subtraction_t, binary_op)
 {
     auto const actual = lhs - rhs;
 
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_subtraction_t, binary_op_commuted)
+TEST_P(jet_test_vector_subtraction_t, binary_op_commuted)
 {
     auto const actual = rhs - lhs;
 
     EXPECT_EQ(-expected, actual);
 }
 
-jet_vector_op_vector_t const subtraction_vectors[] = {
+jet_vector_op_vector_t const vector_subtraction_vectors[] = {
     {"positve - smaller", {11.0, 17.0}, {5.0, 7.0}, {6.0, 10.0}},
     {"positve - larger", {5.0, 7.0}, {11.0, 17.0}, {-6.0, -10.0}},
     {"mixed signs", {-5.0, 7.0}, {11.0, -17.0}, {-16.0, 24.0}},
     {"zeros", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}},
     {"mixed zeros", {5.0, 0.0}, {0.0, 7.0}, {5.0, -7.0}},
 };
-INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_subtraction_t, ValuesIn(subtraction_vectors),
+INSTANTIATE_TEST_SUITE_P(vector_subtraction, jet_test_vector_subtraction_t, ValuesIn(vector_subtraction_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_multiplication_t : jet_test_vector_op_t
+struct jet_test_vector_multiplication_t : jet_test_vector_op_t
 {};
 
-TEST_P(jet_test_multiplication_t, compound_assign)
+TEST_P(jet_test_vector_multiplication_t, compound_assign)
 {
     auto const& actual = lhs *= rhs;
 
@@ -519,14 +519,14 @@ TEST_P(jet_test_multiplication_t, compound_assign)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_multiplication_t, binary_op)
+TEST_P(jet_test_vector_multiplication_t, binary_op)
 {
     auto const actual = lhs * rhs;
 
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_multiplication_t, binary_op_commuted)
+TEST_P(jet_test_vector_multiplication_t, binary_op_commuted)
 {
     auto const actual = rhs * lhs;
 
@@ -551,17 +551,17 @@ jet_vector_op_vector_t const vector_multiplication_vectors[] = {
     // identity
     {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 };
-INSTANTIATE_TEST_SUITE_P(multiplication, jet_test_multiplication_t, ValuesIn(vector_multiplication_vectors),
-                         test_name_generator_t<jet_vector_op_vector_t>{});
+INSTANTIATE_TEST_SUITE_P(vector_multiplication, jet_test_vector_multiplication_t,
+                         ValuesIn(vector_multiplication_vectors), test_name_generator_t<jet_vector_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_division_t : jet_test_vector_op_t
+struct jet_test_vector_division_t : jet_test_vector_op_t
 {};
 
-TEST_P(jet_test_division_t, compound_assign)
+TEST_P(jet_test_vector_division_t, compound_assign)
 {
     auto const& actual = lhs /= rhs;
 
@@ -569,7 +569,7 @@ TEST_P(jet_test_division_t, compound_assign)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_P(jet_test_division_t, binary_op)
+TEST_P(jet_test_vector_division_t, binary_op)
 {
     auto const actual = lhs / rhs;
 
@@ -593,7 +593,7 @@ jet_vector_op_vector_t const vector_division_vectors[] = {
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
     {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 };
-INSTANTIATE_TEST_SUITE_P(division, jet_test_division_t, ValuesIn(vector_division_vectors),
+INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(vector_division_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
 } // namespace
