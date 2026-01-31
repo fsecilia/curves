@@ -29,6 +29,7 @@ using std::isfinite;
 using std::isinf;
 using std::isnan;
 using std::log;
+using std::log1p;
 using std::max;
 using std::min;
 using std::sin;
@@ -386,6 +387,17 @@ template <typename t_scalar_t> struct jet_t
         assert(x.f > scalar_t{0} && "jet_t::log: domain error");
 
         return {log(x.f), x.df / x.f};
+    }
+
+    //! \pre x > -1
+    // d(log1p(x)) = dx/(x + 1)
+    friend constexpr auto log1p(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::log1p;
+
+        assert(x.f > scalar_t{-1} && "jet_t::log1p: domain error");
+
+        return {log1p(x.f), x.df / (x.f + 1)};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
