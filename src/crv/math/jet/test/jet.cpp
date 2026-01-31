@@ -6,6 +6,7 @@
 
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
+#include <limits>
 #include <ostream>
 
 namespace crv {
@@ -14,8 +15,8 @@ namespace {
 using scalar_t = real_t;
 using sut_t    = jet_t<scalar_t>;
 
-static constexpr scalar_t infinity = std::numeric_limits<scalar_t>::infinity();
-static constexpr scalar_t nan      = std::numeric_limits<scalar_t>::quiet_NaN();
+static constexpr scalar_t inf = std::numeric_limits<scalar_t>::infinity();
+static constexpr scalar_t nan = std::numeric_limits<scalar_t>::quiet_NaN();
 
 struct jet_test_t : Test
 {
@@ -795,16 +796,16 @@ TEST_P(jet_test_classification_t, isnan)
 classification_test_vector_t const classification_vectors[] = {
     {"zero", {0.0, 0.0}, true, false, false},
     {"vector", {1.0, 2.0}, true, false, false},
-    {"infinite scalar", {infinity, 0.0}, false, true, false},
-    {"infinite derivative", {0.0, infinity}, false, true, false},
-    {"infinity", {infinity, infinity}, false, true, false},
+    {"infinite scalar", {inf, 0.0}, false, true, false},
+    {"infinite derivative", {0.0, inf}, false, true, false},
+    {"infinity", {inf, inf}, false, true, false},
 
     {"nan scalar", {nan, 0.0}, false, false, true},
     {"nan derivative", {0.0, nan}, false, false, true},
     {"nan", {nan, nan}, false, false, true},
 
-    {"infinite scalar, nan derivative", {infinity, nan}, false, false, true},
-    {"nan scalar, infinite derivative", {nan, infinity}, false, false, true},
+    {"infinite scalar, nan derivative", {inf, nan}, false, false, true},
+    {"nan scalar, infinite derivative", {nan, inf}, false, false, true},
 };
 INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
                          test_name_generator_t<classification_test_vector_t>{});

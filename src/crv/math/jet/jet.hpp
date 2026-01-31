@@ -9,6 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/limits.hpp>
 #include <cmath>
 #include <compare>
 #include <concepts>
