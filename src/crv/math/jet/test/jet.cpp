@@ -893,5 +893,63 @@ math_func_test_vector_x_t const abs_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// copysign
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(copysign(x, y)) = sgn(x)*sgn(y)*dx
+struct jet_test_copysign_t : jet_test_math_func_xy_t
+{};
+
+TEST_P(jet_test_copysign_t, result)
+{
+    auto const actual = copysign(x, y);
+
+    EXPECT_DOUBLE_EQ(expected.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected.df, actual.df);
+}
+
+// clang-format off
+math_func_test_vector_xy_t const copysign_vectors[] = {
+    // standard cases
+    {"nn, nn", {-7.0, -11.0}, {-5.0, -19.0}, {-7.0, -11.0}},
+    {"pp, nn", { 7.0,  11.0}, {-5.0, -19.0}, {-7.0, -11.0}},
+    {"pp, pp", { 7.0,  11.0}, { 5.0,  19.0}, { 7.0,  11.0}},
+
+    // singularities
+    {"pp, 0p", { 7.0,  11.0}, { 0.0,  19.0}, { 7.0,   inf}},
+    {"pp, 0n", { 7.0,  11.0}, { 0.0, -19.0}, { 7.0,  -inf}},
+
+    // successful guards of singularity
+    {"0n, 0n", { 0.0, -11.0}, { 0.0, -19.0}, { 0.0, -11.0}},
+    {"00, 00", { 0.0,   0.0}, { 0.0,   0.0}, { 0.0,   0.0}},
+    {"pp, 00", { 7.0,  11.0}, { 0.0,   0.0}, { 7.0,  11.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(copysign, jet_test_copysign_t, ValuesIn(copysign_vectors),
+                         test_name_generator_t<math_func_test_vector_xy_t>{});
+
+// --------------------------------------------------------------------------------------------------------------------
+// copysign Edge Cases
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_copysign_edge_cases_t : jet_test_t
+{};
+
+TEST_F(jet_test_copysign_edge_cases_t, negative_zero_still_flips_sign)
+{
+    auto const actual = copysign(jet_t{3.0, 1.0}, jet_t{-0.0, 1.0});
+
+    EXPECT_DOUBLE_EQ(-3.0, actual.f);
+}
+
+TEST_F(jet_test_copysign_edge_cases_t, negative_zero_sign_bit_perserved)
+{
+    auto const actual = copysign(jet_t{0.0, 1.0}, jet_t{-0.0, 1.0});
+
+    EXPECT_DOUBLE_EQ(0.0, actual.f);
+    EXPECT_TRUE(std::signbit(actual.f));
+}
+
 } // namespace
 } // namespace crv

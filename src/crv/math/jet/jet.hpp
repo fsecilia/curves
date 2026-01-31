@@ -20,6 +20,7 @@ namespace crv {
 
 using std::abs;
 using std::clamp;
+using std::copysign;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
@@ -305,6 +306,39 @@ template <typename t_scalar_t> struct jet_t
         using std::abs;
 
         return {abs(x.f), copysign(scalar_t{1}, x.f) * x.df};
+    }
+
+    /**
+        applies sign of y to magnitude of x
+
+        copysign(x, y) = |x|*sgn(y)
+        d(copysign(x, y)) = d(|x|)*sgn(y) + |x|*d(sgn(y)) = (sgn(x)*dx)*sgn(y) + |x|*(delta(y)*dy) ; product rule
+
+        The dy term has a jump discontinuity at y = 0, producing a Dirac delta in the derivative. Returns df = +/- inf
+        when y crosses zero with nonzero |x|.
+    */
+    friend constexpr auto copysign(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    {
+        using std::copysign;
+
+        auto const sgn_x = copysign(scalar_t{1}, x.f);
+        auto const sgn_y = copysign(scalar_t{1}, y.f);
+
+        auto const dx_term = sgn_x * sgn_y * x.df;
+
+        /*
+            handle dirac delta spike on y
+
+            When y.f != 0, the spike is 0. When y.f == 0, the spike MAY be inf:
+                - When x.f is 0, the function is continuous at 0, as the jump height is 0, so the spike is 0.
+                - When y.df == 0, y is a constant, so there is no delta contribution. However, if we scaled inf by 0,
+                  the result would be NaN, so only apply inf conditionally.
+                - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
+        */
+        auto const has_delta = (y.f == scalar_t{0}) & (x.f != scalar_t{0}) & (y.df != scalar_t{0});
+        auto const dy_term   = has_delta ? infinity<scalar_t>() * y.df : scalar_t{0};
+
+        return {copysign(x.f, y.f), dx_term + dy_term};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
