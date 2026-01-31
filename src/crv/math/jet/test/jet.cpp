@@ -88,54 +88,54 @@ TEST_F(jet_test_construction_t, default_construction)
 {
     constexpr auto sut = sut_t{};
 
-    static_assert(sut.f == 0.0);
-    static_assert(sut.df == 0.0);
+    static_assert(0.0 == sut.f);
+    static_assert(0.0 == sut.df);
 }
 
 TEST_F(jet_test_construction_t, scalar)
 {
     constexpr auto sut = jet_t{f};
 
-    static_assert(sut.f == f);
-    static_assert(sut.df == 0.0);
+    static_assert(f == sut.f);
+    static_assert(0.0 == sut.df);
 }
 
 TEST_F(jet_test_construction_t, nested_scalar)
 {
     constexpr auto sut = jet_t<jet_t<double>>{x};
 
-    static_assert(sut.f == x);
-    static_assert(sut.df == jet_t{0.0});
+    static_assert(x == sut.f);
+    static_assert(jet_t{0.0} == sut.df);
 }
 
 TEST_F(jet_test_construction_t, pair)
 {
-    static_assert(x.f == f);
-    static_assert(x.df == df);
+    static_assert(f == x.f);
+    static_assert(df == x.df);
 }
 
 TEST_F(jet_test_construction_t, broadcast_level_1)
 {
     constexpr auto sut = jet_t<jet_t<double>>{f};
 
-    static_assert(sut.f == jet_t{f});
-    static_assert(sut.df == jet_t{0.0});
+    static_assert(jet_t{f} == sut.f);
+    static_assert(jet_t{0.0} == sut.df);
 }
 
 TEST_F(jet_test_construction_t, broadcast_level_2)
 {
     constexpr auto sut = jet_t<jet_t<jet_t<double>>>{f};
 
-    static_assert(sut.f == jet_t<jet_t<double>>{f});
-    static_assert(sut.df == jet_t<jet_t<double>>{0.0});
+    static_assert(jet_t<jet_t<double>>{f} == sut.f);
+    static_assert(jet_t<jet_t<double>>{0.0} == sut.df);
 }
 
 TEST_F(jet_test_construction_t, broadcast_level_3)
 {
     constexpr auto sut = jet_t<jet_t<jet_t<jet_t<double>>>>{f};
 
-    static_assert(sut.f == jet_t<jet_t<jet_t<double>>>{f});
-    static_assert(sut.df == jet_t<jet_t<jet_t<double>>>{0.0});
+    static_assert(jet_t<jet_t<jet_t<double>>>{f} == sut.f);
+    static_assert(jet_t<jet_t<jet_t<double>>>{0.0} == sut.df);
 }
 
 // ====================================================================================================================
@@ -153,8 +153,8 @@ TEST_F(jet_test_conversion_t, ctor)
     constexpr auto jet_int = jet_t{f_int, df_int};
     constexpr auto sut     = sut_t{jet_int};
 
-    static_assert(sut.f == static_cast<scalar_t>(f_int));
-    static_assert(sut.df == static_cast<scalar_t>(df_int));
+    static_assert(static_cast<scalar_t>(f_int) == sut.f);
+    static_assert(static_cast<scalar_t>(df_int) == sut.df);
 }
 
 TEST_F(jet_test_conversion_t, assign)
@@ -164,8 +164,8 @@ TEST_F(jet_test_conversion_t, assign)
 
     sut = jet_int;
 
-    EXPECT_DOUBLE_EQ(sut.f, static_cast<scalar_t>(f_int));
-    EXPECT_DOUBLE_EQ(sut.df, static_cast<scalar_t>(df_int));
+    EXPECT_DOUBLE_EQ(static_cast<scalar_t>(f_int), sut.f);
+    EXPECT_DOUBLE_EQ(static_cast<scalar_t>(df_int), sut.df);
 }
 
 TEST_F(jet_test_conversion_t, to_bool_true)
@@ -730,24 +730,24 @@ TEST_F(jet_test_selection_clamp_t, below)
 {
     auto const actual = clamp(sut_t{1.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
 
-    EXPECT_DOUBLE_EQ(actual.f, 2.0);
-    EXPECT_DOUBLE_EQ(actual.df, 10.0);
+    EXPECT_DOUBLE_EQ(2.0, actual.f);
+    EXPECT_DOUBLE_EQ(10.0, actual.df);
 }
 
 TEST_F(jet_test_selection_clamp_t, above)
 {
     auto const actual = clamp(sut_t{10.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
 
-    EXPECT_DOUBLE_EQ(actual.f, 8.0);
-    EXPECT_DOUBLE_EQ(actual.df, 20.0);
+    EXPECT_DOUBLE_EQ(8.0, actual.f);
+    EXPECT_DOUBLE_EQ(20.0, actual.df);
 }
 
 TEST_F(jet_test_selection_clamp_t, within)
 {
     auto const actual = clamp(sut_t{5.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
 
-    EXPECT_DOUBLE_EQ(actual.f, 5.0);
-    EXPECT_DOUBLE_EQ(actual.df, 3.0);
+    EXPECT_DOUBLE_EQ(5.0, actual.f);
+    EXPECT_DOUBLE_EQ(3.0, actual.df);
 }
 
 // ====================================================================================================================
@@ -872,10 +872,10 @@ struct jet_test_abs_t : jet_test_math_func_x_t
 
 TEST_P(jet_test_abs_t, result)
 {
-    auto const result = abs(x);
+    auto const actual = abs(x);
 
-    EXPECT_DOUBLE_EQ(result.f, expected.f);
-    EXPECT_DOUBLE_EQ(result.df, expected.df);
+    EXPECT_DOUBLE_EQ(expected.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected.df, actual.df);
 }
 
 // clang-format off
