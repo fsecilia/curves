@@ -952,5 +952,34 @@ TEST_F(jet_test_copysign_edge_cases_t, negative_zero_sign_bit_perserved)
     EXPECT_TRUE(std::signbit(actual.f));
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// cos
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(cos(x)) = -sin(x)*dx
+struct jet_test_cos_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_cos_t, result)
+{
+    auto const actual = cos(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+const math_func_test_vector_x_t cos_vectors[] = {
+    {"0", {0.0, 1.3}, {1.0, 0.0}},
+    {"-pi/2", {-M_PI_2, 1.3}, {0.0, 1.3}},
+    {"pi/5", {M_PI / 5, 1.3}, {cos(M_PI / 5), -1.3*sin(M_PI / 5)}},
+    {"pi/3", {M_PI / 3, 1.3}, {cos(M_PI / 3), -1.3*sin(M_PI / 3)}},
+    {"pi/2,", {M_PI_2, 1.3}, {0.0, -1.3}},
+    {"pi", {M_PI, 1.3}, {-1.0, 0.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 } // namespace
 } // namespace crv

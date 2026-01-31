@@ -21,6 +21,7 @@ namespace crv {
 using std::abs;
 using std::clamp;
 using std::copysign;
+using std::cos;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
@@ -339,6 +340,15 @@ template <typename t_scalar_t> struct jet_t
         auto const dy_term   = has_delta ? infinity<scalar_t>() * y.df : scalar_t{0};
 
         return {copysign(x.f, y.f), dx_term + dy_term};
+    }
+
+    // d(cos(x)) = -sin(x)*dx
+    friend constexpr auto cos(jet_t const& x) noexcept -> jet_t
+    {
+        using std::cos;
+        using std::sin;
+
+        return {cos(x.f), -sin(x.f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
