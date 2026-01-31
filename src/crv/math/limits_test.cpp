@@ -10,19 +10,21 @@
 namespace crv {
 namespace {
 
-static_assert(min<int8_t>() == std::numeric_limits<int8_t>::min());
-static_assert(max<int8_t>() == std::numeric_limits<int8_t>::max());
-static_assert(min<int64_t>() == std::numeric_limits<int64_t>::min());
-static_assert(max<int64_t>() == std::numeric_limits<int64_t>::max());
-static_assert(min<int128_t>() == std::numeric_limits<int128_t>::min());
-static_assert(max<int128_t>() == std::numeric_limits<int128_t>::max());
+template <typename value_t> constexpr auto test_type_limits() noexcept -> void
+{
+    static_assert(min<value_t>() == std::numeric_limits<value_t>::min());
+    static_assert(max<value_t>() == std::numeric_limits<value_t>::max());
+}
 
-static_assert(min<uint8_t>() == std::numeric_limits<uint8_t>::min());
-static_assert(max<uint8_t>() == std::numeric_limits<uint8_t>::max());
-static_assert(min<uint64_t>() == std::numeric_limits<uint64_t>::min());
-static_assert(max<uint64_t>() == std::numeric_limits<uint64_t>::max());
-static_assert(min<uint128_t>() == std::numeric_limits<uint128_t>::min());
-static_assert(max<uint128_t>() == std::numeric_limits<uint128_t>::max());
+template <typename... values_t> constexpr auto test_types_limits() noexcept -> void
+{
+    (..., test_type_limits<values_t>());
+}
+
+template <typename... values_t> constexpr auto test_all_types_limits() noexcept -> void
+{
+    test_types_limits<int8_t, int64_t, int128_t, uint8_t, uint64_t, uint128_t>();
+}
 
 } // namespace
 } // namespace crv
