@@ -212,6 +212,21 @@ template <typename t_scalar_t> struct jet_t
         return lhs;
     }
 
+    // d(xy) = x*dy + dx*y, product rule
+    constexpr auto operator*=(jet_t const& x) noexcept -> jet_t&
+    {
+        // product rule, (uv)' = uv' + u'v:
+        df = f * x.df + df * x.f;
+        f *= x.f;
+        return *this;
+    }
+
+    friend constexpr auto operator*(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
+    {
+        lhs *= rhs;
+        return lhs;
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------

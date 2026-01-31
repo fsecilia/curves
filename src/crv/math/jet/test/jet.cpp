@@ -504,5 +504,52 @@ jet_vector_op_vector_t const subtraction_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_subtraction_t, ValuesIn(subtraction_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// Multiplication
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_multiplication_t : jet_test_vector_op_t
+{};
+
+TEST_P(jet_test_multiplication_t, compound_assign)
+{
+    auto const& actual = lhs *= rhs;
+
+    EXPECT_EQ(&lhs, &actual);
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_multiplication_t, binary_op)
+{
+    auto const actual = lhs * rhs;
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_multiplication_t, binary_op_commuted)
+{
+    auto const actual = rhs * lhs;
+
+    EXPECT_EQ(expected, actual);
+}
+
+// product rule: d(u*v) = u*dv + du*v; {a1, v1}*{a2, v2} = {a1*a2, a1*v2 + v1*a2}
+jet_vector_op_vector_t const vector_multiplication_vectors[] = {
+    // {2, 1}*{3, 1} = {2*3, 2*1 + 1*3} = {6, 5}
+    {"seeded*seeded", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
+
+    // {3, 2}*{5, 7} = {3*5, 3*7 + 2*5} = {15, 31}
+    {"(scaled seeded)*(scaled seeded)", {3.0, 2.0}, {5.0, 7.0}, {15.0, 31.0}},
+
+    // zero cases
+    {"(seeded zero)*(scaled seeded)", {0.0, 2.0}, {5.0, 7.0}, {0.0, 10.0}},
+    {"(scaled_seeded)*zero", {3.0, 2.0}, {0.0, 0.0}, {0.0, 0.0}},
+
+    // identity
+    {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
+};
+INSTANTIATE_TEST_SUITE_P(multiplication, jet_test_multiplication_t, ValuesIn(vector_multiplication_vectors),
+                         test_name_generator_t<jet_vector_op_vector_t>{});
+
 } // namespace
 } // namespace crv
