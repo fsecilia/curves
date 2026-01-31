@@ -1009,5 +1009,33 @@ const math_func_test_vector_x_t exp_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(exp, jet_test_exp_t, ValuesIn(exp_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// hypot
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
+struct jet_test_hypot_t : jet_test_math_func_xy_t
+{};
+
+TEST_P(jet_test_hypot_t, result)
+{
+    auto const actual = hypot(x, y);
+
+    EXPECT_DOUBLE_EQ(expected.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected.df, actual.df);
+}
+
+// clang-format off
+math_func_test_vector_xy_t const hypot_vectors[] = {
+    {"{0, 0.0}, {0, 0.0}}", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.00}},
+    {"{0, 1.3}, {0, 1.3}}", {0.0, 1.3}, {0.0, 1.3}, {0.0, 0.00}},
+    {"{3, 1.3}, {4, 0.0}}", {3.0, 1.3}, {4.0, 0.0}, {5.0, 0.78}},
+    {"{3, 0.0}, {4, 1.3}}", {3.0, 0.0}, {4.0, 1.3}, {5.0, 1.04}},
+    {"{3, 1.3}, {4, 1.3}}", {3.0, 1.3}, {4.0, 1.3}, {5.0, 1.82}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(hypot, jet_test_hypot_t, ValuesIn(hypot_vectors),
+                         test_name_generator_t<math_func_test_vector_xy_t>{});
+
 } // namespace
 } // namespace crv

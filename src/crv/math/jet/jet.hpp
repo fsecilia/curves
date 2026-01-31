@@ -23,6 +23,7 @@ using std::clamp;
 using std::copysign;
 using std::cos;
 using std::exp;
+using std::hypot;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
@@ -361,6 +362,17 @@ template <typename t_scalar_t> struct jet_t
 
         auto const exp_xf = exp(x.f);
         return {exp_xf, exp_xf * x.df};
+    }
+
+    // d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
+    friend auto hypot(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    {
+        using crv::hypot;
+
+        auto const mag = hypot(x.f, y.f);
+        if (mag == scalar_t{0}) return {scalar_t{0}, scalar_t{0}};
+
+        return {mag, (x.f * x.df + y.f * y.df) / mag};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
