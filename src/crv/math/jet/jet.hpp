@@ -208,11 +208,7 @@ template <typename t_scalar_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator+(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
-    {
-        lhs += rhs;
-        return lhs;
-    }
+    friend constexpr auto operator+(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
 
     constexpr auto operator-=(jet_t const& rhs) noexcept -> jet_t&
     {
@@ -221,11 +217,7 @@ template <typename t_scalar_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator-(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
-    {
-        lhs -= rhs;
-        return lhs;
-    }
+    friend constexpr auto operator-(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
 
     // d(xy) = x*dy + dx*y, product rule
     constexpr auto operator*=(jet_t const& x) noexcept -> jet_t&
@@ -236,11 +228,7 @@ template <typename t_scalar_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator*(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
-    {
-        lhs *= rhs;
-        return lhs;
-    }
+    friend constexpr auto operator*(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
 
     // d(u/v) = (du*v - u*dv)/v^2 = (du - u*dv/v)/v, quotient rule
     constexpr auto operator/=(jet_t const& x) noexcept -> jet_t&
@@ -255,11 +243,7 @@ template <typename t_scalar_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator/(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
-    {
-        lhs /= rhs;
-        return lhs;
-    }
+    friend constexpr auto operator/(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
