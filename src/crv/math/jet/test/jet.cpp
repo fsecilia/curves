@@ -235,18 +235,18 @@ struct jet_test_unary_arithmetic_t : jet_test_t
 
 TEST_F(jet_test_unary_arithmetic_t, plus)
 {
-    constexpr auto sut = +x;
+    constexpr auto expected = sut_t{x.f, x.df};
+    constexpr auto actual   = +x;
 
-    static_assert(primal(sut) == primal(x));
-    static_assert(derivative(sut) == derivative(x));
+    static_assert(expected == actual);
 }
 
 TEST_F(jet_test_unary_arithmetic_t, minus)
 {
-    constexpr auto sut = -x;
+    constexpr auto expected = sut_t{-x.f, -x.df};
+    constexpr auto actual   = -x;
 
-    static_assert(primal(sut) == -primal(x));
-    static_assert(derivative(sut) == -derivative(x));
+    static_assert(expected == actual);
 }
 
 // ====================================================================================================================
