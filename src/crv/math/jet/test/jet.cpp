@@ -330,16 +330,19 @@ struct jet_binary_op_vector_t
     }
 };
 
-// --------------------------------------------------------------------------------------------------------------------
-// Addition
-// --------------------------------------------------------------------------------------------------------------------
-
-struct jet_test_addition_t : jet_test_t, WithParamInterface<jet_binary_op_vector_t>
+struct jet_test_binary_op_t : jet_test_t, WithParamInterface<jet_binary_op_vector_t>
 {
     sut_t       lhs      = GetParam().lhs;
     sut_t const rhs      = GetParam().rhs;
     sut_t const expected = GetParam().expected;
 };
+
+// --------------------------------------------------------------------------------------------------------------------
+// Addition
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_addition_t : jet_test_binary_op_t
+{};
 
 TEST_P(jet_test_addition_t, compound_assign)
 {
@@ -370,12 +373,8 @@ INSTANTIATE_TEST_SUITE_P(addition, jet_test_addition_t, ValuesIn(jet_addition_ve
 // Subtraction
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_subtraction_t : jet_test_t, WithParamInterface<jet_binary_op_vector_t>
-{
-    sut_t       lhs      = GetParam().lhs;
-    sut_t const rhs      = GetParam().rhs;
-    sut_t const expected = GetParam().expected;
-};
+struct jet_test_subtraction_t : jet_test_binary_op_t
+{};
 
 TEST_P(jet_test_subtraction_t, compound_assign)
 {
