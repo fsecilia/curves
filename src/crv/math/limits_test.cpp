@@ -12,6 +12,8 @@ namespace {
 
 template <typename value_t> constexpr auto test_type_limits() noexcept -> void
 {
+    static_assert(epsilon<value_t>() == std::numeric_limits<value_t>::epsilon());
+    static_assert(infinity<value_t>() == std::numeric_limits<value_t>::infinity());
     static_assert(min<value_t>() == std::numeric_limits<value_t>::min());
     static_assert(max<value_t>() == std::numeric_limits<value_t>::max());
 }

@@ -15,6 +15,16 @@
 
 namespace crv {
 
+template <typename value_t> constexpr auto epsilon() noexcept -> value_t
+{
+    return std::numeric_limits<value_t>::epsilon();
+}
+
+template <typename value_t> constexpr auto infinity() noexcept -> value_t
+{
+    return std::numeric_limits<value_t>::infinity();
+}
+
 template <typename value_t> constexpr auto min() noexcept -> value_t
 {
     return std::numeric_limits<value_t>::min();
