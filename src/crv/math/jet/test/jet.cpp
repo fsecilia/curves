@@ -324,9 +324,9 @@ struct jet_binary_op_vector_t
     sut_t       rhs;
     sut_t       expected;
 
-    friend auto operator<<(std::ostream& os, jet_binary_op_vector_t const& c) -> std::ostream&
+    friend auto operator<<(std::ostream& out, jet_binary_op_vector_t const& src) -> std::ostream&
     {
-        return os << c.lhs << " ⨂ " << c.rhs << " = " << c.expected;
+        return out << src.lhs << " ⨂ " << src.rhs << " = " << src.expected;
     }
 };
 
