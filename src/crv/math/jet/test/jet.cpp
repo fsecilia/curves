@@ -366,5 +366,42 @@ jet_binary_op_vector_t const jet_addition_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(addition, jet_test_addition_t, ValuesIn(jet_addition_vectors),
                          test_name_generator_t<jet_binary_op_vector_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// Subtraction
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_subtraction_t : jet_test_t, WithParamInterface<jet_binary_op_vector_t>
+{
+    sut_t       lhs      = GetParam().lhs;
+    sut_t const rhs      = GetParam().rhs;
+    sut_t const expected = GetParam().expected;
+};
+
+TEST_P(jet_test_subtraction_t, compound_assign)
+{
+    lhs -= rhs;
+
+    EXPECT_DOUBLE_EQ(primal(lhs), primal(expected));
+    EXPECT_DOUBLE_EQ(derivative(lhs), derivative(expected));
+}
+
+TEST_P(jet_test_subtraction_t, binary_op)
+{
+    auto const result = lhs - rhs;
+
+    EXPECT_DOUBLE_EQ(primal(result), primal(expected));
+    EXPECT_DOUBLE_EQ(derivative(result), derivative(expected));
+}
+
+jet_binary_op_vector_t const jet_subtraction_vectors[] = {
+    {"positve - smaller", {11.0, 17.0}, {5.0, 7.0}, {6.0, 10.0}},
+    {"positve - larger", {5.0, 7.0}, {11.0, 17.0}, {-6.0, -10.0}},
+    {"mixed signs", {-5.0, 7.0}, {11.0, -17.0}, {-16.0, 24.0}},
+    {"zeros", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}},
+    {"mixed zeros", {5.0, 0.0}, {0.0, 7.0}, {5.0, -7.0}},
+};
+INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_subtraction_t, ValuesIn(jet_subtraction_vectors),
+                         test_name_generator_t<jet_binary_op_vector_t>{});
+
 } // namespace
 } // namespace crv

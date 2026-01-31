@@ -185,6 +185,19 @@ template <typename t_scalar_t> struct jet_t
         return lhs;
     }
 
+    constexpr auto operator-=(jet_t const& rhs) noexcept -> jet_t&
+    {
+        f -= rhs.f;
+        df -= rhs.df;
+        return *this;
+    }
+
+    friend constexpr auto operator-(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------
