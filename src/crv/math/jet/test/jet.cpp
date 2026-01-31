@@ -644,5 +644,98 @@ jet_vector_op_vector_t const vector_division_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(vector_division_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
+// ====================================================================================================================
+// Selection
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// Min, Max
+// --------------------------------------------------------------------------------------------------------------------
+
+struct selection_min_max_vector_t
+{
+    using sut_t = jet_test_t::sut_t;
+
+    std::string name;
+    sut_t       x;
+    sut_t       y;
+    sut_t       expected_min;
+    sut_t       expected_max;
+
+    friend auto operator<<(std::ostream& out, selection_min_max_vector_t const& src) -> std::ostream&
+    {
+        return out << "{.name = \"" << src.name << "\", .x = " << src.x << ", .y = " << src.y
+                   << ", .expected_min = " << src.expected_min << ", .expected_max = " << src.expected_max << "}";
+    }
+};
+
+struct jet_test_selection_min_max_t : jet_test_t, WithParamInterface<selection_min_max_vector_t>
+{
+    sut_t const x            = GetParam().x;
+    sut_t const y            = GetParam().y;
+    sut_t const expected_min = GetParam().expected_min;
+    sut_t const expected_max = GetParam().expected_max;
+};
+
+TEST_P(jet_test_selection_min_max_t, min)
+{
+    auto const actual = min(x, y);
+
+    EXPECT_DOUBLE_EQ(expected_min.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected_min.df, actual.df);
+}
+
+TEST_P(jet_test_selection_min_max_t, max)
+{
+    auto const actual = max(x, y);
+
+    EXPECT_DOUBLE_EQ(expected_max.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected_max.df, actual.df);
+}
+
+selection_min_max_vector_t const selection_vectors[] = {
+    // x < y: min=x, max=y
+    {"x < y = x, y", {2.0, 10.0}, {5.0, 20.0}, {2.0, 10.0}, {5.0, 20.0}},
+
+    // y > x: min=y, max=x
+    {"y > x = y, x", {5.0, 10.0}, {2.0, 20.0}, {2.0, 20.0}, {5.0, 10.0}},
+
+    // x == y: min=x, max=x
+    {"x == y = x, y", {3.0, 10.0}, {3.0, 20.0}, {3.0, 20.0}, {3.0, 20.0}},
+};
+INSTANTIATE_TEST_SUITE_P(selection, jet_test_selection_min_max_t, ValuesIn(selection_vectors),
+                         test_name_generator_t<selection_min_max_vector_t>{});
+
+// --------------------------------------------------------------------------------------------------------------------
+// Clamp
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_selection_clamp_t : jet_test_t
+{};
+
+TEST_F(jet_test_selection_clamp_t, below)
+{
+    auto const actual = clamp(sut_t{1.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
+
+    EXPECT_DOUBLE_EQ(actual.f, 2.0);
+    EXPECT_DOUBLE_EQ(actual.df, 10.0);
+}
+
+TEST_F(jet_test_selection_clamp_t, above)
+{
+    auto const actual = clamp(sut_t{10.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
+
+    EXPECT_DOUBLE_EQ(actual.f, 8.0);
+    EXPECT_DOUBLE_EQ(actual.df, 20.0);
+}
+
+TEST_F(jet_test_selection_clamp_t, within)
+{
+    auto const actual = clamp(sut_t{5.0, 3.0}, sut_t{2.0, 10.0}, sut_t{8.0, 20.0});
+
+    EXPECT_DOUBLE_EQ(actual.f, 5.0);
+    EXPECT_DOUBLE_EQ(actual.df, 3.0);
+}
+
 } // namespace
 } // namespace crv

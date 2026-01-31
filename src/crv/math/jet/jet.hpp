@@ -246,6 +246,24 @@ template <typename t_scalar_t> struct jet_t
     friend constexpr auto operator/(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
 
     // ----------------------------------------------------------------------------------------------------------------
+    // Selection
+    // ----------------------------------------------------------------------------------------------------------------
+
+    // d(min(x, y)) = dx if x < y else dy
+    friend constexpr auto min(jet_t const& x, jet_t const& y) noexcept -> jet_t { return x.f < y.f ? x : y; }
+
+    // d(max(x, y)) = dx if y < x else dy
+    friend constexpr auto max(jet_t const& x, jet_t const& y) noexcept -> jet_t { return y.f < x.f ? x : y; }
+
+    // d(clamp(x, min, max)) = min.df if x < min else max.df if x > max else dx
+    friend constexpr auto clamp(jet_t const& x, jet_t const& min, jet_t const& max) noexcept -> jet_t
+    {
+        if (x.f < min.f) return min;
+        if (x.f > max.f) return max;
+        return x;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------
 
