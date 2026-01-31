@@ -6,6 +6,7 @@
 
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
+#include <ostream>
 
 namespace crv {
 namespace {
@@ -309,6 +310,61 @@ TEST_F(jet_test_scalar_subtraction_t, scalar_minus_jet)
 
     static_assert(sut == sut_t{-1.75, -5.0});
 }
+
+// ====================================================================================================================
+// Vector Arithmetic
+// ====================================================================================================================
+
+struct jet_binary_op_vector_t
+{
+    using sut_t = jet_test_t::sut_t;
+
+    std::string name;
+    sut_t       lhs;
+    sut_t       rhs;
+    sut_t       expected;
+
+    friend auto operator<<(std::ostream& os, jet_binary_op_vector_t const& c) -> std::ostream&
+    {
+        return os << c.lhs << " ⨂ " << c.rhs << " = " << c.expected;
+    }
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Addition
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_addition_t : jet_test_t, WithParamInterface<jet_binary_op_vector_t>
+{
+    sut_t       lhs      = GetParam().lhs;
+    sut_t const rhs      = GetParam().rhs;
+    sut_t const expected = GetParam().expected;
+};
+
+TEST_P(jet_test_addition_t, compound_assign)
+{
+    lhs += rhs;
+
+    EXPECT_DOUBLE_EQ(primal(lhs), primal(expected));
+    EXPECT_DOUBLE_EQ(derivative(lhs), derivative(expected));
+}
+
+TEST_P(jet_test_addition_t, binary_op)
+{
+    auto const result = lhs + rhs;
+
+    EXPECT_DOUBLE_EQ(primal(result), primal(expected));
+    EXPECT_DOUBLE_EQ(derivative(result), derivative(expected));
+}
+
+jet_binary_op_vector_t const jet_addition_vectors[] = {
+    {"positve + positive", {1.0, 2.0}, {3.0, 4.0}, {4.0, 6.0}},
+    {"mixed signs", {-1.0, 2.0}, {3.0, -4.0}, {2.0, -2.0}},
+    {"zeros", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}},
+    {"mixed zeros", {5.0, 0.0}, {0.0, 3.0}, {5.0, 3.0}},
+};
+INSTANTIATE_TEST_SUITE_P(addition, jet_test_addition_t, ValuesIn(jet_addition_vectors),
+                         test_name_generator_t<jet_binary_op_vector_t>{});
 
 } // namespace
 } // namespace crv
