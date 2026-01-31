@@ -17,9 +17,12 @@
 
 namespace crv {
 
+using std::clamp;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
+using std::max;
+using std::min;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
