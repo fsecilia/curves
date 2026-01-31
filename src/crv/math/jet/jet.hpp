@@ -67,11 +67,11 @@ template <typename t_scalar_t> struct jet_t
 
         This ctor is deceptively simple, but it is the reason jet_t<jet_t<jet_t<jet_t<double>>>> + double works.
 
-        Because of auto, this is a function template, so if you pass a scalar, the scalar ctor is a better match and
-        this is not considered. So this doesn't affect normal usage. However, it forwards an arithmetic scalar to the
-        nested f ctor. This recurses, and drills down until it hits a better scalar ctor. Since it's not explicit, this
-        matches any scalar that the literal scalar ctor is not a better match for, and forwards it to the most nested
-        jet in the composition.
+        Because of auto, this is a function template, so if you pass a scalar_t, the scalar ctor is a better match and
+        this is not considered. So this doesn't affect normal usage. However, if you pass an arithmetic other than
+        scalar_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
+        either the better scalar ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that the
+        literal scalar ctor is not a better match for, and forwards it to the most nested jet in the composition.
     */
     constexpr jet_t(arithmetic auto const& s) noexcept : f(s), df(0) {}
 
