@@ -533,7 +533,10 @@ TEST_P(jet_test_multiplication_t, binary_op_commuted)
     EXPECT_EQ(expected, actual);
 }
 
-// product rule: d(u*v) = u*dv + du*v; {a1, v1}*{a2, v2} = {a1*a2, a1*v2 + v1*a2}
+/*
+    product rule: d(u*v) = u*dv + du*v
+    {f1, df1}*{f2, df2} = {f1*f2, f1*df2 + df1*f2}
+*/
 jet_vector_op_vector_t const vector_multiplication_vectors[] = {
     // {2, 1}*{3, 1} = {2*3, 2*1 + 1*3} = {6, 5}
     {"seeded*seeded", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
