@@ -358,6 +358,49 @@ jet_scalar_op_vector_t const scalar_subtraction_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_scalar_subtraction_t, ValuesIn(scalar_subtraction_vectors),
                          test_name_generator_t<jet_scalar_op_vector_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// Multiplication
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_scalar_multiplication_t : jet_test_scalar_op_t
+{};
+
+TEST_P(jet_test_scalar_multiplication_t, compound_assign)
+{
+    auto const& actual = jet *= scalar;
+
+    EXPECT_EQ(&jet, &actual);
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_scalar_multiplication_t, jet_times_scalar)
+{
+    auto const actual = jet * scalar;
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_scalar_multiplication_t, scalar_times_jet)
+{
+    auto const actual = scalar * jet;
+
+    EXPECT_EQ(expected, actual);
+}
+
+// clang-format off
+jet_scalar_op_vector_t const scalar_multiplication_vectors[] = {
+    {"positive*positive", {3.0, 2.0}, 5.0, {15.0, 10.0}},
+    {"positive*negative", {3.0, 2.0}, -5.0, {-15.0, -10.0}},
+    {"negative*positive", {-3.0, -2.0}, 5.0, {-15.0, -10.0}},
+    {"negative*negative", {-3.0, -2.0}, -5.0, {15.0, 10.0}},
+    {"*0", {3.0, 2.0}, 0.0, {0.0, 0.0}},
+    {"0*", {0.0, 0.0}, 5.0, {0.0, 0.0}},
+    {"0*0", {0.0, 0.0}, 0.0, {0.0, 0.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(multiplication, jet_test_scalar_multiplication_t, ValuesIn(scalar_multiplication_vectors),
+                         test_name_generator_t<jet_scalar_op_vector_t>{});
+
 // ====================================================================================================================
 // Vector Arithmetic
 // ====================================================================================================================

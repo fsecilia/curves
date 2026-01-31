@@ -168,6 +168,20 @@ template <typename t_scalar_t> struct jet_t
         return jet_t{lhs - rhs.f, -rhs.df};
     }
 
+    constexpr auto operator*=(scalar_t const& x) noexcept -> jet_t&
+    {
+        f *= x;
+        df *= x;
+        return *this;
+    }
+
+    friend constexpr auto operator*(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
+    friend constexpr auto operator*(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    {
+        // commute
+        return rhs *= lhs;
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Vector Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
