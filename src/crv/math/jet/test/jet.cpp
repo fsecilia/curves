@@ -539,14 +539,14 @@ TEST_P(jet_test_vector_multiplication_t, binary_op_commuted)
 */
 jet_vector_op_vector_t const vector_multiplication_vectors[] = {
     // {2, 1}*{3, 1} = {2*3, 2*1 + 1*3} = {6, 5}
-    {"seeded*seeded", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
+    {"vector*vector", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
 
     // {3, 2}*{5, 7} = {3*5, 3*7 + 2*5} = {15, 31}
-    {"(scaled seeded)*(scaled seeded)", {3.0, 2.0}, {5.0, 7.0}, {15.0, 31.0}},
+    {"scaled_vector*scaled_vector", {3.0, 2.0}, {5.0, 7.0}, {15.0, 31.0}},
 
     // zero cases
-    {"(seeded zero)*(scaled seeded)", {0.0, 2.0}, {5.0, 7.0}, {0.0, 10.0}},
-    {"(scaled_seeded)*zero", {3.0, 2.0}, {0.0, 0.0}, {0.0, 0.0}},
+    {"derivative*scaled_vector", {0.0, 2.0}, {5.0, 7.0}, {0.0, 10.0}},
+    {"scaledd_vector*zero", {3.0, 2.0}, {0.0, 0.0}, {0.0, 0.0}},
 
     // identity
     {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
@@ -582,16 +582,16 @@ TEST_P(jet_test_vector_division_t, binary_op)
 */
 jet_vector_op_vector_t const vector_division_vectors[] = {
     // {6, 5} / {2, 1} = {6/2, (5 - (6/2)*1)/2}
-    {"vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
+    {"scaled_vector/vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
 
     // {10, 4} / {2, 0} = {10/2, (4 - (10/2)*0)/2}
-    {"scalar", {10.0, 4.0}, {2.0, 0.0}, {5.0, 2.0}},
+    {"scaled_vector/scalar", {10.0, 4.0}, {2.0, 0.0}, {5.0, 2.0}},
 
     // {0, 0} / {5, 7} = {0/5, (0 - (0/5)*7)/5}
-    {"zero", {0.0, 0.0}, {5.0, 7.0}, {0.0, 0.0}},
+    {"zero*scaled_vector", {0.0, 0.0}, {5.0, 7.0}, {0.0, 0.0}},
 
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
-    {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
+    {"scaled_vector*identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(vector_division_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
