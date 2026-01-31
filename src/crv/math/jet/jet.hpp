@@ -27,6 +27,7 @@ using std::isinf;
 using std::isnan;
 using std::max;
 using std::min;
+using std::sin;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
@@ -304,7 +305,7 @@ template <typename t_scalar_t> struct jet_t
     /// d(abs(x)) = sgn(x)*dx
     friend constexpr auto abs(jet_t const& x) noexcept -> jet_t
     {
-        using std::abs;
+        using crv::abs;
 
         return {abs(x.f), copysign(scalar_t{1}, x.f) * x.df};
     }
@@ -320,7 +321,7 @@ template <typename t_scalar_t> struct jet_t
     */
     friend constexpr auto copysign(jet_t const& x, jet_t const& y) noexcept -> jet_t
     {
-        using std::copysign;
+        using crv::copysign;
 
         auto const sgn_x = copysign(scalar_t{1}, x.f);
         auto const sgn_y = copysign(scalar_t{1}, y.f);
@@ -345,8 +346,8 @@ template <typename t_scalar_t> struct jet_t
     // d(cos(x)) = -sin(x)*dx
     friend constexpr auto cos(jet_t const& x) noexcept -> jet_t
     {
-        using std::cos;
-        using std::sin;
+        using crv::cos;
+        using crv::sin;
 
         return {cos(x.f), -sin(x.f) * x.df};
     }
