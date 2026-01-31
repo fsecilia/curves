@@ -151,8 +151,8 @@ TEST_F(jet_test_conversion_t, ctor)
     constexpr auto jet_int = jet_t{f_int, df_int};
     constexpr auto sut     = sut_t{jet_int};
 
-    static_assert(primal(sut) == static_cast<scalar_t>(f_int));
-    static_assert(derivative(sut) == static_cast<scalar_t>(df_int));
+    static_assert(sut.f == static_cast<scalar_t>(f_int));
+    static_assert(sut.df == static_cast<scalar_t>(df_int));
 }
 
 TEST_F(jet_test_conversion_t, assign)
@@ -162,8 +162,8 @@ TEST_F(jet_test_conversion_t, assign)
 
     sut = jet_int;
 
-    EXPECT_DOUBLE_EQ(primal(sut), static_cast<scalar_t>(f_int));
-    EXPECT_DOUBLE_EQ(derivative(sut), static_cast<scalar_t>(df_int));
+    EXPECT_DOUBLE_EQ(sut.f, static_cast<scalar_t>(f_int));
+    EXPECT_DOUBLE_EQ(sut.df, static_cast<scalar_t>(df_int));
 }
 
 TEST_F(jet_test_conversion_t, to_bool_true)
