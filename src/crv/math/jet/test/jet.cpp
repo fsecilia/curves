@@ -14,6 +14,9 @@ namespace {
 using scalar_t = real_t;
 using sut_t    = jet_t<scalar_t>;
 
+static constexpr scalar_t infinity = std::numeric_limits<scalar_t>::infinity();
+static constexpr scalar_t nan      = std::numeric_limits<scalar_t>::quiet_NaN();
+
 struct jet_test_t : Test
 {
     static constexpr scalar_t f  = 37.2; // arbitrary
@@ -745,6 +748,67 @@ TEST_F(jet_test_selection_clamp_t, within)
     EXPECT_DOUBLE_EQ(actual.f, 5.0);
     EXPECT_DOUBLE_EQ(actual.df, 3.0);
 }
+
+// ====================================================================================================================
+// Classification
+// ====================================================================================================================
+
+struct classification_vector_t
+{
+    std::string name;
+    sut_t       sut;
+    bool        expected_isfinite;
+    bool        expected_isinf;
+    bool        expected_isnan;
+
+    friend auto operator<<(std::ostream& out, classification_vector_t const& src) -> std::ostream&
+    {
+        return out << "{.name = \"" << src.name << "\", .sut = " << src.sut
+                   << ", .expected_isfinite = " << src.expected_isfinite << ", .expected_isinf = " << src.expected_isinf
+                   << ", .expected_isnan = " << src.expected_isnan << "}";
+    }
+};
+
+struct jet_test_classification_t : jet_test_t, WithParamInterface<classification_vector_t>
+{
+    sut_t const& sut = GetParam().sut;
+
+    bool const expected_isfinite = GetParam().expected_isfinite;
+    bool const expected_isinf    = GetParam().expected_isinf;
+    bool const expected_isnan    = GetParam().expected_isnan;
+};
+
+TEST_P(jet_test_classification_t, isfinite)
+{
+    EXPECT_EQ(expected_isfinite, isfinite(sut));
+}
+
+TEST_P(jet_test_classification_t, isinf)
+{
+    EXPECT_EQ(expected_isinf, isinf(sut));
+}
+
+TEST_P(jet_test_classification_t, isnan)
+{
+    EXPECT_EQ(expected_isnan, isnan(sut));
+}
+
+classification_vector_t const classification_vectors[] = {
+    {"zero", {0.0, 0.0}, true, false, false},
+    {"vector", {1.0, 2.0}, true, false, false},
+    {"infinite scalar", {infinity, 0.0}, false, true, false},
+    {"infinite derivative", {0.0, infinity}, false, true, false},
+    {"infinity", {infinity, infinity}, false, true, false},
+
+    {"nan scalar", {nan, 0.0}, false, false, true},
+    {"nan derivative", {0.0, nan}, false, false, true},
+    {"nan", {nan, nan}, false, false, true},
+
+    {"infinite scalar, nan derivative", {infinity, nan}, false, false, true},
+    {"nan scalar, infinite derivative", {nan, infinity}, false, false, true},
+};
+INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
+                         test_name_generator_t<classification_vector_t>{});
 
 } // namespace
 } // namespace crv

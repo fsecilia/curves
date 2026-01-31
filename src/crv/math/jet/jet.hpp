@@ -9,12 +9,17 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <cmath>
 #include <compare>
 #include <concepts>
 #include <ostream>
 #include <type_traits>
 
 namespace crv {
+
+using std::isfinite;
+using std::isinf;
+using std::isnan;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
@@ -261,6 +266,28 @@ template <typename t_scalar_t> struct jet_t
         if (x.f < min.f) return min;
         if (x.f > max.f) return max;
         return x;
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Classification
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend auto isfinite(jet_t const& x) noexcept -> bool
+    {
+        using crv::isfinite;
+        return isfinite(x.f) && isfinite(x.df);
+    }
+
+    friend auto isinf(jet_t const& x) noexcept -> bool
+    {
+        using crv::isinf;
+        return (isinf(x.f) || isinf(x.df)) && !isnan(x);
+    }
+
+    friend auto isnan(jet_t const& x) noexcept -> bool
+    {
+        using crv::isnan;
+        return isnan(x.f) || isnan(x.df);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
