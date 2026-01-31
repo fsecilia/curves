@@ -551,5 +551,47 @@ jet_vector_op_vector_t const vector_multiplication_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(multiplication, jet_test_multiplication_t, ValuesIn(vector_multiplication_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// Division
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_division_t : jet_test_vector_op_t
+{};
+
+TEST_P(jet_test_division_t, compound_assign)
+{
+    auto const& actual = lhs /= rhs;
+
+    EXPECT_EQ(&lhs, &actual);
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_division_t, binary_op)
+{
+    auto const actual = lhs / rhs;
+
+    EXPECT_EQ(expected, actual);
+}
+
+/*
+    quotient rule: d(u/v) = (du*v - u*dv)/v^2 = (du - (u/v)*dv)/v
+    {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
+*/
+jet_vector_op_vector_t const vector_division_vectors[] = {
+    // {6, 5} / {2, 1} = {6/2, (5 - (6/2)*1)/2}
+    {"vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
+
+    // {10, 4} / {2, 0} = {10/2, (4 - (10/2)*0)/2}
+    {"scalar", {10.0, 4.0}, {2.0, 0.0}, {5.0, 2.0}},
+
+    // {0, 0} / {5, 7} = {0/5, (0 - (0/5)*7)/5}
+    {"zero", {0.0, 0.0}, {5.0, 7.0}, {0.0, 0.0}},
+
+    // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
+    {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
+};
+INSTANTIATE_TEST_SUITE_P(division, jet_test_division_t, ValuesIn(vector_division_vectors),
+                         test_name_generator_t<jet_vector_op_vector_t>{});
+
 } // namespace
 } // namespace crv

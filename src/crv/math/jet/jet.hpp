@@ -227,6 +227,25 @@ template <typename t_scalar_t> struct jet_t
         return lhs;
     }
 
+    // d(u/v) = (du*v - u*dv)/v^2 = (du - u*dv/v)/v, quotient rule
+    constexpr auto operator/=(jet_t const& x) noexcept -> jet_t&
+    {
+        /*
+            This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization,
+            similar to horner's.
+        */
+        auto const inv = scalar_t(1.0) / x.f;
+        f *= inv;
+        df = (df - f * x.df) * inv;
+        return *this;
+    }
+
+    friend constexpr auto operator/(jet_t lhs, jet_t const& rhs) noexcept -> jet_t
+    {
+        lhs /= rhs;
+        return lhs;
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------
