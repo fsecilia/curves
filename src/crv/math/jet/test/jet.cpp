@@ -401,6 +401,48 @@ jet_scalar_op_vector_t const scalar_multiplication_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(scalar_multiplication, jet_test_scalar_multiplication_t,
                          ValuesIn(scalar_multiplication_vectors), test_name_generator_t<jet_scalar_op_vector_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// Division
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_scalar_division_t : jet_test_scalar_op_t
+{};
+
+TEST_P(jet_test_scalar_division_t, compound_assign)
+{
+    auto const& actual = jet /= scalar;
+
+    EXPECT_EQ(&jet, &actual);
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_scalar_division_t, jet_divided_by_scalar)
+{
+    auto const actual = jet / scalar;
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_P(jet_test_scalar_division_t, scalar_divided_by_jet)
+{
+    auto const actual   = scalar / jet;
+    auto const identity = actual * expected;
+
+    EXPECT_NEAR(1.0, identity.f, 1e-15);
+    EXPECT_NEAR(0.0, identity.df, 1e-15);
+}
+
+// clang-format off
+jet_scalar_op_vector_t const scalar_division_vectors[] = {
+    {"positive/positive", {15.0, 10.0}, 5.0, {3.0, 2.0}},
+    {"positive/negative", {15.0, 10.0}, -5.0, {-3.0, -2.0}},
+    {"negative/positive", {-15.0, -10.0}, 5.0, {-3.0, -2.0}},
+    {"negative/negative", {-15.0, -10.0}, -5.0, {3.0, 2.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(scalar_division, jet_test_scalar_division_t, ValuesIn(scalar_division_vectors),
+                         test_name_generator_t<jet_scalar_op_vector_t>{});
+
 // ====================================================================================================================
 // Vector Arithmetic
 // ====================================================================================================================

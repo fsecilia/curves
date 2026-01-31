@@ -182,6 +182,21 @@ template <typename t_scalar_t> struct jet_t
         return rhs *= lhs;
     }
 
+    constexpr auto operator/=(scalar_t const& x) noexcept -> jet_t&
+    {
+        auto const inv = scalar_t(1.0) / x;
+        f *= inv;
+        df *= inv;
+        return *this;
+    }
+
+    friend constexpr auto operator/(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
+    friend constexpr auto operator/(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    {
+        auto const inv = scalar_t(1.0) / rhs.f;
+        return jet_t{lhs, -lhs * rhs.df * inv} * inv;
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Vector Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
