@@ -813,22 +813,50 @@ INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(cla
 // Math Functions
 // ====================================================================================================================
 
-struct math_func_test_vector_t
+// --------------------------------------------------------------------------------------------------------------------
+// One-Param Test
+// --------------------------------------------------------------------------------------------------------------------
+
+struct math_func_test_vector_x_t
 {
     std::string name;
-    sut_t       input;
+    sut_t       x;
     sut_t       expected;
 
-    friend auto operator<<(std::ostream& out, math_func_test_vector_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, math_func_test_vector_x_t const& src) -> std::ostream&
     {
-        return out << "{.name = \"" << src.name << "\", .input = " << src.input << ", .expected = " << src.expected
-                   << "}";
+        return out << "{.name = \"" << src.name << "\", .x = " << src.x << ", .expected = " << src.expected << "}";
     }
 };
 
-struct jet_test_math_func_t : jet_test_t, WithParamInterface<math_func_test_vector_t>
+struct jet_test_math_func_x_t : jet_test_t, WithParamInterface<math_func_test_vector_x_t>
 {
-    sut_t const& input    = GetParam().input;
+    sut_t const& x        = GetParam().x;
+    sut_t const& expected = GetParam().expected;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Two-Param Test
+// --------------------------------------------------------------------------------------------------------------------
+
+struct math_func_test_vector_xy_t
+{
+    std::string name;
+    sut_t       x;
+    sut_t       y;
+    sut_t       expected;
+
+    friend auto operator<<(std::ostream& out, math_func_test_vector_xy_t const& src) -> std::ostream&
+    {
+        return out << "{.name = \"" << src.name << "\", .x = " << src.x << ", .y = " << src.y
+                   << ", .expected = " << src.expected << "}";
+    }
+};
+
+struct jet_test_math_func_xy_t : jet_test_t, WithParamInterface<math_func_test_vector_xy_t>
+{
+    sut_t const& x        = GetParam().x;
+    sut_t const& y        = GetParam().y;
     sut_t const& expected = GetParam().expected;
 };
 
@@ -837,19 +865,19 @@ struct jet_test_math_func_t : jet_test_t, WithParamInterface<math_func_test_vect
 // --------------------------------------------------------------------------------------------------------------------
 
 // d(|x|) = sgn(x)*dx
-struct jet_test_abs_t : jet_test_math_func_t
+struct jet_test_abs_t : jet_test_math_func_x_t
 {};
 
 TEST_P(jet_test_abs_t, result)
 {
-    auto const result = abs(input);
+    auto const result = abs(x);
 
     EXPECT_DOUBLE_EQ(result.f, expected.f);
     EXPECT_DOUBLE_EQ(result.df, expected.df);
 }
 
 // clang-format off
-math_func_test_vector_t const abs_vectors[] = {
+math_func_test_vector_x_t const abs_vectors[] = {
     {"negative, negative", {-7.0, -13.0}, {7.0,  13.0}},
     {"negative, zero",     {-7.0,   0.0}, {7.0,   0.0}},
     {"negative, positive", {-7.0,  13.0}, {7.0, -13.0}},
@@ -861,7 +889,8 @@ math_func_test_vector_t const abs_vectors[] = {
     {"positive, positive", { 7.0,  13.0}, {7.0,  13.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors), test_name_generator_t<math_func_test_vector_t>{});
+INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
 
 } // namespace
 } // namespace crv
