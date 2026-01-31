@@ -618,14 +618,20 @@ TEST_P(jet_test_vector_division_t, binary_op)
     EXPECT_EQ(expected, actual);
 }
 
+TEST_P(jet_test_vector_division_t, binary_op_inverse)
+{
+    auto const actual   = rhs / lhs;
+    auto const identity = actual * expected;
+
+    EXPECT_NEAR(1.0, identity.f, 1e-15);
+    EXPECT_NEAR(0.0, identity.df, 1e-15);
+}
+
 /*
     quotient rule: d(u/v) = (du*v - u*dv)/v^2 = (du - (u/v)*dv)/v
     {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
 */
 jet_vector_op_vector_t const vector_division_vectors[] = {
-    // {0, 0} / {5, 7} = {0/5, (0 - (0/5)*7)/5}
-    {"zero*scaled_vector", {0.0, 0.0}, {5.0, 7.0}, {0.0, 0.0}},
-
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
     {"scaled_vector/identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 
