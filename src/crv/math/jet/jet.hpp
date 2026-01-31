@@ -471,6 +471,15 @@ template <typename t_scalar_t> struct jet_t
         return {power, power * log(x.f) * y.df + pm1 * y.f * x.df};
     }
 
+    // d(cos(x)) = cos(x)*dx
+    friend constexpr auto sin(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::cos;
+        using crv::sin;
+
+        return {sin(x.f), cos(x.f) * x.df};
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------

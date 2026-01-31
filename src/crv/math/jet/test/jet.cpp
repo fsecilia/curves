@@ -1158,6 +1158,35 @@ const math_func_test_vector_xy_t pow_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(pow, jet_test_pow_t, ValuesIn(pow_vectors),
                          test_name_generator_t<math_func_test_vector_xy_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// sin
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_sin_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_sin_t, result)
+{
+    auto const actual = sin(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+// d(sin(x)) = -cos(x)*dx
+const math_func_test_vector_x_t sin_vectors[] = {
+    {"0", {0.0, 1.3}, {0.0, 1.3}},
+    {"-pi/2", {-M_PI_2, 1.3}, {-1.0, 0}},
+    {"pi/5", {M_PI / 5, 1.3}, {sin(M_PI / 5), 1.3*cos(M_PI / 5)}},
+    {"pi/3", {M_PI / 3, 1.3}, {sin(M_PI / 3), 1.3*cos(M_PI / 3)}},
+    {"pi/2,", {M_PI_2, 1.3}, {1.0, 0}},
+    {"pi", {M_PI, 1.3}, {0.0, -1.3}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(sin, jet_test_sin_t, ValuesIn(sin_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================
