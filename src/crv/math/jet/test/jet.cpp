@@ -623,17 +623,17 @@ TEST_P(jet_test_vector_division_t, binary_op)
     {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
 */
 jet_vector_op_vector_t const vector_division_vectors[] = {
-    // {6, 5} / {2, 1} = {6/2, (5 - (6/2)*1)/2}
-    {"scaled_vector/vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
-
-    // {10, 4} / {2, 0} = {10/2, (4 - (10/2)*0)/2}
-    {"scaled_vector/scalar", {10.0, 4.0}, {2.0, 0.0}, {5.0, 2.0}},
-
     // {0, 0} / {5, 7} = {0/5, (0 - (0/5)*7)/5}
     {"zero*scaled_vector", {0.0, 0.0}, {5.0, 7.0}, {0.0, 0.0}},
 
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
-    {"scaled_vector*identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
+    {"scaled_vector/identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
+
+    // {10, 4} / {2, 0} = {10/2, (4 - (10/2)*0)/2}
+    {"scaled_vector/scalar", {10.0, 4.0}, {2.0, 0.0}, {5.0, 2.0}},
+
+    // {6, 5} / {2, 1} = {6/2, (5 - (6/2)*1)/2}
+    {"scaled_vector/vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(vector_division_vectors),
                          test_name_generator_t<jet_vector_op_vector_t>{});
