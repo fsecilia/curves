@@ -15,8 +15,9 @@ namespace {
 using scalar_t = real_t;
 using sut_t    = jet_t<scalar_t>;
 
-static constexpr scalar_t inf = std::numeric_limits<scalar_t>::infinity();
-static constexpr scalar_t nan = std::numeric_limits<scalar_t>::quiet_NaN();
+static constexpr auto eps = epsilon<scalar_t>();
+static constexpr auto inf = infinity<scalar_t>();
+static constexpr auto nan = std::numeric_limits<scalar_t>::quiet_NaN();
 
 struct jet_test_t : Test
 {
