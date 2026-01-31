@@ -253,63 +253,110 @@ TEST_F(jet_test_unary_arithmetic_t, minus)
 // Scalar Arithmetic
 // ====================================================================================================================
 
+struct jet_scalar_op_vector_t
+{
+    using scalar_t = jet_test_t::scalar_t;
+    using sut_t    = jet_test_t::sut_t;
+
+    std::string name;
+    sut_t       jet;
+    scalar_t    scalar;
+    sut_t       expected;
+
+    friend auto operator<<(std::ostream& out, jet_scalar_op_vector_t const& src) -> std::ostream&
+    {
+        return out << src.jet << " ⨂ " << src.scalar << " = " << src.expected;
+    }
+};
+
+struct jet_test_scalar_op_t : jet_test_t, WithParamInterface<jet_scalar_op_vector_t>
+{
+    sut_t          jet      = GetParam().jet;
+    scalar_t const scalar   = GetParam().scalar;
+    sut_t const&   expected = GetParam().expected;
+};
+
 // --------------------------------------------------------------------------------------------------------------------
 // Addition
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_scalar_addition_t : jet_test_t
+struct jet_test_scalar_addition_t : jet_test_scalar_op_t
 {};
 
-TEST_F(jet_test_scalar_addition_t, compound_assign)
+TEST_P(jet_test_scalar_addition_t, compound_assign)
 {
-    auto sut = sut_t{3.0, 5.0};
+    auto const& actual = jet += scalar;
 
-    EXPECT_EQ(&sut, &(sut += 1.5));
-    EXPECT_EQ(sut, (sut_t{4.5, 5.0}));
+    EXPECT_EQ(&jet, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
-TEST_F(jet_test_scalar_addition_t, jet_plus_scalar)
+TEST_P(jet_test_scalar_addition_t, jet_plus_scalar)
 {
-    constexpr auto sut = sut_t{3.0, 5.0} + 1.5;
+    auto const actual = jet + scalar;
 
-    static_assert(sut == sut_t{4.5, 5.0});
+    EXPECT_EQ(expected, actual);
 }
 
-TEST_F(jet_test_scalar_addition_t, scalar_plus_det)
+TEST_P(jet_test_scalar_addition_t, scalar_plus_jet)
 {
-    constexpr auto sut = 1.5 + sut_t{3.0, 5.0};
+    auto const actual = scalar + jet;
 
-    static_assert(sut == sut_t{4.5, 5.0});
+    EXPECT_EQ(expected, actual);
 }
+
+// clang-format off
+jet_scalar_op_vector_t const scalar_addition_vectors[] = {
+    {"positve + positive", {3.0, 5.0}, 11, {14.0, 5.0}},
+    {"negative + negative", {-3.0, -5.0}, -11, {-14.0, -5.0}},
+    {"mixed signs", {3.0, -5.0}, -11, {-8.0, -5.0}},
+    {"zeros", {0.0, 0.0}, 0.0, {0.0, 0.0}},
+    {"mixed zeros", {5.0, 0.0}, 0.0, {5.0, 0.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(addition, jet_test_scalar_addition_t, ValuesIn(scalar_addition_vectors),
+                         test_name_generator_t<jet_scalar_op_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Subtraction
 // --------------------------------------------------------------------------------------------------------------------
 
-struct jet_test_scalar_subtraction_t : jet_test_t
+struct jet_test_scalar_subtraction_t : jet_test_scalar_op_t
 {};
 
-TEST_F(jet_test_scalar_subtraction_t, compound_assign)
+TEST_P(jet_test_scalar_subtraction_t, compound_assign)
 {
-    auto sut = sut_t{3.0, 5.0};
+    auto const& actual = jet -= scalar;
 
-    EXPECT_EQ(&sut, &(sut -= 1.25));
-    EXPECT_EQ(sut, (sut_t{1.75, 5.0}));
+    EXPECT_EQ(&jet, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
-TEST_F(jet_test_scalar_subtraction_t, jet_minus_scalar)
+TEST_P(jet_test_scalar_subtraction_t, jet_minus_scalar)
 {
-    constexpr auto sut = sut_t{3.0, 5.0} - 1.25;
+    auto const actual = jet - scalar;
 
-    static_assert(sut == sut_t{1.75, 5.0});
+    EXPECT_EQ(expected, actual);
 }
 
-TEST_F(jet_test_scalar_subtraction_t, scalar_minus_jet)
+TEST_P(jet_test_scalar_subtraction_t, scalar_minus_jet)
 {
-    constexpr auto sut = 1.25 - sut_t{3.0, 5.0};
+    auto const actual = scalar - jet;
 
-    static_assert(sut == sut_t{-1.75, -5.0});
+    EXPECT_EQ(-expected, actual);
 }
+
+// clang-format off
+jet_scalar_op_vector_t const scalar_subtraction_vectors[] = {
+    {"positve - positive", {3.0, 5.0}, 11, {-8.0, 5.0}},
+    {"negative - negative", {-3.0, -5.0}, -11, {8.0, -5.0}},
+    {"mixed signs", {3.0, -5.0}, -11, {14.0, -5.0}},
+    {"zeros", {0.0, 0.0}, 0.0, {0.0, 0.0}},
+    {"mixed zeros", {5.0, 0.0}, 0.0, {5.0, 0.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(subtraction, jet_test_scalar_subtraction_t, ValuesIn(scalar_subtraction_vectors),
+                         test_name_generator_t<jet_scalar_op_vector_t>{});
 
 // ====================================================================================================================
 // Vector Arithmetic
