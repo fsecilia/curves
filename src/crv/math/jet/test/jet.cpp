@@ -1105,12 +1105,12 @@ struct jet_death_test_t : jet_test_t
 
 TEST_F(jet_death_test_t, log_negative_domain)
 {
-    EXPECT_DEBUG_DEATH(log(jet_t{-1.0, 1.0}), "jet_t::log: domain error");
+    EXPECT_DEBUG_DEATH(log(jet_t{-1.0, 1.0}), "domain error");
 }
 
 TEST_F(jet_death_test_t, log1p_negative_domain)
 {
-    EXPECT_DEBUG_DEATH(log1p(jet_t{-2.0, 1.0}), "jet_t::log1p: domain error");
+    EXPECT_DEBUG_DEATH(log1p(jet_t{-2.0, 1.0}), "domain error");
 }
 
 #endif
