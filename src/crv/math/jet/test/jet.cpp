@@ -1037,5 +1037,49 @@ math_func_test_vector_xy_t const hypot_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(hypot, jet_test_hypot_t, ValuesIn(hypot_vectors),
                          test_name_generator_t<math_func_test_vector_xy_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// log
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(log(x)) = dx/x
+struct jet_test_log_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_log_t, result)
+{
+    auto const actual = log(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+const math_func_test_vector_x_t log_vectors[] = {
+    {"0.5", {0.5, 1.3}, {log(0.5), 1.3/0.5}},
+    {"1", {1.0, 1.3}, {0.0, 1.3}},
+    {"e", {M_E, 1.3}, {1.0, 1.3/M_E}},
+    {"2", {2.0, 1.3}, {log(2), 1.3/2}},
+    {"10", {10.0, 1.3}, {log(10), 1.3/10}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(log, jet_test_log_t, ValuesIn(log_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
+// ====================================================================================================================
+// Assertion Death Tests
+// ====================================================================================================================
+
+#if !defined NDEBUG
+
+struct jet_death_test_t : jet_test_t
+{};
+
+TEST_F(jet_death_test_t, log_negative_domain)
+{
+    EXPECT_DEBUG_DEATH(log(jet_t{-1.0, 1.0}), "jet_t::log: domain error");
+}
+
+#endif
+
 } // namespace
 } // namespace crv

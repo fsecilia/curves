@@ -10,6 +10,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/limits.hpp>
+#include <cassert>
 #include <cmath>
 #include <compare>
 #include <concepts>
@@ -27,6 +28,7 @@ using std::hypot;
 using std::isfinite;
 using std::isinf;
 using std::isnan;
+using std::log;
 using std::max;
 using std::min;
 using std::sin;
@@ -373,6 +375,17 @@ template <typename t_scalar_t> struct jet_t
         if (mag == scalar_t{0}) return {scalar_t{0}, scalar_t{0}};
 
         return {mag, (x.f * x.df + y.f * y.df) / mag};
+    }
+
+    //! \pre x > 0
+    // d(log(x)) = dx/x
+    friend constexpr auto log(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::log;
+
+        assert(x.f > scalar_t{0} && "jet_t::log: domain error");
+
+        return {log(x.f), x.df / x.f};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
