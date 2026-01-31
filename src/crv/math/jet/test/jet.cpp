@@ -809,5 +809,59 @@ classification_test_vector_t const classification_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
                          test_name_generator_t<classification_test_vector_t>{});
 
+// ====================================================================================================================
+// Math Functions
+// ====================================================================================================================
+
+struct math_func_test_vector_t
+{
+    std::string name;
+    sut_t       input;
+    sut_t       expected;
+
+    friend auto operator<<(std::ostream& out, math_func_test_vector_t const& src) -> std::ostream&
+    {
+        return out << "{.name = \"" << src.name << "\", .input = " << src.input << ", .expected = " << src.expected
+                   << "}";
+    }
+};
+
+struct jet_test_math_func_t : jet_test_t, WithParamInterface<math_func_test_vector_t>
+{
+    sut_t const& input    = GetParam().input;
+    sut_t const& expected = GetParam().expected;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// abs
+// --------------------------------------------------------------------------------------------------------------------
+
+// d(|x|) = sgn(x)*dx
+struct jet_test_abs_t : jet_test_math_func_t
+{};
+
+TEST_P(jet_test_abs_t, result)
+{
+    auto const result = abs(input);
+
+    EXPECT_DOUBLE_EQ(result.f, expected.f);
+    EXPECT_DOUBLE_EQ(result.df, expected.df);
+}
+
+// clang-format off
+math_func_test_vector_t const abs_vectors[] = {
+    {"negative, negative", {-7.0, -13.0}, {7.0,  13.0}},
+    {"negative, zero",     {-7.0,   0.0}, {7.0,   0.0}},
+    {"negative, positive", {-7.0,  13.0}, {7.0, -13.0}},
+    {"zero,     negative", { 0.0, -13.0}, {0.0, -13.0}},
+    {"zero,     zero",     { 0.0,   0.0}, {0.0,   0.0}},
+    {"zero,     positive", { 0.0,  13.0}, {0.0,  13.0}},
+    {"positive, negative", { 7.0, -13.0}, {7.0, -13.0}},
+    {"positive, zero",     { 7.0,   0.0}, {7.0,   0.0}},
+    {"positive, positive", { 7.0,  13.0}, {7.0,  13.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors), test_name_generator_t<math_func_test_vector_t>{});
+
 } // namespace
 } // namespace crv

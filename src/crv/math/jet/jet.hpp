@@ -17,6 +17,7 @@
 
 namespace crv {
 
+using std::abs;
 using std::clamp;
 using std::isfinite;
 using std::isinf;
@@ -291,6 +292,18 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::isnan;
         return isnan(x.f) || isnan(x.df);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Math Functions
+    // ----------------------------------------------------------------------------------------------------------------
+
+    /// d(abs(x)) = sgn(x)*dx
+    friend constexpr auto abs(jet_t const& x) noexcept -> jet_t
+    {
+        using std::abs;
+
+        return {abs(x.f), copysign(scalar_t{1}, x.f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
