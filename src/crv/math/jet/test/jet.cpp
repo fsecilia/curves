@@ -189,7 +189,6 @@ struct jet_test_comparison_t : jet_test_t
 
 TEST_F(jet_test_comparison_t, element_equality)
 {
-    // equal only if primal matches AND derivative is zero
     static_assert(jet_t{5.0, 0.0} == 5.0);
     static_assert(jet_t{5.0, 1.0} != 5.0);
     static_assert(jet_t{5.1, 0.0} != 5.0);
