@@ -1094,6 +1094,70 @@ const math_func_test_vector_x_t log1p_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(log1p, jet_test_log1p_t, ValuesIn(log1p_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// pow
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_pow_t : jet_test_math_func_xy_t
+{};
+
+TEST_P(jet_test_pow_t, jet_to_jet)
+{
+    auto const actual = pow(x, y);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+TEST_P(jet_test_pow_t, jet_to_element)
+{
+    auto const reference = pow(x, jet_t{y.f, 0.0});
+    auto const actual    = pow(x, y.f);
+
+    EXPECT_NEAR(reference.f, actual.f, eps);
+    EXPECT_NEAR(reference.df, actual.df, eps);
+}
+
+TEST_P(jet_test_pow_t, element_to_jet)
+{
+    auto const reference = pow(jet_t{x.f, 0.0}, y);
+    auto const actual    = pow(x.f, y);
+
+    EXPECT_NEAR(reference.f, actual.f, eps);
+    EXPECT_NEAR(reference.df, actual.df, eps);
+}
+
+// d(x^y) = x^y*log(x)*dy + x^(y - 1)*y*dx
+auto pow_reference(sut_t const& lhs, sut_t const& rhs) noexcept -> sut_t
+{
+    auto const x  = lhs.f;
+    auto const y  = rhs.f;
+    auto const dx = lhs.df;
+    auto const dy = rhs.df;
+    return {pow(x, y), pow(x, y) * log(x) * dy + pow(x, y - 1.0) * y * dx};
+}
+
+auto pow_vector(std::string name, sut_t const& lhs, sut_t const& rhs) noexcept -> math_func_test_vector_xy_t
+{
+    return {std::move(name), lhs, rhs, pow_reference(lhs, rhs)};
+}
+
+// clang-format off
+const math_func_test_vector_xy_t pow_vectors[] = {
+    pow_vector("-e", {5.1, 1.3}, {-M_E, 2.4}),
+    pow_vector("-1", {5.1, 1.3}, {-1.0, 2.4}),
+    pow_vector("0", {5.1, 1.3}, {0.0, 2.4}),
+    pow_vector("sqrt", {5.1, 1.3}, {0.5, 2.4}),
+    pow_vector("1", {5.1, 1.3}, {1.0, 2.4}),
+    pow_vector("e^e", {M_E, 1.3}, {M_E, 2.4}),
+    pow_vector("e", {5.1, 1.3}, {M_E, 2.4}),
+    pow_vector("square", {5.1, 1.3}, {2.0, 2.4}),
+    pow_vector("cube", {5.1, 1.3}, {3.0, 2.4}),
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(pow, jet_test_pow_t, ValuesIn(pow_vectors),
+                         test_name_generator_t<math_func_test_vector_xy_t>{});
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================
@@ -1111,6 +1175,26 @@ TEST_F(jet_death_test_t, log_negative_domain)
 TEST_F(jet_death_test_t, log1p_negative_domain)
 {
     EXPECT_DEBUG_DEATH(log1p(jet_t{-2.0, 1.0}), "domain error");
+}
+
+TEST_F(jet_death_test_t, pow_jet_to_element_negative_base)
+{
+    EXPECT_DEBUG_DEATH(pow(jet_t{-0.5, 1.0}, 2.5), "domain error");
+}
+
+TEST_F(jet_death_test_t, pow_jet_to_element_negative_integer_base)
+{
+    EXPECT_DEBUG_DEATH(pow(jet_t{-1.0, 1.0}, 2.5), "domain error");
+}
+
+TEST_F(jet_death_test_t, pow_element_to_jet_negative_base)
+{
+    EXPECT_DEBUG_DEATH(pow(-2.0, jet_t{1.0, 1.0}), "domain error");
+}
+
+TEST_F(jet_death_test_t, pow_jet_to_jet_negative_base)
+{
+    EXPECT_DEBUG_DEATH(pow(jet_t{-1.0, 1.0}, jet_t{2.0, 0.0}), "domain error");
 }
 
 #endif

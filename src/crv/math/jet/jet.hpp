@@ -32,6 +32,7 @@ using std::log;
 using std::log1p;
 using std::max;
 using std::min;
+using std::pow;
 using std::sin;
 using std::sqrt;
 
@@ -398,6 +399,76 @@ template <typename t_scalar_t> struct jet_t
         assert(x.f > scalar_t{-1} && "jet_t::log1p: domain error");
 
         return {log1p(x.f), x.df / (x.f + 1)};
+    }
+
+    //! \pre x > 0 || (x == 0 && y >= 1)
+    // jet^element
+    // d(x^y) = x^(y - 1)*y*dx
+    friend constexpr auto pow(jet_t const& x, scalar_t const& y) noexcept -> jet_t
+    {
+        using crv::pow;
+
+        // We restrict the range to positive numbers or 0 with a positive exponent.
+        //
+        // x < 0:
+        // The vast majority of the domain has nonreal results and we don't support complex jets. The only real results
+        // come from negative integers, which don't come up in our usage. Instead of bothering with an int check, all of
+        // x < 0 is excluded.
+        //
+        // x == 0:
+        // The result is inf if y < 1.
+        assert((x > 0 || (x == 0 && y >= 1)) && "jet_t::pow(<jet>, <element>): domain error");
+
+        auto const pm1 = pow(x.f, y - scalar_t(1));
+        return {pm1 * x.f, y * pm1 * x.df};
+    }
+
+    //! \pre x > 0
+    // element^jet
+    // d(x^y) = log(x)*x^y*dy
+    friend constexpr auto pow(scalar_t const& x, jet_t const& y) noexcept -> jet_t
+    {
+        using crv::pow;
+
+        assert(x > scalar_t(0) && "jet_t::pow(<element>, <jet>): domain error");
+
+        auto const power    = pow(x, y.f);
+        auto const log_base = log(x);
+
+        return {power, log_base * power * y.df};
+    }
+
+    //! \pre x > 0
+    // jet^jet
+    // d(x^y) = x^y*(log(x)*dy + y*dx/x) = x^y*log(x)*dy + x^(y - 1)*y*dx
+    friend constexpr auto pow(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    {
+        using crv::pow;
+
+        assert(x.f > scalar_t{0} && "jet_t::pow(<jet>, <jet>): domain error");
+
+        /*
+            By definition:
+
+                x^y = e^(log(x)*y)
+                d(e^(f(x))) = e^(f(x))d(f(x))
+
+            Here, f(x) = log(x)*y:
+
+                d(f(x)) = log(x)*d(y) + d(log(x))*y
+                        = log(x)*dy + y*dx/x
+
+            Using this, the full derivation is:
+
+                d(x^y) = e^(log(x)*y)(log(x)*dy + y*dx/x)
+                       = (x^y)(log(x)*dy + y*dx/x)
+                       = x^y*log(x)*dy + x^(y - 1)*y*dx
+
+            The familiar power rule is recovered when y is a constant because that makes dy = 0.
+        */
+        auto const pm1   = pow(x.f, y.f - 1);
+        auto const power = x.f * pm1;
+        return {power, power * log(x.f) * y.df + pm1 * y.f * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
