@@ -9,7 +9,6 @@ add_library(lib)
 target_sources(lib PRIVATE
     math/fixed/io.hpp
     math/jet/jet.hpp
-    math/jet/io.hpp
     math/io.hpp
     math/io.cpp
 )

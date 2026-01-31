@@ -11,6 +11,7 @@
 #include <crv/lib.hpp>
 #include <compare>
 #include <concepts>
+#include <ostream>
 #include <type_traits>
 
 namespace crv {
@@ -165,6 +166,15 @@ template <typename t_scalar_t> struct jet_t
     friend constexpr auto operator-(scalar_t const& lhs, jet_t const& rhs) noexcept -> jet_t
     {
         return jet_t{lhs - rhs.f, -rhs.df};
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Standard Library Integration
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend auto operator<<(std::ostream& out, jet_t const& src) -> std::ostream&
+    {
+        return out << "{.f = " << src.f << ", .df = " << src.df << "}";
     }
 };
 
