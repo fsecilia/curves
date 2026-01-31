@@ -271,20 +271,20 @@ TEST_F(jet_test_unary_arithmetic_t, minus)
 // Scalar Arithmetic
 // ====================================================================================================================
 
-struct jet_scalar_op_vector_t
+struct scalar_op_test_vector_t
 {
     std::string name;
     sut_t       jet;
     scalar_t    scalar;
     sut_t       expected;
 
-    friend auto operator<<(std::ostream& out, jet_scalar_op_vector_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, scalar_op_test_vector_t const& src) -> std::ostream&
     {
         return out << src.jet << " ⨂ " << src.scalar << " = " << src.expected;
     }
 };
 
-struct jet_test_scalar_op_t : jet_test_t, WithParamInterface<jet_scalar_op_vector_t>
+struct jet_test_scalar_op_t : jet_test_t, WithParamInterface<scalar_op_test_vector_t>
 {
     sut_t          jet      = GetParam().jet;
     scalar_t const scalar   = GetParam().scalar;
@@ -321,7 +321,7 @@ TEST_P(jet_test_scalar_addition_t, scalar_plus_jet)
 }
 
 // clang-format off
-jet_scalar_op_vector_t const scalar_addition_vectors[] = {
+scalar_op_test_vector_t const scalar_addition_vectors[] = {
     {"positve + positive", {3.0, 5.0}, 11, {14.0, 5.0}},
     {"negative + negative", {-3.0, -5.0}, -11, {-14.0, -5.0}},
     {"mixed signs", {3.0, -5.0}, -11, {-8.0, -5.0}},
@@ -330,7 +330,7 @@ jet_scalar_op_vector_t const scalar_addition_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(scalar_addition, jet_test_scalar_addition_t, ValuesIn(scalar_addition_vectors),
-                         test_name_generator_t<jet_scalar_op_vector_t>{});
+                         test_name_generator_t<scalar_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Subtraction
@@ -362,7 +362,7 @@ TEST_P(jet_test_scalar_subtraction_t, scalar_minus_jet)
 }
 
 // clang-format off
-jet_scalar_op_vector_t const scalar_subtraction_vectors[] = {
+scalar_op_test_vector_t const scalar_subtraction_vectors[] = {
     {"positve - positive", {3.0, 5.0}, 11, {-8.0, 5.0}},
     {"negative - negative", {-3.0, -5.0}, -11, {8.0, -5.0}},
     {"mixed signs", {3.0, -5.0}, -11, {14.0, -5.0}},
@@ -371,7 +371,7 @@ jet_scalar_op_vector_t const scalar_subtraction_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(scalar_subtraction, jet_test_scalar_subtraction_t, ValuesIn(scalar_subtraction_vectors),
-                         test_name_generator_t<jet_scalar_op_vector_t>{});
+                         test_name_generator_t<scalar_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication
@@ -403,7 +403,7 @@ TEST_P(jet_test_scalar_multiplication_t, scalar_times_jet)
 }
 
 // clang-format off
-jet_scalar_op_vector_t const scalar_multiplication_vectors[] = {
+scalar_op_test_vector_t const scalar_multiplication_vectors[] = {
     {"positive*positive", {3.0, 2.0}, 5.0, {15.0, 10.0}},
     {"positive*negative", {3.0, 2.0}, -5.0, {-15.0, -10.0}},
     {"negative*positive", {-3.0, -2.0}, 5.0, {-15.0, -10.0}},
@@ -414,7 +414,7 @@ jet_scalar_op_vector_t const scalar_multiplication_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(scalar_multiplication, jet_test_scalar_multiplication_t,
-                         ValuesIn(scalar_multiplication_vectors), test_name_generator_t<jet_scalar_op_vector_t>{});
+                         ValuesIn(scalar_multiplication_vectors), test_name_generator_t<scalar_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
@@ -448,7 +448,7 @@ TEST_P(jet_test_scalar_division_t, scalar_divided_by_jet)
 }
 
 // clang-format off
-jet_scalar_op_vector_t const scalar_division_vectors[] = {
+scalar_op_test_vector_t const scalar_division_vectors[] = {
     {"positive/positive", {15.0, 10.0}, 5.0, {3.0, 2.0}},
     {"positive/negative", {15.0, 10.0}, -5.0, {-3.0, -2.0}},
     {"negative/positive", {-15.0, -10.0}, 5.0, {-3.0, -2.0}},
@@ -456,26 +456,26 @@ jet_scalar_op_vector_t const scalar_division_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(scalar_division, jet_test_scalar_division_t, ValuesIn(scalar_division_vectors),
-                         test_name_generator_t<jet_scalar_op_vector_t>{});
+                         test_name_generator_t<scalar_op_test_vector_t>{});
 
 // ====================================================================================================================
 // Vector Arithmetic
 // ====================================================================================================================
 
-struct jet_vector_op_vector_t
+struct vector_op_test_vector_t
 {
     std::string name;
     sut_t       lhs;
     sut_t       rhs;
     sut_t       expected;
 
-    friend auto operator<<(std::ostream& out, jet_vector_op_vector_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, vector_op_test_vector_t const& src) -> std::ostream&
     {
         return out << src.lhs << " ⨂ " << src.rhs << " = " << src.expected;
     }
 };
 
-struct jet_test_vector_op_t : jet_test_t, WithParamInterface<jet_vector_op_vector_t>
+struct jet_test_vector_op_t : jet_test_t, WithParamInterface<vector_op_test_vector_t>
 {
     sut_t       lhs      = GetParam().lhs;
     sut_t const rhs      = GetParam().rhs;
@@ -511,14 +511,14 @@ TEST_P(jet_test_vector_addition_t, binary_op_commuted)
     EXPECT_EQ(expected, actual);
 }
 
-jet_vector_op_vector_t const vector_addition_vectors[] = {
+vector_op_test_vector_t const vector_addition_vectors[] = {
     {"positve + positive", {1.0, 2.0}, {3.0, 4.0}, {4.0, 6.0}},
     {"mixed signs", {-1.0, 2.0}, {3.0, -4.0}, {2.0, -2.0}},
     {"zeros", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}},
     {"mixed zeros", {5.0, 0.0}, {0.0, 3.0}, {5.0, 3.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_addition, jet_test_vector_addition_t, ValuesIn(vector_addition_vectors),
-                         test_name_generator_t<jet_vector_op_vector_t>{});
+                         test_name_generator_t<vector_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Subtraction
@@ -549,7 +549,7 @@ TEST_P(jet_test_vector_subtraction_t, binary_op_commuted)
     EXPECT_EQ(-expected, actual);
 }
 
-jet_vector_op_vector_t const vector_subtraction_vectors[] = {
+vector_op_test_vector_t const vector_subtraction_vectors[] = {
     {"positve - smaller", {11.0, 17.0}, {5.0, 7.0}, {6.0, 10.0}},
     {"positve - larger", {5.0, 7.0}, {11.0, 17.0}, {-6.0, -10.0}},
     {"mixed signs", {-5.0, 7.0}, {11.0, -17.0}, {-16.0, 24.0}},
@@ -557,7 +557,7 @@ jet_vector_op_vector_t const vector_subtraction_vectors[] = {
     {"mixed zeros", {5.0, 0.0}, {0.0, 7.0}, {5.0, -7.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_subtraction, jet_test_vector_subtraction_t, ValuesIn(vector_subtraction_vectors),
-                         test_name_generator_t<jet_vector_op_vector_t>{});
+                         test_name_generator_t<vector_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication
@@ -592,7 +592,7 @@ TEST_P(jet_test_vector_multiplication_t, binary_op_commuted)
     product rule: d(u*v) = u*dv + du*v
     {f1, df1}*{f2, df2} = {f1*f2, f1*df2 + df1*f2}
 */
-jet_vector_op_vector_t const vector_multiplication_vectors[] = {
+vector_op_test_vector_t const vector_multiplication_vectors[] = {
     // {2, 1}*{3, 1} = {2*3, 2*1 + 1*3} = {6, 5}
     {"vector*vector", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
 
@@ -607,7 +607,7 @@ jet_vector_op_vector_t const vector_multiplication_vectors[] = {
     {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_multiplication, jet_test_vector_multiplication_t,
-                         ValuesIn(vector_multiplication_vectors), test_name_generator_t<jet_vector_op_vector_t>{});
+                         ValuesIn(vector_multiplication_vectors), test_name_generator_t<vector_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
@@ -644,7 +644,7 @@ TEST_P(jet_test_vector_division_t, binary_op_inverse)
     quotient rule: d(u/v) = (du*v - u*dv)/v^2 = (du - (u/v)*dv)/v
     {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
 */
-jet_vector_op_vector_t const vector_division_vectors[] = {
+vector_op_test_vector_t const vector_division_vectors[] = {
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
     {"scaled_vector/identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 
@@ -655,7 +655,7 @@ jet_vector_op_vector_t const vector_division_vectors[] = {
     {"scaled_vector/vector", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
 };
 INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(vector_division_vectors),
-                         test_name_generator_t<jet_vector_op_vector_t>{});
+                         test_name_generator_t<vector_op_test_vector_t>{});
 
 // ====================================================================================================================
 // Selection
@@ -665,7 +665,7 @@ INSTANTIATE_TEST_SUITE_P(vector_division, jet_test_vector_division_t, ValuesIn(v
 // Min, Max
 // --------------------------------------------------------------------------------------------------------------------
 
-struct selection_min_max_vector_t
+struct selection_min_max_test_vector_t
 {
     std::string name;
     sut_t       x;
@@ -673,14 +673,14 @@ struct selection_min_max_vector_t
     sut_t       expected_min;
     sut_t       expected_max;
 
-    friend auto operator<<(std::ostream& out, selection_min_max_vector_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, selection_min_max_test_vector_t const& src) -> std::ostream&
     {
         return out << "{.name = \"" << src.name << "\", .x = " << src.x << ", .y = " << src.y
                    << ", .expected_min = " << src.expected_min << ", .expected_max = " << src.expected_max << "}";
     }
 };
 
-struct jet_test_selection_min_max_t : jet_test_t, WithParamInterface<selection_min_max_vector_t>
+struct jet_test_selection_min_max_t : jet_test_t, WithParamInterface<selection_min_max_test_vector_t>
 {
     sut_t const x            = GetParam().x;
     sut_t const y            = GetParam().y;
@@ -704,7 +704,7 @@ TEST_P(jet_test_selection_min_max_t, max)
     EXPECT_DOUBLE_EQ(expected_max.df, actual.df);
 }
 
-selection_min_max_vector_t const selection_vectors[] = {
+selection_min_max_test_vector_t const selection_vectors[] = {
     // x < y: min=x, max=y
     {"x < y = x, y", {2.0, 10.0}, {5.0, 20.0}, {2.0, 10.0}, {5.0, 20.0}},
 
@@ -715,7 +715,7 @@ selection_min_max_vector_t const selection_vectors[] = {
     {"x == y = x, y", {3.0, 10.0}, {3.0, 20.0}, {3.0, 20.0}, {3.0, 20.0}},
 };
 INSTANTIATE_TEST_SUITE_P(selection, jet_test_selection_min_max_t, ValuesIn(selection_vectors),
-                         test_name_generator_t<selection_min_max_vector_t>{});
+                         test_name_generator_t<selection_min_max_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Clamp
@@ -752,7 +752,7 @@ TEST_F(jet_test_selection_clamp_t, within)
 // Classification
 // ====================================================================================================================
 
-struct classification_vector_t
+struct classification_test_vector_t
 {
     std::string name;
     sut_t       sut;
@@ -760,7 +760,7 @@ struct classification_vector_t
     bool        expected_isinf;
     bool        expected_isnan;
 
-    friend auto operator<<(std::ostream& out, classification_vector_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, classification_test_vector_t const& src) -> std::ostream&
     {
         return out << "{.name = \"" << src.name << "\", .sut = " << src.sut
                    << ", .expected_isfinite = " << src.expected_isfinite << ", .expected_isinf = " << src.expected_isinf
@@ -768,7 +768,7 @@ struct classification_vector_t
     }
 };
 
-struct jet_test_classification_t : jet_test_t, WithParamInterface<classification_vector_t>
+struct jet_test_classification_t : jet_test_t, WithParamInterface<classification_test_vector_t>
 {
     sut_t const& sut = GetParam().sut;
 
@@ -792,7 +792,7 @@ TEST_P(jet_test_classification_t, isnan)
     EXPECT_EQ(expected_isnan, isnan(sut));
 }
 
-classification_vector_t const classification_vectors[] = {
+classification_test_vector_t const classification_vectors[] = {
     {"zero", {0.0, 0.0}, true, false, false},
     {"vector", {1.0, 2.0}, true, false, false},
     {"infinite scalar", {infinity, 0.0}, false, true, false},
@@ -807,7 +807,7 @@ classification_vector_t const classification_vectors[] = {
     {"nan scalar, infinite derivative", {nan, infinity}, false, false, true},
 };
 INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
-                         test_name_generator_t<classification_vector_t>{});
+                         test_name_generator_t<classification_test_vector_t>{});
 
 } // namespace
 } // namespace crv
