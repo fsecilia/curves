@@ -37,6 +37,7 @@ using std::pow;
 using std::sin;
 using std::sinh;
 using std::sqrt;
+using std::swap;
 using std::tan;
 using std::tanh;
 
@@ -539,6 +540,13 @@ template <typename t_scalar_t> struct jet_t
     friend auto operator<<(std::ostream& out, jet_t const& src) -> std::ostream&
     {
         return out << "{.f = " << src.f << ", .df = " << src.df << "}";
+    }
+
+    friend constexpr auto swap(jet_t& lhs, jet_t& rhs) noexcept -> void
+    {
+        using std::swap;
+        swap(lhs.f, rhs.f);
+        swap(lhs.df, rhs.df);
     }
 };
 
