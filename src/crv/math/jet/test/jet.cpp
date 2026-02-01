@@ -1452,6 +1452,65 @@ TEST_F(jet_test_numeric_limits_t, epsilon)
 }
 
 // ====================================================================================================================
+// Chain Rule Composition
+// ====================================================================================================================
+
+struct jet_test_chain_rule_composition_t : jet_test_t
+{
+    static constexpr auto eps = 1.0e-14;
+};
+
+TEST_F(jet_test_chain_rule_composition_t, exp_log)
+{
+    // exp(log(x)) = x
+
+    auto const actual = exp(log(x));
+
+    EXPECT_NEAR(x.f, actual.f, eps);
+    EXPECT_NEAR(x.df, actual.df, eps);
+}
+
+TEST_F(jet_test_chain_rule_composition_t, sqrt_square)
+{
+    // sqrt(x^2) = |x| for x > 0
+    auto const actual = sqrt(pow(x, 2.0));
+
+    EXPECT_NEAR(actual.f, x.f, eps);
+    EXPECT_NEAR(actual.df, x.df, eps);
+}
+
+TEST_F(jet_test_chain_rule_composition_t, tanh_exp)
+{
+    /*
+        exp(a) = {exp(a.f), exp(a.f)*a.df}
+        tanh(b) = {tanh(b.f), (1 - tanh(b.f)^2)*b.df}
+        tanh(exp(x)) = {tanh(exp(x.f)), (1 - tanh(exp(x.f))^2)*exp(x.f)*x.df}
+    */
+    auto const actual = tanh(exp(x));
+
+    auto const exp_f      = exp(x.f);
+    auto const tanh_exp_f = tanh(exp_f);
+    EXPECT_NEAR(actual.f, tanh_exp_f, eps);
+    EXPECT_NEAR(actual.df, (1.0 - tanh_exp_f * tanh_exp_f) * exp_f * x.df, eps);
+}
+
+TEST_F(jet_test_chain_rule_composition_t, log_sqrt)
+{
+    /*
+        sqrt(a) = {sqrt(a.f), a.df/(2*sqrt(a.f))}
+        log(b) = {log(b.f), b.df/b.f}
+        log(sqrt(x)) = {log(sqrt(x.f)), (x.df/(2*sqrt(x.f)))/sqrt(x.f)}
+                     = {log(sqrt(x.f)), x.df/(2*sqrt(x.f)*sqrt(x.f))}
+    */
+    auto const actual = log(sqrt(x));
+
+    auto const sqrt_f     = sqrt(x.f);
+    auto const log_sqrt_f = log(sqrt_f);
+    EXPECT_NEAR(actual.f, log_sqrt_f, eps);
+    EXPECT_NEAR(actual.df, x.df / (2 * sqrt_f * sqrt_f), eps);
+}
+
+// ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================
 
