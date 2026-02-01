@@ -45,14 +45,14 @@ using std::tanh;
 // Concepts
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename scalar_t>
-concept arithmetic = std::is_arithmetic_v<scalar_t>;
+template <typename value_t>
+concept arithmetic = std::is_arithmetic_v<value_t>;
 
-template <typename jet_t>
-concept is_jet = !std::same_as<jet_t, decltype(primal(std::declval<jet_t const>()))>;
+template <typename value_t>
+concept is_jet = !std::same_as<value_t, decltype(primal(std::declval<value_t const>()))>;
 
-template <typename jet_t>
-concept is_not_jet = !is_jet<jet_t>;
+template <typename value_t>
+concept is_not_jet = !is_jet<value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Scalar Fallbacks
@@ -72,69 +72,69 @@ template <typename scalar_t> constexpr auto derivative(scalar_t const&) noexcept
 // Jet
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename t_scalar_t> struct jet_t
+template <typename t_value_t> struct jet_t
 {
-    using scalar_t = t_scalar_t;
+    using value_t = t_value_t;
 
-    scalar_t f{};
-    scalar_t df{};
+    value_t f{};
+    value_t df{};
 
     // ----------------------------------------------------------------------------------------------------------------
     // Construction
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr jet_t() noexcept = default;
-    constexpr jet_t(scalar_t const& s) noexcept : f{s}, df{} {}
-    constexpr jet_t(scalar_t const& f, scalar_t const& df) noexcept : f{f}, df{df} {}
+    constexpr jet_t(value_t const& f) noexcept : f{f} {}
+    constexpr jet_t(value_t const& f, value_t const& df) noexcept : f{f}, df{df} {}
 
     /**
-        broadcast ctor
+        scalar ctor
 
-        This ctor is deceptively simple, but it is the reason jet_t<jet_t<jet_t<jet_t<double>>>> + double works.
+        This ctor is deceptively simple, but it is the reason `jet_t<jet_t<jet_t<jet_t<double>>>>{double{}}` works.
 
-        Because of auto, this is a function template, so if you pass a scalar_t, the scalar ctor is a better match and
+        Because of auto, this is a function template, so if you pass a value_t, the value_t ctor is a better match and
         this is not considered. So this doesn't affect normal usage. However, if you pass an arithmetic other than
-        scalar_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
-        either the better scalar ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that the
-        literal scalar ctor is not a better match for, and forwards it to the most nested jet in the composition.
+        value_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
+        either the better value_t ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that
+        the value_t ctor is not a better match for, and forwards it to the most nested jet in the composition.
     */
-    constexpr jet_t(arithmetic auto const& s) noexcept : f(s), df(0) {}
+    constexpr jet_t(arithmetic auto const& scalar) noexcept : f(scalar), df(0) {}
 
     // ----------------------------------------------------------------------------------------------------------------
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <typename other_scalar_t>
-    explicit constexpr jet_t(jet_t<other_scalar_t> const& other) noexcept
-        : f{static_cast<scalar_t>(other.f)}, df{static_cast<scalar_t>(other.df)}
+    template <typename other_value_t>
+    explicit constexpr jet_t(jet_t<other_value_t> const& other) noexcept
+        : f{static_cast<value_t>(other.f)}, df{static_cast<value_t>(other.df)}
     {}
 
-    template <typename other_scalar_t> constexpr auto operator=(jet_t<other_scalar_t> const& rhs) noexcept -> jet_t&
+    template <typename other_value_t> constexpr auto operator=(jet_t<other_value_t> const& rhs) noexcept -> jet_t&
     {
-        f  = static_cast<scalar_t>(rhs.f);
-        df = static_cast<scalar_t>(rhs.df);
+        f  = static_cast<value_t>(rhs.f);
+        df = static_cast<value_t>(rhs.df);
         return *this;
     }
 
     explicit constexpr operator bool() const noexcept
     {
         // ignore derivative
-        return f != scalar_t{0};
+        return f != value_t{0};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Element Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto operator<=>(jet_t const& lhs, scalar_t const& rhs) noexcept
+    friend constexpr auto operator<=>(jet_t const& lhs, value_t const& rhs) noexcept
         -> std::common_comparison_category_t<decltype(lhs.f <=> rhs), std::weak_ordering>
     {
         return lhs.f <=> rhs;
     }
 
-    friend constexpr auto operator==(jet_t const& lhs, scalar_t const& rhs) noexcept -> bool
+    friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
     {
-        return lhs.f == rhs && lhs.df == scalar_t{0};
+        return lhs.f == rhs && lhs.df == value_t{0};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -154,8 +154,8 @@ template <typename t_scalar_t> struct jet_t
     // Accessors
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto primal(jet_t const& x) noexcept -> scalar_t { return x.f; }
-    friend constexpr auto derivative(jet_t const& x) noexcept -> scalar_t { return x.df; }
+    friend constexpr auto primal(jet_t const& x) noexcept -> value_t { return x.f; }
+    friend constexpr auto derivative(jet_t const& x) noexcept -> value_t { return x.df; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Unary Arithmetic
@@ -165,65 +165,65 @@ template <typename t_scalar_t> struct jet_t
     friend constexpr auto operator-(jet_t const& x) noexcept -> jet_t { return {-x.f, -x.df}; }
 
     // ----------------------------------------------------------------------------------------------------------------
-    // Scalar Arithmetic
+    // Value Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator+=(scalar_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator+=(value_t const& rhs) noexcept -> jet_t&
     {
         f += rhs;
         return *this;
     }
 
-    friend constexpr auto operator+(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
-    friend constexpr auto operator+(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator+(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
+    friend constexpr auto operator+(value_t const& lhs, jet_t rhs) noexcept -> jet_t
     {
         // commute
         return rhs += lhs;
     }
 
-    constexpr auto operator-=(scalar_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator-=(value_t const& rhs) noexcept -> jet_t&
     {
         f -= rhs;
         return *this;
     }
 
-    friend constexpr auto operator-(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
-    friend constexpr auto operator-(scalar_t const& lhs, jet_t const& rhs) noexcept -> jet_t
+    friend constexpr auto operator-(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
+    friend constexpr auto operator-(value_t const& lhs, jet_t const& rhs) noexcept -> jet_t
     {
         return jet_t{lhs - rhs.f, -rhs.df};
     }
 
-    constexpr auto operator*=(scalar_t const& x) noexcept -> jet_t&
+    constexpr auto operator*=(value_t const& x) noexcept -> jet_t&
     {
         f *= x;
         df *= x;
         return *this;
     }
 
-    friend constexpr auto operator*(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
-    friend constexpr auto operator*(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator*(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
+    friend constexpr auto operator*(value_t const& lhs, jet_t rhs) noexcept -> jet_t
     {
         // commute
         return rhs *= lhs;
     }
 
-    constexpr auto operator/=(scalar_t const& x) noexcept -> jet_t&
+    constexpr auto operator/=(value_t const& x) noexcept -> jet_t&
     {
-        auto const inv = scalar_t(1.0) / x;
+        auto const inv = value_t(1.0) / x;
         f *= inv;
         df *= inv;
         return *this;
     }
 
-    friend constexpr auto operator/(jet_t lhs, scalar_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
-    friend constexpr auto operator/(scalar_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator/(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
+    friend constexpr auto operator/(value_t const& lhs, jet_t rhs) noexcept -> jet_t
     {
-        auto const inv = scalar_t(1.0) / rhs.f;
+        auto const inv = value_t(1.0) / rhs.f;
         return jet_t{lhs, -lhs * rhs.df * inv} * inv;
     }
 
     // ----------------------------------------------------------------------------------------------------------------
-    // Vector Arithmetic
+    // Jet Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr auto operator+=(jet_t const& rhs) noexcept -> jet_t&
@@ -262,7 +262,7 @@ template <typename t_scalar_t> struct jet_t
             This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization,
             similar to horner's.
         */
-        auto const inv = scalar_t(1.0) / x.f;
+        auto const inv = value_t(1.0) / x.f;
         f *= inv;
         df = (df - f * x.df) * inv;
         return *this;
@@ -319,7 +319,7 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::abs;
 
-        return {abs(x.f), copysign(scalar_t{1}, x.f) * x.df};
+        return {abs(x.f), copysign(value_t{1}, x.f) * x.df};
     }
 
     /**
@@ -335,8 +335,8 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::copysign;
 
-        auto const sgn_x = copysign(scalar_t{1}, x.f);
-        auto const sgn_y = copysign(scalar_t{1}, y.f);
+        auto const sgn_x = copysign(value_t{1}, x.f);
+        auto const sgn_y = copysign(value_t{1}, y.f);
 
         auto const dx_term = sgn_x * sgn_y * x.df;
 
@@ -349,8 +349,8 @@ template <typename t_scalar_t> struct jet_t
                   the result would be NaN, so only apply inf conditionally.
                 - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
         */
-        auto const has_delta = (y.f == scalar_t{0}) & (x.f != scalar_t{0}) & (y.df != scalar_t{0});
-        auto const dy_term   = has_delta ? infinity<scalar_t>() * y.df : scalar_t{0};
+        auto const has_delta = (y.f == value_t{0}) & (x.f != value_t{0}) & (y.df != value_t{0});
+        auto const dy_term   = has_delta ? infinity<value_t>() * y.df : value_t{0};
 
         return {copysign(x.f, y.f), dx_term + dy_term};
     }
@@ -388,7 +388,7 @@ template <typename t_scalar_t> struct jet_t
         using crv::hypot;
 
         auto const mag = hypot(x.f, y.f);
-        if (mag == scalar_t{0}) return {scalar_t{0}, scalar_t{0}};
+        if (mag == value_t{0}) return {value_t{0}, value_t{0}};
 
         return {mag, (x.f * x.df + y.f * y.df) / mag};
     }
@@ -399,7 +399,7 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::log;
 
-        assert(x.f > scalar_t{0} && "jet_t::log: domain error");
+        assert(x.f > value_t{0} && "jet_t::log: domain error");
 
         return {log(x.f), x.df / x.f};
     }
@@ -410,7 +410,7 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::log1p;
 
-        assert(x.f > scalar_t{-1} && "jet_t::log1p: domain error");
+        assert(x.f > value_t{-1} && "jet_t::log1p: domain error");
 
         return {log1p(x.f), x.df / (x.f + 1)};
     }
@@ -418,7 +418,7 @@ template <typename t_scalar_t> struct jet_t
     //! \pre x > 0 || (x == 0 && y >= 1)
     // jet^element
     // d(x^y) = x^(y - 1)*y*dx
-    friend constexpr auto pow(jet_t const& x, scalar_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(jet_t const& x, value_t const& y) noexcept -> jet_t
     {
         using crv::pow;
 
@@ -433,18 +433,18 @@ template <typename t_scalar_t> struct jet_t
         // The result is inf if y < 1.
         assert((x > 0 || (x == 0 && y >= 1)) && "jet_t::pow(<jet>, <element>): domain error");
 
-        auto const pm1 = pow(x.f, y - scalar_t(1));
+        auto const pm1 = pow(x.f, y - value_t(1));
         return {pm1 * x.f, y * pm1 * x.df};
     }
 
     //! \pre x > 0
     // element^jet
     // d(x^y) = log(x)*x^y*dy
-    friend constexpr auto pow(scalar_t const& x, jet_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(value_t const& x, jet_t const& y) noexcept -> jet_t
     {
         using crv::pow;
 
-        assert(x > scalar_t(0) && "jet_t::pow(<element>, <jet>): domain error");
+        assert(x > value_t(0) && "jet_t::pow(<element>, <jet>): domain error");
 
         auto const power    = pow(x, y.f);
         auto const log_base = log(x);
@@ -459,7 +459,7 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::pow;
 
-        assert(x.f > scalar_t{0} && "jet_t::pow(<jet>, <jet>): domain error");
+        assert(x.f > value_t{0} && "jet_t::pow(<jet>, <jet>): domain error");
 
         /*
             By definition:
@@ -508,12 +508,12 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::sqrt;
 
-        assert(x.f >= scalar_t{0} && "jet_t::sqrt domain error");
+        assert(x.f >= value_t{0} && "jet_t::sqrt domain error");
 
         auto const root = sqrt(x.f);
-        if (root == scalar_t{0}) return {scalar_t{0}, infinity<scalar_t>()};
+        if (root == value_t{0}) return {value_t{0}, infinity<value_t>()};
 
-        return {root, x.df / (scalar_t{2} * root)};
+        return {root, x.df / (value_t{2} * root)};
     }
 
     // d(tan(x)) = (1 + tan(x)^2)*dx
@@ -522,7 +522,7 @@ template <typename t_scalar_t> struct jet_t
         using crv::tan;
 
         auto const tan_f = tan(x.f);
-        return {tan_f, (scalar_t{1} + tan_f * tan_f) * x.df};
+        return {tan_f, (value_t{1} + tan_f * tan_f) * x.df};
     }
 
     // d(tanh(x)) = (1 - tanh(x)^2)*dx
@@ -530,7 +530,7 @@ template <typename t_scalar_t> struct jet_t
     {
         using crv::tanh;
         auto const tanh_f = tanh(x.f);
-        return {tanh_f, (scalar_t{1} - tanh_f * tanh_f) * x.df};
+        return {tanh_f, (value_t{1} - tanh_f * tanh_f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -554,21 +554,21 @@ template <typename t_scalar_t> struct jet_t
 
 namespace std {
 
-template <typename scalar_t> struct numeric_limits<crv::jet_t<scalar_t>> : numeric_limits<scalar_t>
+template <typename value_t> struct numeric_limits<crv::jet_t<value_t>> : numeric_limits<value_t>
 {
     static constexpr bool is_specialized = true;
 
-    using base_t = numeric_limits<scalar_t>;
+    using base_t = numeric_limits<value_t>;
 
-    static constexpr auto min() noexcept -> crv::jet_t<scalar_t> { return base_t::min(); }
-    static constexpr auto max() noexcept -> crv::jet_t<scalar_t> { return base_t::max(); }
-    static constexpr auto lowest() noexcept -> crv::jet_t<scalar_t> { return base_t::lowest(); }
-    static constexpr auto epsilon() noexcept -> crv::jet_t<scalar_t> { return base_t::epsilon(); }
-    static constexpr auto round_error() noexcept -> crv::jet_t<scalar_t> { return base_t::round_error(); }
-    static constexpr auto infinity() noexcept -> crv::jet_t<scalar_t> { return base_t::infinity(); }
-    static constexpr auto quiet_NaN() noexcept -> crv::jet_t<scalar_t> { return base_t::quiet_NaN(); }
-    static constexpr auto signaling_NaN() noexcept -> crv::jet_t<scalar_t> { return base_t::signaling_NaN(); }
-    static constexpr auto denorm_min() noexcept -> crv::jet_t<scalar_t> { return base_t::denorm_min(); }
+    static constexpr auto min() noexcept -> crv::jet_t<value_t> { return base_t::min(); }
+    static constexpr auto max() noexcept -> crv::jet_t<value_t> { return base_t::max(); }
+    static constexpr auto lowest() noexcept -> crv::jet_t<value_t> { return base_t::lowest(); }
+    static constexpr auto epsilon() noexcept -> crv::jet_t<value_t> { return base_t::epsilon(); }
+    static constexpr auto round_error() noexcept -> crv::jet_t<value_t> { return base_t::round_error(); }
+    static constexpr auto infinity() noexcept -> crv::jet_t<value_t> { return base_t::infinity(); }
+    static constexpr auto quiet_NaN() noexcept -> crv::jet_t<value_t> { return base_t::quiet_NaN(); }
+    static constexpr auto signaling_NaN() noexcept -> crv::jet_t<value_t> { return base_t::signaling_NaN(); }
+    static constexpr auto denorm_min() noexcept -> crv::jet_t<value_t> { return base_t::denorm_min(); }
 };
 
 } // namespace std
