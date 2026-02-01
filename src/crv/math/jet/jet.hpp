@@ -35,6 +35,7 @@ using std::min;
 using std::pow;
 using std::sin;
 using std::sqrt;
+using std::tan;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
@@ -491,6 +492,15 @@ template <typename t_scalar_t> struct jet_t
         if (root == scalar_t{0}) return {scalar_t{0}, infinity<scalar_t>()};
 
         return {root, x.df / (scalar_t{2} * root)};
+    }
+
+    // d(tan(x)) = (1 + tan(x)^2)*dx
+    friend constexpr auto tan(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::tan;
+
+        auto const tan_f = tan(x.f);
+        return {tan_f, (scalar_t{1} + tan_f * tan_f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------

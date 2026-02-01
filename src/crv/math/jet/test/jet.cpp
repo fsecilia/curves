@@ -1220,6 +1220,43 @@ const math_func_test_vector_x_t sqrt_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(sqrt, jet_test_sqrt_t, ValuesIn(sqrt_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// tan
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_tan_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_tan_t, result)
+{
+    auto const actual = tan(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// d(tan(x)) = (1 + tan(x)^2)*dx
+constexpr auto tan_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+{
+    auto const tan_a = tan(angle);
+    auto const dx    = 1.3;
+    return {std::move(name), jet_t{angle, dx}, jet_t{tan_a, (1.0 + tan_a * tan_a) * dx}};
+}
+
+// clang-format off
+const math_func_test_vector_x_t tan_vectors[] = {
+    tan_vector("-pi/4", -pi/4),
+    tan_vector("0", 0.0),
+    tan_vector("pi/5", pi/5),
+    tan_vector("pi/4", pi/4),
+    tan_vector("pi/3", pi/3),
+    tan_vector("pi/2", pi/2),
+    tan_vector("pi", pi),
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(tan, jet_test_tan_t, ValuesIn(tan_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================
