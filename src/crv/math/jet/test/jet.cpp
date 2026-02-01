@@ -1309,11 +1309,11 @@ TEST_P(jet_test_tan_t, result)
 }
 
 // d(tan(x)) = (1 + tan(x)^2)*dx
-constexpr auto tan_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+constexpr auto tan_vector(std::string name, scalar_t a) noexcept -> math_func_test_vector_x_t
 {
-    auto const tan_a = tan(angle);
+    auto const tan_a = tan(a);
     auto const dx    = 1.3;
-    return {std::move(name), jet_t{angle, dx}, jet_t{tan_a, (1.0 + tan_a * tan_a) * dx}};
+    return {std::move(name), jet_t{a, dx}, jet_t{tan_a, (1.0 + tan_a * tan_a) * dx}};
 }
 
 // clang-format off
@@ -1346,11 +1346,11 @@ TEST_P(jet_test_tanh_t, result)
 }
 
 // d(tanh(x)) = (1 - tanh(x)^2)*dx
-constexpr auto tanh_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+constexpr auto tanh_vector(std::string name, scalar_t a) noexcept -> math_func_test_vector_x_t
 {
-    auto const tanh_a = tanh(angle);
+    auto const tanh_a = tanh(a);
     auto const dx     = 1.3;
-    return {std::move(name), jet_t{angle, dx}, jet_t{tanh_a, (1.0 - tanh_a * tanh_a) * dx}};
+    return {std::move(name), jet_t{a, dx}, jet_t{tanh_a, (1.0 - tanh_a * tanh_a) * dx}};
 }
 
 // clang-format off
