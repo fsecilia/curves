@@ -190,5 +190,30 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
     compare(actual, {expected_primal, expected_derivative});
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Type Promotion
+// --------------------------------------------------------------------------------------------------------------------
+
+struct nested_jet_test_type_promotion_t : nested_jet_test_t
+{};
+
+TEST_F(nested_jet_test_type_promotion_t, init_jet_with_double)
+{
+    constexpr auto expected = sut_t{{s, 0.0}, {0.0, 0.0}};
+
+    auto const actual = sut_t{s};
+
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_type_promotion_t, init_jet_with_value)
+{
+    constexpr auto expected = sut_t{{s, 0.0}, {0.0, 0.0}};
+
+    auto const actual = sut_t{{s, 0.0}};
+
+    ASSERT_EQ(expected, actual);
+}
+
 } // namespace
 } // namespace crv
