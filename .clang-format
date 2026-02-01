@@ -7,7 +7,7 @@ IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4
 IndentCaseLabels: true
-IndentRequiresClause: false
+IndentRequiresClause: true
 IndentWrappedFunctionNames: false
 
 # alignment
