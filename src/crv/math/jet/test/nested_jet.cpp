@@ -160,5 +160,19 @@ TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
     compare(expected, actual);
 }
 
+TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
+{
+    /*
+        f(x) = 3x^2 + 2x + v + s
+        f'(x) = 6x*dx + 2*dx
+    */
+    auto const expected_primal     = 3.0 * x.f * x.f + 2.0 * x.f + v + s;
+    auto const expected_derivative = 6.0 * x.f * x.df + 2.0 * x.df;
+
+    auto const actual = 3.0 * x * x + 2.0 * x + v + s;
+
+    compare(actual, {expected_primal, expected_derivative});
+}
+
 } // namespace
 } // namespace crv
