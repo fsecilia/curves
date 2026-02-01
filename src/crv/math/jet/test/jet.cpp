@@ -1345,7 +1345,7 @@ TEST_P(jet_test_tanh_t, result)
     EXPECT_NEAR(expected.df, actual.df, eps);
 }
 
-// d(tanh(x)) = (1 + tanh(x)^2)*dx
+// d(tanh(x)) = (1 - tanh(x)^2)*dx
 constexpr auto tanh_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
 {
     auto const tanh_a = tanh(angle);
