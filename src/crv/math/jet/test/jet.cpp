@@ -7,6 +7,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
 #include <limits>
+#include <numbers>
 #include <ostream>
 
 namespace crv {
@@ -18,6 +19,8 @@ using sut_t    = jet_t<scalar_t>;
 static constexpr auto eps = epsilon<scalar_t>();
 static constexpr auto inf = infinity<scalar_t>();
 static constexpr auto nan = std::numeric_limits<scalar_t>::quiet_NaN();
+static constexpr auto e   = std::numbers::e;
+static constexpr auto pi  = std::numbers::pi;
 
 struct jet_test_t : Test
 {
@@ -971,11 +974,11 @@ TEST_P(jet_test_cos_t, result)
 // d(cos(x)) = -sin(x)*dx
 const math_func_test_vector_x_t cos_vectors[] = {
     {"0", {0.0, 1.3}, {1.0, 0.0}},
-    {"-pi/2", {-M_PI_2, 1.3}, {0.0, 1.3}},
-    {"pi/5", {M_PI / 5, 1.3}, {cos(M_PI / 5), -1.3*sin(M_PI / 5)}},
-    {"pi/3", {M_PI / 3, 1.3}, {cos(M_PI / 3), -1.3*sin(M_PI / 3)}},
-    {"pi/2,", {M_PI_2, 1.3}, {0.0, -1.3}},
-    {"pi", {M_PI, 1.3}, {-1.0, 0.0}},
+    {"-pi/2", {-pi/2, 1.3}, {0.0, 1.3}},
+    {"pi/5", {pi / 5, 1.3}, {cos(pi / 5), -1.3*sin(pi / 5)}},
+    {"pi/3", {pi / 3, 1.3}, {cos(pi / 3), -1.3*sin(pi / 3)}},
+    {"pi/2,", {pi/2, 1.3}, {0.0, -1.3}},
+    {"pi", {pi, 1.3}, {-1.0, 0.0}},
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
@@ -999,11 +1002,11 @@ TEST_P(jet_test_exp_t, result)
 // clang-format off
 // d(exp(x)) = exp(x)*dx
 const math_func_test_vector_x_t exp_vectors[] = {
-    {"-1", {-1.0, 1.3}, {1.0 / M_E, 1.3 / M_E}},
+    {"-1", {-1.0, 1.3}, {1.0 / e, 1.3 / e}},
     {"0", {0.0, 1.3}, {1.0, 1.3}},
-    {"0.5", {0.5, 1.3}, {sqrt(M_E), 1.3*sqrt(M_E)}},
-    {"1", {1.0, 1.3}, {M_E, 1.3*M_E}},
-    {"2", {2.0, 1.3}, {M_E*M_E, M_E*M_E*1.3}},
+    {"0.5", {0.5, 1.3}, {sqrt(e), 1.3*sqrt(e)}},
+    {"1", {1.0, 1.3}, {e, 1.3*e}},
+    {"2", {2.0, 1.3}, {e*e, e*e*1.3}},
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(exp, jet_test_exp_t, ValuesIn(exp_vectors),
@@ -1057,7 +1060,7 @@ TEST_P(jet_test_log_t, result)
 const math_func_test_vector_x_t log_vectors[] = {
     {"0.5", {0.5, 1.3}, {log(0.5), 1.3/0.5}},
     {"1", {1.0, 1.3}, {0.0, 1.3}},
-    {"e", {M_E, 1.3}, {1.0, 1.3/M_E}},
+    {"e", {e, 1.3}, {1.0, 1.3/e}},
     {"2", {2.0, 1.3}, {log(2), 1.3/2}},
     {"10", {10.0, 1.3}, {log(10), 1.3/10}},
 };
@@ -1086,7 +1089,7 @@ const math_func_test_vector_x_t log1p_vectors[] = {
     {"0", {0.0, 1.3}, {log1p(0.0), 1.3}},
     {"0.5", {0.5, 1.3}, {log1p(0.5), 1.3/1.5}},
     {"1", {1.0, 1.3}, {log1p(1.0), 1.3/2}},
-    {"e", {M_E, 1.3}, {log1p(M_E), 1.3/(M_E + 1)}},
+    {"e", {e, 1.3}, {log1p(e), 1.3/(e + 1)}},
     {"2", {2.0, 1.3}, {log1p(2), 1.3/3}},
     {"10", {10.0, 1.3}, {log1p(10), 1.3/11}},
 };
@@ -1144,13 +1147,13 @@ auto pow_vector(std::string name, sut_t const& lhs, sut_t const& rhs) noexcept -
 
 // clang-format off
 const math_func_test_vector_xy_t pow_vectors[] = {
-    pow_vector("-e", {5.1, 1.3}, {-M_E, 2.4}),
+    pow_vector("-e", {5.1, 1.3}, {-e, 2.4}),
     pow_vector("-1", {5.1, 1.3}, {-1.0, 2.4}),
     pow_vector("0", {5.1, 1.3}, {0.0, 2.4}),
     pow_vector("sqrt", {5.1, 1.3}, {0.5, 2.4}),
     pow_vector("1", {5.1, 1.3}, {1.0, 2.4}),
-    pow_vector("e^e", {M_E, 1.3}, {M_E, 2.4}),
-    pow_vector("e", {5.1, 1.3}, {M_E, 2.4}),
+    pow_vector("e^e", {e, 1.3}, {e, 2.4}),
+    pow_vector("e", {5.1, 1.3}, {e, 2.4}),
     pow_vector("square", {5.1, 1.3}, {2.0, 2.4}),
     pow_vector("cube", {5.1, 1.3}, {3.0, 2.4}),
 };
@@ -1177,11 +1180,11 @@ TEST_P(jet_test_sin_t, result)
 // d(sin(x)) = -cos(x)*dx
 const math_func_test_vector_x_t sin_vectors[] = {
     {"0", {0.0, 1.3}, {0.0, 1.3}},
-    {"-pi/2", {-M_PI_2, 1.3}, {-1.0, 0}},
-    {"pi/5", {M_PI / 5, 1.3}, {sin(M_PI / 5), 1.3*cos(M_PI / 5)}},
-    {"pi/3", {M_PI / 3, 1.3}, {sin(M_PI / 3), 1.3*cos(M_PI / 3)}},
-    {"pi/2,", {M_PI_2, 1.3}, {1.0, 0}},
-    {"pi", {M_PI, 1.3}, {0.0, -1.3}},
+    {"-pi/2", {-pi/2, 1.3}, {-1.0, 0}},
+    {"pi/5", {pi / 5, 1.3}, {sin(pi / 5), 1.3*cos(pi / 5)}},
+    {"pi/3", {pi / 3, 1.3}, {sin(pi / 3), 1.3*cos(pi / 3)}},
+    {"pi/2,", {pi/2, 1.3}, {1.0, 0}},
+    {"pi", {pi, 1.3}, {0.0, -1.3}},
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(sin, jet_test_sin_t, ValuesIn(sin_vectors),
