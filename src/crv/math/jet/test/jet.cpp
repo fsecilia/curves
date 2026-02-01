@@ -866,7 +866,6 @@ struct jet_test_math_func_xy_t : jet_test_t, WithParamInterface<math_func_test_v
 // abs
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(|x|) = sgn(x)*dx
 struct jet_test_abs_t : jet_test_math_func_x_t
 {};
 
@@ -879,6 +878,7 @@ TEST_P(jet_test_abs_t, result)
 }
 
 // clang-format off
+// d(|x|) = sgn(x)*dx
 math_func_test_vector_x_t const abs_vectors[] = {
     {"negative, negative", {-7.0, -13.0}, {7.0,  13.0}},
     {"negative, zero",     {-7.0,   0.0}, {7.0,   0.0}},
@@ -898,7 +898,6 @@ INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors),
 // copysign
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(copysign(x, y)) = sgn(x)*sgn(y)*dx
 struct jet_test_copysign_t : jet_test_math_func_xy_t
 {};
 
@@ -911,6 +910,7 @@ TEST_P(jet_test_copysign_t, result)
 }
 
 // clang-format off
+// d(copysign(x, y)) = sgn(x)*dx*sgn(y) + |x|*delta(y)*dy
 math_func_test_vector_xy_t const copysign_vectors[] = {
     // standard cases
     {"nn, nn", {-7.0, -11.0}, {-5.0, -19.0}, {-7.0, -11.0}},
@@ -956,7 +956,6 @@ TEST_F(jet_test_copysign_edge_cases_t, negative_zero_sign_bit_perserved)
 // cos
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(cos(x)) = -sin(x)*dx
 struct jet_test_cos_t : jet_test_math_func_x_t
 {};
 
@@ -969,6 +968,7 @@ TEST_P(jet_test_cos_t, result)
 }
 
 // clang-format off
+// d(cos(x)) = -sin(x)*dx
 const math_func_test_vector_x_t cos_vectors[] = {
     {"0", {0.0, 1.3}, {1.0, 0.0}},
     {"-pi/2", {-M_PI_2, 1.3}, {0.0, 1.3}},
@@ -985,7 +985,6 @@ INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
 // exp
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(exp(x)) = exp(x)*dx
 struct jet_test_exp_t : jet_test_math_func_x_t
 {};
 
@@ -998,6 +997,7 @@ TEST_P(jet_test_exp_t, result)
 }
 
 // clang-format off
+// d(exp(x)) = exp(x)*dx
 const math_func_test_vector_x_t exp_vectors[] = {
     {"-1", {-1.0, 1.3}, {1.0 / M_E, 1.3 / M_E}},
     {"0", {0.0, 1.3}, {1.0, 1.3}},
@@ -1013,7 +1013,6 @@ INSTANTIATE_TEST_SUITE_P(exp, jet_test_exp_t, ValuesIn(exp_vectors),
 // hypot
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
 struct jet_test_hypot_t : jet_test_math_func_xy_t
 {};
 
@@ -1026,6 +1025,7 @@ TEST_P(jet_test_hypot_t, result)
 }
 
 // clang-format off
+// d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
 math_func_test_vector_xy_t const hypot_vectors[] = {
     {"{0, 0.0}, {0, 0.0}}", {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.00}},
     {"{0, 1.3}, {0, 1.3}}", {0.0, 1.3}, {0.0, 1.3}, {0.0, 0.00}},
@@ -1041,7 +1041,6 @@ INSTANTIATE_TEST_SUITE_P(hypot, jet_test_hypot_t, ValuesIn(hypot_vectors),
 // log
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(log(x)) = dx/x
 struct jet_test_log_t : jet_test_math_func_x_t
 {};
 
@@ -1054,6 +1053,7 @@ TEST_P(jet_test_log_t, result)
 }
 
 // clang-format off
+// d(log(x)) = dx/x
 const math_func_test_vector_x_t log_vectors[] = {
     {"0.5", {0.5, 1.3}, {log(0.5), 1.3/0.5}},
     {"1", {1.0, 1.3}, {0.0, 1.3}},
@@ -1069,7 +1069,6 @@ INSTANTIATE_TEST_SUITE_P(log, jet_test_log_t, ValuesIn(log_vectors),
 // log1p
 // --------------------------------------------------------------------------------------------------------------------
 
-// d(log1p(x)) = dx/x
 struct jet_test_log1p_t : jet_test_math_func_x_t
 {};
 
@@ -1082,6 +1081,7 @@ TEST_P(jet_test_log1p_t, result)
 }
 
 // clang-format off
+// d(log1p(x)) = dx/x
 const math_func_test_vector_x_t log1p_vectors[] = {
     {"0", {0.0, 1.3}, {log1p(0.0), 1.3}},
     {"0.5", {0.5, 1.3}, {log1p(0.5), 1.3/1.5}},
