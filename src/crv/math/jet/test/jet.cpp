@@ -1187,6 +1187,36 @@ const math_func_test_vector_x_t sin_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(sin, jet_test_sin_t, ValuesIn(sin_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// sqrt
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_sqrt_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_sqrt_t, result)
+{
+    auto const actual = sqrt(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+// d(sqrt(x)) = dx/(2*sqrt(x))
+const math_func_test_vector_x_t sqrt_vectors[] = {
+    {"0", {0.0, 1.3}, {0.0, inf}},
+    {"0.25", {0.25, 1.3}, {0.5, 1.3}},
+    {"1.0", {1.0, 1.3}, {1.0, 1.3/2.0}},
+    {"4.0", {4.0, 1.3}, {2.0, 1.3/4.0}},
+    {"8.0", {8.0, 1.3}, {sqrt(8.0), 1.3/(2*sqrt(8.0))}},
+    {"9.0", {9.0, 1.3}, {3.0, 1.3/6.0}},
+    {"16.0", {16.0, 1.3}, {4.0, 1.3/8.0}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(sqrt, jet_test_sqrt_t, ValuesIn(sqrt_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================
@@ -1224,6 +1254,11 @@ TEST_F(jet_death_test_t, pow_element_to_jet_negative_base)
 TEST_F(jet_death_test_t, pow_jet_to_jet_negative_base)
 {
     EXPECT_DEBUG_DEATH(pow(jet_t{-1.0, 1.0}, jet_t{2.0, 0.0}), "domain error");
+}
+
+TEST_F(jet_death_test_t, sqrt_negative)
+{
+    EXPECT_DEBUG_DEATH(sqrt(jet_t{-1.0, 1.0}), "domain error");
 }
 
 #endif

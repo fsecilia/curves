@@ -480,6 +480,19 @@ template <typename t_scalar_t> struct jet_t
         return {sin(x.f), cos(x.f) * x.df};
     }
 
+    // d(sqrt(x)) = dx/(2*sqrt(x))
+    friend constexpr auto sqrt(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::sqrt;
+
+        assert(x.f >= scalar_t{0} && "jet_t::sqrt domain error");
+
+        auto const root = sqrt(x.f);
+        if (root == scalar_t{0}) return {scalar_t{0}, infinity<scalar_t>()};
+
+        return {root, x.df / (scalar_t{2} * root)};
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------
