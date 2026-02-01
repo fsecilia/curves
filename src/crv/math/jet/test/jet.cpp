@@ -985,6 +985,42 @@ INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
+// cosh
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_cosh_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_cosh_t, result)
+{
+    auto const actual = cosh(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// d(cosh(x)) = sinh(x)*dx
+constexpr auto cosh_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+{
+    auto const dx = scalar_t{1.3};
+    return {std::move(name), {angle, dx}, {cosh(angle), sinh(angle) * dx}};
+}
+
+// clang-format off
+math_func_test_vector_x_t const cosh_vectors[] = {
+    {cosh_vector("-1", -1.0)},
+    {cosh_vector("0", 0.0)},
+    {cosh_vector("1/5", 1.0 / 5)},
+    {cosh_vector("1/4", 1.0 / 4)},
+    {cosh_vector("1/3", 1.0 / 3)},
+    {cosh_vector("1/2", 1.0 / 2)},
+    {cosh_vector("1", 1.0)},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(cosh, jet_test_cosh_t, ValuesIn(cosh_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
+// --------------------------------------------------------------------------------------------------------------------
 // exp
 // --------------------------------------------------------------------------------------------------------------------
 

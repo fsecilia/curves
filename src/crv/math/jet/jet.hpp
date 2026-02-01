@@ -363,6 +363,15 @@ template <typename t_scalar_t> struct jet_t
         return {cos(x.f), -sin(x.f) * x.df};
     }
 
+    // d(cosh(x)) = sinh(x)*dx
+    friend constexpr auto cosh(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::cosh;
+        using crv::sinh;
+
+        return {cosh(x.f), sinh(x.f) * x.df};
+    }
+
     // d(exp(x)) = exp(x)*dx
     friend constexpr auto exp(jet_t const& x) noexcept -> jet_t
     {
