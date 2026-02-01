@@ -1257,6 +1257,40 @@ const math_func_test_vector_x_t tan_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(tan, jet_test_tan_t, ValuesIn(tan_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
+// --------------------------------------------------------------------------------------------------------------------
+// tanh
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_tanh_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_tanh_t, result)
+{
+    auto const actual = tanh(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// d(tanh(x)) = (1 + tanh(x)^2)*dx
+constexpr auto tanh_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+{
+    auto const tanh_a = tanh(angle);
+    auto const dx     = 1.3;
+    return {std::move(name), jet_t{angle, dx}, jet_t{tanh_a, (1.0 - tanh_a * tanh_a) * dx}};
+}
+
+// clang-format off
+const math_func_test_vector_x_t tanh_vectors[] = {
+    tanh_vector("-1", -1.0),
+    tanh_vector("0", 0.0),
+    tanh_vector("1", 1.0),
+    tanh_vector("5", 5.0),
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(tanh, jet_test_tanh_t, ValuesIn(tanh_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================

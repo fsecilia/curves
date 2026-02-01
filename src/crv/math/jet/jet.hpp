@@ -36,6 +36,7 @@ using std::pow;
 using std::sin;
 using std::sqrt;
 using std::tan;
+using std::tanh;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
@@ -501,6 +502,14 @@ template <typename t_scalar_t> struct jet_t
 
         auto const tan_f = tan(x.f);
         return {tan_f, (scalar_t{1} + tan_f * tan_f) * x.df};
+    }
+
+    // d(tanh(x)) = (1 - tanh(x)^2)*dx
+    friend constexpr auto tanh(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::tanh;
+        auto const tanh_f = tanh(x.f);
+        return {tanh_f, (scalar_t{1} - tanh_f * tanh_f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
