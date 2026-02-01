@@ -174,5 +174,21 @@ TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
     compare(actual, {expected_primal, expected_derivative});
 }
 
+TEST_F(nested_jet_test_arithmetic_t, quartic)
+{
+    /*
+        f(x) = x^4
+        f'(x) = 4x^3*dx
+    */
+    auto const expected_primal     = x.f * x.f * x.f * x.f;
+    auto const expected_derivative = 4.0 * x.f * x.f * x.f * x.df;
+
+    auto const x2     = x * x;
+    auto const x4     = x2 * x2;
+    auto const actual = x2 * x2;
+
+    compare(actual, {expected_primal, expected_derivative});
+}
+
 } // namespace
 } // namespace crv
