@@ -23,6 +23,7 @@ using std::abs;
 using std::clamp;
 using std::copysign;
 using std::cos;
+using std::cosh;
 using std::exp;
 using std::hypot;
 using std::isfinite;
@@ -34,6 +35,7 @@ using std::max;
 using std::min;
 using std::pow;
 using std::sin;
+using std::sinh;
 using std::sqrt;
 using std::tan;
 using std::tanh;
@@ -480,6 +482,15 @@ template <typename t_scalar_t> struct jet_t
         using crv::sin;
 
         return {sin(x.f), cos(x.f) * x.df};
+    }
+
+    // d(sinh(x)) = cosh(x)*dx
+    friend constexpr auto sinh(jet_t const& x) noexcept -> jet_t
+    {
+        using crv::cosh;
+        using crv::sinh;
+
+        return {sinh(x.f), cosh(x.f) * x.df};
     }
 
     // d(sqrt(x)) = dx/(2*sqrt(x))

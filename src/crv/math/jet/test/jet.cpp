@@ -1191,6 +1191,42 @@ INSTANTIATE_TEST_SUITE_P(sin, jet_test_sin_t, ValuesIn(sin_vectors),
                          test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
+// sinh
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_sinh_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_sinh_t, result)
+{
+    auto const actual = sinh(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// d(sinh(x)) = cosh(x)*dx
+constexpr auto sinh_vector(std::string name, scalar_t angle) noexcept -> math_func_test_vector_x_t
+{
+    auto const dx = scalar_t{1.3};
+    return {std::move(name), {angle, dx}, {sinh(angle), cosh(angle) * dx}};
+}
+
+// clang-format off
+math_func_test_vector_x_t const sinh_vectors[] = {
+    {sinh_vector("-1", -1.0)},
+    {sinh_vector("0", 0.0)},
+    {sinh_vector("1/5", 1.0 / 5)},
+    {sinh_vector("1/4", 1.0 / 4)},
+    {sinh_vector("1/3", 1.0 / 3)},
+    {sinh_vector("1/2", 1.0 / 2)},
+    {sinh_vector("1", 1.0)},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(sinh, jet_test_sinh_t, ValuesIn(sinh_vectors),
+                         test_name_generator_t<math_func_test_vector_x_t>{});
+
+// --------------------------------------------------------------------------------------------------------------------
 // sqrt
 // --------------------------------------------------------------------------------------------------------------------
 
