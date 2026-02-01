@@ -153,24 +153,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
 
 TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
 {
-    /*
-        {u, du}*{v, dv} = {u*v, u*dv + du*v}
-        {u, du}/{v, dv} = {u/v, (du*v - u*dv)/v^2}
-
-        {s, 0}/{v, dv} = {s/v, -s*dv/v^2}
-        {s, 0}/{{x.f.f, x.f.df}, {x.df.f, x.df.df}} = {s/{x.f.f, x.f.df}, -s*{x.df.f, x.df.df}/{x.f.f, x.f.df}^2}
-            = {s/{x.f.f, x.f.df}, -s*{x.df.f, x.df.df}/{x.f.f, x.f.df}^2}
-            = {{s/x.f.f, -s*x.f.df/x.f.f^2}, {-s*x.df.f, -s*x.df.df}/{x.f.f^2, 2*x.f.f*x.f.df}}
-            = {{s/x.f.f, -s*x.f.df/x.f.f^2}, {-s*x.df.f/x.f.f^2, (-s*x.df.df*x.f.f^2 -
-       -s*x.df.f*2*x.f.f*x.f.df)/x.f.f^4}}
-    */
-
-    // auto const expected = sut_t{s, 0.0} / sut_t{x.f, x.df};
-    auto const x_f_2 = x.f.f * x.f.f;
-    auto const x_f_4 = x_f_2 * x_f_2;
-    auto const expected
-        = sut_t{{s / x.f.f, -s * x.f.df / (x.f.f * x.f.f)},
-                {-s * x.df.f / x_f_2, (-s * x.df.df * x_f_2 - -s * x.df.f * 2 * x.f.f * x.f.df) / x_f_4}};
+    auto const expected = sut_t{s / x.f, -s * x.df / (x.f * x.f)};
 
     auto const actual = s / x;
 
