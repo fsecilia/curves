@@ -548,6 +548,107 @@ template <typename t_value_t> struct jet_t
         swap(lhs.f, rhs.f);
         swap(lhs.df, rhs.df);
     }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Nested Scalar Ambiguity Resolution
+    // ----------------------------------------------------------------------------------------------------------------
+    // These disambiguate scalar operations on nested jets.
+
+    friend constexpr auto operator<=>(jet_t const& lhs, arithmetic auto const& rhs) noexcept -> auto
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs <=> static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator==(jet_t const& lhs, arithmetic auto const& rhs) noexcept -> auto
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs == static_cast<value_t>(rhs);
+    }
+
+    constexpr auto operator+=(arithmetic auto const& rhs) noexcept -> jet_t&
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return *this += static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator+(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs + static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator+(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return static_cast<value_t>(lhs) + rhs;
+    }
+
+    constexpr auto operator-=(arithmetic auto const& rhs) noexcept -> jet_t&
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return *this -= static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator-(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs - static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator-(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return static_cast<value_t>(lhs) - rhs;
+    }
+
+    constexpr auto operator*=(arithmetic auto const& rhs) noexcept -> jet_t&
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return *this *= static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator*(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs * static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator*(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return static_cast<value_t>(lhs) * rhs;
+    }
+
+    constexpr auto operator/=(arithmetic auto const& rhs) noexcept -> jet_t&
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return *this /= static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator/(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return lhs / static_cast<value_t>(rhs);
+    }
+
+    friend constexpr auto operator/(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(rhs), value_t>)
+    {
+        return static_cast<value_t>(lhs) / rhs;
+    }
+
+    friend constexpr auto pow(jet_t const& x, arithmetic auto const& y) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(y), value_t>)
+    {
+        return pow(x, static_cast<value_t>(y));
+    }
+
+    friend constexpr auto pow(arithmetic auto const& x, jet_t const& y) noexcept -> jet_t
+        requires(!std::is_same_v<decltype(x), value_t>)
+    {
+        return pow(static_cast<value_t>(x), y);
+    }
 };
 
 } // namespace crv
