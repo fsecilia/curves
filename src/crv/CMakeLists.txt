@@ -35,7 +35,7 @@ if (enable_testing)
     target_sources(unit_tests PRIVATE
         math/fixed/test.cpp
         math/jet/test/jet.cpp
-        math/jet/test/nested.cpp
+        math/jet/test/nested_jet.cpp
         math/io_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
