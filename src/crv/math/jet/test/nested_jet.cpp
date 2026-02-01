@@ -94,5 +94,34 @@ TEST_F(nested_jet_test_arithmetic_t, jet_minus_scalar)
     ASSERT_EQ(expected, actual);
 }
 
+TEST_F(nested_jet_test_arithmetic_t, compound_times_scalar)
+{
+    auto const expected = sut_t{x.f * s, x.df * s};
+
+    auto        sut    = x;
+    auto const& actual = sut *= s;
+
+    ASSERT_EQ(&sut, &actual);
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
+{
+    auto const expected = sut_t{x.f * s, x.df * s};
+
+    auto const actual = x * s;
+
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
+{
+    auto const expected = sut_t{x.f * s, x.df * s};
+
+    auto const actual = s * x;
+
+    ASSERT_EQ(expected, actual);
+}
+
 } // namespace
 } // namespace crv
