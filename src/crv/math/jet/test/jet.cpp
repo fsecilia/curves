@@ -1404,6 +1404,53 @@ TEST_F(jet_test_swap_t, swap)
     EXPECT_EQ(rhs.df, 2.0);
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// numeric_limits
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_numeric_limits_t : jet_test_t
+{};
+
+TEST_F(jet_test_numeric_limits_t, is_specialized)
+{
+    static_assert(std::numeric_limits<sut_t>::is_specialized);
+}
+
+TEST_F(jet_test_numeric_limits_t, min)
+{
+    constexpr auto min = std::numeric_limits<sut_t>::min();
+
+    static_assert(primal(min) == std::numeric_limits<scalar_t>::min());
+}
+
+TEST_F(jet_test_numeric_limits_t, max)
+{
+    constexpr auto max = std::numeric_limits<sut_t>::max();
+
+    static_assert(primal(max) == std::numeric_limits<scalar_t>::max());
+}
+
+TEST_F(jet_test_numeric_limits_t, infinity)
+{
+    constexpr auto inf = std::numeric_limits<sut_t>::infinity();
+
+    static_assert(std::isinf(primal(inf)));
+}
+
+TEST_F(jet_test_numeric_limits_t, quiet_nan)
+{
+    constexpr auto nan = std::numeric_limits<sut_t>::quiet_NaN();
+
+    static_assert(std::isnan(primal(nan)));
+}
+
+TEST_F(jet_test_numeric_limits_t, epsilon)
+{
+    constexpr auto eps = std::numeric_limits<sut_t>::epsilon();
+
+    static_assert(primal(eps) == std::numeric_limits<scalar_t>::epsilon());
+}
+
 // ====================================================================================================================
 // Assertion Death Tests
 // ====================================================================================================================

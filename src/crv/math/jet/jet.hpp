@@ -551,3 +551,24 @@ template <typename t_scalar_t> struct jet_t
 };
 
 } // namespace crv
+
+namespace std {
+
+template <typename scalar_t> struct numeric_limits<crv::jet_t<scalar_t>> : numeric_limits<scalar_t>
+{
+    static constexpr bool is_specialized = true;
+
+    using base_t = numeric_limits<scalar_t>;
+
+    static constexpr auto min() noexcept -> crv::jet_t<scalar_t> { return base_t::min(); }
+    static constexpr auto max() noexcept -> crv::jet_t<scalar_t> { return base_t::max(); }
+    static constexpr auto lowest() noexcept -> crv::jet_t<scalar_t> { return base_t::lowest(); }
+    static constexpr auto epsilon() noexcept -> crv::jet_t<scalar_t> { return base_t::epsilon(); }
+    static constexpr auto round_error() noexcept -> crv::jet_t<scalar_t> { return base_t::round_error(); }
+    static constexpr auto infinity() noexcept -> crv::jet_t<scalar_t> { return base_t::infinity(); }
+    static constexpr auto quiet_NaN() noexcept -> crv::jet_t<scalar_t> { return base_t::quiet_NaN(); }
+    static constexpr auto signaling_NaN() noexcept -> crv::jet_t<scalar_t> { return base_t::signaling_NaN(); }
+    static constexpr auto denorm_min() noexcept -> crv::jet_t<scalar_t> { return base_t::denorm_min(); }
+};
+
+} // namespace std
