@@ -29,5 +29,41 @@ struct nested_jet_test_t : Test
     static constexpr scalar_t eps = 1e-10;
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+// Arithmetic
+// --------------------------------------------------------------------------------------------------------------------
+
+struct nested_jet_test_arithmetic_t : nested_jet_test_t
+{};
+
+TEST_F(nested_jet_test_arithmetic_t, compound_plus_scalar)
+{
+    auto const expected = sut_t{{x.f.f + s, x.f.df}, x.df};
+
+    auto        sut    = x;
+    auto const& actual = sut += s;
+
+    ASSERT_EQ(&sut, &actual);
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
+{
+    auto const expected = sut_t{{x.f.f + s, x.f.df}, x.df};
+
+    auto const actual = x + s;
+
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, jet_plus_scalar)
+{
+    auto const expected = sut_t{{s + x.f.f, x.f.df}, x.df};
+
+    auto const actual = s + x;
+
+    ASSERT_EQ(expected, actual);
+}
+
 } // namespace
 } // namespace crv
