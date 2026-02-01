@@ -27,6 +27,14 @@ struct nested_jet_test_t : Test
     static constexpr sut_t    y{{5.9, 7.3}, {8.3, 9.7}};
 
     static constexpr scalar_t eps = 1e-10;
+
+    constexpr auto compare(sut_t const& expected, sut_t const& actual, scalar_t tolerance = eps) noexcept -> void
+    {
+        EXPECT_NEAR(expected.f.f, actual.f.f, eps);
+        EXPECT_NEAR(expected.f.df, actual.f.df, eps);
+        EXPECT_NEAR(expected.df.f, actual.df.f, eps);
+        EXPECT_NEAR(expected.df.df, actual.df.df, eps);
+    }
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -121,6 +129,52 @@ TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
     auto const actual = s * x;
 
     ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, compound_over_scalar)
+{
+    auto const expected = sut_t{x.f / s, x.df / s};
+
+    auto        sut    = x;
+    auto const& actual = sut /= s;
+
+    ASSERT_EQ(&sut, &actual);
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
+{
+    auto const expected = sut_t{x.f / s, x.df / s};
+
+    auto const actual = x / s;
+
+    ASSERT_EQ(expected, actual);
+}
+
+TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
+{
+    /*
+        {u, du}*{v, dv} = {u*v, u*dv + du*v}
+        {u, du}/{v, dv} = {u/v, (du*v - u*dv)/v^2}
+
+        {s, 0}/{v, dv} = {s/v, -s*dv/v^2}
+        {s, 0}/{{x.f.f, x.f.df}, {x.df.f, x.df.df}} = {s/{x.f.f, x.f.df}, -s*{x.df.f, x.df.df}/{x.f.f, x.f.df}^2}
+            = {s/{x.f.f, x.f.df}, -s*{x.df.f, x.df.df}/{x.f.f, x.f.df}^2}
+            = {{s/x.f.f, -s*x.f.df/x.f.f^2}, {-s*x.df.f, -s*x.df.df}/{x.f.f^2, 2*x.f.f*x.f.df}}
+            = {{s/x.f.f, -s*x.f.df/x.f.f^2}, {-s*x.df.f/x.f.f^2, (-s*x.df.df*x.f.f^2 -
+       -s*x.df.f*2*x.f.f*x.f.df)/x.f.f^4}}
+    */
+
+    // auto const expected = sut_t{s, 0.0} / sut_t{x.f, x.df};
+    auto const x_f_2 = x.f.f * x.f.f;
+    auto const x_f_4 = x_f_2 * x_f_2;
+    auto const expected
+        = sut_t{{s / x.f.f, -s * x.f.df / (x.f.f * x.f.f)},
+                {-s * x.df.f / x_f_2, (-s * x.df.df * x_f_2 - -s * x.df.f * 2 * x.f.f * x.f.df) / x_f_4}};
+
+    auto const actual = s / x;
+
+    compare(expected, actual);
 }
 
 } // namespace
