@@ -50,11 +50,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    list(APPEND compile_options_common
+    target_compile_options(project_options INTERFACE
         -fsafe-buffer-usage-suggestions
 
         -Weverything
-
         -Wno-c++23-compat
         -Wno-c++20-compat
         -Wno-c++98-compat

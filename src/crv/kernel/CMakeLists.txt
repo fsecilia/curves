@@ -232,19 +232,8 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # Build Targets
 # ---------------------------------------------------------------------------------------------------------------------
 
-# clang kernel builds need LLVM=1
-set(kbuild_flags "")
-if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    list(APPEND kbuild_flags "LLVM=1")
-endif()
-
 # encapsulate external make command
-set(kbuild_make_command
-    make -sC "${kbuild_root}" ${kbuild_flags} V=1
-    "CC=${CMAKE_C_COMPILER}"
-    "CXX=${CMAKE_CXX_COMPILER}"
-    "M=${kbuild_shadow_root}"
-)
+set(kbuild_make_command make -sC "${kbuild_root}" ${kbuild_flags} V=1 "M=${kbuild_shadow_root}")
 
 # main build
 add_custom_command(
