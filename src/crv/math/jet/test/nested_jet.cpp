@@ -55,7 +55,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_plus_scalar)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
+TEST_F(nested_jet_test_arithmetic_t, jet_plus_scalar)
 {
     auto const expected = sut_t{{x.f.f + s, x.f.df}, x.df};
 
@@ -64,7 +64,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, jet_plus_scalar)
+TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
 {
     auto const expected = sut_t{{s + x.f.f, x.f.df}, x.df};
 
@@ -84,7 +84,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_minus_scalar)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, scalar_minus_jet)
+TEST_F(nested_jet_test_arithmetic_t, jet_minus_scalar)
 {
     auto const expected = sut_t{{x.f.f - s, x.f.df}, x.df};
 
@@ -93,7 +93,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_minus_jet)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, jet_minus_scalar)
+TEST_F(nested_jet_test_arithmetic_t, scalar_minus_jet)
 {
     auto const expected = sut_t{{s - x.f.f, -x.f.df}, -x.df};
 
@@ -113,7 +113,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_times_scalar)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
+TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
 {
     auto const expected = sut_t{x.f * s, x.df * s};
 
@@ -122,7 +122,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
+TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
 {
     auto const expected = sut_t{x.f * s, x.df * s};
 
@@ -142,7 +142,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_over_scalar)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
+TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
 {
     auto const expected = sut_t{x.f / s, x.df / s};
 
@@ -151,7 +151,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
     ASSERT_EQ(expected, actual);
 }
 
-TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
+TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
 {
     auto const expected = sut_t{s / x.f, -s * x.df / (x.f * x.f)};
 
@@ -197,7 +197,7 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
 struct nested_jet_test_type_promotion_t : nested_jet_test_t
 {};
 
-TEST_F(nested_jet_test_type_promotion_t, init_jet_with_double)
+TEST_F(nested_jet_test_type_promotion_t, init_jet_with_scalar)
 {
     constexpr auto expected = sut_t{{s, 0.0}, {0.0, 0.0}};
 
