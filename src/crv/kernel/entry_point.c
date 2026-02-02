@@ -6,6 +6,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
+#include <crv/kernel/cxx_build_test.h>
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -13,8 +14,9 @@
 
 static int __init crv_init(void)
 {
-    printk("crv_init\n");
-    return 0;
+    printk("crv_init with c++\n");
+
+    return (reference_cxx() >> 16) - 1;
 }
 
 static void __exit crv_exit(void)

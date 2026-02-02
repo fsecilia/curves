@@ -54,11 +54,13 @@ set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 # these exist only for the kernel module and aren't shared with user-mode code
 
 set(hdrs_kernel
+    cxx_build_test.h
     cxx/cassert
     input/handler.h
 )
 
 set(srcs_kernel
+    cxx_build_test.cpp
     input/handler.c
     entry_point.c
 )
