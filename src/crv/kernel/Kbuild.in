@@ -34,10 +34,9 @@ filtered_c_flags = $(filter-out $(conflicted_c_flags), $(ccflags-y) $(KBUILD_CFL
 # combine c++ flags
 cxx_flags = $(filtered_c_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
 
-# if no specific c++ compiler was set, use the c compiler directly
+# find relative c++ compiler
 ifeq ($(CXX),)
-    CXX := $(CC)
-    cxx_flags := -x c++ $(cxx_flags)
+    CXX := $(patsubst %cc,%g++,$(patsubst %gcc,%g++,$(patsubst %clang,%clang++,$(CC))))
 endif
 
 # add standard c++ compile rule
