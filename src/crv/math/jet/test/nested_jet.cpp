@@ -274,6 +274,31 @@ TEST_F(nested_jet_second_derivative_t, exp)
     EXPECT_NEAR(expected, actual.df.df, eps);
 }
 
+TEST_F(nested_jet_second_derivative_t, x_exp)
+{
+    auto const expected
+        = sut_t{value_t{u * exp(u), exp(u) * du_inner * (1.0 + u)},
+                value_t{exp(u) * du_outer * (1.0 + u), exp(u) * (du_inner * du_outer * (2.0 + u) + d2u * (1.0 + u))}};
+
+    auto const actual = x * exp(x);
+
+    compare(expected, actual);
+}
+
+TEST_F(nested_jet_second_derivative_t, log_sin)
+{
+    auto const t = 1.0 / u;
+    auto const expected
+        = sut_t{value_t{log(u) * sin(u), du_inner * (log(u) * cos(u) + sin(u) * t)},
+                value_t{du_outer * (log(u) * cos(u) + sin(u) * t),
+                        (log(u) * cos(u) + sin(u) * t) * d2u
+                            - du_outer * du_inner * (log(u) * sin(u) + -2 * cos(u) * t + sin(u) * t * t)}};
+
+    auto const actual = log(x) * sin(x);
+
+    compare(expected, actual);
+}
+
 TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
 {
     // decompose pow by values directly; this unnests one level - each term here is a 1-jet
