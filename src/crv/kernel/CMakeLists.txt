@@ -99,6 +99,7 @@ set(kernel_cxx_flags
     -fno-use-cxa-atexit
     -nostdinc++
     -nostdlib
+    -g0
 )
 
 # conditionally enable asserts
