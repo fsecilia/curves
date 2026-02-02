@@ -236,9 +236,14 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
 struct nested_jet_second_derivative_t : nested_jet_test_t
 {
     static constexpr auto u        = x.f.f;   // scalar value
-    static constexpr auto du_outer = x.df.f;  // derivative wrt outer variable
     static constexpr auto du_inner = x.f.df;  // derivative wrt inner variable
+    static constexpr auto du_outer = x.df.f;  // derivative wrt outer variable
     static constexpr auto d2u      = x.df.df; // cross derivative
+
+    static constexpr auto v        = y.f.f;
+    static constexpr auto dv_inner = y.f.df;
+    static constexpr auto dv_outer = y.df.f;
+    static constexpr auto d2v      = y.df.df;
 };
 
 TEST_F(nested_jet_second_derivative_t, cos)
@@ -267,6 +272,68 @@ TEST_F(nested_jet_second_derivative_t, exp)
     auto const actual = exp(x);
 
     EXPECT_NEAR(expected_second_derivative, actual.df.df, eps);
+}
+
+TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
+{
+    // decompose pow by values directly; this unnests one level - each term here is a 1-jet
+    auto const expected = sut_t{pow(x.f, y.f), pow(x.f, y.f) * log(x.f) * y.df + pow(x.f, y.f - 1) * y.f * x.df};
+
+    auto const actual = pow(x, y);
+
+    compare(expected, actual);
+}
+
+/*
+    test second derivative of pow decomposed all the way to scalars
+
+    This test verifies the full scalar expansion of the second derivative. Just writing the final expression out has a
+    lot of terms, many of which are repeated. It is large enough to be opaque. This test tries to document some of the
+    terms with meaningful names.
+*/
+TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
+{
+    // cache common terms
+    auto const lu       = log(u);
+    auto const pow_uv   = pow(u, v);
+    auto const pow_uvm1 = pow(u, v - 1);
+    auto const pow_uvm2 = pow(u, v - 2);
+
+    /*
+        extract repeated term, phi
+
+        A scalar term repeats in these expressions. It's part of the derivative. Call it phi and define it as:
+
+            d(u^v) = (u^v)(log(u)*dv + v*du/u)
+                   = u^(v - 1)*(u*log(u)*dv + v*du)
+            phi   := u*log(u)*dv + v*du
+            d(u^v) = u^(v - 1)*phi
+    */
+    auto const phi_inner = u * lu * dv_inner + v * du_inner;
+    auto const phi_outer = u * lu * dv_outer + v * du_outer;
+
+    // primal
+    auto const scalar_pow       = pow_uv;               // inner primal
+    auto const inner_derivative = pow_uvm1 * phi_inner; // derivative wrt inner jet
+    auto const primal           = value_t{scalar_pow, inner_derivative};
+
+    // derivative
+    auto const outer_derivative = pow_uvm1 * phi_outer; // derivative wrt outer jet; first derivative
+    auto const term_d2u         = v * d2u;              // second derivative of u, scaled by v
+    auto const term_d2v         = u * d2v;              // second derivative of v, scaled by u
+    auto const term_cross       = dv_outer * phi_inner; // cross term between inner and outer derivative
+    auto const mixed_partials   = dv_inner * du_outer + du_inner * dv_outer;
+    auto const second_derivative                        // second derivative wrt outer jet
+        = pow_uvm2
+          * (u * (lu * (term_d2v + term_cross) + term_d2u + mixed_partials) + v * du_outer * (phi_inner - du_inner));
+    auto const derivative = value_t{outer_derivative, second_derivative};
+
+    // decompose pow into its leaf scalars; this unnests two levels - each term here is a scalar
+    auto const expected = sut_t{primal, derivative};
+
+    auto const actual = pow(x, y);
+
+    compare(expected, actual);
 }
 
 // ====================================================================================================================
