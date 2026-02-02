@@ -97,7 +97,6 @@ set(kernel_cxx_flags
     -fno-rtti
     -fno-threadsafe-statics
     -fno-use-cxa-atexit
-    -nostdinc++
     -nostdlib
     -g0
 )
