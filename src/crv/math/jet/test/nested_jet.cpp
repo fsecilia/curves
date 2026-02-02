@@ -229,6 +229,46 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
     compare(actual, {expected_primal, expected_derivative});
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Second Derivative
+// --------------------------------------------------------------------------------------------------------------------
+
+struct nested_jet_second_derivative_t : nested_jet_test_t
+{
+    static constexpr auto u        = x.f.f;   // scalar value
+    static constexpr auto du_outer = x.df.f;  // derivative wrt outer variable
+    static constexpr auto du_inner = x.f.df;  // derivative wrt inner variable
+    static constexpr auto d2u      = x.df.df; // cross derivative
+};
+
+TEST_F(nested_jet_second_derivative_t, cos)
+{
+    /*
+        cos({{u, du_inner}, {du_outer, d2u}}) = {cos({u, du_inner}), -sin({u, du_inner})*{du_outer, d2u}}
+            = {cos({u, du_inner}), -{sin(u), cos(u)*du_inner}*{du_outer, d2u}}
+            = {cos({u, du_inner}), -cos(u)*du_inner*du_outer - sin(u)*d2u}}
+    */
+    auto const expected_second_derivative = -cos(u) * du_inner * du_outer - sin(u) * d2u;
+
+    auto const actual = cos(x);
+
+    EXPECT_NEAR(expected_second_derivative, actual.df.df, eps);
+}
+
+TEST_F(nested_jet_second_derivative_t, exp)
+{
+    /*
+        exp({{u, du_inner}, {du_outer, d2u}}) = {exp({u, du_inner}), exp({u, du_inner})*{du_outer, d2u}}
+            = {{exp(u), exp(u)*du_inner}, {exp(u), exp(u)*du_inner}*{du_outer, d2u}}
+            = {{exp(u), exp(u)*du_inner}, {exp(u)*du_outer, exp(u)*d2u + exp(u)*du_inner*du_outer}}
+    */
+    auto const expected_second_derivative = exp(u) * (du_inner * du_outer + d2u);
+
+    auto const actual = exp(x);
+
+    EXPECT_NEAR(expected_second_derivative, actual.df.df, eps);
+}
+
 // ====================================================================================================================
 // Scalar Ambiguity Resolution
 // ====================================================================================================================
