@@ -119,7 +119,7 @@ template <typename t_value_t> struct jet_t
     explicit constexpr operator bool() const noexcept
     {
         // ignore derivative
-        return f != value_t{0};
+        return f != 0;
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ template <typename t_value_t> struct jet_t
 
     friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
     {
-        return lhs.f == rhs && lhs.df == value_t{0};
+        return lhs.f == rhs && lhs.df == 0;
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ template <typename t_value_t> struct jet_t
 
     constexpr auto operator/=(value_t const& x) noexcept -> jet_t&
     {
-        auto const inv = value_t(1.0) / x;
+        auto const inv = 1 / x;
         f *= inv;
         df *= inv;
         return *this;
@@ -218,7 +218,7 @@ template <typename t_value_t> struct jet_t
     friend constexpr auto operator/(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t const& lhs, jet_t rhs) noexcept -> jet_t
     {
-        auto const inv = value_t(1.0) / rhs.f;
+        auto const inv = 1.0 / rhs.f;
         return jet_t{lhs, -lhs * rhs.df * inv} * inv;
     }
 
@@ -262,7 +262,7 @@ template <typename t_value_t> struct jet_t
             This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization,
             similar to horner's.
         */
-        auto const inv = value_t(1.0) / x.f;
+        auto const inv = 1.0 / x.f;
         f *= inv;
         df = (df - f * x.df) * inv;
         return *this;
@@ -319,7 +319,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::abs;
 
-        return {abs(x.f), copysign(value_t{1}, x.f) * x.df};
+        return {abs(x.f), copysign(1, x.f) * x.df};
     }
 
     /**
@@ -335,8 +335,8 @@ template <typename t_value_t> struct jet_t
     {
         using crv::copysign;
 
-        auto const sgn_x = copysign(value_t{1}, x.f);
-        auto const sgn_y = copysign(value_t{1}, y.f);
+        auto const sgn_x = copysign(1, x.f);
+        auto const sgn_y = copysign(1, y.f);
 
         auto const dx_term = sgn_x * sgn_y * x.df;
 
@@ -349,8 +349,8 @@ template <typename t_value_t> struct jet_t
                   the result would be NaN, so only apply inf conditionally.
                 - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
         */
-        auto const has_delta = (y.f == value_t{0}) & (x.f != value_t{0}) & (y.df != value_t{0});
-        auto const dy_term   = has_delta ? infinity<value_t>() * y.df : value_t{0};
+        auto const has_delta = (y.f == 0) & (x.f != 0) & (y.df != 0);
+        auto const dy_term   = has_delta ? infinity<value_t>() * y.df : 0;
 
         return {copysign(x.f, y.f), dx_term + dy_term};
     }
@@ -388,7 +388,7 @@ template <typename t_value_t> struct jet_t
         using crv::hypot;
 
         auto const mag = hypot(x.f, y.f);
-        if (mag == value_t{0}) return {value_t{0}, value_t{0}};
+        if (mag == 0) return {0, 0};
 
         return {mag, (x.f * x.df + y.f * y.df) / mag};
     }
@@ -399,7 +399,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::log;
 
-        assert(x.f > value_t{0} && "jet_t::log: domain error");
+        assert(x.f > 0 && "jet_t::log: domain error");
 
         return {log(x.f), x.df / x.f};
     }
@@ -410,7 +410,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::log1p;
 
-        assert(x.f > value_t{-1} && "jet_t::log1p: domain error");
+        assert(x.f > -1 && "jet_t::log1p: domain error");
 
         return {log1p(x.f), x.df / (x.f + 1)};
     }
@@ -433,7 +433,7 @@ template <typename t_value_t> struct jet_t
         // The result is inf if y < 1.
         assert((x > 0 || (x == 0 && y >= 1)) && "jet_t::pow(<jet>, <element>): domain error");
 
-        auto const pm1 = pow(x.f, y - value_t(1));
+        auto const pm1 = pow(x.f, y - 1);
         return {pm1 * x.f, y * pm1 * x.df};
     }
 
@@ -444,7 +444,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::pow;
 
-        assert(x > value_t(0) && "jet_t::pow(<element>, <jet>): domain error");
+        assert(x > 0 && "jet_t::pow(<element>, <jet>): domain error");
 
         auto const power    = pow(x, y.f);
         auto const log_base = log(x);
@@ -459,7 +459,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::pow;
 
-        assert(x.f > value_t{0} && "jet_t::pow(<jet>, <jet>): domain error");
+        assert(x.f > 0 && "jet_t::pow(<jet>, <jet>): domain error");
 
         /*
             By definition:
@@ -508,12 +508,12 @@ template <typename t_value_t> struct jet_t
     {
         using crv::sqrt;
 
-        assert(x.f >= value_t{0} && "jet_t::sqrt domain error");
+        assert(x.f >= 0 && "jet_t::sqrt domain error");
 
         auto const root = sqrt(x.f);
-        if (root == value_t{0}) return {value_t{0}, infinity<value_t>()};
+        if (root == 0) return {0, infinity<value_t>()};
 
-        return {root, x.df / (value_t{2} * root)};
+        return {root, x.df / (2 * root)};
     }
 
     // d(tan(x)) = (1 + tan(x)^2)*dx
@@ -522,7 +522,7 @@ template <typename t_value_t> struct jet_t
         using crv::tan;
 
         auto const tan_f = tan(x.f);
-        return {tan_f, (value_t{1} + tan_f * tan_f) * x.df};
+        return {tan_f, (1 + tan_f * tan_f) * x.df};
     }
 
     // d(tanh(x)) = (1 - tanh(x)^2)*dx
@@ -530,7 +530,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::tanh;
         auto const tanh_f = tanh(x.f);
-        return {tanh_f, (value_t{1} - tanh_f * tanh_f) * x.df};
+        return {tanh_f, (1 - tanh_f * tanh_f) * x.df};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
