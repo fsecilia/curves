@@ -229,5 +229,81 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
     compare(actual, {expected_primal, expected_derivative});
 }
 
+// ====================================================================================================================
+// Scalar Ambiguity Resolution
+// ====================================================================================================================
+
+template <typename jet_t> struct jet_test_nested_scalar_ambiguity_resolution_t : nested_jet_test_t
+{};
+
+using jet_types_t = Types<jet_t<double>, jet_t<jet_t<double>>, jet_t<jet_t<jet_t<double>>>>;
+TYPED_TEST_SUITE(jet_test_nested_scalar_ambiguity_resolution_t, jet_types_t);
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, ordering)
+{
+    ASSERT_LT(TypeParam{3.0}, 5.0);
+    ASSERT_LT(3.0, TypeParam{5.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, equality)
+{
+    ASSERT_EQ(TypeParam{3.0}, 3.0);
+    ASSERT_EQ(3.0, TypeParam{3.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_addition)
+{
+    auto nested = TypeParam{3.0};
+    ASSERT_EQ(nested += 5.0, TypeParam{8.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, addition)
+{
+    ASSERT_EQ(TypeParam{3.0} + 5.0, TypeParam{8.0});
+    ASSERT_EQ(3.0 + TypeParam{5.0}, TypeParam{8.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_subtraction)
+{
+    auto nested = TypeParam{3.0};
+    ASSERT_EQ(nested -= 5.0, TypeParam{-2.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, subtraction)
+{
+    ASSERT_EQ(TypeParam{3.0} - 5.0, TypeParam{-2.0});
+    ASSERT_EQ(3.0 - TypeParam{5.0}, TypeParam{-2.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_multiplication)
+{
+    auto nested = TypeParam{3.0};
+    ASSERT_EQ(nested *= 5.0, TypeParam{15.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, multiplication)
+{
+    ASSERT_EQ(TypeParam{3.0} * 5.0, TypeParam{15.0});
+    ASSERT_EQ(3.0 * TypeParam{5.0}, TypeParam{15.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_division)
+{
+    auto nested = TypeParam{16.0};
+    ASSERT_EQ(nested /= 8.0, TypeParam{2.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, division)
+{
+    ASSERT_EQ(TypeParam{16.0} / 8.0, TypeParam{2.0});
+    ASSERT_EQ(16.0 / TypeParam{8.0}, TypeParam{2.0});
+}
+
+TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, pow)
+{
+    ASSERT_EQ(pow(TypeParam{2.0}, 3.0), TypeParam{8.0});
+    ASSERT_EQ(pow(2.0, TypeParam{3.0}), TypeParam{8.0});
+}
+
 } // namespace
 } // namespace crv
