@@ -91,6 +91,7 @@ set(kernel_c_flags
 set(kernel_cxx_flags
     "${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}"
     ${compile_options_common}
+    -Wframe-larger-than=1024
     -fno-builtin
     -fno-exceptions
     -fno-rtti
