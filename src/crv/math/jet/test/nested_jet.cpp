@@ -377,6 +377,43 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+// Symmetry Verification
+// --------------------------------------------------------------------------------------------------------------------
+
+/*
+    For smooth functions, the two first derivative components should match:
+
+        derivative(primal(c)) == primal(derivative(c))
+
+    This is Schwarz's theorem, the equality of mixed partials.
+*/
+struct nested_jet_test_mixed_partials_symmetry_t : nested_jet_test_t
+{
+    static constexpr auto c = sut_t{{3.0, 1.0}, {1.0, 0.0}};
+};
+
+TEST_F(nested_jet_test_mixed_partials_symmetry_t, exp)
+{
+    auto const f = exp(c);
+
+    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+}
+
+TEST_F(nested_jet_test_mixed_partials_symmetry_t, log)
+{
+    auto const f = log(c);
+
+    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+}
+
+TEST_F(nested_jet_test_mixed_partials_symmetry_t, sqrt)
+{
+    auto const f = sqrt(c);
+
+    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Scalar Ambiguity Resolution
 // --------------------------------------------------------------------------------------------------------------------
 
