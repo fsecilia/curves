@@ -38,6 +38,45 @@ struct nested_jet_test_t : Test
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// Construction
+// --------------------------------------------------------------------------------------------------------------------
+
+struct nested_jet_test_construction_t : nested_jet_test_t
+{};
+
+TEST_F(nested_jet_test_construction_t, value)
+{
+    constexpr auto sut = jet_t<jet_t<double>>{v};
+
+    static_assert(v == sut.f);
+    static_assert(jet_t{0.0} == sut.df);
+}
+
+TEST_F(nested_jet_test_construction_t, scalar_level_1)
+{
+    constexpr auto sut = jet_t<jet_t<double>>{s};
+
+    static_assert(jet_t{s} == sut.f);
+    static_assert(jet_t{0.0} == sut.df);
+}
+
+TEST_F(nested_jet_test_construction_t, scalar_level_2)
+{
+    constexpr auto sut = jet_t<jet_t<jet_t<double>>>{s};
+
+    static_assert(jet_t<jet_t<double>>{s} == sut.f);
+    static_assert(jet_t<jet_t<double>>{0.0} == sut.df);
+}
+
+TEST_F(nested_jet_test_construction_t, scalar_level_3)
+{
+    constexpr auto sut = jet_t<jet_t<jet_t<jet_t<double>>>>{s};
+
+    static_assert(jet_t<jet_t<jet_t<double>>>{s} == sut.f);
+    static_assert(jet_t<jet_t<jet_t<double>>>{0.0} == sut.df);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Arithmetic
 // --------------------------------------------------------------------------------------------------------------------
 
