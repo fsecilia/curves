@@ -293,47 +293,62 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
 */
 TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 {
-    // cache common terms
-    auto const lu       = log(u);
-    auto const pow_uv   = pow(u, v);
-    auto const pow_uvm1 = pow(u, v - 1);
-    auto const pow_uvm2 = pow(u, v - 2);
+    // powers of base
+    auto const f    = pow(u, v);     // u^v
+    auto const f_1  = pow(u, v - 1); // u^(v - 1), first derivative factor
+    auto const f_2  = pow(u, v - 2); // u^(v - 2), second derivative factor
+    auto const ln_u = log(u);
 
     /*
-        extract repeated term, phi
+        first partial derivatives
 
-        A scalar term repeats in these expressions. It's part of the derivative. Call it phi and define it as:
+        Define psi as the sensitivity combining both input's contributions:
 
-            d(u^v) = (u^v)(log(u)*dv + v*du/u)
-                   = u^(v - 1)*(u*log(u)*dv + v*du)
-            phi   := u*log(u)*dv + v*du
-            d(u^v) = u^(v - 1)*phi
+            d(u^v) = u^(v - 1)*(u*ln(u)*dv + v*du)
+            psi   := (u*ln(u)*dv + v*du)
+            d(u^v) = f_1*psi
     */
-    auto const phi_inner = u * lu * dv_inner + v * du_inner;
-    auto const phi_outer = u * lu * dv_outer + v * du_outer;
 
-    // primal
-    auto const scalar_pow       = pow_uv;               // inner primal
-    auto const inner_derivative = pow_uvm1 * phi_inner; // derivative wrt inner jet
-    auto const primal           = value_t{scalar_pow, inner_derivative};
+    auto const psi_t = u * ln_u * dv_inner + v * du_inner; // wrt inner variable t
+    auto const psi_s = u * ln_u * dv_outer + v * du_outer; // wrt outer variable s
 
-    // derivative
-    auto const outer_derivative = pow_uvm1 * phi_outer; // derivative wrt outer jet; first derivative
-    auto const term_d2u         = v * d2u;              // second derivative of u, scaled by v
-    auto const term_d2v         = u * d2v;              // second derivative of v, scaled by u
-    auto const term_cross       = dv_outer * phi_inner; // cross term between inner and outer derivative
-    auto const mixed_partials   = dv_inner * du_outer + du_inner * dv_outer;
-    auto const second_derivative                        // second derivative wrt outer jet
-        = pow_uvm2
-          * (u * (lu * (term_d2v + term_cross) + term_d2u + mixed_partials) + v * du_outer * (phi_inner - du_inner));
-    auto const derivative = value_t{outer_derivative, second_derivative};
+    auto const df_dt = f_1 * psi_t;
+    auto const df_ds = f_1 * psi_s;
 
-    // decompose pow into its leaf scalars; this unnests two levels - each term here is a scalar
-    auto const expected = sut_t{primal, derivative};
+    /*
+        second mixed partial derivatives
 
-    auto const actual = pow(x, y);
+        The second mixed partial is `∂/∂s[f_1*psi_t]`
+        Applying the product rule gives `(∂f_1/∂s)*psi_t + f_1*(∂psi_t/∂s)`
+    */
 
-    compare(expected, actual);
+    // term 1: (∂f_1/∂s)*psi_t
+    // ∂(u^(v - 1))/∂s = u^(v - 2) * (u*ln(u)*dv_s + (v-1)*du_s)
+    auto const psi_s_shifted = u * ln_u * dv_outer + (v - 1) * du_outer; // psi for exponent v-1
+    auto const term1         = f_2 * psi_s_shifted * psi_t;
+
+    // term 2: f_1*(∂psi_t/∂s)
+    // ∂psi_t/∂s = ∂(u*ln(u)*dv_t + v*du_t)/∂s
+    //           = (ln(u) + 1)*du_s*dv_t + u*ln(u)*d²v + dv_s*du_t + v*d²u
+    auto const d_uln_ds  = (ln_u + 1) * du_outer; // d(u*ln(u))/ds
+    auto const dpsi_t_ds = d_uln_ds * dv_inner    // from u*ln(u) term
+                           + u * ln_u * d2v       // dv_t -> d²v
+                           + dv_outer * du_inner  // cross partial dv*du
+                           + v * d2u;             // du_t -> d²u
+    auto const term2 = f_1 * dpsi_t_ds;
+
+    auto const d2f_dsdt = term1 + term2;
+
+    /*
+        assemble nested jet
+    */
+
+    auto const expected = sut_t{
+        {f, df_dt},       // {primal, ∂/∂t}
+        {df_ds, d2f_dsdt} // {∂/∂s, ∂²/∂s∂t}
+    };
+
+    compare(expected, pow(x, y));
 }
 
 // ====================================================================================================================
