@@ -37,7 +37,7 @@ if (enable_testing)
     target_sources(unit_tests PRIVATE
         math/accuracy_metrics_test.cpp
         math/compensated_accumulator_test.cpp
-        math/fixed/test.cpp
+        math/fixed/test/fixed.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp

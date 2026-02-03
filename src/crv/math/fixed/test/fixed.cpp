@@ -4,7 +4,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "fixed.hpp"
+#include <crv/math/fixed/fixed.hpp>
 #include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
