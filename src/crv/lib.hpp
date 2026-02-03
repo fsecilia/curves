@@ -17,6 +17,16 @@ namespace crv {
 using int_t  = std::intptr_t;
 using uint_t = std::uintptr_t;
 
+using std::int16_t;
+using std::int32_t;
+using std::int64_t;
+using std::int8_t;
+
+using std::uint16_t;
+using std::uint32_t;
+using std::uint64_t;
+using std::uint8_t;
+
 __extension__ typedef __int128          int128_t;
 __extension__ typedef unsigned __int128 uint128_t;
 
