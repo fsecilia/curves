@@ -17,33 +17,34 @@ namespace crv {
 template <typename real_t> struct compensated_accumulator_t;
 
 template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>>
+struct error_stats_t
+{
+    accumulator_t sse{};
+    real_t        max{};
+    arg_t         arg_max{};
+
+    constexpr auto sample(arg_t arg, real_t error) noexcept -> void
+    {
+        sse += error * error;
+        auto const mag = std::abs(error);
+        if (mag > max)
+        {
+            max     = mag;
+            arg_max = arg;
+        }
+    }
+
+    constexpr auto mse(int_t sample_count) const -> real_t { return sse / sample_count; }
+    constexpr auto rmse(int_t sample_count) const -> real_t { return std::sqrt(mse(sample_count)); }
+
+    constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
+};
+
+template <typename arg_t, typename real_t, typename error_stats_t = error_stats_t<arg_t, real_t>>
 struct accuracy_metrics_t
 {
     int_t sample_count = 0;
-
-    struct error_stats_t
-    {
-        accumulator_t sse{};
-        real_t        max{};
-        arg_t         arg_max{};
-
-        constexpr auto sample(arg_t arg, real_t error) noexcept -> void
-        {
-            sse += error * error;
-            auto const mag = std::abs(error);
-            if (mag > max)
-            {
-                max     = mag;
-                arg_max = arg;
-            }
-        }
-
-        constexpr auto mse(int_t sample_count) const -> real_t { return sse / sample_count; }
-        constexpr auto rmse(int_t sample_count) const -> real_t { return std::sqrt(mse(sample_count)); }
-
-        constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
-        constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
-    };
 
     error_stats_t abs{};
     error_stats_t rel{};

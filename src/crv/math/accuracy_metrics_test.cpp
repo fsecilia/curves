@@ -16,11 +16,12 @@ struct accuracy_metrics_test_t : Test
     using real_t        = float_t;
     using arg_t         = int_t;
     using accumulator_t = real_t;
-    using sut_t         = accuracy_metrics_t<arg_t, real_t, accumulator_t>;
+    using error_stats_t = error_stats_t<arg_t, real_t, accumulator_t>;
+    using sut_t         = accuracy_metrics_t<arg_t, real_t, error_stats_t>;
 
     sut_t sut;
 
-    constexpr auto test(sut_t::error_stats_t const& expected, sut_t::error_stats_t const& actual) const noexcept -> void
+    constexpr auto test(error_stats_t const& expected, error_stats_t const& actual) const noexcept -> void
     {
         EXPECT_DOUBLE_EQ(expected.sse, actual.sse);
         EXPECT_DOUBLE_EQ(expected.max, actual.max);
