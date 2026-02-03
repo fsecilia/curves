@@ -60,7 +60,7 @@ BreakInheritanceList: BeforeColon
 IncludeCategories:
   - Regex: '"'
     Priority: 1
-  - Regex: '<crv/(bin|lib|test).hpp>'
+  - Regex: '<crv/(bin|lib|test|test/integration/integration_test).hpp>'
     Priority: 2
   - Regex: '<crv/'
     Priority: 3

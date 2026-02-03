@@ -14,3 +14,5 @@ target_link_libraries(test PUBLIC
     GTest::gmock
     GTest::gtest
 )
+
+add_subdirectory(integration)
