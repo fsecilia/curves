@@ -25,7 +25,7 @@ struct accuracy_metrics_t
     {
         accumulator_t sse{};
         real_t        max{};
-        real_t        arg_max{};
+        arg_t         arg_max{};
 
         constexpr auto sample(arg_t arg, real_t error) noexcept -> void
         {
