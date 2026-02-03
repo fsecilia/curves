@@ -8,8 +8,9 @@
 #include <array>
 #include <quadmath.h>
 
-namespace crv {
+namespace std {
 
+#if defined polyfill_float128_ostream_inserter
 auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
 {
     // determine format specifier from stream flags
@@ -38,5 +39,6 @@ auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
 
     return out;
 }
+#endif
 
 } // namespace crv

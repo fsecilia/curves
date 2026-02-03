@@ -4,6 +4,9 @@
 # longer-running integration tests
 
 option(BUILD_INTEGRATION_TESTS "Build longer-running integration tests" OFF)
+option(polyfill_float128_abs "Define std::abs(std::float128_t) polyfill" ON)
+option(polyfill_float128_ostream_inserter "Define operator <<(std::ostream&, std::float128_t) polyfill" ON)
+option(polyfill_float128_ldexp "Define std::ldexp(std::float128_t)" ON)
 
 if (BUILD_INTEGRATION_TESTS)
     add_executable(integration_tests)
@@ -43,6 +46,18 @@ if (BUILD_INTEGRATION_TESTS)
             target_link_libraries(integration_tests PRIVATE "${libquadmath}")
             target_include_directories(integration_tests PRIVATE "${libquadmath_include}")
             set_target_properties(integration_tests PROPERTIES CXX_EXTENSIONS TRUE)
+
+            if (polyfill_float128_abs)
+                target_compile_definitions(integration_tests PRIVATE "-Dpolyfill_float128_abs")
+            endif()
+
+            if (polyfill_float128_ostream_inserter)
+                target_compile_definitions(integration_tests PRIVATE "-Dpolyfill_float128_ostream_inserter")
+            endif()
+
+            if (polyfill_float128_ldexp)
+                target_compile_definitions(integration_tests PRIVATE "-Dpolyfill_float128_ldexp")
+            endif()
         endif()
     endif()
 
