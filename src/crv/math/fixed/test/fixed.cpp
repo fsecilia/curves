@@ -430,5 +430,27 @@ TEST_F(fixed_test_compound_assignment_t, multiplication)
 
 } // namespace binary_arithmetic
 
+// ====================================================================================================================
+// Math Functions
+// ====================================================================================================================
+
+namespace math_functions {
+
+// --------------------------------------------------------------------------------------------------------------------
+// abs
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(abs(fixed_t<int_t, 3>{-max<int_t>()}).value == fixed_t<int_t, 3>{max<int_t>()}.value);
+static_assert(abs(fixed_t<int_t, 3>{-1}).value == fixed_t<int_t, 3>{1}.value);
+static_assert(abs(fixed_t<int_t, 3>{0}).value == fixed_t<int_t, 3>{0}.value);
+static_assert(abs(fixed_t<int_t, 3>{1}).value == fixed_t<int_t, 3>{1}.value);
+static_assert(abs(fixed_t<int_t, 3>{max<int_t>()}).value == fixed_t<int_t, 3>{max<int_t>()}.value);
+
+static_assert(abs(fixed_t<uint_t, 3>{0}).value == fixed_t<uint_t, 3>{0}.value);
+static_assert(abs(fixed_t<uint_t, 3>{1}).value == fixed_t<uint_t, 3>{1}.value);
+static_assert(abs(fixed_t<uint_t, 3>{max<int_t>()}).value == fixed_t<uint_t, 3>{max<int_t>()}.value);
+
+} // namespace math_functions
+
 } // namespace
 } // namespace crv

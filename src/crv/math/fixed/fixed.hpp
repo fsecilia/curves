@@ -13,6 +13,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
 #include <algorithm>
+#include <concepts>
 
 namespace crv {
 
@@ -91,6 +92,22 @@ template <integral value_type, int_t t_frac_bits> struct fixed_t
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs += rhs; }
     friend constexpr auto operator-(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs -= rhs; }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Math Functions
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto abs(fixed_t const& src) noexcept -> fixed_t
+        requires(std::unsigned_integral<value_t>)
+    {
+        return src;
+    }
+
+    friend constexpr auto abs(fixed_t const& src) noexcept -> fixed_t
+        requires(std::signed_integral<value_t>)
+    {
+        return src.value < 0 ? fixed_t{-src.value} : src;
+    }
 
 private:
     template <integral other_value_t, int_t other_frac_bits>
