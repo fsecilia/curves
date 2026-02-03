@@ -20,9 +20,9 @@ using uint_t = std::uintptr_t;
 __extension__ typedef __int128          int128_t;
 __extension__ typedef unsigned __int128 uint128_t;
 
-using real32_t  = float;
-using real64_t  = double;
-using real_t    = real64_t;
-using realmax_t = long double;
+using float32_t   = float;
+using float64_t   = double;
+using float_t     = float64_t;
+using float_max_t = long double;
 
 } // namespace crv

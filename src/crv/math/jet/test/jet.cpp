@@ -14,7 +14,7 @@
 namespace crv {
 namespace {
 
-using value_t = real_t;
+using value_t = float_t;
 using sut_t   = jet_t<value_t>;
 
 static constexpr auto eps = epsilon<value_t>();
@@ -43,7 +43,7 @@ struct jet_test_concepts_t : jet_test_t
 TEST_F(jet_test_concepts_t, arithmetic)
 {
     static_assert(arithmetic<int_t>);
-    static_assert(arithmetic<real_t>);
+    static_assert(arithmetic<float_t>);
 
     static_assert(!arithmetic<nonarithmetic_t>);
 }
