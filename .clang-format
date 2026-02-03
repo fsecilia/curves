@@ -51,6 +51,7 @@ AllowShortCompoundRequirementOnASingleLine: true
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
 BreakBeforeBinaryOperators: All
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
