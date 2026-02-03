@@ -7,6 +7,7 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
+    math/compensated_accumulator.hpp
     math/fixed/io.hpp
     math/jet/jet.hpp
     math/io.hpp
@@ -33,6 +34,7 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
+        math/compensated_accumulator_test.cpp
         math/fixed/test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
