@@ -9,7 +9,7 @@
                 "all"
             ],
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "panel": "shared",
@@ -26,7 +26,7 @@
                 "kbuild"
             ],
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "panel": "shared",
@@ -44,7 +44,7 @@
                 "kbuild"
             ],
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "panel": "shared",
@@ -62,7 +62,7 @@
             "type": "cmake",
             "command": "clean",
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "group": "clean",
@@ -80,7 +80,7 @@
                 "clean_kbuild"
             ],
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "group": "clean",
@@ -93,7 +93,7 @@
         {
             "label": "clean all",
             "dependsOn": [
-                "clean kbuild",
+                "clean_kbuild",
                 "clean"
             ],
             "dependsOrder": "sequence",
