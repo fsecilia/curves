@@ -11,6 +11,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/limits.hpp>
 #include <cmath>
+#include <ostream>
 
 namespace crv {
 
@@ -45,6 +46,11 @@ struct error_stats_t
 
     constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
     constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
+
+    friend auto operator<<(std::ostream& out, error_stats_t const& src) -> std::ostream&
+    {
+        return out << "arg_max = " << src.arg_max << "\nmax = " << src.max;
+    }
 };
 
 template <typename arg_t, typename real_t, typename error_stats_t = error_stats_t<arg_t, real_t>>
@@ -71,6 +77,18 @@ struct accuracy_metrics_t
 
     constexpr auto operator<=>(accuracy_metrics_t const&) const noexcept -> auto = default;
     constexpr auto operator==(accuracy_metrics_t const&) const noexcept -> bool  = default;
+
+    friend auto operator<<(std::ostream& out, accuracy_metrics_t const& src) -> std::ostream&
+    {
+        // clang-format off
+        return out
+            << "sample count = " << src.sample_count
+            << "\nabs:\n"
+            << src.abs << "\nmse = " << src.abs_mse() << "\nrmse = " << src.abs_rmse()
+            << "\nrel:\n"
+            << src.rel << "\nmse = " << src.rel_mse() << "\nrmse = " << src.rel_rmse();
+        // clang-format on
+    }
 };
 
 } // namespace crv
