@@ -1,5 +1,4 @@
 CompileFlags:
-  Add: [-std=c++23]
   Remove: [-mno-direct-extern-access]
 
 ---
