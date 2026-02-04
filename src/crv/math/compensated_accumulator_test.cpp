@@ -23,7 +23,7 @@ TEST_F(compensated_accumulator_test_t, sums_normally)
 {
     auto sut = sut_t{0};
 
-    for (auto i = 0; i < iterations; ++i) sut += i;
+    for (auto i = 0; i < iterations; ++i) sut += static_cast<real_t>(i);
 
     EXPECT_EQ(static_cast<float>(iterations * (iterations - 1)) / 2, static_cast<float>(sut));
 }

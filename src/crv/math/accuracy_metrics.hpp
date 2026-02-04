@@ -37,7 +37,7 @@ struct error_stats_t
         }
     }
 
-    constexpr auto mse(int_t sample_count) const -> real_t { return sse / sample_count; }
+    constexpr auto mse(int_t sample_count) const -> real_t { return sse / static_cast<real_t>(sample_count); }
     constexpr auto rmse(int_t sample_count) const -> real_t
     {
         using std::sqrt;

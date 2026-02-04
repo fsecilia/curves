@@ -20,7 +20,7 @@ namespace crv {
 template <typename fixed_t> struct fixed_converter_t;
 
 /// specialization to crack target's parameters
-template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<value_t, frac_bits>>
+template <integral value_t, int_t frac_bits> struct fixed_converter_t<fixed_t<value_t, frac_bits>>
 {
     using target_t = fixed_t<value_t, frac_bits>;
 

@@ -334,7 +334,7 @@ struct fixed_division_test_t : Test
         auto const actual = divide<vector_t::out_frac_bits>(lhs, rhs);
 
         EXPECT_EQ(actual.value, expected.value) << "failed for " << vector;
-    };
+    }
 };
 
 TEST_F(fixed_division_test_t, limits)

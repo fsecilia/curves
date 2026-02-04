@@ -33,8 +33,8 @@ auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
 
     // write float using format string
     std::array<char, 128> buffer;
-    auto const            intended_length = quadmath_snprintf(buffer.data(), buffer.size(), format.data(), src);
-    auto const            actual_length   = std::min(static_cast<size_t>(intended_length), buffer.size() - 1);
+    auto const            intended_length = static_cast<std::streamsize>(quadmath_snprintf(buffer.data(), buffer.size(), format.data(), src));
+    auto const            actual_length   = std::min(intended_length, std::ssize(buffer) - 1);
     if (actual_length > 0) out.write(buffer.data(), actual_length);
 
     return out;

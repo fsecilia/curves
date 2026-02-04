@@ -76,10 +76,10 @@ inline auto div_u128_u64(uint128_t dividend, uint64_t divisor) noexcept -> div_u
 // log2
 // --------------------------------------------------------------------------------------------------------------------
 
-template <unsigned_integral value_t> constexpr auto log2(value_t value) noexcept -> value_t
+template <integral value_t> constexpr auto log2(value_t value) noexcept -> value_t
 {
-    assert(value != 0 && "log2: domain error");
-    return std::bit_width(value) - 1;
+    assert(value > 0 && "log2: domain error");
+    return static_cast<value_t>(std::bit_width(value) - 1);
 }
 
 // ====================================================================================================================

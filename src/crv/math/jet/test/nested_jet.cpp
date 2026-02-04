@@ -30,10 +30,10 @@ struct nested_jet_test_t : Test
 
     constexpr auto compare(sut_t const& expected, sut_t const& actual, scalar_t tolerance = eps) noexcept -> void
     {
-        EXPECT_NEAR(expected.f.f, actual.f.f, eps);
-        EXPECT_NEAR(expected.f.df, actual.f.df, eps);
-        EXPECT_NEAR(expected.df.f, actual.df.f, eps);
-        EXPECT_NEAR(expected.df.df, actual.df.df, eps);
+        EXPECT_NEAR(expected.f.f, actual.f.f, tolerance);
+        EXPECT_NEAR(expected.f.df, actual.f.df, tolerance);
+        EXPECT_NEAR(expected.df.f, actual.df.f, tolerance);
+        EXPECT_NEAR(expected.df.df, actual.df.df, tolerance);
     }
 };
 
@@ -224,7 +224,7 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
 
     auto const x2     = x * x;
     auto const x4     = x2 * x2;
-    auto const actual = x2 * x2;
+    auto const actual = x4;
 
     compare(actual, {expected_primal, expected_derivative});
 }

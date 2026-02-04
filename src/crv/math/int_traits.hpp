@@ -27,7 +27,7 @@ struct is_integral
                          || std::is_same_v<std::remove_cv_t<value_t>, uint128_t>>
 {};
 
-template <typename value_t> constexpr auto is_integral_v = is_integral<value_t>::value;
+template <typename value_t> inline constexpr auto is_integral_v = is_integral<value_t>::value;
 
 template <typename value_t>
 concept integral = is_integral_v<value_t>;
@@ -40,7 +40,7 @@ template <typename value_t>
 struct is_arithmetic : std::bool_constant<is_integral_v<value_t> || std::is_floating_point_v<value_t>>
 {};
 
-template <typename value_t> constexpr auto is_arithmetic_v = is_arithmetic<value_t>::value;
+template <typename value_t> inline constexpr auto is_arithmetic_v = is_arithmetic<value_t>::value;
 
 template <typename value_t>
 concept arithmetic = is_arithmetic_v<value_t>;
@@ -50,7 +50,7 @@ concept arithmetic = is_arithmetic_v<value_t>;
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename value_t>
-constexpr auto is_signed_v = [] {
+inline constexpr auto is_signed_v = [] {
     if constexpr (is_arithmetic_v<value_t>) { return value_t(-1) < value_t{0}; }
     else return false;
 }();

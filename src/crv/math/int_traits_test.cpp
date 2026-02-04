@@ -137,7 +137,7 @@ template <int_t... sizes> constexpr auto test_sizes() noexcept -> void
 }
 
 // runs test_sizes() for all supported integer sizes
-constexpr auto test_all_sizes() noexcept -> void
+[[maybe_unused]] constexpr auto test_all_sizes() noexcept -> void
 {
     test_sizes<1, 2, 4, 8, 16>();
 }

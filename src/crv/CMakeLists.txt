@@ -30,6 +30,7 @@ set_target_properties(lib
         VERSION ${PROJECT_VERSION}
         SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
+target_link_libraries(lib project_options)
 
 if (enable_testing)
     add_subdirectory(test)

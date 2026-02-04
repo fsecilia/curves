@@ -23,7 +23,7 @@ template <typename... values_t> constexpr auto test_types_limits() noexcept -> v
     (..., test_type_limits<values_t>());
 }
 
-template <typename... values_t> constexpr auto test_all_types_limits() noexcept -> void
+template <typename... values_t> [[maybe_unused]] constexpr auto test_all_types_limits() noexcept -> void
 {
     test_types_limits<int8_t, int64_t, int128_t, uint8_t, uint64_t, uint128_t>();
 }

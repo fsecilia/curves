@@ -49,6 +49,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    list(APPEND compile_options_common
+        -Wno-changes-meaning
+    )
+endif()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(project_options INTERFACE
         -fsafe-buffer-usage-suggestions
@@ -59,11 +65,15 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-c++98-compat
         -Wno-c++98-compat-pedantic
         -Wno-c99-extensions
+        -Wno-ctad-maybe-unsupported
         -Wno-documentation
         -Wno-documentation-unknown-command
         -Wno-exit-time-destructors
+        -Wno-float-equal
         -Wno-global-constructors
         -Wno-padded
+        -Wno-shadow
+        -Wno-shadow-field-in-constructor
         -Wno-switch-default
         -Wno-unsafe-buffer-usage
     )
