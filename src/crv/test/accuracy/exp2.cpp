@@ -5,8 +5,6 @@
 */
 
 #include <crv/lib.hpp>
-
-#include <crv/test/test.hpp>
 #include <crv/math/accuracy_metrics.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/fixed/conversions.hpp>
@@ -15,6 +13,8 @@
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/float128/float128.hpp>
 #include <cmath>
+#include <cstdlib>
+#include <iostream>
 
 namespace crv {
 namespace {
@@ -46,18 +46,15 @@ void run_accuracy_test(func_approx_t const& approx, func_ref_t const& ref, accur
     std::cout << metrics << std::endl;
 }
 
-struct exp2_test_t : Test
+auto test_exp2() noexcept -> void
 {
+    using std::log2;
+
     using fixed_t     = crv::fixed_t<uint64_t, 48>;
     using reference_t = reference_float_t;
     using metrics_t   = accuracy_metrics_t<fixed_t, reference_t>;
 
     metrics_t metrics;
-};
-
-TEST_F(exp2_test_t, accuracy)
-{
-    using std::log2;
 
     auto const max_rep_float = log2(static_cast<reference_t>(max<fixed_t::value_t>() >> fixed_t::frac_bits));
     auto const max_rep_int   = static_cast<fixed_t::value_t>(max_rep_float);
@@ -74,5 +71,16 @@ TEST_F(exp2_test_t, accuracy)
         metrics, domain_max, delta);
 }
 
+auto main(int, char*[]) -> int
+{
+    test_exp2();
+    return EXIT_SUCCESS;
+}
+
 } // namespace
 } // namespace crv
+
+auto main(int arg_count, char* args[]) -> int
+{
+    return crv::main(arg_count, args);
+}
