@@ -25,8 +25,10 @@ struct error_stats_t
 
     constexpr auto sample(arg_t arg, real_t error) noexcept -> void
     {
+        using std::abs;
+
         sse += error * error;
-        auto const mag = std::abs(error);
+        auto const mag = abs(error);
         if (mag > max)
         {
             max     = mag;
@@ -35,7 +37,11 @@ struct error_stats_t
     }
 
     constexpr auto mse(int_t sample_count) const -> real_t { return sse / sample_count; }
-    constexpr auto rmse(int_t sample_count) const -> real_t { return std::sqrt(mse(sample_count)); }
+    constexpr auto rmse(int_t sample_count) const -> real_t
+    {
+        using std::sqrt;
+        return sqrt(mse(sample_count));
+    }
 
     constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
     constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;

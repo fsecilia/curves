@@ -10,7 +10,7 @@
 
 namespace std {
 
-#if defined polyfill_float128_ostream_inserter
+#if defined CRV_POLYFILL_FLOAT128_OSTREAM_INSERTER
 auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
 {
     // determine format specifier from stream flags

@@ -26,12 +26,15 @@ template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<valu
 
     template <std::floating_point src_t> constexpr auto to(src_t src) const noexcept -> target_t
     {
-        return target_t{static_cast<value_t>(std::round(src * std::ldexp(src_t{1}, frac_bits)))};
+        using std::ldexp;
+        using std::round;
+        return target_t{static_cast<value_t>(round(src * ldexp(src_t{1}, frac_bits)))};
     }
 
     template <std::floating_point dst_t> constexpr auto from(target_t src) const noexcept -> dst_t
     {
-        return static_cast<dst_t>(src.value) / std::ldexp(dst_t{1}, frac_bits);
+        using std::ldexp;
+        return static_cast<dst_t>(src.value) / ldexp(dst_t{1}, frac_bits);
     }
 };
 

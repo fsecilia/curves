@@ -46,7 +46,7 @@ TEST_P(float128_test_t, result)
     EXPECT_EQ(expected, actual);
 }
 
-using limits        = std::numeric_limits<std::float128_t>;
+using limits        = std::numeric_limits<float128_t>;
 constexpr auto inf  = limits::infinity();
 constexpr auto qnan = limits::quiet_NaN();
 

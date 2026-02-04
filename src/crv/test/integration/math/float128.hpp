@@ -8,45 +8,74 @@
 
 #pragma once
 
+#if defined CRV_FEATURE_FLOAT_128
+
 #include <quadmath.h>
 #include <stdfloat>
 
-#if !defined __STDCPP_FLOAT128_T__ && !defined __FLOAT128__
-#error "std::float128_t unavailable"
-#endif
-
-#if defined polyfill_float128_ostream_inserter
+#if defined CRV_POLYFILL_FLOAT128_OSTREAM_INSERTER
 #include <ostream>
 #endif
 
+#if !defined __STDCPP_FLOAT128_T__
+
+using float128_t = __float128;
+
 namespace std {
 
-#if !defined __STDCPP_FLOAT128_T__ && defined __FLOAT128__
-using float128_t = __float128;
-#endif
+using ::float128_t;
 
-#if defined polyfill_float128_ostream_inserter
-auto operator<<(std::ostream& out, float128_t src) -> std::ostream&;
-#endif
-
-#if defined polyfill_float128_abs
-inline constexpr auto abs(float128_t const& src) noexcept -> float128_t
+#if defined CRV_POLYFILL_FLOAT128_EXP2
+inline auto exp2(float128_t src) -> float128_t
 {
-    return src < 0 ? -src : src;
+    return exp2q(src);
 }
 #endif
 
-#if defined polyfill_float128_ldexp
-inline auto ldexp(float128_t const& src, int exponent) -> float128_t
+#if defined CRV_POLYFILL_FLOAT128_LDEXP
+inline auto ldexp(float128_t src, int exponent) -> float128_t
 {
     return ldexpq(src, exponent);
 }
+#endif
+
+#if defined CRV_POLYFILL_FLOAT128_LOG2
+inline auto log2(float128_t src) -> float128_t
+{
+    return log2q(src);
+}
+#endif
+
+#if defined CRV_POLYFILL_FLOAT128_ROUND
+inline auto round(float128_t src) -> float128_t
+{
+    return roundq(src);
+}
+#endif
+
+#if defined CRV_POLYFILL_FLOAT128_SQRT
+inline auto sqrt(float128_t src) -> float128_t
+{
+    return sqrtq(src);
+}
+#endif
+
+} // namespace std
+
+#endif // #if !defined __STDCPP_FLOAT128_T__
+
+namespace std {
+
+#if defined CRV_POLYFILL_FLOAT128_OSTREAM_INSERTER
+auto operator<<(std::ostream& out, float128_t src) -> std::ostream&;
 #endif
 
 } // namespace std
 
 namespace crv {
 
-using float128_t = std::float128_t;
+using std::float128_t;
 
 } // namespace crv
+
+#endif
