@@ -1,0 +1,21 @@
+#! /usr/bin/env sollya
+/*
+    SPDX-License-Identifier: MIT
+
+    generates coefficients for exp2
+*/
+
+prec = 512!;
+
+poly_degree = 7;
+poly_format = 48;
+poly_fixed = fpminimax(2^x, poly_degree, [|poly_format...|], [0;1], fixed, absolute);
+
+print("static constexpr auto poly_degree =", poly_degree, ";");
+print("static constexpr fixed_t<uint64_t, ", poly_format, "> poly_coeffs[] = {");
+for i from 0 to poly_degree do {
+  c = coeff(poly_fixed, i);
+  c_rounded = nearestint(c*2^poly_format);
+  print(c_rounded, ",");
+};
+print("};");

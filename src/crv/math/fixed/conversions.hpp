@@ -24,9 +24,11 @@ template <integral value_t, int_t frac_bits> struct fixed_converter_t<fixed_t<va
 {
     using target_t = fixed_t<value_t, frac_bits>;
 
-#ifndef NDEBUG
+#if !defined NDEBUG
     template <std::floating_point src_t> constexpr auto range_check(src_t scaled) const noexcept -> void
     {
+        using std::ldexp;
+
         if constexpr (std::is_signed_v<value_t>)
         {
             auto const limit = ldexp(src_t{1}, std::numeric_limits<value_t>::digits);

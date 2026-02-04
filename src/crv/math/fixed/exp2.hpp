@@ -11,6 +11,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/limits.hpp>
+#include <limits>
 
 namespace crv {
 
@@ -107,6 +108,50 @@ private:
     };
     static constexpr int8_t poly_frac_bits[] = {
         62, 63, 65, 67, 69, 72, 75, 79, 82, 86, 90, 94, 97,
+    };
+};
+
+class exp2_q32_t
+{
+public:
+    template <unsigned_integral out_value_t, int_t out_frac_bits, unsigned_integral in_value_t, int_t in_frac_bits>
+    constexpr auto eval(fixed_t<in_value_t, in_frac_bits> const& input) const noexcept
+        -> fixed_t<out_value_t, out_frac_bits>
+    {
+        using limits_t = std::numeric_limits<out_value_t>;
+
+        auto const            int_part     = input.value >> in_frac_bits;
+        static constexpr auto max_int_part = limits_t::digits - out_frac_bits;
+        assert(int_part < max_int_part && "exp2_q32: integer overflow");
+        if (int_part >= max_int_part) [[unlikely]] { return limits_t::max(); }
+
+        static constexpr auto frac_mask = (in_value_t{1} << in_frac_bits) - 1;
+        uint64_t              frac_part_q32;
+        if constexpr (in_frac_bits == 32) { frac_part_q32 = input.value & frac_mask; }
+        else if constexpr (in_frac_bits > 32) { frac_part_q32 = (input.value & frac_mask) >> (in_frac_bits - 32); }
+        else frac_part_q32 = static_cast<uint64_t>(input.value & frac_mask) << (32 - in_frac_bits);
+
+        auto accumulator = poly_coeffs[poly_degree];
+        for (auto coeff_index = poly_degree - 1; coeff_index >= 0; --coeff_index)
+        {
+            auto const product = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32);
+            accumulator = static_cast<uint64_t>((product >> 32) + ((product >> 31) & 1) + poly_coeffs[coeff_index]);
+        }
+
+        auto const final_shift = static_cast<int>(out_frac_bits) - 32 + static_cast<int>(int_part);
+
+        if (final_shift >= 0) { return static_cast<out_value_t>(accumulator) << final_shift; }
+        else
+        {
+            auto const shr = -final_shift;
+            return static_cast<out_value_t>((accumulator >> shr) + ((accumulator >> (shr - 1)) & 1));
+        }
+    }
+
+private:
+    static constexpr auto     poly_degree   = 7;
+    static constexpr uint64_t poly_coeffs[] = {
+        4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
     };
 };
 
