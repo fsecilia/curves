@@ -19,6 +19,7 @@ target_sources_kernel(lib
     lib.hpp
     lib.cpp
     math/fixed/fixed.hpp
+    math/fixed/exp2.hpp
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp

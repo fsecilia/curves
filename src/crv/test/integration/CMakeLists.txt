@@ -14,6 +14,7 @@ option(polyfill_float128_sqrt "Define std::sqrt(std::float128_t) polyfill" ON)
 if (BUILD_INTEGRATION_TESTS)
     add_executable(integration_tests)
     target_sources(integration_tests PRIVATE
+        math/exp2_test.cpp
         math/float128.hpp
         integration_test.hpp
     )
