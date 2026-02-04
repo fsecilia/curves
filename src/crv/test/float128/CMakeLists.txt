@@ -12,14 +12,10 @@ option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
 option(polyfill_float128_sqrt "Define std::sqrt(std::float128_t) polyfill" ON)
 
 if (BUILD_INTEGRATION_TESTS)
-    add_executable(integration_tests)
-    target_sources(integration_tests PRIVATE
-        math/exp2_test.cpp
-        math/float128.hpp
-        integration_test.hpp
-    )
-    target_link_libraries(integration_tests PRIVATE lib test)
-    gtest_discover_tests(integration_tests)
+    # The library is a shell unless float128 is available. By default, it only includes the header to signal to other
+    # targets whether float128 is available or not.
+    add_library(float128)
+    target_sources(float128 PRIVATE float128.hpp)
 
     # Try finding quadmath.
     find_library(libquadmath quadmath)
@@ -47,45 +43,46 @@ if (BUILD_INTEGRATION_TESTS)
     endif()
 
     if (libquadmath_FOUND)
-        target_sources(integration_tests PRIVATE
-            math/float128_test.cpp
-            math/float128.cpp
-        )
-        target_link_libraries(integration_tests PRIVATE "${libquadmath}")
-        target_include_directories(integration_tests SYSTEM PRIVATE "${libquadmath_include}")
-        set_target_properties(integration_tests PROPERTIES CXX_EXTENSIONS TRUE)
-
-        target_compile_definitions(integration_tests PRIVATE "-DCRV_FEATURE_FLOAT_128")
+        # add implementation to library
+        target_sources(float128 PRIVATE float128.cpp)
+        target_link_libraries(float128 PUBLIC "${libquadmath}" lib)
+        target_include_directories(float128 SYSTEM PUBLIC "${libquadmath_include}")
+        target_compile_definitions(float128 PUBLIC "-DCRV_FEATURE_FLOAT_128")
+        set_target_properties(float128 PROPERTIES CXX_EXTENSIONS TRUE)
 
         if (polyfill_float128_exp2)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_EXP2")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_EXP2")
         endif()
 
         if (polyfill_float128_ldexp)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_LDEXP")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LDEXP")
         endif()
 
         if (polyfill_float128_log2)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_LOG2")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LOG2")
         endif()
 
         if (polyfill_float128_ostream_inserter)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_OSTREAM_INSERTER")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_OSTREAM_INSERTER")
         endif()
 
         if (polyfill_float128_round)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_ROUND")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_ROUND")
         endif()
 
         if (polyfill_float128_sqrt)
-            target_compile_definitions(integration_tests PRIVATE "-DCRV_POLYFILL_FLOAT128_SQRT")
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_SQRT")
         endif()
 
-        # When buliding with clang, the polyfills must be visible before any imports. This introduces an include order
+        # When building with clang, the polyfills must be visible before any imports. This introduces an include order
         # dependency, which is fragile. Here, the polyfills header is explicitly included first from the commandline.
-        target_compile_options(integration_tests PRIVATE
-            "-include${CMAKE_CURRENT_SOURCE_DIR}/math/float128.hpp"
-        )
+        target_compile_options(float128 PUBLIC "-include${CMAKE_CURRENT_SOURCE_DIR}/float128.hpp")
+
+        # add test executable
+        add_executable(float128_tests)
+        target_sources(float128_tests PRIVATE float128_test.cpp)
+        target_link_libraries(float128_tests PRIVATE float128 test)
+        gtest_discover_tests(float128_tests)
     else()
         message(WARNING "libquadmath not found: 128-bit floating-point unavailable")
     endif()

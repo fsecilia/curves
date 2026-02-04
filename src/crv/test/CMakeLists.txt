@@ -15,4 +15,5 @@ target_link_libraries(test PUBLIC
     GTest::gtest
 )
 
-add_subdirectory(integration)
+add_subdirectory(accuracy)
+add_subdirectory(float128)

@@ -6,14 +6,14 @@
 
 #include <crv/lib.hpp>
 
-#include <crv/test/integration/integration_test.hpp>
+#include <crv/test/test.hpp>
 #include <crv/math/accuracy_metrics.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/exp2.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
-#include <crv/test/integration/math/float128.hpp>
+#include <crv/test/float128/float128.hpp>
 #include <cmath>
 
 namespace crv {
