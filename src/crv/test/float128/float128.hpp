@@ -39,6 +39,13 @@ inline auto ldexp(float128_t src, int exponent) -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_LLROUND
+inline auto llround(float128_t src) -> long long int
+{
+    return llroundq(src);
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_LOG2
 inline auto log2(float128_t src) -> float128_t
 {

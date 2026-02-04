@@ -6,6 +6,7 @@
 option(BUILD_INTEGRATION_TESTS "Build longer-running integration tests" OFF)
 option(polyfill_float128_exp2 "Define std::exp2(std::float128_t)" ON)
 option(polyfill_float128_ldexp "Define std::ldexp(std::float128_t, int)" ON)
+option(polyfill_float128_llround "Define std::llround(std::float128_t) polyfill" ON)
 option(polyfill_float128_log2 "Define std::log2(std::float128_t)" ON)
 option(polyfill_float128_ostream_inserter "Define operator <<(std::ostream&, std::float128_t) polyfill" ON)
 option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
@@ -56,6 +57,10 @@ if (BUILD_INTEGRATION_TESTS)
 
         if (polyfill_float128_ldexp)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LDEXP")
+        endif()
+
+        if (polyfill_float128_llround)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LLROUND")
         endif()
 
         if (polyfill_float128_log2)
