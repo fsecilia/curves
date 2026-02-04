@@ -9,7 +9,7 @@ add_library(lib)
 target_sources(lib PRIVATE
     math/accuracy_metrics.hpp
     math/compensated_accumulator.hpp
-    math/fixed/float.hpp
+    math/fixed/conversions.hpp
     math/fixed/io.hpp
     math/jet/jet.hpp
     math/io.hpp
@@ -38,8 +38,8 @@ if (enable_testing)
     target_sources(unit_tests PRIVATE
         math/accuracy_metrics_test.cpp
         math/compensated_accumulator_test.cpp
+        math/fixed/test/conversions.cpp
         math/fixed/test/fixed.cpp
-        math/fixed/test/float.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp

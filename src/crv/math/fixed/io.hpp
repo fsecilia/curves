@@ -10,7 +10,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/float.hpp>
+#include <crv/math/fixed/conversions.hpp>
 #include <ostream>
 
 namespace crv {
