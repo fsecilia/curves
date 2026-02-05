@@ -127,9 +127,20 @@ public:
 
         static constexpr auto frac_mask = (in_value_t{1} << in_frac_bits) - 1;
         uint64_t              frac_part_q32;
-        if constexpr (in_frac_bits == 32) { frac_part_q32 = input.value & frac_mask; }
-        else if constexpr (in_frac_bits > 32) { frac_part_q32 = (input.value & frac_mask) >> (in_frac_bits - 32); }
-        else frac_part_q32 = static_cast<uint64_t>(input.value & frac_mask) << (32 - in_frac_bits);
+        if constexpr (in_frac_bits > 32)
+        {
+            auto const shift = in_frac_bits - 32;
+            auto const val = static_cast<std::make_unsigned_t<in_value_t>>(input.value & frac_mask);
+            frac_part_q32 = (val >> shift) + ((val >> (shift - 1)) & 1);
+        }
+        else if constexpr (in_frac_bits < 32)
+        {
+            frac_part_q32 = static_cast<uint64_t>(input.value & frac_mask) << (32 - in_frac_bits);
+        }
+        else
+        {
+            frac_part_q32 = input.value & frac_mask;
+        }
 
         auto accumulator = poly_coeffs[poly_degree];
         for (auto coeff_index = poly_degree - 1; coeff_index >= 0; --coeff_index)
