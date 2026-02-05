@@ -107,10 +107,13 @@ struct min_max_t
 // --------------------------------------------------------------------------------------------------------------------
 
 /// tracks stats about an error metric and provides a summary
-template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>,
-          typename min_max_t = min_max_t<arg_t, real_t>>
+template <typename t_arg_t, typename t_real_t, typename accumulator_t = compensated_accumulator_t<t_real_t>,
+          typename min_max_t = min_max_t<t_arg_t, t_real_t>>
 struct error_accumulator_t
 {
+    using arg_t  = t_arg_t;
+    using real_t = t_real_t;
+
     accumulator_t sse{};
     accumulator_t sum{};
     min_max_t     min_max{};
@@ -151,6 +154,25 @@ struct error_accumulator_t
     constexpr auto operator<=>(error_accumulator_t const&) const noexcept -> auto = default;
     constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
 };
+
+// --------------------------------------------------------------------------------------------------------------------
+// Metric Policies
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace metric_policy {
+
+struct abs_t
+{
+    template <typename error_accumulator_t, typename fixed_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
+                              error_accumulator_t::real_t expected) const noexcept -> void
+    {
+        auto const error = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+        error_accumulator.sample(arg, error);
+    }
+};
+
+} // namespace metric_policy
 
 // --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
