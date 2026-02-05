@@ -15,8 +15,8 @@ namespace {
 enum class format_flags_t
 {
     none       = 0,
-    fixed      = std::ios::fixed,
-    scientific = std::ios::scientific,
+    fixed      = std::ios_base::fixed,
+    scientific = std::ios_base::scientific,
 };
 
 struct param_t
@@ -38,7 +38,7 @@ struct float128_test_t : TestWithParam<param_t>
 TEST_P(float128_test_t, result)
 {
     std::ostringstream out;
-    out.flags(static_cast<std::ios::fmtflags>(format_flags));
+    out.flags(static_cast<std::ios_base::fmtflags>(format_flags));
     out.precision(precision);
     out << GetParam().input;
     auto const actual = out.str();

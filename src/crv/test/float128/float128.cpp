@@ -16,8 +16,8 @@ auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
     // determine format specifier from stream flags
     auto       specifier = 'g';
     auto const flags     = out.flags();
-    if (flags & std::ios::fixed) { specifier = 'f'; }
-    else if (flags & std::ios::scientific) { specifier = 'e'; }
+    if (flags & std::ios_base::fixed) { specifier = 'f'; }
+    else if (flags & std::ios_base::scientific) { specifier = 'e'; }
 
     // build format string dynamically based on specifier and precision
     std::array<char, 64> format;
