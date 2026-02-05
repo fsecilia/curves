@@ -359,6 +359,42 @@ TEST_F(metric_policy_test_t, rel_nonzero)
     EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
+TEST_F(metric_policy_test_t, ulps_zero_error)
+{
+    auto const sut = metric_policy::ulps_t{};
+
+    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
+    auto const actual = fixed_t{static_cast<fixed_t::value_t>(ideal)};
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(arg, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(0.0, error_accumulator.error);
+}
+
+TEST_F(metric_policy_test_t, ulps_one_high)
+{
+    auto const sut = metric_policy::ulps_t{};
+
+    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
+    auto const actual = fixed_t{static_cast<fixed_t::value_t>(error + ideal)};
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(arg, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
+}
+
+TEST_F(metric_policy_test_t, ulps_ten_low)
+{
+    auto const sut = metric_policy::ulps_t{};
+
+    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
+    auto const actual = fixed_t{static_cast<fixed_t::value_t>(-10 * error + ideal)};
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(arg, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(-10 * error, error_accumulator.error);
+}
+
 // ====================================================================================================================
 // Accuracy Metrics
 // ====================================================================================================================

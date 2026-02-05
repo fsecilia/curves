@@ -187,6 +187,18 @@ struct rel_t
     }
 };
 
+struct ulps_t
+{
+    template <typename error_accumulator_t, typename fixed_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
+                              error_accumulator_t::real_t expected) const noexcept -> void
+    {
+        auto const ideal = std::round(std::ldexp(expected, fixed_t::frac_bits));
+        auto const ulps  = static_cast<error_accumulator_t::real_t>(actual.value) - ideal;
+        error_accumulator.sample(arg, ulps);
+    }
+};
+
 } // namespace metric_policy
 
 // --------------------------------------------------------------------------------------------------------------------
