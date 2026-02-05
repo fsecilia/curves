@@ -34,6 +34,11 @@ template <typename arg_t, typename real_t> struct arg_max_t
             arg_max = arg;
         }
     }
+
+    friend auto operator<<(std::ostream& out, arg_max_t const& src) -> std::ostream&
+    {
+        return out << "arg_max = " << src.arg_max << "\nmax = " << src.max;
+    }
 };
 
 template <typename arg_t, typename real_t> struct arg_min_t
@@ -48,6 +53,11 @@ template <typename arg_t, typename real_t> struct arg_min_t
             min     = value;
             arg_min = arg;
         }
+    }
+
+    friend auto operator<<(std::ostream& out, arg_min_t const& src) -> std::ostream&
+    {
+        return out << "arg_min = " << src.arg_min << "\nmin = " << src.min;
     }
 };
 

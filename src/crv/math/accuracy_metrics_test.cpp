@@ -7,6 +7,7 @@
 #include "accuracy_metrics.hpp"
 #include <crv/test/test.hpp>
 #include <gtest/gtest.h>
+#include <sstream>
 
 namespace crv {
 namespace {
@@ -55,6 +56,17 @@ TEST_F(arg_max_test_t, sample_new_max)
     ASSERT_EQ(new_arg, sut.arg_max);
 }
 
+TEST_F(arg_max_test_t, ostream_inserter)
+{
+    auto expected = std::ostringstream{};
+    expected << "arg_max = " << old_arg_max << "\nmax = " << old_max;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected.str(), actual.str());
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // Arg Min
 // --------------------------------------------------------------------------------------------------------------------
@@ -97,6 +109,17 @@ TEST_F(arg_min_test_t, sample_new_min)
 
     ASSERT_EQ(new_min, sut.min);
     ASSERT_EQ(new_arg, sut.arg_min);
+}
+
+TEST_F(arg_min_test_t, ostream_inserter)
+{
+    auto expected = std::ostringstream{};
+    expected << "arg_min = " << old_arg_min << "\nmin = " << old_min;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected.str(), actual.str());
 }
 
 // --------------------------------------------------------------------------------------------------------------------
