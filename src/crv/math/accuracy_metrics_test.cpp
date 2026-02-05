@@ -328,9 +328,9 @@ struct metric_policy_test_t : Test
     error_accumulator_t error_accumulator{};
 };
 
-TEST_F(metric_policy_test_t, abs)
+TEST_F(metric_policy_test_t, diff_positive)
 {
-    auto const sut = metric_policy::abs_t{};
+    auto const sut = metric_policy::diff_t{};
 
     auto const actual = to_fixed<fixed_t>(error + expected);
     sut(error_accumulator, arg, actual, expected);

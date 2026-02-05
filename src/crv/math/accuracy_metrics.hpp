@@ -161,7 +161,7 @@ struct error_accumulator_t
 
 namespace metric_policy {
 
-struct abs_t
+struct diff_t
 {
     template <typename error_accumulator_t, typename fixed_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
