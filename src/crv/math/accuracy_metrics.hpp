@@ -18,7 +18,7 @@ namespace crv {
 template <typename real_t> struct compensated_accumulator_t;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Arg Max/Min
+// Max/Min
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename arg_t, typename real_t> struct arg_max_t
@@ -58,6 +58,36 @@ template <typename arg_t, typename real_t> struct arg_min_t
     friend auto operator<<(std::ostream& out, arg_min_t const& src) -> std::ostream&
     {
         return out << "arg_min = " << src.arg_min << "\nmin = " << src.min;
+    }
+};
+
+template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t, real_t>,
+          typename arg_max_t = arg_max_t<arg_t, real_t>>
+struct min_max_t
+{
+    arg_min_t min_signed;
+    arg_max_t max_signed;
+
+    constexpr auto max_mag() const noexcept -> real_t
+    {
+        return std::max(std::abs(min_signed.min), std::abs(max_signed.max));
+    }
+
+    constexpr auto arg_max_mag() const noexcept -> real_t
+    {
+        return std::abs(min_signed.min) < std::abs(max_signed.max) ? max_signed.arg_max : min_signed.arg_min;
+    }
+
+    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    {
+        min_signed.sample(arg, value);
+        max_signed.sample(arg, value);
+    }
+
+    friend auto operator<<(std::ostream& out, min_max_t const& src) -> std::ostream&
+    {
+        return out << "min_signed = " << src.min_signed << "\nmax_signed = " << src.max_signed
+                   << "\nmax_mag = " << src.max_mag() << "\narg_max_mag = " << src.arg_max_mag();
     }
 };
 

@@ -133,6 +133,89 @@ TEST_F(arg_min_test_t, ostream_inserter)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+// Min Max
+// --------------------------------------------------------------------------------------------------------------------
+
+struct min_max_test_t : Test
+{
+    using arg_t  = int_t;
+    using real_t = float_t;
+
+    static constexpr arg_t  arg_min     = 3;
+    static constexpr real_t min         = 1.1;
+    static constexpr arg_t  arg_max     = 5;
+    static constexpr real_t max         = 1.2;
+    static constexpr arg_t  arg_max_mag = arg_max;
+    static constexpr real_t max_mag     = 1.2;
+
+    struct arg_min_t
+    {
+        arg_t  arg_min{min_max_test_t::arg_min};
+        real_t min{min_max_test_t::min};
+
+        constexpr auto sample(arg_t arg, real_t min) noexcept -> void
+        {
+            arg_min   = arg;
+            this->min = min;
+        }
+
+        friend auto operator<<(std::ostream& out, arg_min_t const&) -> std::ostream& { return out << "arg_min"; }
+    };
+
+    struct arg_max_t
+    {
+        arg_t  arg_max{min_max_test_t::arg_max};
+        real_t max{min_max_test_t::max};
+
+        constexpr auto sample(arg_t arg, real_t max) noexcept -> void
+        {
+            arg_max   = arg;
+            this->max = max;
+        }
+
+        friend auto operator<<(std::ostream& out, arg_max_t const&) -> std::ostream& { return out << "arg_max"; }
+    };
+
+    using sut_t = min_max_t<arg_t, real_t, arg_min_t, arg_max_t>;
+    sut_t sut{};
+};
+
+TEST_F(min_max_test_t, max_mag)
+{
+    ASSERT_EQ(max_mag, sut.max_mag());
+}
+
+TEST_F(min_max_test_t, arg_max_mag)
+{
+    ASSERT_EQ(arg_max_mag, sut.arg_max_mag());
+}
+
+TEST_F(min_max_test_t, sample)
+{
+    static constexpr auto sample_arg   = real_t{19.0};
+    static constexpr auto sample_value = real_t{17.0};
+
+    sut.sample(sample_arg, sample_value);
+
+    EXPECT_EQ(sample_arg, sut.max_signed.arg_max);
+    EXPECT_EQ(sample_value, sut.max_signed.max);
+    EXPECT_EQ(sample_arg, sut.min_signed.arg_min);
+    EXPECT_EQ(sample_value, sut.min_signed.min);
+}
+
+TEST_F(min_max_test_t, ostream_inserter)
+{
+    auto expected = std::ostringstream{};
+    expected << "min_signed = arg_min\nmax_signed = arg_max\nmax_mag = " << max_mag
+             << "\narg_max_mag = " << arg_max_mag;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected.str(), actual.str());
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
