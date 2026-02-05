@@ -106,6 +106,7 @@ if (BUILD_INTEGRATION_TESTS)
         # add test executable
         add_executable(float128_tests)
         target_sources(float128_tests PRIVATE float128_test.cpp)
+        set_target_properties(float128_tests PROPERTIES CXX_EXTENSIONS TRUE)
         target_link_libraries(float128_tests PRIVATE float128 test)
         gtest_discover_tests(float128_tests)
     else()
