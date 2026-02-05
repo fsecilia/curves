@@ -17,6 +17,29 @@ namespace crv {
 
 template <typename real_t> struct compensated_accumulator_t;
 
+// --------------------------------------------------------------------------------------------------------------------
+// Arg Max
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename arg_t, typename real_t> struct arg_max_t
+{
+    real_t max{};
+    arg_t  arg_max{};
+
+    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    {
+        if (max < value)
+        {
+            max     = value;
+            arg_max = arg;
+        }
+    }
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Error Stats
+// --------------------------------------------------------------------------------------------------------------------
+
 template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>>
 struct error_stats_t
 {
