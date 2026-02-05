@@ -65,6 +65,12 @@ if (BUILD_INTEGRATION_TESTS)
             target_compile_options(float128 PUBLIC "SHELL:-isystem ${libquadmath_include}")
         endif()
 
+        # When building with clang, these polyfills must be visible before any imports. This introduces an include order
+        # dependency, which is fragile. Here, the polyfills header is explicitly included first from the commandline.
+        if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+            target_compile_options(float128 PUBLIC "-include${CMAKE_CURRENT_SOURCE_DIR}/float128.hpp")
+        endif()
+
         if (polyfill_float128_exp2)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_EXP2")
         endif()
@@ -96,10 +102,6 @@ if (BUILD_INTEGRATION_TESTS)
         if (polyfill_float128_sqrt)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_SQRT")
         endif()
-
-        # When building with clang, the polyfills must be visible before any imports. This introduces an include order
-        # dependency, which is fragile. Here, the polyfills header is explicitly included first from the commandline.
-        target_compile_options(float128 PUBLIC "-include${CMAKE_CURRENT_SOURCE_DIR}/float128.hpp")
 
         # add test executable
         add_executable(float128_tests)
