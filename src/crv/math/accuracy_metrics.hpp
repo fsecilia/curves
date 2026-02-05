@@ -18,31 +18,8 @@ namespace crv {
 template <typename real_t> struct compensated_accumulator_t;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Max/Min
+// Min/Max
 // --------------------------------------------------------------------------------------------------------------------
-
-template <typename arg_t, typename real_t> struct arg_max_t
-{
-    real_t max{min<real_t>()};
-    arg_t  arg_max{};
-
-    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
-    {
-        if (max < value)
-        {
-            max     = value;
-            arg_max = arg;
-        }
-    }
-
-    friend auto operator<<(std::ostream& out, arg_max_t const& src) -> std::ostream&
-    {
-        return out << src.max << "@" << src.arg_max;
-    }
-
-    constexpr auto operator<=>(arg_max_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
-};
 
 template <typename arg_t, typename real_t> struct arg_min_t
 {
@@ -65,6 +42,29 @@ template <typename arg_t, typename real_t> struct arg_min_t
 
     constexpr auto operator<=>(arg_min_t const&) const noexcept -> auto = default;
     constexpr auto operator==(arg_min_t const&) const noexcept -> bool  = default;
+};
+
+template <typename arg_t, typename real_t> struct arg_max_t
+{
+    real_t max{min<real_t>()};
+    arg_t  arg_max{};
+
+    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    {
+        if (max < value)
+        {
+            max     = value;
+            arg_max = arg;
+        }
+    }
+
+    friend auto operator<<(std::ostream& out, arg_max_t const& src) -> std::ostream&
+    {
+        return out << src.max << "@" << src.arg_max;
+    }
+
+    constexpr auto operator<=>(arg_max_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
 };
 
 template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t, real_t>,
