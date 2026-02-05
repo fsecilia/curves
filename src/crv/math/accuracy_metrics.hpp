@@ -167,8 +167,8 @@ struct diff_t
     constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
                               error_accumulator_t::real_t expected) const noexcept -> void
     {
-        auto const error = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
-        error_accumulator.sample(arg, error);
+        auto const diff = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+        error_accumulator.sample(arg, diff);
     }
 };
 
@@ -180,8 +180,9 @@ struct rel_t
     {
         if (std::abs(expected) > epsilon<typename error_accumulator_t::real_t>())
         {
-            auto const error = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
-            error_accumulator.sample(arg, error / expected);
+            auto const diff = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+            auto const rel  = diff / expected;
+            error_accumulator.sample(arg, rel);
         }
     }
 };

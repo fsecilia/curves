@@ -305,10 +305,9 @@ struct metric_policy_test_t : Test
     using real_t  = float_t;
     using fixed_t = fixed_t<int64_t, 32>;
 
-    static constexpr auto arg       = arg_t{4};
-    static constexpr auto error     = real_t{35.1};
-    static constexpr auto expected  = real_t{2.7};
-    static constexpr auto tolerance = 1e-10;
+    static constexpr auto arg      = arg_t{372};
+    static constexpr auto error    = real_t{1.0};
+    static constexpr auto expected = real_t{4.0};
 
     struct error_accumulator_t
     {
@@ -332,11 +331,11 @@ TEST_F(metric_policy_test_t, diff_positive)
 {
     auto const sut = metric_policy::diff_t{};
 
-    auto const actual = to_fixed<fixed_t>(error + expected);
+    auto const actual = to_fixed<fixed_t>(expected + error);
     sut(error_accumulator, arg, actual, expected);
 
     EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_NEAR(error, error_accumulator.error, tolerance);
+    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
 TEST_F(metric_policy_test_t, rel_zero)
@@ -357,7 +356,7 @@ TEST_F(metric_policy_test_t, rel_nonzero)
     sut(error_accumulator, arg, actual, expected);
 
     EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_NEAR(error, error_accumulator.error, tolerance);
+    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
 // ====================================================================================================================
