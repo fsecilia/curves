@@ -130,8 +130,8 @@ public:
         if constexpr (in_frac_bits > 32)
         {
             auto const shift = in_frac_bits - 32;
-            auto const val = static_cast<std::make_unsigned_t<in_value_t>>(input.value & frac_mask);
-            frac_part_q32 = (val >> shift) + ((val >> (shift - 1)) & 1);
+            auto const val   = static_cast<std::make_unsigned_t<in_value_t>>(input.value & frac_mask);
+            frac_part_q32    = (val >> shift) + ((val >> (shift - 1)) & 1);
         }
         else if constexpr (in_frac_bits < 32)
         {
@@ -143,20 +143,23 @@ public:
         }
 
         auto accumulator = poly_coeffs[poly_degree];
-        for (auto coeff_index = poly_degree - 1; coeff_index >= 0; --coeff_index)
+        for (auto coeff_index = poly_degree - 1; coeff_index >= 1; --coeff_index)
         {
             auto const product = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32);
             accumulator = static_cast<uint64_t>((product >> 32) + ((product >> 31) & 1) + poly_coeffs[coeff_index]);
         }
 
-        auto const final_shift = static_cast<int>(out_frac_bits) - 32 + static_cast<int>(int_part);
+        auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32)
+                                       + (static_cast<uint128_t>(poly_coeffs[0]) << 32);
 
-        if (final_shift >= 0) { return static_cast<out_value_t>(accumulator) << final_shift; }
+        auto const final_shift = static_cast<int>(out_frac_bits) - 64 + static_cast<int>(int_part);
+
+        if (final_shift >= 0) { return static_cast<out_value_t>(final_accumulator << final_shift); }
         else
         {
             auto const shr = -final_shift;
-            if (shr > 64) [[unlikely]] { return 0;}
-            return static_cast<out_value_t>((accumulator >> shr) + ((accumulator >> (shr - 1)) & 1));
+            if (shr > 128) [[unlikely]] { return 0; }
+            return static_cast<out_value_t>((final_accumulator >> shr) + ((final_accumulator >> (shr - 1)) & 1));
         }
     }
 
