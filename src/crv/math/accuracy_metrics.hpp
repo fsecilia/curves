@@ -79,7 +79,7 @@ struct min_max_t
         return std::max(std::abs(min_signed.min), std::abs(max_signed.max));
     }
 
-    constexpr auto arg_max_mag() const noexcept -> real_t
+    constexpr auto arg_max_mag() const noexcept -> arg_t
     {
         return std::abs(min_signed.min) < std::abs(max_signed.max) ? max_signed.arg_max : min_signed.arg_min;
     }
