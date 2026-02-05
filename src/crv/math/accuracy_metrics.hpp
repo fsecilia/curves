@@ -94,6 +94,9 @@ struct min_max_t
     {
         return out << "min = " << src.min_signed << "\nmax = " << src.max_signed;
     }
+
+    constexpr auto operator<=>(min_max_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(min_max_t const&) const noexcept -> bool  = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -130,14 +133,15 @@ struct error_stats_t
         return sqrt(mse());
     }
 
-    constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
 
     friend auto operator<<(std::ostream& out, error_stats_t const& src) -> std::ostream&
     {
         return out << "sample count = " << src.sample_count << "\narg_max = " << src.arg_max << "\nmax = " << src.max
                    << "\nmse = " << src.mse() << "\nrmse = " << src.rmse();
     }
+
+    constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -162,13 +166,13 @@ struct accuracy_metrics_t
         if (std::abs(expected) > epsilon<real_t>()) rel.sample(arg, error / expected);
     }
 
-    constexpr auto operator<=>(accuracy_metrics_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(accuracy_metrics_t const&) const noexcept -> bool  = default;
-
     friend auto operator<<(std::ostream& out, accuracy_metrics_t const& src) -> std::ostream&
     {
         return out << "abs:\n" << src.abs << "\nrel:\n" << src.rel;
     }
+
+    constexpr auto operator<=>(accuracy_metrics_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(accuracy_metrics_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv
