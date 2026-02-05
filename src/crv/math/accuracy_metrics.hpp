@@ -21,6 +21,7 @@ template <typename real_t> struct compensated_accumulator_t;
 // Min/Max
 // --------------------------------------------------------------------------------------------------------------------
 
+/// tracks min@arg
 template <typename arg_t, typename real_t> struct arg_min_t
 {
     real_t min{max<real_t>()};
@@ -44,6 +45,7 @@ template <typename arg_t, typename real_t> struct arg_min_t
     constexpr auto operator==(arg_min_t const&) const noexcept -> bool  = default;
 };
 
+/// tracks max@arg
 template <typename arg_t, typename real_t> struct arg_max_t
 {
     real_t max{min<real_t>()};
@@ -67,6 +69,7 @@ template <typename arg_t, typename real_t> struct arg_max_t
     constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
 };
 
+/// tracks signed min and max, max magnitude
 template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t, real_t>,
           typename arg_max_t = arg_max_t<arg_t, real_t>>
 struct min_max_t
