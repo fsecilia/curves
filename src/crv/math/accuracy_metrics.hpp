@@ -172,6 +172,20 @@ struct abs_t
     }
 };
 
+struct rel_t
+{
+    template <typename error_accumulator_t, typename fixed_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
+                              error_accumulator_t::real_t expected) const noexcept -> void
+    {
+        if (std::abs(expected) > epsilon<typename error_accumulator_t::real_t>())
+        {
+            auto const error = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+            error_accumulator.sample(arg, error / expected);
+        }
+    }
+};
+
 } // namespace metric_policy
 
 // --------------------------------------------------------------------------------------------------------------------
