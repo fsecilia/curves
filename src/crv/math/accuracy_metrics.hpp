@@ -37,8 +37,11 @@ template <typename arg_t, typename real_t> struct arg_max_t
 
     friend auto operator<<(std::ostream& out, arg_max_t const& src) -> std::ostream&
     {
-        return out << "arg_max = " << src.arg_max << "\nmax = " << src.max;
+        return out << src.max << "@" << src.arg_max;
     }
+
+    constexpr auto operator<=>(arg_max_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
 };
 
 template <typename arg_t, typename real_t> struct arg_min_t
@@ -57,8 +60,11 @@ template <typename arg_t, typename real_t> struct arg_min_t
 
     friend auto operator<<(std::ostream& out, arg_min_t const& src) -> std::ostream&
     {
-        return out << "arg_min = " << src.arg_min << "\nmin = " << src.min;
+        return out << src.min << "@" << src.arg_min;
     }
+
+    constexpr auto operator<=>(arg_min_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(arg_min_t const&) const noexcept -> bool  = default;
 };
 
 template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t, real_t>,
@@ -86,8 +92,7 @@ struct min_max_t
 
     friend auto operator<<(std::ostream& out, min_max_t const& src) -> std::ostream&
     {
-        return out << "min_signed = " << src.min_signed << "\nmax_signed = " << src.max_signed
-                   << "\nmax_mag = " << src.max_mag() << "\narg_max_mag = " << src.arg_max_mag();
+        return out << "min = " << src.min_signed << "\nmax = " << src.max_signed;
     }
 };
 
@@ -162,7 +167,7 @@ struct accuracy_metrics_t
 
     friend auto operator<<(std::ostream& out, accuracy_metrics_t const& src) -> std::ostream&
     {
-        return out << "\nabs:\n" << src.abs << "\nrel:\n" << src.rel;
+        return out << "abs:\n" << src.abs << "\nrel:\n" << src.rel;
     }
 };
 

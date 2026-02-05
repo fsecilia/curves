@@ -64,7 +64,7 @@ TEST_F(arg_max_test_t, sample_new_max)
 TEST_F(arg_max_test_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
-    expected << "arg_max = " << old_arg_max << "\nmax = " << old_max;
+    expected << old_max << "@" << old_arg_max;
 
     auto actual = std::ostringstream{};
     actual << sut;
@@ -124,7 +124,7 @@ TEST_F(arg_min_test_t, sample_new_min)
 TEST_F(arg_min_test_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
-    expected << "arg_min = " << old_arg_min << "\nmin = " << old_min;
+    expected << old_min << "@" << old_arg_min;
 
     auto actual = std::ostringstream{};
     actual << sut;
@@ -205,14 +205,10 @@ TEST_F(min_max_test_t, sample)
 
 TEST_F(min_max_test_t, ostream_inserter)
 {
-    auto expected = std::ostringstream{};
-    expected << "min_signed = arg_min\nmax_signed = arg_max\nmax_mag = " << max_mag
-             << "\narg_max_mag = " << arg_max_mag;
-
     auto actual = std::ostringstream{};
     actual << sut;
 
-    ASSERT_EQ(expected.str(), actual.str());
+    ASSERT_EQ("min = arg_min\nmax = arg_max", actual.str());
 }
 
 // --------------------------------------------------------------------------------------------------------------------
