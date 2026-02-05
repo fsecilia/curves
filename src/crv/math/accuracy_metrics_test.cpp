@@ -56,6 +56,50 @@ TEST_F(arg_max_test_t, sample_new_max)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+// Arg Min
+// --------------------------------------------------------------------------------------------------------------------
+
+struct arg_min_test_t : Test
+{
+    using arg_t  = int_t;
+    using real_t = float_t;
+    using sut_t  = arg_min_t<int_t, real_t>;
+
+    static constexpr auto old_min     = 3.0;
+    static constexpr auto old_arg_min = 5;
+    static constexpr auto new_arg     = 10;
+
+    sut_t sut{.min = old_min, .arg_min = old_arg_min};
+};
+
+TEST_F(arg_min_test_t, sample_without_new_min)
+{
+    auto const value = old_min + 1;
+    sut.sample(new_arg, value);
+
+    ASSERT_EQ(old_min, sut.min);
+    ASSERT_EQ(old_arg_min, sut.arg_min);
+}
+
+TEST_F(arg_min_test_t, first_wins)
+{
+    auto const value = old_min;
+    sut.sample(new_arg, value);
+
+    ASSERT_EQ(old_min, sut.min);
+    ASSERT_EQ(old_arg_min, sut.arg_min);
+}
+
+TEST_F(arg_min_test_t, sample_new_min)
+{
+    auto const new_min = old_min - 1;
+    sut.sample(new_arg, new_min);
+
+    ASSERT_EQ(new_min, sut.min);
+    ASSERT_EQ(new_arg, sut.arg_min);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
