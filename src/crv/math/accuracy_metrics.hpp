@@ -23,7 +23,7 @@ template <typename real_t> struct compensated_accumulator_t;
 
 template <typename arg_t, typename real_t> struct arg_max_t
 {
-    real_t max{};
+    real_t max{min<real_t>()};
     arg_t  arg_max{};
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void
@@ -43,7 +43,7 @@ template <typename arg_t, typename real_t> struct arg_max_t
 
 template <typename arg_t, typename real_t> struct arg_min_t
 {
-    real_t min{};
+    real_t min{max<real_t>()};
     arg_t  arg_min{};
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void

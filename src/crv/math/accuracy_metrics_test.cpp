@@ -29,6 +29,11 @@ struct arg_max_test_t : Test
     sut_t sut{.max = old_max, .arg_max = old_arg_max};
 };
 
+TEST_F(arg_max_test_t, initializes_to_min)
+{
+    ASSERT_EQ(min<real_t>(), sut_t{}.max);
+}
+
 TEST_F(arg_max_test_t, sample_without_new_max)
 {
     auto const value = old_max - 1;
@@ -83,6 +88,11 @@ struct arg_min_test_t : Test
 
     sut_t sut{.min = old_min, .arg_min = old_arg_min};
 };
+
+TEST_F(arg_min_test_t, initializes_to_max)
+{
+    ASSERT_EQ(max<real_t>(), sut_t{}.min);
+}
 
 TEST_F(arg_min_test_t, sample_without_new_min)
 {
