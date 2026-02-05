@@ -52,7 +52,8 @@ struct error_stats_t
 
     friend auto operator<<(std::ostream& out, error_stats_t const& src) -> std::ostream&
     {
-        return out << "sample count = " << src.sample_count << "\narg_max = " << src.arg_max << "\nmax = " << src.max;
+        return out << "sample count = " << src.sample_count << "\narg_max = " << src.arg_max << "\nmax = " << src.max
+                   << "\nmse = " << src.mse() << "\nrmse = " << src.rmse();
     }
 };
 
@@ -79,13 +80,7 @@ struct accuracy_metrics_t
 
     friend auto operator<<(std::ostream& out, accuracy_metrics_t const& src) -> std::ostream&
     {
-        // clang-format off
-        return out
-            << "\nabs:\n"
-            << src.abs << "\nmse = " << src.abs_mse() << "\nrmse = " << src.abs_rmse()
-            << "\nrel:\n"
-            << src.rel << "\nmse = " << src.rel_mse() << "\nrmse = " << src.rel_rmse();
-        // clang-format on
+        return out << "\nabs:\n" << src.abs << "\nrel:\n" << src.rel;
     }
 };
 
