@@ -103,59 +103,64 @@ struct min_max_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// Error Stats
+// Error Accumulator
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>>
-struct error_stats_t
+/// tracks stats about an error metric and provides a summary
+template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>,
+          typename min_max_t = min_max_t<arg_t, real_t>>
+struct error_accumulator_t
 {
-    int_t         sample_count{};
     accumulator_t sse{};
-    real_t        max{};
-    arg_t         arg_max{};
+    accumulator_t sum{};
+    min_max_t     min_max{};
+    int_t         sample_count{};
 
     constexpr auto sample(arg_t arg, real_t error) noexcept -> void
     {
-        using std::abs;
-
         ++sample_count;
 
         sse += error * error;
-        auto const mag = abs(error);
-        if (mag > max)
-        {
-            max     = mag;
-            arg_max = arg;
-        }
+        sum += error;
+        min_max.sample(arg, error);
     }
 
-    constexpr auto mse() const -> real_t { return sse / static_cast<real_t>(sample_count); }
-    constexpr auto rmse() const -> real_t
+    constexpr auto mse() const noexcept -> real_t { return sse / static_cast<real_t>(sample_count); }
+    constexpr auto rmse() const noexcept -> real_t
     {
         using std::sqrt;
         return sqrt(mse());
     }
 
+    constexpr auto bias() const noexcept -> real_t { return sum / static_cast<real_t>(sample_count); }
 
-    friend auto operator<<(std::ostream& out, error_stats_t const& src) -> std::ostream&
+    constexpr auto variance() const noexcept -> real_t
     {
-        return out << "sample count = " << src.sample_count << "\narg_max = " << src.arg_max << "\nmax = " << src.max
-                   << "\nmse = " << src.mse() << "\nrmse = " << src.rmse();
+        auto const bias = this->bias();
+        return mse() - bias * bias;
     }
 
-    constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(error_stats_t const&) const noexcept -> bool  = default;
+    friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
+    {
+        return out << "sample count = " << src.sample_count << "\n"
+                   << src.min_max << "\n"
+                   << "sum = " << src.sum << "\nmse = " << src.mse() << "\nrmse = " << src.rmse()
+                   << "\nbias = " << src.bias() << "\nvariance = " << src.variance();
+    }
+
+    constexpr auto operator<=>(error_accumulator_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename arg_t, typename real_t, typename error_stats_t = error_stats_t<arg_t, real_t>>
+template <typename arg_t, typename real_t, typename error_accumulator_t = error_accumulator_t<arg_t, real_t>>
 struct accuracy_metrics_t
 {
-    error_stats_t abs{};
-    error_stats_t rel{};
+    error_accumulator_t abs{};
+    error_accumulator_t rel{};
 
     constexpr auto abs_mse() const -> real_t { return abs.mse(); }
     constexpr auto abs_rmse() const -> real_t { return abs.rmse(); }

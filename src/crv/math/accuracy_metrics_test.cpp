@@ -212,6 +212,89 @@ TEST_F(min_max_test_t, ostream_inserter)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+// Error Accumulator
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_accumulator_test_t : Test
+{
+    using arg_t         = int_t;
+    using real_t        = float_t;
+    using accumulator_t = float_t;
+
+    static constexpr auto arg          = arg_t{3};
+    static constexpr auto error        = real_t{15.2};
+    static constexpr auto sample_count = int_t{11};
+
+    static constexpr auto rmse = real_t{23.6};
+    static constexpr auto mse  = rmse * rmse;
+    static constexpr auto sse  = mse * sample_count;
+
+    static constexpr auto bias     = 7.3;
+    static constexpr auto variance = mse - bias * bias;
+    static constexpr auto sum      = bias * sample_count;
+
+    struct min_max_t
+    {
+        arg_t  arg{};
+        real_t error{};
+
+        constexpr auto sample(arg_t arg, real_t error) noexcept -> void
+        {
+            this->arg   = arg;
+            this->error = error;
+        }
+
+        friend auto operator<<(std::ostream& out, min_max_t const&) -> std::ostream& { return out << "min_max"; }
+    };
+
+    using sut_t = error_accumulator_t<arg_t, real_t, accumulator_t, min_max_t>;
+    sut_t sut{.sse = sse, .sum = sum, .min_max = {}, .sample_count = sample_count};
+};
+
+TEST_F(error_accumulator_test_t, sample)
+{
+    sut.sample(arg, error);
+
+    EXPECT_EQ(sample_count + 1, sut.sample_count);
+    EXPECT_EQ(sse + error * error, sut.sse);
+    EXPECT_EQ(sum + error, sut.sum);
+    EXPECT_EQ(arg, sut.min_max.arg);
+    EXPECT_EQ(error, sut.min_max.error);
+}
+
+TEST_F(error_accumulator_test_t, mse)
+{
+    EXPECT_EQ(mse, sut.mse());
+}
+
+TEST_F(error_accumulator_test_t, rmse)
+{
+    EXPECT_EQ(rmse, sut.rmse());
+}
+
+TEST_F(error_accumulator_test_t, bias)
+{
+    EXPECT_EQ(bias, sut.bias());
+}
+
+TEST_F(error_accumulator_test_t, variance)
+{
+    EXPECT_EQ(variance, sut.variance());
+}
+
+TEST_F(error_accumulator_test_t, ostream_inserter)
+{
+    auto expected = std::ostringstream{};
+    expected << "sample count = " << sample_count << "\nmin_max\nsum = " << sum << "\nmse = " << mse
+             << "\nrmse = " << rmse << "\nbias = " << bias << "\nvariance = " << variance;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected.str(), actual.str());
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
