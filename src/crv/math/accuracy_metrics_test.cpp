@@ -23,6 +23,7 @@ struct accuracy_metrics_test_t : Test
 
     constexpr auto test(error_stats_t const& expected, error_stats_t const& actual) const noexcept -> void
     {
+        EXPECT_EQ(expected.sample_count, actual.sample_count);
         EXPECT_DOUBLE_EQ(expected.sse, actual.sse);
         EXPECT_DOUBLE_EQ(expected.max, actual.max);
         EXPECT_EQ(expected.arg_max, actual.arg_max);
@@ -30,7 +31,6 @@ struct accuracy_metrics_test_t : Test
 
     constexpr auto test(sut_t const& expected, sut_t const& actual) const noexcept -> void
     {
-        EXPECT_EQ(expected.sample_count, actual.sample_count);
         test(expected.abs, actual.abs);
         test(expected.rel, actual.rel);
     }
@@ -42,7 +42,8 @@ TEST_F(accuracy_metrics_test_t, identity)
     constexpr auto sample_count = 100;
     for (auto i = 0; i < sample_count; ++i) sut.sample(i, 42.0, 42.0);
 
-    test(sut_t{.sample_count = sample_count}, sut);
+    auto const expected_error_stats = error_stats_t{.sample_count = sample_count};
+    test(sut_t{.abs = expected_error_stats, .rel = expected_error_stats}, sut);
 }
 
 constexpr auto sqr(auto x) noexcept -> auto
@@ -54,23 +55,20 @@ TEST_F(accuracy_metrics_test_t, known_sequence)
 {
     // first sample sets new abs and rel arg_max
     sut.sample(3, 2.5, 2);
-    test(sut_t{.sample_count = 1,
-               .abs          = {.sse = 0.25, .max = 0.5, .arg_max = 3},
-               .rel          = {.sse = 0.0625, .max = 0.25, .arg_max = 3}},
+    test(sut_t{.abs = {.sample_count = 1, .sse = 0.25, .max = 0.5, .arg_max = 3},
+               .rel = {.sample_count = 1, .sse = 0.0625, .max = 0.25, .arg_max = 3}},
          sut);
 
     // new abs arg_max
     sut.sample(5, 5, 4);
-    test(sut_t{.sample_count = 2,
-               .abs          = {.sse = 1.25, .max = 1, .arg_max = 5},
-               .rel          = {.sse = 0.125, .max = 0.25, .arg_max = 3}},
+    test(sut_t{.abs = {.sample_count = 2, .sse = 1.25, .max = 1, .arg_max = 5},
+               .rel = {.sample_count = 2, .sse = 0.125, .max = 0.25, .arg_max = 3}},
          sut);
 
     // new rel arg_max
     sut.sample(2, 0.1, 0.01);
-    test(sut_t{.sample_count = 3,
-               .abs          = {.sse = 1.2581, .max = 1, .arg_max = 5},
-               .rel          = {.sse = 81.125, .max = 0.09 / 0.01, .arg_max = 2}},
+    test(sut_t{.abs = {.sample_count = 3, .sse = 1.2581, .max = 1, .arg_max = 5},
+               .rel = {.sample_count = 3, .sse = 81.125, .max = 0.09 / 0.01, .arg_max = 2}},
          sut);
 
     EXPECT_EQ(1.2581 / 3, sut.abs_mse());
@@ -81,11 +79,10 @@ TEST_F(accuracy_metrics_test_t, known_sequence)
 
 TEST_F(accuracy_metrics_test_t, rel_ignores_expected_zero)
 {
-    // sample_count and abs are still updated, but rel is ignored
+    // abs sample_count is updated, but rel is ignored
     sut.sample(3, 10, 0);
-    test(sut_t{.sample_count = 1,
-               .abs          = {.sse = sqr(10), .max = 10, .arg_max = 3},
-               .rel          = {.sse = 0, .max = 0, .arg_max = 0}},
+    test(sut_t{.abs = {.sample_count = 1, .sse = sqr(10), .max = 10, .arg_max = 3},
+               .rel = {.sample_count = 0, .sse = 0, .max = 0, .arg_max = 0}},
          sut);
 }
 

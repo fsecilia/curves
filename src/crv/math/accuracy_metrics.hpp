@@ -20,6 +20,7 @@ template <typename real_t> struct compensated_accumulator_t;
 template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>>
 struct error_stats_t
 {
+    int_t         sample_count{};
     accumulator_t sse{};
     real_t        max{};
     arg_t         arg_max{};
@@ -27,6 +28,8 @@ struct error_stats_t
     constexpr auto sample(arg_t arg, real_t error) noexcept -> void
     {
         using std::abs;
+
+        ++sample_count;
 
         sse += error * error;
         auto const mag = abs(error);
@@ -37,11 +40,11 @@ struct error_stats_t
         }
     }
 
-    constexpr auto mse(int_t sample_count) const -> real_t { return sse / static_cast<real_t>(sample_count); }
-    constexpr auto rmse(int_t sample_count) const -> real_t
+    constexpr auto mse() const -> real_t { return sse / static_cast<real_t>(sample_count); }
+    constexpr auto rmse() const -> real_t
     {
         using std::sqrt;
-        return sqrt(mse(sample_count));
+        return sqrt(mse());
     }
 
     constexpr auto operator<=>(error_stats_t const&) const noexcept -> auto = default;
@@ -49,27 +52,23 @@ struct error_stats_t
 
     friend auto operator<<(std::ostream& out, error_stats_t const& src) -> std::ostream&
     {
-        return out << "arg_max = " << src.arg_max << "\nmax = " << src.max;
+        return out << "sample count = " << src.sample_count << "\narg_max = " << src.arg_max << "\nmax = " << src.max;
     }
 };
 
 template <typename arg_t, typename real_t, typename error_stats_t = error_stats_t<arg_t, real_t>>
 struct accuracy_metrics_t
 {
-    int_t sample_count = 0;
-
     error_stats_t abs{};
     error_stats_t rel{};
 
-    constexpr auto abs_mse() const -> real_t { return abs.mse(sample_count); }
-    constexpr auto abs_rmse() const -> real_t { return abs.rmse(sample_count); }
-    constexpr auto rel_mse() const -> real_t { return rel.mse(sample_count); }
-    constexpr auto rel_rmse() const -> real_t { return rel.rmse(sample_count); }
+    constexpr auto abs_mse() const -> real_t { return abs.mse(); }
+    constexpr auto abs_rmse() const -> real_t { return abs.rmse(); }
+    constexpr auto rel_mse() const -> real_t { return rel.mse(); }
+    constexpr auto rel_rmse() const -> real_t { return rel.rmse(); }
 
     constexpr auto sample(arg_t arg, real_t actual, real_t expected) noexcept -> void
     {
-        ++sample_count;
-
         auto const error = actual - expected;
         abs.sample(arg, error);
         if (std::abs(expected) > epsilon<real_t>()) rel.sample(arg, error / expected);
@@ -82,7 +81,6 @@ struct accuracy_metrics_t
     {
         // clang-format off
         return out
-            << "sample count = " << src.sample_count
             << "\nabs:\n"
             << src.abs << "\nmse = " << src.abs_mse() << "\nrmse = " << src.abs_rmse()
             << "\nrel:\n"
