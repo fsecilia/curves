@@ -66,7 +66,7 @@ template <integral value_t, int_t frac_bits> struct fixed_converter_t<fixed_t<va
     template <std::floating_point dst_t> constexpr auto from(target_t src) const noexcept -> dst_t
     {
         using std::ldexp;
-        return static_cast<dst_t>(src.value) / ldexp(dst_t{1}, frac_bits);
+        return ldexp(static_cast<dst_t>(src.value), -frac_bits);
     }
 };
 
