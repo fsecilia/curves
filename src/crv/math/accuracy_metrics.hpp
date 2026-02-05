@@ -80,6 +80,10 @@ struct error_stats_t
     }
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+// Accuracy Metrics
+// --------------------------------------------------------------------------------------------------------------------
+
 template <typename arg_t, typename real_t, typename error_stats_t = error_stats_t<arg_t, real_t>>
 struct accuracy_metrics_t
 {
