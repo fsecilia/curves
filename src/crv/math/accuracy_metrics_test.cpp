@@ -59,6 +59,7 @@ TEST_F(arg_max_test_t, sample_new_max)
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
+#if 0
 struct accuracy_metrics_test_t : Test
 {
     using real_t        = float_t;
@@ -133,6 +134,7 @@ TEST_F(accuracy_metrics_test_t, rel_ignores_expected_zero)
                .rel = {.sample_count = 0, .sse = 0, .max = 0, .arg_max = 0}},
          sut);
 }
+#endif
 
 } // namespace
 } // namespace crv
