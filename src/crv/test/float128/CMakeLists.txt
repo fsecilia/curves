@@ -48,9 +48,22 @@ if (BUILD_INTEGRATION_TESTS)
         # add implementation to library
         target_sources(float128 PRIVATE float128.cpp)
         target_link_libraries(float128 PUBLIC "${libquadmath}" lib)
-        target_include_directories(float128 SYSTEM PUBLIC "${libquadmath_include}")
         target_compile_definitions(float128 PUBLIC "-DCRV_FEATURE_FLOAT_128")
         set_target_properties(float128 PROPERTIES CXX_EXTENSIONS TRUE)
+
+        # Normally, the path to libquadmath should be included this way:
+        #
+        #   target_include_directories(float128 SYSTEM PUBLIC "${libquadmath_include}")
+        #
+        # However, libquadmath is shipped as part of gcc. When compiling, gcc already implicitly searches this path.
+        # CMake knows this, so when building with gcc, cmake does not emit this path to compile_commands.json.
+        # However, clangd does not know this, and requires the path.
+        #
+        # Instead, we manually specify the argument. This way, cmake emits it to compile_commands.json and clangd picks
+        # it up there.
+        if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_compile_options(float128 PUBLIC "SHELL:-isystem ${libquadmath_include}")
+        endif()
 
         if (polyfill_float128_exp2)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_EXP2")
