@@ -25,13 +25,10 @@ using reference_float_t = float128_t;
 using reference_float_t = float64_t;
 #endif
 
-template <typename fixed_t, typename real_t, typename func_approx_t, typename func_ref_t>
-void run_accuracy_test(func_approx_t const& approx, func_ref_t const& ref, accuracy_metrics_t<fixed_t, real_t>& metrics,
-                       fixed_t const& domain_max, fixed_t const& delta)
+template <typename in_t, typename out_t, typename real_t, typename func_approx_t, typename func_ref_t>
+void run_accuracy_test(func_approx_t const& approx, func_ref_t const& ref, accuracy_metrics_t<in_t, real_t>& metrics,
+                       in_t const& min, in_t const& max, in_t const& delta)
 {
-    auto const min = fixed_t{0}; // delta;
-    auto const max = fixed_t{domain_max.value};
-
     for (auto x_fixed = min; x_fixed <= max; x_fixed += delta)
     {
         auto const x_real = from_fixed<real_t>(x_fixed);
@@ -50,25 +47,27 @@ auto test_exp2() noexcept -> void
 {
     using std::log2;
 
-    using fixed_t     = crv::fixed_t<uint64_t, 32>;
+    using in_t        = crv::fixed_t<int64_t, 32>;
+    using out_t       = crv::fixed_t<uint64_t, 32>;
     using reference_t = reference_float_t;
-    using metrics_t   = accuracy_metrics_t<fixed_t, reference_t>;
+    using metrics_t   = accuracy_metrics_t<in_t, reference_t>;
 
     metrics_t metrics;
 
-    auto const max_rep_float = log2(static_cast<reference_t>(max<fixed_t::value_t>() >> fixed_t::frac_bits));
-    auto const max_rep_int   = static_cast<fixed_t::value_t>(max_rep_float);
-    auto const domain_max    = fixed_t{max_rep_int << fixed_t::frac_bits};
+    auto const max_rep_float = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
+    auto const max_rep_int   = static_cast<in_t::value_t>(max_rep_float);
+    auto const max           = in_t{max_rep_int << in_t::frac_bits};
+    auto const min           = -max;
     auto const iterations    = 1000000;
-    auto const delta         = fixed_t{(domain_max.value + (iterations / 2)) / iterations};
+    auto const delta         = in_t{(max.value - min.value + (iterations / 2)) / iterations};
     auto const approx_impl   = exp2_q32_t{}; // preprod_exp2_t{};
-    run_accuracy_test<fixed_t, reference_t>(
-        [&](fixed_t const& x) { return approx_impl.template eval<fixed_t::value_t, fixed_t::frac_bits>(x); },
+    run_accuracy_test<in_t, out_t, reference_t>(
+        [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
         [](reference_t const& x) {
             using std::exp2;
             return exp2(x);
         },
-        metrics, domain_max, delta);
+        metrics, min, max, delta);
 }
 
 auto main(int, char*[]) -> int

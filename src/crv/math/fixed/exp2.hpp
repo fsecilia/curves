@@ -114,18 +114,18 @@ private:
 class exp2_q32_t
 {
 public:
-    template <unsigned_integral out_value_t, int_t out_frac_bits, unsigned_integral in_value_t, int_t in_frac_bits>
+    template <unsigned_integral out_value_t, int_t out_frac_bits, integral in_value_t, int_t in_frac_bits>
     constexpr auto eval(fixed_t<in_value_t, in_frac_bits> const& input) const noexcept
         -> fixed_t<out_value_t, out_frac_bits>
     {
-        using limits_t = std::numeric_limits<out_value_t>;
+        using out_limits_t = std::numeric_limits<out_value_t>;
 
         auto const            int_part     = input.value >> in_frac_bits;
-        static constexpr auto max_int_part = limits_t::digits - out_frac_bits;
+        static constexpr auto max_int_part = out_limits_t::digits - out_frac_bits;
         assert(int_part < max_int_part && "exp2_q32: integer overflow");
-        if (int_part >= max_int_part) [[unlikely]] { return limits_t::max(); }
+        if (int_part >= max_int_part) [[unlikely]] { return out_limits_t::max(); }
 
-        static constexpr auto frac_mask = (in_value_t{1} << in_frac_bits) - 1;
+        static constexpr auto frac_mask = (std::make_unsigned_t<in_value_t>{1} << in_frac_bits) - 1;
         uint64_t              frac_part_q32;
         if constexpr (in_frac_bits > 32)
         {
@@ -135,11 +135,11 @@ public:
         }
         else if constexpr (in_frac_bits < 32)
         {
-            frac_part_q32 = static_cast<uint64_t>(input.value & frac_mask) << (32 - in_frac_bits);
+            frac_part_q32 = (static_cast<uint64_t>(input.value) & frac_mask) << (32 - in_frac_bits);
         }
         else
         {
-            frac_part_q32 = input.value & frac_mask;
+            frac_part_q32 = static_cast<uint64_t>(input.value) & frac_mask;
         }
 
         auto accumulator = poly_coeffs[poly_degree];
@@ -155,6 +155,7 @@ public:
         else
         {
             auto const shr = -final_shift;
+            if (shr > 64) [[unlikely]] { return 0;}
             return static_cast<out_value_t>((accumulator >> shr) + ((accumulator >> (shr - 1)) & 1));
         }
     }
