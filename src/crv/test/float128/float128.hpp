@@ -53,6 +53,13 @@ inline auto log2(float128_t src) -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_POW
+inline auto pow(float128_t src, float128_t exponent) -> float128_t
+{
+    return powq(src, exponent);
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_ROUND
 inline auto round(float128_t src) -> float128_t
 {

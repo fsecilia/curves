@@ -10,6 +10,7 @@ option(polyfill_float128_llround "Define std::llround(std::float128_t) polyfill"
 option(polyfill_float128_log2 "Define std::log2(std::float128_t)" ON)
 option(polyfill_float128_ostream_inserter "Define operator <<(std::ostream&, std::float128_t) polyfill" ON)
 option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
+option(polyfill_float128_pow "Define std::pow(std::float128_t) polyfill" ON)
 option(polyfill_float128_sqrt "Define std::sqrt(std::float128_t) polyfill" ON)
 
 if (BUILD_INTEGRATION_TESTS)
@@ -69,6 +70,10 @@ if (BUILD_INTEGRATION_TESTS)
 
         if (polyfill_float128_ostream_inserter)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_OSTREAM_INSERTER")
+        endif()
+
+        if (polyfill_float128_pow)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_POW")
         endif()
 
         if (polyfill_float128_round)
