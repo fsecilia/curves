@@ -47,9 +47,9 @@ if (BUILD_INTEGRATION_TESTS)
     if (libquadmath_FOUND)
         # add implementation to library
         target_sources(float128 PRIVATE float128.cpp)
-        target_link_libraries(float128 PUBLIC "${libquadmath}" lib)
-        target_compile_definitions(float128 PUBLIC "-DCRV_FEATURE_FLOAT_128")
         set_target_properties(float128 PROPERTIES CXX_EXTENSIONS TRUE)
+        target_compile_definitions(float128 PUBLIC "-DCRV_FEATURE_FLOAT_128")
+        target_link_libraries(float128 PUBLIC "${libquadmath}" lib)
 
         # Normally, the path to libquadmath should be included this way:
         #
