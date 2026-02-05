@@ -34,7 +34,7 @@ template <typename real_t> struct compensated_accumulator_t
         sum          = t;
     }
 
-    operator real_t() const { return sum; }
+    operator real_t() const { return sum + compensation; }
 
     constexpr auto operator<=>(compensated_accumulator_t const&) const noexcept -> auto = default;
     constexpr auto operator==(compensated_accumulator_t const&) const noexcept -> bool  = default;

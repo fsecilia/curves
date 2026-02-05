@@ -46,5 +46,12 @@ TEST_F(compensated_accumulator_test_t, catches_vanishing_udates)
     EXPECT_EQ(static_cast<float>(sut), large_value + expected_change);
 }
 
+TEST_F(compensated_accumulator_test_t, final_conversion_includes_compensation)
+{
+    auto const sut = sut_t{.sum = real_t{1}, .compensation = real_t{2}};
+    EXPECT_DOUBLE_EQ(sut.sum, 1.0);
+    EXPECT_DOUBLE_EQ(static_cast<real_t>(sut), 3.0);
+}
+
 } // namespace
 } // namespace crv
