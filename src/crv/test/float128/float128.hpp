@@ -26,49 +26,49 @@ namespace std {
 using ::float128_t;
 
 #if defined CRV_POLYFILL_FLOAT128_EXP2
-inline auto exp2(float128_t src) -> float128_t
+inline auto exp2(float128_t src) noexcept -> float128_t
 {
     return exp2q(src);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_LDEXP
-inline auto ldexp(float128_t src, int exponent) -> float128_t
+inline auto ldexp(float128_t src, int exponent) noexcept -> float128_t
 {
     return ldexpq(src, exponent);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_LLROUND
-inline auto llround(float128_t src) -> long long int
+inline auto llround(float128_t src) noexcept -> long long int
 {
     return llroundq(src);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_LOG2
-inline auto log2(float128_t src) -> float128_t
+inline auto log2(float128_t src) noexcept -> float128_t
 {
     return log2q(src);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_POW
-inline auto pow(float128_t src, float128_t exponent) -> float128_t
+inline auto pow(float128_t src, float128_t exponent) noexcept -> float128_t
 {
     return powq(src, exponent);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_ROUND
-inline auto round(float128_t src) -> float128_t
+inline auto round(float128_t src) noexcept -> float128_t
 {
     return roundq(src);
 }
 #endif
 
 #if defined CRV_POLYFILL_FLOAT128_SQRT
-inline auto sqrt(float128_t src) -> float128_t
+inline auto sqrt(float128_t src) noexcept -> float128_t
 {
     return sqrtq(src);
 }
