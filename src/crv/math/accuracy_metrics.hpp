@@ -150,9 +150,11 @@ struct error_accumulator_t
 // --------------------------------------------------------------------------------------------------------------------
 // Metric Policies
 // --------------------------------------------------------------------------------------------------------------------
+// These define how specific categories of error are calculated.
 
 namespace metric_policy {
 
+/// calcs signed diff
 struct diff_t
 {
     template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
@@ -167,6 +169,11 @@ struct diff_t
     constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
 };
 
+/**
+    calcs signed relative diff, diff/expected
+
+    Samples with expected value of 0 are omitted.
+*/
 struct rel_t
 {
     template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
@@ -185,6 +192,7 @@ struct rel_t
     constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
 };
 
+/// calcs signed ulps, units-in-last-place
 struct ulps_t
 {
     template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
@@ -232,6 +240,7 @@ struct error_metric_t
 // Error Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
+/// default policy used in prod
 struct default_error_metrics_policy_t
 {
     using arg_t  = int_t;
@@ -246,6 +255,7 @@ struct default_error_metrics_policy_t
     using ulps_metric_t = error_metric_t<arg_t, real_t, metric_policy::ulps_t>;
 };
 
+/// collects metrics about various types of error
 template <typename policy_t = default_error_metrics_policy_t> struct error_metrics_t
 {
     using arg_t         = policy_t::arg_t;
