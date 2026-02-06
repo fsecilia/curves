@@ -170,6 +170,9 @@ struct diff_t
         auto const diff = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
         error_accumulator.sample(arg, diff);
     }
+
+    constexpr auto operator<=>(diff_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
 };
 
 struct rel_t
@@ -185,6 +188,9 @@ struct rel_t
             error_accumulator.sample(arg, rel);
         }
     }
+
+    constexpr auto operator<=>(rel_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
 };
 
 struct ulps_t
@@ -197,6 +203,9 @@ struct ulps_t
         auto const ulps  = static_cast<error_accumulator_t::real_t>(actual.value) - ideal;
         error_accumulator.sample(arg, ulps);
     }
+
+    constexpr auto operator<=>(ulps_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace metric_policy
