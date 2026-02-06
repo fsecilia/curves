@@ -74,28 +74,25 @@ template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t,
           typename arg_max_t = arg_max_t<arg_t, real_t>>
 struct min_max_t
 {
-    arg_min_t min_signed;
-    arg_max_t max_signed;
+    arg_min_t min;
+    arg_max_t max;
 
-    constexpr auto max_mag() const noexcept -> real_t
-    {
-        return std::max(std::abs(min_signed.value), std::abs(max_signed.value));
-    }
+    constexpr auto max_mag() const noexcept -> real_t { return std::max(std::abs(min.value), std::abs(max.value)); }
 
     constexpr auto arg_max_mag() const noexcept -> arg_t
     {
-        return std::abs(min_signed.value) < std::abs(max_signed.value) ? max_signed.arg : min_signed.arg;
+        return std::abs(min.value) < std::abs(max.value) ? max.arg : min.arg;
     }
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void
     {
-        min_signed.sample(arg, value);
-        max_signed.sample(arg, value);
+        min.sample(arg, value);
+        max.sample(arg, value);
     }
 
     friend auto operator<<(std::ostream& out, min_max_t const& src) -> std::ostream&
     {
-        return out << "min = " << src.min_signed << "\nmax = " << src.max_signed;
+        return out << "min = " << src.min << "\nmax = " << src.max;
     }
 
     constexpr auto operator<=>(min_max_t const&) const noexcept -> auto = default;

@@ -199,10 +199,10 @@ TEST_F(min_max_test_t, sample)
 
     sut.sample(arg, value);
 
-    EXPECT_EQ(arg, sut.max_signed.arg);
-    EXPECT_EQ(value, sut.max_signed.value);
-    EXPECT_EQ(arg, sut.min_signed.arg);
-    EXPECT_EQ(value, sut.min_signed.value);
+    EXPECT_EQ(arg, sut.max.arg);
+    EXPECT_EQ(value, sut.max.value);
+    EXPECT_EQ(arg, sut.min.arg);
+    EXPECT_EQ(value, sut.min.value);
 }
 
 TEST_F(min_max_test_t, ostream_inserter)
