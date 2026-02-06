@@ -327,7 +327,14 @@ struct metric_policy_test_t : Test
     error_accumulator_t error_accumulator{};
 };
 
-TEST_F(metric_policy_test_t, diff_positive)
+// --------------------------------------------------------------------------------------------------------------------
+// Metric Policy Diff
+// --------------------------------------------------------------------------------------------------------------------
+
+struct metric_policy_test_diff_t : metric_policy_test_t
+{};
+
+TEST_F(metric_policy_test_diff_t, positive)
 {
     auto const sut = metric_policy::diff_t{};
 
@@ -338,7 +345,25 @@ TEST_F(metric_policy_test_t, diff_positive)
     EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
-TEST_F(metric_policy_test_t, rel_zero)
+TEST_F(metric_policy_test_diff_t, negative)
+{
+    auto const sut = metric_policy::diff_t{};
+
+    auto const actual = to_fixed<fixed_t>(expected - error);
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(arg, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(error, -error_accumulator.error);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// Metric Policy Rel
+// --------------------------------------------------------------------------------------------------------------------
+
+struct metric_policy_test_rel_t : metric_policy_test_t
+{};
+
+TEST_F(metric_policy_test_rel_t, zero)
 {
     auto const sut = metric_policy::rel_t{};
 
@@ -348,7 +373,7 @@ TEST_F(metric_policy_test_t, rel_zero)
     EXPECT_EQ(0, error_accumulator.error);
 }
 
-TEST_F(metric_policy_test_t, rel_nonzero)
+TEST_F(metric_policy_test_rel_t, nonzero)
 {
     auto const sut = metric_policy::rel_t{};
 
@@ -359,7 +384,14 @@ TEST_F(metric_policy_test_t, rel_nonzero)
     EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
-TEST_F(metric_policy_test_t, ulps_zero_error)
+// --------------------------------------------------------------------------------------------------------------------
+// Metric Policy Ulps
+// --------------------------------------------------------------------------------------------------------------------
+
+struct metric_policy_test_ulps_t : metric_policy_test_t
+{};
+
+TEST_F(metric_policy_test_ulps_t, zero_error)
 {
     auto const sut = metric_policy::ulps_t{};
 
@@ -371,7 +403,7 @@ TEST_F(metric_policy_test_t, ulps_zero_error)
     EXPECT_DOUBLE_EQ(0.0, error_accumulator.error);
 }
 
-TEST_F(metric_policy_test_t, ulps_one_high)
+TEST_F(metric_policy_test_ulps_t, one_high)
 {
     auto const sut = metric_policy::ulps_t{};
 
@@ -383,7 +415,7 @@ TEST_F(metric_policy_test_t, ulps_one_high)
     EXPECT_DOUBLE_EQ(error, error_accumulator.error);
 }
 
-TEST_F(metric_policy_test_t, ulps_ten_low)
+TEST_F(metric_policy_test_ulps_t, ten_low)
 {
     auto const sut = metric_policy::ulps_t{};
 
