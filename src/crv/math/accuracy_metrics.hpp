@@ -78,7 +78,6 @@ struct min_max_t
     arg_max_t max;
 
     constexpr auto max_mag() const noexcept -> real_t { return std::max(std::abs(min.value), std::abs(max.value)); }
-
     constexpr auto arg_max_mag() const noexcept -> arg_t
     {
         return std::abs(min.value) < std::abs(max.value) ? max.arg : min.arg;
@@ -130,7 +129,6 @@ struct error_accumulator_t
     }
 
     constexpr auto bias() const noexcept -> real_t { return sum / static_cast<real_t>(sample_count); }
-
     constexpr auto variance() const noexcept -> real_t
     {
         auto const bias = this->bias();
