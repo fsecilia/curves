@@ -24,21 +24,21 @@ template <typename real_t> struct compensated_accumulator_t;
 /// tracks min@arg
 template <typename arg_t, typename real_t> struct arg_min_t
 {
-    real_t min{max<real_t>()};
-    arg_t  arg_min{};
+    real_t value{max<real_t>()};
+    arg_t  arg{};
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void
     {
-        if (value < min)
+        if (value < this->value)
         {
-            min     = value;
-            arg_min = arg;
+            this->value = value;
+            this->arg   = arg;
         }
     }
 
     friend auto operator<<(std::ostream& out, arg_min_t const& src) -> std::ostream&
     {
-        return out << src.min << "@" << src.arg_min;
+        return out << src.value << "@" << src.arg;
     }
 
     constexpr auto operator<=>(arg_min_t const&) const noexcept -> auto = default;
@@ -48,21 +48,21 @@ template <typename arg_t, typename real_t> struct arg_min_t
 /// tracks max@arg
 template <typename arg_t, typename real_t> struct arg_max_t
 {
-    real_t max{min<real_t>()};
-    arg_t  arg_max{};
+    real_t value{min<real_t>()};
+    arg_t  arg{};
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void
     {
-        if (max < value)
+        if (this->value < value)
         {
-            max     = value;
-            arg_max = arg;
+            this->value = value;
+            this->arg   = arg;
         }
     }
 
     friend auto operator<<(std::ostream& out, arg_max_t const& src) -> std::ostream&
     {
-        return out << src.max << "@" << src.arg_max;
+        return out << src.value << "@" << src.arg;
     }
 
     constexpr auto operator<=>(arg_max_t const&) const noexcept -> auto = default;
@@ -79,12 +79,12 @@ struct min_max_t
 
     constexpr auto max_mag() const noexcept -> real_t
     {
-        return std::max(std::abs(min_signed.min), std::abs(max_signed.max));
+        return std::max(std::abs(min_signed.value), std::abs(max_signed.value));
     }
 
     constexpr auto arg_max_mag() const noexcept -> arg_t
     {
-        return std::abs(min_signed.min) < std::abs(max_signed.max) ? max_signed.arg_max : min_signed.arg_min;
+        return std::abs(min_signed.value) < std::abs(max_signed.value) ? max_signed.arg : min_signed.arg;
     }
 
     constexpr auto sample(arg_t arg, real_t value) noexcept -> void

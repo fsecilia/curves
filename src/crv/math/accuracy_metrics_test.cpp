@@ -24,16 +24,16 @@ struct arg_max_test_t : Test
     using real_t = float_t;
     using sut_t  = arg_max_t<int_t, real_t>;
 
-    static constexpr auto old_max     = 3.0;
-    static constexpr auto old_arg_max = 5;
-    static constexpr auto new_arg     = 10;
+    static constexpr auto old_max = 3.0;
+    static constexpr auto old_arg = 5;
+    static constexpr auto new_arg = 10;
 
-    sut_t sut{.max = old_max, .arg_max = old_arg_max};
+    sut_t sut{.value = old_max, .arg = old_arg};
 };
 
 TEST_F(arg_max_test_t, initializes_to_min)
 {
-    ASSERT_EQ(min<real_t>(), sut_t{}.max);
+    ASSERT_EQ(min<real_t>(), sut_t{}.value);
 }
 
 TEST_F(arg_max_test_t, sample_without_new_max)
@@ -41,8 +41,8 @@ TEST_F(arg_max_test_t, sample_without_new_max)
     auto const value = old_max - 1;
     sut.sample(new_arg, value);
 
-    ASSERT_EQ(old_max, sut.max);
-    ASSERT_EQ(old_arg_max, sut.arg_max);
+    ASSERT_EQ(old_max, sut.value);
+    ASSERT_EQ(old_arg, sut.arg);
 }
 
 TEST_F(arg_max_test_t, first_wins)
@@ -50,8 +50,8 @@ TEST_F(arg_max_test_t, first_wins)
     auto const value = old_max;
     sut.sample(new_arg, value);
 
-    ASSERT_EQ(old_max, sut.max);
-    ASSERT_EQ(old_arg_max, sut.arg_max);
+    ASSERT_EQ(old_max, sut.value);
+    ASSERT_EQ(old_arg, sut.arg);
 }
 
 TEST_F(arg_max_test_t, sample_new_max)
@@ -59,14 +59,14 @@ TEST_F(arg_max_test_t, sample_new_max)
     auto const new_max = old_max + 1;
     sut.sample(new_arg, new_max);
 
-    ASSERT_EQ(new_max, sut.max);
-    ASSERT_EQ(new_arg, sut.arg_max);
+    ASSERT_EQ(new_max, sut.value);
+    ASSERT_EQ(new_arg, sut.arg);
 }
 
 TEST_F(arg_max_test_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
-    expected << old_max << "@" << old_arg_max;
+    expected << old_max << "@" << old_arg;
 
     auto actual = std::ostringstream{};
     actual << sut;
@@ -84,16 +84,16 @@ struct arg_min_test_t : Test
     using real_t = float_t;
     using sut_t  = arg_min_t<int_t, real_t>;
 
-    static constexpr auto old_min     = 3.0;
-    static constexpr auto old_arg_min = 5;
-    static constexpr auto new_arg     = 10;
+    static constexpr auto old_min = 3.0;
+    static constexpr auto old_arg = 5;
+    static constexpr auto new_arg = 10;
 
-    sut_t sut{.min = old_min, .arg_min = old_arg_min};
+    sut_t sut{.value = old_min, .arg = old_arg};
 };
 
 TEST_F(arg_min_test_t, initializes_to_max)
 {
-    ASSERT_EQ(max<real_t>(), sut_t{}.min);
+    ASSERT_EQ(max<real_t>(), sut_t{}.value);
 }
 
 TEST_F(arg_min_test_t, sample_without_new_min)
@@ -101,8 +101,8 @@ TEST_F(arg_min_test_t, sample_without_new_min)
     auto const value = old_min + 1;
     sut.sample(new_arg, value);
 
-    ASSERT_EQ(old_min, sut.min);
-    ASSERT_EQ(old_arg_min, sut.arg_min);
+    ASSERT_EQ(old_min, sut.value);
+    ASSERT_EQ(old_arg, sut.arg);
 }
 
 TEST_F(arg_min_test_t, first_wins)
@@ -110,8 +110,8 @@ TEST_F(arg_min_test_t, first_wins)
     auto const value = old_min;
     sut.sample(new_arg, value);
 
-    ASSERT_EQ(old_min, sut.min);
-    ASSERT_EQ(old_arg_min, sut.arg_min);
+    ASSERT_EQ(old_min, sut.value);
+    ASSERT_EQ(old_arg, sut.arg);
 }
 
 TEST_F(arg_min_test_t, sample_new_min)
@@ -119,14 +119,14 @@ TEST_F(arg_min_test_t, sample_new_min)
     auto const new_min = old_min - 1;
     sut.sample(new_arg, new_min);
 
-    ASSERT_EQ(new_min, sut.min);
-    ASSERT_EQ(new_arg, sut.arg_min);
+    ASSERT_EQ(new_min, sut.value);
+    ASSERT_EQ(new_arg, sut.arg);
 }
 
 TEST_F(arg_min_test_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
-    expected << old_min << "@" << old_arg_min;
+    expected << old_min << "@" << old_arg;
 
     auto actual = std::ostringstream{};
     actual << sut;
@@ -152,13 +152,13 @@ struct min_max_test_t : Test
 
     struct arg_min_t
     {
-        arg_t  arg_min{min_max_test_t::arg_min};
-        real_t min{min_max_test_t::min};
+        arg_t  arg{arg_min};
+        real_t value{min};
 
-        constexpr auto sample(arg_t arg, real_t min) noexcept -> void
+        constexpr auto sample(arg_t arg, real_t value) noexcept -> void
         {
-            arg_min   = arg;
-            this->min = min;
+            this->arg   = arg;
+            this->value = value;
         }
 
         friend auto operator<<(std::ostream& out, arg_min_t const&) -> std::ostream& { return out << "arg_min"; }
@@ -166,13 +166,13 @@ struct min_max_test_t : Test
 
     struct arg_max_t
     {
-        arg_t  arg_max{min_max_test_t::arg_max};
-        real_t max{min_max_test_t::max};
+        arg_t  arg{min_max_test_t::arg_max};
+        real_t value{min_max_test_t::max};
 
-        constexpr auto sample(arg_t arg, real_t max) noexcept -> void
+        constexpr auto sample(arg_t arg, real_t value) noexcept -> void
         {
-            arg_max   = arg;
-            this->max = max;
+            this->arg   = arg;
+            this->value = value;
         }
 
         friend auto operator<<(std::ostream& out, arg_max_t const&) -> std::ostream& { return out << "arg_max"; }
@@ -194,15 +194,15 @@ TEST_F(min_max_test_t, arg_max_mag)
 
 TEST_F(min_max_test_t, sample)
 {
-    static constexpr auto sample_arg   = real_t{19.0};
-    static constexpr auto sample_value = real_t{17.0};
+    static constexpr auto arg   = real_t{19.0};
+    static constexpr auto value = real_t{17.0};
 
-    sut.sample(sample_arg, sample_value);
+    sut.sample(arg, value);
 
-    EXPECT_EQ(sample_arg, sut.max_signed.arg_max);
-    EXPECT_EQ(sample_value, sut.max_signed.max);
-    EXPECT_EQ(sample_arg, sut.min_signed.arg_min);
-    EXPECT_EQ(sample_value, sut.min_signed.min);
+    EXPECT_EQ(arg, sut.max_signed.arg);
+    EXPECT_EQ(value, sut.max_signed.value);
+    EXPECT_EQ(arg, sut.min_signed.arg);
+    EXPECT_EQ(value, sut.min_signed.value);
 }
 
 TEST_F(min_max_test_t, ostream_inserter)
