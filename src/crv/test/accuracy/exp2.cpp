@@ -78,8 +78,8 @@ auto test_exp2() noexcept -> void
         auto const min               = in_t{range.min};
         auto const max               = in_t{range.max};
 
-        auto const approx_impl = exp2_q32_t{};
-        // auto const approx_impl = preprod_exp2_t{};
+        // gauto const approx_impl = exp2_q32_t{};
+        auto const approx_impl = preprod_exp2_t{};
         run_accuracy_test<in_t, out_t, reference_t>(
             [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
             [](reference_t const& x) {

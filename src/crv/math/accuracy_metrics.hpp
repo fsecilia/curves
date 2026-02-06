@@ -107,13 +107,10 @@ struct min_max_t
 // --------------------------------------------------------------------------------------------------------------------
 
 /// tracks stats about an error metric and provides a summary
-template <typename t_arg_t, typename t_real_t, typename accumulator_t = compensated_accumulator_t<t_real_t>,
-          typename min_max_t = min_max_t<t_arg_t, t_real_t>>
+template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>,
+          typename min_max_t = min_max_t<arg_t, real_t>>
 struct error_accumulator_t
 {
-    using arg_t  = t_arg_t;
-    using real_t = t_real_t;
-
     accumulator_t sse{};
     accumulator_t sum{};
     min_max_t     min_max{};
@@ -163,11 +160,11 @@ namespace metric_policy {
 
 struct diff_t
 {
-    template <typename error_accumulator_t, typename fixed_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
-                              error_accumulator_t::real_t expected) const noexcept -> void
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
+                              real_t expected) const noexcept -> void
     {
-        auto const diff = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+        auto const diff = from_fixed<real_t>(actual) - expected;
         error_accumulator.sample(arg, diff);
     }
 
@@ -177,13 +174,13 @@ struct diff_t
 
 struct rel_t
 {
-    template <typename error_accumulator_t, typename fixed_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
-                              error_accumulator_t::real_t expected) const noexcept -> void
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
+                              real_t expected) const noexcept -> void
     {
-        if (std::abs(expected) > epsilon<typename error_accumulator_t::real_t>())
+        if (std::abs(expected) > epsilon<real_t>())
         {
-            auto const diff = from_fixed<typename error_accumulator_t::real_t>(actual) - expected;
+            auto const diff = from_fixed<real_t>(actual) - expected;
             auto const rel  = diff / expected;
             error_accumulator.sample(arg, rel);
         }
@@ -195,12 +192,12 @@ struct rel_t
 
 struct ulps_t
 {
-    template <typename error_accumulator_t, typename fixed_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, error_accumulator_t::arg_t arg, fixed_t actual,
-                              error_accumulator_t::real_t expected) const noexcept -> void
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
+                              real_t expected) const noexcept -> void
     {
         auto const ideal = std::round(std::ldexp(expected, fixed_t::frac_bits));
-        auto const ulps  = static_cast<error_accumulator_t::real_t>(actual.value) - ideal;
+        auto const ulps  = static_cast<real_t>(actual.value) - ideal;
         error_accumulator.sample(arg, ulps);
     }
 
