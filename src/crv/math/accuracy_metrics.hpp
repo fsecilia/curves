@@ -211,6 +211,32 @@ struct ulps_t
 } // namespace metric_policy
 
 // --------------------------------------------------------------------------------------------------------------------
+// Error Metric
+// --------------------------------------------------------------------------------------------------------------------
+
+/// associates an error accumulator with a metric policy to actually calc the specific type of error
+template <typename arg_t, typename real_t, typename policy_t,
+          typename error_accumulator_t = error_accumulator_t<arg_t, real_t>>
+struct error_metric_t
+{
+    [[no_unique_address]] policy_t policy;
+    error_accumulator_t            error_accumulator;
+
+    template <typename fixed_t> auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+    {
+        policy(error_accumulator, arg, actual, expected);
+    }
+
+    friend auto operator<<(std::ostream& out, error_metric_t const& src) -> std::ostream&
+    {
+        return out << src.error_accumulator;
+    }
+
+    constexpr auto operator<=>(error_metric_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(error_metric_t const&) const noexcept -> bool  = default;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
