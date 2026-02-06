@@ -368,7 +368,7 @@ TEST_F(metric_policy_test_rel_t, zero)
 {
     auto const sut = metric_policy::rel_t{};
 
-    sut(error_accumulator, arg, fixed_t{1}, 0);
+    sut(error_accumulator, arg, fixed_t{1}, 0.0);
 
     EXPECT_EQ(0, error_accumulator.arg);
     EXPECT_EQ(0, error_accumulator.error);
@@ -448,7 +448,7 @@ struct error_metric_test_t : Test
 
     using arg_t   = int_t;
     using fixed_t = int_t;
-    using real_t  = int_t;
+    using real_t  = float_t;
 
     struct policy_t
     {
@@ -505,7 +505,7 @@ struct error_metrics_test_t : Test
 {
     using arg_t   = int_t;
     using fixed_t = int_t;
-    using real_t  = int_t;
+    using real_t  = float_t;
 
     struct sample_results_t
     {
