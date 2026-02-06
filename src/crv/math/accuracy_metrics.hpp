@@ -219,7 +219,7 @@ struct error_metric_t
     [[no_unique_address]] policy_t policy;
     error_accumulator_t            error_accumulator;
 
-    template <typename fixed_t> auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
     {
         policy(error_accumulator, arg, actual, expected);
     }
