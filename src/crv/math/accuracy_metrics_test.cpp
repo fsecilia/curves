@@ -9,6 +9,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
 #include <sstream>
+#include <string_view>
 
 namespace crv {
 namespace {
@@ -494,6 +495,85 @@ TEST_F(error_metric_test_t, ostream_inserter)
     actual << sut;
 
     EXPECT_EQ(expected.str(), actual.str());
+}
+
+// ====================================================================================================================
+// Error Metrics
+// ====================================================================================================================
+
+struct error_metrics_test_t : Test
+{
+    using arg_t   = int_t;
+    using fixed_t = int_t;
+    using real_t  = int_t;
+
+    struct sample_results_t
+    {
+        arg_t   arg{};
+        fixed_t actual{};
+        real_t  expected{};
+
+        constexpr auto operator==(sample_results_t const&) const noexcept -> bool = default;
+    };
+
+    struct metric_t
+    {
+        std::string_view name;
+
+        sample_results_t sample_results{};
+
+        constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+        {
+            sample_results.arg      = arg;
+            sample_results.actual   = actual;
+            sample_results.expected = expected;
+        }
+
+        friend auto operator<<(std::ostream& out, metric_t const& src) -> std::ostream& { return out << src.name; }
+    };
+
+    struct policy_t
+    {
+        using arg_t  = int_t;
+        using real_t = int_t;
+
+        template <typename, typename> using diff_metric_t = metric_t;
+        template <typename, typename> using rel_metric_t  = metric_t;
+        template <typename, typename> using ulps_metric_t = metric_t;
+    };
+
+    using sut_t = error_metrics_t<policy_t>;
+
+    static constexpr auto expected_sample_results = sample_results_t{
+        .arg      = 7,
+        .actual   = 11,
+        .expected = 13,
+    };
+
+    sut_t sut{
+        .diff_metric = metric_t{.name = "diff"},
+        .rel_metric  = metric_t{.name = "rel"},
+        .ulps_metric = metric_t{.name = "ulps"},
+    };
+};
+
+TEST_F(error_metrics_test_t, sample)
+{
+    sut.sample(expected_sample_results.arg, expected_sample_results.actual, expected_sample_results.expected);
+
+    EXPECT_EQ(expected_sample_results, sut.diff_metric.sample_results);
+    EXPECT_EQ(expected_sample_results, sut.rel_metric.sample_results);
+    EXPECT_EQ(expected_sample_results, sut.ulps_metric.sample_results);
+}
+
+TEST_F(error_metrics_test_t, ostream_inserter)
+{
+    auto const expected = "diff:\ndiff\nrel:\nrel\nulps:\nulps";
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    EXPECT_EQ(expected, actual.str());
 }
 
 // ====================================================================================================================

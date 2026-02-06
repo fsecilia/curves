@@ -237,6 +237,52 @@ struct error_metric_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// Error Metrics
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_metrics_policy_t
+{
+    using arg_t  = int_t;
+    using real_t = float_t;
+
+    template <typename arg_t, typename real_t>
+    using diff_metric_t = error_metric_t<arg_t, real_t, metric_policy::diff_t>;
+
+    template <typename arg_t, typename real_t> using rel_metric_t = error_metric_t<arg_t, real_t, metric_policy::rel_t>;
+
+    template <typename arg_t, typename real_t>
+    using ulps_metric_t = error_metric_t<arg_t, real_t, metric_policy::ulps_t>;
+};
+
+template <typename policy_t> struct error_metrics_t
+{
+    using arg_t         = policy_t::arg_t;
+    using real_t        = policy_t::real_t;
+    using diff_metric_t = policy_t::template diff_metric_t<arg_t, real_t>;
+    using rel_metric_t  = policy_t::template rel_metric_t<arg_t, real_t>;
+    using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, real_t>;
+
+    diff_metric_t diff_metric;
+    rel_metric_t  rel_metric;
+    ulps_metric_t ulps_metric;
+
+    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+    {
+        diff_metric.sample(arg, actual, expected);
+        rel_metric.sample(arg, actual, expected);
+        ulps_metric.sample(arg, actual, expected);
+    }
+
+    friend auto operator<<(std::ostream& out, error_metrics_t const& src) -> std::ostream&
+    {
+        return out << "diff:\n" << src.diff_metric << "\nrel:\n" << src.rel_metric << "\nulps:\n" << src.ulps_metric;
+    }
+
+    constexpr auto operator<=>(error_metrics_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(error_metrics_t const&) const noexcept -> bool  = default;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
 // Accuracy Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
