@@ -5,8 +5,8 @@
 */
 
 #include <crv/lib.hpp>
-#include <crv/math/accuracy_metrics.hpp>
 #include <crv/math/compensated_accumulator.hpp>
+#include <crv/math/error_metrics.hpp>
 #include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/exp2.hpp>
 #include <crv/math/fixed/fixed.hpp>

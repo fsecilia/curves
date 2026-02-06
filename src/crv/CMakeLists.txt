@@ -7,8 +7,8 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
-    math/accuracy_metrics.hpp
     math/compensated_accumulator.hpp
+    math/error_metrics.hpp
     math/fixed/conversions.hpp
     math/fixed/io.hpp
     math/jet/jet.hpp
@@ -38,8 +38,8 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
-        math/accuracy_metrics_test.cpp
         math/compensated_accumulator_test.cpp
+        math/error_metrics_test.cpp
         math/fixed/test/conversions.cpp
         math/fixed/test/fixed.cpp
         math/jet/test/jet.cpp
