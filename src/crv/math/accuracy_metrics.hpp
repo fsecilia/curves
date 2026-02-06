@@ -240,7 +240,7 @@ struct error_metric_t
 // Error Metrics
 // --------------------------------------------------------------------------------------------------------------------
 
-struct error_metrics_policy_t
+struct default_error_metrics_policy_t
 {
     using arg_t  = int_t;
     using real_t = float_t;
@@ -254,7 +254,7 @@ struct error_metrics_policy_t
     using ulps_metric_t = error_metric_t<arg_t, real_t, metric_policy::ulps_t>;
 };
 
-template <typename policy_t> struct error_metrics_t
+template <typename policy_t = default_error_metrics_policy_t> struct error_metrics_t
 {
     using arg_t         = policy_t::arg_t;
     using real_t        = policy_t::real_t;
@@ -280,37 +280,6 @@ template <typename policy_t> struct error_metrics_t
 
     constexpr auto operator<=>(error_metrics_t const&) const noexcept -> auto = default;
     constexpr auto operator==(error_metrics_t const&) const noexcept -> bool  = default;
-};
-
-// --------------------------------------------------------------------------------------------------------------------
-// Accuracy Metrics
-// --------------------------------------------------------------------------------------------------------------------
-
-template <typename arg_t, typename real_t, typename error_accumulator_t = error_accumulator_t<arg_t, real_t>>
-struct accuracy_metrics_t
-{
-    error_accumulator_t abs{};
-    error_accumulator_t rel{};
-
-    constexpr auto abs_mse() const -> real_t { return abs.mse(); }
-    constexpr auto abs_rmse() const -> real_t { return abs.rmse(); }
-    constexpr auto rel_mse() const -> real_t { return rel.mse(); }
-    constexpr auto rel_rmse() const -> real_t { return rel.rmse(); }
-
-    constexpr auto sample(arg_t arg, real_t actual, real_t expected) noexcept -> void
-    {
-        auto const error = actual - expected;
-        abs.sample(arg, error);
-        if (std::abs(expected) > epsilon<real_t>()) rel.sample(arg, error / expected);
-    }
-
-    friend auto operator<<(std::ostream& out, accuracy_metrics_t const& src) -> std::ostream&
-    {
-        return out << "abs:\n" << src.abs << "\nrel:\n" << src.rel;
-    }
-
-    constexpr auto operator<=>(accuracy_metrics_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(accuracy_metrics_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv
