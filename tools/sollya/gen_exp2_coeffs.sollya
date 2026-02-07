@@ -2,20 +2,109 @@
 /*
     SPDX-License-Identifier: MIT
 
-    generates coefficients for exp2
+    generates coefficients and their exponents to approximate exp2m1, 2^x - 1
+
+    This implementation generates an array of normalized, 63-bit coefficients. Because they're normalized, the formats
+    vary, so it also generates an array of exponents for each coefficient. It targets 8 nonzero coefficients with a 0
+    constant term. This causes the function to go through exactly {0, 0} and the 64-bit coefficients fit in exactly one
+    64-bit cache line.
 */
 
+// use high precision internals
 prec = 512!;
 
-poly_degree = 7;
-poly_format = 48;
-poly_fixed = fpminimax(2^x, poly_degree, [|poly_format...|], [0;1], fixed, absolute);
+// --------------------------------------------------------------------------------------------------------------------
+// Calc Approximation
+// --------------------------------------------------------------------------------------------------------------------
 
-print("static constexpr auto poly_degree =", poly_degree, ";");
-print("static constexpr fixed_t<uint64_t, ", poly_format, "> poly_coeffs[] = {");
-for i from 0 to poly_degree do {
-  c = coeff(poly_fixed, i);
-  c_rounded = nearestint(c*2^poly_format);
-  print(c_rounded, ",");
+/*
+    define approximation
+
+    This deliberately omits the constant term from the basis, forcing it to be exactly 0. This way, the result will go
+    through 0 exactly.
+*/
+poly_func = 2^x - 1;
+poly_domain = [-0.5;0.5];
+poly_basis = [| x, x^2, x^3, x^4, x^5, x^6, x^7, x^8 |];
+poly_degree = length(poly_basis);
+
+/*
+    determine coeff formats from guess
+
+    fpminimax() requires frac_bits for every coefficient. remez() does not, so generate an initial solution to see the
+    coefficients fpminimax will need.
+*/
+poly_formats = [||];
+poly_guess = remez(poly_func, poly_basis, poly_domain);
+print("poly_guess", poly_guess);
+for i from 0 to poly_degree do
+{
+    c = coeff(poly_guess, i);
+    if (c != 0) then
+    {
+        coeff_int_bits = ceil(log2(abs(c)));
+        coeff_frac_bits = 63 - coeff_int_bits;
+        poly_formats = poly_formats :. coeff_frac_bits;
+    };
+};
+print("poly_formats", poly_formats);
+
+// generate approximation from guessed formats
+poly = fpminimax(poly_func, poly_basis, poly_formats, poly_domain, fixed, absolute);
+print("poly", poly);
+
+// --------------------------------------------------------------------------------------------------------------------
+// Format Output
+// --------------------------------------------------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------------------------------------------------
+// Format Output
+// --------------------------------------------------------------------------------------------------------------------
+
+print("static constexpr auto poly_degree =", poly_degree @ ";");
+
+print("static const uint64_t poly_coeffs[] = {");
+/*
+    Generate Coefficients: High Degree -> Low Degree (x^8 down to x^1)
+    This allows a standard ascending C++ loop (0..7) to function as a
+    standard Horner's evaluation.
+*/
+for j from 0 to poly_degree - 1 do
+{
+    // i counts down: 8, 7, 6... 1
+    i = poly_degree - j;
+
+    c = coeff(poly, i);
+    // Note: poly_formats is indexed 0..(degree-1), so x^1 is at index 0
+    frac_bits = poly_formats[i-1];
+
+    c_rounded = nearestint(c * 2^frac_bits);
+
+    print("    " @ c_rounded @ "ULL, // " @ c
+        @ " * x^" @ i @ " (Q" @ (63 - frac_bits) @ "." @ frac_bits @ ")");
+};
+print("};");
+
+print("static const int poly_shifts[] = {");
+/*
+    Generate Shifts: High Degree -> Low Degree
+    Calculates the 'delta' in fractional bits between the current term and the next.
+
+    Horner Step:
+    acc = (acc * x) >> (64 + shift[i]); // rough logic, depends on your x format
+    acc += coeffs[i+1];
+*/
+for j from 0 to poly_degree - 2 do
+{
+    // i counts down: 8, 7... 2
+    i = poly_degree - j;
+
+    curr_frac = poly_formats[i-1]; // Format of x^i (current)
+    next_frac = poly_formats[i-2]; // Format of x^(i-1) (next)
+
+    // How much more precision does the higher term have?
+    shift = curr_frac - next_frac;
+
+    print("    " @ shift @ ", // Shift delta between x^" @ i @ " (Q." @ curr_frac @ ") and x^" @ (i-1) @ " (Q." @ next_frac @ ")");
 };
 print("};");

@@ -12,6 +12,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/float128/float128.hpp>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -19,7 +20,7 @@
 namespace crv {
 namespace {
 
-#if defined CRV_FEATURE_FLOAT_128
+#if 0 && defined CRV_FEATURE_FLOAT_128
 using reference_float_t = float128_t;
 #else
 using reference_float_t = float64_t;
@@ -30,10 +31,29 @@ template <typename in_t, typename out_t, typename real_t, typename func_approx_t
 void run_accuracy_test(func_approx_t const& approx, func_ref_t const& ref, error_metrics_t& metrics, in_t const& min,
                        in_t const& max, in_t const& delta)
 {
+    using clock_t                         = std::chrono::steady_clock;
+    auto const            start_time      = clock_t::now();
+    auto                  prev_time       = start_time;
+    static constexpr auto update_interval = std::chrono::seconds(1);
+
     for (auto x_fixed = min; x_fixed <= max; x_fixed += delta)
     {
-        auto const x_real = from_fixed<real_t>(x_fixed);
-        metrics.sample(x_fixed, approx(x_fixed), ref(x_real));
+        static constexpr auto iterations_between_time_checks = 10000;
+        for (auto iteration = 0; iteration < iterations_between_time_checks && x_fixed <= max;
+             ++iteration, x_fixed += delta)
+        {
+            auto const x_real = from_fixed<real_t>(x_fixed);
+            metrics.sample(x_fixed, approx(x_fixed), ref(x_real));
+        }
+
+        auto const cur_time = clock_t::now();
+        if (cur_time - prev_time > update_interval)
+        {
+            prev_time = cur_time;
+            std::cout << 100 * (static_cast<real_t>(x_fixed.value) - static_cast<real_t>(min.value))
+                             / (static_cast<real_t>(max.value) - static_cast<real_t>(min.value))
+                      << "%" << std::endl;
+        }
     }
 
     std::cout << "[" << min << ", " << max << "], Δ = " << delta << "\n" << metrics << "\n" << std::endl;
@@ -54,20 +74,27 @@ auto test_exp2() noexcept -> void
     };
     using metrics_t = error_metrics_t<error_metrics_policy_t>;
 
-    auto const iterations       = 1000000;
+#if 1
+    auto const iterations       = 100000000;
     auto const max_rep_float    = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
     auto const max_rep_int      = static_cast<in_t::value_t>(max_rep_float);
     auto const max              = max_rep_int << in_t::frac_bits;
     auto const min              = -max;
     auto const iterations_denom = max - min;
+#else
+    auto const max = to_fixed<in_t>(0.5).value;
+    auto const min = -max;
+#endif
 
+#if 1
     struct ranges_t
     {
         int_t min;
         int_t max;
     };
     ranges_t ranges[] = {
-        {min, 0}, {min / 2, 0}, {min / 2, max / 2}, {0, max / 2}, {0, max}, {min, max},
+        {min, max},
+        // {min, 0}, {min / 2, 0}, {min / 2, max / 2}, {0, max / 2}, {0, max}, {min, max},
     };
     for (auto const& range : ranges)
     {
@@ -78,8 +105,9 @@ auto test_exp2() noexcept -> void
         auto const min               = in_t{range.min};
         auto const max               = in_t{range.max};
 
-        // gauto const approx_impl = exp2_q32_t{};
-        auto const approx_impl = preprod_exp2_t{};
+        // auto const approx_impl = exp2_q32_t{};
+        // auto const approx_impl = preprod_exp2_t{};
+        auto const approx_impl = exp2_minimax_t{};
         run_accuracy_test<in_t, out_t, reference_t>(
             [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
             [](reference_t const& x) {
@@ -88,6 +116,12 @@ auto test_exp2() noexcept -> void
             },
             metrics, min, max, delta);
     }
+#endif
+
+#if 0
+    auto const min = to_fixed<float_t>(-0.5);
+    auto const max = to_fixed<float_t>(-0.5);
+#endif
 }
 
 auto main(int, char*[]) -> int

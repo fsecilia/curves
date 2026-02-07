@@ -71,7 +71,8 @@ public:
 
         // Restore.
 
-        // TODO: this is basically a runtime implementation of convert_value. Both should use the same core function.
+        // TODO: this is basically a runtime implementation of fixed_t::convert_value. Both should use the same core
+        // function.
 
         // At the end of the Horner's loop, the number of fractional bits in
         // result is the number of fractional bits of coefficient 0. Shift
@@ -167,6 +168,129 @@ private:
     static constexpr auto     poly_degree   = 7;
     static constexpr uint64_t poly_coeffs[] = {
         4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
+    };
+};
+
+class exp2_minimax_t
+{
+public:
+    template <std::unsigned_integral out_value_t, int_t out_frac_bits, std::integral in_value_t, int_t in_frac_bits>
+    constexpr auto eval(crv::fixed_t<in_value_t, in_frac_bits> const& input) const noexcept
+        -> crv::fixed_t<out_value_t, out_frac_bits>
+    {
+        using out_limits = std::numeric_limits<out_value_t>;
+
+        // --------------------------------------------------------------------
+        // 1. Range Reduction to [-0.5, 0.5]
+        // --------------------------------------------------------------------
+        constexpr in_value_t half_bias = (in_value_t(1) << (in_frac_bits - 1));
+        auto const           input_val = input.value;
+
+        // k = round_to_nearest(input)
+        auto const int_part = (input_val + half_bias) >> in_frac_bits;
+
+        // r = input - k
+        // We use int128 to safely handle the subtraction of potentially large k
+        int128_t const frac_part = int128_t(input_val) - (int128_t(int_part) << in_frac_bits);
+
+        // --------------------------------------------------------------------
+        // 2. Bounds Check
+        // --------------------------------------------------------------------
+        static constexpr auto max_out_int = out_limits::digits - out_frac_bits;
+
+        // Overflow: if 2^k exceeds max output
+        if (int_part >= max_out_int) [[unlikely]] { return out_limits::max(); }
+        // Underflow: if 2^k is smaller than 1 ULP
+        if (int_part < -(int)out_frac_bits - 64) [[unlikely]] { return 0; }
+
+        // --------------------------------------------------------------------
+        // 3. Polynomial Evaluation (exp2(r) - 1)
+        // --------------------------------------------------------------------
+        // We accumulate in signed 128-bit.
+        // Coefficients are unsigned but treated as positive values in the signed accumulator.
+
+        // Start with x^8 (Q.82)
+        int128_t acc = poly_coeffs[0];
+
+        // Horner's Loop: Process x^8 down to x^1
+        // Loop runs 7 times (indices 0 to 6).
+        // Adds coeffs[1] (x^7) through coeffs[7] (x^1).
+        // #pragma unroll
+        for (int i = 0; i < poly_degree - 1; ++i)
+        {
+            acc *= frac_part;
+
+            // Shift = InputQ + DeltaQ
+            int const shift = in_frac_bits + poly_shifts[i];
+
+            // Rounding arithmetic right shift
+            acc = (acc + (int128_t(1) << (shift - 1))) >> shift;
+
+            acc += poly_coeffs[i + 1];
+        }
+
+        // Final Eval: Multiply by r one last time.
+        // Loop ended after adding x^1 (Q.63).
+        // So 'acc' is currently Q.63 aligned.
+        acc *= frac_part;
+
+        // Result is now Q(Input + 63).
+
+        // --------------------------------------------------------------------
+        // 4. Reconstruction (1.0 + acc) << k
+        // --------------------------------------------------------------------
+        // 1.0 in Q(Input + 63)
+        int128_t const one             = int128_t(1) << (in_frac_bits + 63);
+        int128_t const result_unscaled = one + acc;
+
+        // Final Shift: Convert Q(Input + 63) -> Q(Output)
+        // Adjust for exponent 'k' (int_part).
+        // right_shift = current_Q - target_Q - k
+        int const final_rshift = (in_frac_bits + 63) - out_frac_bits - static_cast<int>(int_part);
+
+        if (final_rshift >= 0)
+        {
+            if (final_rshift >= 128) [[unlikely]]
+                return 0;
+
+            // Rounding Right Shift
+            int128_t rnd = int128_t(1) << (final_rshift - 1);
+            return static_cast<out_value_t>((result_unscaled + rnd) >> final_rshift);
+        }
+        else
+        {
+            int const lshift = -final_rshift;
+            if (lshift >= 128) [[unlikely]]
+                return out_limits::max();
+            return static_cast<out_value_t>(result_unscaled << lshift);
+        }
+    }
+
+private:
+    static constexpr int poly_degree = 8;
+
+    static constexpr uint64_t const poly_coeffs[] = {
+        6413836306507499907ULL, // 1.3263502612079305838139673820319920476140662657371649402193725109100341796875e-6 *
+                                // x^8 (Q-19.82)
+        4627166657175798541ULL, // 1.5310010199470489785574110451764513751715668377073598094284534454345703125e-5 * x^7
+                                // (Q-15.78)
+        5819245827253372288ULL, // 1.5403415449549103224328831795997274412002298049628734588623046875e-4 * x^6 (Q-12.75)
+        6296544166165201635ULL, // 1.333345090645945436539436773464017971235762161086313426494598388671875e-3 * x^5
+                                // (Q-9.72)
+        5677541381735370902ULL, // 9.61812921945912777541769049516329204152498277835547924041748046875e-3 * x^4 (Q-6.69)
+        8190960810162982905ULL, // 5.55041094070145845732204732680958869650567066855728626251220703125e-2 * x^3 (Q-4.67)
+        8862793787060165486ULL, // 0.2402265069555415648978012599368270230115740559995174407958984375 * x^2 (Q-2.65)
+        6393154322474104270ULL, // 0.69314718054615170341435648193595397970057092607021331787109375 * x^1 (Q0.63)
+    };
+
+    static constexpr int const poly_shifts[] = {
+        4, // Shift delta between x^8 (Q.82) and x^7 (Q.78)
+        3, // Shift delta between x^7 (Q.78) and x^6 (Q.75)
+        3, // Shift delta between x^6 (Q.75) and x^5 (Q.72)
+        3, // Shift delta between x^5 (Q.72) and x^4 (Q.69)
+        2, // Shift delta between x^4 (Q.69) and x^3 (Q.67)
+        2, // Shift delta between x^3 (Q.67) and x^2 (Q.65)
+        2, // Shift delta between x^2 (Q.65) and x^1 (Q.63)
     };
 };
 
