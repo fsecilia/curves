@@ -20,7 +20,7 @@
 namespace crv {
 namespace {
 
-#if 0 && defined CRV_FEATURE_FLOAT_128
+#if defined CRV_FEATURE_FLOAT_128
 using reference_float_t = float128_t;
 #else
 using reference_float_t = float64_t;
@@ -49,7 +49,7 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
 
         for (auto x_fixed = min; x_fixed <= max; x_fixed += delta)
         {
-            static constexpr auto iterations_between_time_checks = 10000;
+            static constexpr auto iterations_between_time_checks = 1'000'000;
             for (auto iteration = 0; iteration < iterations_between_time_checks && x_fixed <= max;
                  ++iteration, x_fixed += delta)
             {
@@ -110,30 +110,34 @@ auto test_exp2() noexcept -> void
         },
     };
 
-    auto const iterations = 1000000;
-    auto const delta      = in_t{(max - min + iterations / 2) / iterations};
+    auto const iterations  = 1000000;
+    auto const coarse_step = (max - min + iterations / 2) / iterations;
 
-    struct ranges_t
+    struct range_t
     {
-        int_t min;
-        int_t max;
+        in_t min;
+        in_t max;
+        in_t step_size;
     };
-    ranges_t ranges[] = {
-        {min, 0}, {min / 2, 0}, {min / 2, max / 2}, {0, max / 2}, {0, max}, {min, max},
+
+    range_t ranges[] = {
+        {min, 0, coarse_step},
+        {min / 2, 0, coarse_step},
+        {min / 2, max / 2, coarse_step},
+        {0, max / 2, coarse_step},
+        {0, max, coarse_step},
+        {min, max, coarse_step},
+        {min, in_t{min} + to_fixed<in_t>(0.005), 1},
+        {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
+        {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
+        {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
+        {in_t{max} - to_fixed<in_t>(0.005), max, 1},
     };
     for (auto const& range : ranges)
     {
-        auto const min = in_t{range.min};
-        auto const max = in_t{range.max};
-
         metrics_t metrics;
-        accuracy_test(metrics, min, max, delta);
+        accuracy_test(metrics, range.min, range.max, range.step_size);
     }
-
-    auto const range_reduced_min     = to_fixed<in_t>(-0.5);
-    auto const range_reduced_max     = to_fixed<in_t>(0.5);
-    auto       range_reduced_metrics = metrics_t{};
-    accuracy_test(range_reduced_metrics, range_reduced_min, range_reduced_max, 1);
 }
 
 auto main(int, char*[]) -> int
