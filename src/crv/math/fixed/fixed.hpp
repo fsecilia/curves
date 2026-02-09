@@ -137,7 +137,7 @@ private:
 namespace detail::fixed {
 
 template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
-struct multiplication_result_f
+struct multiplication_result_t
 {
     static constexpr auto larger_type_size   = 2 * std::max(sizeof(lhs_value_t), sizeof(rhs_value_t));
     static constexpr auto either_type_signed = is_signed_v<lhs_value_t> || is_signed_v<rhs_value_t>;
@@ -151,7 +151,7 @@ struct multiplication_result_f
 
 template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
 using multiplication_result_t
-    = detail::fixed::multiplication_result_f<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>::type;
+    = detail::fixed::multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>::type;
 
 template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
 constexpr auto operator*(fixed_t<lhs_value_t, lhs_frac_bits>        lhs,

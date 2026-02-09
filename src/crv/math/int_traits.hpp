@@ -70,24 +70,24 @@ concept unsigned_integral = integral<value_t> && !signed_integral<value_t>;
 
 namespace detail::integer {
 
-template <int_t size, bool is_signed> struct sized_integer_f;
+template <int_t size, bool is_signed> struct sized_integer_t;
 
 // clang-format off
-template <> struct sized_integer_f<1, false> { using type = uint8_t; };
-template <> struct sized_integer_f<2, false> { using type = uint16_t; };
-template <> struct sized_integer_f<4, false> { using type = uint32_t; };
-template <> struct sized_integer_f<8, false> { using type = uint64_t; };
-template <> struct sized_integer_f<16, false> { using type = uint128_t; };
+template <> struct sized_integer_t<1, false> { using type = uint8_t; };
+template <> struct sized_integer_t<2, false> { using type = uint16_t; };
+template <> struct sized_integer_t<4, false> { using type = uint32_t; };
+template <> struct sized_integer_t<8, false> { using type = uint64_t; };
+template <> struct sized_integer_t<16, false> { using type = uint128_t; };
 
-template <> struct sized_integer_f<1, true> { using type = int8_t; };
-template <> struct sized_integer_f<2, true> { using type = int16_t; };
-template <> struct sized_integer_f<4, true> { using type = int32_t; };
-template <> struct sized_integer_f<8, true> { using type = int64_t; };
-template <> struct sized_integer_f<16, true> { using type = int128_t; };
+template <> struct sized_integer_t<1, true> { using type = int8_t; };
+template <> struct sized_integer_t<2, true> { using type = int16_t; };
+template <> struct sized_integer_t<4, true> { using type = int32_t; };
+template <> struct sized_integer_t<8, true> { using type = int64_t; };
+template <> struct sized_integer_t<16, true> { using type = int128_t; };
 // clang-format on
 
 } // namespace detail::integer
 
-template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_f<size, is_signed>::type;
+template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_t<size, is_signed>::type;
 
 } // namespace crv
