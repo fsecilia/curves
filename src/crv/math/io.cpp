@@ -18,7 +18,7 @@ auto operator<<(std::ostream& out, uint128_t src) -> std::ostream&
     auto cur = std::end(buffer);
     while (src > 0)
     {
-        *--cur = '0' + (src % 10);
+        *--cur = '0' + static_cast<char>(src % 10);
         src /= 10;
     }
 

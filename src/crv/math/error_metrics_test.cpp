@@ -22,7 +22,7 @@ struct arg_max_test_t : Test
 {
     using arg_t   = int_t;
     using value_t = float_t;
-    using sut_t   = arg_max_t<int_t, value_t>;
+    using sut_t   = arg_max_t<arg_t, value_t>;
 
     static constexpr auto old_max = 3.0;
     static constexpr auto old_arg = 5;
@@ -82,7 +82,7 @@ struct arg_min_test_t : Test
 {
     using arg_t   = int_t;
     using value_t = float_t;
-    using sut_t   = arg_min_t<int_t, value_t>;
+    using sut_t   = arg_min_t<arg_t, value_t>;
 
     static constexpr auto old_min = 3.0;
     static constexpr auto old_arg = 5;

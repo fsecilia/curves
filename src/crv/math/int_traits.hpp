@@ -88,6 +88,6 @@ template <> struct sized_integer_f<16, true> { using type = int128_t; };
 
 } // namespace detail::integer
 
-template <int_t size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_f<size, is_signed>::type;
+template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_f<size, is_signed>::type;
 
 } // namespace crv

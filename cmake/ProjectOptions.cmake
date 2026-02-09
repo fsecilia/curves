@@ -34,6 +34,8 @@ list(APPEND compile_options_common)
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     list(APPEND compile_options_common
         -Wall
+        -Wfloat-conversion
+        -Wdouble-promotion
         -Werror
         -Wextra
         -Wswitch-enum
