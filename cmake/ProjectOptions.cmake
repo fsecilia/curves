@@ -60,8 +60,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fsafe-buffer-usage-suggestions
 
         -Weverything
-        -Wno-c++23-compat
         -Wno-c++20-compat
+        -Wno-c++23-compat
         -Wno-c++98-compat
         -Wno-c++98-compat-pedantic
         -Wno-c99-extensions
