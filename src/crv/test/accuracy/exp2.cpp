@@ -20,7 +20,7 @@
 namespace crv {
 namespace {
 
-#if defined CRV_FEATURE_FLOAT_128
+#if 0 && defined CRV_FEATURE_FLOAT_128
 using reference_float_t = float128_t;
 #else
 using reference_float_t = float64_t;
@@ -98,7 +98,8 @@ auto test_exp2() noexcept -> void
     auto const min           = -max;
 
     // auto const approx_impl = exp2_q32_t{};
-    auto const approx_impl = preprod_exp2_t{};
+    // auto const approx_impl = preprod_exp2_t{};
+    auto const approx_impl = exp2_minimax_t{};
 
     auto const accuracy_test = accuracy_test_t{
         in_t{min},
@@ -127,11 +128,9 @@ auto test_exp2() noexcept -> void
         {0, max / 2, coarse_step},
         {0, max, coarse_step},
         {min, max, coarse_step},
-        {min, in_t{min} + to_fixed<in_t>(0.005), 1},
-        {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
-        {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
-        {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
-        {in_t{max} - to_fixed<in_t>(0.005), max, 1},
+        {min, in_t{min} + to_fixed<in_t>(0.5), 1},
+        {to_fixed<in_t>(-0.5), to_fixed<in_t>(0.5), 1},
+        {in_t{max} - to_fixed<in_t>(0.5), max, 1},
     };
     for (auto const& range : ranges)
     {

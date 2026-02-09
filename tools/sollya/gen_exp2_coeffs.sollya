@@ -8,9 +8,9 @@
     exp2m1(). It targets 8 nonzero coefficients with a 0 constant term. This causes the function to go through exactly
     {0, 0} and the 64-bit coefficients fill one 64-byte cache line.
 
-    Each coefficient is normalized, taking the top 63 bits of the scaled and rounded floating-point solution provided by
-    fpminimax(). Since each coefficient has its own format, an array of relative shifts to apply to each Horner's step
-    product is also generated.
+    Each coefficient is normalized, taking the top bits of the scaled and rounded floating-point solution provided by
+    fpminimax(). Since each coefficient has its own format, an array of frac bits for each coefficient is also
+    generated.
 
     The Horner's step becomes:
 
@@ -20,6 +20,9 @@
 
 // use high precision internals
 prec = 512!;
+
+// use 63 bits of precision
+coeff_precision = 63;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Calc Approximation
@@ -53,7 +56,7 @@ for power from 0 to poly_degree do
     if (c != 0) then
     {
         coeff_int_bits = ceil(log2(abs(c)));
-        coeff_frac_bits = 63 - coeff_int_bits;
+        coeff_frac_bits = coeff_precision - coeff_int_bits;
         poly_formats = poly_formats :. coeff_frac_bits;
     };
 };
@@ -87,12 +90,12 @@ for power from poly_degree to 1 by -1 do
     frac_bits = poly_formats[power - 1];
     c_fixed = nearestint(c * 2^frac_bits);
     print("    " @ c_fixed
-        @ "ULL, // " @ c @ "*x^" @ power @ " (Q" @ (63 - frac_bits) @ "." @ frac_bits @ ")");
+        @ "ULL, // " @ c @ "*x^" @ power @ " (Q" @ (coeff_precision - frac_bits) @ "." @ frac_bits @ ")");
 };
 print("};");
 
 /*
-    generate relative shifts in descending order
+    generate shifts in descending order
 
     These values are the difference in frac_bits between each successive coefficient. They describe an additional right
     shift to apply to each 128-bit product in the Horner's method loop before accumulating the next term. The order is
@@ -107,7 +110,14 @@ for power from poly_degree - 1 to 1 by -1 do
 
     print("    " @ shift
         @ ", // relative shift from "
-        @ "x^" @ (power + 1) @ " (Q" @ (63 - curr) @ "." @ curr @ ") to "
-        @ "x^" @ power       @ " (Q" @ (63 - next) @ "." @ next @ ")");
+        @ "x^" @ (power + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
+        @ "x^" @ power       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
 };
 print("};");
+
+/*
+    generate final absolute shift value
+
+    The final shift must be known to shift into the requested output format.
+*/
+print("static constexpr auto final_poly_shift =", poly_formats[0] @ ";");
