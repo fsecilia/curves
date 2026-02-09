@@ -21,8 +21,8 @@
 // use high precision internals
 prec = 512!;
 
-// use 63 bits of precision
-coeff_precision = 63;
+// precision of normalized coefficients
+coeff_precision = 64;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Calc Approximation

@@ -20,7 +20,7 @@
 namespace crv {
 namespace {
 
-#if 0 && defined CRV_FEATURE_FLOAT_128
+#if defined CRV_FEATURE_FLOAT_128
 using reference_float_t = float128_t;
 #else
 using reference_float_t = float64_t;
@@ -81,8 +81,8 @@ auto test_exp2() noexcept -> void
 {
     using std::log2;
 
-    using in_t        = crv::fixed_t<int64_t, 32>;
-    using out_t       = crv::fixed_t<uint64_t, 32>;
+    using in_t        = crv::fixed_t<int64_t, 48>;
+    using out_t       = crv::fixed_t<uint64_t, 48>;
     using reference_t = reference_float_t;
 
     struct error_metrics_policy_t : default_error_metrics_policy_t
@@ -113,6 +113,7 @@ auto test_exp2() noexcept -> void
 
     auto const iterations  = 1000000;
     auto const coarse_step = (max - min + iterations / 2) / iterations;
+    auto const fine_width  = coarse_step / 1000;
 
     struct range_t
     {
@@ -128,9 +129,11 @@ auto test_exp2() noexcept -> void
         {0, max / 2, coarse_step},
         {0, max, coarse_step},
         {min, max, coarse_step},
-        {min, in_t{min} + to_fixed<in_t>(0.5), 1},
-        {to_fixed<in_t>(-0.5), to_fixed<in_t>(0.5), 1},
-        {in_t{max} - to_fixed<in_t>(0.5), max, 1},
+        {min, in_t{min + fine_width}, 1},
+        {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.5) + in_t{fine_width}, 1},
+        {in_t{-fine_width}, in_t{fine_width}, 1},
+        {to_fixed<in_t>(0.5) - in_t{fine_width}, to_fixed<in_t>(0.5), 1},
+        {in_t{max - fine_width}, max, 1},
     };
     for (auto const& range : ranges)
     {
