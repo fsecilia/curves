@@ -20,9 +20,9 @@ namespace {
 
 struct arg_max_test_t : Test
 {
-    using arg_t  = int_t;
-    using real_t = float_t;
-    using sut_t  = arg_max_t<int_t, real_t>;
+    using arg_t   = int_t;
+    using value_t = float_t;
+    using sut_t   = arg_max_t<int_t, value_t>;
 
     static constexpr auto old_max = 3.0;
     static constexpr auto old_arg = 5;
@@ -33,7 +33,7 @@ struct arg_max_test_t : Test
 
 TEST_F(arg_max_test_t, initializes_to_min)
 {
-    ASSERT_EQ(min<real_t>(), sut_t{}.value);
+    ASSERT_EQ(min<value_t>(), sut_t{}.value);
 }
 
 TEST_F(arg_max_test_t, sample_without_new_max)
@@ -80,9 +80,9 @@ TEST_F(arg_max_test_t, ostream_inserter)
 
 struct arg_min_test_t : Test
 {
-    using arg_t  = int_t;
-    using real_t = float_t;
-    using sut_t  = arg_min_t<int_t, real_t>;
+    using arg_t   = int_t;
+    using value_t = float_t;
+    using sut_t   = arg_min_t<int_t, value_t>;
 
     static constexpr auto old_min = 3.0;
     static constexpr auto old_arg = 5;
@@ -93,7 +93,7 @@ struct arg_min_test_t : Test
 
 TEST_F(arg_min_test_t, initializes_to_max)
 {
-    ASSERT_EQ(max<real_t>(), sut_t{}.value);
+    ASSERT_EQ(max<value_t>(), sut_t{}.value);
 }
 
 TEST_F(arg_min_test_t, sample_without_new_min)
@@ -140,22 +140,22 @@ TEST_F(arg_min_test_t, ostream_inserter)
 
 struct min_max_test_t : Test
 {
-    using arg_t  = int_t;
-    using real_t = float_t;
+    using arg_t   = int_t;
+    using value_t = float_t;
 
-    static constexpr arg_t  arg_min     = 3;
-    static constexpr real_t min         = 1.1;
-    static constexpr arg_t  arg_max     = 5;
-    static constexpr real_t max         = 1.2;
-    static constexpr arg_t  arg_max_mag = arg_max;
-    static constexpr real_t max_mag     = 1.2;
+    static constexpr arg_t   arg_min     = 3;
+    static constexpr value_t min         = 1.1;
+    static constexpr arg_t   arg_max     = 5;
+    static constexpr value_t max         = 1.2;
+    static constexpr arg_t   arg_max_mag = arg_max;
+    static constexpr value_t max_mag     = 1.2;
 
     struct arg_min_t
     {
-        arg_t  arg{arg_min};
-        real_t value{min};
+        arg_t   arg{arg_min};
+        value_t value{min};
 
-        constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+        constexpr auto sample(arg_t arg, value_t value) noexcept -> void
         {
             this->arg   = arg;
             this->value = value;
@@ -166,10 +166,10 @@ struct min_max_test_t : Test
 
     struct arg_max_t
     {
-        arg_t  arg{min_max_test_t::arg_max};
-        real_t value{min_max_test_t::max};
+        arg_t   arg{min_max_test_t::arg_max};
+        value_t value{min_max_test_t::max};
 
-        constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+        constexpr auto sample(arg_t arg, value_t value) noexcept -> void
         {
             this->arg   = arg;
             this->value = value;
@@ -178,7 +178,7 @@ struct min_max_test_t : Test
         friend auto operator<<(std::ostream& out, arg_max_t const&) -> std::ostream& { return out << "arg_max"; }
     };
 
-    using sut_t = min_max_t<arg_t, real_t, arg_min_t, arg_max_t>;
+    using sut_t = min_max_t<arg_t, value_t, arg_min_t, arg_max_t>;
     sut_t sut{};
 };
 
@@ -194,8 +194,8 @@ TEST_F(min_max_test_t, arg_max_mag)
 
 TEST_F(min_max_test_t, sample)
 {
-    static constexpr auto arg   = real_t{19.0};
-    static constexpr auto value = real_t{17.0};
+    static constexpr auto arg   = value_t{19.0};
+    static constexpr auto value = value_t{17.0};
 
     sut.sample(arg, value);
 
@@ -220,14 +220,14 @@ TEST_F(min_max_test_t, ostream_inserter)
 struct error_accumulator_test_t : Test
 {
     using arg_t         = int_t;
-    using real_t        = float_t;
+    using value_t       = float_t;
     using accumulator_t = float_t;
 
     static constexpr auto arg          = arg_t{3};
-    static constexpr auto error        = real_t{15.2};
+    static constexpr auto error        = value_t{15.2};
     static constexpr auto sample_count = int_t{11};
 
-    static constexpr auto rmse = real_t{23.6};
+    static constexpr auto rmse = value_t{23.6};
     static constexpr auto mse  = rmse * rmse;
     static constexpr auto sse  = mse * sample_count;
 
@@ -237,10 +237,10 @@ struct error_accumulator_test_t : Test
 
     struct min_max_t
     {
-        arg_t  arg{};
-        real_t error{};
+        arg_t   arg{};
+        value_t error{};
 
-        constexpr auto sample(arg_t arg, real_t error) noexcept -> void
+        constexpr auto sample(arg_t arg, value_t error) noexcept -> void
         {
             this->arg   = arg;
             this->error = error;
@@ -249,7 +249,7 @@ struct error_accumulator_test_t : Test
         friend auto operator<<(std::ostream& out, min_max_t const&) -> std::ostream& { return out << "min_max"; }
     };
 
-    using sut_t = error_accumulator_t<arg_t, real_t, accumulator_t, min_max_t>;
+    using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, min_max_t>;
     sut_t sut{.sse = sse, .sum = sum, .min_max = {}, .sample_count = sample_count};
 };
 
@@ -303,22 +303,22 @@ TEST_F(error_accumulator_test_t, ostream_inserter)
 struct metric_policy_test_t : Test
 {
     using arg_t   = int_t;
-    using real_t  = float_t;
+    using value_t = float_t;
     using fixed_t = fixed_t<int64_t, 32>;
 
     static constexpr auto arg      = arg_t{372};
-    static constexpr auto error    = real_t{1.0};
-    static constexpr auto expected = real_t{4.0};
+    static constexpr auto error    = value_t{1.0};
+    static constexpr auto expected = value_t{4.0};
 
     struct error_accumulator_t
     {
-        using arg_t  = arg_t;
-        using real_t = real_t;
+        using arg_t   = arg_t;
+        using value_t = value_t;
 
-        arg_t  arg{};
-        real_t error{};
+        arg_t   arg{};
+        value_t error{};
 
-        auto sample(arg_t arg, real_t error) noexcept -> void
+        auto sample(arg_t arg, value_t error) noexcept -> void
         {
             this->arg   = arg;
             this->error = error;
@@ -448,16 +448,16 @@ struct error_metric_test_t : Test
 
     using arg_t   = int_t;
     using fixed_t = int_t;
-    using real_t  = float_t;
+    using value_t = float_t;
 
     struct policy_t
     {
         error_accumulator_t error_accumulator{};
         arg_t               arg{};
         fixed_t             actual{};
-        real_t              expected{};
+        value_t             expected{};
         auto                operator()(error_accumulator_t const& error_accumulator, arg_t arg, fixed_t actual,
-                        real_t expected) noexcept -> void
+                        value_t expected) noexcept -> void
         {
             this->error_accumulator = error_accumulator;
             this->arg               = arg;
@@ -466,13 +466,13 @@ struct error_metric_test_t : Test
         }
     };
 
-    using sut_t = error_metric_t<arg_t, real_t, policy_t, error_accumulator_t>;
+    using sut_t = error_metric_t<arg_t, value_t, policy_t, error_accumulator_t>;
 
     static constexpr auto error_accumulator_id = 5;
     error_accumulator_t   error_accumulator{.id = 5};
     arg_t                 arg{7};
     fixed_t               actual{11};
-    real_t                expected{13};
+    value_t               expected{13};
     sut_t                 sut{.policy = {}, .error_accumulator = error_accumulator};
 };
 
@@ -505,13 +505,13 @@ struct error_metrics_test_t : Test
 {
     using arg_t   = int_t;
     using fixed_t = int_t;
-    using real_t  = float_t;
+    using value_t = float_t;
 
     struct sample_results_t
     {
         arg_t   arg{};
         fixed_t actual{};
-        real_t  expected{};
+        value_t expected{};
 
         constexpr auto operator==(sample_results_t const&) const noexcept -> bool = default;
     };
@@ -522,7 +522,7 @@ struct error_metrics_test_t : Test
 
         sample_results_t sample_results{};
 
-        constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+        constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
         {
             sample_results.arg      = arg;
             sample_results.actual   = actual;
@@ -534,8 +534,8 @@ struct error_metrics_test_t : Test
 
     struct policy_t
     {
-        using arg_t  = int_t;
-        using real_t = int_t;
+        using arg_t   = int_t;
+        using value_t = int_t;
 
         template <typename, typename> using diff_metric_t = metric_t;
         template <typename, typename> using rel_metric_t  = metric_t;

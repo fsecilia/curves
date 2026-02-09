@@ -40,7 +40,7 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
 
         std::cout << "[" << min << ", " << max << "], Δ = " << delta << std::endl;
 
-        using real_t  = error_metrics_t::real_t;
+        using value_t = error_metrics_t::value_t;
         using clock_t = std::chrono::steady_clock;
 
         auto const            start_time      = clock_t::now();
@@ -53,7 +53,7 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
             for (auto iteration = 0; iteration < iterations_between_time_checks && x_fixed <= max;
                  ++iteration, x_fixed += delta)
             {
-                auto const x_real = from_fixed<real_t>(x_fixed);
+                auto const x_real = from_fixed<value_t>(x_fixed);
                 error_metrics.sample(x_fixed, approx(x_fixed), ref(x_real));
             }
 
@@ -62,8 +62,8 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
             {
                 prev_time = cur_time;
 
-                auto const completed = static_cast<real_t>(x_fixed.value) - static_cast<real_t>(min.value);
-                auto const total     = static_cast<real_t>(max.value) - static_cast<real_t>(min.value);
+                auto const completed = static_cast<value_t>(x_fixed.value) - static_cast<value_t>(min.value);
+                auto const total     = static_cast<value_t>(max.value) - static_cast<value_t>(min.value);
 
                 auto const elapsed = cur_time - start_time;
                 auto const remaining
@@ -88,7 +88,7 @@ auto test_exp2() noexcept -> void
     struct error_metrics_policy_t : default_error_metrics_policy_t
     {
         using arg_t  = in_t;
-        using real_t = reference_t;
+        using value_t = reference_t;
     };
     using metrics_t = error_metrics_t<error_metrics_policy_t>;
 

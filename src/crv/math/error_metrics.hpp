@@ -22,12 +22,12 @@ template <typename real_t> struct compensated_accumulator_t;
 // --------------------------------------------------------------------------------------------------------------------
 
 /// tracks min@arg
-template <typename arg_t, typename real_t> struct arg_min_t
+template <typename arg_t, typename value_t> struct arg_min_t
 {
-    real_t value{max<real_t>()};
-    arg_t  arg{};
+    value_t value{max<value_t>()};
+    arg_t   arg{};
 
-    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {
         if (value < this->value)
         {
@@ -46,12 +46,12 @@ template <typename arg_t, typename real_t> struct arg_min_t
 };
 
 /// tracks max@arg
-template <typename arg_t, typename real_t> struct arg_max_t
+template <typename arg_t, typename value_t> struct arg_max_t
 {
-    real_t value{min<real_t>()};
-    arg_t  arg{};
+    value_t value{min<value_t>()};
+    arg_t   arg{};
 
-    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {
         if (this->value < value)
         {
@@ -70,20 +70,20 @@ template <typename arg_t, typename real_t> struct arg_max_t
 };
 
 /// tracks signed min and max, max magnitude
-template <typename arg_t, typename real_t, typename arg_min_t = arg_min_t<arg_t, real_t>,
-          typename arg_max_t = arg_max_t<arg_t, real_t>>
+template <typename arg_t, typename value_t, typename arg_min_t = arg_min_t<arg_t, value_t>,
+          typename arg_max_t = arg_max_t<arg_t, value_t>>
 struct min_max_t
 {
     arg_min_t min;
     arg_max_t max;
 
-    constexpr auto max_mag() const noexcept -> real_t { return std::max(std::abs(min.value), std::abs(max.value)); }
+    constexpr auto max_mag() const noexcept -> value_t { return std::max(std::abs(min.value), std::abs(max.value)); }
     constexpr auto arg_max_mag() const noexcept -> arg_t
     {
         return std::abs(min.value) < std::abs(max.value) ? max.arg : min.arg;
     }
 
-    constexpr auto sample(arg_t arg, real_t value) noexcept -> void
+    constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {
         min.sample(arg, value);
         max.sample(arg, value);
@@ -103,8 +103,8 @@ struct min_max_t
 // --------------------------------------------------------------------------------------------------------------------
 
 /// tracks stats about an error metric and provides a summary
-template <typename arg_t, typename real_t, typename accumulator_t = compensated_accumulator_t<real_t>,
-          typename min_max_t = min_max_t<arg_t, real_t>>
+template <typename arg_t, typename value_t, typename accumulator_t = compensated_accumulator_t<value_t>,
+          typename min_max_t = min_max_t<arg_t, value_t>>
 struct error_accumulator_t
 {
     accumulator_t sse{};
@@ -112,7 +112,7 @@ struct error_accumulator_t
     min_max_t     min_max{};
     int_t         sample_count{};
 
-    constexpr auto sample(arg_t arg, real_t error) noexcept -> void
+    constexpr auto sample(arg_t arg, value_t error) noexcept -> void
     {
         ++sample_count;
 
@@ -121,15 +121,15 @@ struct error_accumulator_t
         min_max.sample(arg, error);
     }
 
-    constexpr auto mse() const noexcept -> real_t { return sse / static_cast<real_t>(sample_count); }
-    constexpr auto rmse() const noexcept -> real_t
+    constexpr auto mse() const noexcept -> value_t { return sse / static_cast<value_t>(sample_count); }
+    constexpr auto rmse() const noexcept -> value_t
     {
         using std::sqrt;
         return sqrt(mse());
     }
 
-    constexpr auto bias() const noexcept -> real_t { return sum / static_cast<real_t>(sample_count); }
-    constexpr auto variance() const noexcept -> real_t
+    constexpr auto bias() const noexcept -> value_t { return sum / static_cast<value_t>(sample_count); }
+    constexpr auto variance() const noexcept -> value_t
     {
         auto const bias = this->bias();
         return mse() - bias * bias;
@@ -157,11 +157,11 @@ namespace metric_policy {
 /// calcs signed diff
 struct diff_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
-                              real_t expected) const noexcept -> void
+                              value_t expected) const noexcept -> void
     {
-        auto const diff = from_fixed<real_t>(actual) - expected;
+        auto const diff = from_fixed<value_t>(actual) - expected;
         error_accumulator.sample(arg, diff);
     }
 
@@ -176,13 +176,13 @@ struct diff_t
 */
 struct rel_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
-                              real_t expected) const noexcept -> void
+                              value_t expected) const noexcept -> void
     {
-        if (std::abs(expected) > epsilon<real_t>())
+        if (std::abs(expected) > epsilon<value_t>())
         {
-            auto const diff = from_fixed<real_t>(actual) - expected;
+            auto const diff = from_fixed<value_t>(actual) - expected;
             auto const rel  = diff / expected;
             error_accumulator.sample(arg, rel);
         }
@@ -195,12 +195,12 @@ struct rel_t
 /// calcs signed ulps, units-in-last-place
 struct ulps_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename real_t>
+    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
-                              real_t expected) const noexcept -> void
+                              value_t expected) const noexcept -> void
     {
         auto const ideal = std::round(std::ldexp(expected, fixed_t::frac_bits));
-        auto const ulps  = static_cast<real_t>(actual.value) - ideal;
+        auto const ulps  = static_cast<value_t>(actual.value) - ideal;
         error_accumulator.sample(arg, ulps);
     }
 
@@ -215,14 +215,14 @@ struct ulps_t
 // --------------------------------------------------------------------------------------------------------------------
 
 /// associates an error accumulator with a metric policy to actually calc the specific type of error
-template <typename arg_t, typename real_t, typename policy_t,
-          typename error_accumulator_t = error_accumulator_t<arg_t, real_t>>
+template <typename arg_t, typename value_t, typename policy_t,
+          typename error_accumulator_t = error_accumulator_t<arg_t, value_t>>
 struct error_metric_t
 {
     [[no_unique_address]] policy_t policy;
     error_accumulator_t            error_accumulator;
 
-    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
         policy(error_accumulator, arg, actual, expected);
     }
@@ -243,32 +243,33 @@ struct error_metric_t
 /// default policy used in prod
 struct default_error_metrics_policy_t
 {
-    using arg_t  = int_t;
-    using real_t = float_t;
+    using arg_t   = int_t;
+    using value_t = float_t;
 
-    template <typename arg_t, typename real_t>
-    using diff_metric_t = error_metric_t<arg_t, real_t, metric_policy::diff_t>;
+    template <typename arg_t, typename value_t>
+    using diff_metric_t = error_metric_t<arg_t, value_t, metric_policy::diff_t>;
 
-    template <typename arg_t, typename real_t> using rel_metric_t = error_metric_t<arg_t, real_t, metric_policy::rel_t>;
+    template <typename arg_t, typename value_t>
+    using rel_metric_t = error_metric_t<arg_t, value_t, metric_policy::rel_t>;
 
-    template <typename arg_t, typename real_t>
-    using ulps_metric_t = error_metric_t<arg_t, real_t, metric_policy::ulps_t>;
+    template <typename arg_t, typename value_t>
+    using ulps_metric_t = error_metric_t<arg_t, value_t, metric_policy::ulps_t>;
 };
 
 /// collects metrics about various types of error
 template <typename policy_t = default_error_metrics_policy_t> struct error_metrics_t
 {
     using arg_t         = policy_t::arg_t;
-    using real_t        = policy_t::real_t;
-    using diff_metric_t = policy_t::template diff_metric_t<arg_t, real_t>;
-    using rel_metric_t  = policy_t::template rel_metric_t<arg_t, real_t>;
-    using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, real_t>;
+    using value_t       = policy_t::value_t;
+    using diff_metric_t = policy_t::template diff_metric_t<arg_t, value_t>;
+    using rel_metric_t  = policy_t::template rel_metric_t<arg_t, value_t>;
+    using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, value_t>;
 
     diff_metric_t diff_metric;
     rel_metric_t  rel_metric;
     ulps_metric_t ulps_metric;
 
-    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, real_t expected) noexcept -> void
+    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
         diff_metric.sample(arg, actual, expected);
         rel_metric.sample(arg, actual, expected);
