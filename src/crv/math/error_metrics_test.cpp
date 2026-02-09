@@ -194,7 +194,7 @@ TEST_F(min_max_test_t, arg_max_mag)
 
 TEST_F(min_max_test_t, sample)
 {
-    static constexpr auto arg   = value_t{19.0};
+    static constexpr auto arg   = arg_t{19};
     static constexpr auto value = value_t{17.0};
 
     sut.sample(arg, value);
@@ -534,8 +534,8 @@ struct error_metrics_test_t : Test
 
     struct policy_t
     {
-        using arg_t   = int_t;
-        using value_t = int_t;
+        using arg_t   = arg_t;
+        using value_t = value_t;
 
         template <typename, typename> using diff_metric_t = metric_t;
         template <typename, typename> using rel_metric_t  = metric_t;
