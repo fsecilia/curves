@@ -5,10 +5,12 @@
 */
 
 #include "error_metrics.hpp"
+#include "gmock/gmock.h"
 #include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
 #include <algorithm>
+#include <gmock/gmock.h>
 #include <map>
 #include <random>
 #include <sstream>
@@ -797,6 +799,59 @@ TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
     actual << sut;
 
     ASSERT_EQ(expected.str(), actual.str());
+}
+
+// ====================================================================================================================
+// Ulps Error Accumulator
+// ====================================================================================================================
+
+struct ulps_error_accumulator_test_t : Test
+{
+    using arg_t = int_t;
+    using int_t = int_t;
+
+    struct error_accumulator_t;
+    struct mock_error_accumulator_t
+    {
+        MOCK_METHOD(void, sample, (arg_t arg, float_t value), (const, noexcept));
+        MOCK_METHOD(std::ostream&, ostream_inserter, (std::ostream & out, error_accumulator_t const& src));
+
+        virtual ~mock_error_accumulator_t() = default;
+    };
+    StrictMock<mock_error_accumulator_t> mock_error_accumulator{};
+
+    struct error_accumulator_t
+    {
+        mock_error_accumulator_t* mock = nullptr;
+
+        auto sample(arg_t arg, float_t value) const noexcept -> void { mock->sample(arg, value); }
+
+        friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
+        {
+            return src.mock->ostream_inserter(out, src);
+        }
+    };
+
+    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t>;
+    sut_t sut{error_accumulator_t{&mock_error_accumulator}};
+};
+
+TEST_F(ulps_error_accumulator_test_t, sample)
+{
+    auto const arg   = arg_t{3};
+    auto const value = int_t{5};
+    EXPECT_CALL(mock_error_accumulator, sample(arg, static_cast<float_t>(value)));
+    sut.sample(arg, value);
+}
+
+TEST_F(ulps_error_accumulator_test_t, ostream_inserter)
+{
+    auto out = std::ostringstream{};
+    EXPECT_CALL(mock_error_accumulator, ostream_inserter(Ref(out), Ref(sut))).WillOnce(ReturnArg<0>());
+
+    decltype(auto) actual = out << sut;
+
+    EXPECT_EQ(&out, &actual);
 }
 
 // ====================================================================================================================
