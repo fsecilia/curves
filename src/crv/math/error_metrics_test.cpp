@@ -19,6 +19,24 @@
 namespace crv {
 namespace {
 
+struct mock_sampler_t
+{
+    MOCK_METHOD(void, sample, (int_t value));
+    MOCK_METHOD(void, sample, (int_t arg, float_t value));
+    virtual ~mock_sampler_t() = default;
+};
+
+struct sampler_t
+{
+    std::string_view name;
+    mock_sampler_t*  mock = nullptr;
+
+    auto sample(int_t value) -> void { mock->sample(value); }
+    auto sample(int_t arg, float_t value) -> void { mock->sample(arg, value); }
+
+    friend auto operator<<(std::ostream& out, sampler_t const& src) -> std::ostream& { return out << src.name; }
+};
+
 // ====================================================================================================================
 // Arg Max
 // ====================================================================================================================
@@ -699,23 +717,8 @@ struct distribution_test_t : Test
 {
     using value_t = int_t;
 
-    struct mock_sampler_t
-    {
-        MOCK_METHOD(void, sample, (value_t value));
-        virtual ~mock_sampler_t() = default;
-    };
-    StrictMock<mock_sampler_t> mock_histogram_sampler;
-    StrictMock<mock_sampler_t> mock_faithfully_rounded_fraction_sampler;
-
-    struct sampler_t
-    {
-        std::string_view name;
-        mock_sampler_t*  mock = nullptr;
-
-        auto sample(value_t value) -> void { mock->sample(value); }
-
-        friend auto operator<<(std::ostream& out, sampler_t const& src) -> std::ostream& { return out << src.name; }
-    };
+    StrictMock<mock_sampler_t> mock_histogram;
+    StrictMock<mock_sampler_t> mock_faithfully_rounded_fraction;
 
     using histogram_t                   = sampler_t;
     using faithfully_rounded_fraction_t = sampler_t;
@@ -725,7 +728,7 @@ struct distribution_test_t : Test
 
     struct mock_percentile_calculator_t
     {
-        MOCK_METHOD(percentile_result_t, call, (mock_sampler_t const& mock_histogram_sampler), (const, noexcept));
+        MOCK_METHOD(percentile_result_t, call, (mock_sampler_t const& mock_histogram), (const, noexcept));
         virtual ~mock_percentile_calculator_t() = default;
     };
     StrictMock<mock_percentile_calculator_t> mock_percentilies_calculator;
@@ -740,14 +743,13 @@ struct distribution_test_t : Test
     };
 
     using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t, faithfully_rounded_fraction_t>;
-    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram_sampler},
-              faithfully_rounded_fraction_t{"faithfully_rounded_fraction", &mock_faithfully_rounded_fraction_sampler}};
+    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram},
+              faithfully_rounded_fraction_t{"faithfully_rounded_fraction", &mock_faithfully_rounded_fraction}};
 };
 
 TEST_F(distribution_test_t, calc_percentiles)
 {
-    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram_sampler)))
-        .WillOnce(Return(expected_percentile_result));
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
 
     auto const actual = sut.calc_percentiles();
 
@@ -757,15 +759,14 @@ TEST_F(distribution_test_t, calc_percentiles)
 TEST_F(distribution_test_t, sample)
 {
     auto const ulps = int_t{13};
-    EXPECT_CALL(mock_histogram_sampler, sample(ulps));
-    EXPECT_CALL(mock_faithfully_rounded_fraction_sampler, sample(ulps));
+    EXPECT_CALL(mock_histogram, sample(ulps));
+    EXPECT_CALL(mock_faithfully_rounded_fraction, sample(ulps));
     sut.sample(ulps);
 }
 
 TEST_F(distribution_test_t, ostream_inserter)
 {
-    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram_sampler)))
-        .WillOnce(Return(expected_percentile_result));
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
 
     auto expected = std::ostringstream{};
     expected << expected_percentile_result << "\nfr_frac = faithfully_rounded_fraction";
