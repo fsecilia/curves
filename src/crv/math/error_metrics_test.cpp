@@ -722,15 +722,15 @@ TEST_F(error_accumulator_test_t, ostream_inserter)
 // Metric Policies
 // ====================================================================================================================
 
-struct metric_policy_test_t : Test
+template <typename t_value_t = float_t> struct metric_policy_test_t : Test
 {
     using arg_t   = int_t;
-    using value_t = float_t;
+    using value_t = t_value_t;
     using fixed_t = fixed_t<int64_t, 32>;
 
     static constexpr auto arg      = arg_t{372};
-    static constexpr auto error    = value_t{1.0};
-    static constexpr auto expected = value_t{4.0};
+    static constexpr auto error    = value_t{1};
+    static constexpr auto expected = value_t{4};
 
     struct error_accumulator_t
     {
@@ -754,7 +754,7 @@ struct metric_policy_test_t : Test
 // Metric Policy Diff
 // --------------------------------------------------------------------------------------------------------------------
 
-struct metric_policy_test_diff_t : metric_policy_test_t
+struct metric_policy_test_diff_t : metric_policy_test_t<>
 {};
 
 TEST_F(metric_policy_test_diff_t, positive)
@@ -783,7 +783,7 @@ TEST_F(metric_policy_test_diff_t, negative)
 // Metric Policy Rel
 // --------------------------------------------------------------------------------------------------------------------
 
-struct metric_policy_test_rel_t : metric_policy_test_t
+struct metric_policy_test_rel_t : metric_policy_test_t<>
 {};
 
 TEST_F(metric_policy_test_rel_t, zero)
@@ -811,14 +811,14 @@ TEST_F(metric_policy_test_rel_t, nonzero)
 // Metric Policy Ulps
 // --------------------------------------------------------------------------------------------------------------------
 
-struct metric_policy_test_ulps_t : metric_policy_test_t
+struct metric_policy_test_ulps_t : metric_policy_test_t<int_t>
 {};
 
 TEST_F(metric_policy_test_ulps_t, zero_error)
 {
     auto const sut = metric_policy::ulps_t{};
 
-    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
+    auto const ideal  = static_cast<int_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
     auto const actual = fixed_t{static_cast<fixed_t::value_t>(ideal)};
     sut(error_accumulator, arg, actual, expected);
 

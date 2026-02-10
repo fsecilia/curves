@@ -306,6 +306,26 @@ struct error_accumulator_t
     constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
 };
 
+template <typename arg_t, typename int_value_t, typename float_value_t,
+          typename error_accumulator_t = error_accumulator_t<arg_t, float_value_t>>
+struct ulps_error_accumulator_t : error_accumulator_t
+{
+    using value_t = int_value_t;
+
+    constexpr auto sample(arg_t arg, value_t error) noexcept -> void
+    {
+        error_accumulator_t::sample(arg, static_cast<float_value_t>(error));
+    }
+
+    friend auto operator<<(std::ostream& out, ulps_error_accumulator_t const& src) -> std::ostream&
+    {
+        return out << static_cast<error_accumulator_t const&>(src);
+    }
+
+    constexpr auto operator<=>(ulps_error_accumulator_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(ulps_error_accumulator_t const&) const noexcept -> bool  = default;
+};
+
 // --------------------------------------------------------------------------------------------------------------------
 // Metric Policies
 // --------------------------------------------------------------------------------------------------------------------
@@ -354,12 +374,13 @@ struct rel_t
 /// calcs signed ulps, units-in-last-place
 struct ulps_t
 {
-    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
+    template <int_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
                               value_t expected) const noexcept -> void
     {
-        auto const ideal = std::round(std::ldexp(expected, fixed_t::frac_bits));
-        auto const ulps  = static_cast<value_t>(actual.value) - ideal;
+        using int_value_t = error_accumulator_t::value_t;
+        auto const ideal  = static_cast<int_value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
+        auto const ulps   = actual.value - ideal;
         error_accumulator.sample(arg, ulps);
     }
 
@@ -412,7 +433,8 @@ struct default_error_metrics_policy_t
     using rel_metric_t = error_metric_t<arg_t, value_t, metric_policy::rel_t>;
 
     template <typename arg_t, typename value_t>
-    using ulps_metric_t = error_metric_t<arg_t, value_t, metric_policy::ulps_t>;
+    using ulps_metric_t
+        = error_metric_t<arg_t, value_t, metric_policy::ulps_t, ulps_error_accumulator_t<arg_t, int_t, value_t>>;
 };
 
 /// collects metrics about various types of error
