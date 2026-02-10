@@ -8,7 +8,9 @@
 #include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
+#include <algorithm>
 #include <map>
+#include <random>
 #include <sstream>
 #include <string_view>
 
@@ -385,6 +387,252 @@ TEST_F(integer_histogram_test_nontrivially_constructed_t, ostream_inserter)
     actual << sut;
 
     EXPECT_EQ(expected, actual.str());
+}
+
+// ====================================================================================================================
+// Histogram Percentiles
+// ====================================================================================================================
+
+struct percentiles_calculator_test_t : Test
+{
+    using data_t = std::vector<int_t>;
+    struct oracle_t
+    {
+        auto operator()(data_t data) const noexcept -> percentile_calculator_t::result_t
+        {
+            if (data.empty()) return {};
+
+            std::sort(data.begin(), data.end());
+            auto const total = static_cast<int64_t>(data.size());
+
+            auto const percentile = [&](auto percentage) noexcept {
+                auto const target_count = (total * percentage + 99) / 100;
+                return data[target_count - 1];
+            };
+            return {percentile(50), percentile(90), percentile(95), percentile(99), percentile(100)};
+        }
+    };
+
+    using histogram_t = histogram_t<int_t>;
+
+    using sut_t    = percentile_calculator_t;
+    using result_t = sut_t::result_t;
+    sut_t sut{};
+};
+
+TEST_F(percentiles_calculator_test_t, empty)
+{
+    auto const expected = result_t{};
+
+    auto const actual = sut(histogram_t{});
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, segments_1)
+{
+    auto const expected = result_t{.p50 = 10, .p90 = 10, .p95 = 10, .p99 = 10, .p100 = 10};
+
+    auto histogram = histogram_t{};
+
+    histogram.sample(10);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, segments_2)
+{
+    auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 10, .p99 = 10, .p100 = 10};
+
+    auto histogram = histogram_t{};
+
+    histogram.sample(-10);
+    histogram.sample(10);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, segments_10)
+{
+    auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 100, .p99 = 100, .p100 = 100};
+
+    auto histogram = histogram_t{};
+
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(100);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, segments_20)
+{
+    auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 50, .p99 = 100, .p100 = 100};
+
+    auto histogram = histogram_t{};
+
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+    histogram.sample(-10);
+
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(10);
+    histogram.sample(50);
+    histogram.sample(100);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, segments_100)
+{
+    auto const expected = result_t{.p50 = 50, .p90 = 90, .p95 = 95, .p99 = 99, .p100 = 100};
+
+    auto histogram = histogram_t{};
+    for (auto value = 1; value <= 100; ++value) histogram.sample(value);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, all_in_one_bin)
+{
+    auto const expected = result_t{.p50 = 5, .p90 = 5, .p95 = 5, .p99 = 5, .p100 = 5};
+
+    auto histogram = histogram_t{};
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+    histogram.sample(5);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(percentiles_calculator_test_t, sparse_step)
+{
+    auto const expected = result_t{.p50 = 0, .p90 = 1000, .p95 = 1000, .p99 = 1000, .p100 = 1000};
+
+    auto histogram = histogram_t{};
+    histogram.sample(-1000);
+    histogram.sample(0);
+    histogram.sample(1000);
+
+    auto const actual = sut(histogram);
+
+    EXPECT_EQ(expected, actual);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// Fuzz Testing
+// --------------------------------------------------------------------------------------------------------------------
+
+struct percentiles_calculator_fuzz_test_t : percentiles_calculator_test_t
+{
+    struct oracle_t
+    {
+        auto operator()(data_t data) const noexcept -> percentile_calculator_t::result_t
+        {
+            if (data.empty()) return {};
+
+            std::sort(data.begin(), data.end());
+            auto const total = static_cast<int64_t>(data.size());
+
+            auto const percentile = [&](auto percentage) noexcept {
+                auto const target_count = (total * percentage + 99) / 100;
+                return data[target_count - 1];
+            };
+            return {percentile(50), percentile(90), percentile(95), percentile(99), percentile(100)};
+        }
+    };
+    oracle_t oracle{};
+
+    int_t const iteration_count = 1000;
+
+    std::mt19937 rng{0xF012345678};
+
+    std::uniform_int_distribution<int_t> value_distribution{-1000, 1000};
+    std::uniform_int_distribution<int_t> size_distribution{1, 10000};
+
+    auto fuzz(data_t const& data, histogram_t const& histogram, int_t iteration) const -> void
+    {
+        auto const expected = oracle(data);
+
+        auto const actual = sut(histogram);
+
+        EXPECT_EQ(expected, actual) << "mismatch on iteration " << iteration << "!\n"
+                                    << "samples: " << std::size(data) << "\n"
+                                    << "expected: " << expected << "\n"
+                                    << "actual:   " << actual << "\n";
+    }
+
+    auto fuzz(int_t iteration) -> void
+    {
+        auto const size = size_distribution(rng);
+
+        auto data = data_t{};
+        data.reserve(size);
+
+        auto histogram = histogram_t{};
+
+        for (auto sample_index = 0; sample_index < size; ++sample_index)
+        {
+            auto const value = value_distribution(rng);
+            data.push_back(value);
+            histogram.sample(value);
+        }
+
+        fuzz(data, histogram, iteration);
+    }
+
+    auto fuzz() -> void
+    {
+        for (auto iteration = 0; iteration < iteration_count; ++iteration) { fuzz(iteration); }
+    }
+};
+
+TEST_F(percentiles_calculator_fuzz_test_t, fuzz)
+{
+    fuzz();
 }
 
 // ====================================================================================================================
