@@ -395,7 +395,7 @@ TEST_F(integer_histogram_test_nontrivially_constructed_t, ostream_inserter)
 // Histogram Percentiles
 // ====================================================================================================================
 
-struct percentiles_calculator_test_t : Test
+struct percentile_calculator_test_t : Test
 {
     using data_t = std::vector<int_t>;
     struct oracle_t
@@ -422,7 +422,7 @@ struct percentiles_calculator_test_t : Test
     sut_t sut{};
 };
 
-TEST_F(percentiles_calculator_test_t, empty)
+TEST_F(percentile_calculator_test_t, empty)
 {
     auto const expected = result_t{};
 
@@ -431,7 +431,7 @@ TEST_F(percentiles_calculator_test_t, empty)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, segments_1)
+TEST_F(percentile_calculator_test_t, segments_1)
 {
     auto const expected = result_t{.p50 = 10, .p90 = 10, .p95 = 10, .p99 = 10, .p100 = 10};
 
@@ -444,7 +444,7 @@ TEST_F(percentiles_calculator_test_t, segments_1)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, segments_2)
+TEST_F(percentile_calculator_test_t, segments_2)
 {
     auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 10, .p99 = 10, .p100 = 10};
 
@@ -458,7 +458,7 @@ TEST_F(percentiles_calculator_test_t, segments_2)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, segments_10)
+TEST_F(percentile_calculator_test_t, segments_10)
 {
     auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 100, .p99 = 100, .p100 = 100};
 
@@ -481,7 +481,7 @@ TEST_F(percentiles_calculator_test_t, segments_10)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, segments_20)
+TEST_F(percentile_calculator_test_t, segments_20)
 {
     auto const expected = result_t{.p50 = -10, .p90 = 10, .p95 = 50, .p99 = 100, .p100 = 100};
 
@@ -516,7 +516,7 @@ TEST_F(percentiles_calculator_test_t, segments_20)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, segments_100)
+TEST_F(percentile_calculator_test_t, segments_100)
 {
     auto const expected = result_t{.p50 = 50, .p90 = 90, .p95 = 95, .p99 = 99, .p100 = 100};
 
@@ -528,7 +528,7 @@ TEST_F(percentiles_calculator_test_t, segments_100)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, all_in_one_bin)
+TEST_F(percentile_calculator_test_t, all_in_one_bin)
 {
     auto const expected = result_t{.p50 = 5, .p90 = 5, .p95 = 5, .p99 = 5, .p100 = 5};
 
@@ -550,7 +550,7 @@ TEST_F(percentiles_calculator_test_t, all_in_one_bin)
     EXPECT_EQ(expected, actual);
 }
 
-TEST_F(percentiles_calculator_test_t, sparse_step)
+TEST_F(percentile_calculator_test_t, sparse_step)
 {
     auto const expected = result_t{.p50 = 0, .p90 = 1000, .p95 = 1000, .p99 = 1000, .p100 = 1000};
 
@@ -568,7 +568,7 @@ TEST_F(percentiles_calculator_test_t, sparse_step)
 // Fuzz Testing
 // --------------------------------------------------------------------------------------------------------------------
 
-struct percentiles_calculator_fuzz_test_t : percentiles_calculator_test_t
+struct percentile_calculator_fuzz_test_t : percentile_calculator_test_t
 {
     struct oracle_t
     {
@@ -632,7 +632,7 @@ struct percentiles_calculator_fuzz_test_t : percentiles_calculator_test_t
     }
 };
 
-TEST_F(percentiles_calculator_fuzz_test_t, fuzz)
+TEST_F(percentile_calculator_fuzz_test_t, fuzz)
 {
     fuzz();
 }
