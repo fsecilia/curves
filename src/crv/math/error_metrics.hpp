@@ -389,19 +389,23 @@ struct error_accumulator_t
 };
 
 template <typename arg_t, typename int_value_t, typename float_value_t,
-          typename error_accumulator_t = error_accumulator_t<arg_t, float_value_t>>
+          typename error_accumulator_t = error_accumulator_t<arg_t, float_value_t>,
+          typename distribution_t      = distribution_t<int_value_t, float_value_t>>
 struct ulps_error_accumulator_t : error_accumulator_t
 {
     using value_t = int_value_t;
 
+    distribution_t distribution{};
+
     constexpr auto sample(arg_t arg, value_t error) noexcept -> void
     {
         error_accumulator_t::sample(arg, static_cast<float_value_t>(error));
+        distribution.sample(error);
     }
 
     friend auto operator<<(std::ostream& out, ulps_error_accumulator_t const& src) -> std::ostream&
     {
-        return out << static_cast<error_accumulator_t const&>(src);
+        return out << static_cast<error_accumulator_t const&>(src) << "\n" << src.distribution;
     }
 
     constexpr auto operator<=>(ulps_error_accumulator_t const&) const noexcept -> auto = default;

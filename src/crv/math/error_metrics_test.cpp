@@ -894,32 +894,16 @@ TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
 struct ulps_error_accumulator_test_t : Test
 {
     using arg_t = int_t;
-    using int_t = int_t;
 
-    struct error_accumulator_t;
-    struct mock_error_accumulator_t
-    {
-        MOCK_METHOD(void, sample, (arg_t arg, float_t value), (const, noexcept));
-        MOCK_METHOD(std::ostream&, ostream_inserter, (std::ostream & out, error_accumulator_t const& src));
+    StrictMock<mock_sampler_t> mock_error_accumulator;
+    StrictMock<mock_sampler_t> mock_distribution;
 
-        virtual ~mock_error_accumulator_t() = default;
-    };
-    StrictMock<mock_error_accumulator_t> mock_error_accumulator{};
+    using error_accumulator_t = sampler_t;
+    using distribution_t      = sampler_t;
 
-    struct error_accumulator_t
-    {
-        mock_error_accumulator_t* mock = nullptr;
-
-        auto sample(arg_t arg, float_t value) const noexcept -> void { mock->sample(arg, value); }
-
-        friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
-        {
-            return src.mock->ostream_inserter(out, src);
-        }
-    };
-
-    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t>;
-    sut_t sut{error_accumulator_t{&mock_error_accumulator}};
+    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t, distribution_t>;
+    sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator},
+              distribution_t{"distribution", &mock_distribution}};
 };
 
 TEST_F(ulps_error_accumulator_test_t, sample)
@@ -927,17 +911,18 @@ TEST_F(ulps_error_accumulator_test_t, sample)
     auto const arg   = arg_t{3};
     auto const value = int_t{5};
     EXPECT_CALL(mock_error_accumulator, sample(arg, static_cast<float_t>(value)));
+    EXPECT_CALL(mock_distribution, sample(value));
     sut.sample(arg, value);
 }
 
 TEST_F(ulps_error_accumulator_test_t, ostream_inserter)
 {
-    auto out = std::ostringstream{};
-    EXPECT_CALL(mock_error_accumulator, ostream_inserter(Ref(out), Ref(sut))).WillOnce(ReturnArg<0>());
+    auto const expected = "error_accumulator\ndistribution";
 
-    decltype(auto) actual = out << sut;
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
 
-    EXPECT_EQ(&out, &actual);
+    EXPECT_EQ(expected, actual.str());
 }
 
 // ====================================================================================================================
