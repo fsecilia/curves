@@ -659,20 +659,20 @@ TEST_F(percentile_calculator_fuzz_test_t, fuzz)
 // Faithfully-Rounded Fraction
 // ====================================================================================================================
 
-struct faithfully_rounded_fraction_test_t : Test
+struct fr_frac_test_t : Test
 {
     using ulps_t  = int_t;
     using float_t = float_t;
-    using sut_t   = faithfully_rounded_fraction_t<ulps_t, float_t>;
+    using sut_t   = fr_frac_t<ulps_t, float_t>;
     sut_t sut{};
 };
 
-TEST_F(faithfully_rounded_fraction_test_t, result_initially_zero)
+TEST_F(fr_frac_test_t, result_initially_zero)
 {
     EXPECT_EQ(0, sut.result());
 }
 
-TEST_F(faithfully_rounded_fraction_test_t, sample_zero)
+TEST_F(fr_frac_test_t, sample_zero)
 {
     sut.sample(0);
     EXPECT_EQ(1, sut.faithfully_rounded_count);
@@ -680,7 +680,7 @@ TEST_F(faithfully_rounded_fraction_test_t, sample_zero)
     EXPECT_EQ(1, sut.result());
 }
 
-TEST_F(faithfully_rounded_fraction_test_t, sample_pass)
+TEST_F(fr_frac_test_t, sample_pass)
 {
     sut.sample(1);
     EXPECT_EQ(1, sut.faithfully_rounded_count);
@@ -688,7 +688,7 @@ TEST_F(faithfully_rounded_fraction_test_t, sample_pass)
     EXPECT_EQ(1, sut.result());
 }
 
-TEST_F(faithfully_rounded_fraction_test_t, sample_fail)
+TEST_F(fr_frac_test_t, sample_fail)
 {
     sut.sample(2);
     EXPECT_EQ(0, sut.faithfully_rounded_count);
@@ -696,7 +696,7 @@ TEST_F(faithfully_rounded_fraction_test_t, sample_fail)
     EXPECT_EQ(0, sut.result());
 }
 
-TEST_F(faithfully_rounded_fraction_test_t, multiple_samples)
+TEST_F(fr_frac_test_t, multiple_samples)
 {
     sut.sample(0);
     sut.sample(1);
@@ -718,10 +718,10 @@ struct distribution_test_t : Test
     using value_t = int_t;
 
     StrictMock<mock_sampler_t> mock_histogram;
-    StrictMock<mock_sampler_t> mock_faithfully_rounded_fraction;
+    StrictMock<mock_sampler_t> mock_fr_frac;
 
-    using histogram_t                   = sampler_t;
-    using faithfully_rounded_fraction_t = sampler_t;
+    using histogram_t = sampler_t;
+    using fr_frac_t   = sampler_t;
 
     using percentile_result_t                        = int_t;
     static constexpr auto expected_percentile_result = percentile_result_t{17};
@@ -742,9 +742,9 @@ struct distribution_test_t : Test
         auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
     };
 
-    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t, faithfully_rounded_fraction_t>;
+    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t, fr_frac_t>;
     sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram},
-              faithfully_rounded_fraction_t{"faithfully_rounded_fraction", &mock_faithfully_rounded_fraction}};
+              fr_frac_t{"fr_frac", &mock_fr_frac}};
 };
 
 TEST_F(distribution_test_t, calc_percentiles)
@@ -760,7 +760,7 @@ TEST_F(distribution_test_t, sample)
 {
     auto const ulps = int_t{13};
     EXPECT_CALL(mock_histogram, sample(ulps));
-    EXPECT_CALL(mock_faithfully_rounded_fraction, sample(ulps));
+    EXPECT_CALL(mock_fr_frac, sample(ulps));
     sut.sample(ulps);
 }
 
@@ -769,7 +769,7 @@ TEST_F(distribution_test_t, ostream_inserter)
     EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
 
     auto expected = std::ostringstream{};
-    expected << expected_percentile_result << "\nfr_frac = faithfully_rounded_fraction";
+    expected << expected_percentile_result << "\nfr_frac = fr_frac";
 
     auto actual = std::ostringstream{};
     actual << sut;

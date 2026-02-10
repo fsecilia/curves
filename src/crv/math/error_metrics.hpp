@@ -253,7 +253,8 @@ struct percentile_calculator_t
 // Faithfully-Rounded Fraction
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename ulps_t, typename float_t> struct faithfully_rounded_fraction_t
+// fr_frac is the fraction of faithfully-rounded samples that are within 1-ulp of the expected result.
+template <typename ulps_t, typename float_t> struct fr_frac_t
 {
     int_t faithfully_rounded_count{};
     int_t sample_count{};
@@ -271,13 +272,10 @@ template <typename ulps_t, typename float_t> struct faithfully_rounded_fraction_
         if (abs(ulps) <= 1) ++faithfully_rounded_count;
     }
 
-    friend auto operator<<(std::ostream& out, faithfully_rounded_fraction_t const& src) -> std::ostream&
-    {
-        return out << src.result();
-    }
+    friend auto operator<<(std::ostream& out, fr_frac_t const& src) -> std::ostream& { return out << src.result(); }
 
-    constexpr auto operator<=>(faithfully_rounded_fraction_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(faithfully_rounded_fraction_t const&) const noexcept -> bool  = default;
+    constexpr auto operator<=>(fr_frac_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(fr_frac_t const&) const noexcept -> bool  = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -285,17 +283,14 @@ template <typename ulps_t, typename float_t> struct faithfully_rounded_fraction_
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename int_t, typename float_t, typename histogram_t = histogram_t<int_t>,
-          typename percentile_calculator_t       = percentile_calculator_t,
-          typename faithfully_rounded_fraction_t = faithfully_rounded_fraction_t<int_t, float_t>>
+          typename percentile_calculator_t = percentile_calculator_t, typename fr_frac_t = fr_frac_t<int_t, float_t>>
 class distribution_t
 {
 public:
     distribution_t() = default;
 
-    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram,
-                   faithfully_rounded_fraction_t faithfully_rounded_fraction) noexcept
-        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)},
-          faithfully_rounded_fraction_{std::move(faithfully_rounded_fraction)}
+    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram, fr_frac_t fr_frac) noexcept
+        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)}, fr_frac_{std::move(fr_frac)}
     {}
 
     auto calc_percentiles() const noexcept -> percentile_calculator_t::result_t
@@ -306,12 +301,12 @@ public:
     auto sample(int_t ulps) noexcept -> void
     {
         histogram_.sample(ulps);
-        faithfully_rounded_fraction_.sample(ulps);
+        fr_frac_.sample(ulps);
     }
 
     friend auto operator<<(std::ostream& out, distribution_t const& src) -> std::ostream&
     {
-        return out << src.calc_percentiles() << "\nfr_frac = " << src.faithfully_rounded_fraction_;
+        return out << src.calc_percentiles() << "\nfr_frac = " << src.fr_frac_;
     }
 
     constexpr auto operator<=>(distribution_t const&) const noexcept -> auto = default;
@@ -320,7 +315,7 @@ public:
 private:
     [[no_unique_address]] percentile_calculator_t calc_percentiles_{};
     histogram_t                                   histogram_{};
-    faithfully_rounded_fraction_t                 faithfully_rounded_fraction_{};
+    fr_frac_t                                     fr_frac_{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
