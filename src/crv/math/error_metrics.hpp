@@ -12,6 +12,7 @@
 #include <crv/math/limits.hpp>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <map>
 #include <ostream>
 #include <utility>
@@ -252,11 +253,19 @@ struct percentile_calculator_t
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
 
+template <typename error_accumulator_t>
+concept float_error_accumulator = std::floating_point<typename error_accumulator_t::value_t>;
+
+template <typename error_accumulator_t>
+concept int_error_accumulator = std::signed_integral<typename error_accumulator_t::value_t>;
+
 /// tracks stats about an error metric and provides a summary
-template <typename arg_t, typename value_t, typename accumulator_t = compensated_accumulator_t<value_t>,
-          typename min_max_t = min_max_t<arg_t, value_t>>
+template <typename arg_t, typename t_value_t, typename accumulator_t = compensated_accumulator_t<t_value_t>,
+          typename min_max_t = min_max_t<arg_t, t_value_t>>
 struct error_accumulator_t
 {
+    using value_t = t_value_t;
+
     accumulator_t sse{};
     accumulator_t sum{};
     min_max_t     min_max{};
@@ -307,7 +316,7 @@ namespace metric_policy {
 /// calcs signed diff
 struct diff_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
+    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
                               value_t expected) const noexcept -> void
     {
@@ -326,7 +335,7 @@ struct diff_t
 */
 struct rel_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
+    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
                               value_t expected) const noexcept -> void
     {
@@ -345,7 +354,7 @@ struct rel_t
 /// calcs signed ulps, units-in-last-place
 struct ulps_t
 {
-    template <typename error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
+    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
     constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
                               value_t expected) const noexcept -> void
     {
