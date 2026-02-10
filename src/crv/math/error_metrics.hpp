@@ -311,14 +311,22 @@ struct error_accumulator_t
         min_max.sample(arg, error);
     }
 
-    constexpr auto mse() const noexcept -> value_t { return sse / static_cast<value_t>(sample_count); }
+    constexpr auto mse() const noexcept -> value_t
+    {
+        return sample_count ? sse / static_cast<value_t>(sample_count) : 0;
+    }
+
     constexpr auto rmse() const noexcept -> value_t
     {
         using std::sqrt;
         return sqrt(mse());
     }
 
-    constexpr auto bias() const noexcept -> value_t { return sum / static_cast<value_t>(sample_count); }
+    constexpr auto bias() const noexcept -> value_t
+    {
+        return sample_count ? sum / static_cast<value_t>(sample_count) : 0;
+    }
+
     constexpr auto variance() const noexcept -> value_t
     {
         auto const bias = this->bias();

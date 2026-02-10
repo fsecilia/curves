@@ -726,10 +726,37 @@ struct error_accumulator_test_t : Test
     };
 
     using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, min_max_t>;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Default Constructed
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_accumulator_test_default_constructed_t : error_accumulator_test_t
+{
+    sut_t sut{};
+};
+
+TEST_F(error_accumulator_test_default_constructed_t, mse)
+{
+    EXPECT_EQ(0, sut.mse());
+}
+
+TEST_F(error_accumulator_test_default_constructed_t, bias)
+{
+    EXPECT_EQ(0, sut.bias());
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// Constructed
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_accumulator_test_constructed_t : error_accumulator_test_t
+{
     sut_t sut{.sse = sse, .sum = sum, .min_max = {}, .sample_count = sample_count};
 };
 
-TEST_F(error_accumulator_test_t, sample)
+TEST_F(error_accumulator_test_constructed_t, sample)
 {
     sut.sample(arg, error);
 
@@ -740,27 +767,27 @@ TEST_F(error_accumulator_test_t, sample)
     EXPECT_EQ(error, sut.min_max.error);
 }
 
-TEST_F(error_accumulator_test_t, mse)
+TEST_F(error_accumulator_test_constructed_t, mse)
 {
     EXPECT_EQ(mse, sut.mse());
 }
 
-TEST_F(error_accumulator_test_t, rmse)
+TEST_F(error_accumulator_test_constructed_t, rmse)
 {
     EXPECT_EQ(rmse, sut.rmse());
 }
 
-TEST_F(error_accumulator_test_t, bias)
+TEST_F(error_accumulator_test_constructed_t, bias)
 {
     EXPECT_EQ(bias, sut.bias());
 }
 
-TEST_F(error_accumulator_test_t, variance)
+TEST_F(error_accumulator_test_constructed_t, variance)
 {
     EXPECT_EQ(variance, sut.variance());
 }
 
-TEST_F(error_accumulator_test_t, ostream_inserter)
+TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
     expected << "sample count = " << sample_count << "\nmin_max\nsum = " << sum << "\nmse = " << mse
