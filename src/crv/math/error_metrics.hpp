@@ -250,6 +250,37 @@ struct percentile_calculator_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// Faithfully-Rounded Fraction
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename ulps_t, typename float_t> struct faithfully_rounded_fraction_t
+{
+    int_t faithfully_rounded_count{};
+    int_t sample_count{};
+
+    auto result() const noexcept -> float_t
+    {
+        return sample_count ? static_cast<float_t>(faithfully_rounded_count) / static_cast<float_t>(sample_count) : 0;
+    }
+
+    auto sample(ulps_t ulps) noexcept -> void
+    {
+        ++sample_count;
+
+        using std::abs;
+        if (abs(ulps) <= 1) ++faithfully_rounded_count;
+    }
+
+    friend auto operator<<(std::ostream& out, faithfully_rounded_fraction_t const& src) -> std::ostream&
+    {
+        return out << src.result();
+    }
+
+    constexpr auto operator<=>(faithfully_rounded_fraction_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(faithfully_rounded_fraction_t const&) const noexcept -> bool  = default;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
 

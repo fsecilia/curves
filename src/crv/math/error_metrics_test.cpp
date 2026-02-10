@@ -636,6 +636,60 @@ TEST_F(percentiles_calculator_fuzz_test_t, fuzz)
 }
 
 // ====================================================================================================================
+// Faithfully-Rounded Fraction
+// ====================================================================================================================
+
+struct faithfully_rounded_fraction_test_t : Test
+{
+    using ulps_t  = int_t;
+    using float_t = float_t;
+    using sut_t   = faithfully_rounded_fraction_t<ulps_t, float_t>;
+    sut_t sut{};
+};
+
+TEST_F(faithfully_rounded_fraction_test_t, result_initially_zero)
+{
+    EXPECT_EQ(0, sut.result());
+}
+
+TEST_F(faithfully_rounded_fraction_test_t, sample_zero)
+{
+    sut.sample(0);
+    EXPECT_EQ(1, sut.faithfully_rounded_count);
+    EXPECT_EQ(1, sut.sample_count);
+    EXPECT_EQ(1, sut.result());
+}
+
+TEST_F(faithfully_rounded_fraction_test_t, sample_pass)
+{
+    sut.sample(1);
+    EXPECT_EQ(1, sut.faithfully_rounded_count);
+    EXPECT_EQ(1, sut.sample_count);
+    EXPECT_EQ(1, sut.result());
+}
+
+TEST_F(faithfully_rounded_fraction_test_t, sample_fail)
+{
+    sut.sample(2);
+    EXPECT_EQ(0, sut.faithfully_rounded_count);
+    EXPECT_EQ(1, sut.sample_count);
+    EXPECT_EQ(0, sut.result());
+}
+
+TEST_F(faithfully_rounded_fraction_test_t, multiple_samples)
+{
+    sut.sample(0);
+    sut.sample(1);
+    sut.sample(2);
+    sut.sample(0);
+    sut.sample(10);
+
+    EXPECT_EQ(3, sut.faithfully_rounded_count);
+    EXPECT_EQ(5, sut.sample_count);
+    EXPECT_EQ(3.0 / 5.0, sut.result());
+}
+
+// ====================================================================================================================
 // Error Accumulator
 // ====================================================================================================================
 
