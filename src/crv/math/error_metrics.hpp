@@ -281,6 +281,49 @@ template <typename ulps_t, typename float_t> struct faithfully_rounded_fraction_
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// Distribution
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename int_t, typename float_t, typename histogram_t = histogram_t<int_t>,
+          typename percentile_calculator_t       = percentile_calculator_t,
+          typename faithfully_rounded_fraction_t = faithfully_rounded_fraction_t<int_t, float_t>>
+class distribution_t
+{
+public:
+    distribution_t() = default;
+
+    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram,
+                   faithfully_rounded_fraction_t faithfully_rounded_fraction) noexcept
+        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)},
+          faithfully_rounded_fraction_{std::move(faithfully_rounded_fraction)}
+    {}
+
+    auto calc_percentiles() const noexcept -> percentile_calculator_t::result_t
+    {
+        return calc_percentiles_(histogram_);
+    }
+
+    auto sample(int_t ulps) noexcept -> void
+    {
+        histogram_.sample(ulps);
+        faithfully_rounded_fraction_.sample(ulps);
+    }
+
+    friend auto operator<<(std::ostream& out, distribution_t const& src) -> std::ostream&
+    {
+        return out << src.calc_percentiles() << "\nfr_frac = " << src.faithfully_rounded_fraction_;
+    }
+
+    constexpr auto operator<=>(distribution_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(distribution_t const&) const noexcept -> bool  = default;
+
+private:
+    [[no_unique_address]] percentile_calculator_t calc_percentiles_{};
+    histogram_t                                   histogram_{};
+    faithfully_rounded_fraction_t                 faithfully_rounded_fraction_{};
+};
+
+// --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
 

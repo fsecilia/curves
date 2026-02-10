@@ -692,6 +692,91 @@ TEST_F(faithfully_rounded_fraction_test_t, multiple_samples)
 }
 
 // ====================================================================================================================
+// Distribution
+// ====================================================================================================================
+
+struct distribution_test_t : Test
+{
+    using value_t = int_t;
+
+    struct mock_sampler_t
+    {
+        MOCK_METHOD(void, sample, (value_t value));
+        virtual ~mock_sampler_t() = default;
+    };
+    StrictMock<mock_sampler_t> mock_histogram_sampler;
+    StrictMock<mock_sampler_t> mock_faithfully_rounded_fraction_sampler;
+
+    struct sampler_t
+    {
+        std::string_view name;
+        mock_sampler_t*  mock = nullptr;
+
+        auto sample(value_t value) -> void { mock->sample(value); }
+
+        friend auto operator<<(std::ostream& out, sampler_t const& src) -> std::ostream& { return out << src.name; }
+    };
+
+    using histogram_t                   = sampler_t;
+    using faithfully_rounded_fraction_t = sampler_t;
+
+    using percentile_result_t                        = int_t;
+    static constexpr auto expected_percentile_result = percentile_result_t{17};
+
+    struct mock_percentile_calculator_t
+    {
+        MOCK_METHOD(percentile_result_t, call, (mock_sampler_t const& mock_histogram_sampler), (const, noexcept));
+        virtual ~mock_percentile_calculator_t() = default;
+    };
+    StrictMock<mock_percentile_calculator_t> mock_percentilies_calculator;
+
+    struct percentile_calculator_t
+    {
+        using result_t = percentile_result_t;
+
+        mock_percentile_calculator_t* mock = nullptr;
+
+        auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
+    };
+
+    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t, faithfully_rounded_fraction_t>;
+    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram_sampler},
+              faithfully_rounded_fraction_t{"faithfully_rounded_fraction", &mock_faithfully_rounded_fraction_sampler}};
+};
+
+TEST_F(distribution_test_t, calc_percentiles)
+{
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram_sampler)))
+        .WillOnce(Return(expected_percentile_result));
+
+    auto const actual = sut.calc_percentiles();
+
+    EXPECT_EQ(expected_percentile_result, actual);
+}
+
+TEST_F(distribution_test_t, sample)
+{
+    auto const ulps = int_t{13};
+    EXPECT_CALL(mock_histogram_sampler, sample(ulps));
+    EXPECT_CALL(mock_faithfully_rounded_fraction_sampler, sample(ulps));
+    sut.sample(ulps);
+}
+
+TEST_F(distribution_test_t, ostream_inserter)
+{
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram_sampler)))
+        .WillOnce(Return(expected_percentile_result));
+
+    auto expected = std::ostringstream{};
+    expected << expected_percentile_result << "\nfr_frac = faithfully_rounded_fraction";
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    EXPECT_EQ(expected.str(), actual.str());
+}
+
+// ====================================================================================================================
 // Error Accumulator
 // ====================================================================================================================
 
