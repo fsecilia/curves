@@ -7,6 +7,7 @@
 #include "stats.hpp"
 #include <crv/test/test.hpp>
 #include <algorithm>
+#include <gmock/gmock.h>
 #include <map>
 #include <random>
 #include <sstream>
@@ -413,6 +414,83 @@ struct percentile_calculator_fuzz_test_t : percentile_calculator_test_t
 TEST_F(percentile_calculator_fuzz_test_t, fuzz)
 {
     fuzz();
+}
+
+// ====================================================================================================================
+// Distribution
+// ====================================================================================================================
+
+struct distribution_test_t : Test
+{
+    using value_t = int_t;
+
+    struct mock_histogram_t
+    {
+        MOCK_METHOD(void, sample, (int_t value));
+        virtual ~mock_histogram_t() = default;
+    };
+    StrictMock<mock_histogram_t> mock_histogram;
+
+    struct histogram_t
+    {
+        std::string_view  name;
+        mock_histogram_t* mock = nullptr;
+
+        auto sample(int_t value) -> void { mock->sample(value); }
+
+        friend auto operator<<(std::ostream& out, histogram_t const& src) -> std::ostream& { return out << src.name; }
+    };
+
+    using percentile_result_t                        = int_t;
+    static constexpr auto expected_percentile_result = percentile_result_t{17};
+
+    struct mock_percentile_calculator_t
+    {
+        MOCK_METHOD(percentile_result_t, call, (mock_histogram_t const& mock_histogram), (const, noexcept));
+        virtual ~mock_percentile_calculator_t() = default;
+    };
+    StrictMock<mock_percentile_calculator_t> mock_percentilies_calculator;
+
+    struct percentile_calculator_t
+    {
+        using result_t = percentile_result_t;
+
+        mock_percentile_calculator_t* mock = nullptr;
+
+        auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
+    };
+
+    using sut_t = distribution_t<histogram_t, percentile_calculator_t>;
+    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram}};
+};
+
+TEST_F(distribution_test_t, calc_percentiles)
+{
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
+
+    auto const actual = sut.calc_percentiles();
+
+    EXPECT_EQ(expected_percentile_result, actual);
+}
+
+TEST_F(distribution_test_t, sample)
+{
+    auto const ulps = int_t{13};
+    EXPECT_CALL(mock_histogram, sample(ulps));
+    sut.sample(ulps);
+}
+
+TEST_F(distribution_test_t, ostream_inserter)
+{
+    EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
+
+    auto expected = std::ostringstream{};
+    expected << expected_percentile_result;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    EXPECT_EQ(expected.str(), actual.str());
 }
 
 } // namespace

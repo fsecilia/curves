@@ -17,7 +17,6 @@
 #include <concepts>
 #include <optional>
 #include <ostream>
-#include <utility>
 
 namespace crv {
 
@@ -50,40 +49,6 @@ template <typename float_t> struct fr_frac_t
 
     constexpr auto operator<=>(fr_frac_t const&) const noexcept -> auto = default;
     constexpr auto operator==(fr_frac_t const&) const noexcept -> bool  = default;
-};
-
-// --------------------------------------------------------------------------------------------------------------------
-// Distribution
-// --------------------------------------------------------------------------------------------------------------------
-
-template <typename histogram_t = histogram_t<int_t>, typename percentile_calculator_t = percentile_calculator_t<int_t>>
-class distribution_t
-{
-public:
-    distribution_t() = default;
-
-    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram) noexcept
-        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)}
-    {}
-
-    auto calc_percentiles() const noexcept -> percentile_calculator_t::result_t
-    {
-        return calc_percentiles_(histogram_);
-    }
-
-    auto sample(int_t ulps) noexcept -> void { histogram_.sample(ulps); }
-
-    friend auto operator<<(std::ostream& out, distribution_t const& src) -> std::ostream&
-    {
-        return out << src.calc_percentiles();
-    }
-
-    constexpr auto operator<=>(distribution_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(distribution_t const&) const noexcept -> bool  = default;
-
-private:
-    [[no_unique_address]] percentile_calculator_t calc_percentiles_{};
-    histogram_t                                   histogram_{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
