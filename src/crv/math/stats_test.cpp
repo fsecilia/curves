@@ -193,24 +193,6 @@ TEST_F(integer_histogram_test_constructed_t, ostream_inserter)
 
 struct percentile_calculator_test_t : Test
 {
-    using data_t = std::vector<int_t>;
-    struct oracle_t
-    {
-        auto operator()(data_t data) const noexcept -> percentile_calculator_t::result_t
-        {
-            if (data.empty()) return {};
-
-            std::sort(data.begin(), data.end());
-            auto const total = static_cast<int64_t>(data.size());
-
-            auto const percentile = [&](auto percentage) noexcept {
-                auto const target_count = (total * percentage + 99) / 100;
-                return data[target_count - 1];
-            };
-            return {percentile(50), percentile(90), percentile(95), percentile(99), percentile(100)};
-        }
-    };
-
     using histogram_t = histogram_t<int_t>;
 
     using sut_t    = percentile_calculator_t;
@@ -366,9 +348,10 @@ TEST_F(percentile_calculator_test_t, sparse_step)
 
 struct percentile_calculator_fuzz_test_t : percentile_calculator_test_t
 {
+    using data_t = std::vector<int_t>;
     struct oracle_t
     {
-        auto operator()(data_t data) const noexcept -> percentile_calculator_t::result_t
+        auto operator()(data_t data) const noexcept -> result_t
         {
             if (data.empty()) return {};
 
