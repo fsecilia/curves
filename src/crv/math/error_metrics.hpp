@@ -122,7 +122,7 @@ struct error_accumulator_t
 };
 
 template <typename arg_t, typename float_t, typename error_accumulator_t = error_accumulator_t<arg_t, float_t>,
-          typename distribution_t = distribution_t<>, typename fr_frac_t = fr_frac_t<float_t>>
+          typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<float_t>>
 struct ulps_error_accumulator_t : error_accumulator_t
 {
     using value_t = int_t;

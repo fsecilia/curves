@@ -167,7 +167,8 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
 // Distribution
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename histogram_t = histogram_t<int_t>, typename percentile_calculator_t = percentile_calculator_t<int_t>>
+template <typename value_t, typename histogram_t = histogram_t<value_t>,
+          typename percentile_calculator_t = percentile_calculator_t<value_t>>
 class distribution_t
 {
 public:
@@ -182,7 +183,7 @@ public:
         return calc_percentiles_(histogram_);
     }
 
-    auto sample(int_t ulps) noexcept -> void { histogram_.sample(ulps); }
+    auto sample(value_t value) noexcept -> void { histogram_.sample(value); }
 
     friend auto operator<<(std::ostream& out, distribution_t const& src) -> std::ostream&
     {

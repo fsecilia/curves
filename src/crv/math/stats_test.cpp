@@ -460,7 +460,7 @@ struct distribution_test_t : Test
         auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
     };
 
-    using sut_t = distribution_t<histogram_t, percentile_calculator_t>;
+    using sut_t = distribution_t<value_t, histogram_t, percentile_calculator_t>;
     sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram}};
 };
 
