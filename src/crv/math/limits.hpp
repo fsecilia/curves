@@ -27,7 +27,7 @@ template <typename value_t> constexpr auto infinity() noexcept -> value_t
 
 template <typename value_t> constexpr auto min() noexcept -> value_t
 {
-    return std::numeric_limits<value_t>::min();
+    return std::numeric_limits<value_t>::lowest();
 }
 
 template <typename value_t> constexpr auto max() noexcept -> value_t
