@@ -204,10 +204,12 @@ TEST_F(min_max_test_t, sample)
 
 TEST_F(min_max_test_t, ostream_inserter)
 {
+    auto const expected = "min = arg_min\nmax = arg_max";
+
     auto actual = std::ostringstream{};
     actual << sut;
 
-    ASSERT_EQ("min = arg_min\nmax = arg_max", actual.str());
+    ASSERT_EQ(expected, actual.str());
 }
 
 } // namespace
