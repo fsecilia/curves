@@ -7,6 +7,7 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
+    math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/error_metrics.hpp
     math/fixed/conversions.hpp
@@ -38,6 +39,7 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
+        math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
         math/error_metrics_test.cpp
         math/fixed/test/conversions.cpp
