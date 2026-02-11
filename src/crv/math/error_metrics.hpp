@@ -374,10 +374,15 @@ struct error_accumulator_t
 
     friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
     {
-        return out << "sample count = " << src.sample_count << "\n"
-                   << src.min_max << "\n"
-                   << "sum = " << src.sum << "\nmse = " << src.mse() << "\nrmse = " << src.rmse()
-                   << "\nbias = " << src.bias() << "\nvariance = " << src.variance();
+        out << "sample count = " << src.sample_count;
+        if (src.sample_count)
+        {
+            out << "\n"
+                << src.min_max << "\n"
+                << "sum = " << src.sum << "\nmse = " << src.mse() << "\nrmse = " << src.rmse()
+                << "\nbias = " << src.bias() << "\nvariance = " << src.variance();
+        }
+        return out;
     }
 
     constexpr auto operator<=>(error_accumulator_t const&) const noexcept -> auto = default;

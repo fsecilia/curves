@@ -835,6 +835,16 @@ TEST_F(error_accumulator_test_default_constructed_t, bias)
     EXPECT_EQ(0, sut.bias());
 }
 
+TEST_F(error_accumulator_test_default_constructed_t, ostream_inserter)
+{
+    auto const expected = "sample count = 0";
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected, actual.str());
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // Constructed
 // --------------------------------------------------------------------------------------------------------------------
