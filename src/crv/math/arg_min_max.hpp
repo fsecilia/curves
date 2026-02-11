@@ -68,10 +68,10 @@ template <typename arg_t, typename value_t> struct arg_max_t
     constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
 };
 
-/// tracks signed min and max, max magnitude
+/// tracks arg min and arg max, and the max of both by magnitude
 template <typename arg_t, typename value_t, typename arg_min_t = arg_min_t<arg_t, value_t>,
           typename arg_max_t = arg_max_t<arg_t, value_t>>
-struct min_max_t
+struct arg_min_max_t
 {
     arg_min_t min;
     arg_max_t max;
@@ -88,13 +88,13 @@ struct min_max_t
         max.sample(arg, value);
     }
 
-    friend auto operator<<(std::ostream& out, min_max_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, arg_min_max_t const& src) -> std::ostream&
     {
         return out << "min = " << src.min << "\nmax = " << src.max;
     }
 
-    constexpr auto operator<=>(min_max_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(min_max_t const&) const noexcept -> bool  = default;
+    constexpr auto operator<=>(arg_min_max_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(arg_min_max_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv

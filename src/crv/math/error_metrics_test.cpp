@@ -600,7 +600,7 @@ struct error_accumulator_test_t : Test
     static constexpr auto variance = mse - bias * bias;
     static constexpr auto sum      = bias * sample_count;
 
-    struct min_max_t
+    struct arg_min_max_t
     {
         arg_t   arg{};
         value_t error{};
@@ -611,10 +611,13 @@ struct error_accumulator_test_t : Test
             this->error = error;
         }
 
-        friend auto operator<<(std::ostream& out, min_max_t const&) -> std::ostream& { return out << "min_max"; }
+        friend auto operator<<(std::ostream& out, arg_min_max_t const&) -> std::ostream&
+        {
+            return out << "arg_min_max";
+        }
     };
 
-    using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, min_max_t>;
+    using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, arg_min_max_t>;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -652,7 +655,7 @@ TEST_F(error_accumulator_test_default_constructed_t, ostream_inserter)
 
 struct error_accumulator_test_constructed_t : error_accumulator_test_t
 {
-    sut_t sut{.sse = sse, .sum = sum, .min_max = {}, .sample_count = sample_count};
+    sut_t sut{.sse = sse, .sum = sum, .arg_min_max = {}, .sample_count = sample_count};
 };
 
 TEST_F(error_accumulator_test_constructed_t, sample)
@@ -662,8 +665,8 @@ TEST_F(error_accumulator_test_constructed_t, sample)
     EXPECT_EQ(sample_count + 1, sut.sample_count);
     EXPECT_EQ(sse + error * error, sut.sse);
     EXPECT_EQ(sum + error, sut.sum);
-    EXPECT_EQ(arg, sut.min_max.arg);
-    EXPECT_EQ(error, sut.min_max.error);
+    EXPECT_EQ(arg, sut.arg_min_max.arg);
+    EXPECT_EQ(error, sut.arg_min_max.error);
 }
 
 TEST_F(error_accumulator_test_constructed_t, mse)
@@ -689,7 +692,7 @@ TEST_F(error_accumulator_test_constructed_t, variance)
 TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
-    expected << "sample count = " << sample_count << "\nmin_max\nsum = " << sum << "\nmse = " << mse
+    expected << "sample count = " << sample_count << "\narg_min_max\nsum = " << sum << "\nmse = " << mse
              << "\nrmse = " << rmse << "\nbias = " << bias << "\nvariance = " << variance;
 
     auto actual = std::ostringstream{};

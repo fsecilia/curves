@@ -251,14 +251,14 @@ concept int_error_accumulator = std::signed_integral<typename error_accumulator_
 
 /// tracks stats about an error metric and provides a summary
 template <typename arg_t, typename t_value_t, typename accumulator_t = compensated_accumulator_t<t_value_t>,
-          typename min_max_t = min_max_t<arg_t, t_value_t>>
+          typename arg_min_max_t = arg_min_max_t<arg_t, t_value_t>>
 struct error_accumulator_t
 {
     using value_t = t_value_t;
 
     accumulator_t sse{};
     accumulator_t sum{};
-    min_max_t     min_max{};
+    arg_min_max_t arg_min_max{};
     int_t         sample_count{};
 
     constexpr auto sample(arg_t arg, value_t error) noexcept -> void
@@ -267,7 +267,7 @@ struct error_accumulator_t
 
         sse += error * error;
         sum += error;
-        min_max.sample(arg, error);
+        arg_min_max.sample(arg, error);
     }
 
     constexpr auto mse() const noexcept -> value_t
@@ -298,7 +298,7 @@ struct error_accumulator_t
         if (src.sample_count)
         {
             out << "\n"
-                << src.min_max << "\n"
+                << src.arg_min_max << "\n"
                 << "sum = " << src.sum << "\nmse = " << src.mse() << "\nrmse = " << src.rmse()
                 << "\nbias = " << src.bias() << "\nvariance = " << src.variance();
         }

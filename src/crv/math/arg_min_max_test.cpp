@@ -132,10 +132,10 @@ TEST_F(arg_min_test_t, ostream_inserter)
 }
 
 // ====================================================================================================================
-// Min Max
+// Arg Min Max
 // ====================================================================================================================
 
-struct min_max_test_t : Test
+struct arg_min_max_test_t : Test
 {
     using arg_t   = int_t;
     using value_t = float_t;
@@ -163,8 +163,8 @@ struct min_max_test_t : Test
 
     struct arg_max_t
     {
-        arg_t   arg{min_max_test_t::arg_max};
-        value_t value{min_max_test_t::max};
+        arg_t   arg{arg_min_max_test_t::arg_max};
+        value_t value{arg_min_max_test_t::max};
 
         constexpr auto sample(arg_t arg, value_t value) noexcept -> void
         {
@@ -175,21 +175,21 @@ struct min_max_test_t : Test
         friend auto operator<<(std::ostream& out, arg_max_t const&) -> std::ostream& { return out << "arg_max"; }
     };
 
-    using sut_t = min_max_t<arg_t, value_t, arg_min_t, arg_max_t>;
+    using sut_t = arg_min_max_t<arg_t, value_t, arg_min_t, arg_max_t>;
     sut_t sut{};
 };
 
-TEST_F(min_max_test_t, max_mag)
+TEST_F(arg_min_max_test_t, max_mag)
 {
     ASSERT_EQ(max_mag, sut.max_mag());
 }
 
-TEST_F(min_max_test_t, arg_max_mag)
+TEST_F(arg_min_max_test_t, arg_max_mag)
 {
     ASSERT_EQ(arg_max_mag, sut.arg_max_mag());
 }
 
-TEST_F(min_max_test_t, sample)
+TEST_F(arg_min_max_test_t, sample)
 {
     static constexpr auto arg   = arg_t{19};
     static constexpr auto value = value_t{17.0};
@@ -202,7 +202,7 @@ TEST_F(min_max_test_t, sample)
     EXPECT_EQ(value, sut.min.value);
 }
 
-TEST_F(min_max_test_t, ostream_inserter)
+TEST_F(arg_min_max_test_t, ostream_inserter)
 {
     auto const expected = "min = arg_min\nmax = arg_max";
 
