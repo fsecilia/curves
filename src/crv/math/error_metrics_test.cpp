@@ -39,9 +39,7 @@ struct sampler_t
 
 struct fr_frac_test_t : Test
 {
-    using ulps_t  = int_t;
-    using float_t = float_t;
-    using sut_t   = fr_frac_t<ulps_t, float_t>;
+    using sut_t = fr_frac_t<float_t>;
     sut_t sut{};
 };
 
@@ -118,7 +116,7 @@ struct distribution_test_t : Test
         auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
     };
 
-    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t>;
+    using sut_t = distribution_t<histogram_t, percentile_calculator_t>;
     sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram}};
 };
 
@@ -290,7 +288,7 @@ struct ulps_error_accumulator_test_t : Test
     using distribution_t      = sampler_t;
     using fr_frac_t           = sampler_t;
 
-    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t, distribution_t, fr_frac_t>;
+    using sut_t = ulps_error_accumulator_t<arg_t, float_t, error_accumulator_t, distribution_t, fr_frac_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator},
               distribution_t{"distribution", &mock_distribution}, fr_frac_t{"fr_frac", &mock_fr_frac}};
 };

@@ -28,7 +28,7 @@ template <typename real_t> struct compensated_accumulator_t;
 // --------------------------------------------------------------------------------------------------------------------
 
 // fr_frac is the fraction of faithfully-rounded samples that are within 1-ulp of the expected result.
-template <typename ulps_t, typename float_t> struct fr_frac_t
+template <typename float_t> struct fr_frac_t
 {
     int_t faithfully_rounded_count{};
     int_t sample_count{};
@@ -38,7 +38,7 @@ template <typename ulps_t, typename float_t> struct fr_frac_t
         return sample_count ? static_cast<float_t>(faithfully_rounded_count) / static_cast<float_t>(sample_count) : 0;
     }
 
-    auto sample(ulps_t ulps) noexcept -> void
+    auto sample(int_t ulps) noexcept -> void
     {
         ++sample_count;
 
@@ -56,8 +56,7 @@ template <typename ulps_t, typename float_t> struct fr_frac_t
 // Distribution
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename int_t, typename float_t, typename histogram_t = histogram_t<int_t>,
-          typename percentile_calculator_t = percentile_calculator_t<int_t>>
+template <typename histogram_t = histogram_t<int_t>, typename percentile_calculator_t = percentile_calculator_t<int_t>>
 class distribution_t
 {
 public:
@@ -157,20 +156,18 @@ struct error_accumulator_t
     constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
 };
 
-template <typename arg_t, typename int_value_t, typename float_value_t,
-          typename error_accumulator_t = error_accumulator_t<arg_t, float_value_t>,
-          typename distribution_t      = distribution_t<int_value_t, float_value_t>,
-          typename fr_frac_t           = fr_frac_t<int_t, float_t>>
+template <typename arg_t, typename float_t, typename error_accumulator_t = error_accumulator_t<arg_t, float_t>,
+          typename distribution_t = distribution_t<>, typename fr_frac_t = fr_frac_t<float_t>>
 struct ulps_error_accumulator_t : error_accumulator_t
 {
-    using value_t = int_value_t;
+    using value_t = int_t;
 
     distribution_t distribution{};
     fr_frac_t      fr_frac{};
 
     constexpr auto sample(arg_t arg, value_t error) noexcept -> void
     {
-        error_accumulator_t::sample(arg, static_cast<float_value_t>(error));
+        error_accumulator_t::sample(arg, static_cast<float_t>(error));
         distribution.sample(error);
         fr_frac.sample(error);
     }
@@ -329,7 +326,7 @@ struct default_error_metrics_policy_t
 
     template <typename arg_t, typename value_t>
     using ulps_metric_t
-        = error_metric_t<arg_t, value_t, metric_policy::ulps_t, ulps_error_accumulator_t<arg_t, int_t, value_t>>;
+        = error_metric_t<arg_t, value_t, metric_policy::ulps_t, ulps_error_accumulator_t<arg_t, value_t>>;
 
     template <typename arg_t, typename value_t>
     using mono_error_accumulator_t = mono_error_accumulator_t<arg_t, value_t>;
