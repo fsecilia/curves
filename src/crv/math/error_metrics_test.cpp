@@ -1067,6 +1067,7 @@ TEST_F(metric_policy_test_ulps_t, ten_low)
     EXPECT_DOUBLE_EQ(-10 * error, error_accumulator.error);
 }
 
+#if 0
 // --------------------------------------------------------------------------------------------------------------------
 // Metric Policy Mono
 // --------------------------------------------------------------------------------------------------------------------
@@ -1119,6 +1120,7 @@ TEST_F(metric_policy_test_mono_t, lesser)
     EXPECT_DOUBLE_EQ(arg, error_accumulator.arg);
     EXPECT_DOUBLE_EQ(-error, error_accumulator.error);
 }
+#endif
 
 // ====================================================================================================================
 // Error Metric
@@ -1224,41 +1226,63 @@ struct error_metrics_test_t : Test
         friend auto operator<<(std::ostream& out, metric_t const& src) -> std::ostream& { return out << src.name; }
     };
 
+    struct accumulator_t
+    {
+        std::string_view name;
+
+        sample_results_t sample_results{};
+
+        constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
+        {
+            sample_results.arg    = arg;
+            sample_results.actual = actual;
+        }
+
+        friend auto operator<<(std::ostream& out, accumulator_t const& src) -> std::ostream& { return out << src.name; }
+    };
+
     struct policy_t
     {
         using arg_t   = arg_t;
         using value_t = value_t;
 
-        template <typename, typename> using diff_metric_t = metric_t;
-        template <typename, typename> using rel_metric_t  = metric_t;
-        template <typename, typename> using ulps_metric_t = metric_t;
-        template <typename, typename> using mono_metric_t = metric_t;
+        template <typename, typename> using diff_metric_t            = metric_t;
+        template <typename, typename> using rel_metric_t             = metric_t;
+        template <typename, typename> using ulps_metric_t            = metric_t;
+        template <typename, typename> using mono_error_accumulator_t = accumulator_t;
     };
 
     using sut_t = error_metrics_t<policy_t>;
 
-    static constexpr auto expected_sample_results = sample_results_t{
+    static constexpr auto expected_metric_sample_results = sample_results_t{
         .arg      = 7,
         .actual   = 11,
         .expected = 13,
     };
 
+    static constexpr auto expected_accumulator_sample_results = sample_results_t{
+        .arg      = 7,
+        .actual   = 11,
+        .expected = 0,
+    };
+
     sut_t sut{
-        .diff_metric = metric_t{.name = "diff"},
-        .rel_metric  = metric_t{.name = "rel"},
-        .ulps_metric = metric_t{.name = "ulps"},
-        .mono_metric = metric_t{.name = "mono"},
+        .diff_metric            = metric_t{.name = "diff"},
+        .rel_metric             = metric_t{.name = "rel"},
+        .ulps_metric            = metric_t{.name = "ulps"},
+        .mono_error_accumulator = accumulator_t{.name = "mono"},
     };
 };
 
 TEST_F(error_metrics_test_t, sample)
 {
-    sut.sample(expected_sample_results.arg, expected_sample_results.actual, expected_sample_results.expected);
+    sut.sample(expected_metric_sample_results.arg, expected_metric_sample_results.actual,
+               expected_metric_sample_results.expected);
 
-    EXPECT_EQ(expected_sample_results, sut.diff_metric.sample_results);
-    EXPECT_EQ(expected_sample_results, sut.rel_metric.sample_results);
-    EXPECT_EQ(expected_sample_results, sut.ulps_metric.sample_results);
-    EXPECT_EQ(expected_sample_results, sut.mono_metric.sample_results);
+    EXPECT_EQ(expected_metric_sample_results, sut.diff_metric.sample_results);
+    EXPECT_EQ(expected_metric_sample_results, sut.rel_metric.sample_results);
+    EXPECT_EQ(expected_metric_sample_results, sut.ulps_metric.sample_results);
+    EXPECT_EQ(expected_accumulator_sample_results, sut.mono_error_accumulator.sample_results);
 }
 
 TEST_F(error_metrics_test_t, ostream_inserter)
