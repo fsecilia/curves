@@ -57,7 +57,7 @@ template <typename ulps_t, typename float_t> struct fr_frac_t
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename int_t, typename float_t, typename histogram_t = histogram_t<int_t>,
-          typename percentile_calculator_t = percentile_calculator_t>
+          typename percentile_calculator_t = percentile_calculator_t<int_t>>
 class distribution_t
 {
 public:

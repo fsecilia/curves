@@ -109,15 +109,15 @@ private:
 // Percentiles
 // --------------------------------------------------------------------------------------------------------------------
 
-struct percentile_calculator_t
+template <typename value_t, typename histogram_t = histogram_t<value_t>> struct percentile_calculator_t
 {
     struct result_t
     {
-        int_t p50{};
-        int_t p90{};
-        int_t p95{};
-        int_t p99{};
-        int_t p100{};
+        value_t p50{};
+        value_t p90{};
+        value_t p95{};
+        value_t p99{};
+        value_t p100{};
 
         constexpr auto operator<=>(result_t const&) const noexcept -> auto = default;
         constexpr auto operator==(result_t const&) const noexcept -> bool  = default;
@@ -129,28 +129,28 @@ struct percentile_calculator_t
         }
     };
 
-    auto operator()(auto const& histogram) const noexcept -> result_t
+    auto operator()(histogram_t const& histogram) const noexcept -> result_t
     {
         if (histogram.count() == 0) return {};
 
         auto result = result_t{};
 
         auto const total = histogram.count();
-        auto const limit = [total](int_t percentage) noexcept { return (total * percentage + 99) / 100; };
+        auto const limit = [total](value_t percentage) noexcept { return (total * percentage + 99) / 100; };
         struct thresholds_t
         {
-            int_t  limit;
-            int_t& dst;
+            value_t  limit;
+            value_t& dst;
         };
         thresholds_t const thresholds[] = {
             {limit(50), result.p50}, {limit(90), result.p90}, {limit(95), result.p95},
             {limit(99), result.p99}, {total, result.p100},
         };
 
-        auto       running_sum = 0;
+        auto       running_sum = value_t{0};
         auto       index       = 0;
-        auto const max_index   = static_cast<int_t>(std::size(thresholds));
-        histogram.visit([&](auto value, auto count) noexcept {
+        auto const max_index   = std::ssize(thresholds);
+        histogram.visit([&](value_t value, int_t count) noexcept {
             running_sum += count;
 
             // assign crossed thresholds

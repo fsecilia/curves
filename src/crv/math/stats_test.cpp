@@ -188,15 +188,14 @@ TEST_F(integer_histogram_test_constructed_t, ostream_inserter)
 }
 
 // ====================================================================================================================
-// Histogram Percentiles
+// Percentiles
 // ====================================================================================================================
 
 struct percentile_calculator_test_t : Test
 {
     using histogram_t = histogram_t<int_t>;
-
-    using sut_t    = percentile_calculator_t;
-    using result_t = sut_t::result_t;
+    using sut_t       = percentile_calculator_t<int_t, histogram_t>;
+    using result_t    = sut_t::result_t;
     sut_t sut{};
 };
 
