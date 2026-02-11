@@ -519,10 +519,8 @@ struct distribution_test_t : Test
     using value_t = int_t;
 
     StrictMock<mock_sampler_t> mock_histogram;
-    StrictMock<mock_sampler_t> mock_fr_frac;
 
     using histogram_t = sampler_t;
-    using fr_frac_t   = sampler_t;
 
     using percentile_result_t                        = int_t;
     static constexpr auto expected_percentile_result = percentile_result_t{17};
@@ -543,9 +541,8 @@ struct distribution_test_t : Test
         auto operator()(histogram_t const& histogram) const noexcept -> result_t { return mock->call(*histogram.mock); }
     };
 
-    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t, fr_frac_t>;
-    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram},
-              fr_frac_t{"fr_frac", &mock_fr_frac}};
+    using sut_t = distribution_t<int_t, float_t, histogram_t, percentile_calculator_t>;
+    sut_t sut{percentile_calculator_t{&mock_percentilies_calculator}, histogram_t{"histogram", &mock_histogram}};
 };
 
 TEST_F(distribution_test_t, calc_percentiles)
@@ -561,7 +558,6 @@ TEST_F(distribution_test_t, sample)
 {
     auto const ulps = int_t{13};
     EXPECT_CALL(mock_histogram, sample(ulps));
-    EXPECT_CALL(mock_fr_frac, sample(ulps));
     sut.sample(ulps);
 }
 
@@ -570,7 +566,7 @@ TEST_F(distribution_test_t, ostream_inserter)
     EXPECT_CALL(mock_percentilies_calculator, call(Ref(mock_histogram))).WillOnce(Return(expected_percentile_result));
 
     auto expected = std::ostringstream{};
-    expected << expected_percentile_result << "\nfr_frac = fr_frac";
+    expected << expected_percentile_result;
 
     auto actual = std::ostringstream{};
     actual << sut;
@@ -711,13 +707,15 @@ struct ulps_error_accumulator_test_t : Test
 
     StrictMock<mock_sampler_t> mock_error_accumulator;
     StrictMock<mock_sampler_t> mock_distribution;
+    StrictMock<mock_sampler_t> mock_fr_frac;
 
     using error_accumulator_t = sampler_t;
     using distribution_t      = sampler_t;
+    using fr_frac_t           = sampler_t;
 
-    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t, distribution_t>;
+    using sut_t = ulps_error_accumulator_t<arg_t, int_t, float_t, error_accumulator_t, distribution_t, fr_frac_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator},
-              distribution_t{"distribution", &mock_distribution}};
+              distribution_t{"distribution", &mock_distribution}, fr_frac_t{"fr_frac", &mock_fr_frac}};
 };
 
 TEST_F(ulps_error_accumulator_test_t, sample)
@@ -726,12 +724,13 @@ TEST_F(ulps_error_accumulator_test_t, sample)
     auto const value = int_t{5};
     EXPECT_CALL(mock_error_accumulator, sample(arg, static_cast<float_t>(value)));
     EXPECT_CALL(mock_distribution, sample(value));
+    EXPECT_CALL(mock_fr_frac, sample(value));
     sut.sample(arg, value);
 }
 
 TEST_F(ulps_error_accumulator_test_t, ostream_inserter)
 {
-    auto const expected = "error_accumulator\ndistribution";
+    auto const expected = "error_accumulator\ndistribution\nfr_frac = fr_frac";
 
     auto actual = std::ostringstream{};
     EXPECT_EQ(&actual, &(actual << sut));

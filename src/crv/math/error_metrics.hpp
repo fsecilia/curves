@@ -204,14 +204,14 @@ template <typename ulps_t, typename float_t> struct fr_frac_t
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename int_t, typename float_t, typename histogram_t = histogram_t<int_t>,
-          typename percentile_calculator_t = percentile_calculator_t, typename fr_frac_t = fr_frac_t<int_t, float_t>>
+          typename percentile_calculator_t = percentile_calculator_t>
 class distribution_t
 {
 public:
     distribution_t() = default;
 
-    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram, fr_frac_t fr_frac) noexcept
-        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)}, fr_frac_{std::move(fr_frac)}
+    distribution_t(percentile_calculator_t calc_percentiles, histogram_t histogram) noexcept
+        : calc_percentiles_{std::move(calc_percentiles)}, histogram_{std::move(histogram)}
     {}
 
     auto calc_percentiles() const noexcept -> percentile_calculator_t::result_t
@@ -219,15 +219,11 @@ public:
         return calc_percentiles_(histogram_);
     }
 
-    auto sample(int_t ulps) noexcept -> void
-    {
-        histogram_.sample(ulps);
-        fr_frac_.sample(ulps);
-    }
+    auto sample(int_t ulps) noexcept -> void { histogram_.sample(ulps); }
 
     friend auto operator<<(std::ostream& out, distribution_t const& src) -> std::ostream&
     {
-        return out << src.calc_percentiles() << "\nfr_frac = " << src.fr_frac_;
+        return out << src.calc_percentiles();
     }
 
     constexpr auto operator<=>(distribution_t const&) const noexcept -> auto = default;
@@ -236,7 +232,6 @@ public:
 private:
     [[no_unique_address]] percentile_calculator_t calc_percentiles_{};
     histogram_t                                   histogram_{};
-    fr_frac_t                                     fr_frac_{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -311,22 +306,26 @@ struct error_accumulator_t
 
 template <typename arg_t, typename int_value_t, typename float_value_t,
           typename error_accumulator_t = error_accumulator_t<arg_t, float_value_t>,
-          typename distribution_t      = distribution_t<int_value_t, float_value_t>>
+          typename distribution_t      = distribution_t<int_value_t, float_value_t>,
+          typename fr_frac_t           = fr_frac_t<int_t, float_t>>
 struct ulps_error_accumulator_t : error_accumulator_t
 {
     using value_t = int_value_t;
 
     distribution_t distribution{};
+    fr_frac_t      fr_frac{};
 
     constexpr auto sample(arg_t arg, value_t error) noexcept -> void
     {
         error_accumulator_t::sample(arg, static_cast<float_value_t>(error));
         distribution.sample(error);
+        fr_frac.sample(error);
     }
 
     friend auto operator<<(std::ostream& out, ulps_error_accumulator_t const& src) -> std::ostream&
     {
-        return out << static_cast<error_accumulator_t const&>(src) << "\n" << src.distribution;
+        return out << static_cast<error_accumulator_t const&>(src) << "\n"
+                   << src.distribution << "\nfr_frac = " << src.fr_frac;
     }
 
     constexpr auto operator<=>(ulps_error_accumulator_t const&) const noexcept -> auto = default;
