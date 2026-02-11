@@ -20,7 +20,11 @@
 
 namespace crv {
 
-template <typename real_t> struct compensated_accumulator_t;
+template <typename error_accumulator_t>
+concept float_error_accumulator = std::floating_point<typename error_accumulator_t::value_t>;
+
+template <typename error_accumulator_t>
+concept int_error_accumulator = std::signed_integral<typename error_accumulator_t::value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Faithfully-Rounded Fraction
@@ -54,72 +58,6 @@ template <typename float_t> struct fr_frac_t
 // --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
-
-template <typename error_accumulator_t>
-concept float_error_accumulator = std::floating_point<typename error_accumulator_t::value_t>;
-
-template <typename error_accumulator_t>
-concept int_error_accumulator = std::signed_integral<typename error_accumulator_t::value_t>;
-
-/// tracks stats about an error metric and provides a summary
-template <typename arg_t, typename t_value_t, typename accumulator_t = compensated_accumulator_t<t_value_t>,
-          typename arg_min_max_t = arg_min_max_t<arg_t, t_value_t>>
-struct error_accumulator_t
-{
-    using value_t = t_value_t;
-
-    accumulator_t sse{};
-    accumulator_t sum{};
-    arg_min_max_t arg_min_max{};
-    int_t         sample_count{};
-
-    constexpr auto sample(arg_t arg, value_t error) noexcept -> void
-    {
-        ++sample_count;
-
-        sse += error * error;
-        sum += error;
-        arg_min_max.sample(arg, error);
-    }
-
-    constexpr auto mse() const noexcept -> value_t
-    {
-        return sample_count ? sse / static_cast<value_t>(sample_count) : 0;
-    }
-
-    constexpr auto rmse() const noexcept -> value_t
-    {
-        using std::sqrt;
-        return sqrt(mse());
-    }
-
-    constexpr auto bias() const noexcept -> value_t
-    {
-        return sample_count ? sum / static_cast<value_t>(sample_count) : 0;
-    }
-
-    constexpr auto variance() const noexcept -> value_t
-    {
-        auto const bias = this->bias();
-        return mse() - bias * bias;
-    }
-
-    friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
-    {
-        out << "sample count = " << src.sample_count;
-        if (src.sample_count)
-        {
-            out << "\n"
-                << src.arg_min_max << "\n"
-                << "sum = " << src.sum << "\nmse = " << src.mse() << "\nrmse = " << src.rmse()
-                << "\nbias = " << src.bias() << "\nvariance = " << src.variance();
-        }
-        return out;
-    }
-
-    constexpr auto operator<=>(error_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
-};
 
 template <typename arg_t, typename float_t, typename error_accumulator_t = error_accumulator_t<arg_t, float_t>,
           typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<float_t>>

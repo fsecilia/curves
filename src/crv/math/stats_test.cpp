@@ -493,5 +493,128 @@ TEST_F(distribution_test_t, ostream_inserter)
     EXPECT_EQ(expected.str(), actual.str());
 }
 
+// ====================================================================================================================
+// Error Accumulator
+// ====================================================================================================================
+
+struct error_accumulator_test_t : Test
+{
+    using arg_t         = int_t;
+    using value_t       = float_t;
+    using accumulator_t = float_t;
+
+    static constexpr auto arg          = arg_t{3};
+    static constexpr auto error        = value_t{15.2};
+    static constexpr auto sample_count = int_t{11};
+
+    static constexpr auto rmse = value_t{23.6};
+    static constexpr auto mse  = rmse * rmse;
+    static constexpr auto sse  = mse * sample_count;
+
+    static constexpr auto bias     = 7.3;
+    static constexpr auto variance = mse - bias * bias;
+    static constexpr auto sum      = bias * sample_count;
+
+    struct arg_min_max_t
+    {
+        arg_t   arg{};
+        value_t error{};
+
+        constexpr auto sample(arg_t arg, value_t error) noexcept -> void
+        {
+            this->arg   = arg;
+            this->error = error;
+        }
+
+        friend auto operator<<(std::ostream& out, arg_min_max_t const&) -> std::ostream&
+        {
+            return out << "arg_min_max";
+        }
+    };
+
+    using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, arg_min_max_t>;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Default Constructed
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_accumulator_test_default_constructed_t : error_accumulator_test_t
+{
+    sut_t sut{};
+};
+
+TEST_F(error_accumulator_test_default_constructed_t, mse)
+{
+    EXPECT_EQ(0, sut.mse());
+}
+
+TEST_F(error_accumulator_test_default_constructed_t, bias)
+{
+    EXPECT_EQ(0, sut.bias());
+}
+
+TEST_F(error_accumulator_test_default_constructed_t, ostream_inserter)
+{
+    auto const expected = "sample count = 0";
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected, actual.str());
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// Constructed
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_accumulator_test_constructed_t : error_accumulator_test_t
+{
+    sut_t sut{.sse = sse, .sum = sum, .arg_min_max = {}, .sample_count = sample_count};
+};
+
+TEST_F(error_accumulator_test_constructed_t, sample)
+{
+    sut.sample(arg, error);
+
+    EXPECT_EQ(sample_count + 1, sut.sample_count);
+    EXPECT_EQ(sse + error * error, sut.sse);
+    EXPECT_EQ(sum + error, sut.sum);
+    EXPECT_EQ(arg, sut.arg_min_max.arg);
+    EXPECT_EQ(error, sut.arg_min_max.error);
+}
+
+TEST_F(error_accumulator_test_constructed_t, mse)
+{
+    EXPECT_EQ(mse, sut.mse());
+}
+
+TEST_F(error_accumulator_test_constructed_t, rmse)
+{
+    EXPECT_EQ(rmse, sut.rmse());
+}
+
+TEST_F(error_accumulator_test_constructed_t, bias)
+{
+    EXPECT_EQ(bias, sut.bias());
+}
+
+TEST_F(error_accumulator_test_constructed_t, variance)
+{
+    EXPECT_EQ(variance, sut.variance());
+}
+
+TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
+{
+    auto expected = std::ostringstream{};
+    expected << "sample count = " << sample_count << "\narg_min_max\nsum = " << sum << "\nmse = " << mse
+             << "\nrmse = " << rmse << "\nbias = " << bias << "\nvariance = " << variance;
+
+    auto actual = std::ostringstream{};
+    actual << sut;
+
+    ASSERT_EQ(expected.str(), actual.str());
+}
+
 } // namespace
 } // namespace crv
