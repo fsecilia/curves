@@ -59,7 +59,7 @@ template <typename float_t> struct fr_frac_t
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename arg_t, typename float_t, typename error_accumulator_t = error_accumulator_t<arg_t, float_t>,
+template <typename arg_t, typename float_t, typename error_accumulator_t = stats_accumulator_t<arg_t, float_t>,
           typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<float_t>>
 struct ulps_error_accumulator_t : error_accumulator_t
 {
@@ -86,7 +86,7 @@ struct ulps_error_accumulator_t : error_accumulator_t
 };
 
 /// tracks monotonicity per sample
-template <typename arg_t, typename value_t, typename error_accumulator_t = error_accumulator_t<arg_t, value_t>>
+template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
 struct mono_error_accumulator_t : error_accumulator_t
 {
     std::optional<value_t> prev{};
@@ -191,7 +191,7 @@ struct ulps_t
 
 /// associates an error accumulator with a metric policy to actually calc the specific type of error
 template <typename arg_t, typename value_t, typename policy_t,
-          typename error_accumulator_t = error_accumulator_t<arg_t, value_t>>
+          typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
 struct error_metric_t
 {
     [[no_unique_address]] policy_t policy;

@@ -494,10 +494,10 @@ TEST_F(distribution_test_t, ostream_inserter)
 }
 
 // ====================================================================================================================
-// Error Accumulator
+// Stats Accumulator
 // ====================================================================================================================
 
-struct error_accumulator_test_t : Test
+struct stats_accumulator_test_t : Test
 {
     using arg_t         = int_t;
     using value_t       = float_t;
@@ -532,29 +532,29 @@ struct error_accumulator_test_t : Test
         }
     };
 
-    using sut_t = error_accumulator_t<arg_t, value_t, accumulator_t, arg_min_max_t>;
+    using sut_t = stats_accumulator_t<arg_t, value_t, accumulator_t, arg_min_max_t>;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
 // Default Constructed
 // --------------------------------------------------------------------------------------------------------------------
 
-struct error_accumulator_test_default_constructed_t : error_accumulator_test_t
+struct stats_accumulator_test_default_constructed_t : stats_accumulator_test_t
 {
     sut_t sut{};
 };
 
-TEST_F(error_accumulator_test_default_constructed_t, mse)
+TEST_F(stats_accumulator_test_default_constructed_t, mse)
 {
     EXPECT_EQ(0, sut.mse());
 }
 
-TEST_F(error_accumulator_test_default_constructed_t, bias)
+TEST_F(stats_accumulator_test_default_constructed_t, bias)
 {
     EXPECT_EQ(0, sut.bias());
 }
 
-TEST_F(error_accumulator_test_default_constructed_t, ostream_inserter)
+TEST_F(stats_accumulator_test_default_constructed_t, ostream_inserter)
 {
     auto const expected = "sample count = 0";
 
@@ -568,12 +568,12 @@ TEST_F(error_accumulator_test_default_constructed_t, ostream_inserter)
 // Constructed
 // --------------------------------------------------------------------------------------------------------------------
 
-struct error_accumulator_test_constructed_t : error_accumulator_test_t
+struct stats_accumulator_test_constructed_t : stats_accumulator_test_t
 {
     sut_t sut{.sse = sse, .sum = sum, .arg_min_max = {}, .sample_count = sample_count};
 };
 
-TEST_F(error_accumulator_test_constructed_t, sample)
+TEST_F(stats_accumulator_test_constructed_t, sample)
 {
     sut.sample(arg, error);
 
@@ -584,27 +584,27 @@ TEST_F(error_accumulator_test_constructed_t, sample)
     EXPECT_EQ(error, sut.arg_min_max.error);
 }
 
-TEST_F(error_accumulator_test_constructed_t, mse)
+TEST_F(stats_accumulator_test_constructed_t, mse)
 {
     EXPECT_EQ(mse, sut.mse());
 }
 
-TEST_F(error_accumulator_test_constructed_t, rmse)
+TEST_F(stats_accumulator_test_constructed_t, rmse)
 {
     EXPECT_EQ(rmse, sut.rmse());
 }
 
-TEST_F(error_accumulator_test_constructed_t, bias)
+TEST_F(stats_accumulator_test_constructed_t, bias)
 {
     EXPECT_EQ(bias, sut.bias());
 }
 
-TEST_F(error_accumulator_test_constructed_t, variance)
+TEST_F(stats_accumulator_test_constructed_t, variance)
 {
     EXPECT_EQ(variance, sut.variance());
 }
 
-TEST_F(error_accumulator_test_constructed_t, ostream_inserter)
+TEST_F(stats_accumulator_test_constructed_t, ostream_inserter)
 {
     auto expected = std::ostringstream{};
     expected << "sample count = " << sample_count << "\narg_min_max\nsum = " << sum << "\nmse = " << mse

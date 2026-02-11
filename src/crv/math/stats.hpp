@@ -202,13 +202,13 @@ private:
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// Error Accumulator
+// Stats Accumulator
 // --------------------------------------------------------------------------------------------------------------------
 
 /// accumulates stats to provide a summary
 template <typename arg_t, typename t_value_t, typename accumulator_t = compensated_accumulator_t<t_value_t>,
           typename arg_min_max_t = arg_min_max_t<arg_t, t_value_t>>
-struct error_accumulator_t
+struct stats_accumulator_t
 {
     using value_t = t_value_t;
 
@@ -248,7 +248,7 @@ struct error_accumulator_t
         return mse() - bias * bias;
     }
 
-    friend auto operator<<(std::ostream& out, error_accumulator_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, stats_accumulator_t const& src) -> std::ostream&
     {
         out << "sample count = " << src.sample_count;
         if (src.sample_count)
@@ -261,8 +261,8 @@ struct error_accumulator_t
         return out;
     }
 
-    constexpr auto operator<=>(error_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(error_accumulator_t const&) const noexcept -> bool  = default;
+    constexpr auto operator<=>(stats_accumulator_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(stats_accumulator_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv
