@@ -15,6 +15,7 @@ target_sources(lib PRIVATE
     math/jet/jet.hpp
     math/io.hpp
     math/io.cpp
+    math/stats.hpp
 )
 target_sources_kernel(lib
     lib.hpp
@@ -50,6 +51,7 @@ if (enable_testing)
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
+        math/stats_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
         lib
