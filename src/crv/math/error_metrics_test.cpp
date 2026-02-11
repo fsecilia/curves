@@ -1057,6 +1057,59 @@ TEST_F(metric_policy_test_ulps_t, ten_low)
     EXPECT_DOUBLE_EQ(-10 * error, error_accumulator.error);
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Metric Policy Mono
+// --------------------------------------------------------------------------------------------------------------------
+
+struct metric_policy_test_mono_t : metric_policy_test_t<>
+{
+    using sut_t = metric_policy::mono_t<value_t>;
+};
+
+TEST_F(metric_policy_test_mono_t, initializes_to_nullopt)
+{
+    EXPECT_EQ(std::nullopt, sut_t{}.prev);
+}
+
+TEST_F(metric_policy_test_mono_t, greater)
+{
+    auto const prev = 10.0;
+    auto       sut  = sut_t{.prev = prev};
+
+    auto const actual = to_fixed<fixed_t>(prev + error);
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
+    EXPECT_DOUBLE_EQ(0, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(0, error_accumulator.error);
+}
+
+TEST_F(metric_policy_test_mono_t, equal)
+{
+    auto const prev = 10.0;
+    auto       sut  = sut_t{.prev = prev};
+
+    auto const actual = to_fixed<fixed_t>(prev);
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
+    EXPECT_DOUBLE_EQ(0, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(0, error_accumulator.error);
+}
+
+TEST_F(metric_policy_test_mono_t, lesser)
+{
+    auto const prev = 10.0;
+    auto       sut  = sut_t{.prev = prev};
+
+    auto const actual = to_fixed<fixed_t>(prev - error);
+    sut(error_accumulator, arg, actual, expected);
+
+    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
+    EXPECT_DOUBLE_EQ(arg, error_accumulator.arg);
+    EXPECT_DOUBLE_EQ(-error, error_accumulator.error);
+}
+
 // ====================================================================================================================
 // Error Metric
 // ====================================================================================================================
@@ -1169,6 +1222,7 @@ struct error_metrics_test_t : Test
         template <typename, typename> using diff_metric_t = metric_t;
         template <typename, typename> using rel_metric_t  = metric_t;
         template <typename, typename> using ulps_metric_t = metric_t;
+        template <typename, typename> using mono_metric_t = metric_t;
     };
 
     using sut_t = error_metrics_t<policy_t>;
@@ -1183,6 +1237,7 @@ struct error_metrics_test_t : Test
         .diff_metric = metric_t{.name = "diff"},
         .rel_metric  = metric_t{.name = "rel"},
         .ulps_metric = metric_t{.name = "ulps"},
+        .mono_metric = metric_t{.name = "mono"},
     };
 };
 
@@ -1193,11 +1248,12 @@ TEST_F(error_metrics_test_t, sample)
     EXPECT_EQ(expected_sample_results, sut.diff_metric.sample_results);
     EXPECT_EQ(expected_sample_results, sut.rel_metric.sample_results);
     EXPECT_EQ(expected_sample_results, sut.ulps_metric.sample_results);
+    EXPECT_EQ(expected_sample_results, sut.mono_metric.sample_results);
 }
 
 TEST_F(error_metrics_test_t, ostream_inserter)
 {
-    auto const expected = "diff:\ndiff\nrel:\nrel\nulps:\nulps";
+    auto const expected = "diff:\ndiff\nrel:\nrel\nulps:\nulps\nmono:\nmono";
 
     auto actual = std::ostringstream{};
     actual << sut;

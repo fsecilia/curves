@@ -14,6 +14,7 @@
 #include <cmath>
 #include <concepts>
 #include <map>
+#include <optional>
 #include <ostream>
 #include <utility>
 #include <vector>
@@ -469,6 +470,32 @@ struct ulps_t
     constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
 };
 
+/// tracks monotonicity per sample
+template <typename value_t> struct mono_t
+{
+    std::optional<value_t> prev{};
+
+    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual, value_t) noexcept
+        -> void
+    {
+        auto const cur = from_fixed<value_t>(actual);
+        if (!prev)
+        {
+            prev = cur;
+            return;
+        }
+
+        auto const diff = cur - *prev;
+        *prev           = cur;
+
+        if (diff < 0) error_accumulator.sample(arg, diff);
+    }
+
+    constexpr auto operator<=>(mono_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(mono_t const&) const noexcept -> bool  = default;
+};
+
 } // namespace metric_policy
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -516,6 +543,9 @@ struct default_error_metrics_policy_t
     template <typename arg_t, typename value_t>
     using ulps_metric_t
         = error_metric_t<arg_t, value_t, metric_policy::ulps_t, ulps_error_accumulator_t<arg_t, int_t, value_t>>;
+
+    template <typename arg_t, typename value_t>
+    using mono_metric_t = error_metric_t<arg_t, value_t, metric_policy::mono_t<value_t>>;
 };
 
 /// collects metrics about various types of error
@@ -526,21 +556,28 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
     using diff_metric_t = policy_t::template diff_metric_t<arg_t, value_t>;
     using rel_metric_t  = policy_t::template rel_metric_t<arg_t, value_t>;
     using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, value_t>;
+    using mono_metric_t = policy_t::template mono_metric_t<arg_t, value_t>;
 
     diff_metric_t diff_metric;
     rel_metric_t  rel_metric;
     ulps_metric_t ulps_metric;
+    mono_metric_t mono_metric;
 
     template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
         diff_metric.sample(arg, actual, expected);
         rel_metric.sample(arg, actual, expected);
         ulps_metric.sample(arg, actual, expected);
+        mono_metric.sample(arg, actual, expected);
     }
 
     friend auto operator<<(std::ostream& out, error_metrics_t const& src) -> std::ostream&
     {
-        return out << "diff:\n" << src.diff_metric << "\nrel:\n" << src.rel_metric << "\nulps:\n" << src.ulps_metric;
+        return out << "diff:\n"
+                   << src.diff_metric << "\nrel:\n"
+                   << src.rel_metric << "\nulps:\n"
+                   << src.ulps_metric << "\nmono:\n"
+                   << src.mono_metric;
     }
 
     constexpr auto operator<=>(error_metrics_t const&) const noexcept -> auto = default;
