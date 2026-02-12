@@ -80,9 +80,6 @@ public:
         }
     }
 
-    constexpr auto operator<=>(histogram_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(histogram_t const&) const noexcept -> bool  = default;
-
     friend auto operator<<(std::ostream& out, histogram_t const& src) -> std::ostream&
     {
         out << "{";
@@ -97,6 +94,9 @@ public:
         out << "}";
         return out;
     }
+
+    constexpr auto operator<=>(histogram_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(histogram_t const&) const noexcept -> bool  = default;
 
 private:
     int_t    count_{};
@@ -126,14 +126,14 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
         value_t p99{};
         value_t p100{};
 
-        constexpr auto operator<=>(result_t const&) const noexcept -> auto = default;
-        constexpr auto operator==(result_t const&) const noexcept -> bool  = default;
-
         friend auto operator<<(std::ostream& out, result_t const& src) -> std::ostream&
         {
             return out << "p50 = " << src.p50 << ", p90 = " << src.p90 << ", p95 = " << src.p95 << ", p99 = " << src.p99
                        << ", max = " << src.p100;
         }
+
+        constexpr auto operator<=>(result_t const&) const noexcept -> auto = default;
+        constexpr auto operator==(result_t const&) const noexcept -> bool  = default;
     };
 
     auto operator()(histogram_t const& histogram) const noexcept -> result_t
