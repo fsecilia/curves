@@ -135,47 +135,55 @@ struct ulps_t
     constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
 };
 
+/// tracks monotonicity per sample
+template <typename arg_t, typename value_t, typename fixed_t,
+          typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
+struct mono_t
+{
+    error_accumulator_t    error_accumulator{};
+    std::optional<fixed_t> prev{};
+    int_t                  violation_count{};
+
+    constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
+    {
+        if (!prev)
+        {
+            prev = actual;
+            return;
+        }
+
+        auto const error = actual - *prev;
+        *prev            = actual;
+
+        if (error < 0) ++violation_count;
+
+        error_accumulator.sample(arg, from_fixed<value_t>(std::max(fixed_t{0}, error)));
+    }
+
+    constexpr auto violation_frac() const noexcept -> value_t
+    {
+        auto const sample_count = error_accumulator.sample_count;
+        assert(sample_count);
+        return static_cast<value_t>(violation_count) / sample_count;
+    }
+
+    friend auto operator<<(std::ostream& out, mono_t const& src) -> std::ostream&
+    {
+        out << "violations = " << src.violation_count;
+        if (!src.violation_count) return out << " (0%)";
+
+        return out << " (" << src.violation_frac() * 100 << "%)\n" << src.error_accumulator;
+    }
+
+    constexpr auto operator<=>(mono_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(mono_t const&) const noexcept -> bool  = default;
+};
+
 } // namespace error_metric
 
 // --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
-
-/// tracks monotonicity per sample
-template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
-struct mono_error_accumulator_t : error_accumulator_t
-{
-    std::optional<value_t> prev{};
-    int_t                  violation_count{};
-
-    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
-    {
-        auto const cur = from_fixed<value_t>(actual);
-        if (!prev)
-        {
-            prev = cur;
-            return;
-        }
-
-        auto const error = std::max(value_t{0}, cur - *prev);
-        *prev            = cur;
-
-        if (error != 0) ++violation_count;
-
-        error_accumulator_t::sample(arg, error);
-    }
-
-    friend auto operator<<(std::ostream& out, mono_error_accumulator_t const& src) -> std::ostream&
-    {
-        out << "violation count = " << src.violation_count;
-        if (!src.violation_count) return out;
-
-        return out << "\n" << static_cast<error_accumulator_t const&>(src);
-    }
-
-    constexpr auto operator<=>(mono_error_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(mono_error_accumulator_t const&) const noexcept -> bool  = default;
-};
 
 // --------------------------------------------------------------------------------------------------------------------
 // Error Metric
@@ -216,28 +224,29 @@ struct default_error_metrics_policy_t
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
     template <typename arg_t, typename value_t> using rel_metric_t  = error_metric::rel_t<arg_t, value_t>;
+
     template <typename arg_t, typename value_t, typename fixed_t>
     using ulps_metric_t = error_metric::ulps_t<arg_t, value_t, fixed_t>;
 
-    template <typename arg_t, typename value_t>
-    using mono_error_accumulator_t = mono_error_accumulator_t<arg_t, value_t>;
+    template <typename arg_t, typename value_t, typename fixed_t>
+    using mono_metric_t = error_metric::mono_t<arg_t, value_t, fixed_t>;
 };
 
 /// collects metrics about various types of error
 template <typename policy_t = default_error_metrics_policy_t> struct error_metrics_t
 {
-    using arg_t                    = policy_t::arg_t;
-    using value_t                  = policy_t::value_t;
-    using fixed_t                  = policy_t::fixed_t;
-    using diff_metric_t            = policy_t::template diff_metric_t<arg_t, value_t>;
-    using rel_metric_t             = policy_t::template rel_metric_t<arg_t, value_t>;
-    using ulps_metric_t            = policy_t::template ulps_metric_t<arg_t, value_t, fixed_t>;
-    using mono_error_accumulator_t = policy_t::template mono_error_accumulator_t<arg_t, value_t>;
+    using arg_t         = policy_t::arg_t;
+    using value_t       = policy_t::value_t;
+    using fixed_t       = policy_t::fixed_t;
+    using diff_metric_t = policy_t::template diff_metric_t<arg_t, value_t>;
+    using rel_metric_t  = policy_t::template rel_metric_t<arg_t, value_t>;
+    using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, value_t, fixed_t>;
+    using mono_metric_t = policy_t::template mono_metric_t<arg_t, value_t, fixed_t>;
 
-    diff_metric_t            diff_metric;
-    rel_metric_t             rel_metric;
-    ulps_metric_t            ulps_metric;
-    mono_error_accumulator_t mono_error_accumulator;
+    diff_metric_t diff_metric;
+    rel_metric_t  rel_metric;
+    ulps_metric_t ulps_metric;
+    mono_metric_t mono_metric;
 
     template <typename fixed_t>
     constexpr auto sample(arg_t arg, fixed_t actual_fixed, value_t expected) noexcept -> void
@@ -246,7 +255,7 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
         diff_metric.sample(arg, actual_value, expected);
         rel_metric.sample(arg, actual_value, expected);
         ulps_metric.sample(arg, actual_fixed, expected);
-        mono_error_accumulator.sample(arg, actual_fixed);
+        mono_metric.sample(arg, actual_fixed);
     }
 
     friend auto operator<<(std::ostream& out, error_metrics_t const& src) -> std::ostream&
@@ -256,7 +265,7 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
             << "diff:\n" << src.diff_metric
             << "\nrel:\n" << src.rel_metric
             << "\nulps:\n" << src.ulps_metric
-            << "\nmono:\n" << src.mono_error_accumulator;
+            << "\nmono:\n" << src.mono_metric;
         // clang-format on
     }
 

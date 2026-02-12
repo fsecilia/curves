@@ -255,92 +255,102 @@ TEST_F(error_metric_ulps_test_t, ostream_inserter)
     EXPECT_EQ(expected, actual.str());
 }
 
-// ====================================================================================================================
-// Metric Policies
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// Montonicity
+// --------------------------------------------------------------------------------------------------------------------
 
-template <typename t_value_t = float_t> struct metric_policy_test_t : Test
+struct error_metric_mono_test_t : Test
 {
     using arg_t   = int_t;
-    using value_t = t_value_t;
-    using fixed_t = fixed_t<int64_t, 32>;
+    using value_t = float_t;
+    using fixed_t = fixed_t<int_t, 0>;
 
-    static constexpr auto arg      = arg_t{372};
-    static constexpr auto error    = value_t{1};
-    static constexpr auto expected = value_t{4};
+    arg_t const   arg{3};
+    fixed_t const actual_fixed{7};
+    value_t const actual_float{from_fixed<value_t>(actual_fixed)};
+    fixed_t const error{13};
 
-    struct error_accumulator_t
+    StrictMock<mock_sampler_t> mock_error_accumulator;
+
+    using error_accumulator_t = sampler_t;
+    struct counting_error_accumulator_t : sampler_t
     {
-        using arg_t   = arg_t;
-        using value_t = value_t;
-
-        arg_t   arg{};
-        value_t error{};
-
-        auto sample(arg_t arg, value_t error) noexcept -> void
-        {
-            this->arg   = arg;
-            this->error = error;
-        }
+        int_t sample_count{0};
     };
 
-    error_accumulator_t error_accumulator{};
+    using distribution_t = sampler_t;
+    using fr_frac_t      = sampler_t;
+
+    using sut_t = error_metric::mono_t<arg_t, value_t, fixed_t, counting_error_accumulator_t>;
+    sut_t sut{counting_error_accumulator_t{error_accumulator_t{"error_accumulator", &mock_error_accumulator}}};
 };
 
-#if 0
-// --------------------------------------------------------------------------------------------------------------------
-// Metric Policy Mono
-// --------------------------------------------------------------------------------------------------------------------
-
-struct metric_policy_test_mono_t : metric_policy_test_t<>
+TEST_F(error_metric_mono_test_t, sample_no_prev)
 {
-    using sut_t = metric_policy::mono_t<value_t>;
-};
+    auto const expected = actual_fixed;
 
-TEST_F(metric_policy_test_mono_t, initializes_to_nullopt)
-{
-    EXPECT_EQ(std::nullopt, sut_t{}.prev);
+    sut.sample(arg, expected);
+
+    EXPECT_EQ(expected, *sut.prev);
+    EXPECT_EQ(0, sut.violation_count);
 }
 
-TEST_F(metric_policy_test_mono_t, greater)
+TEST_F(error_metric_mono_test_t, sample_zero_error)
 {
-    auto const prev = 10.0;
-    auto       sut  = sut_t{.prev = prev};
+    sut.prev = actual_fixed;
+    EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
 
-    auto const actual = to_fixed<fixed_t>(prev + error);
-    sut(error_accumulator, arg, actual, expected);
+    sut.sample(arg, actual_fixed);
 
-    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
-    EXPECT_DOUBLE_EQ(0, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(0, error_accumulator.error);
+    EXPECT_EQ(actual_fixed, *sut.prev);
+    EXPECT_EQ(0, sut.violation_count);
 }
 
-TEST_F(metric_policy_test_mono_t, equal)
+TEST_F(error_metric_mono_test_t, sample_positive_error)
 {
-    auto const prev = 10.0;
-    auto       sut  = sut_t{.prev = prev};
+    sut.prev = actual_fixed;
+    EXPECT_CALL(mock_error_accumulator, sample(arg, from_fixed<value_t>(error)));
 
-    auto const actual = to_fixed<fixed_t>(prev);
-    sut(error_accumulator, arg, actual, expected);
+    sut.sample(arg, actual_fixed + error);
 
-    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
-    EXPECT_DOUBLE_EQ(0, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(0, error_accumulator.error);
+    EXPECT_EQ(actual_fixed + error, *sut.prev);
+    EXPECT_EQ(0, sut.violation_count);
 }
 
-TEST_F(metric_policy_test_mono_t, lesser)
+TEST_F(error_metric_mono_test_t, sample_negative_error)
 {
-    auto const prev = 10.0;
-    auto       sut  = sut_t{.prev = prev};
+    sut.prev = actual_fixed;
+    EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
 
-    auto const actual = to_fixed<fixed_t>(prev - error);
-    sut(error_accumulator, arg, actual, expected);
+    auto const actual   = actual_fixed;
+    auto const expected = actual - error;
+    sut.sample(arg, expected);
 
-    EXPECT_EQ(from_fixed<value_t>(actual), sut.prev);
-    EXPECT_DOUBLE_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(-error, error_accumulator.error);
+    EXPECT_EQ(actual_fixed - error, *sut.prev);
+    EXPECT_EQ(1, sut.violation_count);
 }
-#endif
+
+TEST_F(error_metric_mono_test_t, ostream_inserter_zero_sample_count)
+{
+    auto const expected = "violations = 0 (0%)";
+
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
+
+    EXPECT_EQ(expected, actual.str());
+}
+
+TEST_F(error_metric_mono_test_t, ostream_inserter_nonzero_sample_count)
+{
+    sut.violation_count                = 73;
+    sut.error_accumulator.sample_count = sut.violation_count * 2;
+    auto const expected                = "violations = 73 (50%)\nerror_accumulator";
+
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
+
+    EXPECT_EQ(expected, actual.str());
+}
 
 // ====================================================================================================================
 // Error Metric
@@ -430,35 +440,36 @@ struct error_metrics_test_t : Test
         constexpr auto operator==(sample_results_t const&) const noexcept -> bool = default;
     };
 
-    template <typename actual_t> struct metric_t
+    template <typename actual_t> struct common_metric_t
     {
         std::string_view name;
 
         sample_results_t<actual_t> sample_results{};
 
-        constexpr auto sample(arg_t arg, actual_t actual, value_t expected) noexcept -> void
+        friend auto operator<<(std::ostream& out, common_metric_t const& src) -> std::ostream&
         {
-            sample_results.arg      = arg;
-            sample_results.actual   = actual;
-            sample_results.expected = expected;
+            return out << src.name;
         }
-
-        friend auto operator<<(std::ostream& out, metric_t const& src) -> std::ostream& { return out << src.name; }
     };
 
-    struct accumulator_t
+    template <typename actual_t> struct metric_t : common_metric_t<actual_t>
     {
-        std::string_view name;
+        constexpr auto sample(arg_t arg, actual_t actual, value_t expected) noexcept -> void
+        {
+            this->sample_results.arg      = arg;
+            this->sample_results.actual   = actual;
+            this->sample_results.expected = expected;
+        }
+    };
 
-        sample_results_t<fixed_t> sample_results{};
-
+    // mono metric has a differerent sample() shape
+    struct mono_metric_t : common_metric_t<fixed_t>
+    {
         constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
         {
             sample_results.arg    = arg;
             sample_results.actual = actual;
         }
-
-        friend auto operator<<(std::ostream& out, accumulator_t const& src) -> std::ostream& { return out << src.name; }
     };
 
     struct policy_t
@@ -467,10 +478,10 @@ struct error_metrics_test_t : Test
         using value_t = value_t;
         using fixed_t = fixed_t;
 
-        template <typename, typename> using diff_metric_t            = metric_t<value_t>;
-        template <typename, typename> using rel_metric_t             = metric_t<value_t>;
-        template <typename, typename, typename> using ulps_metric_t  = metric_t<fixed_t>;
-        template <typename, typename> using mono_error_accumulator_t = accumulator_t;
+        template <typename, typename> using diff_metric_t           = metric_t<value_t>;
+        template <typename, typename> using rel_metric_t            = metric_t<value_t>;
+        template <typename, typename, typename> using ulps_metric_t = metric_t<fixed_t>;
+        template <typename, typename, typename> using mono_metric_t = mono_metric_t;
     };
 
     using sut_t = error_metrics_t<policy_t>;
@@ -488,10 +499,10 @@ struct error_metrics_test_t : Test
     };
 
     sut_t sut{
-        .diff_metric            = metric_t<value_t>{.name = "diff"},
-        .rel_metric             = metric_t<value_t>{.name = "rel"},
-        .ulps_metric            = metric_t<fixed_t>{.name = "ulps"},
-        .mono_error_accumulator = accumulator_t{.name = "mono"},
+        .diff_metric = metric_t<value_t>{{.name = "diff"}},
+        .rel_metric  = metric_t<value_t>{{.name = "rel"}},
+        .ulps_metric = metric_t<fixed_t>{{.name = "ulps"}},
+        .mono_metric = mono_metric_t{{.name = "mono"}},
     };
 };
 
@@ -510,7 +521,7 @@ TEST_F(error_metrics_test_t, sample)
     EXPECT_EQ(expected_accumulator_sample_results.actual, sut.ulps_metric.sample_results.actual);
     EXPECT_EQ(expected_metric_sample_results.expected, sut.ulps_metric.sample_results.expected);
 
-    EXPECT_EQ(expected_accumulator_sample_results, sut.mono_error_accumulator.sample_results);
+    EXPECT_EQ(expected_accumulator_sample_results, sut.mono_metric.sample_results);
 }
 
 TEST_F(error_metrics_test_t, ostream_inserter)
