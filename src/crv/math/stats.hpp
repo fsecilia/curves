@@ -11,10 +11,12 @@
 #include <crv/lib.hpp>
 #include <crv/math/arg_min_max.hpp>
 #include <crv/math/compensated_accumulator.hpp>
+#include <crv/math/integer.hpp>
 #include <cassert>
 #include <cmath>
 #include <concepts>
 #include <ostream>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -103,8 +105,10 @@ private:
 
     auto inc(values_t& values, value_t value) noexcept -> void
     {
-        if (std::cmp_greater_equal(value, std::size(values))) values.resize(value + 1);
-        ++values[value];
+        using uint_value_t    = std::make_unsigned_t<value_t>;
+        auto const uint_value = int_cast<uint_value_t>(value);
+        if (std::cmp_greater_equal(uint_value, std::size(values))) values.resize(uint_value + 1);
+        ++values[uint_value];
     }
 };
 

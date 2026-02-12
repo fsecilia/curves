@@ -74,6 +74,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-float-equal
         -Wno-global-constructors
         -Wno-padded
+        -Wno-sign-conversion
         -Wno-shadow
         -Wno-shadow-field-in-constructor
         -Wno-switch-default

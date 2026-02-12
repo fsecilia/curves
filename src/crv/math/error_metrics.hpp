@@ -118,7 +118,7 @@ struct ulps_t
         auto const ulps = actual.value >= expected_fixed ? static_cast<int_t>(actual.value - expected_fixed)
                                                          : -static_cast<int_t>(expected_fixed - actual.value);
 
-        error_accumulator.sample(arg, ulps);
+        error_accumulator.sample(arg, static_cast<value_t>(ulps));
         distribution.sample(ulps);
         fr_frac.sample(ulps);
     }
@@ -167,7 +167,7 @@ struct mono_t
     {
         auto const sample_count = error_accumulator.sample_count;
         assert(sample_count);
-        return static_cast<value_t>(violation_count) / sample_count;
+        return static_cast<value_t>(violation_count) / static_cast<value_t>(sample_count);
     }
 
     friend auto operator<<(std::ostream& out, mono_t const& src) -> std::ostream&
