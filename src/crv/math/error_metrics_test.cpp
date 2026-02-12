@@ -206,35 +206,6 @@ template <typename t_value_t = float_t> struct metric_policy_test_t : Test
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// Metric Policy Diff
-// --------------------------------------------------------------------------------------------------------------------
-
-struct metric_policy_test_diff_t : metric_policy_test_t<>
-{};
-
-TEST_F(metric_policy_test_diff_t, positive)
-{
-    auto const sut = metric_policy::diff_t{};
-
-    auto const actual = to_fixed<fixed_t>(expected + error);
-    sut(error_accumulator, arg, actual, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
-}
-
-TEST_F(metric_policy_test_diff_t, negative)
-{
-    auto const sut = metric_policy::diff_t{};
-
-    auto const actual = to_fixed<fixed_t>(expected - error);
-    sut(error_accumulator, arg, actual, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(error, -error_accumulator.error);
-}
-
-// --------------------------------------------------------------------------------------------------------------------
 // Metric Policy Rel
 // --------------------------------------------------------------------------------------------------------------------
 

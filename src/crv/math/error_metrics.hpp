@@ -156,21 +156,6 @@ struct mono_error_accumulator_t : error_accumulator_t
 
 namespace metric_policy {
 
-/// calcs signed diff
-struct diff_t
-{
-    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
-                              value_t expected) const noexcept -> void
-    {
-        auto const diff = from_fixed<value_t>(actual) - expected;
-        error_accumulator.sample(arg, diff);
-    }
-
-    constexpr auto operator<=>(diff_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
-};
-
 /**
     calcs signed relative diff, diff/expected
 
