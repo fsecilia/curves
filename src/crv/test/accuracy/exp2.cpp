@@ -77,73 +77,73 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
     }
 };
 
-auto test_exp2() noexcept -> void
+struct exp2_test_t
 {
-    using std::log2;
-
     using in_t        = crv::fixed_t<int64_t, 32>;
     using out_t       = crv::fixed_t<uint64_t, 32>;
     using reference_t = reference_float_t;
 
-    struct error_metrics_policy_t : default_error_metrics_policy_t
+    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
+    {};
+
+    auto operator()() noexcept -> void
     {
-        using arg_t   = in_t;
-        using value_t = reference_t;
-        using fixed_t = out_t;
-    };
-    using metrics_t = error_metrics_t<error_metrics_policy_t>;
+        using std::log2;
 
-    auto const max_rep_float = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
-    auto const max_rep_int   = static_cast<in_t::value_t>(max_rep_float);
-    auto const max           = max_rep_int << in_t::frac_bits;
-    auto const min           = -max;
+        using metrics_t = error_metrics_t<error_metrics_policy_t>;
 
-    // auto const approx_impl = exp2_q32_t{};
-    auto const approx_impl = preprod_exp2_t{};
+        auto const max_rep_float = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
+        auto const max_rep_int   = static_cast<in_t::value_t>(max_rep_float);
+        auto const max           = max_rep_int << in_t::frac_bits;
+        auto const min           = -max;
 
-    auto const accuracy_test = accuracy_test_t{
-        in_t{min},
-        in_t{max},
-        [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
-        [](reference_t const& x) {
-            using std::exp2;
-            return exp2(x);
-        },
-    };
+        // auto const approx_impl = exp2_q32_t{};
+        auto const approx_impl = preprod_exp2_t{};
 
-    auto const iterations  = 1000000;
-    auto const coarse_step = (max - min + iterations / 2) / iterations;
+        auto const accuracy_test = accuracy_test_t{
+            in_t{min},
+            in_t{max},
+            [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
+            [](reference_t const& x) {
+                using std::exp2;
+                return exp2(x);
+            },
+        };
 
-    struct range_t
-    {
-        in_t min;
-        in_t max;
-        in_t step_size;
-    };
+        auto const iterations  = 1000000;
+        auto const coarse_step = (max - min + iterations / 2) / iterations;
 
-    range_t ranges[] = {
-        {min, 0, coarse_step},
-        {min / 2, 0, coarse_step},
-        {min / 2, max / 2, coarse_step},
-        {0, max / 2, coarse_step},
-        {0, max, coarse_step},
-        {min, max, coarse_step},
-        {min, in_t{min} + to_fixed<in_t>(0.005), 1},
-        {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
-        {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
-        {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
-        {in_t{max} - to_fixed<in_t>(0.005), max, 1},
-    };
-    for (auto const& range : ranges)
-    {
-        metrics_t metrics;
-        accuracy_test(metrics, range.min, range.max, range.step_size);
+        struct range_t
+        {
+            in_t min;
+            in_t max;
+            in_t step_size;
+        };
+
+        range_t ranges[] = {
+            {min, 0, coarse_step},
+            {min / 2, 0, coarse_step},
+            {min / 2, max / 2, coarse_step},
+            {0, max / 2, coarse_step},
+            {0, max, coarse_step},
+            {min, max, coarse_step},
+            {min, in_t{min} + to_fixed<in_t>(0.005), 1},
+            {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
+            {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
+            {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
+            {in_t{max} - to_fixed<in_t>(0.005), max, 1},
+        };
+        for (auto const& range : ranges)
+        {
+            metrics_t metrics;
+            accuracy_test(metrics, range.min, range.max, range.step_size);
+        }
     }
-}
+};
 
 auto main(int, char*[]) -> int
 {
-    test_exp2();
+    exp2_test_t{}();
     return EXIT_SUCCESS;
 }
 

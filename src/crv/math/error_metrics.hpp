@@ -179,11 +179,12 @@ struct mono_t
 // --------------------------------------------------------------------------------------------------------------------
 
 /// default policy used in prod
-struct default_error_metrics_policy_t
+template <typename t_arg_t = int_t, typename t_value_t = float_t, typename t_fixed_t = fixed_t<int_t, 32>>
+struct error_metrics_policy_t
 {
-    using arg_t   = int_t;
-    using value_t = float_t;
-    using fixed_t = fixed_t<int_t, 32>;
+    using arg_t   = t_arg_t;
+    using value_t = t_value_t;
+    using fixed_t = t_fixed_t;
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
     template <typename arg_t, typename value_t> using rel_metric_t  = error_metric::rel_t<arg_t, value_t>;
@@ -196,7 +197,7 @@ struct default_error_metrics_policy_t
 };
 
 /// collects metrics about various types of error
-template <typename policy_t = default_error_metrics_policy_t> struct error_metrics_t
+template <typename policy_t = error_metrics_policy_t<>> struct error_metrics_t
 {
     using arg_t         = policy_t::arg_t;
     using value_t       = policy_t::value_t;
