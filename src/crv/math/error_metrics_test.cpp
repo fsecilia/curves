@@ -132,6 +132,54 @@ TEST_F(error_metric_diff_test_t, ostream_inserter)
     EXPECT_EQ(expected, actual.str());
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// Signed Rel Diff
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_metric_rel_test_t : Test
+{
+    using arg_t   = int_t;
+    using value_t = float_t;
+
+    arg_t const   arg{3};
+    value_t const actual{7};
+    value_t const error{13};
+
+    StrictMock<mock_sampler_t> mock_error_accumulator;
+
+    using error_accumulator_t = sampler_t;
+
+    using sut_t = error_metric::rel_t<arg_t, value_t, error_accumulator_t>;
+    sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator}};
+};
+
+TEST_F(error_metric_rel_test_t, sample_expected_zero_is_ignored)
+{
+    sut.sample(arg, actual, 0.0);
+}
+
+TEST_F(error_metric_rel_test_t, sample_positive_error)
+{
+    EXPECT_CALL(mock_error_accumulator, sample(arg, error / actual));
+    sut.sample(arg, actual + error, actual);
+}
+
+TEST_F(error_metric_rel_test_t, sample_negative_error)
+{
+    EXPECT_CALL(mock_error_accumulator, sample(arg, -error / actual));
+    sut.sample(arg, actual - error, actual);
+}
+
+TEST_F(error_metric_rel_test_t, ostream_inserter)
+{
+    auto const expected = "error_accumulator";
+
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
+
+    EXPECT_EQ(expected, actual.str());
+}
+
 // ====================================================================================================================
 // Ulps Error Accumulator
 // ====================================================================================================================
@@ -204,33 +252,6 @@ template <typename t_value_t = float_t> struct metric_policy_test_t : Test
 
     error_accumulator_t error_accumulator{};
 };
-
-// --------------------------------------------------------------------------------------------------------------------
-// Metric Policy Rel
-// --------------------------------------------------------------------------------------------------------------------
-
-struct metric_policy_test_rel_t : metric_policy_test_t<>
-{};
-
-TEST_F(metric_policy_test_rel_t, zero)
-{
-    auto const sut = metric_policy::rel_t{};
-
-    sut(error_accumulator, arg, 1.0, 0.0);
-
-    EXPECT_EQ(0, error_accumulator.arg);
-    EXPECT_EQ(0, error_accumulator.error);
-}
-
-TEST_F(metric_policy_test_rel_t, nonzero)
-{
-    auto const sut = metric_policy::rel_t{};
-
-    sut(error_accumulator, arg, error * expected + expected, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
-}
 
 // --------------------------------------------------------------------------------------------------------------------
 // Metric Policy Ulps

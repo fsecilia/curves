@@ -81,6 +81,31 @@ struct diff_t
     constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
 };
 
+/**
+    tracks signed relative diff, diff/expected
+
+    Samples with expected value of 0 are omitted.
+*/
+template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
+struct rel_t
+{
+    error_accumulator_t error_accumulator{};
+
+    constexpr auto sample(arg_t arg, value_t actual, value_t expected) noexcept -> void
+    {
+        if (std::abs(expected) <= epsilon<value_t>()) return;
+        error_accumulator.sample(arg, (actual - expected) / expected);
+    }
+
+    friend auto operator<<(std::ostream& out, rel_t const& src) -> std::ostream&
+    {
+        return out << src.error_accumulator;
+    }
+
+    constexpr auto operator<=>(rel_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
+};
+
 } // namespace error_metric
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -156,29 +181,6 @@ struct mono_error_accumulator_t : error_accumulator_t
 
 namespace metric_policy {
 
-/**
-    calcs signed relative diff, diff/expected
-
-    Samples with expected value of 0 are omitted.
-*/
-struct rel_t
-{
-    template <float_error_accumulator error_accumulator_t, typename arg_t, typename value_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, value_t actual,
-                              value_t expected) const noexcept -> void
-    {
-        if (std::abs(expected) > epsilon<value_t>())
-        {
-            auto const diff = actual - expected;
-            auto const rel  = diff / expected;
-            error_accumulator.sample(arg, rel);
-        }
-    }
-
-    constexpr auto operator<=>(rel_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
-};
-
 /// calcs signed ulps, units-in-last-place
 struct ulps_t
 {
@@ -236,8 +238,7 @@ struct default_error_metrics_policy_t
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
 
-    template <typename arg_t, typename value_t>
-    using rel_metric_t = error_metric_t<arg_t, value_t, metric_policy::rel_t>;
+    template <typename arg_t, typename value_t> using rel_metric_t = error_metric::rel_t<arg_t, value_t>;
 
     template <typename arg_t, typename value_t>
     using ulps_metric_t
