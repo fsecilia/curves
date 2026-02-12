@@ -56,6 +56,34 @@ template <typename float_t> struct fr_frac_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// Individual Error Metrics
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace error_metric {
+
+/// tracks signed diff
+template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
+struct diff_t
+{
+    error_accumulator_t error_accumulator{};
+
+    constexpr auto sample(arg_t arg, value_t actual, value_t expected) noexcept -> void
+    {
+        error_accumulator.sample(arg, actual - expected);
+    }
+
+    friend auto operator<<(std::ostream& out, diff_t const& src) -> std::ostream&
+    {
+        return out << src.error_accumulator;
+    }
+
+    constexpr auto operator<=>(diff_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
+};
+
+} // namespace error_metric
+
+// --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
 

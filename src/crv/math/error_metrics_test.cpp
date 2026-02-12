@@ -86,6 +86,53 @@ TEST_F(fr_frac_test_t, multiple_samples)
 }
 
 // ====================================================================================================================
+// Individual Error Metrics
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// Signed Diff
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_metric_diff_test_t : Test
+{
+    using arg_t   = int_t;
+    using value_t = float_t;
+
+    arg_t const   arg{3};
+    value_t const actual{7};
+    value_t const error{13};
+
+    StrictMock<mock_sampler_t> mock_error_accumulator;
+
+    using error_accumulator_t = sampler_t;
+
+    using sut_t = error_metric::diff_t<arg_t, value_t, error_accumulator_t>;
+    sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator}};
+};
+
+TEST_F(error_metric_diff_test_t, sample_positive_error)
+{
+    EXPECT_CALL(mock_error_accumulator, sample(arg, error));
+    sut.sample(arg, actual + error, actual);
+}
+
+TEST_F(error_metric_diff_test_t, sample_negative_error)
+{
+    EXPECT_CALL(mock_error_accumulator, sample(arg, -error));
+    sut.sample(arg, actual - error, actual);
+}
+
+TEST_F(error_metric_diff_test_t, ostream_inserter)
+{
+    auto const expected = "error_accumulator";
+
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
+
+    EXPECT_EQ(expected, actual.str());
+}
+
+// ====================================================================================================================
 // Ulps Error Accumulator
 // ====================================================================================================================
 
