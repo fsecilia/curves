@@ -248,7 +248,6 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
     ulps_metric_t ulps_metric;
     mono_metric_t mono_metric;
 
-    template <typename fixed_t>
     constexpr auto sample(arg_t arg, fixed_t actual_fixed, value_t expected) noexcept -> void
     {
         auto const actual_value = from_fixed<value_t>(actual_fixed);
