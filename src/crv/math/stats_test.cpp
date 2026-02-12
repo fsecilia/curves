@@ -437,8 +437,6 @@ struct distribution_test_t : Test
         mock_histogram_t* mock = nullptr;
 
         auto sample(int_t value) -> void { mock->sample(value); }
-
-        friend auto operator<<(std::ostream& out, histogram_t const& src) -> std::ostream& { return out << src.name; }
     };
 
     using percentile_result_t                        = int_t;
