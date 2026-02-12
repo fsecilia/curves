@@ -362,45 +362,38 @@ struct error_metrics_test_t : Test
     using fixed_t = fixed_t<int_t, 0>;
     using value_t = float_t;
 
-    template <typename actual_t> struct sample_results_t
+    template <typename actual_t> struct metric_t
     {
+        std::string_view name;
+
         arg_t    arg{};
         actual_t actual{};
         value_t  expected{};
 
-        constexpr auto operator==(sample_results_t const&) const noexcept -> bool = default;
+        constexpr auto sample(arg_t arg, actual_t actual, value_t expected) noexcept -> void
+        {
+            this->arg      = arg;
+            this->actual   = actual;
+            this->expected = expected;
+        }
+
+        friend auto operator<<(std::ostream& out, metric_t const& src) -> std::ostream& { return out << src.name; }
     };
 
-    template <typename actual_t> struct common_metric_t
+    struct mono_metric_t
     {
         std::string_view name;
 
-        sample_results_t<actual_t> sample_results{};
+        arg_t   arg{};
+        fixed_t actual{};
 
-        friend auto operator<<(std::ostream& out, common_metric_t const& src) -> std::ostream&
-        {
-            return out << src.name;
-        }
-    };
-
-    template <typename actual_t> struct metric_t : common_metric_t<actual_t>
-    {
-        constexpr auto sample(arg_t arg, actual_t actual, value_t expected) noexcept -> void
-        {
-            this->sample_results.arg      = arg;
-            this->sample_results.actual   = actual;
-            this->sample_results.expected = expected;
-        }
-    };
-
-    // mono metric has a differerent sample() shape
-    struct mono_metric_t : common_metric_t<fixed_t>
-    {
         constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
         {
-            sample_results.arg    = arg;
-            sample_results.actual = actual;
+            this->arg    = arg;
+            this->actual = actual;
         }
+
+        friend auto operator<<(std::ostream& out, mono_metric_t const& src) -> std::ostream& { return out << src.name; }
     };
 
     struct policy_t
@@ -417,42 +410,41 @@ struct error_metrics_test_t : Test
 
     using sut_t = error_metrics_t<policy_t>;
 
-    static constexpr auto expected_metric_sample_results = sample_results_t<value_t>{
-        .arg      = 7,
-        .actual   = 11,
-        .expected = 13,
-    };
-
-    static constexpr auto expected_accumulator_sample_results = sample_results_t<fixed_t>{
-        .arg      = 7,
-        .actual   = 11,
-        .expected = 0,
-    };
+    arg_t const   arg{7};
+    value_t const actual_value{11};
+    fixed_t const actual_fixed{to_fixed<fixed_t>(actual_value)};
+    value_t const expected{13};
 
     sut_t sut{
-        .diff_metric = metric_t<value_t>{{.name = "diff"}},
-        .rel_metric  = metric_t<value_t>{{.name = "rel"}},
-        .ulps_metric = metric_t<fixed_t>{{.name = "ulps"}},
-        .mono_metric = mono_metric_t{{.name = "mono"}},
+        .diff_metric = metric_t<value_t>{.name = "diff"},
+        .rel_metric  = metric_t<value_t>{.name = "rel"},
+        .ulps_metric = metric_t<fixed_t>{.name = "ulps"},
+        .mono_metric = mono_metric_t{.name = "mono"},
     };
 };
 
 TEST_F(error_metrics_test_t, sample)
 {
-    sut.sample(expected_metric_sample_results.arg, expected_accumulator_sample_results.actual,
-               expected_metric_sample_results.expected);
+    sut.sample(arg, actual_fixed, expected);
 
-    EXPECT_EQ(expected_metric_sample_results.arg, sut.diff_metric.sample_results.arg);
-    EXPECT_EQ(expected_accumulator_sample_results.actual, sut.diff_metric.sample_results.actual);
-    EXPECT_EQ(expected_metric_sample_results.expected, sut.diff_metric.sample_results.expected);
+    // diff metric
+    EXPECT_EQ(arg, sut.diff_metric.arg);
+    EXPECT_EQ(actual_value, sut.diff_metric.actual);
+    EXPECT_EQ(expected, sut.diff_metric.expected);
 
-    EXPECT_EQ(expected_metric_sample_results, sut.rel_metric.sample_results);
+    // rel metric
+    EXPECT_EQ(arg, sut.rel_metric.arg);
+    EXPECT_EQ(actual_value, sut.rel_metric.actual);
+    EXPECT_EQ(expected, sut.rel_metric.expected);
 
-    EXPECT_EQ(expected_metric_sample_results.arg, sut.ulps_metric.sample_results.arg);
-    EXPECT_EQ(expected_accumulator_sample_results.actual, sut.ulps_metric.sample_results.actual);
-    EXPECT_EQ(expected_metric_sample_results.expected, sut.ulps_metric.sample_results.expected);
+    // ulps metric
+    EXPECT_EQ(arg, sut.ulps_metric.arg);
+    EXPECT_EQ(actual_fixed, sut.ulps_metric.actual);
+    EXPECT_EQ(expected, sut.ulps_metric.expected);
 
-    EXPECT_EQ(expected_accumulator_sample_results, sut.mono_metric.sample_results);
+    // mono metric
+    EXPECT_EQ(arg, sut.mono_metric.arg);
+    EXPECT_EQ(actual_fixed, sut.mono_metric.actual);
 }
 
 TEST_F(error_metrics_test_t, ostream_inserter)
