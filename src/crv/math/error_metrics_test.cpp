@@ -309,24 +309,24 @@ TEST_F(error_metric_mono_test_t, sample_zero_error)
 TEST_F(error_metric_mono_test_t, sample_positive_error)
 {
     sut.prev = actual_fixed;
-    EXPECT_CALL(mock_error_accumulator, sample(arg, from_fixed<value_t>(error)));
+    EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
 
-    sut.sample(arg, actual_fixed + error);
+    auto const expected = actual_fixed + error;
+    sut.sample(arg, expected);
 
-    EXPECT_EQ(actual_fixed + error, *sut.prev);
+    EXPECT_EQ(expected, *sut.prev);
     EXPECT_EQ(0, sut.violation_count);
 }
 
 TEST_F(error_metric_mono_test_t, sample_negative_error)
 {
     sut.prev = actual_fixed;
-    EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
+    EXPECT_CALL(mock_error_accumulator, sample(arg, from_fixed<value_t>(error)));
 
-    auto const actual   = actual_fixed;
-    auto const expected = actual - error;
+    auto const expected = actual_fixed - error;
     sut.sample(arg, expected);
 
-    EXPECT_EQ(actual_fixed - error, *sut.prev);
+    EXPECT_EQ(expected, *sut.prev);
     EXPECT_EQ(1, sut.violation_count);
 }
 

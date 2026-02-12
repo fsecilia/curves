@@ -112,8 +112,12 @@ struct ulps_t
 
     constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
-        auto const ulps
-            = actual.value - static_cast<fixed_t::value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
+        auto const expected_fixed = static_cast<fixed_t::value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
+
+        // calc signed ulps from potentially unsigned values without widening
+        auto const ulps = actual.value >= expected_fixed ? static_cast<int_t>(actual.value - expected_fixed)
+                                                         : -static_cast<int_t>(expected_fixed - actual.value);
+
         error_accumulator.sample(arg, ulps);
         distribution.sample(ulps);
         fr_frac.sample(ulps);
@@ -145,12 +149,18 @@ struct mono_t
             return;
         }
 
-        auto const error = actual - *prev;
-        *prev            = actual;
+        auto const violation = actual < *prev;
+        if (violation)
+        {
+            ++violation_count;
+            error_accumulator.sample(arg, from_fixed<value_t>(*prev - actual));
+        }
+        else
+        {
+            error_accumulator.sample(arg, value_t{0});
+        }
 
-        if (error < 0) ++violation_count;
-
-        error_accumulator.sample(arg, from_fixed<value_t>(std::max(fixed_t{0}, error)));
+        *prev = actual;
     }
 
     constexpr auto violation_frac() const noexcept -> value_t
