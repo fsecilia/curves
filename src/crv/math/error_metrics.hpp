@@ -15,17 +15,10 @@
 #include <crv/math/stats.hpp>
 #include <cassert>
 #include <cmath>
-#include <concepts>
 #include <optional>
 #include <ostream>
 
 namespace crv {
-
-template <typename error_accumulator_t>
-concept float_error_accumulator = std::floating_point<typename error_accumulator_t::value_t>;
-
-template <typename error_accumulator_t>
-concept int_error_accumulator = std::signed_integral<typename error_accumulator_t::value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Faithfully-Rounded Fraction
