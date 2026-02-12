@@ -178,13 +178,13 @@ struct diff_t
 */
 struct rel_t
 {
-    template <float_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
+    template <float_error_accumulator error_accumulator_t, typename arg_t, typename value_t>
+    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, value_t actual,
                               value_t expected) const noexcept -> void
     {
         if (std::abs(expected) > epsilon<value_t>())
         {
-            auto const diff = from_fixed<value_t>(actual) - expected;
+            auto const diff = actual - expected;
             auto const rel  = diff / expected;
             error_accumulator.sample(arg, rel);
         }
@@ -249,8 +249,7 @@ struct default_error_metrics_policy_t
     using arg_t   = int_t;
     using value_t = float_t;
 
-    template <typename arg_t, typename value_t>
-    using diff_metric_t = error_metric_t<arg_t, value_t, metric_policy::diff_t>;
+    template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
 
     template <typename arg_t, typename value_t>
     using rel_metric_t = error_metric_t<arg_t, value_t, metric_policy::rel_t>;
@@ -278,12 +277,14 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
     ulps_metric_t            ulps_metric;
     mono_error_accumulator_t mono_error_accumulator;
 
-    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
+    template <typename fixed_t>
+    constexpr auto sample(arg_t arg, fixed_t actual_fixed, value_t expected) noexcept -> void
     {
-        diff_metric.sample(arg, actual, expected);
-        rel_metric.sample(arg, actual, expected);
-        ulps_metric.sample(arg, actual, expected);
-        mono_error_accumulator.sample(arg, actual);
+        auto const actual_value = from_fixed<value_t>(actual_fixed);
+        diff_metric.sample(arg, actual_value, expected);
+        rel_metric.sample(arg, actual_value, expected);
+        ulps_metric.sample(arg, actual_fixed, expected);
+        mono_error_accumulator.sample(arg, actual_fixed);
     }
 
     friend auto operator<<(std::ostream& out, error_metrics_t const& src) -> std::ostream&
