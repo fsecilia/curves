@@ -106,37 +106,38 @@ struct rel_t
     constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
 };
 
+/// tracks signed ulps
+template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>,
+          typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<value_t>>
+struct ulps_t
+{
+    error_accumulator_t error_accumulator{};
+    distribution_t      distribution{};
+    fr_frac_t           fr_frac{};
+
+    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
+    {
+        auto const ulps
+            = actual.value - static_cast<fixed_t::value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
+        error_accumulator.sample(arg, ulps);
+        distribution.sample(ulps);
+        fr_frac.sample(ulps);
+    }
+
+    friend auto operator<<(std::ostream& out, ulps_t const& src) -> std::ostream&
+    {
+        return out << src.error_accumulator << "\n" << src.distribution << "\nfr_frac = " << src.fr_frac;
+    }
+
+    constexpr auto operator<=>(ulps_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
+};
+
 } // namespace error_metric
 
 // --------------------------------------------------------------------------------------------------------------------
 // Error Accumulators
 // --------------------------------------------------------------------------------------------------------------------
-
-template <typename arg_t, typename float_t, typename error_accumulator_t = stats_accumulator_t<arg_t, float_t>,
-          typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<float_t>>
-struct ulps_error_accumulator_t : error_accumulator_t
-{
-    using value_t = int_t;
-
-    distribution_t distribution{};
-    fr_frac_t      fr_frac{};
-
-    constexpr auto sample(arg_t arg, value_t error) noexcept -> void
-    {
-        error_accumulator_t::sample(arg, static_cast<float_t>(error));
-        distribution.sample(error);
-        fr_frac.sample(error);
-    }
-
-    friend auto operator<<(std::ostream& out, ulps_error_accumulator_t const& src) -> std::ostream&
-    {
-        return out << static_cast<error_accumulator_t const&>(src) << "\n"
-                   << src.distribution << "\nfr_frac = " << src.fr_frac;
-    }
-
-    constexpr auto operator<=>(ulps_error_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(ulps_error_accumulator_t const&) const noexcept -> bool  = default;
-};
 
 /// tracks monotonicity per sample
 template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
@@ -175,32 +176,6 @@ struct mono_error_accumulator_t : error_accumulator_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// Metric Policies
-// --------------------------------------------------------------------------------------------------------------------
-// These define how specific categories of error are calculated.
-
-namespace metric_policy {
-
-/// calcs signed ulps, units-in-last-place
-struct ulps_t
-{
-    template <int_error_accumulator error_accumulator_t, typename arg_t, typename fixed_t, typename value_t>
-    constexpr auto operator()(error_accumulator_t& error_accumulator, arg_t arg, fixed_t actual,
-                              value_t expected) const noexcept -> void
-    {
-        using int_value_t = error_accumulator_t::value_t;
-        auto const ideal  = static_cast<int_value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
-        auto const ulps   = actual.value - ideal;
-        error_accumulator.sample(arg, ulps);
-    }
-
-    constexpr auto operator<=>(ulps_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
-};
-
-} // namespace metric_policy
-
-// --------------------------------------------------------------------------------------------------------------------
 // Error Metric
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -237,12 +212,8 @@ struct default_error_metrics_policy_t
     using value_t = float_t;
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
-
-    template <typename arg_t, typename value_t> using rel_metric_t = error_metric::rel_t<arg_t, value_t>;
-
-    template <typename arg_t, typename value_t>
-    using ulps_metric_t
-        = error_metric_t<arg_t, value_t, metric_policy::ulps_t, ulps_error_accumulator_t<arg_t, value_t>>;
+    template <typename arg_t, typename value_t> using rel_metric_t  = error_metric::rel_t<arg_t, value_t>;
+    template <typename arg_t, typename value_t> using ulps_metric_t = error_metric::ulps_t<arg_t, value_t>;
 
     template <typename arg_t, typename value_t>
     using mono_error_accumulator_t = mono_error_accumulator_t<arg_t, value_t>;

@@ -108,18 +108,27 @@ struct error_metric_diff_test_t : Test
 
     using sut_t = error_metric::diff_t<arg_t, value_t, error_accumulator_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator}};
+
+    auto test_sample(value_t error) noexcept -> void
+    {
+        EXPECT_CALL(mock_error_accumulator, sample(arg, error));
+        sut.sample(arg, actual + error, actual);
+    }
 };
+
+TEST_F(error_metric_diff_test_t, sample_zero_error)
+{
+    test_sample(0);
+}
 
 TEST_F(error_metric_diff_test_t, sample_positive_error)
 {
-    EXPECT_CALL(mock_error_accumulator, sample(arg, error));
-    sut.sample(arg, actual + error, actual);
+    test_sample(error);
 }
 
 TEST_F(error_metric_diff_test_t, sample_negative_error)
 {
-    EXPECT_CALL(mock_error_accumulator, sample(arg, -error));
-    sut.sample(arg, actual - error, actual);
+    test_sample(-error);
 }
 
 TEST_F(error_metric_diff_test_t, ostream_inserter)
@@ -151,6 +160,12 @@ struct error_metric_rel_test_t : Test
 
     using sut_t = error_metric::rel_t<arg_t, value_t, error_accumulator_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator}};
+
+    auto test_sample(value_t error) noexcept -> void
+    {
+        EXPECT_CALL(mock_error_accumulator, sample(arg, error / actual));
+        sut.sample(arg, actual + error, actual);
+    }
 };
 
 TEST_F(error_metric_rel_test_t, sample_expected_zero_is_ignored)
@@ -160,14 +175,12 @@ TEST_F(error_metric_rel_test_t, sample_expected_zero_is_ignored)
 
 TEST_F(error_metric_rel_test_t, sample_positive_error)
 {
-    EXPECT_CALL(mock_error_accumulator, sample(arg, error / actual));
-    sut.sample(arg, actual + error, actual);
+    test_sample(error);
 }
 
 TEST_F(error_metric_rel_test_t, sample_negative_error)
 {
-    EXPECT_CALL(mock_error_accumulator, sample(arg, -error / actual));
-    sut.sample(arg, actual - error, actual);
+    test_sample(-error);
 }
 
 TEST_F(error_metric_rel_test_t, ostream_inserter)
@@ -180,13 +193,21 @@ TEST_F(error_metric_rel_test_t, ostream_inserter)
     EXPECT_EQ(expected, actual.str());
 }
 
-// ====================================================================================================================
-// Ulps Error Accumulator
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
+// Signed Ulps
+// --------------------------------------------------------------------------------------------------------------------
 
-struct ulps_error_accumulator_test_t : Test
+struct error_metric_ulps_test_t : Test
 {
-    using arg_t = int_t;
+    using arg_t   = int_t;
+    using value_t = float_t;
+    using ulps_t  = int_t;
+    using fixed_t = fixed_t<int_t, 0>;
+
+    arg_t const   arg{3};
+    fixed_t const actual_fixed{7};
+    value_t const actual_float{from_fixed<value_t>(actual_fixed)};
+    ulps_t const  error{13};
 
     StrictMock<mock_sampler_t> mock_error_accumulator;
     StrictMock<mock_sampler_t> mock_distribution;
@@ -196,22 +217,35 @@ struct ulps_error_accumulator_test_t : Test
     using distribution_t      = sampler_t;
     using fr_frac_t           = sampler_t;
 
-    using sut_t = ulps_error_accumulator_t<arg_t, float_t, error_accumulator_t, distribution_t, fr_frac_t>;
+    using sut_t = error_metric::ulps_t<arg_t, value_t, error_accumulator_t, distribution_t, fr_frac_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator},
               distribution_t{"distribution", &mock_distribution}, fr_frac_t{"fr_frac", &mock_fr_frac}};
+
+    auto test_sample(ulps_t error) noexcept -> void
+    {
+        EXPECT_CALL(mock_error_accumulator, sample(arg, error));
+        EXPECT_CALL(mock_distribution, sample(error));
+        EXPECT_CALL(mock_fr_frac, sample(error));
+        sut.sample(arg, fixed_t{actual_fixed.value + error}, from_fixed<value_t>(actual_fixed));
+    }
 };
 
-TEST_F(ulps_error_accumulator_test_t, sample)
+TEST_F(error_metric_ulps_test_t, sample_zero_error)
 {
-    auto const arg   = arg_t{3};
-    auto const value = int_t{5};
-    EXPECT_CALL(mock_error_accumulator, sample(arg, static_cast<float_t>(value)));
-    EXPECT_CALL(mock_distribution, sample(value));
-    EXPECT_CALL(mock_fr_frac, sample(value));
-    sut.sample(arg, value);
+    test_sample(0);
 }
 
-TEST_F(ulps_error_accumulator_test_t, ostream_inserter)
+TEST_F(error_metric_ulps_test_t, one_higher)
+{
+    test_sample(error);
+}
+
+TEST_F(error_metric_ulps_test_t, ten_lower)
+{
+    test_sample(-10 * error);
+}
+
+TEST_F(error_metric_ulps_test_t, ostream_inserter)
 {
     auto const expected = "error_accumulator\ndistribution\nfr_frac = fr_frac";
 
@@ -252,49 +286,6 @@ template <typename t_value_t = float_t> struct metric_policy_test_t : Test
 
     error_accumulator_t error_accumulator{};
 };
-
-// --------------------------------------------------------------------------------------------------------------------
-// Metric Policy Ulps
-// --------------------------------------------------------------------------------------------------------------------
-
-struct metric_policy_test_ulps_t : metric_policy_test_t<int_t>
-{};
-
-TEST_F(metric_policy_test_ulps_t, zero_error)
-{
-    auto const sut = metric_policy::ulps_t{};
-
-    auto const ideal  = static_cast<int_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
-    auto const actual = fixed_t{static_cast<fixed_t::value_t>(ideal)};
-    sut(error_accumulator, arg, actual, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(0.0, error_accumulator.error);
-}
-
-TEST_F(metric_policy_test_ulps_t, one_high)
-{
-    auto const sut = metric_policy::ulps_t{};
-
-    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
-    auto const actual = fixed_t{static_cast<fixed_t::value_t>(error + ideal)};
-    sut(error_accumulator, arg, actual, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(error, error_accumulator.error);
-}
-
-TEST_F(metric_policy_test_ulps_t, ten_low)
-{
-    auto const sut = metric_policy::ulps_t{};
-
-    auto const ideal  = std::round(std::ldexp(expected, fixed_t::frac_bits));
-    auto const actual = fixed_t{static_cast<fixed_t::value_t>(-10 * error + ideal)};
-    sut(error_accumulator, arg, actual, expected);
-
-    EXPECT_EQ(arg, error_accumulator.arg);
-    EXPECT_DOUBLE_EQ(-10 * error, error_accumulator.error);
-}
 
 #if 0
 // --------------------------------------------------------------------------------------------------------------------
