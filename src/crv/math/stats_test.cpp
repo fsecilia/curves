@@ -140,7 +140,7 @@ TEST_F(integer_histogram_test_default_constructed_t, ostream_inserter)
     auto const expected = "{}";
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     EXPECT_EQ(expected, actual.str());
 }
@@ -183,7 +183,7 @@ TEST_F(integer_histogram_test_constructed_t, ostream_inserter)
     auto const expected = "{{-4, 13}, {-2, 7}, {-1, 3}, {0, 2}, {1, 5}, {3, 11}, {4, 17}, {5, 19}}";
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     EXPECT_EQ(expected, actual.str());
 }
@@ -488,7 +488,7 @@ TEST_F(distribution_test_t, ostream_inserter)
     expected << expected_percentile_result;
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     EXPECT_EQ(expected.str(), actual.str());
 }
@@ -559,7 +559,7 @@ TEST_F(stats_accumulator_test_default_constructed_t, ostream_inserter)
     auto const expected = "sample count = 0";
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     ASSERT_EQ(expected, actual.str());
 }
@@ -611,7 +611,7 @@ TEST_F(stats_accumulator_test_constructed_t, ostream_inserter)
              << "\nrmse = " << rmse << "\nbias = " << bias << "\nvariance = " << variance;
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     ASSERT_EQ(expected.str(), actual.str());
 }

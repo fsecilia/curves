@@ -1345,11 +1345,13 @@ struct jet_test_ostream_inserter_t : jet_test_t
 
 TEST_F(jet_test_ostream_inserter_t, format)
 {
-    std::ostringstream out;
+    auto const expected = "{.f = 3.5, .df = 2.5}";
+    auto const sut      = jet_t{3.5, 2.5};
 
-    out << jet_t{3.5, 2.5};
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
 
-    EXPECT_EQ(out.str(), "{.f = 3.5, .df = 2.5}");
+    EXPECT_EQ(actual.str(), expected);
 }
 
 // --------------------------------------------------------------------------------------------------------------------

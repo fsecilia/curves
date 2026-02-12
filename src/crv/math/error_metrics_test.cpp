@@ -347,7 +347,7 @@ TEST_F(error_metric_mono_test_t, ostream_inserter_nonzero_sample_count)
     auto const expected                = "violations = 73 (50%)\nerror_accumulator";
 
     auto actual = std::ostringstream{};
-    EXPECT_EQ(&actual, &(actual << sut));
+    actual << sut;
 
     EXPECT_EQ(expected, actual.str());
 }
@@ -452,7 +452,7 @@ TEST_F(error_metrics_test_t, ostream_inserter)
     auto const expected = "diff:\ndiff\nrel:\nrel\nulps:\nulps\nmono:\nmono";
 
     auto actual = std::ostringstream{};
-    actual << sut;
+    EXPECT_EQ(&actual, &(actual << sut));
 
     EXPECT_EQ(expected, actual.str());
 }
