@@ -10,6 +10,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/arg_min_max.hpp>
+#include <crv/math/fixed/fixed.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/stats.hpp>
 #include <cassert>
@@ -107,7 +108,8 @@ struct rel_t
 };
 
 /// tracks signed ulps
-template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>,
+template <typename arg_t, typename value_t, typename fixed_t,
+          typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>,
           typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<value_t>>
 struct ulps_t
 {
@@ -115,7 +117,7 @@ struct ulps_t
     distribution_t      distribution{};
     fr_frac_t           fr_frac{};
 
-    template <typename fixed_t> constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
+    constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
         auto const ulps
             = actual.value - static_cast<fixed_t::value_t>(std::round(std::ldexp(expected, fixed_t::frac_bits)));
@@ -210,10 +212,12 @@ struct default_error_metrics_policy_t
 {
     using arg_t   = int_t;
     using value_t = float_t;
+    using fixed_t = fixed_t<int_t, 32>;
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
     template <typename arg_t, typename value_t> using rel_metric_t  = error_metric::rel_t<arg_t, value_t>;
-    template <typename arg_t, typename value_t> using ulps_metric_t = error_metric::ulps_t<arg_t, value_t>;
+    template <typename arg_t, typename value_t, typename fixed_t>
+    using ulps_metric_t = error_metric::ulps_t<arg_t, value_t, fixed_t>;
 
     template <typename arg_t, typename value_t>
     using mono_error_accumulator_t = mono_error_accumulator_t<arg_t, value_t>;
@@ -224,9 +228,10 @@ template <typename policy_t = default_error_metrics_policy_t> struct error_metri
 {
     using arg_t                    = policy_t::arg_t;
     using value_t                  = policy_t::value_t;
+    using fixed_t                  = policy_t::fixed_t;
     using diff_metric_t            = policy_t::template diff_metric_t<arg_t, value_t>;
     using rel_metric_t             = policy_t::template rel_metric_t<arg_t, value_t>;
-    using ulps_metric_t            = policy_t::template ulps_metric_t<arg_t, value_t>;
+    using ulps_metric_t            = policy_t::template ulps_metric_t<arg_t, value_t, fixed_t>;
     using mono_error_accumulator_t = policy_t::template mono_error_accumulator_t<arg_t, value_t>;
 
     diff_metric_t            diff_metric;

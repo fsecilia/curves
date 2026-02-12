@@ -89,6 +89,7 @@ auto test_exp2() noexcept -> void
     {
         using arg_t   = in_t;
         using value_t = reference_t;
+        using fixed_t = out_t;
     };
     using metrics_t = error_metrics_t<error_metrics_policy_t>;
 

@@ -217,7 +217,7 @@ struct error_metric_ulps_test_t : Test
     using distribution_t      = sampler_t;
     using fr_frac_t           = sampler_t;
 
-    using sut_t = error_metric::ulps_t<arg_t, value_t, error_accumulator_t, distribution_t, fr_frac_t>;
+    using sut_t = error_metric::ulps_t<arg_t, value_t, fixed_t, error_accumulator_t, distribution_t, fr_frac_t>;
     sut_t sut{error_accumulator_t{"error_accumulator", &mock_error_accumulator},
               distribution_t{"distribution", &mock_distribution}, fr_frac_t{"fr_frac", &mock_fr_frac}};
 
@@ -465,10 +465,11 @@ struct error_metrics_test_t : Test
     {
         using arg_t   = arg_t;
         using value_t = value_t;
+        using fixed_t = fixed_t;
 
         template <typename, typename> using diff_metric_t            = metric_t<value_t>;
         template <typename, typename> using rel_metric_t             = metric_t<value_t>;
-        template <typename, typename> using ulps_metric_t            = metric_t<fixed_t>;
+        template <typename, typename, typename> using ulps_metric_t  = metric_t<fixed_t>;
         template <typename, typename> using mono_error_accumulator_t = accumulator_t;
     };
 
