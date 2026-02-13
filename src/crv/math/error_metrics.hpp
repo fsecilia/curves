@@ -132,11 +132,37 @@ struct ulps_t
     constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+// Montonicity Direction Policies
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace mono_dir_policies {
+
+struct ascending_t
+{
+    template <typename fixed_t> constexpr auto operator()(fixed_t prev, fixed_t cur) const noexcept -> fixed_t
+    {
+        return cur < prev ? prev - cur : 0;
+    }
+};
+
+struct descending_t
+{
+    template <typename fixed_t> constexpr auto operator()(fixed_t prev, fixed_t cur) const noexcept -> fixed_t
+    {
+        return cur > prev ? cur - prev : 0;
+    }
+};
+
+} // namespace mono_dir_policies
+
 /// tracks monotonicity per sample
-template <typename arg_t, typename value_t, typename fixed_t,
+template <typename arg_t, typename value_t, typename fixed_t, typename dir_policy_t = mono_dir_policies::ascending_t,
           typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
 struct mono_t
 {
+    [[no_unique_address]] dir_policy_t dir_policy{};
+
     error_accumulator_t    error_accumulator{};
     std::optional<fixed_t> prev{};
     int_t                  violation_count{};
@@ -149,16 +175,13 @@ struct mono_t
             return;
         }
 
-        auto const violation = actual < *prev;
+        auto violation = dir_policy(*prev, actual);
         if (violation)
         {
             ++violation_count;
-            error_accumulator.sample(arg, from_fixed<value_t>(*prev - actual));
+            error_accumulator.sample(arg, from_fixed<value_t>(violation));
         }
-        else
-        {
-            error_accumulator.sample(arg, value_t{0});
-        }
+        else error_accumulator.sample(arg, value_t{0});
 
         *prev = actual;
     }

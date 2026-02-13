@@ -256,6 +256,40 @@ TEST_F(error_metric_ulps_test_t, ostream_inserter)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+// Montonicity Direction Policies
+// --------------------------------------------------------------------------------------------------------------------
+
+struct error_metric_mono_dir_policies_test_t : Test
+{
+    using fixed_t = fixed_t<int_t, 0>;
+
+    fixed_t lesser       = fixed_t{3};
+    fixed_t greater      = fixed_t{5};
+    fixed_t violation    = fixed_t{2};
+    fixed_t no_violation = fixed_t{0};
+};
+
+TEST_F(error_metric_mono_dir_policies_test_t, ascending_no_violation)
+{
+    EXPECT_EQ(no_violation, error_metric::mono_dir_policies::ascending_t{}(lesser, greater));
+}
+
+TEST_F(error_metric_mono_dir_policies_test_t, ascending_violation)
+{
+    EXPECT_EQ(violation, error_metric::mono_dir_policies::ascending_t{}(greater, lesser));
+}
+
+TEST_F(error_metric_mono_dir_policies_test_t, descending_no_violation)
+{
+    EXPECT_EQ(no_violation, error_metric::mono_dir_policies::descending_t{}(greater, lesser));
+}
+
+TEST_F(error_metric_mono_dir_policies_test_t, descending_violation)
+{
+    EXPECT_EQ(violation, error_metric::mono_dir_policies::descending_t{}(lesser, greater));
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Montonicity
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -266,9 +300,22 @@ struct error_metric_mono_test_t : Test
     using fixed_t = fixed_t<int_t, 0>;
 
     arg_t const   arg{3};
-    fixed_t const actual_fixed{7};
-    value_t const actual_float{from_fixed<value_t>(actual_fixed)};
-    fixed_t const error{13};
+    fixed_t const prev{7};
+    fixed_t const cur{13};
+
+    struct mock_dir_policy_t
+    {
+        MOCK_METHOD(fixed_t, call, (fixed_t prev, fixed_t cur), (const, noexcept));
+        virtual ~mock_dir_policy_t() = default;
+    };
+    StrictMock<mock_dir_policy_t> mock_dir_policy;
+
+    struct dir_policy_t
+    {
+        mock_dir_policy_t* mock = nullptr;
+
+        auto operator()(fixed_t prev, fixed_t cur) const noexcept -> fixed_t { return mock->call(prev, cur); }
+    };
 
     StrictMock<mock_sampler_t> mock_error_accumulator;
 
@@ -281,52 +328,41 @@ struct error_metric_mono_test_t : Test
     using distribution_t = sampler_t;
     using fr_frac_t      = sampler_t;
 
-    using sut_t = error_metric::mono_t<arg_t, value_t, fixed_t, counting_error_accumulator_t>;
-    sut_t sut{counting_error_accumulator_t{error_accumulator_t{"error_accumulator", &mock_error_accumulator}}};
+    using sut_t = error_metric::mono_t<arg_t, value_t, fixed_t, dir_policy_t, counting_error_accumulator_t>;
+    sut_t sut{dir_policy_t{&mock_dir_policy},
+              counting_error_accumulator_t{error_accumulator_t{"error_accumulator", &mock_error_accumulator}}};
 };
 
 TEST_F(error_metric_mono_test_t, sample_no_prev)
 {
-    auto const expected = actual_fixed;
+    sut.sample(arg, cur);
 
-    sut.sample(arg, expected);
-
-    EXPECT_EQ(expected, *sut.prev);
+    EXPECT_EQ(cur, *sut.prev);
     EXPECT_EQ(0, sut.violation_count);
 }
 
-TEST_F(error_metric_mono_test_t, sample_zero_error)
+TEST_F(error_metric_mono_test_t, sample_with_prev_no_violation)
 {
-    sut.prev = actual_fixed;
+    sut.prev = prev;
+    EXPECT_CALL(mock_dir_policy, call(prev, cur)).WillOnce(Return(0));
     EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
 
-    sut.sample(arg, actual_fixed);
+    sut.sample(arg, cur);
 
-    EXPECT_EQ(actual_fixed, *sut.prev);
+    EXPECT_EQ(cur, *sut.prev);
     EXPECT_EQ(0, sut.violation_count);
 }
 
-TEST_F(error_metric_mono_test_t, sample_positive_error)
+TEST_F(error_metric_mono_test_t, sample_with_prev_violation)
 {
-    sut.prev = actual_fixed;
-    EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
+    sut.prev                      = prev;
+    auto const expected_violation = fixed_t{257};
+    EXPECT_CALL(mock_dir_policy, call(prev, cur)).WillOnce(Return(expected_violation));
+    EXPECT_CALL(mock_error_accumulator, sample(arg, from_fixed<value_t>(expected_violation)));
 
-    auto const expected = actual_fixed + error;
-    sut.sample(arg, expected);
+    sut.sample(arg, cur);
 
-    EXPECT_EQ(expected, *sut.prev);
-    EXPECT_EQ(0, sut.violation_count);
-}
-
-TEST_F(error_metric_mono_test_t, sample_negative_error)
-{
-    sut.prev = actual_fixed;
-    EXPECT_CALL(mock_error_accumulator, sample(arg, from_fixed<value_t>(error)));
-
-    auto const expected = actual_fixed - error;
-    sut.sample(arg, expected);
-
-    EXPECT_EQ(expected, *sut.prev);
+    EXPECT_EQ(cur, *sut.prev);
     EXPECT_EQ(1, sut.violation_count);
 }
 
