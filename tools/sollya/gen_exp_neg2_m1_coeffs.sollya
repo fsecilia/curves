@@ -1,0 +1,71 @@
+#! /usr/bin/env sollya
+/*
+    SPDX-License-Identifier: MIT
+
+    generates coefficients and shifts to approximate 2^-x - 1
+*/
+
+prec = 512!;
+coeff_precision = 63;
+
+// --------------------------------------------------------------------------------------------------------------------
+// Approximation
+// --------------------------------------------------------------------------------------------------------------------
+
+// define function to approximate
+poly_func   = 2^-x - 1;
+poly_domain = [2^-255, 1];
+poly_basis  = [| x, x^2, x^3, x^4, x^5, x^6, x^7, x^8 |];
+poly_degree = length(poly_basis);
+
+// approximate using given precision
+poly = fpminimax(poly_func, poly_basis, [|coeff_precision...|], poly_domain, floating, absolute);
+
+print("// approx error:", dirtyinfnorm(poly - poly_func, poly_domain));
+
+// --------------------------------------------------------------------------------------------------------------------
+// Derive Q Formats
+// --------------------------------------------------------------------------------------------------------------------
+
+// extract per-coefficient Q formats from the actual magnitudes.
+poly_formats = [||];
+for power from 1 to poly_degree do
+{
+    c = coeff(poly, power);
+    coeff_int_bits  = floor(log2(abs(c))) + 1;
+    coeff_frac_bits = coeff_precision - coeff_int_bits;
+    poly_formats = poly_formats :. coeff_frac_bits;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Format Output
+// --------------------------------------------------------------------------------------------------------------------
+
+print("static constexpr auto poly_degree =", poly_degree @ ";");
+
+print("static constexpr int64_t poly_coeffs[] = {");
+for power from poly_degree to 1 by -1 do
+{
+    c = coeff(poly, power);
+    frac_bits = poly_formats[power - 1];
+    c_fixed = nearestint(c * 2^frac_bits);
+    print("    " @ c_fixed
+        @ "LL, // " @ c @ "*x^" @ power
+        @ " (Q" @ (coeff_precision - frac_bits) @ "." @ frac_bits @ ")");
+};
+print("};");
+
+print("static constexpr int_t poly_shifts[] = {");
+for power from poly_degree - 1 to 1 by -1 do
+{
+    curr = poly_formats[power];
+    next = poly_formats[power - 1];
+    shift = curr - next;
+    print("    " @ shift
+        @ ", // relative shift from "
+        @ "x^" @ (power + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
+        @ "x^" @ power       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
+};
+print("};");
+
+print("static constexpr auto final_poly_shift =", poly_formats[0] @ ";");
