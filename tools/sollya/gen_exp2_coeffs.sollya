@@ -3,69 +3,41 @@
     SPDX-License-Identifier: MIT
 
     generates coefficients and shifts to approximate exp2m1(x), 2^x - 1.
-
-    This implementation generates an array of fixed-point coefficients for a degree-8 polynomial that approximates
-    exp2m1(). It targets 8 nonzero coefficients with a 0 constant term. This causes the function to go through exactly
-    {0, 0} and the 64-bit coefficients fill one 64-byte cache line.
-
-    Each coefficient is normalized, taking the top 63 bits of the scaled and rounded floating-point solution provided by
-    fpminimax(). Since each coefficient has its own format, an array of relative shifts to apply to each Horner's step
-    product is also generated.
-
-    The Horner's step becomes:
-
-        accumulator = (accumulator*x) >> (64 + poly_shifts[i]);
-        accumulator += poly_coeffs[i + 1];
 */
 
-// use high precision internals
 prec = 512!;
+coeff_precision = 63;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Calc Approximation
+// Approximation
 // --------------------------------------------------------------------------------------------------------------------
 
-/*
-    define approximation
-
-    This deliberately omits the constant term from the basis, forcing it to be exactly 0. This way, the result will go
-    through 0 exactly.
-*/
-poly_func = 2^x - 1;
+poly_func   = 2^x - 1;
 poly_domain = [-0.5;0.5];
-poly_basis = [| x, x^2, x^3, x^4, x^5, x^6, x^7, x^8 |];
+poly_basis  = [| x, x^2, x^3, x^4, x^5, x^6, x^7, x^8 |];
 poly_degree = length(poly_basis);
 
-/*
-    determine coeff formats from guess
+// floating mode: each coefficient gets coeff_precision significant bits.
+// no need to precompute Q formats.
+poly = fpminimax(poly_func, poly_basis, [|coeff_precision...|], poly_domain, floating, absolute);
 
-    fpminimax() requires formats for each coefficient, which we don't yet know. remez() does not require formats, so
-    generate an initial solution with remez() to see which formats fpminimax() will need.
+// report approximation error (accounts for coefficient quantization)
+print("// approx error:", dirtyinfnorm(poly - poly_func, poly_domain));
 
-    The result, poly_formats[], is 0-based, but because we omit the constant term from the basis, it starts with the
-    format for power x^1. This means it's indexed by 1 less than the power we pass to coeff().
-*/
-poly_formats = [||]; // 0 based, starting with power 1
-poly_guess = remez(poly_func, poly_basis, poly_domain);
-for power from 0 to poly_degree do
+// --------------------------------------------------------------------------------------------------------------------
+// Derive Q Formats from Result
+// --------------------------------------------------------------------------------------------------------------------
+
+// extract per-coefficient Q formats from the actual magnitudes.
+// floor(log2(|c|)) + 1 gives the integer bits needed (correct at powers of 2).
+poly_formats = [||];
+for power from 1 to poly_degree do
 {
-    c = coeff(poly_guess, power);
-    if (c != 0) then
-    {
-        coeff_int_bits = ceil(log2(abs(c)));
-        coeff_frac_bits = 63 - coeff_int_bits;
-        poly_formats = poly_formats :. coeff_frac_bits;
-    };
+    c = coeff(poly, power);
+    coeff_int_bits  = floor(log2(abs(c))) + 1;
+    coeff_frac_bits = coeff_precision - coeff_int_bits;
+    poly_formats = poly_formats :. coeff_frac_bits;
 };
-
-/*
-    generate approximation from guessed formats
-
-    The guessed polynomial from remez() is close to the final solution, but it is not quantized for fixed point.
-    fpminimax() generates the actual coefficients aligned to a fixed lattice, but these values are still in floating
-    point. They are converted when formatted for output.
-*/
-poly = fpminimax(poly_func, poly_basis, poly_formats, poly_domain, fixed, absolute);
 
 // --------------------------------------------------------------------------------------------------------------------
 // Format Output
@@ -73,13 +45,6 @@ poly = fpminimax(poly_func, poly_basis, poly_formats, poly_domain, fixed, absolu
 
 print("static constexpr auto poly_degree =", poly_degree @ ";");
 
-/*
-    generate coefficients
-
-    The coefficients in poly are in floating point, in ascending order. They are converted to fixed point by scaling and
-    rounding. The output order is reversed so the coefficients are indexed in ascending order by the Horner's method
-    loop. Finally, they're printed with c++ formatting as a constexpr array.
-*/
 print("static constexpr uint64_t poly_coeffs[] = {");
 for power from poly_degree to 1 by -1 do
 {
@@ -87,27 +52,22 @@ for power from poly_degree to 1 by -1 do
     frac_bits = poly_formats[power - 1];
     c_fixed = nearestint(c * 2^frac_bits);
     print("    " @ c_fixed
-        @ "ULL, // " @ c @ "*x^" @ power @ " (Q" @ (63 - frac_bits) @ "." @ frac_bits @ ")");
+        @ "ULL, // " @ c @ "*x^" @ power
+        @ " (Q" @ (coeff_precision - frac_bits) @ "." @ frac_bits @ ")");
 };
 print("};");
 
-/*
-    generate relative shifts in descending order
-
-    These values are the difference in frac_bits between each successive coefficient. They describe an additional right
-    shift to apply to each 128-bit product in the Horner's method loop before accumulating the next term. The order is
-    also reversed so they are in the same relative order as the coefficients.
-*/
 print("static constexpr int_t poly_shifts[] = {");
 for power from poly_degree - 1 to 1 by -1 do
 {
     curr = poly_formats[power];
     next = poly_formats[power - 1];
     shift = curr - next;
-
     print("    " @ shift
         @ ", // relative shift from "
-        @ "x^" @ (power + 1) @ " (Q" @ (63 - curr) @ "." @ curr @ ") to "
-        @ "x^" @ power       @ " (Q" @ (63 - next) @ "." @ next @ ")");
+        @ "x^" @ (power + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
+        @ "x^" @ power       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
 };
 print("};");
+
+print("static constexpr auto final_poly_shift =", poly_formats[0] @ ";");

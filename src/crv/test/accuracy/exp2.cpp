@@ -103,7 +103,8 @@ struct exp2_test_32_t
         auto const min           = -max;
 
         // auto const approx_impl = exp2_q32_t{};
-        auto const approx_impl = preprod_exp2_t{};
+        // auto const approx_impl = preprod_exp2_t{};
+        auto const approx_impl = exp2_normalized_t{};
 
         auto const accuracy_test = accuracy_test_t{
             [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
@@ -146,7 +147,9 @@ struct exp2_test_32_t
 
 struct exp2_test_64_t
 {
-    using impl_t      = exp2_q64_to_q1_63_t;
+    // using impl_t = exp2_q64_to_q1_63_t;
+    using impl_t = exp2_normalized_q64_to_q1_63_t;
+
     using in_t        = impl_t::in_t;
     using out_t       = impl_t::out_t;
     using reference_t = reference_float_t;
@@ -172,7 +175,7 @@ struct exp2_test_64_t
             },
         };
 
-        auto const iterations  = 1000000ULL;
+        auto const iterations  = 10000000ULL;
         auto const coarse_step = max / iterations;
 
         struct range_t
@@ -193,7 +196,6 @@ struct exp2_test_64_t
 
             {0, max, coarse_step},
 
-            {0, max, coarse_step},
             {0, iterations, 1},
             {max / 2 - iterations / 2, max / 2 + iterations / 2, 1},
             {max - iterations, max, 1},

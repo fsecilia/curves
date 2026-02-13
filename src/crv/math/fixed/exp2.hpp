@@ -71,13 +71,14 @@ public:
 
         // Restore.
 
-        // TODO: this is basically a runtime implementation of convert_value. Both should use the same core function.
+        // TODO: this is basically a runtime implementation of fixed_t::convert_value. Both should use the same core
+        // function.
 
         // At the end of the Horner's loop, the number of fractional bits in
         // result is the number of fractional bits of coefficient 0. Shift
         // the remaining int part, then shift into the final output precision.
         final_shift
-            = static_cast<int>(out_frac_bits) - static_cast<int>(poly_frac_bits[0]) + static_cast<int>(int_part);
+            = static_cast<int_t>(out_frac_bits) - static_cast<int_t>(poly_frac_bits[0]) + static_cast<int_t>(int_part);
         using out_t = fixed_t<out_value_t, out_frac_bits>;
         if (final_shift > 0)
         {
@@ -152,7 +153,7 @@ public:
         auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32)
                                        + (static_cast<uint128_t>(poly_coeffs[0]) << 32);
 
-        auto const final_shift = static_cast<int>(out_frac_bits) - 64 + static_cast<int>(int_part);
+        auto const final_shift = static_cast<int_t>(out_frac_bits) - 64 + static_cast<int_t>(int_part);
 
         if (final_shift >= 0) { return static_cast<out_value_t>(final_accumulator << final_shift); }
         else
@@ -198,6 +199,189 @@ private:
     static constexpr uint64_t poly_coeffs[] = {
         4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
     };
+};
+
+class exp2_normalized_t
+{
+public:
+    template <unsigned_integral out_value_t, int_t out_frac_bits, integral in_value_t, int_t in_frac_bits>
+    constexpr auto eval(fixed_t<in_value_t, in_frac_bits> input) const noexcept -> fixed_t<out_value_t, out_frac_bits>
+    {
+        using out_limits = std::numeric_limits<out_value_t>;
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Reduce Range to [-0.5, 0.5]
+        // ------------------------------------------------------------------------------------------------------------
+
+        // extract signed int part, rounded half up
+        //
+        // This won't overflow for valid values, but because we do this before bounds checking, it may.
+        constexpr auto half_bias = in_value_t(1) << (in_frac_bits - 1);
+        auto const     int_part  = (input.value + half_bias) >> in_frac_bits;
+
+        // extract signed frac part
+        auto const frac_part = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Bounds Check
+        // ------------------------------------------------------------------------------------------------------------
+
+        static constexpr auto max_out_int = out_limits::digits - out_frac_bits;
+        auto const            overflows   = int_part >= max_out_int;
+        if (overflows) [[unlikely]] { return out_limits::max(); }
+
+        auto const underflows = int_part < -out_frac_bits - 64;
+        if (underflows) [[unlikely]] { return 0; }
+
+        // ------------------------------------------------------------------------------------------------------------
+        // Polynomial Evaluation
+        // ------------------------------------------------------------------------------------------------------------R
+
+        // evaluate exp2(frac_part) - 1 using Horner's method
+        int128_t acc = poly_coeffs[0];
+        for (auto i = 0; i < poly_degree - 1; ++i)
+        {
+            acc *= frac_part;
+
+            auto const shift = in_frac_bits + poly_shifts[i];
+            acc              = (acc >> shift) + ((acc >> (shift - 1)) & 1);
+
+            acc += poly_coeffs[i + 1];
+        }
+
+        // apply final coeff, but retain 128 bits
+        acc *= frac_part;
+
+        // --------------------------------------------------------------------
+        // Reconstruction
+        // --------------------------------------------------------------------
+
+        auto const one             = int128_t{1} << (in_frac_bits + final_poly_shift);
+        auto const result_unscaled = one + acc;
+
+        auto const final_rshift = (in_frac_bits + final_poly_shift) - out_frac_bits - static_cast<int_t>(int_part);
+        if (final_rshift >= 0)
+        {
+            if (final_rshift >= 128) [[unlikely]] { return 0; }
+
+            // shr, round via carry
+            return (static_cast<out_value_t>(result_unscaled >> final_rshift))
+                   + (static_cast<out_value_t>((result_unscaled >> (final_rshift - 1)) & 1));
+        }
+        else
+        {
+            int const lshift = -final_rshift;
+            if (lshift >= 128) [[unlikely]] { return out_limits::max(); }
+            return static_cast<out_value_t>(result_unscaled << lshift);
+        }
+    }
+
+private:
+    static constexpr auto     poly_degree   = 8;
+    static constexpr uint64_t poly_coeffs[] = {
+        12827672613015377259ULL, // 1.32635026120796961071225551672333477747078855912832295871339738368988037109375e-6*x^8
+                                 // (Q-19.83)
+        9254333314362726772ULL,  // 1.531001019948890231315756106492999288892775666681700386106967926025390625e-5*x^7
+                                 // (Q-15.79)
+        11638491654506743333ULL, // 1.540341544954910157923202955053583462774469126088661141693592071533203125e-4*x^6
+                                 // (Q-12.76)
+        12593088332330319349ULL, // 1.3333450906459365510579409574466736021491897190571762621402740478515625e-3*x^5
+                                 // (Q-9.73)
+        11355082763470741806ULL, // 9.618129219459127777111756389671892719661627779714763164520263671875e-3*x^4 (Q-6.70)
+        16381921620325966193ULL, // 5.550410940701458587087494846168400641772677772678434848785400390625e-2*x^3 (Q-4.68)
+        17725587574120330972ULL, // 0.2402265069555415648978012599368270230115740559995174407958984375*x^2 (Q-2.66)
+        12786308644948208539ULL, // 0.6931471805461517033601463733116787580001982860267162322998046875*x^1 (Q0.64)
+    };
+    static constexpr int_t poly_shifts[] = {
+        4, // relative shift from x^8 (Q-19.83) to x^7 (Q-15.79)
+        3, // relative shift from x^7 (Q-15.79) to x^6 (Q-12.76)
+        3, // relative shift from x^6 (Q-12.76) to x^5 (Q-9.73)
+        3, // relative shift from x^5 (Q-9.73) to x^4 (Q-6.70)
+        2, // relative shift from x^4 (Q-6.70) to x^3 (Q-4.68)
+        2, // relative shift from x^3 (Q-4.68) to x^2 (Q-2.66)
+        2, // relative shift from x^2 (Q-2.66) to x^1 (Q0.64)
+    };
+    static constexpr auto final_poly_shift = 64;
+};
+
+class exp2_normalized_q64_to_q1_63_t
+{
+public:
+    // Input:  Q0.64 unsigned — x in [0, 1)
+    // Output: Q1.63 unsigned — exp2(x) in [1, 2)
+    using in_t  = fixed_t<uint64_t, 64>;
+    using out_t = fixed_t<uint64_t, 63>;
+
+    static constexpr auto in_frac_bits  = in_t::frac_bits;
+    static constexpr auto out_frac_bits = out_t::frac_bits;
+
+    constexpr auto eval(in_t const& input) const noexcept -> out_t
+    {
+        // ----------------------------------------------------------------
+        // Range reduction to [-0.5, 0.5)
+        // ----------------------------------------------------------------
+
+        auto const int_part = static_cast<int_t>(input.value >> (in_frac_bits - 1));
+        auto const frac     = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
+
+        // ----------------------------------------------------------------
+        // Polynomial Evaluation
+        // ----------------------------------------------------------------
+
+        // evaluate exp2(frac_part) - 1 using Horner's method
+        auto acc = static_cast<int128_t>(poly_coeffs[0]);
+        for (auto i = 0; i < poly_degree - 1; ++i)
+        {
+            acc *= frac;
+
+            // We added in_frac_bits via multiplication.
+            // We need to shift right to match the next coefficient's Q-format.
+            auto const shift = in_frac_bits + poly_shifts[i];
+
+            acc = (acc >> shift) + ((acc >> (shift - 1)) & 1);
+            acc += static_cast<int128_t>(poly_coeffs[i + 1]);
+        }
+
+        // apply final coeff, but retain 128 bits
+        acc *= frac;
+
+        // ----------------------------------------------------------------
+        // Reconstruction
+        // ----------------------------------------------------------------
+
+        constexpr auto current_frac_bits = final_poly_shift + in_frac_bits;
+
+        auto const rshift        = current_frac_bits - out_frac_bits - int_part;
+        auto const acc_shifted   = (acc >> rshift) + ((acc >> (rshift - 1)) & 1);
+        auto const one_in_output = static_cast<int128_t>(1) << (out_frac_bits + int_part);
+        return out_t{static_cast<uint64_t>(acc_shifted + one_in_output)};
+    }
+
+private:
+    static constexpr auto     poly_degree   = 8;
+    static constexpr uint64_t poly_coeffs[] = {
+        6413836306507499907ULL, // 1.3263502612079305838139673820319920476140662657371649402193725109100341796875e-6*x^8
+                                // (Q-19.82)
+        4627166657175798541ULL, // 1.5310010199470489785574110451764513751715668377073598094284534454345703125e-5*x^7
+                                // (Q-15.78)
+        5819245827253372288ULL, // 1.5403415449549103224328831795997274412002298049628734588623046875e-4*x^6 (Q-12.75)
+        6296544166165201635ULL, // 1.333345090645945436539436773464017971235762161086313426494598388671875e-3*x^5
+                                // (Q-9.72)
+        5677541381735370902ULL, // 9.61812921945912777541769049516329204152498277835547924041748046875e-3*x^4 (Q-6.69)
+        8190960810162982905ULL, // 5.55041094070145845732204732680958869650567066855728626251220703125e-2*x^3 (Q-4.67)
+        8862793787060165486ULL, // 0.2402265069555415648978012599368270230115740559995174407958984375*x^2 (Q-2.65)
+        6393154322474104270ULL, // 0.69314718054615170341435648193595397970057092607021331787109375*x^1 (Q0.63)
+    };
+    static constexpr int_t poly_shifts[] = {
+        4, // relative shift from x^8 (Q-19.82) to x^7 (Q-15.78)
+        3, // relative shift from x^7 (Q-15.78) to x^6 (Q-12.75)
+        3, // relative shift from x^6 (Q-12.75) to x^5 (Q-9.72)
+        3, // relative shift from x^5 (Q-9.72) to x^4 (Q-6.69)
+        2, // relative shift from x^4 (Q-6.69) to x^3 (Q-4.67)
+        2, // relative shift from x^3 (Q-4.67) to x^2 (Q-2.65)
+        2, // relative shift from x^2 (Q-2.65) to x^1 (Q0.63)
+    };
+    static constexpr auto final_poly_shift = 63;
 };
 
 } // namespace crv
