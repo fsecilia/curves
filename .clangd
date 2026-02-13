@@ -3,6 +3,11 @@ CompileFlags:
 
 ---
 
+Completion:
+  HeaderInsertion: Never
+
+---
+
 If:
   PathMatch: .*/crv/kernel/cxx/.*
 
