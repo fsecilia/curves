@@ -4,12 +4,11 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#if 0
 #include <crv/lib.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/error_metrics.hpp>
 #include <crv/math/fixed/conversions.hpp>
-#include <crv/math/fixed/exp2.hpp>
+#include <crv/math/fixed/exp2_neg_m1.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/math/limits.hpp>
@@ -83,79 +82,16 @@ template <typename func_approx_t, typename func_ref_t> struct accuracy_test_t
     }
 };
 
-struct exp2_test_32_t
+struct exp2_neg_m1_q64_to_q1_63_test_t
 {
-    using in_t        = crv::fixed_t<int64_t, 32>;
-    using out_t       = crv::fixed_t<uint64_t, 32>;
-    using reference_t = reference_float_t;
-
-    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
-    {};
-
-    auto operator()() noexcept -> void
-    {
-        using std::log2;
-
-        using metrics_t = error_metrics_t<error_metrics_policy_t>;
-
-        auto const max_rep_float = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
-        auto const max_rep_int   = static_cast<in_t::value_t>(max_rep_float);
-        auto const max           = max_rep_int << in_t::frac_bits;
-        auto const min           = -max;
-
-        // auto const approx_impl = exp2_q32_t{};
-        // auto const approx_impl = preprod_exp2_t{};
-        auto const approx_impl = exp2_normalized_t{};
-
-        auto const accuracy_test = accuracy_test_t{
-            [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
-            [](reference_t const& x) {
-                using std::exp2;
-                return exp2(x);
-            },
-        };
-
-        auto const iterations  = 1000000;
-        auto const coarse_step = (max - min + iterations / 2) / iterations;
-
-        struct range_t
-        {
-            in_t min;
-            in_t max;
-            in_t step_size;
-        };
-
-        range_t ranges[] = {
-            {min, 0, coarse_step},
-            {min / 2, 0, coarse_step},
-            {min / 2, max / 2, coarse_step},
-            {0, max / 2, coarse_step},
-            {0, max, coarse_step},
-            {min, max, coarse_step},
-            {min, in_t{min} + to_fixed<in_t>(0.005), 1},
-            {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
-            {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
-            {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
-            {in_t{max} - to_fixed<in_t>(0.005), max, 1},
-        };
-        for (auto const& range : ranges)
-        {
-            metrics_t metrics;
-            accuracy_test(metrics, range.min, range.max, range.step_size);
-        }
-    }
-};
-
-struct exp2_test_64_t
-{
-    // using impl_t = exp2_q64_to_q1_63_t;
-    using impl_t = exp2_normalized_q64_to_q1_63_t;
+    using impl_t = exp2_neg_m1_q64_to_q1_63_t;
 
     using in_t        = impl_t::in_t;
     using out_t       = impl_t::out_t;
     using reference_t = reference_float_t;
 
-    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
+    struct error_metrics_policy_t
+        : crv::error_metrics_policy_t<in_t, reference_t, out_t, error_metric::mono_dir_policies::descending_t>
     {};
 
     auto operator()() noexcept -> void
@@ -172,7 +108,7 @@ struct exp2_test_64_t
             [&](in_t const& x) { return approx_impl.eval(x); },
             [](reference_t const& x) {
                 using std::exp2;
-                return exp2(x);
+                return exp2(-x) - static_cast<reference_t>(1.0);
             },
         };
 
@@ -211,8 +147,7 @@ struct exp2_test_64_t
 
 auto main(int, char*[]) -> int
 {
-    // exp2_test_32_t{}();
-    exp2_test_64_t{}();
+    exp2_neg_m1_q64_to_q1_63_test_t{}();
     return EXIT_SUCCESS;
 }
 
@@ -223,4 +158,3 @@ auto main(int arg_count, char* args[]) -> int
 {
     return crv::main(arg_count, args);
 }
-#endif

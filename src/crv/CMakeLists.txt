@@ -22,6 +22,7 @@ target_sources_kernel(lib
     lib.cpp
     math/fixed/fixed.hpp
     math/fixed/exp2.hpp
+    math/fixed/exp2_neg_m1.hpp
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
@@ -44,6 +45,7 @@ if (enable_testing)
         math/compensated_accumulator_test.cpp
         math/error_metrics_test.cpp
         math/fixed/test/conversions.cpp
+        math/fixed/test/exp2_neg_m1.cpp
         math/fixed/test/fixed.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
