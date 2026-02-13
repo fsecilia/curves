@@ -311,6 +311,17 @@ TEST_F(percentile_calculator_test_t, sparse_step)
     EXPECT_EQ(expected, actual);
 }
 
+TEST_F(percentile_calculator_test_t, result_ostream_inserter)
+{
+    auto const sut      = result_t{.p50 = 3, .p90 = 7, .p95 = 13, .p99 = 19, .p100 = 29};
+    auto const expected = "p50 = 3, p90 = 7, p95 = 13, p99 = 19, p100 = 29";
+
+    auto actual = std::ostringstream{};
+    EXPECT_EQ(&actual, &(actual << sut));
+
+    EXPECT_EQ(expected, actual.str());
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // Fuzz Testing
 // --------------------------------------------------------------------------------------------------------------------

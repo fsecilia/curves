@@ -98,7 +98,7 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
         friend auto operator<<(std::ostream& out, result_t const& src) -> std::ostream&
         {
             return out << "p50 = " << src.p50 << ", p90 = " << src.p90 << ", p95 = " << src.p95 << ", p99 = " << src.p99
-                       << ", max = " << src.p100;
+                       << ", p100 = " << src.p100;
         }
 
         constexpr auto operator<=>(result_t const&) const noexcept -> auto = default;
