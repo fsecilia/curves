@@ -170,4 +170,34 @@ private:
     };
 };
 
+class exp2_q64_to_q1_63_t
+{
+public:
+    using in_t  = fixed_t<uint64_t, 64>;
+    using out_t = fixed_t<uint64_t, 63>;
+
+    constexpr auto eval(in_t const& input) const noexcept -> out_t
+    {
+        auto const x = input.value;
+
+        auto accumulator = poly_coeffs[poly_degree];
+        for (auto coeff_index = poly_degree - 1; coeff_index >= 1; --coeff_index)
+        {
+            auto const product = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(x);
+            accumulator = static_cast<uint64_t>((product >> 64) + ((product >> 63) & 1) + poly_coeffs[coeff_index]);
+        }
+
+        auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(x)
+                                       + (static_cast<uint128_t>(poly_coeffs[0]) << 64);
+
+        return out_t{static_cast<uint64_t>((final_accumulator >> 33) + ((final_accumulator >> 32) & 1))};
+    }
+
+private:
+    static constexpr auto     poly_degree   = 7;
+    static constexpr uint64_t poly_coeffs[] = {
+        4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
+    };
+};
+
 } // namespace crv

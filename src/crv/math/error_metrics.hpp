@@ -119,7 +119,7 @@ struct ulps_t
                                                          : -static_cast<int_t>(expected_fixed - actual.value);
 
         error_accumulator.sample(arg, static_cast<value_t>(ulps));
-        distribution.sample(ulps);
+        // distribution.sample(ulps);
         fr_frac.sample(ulps);
     }
 

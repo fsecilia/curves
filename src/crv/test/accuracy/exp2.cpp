@@ -11,6 +11,7 @@
 #include <crv/math/fixed/exp2.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
+#include <crv/math/limits.hpp>
 #include <crv/test/float128/float128.hpp>
 #include <chrono>
 #include <cmath>
@@ -26,14 +27,12 @@ using reference_float_t = float128_t;
 using reference_float_t = float64_t;
 #endif
 
-template <typename in_t, typename func_approx_t, typename func_ref_t> struct accuracy_test_t
+template <typename func_approx_t, typename func_ref_t> struct accuracy_test_t
 {
-    in_t          domain_min;
-    in_t          domain_max;
     func_approx_t approx;
     func_ref_t    ref;
 
-    template <typename error_metrics_t>
+    template <typename in_t, typename error_metrics_t>
     auto operator()(error_metrics_t& error_metrics, in_t min, in_t max, in_t delta) const -> void
     {
         auto const clear_line = "\r\033[2K";
@@ -47,11 +46,14 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
         auto                  prev_time       = start_time;
         static constexpr auto update_interval = std::chrono::seconds(1);
 
-        for (auto x_fixed = min; x_fixed <= max; x_fixed += delta)
+        auto       x_fixed          = min;
+        auto const total_iterations = (max.value - min.value) / delta.value;
+        auto       total_iteration  = typename in_t::value_t{0};
+        while (total_iteration < total_iterations)
         {
             static constexpr auto iterations_between_time_checks = 1'000'000;
-            for (auto iteration = 0; iteration < iterations_between_time_checks && x_fixed <= max;
-                 ++iteration, x_fixed += delta)
+            for (auto iteration = 0; iteration < iterations_between_time_checks && total_iteration < total_iterations;
+                 ++iteration, ++total_iteration, x_fixed += delta)
             {
                 auto const x_real = from_fixed<value_t>(x_fixed);
                 error_metrics.sample(x_fixed, approx(x_fixed), ref(x_real));
@@ -71,13 +73,16 @@ template <typename in_t, typename func_approx_t, typename func_ref_t> struct acc
 
                 std::cout << clear_line << 100 * completed / total << "% (" << remaining << " remaining)" << std::flush;
             }
+
+            ++total_iteration;
+            x_fixed += delta;
         }
 
         std::cout << clear_line << error_metrics << "\n" << std::endl;
     }
 };
 
-struct exp2_test_t
+struct exp2_test_32_t
 {
     using in_t        = crv::fixed_t<int64_t, 32>;
     using out_t       = crv::fixed_t<uint64_t, 32>;
@@ -101,8 +106,6 @@ struct exp2_test_t
         auto const approx_impl = preprod_exp2_t{};
 
         auto const accuracy_test = accuracy_test_t{
-            in_t{min},
-            in_t{max},
             [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
             [](reference_t const& x) {
                 using std::exp2;
@@ -141,9 +144,72 @@ struct exp2_test_t
     }
 };
 
+struct exp2_test_64_t
+{
+    using impl_t      = exp2_q64_to_q1_63_t;
+    using in_t        = impl_t::in_t;
+    using out_t       = impl_t::out_t;
+    using reference_t = reference_float_t;
+
+    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
+    {};
+
+    auto operator()() noexcept -> void
+    {
+        using std::log2;
+
+        using metrics_t = error_metrics_t<error_metrics_policy_t>;
+
+        auto const max = crv::max<uint64_t>();
+
+        auto const approx_impl = impl_t{};
+
+        auto const accuracy_test = accuracy_test_t{
+            [&](in_t const& x) { return approx_impl.eval(x); },
+            [](reference_t const& x) {
+                using std::exp2;
+                return exp2(x);
+            },
+        };
+
+        auto const iterations  = 1000000ULL;
+        auto const coarse_step = max / iterations;
+
+        struct range_t
+        {
+            in_t min;
+            in_t max;
+            in_t step_size;
+        };
+
+        range_t ranges[] = {
+            {0, max / 4, coarse_step},
+            {max / 4, max / 2, coarse_step},
+            {max / 2, 3 * (max / 4), coarse_step},
+            {3 * (max / 4), max, coarse_step},
+
+            {0, max / 2, coarse_step},
+            {max / 2, max, coarse_step},
+
+            {0, max, coarse_step},
+
+            {0, max, coarse_step},
+            {0, iterations, 1},
+            {max / 2 - iterations / 2, max / 2 + iterations / 2, 1},
+            {max - iterations, max, 1},
+        };
+        for (auto const& range : ranges)
+        {
+            metrics_t metrics;
+            accuracy_test(metrics, range.min, range.max, range.step_size);
+        }
+    }
+};
+
 auto main(int, char*[]) -> int
 {
-    exp2_test_t{}();
+    // exp2_test_32_t{}();
+    exp2_test_64_t{}();
     return EXIT_SUCCESS;
 }
 
