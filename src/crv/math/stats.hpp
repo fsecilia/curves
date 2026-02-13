@@ -15,6 +15,7 @@
 #include <cassert>
 #include <cmath>
 #include <concepts>
+#include <map>
 #include <ostream>
 #include <type_traits>
 #include <utility>
@@ -33,19 +34,22 @@ template <std::signed_integral value_t> class histogram_t<value_t>
 {
 public:
     using values_t = std::vector<int_t>;
+    using map_t    = std::map<int_t, int_t>;
 
     histogram_t(values_t negative, values_t positive) noexcept
-        : negative_{std::move(negative)}, positive_{std::move(positive)}
     {
-        assert((negative_.empty() || negative_[0] == 0) && "histogram_t: negative_[0] is always skipped");
+        assert((negative.empty() || negative[0] == 0) && "histogram_t: negative[0] is always skipped");
 
-        // count elements
-        for (auto const element : negative_) count_ += element;
-        for (auto const element : positive_) count_ += element;
+        for (auto i = 0; i < std::ssize(negative); ++i)
+        {
+            if (negative[i]) map_.insert({-i, negative[i]});
+        }
+        for (auto i = 0; i < std::ssize(positive); ++i)
+        {
+            if (positive[i]) map_.insert({i, positive[i]});
+        }
 
-        // strip trailing zeros
-        while (!negative_.empty() && !negative_.back()) negative_.pop_back();
-        while (!positive_.empty() && !positive_.back()) positive_.pop_back();
+        for (auto const& element : map_) count_ += element.second;
     }
 
     histogram_t() = default;
@@ -54,29 +58,15 @@ public:
 
     auto sample(value_t value) -> void
     {
-        if (value >= 0) inc(positive_, value);
-        else inc(negative_, -value);
+        map_[value]++;
         ++count_;
     }
 
     template <typename visitor_t> auto visit(visitor_t&& visitor) const -> void
     {
-        // walk negative in reverse order, skipping [0]
-        for (auto i = std::ssize(negative_) - 1; i > 0; --i)
+        for (auto const& element : map_)
         {
-            if (negative_[i] > 0)
-            {
-                if (!visitor(static_cast<value_t>(-i), negative_[i])) return;
-            }
-        }
-
-        // walk positive in forward order
-        for (auto i = 0; i < std::ssize(positive_); ++i)
-        {
-            if (positive_[i] > 0)
-            {
-                if (!visitor(static_cast<value_t>(i), positive_[i])) return;
-            }
+            if (!visitor(element.first, element.second)) return;
         }
     }
 
@@ -99,17 +89,8 @@ public:
     constexpr auto operator==(histogram_t const&) const noexcept -> bool  = default;
 
 private:
-    int_t    count_{};
-    values_t negative_{};
-    values_t positive_{};
-
-    auto inc(values_t& values, value_t value) noexcept -> void
-    {
-        using uint_value_t    = std::make_unsigned_t<value_t>;
-        auto const uint_value = int_cast<uint_value_t>(value);
-        if (std::cmp_greater_equal(uint_value, std::size(values))) values.resize(uint_value + 1);
-        ++values[uint_value];
-    }
+    int_t count_{};
+    map_t map_{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -140,7 +121,8 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
     {
         if (histogram.count() == 0) return {};
 
-        auto result = result_t{};
+        auto result     = result_t{};
+        result.map_size = histogram.map_size();
 
         auto const total = histogram.count();
         auto const limit = [total](value_t percentage) noexcept { return (total * percentage + 99) / 100; };
