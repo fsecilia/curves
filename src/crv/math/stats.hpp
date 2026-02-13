@@ -33,22 +33,10 @@ template <typename value_t> class histogram_t;
 template <std::signed_integral value_t> class histogram_t<value_t>
 {
 public:
-    using values_t = std::vector<int_t>;
-    using map_t    = std::map<int_t, int_t>;
+    using map_t = std::map<int_t, int_t>;
 
-    histogram_t(values_t negative, values_t positive) noexcept
+    histogram_t(map_t map) noexcept : map_{std::move(map)}
     {
-        assert((negative.empty() || negative[0] == 0) && "histogram_t: negative[0] is always skipped");
-
-        for (auto i = 0; i < std::ssize(negative); ++i)
-        {
-            if (negative[i]) map_.insert({-i, negative[i]});
-        }
-        for (auto i = 0; i < std::ssize(positive); ++i)
-        {
-            if (positive[i]) map_.insert({i, positive[i]});
-        }
-
         for (auto const& element : map_) count_ += element.second;
     }
 
@@ -121,8 +109,7 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
     {
         if (histogram.count() == 0) return {};
 
-        auto result     = result_t{};
-        result.map_size = histogram.map_size();
+        auto result = result_t{};
 
         auto const total = histogram.count();
         auto const limit = [total](value_t percentage) noexcept { return (total * percentage + 99) / 100; };
