@@ -9,19 +9,59 @@ prec = 512!;
 coeff_precision = 63;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Approximation
+// Constrain Approximation
 // --------------------------------------------------------------------------------------------------------------------
 
 // define function to approximate
 poly_func   = 2^-x - 1;
-poly_domain = [2^-255, 1];
-poly_basis  = [| x, x^2, x^3, x^4, x^5, x^6, x^7, x^8 |];
-poly_degree = length(poly_basis);
+poly_degree = 8;
+poly_domain = [2^-255, 1 - 2^-255];
 
-// approximate using given precision
-poly = fpminimax(poly_func, poly_basis, [|coeff_precision...|], poly_domain, floating, absolute);
+/*
+    pin endpdoints
 
-print("// approx error:", dirtyinfnorm(poly - poly_func, poly_domain));
+    The natural fpminimax approximation of this function has more error at x=1 than at x=0, causing a zipper effect when
+    stitching across integer boundaries in the reconstruction. Pinning the endpoints fixes the zipper effect, but
+    fpminimax() doesn't support constraints the way remez() does. Here, both endpoints are constrained by omitting a
+    term from the basis.
+
+    Without a constant term, the polynomial is naturally forced through (0, 0).
+
+    c1 + c2 + ... + c8 = p(1) is solved for the linear term, c1, then it is substituted back. Each remaining basis
+    function becomes x^k - x, and the approximated function becomes p(x) - p(1)x.
+*/
+constrained_basis = [||];
+for k from 2 to poly_degree do
+{
+    constrained_basis = constrained_basis :. (x^k - x);
+};
+constrained_func = poly_func - poly_func(1)*x;
+poly_constrained
+    = fpminimax(constrained_func, constrained_basis, [|coeff_precision...|], poly_domain, floating, absolute);
+
+print("// approx error:", dirtyinfnorm(poly_constrained - constrained_func, poly_domain));
+
+// --------------------------------------------------------------------------------------------------------------------
+// Extract Coefficients
+// --------------------------------------------------------------------------------------------------------------------
+
+poly_coeffs = [||];
+
+// c1 = p(1) - ck
+c1 = poly_func(1);
+for k from 2 to poly_degree do
+{
+    c1 = c1 - coeff(poly_constrained, k);
+};
+poly_coeffs = poly_coeffs :. c1;
+
+// c2..c8 come directly from the constrained solution
+for k from 2 to poly_degree do
+{
+    poly_coeffs = poly_coeffs :. coeff(poly_constrained, k);
+};
+
+poly_coeffs_count = poly_degree - 1;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Derive Q Formats
@@ -29,9 +69,9 @@ print("// approx error:", dirtyinfnorm(poly - poly_func, poly_domain));
 
 // extract per-coefficient Q formats from the actual magnitudes.
 poly_formats = [||];
-for power from 1 to poly_degree do
+for coeff_index from 0 to poly_coeffs_count do
 {
-    c = coeff(poly, power);
+    c = poly_coeffs[coeff_index];
     coeff_int_bits  = floor(log2(abs(c))) + 1;
     coeff_frac_bits = coeff_precision - coeff_int_bits;
     poly_formats = poly_formats :. coeff_frac_bits;
@@ -44,27 +84,27 @@ for power from 1 to poly_degree do
 print("static constexpr auto poly_degree =", poly_degree @ ";");
 
 print("static constexpr int64_t poly_coeffs[] = {");
-for power from poly_degree to 1 by -1 do
+for coeff_index from poly_coeffs_count to 0 by -1 do
 {
-    c = coeff(poly, power);
-    frac_bits = poly_formats[power - 1];
+    c = poly_coeffs[coeff_index];
+    frac_bits = poly_formats[coeff_index];
     c_fixed = nearestint(c * 2^frac_bits);
     print("    " @ c_fixed
-        @ "LL, // " @ c @ "*x^" @ power
+        @ "LL, // " @ c @ "*x^" @ (coeff_index + 1)
         @ " (Q" @ (coeff_precision - frac_bits) @ "." @ frac_bits @ ")");
 };
 print("};");
 
 print("static constexpr int_t poly_shifts[] = {");
-for power from poly_degree - 1 to 1 by -1 do
+for coeff_index from poly_coeffs_count to 1 by -1 do
 {
-    curr = poly_formats[power];
-    next = poly_formats[power - 1];
+    curr = poly_formats[coeff_index];
+    next = poly_formats[coeff_index - 1];
     shift = curr - next;
     print("    " @ shift
         @ ", // relative shift from "
-        @ "x^" @ (power + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
-        @ "x^" @ power       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
+        @ "x^" @ (coeff_index + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
+        @ "x^" @ coeff_index       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
 };
 print("};");
 
