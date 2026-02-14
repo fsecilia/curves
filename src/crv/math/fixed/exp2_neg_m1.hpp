@@ -27,22 +27,19 @@ public:
 
     constexpr auto eval(in_t const& input) const noexcept -> out_t
     {
-        auto acc = static_cast<int128_t>(poly_coeffs[0]);
+        auto acc = poly_coeffs[0];
+
         for (auto i = 0; i < poly_degree - 1; ++i)
         {
-            acc *= static_cast<int128_t>(input.value);
-
-            auto const shift = in_frac_bits + poly_shifts[i];
-
-            acc = (acc >> shift) + ((acc >> (shift - 1)) & 1);
-            acc += static_cast<int128_t>(poly_coeffs[i + 1]);
+            auto const product = static_cast<int128_t>(acc) * static_cast<int128_t>(input.value);
+            auto const shift   = in_frac_bits + poly_shifts[i];
+            acc = static_cast<int64_t>((product >> shift) + ((product >> (shift - 1)) & 1)) + poly_coeffs[i + 1];
         }
 
-        acc *= static_cast<int128_t>(input.value);
+        auto const final_product = static_cast<int128_t>(acc) * static_cast<int128_t>(input.value);
+        auto const final_shift   = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
+        acc = static_cast<int64_t>((final_product >> final_shift) + ((final_product >> (final_shift - 1)) & 1));
 
-        auto const shift = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
-
-        acc = (acc >> shift) + ((acc >> (shift - 1)) & 1);
         return out_t{static_cast<int64_t>(acc)};
     }
 
