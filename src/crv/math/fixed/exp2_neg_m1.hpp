@@ -40,7 +40,7 @@ public:
 
         acc *= static_cast<int128_t>(input.value);
 
-        auto const shift = final_poly_shift + in_frac_bits - out_frac_bits;
+        auto const shift = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
 
         acc = (acc >> shift) + ((acc >> (shift - 1)) & 1);
         return out_t{static_cast<int64_t>(acc)};
@@ -68,8 +68,8 @@ private:
         2, // relative shift from x^4 (Q-6.69) to x^3 (Q-4.67)
         2, // relative shift from x^3 (Q-4.67) to x^2 (Q-2.65)
         2, // relative shift from x^2 (Q-2.65) to x^1 (Q0.63)
+        -1, // relative shift from 128-bits to 64-bits
     };
-    static constexpr auto final_poly_shift = 63;
     // clang-format on
 };
 

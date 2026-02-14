@@ -106,6 +106,5 @@ for coeff_index from poly_coeffs_count to 1 by -1 do
         @ "x^" @ (coeff_index + 1) @ " (Q" @ (coeff_precision - curr) @ "." @ curr @ ") to "
         @ "x^" @ coeff_index       @ " (Q" @ (coeff_precision - next) @ "." @ next @ ")");
 };
+print("    " @ (poly_formats[0] - 64) @ ", // relative shift from 128-bits to 64-bits");
 print("};");
-
-print("static constexpr auto final_poly_shift =", poly_formats[0] @ ";");
