@@ -12,6 +12,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/traits.hpp>
 #include <cassert>
 #include <type_traits>
 
@@ -63,6 +64,27 @@ concept signed_integral = integral<value_t> && is_signed_v<value_t>;
 
 template <typename value_t>
 concept unsigned_integral = integral<value_t> && !signed_integral<value_t>;
+
+// --------------------------------------------------------------------------------------------------------------------
+// make_unsigned
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace detail {
+
+template <typename src_t, int size> struct make_unsigned_f : std::make_unsigned<src_t>
+{};
+
+template <typename src_t> struct make_unsigned_f<src_t, sizeof(uint128_t)>
+{
+    using type = copy_cv_t<uint128_t, src_t>;
+};
+
+} // namespace detail
+
+template <typename src_t> struct make_unsigned : detail::make_unsigned_f<src_t, sizeof(src_t)>
+{};
+
+template <typename src_t> using make_unsigned_t = make_unsigned<src_t>::type;
 
 // --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t

@@ -115,6 +115,36 @@ static_assert(!unsigned_integral<nonsigned_t>);
 } // namespace is_signed_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// make_unsigned
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace make_unsigned_tests {
+
+// basic types match std::make_unsigned
+static_assert(std::same_as<make_unsigned_t<int>, std::make_unsigned_t<int>>);
+static_assert(std::same_as<make_unsigned_t<signed>, std::make_unsigned_t<signed>>);
+static_assert(std::same_as<make_unsigned_t<unsigned>, std::make_unsigned_t<unsigned>>);
+static_assert(std::same_as<make_unsigned_t<unsigned int>, std::make_unsigned_t<unsigned int>>);
+static_assert(std::same_as<make_unsigned_t<int8_t>, uint8_t>);
+static_assert(std::same_as<make_unsigned_t<uint64_t>, uint64_t>);
+
+// cv-qualifiers are preserved on forwarded types
+static_assert(std::same_as<make_unsigned_t<int const>, std::make_unsigned_t<int const>>);
+static_assert(std::same_as<make_unsigned_t<int64_t volatile>, uint64_t volatile>);
+static_assert(std::same_as<make_unsigned_t<int16_t const volatile>, uint16_t const volatile>);
+
+// extended to cover unqualified 128-bit types
+static_assert(std::same_as<make_unsigned_t<int128_t>, uint128_t>);
+static_assert(std::same_as<make_unsigned_t<uint128_t>, uint128_t>);
+
+// cv-qualifiers are preserved on extended types
+static_assert(std::same_as<make_unsigned_t<int128_t const>, uint128_t const>);
+static_assert(std::same_as<make_unsigned_t<__int128 const volatile>, unsigned __int128 const volatile>);
+static_assert(std::same_as<make_unsigned_t<unsigned __int128 volatile>, unsigned __int128 volatile>);
+
+} // namespace make_unsigned_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // sized_integer_t
 // --------------------------------------------------------------------------------------------------------------------
 
