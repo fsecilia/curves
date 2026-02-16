@@ -27,13 +27,13 @@ namespace crv {
 class preprod_exp2_t
 {
 public:
-    template <typename out_value_t, int_t out_frac_bits, typename in_value_t, int_t in_frac_bits>
+    template <typename out_value_t, int out_frac_bits, typename in_value_t, int in_frac_bits>
     constexpr auto eval(fixed_t<in_value_t, in_frac_bits> const& input) const noexcept
         -> fixed_t<out_value_t, out_frac_bits>
     {
         uint64_t result, frac_part_norm;
         int      final_shift;
-        int64_t  int_part;
+        int      int_part;
 
         // Validate.
         static_assert(in_frac_bits < 64 || out_frac_bits < 64);
@@ -41,7 +41,7 @@ public:
         // Reduce.
 
         // Save int part in Q64.0. This is part of the final shift.
-        int_part = static_cast<int64_t>(input.value) >> in_frac_bits;
+        int_part = input.value >> in_frac_bits;
         if (int_part > 65) [[unlikely]] { return max<uint64_t>(); }
         if (int_part < -65) [[unlikely]] { return 0; }
         // int_part now fits into a standard int.
@@ -77,8 +77,7 @@ public:
         // At the end of the Horner's loop, the number of fractional bits in
         // result is the number of fractional bits of coefficient 0. Shift
         // the remaining int part, then shift into the final output precision.
-        final_shift
-            = static_cast<int_t>(out_frac_bits) - static_cast<int_t>(poly_frac_bits[0]) + static_cast<int_t>(int_part);
+        final_shift = out_frac_bits - poly_frac_bits[0] + int_part;
         using out_t = fixed_t<out_value_t, out_frac_bits>;
         if (final_shift > 0)
         {
@@ -115,7 +114,7 @@ private:
 class exp2_q32_t
 {
 public:
-    template <unsigned_integral out_value_t, int_t out_frac_bits, integral in_value_t, int_t in_frac_bits>
+    template <unsigned_integral out_value_t, int out_frac_bits, integral in_value_t, int in_frac_bits>
     constexpr auto eval(fixed_t<in_value_t, in_frac_bits> const& input) const noexcept
         -> fixed_t<out_value_t, out_frac_bits>
     {
@@ -153,7 +152,7 @@ public:
         auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32)
                                        + (static_cast<uint128_t>(poly_coeffs[0]) << 32);
 
-        auto const final_shift = static_cast<int_t>(out_frac_bits) - 64 + static_cast<int_t>(int_part);
+        auto const final_shift = out_frac_bits - 64 + int_part;
 
         if (final_shift >= 0) { return static_cast<out_value_t>(final_accumulator << final_shift); }
         else
@@ -204,7 +203,7 @@ private:
 class exp2_normalized_t
 {
 public:
-    template <unsigned_integral out_value_t, int_t out_frac_bits, integral in_value_t, int_t in_frac_bits>
+    template <unsigned_integral out_value_t, int out_frac_bits, integral in_value_t, int in_frac_bits>
     constexpr auto eval(fixed_t<in_value_t, in_frac_bits> input) const noexcept -> fixed_t<out_value_t, out_frac_bits>
     {
         using out_limits = std::numeric_limits<out_value_t>;
@@ -321,7 +320,7 @@ public:
         // Range reduction to [-0.5, 0.5)
         // ----------------------------------------------------------------
 
-        auto const int_part = static_cast<int_t>(input.value >> (in_frac_bits - 1));
+        auto const int_part = static_cast<int>(input.value >> (in_frac_bits - 1));
         auto const frac     = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
 
         // ----------------------------------------------------------------

@@ -304,7 +304,7 @@ static_assert(typed_equal<fixed_t<uint128_t, 128>>(
 
 namespace division {
 
-template <int_t t_out_frac_bits, int_t t_lhs_frac_bits, int_t t_rhs_frac_bits> struct vector_t
+template <int t_out_frac_bits, int t_lhs_frac_bits, int t_rhs_frac_bits> struct vector_t
 {
     static constexpr auto out_frac_bits = t_out_frac_bits;
     static constexpr auto lhs_frac_bits = t_lhs_frac_bits;

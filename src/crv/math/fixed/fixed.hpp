@@ -17,13 +17,13 @@
 
 namespace crv {
 
-template <integral value_type, int_t t_frac_bits> struct fixed_t;
+template <integral value_type, int frac_bits> struct fixed_t;
 using fixed_q15_0_t  = fixed_t<int16_t, 0>;
 using fixed_q32_32_t = fixed_t<int64_t, 32>;
 using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
 
 /// fixed-point arithmetic type with statically-configurable precision
-template <integral value_type, int_t t_frac_bits> struct fixed_t
+template <integral value_type, int t_frac_bits> struct fixed_t
 {
     using value_t                   = value_type;
     static constexpr auto frac_bits = t_frac_bits;
@@ -51,7 +51,7 @@ template <integral value_type, int_t t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <typename other_value_t, int_t other_frac_bits>
+    template <typename other_value_t, int other_frac_bits>
     explicit constexpr fixed_t(fixed_t<other_value_t, other_frac_bits> const& other) noexcept
         : fixed_t{convert_value<other_value_t, other_frac_bits>(other.value)}
     {}
@@ -110,7 +110,7 @@ template <integral value_type, int_t t_frac_bits> struct fixed_t
     }
 
 private:
-    template <integral other_value_t, int_t other_frac_bits>
+    template <integral other_value_t, int other_frac_bits>
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
     {
         static constexpr auto max_type_size = std::max(sizeof(value_t), sizeof(other_value_t));
@@ -136,7 +136,7 @@ private:
 
 namespace detail::fixed {
 
-template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
+template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
 struct multiplication_result_t
 {
     static constexpr auto larger_type_size   = 2 * std::max(sizeof(lhs_value_t), sizeof(rhs_value_t));
@@ -149,11 +149,11 @@ struct multiplication_result_t
 
 } // namespace detail::fixed
 
-template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
+template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
 using multiplication_result_t
     = detail::fixed::multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>::type;
 
-template <typename lhs_value_t, int_t lhs_frac_bits, typename rhs_value_t, int_t rhs_frac_bits>
+template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
 constexpr auto operator*(fixed_t<lhs_value_t, lhs_frac_bits>        lhs,
                          fixed_t<rhs_value_t, rhs_frac_bits> const& rhs) noexcept
     -> multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>
@@ -177,7 +177,7 @@ constexpr auto operator*(fixed_t<lhs_value_t, lhs_frac_bits>        lhs,
         - the output precision is at least as high as the dividend
     This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
 */
-template <int_t out_frac_bits, int_t lhs_frac_bits, int_t rhs_frac_bits>
+template <int out_frac_bits, int lhs_frac_bits, int rhs_frac_bits>
 auto divide(fixed_t<uint64_t, lhs_frac_bits> const& lhs, fixed_t<uint64_t, rhs_frac_bits> const& rhs) noexcept
     -> fixed_t<uint64_t, out_frac_bits>
 {
