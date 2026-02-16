@@ -18,6 +18,23 @@ constexpr auto frac_bits = 21;
 using sut_t              = fixed_t<value_t, frac_bits>;
 
 // ====================================================================================================================
+// Concepts
+// ====================================================================================================================
+
+static_assert(is_fixed<sut_t>);
+static_assert(is_fixed<fixed_q15_0_t>);
+static_assert(is_fixed<fixed_q32_32_t>);
+static_assert(is_fixed<fixed_q0_64_t>);
+static_assert(!is_fixed<int>);
+static_assert(!is_fixed<int_t>);
+static_assert(!is_fixed<float_t>);
+
+struct not_fixed_t
+{};
+
+static_assert(!is_fixed<not_fixed_t>);
+
+// ====================================================================================================================
 // Construction
 // ====================================================================================================================
 

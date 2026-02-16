@@ -13,7 +13,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
 #include <algorithm>
-#include <concepts>
+#include <type_traits>
 
 namespace crv {
 
@@ -21,6 +21,23 @@ template <integral value_type, int frac_bits> struct fixed_t;
 using fixed_q15_0_t  = fixed_t<int16_t, 0>;
 using fixed_q32_32_t = fixed_t<int64_t, 32>;
 using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
+
+// --------------------------------------------------------------------------------------------------------------------
+// Concepts
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename type_t> struct is_fixed_f : std::false_type
+{};
+
+template <typename value_t, int frac_bits> struct is_fixed_f<fixed_t<value_t, frac_bits>> : std::true_type
+{};
+
+template <typename type_t> static constexpr auto is_fixed_v = is_fixed_f<type_t>::value;
+
+template <typename type_t>
+concept is_fixed = is_fixed_v<type_t>;
+
+// --------------------------------------------------------------------------------------------------------------------
 
 /// fixed-point arithmetic type with statically-configurable precision
 template <integral value_type, int t_frac_bits> struct fixed_t
