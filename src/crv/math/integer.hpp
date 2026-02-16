@@ -86,6 +86,22 @@ template <integral value_t> constexpr auto log2(value_t value) noexcept -> value
 // Conversions
 // ====================================================================================================================
 
+/// extends std::in_range to support 128-bit types
+template <integral to_t, integral from_t> constexpr auto in_range(from_t from) noexcept -> bool
+{
+    if constexpr (is_signed_v<from_t> == is_signed_v<to_t>) { return min<to_t>() <= from && from <= max<to_t>(); }
+    else if constexpr (is_signed_v<from_t>)
+    {
+        // signed->unsigned
+        return 0 <= from && static_cast<make_unsigned_t<from_t>>(from) <= max<to_t>();
+    }
+    else
+    {
+        // unsigned->signed
+        return from <= static_cast<make_unsigned_t<to_t>>(max<to_t>());
+    }
+}
+
 //! asserts that from is in the representable range of to_t
 template <integral to_t, integral from_t> constexpr auto int_cast(from_t from) noexcept -> to_t
 {

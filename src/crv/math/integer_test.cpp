@@ -168,6 +168,30 @@ TEST(log2, asserts_on_log2_0)
 // ====================================================================================================================
 
 // --------------------------------------------------------------------------------------------------------------------
+// in_range
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(in_range<int8_t>(int128_t{min<int8_t>()}));
+static_assert(in_range<int8_t>(int128_t{max<int8_t>()}));
+static_assert(in_range<int8_t>(uint128_t{0}));
+static_assert(in_range<int8_t>(uint128_t{max<int8_t>()}));
+
+static_assert(in_range<uint8_t>(int128_t{min<uint8_t>()}));
+static_assert(in_range<uint8_t>(int128_t{max<uint8_t>()}));
+static_assert(in_range<uint8_t>(uint128_t{min<uint8_t>()}));
+static_assert(in_range<uint8_t>(uint128_t{max<uint8_t>()}));
+
+static_assert(in_range<int128_t>(int8_t{min<int8_t>()}));
+static_assert(in_range<int128_t>(int8_t{max<int8_t>()}));
+static_assert(in_range<int128_t>(uint8_t{min<uint8_t>()}));
+static_assert(in_range<int128_t>(uint8_t{max<uint8_t>()}));
+
+static_assert(in_range<uint128_t>(int8_t{0}));
+static_assert(in_range<uint128_t>(int8_t{max<int8_t>()}));
+static_assert(in_range<uint128_t>(uint8_t{min<uint8_t>()}));
+static_assert(in_range<uint128_t>(uint8_t{max<uint8_t>()}));
+
+// --------------------------------------------------------------------------------------------------------------------
 // int_cast
 // --------------------------------------------------------------------------------------------------------------------
 
