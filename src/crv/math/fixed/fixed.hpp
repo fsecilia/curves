@@ -38,6 +38,33 @@ template <typename type_t>
 concept is_fixed = is_fixed_v<type_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
+// Type Traits
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace fixed {
+
+template <is_fixed lhs_t, is_fixed rhs_t> struct promotion_traits_t;
+
+template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
+struct promotion_traits_t<fixed_t<lhs_value_t, lhs_frac_bits>, fixed_t<rhs_value_t, rhs_frac_bits>>
+{
+    static constexpr auto either_type_signed = is_signed_v<lhs_value_t> || is_signed_v<rhs_value_t>;
+
+    static constexpr auto promoted_value_type_size = std::max(sizeof(lhs_value_t), sizeof(rhs_value_t));
+    static constexpr auto promoted_frac_bits       = std::max(lhs_frac_bits, rhs_frac_bits);
+    using promoted_t = fixed_t<sized_integer_t<promoted_value_type_size, either_type_signed>, promoted_frac_bits>;
+
+    static constexpr auto wider_value_type_size = promoted_value_type_size * 2;
+    static constexpr auto wider_frac_bits       = lhs_frac_bits + rhs_frac_bits;
+    using wider_t = fixed_t<sized_integer_t<wider_value_type_size, either_type_signed>, wider_frac_bits>;
+};
+
+template <is_fixed lhs_t, is_fixed rhs_t> using promoted_t = promotion_traits_t<lhs_t, rhs_t>::promoted_t;
+template <is_fixed lhs_t, is_fixed rhs_t> using wider_t    = promotion_traits_t<lhs_t, rhs_t>::wider_t;
+
+} // namespace fixed
+
+// --------------------------------------------------------------------------------------------------------------------
 
 /// fixed-point arithmetic type with statically-configurable precision
 template <integral value_type, int t_frac_bits> struct fixed_t
