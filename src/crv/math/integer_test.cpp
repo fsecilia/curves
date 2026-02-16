@@ -215,6 +215,11 @@ static_assert(int_cast<int16_t>(uint8_t{0}) == 0);
 static_assert(int_cast<int16_t>(uint8_t{1}) == 1);
 static_assert(int_cast<int16_t>(uint8_t{max<int8_t>()}) == max<int8_t>());
 
+static_assert(int_cast<int8_t>(int128_t{max<int8_t>()}) == max<int8_t>());
+static_assert(int_cast<int8_t>(uint128_t{max<int8_t>()}) == max<int8_t>());
+static_assert(int_cast<uint8_t>(int128_t{max<uint8_t>()}) == max<uint8_t>());
+static_assert(int_cast<uint8_t>(uint128_t{max<uint8_t>()}) == max<uint8_t>());
+
 #if !defined NDEBUG
 
 TEST(int_cast, asserts_casting_negative_to_unsigned)
