@@ -26,6 +26,7 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
+    traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
 set_target_properties(lib
@@ -54,6 +55,7 @@ if (enable_testing)
         math/integer_test.cpp
         math/limits_test.cpp
         math/stats_test.cpp
+        traits_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
         lib
