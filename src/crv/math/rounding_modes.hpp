@@ -51,4 +51,76 @@ struct truncate
     }
 };
 
+/**
+    rounds to nearest, breaking ties by rounding toward positive infinity
+
+    This is faster than symmetric and rne, but introduces positive DC bias in signed signals. Appropriate for unsigned
+    or positive-only data.
+
+    Bias per shift by k:    +1/2^(k + 1) ulp
+    Bias per division by d: +1/2d ulp for even d, 0 for odd d
+    Accumulated error:      sqrt(N) at practical sample sizes, linear dominates after N > 2^(2k)/3
+*/
+struct asymmetric
+{
+    template <integral value_t>
+    constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+    {
+        assert(shift > 0 && "asymmetric::shr: shift must be positive");
+
+        auto const carry = (unshifted >> (shift - 1)) & 1;
+
+        return shifted + carry;
+    }
+
+    template <integral value_t>
+    constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    {
+        assert(divisor > 0 && "asymmetric::div: divisors must be positive");
+
+        if constexpr (is_signed_v<value_t>)
+        {
+            auto const abs_rem  = remainder < 0 ? -remainder : remainder;
+            auto const positive = remainder >= 0;
+            auto const round    = (abs_rem + positive) > (divisor - abs_rem);
+            auto const carry    = round ? (positive ? 1 : -1) : 0;
+
+            return quotient + carry;
+        }
+        else
+        {
+            auto const carry = (remainder + 1) > (divisor - remainder);
+
+            return quotient + carry;
+        }
+    }
+
+    template <integral value_t>
+    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
+                           int_t shift) const noexcept -> value_t
+    {
+        if (!shift) return div(shifted_quotient, divisor, remainder);
+        if (!remainder) return shr(shifted_quotient, quotient, shift);
+
+        if constexpr (is_signed_v<value_t>)
+        {
+            using uval_t = make_unsigned_t<value_t>;
+
+            constexpr auto one = uval_t{1};
+
+            auto const half     = one << (shift - 1);
+            auto const mask     = (one << shift) - 1;
+            auto const frac     = static_cast<uval_t>(quotient) & mask;
+            auto const negative = static_cast<uval_t>(quotient < 0);
+            auto const carry    = static_cast<value_t>(frac >= (half + negative));
+
+            return shifted_quotient + carry;
+        }
+        else
+        {
+            return shr(shifted_quotient, quotient, shift);
+        }
+    }
+};
+
 } // namespace crv::rounding_modes
