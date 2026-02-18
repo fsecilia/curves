@@ -194,4 +194,90 @@ struct symmetric
     }
 };
 
+/**
+    rounds to nearest, breaking ties by rounding to nearest even
+
+    This is rne, also called banker's rounding. Slowest, but unbiased. This is the only mode where expected error is
+    exactly zero regardless of data distribution or divisor parity.
+
+    Suitable for recursive filters, feedback loops, long accumulations, or anywhere DC offset matters.
+
+    Bias per operation: 0
+    Accumulated error:  sqrt(N)
+*/
+struct round_nearest_even
+{
+    template <integral value_t>
+    constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+    {
+        assert(shift > 0 && "round_nearest_even::shr: shift must be positive");
+
+        using uval_t       = make_unsigned_t<value_t>;
+        constexpr auto one = uval_t{1};
+
+        auto const half = one << (shift - 1);
+        auto const mask = (one << shift) - 1;
+        auto const frac = static_cast<uval_t>(unshifted) & mask;
+
+        auto const tiebreaker = static_cast<uval_t>(shifted) & 1;
+        auto const bias       = (half - 1) + tiebreaker;
+        auto const carry      = static_cast<value_t>((frac + bias) >> shift);
+
+        return shifted + carry;
+    }
+
+    template <integral value_t>
+    constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    {
+        assert(divisor > 0 && "round_nearest_even::div: divisors must be positive");
+
+        auto const is_odd = quotient & 1;
+
+        if constexpr (is_signed_v<value_t>)
+        {
+            auto const abs_rem  = remainder < 0 ? -remainder : remainder;
+            auto const positive = remainder >= 0;
+            auto const round    = (abs_rem + is_odd) > (divisor - abs_rem);
+            auto const carry    = round ? (positive ? 1 : -1) : 0;
+
+            return quotient + carry;
+        }
+        else
+        {
+            auto const carry = (remainder + is_odd) > (divisor - remainder);
+
+            return quotient + carry;
+        }
+    }
+
+    template <integral value_t>
+    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
+                           int_t shift) const noexcept -> value_t
+    {
+        if (shift == 0) return div(shifted_quotient, divisor, remainder);
+        if (remainder == 0) return shr(shifted_quotient, quotient, shift);
+
+        using uval_t       = make_unsigned_t<value_t>;
+        constexpr auto one = uval_t{1};
+
+        auto const half = one << (shift - 1);
+        auto const mask = (one << shift) - 1;
+        auto const frac = static_cast<uval_t>(quotient) & mask;
+
+        if constexpr (std::is_signed_v<value_t>)
+        {
+            auto const negative = static_cast<uval_t>(quotient < 0);
+            auto const carry    = static_cast<value_t>(frac >= (half + negative));
+
+            return shifted_quotient + carry;
+        }
+        else
+        {
+            auto const carry = static_cast<value_t>(frac >= half);
+
+            return shifted_quotient + carry;
+        }
+    }
+};
+
 } // namespace crv::rounding_modes
