@@ -32,7 +32,7 @@ namespace crv::rounding_modes {
     Bias per division by d: -(d - 1)/2d ulp, approaches -1/2
     Accumulated error:      linear in N, bias-dominated
 */
-struct truncate
+struct truncate_t
 {
     template <integral value_t> constexpr auto shr(value_t shifted, value_t, int_t) const noexcept -> value_t
     {
@@ -50,6 +50,7 @@ struct truncate
         return shifted_quotient;
     }
 };
+inline constexpr auto truncate = truncate_t{};
 
 /**
     rounds to nearest, breaking ties by rounding toward positive infinity
@@ -61,7 +62,7 @@ struct truncate
     Bias per division by d: +1/2d ulp for even d, 0 for odd d
     Accumulated error:      sqrt(N) at practical sample sizes, linear dominates after N > 2^(2k)/3
 */
-struct asymmetric
+struct asymmetric_t
 {
     template <integral value_t>
     constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
@@ -122,6 +123,7 @@ struct asymmetric
         }
     }
 };
+inline constexpr auto asymmetric = asymmetric_t{};
 
 /**
     rounds to nearest, breaking ties by rounding away from zero
@@ -134,7 +136,7 @@ struct asymmetric
     Bias per division by d: +/-1/2d ulp for even d, 0 for odd d
     Accumulated error:      sqrt(N) for sign-balanced data, biases cancel; same as asymmetric for same-sign data
 */
-struct symmetric
+struct symmetric_t
 {
     template <integral value_t>
     constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
@@ -155,7 +157,7 @@ struct symmetric
 
             return shifted + carry;
         }
-        else return asymmetric{}.shr(shifted, unshifted, shift);
+        else return asymmetric_t{}.shr(shifted, unshifted, shift);
     }
 
     template <integral value_t>
@@ -172,7 +174,7 @@ struct symmetric
 
             return quotient + carry;
         }
-        else return asymmetric{}.div(quotient, divisor, remainder);
+        else return asymmetric_t{}.div(quotient, divisor, remainder);
     }
 
     template <integral value_t>
@@ -183,6 +185,7 @@ struct symmetric
         else return div(shifted_quotient, divisor, remainder);
     }
 };
+inline constexpr auto symmetric = symmetric_t{};
 
 /**
     rounds to nearest, breaking ties by rounding to nearest even
@@ -195,7 +198,7 @@ struct symmetric
     Bias per operation: 0
     Accumulated error:  sqrt(N)
 */
-struct round_nearest_even
+struct round_nearest_even_t
 {
     template <integral value_t>
     constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
@@ -246,8 +249,9 @@ struct round_nearest_even
     {
         if (shift == 0) return div(shifted_quotient, divisor, remainder);
         if (remainder == 0) return shr(shifted_quotient, quotient, shift);
-        return symmetric{}.shr(shifted_quotient, quotient, shift);
+        return symmetric_t{}.shr(shifted_quotient, quotient, shift);
     }
 };
+inline constexpr auto round_nearest_even = round_nearest_even_t{};
 
 } // namespace crv::rounding_modes
