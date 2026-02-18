@@ -132,10 +132,31 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return *this;
     }
 
-    constexpr auto operator*=(fixed_t const& src) noexcept -> fixed_t& { return *this = fixed_t{*this * src}; }
+    constexpr auto operator*=(fixed_t const& src) noexcept -> fixed_t& { return *this = fixed_t{multiply(*this, src)}; }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs += rhs; }
     friend constexpr auto operator-(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs -= rhs; }
+    friend constexpr auto operator*(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs *= rhs; }
+
+    template <typename other_value_t, int_t other_frac_bits>
+    friend constexpr auto operator*(fixed_t const& lhs, fixed_t<other_value_t, other_frac_bits> const& rhs) noexcept
+        -> fixed_t
+    {
+        return multiply(lhs, rhs);
+    }
+
+    /// \returns wide product at higher precision
+    template <integral other_value_t, int other_frac_bits>
+    friend constexpr auto multiply(fixed_t lhs, fixed_t<other_value_t, other_frac_bits> const& rhs) noexcept
+        -> fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>
+    {
+        using result_t = fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>;
+
+        // The outer cast here is necessary because if the value type is smaller than int, it is promoted.
+        auto const product = static_cast<result_t::value_t>(static_cast<result_t::value_t>(lhs.value) * rhs.value);
+
+        return result_t{product};
+    }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Math Functions
@@ -177,39 +198,6 @@ private:
         }
     }
 };
-
-namespace detail::fixed {
-
-template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
-struct multiplication_result_t
-{
-    static constexpr auto larger_type_size   = 2 * std::max(sizeof(lhs_value_t), sizeof(rhs_value_t));
-    static constexpr auto either_type_signed = is_signed_v<lhs_value_t> || is_signed_v<rhs_value_t>;
-    static constexpr auto result_frac_bits   = lhs_frac_bits + rhs_frac_bits;
-
-    using value_t = sized_integer_t<larger_type_size, either_type_signed>;
-    using type    = fixed_t<value_t, result_frac_bits>;
-};
-
-} // namespace detail::fixed
-
-template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
-using multiplication_result_t
-    = detail::fixed::multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>::type;
-
-template <typename lhs_value_t, int lhs_frac_bits, typename rhs_value_t, int rhs_frac_bits>
-constexpr auto operator*(fixed_t<lhs_value_t, lhs_frac_bits>        lhs,
-                         fixed_t<rhs_value_t, rhs_frac_bits> const& rhs) noexcept
-    -> multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>
-
-{
-    using result_t = multiplication_result_t<lhs_value_t, lhs_frac_bits, rhs_value_t, rhs_frac_bits>;
-
-    // The outer cast here is necessary because if the value type is smaller than int, it is promoted.
-    auto const product = static_cast<result_t::value_t>(static_cast<result_t::value_t>(lhs.value) * rhs.value);
-
-    return result_t{product};
-}
 
 /**
     division, stripped down for pipeline

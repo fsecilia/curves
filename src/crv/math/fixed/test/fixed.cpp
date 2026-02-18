@@ -251,92 +251,97 @@ static_assert(sut_t{-3} - sut_t{-7} == sut_t{4});
 // --------------------------------------------------------------------------------------------------------------------
 
 // mixed types, zeros
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{-11 << 3} * fixed_t<int16_t, 5>{0},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3}, fixed_t<int16_t, 5>{0}),
                                                    fixed_t<int32_t, 8>{0}),
               "fixed_t: mixed negative*0 failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{0} * fixed_t<int16_t, 5>{-13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{-13 << 5}),
                                                    fixed_t<int32_t, 8>{0}),
               "fixed_t: mixed 0*negative failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{0} * fixed_t<int16_t, 5>{0},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{0}),
                                                    fixed_t<int32_t, 8>{0}),
               "fixed_t: mixed 0*0 failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{0} * fixed_t<int16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{13 << 5}),
                                                    fixed_t<int32_t, 8>{0}),
               "fixed_t: mixed 0*positive failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{11 << 3} * fixed_t<int16_t, 5>{0},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{0}),
                                                    fixed_t<int32_t, 8>{0}),
               "fixed_t: mixed positive*0 failed");
 
 // mixed types, signed and unsigned
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{11 << 3} * fixed_t<int16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
                                                    fixed_t<int32_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed int*int failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{11 << 3} * fixed_t<uint16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<uint16_t, 5>{13 << 5}),
                                                    fixed_t<int32_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed int*uint failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<uint8_t, 3>{11 << 3} * fixed_t<int16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
                                                    fixed_t<int32_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed uint*int failed");
-static_assert(typed_equal<fixed_t<uint32_t, 3 + 5>>(fixed_t<uint8_t, 3>{11 << 3} * fixed_t<uint16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<uint32_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3},
+                                                             fixed_t<uint16_t, 5>{13 << 5}),
                                                     fixed_t<uint32_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed uint*uint failed");
 
 // mixed types with 128-bit results
-static_assert(typed_equal<fixed_t<int128_t, 3 + 5>>(fixed_t<int8_t, 3>{11 << 3} * fixed_t<uint64_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int128_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3},
+                                                             fixed_t<uint64_t, 5>{13 << 5}),
                                                     fixed_t<int128_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed int8*uint64 failed");
-static_assert(typed_equal<fixed_t<uint128_t, 3 + 5>>(fixed_t<uint8_t, 3>{11 << 3} * fixed_t<uint64_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<uint128_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3},
+                                                              fixed_t<uint64_t, 5>{13 << 5}),
                                                      fixed_t<uint128_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed uint8*uint64 failed");
 
 // mixed signs
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{-11 << 3} * fixed_t<uint16_t, 5>{13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3},
+                                                            fixed_t<uint16_t, 5>{13 << 5}),
                                                    fixed_t<int32_t, 8>{-(11 * 13) << 8}),
               "fixed_t: mixed negative*positive failed");
 
 // double negative
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(fixed_t<int8_t, 3>{-11 << 3} * fixed_t<int16_t, 5>{-13 << 5},
+static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3},
+                                                            fixed_t<int16_t, 5>{-13 << 5}),
                                                    fixed_t<int32_t, 8>{(11 * 13) << 8}),
               "fixed_t: mixed negative*negative failed");
 
 // pure integer parts
-static_assert(typed_equal<fixed_t<int64_t, 0>>(fixed_t<int16_t, 0>{7} * fixed_t<int32_t, 0>{11},
+static_assert(typed_equal<fixed_t<int64_t, 0>>(multiply(fixed_t<int16_t, 0>{7}, fixed_t<int32_t, 0>{11}),
                                                fixed_t<int64_t, 0>{77}),
               "fixed_t: integer*integer failed");
 
 // range limits
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(fixed_t<int8_t, 7>{min<int8_t>()}
-                                                       * fixed_t<int8_t, 7>{min<int8_t>()},
+static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
+                                                            fixed_t<int8_t, 7>{min<int8_t>()}),
                                                    fixed_t<int16_t, 14>{min<int8_t>() * min<int8_t>()}),
               "fixed_t: min*min failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(fixed_t<int8_t, 7>{min<int8_t>()}
-                                                       * fixed_t<int8_t, 7>{max<int8_t>()},
+static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
+                                                            fixed_t<int8_t, 7>{max<int8_t>()}),
                                                    fixed_t<int16_t, 14>{min<int8_t>() * max<int8_t>()}),
               "fixed_t: min*max failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(fixed_t<int8_t, 7>{max<int8_t>()}
-                                                       * fixed_t<int8_t, 7>{min<int8_t>()},
+static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
+                                                            fixed_t<int8_t, 7>{min<int8_t>()}),
                                                    fixed_t<int16_t, 14>{max<int8_t>() * min<int8_t>()}),
               "fixed_t: max*min failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(fixed_t<int8_t, 7>{max<int8_t>()}
-                                                       * fixed_t<int8_t, 7>{max<int8_t>()},
+static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
+                                                            fixed_t<int8_t, 7>{max<int8_t>()}),
                                                    fixed_t<int16_t, 14>{max<int8_t>() * max<int8_t>()}),
               "fixed_t: max*max failed");
 
 // 128-bit limits
-static_assert(typed_equal<fixed_t<int128_t, 0>>(fixed_t<int64_t, 0>{max<int64_t>()}
-                                                    * fixed_t<int64_t, 0>{max<int64_t>()},
+static_assert(typed_equal<fixed_t<int128_t, 0>>(multiply(fixed_t<int64_t, 0>{max<int64_t>()},
+                                                         fixed_t<int64_t, 0>{max<int64_t>()}),
                                                 fixed_t<int128_t, 0>{int128_t{max<int64_t>()} * max<int64_t>()}),
               "fixed_t: max signed integer*integer failed");
-static_assert(typed_equal<fixed_t<uint128_t, 0>>(fixed_t<uint64_t, 0>{max<uint64_t>()}
-                                                     * fixed_t<uint64_t, 0>{max<uint64_t>()},
+static_assert(typed_equal<fixed_t<uint128_t, 0>>(multiply(fixed_t<uint64_t, 0>{max<uint64_t>()},
+                                                          fixed_t<uint64_t, 0>{max<uint64_t>()}),
                                                  fixed_t<uint128_t, 0>{uint128_t{max<uint64_t>()} * max<uint64_t>()}),
               "fixed_t: max unsigned integer*integer failed");
-static_assert(typed_equal<fixed_t<int128_t, 126>>(fixed_t<int64_t, 63>{max<int64_t>()}
-                                                      * fixed_t<int64_t, 63>{max<int64_t>()},
+static_assert(typed_equal<fixed_t<int128_t, 126>>(multiply(fixed_t<int64_t, 63>{max<int64_t>()},
+                                                           fixed_t<int64_t, 63>{max<int64_t>()}),
                                                   fixed_t<int128_t, 126>{int128_t{max<int64_t>()} * max<int64_t>()}),
               "fixed_t: max signed fraction*fraction failed");
 static_assert(typed_equal<fixed_t<uint128_t, 128>>(
-                  fixed_t<uint64_t, 64>{max<uint64_t>()} * fixed_t<uint64_t, 64>{max<uint64_t>()},
+                  multiply(fixed_t<uint64_t, 64>{max<uint64_t>()}, fixed_t<uint64_t, 64>{max<uint64_t>()}),
                   fixed_t<uint128_t, 128>{uint128_t{max<uint64_t>()} * max<uint64_t>()}),
               "fixed_t: max unsigned fraction*fraction failed");
 
