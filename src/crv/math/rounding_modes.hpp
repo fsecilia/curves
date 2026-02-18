@@ -155,12 +155,7 @@ struct symmetric
 
             return shifted + carry;
         }
-        else
-        {
-            auto const carry = (unshifted >> (shift - 1)) & 1;
-
-            return shifted + carry;
-        }
+        else return asymmetric{}.shr(shifted, unshifted, shift);
     }
 
     template <integral value_t>
@@ -177,12 +172,7 @@ struct symmetric
 
             return quotient + carry;
         }
-        else
-        {
-            auto const carry = (remainder + 1) > (divisor - remainder);
-
-            return quotient + carry;
-        }
+        else return asymmetric{}.div(quotient, divisor, remainder);
     }
 
     template <integral value_t>
@@ -256,27 +246,7 @@ struct round_nearest_even
     {
         if (shift == 0) return div(shifted_quotient, divisor, remainder);
         if (remainder == 0) return shr(shifted_quotient, quotient, shift);
-
-        using uval_t       = make_unsigned_t<value_t>;
-        constexpr auto one = uval_t{1};
-
-        auto const half = one << (shift - 1);
-        auto const mask = (one << shift) - 1;
-        auto const frac = static_cast<uval_t>(quotient) & mask;
-
-        if constexpr (std::is_signed_v<value_t>)
-        {
-            auto const negative = static_cast<uval_t>(quotient < 0);
-            auto const carry    = static_cast<value_t>(frac >= (half + negative));
-
-            return shifted_quotient + carry;
-        }
-        else
-        {
-            auto const carry = static_cast<value_t>(frac >= half);
-
-            return shifted_quotient + carry;
-        }
+        return symmetric{}.shr(shifted_quotient, quotient, shift);
     }
 };
 
