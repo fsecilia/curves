@@ -185,5 +185,93 @@ static_assert(shr<asymmetric>(0, 2) == 0);
 static_assert(div<asymmetric>(0, 7) == 0);
 static_assert(div<asymmetric>(-5, 1) == -5);
 
+// ====================================================================================================================
+// Symmetric
+// ====================================================================================================================
+
+// shr
+// --------------------------------------------------------------------------------------------------------------------
+
+// shift = 1
+static_assert(shr<symmetric>(4, 1) == 2);   // exact
+static_assert(shr<symmetric>(3, 1) == 2);   //  1.5 ->  2 (away from 0)
+static_assert(shr<symmetric>(-3, 1) == -2); // -1.5 -> -2 (away from 0)
+static_assert(shr<symmetric>(-1, 1) == -1); // -0.5 -> -1 (away from 0)
+
+// shift = 2
+static_assert(shr<symmetric>(1, 2) == 0);   //  0.25 -> 0
+static_assert(shr<symmetric>(2, 2) == 1);   //  0.5  -> 1 (away from 0)
+static_assert(shr<symmetric>(3, 2) == 1);   //  0.75 -> 1
+static_assert(shr<symmetric>(-1, 2) == 0);  // -0.25 -> 0
+static_assert(shr<symmetric>(-2, 2) == -1); // -0.5  -> -1 (away from 0)
+static_assert(shr<symmetric>(-3, 2) == -1); // -0.75 -> -1
+
+// unsigned
+static_assert(shr<symmetric>(3u, 1) == 2); // 1.5 tie -> up (away from 0)
+static_assert(shr<symmetric>(1u, 2) == 0); // 0.25 below
+static_assert(shr<symmetric>(2u, 2) == 1); // 0.5  tie -> up
+static_assert(shr<symmetric>(3u, 2) == 1); // 0.75 above
+
+// div
+// --------------------------------------------------------------------------------------------------------------------
+
+// signed, even divisor
+static_assert(div<symmetric>(1, 2) == 1);   //  0.5 ->  1 (away from 0)
+static_assert(div<symmetric>(-1, 2) == -1); // -0.5 -> -1 (away from 0)
+static_assert(div<symmetric>(1, 4) == 0);
+static_assert(div<symmetric>(3, 4) == 1);
+static_assert(div<symmetric>(-2, 4) == -1); // -0.5 -> -1 (away from 0)
+
+// signed, odd divisor
+static_assert(div<symmetric>(1, 3) == 0);
+static_assert(div<symmetric>(2, 3) == 1);
+static_assert(div<symmetric>(-2, 3) == -1);
+
+// unsigned
+static_assert(div<symmetric>(1u, 2u) == 1); // 0.5  tie -> up
+static_assert(div<symmetric>(1u, 4u) == 0); // 0.25 below
+static_assert(div<symmetric>(2u, 4u) == 1); // 0.5  tie -> up
+static_assert(div<symmetric>(3u, 4u) == 1); // 0.75 above
+static_assert(div<symmetric>(1u, 3u) == 0); // 0.33 below (odd divisor)
+static_assert(div<symmetric>(2u, 3u) == 1); // 0.67 above (odd divisor)
+
+// div_shr
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(div_shr<symmetric>(1, 2, 0) == 1);   //  0.5 ->  1 (div path)
+static_assert(div_shr<symmetric>(-1, 2, 0) == -1); // -0.5 -> -1 (div path)
+
+// shift > 0: shr sees quotient, remainder doesn't matter
+
+// q=2, shr(2,1) = 1 (exact, no rounding)
+static_assert(div_shr<symmetric>(7, 3, 1) == 1);
+
+// q=-2, shr(-2,1) = -1 (exact)
+static_assert(div_shr<symmetric>(-7, 3, 1) == -1);
+
+// q=1, shr(1,1) = 0.5 -> 1 (away from 0)
+static_assert(div_shr<symmetric>(4, 3, 1) == 1);
+
+// q=-1, shr(-1,1) = -0.5 -> -1 (away from 0)
+static_assert(div_shr<symmetric>(-4, 3, 1) == -1);
+
+// uint32_t overflow
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(div<symmetric, uint32_t>(2147483647u, 4294967295u) == 0);
+static_assert(div<symmetric, uint32_t>(2147483648u, 4294967295u) == 1);
+static_assert(div<symmetric, uint32_t>(4294967294u, 4294967295u) == 1);
+static_assert(div<symmetric, uint32_t>(2147483647u, 4294967294u) == 1); // tie -> 1
+
+static_assert(shr<symmetric, uint32_t>(0xFFFFFFFFu, 1) == 0x80000000u);
+static_assert(shr<symmetric, uint32_t>(0x80008000u, 16) == 0x8001u); // tie -> up (away from 0)
+static_assert(shr<symmetric, uint32_t>(0x80007FFFu, 16) == 0x8000u); // below half -> down
+
+// boundary
+// --------------------------------------------------------------------------------------------------------------------
+static_assert(shr<symmetric>(0, 2) == 0);
+static_assert(div<symmetric>(0, 7) == 0);
+static_assert(div<symmetric>(-5, 1) == -5);
+
 } // namespace
 } // namespace crv::rounding_modes
