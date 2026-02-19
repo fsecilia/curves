@@ -143,7 +143,10 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return *this;
     }
 
-    constexpr auto operator*=(fixed_t src) noexcept -> fixed_t& { return *this = fixed_t{multiply(*this, src)}; }
+    constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
+    {
+        return *this = multiply(*this, src, rounding_modes::asymmetric);
+    }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
     friend constexpr auto operator-(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
@@ -151,26 +154,33 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply(lhs, rhs);
+        return multiply(lhs, rhs, rounding_modes::asymmetric);
     }
 
     /// \returns wide product at higher precision
     template <is_fixed rhs_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> fixed::wider_t<fixed_t, rhs_t>
     {
-        using result_t = fixed::wider_t<fixed_t, rhs_t>;
-        using wider_t  = result_t::value_t;
+        using result_t      = fixed::wider_t<fixed_t, rhs_t>;
+        using wider_value_t = result_t::value_t;
 
-        auto const product = int_cast<wider_t>(int_cast<wider_t>(lhs.value) * rhs.value);
+        auto const product = int_cast<wider_value_t>(int_cast<wider_value_t>(lhs.value) * rhs.value);
 
         return result_t{product};
+    }
+
+    /// \returns product, widened or narrowed to output type and rescaled to output precision using given rounding mode
+    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t>
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> out_t
+    {
+        return out_t{multiply(lhs, rhs), rounding_mode};
     }
 
     /// \returns product, narrowed to lhs type and rescaled to lhs precision using given rounding mode
     template <is_fixed rhs_t, typename rounding_mode_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> fixed_t
     {
-        return fixed_t{multiply(lhs, rhs), rounding_mode};
+        return multiply<fixed_t, rhs_t, rounding_mode_t>(lhs, rhs, rounding_mode);
     }
 
     // ----------------------------------------------------------------------------------------------------------------

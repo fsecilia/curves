@@ -388,6 +388,47 @@ static_assert(typed_equal<fixed_t<uint128_t, 128>>(
               "fixed_t: max unsigned fraction*fraction failed");
 
 // --------------------------------------------------------------------------------------------------------------------
+// Multiplication to Specific Type with Rounding Mode
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+                                              multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
+                                                                           fixed_t<int32_t, 1>{3 << 1},
+                                                                           rounding_modes::truncate)),
+              "fixed_t: signed*signed multiplication to specific type failed");
+
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+                                              multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
+                                                                           fixed_t<uint32_t, 1>{3 << 1},
+                                                                           rounding_modes::truncate)),
+              "fixed_t: signed*unsigned multiplication to specific type failed");
+
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+                                              multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
+                                                                           fixed_t<int32_t, 1>{3 << 1},
+                                                                           rounding_modes::truncate)),
+              "fixed_t: unsigned*signed multiplication to specific type failed");
+
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+                                              multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
+                                                                           fixed_t<uint32_t, 1>{3 << 1},
+                                                                           rounding_modes::truncate)),
+              "fixed_t: unsigned*unsigned multiplication to specific type failed");
+
+TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
+{
+    using out_t = fixed_t<uint_t, 1>;
+    auto const lhs      = fixed_t<int_t, 1>(2 << 1);
+    auto const rhs      = fixed_t<int_t, 1>(3 << 1);
+    auto const expected = out_t{29};
+    EXPECT_CALL(mock_rounding_mode, shr(2 * 3 << 1, 2 * 3 << 2, 1)).WillOnce(Return(expected.value));
+
+    auto const actual = multiply<out_t>(lhs, rhs, rounding_mode);
+
+    EXPECT_EQ(expected, actual);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
