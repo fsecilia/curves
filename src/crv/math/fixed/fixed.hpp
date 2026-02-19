@@ -106,7 +106,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <is_fixed other_t> explicit constexpr fixed_t(other_t const& other) noexcept : fixed_t{convert(other)} {}
+    template <is_fixed other_t> explicit constexpr fixed_t(other_t other) noexcept : fixed_t{convert(other)} {}
 
     explicit constexpr operator bool() const noexcept { return !!value; }
 
@@ -121,30 +121,30 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Unary Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto operator+(fixed_t const& src) noexcept -> fixed_t { return src; }
-    friend constexpr auto operator-(fixed_t const& src) noexcept -> fixed_t { return fixed_t{-src.value}; }
+    friend constexpr auto operator+(fixed_t src) noexcept -> fixed_t { return src; }
+    friend constexpr auto operator-(fixed_t src) noexcept -> fixed_t { return fixed_t{-src.value}; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Binary Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator+=(fixed_t const& src) noexcept -> fixed_t&
+    constexpr auto operator+=(fixed_t src) noexcept -> fixed_t&
     {
         value += src.value;
         return *this;
     }
 
-    constexpr auto operator-=(fixed_t const& src) noexcept -> fixed_t&
+    constexpr auto operator-=(fixed_t src) noexcept -> fixed_t&
     {
         value -= src.value;
         return *this;
     }
 
-    constexpr auto operator*=(fixed_t const& src) noexcept -> fixed_t& { return *this = fixed_t{multiply(*this, src)}; }
+    constexpr auto operator*=(fixed_t src) noexcept -> fixed_t& { return *this = fixed_t{multiply(*this, src)}; }
 
-    friend constexpr auto operator+(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs += rhs; }
-    friend constexpr auto operator-(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs -= rhs; }
-    friend constexpr auto operator*(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs *= rhs; }
+    friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
+    friend constexpr auto operator-(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
+    friend constexpr auto operator*(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
@@ -174,13 +174,13 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Math Functions
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto abs(fixed_t const& src) noexcept -> fixed_t
+    friend constexpr auto abs(fixed_t src) noexcept -> fixed_t
         requires(std::unsigned_integral<value_t>)
     {
         return src;
     }
 
-    friend constexpr auto abs(fixed_t const& src) noexcept -> fixed_t
+    friend constexpr auto abs(fixed_t src) noexcept -> fixed_t
         requires(std::signed_integral<value_t>)
     {
         return src.value < 0 ? fixed_t{-src.value} : src;
@@ -227,7 +227,7 @@ private:
     This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
 */
 template <int out_frac_bits, int lhs_frac_bits, int rhs_frac_bits>
-auto divide(fixed_t<uint64_t, lhs_frac_bits> const& lhs, fixed_t<uint64_t, rhs_frac_bits> const& rhs) noexcept
+auto divide(fixed_t<uint64_t, lhs_frac_bits> lhs, fixed_t<uint64_t, rhs_frac_bits> rhs) noexcept
     -> fixed_t<uint64_t, out_frac_bits>
 {
     constexpr auto total_shift = rhs_frac_bits + out_frac_bits - lhs_frac_bits;
