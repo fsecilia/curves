@@ -22,7 +22,7 @@
 
 namespace crv {
 
-template <integral value_type, int frac_bits> struct fixed_t;
+template <integral value_t, int frac_bits> struct fixed_t;
 using fixed_q15_0_t  = fixed_t<int16_t, 0>;
 using fixed_q32_32_t = fixed_t<int64_t, 32>;
 using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
