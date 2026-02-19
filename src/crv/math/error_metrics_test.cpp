@@ -5,8 +5,8 @@
 */
 
 #include "error_metrics.hpp"
-#include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 #include <sstream>
