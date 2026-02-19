@@ -190,25 +190,25 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     }
 
 private:
+    /// \returns out_t, widening or narrowing \p in with rounding mode if necessary
     template <is_fixed other_t, typename rounding_mode_t = rounding_modes::asymmetric_t>
     static constexpr auto convert(other_t other, rounding_mode_t rounding_mode = {}) noexcept -> fixed_t
     {
         static constexpr auto other_frac_bits = other_t::frac_bits;
 
-        using wider_t       = fixed::promoted_t<fixed_t, other_t>;
-        using wider_value_t = wider_t::value_t;
+        using promoted_value_t = fixed::promoted_t<fixed_t, other_t>::value_t;
 
         if constexpr (frac_bits > other_frac_bits)
         {
             // shift left using wider type
-            return fixed_t{int_cast<value_t>(int_cast<wider_value_t>(other.value) << (frac_bits - other_frac_bits))};
+            return fixed_t{int_cast<value_t>(int_cast<promoted_value_t>(other.value) << (frac_bits - other_frac_bits))};
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = int_cast<wider_value_t>(other.value);
-            auto const     shifted   = int_cast<wider_value_t>(unshifted >> shift);
+            auto const     unshifted = int_cast<promoted_value_t>(other.value);
+            auto const     shifted   = int_cast<promoted_value_t>(unshifted >> shift);
             return fixed_t{int_cast<value_t>(rounding_mode.shr(shifted, unshifted, shift))};
         }
         else
