@@ -34,7 +34,7 @@ using fixed_q0_64_t  = fixed_t<uint64_t, 64>;
 template <typename type_t> struct is_fixed_f : std::false_type
 {};
 
-template <typename value_t, int frac_bits> struct is_fixed_f<fixed_t<value_t, frac_bits>> : std::true_type
+template <integral value_t, int frac_bits> struct is_fixed_f<fixed_t<value_t, frac_bits>> : std::true_type
 {};
 
 template <typename type_t> static constexpr auto is_fixed_v = is_fixed_f<type_t>::value;
