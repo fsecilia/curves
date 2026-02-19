@@ -7,7 +7,7 @@
 obj-m += @kbuild_output@
 
 # flags to build c files
-ccflags-y += -I$(src) -I$(src)/src/crv/cxx -DCRV_VERSION="@PROJECT_VERSION@-@git_hash@"
+ccflags-y += -I$(src)/src/crv/kernel/cxx -I$(src) -DCRV_VERSION="@PROJECT_VERSION@-@git_hash@"
 
 # c warnings that conflict with c++
 conflicting_c_warnings := designated-init \
