@@ -16,6 +16,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/math/rounding_modes.hpp>
 #include <algorithm>
 #include <type_traits>
 
@@ -179,8 +180,9 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     }
 
 private:
-    template <integral other_value_t, int other_frac_bits>
-    static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
+    template <integral other_value_t, int other_frac_bits, typename rounding_mode_t = rounding_modes::asymmetric_t>
+    static constexpr auto convert_value(other_value_t const& other_value, rounding_mode_t rounding_mode = {}) noexcept
+        -> value_t
     {
         static constexpr auto max_type_size = std::max(sizeof(value_t), sizeof(other_value_t));
 
@@ -193,14 +195,15 @@ private:
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
-            constexpr auto shift = other_frac_bits - frac_bits;
-
-            auto const wider = int_cast<wider_t>(other_value);
-
-            return int_cast<value_t>((wider >> shift) + ((wider >> (shift - 1)) & int_cast<wider_t>(1)));
+            // right shift using rounding mode
+            constexpr auto shift     = other_frac_bits - frac_bits;
+            auto const     unshifted = int_cast<wider_t>(other_value);
+            auto const     shifted   = int_cast<wider_t>(unshifted >> shift);
+            return int_cast<value_t>(rounding_mode.shr(shifted, unshifted, shift));
         }
         else
         {
+            // no conversion necessary
             return int_cast<value_t>(other_value);
         }
     }
