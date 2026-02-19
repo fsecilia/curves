@@ -3,6 +3,10 @@
     \file
     \brief fixed point integer type
 
+    The seemingly superfluous casts back to the value type strewn about this module are required because of c promotion
+    rules. Broadly, types smaller than int are cast to int when performing arithmetic. It's more nuanced than that, but
+    anywhere a promotion happens, we have to cast back.
+
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
@@ -151,9 +155,9 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         -> fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>
     {
         using result_t = fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>;
+        using wider_t  = result_t::value_t;
 
-        // The outer cast here is necessary because if the value type is smaller than int, it is promoted.
-        auto const product = static_cast<result_t::value_t>(static_cast<result_t::value_t>(lhs.value) * rhs.value);
+        auto const product = int_cast<wider_t>(int_cast<wider_t>(lhs.value) * rhs.value);
 
         return result_t{product};
     }
@@ -179,22 +183,25 @@ private:
     static constexpr auto convert_value(other_value_t const& other_value) noexcept -> value_t
     {
         static constexpr auto max_type_size = std::max(sizeof(value_t), sizeof(other_value_t));
-        using wider_t                       = sized_integer_t<max_type_size, signed_integral<other_value_t>>;
+
+        using wider_t = sized_integer_t<max_type_size, signed_integral<other_value_t>>;
 
         if constexpr (frac_bits > other_frac_bits)
         {
             // shift left using wider type
-            return static_cast<value_t>(static_cast<wider_t>(other_value) << (frac_bits - other_frac_bits));
+            return int_cast<value_t>(int_cast<wider_t>(other_value) << (frac_bits - other_frac_bits));
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
             constexpr auto shift = other_frac_bits - frac_bits;
-            auto const     wider = static_cast<wider_t>(other_value);
-            return static_cast<value_t>((wider >> shift) + ((wider >> (shift - 1)) & static_cast<wider_t>(1)));
+
+            auto const wider = int_cast<wider_t>(other_value);
+
+            return int_cast<value_t>((wider >> shift) + ((wider >> (shift - 1)) & int_cast<wider_t>(1)));
         }
         else
         {
-            return static_cast<value_t>(other_value);
+            return int_cast<value_t>(other_value);
         }
     }
 };
@@ -219,7 +226,7 @@ auto divide(fixed_t<uint64_t, lhs_frac_bits> const& lhs, fixed_t<uint64_t, rhs_f
     auto const divides_by_zero = 0 == divisor;
     if (divides_by_zero) [[unlikely]] { return {max<uint64_t>()}; }
 
-    auto const dividend           = static_cast<uint128_t>(lhs.value) << total_shift;
+    auto const dividend           = int_cast<uint128_t>(lhs.value) << total_shift;
     auto const quotient_overflows = (dividend >> 64) >= divisor;
     if (quotient_overflows) [[unlikely]] { return {max<uint64_t>()}; }
 
