@@ -163,6 +163,16 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return result_t{product};
     }
 
+    /// \returns product, narrowed to lhs type and rescaled to lhs precision using given rounding mode
+    template <integral other_value_t, int other_frac_bits, typename rounding_mode_t>
+    friend constexpr auto multiply(fixed_t lhs, fixed_t<other_value_t, other_frac_bits> rhs,
+                                   rounding_mode_t rounding_mode) noexcept -> fixed_t
+    {
+        auto const wide_result = multiply(lhs, rhs);
+        using wide_t           = decltype(wide_result);
+        return fixed_t{convert_value<typename wide_t::value_t, wide_t::frac_bits>(wide_result.value, rounding_mode)};
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Math Functions
     // ----------------------------------------------------------------------------------------------------------------
