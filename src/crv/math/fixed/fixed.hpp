@@ -151,11 +151,10 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     }
 
     /// \returns wide product at higher precision
-    template <integral other_value_t, int other_frac_bits>
-    friend constexpr auto multiply(fixed_t lhs, fixed_t<other_value_t, other_frac_bits> const& rhs) noexcept
-        -> fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>
+    template <is_fixed rhs_t>
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> fixed::wider_t<fixed_t, rhs_t>
     {
-        using result_t = fixed::wider_t<fixed_t, fixed_t<other_value_t, other_frac_bits>>;
+        using result_t = fixed::wider_t<fixed_t, rhs_t>;
         using wider_t  = result_t::value_t;
 
         auto const product = int_cast<wider_t>(int_cast<wider_t>(lhs.value) * rhs.value);
@@ -164,9 +163,8 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     }
 
     /// \returns product, narrowed to lhs type and rescaled to lhs precision using given rounding mode
-    template <integral other_value_t, int other_frac_bits, typename rounding_mode_t>
-    friend constexpr auto multiply(fixed_t lhs, fixed_t<other_value_t, other_frac_bits> rhs,
-                                   rounding_mode_t rounding_mode) noexcept -> fixed_t
+    template <is_fixed rhs_t, typename rounding_mode_t>
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> fixed_t
     {
         auto const wide_result = multiply(lhs, rhs);
         using wide_t           = decltype(wide_result);
