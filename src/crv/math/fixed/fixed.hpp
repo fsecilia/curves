@@ -73,6 +73,13 @@ template <is_fixed lhs_t, is_fixed rhs_t> struct wider_traits_t
 };
 template <is_fixed lhs_t, is_fixed rhs_t> using wider_t = wider_traits_t<lhs_t, rhs_t>::wider_t;
 
+/*
+    This is asymmetric because that's what fixed_t originally did manually. It will eventually change to truncate to
+    match c++ integer rules.
+*/
+inline constexpr auto default_rounding_mode = rounding_modes::asymmetric;
+using default_rounding_mode_t               = std::remove_cv_t<decltype(default_rounding_mode)>;
+
 } // namespace fixed
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -106,7 +113,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <is_fixed other_t, typename rounding_mode_t = rounding_modes::asymmetric_t>
+    template <is_fixed other_t, typename rounding_mode_t = fixed::default_rounding_mode_t>
     explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
         : fixed_t{convert(other, rounding_mode)}
     {}
@@ -145,7 +152,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
     constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
     {
-        return *this = multiply(*this, src, rounding_modes::asymmetric);
+        return *this = multiply(*this, src, fixed::default_rounding_mode);
     }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
@@ -154,7 +161,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply(lhs, rhs, rounding_modes::asymmetric);
+        return multiply(lhs, rhs, fixed::default_rounding_mode);
     }
 
     /// \returns wide product at higher precision
@@ -201,7 +208,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
 private:
     /// \returns out_t, widening or narrowing \p in with rounding mode if necessary
-    template <is_fixed other_t, typename rounding_mode_t = rounding_modes::asymmetric_t>
+    template <is_fixed other_t, typename rounding_mode_t = fixed::default_rounding_mode_t>
     static constexpr auto convert(other_t other, rounding_mode_t rounding_mode = {}) noexcept -> fixed_t
     {
         static constexpr auto other_frac_bits = other_t::frac_bits;
