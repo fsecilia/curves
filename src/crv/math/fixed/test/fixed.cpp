@@ -177,51 +177,39 @@ static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64,
 
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>()}}.value == min<int8_t>() / 4);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 1}}.value == min<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 2}}.value == min<int8_t>() / 4 + 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 3}}.value == min<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 4}}.value == min<int8_t>() / 4 + 1);
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-107}}.value == -27);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-106}}.value == -26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-106}}.value == -27);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-103}}.value == -26);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-102}}.value == -25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-101}}.value == -25);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-100}}.value == -25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-99}}.value == -25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-98}}.value == -24);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-98}}.value == -25);
 
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-4}}.value == -1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-3}}.value == -1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-2}}.value == 0);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-1}}.value == 0);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-1}}.value == -1);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{0}}.value == 0);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{1}}.value == 0);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{2}}.value == 1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{3}}.value == 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{3}}.value == 0);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{4}}.value == 1);
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{97}}.value == 24);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{98}}.value == 25);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{98}}.value == 24);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{100}}.value == 25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{101}}.value == 25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{102}}.value == 26);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 26);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 25);
 static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{105}}.value == 26);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{106}}.value == 27);
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 2}}.value == max<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 1}}.value == max<int8_t>() / 4 + 1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>()}}.value == max<int8_t>() / 4 + 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 4}}.value == max<int8_t>() / 4 - 1);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 3}}.value == max<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 1}}.value == max<int8_t>() / 4);
+static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>()}}.value == max<int8_t>() / 4);
 
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{0}}.value == 0);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{1}}.value == 0);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{2}}.value == 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{3}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{3}}.value == 0);
 static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{4}}.value == 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{5}}.value == 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{6}}.value == 2);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{7}}.value == 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{8}}.value == 2);
 
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 2}}.value == max<uint8_t>() / 4);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 1}}.value == max<uint8_t>() / 4 + 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>()}}.value == max<uint8_t>() / 4 + 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 4}}.value == max<uint8_t>() / 4 - 1);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 1}}.value == max<uint8_t>() / 4);
+static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>()}}.value == max<uint8_t>() / 4);
 
 // --------------------------------------------------------------------------------------------------------------------
 // Bool
@@ -417,7 +405,7 @@ static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 {
-    using out_t = fixed_t<uint_t, 1>;
+    using out_t         = fixed_t<uint_t, 1>;
     auto const lhs      = fixed_t<int_t, 1>(2 << 1);
     auto const rhs      = fixed_t<int_t, 1>(3 << 1);
     auto const expected = out_t{29};

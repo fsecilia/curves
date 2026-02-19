@@ -73,11 +73,7 @@ template <is_fixed lhs_t, is_fixed rhs_t> struct wider_traits_t
 };
 template <is_fixed lhs_t, is_fixed rhs_t> using wider_t = wider_traits_t<lhs_t, rhs_t>::wider_t;
 
-/*
-    This is asymmetric because that's what fixed_t originally did manually. It will eventually change to truncate to
-    match c++ integer rules.
-*/
-inline constexpr auto default_rounding_mode = rounding_modes::asymmetric;
+inline constexpr auto default_rounding_mode = rounding_modes::truncate;
 using default_rounding_mode_t               = std::remove_cv_t<decltype(default_rounding_mode)>;
 
 } // namespace fixed
