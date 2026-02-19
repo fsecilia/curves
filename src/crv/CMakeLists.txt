@@ -10,7 +10,7 @@ target_sources(lib PRIVATE
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/error_metrics.hpp
-    math/fixed/conversions.hpp
+    math/fixed/float_conversions.hpp
     math/fixed/io.hpp
     math/jet/jet.hpp
     math/io.hpp
@@ -46,9 +46,9 @@ if (enable_testing)
         math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
         math/error_metrics_test.cpp
-        math/fixed/test/conversions.cpp
         math/fixed/test/exp2_neg_m1.cpp
         math/fixed/test/fixed.cpp
+        math/fixed/test/float_conversions.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp

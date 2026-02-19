@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 /*!
     \file
-    \brief io for fixed_t
+    \brief float conversions for fixed_t
+
+    There's no float in the kernel, only in user mode, so instead of wrapping float conversions with !__KERNEL__, they
+    have been extracted to a dedicated module.
 
     \copyright Copyright (C) 2026 Frank Secilia
 */
