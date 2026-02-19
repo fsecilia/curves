@@ -106,10 +106,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <typename other_value_t, int other_frac_bits>
-    explicit constexpr fixed_t(fixed_t<other_value_t, other_frac_bits> const& other) noexcept
-        : fixed_t{convert_value<other_value_t, other_frac_bits>(other.value)}
-    {}
+    template <is_fixed other_t> explicit constexpr fixed_t(other_t const& other) noexcept : fixed_t{convert(other)} {}
 
     explicit constexpr operator bool() const noexcept { return !!value; }
 
@@ -149,9 +146,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto operator-(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs -= rhs; }
     friend constexpr auto operator*(fixed_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return lhs *= rhs; }
 
-    template <typename other_value_t, int_t other_frac_bits>
-    friend constexpr auto operator*(fixed_t const& lhs, fixed_t<other_value_t, other_frac_bits> const& rhs) noexcept
-        -> fixed_t
+    template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
         return multiply(lhs, rhs);
     }
@@ -172,9 +167,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     template <is_fixed rhs_t, typename rounding_mode_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> fixed_t
     {
-        auto const wide_result = multiply(lhs, rhs);
-        using wide_t           = decltype(wide_result);
-        return fixed_t{convert_value<typename wide_t::value_t, wide_t::frac_bits>(wide_result.value, rounding_mode)};
+        return convert(multiply(lhs, rhs), rounding_mode);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -194,31 +187,31 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     }
 
 private:
-    template <integral other_value_t, int other_frac_bits, typename rounding_mode_t = rounding_modes::asymmetric_t>
-    static constexpr auto convert_value(other_value_t const& other_value, rounding_mode_t rounding_mode = {}) noexcept
-        -> value_t
+    template <is_fixed other_t, typename rounding_mode_t = rounding_modes::asymmetric_t>
+    static constexpr auto convert(other_t other, rounding_mode_t rounding_mode = {}) noexcept -> fixed_t
     {
-        static constexpr auto max_type_size = std::max(sizeof(value_t), sizeof(other_value_t));
+        static constexpr auto other_frac_bits = other_t::frac_bits;
 
-        using wider_t = sized_integer_t<max_type_size, signed_integral<other_value_t>>;
+        using wider_t       = fixed::promoted_t<fixed_t, other_t>;
+        using wider_value_t = wider_t::value_t;
 
         if constexpr (frac_bits > other_frac_bits)
         {
             // shift left using wider type
-            return int_cast<value_t>(int_cast<wider_t>(other_value) << (frac_bits - other_frac_bits));
+            return fixed_t{int_cast<value_t>(int_cast<wider_value_t>(other.value) << (frac_bits - other_frac_bits))};
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = int_cast<wider_t>(other_value);
-            auto const     shifted   = int_cast<wider_t>(unshifted >> shift);
-            return int_cast<value_t>(rounding_mode.shr(shifted, unshifted, shift));
+            auto const     unshifted = int_cast<wider_value_t>(other.value);
+            auto const     shifted   = int_cast<wider_value_t>(unshifted >> shift);
+            return fixed_t{int_cast<value_t>(rounding_mode.shr(shifted, unshifted, shift))};
         }
         else
         {
             // no conversion necessary
-            return int_cast<value_t>(other_value);
+            return fixed_t{int_cast<value_t>(other.value)};
         }
     }
 };
