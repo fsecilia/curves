@@ -106,7 +106,10 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <is_fixed other_t> explicit constexpr fixed_t(other_t other) noexcept : fixed_t{convert(other)} {}
+    template <is_fixed other_t, typename rounding_mode_t = rounding_modes::asymmetric_t>
+    explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
+        : fixed_t{convert(other, rounding_mode)}
+    {}
 
     explicit constexpr operator bool() const noexcept { return !!value; }
 
@@ -167,7 +170,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     template <is_fixed rhs_t, typename rounding_mode_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> fixed_t
     {
-        return convert(multiply(lhs, rhs), rounding_mode);
+        return fixed_t{multiply(lhs, rhs), rounding_mode};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
