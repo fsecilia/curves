@@ -8,9 +8,9 @@
 
 #include <source_location>
 
-extern "C" {
-void panic(char const* fmt, ...);
-}
+#pragma once
+
+extern "C" [[noreturn]] void panic(char const* fmt, ...);
 
 namespace crv {
 
