@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*!
     \file
-    \brief
+    \brief division results
 
     \copyright Copyright (C) 2026 Frank Secilia
 */
@@ -13,14 +13,17 @@
 
 namespace crv {
 
-//! result of u128/u64
-struct div_u128_u64_t
+//! result of division in {quotient, remainder} form using the type of the original divisor and dividend
+template <typename value_t> struct div_result_t
 {
-    uint64_t quotient;
-    uint64_t remainder;
+    value_t quotient;
+    value_t remainder;
 
-    auto operator<=>(div_u128_u64_t const&) const noexcept -> auto = default;
-    auto operator==(div_u128_u64_t const&) const noexcept -> bool  = default;
+    auto operator<=>(div_result_t const&) const noexcept -> auto = default;
+    auto operator==(div_result_t const&) const noexcept -> bool  = default;
 };
+
+//! result of u128/u64
+using div_u128_u64_t = div_result_t<uint64_t>;
 
 } // namespace crv
