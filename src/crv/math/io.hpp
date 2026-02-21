@@ -9,6 +9,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/division/result.hpp>
 #include <crv/math/integer.hpp>
 #include <ostream>
 
