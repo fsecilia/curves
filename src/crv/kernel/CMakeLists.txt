@@ -161,6 +161,7 @@ macro(add_to_kbuild src_abs)
     # track for Kbuild and dependencies
     list(APPEND srcs_kbuild_rel "${_src_rel}")
     list(APPEND srcs_kbuild_abs "${_dst}")
+    list(APPEND srcs_kbuild_orig "${src_abs}")
 
     # symlink to shadow build
     add_custom_command(
@@ -243,7 +244,7 @@ add_custom_command(
     OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
     COMMAND ${kbuild_make_command} $<$<CONFIG:DEBUG>:EXTRA_CFLAGS=-DCRV_ENABLE_ASSERTS> modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
-    DEPENDS ${srcs_kbuild_abs} "${makefile_dst}" "${kbuild_gen}"
+    DEPENDS ${srcs_kbuild_abs} ${srcs_kbuild_orig} "${makefile_dst}" "${kbuild_gen}"
     COMMENT "building kernel module"
     VERBATIM
     USES_TERMINAL
