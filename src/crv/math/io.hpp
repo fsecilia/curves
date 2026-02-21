@@ -17,6 +17,10 @@ namespace crv {
 
 auto operator<<(std::ostream& out, uint128_t src) -> std::ostream&;
 auto operator<<(std::ostream& out, int128_t src) -> std::ostream&;
-auto operator<<(std::ostream& out, div_u128_u64_t const& src) -> std::ostream&;
+
+template <typename value_t> auto operator<<(std::ostream& out, div_result_t<value_t> const& src) -> std::ostream&
+{
+    return out << "{.quotient = " << src.quotient << ", .remainder = " << src.remainder << "}";
+}
 
 } // namespace crv

@@ -33,9 +33,4 @@ auto operator<<(std::ostream& out, int128_t src) -> std::ostream&
     else return out << static_cast<uint128_t>(src);
 }
 
-auto operator<<(std::ostream& out, div_u128_u64_t const& src) -> std::ostream&
-{
-    return out << "{.quotient = " << src.quotient << ", .remainder = " << src.remainder << "}";
-}
-
 } // namespace crv
