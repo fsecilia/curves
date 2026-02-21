@@ -53,17 +53,9 @@ template <is_fixed lhs_t, is_fixed rhs_t>
 using promoted_t = fixed_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>,
                            std::max(lhs_t::frac_bits, rhs_t::frac_bits)>;
 
-template <is_fixed lhs_t, is_fixed rhs_t> struct wider_traits_t
-{
-    using promoted_value_t = promoted_t<lhs_t, rhs_t>::value_t;
-
-    static constexpr auto either_type_signed = is_signed_v<promoted_value_t>;
-    static constexpr auto value_type_size    = sizeof(promoted_value_t) * 2;
-    static constexpr auto frac_bits          = lhs_t::frac_bits + rhs_t::frac_bits;
-
-    using wider_t = fixed_t<sized_integer_t<value_type_size, either_type_signed>, frac_bits>;
-};
-template <is_fixed lhs_t, is_fixed rhs_t> using wider_t = wider_traits_t<lhs_t, rhs_t>::wider_t;
+template <is_fixed lhs_t, is_fixed rhs_t>
+using wider_t = fixed_t<crv::wider_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>>,
+                        lhs_t::frac_bits + rhs_t::frac_bits>;
 
 inline constexpr auto default_rounding_mode = rounding_modes::truncate;
 using default_rounding_mode_t               = std::remove_cv_t<decltype(default_rounding_mode)>;
