@@ -174,5 +174,23 @@ template <int_t... sizes> constexpr auto test_sizes() noexcept -> void
 
 } // namespace sized_integer_tests
 
+// --------------------------------------------------------------------------------------------------------------------
+// promoted_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace promoted_tests {
+
+static_assert(std::same_as<promoted_t<int16_t, int32_t>, int32_t>);
+static_assert(std::same_as<promoted_t<int16_t, uint32_t>, int32_t>);
+static_assert(std::same_as<promoted_t<uint16_t, int32_t>, int32_t>);
+static_assert(std::same_as<promoted_t<uint16_t, uint32_t>, uint32_t>);
+
+static_assert(std::same_as<promoted_t<int32_t, int16_t>, int32_t>);
+static_assert(std::same_as<promoted_t<int32_t, uint16_t>, int32_t>);
+static_assert(std::same_as<promoted_t<uint32_t, int16_t>, int32_t>);
+static_assert(std::same_as<promoted_t<uint32_t, uint16_t>, uint32_t>);
+
+} // namespace promoted_tests
+
 } // namespace
 } // namespace crv
