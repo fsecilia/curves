@@ -250,6 +250,7 @@ add_custom_command(
     USES_TERMINAL
 )
 add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}")
+add_dependencies(kbuild lib)
 
 # clean
 add_custom_target(clean_kbuild
