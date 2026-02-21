@@ -41,11 +41,11 @@ endif
 
 # add standard c++ compile rule
 quiet_cmd_cxx_o_cpp = CXX [M]  $@
-cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -c -o $@ $<
+cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -Wp,-MMD,$(depfile) -c -o $@ $<
 
 # add standard c++ pattern
 $(obj)/%.o: $(src)/%.cpp FORCE
-	$(call if_changed,cxx_o_cpp)
+	$(call if_changed_dep,cxx_o_cpp)
 
 # list of object files to build
 @project_name_underscores@-y := @objs_kbuild@
