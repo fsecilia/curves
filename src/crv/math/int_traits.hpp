@@ -13,6 +13,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/traits.hpp>
+#include <algorithm>
 #include <cassert>
 #include <type_traits>
 
@@ -111,5 +112,13 @@ template <> struct sized_integer_t<16, true> { using type = int128_t; };
 } // namespace detail::integer
 
 template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_t<size, is_signed>::type;
+
+// --------------------------------------------------------------------------------------------------------------------
+// promoted_t
+// --------------------------------------------------------------------------------------------------------------------
+
+/// integer type sized to the larger of lhs_t and rhs_t and signed if either is signed
+template <integral lhs_t, integral rhs_t>
+using promoted_t = sized_integer_t<std::max(sizeof(lhs_t), sizeof(rhs_t)), is_signed_v<lhs_t> || is_signed_v<rhs_t>>;
 
 } // namespace crv

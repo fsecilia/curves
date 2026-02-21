@@ -49,18 +49,9 @@ concept is_fixed = is_fixed_v<type_t>;
 
 namespace fixed {
 
-template <is_fixed lhs_t, is_fixed rhs_t> struct promotion_traits_t
-{
-    using lhs_value_t = lhs_t::value_t;
-    using rhs_value_t = rhs_t::value_t;
-
-    static constexpr auto either_type_signed = is_signed_v<lhs_value_t> || is_signed_v<rhs_value_t>;
-    static constexpr auto value_type_size    = std::max(sizeof(lhs_value_t), sizeof(rhs_value_t));
-    static constexpr auto frac_bits          = std::max(lhs_t::frac_bits, rhs_t::frac_bits);
-
-    using promoted_t = fixed_t<sized_integer_t<value_type_size, either_type_signed>, frac_bits>;
-};
-template <is_fixed lhs_t, is_fixed rhs_t> using promoted_t = promotion_traits_t<lhs_t, rhs_t>::promoted_t;
+template <is_fixed lhs_t, is_fixed rhs_t>
+using promoted_t = fixed_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>,
+                           std::max(lhs_t::frac_bits, rhs_t::frac_bits)>;
 
 template <is_fixed lhs_t, is_fixed rhs_t> struct wider_traits_t
 {
