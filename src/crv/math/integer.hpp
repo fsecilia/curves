@@ -76,6 +76,7 @@ constexpr auto to_signed_copysign(unsigned_t src, signed_integral auto sign) noe
     assert(src <= (sign < 0 ? static_cast<unsigned_t>(min<dst_t>()) : static_cast<unsigned_t>(max<dst_t>()))
            && "to_signed_copysign: input out of range");
 
+    // negation must occur before conversion because abs(min()) is not representable by signed types
     return sign < 0 ? static_cast<dst_t>(-src) : static_cast<dst_t>(src);
 }
 
