@@ -4,7 +4,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "hardware.hpp"
+#include "instruction.hpp"
 #include <crv/math/io.hpp>
 #include <crv/test/test.hpp>
 #include <ostream>
