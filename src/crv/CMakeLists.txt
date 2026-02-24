@@ -20,7 +20,7 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     lib.hpp
     lib.cpp
-    math/division/hardware.hpp
+    math/division/instruction.hpp
     math/division/result.hpp
     math/fixed/fixed.hpp
     math/fixed/exp2.hpp
@@ -47,7 +47,7 @@ if (enable_testing)
     target_sources(unit_tests PRIVATE
         math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
-        math/division/hardware_test.cpp
+        math/division/instruction_test.cpp
         math/error_metrics_test.cpp
         math/fixed/test/exp2_neg_m1.cpp
         math/fixed/test/fixed.cpp
