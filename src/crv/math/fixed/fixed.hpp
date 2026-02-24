@@ -240,7 +240,7 @@ auto divide(fixed_t<uint64_t, lhs_frac_bits> lhs, fixed_t<uint64_t, rhs_frac_bit
     auto const quotient_overflows = (dividend >> 64) >= divisor;
     if (quotient_overflows) [[unlikely]] { return {max<uint64_t>()}; }
 
-    auto [quotient, remainder] = div_u128_u64(dividend, divisor);
+    auto [quotient, remainder] = division::instruction_t<uint128_t, uint64_t>{}(dividend, divisor);
 
     quotient += remainder >= (divisor - remainder);
 

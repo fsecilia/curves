@@ -10,48 +10,53 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/division/result.hpp>
+#include <crv/math/int_traits.hpp>
 #include <cassert>
 
-namespace crv {
+namespace crv::division {
 
-//! generic division; uses compiler's existing 128-bit division operator
-inline auto div_u128_u64_generic(uint128_t dividend, uint64_t divisor) noexcept -> div_u128_u64_t
+/**
+    executes the platform's native <2N>/<N> division instruction
+
+    \pre upper half of dividend must be strictly less than divisor
+
+    Violating the precondition causes a hardware trap; #DE on x86. Callers are responsible for decomposing inputs that
+    don't satisfy this precondition.
+*/
+template <unsigned_integral dividend_t, unsigned_integral divisor_t = dividend_t> struct instruction_t;
+
+/// generic division; uses compiler's existing division operator
+template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct instruction_t
 {
-    return div_u128_u64_t{.quotient  = static_cast<uint64_t>(dividend / divisor),
-                          .remainder = static_cast<uint64_t>(dividend % divisor)};
-}
+    constexpr auto operator()(dividend_t dividend, divisor_t divisor) const noexcept -> div_result_t<divisor_t>
+    {
+        return {.quotient  = static_cast<divisor_t>(dividend / divisor),
+                .remainder = static_cast<divisor_t>(dividend % divisor)};
+    }
+};
 
 #if defined __x86_64__
 
-// x64-specific implementation; uses divq directly to avoid missing 128/128 division instruction
-inline auto div_u128_u64_x64(uint128_t dividend, uint64_t divisor) noexcept -> div_u128_u64_t
+/// x64-specific implementation; uses inline asm to execute u128/u64 division instruction directly
+template <> struct instruction_t<uint128_t, uint64_t>
 {
-    // assert((dividend >> 64) < divisor && "division parameters will trap");
+    auto operator()(uint128_t dividend, uint64_t divisor) const noexcept -> div_result_t<uint64_t>
+    {
+        assert((dividend >> 64) < divisor && "division parameters will trap");
 
-    auto const high = static_cast<uint64_t>(dividend >> 64);
-    auto const low  = static_cast<uint64_t>(dividend);
+        auto const high = static_cast<uint64_t>(dividend >> 64);
+        auto const low  = static_cast<uint64_t>(dividend);
 
-    div_u128_u64_t result;
-    asm volatile("divq %[divisor]"
-                 : "=a"(result.quotient), "=d"(result.remainder)
-                 : "d"(high), "a"(low), [divisor] "rm"(divisor)
-                 : "cc");
+        div_u128_u64_t result;
+        asm volatile("divq %[divisor]"
+                     : "=a"(result.quotient), "=d"(result.remainder)
+                     : "d"(high), "a"(low), [divisor] "rm"(divisor)
+                     : "cc");
 
-    return result;
-}
-
-inline auto div_u128_u64(uint128_t dividend, uint64_t divisor) noexcept -> div_u128_u64_t
-{
-    return div_u128_u64_x64(dividend, divisor);
-}
-
-#else
-
-inline auto div_u128_u64(uint128_t dividend, uint64_t divisor) noexcept -> div_u128_u64_t
-{
-    return div_u128_u64_generic(dividend, divisor);
-}
+        return result;
+    }
+};
 
 #endif
 
-} // namespace crv
+} // namespace crv::division
