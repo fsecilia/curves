@@ -105,19 +105,19 @@ int128_param_t const s128_test_params[] = {
 INSTANTIATE_TEST_SUITE_P(cases, math_io_int128_test_t, ValuesIn(s128_test_params));
 
 // --------------------------------------------------------------------------------------------------------------------
-// div_u128_u64_t
+// div_result_t
 // --------------------------------------------------------------------------------------------------------------------
 
-struct div_u128_u64_param_t
+struct div_result_param_t
 {
-    div_u128_u64_t sut;
-    std::string    expected;
+    div_result_t<uint64_t, uint32_t> sut;
+    std::string                      expected;
 };
 
-struct math_io_div_u128_u64_test_t : TestWithParam<div_u128_u64_param_t>
+struct math_io_div_result_test_t : TestWithParam<div_result_param_t>
 {};
 
-TEST_P(math_io_div_u128_u64_test_t, result)
+TEST_P(math_io_div_result_test_t, result)
 {
     auto const expected = GetParam().expected;
 
@@ -128,24 +128,24 @@ TEST_P(math_io_div_u128_u64_test_t, result)
     EXPECT_EQ(expected, actual);
 }
 
-div_u128_u64_param_t const div_u128_u64_test_params[] = {
+div_result_param_t const div_result_test_params[] = {
     {{.quotient = 0, .remainder = 0}, "{.quotient = 0, .remainder = 0}"},
     {{.quotient = 0, .remainder = 1}, "{.quotient = 0, .remainder = 1}"},
     {{.quotient = 1, .remainder = 0}, "{.quotient = 1, .remainder = 0}"},
     {{.quotient = 1, .remainder = 1}, "{.quotient = 1, .remainder = 1}"},
 
-    {{.quotient = 0, .remainder = max<uint64_t>()}, "{.quotient = 0, .remainder = 18446744073709551615}"},
+    {{.quotient = 0, .remainder = max<uint32_t>()}, "{.quotient = 0, .remainder = 4294967295}"},
     {{.quotient = max<uint64_t>(), .remainder = 0}, "{.quotient = 18446744073709551615, .remainder = 0}"},
 
     {
         {
             .quotient  = max<uint64_t>(),
-            .remainder = max<uint64_t>(),
+            .remainder = max<uint32_t>(),
         },
-        "{.quotient = 18446744073709551615, .remainder = 18446744073709551615}",
+        "{.quotient = 18446744073709551615, .remainder = 4294967295}",
     },
 };
-INSTANTIATE_TEST_SUITE_P(cases, math_io_div_u128_u64_test_t, ValuesIn(div_u128_u64_test_params));
+INSTANTIATE_TEST_SUITE_P(cases, math_io_div_result_test_t, ValuesIn(div_result_test_params));
 
 } // namespace
 } // namespace crv

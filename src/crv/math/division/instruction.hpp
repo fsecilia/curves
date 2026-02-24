@@ -47,7 +47,7 @@ template <> struct instruction_t<uint128_t, uint64_t>
         auto const high = static_cast<uint64_t>(dividend >> 64);
         auto const low  = static_cast<uint64_t>(dividend);
 
-        div_u128_u64_t result;
+        div_result_t<uint64_t> result;
         asm volatile("divq %[divisor]"
                      : "=a"(result.quotient), "=d"(result.remainder)
                      : "d"(high), "a"(low), [divisor] "rm"(divisor)
