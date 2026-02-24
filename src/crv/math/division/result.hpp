@@ -13,17 +13,14 @@
 
 namespace crv {
 
-//! result of division in {quotient, remainder} form using the type of the original divisor and dividend
-template <typename value_t> struct div_result_t
+//! result of division in full (quotient, remainder) form
+template <typename quotient_t, typename remainder_t = quotient_t> struct div_result_t
 {
-    value_t quotient;
-    value_t remainder;
+    quotient_t  quotient;
+    remainder_t remainder;
 
     auto operator<=>(div_result_t const&) const noexcept -> auto = default;
     auto operator==(div_result_t const&) const noexcept -> bool  = default;
 };
-
-//! result of u128/u64
-using div_u128_u64_t = div_result_t<uint64_t>;
 
 } // namespace crv

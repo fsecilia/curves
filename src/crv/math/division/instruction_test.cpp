@@ -110,9 +110,9 @@ struct instruction_u128_u64_test_param_t
 
 struct division_instruction_u128_u64_test_t : TestWithParam<instruction_u128_u64_test_param_t>
 {
-    uint128_t             dividend = GetParam().dividend;
-    uint64_t              divisor  = GetParam().divisor;
-    div_u128_u64_t const& result   = GetParam().result;
+    uint128_t              dividend = GetParam().dividend;
+    uint64_t               divisor  = GetParam().divisor;
+    div_result_t<uint64_t> result   = GetParam().result;
 
     using sut_t = instruction_t<uint128_t, uint64_t>;
     sut_t sut{};
