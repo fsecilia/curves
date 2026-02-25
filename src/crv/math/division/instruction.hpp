@@ -28,7 +28,7 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t = dividend_t
 /// generic division; uses compiler's existing division operator
 template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct instruction_t
 {
-    constexpr auto operator()(dividend_t dividend, divisor_t divisor) const noexcept -> div_result_t<divisor_t>
+    constexpr auto operator()(dividend_t dividend, divisor_t divisor) const noexcept -> result_t<divisor_t>
     {
         return {.quotient  = static_cast<divisor_t>(dividend / divisor),
                 .remainder = static_cast<divisor_t>(dividend % divisor)};
@@ -40,14 +40,14 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct inst
 /// x64-specific implementation; uses inline asm to execute u128/u64 division instruction directly
 template <> struct instruction_t<uint128_t, uint64_t>
 {
-    auto operator()(uint128_t dividend, uint64_t divisor) const noexcept -> div_result_t<uint64_t>
+    auto operator()(uint128_t dividend, uint64_t divisor) const noexcept -> result_t<uint64_t>
     {
         assert((dividend >> 64) < divisor && "division parameters will trap");
 
         auto const high = static_cast<uint64_t>(dividend >> 64);
         auto const low  = static_cast<uint64_t>(dividend);
 
-        div_result_t<uint64_t> result;
+        result_t<uint64_t> result;
         asm volatile("divq %[divisor]"
                      : "=a"(result.quotient), "=d"(result.remainder)
                      : "d"(high), "a"(low), [divisor] "rm"(divisor)
