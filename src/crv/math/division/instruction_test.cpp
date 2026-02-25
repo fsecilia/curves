@@ -17,7 +17,7 @@ namespace crv::division {
 namespace {
 
 template <unsigned_integral dividend_t, unsigned_integral divisor_t>
-constexpr auto test_division(div_result_t<divisor_t> expected, dividend_t dividend, divisor_t divisor) noexcept -> bool
+constexpr auto test_division(result_t<divisor_t> expected, dividend_t dividend, divisor_t divisor) noexcept -> bool
 {
     return expected == instruction_t<dividend_t, divisor_t>{}(dividend, divisor);
 };
@@ -26,7 +26,7 @@ template <typename quotient_t> constexpr auto test() noexcept -> void
 {
     using dividend_t = wider_t<quotient_t>;
     using divisor_t  = quotient_t;
-    using result_t   = div_result_t<quotient_t>;
+    using result_t   = result_t<quotient_t>;
 
     auto const test = [](result_t const& expected, dividend_t dividend, divisor_t divisor) noexcept {
         return test_division<wider_t<quotient_t>, quotient_t>(expected, dividend, divisor);
@@ -96,10 +96,10 @@ constexpr auto test() noexcept -> void
 
 struct instruction_u128_u64_test_param_t
 {
-    std::string            name;
-    uint128_t              dividend;
-    uint64_t               divisor;
-    div_result_t<uint64_t> result;
+    std::string        name;
+    uint128_t          dividend;
+    uint64_t           divisor;
+    result_t<uint64_t> result;
 
     friend auto operator<<(std::ostream& out, instruction_u128_u64_test_param_t const& src) -> std::ostream&
     {
@@ -110,9 +110,9 @@ struct instruction_u128_u64_test_param_t
 
 struct division_instruction_u128_u64_test_t : TestWithParam<instruction_u128_u64_test_param_t>
 {
-    uint128_t              dividend = GetParam().dividend;
-    uint64_t               divisor  = GetParam().divisor;
-    div_result_t<uint64_t> result   = GetParam().result;
+    uint128_t          dividend = GetParam().dividend;
+    uint64_t           divisor  = GetParam().divisor;
+    result_t<uint64_t> result   = GetParam().result;
 
     using sut_t = instruction_t<uint128_t, uint64_t>;
     sut_t sut{};
