@@ -30,4 +30,13 @@ template <typename result_t> inline constexpr auto is_result_v = is_result_f<res
 template <typename result_t>
 concept is_result = is_result_v<std::remove_cvref_t<result_t>>;
 
+// --------------------------------------------------------------------------------------------------------------------
+// is_divider
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename divider_t, typename dividend_t, typename divisor_t>
+concept is_divider = requires(divider_t const& divider, dividend_t dividend, divisor_t divisor) {
+    { divider(dividend, divisor) } -> is_result;
+};
+
 } // namespace crv::division
