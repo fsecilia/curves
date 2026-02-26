@@ -30,7 +30,7 @@ template <typename test_types_t> struct division_long_divider_test_t : ::testing
     static constexpr auto shift              = dividend_bit_count / 2;
     static constexpr auto low_mask           = (dividend_t{1} << shift) - 1;
 
-    struct instruction_t
+    struct hardware_divider_t
     {
         auto verify_preconditions(dividend_t dividend, divisor_t divisor) const noexcept -> void
         {
@@ -46,13 +46,13 @@ template <typename test_types_t> struct division_long_divider_test_t : ::testing
         }
     };
 
-    using sut_t = long_divider_t<dividend_t, divisor_t, instruction_t>;
+    using sut_t = long_divider_t<dividend_t, divisor_t, hardware_divider_t>;
 
     sut_t sut{};
 
     auto test(dividend_t dividend, divisor_t divisor) const noexcept -> result_t
     {
-        return sut(dividend, divisor, instruction_t{});
+        return sut(dividend, divisor, hardware_divider_t{});
     }
 
     struct full_width_generator_t
@@ -178,7 +178,7 @@ TYPED_TEST(division_long_divider_test_t, basic)
 }
 
 /*
-    tests highest possible dividend for an arbitrary divisor where first instruction's quotient is zero
+    tests highest possible dividend for an arbitrary divisor where first hardware division's quotient is zero
 
         [n - 1][~0]/n
 
@@ -203,7 +203,7 @@ TYPED_TEST(division_long_divider_test_t, test_high_divisor_minus_one)
 }
 
 /*
-    tests lowest possible dividend for an arbitrary divisor where the first instruction's quotient is nonzero
+    tests lowest possible dividend for an arbitrary divisor where the first hardware division's quotient is nonzero
 
         [n][0]/n
 

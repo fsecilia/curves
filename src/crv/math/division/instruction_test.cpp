@@ -19,7 +19,7 @@ namespace {
 template <unsigned_integral dividend_t, unsigned_integral divisor_t>
 constexpr auto test_division(result_t<divisor_t> expected, dividend_t dividend, divisor_t divisor) noexcept -> bool
 {
-    return expected == instruction_t<dividend_t, divisor_t>{}(dividend, divisor);
+    return expected == hardware_divider_t<dividend_t, divisor_t>{}(dividend, divisor);
 };
 
 template <typename quotient_t> constexpr auto test() noexcept -> void
@@ -94,31 +94,31 @@ constexpr auto test() noexcept -> void
 // These cannot be made constexpr because of the inline asm, so they are tested with a table.
 // --------------------------------------------------------------------------------------------------------------------
 
-struct instruction_u128_u64_test_param_t
+struct hardware_divider_u128_u64_test_param_t
 {
     std::string        name;
     uint128_t          dividend;
     uint64_t           divisor;
     result_t<uint64_t> result;
 
-    friend auto operator<<(std::ostream& out, instruction_u128_u64_test_param_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, hardware_divider_u128_u64_test_param_t const& src) -> std::ostream&
     {
         return out << "{.name = \"" << src.name << "\", .dividend = " << src.dividend << ", .divisor = " << src.divisor
                    << ", result = " << src.result << "}";
     }
 };
 
-struct division_instruction_u128_u64_test_t : TestWithParam<instruction_u128_u64_test_param_t>
+struct division_hardware_divider_u128_u64_test_t : TestWithParam<hardware_divider_u128_u64_test_param_t>
 {
     uint128_t          dividend = GetParam().dividend;
     uint64_t           divisor  = GetParam().divisor;
     result_t<uint64_t> result   = GetParam().result;
 
-    using sut_t = instruction_t<uint128_t, uint64_t>;
+    using sut_t = hardware_divider_t<uint128_t, uint64_t>;
     sut_t sut{};
 };
 
-TEST_P(division_instruction_u128_u64_test_t, result)
+TEST_P(division_hardware_divider_u128_u64_test_t, result)
 {
     EXPECT_EQ(result, sut(dividend, divisor));
 }
@@ -131,7 +131,7 @@ constexpr auto dividend(uint64_t high, uint64_t low) -> uint128_t
 
 constexpr auto max = std::numeric_limits<uint64_t>::max();
 
-instruction_u128_u64_test_param_t const division_params[] = {
+hardware_divider_u128_u64_test_param_t const division_params[] = {
     // basics
     {"0/1", 0, 1, {.quotient = 0, .remainder = 0}},
     {"1/1", 1, 1, {.quotient = 1, .remainder = 0}},
@@ -170,8 +170,8 @@ instruction_u128_u64_test_param_t const division_params[] = {
     */
     {"max everything", dividend(max - 1, max), max, {.quotient = max, .remainder = max - 1}},
 };
-INSTANTIATE_TEST_SUITE_P(cases, division_instruction_u128_u64_test_t, ValuesIn(division_params),
-                         test_name_generator_t<instruction_u128_u64_test_param_t>{});
+INSTANTIATE_TEST_SUITE_P(cases, division_hardware_divider_u128_u64_test_t, ValuesIn(division_params),
+                         test_name_generator_t<hardware_divider_u128_u64_test_param_t>{});
 
 } // namespace
 } // namespace crv::division

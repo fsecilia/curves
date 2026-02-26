@@ -17,20 +17,20 @@
 namespace crv::division {
 
 /// performs unsigned long division, splitting dividend into high and low halves
-template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename instruction_t> struct long_divider_t
+template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename hardware_divider_t> struct long_divider_t
 {
     using result_t = result_t<dividend_t, divisor_t>;
 
     /**
-        invokes instruction with high and low halves of dividend
+        invokes hardware divider with high and low halves of dividend
 
         This function takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then
-        performs long division, invoking the given instruction to divide each half, strictly satisfying the
-        instruction's precondition that the upper half of the passed dividend must be strictly less than the passed
+        performs long division, invoking the hardware divider to divide each half, strictly satisfying the
+        hardware divider's precondition that the upper half of the passed dividend must be strictly less than the passed
         divisor.
     */
-    constexpr auto operator()(dividend_t dividend, divisor_t divisor, instruction_t instruction) const noexcept
-        -> result_t
+    constexpr auto operator()(dividend_t dividend, divisor_t divisor,
+                              hardware_divider_t hardware_divider) const noexcept -> result_t
     {
         /*
             [x] := floor(x)
@@ -64,11 +64,11 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename in
         auto const low  = dividend & low_mask;
 
         // upper half is 0, by definition
-        auto const high_result = instruction(high, divisor);
+        auto const high_result = hardware_divider(high, divisor);
 
         // upper half is remainder of dividing by divisor, so it is strictly less than divisor
         auto const remaining_result
-            = instruction((int_cast<dividend_t>(high_result.remainder) << shift) | low, divisor);
+            = hardware_divider((int_cast<dividend_t>(high_result.remainder) << shift) | low, divisor);
 
         return result_t{.quotient  = (int_cast<dividend_t>(high_result.quotient) << shift) + remaining_result.quotient,
                         .remainder = remaining_result.remainder};
