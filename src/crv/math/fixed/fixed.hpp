@@ -13,7 +13,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/division/instruction.hpp>
+#include <crv/math/division/hardware_divider.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>

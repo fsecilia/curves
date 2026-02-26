@@ -4,7 +4,7 @@
     \copyright Copyright (C) 2026 Frank Secilia
 */
 
-#include "instruction.hpp"
+#include "hardware_divider.hpp"
 #include <crv/math/int_traits.hpp>
 #include <crv/math/io.hpp>
 #include <crv/test/test.hpp>
