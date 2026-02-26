@@ -23,10 +23,10 @@ namespace crv::division {
     Violating the precondition causes a hardware trap; #DE on x86. Callers are responsible for decomposing inputs that
     don't satisfy this precondition.
 */
-template <unsigned_integral dividend_t, unsigned_integral divisor_t = dividend_t> struct instruction_t;
+template <unsigned_integral dividend_t, unsigned_integral divisor_t = dividend_t> struct hardware_divider_t;
 
 /// generic division; uses compiler's existing division operator
-template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct instruction_t
+template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct hardware_divider_t
 {
     constexpr auto operator()(dividend_t dividend, divisor_t divisor) const noexcept -> result_t<divisor_t>
     {
@@ -38,7 +38,7 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t> struct inst
 #if defined __x86_64__
 
 /// x64-specific implementation; uses inline asm to execute u128/u64 division instruction directly
-template <> struct instruction_t<uint128_t, uint64_t>
+template <> struct hardware_divider_t<uint128_t, uint64_t>
 {
     auto operator()(uint128_t dividend, uint64_t divisor) const noexcept -> result_t<uint64_t>
     {
