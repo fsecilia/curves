@@ -104,9 +104,14 @@ int128_param_t const s128_test_params[] = {
 };
 INSTANTIATE_TEST_SUITE_P(cases, math_io_int128_test_t, ValuesIn(s128_test_params));
 
+} // namespace
+
 // --------------------------------------------------------------------------------------------------------------------
 // result_t
 // --------------------------------------------------------------------------------------------------------------------
+
+namespace division {
+namespace {
 
 struct division_result_param_t
 {
@@ -148,4 +153,5 @@ division_result_param_t const division_result_test_params[] = {
 INSTANTIATE_TEST_SUITE_P(cases, math_io_division_result_test_t, ValuesIn(division_result_test_params));
 
 } // namespace
+} // namespace division
 } // namespace crv

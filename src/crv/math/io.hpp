@@ -18,10 +18,15 @@ namespace crv {
 auto operator<<(std::ostream& out, uint128_t src) -> std::ostream&;
 auto operator<<(std::ostream& out, int128_t src) -> std::ostream&;
 
+namespace division {
+
+using crv::operator<<;
+
 template <typename quotient_t, typename remainder_t>
-auto operator<<(std::ostream& out, division::result_t<quotient_t, remainder_t> const& src) -> std::ostream&
+auto operator<<(std::ostream& out, result_t<quotient_t, remainder_t> const& src) -> std::ostream&
 {
     return out << "{.quotient = " << src.quotient << ", .remainder = " << src.remainder << "}";
 }
 
+} // namespace division
 } // namespace crv
