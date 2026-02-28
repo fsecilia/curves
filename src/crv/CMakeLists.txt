@@ -21,6 +21,7 @@ target_sources_kernel(lib
     lib.hpp
     lib.cpp
     math/division/concepts.hpp
+    math/division/dispatcher.hpp
     math/division/hardware_divider.hpp
     math/division/long_divider.hpp
     math/division/result.hpp
@@ -50,6 +51,7 @@ if (enable_testing)
         math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
         math/division/concepts_test.cpp
+        math/division/dispatcher_test.cpp
         math/division/hardware_divider_test.cpp
         math/division/long_divider_test.cpp
         math/error_metrics_test.cpp
