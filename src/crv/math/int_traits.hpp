@@ -114,7 +114,7 @@ template <> struct sized_integer_t<16, true> { using type = int128_t; };
 template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_t<size, is_signed>::type;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Integer Promotiosn
+// Integer Promotions
 // --------------------------------------------------------------------------------------------------------------------
 
 /// integer type sized to the larger of lhs_t and rhs_t and signed if either is signed
