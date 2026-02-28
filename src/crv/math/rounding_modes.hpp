@@ -74,53 +74,55 @@ struct asymmetric_t
         return shifted + carry;
     }
 
-    template <integral value_t>
+    template <signed_integral value_t>
     constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
     {
         assert(divisor > 0 && "asymmetric::div: divisors must be positive");
 
-        if constexpr (is_signed_v<value_t>)
-        {
-            auto const abs_rem  = remainder < 0 ? -remainder : remainder;
-            auto const positive = remainder >= 0;
-            auto const round    = (abs_rem + positive) > (divisor - abs_rem);
-            auto const carry    = round ? (positive ? 1 : -1) : 0;
+        auto const abs_rem  = remainder < 0 ? -remainder : remainder;
+        auto const positive = remainder >= 0;
+        auto const round    = (abs_rem + positive) > (divisor - abs_rem);
+        auto const carry    = round ? (positive ? 1 : -1) : 0;
 
-            return quotient + carry;
-        }
-        else
-        {
-            auto const carry = (remainder + 1) > (divisor - remainder);
-
-            return quotient + carry;
-        }
+        return quotient + carry;
     }
 
-    template <integral value_t>
+    template <unsigned_integral value_t>
+    constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    {
+        assert(divisor > 0 && "asymmetric::div: divisors must be positive");
+
+        auto const carry = (remainder + 1) > (divisor - remainder);
+
+        return quotient + carry;
+    }
+
+    template <signed_integral value_t>
     constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
                            int_t shift) const noexcept -> value_t
     {
         if (!shift) return div(shifted_quotient, divisor, remainder);
         if (!remainder) return shr(shifted_quotient, quotient, shift);
 
-        if constexpr (is_signed_v<value_t>)
-        {
-            using uval_t = make_unsigned_t<value_t>;
+        using uval_t = make_unsigned_t<value_t>;
 
-            constexpr auto one = uval_t{1};
+        constexpr auto one = uval_t{1};
 
-            auto const half     = one << (shift - 1);
-            auto const mask     = (one << shift) - 1;
-            auto const frac     = static_cast<uval_t>(quotient) & mask;
-            auto const negative = static_cast<uval_t>(quotient < 0);
-            auto const carry    = static_cast<value_t>(frac >= (half + negative));
+        auto const half     = one << (shift - 1);
+        auto const mask     = (one << shift) - 1;
+        auto const frac     = static_cast<uval_t>(quotient) & mask;
+        auto const negative = static_cast<uval_t>(quotient < 0);
+        auto const carry    = static_cast<value_t>(frac >= (half + negative));
 
-            return shifted_quotient + carry;
-        }
-        else
-        {
-            return shr(shifted_quotient, quotient, shift);
-        }
+        return shifted_quotient + carry;
+    }
+
+    template <unsigned_integral value_t>
+    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
+                           int_t shift) const noexcept -> value_t
+    {
+        if (!shift) return div(shifted_quotient, divisor, remainder);
+        else return shr(shifted_quotient, quotient, shift);
     }
 };
 inline constexpr auto asymmetric = asymmetric_t{};
@@ -143,38 +145,46 @@ struct symmetric_t
     {
         assert(shift > 0 && "symmetric::shr: shift must be positive");
 
-        if constexpr (is_signed_v<value_t>)
-        {
-            using uval_t = make_unsigned_t<value_t>;
+        using uval_t = make_unsigned_t<value_t>;
 
-            constexpr auto one = uval_t{1};
+        constexpr auto one = uval_t{1};
 
-            auto const half     = one << (shift - 1);
-            auto const mask     = (one << shift) - 1;
-            auto const frac     = static_cast<uval_t>(unshifted) & mask;
-            auto const negative = static_cast<uval_t>(unshifted < 0);
-            auto const carry    = static_cast<value_t>(frac >= (half + negative));
+        auto const half     = one << (shift - 1);
+        auto const mask     = (one << shift) - 1;
+        auto const frac     = static_cast<uval_t>(unshifted) & mask;
+        auto const negative = static_cast<uval_t>(unshifted < 0);
+        auto const carry    = static_cast<value_t>(frac >= (half + negative));
 
-            return shifted + carry;
-        }
-        else return asymmetric_t{}.shr(shifted, unshifted, shift);
+        return shifted + carry;
     }
 
-    template <integral value_t>
+    template <unsigned_integral value_t>
+    constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+    {
+        assert(shift > 0 && "symmetric::shr: shift must be positive");
+
+        return asymmetric_t{}.shr(shifted, unshifted, shift);
+    }
+
+    template <signed_integral value_t>
     constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
     {
         assert(divisor > 0 && "symmetric::div: divisors must be positive");
 
-        if constexpr (is_signed_v<value_t>)
-        {
-            auto const abs_rem  = remainder < 0 ? -remainder : remainder;
-            auto const positive = remainder >= 0;
-            auto const round    = abs_rem >= (divisor - abs_rem);
-            auto const carry    = round ? (positive ? 1 : -1) : 0;
+        auto const abs_rem  = remainder < 0 ? -remainder : remainder;
+        auto const positive = remainder >= 0;
+        auto const round    = abs_rem >= (divisor - abs_rem);
+        auto const carry    = round ? (positive ? 1 : -1) : 0;
 
-            return quotient + carry;
-        }
-        else return asymmetric_t{}.div(quotient, divisor, remainder);
+        return quotient + carry;
+    }
+
+    template <unsigned_integral value_t>
+    constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    {
+        assert(divisor > 0 && "symmetric::div: divisors must be positive");
+
+        return asymmetric_t{}.div(quotient, divisor, remainder);
     }
 
     template <integral value_t>
@@ -219,28 +229,29 @@ struct round_nearest_even_t
         return shifted + carry;
     }
 
-    template <integral value_t>
+    template <signed_integral value_t>
+    constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    {
+        assert(divisor > 0 && "round_nearest_even::div: divisors must be positive");
+
+        auto const is_odd   = quotient & 1;
+        auto const abs_rem  = remainder < 0 ? -remainder : remainder;
+        auto const positive = remainder >= 0;
+        auto const round    = (abs_rem + is_odd) > (divisor - abs_rem);
+        auto const carry    = round ? (positive ? 1 : -1) : 0;
+
+        return quotient + carry;
+    }
+
+    template <unsigned_integral value_t>
     constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
     {
         assert(divisor > 0 && "round_nearest_even::div: divisors must be positive");
 
         auto const is_odd = quotient & 1;
+        auto const carry  = (remainder + is_odd) > (divisor - remainder);
 
-        if constexpr (is_signed_v<value_t>)
-        {
-            auto const abs_rem  = remainder < 0 ? -remainder : remainder;
-            auto const positive = remainder >= 0;
-            auto const round    = (abs_rem + is_odd) > (divisor - abs_rem);
-            auto const carry    = round ? (positive ? 1 : -1) : 0;
-
-            return quotient + carry;
-        }
-        else
-        {
-            auto const carry = (remainder + is_odd) > (divisor - remainder);
-
-            return quotient + carry;
-        }
+        return quotient + carry;
     }
 
     template <integral value_t>
