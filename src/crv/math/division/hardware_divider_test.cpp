@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "hardware_divider.hpp"
 #include <crv/math/int_traits.hpp>
@@ -51,33 +50,25 @@ template <typename quotient_t> constexpr auto test() noexcept -> void
     auto dividend
         = [](quotient_t high, quotient_t low) -> dividend_t { return (static_cast<dividend_t>(high) << size) | low; };
 
-    /*
-        max dividend with divisor = 1
-
-        This is the largest dividend that will not trap when the divisor is 1.
-    */
+    // max dividend with divisor = 1
+    //
+    // This is the largest dividend that will not trap when the divisor is 1.
     static_assert(test({max, 0}, max, 1));
 
-    /*
-        high bit set in dividend with divisor = 2
-
-        This sets the high bit in the result.
-    */
+    // high bit set in dividend with divisor = 2
+    //
+    // This sets the high bit in the result.
     static_assert(test({quotient_t{1} << (sign_bit - 1), 0}, dividend(1, 0), 2));
 
-    /*
-        max possible remainder
-
-        This sets all bits in the remainder. Dividend is one less than a clean division.
-    */
+    // max possible remainder
+    //
+    // This sets all bits in the remainder. Dividend is one less than a clean division.
     static_assert(test({0, max - 1}, dividend(0, max - 1), max));
 
-    /*
-        max everything
-
-        Dividend is all set bits except high bit. Divisor is all set bits. This is the largest division that can be
-        performed without trapping. It exercises the full width of the ALU.
-    */
+    // max everything
+    //
+    // Dividend is all set bits except high bit. Divisor is all set bits. This is the largest division that can be
+    // performed without trapping. It exercises the full width of the ALU.
     static_assert(test({max, max - 1}, dividend(max - 1, max), max));
 };
 
@@ -141,33 +132,25 @@ hardware_divider_u128_u64_test_param_t const division_params[] = {
     {"3/2", 3, 2, {.quotient = 1, .remainder = 1}},
     {"small/small", 100, 3, {.quotient = 33, .remainder = 1}},
 
-    /*
-        max dividend with divisor = 1
-
-        This is the largest dividend that will not trap when the divisor is 1.
-    */
+    // max dividend with divisor = 1
+    //
+    // This is the largest dividend that will not trap when the divisor is 1.
     {"max/1", max, 1, {.quotient = max, .remainder = 0}},
 
-    /*
-        high bit set in dividend with divisor = 2
-
-        This sets the high bit in the result.
-    */
+    // high bit set in dividend with divisor = 2
+    //
+    // This sets the high bit in the result.
     {"high bit set", dividend(1, 0), 2, {.quotient = 1ULL << 63, .remainder = 0}},
 
-    /*
-        max possible remainder
-
-        This sets all bits in the remainder. Dividend is one less than a clean division.
-    */
+    // max possible remainder
+    //
+    // This sets all bits in the remainder. Dividend is one less than a clean division.
     {"max remainder", dividend(0, max - 1), max, {.quotient = 0, .remainder = max - 1}},
 
-    /*
-        max everything
-
-        Dividend is 127 set bits. Divisor is all set bits. This is the largest division that can be performed without
-        trapping. It exercises the full width of the ALU.
-    */
+    // max everything
+    //
+    // Dividend is 127 set bits. Divisor is all set bits. This is the largest division that can be performed without
+    // trapping. It exercises the full width of the ALU.
     {"max everything", dividend(max - 1, max), max, {.quotient = max, .remainder = max - 1}},
 };
 INSTANTIATE_TEST_SUITE_P(cases, division_hardware_divider_u128_u64_test_t, ValuesIn(division_params),

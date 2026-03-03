@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief dispatches division to specific dividers
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief dispatches division to specific dividers
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -34,13 +32,11 @@ struct dispatcher_t
     }
 };
 
-/**
-    dispatches double-width dividends to long divider when quotient does not fit in destination type
-
-    The hardware divider specializes double-width dividends. These specializations may trap if the quotient does not
-    fit into the destination type. The long divider handles these correctly, so this specialization dispatches to the
-    hardware divider when possible and the long divider when necessary.
-*/
+/// dispatches double-width dividends to long divider when quotient does not fit in destination type
+///
+/// The hardware divider specializes double-width dividends. These specializations may trap if the quotient does not
+/// fit into the destination type. The long divider handles these correctly, so this specialization dispatches to the
+/// hardware divider when possible and the long divider when necessary.
 template <unsigned_integral divisor_t, is_divider<wider_t<divisor_t>, divisor_t> hardware_divider_t,
           is_divider<wider_t<divisor_t>, divisor_t> long_divider_t>
 struct dispatcher_t<wider_t<divisor_t>, divisor_t, hardware_divider_t, long_divider_t>

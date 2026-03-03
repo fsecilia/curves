@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief division-specific concepts
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief division-specific concepts
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

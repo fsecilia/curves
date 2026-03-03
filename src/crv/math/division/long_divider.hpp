@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief unsigned long division
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief unsigned long division
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -21,40 +19,35 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename ha
 {
     using result_t = result_t<dividend_t, divisor_t>;
 
-    /**
-        invokes hardware divider with high and low halves of dividend
-
-        This function takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then
-        performs long division, invoking the hardware divider to divide each half, strictly satisfying the
-        hardware divider's precondition that the upper half of the passed dividend must be strictly less than the passed
-        divisor.
-    */
+    /// invokes hardware divider with high and low halves of dividend
+    ///
+    /// This function takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then
+    /// performs long division, invoking the hardware divider to divide each half, strictly satisfying the hardware
+    /// divider's precondition that the upper half of the passed dividend must be strictly less than the passed divisor.
     constexpr auto operator()(dividend_t dividend, divisor_t divisor,
                               hardware_divider_t hardware_divider) const noexcept -> result_t
     {
-        /*
-            [x] := floor(x)
-            x = [x/y]y + x%y ; division identity
-
-            a = high
-            b = low
-            c = 1 << shift
-            d = divisor
-            dividend = ac + b
-                = ([a/d]d + a%d)c + b                               ; apply division identity to a
-                = [a/d]cd + (a%d)c + b                              ; distribute c
-                = [a/d]cd + [((a%d)c + b)/d]d + ((a%d)c + b)%d      ; apply division identity to (a%d)c + b
-                = ([a/d]c + [((a%d)c + b)/d])d + ((a%d)c + b)%d     ; factor out d
-                = ([a/d]c + [((a%d)c | b)/d])d + ((a%d)c | b)%d     ; b < c, so replace + with |
-
-            q = ([a/d]c + [((a%d)c | b)/d])
-            r = ((a%d)c | b)%d
-            ac + b = qd + r, r < d
-
-            For both divisions, upper half of passed dividend is strictly less than passed divisor:
-            a/d -> (0c | a) >> shift < d
-            ((a%d)c | b)/d -> ((a%d)c | b) >> shift < d
-        */
+        // [x] := floor(x)
+        // x = [x/y]y + x%y ; division identity
+        //
+        // a = high
+        // b = low
+        // c = 1 << shift
+        // d = divisor
+        // dividend = ac + b
+        //     = ([a/d]d + a%d)c + b                               ; apply division identity to a
+        //     = [a/d]cd + (a%d)c + b                              ; distribute c
+        //     = [a/d]cd + [((a%d)c + b)/d]d + ((a%d)c + b)%d      ; apply division identity to (a%d)c + b
+        //     = ([a/d]c + [((a%d)c + b)/d])d + ((a%d)c + b)%d     ; factor out d
+        //     = ([a/d]c + [((a%d)c | b)/d])d + ((a%d)c | b)%d     ; b < c, so replace + with |
+        //
+        // q = ([a/d]c + [((a%d)c | b)/d])
+        // r = ((a%d)c | b)%d
+        // ac + b = qd + r, r < d
+        //
+        // For both divisions, upper half of passed dividend is strictly less than passed divisor:
+        //     a/d -> (0c | a) >> shift < d
+        //     ((a%d)c | b)/d -> ((a%d)c | b) >> shift < d
 
         constexpr auto const width    = sizeof(dividend) * CHAR_BIT;
         constexpr auto const shift    = width / 2;

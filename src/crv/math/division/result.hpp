@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief division results
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief division results
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -13,7 +11,7 @@
 
 namespace crv::division {
 
-//! result of division in full (quotient, remainder) form
+/// result of division in full (quotient, remainder) form
 template <typename quotient_t, typename remainder_t = quotient_t> struct result_t
 {
     quotient_t  quotient;
@@ -23,4 +21,4 @@ template <typename quotient_t, typename remainder_t = quotient_t> struct result_
     auto operator==(result_t const&) const noexcept -> bool  = default;
 };
 
-} // namespace crv
+} // namespace crv::division

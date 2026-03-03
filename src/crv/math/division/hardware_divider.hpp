@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief integer fundamentals
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief integer fundamentals
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -15,14 +13,12 @@
 
 namespace crv::division {
 
-/**
-    executes the platform's native <2N>/<N> division instruction
-
-    \pre upper half of dividend must be strictly less than divisor
-
-    Violating the precondition causes a hardware trap; #DE on x86. Callers are responsible for decomposing inputs that
-    don't satisfy this precondition.
-*/
+/// executes the platform's native <2N>/<N> division instruction
+///
+/// \pre upper half of dividend must be strictly less than divisor
+///
+/// Violating the precondition causes a hardware trap; #DE on x86. Callers are responsible for decomposing inputs that
+/// don't satisfy this precondition.
 template <unsigned_integral dividend_t, unsigned_integral divisor_t = dividend_t> struct hardware_divider_t;
 
 /// generic division; uses compiler's existing division operator

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "long_divider.hpp"
 #include <crv/math/io.hpp>
@@ -169,14 +168,12 @@ TYPED_TEST(division_long_divider_test_t, basic)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests highest possible dividend for an arbitrary divisor where first hardware division's quotient is zero
-
-        [n - 1][~0]/n
-
-    This maximizes the remainder carried to the second step. This is the last value for the given divisor that does not
-    trap.
-*/
+// tests highest possible dividend for an arbitrary divisor where first hardware division's quotient is zero
+//
+//     [n - 1][~0]/n
+//
+// This maximizes the remainder carried to the second step. This is the last value for the given divisor that does not
+// trap.
 TYPED_TEST(division_long_divider_test_t, test_high_divisor_minus_one)
 {
     using dividend_t = TestFixture::dividend_t;
@@ -194,13 +191,11 @@ TYPED_TEST(division_long_divider_test_t, test_high_divisor_minus_one)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests lowest possible dividend for an arbitrary divisor where the first hardware division's quotient is nonzero
-
-        [n][0]/n
-
-    This is the first value for the given divisor that traps.
-*/
+// tests lowest possible dividend for an arbitrary divisor where the first hardware division's quotient is nonzero
+//
+//     [n][0]/n
+//
+// This is the first value for the given divisor that traps.
 TYPED_TEST(division_long_divider_test_t, high_equals_divisor)
 {
     using dividend_t = TestFixture::dividend_t;
@@ -219,13 +214,11 @@ TYPED_TEST(division_long_divider_test_t, high_equals_divisor)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests maximum remainder that can be carried into the low half
-
-        [~0 - 1][~0]/~0
-
-    This maximizes both the shifted remainder and the low half to stress the bitwise or.
-*/
+// tests maximum remainder that can be carried into the low half
+//
+//     [~0 - 1][~0]/~0
+//
+// This maximizes both the shifted remainder and the low half to stress the bitwise or.
 TYPED_TEST(division_long_divider_test_t, max_divisor_max_remainder_carry)
 {
     using dividend_t = TestFixture::dividend_t;
@@ -244,13 +237,11 @@ TYPED_TEST(division_long_divider_test_t, max_divisor_max_remainder_carry)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests condition where remainder carry is large, but low bits are empty
-
-        [~0 - 1][0]/~0
-
-    This ensures the shift and bitwise or don't rely on low bits being present.
-*/
+// tests condition where remainder carry is large, but low bits are empty
+//
+//     [~0 - 1][0]/~0
+//
+// This ensures the shift and bitwise or don't rely on low bits being present.
 TYPED_TEST(division_long_divider_test_t, empty_low_half)
 {
     using dividend_t = TestFixture::dividend_t;
@@ -269,13 +260,11 @@ TYPED_TEST(division_long_divider_test_t, empty_low_half)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests condition where the entire dividend is smaller than the divisor.
-
-        [0][~0 - 1]/~0
-
-    High half is 0, quotient should be 0, and remainder should be the dividend.
-*/
+// tests condition where the entire dividend is smaller than divisor
+//
+//     [0][~0 - 1]/~0
+//
+// High half is 0, quotient should be 0, and remainder should be the dividend.
 TYPED_TEST(division_long_divider_test_t, dividend_smaller_than_divisor)
 {
     using dividend_t = TestFixture::dividend_t;
@@ -312,13 +301,11 @@ TYPED_TEST(division_long_divider_test_t, only_msb_set)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests maximum possible double-width dividend divided by 1
-
-        [~0][~0]1
-
-    Tests that no bits are dropped or overflowed during reassembly. This is the largest result possible.
-*/
+// tests maximum possible double-width dividend divided by 1
+//
+//     [~0][~0]1
+//
+// Tests that no bits are dropped or overflowed during reassembly. This is the largest result possible.
 TYPED_TEST(division_long_divider_test_t, max_capacity)
 {
     using divisor_t = TestFixture::divisor_t;
@@ -333,11 +320,9 @@ TYPED_TEST(division_long_divider_test_t, max_capacity)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests edge case where divisor is exactly a power of two
-
-    This tests off-by-one errors in bit-shifting logic.
-*/
+// tests edge case where divisor is exactly a power of two
+//
+// This tests off-by-one errors in bit-shifting logic.
 TYPED_TEST(division_long_divider_test_t, power_of_two_divisor)
 {
     using divisor_t = TestFixture::divisor_t;
@@ -352,9 +337,7 @@ TYPED_TEST(division_long_divider_test_t, power_of_two_divisor)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    tests case where high is exact multiple of divisor, so first remainder is 0
-*/
+// tests case where high is exact multiple of divisor, so first remainder is 0
 TYPED_TEST(division_long_divider_test_t, zero_remainder_carry)
 {
     using dividend_t = TestFixture::dividend_t;
