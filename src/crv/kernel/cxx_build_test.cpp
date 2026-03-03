@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
-/*!
-    \file
-    \brief
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 extern "C" {
 #include "cxx_build_test.h"

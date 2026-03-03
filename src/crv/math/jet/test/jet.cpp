@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
@@ -562,10 +561,8 @@ TEST_P(jet_test_jet_multiplication_t, binary_op_commuted)
     EXPECT_EQ(expected, actual);
 }
 
-/*
-    product rule: d(u*v) = u*dv + du*v
-    {f1, df1}*{f2, df2} = {f1*f2, f1*df2 + df1*f2}
-*/
+// product rule: d(u*v) = u*dv + du*v
+// {f1, df1}*{f2, df2} = {f1*f2, f1*df2 + df1*f2}
 jet_op_test_vector_t const jet_multiplication_vectors[] = {
     // {2, 1}*{3, 1} = {2*3, 2*1 + 1*3} = {6, 5}
     {"variable*variable", {2.0, 1.0}, {3.0, 1.0}, {6.0, 5.0}},
@@ -614,10 +611,8 @@ TEST_P(jet_test_jet_division_t, binary_op_inverse)
     EXPECT_NEAR(0.0, identity.df, 1e-15);
 }
 
-/*
-    quotient rule: d(u/v) = (du*v - u*dv)/v^2 = (du - (u/v)*dv)/v
-    {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
-*/
+// quotient rule: d(u/v) = (du*v - u*dv)/v^2 = (du - (u/v)*dv)/v
+// {f1, df1} / {f2, df2} = {f1/f2, (df1 - (f1/f2)*df2)/f2}
 jet_op_test_vector_t const jet_division_vectors[] = {
     // {3, 2} / {1, 0} = {3/1, (1 - (3/2)*0)/1}
     {"scaled_variable/identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
@@ -1451,11 +1446,9 @@ TEST_F(jet_test_chain_rule_composition_t, sqrt_square)
 
 TEST_F(jet_test_chain_rule_composition_t, tanh_exp)
 {
-    /*
-        exp(a) = {exp(a.f), exp(a.f)*a.df}
-        tanh(b) = {tanh(b.f), (1 - tanh(b.f)^2)*b.df}
-        tanh(exp(x)) = {tanh(exp(x.f)), (1 - tanh(exp(x.f))^2)*exp(x.f)*x.df}
-    */
+    // exp(a) = {exp(a.f), exp(a.f)*a.df}
+    // tanh(b) = {tanh(b.f), (1 - tanh(b.f)^2)*b.df}
+    // tanh(exp(x)) = {tanh(exp(x.f)), (1 - tanh(exp(x.f))^2)*exp(x.f)*x.df}
     auto const actual = tanh(exp(x));
 
     auto const exp_f      = exp(x.f);
@@ -1466,12 +1459,10 @@ TEST_F(jet_test_chain_rule_composition_t, tanh_exp)
 
 TEST_F(jet_test_chain_rule_composition_t, log_sqrt)
 {
-    /*
-        sqrt(a) = {sqrt(a.f), a.df/(2*sqrt(a.f))}
-        log(b) = {log(b.f), b.df/b.f}
-        log(sqrt(x)) = {log(sqrt(x.f)), (x.df/(2*sqrt(x.f)))/sqrt(x.f)}
-                     = {log(sqrt(x.f)), x.df/(2*sqrt(x.f)*sqrt(x.f))}
-    */
+    // sqrt(a) = {sqrt(a.f), a.df/(2*sqrt(a.f))}
+    // log(b) = {log(b.f), b.df/b.f}
+    // log(sqrt(x)) = {log(sqrt(x.f)), (x.df/(2*sqrt(x.f)))/sqrt(x.f)}
+    //              = {log(sqrt(x.f)), x.df/(2*sqrt(x.f)*sqrt(x.f))}
     auto const actual = log(sqrt(x));
 
     auto const sqrt_f     = sqrt(x.f);

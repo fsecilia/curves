@@ -1,9 +1,7 @@
 #! /usr/bin/env sollya
-/*
-    SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
-    generates coefficients and shifts to approximate 2^-x - 1
-*/
+// generates coefficients and shifts to approximate 2^-x - 1
 
 prec = 512!;
 coeff_precision = 63;
@@ -17,19 +15,17 @@ poly_func   = 2^-x - 1;
 poly_degree = 8;
 poly_domain = [2^-255, 1 - 2^-255];
 
-/*
-    pin endpdoints
-
-    The natural fpminimax approximation of this function has more error at x=1 than at x=0, causing a zipper effect when
-    stitching across integer boundaries in the reconstruction. Pinning the endpoints fixes the zipper effect, but
-    fpminimax() doesn't support constraints the way remez() does. Here, both endpoints are constrained by omitting a
-    term from the basis.
-
-    Without a constant term, the polynomial is naturally forced through (0, 0).
-
-    c1 + c2 + ... + c8 = p(1) is solved for the linear term, c1, then it is substituted back. Each remaining basis
-    function becomes x^k - x, and the approximated function becomes p(x) - p(1)x.
-*/
+/// pin endpdoints
+///
+/// The natural fpminimax approximation of this function has more error at x=1 than at x=0, causing a zipper effect when
+/// stitching across integer boundaries in the reconstruction. Pinning the endpoints fixes the zipper effect, but
+/// fpminimax() doesn't support constraints the way remez() does. Here, both endpoints are constrained by omitting a
+/// term from the basis.
+///
+/// Without a constant term, the polynomial is naturally forced through (0, 0).
+///
+/// c1 + c2 + ... + c8 = p(1) is solved for the linear term, c1, then it is substituted back. Each remaining basis
+/// function becomes x^k - x, and the approximated function becomes p(x) - p(1)x.
 constrained_basis = [||];
 for k from 2 to poly_degree do
 {

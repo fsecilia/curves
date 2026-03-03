@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief statistical error metrics
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief statistical error metrics
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -75,11 +73,9 @@ struct diff_t
     constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
 };
 
-/**
-    tracks signed relative diff, diff/expected
-
-    Samples with expected value of 0 are omitted.
-*/
+/// tracks signed relative diff, diff/expected
+///
+/// Samples with expected value of 0 are omitted.
 template <typename arg_t, typename value_t, typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
 struct rel_t
 {

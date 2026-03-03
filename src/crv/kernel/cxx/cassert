@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
-/*!
-    \file
-    \brief kernel shim for cassert
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief kernel shim for cassert
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <source_location>
 

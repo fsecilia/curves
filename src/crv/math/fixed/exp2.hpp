@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief fixed point integer type
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief fixed point integer type
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -15,15 +13,13 @@
 
 namespace crv {
 
-/*!
-    port of preprod exp2
-
-    This is a port of the kernel c version we tested in preprod. Sollya says it should be is accurate up to 2^-61, but
-    it uses a degree-12 polynomial and has a separate array for the coefficients of each exponent.
-
-    We'll start with this version to help calibrate real implementations, but it is unlikely to stay around for
-    production.
-*/
+/// port of preprod exp2
+///
+/// This is a port of the kernel c version we tested in preprod. Sollya says it should be is accurate up to 2^-61, but
+/// it uses a degree-12 polynomial and has a separate array for the coefficients of each exponent.
+///
+/// We'll start with this version to help calibrate real implementations, but it is unlikely to stay around for
+/// production.
 class preprod_exp2_t
 {
 public:
@@ -49,10 +45,7 @@ public:
         // Normalize frac part into a Q0.64.
         // The input domain is now strictly [0, 1), and the output range is now [1, 2).
         if constexpr (in_frac_bits > 0) { frac_part_norm = static_cast<uint64_t>(input.value) << (64 - in_frac_bits); }
-        else
-        {
-            frac_part_norm = 0;
-        }
+        else frac_part_norm = 0;
 
         // Approximate.
 

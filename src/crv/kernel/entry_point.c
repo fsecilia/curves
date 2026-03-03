@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
-/*!
-    \file
-    \brief kernel module entry point
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief kernel module entry point
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/kernel/cxx_build_test.h>
 #include <linux/errno.h>

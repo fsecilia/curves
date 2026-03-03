@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief io for math types
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief io for math types
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

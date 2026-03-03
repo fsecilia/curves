@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "error_metrics.hpp"
 #include <crv/math/fixed/fixed.hpp>

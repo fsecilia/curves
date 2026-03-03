@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief 128-bit floating point support
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief 128-bit floating point support
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

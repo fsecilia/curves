@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief arg min, arg max, and their composition
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief arg min, arg max, and their composition
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

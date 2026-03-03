@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief autodifferentiating 1-jet
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief autodifferentiating 1-jet
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -72,6 +70,7 @@ template <typename scalar_t> constexpr auto derivative(scalar_t const&) noexcept
 // Jet
 // --------------------------------------------------------------------------------------------------------------------
 
+/// autodifferentiating 1-jet
 template <typename t_value_t> struct jet_t
 {
     using value_t = t_value_t;
@@ -87,17 +86,15 @@ template <typename t_value_t> struct jet_t
     constexpr jet_t(value_t const& f) noexcept : f{f} {}
     constexpr jet_t(value_t const& f, value_t const& df) noexcept : f{f}, df{df} {}
 
-    /**
-        scalar ctor
-
-        This ctor is deceptively simple, but it is the reason `jet_t<jet_t<jet_t<jet_t<double>>>>{double{}}` works.
-
-        Because of auto, this is a function template, so if you pass a value_t, the value_t ctor is a better match and
-        this is not considered. So this doesn't affect normal usage. However, if you pass an arithmetic other than
-        value_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
-        either the better value_t ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that
-        the value_t ctor is not a better match for, and forwards it to the most nested jet in the composition.
-    */
+    /// scalar ctor
+    ///
+    /// This ctor is deceptively simple, but it is the reason `jet_t<jet_t<jet_t<jet_t<double>>>>{double{}}` works.
+    ///
+    /// Because of auto, this is a function template, so if you pass a value_t, the value_t ctor is a better match and
+    /// this is not considered. So this doesn't affect normal usage. However, if you pass an arithmetic other than
+    /// value_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
+    /// either the better value_t ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that
+    /// the value_t ctor is not a better match for, and forwards it to the most nested jet in the composition.
     constexpr jet_t(arithmetic auto const& scalar) noexcept : f(scalar), df(0) {}
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -258,10 +255,8 @@ template <typename t_value_t> struct jet_t
     // d(u/v) = (du*v - u*dv)/v^2 = (du - u*dv/v)/v, quotient rule
     constexpr auto operator/=(jet_t const& x) noexcept -> jet_t&
     {
-        /*
-            This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization,
-            similar to horner's.
-        */
+        // This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization, similar
+        // to horner's.
         auto const inv = 1.0 / x.f;
         f *= inv;
         df = (df - f * x.df) * inv;
@@ -322,15 +317,13 @@ template <typename t_value_t> struct jet_t
         return {abs(x.f), copysign(1, x.f) * x.df};
     }
 
-    /**
-        applies sign of y to magnitude of x
-
-        copysign(x, y) = |x|*sgn(y)
-        d(copysign(x, y)) = d(|x|)*sgn(y) + |x|*d(sgn(y)) = (sgn(x)*dx)*sgn(y) + |x|*(delta(y)*dy) ; product rule
-
-        The dy term has a jump discontinuity at y = 0, producing a Dirac delta in the derivative. Returns df = +/- inf
-        when y crosses zero with nonzero |x|.
-    */
+    /// applies sign of y to magnitude of x
+    ///
+    /// copysign(x, y) = |x|*sgn(y)
+    /// d(copysign(x, y)) = d(|x|)*sgn(y) + |x|*d(sgn(y)) = (sgn(x)*dx)*sgn(y) + |x|*(delta(y)*dy) ; product rule
+    ///
+    /// The dy term has a jump discontinuity at y = 0, producing a Dirac delta in the derivative. Returns df = +/- inf
+    /// when y crosses zero with nonzero |x|.
     friend constexpr auto copysign(jet_t const& x, jet_t const& y) noexcept -> jet_t
     {
         using crv::copysign;
@@ -340,15 +333,13 @@ template <typename t_value_t> struct jet_t
 
         auto const dx_term = sgn_x * sgn_y * x.df;
 
-        /*
-            handle dirac delta spike on y
-
-            When y.f != 0, the spike is 0. When y.f == 0, the spike MAY be inf:
-                - When x.f is 0, the function is continuous at 0, as the jump height is 0, so the spike is 0.
-                - When y.df == 0, y is a constant, so there is no delta contribution. However, if we scaled inf by 0,
-                  the result would be NaN, so only apply inf conditionally.
-                - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
-        */
+        // handle dirac delta spike on y
+        //
+        // When y.f != 0, the spike is 0. When y.f == 0, the spike MAY be inf:
+        //     - When x.f is 0, the function is continuous at 0, as the jump height is 0, so the spike is 0.
+        //     - When y.df == 0, y is a constant, so there is no delta contribution. However, if we scaled inf by 0,
+        //         the result would be NaN, so only apply inf conditionally.
+        //     - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
         auto const has_delta = (y.f == 0) & (x.f != 0) & (y.df != 0);
         auto const dy_term   = has_delta ? infinity<value_t>() * y.df : 0;
 
@@ -393,8 +384,8 @@ template <typename t_value_t> struct jet_t
         return {mag, (x.f * x.df + y.f * y.df) / mag};
     }
 
-    //! \pre x > 0
-    // d(log(x)) = dx/x
+    /// \pre x > 0
+    /// d(log(x)) = dx/x
     friend constexpr auto log(jet_t const& x) noexcept -> jet_t
     {
         using crv::log;
@@ -404,8 +395,8 @@ template <typename t_value_t> struct jet_t
         return {log(x.f), x.df / x.f};
     }
 
-    //! \pre x > -1
-    // d(log1p(x)) = dx/(x + 1)
+    /// \pre x > -1
+    /// d(log1p(x)) = dx/(x + 1)
     friend constexpr auto log1p(jet_t const& x) noexcept -> jet_t
     {
         using crv::log1p;
@@ -415,9 +406,9 @@ template <typename t_value_t> struct jet_t
         return {log1p(x.f), x.df / (x.f + 1)};
     }
 
-    //! \pre x > 0 || (x == 0 && y >= 1)
-    // jet^element
-    // d(x^y) = x^(y - 1)*y*dx
+    /// \pre x > 0 || (x == 0 && y >= 1)
+    /// jet^element
+    /// d(x^y) = x^(y - 1)*y*dx
     friend constexpr auto pow(jet_t const& x, value_t const& y) noexcept -> jet_t
     {
         using crv::pow;
@@ -437,9 +428,9 @@ template <typename t_value_t> struct jet_t
         return {pm1 * x.f, y * pm1 * x.df};
     }
 
-    //! \pre x > 0
-    // element^jet
-    // d(x^y) = log(x)*x^y*dy
+    /// \pre x > 0
+    /// element^jet
+    /// d(x^y) = log(x)*x^y*dy
     friend constexpr auto pow(value_t const& x, jet_t const& y) noexcept -> jet_t
     {
         using crv::pow;
@@ -452,34 +443,32 @@ template <typename t_value_t> struct jet_t
         return {power, log_base * power * y.df};
     }
 
-    //! \pre x > 0
-    // jet^jet
-    // d(x^y) = x^y*(log(x)*dy + y*dx/x) = x^y*log(x)*dy + x^(y - 1)*y*dx
+    /// \pre x > 0
+    /// jet^jet
+    /// d(x^y) = x^y*(log(x)*dy + y*dx/x) = x^y*log(x)*dy + x^(y - 1)*y*dx
     friend constexpr auto pow(jet_t const& x, jet_t const& y) noexcept -> jet_t
     {
         using crv::pow;
 
         assert(x.f > 0 && "jet_t::pow(<jet>, <jet>): domain error");
 
-        /*
-            By definition:
-
-                x^y = e^(log(x)*y)
-                d(e^(f(x))) = e^(f(x))d(f(x))
-
-            Here, f(x) = log(x)*y:
-
-                d(f(x)) = log(x)*d(y) + d(log(x))*y
-                        = log(x)*dy + y*dx/x
-
-            Using this, the full derivation is:
-
-                d(x^y) = e^(log(x)*y)(log(x)*dy + y*dx/x)
-                       = (x^y)(log(x)*dy + y*dx/x)
-                       = x^y*log(x)*dy + x^(y - 1)*y*dx
-
-            The familiar power rule is recovered when y is a constant because that makes dy = 0.
-        */
+        // By definition:
+        //
+        //     x^y = e^(log(x)*y)
+        //     d(e^(f(x))) = e^(f(x))d(f(x))
+        //
+        // Here, f(x) = log(x)*y:
+        //
+        //     d(f(x)) = log(x)*d(y) + d(log(x))*y
+        //             = log(x)*dy + y*dx/x
+        //
+        // Using this, the full derivation is:
+        //
+        //     d(x^y) = e^(log(x)*y)(log(x)*dy + y*dx/x)
+        //             = (x^y)(log(x)*dy + y*dx/x)
+        //             = x^y*log(x)*dy + x^(y - 1)*y*dx
+        //
+        // The familiar power rule is recovered when y is a constant because that makes dy = 0.
         auto const pm1   = pow(x.f, y.f - 1);
         auto const power = x.f * pm1;
         return {power, power * log(x.f) * y.df + pm1 * y.f * x.df};

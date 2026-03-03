@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief tests jet composition over jets
 
-    These tests verify that autodiff composes correctly to calc second derivatives via jet_t<jet_t<double>>.
-
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief tests jet composition over jets
+///
+/// These tests verify that autodiff composes correctly to calc second derivatives via jet_t<jet_t<double>>.
+///
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
@@ -201,10 +200,8 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
 
 TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
 {
-    /*
-        f(x) = 3x^2 + 2x + v + s
-        f'(x) = 6x*dx + 2*dx
-    */
+    // f(x) = 3x^2 + 2x + v + s
+    // f'(x) = 6x*dx + 2*dx
     auto const expected_primal     = 3.0 * x.f * x.f + 2.0 * x.f + v + s;
     auto const expected_derivative = 6.0 * x.f * x.df + 2.0 * x.df;
 
@@ -215,10 +212,8 @@ TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
 
 TEST_F(nested_jet_test_arithmetic_t, quartic)
 {
-    /*
-        f(x) = x^4
-        f'(x) = 4x^3*dx
-    */
+    // f(x) = x^4
+    // f'(x) = 4x^3*dx
     auto const expected_primal     = x.f * x.f * x.f * x.f;
     auto const expected_derivative = 4.0 * x.f * x.f * x.f * x.df;
 
@@ -248,11 +243,10 @@ struct nested_jet_second_derivative_t : nested_jet_test_t
 
 TEST_F(nested_jet_second_derivative_t, cos)
 {
-    /*
-        cos({{u, du_inner}, {du_outer, d2u}}) = {cos({u, du_inner}), -sin({u, du_inner})*{du_outer, d2u}}
-            = {cos({u, du_inner}), -{sin(u), cos(u)*du_inner}*{du_outer, d2u}}
-            = {cos({u, du_inner}), -cos(u)*du_inner*du_outer - sin(u)*d2u}}
-    */
+    // cos({{u, du_inner}, {du_outer, d2u}})
+    //     = {cos({u, du_inner}), -sin({u, du_inner})*{du_outer, d2u}}
+    //     = {cos({u, du_inner}), -{sin(u), cos(u)*du_inner}*{du_outer, d2u}}
+    //     = {cos({u, du_inner}), -cos(u)*du_inner*du_outer - sin(u)*d2u}}
     auto const expected = -cos(u) * du_inner * du_outer - sin(u) * d2u;
 
     auto const actual = cos(x);
@@ -262,11 +256,10 @@ TEST_F(nested_jet_second_derivative_t, cos)
 
 TEST_F(nested_jet_second_derivative_t, exp)
 {
-    /*
-        exp({{u, du_inner}, {du_outer, d2u}}) = {exp({u, du_inner}), exp({u, du_inner})*{du_outer, d2u}}
-            = {{exp(u), exp(u)*du_inner}, {exp(u), exp(u)*du_inner}*{du_outer, d2u}}
-            = {{exp(u), exp(u)*du_inner}, {exp(u)*du_outer, exp(u)*d2u + exp(u)*du_inner*du_outer}}
-    */
+    // exp({{u, du_inner}, {du_outer, d2u}})
+    //     = {exp({u, du_inner}), exp({u, du_inner})*{du_outer, d2u}}
+    //     = {{exp(u), exp(u)*du_inner}, {exp(u), exp(u)*du_inner}*{du_outer, d2u}}
+    //     = {{exp(u), exp(u)*du_inner}, {exp(u)*du_outer, exp(u)*d2u + exp(u)*du_inner*du_outer}}
     auto const expected = exp(u) * (du_inner * du_outer + d2u);
 
     auto const actual = exp(x);
@@ -309,13 +302,11 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
     compare(expected, actual);
 }
 
-/*
-    test second derivative of pow decomposed all the way to scalars
-
-    This test verifies the full scalar expansion of the second derivative. Just writing the final expression out has a
-    lot of terms, many of which are repeated. It is large enough to be opaque. This test tries to document some of the
-    terms with meaningful names.
-*/
+// test second derivative of pow decomposed all the way to scalars
+//
+// This test verifies the full scalar expansion of the second derivative. Just writing the final expression out has a
+// lot of terms, many of which are repeated. It is large enough to be opaque. This test tries to document some of the
+// terms with meaningful names.
 TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 {
     // powers of base
@@ -324,15 +315,13 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
     auto const f_2  = pow(u, v - 2); // u^(v - 2), second derivative factor
     auto const ln_u = log(u);
 
-    /*
-        first partial derivatives
-
-        Define psi as the sensitivity combining both input's contributions:
-
-            d(u^v) = u^(v - 1)*(u*ln(u)*dv + v*du)
-            psi   := (u*ln(u)*dv + v*du)
-            d(u^v) = f_1*psi
-    */
+    // first partial derivatives
+    //
+    // Define psi as the sensitivity combining both input's contributions:
+    //
+    //     d(u^v) = u^(v - 1)*(u*ln(u)*dv + v*du)
+    //     psi   := (u*ln(u)*dv + v*du)
+    //     d(u^v) = f_1*psi
 
     auto const psi_t = u * ln_u * dv_inner + v * du_inner; // wrt inner variable t
     auto const psi_s = u * ln_u * dv_outer + v * du_outer; // wrt outer variable s
@@ -340,20 +329,18 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
     auto const df_dt = f_1 * psi_t;
     auto const df_ds = f_1 * psi_s;
 
-    /*
-        second mixed partial derivatives
+    // second mixed partial derivatives
+    //
+    // The second mixed partial is `@/@s[f_1*psi_t]`
+    // Applying the product rule gives `(@f_1/@s)*psi_t + f_1*(@psi_t/@s)`
 
-        The second mixed partial is `∂/∂s[f_1*psi_t]`
-        Applying the product rule gives `(∂f_1/∂s)*psi_t + f_1*(∂psi_t/∂s)`
-    */
-
-    // term 1: (∂f_1/∂s)*psi_t
-    // ∂(u^(v - 1))/∂s = u^(v - 2) * (u*ln(u)*dv_s + (v-1)*du_s)
+    // term 1: (@f_1/@s)*psi_t
+    // @(u^(v - 1))/@s = u^(v - 2) * (u*ln(u)*dv_s + (v-1)*du_s)
     auto const psi_s_shifted = u * ln_u * dv_outer + (v - 1) * du_outer; // psi for exponent v-1
     auto const term1         = f_2 * psi_s_shifted * psi_t;
 
-    // term 2: f_1*(∂psi_t/∂s)
-    // ∂psi_t/∂s = ∂(u*ln(u)*dv_t + v*du_t)/∂s
+    // term 2: f_1*(@psi_t/@s)
+    // @psi_t/@s = @(u*ln(u)*dv_t + v*du_t)/@s
     //           = (ln(u) + 1)*du_s*dv_t + u*ln(u)*d²v + dv_s*du_t + v*d²u
     auto const d_uln_ds  = (ln_u + 1) * du_outer; // d(u*ln(u))/ds
     auto const dpsi_t_ds = d_uln_ds * dv_inner    // from u*ln(u) term
@@ -364,13 +351,11 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 
     auto const d2f_dsdt = term1 + term2;
 
-    /*
-        assemble nested jet
-    */
+    // assemble nested jet
 
     auto const expected = sut_t{
-        {f, df_dt},       // {primal, ∂/∂t}
-        {df_ds, d2f_dsdt} // {∂/∂s, ∂²/∂s∂t}
+        {f, df_dt},       // {primal, @/@t}
+        {df_ds, d2f_dsdt} // {@/@s, @²/@s@t}
     };
 
     compare(expected, pow(x, y));
@@ -380,13 +365,11 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 // Symmetry Verification
 // --------------------------------------------------------------------------------------------------------------------
 
-/*
-    For smooth functions, the two first derivative components should match:
-
-        derivative(primal(c)) == primal(derivative(c))
-
-    This is Schwarz's theorem, the equality of mixed partials.
-*/
+// For smooth functions, the two first derivative components should match:
+//
+//     derivative(primal(c)) == primal(derivative(c))
+//
+// This is Schwarz's theorem, the equality of mixed partials.
 struct nested_jet_test_mixed_partials_symmetry_t : nested_jet_test_t
 {
     static constexpr auto c = sut_t{{3.0, 1.0}, {1.0, 0.0}};

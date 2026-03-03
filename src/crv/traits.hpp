@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \brief common type traits
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief common type traits
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

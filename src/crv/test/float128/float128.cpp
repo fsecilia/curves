@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
-/*!
-    \file
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "float128.hpp"
 #include <array>
@@ -33,12 +32,13 @@ auto operator<<(std::ostream& out, float128_t src) -> std::ostream&
 
     // write float using format string
     std::array<char, 128> buffer;
-    auto const            intended_length = static_cast<std::streamsize>(quadmath_snprintf(buffer.data(), buffer.size(), format.data(), src));
-    auto const            actual_length   = std::min(intended_length, std::ssize(buffer) - 1);
+    auto const            intended_length
+        = static_cast<std::streamsize>(quadmath_snprintf(buffer.data(), buffer.size(), format.data(), src));
+    auto const actual_length = std::min(intended_length, std::ssize(buffer) - 1);
     if (actual_length > 0) out.write(buffer.data(), actual_length);
 
     return out;
 }
 #endif
 
-} // namespace crv
+} // namespace std

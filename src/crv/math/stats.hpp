@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief basic statisticvs
 
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief basic statistics
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 

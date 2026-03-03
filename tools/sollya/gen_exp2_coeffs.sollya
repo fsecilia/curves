@@ -1,9 +1,7 @@
 #! /usr/bin/env sollya
-/*
-    SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
-    generates coefficients and shifts to approximate exp2m1(x), 2^x - 1.
-*/
+// generates coefficients and shifts to approximate exp2m1(x), 2^x - 1.
 
 prec = 512!;
 coeff_precision = 63;

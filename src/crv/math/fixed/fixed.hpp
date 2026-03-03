@@ -1,14 +1,8 @@
 // SPDX-License-Identifier: MIT
-/**
-    \file
-    \brief fixed point integer type
 
-    The seemingly superfluous casts back to the value type strewn about this module are required because of c promotion
-    rules. Broadly, types smaller than int are cast to int when performing arithmetic. It's more nuanced than that, but
-    anywhere a promotion happens, we have to cast back.
-
-    \copyright Copyright (C) 2026 Frank Secilia
-*/
+/// \file
+/// \brief fixed point integer type
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
@@ -215,16 +209,14 @@ private:
     }
 };
 
-/**
-    division, stripped down for pipeline
-
-    This is not a general implementation. The pipeline has one big divide, and this implementation considers its
-    constraints:
-        - all values are unsigned
-        - all values are 64-bit
-        - the output precision is at least as high as the dividend
-    This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
-*/
+/// division, stripped down for pipeline
+///
+/// This is not a general implementation. The pipeline has one big divide, and this implementation considers its
+/// constraints:
+///     - all values are unsigned
+///     - all values are 64-bit
+///     - the output precision is at least as high as the dividend
+/// This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
 template <int out_frac_bits, int lhs_frac_bits, int rhs_frac_bits>
 auto divide(fixed_t<uint64_t, lhs_frac_bits> lhs, fixed_t<uint64_t, rhs_frac_bits> rhs) noexcept
     -> fixed_t<uint64_t, out_frac_bits>
