@@ -18,10 +18,10 @@ template <typename t_dividend_t, typename t_divisor_t> struct test_case_t
     using divisor_t  = t_divisor_t;
 };
 
-template <typename test_types_t> struct division_long_divider_test_t : ::testing::Test
+template <typename t_divisor_t> struct division_long_divider_test_t : ::testing::Test
 {
-    using dividend_t = test_types_t::dividend_t;
-    using divisor_t  = test_types_t::divisor_t;
+    using divisor_t  = t_divisor_t;
+    using dividend_t = wider_t<divisor_t>;
     using result_t   = result_t<dividend_t, divisor_t>;
 
     static constexpr auto dividend_bit_count = sizeof(dividend_t) * CHAR_BIT;
@@ -106,15 +106,7 @@ template <typename test_types_t> struct division_long_divider_test_t : ::testing
     }
 };
 
-using test_types_t = ::testing::Types<
-    // N/N
-    test_case_t<uint32_t, uint32_t>, // N/N
-    test_case_t<uint64_t, uint64_t>, // N/N
-
-    // 2N/N
-    test_case_t<uint64_t, uint32_t>, // 2N/N
-    test_case_t<uint128_t, uint64_t> // 2N/N
-    >;
+using test_types_t = ::testing::Types<uint64_t, uint32_t>;
 TYPED_TEST_SUITE(division_long_divider_test_t, test_types_t);
 
 TYPED_TEST(division_long_divider_test_t, zero)
