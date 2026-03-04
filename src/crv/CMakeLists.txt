@@ -46,9 +46,9 @@ if (enable_testing)
         math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
         math/error_metrics_test.cpp
-        math/fixed/test/exp2_neg_m1.cpp
-        math/fixed/test/fixed.cpp
-        math/fixed/test/float_conversions.cpp
+        math/fixed/exp2_neg_m1_test.cpp
+        math/fixed/fixed_test.cpp
+        math/fixed/float_conversions_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp
