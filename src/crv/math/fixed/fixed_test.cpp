@@ -26,8 +26,10 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
 {
     struct mock_rounding_mode_t
     {
-        MOCK_METHOD(int_t, shr, (int_t, int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, div, (int_t, int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, shr_bias, (int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, shr_carry, (int_t, int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, div_bias, (int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, div_carry, (int_t, int_t, int_t), (const, noexcept));
         MOCK_METHOD(int_t, div_shr, (int_t, int_t, int_t, int_t, int_t), (const, noexcept));
         virtual ~mock_rounding_mode_t() = default;
     };
@@ -37,16 +39,26 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
     {
         mock_rounding_mode_t* mock = nullptr;
 
-        template <integral value_t>
-        constexpr auto shr(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+        template <integral value_t> constexpr auto shr_bias(value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->shr(shifted, unshifted, shift);
+            return mock->shr_bias(unshifted, shift);
         }
 
         template <integral value_t>
-        constexpr auto div(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+        constexpr auto shr_carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->div(quotient, divisor, remainder);
+            return mock->shr_carry(shifted, unshifted, shift);
+        }
+
+        template <integral value_t> constexpr auto div_bias(value_t quotient, value_t divisor) const noexcept -> value_t
+        {
+            return mock->div_bias(quotient, divisor);
+        }
+
+        template <integral value_t>
+        constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+        {
+            return mock->div_carry(quotient, divisor, remainder);
         }
 
         template <integral value_t>
@@ -404,11 +416,13 @@ static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 {
-    using out_t         = fixed_t<uint_t, 1>;
-    auto const lhs      = fixed_t<int_t, 1>(2 << 1);
-    auto const rhs      = fixed_t<int_t, 1>(3 << 1);
-    auto const expected = out_t{29};
-    EXPECT_CALL(mock_rounding_mode, shr(2 * 3 << 1, 2 * 3 << 2, 1)).WillOnce(Return(expected.value));
+    using out_t              = fixed_t<uint_t, 1>;
+    auto const lhs           = fixed_t<uint8_t, 1>(2 << 1);
+    auto const rhs           = fixed_t<int16_t, 1>(3 << 1);
+    auto const expected_bias = uint32_t{23};
+    auto const expected      = out_t{29};
+    EXPECT_CALL(mock_rounding_mode, shr_bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, shr_carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply<out_t>(lhs, rhs, rounding_mode);
 
@@ -441,10 +455,13 @@ static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 * 3 << 1},
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 {
-    auto const lhs      = fixed_t<int_t, 1>(2 << 1);
-    auto const rhs      = fixed_t<int_t, 1>(3 << 1);
-    auto const expected = 29;
-    EXPECT_CALL(mock_rounding_mode, shr(2 * 3 << 1, 2 * 3 << 2, 1)).WillOnce(Return(expected));
+    using sut_t              = fixed_t<int_t, 1>;
+    auto const lhs           = sut_t{2 << 1};
+    auto const rhs           = sut_t{3 << 1};
+    auto const expected_bias = sut_t::value_t{23};
+    auto const expected      = sut_t{29};
+    EXPECT_CALL(mock_rounding_mode, shr_bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, shr_carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply(lhs, rhs, rounding_mode);
 

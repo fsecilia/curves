@@ -198,9 +198,9 @@ private:
         {
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = int_cast<promoted_value_t>(other.value);
+            auto const     unshifted = rounding_mode.shr_bias(int_cast<promoted_value_t>(other.value), shift);
             auto const     shifted   = int_cast<promoted_value_t>(unshifted >> shift);
-            return fixed_t{int_cast<value_t>(rounding_mode.shr(shifted, unshifted, shift))};
+            return fixed_t{int_cast<value_t>(rounding_mode.shr_carry(shifted, unshifted, shift))};
         }
         else
         {
