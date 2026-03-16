@@ -134,6 +134,30 @@ static_assert(div_shr(3u, 2u, 0, truncate) == 1u); // shift == 0
 static_assert(div_shr(6u, 3u, 1, truncate) == 1u); // remainder == 0
 static_assert(div_shr(7u, 3u, 1, truncate) == 1u); // remainder != 0
 
+// --------------------------------------------------------------------------------------------------------------------
+// Mixed-Width Boundaries
+// --------------------------------------------------------------------------------------------------------------------
+
+// wide / narrow unsigned: quotient exceeds 32-bit max
+static_assert(truncate.div_carry(static_cast<uint64_t>(0x1FFFFFFFFull), // quotient (odd, requires carry)
+                                 static_cast<uint32_t>(2),              // divisor
+                                 static_cast<uint32_t>(1))              // remainder
+              == 0x1FFFFFFFFull);                                       // cleanly rolls over into the 34th bit
+
+// wide / narrow signed: negative quotient exceeds 32-bit min
+static_assert(truncate.div_carry(static_cast<int64_t>(-0x1FFFFFFFFll), // quotient (odd, requires carry)
+                                 static_cast<int32_t>(2),              // divisor
+                                 static_cast<int32_t>(-1))             // remainder
+              == -0x1FFFFFFFFll); // carries more negative, preserving sign and width
+
+// div_shr: routing with mixed types
+static_assert(truncate.div_shr(static_cast<int64_t>(0x100000000ll), // shifted_quotient
+                               static_cast<int64_t>(0x200000001ll), // quotient
+                               static_cast<int32_t>(3),             // divisor
+                               static_cast<int32_t>(2),             // remainder (routes to nearest_away)
+                               1)                                   // shift
+              == 0x100000000ll);                                    // carries successfully in wide_t space
+
 // ====================================================================================================================
 // nearest_up_t
 // ====================================================================================================================
@@ -232,6 +256,30 @@ static_assert(div_shr(5u, 2u, 1, nearest_up) == 1u); // 5/2=2 rem 1, 2>>1=1, fra
 // boundaries
 static_assert(div_shr<uint32_t>(0xFFFFFFFFu, 2u, 1, nearest_up) == 0x40000000u); // tie -> away -> up
 
+// --------------------------------------------------------------------------------------------------------------------
+// Mixed-Width Boundaries
+// --------------------------------------------------------------------------------------------------------------------
+
+// wide / narrow unsigned: quotient exceeds 32-bit max
+static_assert(nearest_up.div_carry(static_cast<uint64_t>(0x1FFFFFFFFull), // quotient (odd, requires carry)
+                                   static_cast<uint32_t>(2),              // divisor
+                                   static_cast<uint32_t>(1))              // remainder
+              == 0x200000000ull);                                         // cleanly rolls over into the 34th bit
+
+// wide / narrow signed: negative quotient exceeds 32-bit min
+static_assert(nearest_up.div_carry(static_cast<int64_t>(-0x1FFFFFFFFll), // quotient (odd, requires carry)
+                                   static_cast<int32_t>(2),              // divisor
+                                   static_cast<int32_t>(-1))             // remainder
+              == -0x1FFFFFFFFll); // carries more negative, preserving sign and width
+
+// div_shr: routing with mixed types
+static_assert(nearest_up.div_shr(static_cast<int64_t>(0x100000000ll), // shifted_quotient
+                                 static_cast<int64_t>(0x200000001ll), // quotient
+                                 static_cast<int32_t>(3),             // divisor
+                                 static_cast<int32_t>(2),             // remainder (routes to nearest_away)
+                                 1)                                   // shift
+              == 0x100000001ll);                                      // carries successfully in wide_t space
+
 // ====================================================================================================================
 // nearest_away_t
 // ====================================================================================================================
@@ -291,6 +339,24 @@ static_assert(div_shr(7u, 3u, 1, nearest_away) == 1u);
 
 // boundaries
 static_assert(div_shr<uint32_t>(0xFFFFFFFFu, 2u, 1, nearest_away) == 0x40000000u);
+
+// --------------------------------------------------------------------------------------------------------------------
+// Mixed-Width Boundaries
+// --------------------------------------------------------------------------------------------------------------------
+
+// wide / narrow signed: negative quotient exceeds 32-bit min
+static_assert(nearest_away.div_carry(static_cast<int64_t>(-0x1FFFFFFFFll), // quotient (odd, requires carry)
+                                     static_cast<int32_t>(2),              // divisor
+                                     static_cast<int32_t>(-1))             // remainder
+              == -0x200000000ll); // carries more negative, preserving sign and width
+
+// div_shr: routing with mixed types
+static_assert(nearest_away.div_shr(static_cast<int64_t>(0x100000000ll), // shifted_quotient
+                                   static_cast<int64_t>(0x200000001ll), // quotient
+                                   static_cast<int32_t>(3),             // divisor
+                                   static_cast<int32_t>(2),             // remainder (routes to nearest_away)
+                                   1)                                   // shift
+              == 0x100000001ll);                                        // carries successfully in wide_t space
 
 // ====================================================================================================================
 // nearest_even_t
@@ -400,6 +466,30 @@ static_assert(div_shr(5u, 2u, 1, nearest_even) == 1u); // exact after shift
 static_assert(div_shr<uint32_t>(0xFFFFFFFEu, 2u, 1, nearest_even) == 0x40000000u); // tie, rem=0, odd  -> round
 static_assert(div_shr<uint32_t>(0xFFFFFFFFu, 2u, 1, nearest_even) == 0x40000000u); // tie, rem!=0, away -> round
 
+// --------------------------------------------------------------------------------------------------------------------
+// Mixed-Width Boundaries
+// --------------------------------------------------------------------------------------------------------------------
+
+// wide / narrow unsigned: quotient exceeds 32-bit max
+static_assert(nearest_even.div_carry(static_cast<uint64_t>(0x1FFFFFFFFull), // quotient (odd, requires carry)
+                                     static_cast<uint32_t>(2),              // divisor
+                                     static_cast<uint32_t>(1))              // remainder
+              == 0x200000000ull);                                           // cleanly rolls over into the 34th bit
+
+// wide / narrow signed: negative quotient exceeds 32-bit min
+static_assert(nearest_even.div_carry(static_cast<int64_t>(-0x1FFFFFFFFll), // quotient (odd, requires carry)
+                                     static_cast<int32_t>(2),              // divisor
+                                     static_cast<int32_t>(-1))             // remainder
+              == -0x200000000ll); // carries more negative, preserving sign and width
+
+// div_shr: routing with mixed types
+static_assert(nearest_even.div_shr(static_cast<int64_t>(0x100000000ll), // shifted_quotient
+                                   static_cast<int64_t>(0x200000001ll), // quotient
+                                   static_cast<int32_t>(3),             // divisor
+                                   static_cast<int32_t>(2),             // remainder (routes to nearest_away)
+                                   1)                                   // shift
+              == 0x100000001ll);                                        // carries successfully in wide_t space
+
 // ====================================================================================================================
 // fast::nearest_up_t
 // ====================================================================================================================
@@ -489,6 +579,21 @@ static_assert(div(2u, 3u, fast::nearest_away) == div(2u, 3u, nearest_away)); // 
 static_assert(div_shr(1u, 2u, 0, fast::nearest_away) == div_shr(1u, 2u, 0, nearest_away)); // !shift
 static_assert(div_shr(6u, 2u, 1, fast::nearest_away) == div_shr(6u, 2u, 1, nearest_away)); // !remainder
 static_assert(div_shr(7u, 3u, 1, fast::nearest_away) == div_shr(7u, 3u, 1, nearest_away)); // both nonzero
+
+// --------------------------------------------------------------------------------------------------------------------
+// Mixed-Width Boundaries
+// --------------------------------------------------------------------------------------------------------------------
+
+// delegates div_bias to safe nearest_up_t (which is a pass-through)
+static_assert(fast::nearest_up.div_bias(static_cast<uint64_t>(100), // dividend
+                                        static_cast<uint32_t>(5))   // divisor
+              == 100ull);                                           // unchanged
+
+// delegates div_carry to safe nearest_up_t (which actually executes the carry)
+static_assert(fast::nearest_up.div_carry(static_cast<uint64_t>(42), // quotient
+                                         static_cast<uint32_t>(5),  // divisor
+                                         static_cast<uint32_t>(3))  // remainder
+              == 43ull);                                            // (3 + 1) > (5 - 3) -> carry
 
 } // namespace
 } // namespace crv::rounding_modes

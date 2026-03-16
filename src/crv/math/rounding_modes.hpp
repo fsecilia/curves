@@ -79,20 +79,25 @@ struct truncate_t
     }
 
     /// returns dividend unchanged
-    template <integral value_t> constexpr auto div_bias(value_t dividend, value_t) const noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_bias(wide_t dividend, narrow_t) const noexcept -> wide_t
     {
         return dividend;
     }
 
     /// returns quotient unchanged
-    template <integral value_t> constexpr auto div_carry(value_t quotient, value_t, value_t) const noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_carry(wide_t quotient, narrow_t, narrow_t) const noexcept -> wide_t
     {
         return quotient;
     }
 
     /// returns shifted_quotient unchanged
-    template <integral value_t>
-    constexpr auto div_shr(value_t shifted_quotient, value_t, value_t, value_t, int_t) const noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_shr(wide_t shifted_quotient, wide_t, narrow_t, narrow_t, int_t) const noexcept -> wide_t
     {
         return shifted_quotient;
     }
@@ -127,14 +132,16 @@ struct nearest_up_t
     }
 
     /// returns dividend unchanged
-    template <integral value_t> constexpr auto div_bias(value_t dividend, value_t) const noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_bias(wide_t dividend, narrow_t) const noexcept -> wide_t
     {
         return dividend;
     }
 
     /// carry = (|rem| + positive) > (divisor - |rem|)
-    template <signed_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    template <signed_integral wide_t, signed_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         assert(divisor > 0 && "nearest_up_t: divisors must be positive");
 
@@ -143,23 +150,24 @@ struct nearest_up_t
         auto const round    = (abs_rem + positive) > (divisor - abs_rem);
         auto const carry    = round ? (positive ? 1 : -1) : 0;
 
-        return int_cast<value_t>(quotient + carry);
+        return int_cast<wide_t>(quotient + carry);
     }
 
     /// unsigned simplifies to carry = (remainder + 1) > (divisor - remainder)
-    template <unsigned_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    template <unsigned_integral wide_t, unsigned_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         assert(divisor > 0 && "nearest_up_t: divisors must be positive");
 
         auto const carry = (remainder + 1) > (divisor - remainder);
 
-        return int_cast<value_t>(quotient + carry);
+        return int_cast<wide_t>(quotient + carry);
     }
 
-    template <integral value_t>
-    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
-                           int_t shift) noexcept -> value_t;
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_shr(wide_t shifted_quotient, wide_t quotient, narrow_t divisor, narrow_t remainder,
+                           int_t shift) const noexcept -> wide_t;
 };
 inline constexpr auto nearest_up = nearest_up_t{};
 
@@ -202,8 +210,8 @@ struct nearest_away_t : private nearest_up_t
     }
 
     /// carry = |rem| >= (divisor - |rem|)
-    template <signed_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    template <signed_integral wide_t, signed_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         assert(divisor > 0 && "nearest_away_t: divisors must be positive");
 
@@ -212,12 +220,13 @@ struct nearest_away_t : private nearest_up_t
         auto const round    = abs_rem >= (divisor - abs_rem);
         auto const carry    = round ? (positive ? 1 : -1) : 0;
 
-        return int_cast<value_t>(quotient + carry);
+        return int_cast<wide_t>(quotient + carry);
     }
 
-    template <integral value_t>
-    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
-                           int_t shift) noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_shr(wide_t shifted_quotient, wide_t quotient, narrow_t divisor, narrow_t remainder,
+                           int_t shift) const noexcept -> wide_t
     {
         if (!shift) return div_carry(shifted_quotient, divisor, remainder);
         return shr_carry(shifted_quotient, quotient, shift);
@@ -263,14 +272,16 @@ struct nearest_even_t
     }
 
     /// returns dividend unchanged
-    template <integral value_t> constexpr auto div_bias(value_t dividend, value_t) const noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_bias(wide_t dividend, narrow_t) const noexcept -> wide_t
     {
         return dividend;
     }
 
     /// carry = (|rem| + is_odd) > (divisor - |rem|)
-    template <signed_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    template <signed_integral wide_t, signed_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         assert(divisor > 0 && "nearest_even_t: divisors must be positive");
 
@@ -280,24 +291,25 @@ struct nearest_even_t
         auto const round    = (abs_rem + is_odd) > (divisor - abs_rem);
         auto const carry    = round ? (positive ? 1 : -1) : 0;
 
-        return int_cast<value_t>(quotient + carry);
+        return int_cast<wide_t>(quotient + carry);
     }
 
     /// unsigned simplifies to carry = (remainder + is_odd) > (divisor - remainder)
-    template <unsigned_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
+    template <unsigned_integral wide_t, unsigned_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         assert(divisor > 0 && "nearest_even_t: divisors must be positive");
 
         auto const is_odd = quotient & 1;
         auto const carry  = (remainder + is_odd) > (divisor - remainder);
 
-        return int_cast<value_t>(quotient + carry);
+        return int_cast<wide_t>(quotient + carry);
     }
 
-    template <integral value_t>
-    constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
-                           int_t shift) noexcept -> value_t
+    template <integral wide_t, integral narrow_t>
+        requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+    constexpr auto div_shr(wide_t shifted_quotient, wide_t quotient, narrow_t divisor, narrow_t remainder,
+                           int_t shift) const noexcept -> wide_t
     {
         if (!shift) return div_carry(shifted_quotient, divisor, remainder);
         if (!remainder) return shr_carry(shifted_quotient, quotient, shift);
@@ -392,21 +404,21 @@ struct nearest_away_t : rounding_modes::nearest_away_t
     /// add floor(divisor / 2) before dividing
     ///
     /// \pre dividend + (divisor >> 1) does not overflow
-    template <unsigned_integral value_t>
-    constexpr auto div_bias(value_t dividend, value_t divisor) const noexcept -> value_t
+    template <unsigned_integral wide_t, unsigned_integral narrow_t>
+    constexpr auto div_bias(wide_t dividend, narrow_t divisor) const noexcept -> wide_t
     {
         assert(divisor > 0 && "fast::nearest_away_t: divisor must be positive");
 
         auto const half = divisor >> 1;
 
-        assert(max<value_t>() - half >= dividend && "fast::nearest_away_t::div_bias: integer overflow");
+        assert(max<wide_t>() - half >= dividend && "fast::nearest_away_t::div_bias: integer overflow");
 
-        return int_cast<value_t>(dividend + half);
+        return int_cast<wide_t>(dividend + half);
     }
 
     /// pass-through: bias already applied
-    template <unsigned_integral value_t>
-    constexpr auto div_carry(value_t quotient, value_t, value_t) const noexcept -> value_t
+    template <unsigned_integral wide_t, unsigned_integral narrow_t>
+    constexpr auto div_carry(wide_t quotient, narrow_t, narrow_t) const noexcept -> wide_t
     {
         return quotient;
     }
@@ -419,9 +431,10 @@ inline constexpr auto nearest_away = nearest_away_t{};
 // Implementations
 // --------------------------------------------------------------------------------------------------------------------
 
-template <integral value_t>
-constexpr auto nearest_up_t::div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
-                                     int_t shift) noexcept -> value_t
+template <integral wide_t, integral narrow_t>
+    requires(std::is_signed_v<wide_t> == std::is_signed_v<narrow_t>)
+constexpr auto nearest_up_t::div_shr(wide_t shifted_quotient, wide_t quotient, narrow_t divisor, narrow_t remainder,
+                                     int_t shift) const noexcept -> wide_t
 {
     if (!shift) return div_carry(shifted_quotient, divisor, remainder);
     if (!remainder) return shr_carry(shifted_quotient, quotient, shift);
