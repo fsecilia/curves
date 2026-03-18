@@ -9,6 +9,9 @@
 namespace crv::division {
 namespace {
 
+struct arbitrary_t
+{};
+
 // --------------------------------------------------------------------------------------------------------------------
 // is_result
 // --------------------------------------------------------------------------------------------------------------------
@@ -21,10 +24,7 @@ static_assert(is_result<result_t<int_t, uint_t>>);
 static_assert(is_result<result_t<uint_t, int_t>>);
 static_assert(is_result<result_t<uint_t, uint_t>>);
 
-struct not_result_t
-{};
-
-static_assert(!is_result<not_result_t>);
+static_assert(!is_result<arbitrary_t>);
 
 // --------------------------------------------------------------------------------------------------------------------
 // is_divider
@@ -40,16 +40,10 @@ static_assert(is_divider<divider_t<int_t, uint_t>, int_t, uint_t>);
 static_assert(is_divider<divider_t<uint_t, int_t>, uint_t, int_t>);
 static_assert(is_divider<divider_t<uint_t, uint_t>, uint_t, uint_t>);
 
-struct not_convertible_to_int_t
-{};
+static_assert(!is_divider<divider_t<int_t, int_t>, arbitrary_t, int_t>);
+static_assert(!is_divider<divider_t<int_t, int_t>, int_t, arbitrary_t>);
 
-static_assert(!is_divider<divider_t<int_t, int_t>, not_convertible_to_int_t, int_t>);
-static_assert(!is_divider<divider_t<int_t, int_t>, int_t, not_convertible_to_int_t>);
-
-struct not_divider_t
-{};
-
-static_assert(!is_divider<not_divider_t, int_t, int_t>);
+static_assert(!is_divider<arbitrary_t, int_t, int_t>);
 
 } // namespace
 } // namespace crv::division
