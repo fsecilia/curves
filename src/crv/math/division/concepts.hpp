@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/division/result.hpp>
+#include <crv/math/int_traits.hpp>
 #include <type_traits>
 
 namespace crv::division {
@@ -36,5 +37,12 @@ template <typename divider_t, typename dividend_t, typename divisor_t>
 concept is_divider = requires(divider_t const& divider, dividend_t dividend, divisor_t divisor) {
     { divider(dividend, divisor) } -> is_result;
 };
+
+// --------------------------------------------------------------------------------------------------------------------
+// is_wide_divider
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename divider_t, typename narrow_t>
+concept is_wide_divider = is_divider<divider_t, wider_t<narrow_t>, narrow_t>;
 
 } // namespace crv::division
