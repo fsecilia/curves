@@ -53,7 +53,7 @@ template <unsigned_integral narrow_t, int total_shift, typename wide_divider_t> 
     }
 };
 
-/// statically to pre-shifts a known constant dividend
+/// statically pre-shifts a known constant dividend
 template <unsigned_integral narrow_t, narrow_t constant_dividend, int total_shift, typename wide_divider_t>
 struct constant_t
 {
