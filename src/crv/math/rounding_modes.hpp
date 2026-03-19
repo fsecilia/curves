@@ -47,7 +47,31 @@
 #include <crv/math/limits.hpp>
 #include <cassert>
 
-namespace crv::rounding_modes {
+namespace crv {
+
+// ====================================================================================================================
+// Concepts
+// ====================================================================================================================
+
+/// matches rounding modes with independent wide and narrow types
+template <typename rounding_mode_t, typename wide_t, typename narrow_t>
+concept is_rounding_mode = requires(rounding_mode_t const& rounding_mode, wide_t wide, narrow_t narrow, int_t shift) {
+    { rounding_mode.shr_bias(wide, shift) } -> std::same_as<wide_t>;
+    { rounding_mode.shr_carry(wide, wide, shift) } -> std::same_as<wide_t>;
+    { rounding_mode.div_bias(wide, narrow) } -> std::same_as<wide_t>;
+    { rounding_mode.div_carry(wide, narrow, narrow) } -> std::same_as<wide_t>;
+    { rounding_mode.div_shr(wide, wide, narrow, narrow, shift) } -> std::same_as<wide_t>;
+};
+
+/// matches rounding modes with uniform wide and narrow types
+template <typename rounding_mode_t, typename value_t>
+concept is_uniform_rounding_mode = is_rounding_mode<rounding_mode_t, value_t, value_t>;
+
+// ====================================================================================================================
+// Rounding Modes
+// ====================================================================================================================
+
+namespace rounding_modes {
 
 // --------------------------------------------------------------------------------------------------------------------
 // Safe Rounding Modes
@@ -441,4 +465,5 @@ constexpr auto nearest_up_t::div_shr(wide_t shifted_quotient, wide_t quotient, n
     return nearest_away.shr_carry(shifted_quotient, quotient, shift);
 }
 
-} // namespace crv::rounding_modes
+} // namespace rounding_modes
+} // namespace crv

@@ -8,8 +8,32 @@
 #include <crv/test/test.hpp>
 #include <concepts>
 
-namespace crv::rounding_modes {
+namespace crv {
+namespace rounding_modes {
 namespace {
+
+// ====================================================================================================================
+// Concepts
+// ====================================================================================================================
+
+struct arbitrary_t
+{};
+
+static_assert(is_rounding_mode<nearest_up_t, int_t, int_t>);     // uniform types
+static_assert(is_rounding_mode<nearest_up_t, int32_t, int16_t>); // wide, narow
+static_assert(is_rounding_mode<nearest_away_t, int_t, int_t>);   // different rounding mode
+static_assert(!is_rounding_mode<nearest_up_t, int_t, uint_t>);   // sign difference
+static_assert(!is_rounding_mode<nearest_up_t, uint_t, int_t>);   // sign difference, reversed
+static_assert(!is_rounding_mode<arbitrary_t, int_t, int_t>);     // not a rounding mode
+
+static_assert(is_uniform_rounding_mode<nearest_up_t, int_t>);    // signed
+static_assert(is_uniform_rounding_mode<nearest_up_t, uint_t>);   // unsigned
+static_assert(is_uniform_rounding_mode<nearest_away_t, int_t>);  // different rounding mode
+static_assert(!is_uniform_rounding_mode<arbitrary_t, int_t>);    // not a rounding mode
+
+// ====================================================================================================================
+// Rounding Modes Support
+// ====================================================================================================================
 
 /// calls shr_carry directly with the arithmetic-shifted value
 template <typename value_t, typename sut_t>
@@ -596,4 +620,5 @@ static_assert(fast::nearest_up.div_carry(static_cast<uint64_t>(42), // quotient
               == 43ull);                                            // (3 + 1) > (5 - 3) -> carry
 
 } // namespace
-} // namespace crv::rounding_modes
+} // namespace rounding_modes
+} // namespace crv
