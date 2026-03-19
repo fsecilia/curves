@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "normalizing_dividers.hpp"
+#include "prescaling_dividers.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <compare>

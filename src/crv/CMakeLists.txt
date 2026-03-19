@@ -25,7 +25,7 @@ target_sources_kernel(lib
     math/division/hardware_divider.hpp
     math/division/long_divider.hpp
     math/division/io.hpp
-    math/division/normalizing_dividers.hpp
+    math/division/prescaling_dividers.hpp
     math/division/result.hpp
     math/division/rounding_divider.hpp
     math/fixed/fixed.hpp
@@ -58,7 +58,7 @@ if (enable_testing)
         math/division/hardware_divider_test.cpp
         math/division/long_divider_test.cpp
         math/division/io_test.cpp
-        math/division/normalizing_dividers_test.cpp
+        math/division/prescaling_dividers_test.cpp
         math/division/rounding_divider_test.cpp
         math/error_metrics_test.cpp
         math/fixed/exp2_neg_m1_test.cpp
