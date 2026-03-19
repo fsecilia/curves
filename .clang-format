@@ -55,6 +55,7 @@ AllowShortLoopsOnASingleLine: true
 BreakBeforeBinaryOperators: All
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
+BreakStringLiterals: false
 
 # includes
 IncludeCategories:
