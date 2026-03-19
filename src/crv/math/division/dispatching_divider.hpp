@@ -25,8 +25,8 @@ template <unsigned_integral dividend_t, unsigned_integral divisor_t,
 struct dispatching_divider_t;
 
 /// specializes explicitly on wide dividend, narrow divisor
-template <unsigned_integral narrow_t, is_divider<wider_t<narrow_t>, narrow_t> hardware_divider_t,
-          is_divider<wider_t<narrow_t>, narrow_t> long_divider_t>
+template <unsigned_integral narrow_t, is_wide_divider<narrow_t> hardware_divider_t,
+          is_wide_divider<narrow_t> long_divider_t>
 struct dispatching_divider_t<wider_t<narrow_t>, narrow_t, hardware_divider_t, long_divider_t>
 {
     using wide_t = wider_t<narrow_t>;
