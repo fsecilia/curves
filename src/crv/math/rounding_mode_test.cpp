@@ -111,7 +111,6 @@ struct preserves_type_t
     }
 
     constexpr auto operator()(auto rounding_mode) const noexcept -> bool
-
     {
         return shr_bias(rounding_mode) && shr_carry(rounding_mode) && div_bias(rounding_mode) && div_shr(rounding_mode);
     }
