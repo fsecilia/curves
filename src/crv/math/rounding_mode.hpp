@@ -53,15 +53,26 @@ namespace crv {
 // Concepts
 // ====================================================================================================================
 
-/// matches rounding modes with independent wide and narrow types
 template <typename rounding_mode_t, typename wide_t, typename narrow_t>
-concept is_rounding_mode = requires(rounding_mode_t const& rounding_mode, wide_t wide, narrow_t narrow, int_t shift) {
-    { rounding_mode.shr_bias(wide, shift) } -> std::same_as<wide_t>;
-    { rounding_mode.shr_carry(wide, wide, shift) } -> std::same_as<wide_t>;
+concept is_shr_rounding_mode
+    = requires(rounding_mode_t const& rounding_mode, wide_t wide, narrow_t narrow, int_t shift) {
+          { rounding_mode.shr_bias(wide, shift) } -> std::same_as<wide_t>;
+          { rounding_mode.shr_carry(wide, wide, shift) } -> std::same_as<wide_t>;
+      };
+
+template <typename rounding_mode_t, typename wide_t, typename narrow_t>
+concept is_div_rounding_mode = requires(rounding_mode_t const& rounding_mode, wide_t wide, narrow_t narrow) {
     { rounding_mode.div_bias(wide, narrow) } -> std::same_as<wide_t>;
     { rounding_mode.div_carry(wide, narrow, narrow) } -> std::same_as<wide_t>;
-    { rounding_mode.div_shr(wide, wide, narrow, narrow, shift) } -> std::same_as<wide_t>;
 };
+
+/// matches rounding modes with independent wide and narrow types
+template <typename rounding_mode_t, typename wide_t, typename narrow_t>
+concept is_rounding_mode
+    = is_shr_rounding_mode<rounding_mode_t, wide_t, narrow_t> && is_div_rounding_mode<rounding_mode_t, wide_t, narrow_t>
+      && requires(rounding_mode_t const& rounding_mode, wide_t wide, narrow_t narrow, int_t shift) {
+             { rounding_mode.div_shr(wide, wide, narrow, narrow, shift) } -> std::same_as<wide_t>;
+         };
 
 /// matches rounding modes with uniform wide and narrow types
 template <typename rounding_mode_t, typename value_t>
