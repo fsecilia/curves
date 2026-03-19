@@ -11,7 +11,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/rounding_modes.hpp>
+#include <crv/math/rounding_mode.hpp>
 #include <algorithm>
 #include <type_traits>
 

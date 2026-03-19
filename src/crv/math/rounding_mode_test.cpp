@@ -3,8 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include "rounding_mode.hpp"
 #include <crv/math/limits.hpp>
-#include <crv/math/rounding_modes.hpp>
 #include <crv/test/test.hpp>
 #include <concepts>
 

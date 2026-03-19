@@ -33,7 +33,7 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
-    math/rounding_modes.hpp
+    math/rounding_mode.hpp
     traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -68,7 +68,7 @@ if (enable_testing)
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
-        math/rounding_modes_test.cpp
+        math/rounding_mode_test.cpp
         math/stats_test.cpp
         traits_test.cpp
     )
