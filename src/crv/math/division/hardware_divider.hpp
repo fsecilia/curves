@@ -46,10 +46,10 @@ template <> struct hardware_divider_t<uint64_t, uint32_t>
         auto const low  = static_cast<uint32_t>(dividend);
 
         result_t<uint32_t> result;
-        asm volatile("divl %[divisor]"
-                     : "=a"(result.quotient), "=d"(result.remainder)
-                     : "d"(high), "a"(low), [divisor] "rm"(divisor)
-                     : "cc");
+        asm("divl %[divisor]"
+            : "=a"(result.quotient), "=d"(result.remainder)
+            : "d"(high), "a"(low), [divisor] "rm"(divisor)
+            : "cc");
 
         return result;
     }
@@ -66,10 +66,10 @@ template <> struct hardware_divider_t<uint128_t, uint64_t>
         auto const low  = static_cast<uint64_t>(dividend);
 
         result_t<uint64_t> result;
-        asm volatile("divq %[divisor]"
-                     : "=a"(result.quotient), "=d"(result.remainder)
-                     : "d"(high), "a"(low), [divisor] "rm"(divisor)
-                     : "cc");
+        asm("divq %[divisor]"
+            : "=a"(result.quotient), "=d"(result.remainder)
+            : "d"(high), "a"(low), [divisor] "rm"(divisor)
+            : "cc");
 
         return result;
     }
