@@ -34,7 +34,7 @@ struct dispatching_divider_t<wider_t<narrow_t>, narrow_t, hardware_divider_t, lo
     [[no_unique_address]] hardware_divider_t hardware_divider;
     [[no_unique_address]] long_divider_t     long_divider;
 
-    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<wide_t, narrow_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<wide_t, narrow_t>
     {
         constexpr auto const narrow_width = sizeof(divisor) * CHAR_BIT;
 
