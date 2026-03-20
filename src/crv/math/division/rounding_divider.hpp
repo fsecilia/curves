@@ -28,9 +28,9 @@ template <unsigned_integral narrow_t, is_wide_divider<narrow_t> wide_divider_t> 
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
     constexpr auto operator()(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
-        auto const biased = rounding_mode.div_bias(dividend, divisor);
+        auto const biased = rounding_mode.bias(dividend, divisor);
         auto const result = divide(biased, divisor);
-        return rounding_mode.div_carry(result.quotient, divisor, result.remainder);
+        return rounding_mode.carry(result.quotient, divisor, result.remainder);
     }
 };
 

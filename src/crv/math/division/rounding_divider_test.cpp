@@ -16,12 +16,12 @@ using result_t = result_t<wide_t, narrow_t>;
 
 struct rounding_mode_t
 {
-    constexpr auto div_bias(wide_t dividend, narrow_t divisor) const noexcept -> wide_t
+    constexpr auto bias(wide_t dividend, narrow_t divisor) const noexcept -> wide_t
     {
         return dividend * 2 + divisor;
     }
 
-    constexpr auto div_carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
+    constexpr auto carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t
     {
         return quotient * 7 + divisor * 5 + remainder * 3;
     }

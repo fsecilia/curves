@@ -51,8 +51,8 @@ template <is_fixed lhs_t, is_fixed rhs_t>
 using wider_t = fixed_t<crv::wider_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>>,
                         lhs_t::frac_bits + rhs_t::frac_bits>;
 
-inline constexpr auto default_rounding_mode = rounding_modes::truncate;
-using default_rounding_mode_t               = std::remove_cv_t<decltype(default_rounding_mode)>;
+inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
+using default_shr_rounding_mode_t               = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
 
 } // namespace fixed
 
@@ -87,7 +87,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    template <is_fixed other_t, typename rounding_mode_t = fixed::default_rounding_mode_t>
+    template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
     explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
         : fixed_t{convert(other, rounding_mode)}
     {}
@@ -126,7 +126,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
     constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
     {
-        return *this = multiply(*this, src, fixed::default_rounding_mode);
+        return *this = multiply(*this, src, fixed::default_shr_rounding_mode);
     }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
@@ -135,7 +135,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply(lhs, rhs, fixed::default_rounding_mode);
+        return multiply(lhs, rhs, fixed::default_shr_rounding_mode);
     }
 
     /// \returns wide product at higher precision
@@ -182,7 +182,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
 private:
     /// \returns out_t, widening or narrowing \p in with rounding mode if necessary
-    template <is_fixed other_t, typename rounding_mode_t = fixed::default_rounding_mode_t>
+    template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
     static constexpr auto convert(other_t other, rounding_mode_t rounding_mode = {}) noexcept -> fixed_t
     {
         static constexpr auto other_frac_bits = other_t::frac_bits;
@@ -198,9 +198,9 @@ private:
         {
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = rounding_mode.shr_bias(int_cast<promoted_value_t>(other.value), shift);
+            auto const     unshifted = rounding_mode.bias(int_cast<promoted_value_t>(other.value), shift);
             auto const     shifted   = int_cast<promoted_value_t>(unshifted >> shift);
-            return fixed_t{int_cast<value_t>(rounding_mode.shr_carry(shifted, unshifted, shift))};
+            return fixed_t{int_cast<value_t>(rounding_mode.carry(shifted, unshifted, shift))};
         }
         else
         {

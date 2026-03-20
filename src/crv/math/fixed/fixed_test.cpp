@@ -26,11 +26,8 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
 {
     struct mock_rounding_mode_t
     {
-        MOCK_METHOD(int_t, shr_bias, (int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, shr_carry, (int_t, int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, div_bias, (int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, div_carry, (int_t, int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, div_shr, (int_t, int_t, int_t, int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, bias, (int_t, int_t), (const, noexcept));
+        MOCK_METHOD(int_t, carry, (int_t, int_t, int_t), (const, noexcept));
         virtual ~mock_rounding_mode_t() = default;
     };
     StrictMock<mock_rounding_mode_t> mock_rounding_mode{};
@@ -39,33 +36,15 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
     {
         mock_rounding_mode_t* mock = nullptr;
 
-        template <integral value_t> constexpr auto shr_bias(value_t unshifted, int_t shift) const noexcept -> value_t
+        template <integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->shr_bias(unshifted, shift);
+            return mock->bias(unshifted, shift);
         }
 
         template <integral value_t>
-        constexpr auto shr_carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+        constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->shr_carry(shifted, unshifted, shift);
-        }
-
-        template <integral value_t> constexpr auto div_bias(value_t quotient, value_t divisor) const noexcept -> value_t
-        {
-            return mock->div_bias(quotient, divisor);
-        }
-
-        template <integral value_t>
-        constexpr auto div_carry(value_t quotient, value_t divisor, value_t remainder) const noexcept -> value_t
-        {
-            return mock->div_carry(quotient, divisor, remainder);
-        }
-
-        template <integral value_t>
-        constexpr auto div_shr(value_t shifted_quotient, value_t quotient, value_t divisor, value_t remainder,
-                               int_t shift) const noexcept -> value_t
-        {
-            return mock->div_shr(shifted_quotient, quotient, divisor, remainder, shift);
+            return mock->carry(shifted, unshifted, shift);
         }
     };
     rounding_mode_t rounding_mode{&mock_rounding_mode};
@@ -393,25 +372,25 @@ static_assert(typed_equal<fixed_t<uint128_t, 128>>(
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
-                                                                           rounding_modes::truncate)),
+                                                                           rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication to specific type failed");
 
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
-                                                                           rounding_modes::truncate)),
+                                                                           rounding_modes::shr::truncate)),
               "fixed_t: signed*unsigned multiplication to specific type failed");
 
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
-                                                                           rounding_modes::truncate)),
+                                                                           rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication to specific type failed");
 
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
-                                                                           rounding_modes::truncate)),
+                                                                           rounding_modes::shr::truncate)),
               "fixed_t: unsigned*unsigned multiplication to specific type failed");
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
@@ -421,8 +400,8 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
     auto const rhs           = fixed_t<int16_t, 1>(3 << 1);
     auto const expected_bias = uint32_t{23};
     auto const expected      = out_t{29};
-    EXPECT_CALL(mock_rounding_mode, shr_bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
-    EXPECT_CALL(mock_rounding_mode, shr_carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
+    EXPECT_CALL(mock_rounding_mode, bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply<out_t>(lhs, rhs, rounding_mode);
 
@@ -435,22 +414,22 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
-                                                       rounding_modes::truncate)),
+                                                       rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication with rounding mode failed");
 
 static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
                                               multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                       rounding_modes::truncate)),
+                                                       rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication with rounding mode failed");
 
 static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 * 3 << 1},
                                                multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
-                                                        rounding_modes::truncate)),
+                                                        rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication with rounding mode failed");
 
 static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 * 3 << 1},
                                                multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                        rounding_modes::truncate)),
+                                                        rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication with rounding mode failed");
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
@@ -460,8 +439,8 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
     auto const rhs           = sut_t{3 << 1};
     auto const expected_bias = sut_t::value_t{23};
     auto const expected      = sut_t{29};
-    EXPECT_CALL(mock_rounding_mode, shr_bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
-    EXPECT_CALL(mock_rounding_mode, shr_carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
+    EXPECT_CALL(mock_rounding_mode, bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply(lhs, rhs, rounding_mode);
 

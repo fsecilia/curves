@@ -33,8 +33,8 @@ struct rounding_mode_t
 {
     constexpr auto use(wide_t dividend, narrow_t divisor) const noexcept -> wide_t { return dividend * 2 + divisor; }
 
-    constexpr auto div_bias(wide_t, narrow_t) const noexcept -> wide_t;
-    constexpr auto div_carry(wide_t, narrow_t, narrow_t) const noexcept -> wide_t;
+    constexpr auto bias(wide_t, narrow_t) const noexcept -> wide_t;
+    constexpr auto carry(wide_t, narrow_t, narrow_t) const noexcept -> wide_t;
 };
 constexpr auto rounding_mode = rounding_mode_t{};
 
