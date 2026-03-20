@@ -6,7 +6,6 @@
 #include "prescaling_dividers.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
-#include <compare>
 #include <gmock/gmock.h>
 
 namespace crv::division::prescaling_dividers {
