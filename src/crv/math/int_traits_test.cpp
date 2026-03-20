@@ -114,6 +114,43 @@ static_assert(!unsigned_integral<nonsigned_t>);
 } // namespace is_signed_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// make_signed
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace make_signed_tests {
+
+// basic types match std::make_signed
+static_assert(std::same_as<make_signed_t<int>, std::make_signed_t<int>>);
+static_assert(std::same_as<make_signed_t<signed>, std::make_signed_t<signed>>);
+static_assert(std::same_as<make_signed_t<signed int>, std::make_signed_t<signed int>>);
+static_assert(std::same_as<make_signed_t<unsigned>, std::make_signed_t<unsigned>>);
+static_assert(std::same_as<make_signed_t<unsigned int>, std::make_signed_t<unsigned int>>);
+
+// sized_types match std::make_signed
+static_assert(std::same_as<make_signed_t<int8_t>, int8_t>);
+static_assert(std::same_as<make_signed_t<int64_t>, int64_t>);
+static_assert(std::same_as<make_signed_t<uint8_t>, int8_t>);
+static_assert(std::same_as<make_signed_t<uint64_t>, int64_t>);
+
+// cv-qualifiers are preserved on forwarded types
+static_assert(std::same_as<make_signed_t<unsigned const>, std::make_signed_t<int const>>);
+static_assert(std::same_as<make_signed_t<uint16_t const volatile>, int16_t const volatile>);
+static_assert(std::same_as<make_signed_t<uint64_t volatile>, int64_t volatile>);
+
+// extended to cover unqualified 128-bit types
+static_assert(std::same_as<make_signed_t<int128_t>, int128_t>);
+static_assert(std::same_as<make_signed_t<uint128_t>, int128_t>);
+
+// cv-qualifiers are preserved on extended types
+static_assert(std::same_as<make_signed_t<int128_t const>, int128_t const>);
+static_assert(std::same_as<make_signed_t<uint128_t const>, int128_t const>);
+static_assert(std::same_as<make_signed_t<__int128 const volatile>, __int128 const volatile>);
+static_assert(std::same_as<make_signed_t<signed __int128 volatile>, signed __int128 volatile>);
+static_assert(std::same_as<make_signed_t<unsigned __int128 volatile>, signed __int128 volatile>);
+
+} // namespace make_signed_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // make_unsigned
 // --------------------------------------------------------------------------------------------------------------------
 

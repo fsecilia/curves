@@ -66,6 +66,28 @@ template <typename value_t>
 concept unsigned_integral = integral<value_t> && !signed_integral<value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
+// make_signed
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace detail {
+
+template <typename src_t, int size> struct make_signed_f : std::make_signed<src_t>
+{};
+
+// add specialization for int128_t
+template <typename src_t> struct make_signed_f<src_t, sizeof(int128_t)>
+{
+    using type = copy_cv_t<int128_t, src_t>;
+};
+
+} // namespace detail
+
+template <typename src_t> struct make_signed : detail::make_signed_f<src_t, sizeof(src_t)>
+{};
+
+template <typename src_t> using make_signed_t = make_signed<src_t>::type;
+
+// --------------------------------------------------------------------------------------------------------------------
 // make_unsigned
 // --------------------------------------------------------------------------------------------------------------------
 
