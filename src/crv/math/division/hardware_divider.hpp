@@ -48,7 +48,7 @@ template <> struct hardware_divider_t<uint64_t, uint32_t>
         result_t<uint32_t> result;
         asm("divl %[divisor]"
             : "=a"(result.quotient), "=d"(result.remainder)
-            : "d"(high), "a"(low), [divisor] "rm"(divisor)
+            : "d"(high), "a"(low), [divisor] "r"(divisor)
             : "cc");
 
         return result;
@@ -68,7 +68,7 @@ template <> struct hardware_divider_t<uint128_t, uint64_t>
         result_t<uint64_t> result;
         asm("divq %[divisor]"
             : "=a"(result.quotient), "=d"(result.remainder)
-            : "d"(high), "a"(low), [divisor] "rm"(divisor)
+            : "d"(high), "a"(low), [divisor] "r"(divisor)
             : "cc");
 
         return result;
