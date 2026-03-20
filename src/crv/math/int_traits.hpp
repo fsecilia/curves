@@ -96,6 +96,7 @@ namespace detail {
 template <typename src_t, int size> struct make_unsigned_f : std::make_unsigned<src_t>
 {};
 
+// add specialization for uint128_t
 template <typename src_t> struct make_unsigned_f<src_t, sizeof(uint128_t)>
 {
     using type = copy_cv_t<uint128_t, src_t>;
