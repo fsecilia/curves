@@ -16,15 +16,56 @@ struct arbitrary_t
 // is_result
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(is_result<result_t<int_t>>);
-static_assert(is_result<result_t<uint_t>>);
+namespace is_result_test {
 
-static_assert(is_result<result_t<int_t, int_t>>);
-static_assert(is_result<result_t<int_t, uint_t>>);
-static_assert(is_result<result_t<uint_t, int_t>>);
-static_assert(is_result<result_t<uint_t, uint_t>>);
+struct valid_t
+{
+    uint64_t quotient;
+    uint32_t remainder;
+};
 
-static_assert(!is_result<arbitrary_t>);
+struct reversed_sizes_t
+{
+    uint32_t quotient;
+    uint64_t remainder;
+};
+
+struct signed_types_t
+{
+    int64_t quotient;
+    int32_t remainder;
+};
+
+struct missing_remainder_t
+{
+    uint64_t quotient;
+};
+
+struct missing_quotient_t
+{
+    uint32_t remainder;
+};
+
+struct nonadjacent_sizes_t
+{
+    uint64_t quotient;
+    uint8_t  remainder;
+};
+
+static_assert(is_result<valid_t>);
+static_assert(is_result<valid_t const>);
+static_assert(is_result<valid_t&>);
+static_assert(is_result<valid_t const&>);
+static_assert(is_result<valid_t volatile&&>);
+
+static_assert(is_result<reversed_sizes_t>);
+static_assert(is_result<nonadjacent_sizes_t>);
+
+static_assert(!is_result<signed_types_t>);
+static_assert(!is_result<missing_quotient_t>);
+static_assert(!is_result<missing_remainder_t>);
+
+} // namespace is_result_test
 
 // --------------------------------------------------------------------------------------------------------------------
 // is_divider
@@ -35,15 +76,17 @@ template <typename dividend_t, typename divisor_t> struct divider_t
     constexpr auto operator()(dividend_t, divisor_t) const noexcept -> result_t<dividend_t, divisor_t> { return {}; }
 };
 
-static_assert(is_divider<divider_t<int_t, int_t>, int_t, int_t>);
-static_assert(is_divider<divider_t<int_t, uint_t>, int_t, uint_t>);
-static_assert(is_divider<divider_t<uint_t, int_t>, uint_t, int_t>);
+static_assert(!is_divider<divider_t<int_t, int_t>, int_t, int_t>);
+static_assert(!is_divider<divider_t<int_t, uint_t>, int_t, uint_t>);
+static_assert(!is_divider<divider_t<uint_t, int_t>, uint_t, int_t>);
 static_assert(is_divider<divider_t<uint_t, uint_t>, uint_t, uint_t>);
 
 static_assert(!is_divider<divider_t<int_t, int_t>, arbitrary_t, int_t>);
 static_assert(!is_divider<divider_t<int_t, int_t>, int_t, arbitrary_t>);
+static_assert(!is_divider<divider_t<uint_t, uint_t>, arbitrary_t, uint_t>);
+static_assert(!is_divider<divider_t<uint_t, uint_t>, uint_t, arbitrary_t>);
 
-static_assert(!is_divider<arbitrary_t, int_t, int_t>);
+static_assert(!is_divider<arbitrary_t, uint_t, uint_t>);
 
 // --------------------------------------------------------------------------------------------------------------------
 // is_wide_divider
@@ -55,7 +98,7 @@ template <typename narrow_t> struct wide_divider_t
     constexpr auto operator()(wide_t, narrow_t) const noexcept -> result_t<wide_t, narrow_t> { return {}; }
 };
 
-static_assert(is_wide_divider<wide_divider_t<int_t>, int_t>);
+static_assert(!is_wide_divider<wide_divider_t<int_t>, int_t>);
 static_assert(is_wide_divider<wide_divider_t<uint_t>, uint_t>);
 
 static_assert(!is_wide_divider<wide_divider_t<int_t>, arbitrary_t>);

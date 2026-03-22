@@ -17,17 +17,13 @@ namespace crv::division {
 // is_result
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename result_t> struct is_result_f : std::false_type
-{};
-
-template <typename quotient_t, typename remainder_t>
-struct is_result_f<result_t<quotient_t, remainder_t>> : std::true_type
-{};
-
-template <typename result_t> inline constexpr auto is_result_v = is_result_f<result_t>::value;
-
 template <typename result_t>
-concept is_result = is_result_v<std::remove_cvref_t<result_t>>;
+concept is_result = requires(std::remove_cvref_t<result_t> result) {
+    result.quotient;
+    result.remainder;
+    requires unsigned_integral<decltype(result.quotient)>;
+    requires unsigned_integral<decltype(result.remainder)>;
+};
 
 // --------------------------------------------------------------------------------------------------------------------
 // is_divider
