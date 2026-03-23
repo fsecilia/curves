@@ -20,8 +20,8 @@ namespace crv::division {
 /// The hardware divider is more efficient, but traps if the quotient does not fit into a narrow destination. The
 /// long divider handles wide quotients correctly, but costs more to execute. This type range checks using a shift, then
 /// dispatches to hardware when it can, to software when it must.
-template <unsigned_integral dividend_t, unsigned_integral divisor_t,
-          is_divider<dividend_t, divisor_t> hardware_divider_t, is_divider<dividend_t, divisor_t> long_divider_t>
+template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename hardware_divider_t,
+          typename long_divider_t>
 struct dispatching_divider_t;
 
 /// specializes explicitly on wide dividend, narrow divisor

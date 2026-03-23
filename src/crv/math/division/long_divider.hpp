@@ -16,9 +16,7 @@
 namespace crv::division {
 
 /// performs unsigned long division, splitting dividend into high and low halves
-template <unsigned_integral dividend_t, unsigned_integral divisor_t,
-          is_divider<dividend_t, divisor_t> hardware_divider_t>
-struct long_divider_t;
+template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename hardware_divider_t> struct long_divider_t;
 
 /// specializes explicitly on wide dividend, narrow divisor
 template <unsigned_integral narrow_t, is_wide_divider<narrow_t> hardware_divider_t>
