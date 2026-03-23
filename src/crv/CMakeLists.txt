@@ -22,8 +22,8 @@ target_sources_kernel(lib
     lib.cpp
     math/division/concepts.hpp
     math/division/dispatching_divider.hpp
+    math/division/divider.hpp
     math/division/hardware_divider.hpp
-    math/division/long_divider.hpp
     math/division/io.hpp
     math/division/prescaling_dividers.hpp
     math/division/result.hpp
@@ -56,8 +56,8 @@ if (enable_testing)
         math/compensated_accumulator_test.cpp
         math/division/concepts_test.cpp
         math/division/dispatching_divider_test.cpp
+        math/division/divider_test.cpp
         math/division/hardware_divider_test.cpp
-        math/division/long_divider_test.cpp
         math/division/io_test.cpp
         math/division/prescaling_dividers_test.cpp
         math/division/rounding_divider_test.cpp

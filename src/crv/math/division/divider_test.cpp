@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "long_divider.hpp"
+#include "divider.hpp"
 #include <crv/math/io.hpp>
 #include <crv/test/test.hpp>
 #include <random>
