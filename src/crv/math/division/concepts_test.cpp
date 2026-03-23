@@ -68,27 +68,6 @@ static_assert(!is_result<missing_remainder_t>);
 } // namespace is_result_test
 
 // --------------------------------------------------------------------------------------------------------------------
-// is_divider
-// --------------------------------------------------------------------------------------------------------------------
-
-template <typename dividend_t, typename divisor_t> struct divider_t
-{
-    constexpr auto operator()(dividend_t, divisor_t) const noexcept -> result_t<dividend_t, divisor_t> { return {}; }
-};
-
-static_assert(!is_divider<divider_t<int_t, int_t>, int_t, int_t>);
-static_assert(!is_divider<divider_t<int_t, uint_t>, int_t, uint_t>);
-static_assert(!is_divider<divider_t<uint_t, int_t>, uint_t, int_t>);
-static_assert(is_divider<divider_t<uint_t, uint_t>, uint_t, uint_t>);
-
-static_assert(!is_divider<divider_t<int_t, int_t>, arbitrary_t, int_t>);
-static_assert(!is_divider<divider_t<int_t, int_t>, int_t, arbitrary_t>);
-static_assert(!is_divider<divider_t<uint_t, uint_t>, arbitrary_t, uint_t>);
-static_assert(!is_divider<divider_t<uint_t, uint_t>, uint_t, arbitrary_t>);
-
-static_assert(!is_divider<arbitrary_t, uint_t, uint_t>);
-
-// --------------------------------------------------------------------------------------------------------------------
 // is_wide_divider
 // --------------------------------------------------------------------------------------------------------------------
 
