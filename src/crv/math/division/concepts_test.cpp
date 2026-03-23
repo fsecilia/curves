@@ -12,6 +12,12 @@ namespace {
 struct arbitrary_t
 {};
 
+struct rounding_mode_t
+{
+    constexpr auto bias(uint64_t dividend, uint32_t divisor) const noexcept -> uint64_t;
+    constexpr auto carry(uint64_t quotient, uint32_t divisor, uint32_t remainder) const noexcept -> uint64_t;
+};
+
 // --------------------------------------------------------------------------------------------------------------------
 // is_result
 // --------------------------------------------------------------------------------------------------------------------
@@ -92,12 +98,6 @@ static_assert(!is_hardware_divider<arbitrary_t, uint_t>);
 // ====================================================================================================================
 
 namespace is_divider_test {
-
-struct rounding_mode_t
-{
-    constexpr auto bias(uint64_t d, uint32_t) const noexcept -> uint64_t;
-    constexpr auto carry(uint64_t q, uint32_t, uint32_t) const noexcept -> uint64_t;
-};
 
 struct valid_divider_t
 {
