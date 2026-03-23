@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/division/result.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/rounding_mode.hpp>
 #include <type_traits>
 
 namespace crv::division {
@@ -28,5 +29,13 @@ concept is_hardware_divider
     = unsigned_integral<narrow_t> && requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor) {
           { divider(dividend, divisor) } -> is_result;
       };
+
+/// takes unsigned wide dividend, unsigned narrow divisor, and rounding mode; returns wide quotient
+template <typename divider_t, typename narrow_t, typename rounding_mode_t>
+concept is_divider = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, wider_t<narrow_t>, narrow_t>
+                     && requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor,
+                                 rounding_mode_t rounding_mode) {
+                            { divider(dividend, divisor, rounding_mode) } -> std::same_as<wider_t<narrow_t>>;
+                        };
 
 } // namespace crv::division
