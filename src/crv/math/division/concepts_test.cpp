@@ -9,13 +9,16 @@
 namespace crv::division {
 namespace {
 
+using narrow_t = uint32_t;
+using wide_t   = uint64_t;
+
 struct arbitrary_t
 {};
 
 struct rounding_mode_t
 {
-    constexpr auto bias(uint64_t dividend, uint32_t divisor) const noexcept -> uint64_t;
-    constexpr auto carry(uint64_t quotient, uint32_t divisor, uint32_t remainder) const noexcept -> uint64_t;
+    constexpr auto bias(wide_t dividend, narrow_t divisor) const noexcept -> wide_t;
+    constexpr auto carry(wide_t quotient, narrow_t divisor, narrow_t remainder) const noexcept -> wide_t;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -26,14 +29,14 @@ namespace is_result_test {
 
 struct valid_t
 {
-    uint64_t quotient;
-    uint32_t remainder;
+    wide_t   quotient;
+    narrow_t remainder;
 };
 
 struct reversed_sizes_t
 {
-    uint32_t quotient;
-    uint64_t remainder;
+    narrow_t quotient;
+    wide_t   remainder;
 };
 
 struct signed_types_t
@@ -44,12 +47,12 @@ struct signed_types_t
 
 struct missing_remainder_t
 {
-    uint64_t quotient;
+    wide_t quotient;
 };
 
 struct missing_quotient_t
 {
-    uint32_t remainder;
+    narrow_t remainder;
 };
 
 struct nonadjacent_sizes_t
@@ -101,17 +104,17 @@ namespace is_divider_test {
 
 struct valid_divider_t
 {
-    constexpr auto operator()(uint64_t, uint32_t, rounding_mode_t) const noexcept -> uint64_t;
+    constexpr auto operator()(wide_t, narrow_t, rounding_mode_t) const noexcept -> wide_t;
 };
 
-static_assert(is_divider<valid_divider_t, uint32_t, rounding_mode_t>);
-static_assert(!is_divider<arbitrary_t, uint32_t, rounding_mode_t>);
+static_assert(is_divider<valid_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_divider<arbitrary_t, narrow_t, rounding_mode_t>);
 
 struct wrong_return_divider_t
 {
-    constexpr auto operator()(uint64_t, uint32_t, rounding_mode_t) const noexcept -> uint32_t;
+    constexpr auto operator()(wide_t, narrow_t, rounding_mode_t) const noexcept -> narrow_t;
 };
-static_assert(!is_divider<wrong_return_divider_t, uint32_t, rounding_mode_t>);
+static_assert(!is_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
 
 } // namespace is_divider_test
 
@@ -123,17 +126,17 @@ namespace is_rounded_divider_test {
 
 struct valid_rounded_divider_t
 {
-    constexpr auto operator()(uint32_t, uint32_t, rounding_mode_t) const noexcept -> uint64_t;
+    constexpr auto operator()(narrow_t, narrow_t, rounding_mode_t) const noexcept -> wide_t;
 };
 
-static_assert(is_rounded_divider<valid_rounded_divider_t, uint32_t, rounding_mode_t>);
-static_assert(!is_rounded_divider<arbitrary_t, uint32_t, rounding_mode_t>);
+static_assert(is_rounded_divider<valid_rounded_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_rounded_divider<arbitrary_t, narrow_t, rounding_mode_t>);
 
 struct wrong_return_divider_t
 {
-    constexpr auto operator()(uint32_t, uint32_t, rounding_mode_t) const noexcept -> uint32_t;
+    constexpr auto operator()(narrow_t, narrow_t, rounding_mode_t) const noexcept -> narrow_t;
 };
-static_assert(!is_rounded_divider<wrong_return_divider_t, uint32_t, rounding_mode_t>);
+static_assert(!is_rounded_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
 
 } // namespace is_rounded_divider_test
 
