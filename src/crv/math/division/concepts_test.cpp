@@ -115,5 +115,27 @@ static_assert(!is_divider<wrong_return_divider_t, uint32_t, rounding_mode_t>);
 
 } // namespace is_divider_test
 
+// ====================================================================================================================
+// is_rounded_divider
+// ====================================================================================================================
+
+namespace is_rounded_divider_test {
+
+struct valid_rounded_divider_t
+{
+    constexpr auto operator()(uint32_t, uint32_t, rounding_mode_t) const noexcept -> uint64_t;
+};
+
+static_assert(is_rounded_divider<valid_rounded_divider_t, uint32_t, rounding_mode_t>);
+static_assert(!is_rounded_divider<arbitrary_t, uint32_t, rounding_mode_t>);
+
+struct wrong_return_divider_t
+{
+    constexpr auto operator()(uint32_t, uint32_t, rounding_mode_t) const noexcept -> uint32_t;
+};
+static_assert(!is_rounded_divider<wrong_return_divider_t, uint32_t, rounding_mode_t>);
+
+} // namespace is_rounded_divider_test
+
 } // namespace
 } // namespace crv::division
