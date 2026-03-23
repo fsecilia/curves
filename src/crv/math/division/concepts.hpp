@@ -26,11 +26,11 @@ concept is_result = requires(std::remove_cvref_t<result_t> result) {
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// is_wide_divider
+// is_hardware_divider
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename divider_t, typename narrow_t>
-concept is_wide_divider = requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor) {
+concept is_hardware_divider = requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor) {
     { divider(dividend, divisor) } -> is_result;
 };
 

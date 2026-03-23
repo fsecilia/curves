@@ -18,7 +18,7 @@ namespace crv::division {
 /// brackets division with rounding mode
 ///
 /// This type applies a rounding mode, biasing before for fast modes and carrying after for safe modes.
-template <unsigned_integral narrow_t, is_wide_divider<narrow_t> wide_divider_t> struct rounding_divider_t
+template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> wide_divider_t> struct rounding_divider_t
 {
     using wide_t = wider_t<narrow_t>;
 

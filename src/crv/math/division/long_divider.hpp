@@ -19,7 +19,7 @@ namespace crv::division {
 template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename hardware_divider_t> struct long_divider_t;
 
 /// specializes explicitly on wide dividend, narrow divisor
-template <unsigned_integral narrow_t, is_wide_divider<narrow_t> hardware_divider_t>
+template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t>
 struct long_divider_t<wider_t<narrow_t>, narrow_t, hardware_divider_t>
 {
     using wide_t   = wider_t<narrow_t>;

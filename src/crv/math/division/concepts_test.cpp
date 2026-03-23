@@ -68,21 +68,21 @@ static_assert(!is_result<missing_remainder_t>);
 } // namespace is_result_test
 
 // --------------------------------------------------------------------------------------------------------------------
-// is_wide_divider
+// is_hardware_divider
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename narrow_t> struct wide_divider_t
+template <typename narrow_t> struct hardware_divider_t
 {
     using wide_t = wider_t<narrow_t>;
     constexpr auto operator()(wide_t, narrow_t) const noexcept -> result_t<wide_t, narrow_t> { return {}; }
 };
 
-static_assert(!is_wide_divider<wide_divider_t<int_t>, int_t>);
-static_assert(is_wide_divider<wide_divider_t<uint_t>, uint_t>);
+static_assert(!is_hardware_divider<hardware_divider_t<int_t>, int_t>);
+static_assert(is_hardware_divider<hardware_divider_t<uint_t>, uint_t>);
 
-static_assert(!is_wide_divider<wide_divider_t<int_t>, arbitrary_t>);
+static_assert(!is_hardware_divider<hardware_divider_t<int_t>, arbitrary_t>);
 
-static_assert(!is_wide_divider<arbitrary_t, int_t>);
+static_assert(!is_hardware_divider<arbitrary_t, int_t>);
 
 } // namespace
 } // namespace crv::division
