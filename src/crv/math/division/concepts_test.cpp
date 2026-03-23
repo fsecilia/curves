@@ -71,18 +71,21 @@ static_assert(!is_result<missing_remainder_t>);
 // is_hardware_divider
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename narrow_t> struct hardware_divider_t
+namespace is_hardware_divider_test {
+
+template <unsigned_integral narrow_t> struct valid_hardware_divider_t
 {
     using wide_t = wider_t<narrow_t>;
-    constexpr auto operator()(wide_t, narrow_t) const noexcept -> result_t<wide_t, narrow_t> { return {}; }
+    constexpr auto operator()(wide_t, narrow_t) const noexcept -> result_t<narrow_t>;
 };
 
-static_assert(!is_hardware_divider<hardware_divider_t<int_t>, int_t>);
-static_assert(is_hardware_divider<hardware_divider_t<uint_t>, uint_t>);
+static_assert(is_hardware_divider<valid_hardware_divider_t<uint_t>, uint_t>);
+static_assert(is_hardware_divider<valid_hardware_divider_t<uint8_t>, uint8_t>);
+static_assert(is_hardware_divider<valid_hardware_divider_t<uint32_t>, uint32_t>);
+static_assert(!is_hardware_divider<valid_hardware_divider_t<uint_t>, int_t>);
+static_assert(!is_hardware_divider<arbitrary_t, uint_t>);
 
-static_assert(!is_hardware_divider<hardware_divider_t<int_t>, arbitrary_t>);
-
-static_assert(!is_hardware_divider<arbitrary_t, int_t>);
+} // namespace is_hardware_divider_test
 
 } // namespace
 } // namespace crv::division
