@@ -232,11 +232,11 @@ auto divide(fixed_t<uint64_t, lhs_frac_bits> lhs, fixed_t<uint64_t, rhs_frac_bit
     auto const quotient_overflows = (dividend >> 64) >= divisor;
     if (quotient_overflows) [[unlikely]] { return {max<uint64_t>()}; }
 
-    auto [quotient, remainder] = division::hardware_divider_t<uint128_t, uint64_t>{}(dividend, divisor);
+    auto [quotient, remainder] = division::hardware_divider_t<uint64_t>{}(dividend, divisor);
 
     quotient += remainder >= (divisor - remainder);
 
-    return {quotient};
+    return {int_cast<uint64_t>(quotient)};
 }
 
 } // namespace crv
