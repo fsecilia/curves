@@ -15,17 +15,18 @@
 
 namespace crv::division {
 
-template <typename prescaling_divider_t, bool saturates = true> struct shifted_int_divider_t
+template <typename narrow_divider_t, bool saturates = true> struct shifted_int_divider_t
 {
-    [[no_unique_address]] prescaling_divider_t prescaling_divider;
+    [[no_unique_address]] narrow_divider_t narrow_divider;
 
     template <unsigned_integral narrow_t, typename rounding_mode_t>
+        requires is_narrow_divider<narrow_divider_t, narrow_t, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> narrow_t
     {
         using wide_t = wider_t<narrow_t>;
 
-        auto const wide_quotient = prescaling_divider(dividend, divisor, rounding_mode);
+        auto const wide_quotient = narrow_divider(dividend, divisor, rounding_mode);
 
         if constexpr (saturates)
         {
@@ -36,6 +37,7 @@ template <typename prescaling_divider_t, bool saturates = true> struct shifted_i
     }
 
     template <signed_integral narrow_t, typename rounding_mode_t>
+        requires is_narrow_divider<narrow_divider_t, make_unsigned_t<narrow_t>, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> narrow_t
     {
@@ -46,7 +48,7 @@ template <typename prescaling_divider_t, bool saturates = true> struct shifted_i
         auto const abs_dividend = dividend < 0 ? -static_cast<unsigned_t>(dividend) : static_cast<unsigned_t>(dividend);
         auto const abs_divisor  = divisor < 0 ? -static_cast<unsigned_t>(divisor) : static_cast<unsigned_t>(divisor);
 
-        auto const wide_quotient = prescaling_divider(abs_dividend, abs_divisor, rounding_mode);
+        auto const wide_quotient = narrow_divider(abs_dividend, abs_divisor, rounding_mode);
         auto const magnitude     = static_cast<unsigned_t>(wide_quotient);
         auto const signed_result = negative ? static_cast<narrow_t>(-magnitude) : static_cast<narrow_t>(magnitude);
 

@@ -22,6 +22,16 @@ template <typename wide_t, wide_t canned_value> struct constant_divider_t
     template <typename... args_t> constexpr auto operator()(args_t...) const noexcept -> wide_t { return canned_value; }
 };
 
+/// stub; returns first parameter verbatim
+template <typename narrow_t> struct stub_rounding_mode_t
+{
+    using wide_t = wider_t<narrow_t>;
+    constexpr auto bias(wide_t dividend, narrow_t) const noexcept -> wide_t { return dividend; }
+    constexpr auto carry(wide_t quotient, narrow_t, narrow_t) const noexcept -> wide_t { return quotient; }
+
+    constexpr auto use(wide_t value) const noexcept -> wide_t { return value * 2; }
+};
+
 /// fake; returns an asymmetric combination of inputs so tests can detect argument swaps
 ///
 /// The weights here, (3, 2), are arbitrary primes; they just need to be distinct so f(a, b) != f(b, a).
@@ -30,16 +40,9 @@ template <typename wide_t, typename narrow_t, typename rounding_mode_t> struct f
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> wide_t
     {
-        return int_cast<wide_t>(dividend) * 3 + int_cast<wide_t>(divisor) * 2 + int_cast<wide_t>(rounding_mode);
+        return rounding_mode.use(int_cast<wide_t>(dividend) * 3 + int_cast<wide_t>(divisor));
     }
 };
-
-/// dummy; rounding mode is just an int
-///
-/// Normally, rounding mode is a type with methods, but we just need to verify that it is fowarded, and any value type
-/// is sufficient for that.
-using rounding_mode_t        = int_t;
-constexpr auto rounding_mode = int_t{7};
 
 // ====================================================================================================================
 // Unsigned
@@ -57,12 +60,13 @@ constexpr auto divisor  = narrow_t{13};
 // Forwarding
 // --------------------------------------------------------------------------------------------------------------------
 
+using rounding_mode_t        = stub_rounding_mode_t<narrow_t>;
+constexpr auto rounding_mode = rounding_mode_t{};
+
 using forwarding_divider_t = forwarding_divider_t<wide_t, narrow_t, rounding_mode_t>;
 using forwarding_sut_t     = shifted_int_divider_t<forwarding_divider_t, true>;
 
-// 11 * 3 + 13 * 2 + 7 = 66, fits in narrow_t, so no saturation.
-// Swapped arguments would give 13 * 3 + 11 * 2 + 7 = 68
-static_assert(forwarding_sut_t{}(dividend, divisor, rounding_mode) == narrow_t{66});
+static_assert(forwarding_sut_t{}(dividend, divisor, rounding_mode) == narrow_t{(dividend * 3 + divisor) * 2});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Saturation
@@ -88,15 +92,19 @@ static_assert(constant_sut_t<wide_t{1000}, true>{}(dividend, divisor, rounding_m
 
 template <typename narrow_t> struct unsigned_boundary_check_t
 {
-    using wide_t            = wider_t<narrow_t>;
-    static constexpr auto d = narrow_t{1};
+    using wide_t                 = wider_t<narrow_t>;
+    static constexpr auto narrow = narrow_t{1};
+
+    using rounding_mode_t               = stub_rounding_mode_t<narrow_t>;
+    static constexpr auto rounding_mode = rounding_mode_t{};
 
     template <wide_t canned_value, bool saturates>
     using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
 
-    static_assert(constant_sut_t<wide_t{max<narrow_t>()}, true>{}(d, d, rounding_mode) == max<narrow_t>());
-    static_assert(constant_sut_t<wide_t{max<narrow_t>()} + 1, true>{}(d, d, rounding_mode) == max<narrow_t>());
-    static_assert(constant_sut_t<wide_t{max<narrow_t>()} + 1, false>{}(d, d, rounding_mode) == narrow_t{0});
+    static_assert(constant_sut_t<wide_t{max<narrow_t>()}, true>{}(narrow, narrow, rounding_mode) == max<narrow_t>());
+    static_assert(constant_sut_t<wide_t{max<narrow_t>()} + 1, true>{}(narrow, narrow, rounding_mode)
+                  == max<narrow_t>());
+    static_assert(constant_sut_t<wide_t{max<narrow_t>()} + 1, false>{}(narrow, narrow, rounding_mode) == narrow_t{0});
 };
 
 template struct unsigned_boundary_check_t<uint8_t>;
@@ -124,16 +132,19 @@ constexpr auto negative_divisor  = narrow_t{-13};
 // Forwarding
 // --------------------------------------------------------------------------------------------------------------------
 
+using rounding_mode_t        = stub_rounding_mode_t<unsigned_t>;
+constexpr auto rounding_mode = rounding_mode_t{};
+
 // forwarding divider receives unsigned_t args from the signed overload
 using forwarding_divider_t = forwarding_divider_t<wide_t, unsigned_t, rounding_mode_t>;
 using forwarding_sut_t     = shifted_int_divider_t<forwarding_divider_t, true>;
 
-// All four sign quadrants produce same magnitude: 11 * 3 + 13 * 2 + 7 = 66
+// All four sign quadrants produce same magnitude: (11 * 3 + 13)*2 = 92
 // Only the final sign differs. If either abs were missing, the asymmetric combination would produce a different value.
-static_assert(forwarding_sut_t{}(positive_dividend, positive_divisor, rounding_mode) == narrow_t{66});  // +/+ -> +
-static_assert(forwarding_sut_t{}(positive_dividend, negative_divisor, rounding_mode) == narrow_t{-66}); // +/- -> -
-static_assert(forwarding_sut_t{}(negative_dividend, positive_divisor, rounding_mode) == narrow_t{-66}); // -/+ -> -
-static_assert(forwarding_sut_t{}(negative_dividend, negative_divisor, rounding_mode) == narrow_t{66});  // -/- -> +
+static_assert(forwarding_sut_t{}(positive_dividend, positive_divisor, rounding_mode) == narrow_t{92});  // +/+ -> +
+static_assert(forwarding_sut_t{}(positive_dividend, negative_divisor, rounding_mode) == narrow_t{-92}); // +/- -> -
+static_assert(forwarding_sut_t{}(negative_dividend, positive_divisor, rounding_mode) == narrow_t{-92}); // -/+ -> -
+static_assert(forwarding_sut_t{}(negative_dividend, negative_divisor, rounding_mode) == narrow_t{92});  // -/- -> +
 
 // --------------------------------------------------------------------------------------------------------------------
 // Positive Saturation Boundaries
@@ -194,21 +205,29 @@ static_assert(edge_case_sut_t{}(narrow_t{0}, narrow_t{-1}, rounding_mode) == nar
 
 template <typename narrow_t> struct signed_boundary_check_t
 {
-    using unsigned_t          = make_unsigned_t<narrow_t>;
-    using wide_t              = wider_t<unsigned_t>;
-    static constexpr auto pos = narrow_t{1};
-    static constexpr auto neg = narrow_t{-1};
+    using unsigned_t = make_unsigned_t<narrow_t>;
+    using wide_t     = wider_t<unsigned_t>;
+
+    static constexpr auto positive = narrow_t{1};
+    static constexpr auto negative = narrow_t{-1};
+
+    using rounding_mode_t               = stub_rounding_mode_t<unsigned_t>;
+    static constexpr auto rounding_mode = rounding_mode_t{};
 
     template <wide_t canned_value, bool saturates>
     using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
 
     // positive result: max<narrow_t>() is the bound
-    static_assert(constant_sut_t<wide_t(max<narrow_t>()), true>{}(pos, pos, rounding_mode) == max<narrow_t>());
-    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 1, true>{}(pos, pos, rounding_mode) == max<narrow_t>());
+    static_assert(constant_sut_t<wide_t(max<narrow_t>()), true>{}(positive, positive, rounding_mode)
+                  == max<narrow_t>());
+    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 1, true>{}(positive, positive, rounding_mode)
+                  == max<narrow_t>());
 
     // negative result: max<narrow_t>() + 1 is representable as min<narrow_t>()
-    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 1, true>{}(neg, pos, rounding_mode) == min<narrow_t>());
-    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 2, true>{}(neg, pos, rounding_mode) == min<narrow_t>());
+    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 1, true>{}(negative, positive, rounding_mode)
+                  == min<narrow_t>());
+    static_assert(constant_sut_t<wide_t(max<narrow_t>()) + 2, true>{}(negative, positive, rounding_mode)
+                  == min<narrow_t>());
 };
 
 template struct signed_boundary_check_t<int8_t>;
