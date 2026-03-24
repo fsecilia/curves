@@ -21,13 +21,11 @@ target_sources_kernel(lib
     lib.hpp
     lib.cpp
     math/division/concepts.hpp
-    math/division/dispatching_divider.hpp
     math/division/divider.hpp
     math/division/hardware_divider.hpp
     math/division/io.hpp
     math/division/prescaling_dividers.hpp
     math/division/result.hpp
-    math/division/rounding_divider.hpp
     math/division/shifted_int_divider.hpp
     math/fixed/fixed.hpp
     math/fixed/exp2.hpp
@@ -55,12 +53,10 @@ if (enable_testing)
         math/arg_min_max_test.cpp
         math/compensated_accumulator_test.cpp
         math/division/concepts_test.cpp
-        math/division/dispatching_divider_test.cpp
         math/division/divider_test.cpp
         math/division/hardware_divider_test.cpp
         math/division/io_test.cpp
         math/division/prescaling_dividers_test.cpp
-        math/division/rounding_divider_test.cpp
         math/division/shifted_int_divider_test.cpp
         math/error_metrics_test.cpp
         math/fixed/exp2_neg_m1_test.cpp

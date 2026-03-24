@@ -8,9 +8,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/division/concepts.hpp>
-#include <crv/math/division/result.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
+#include <crv/math/rounding_mode.hpp>
 #include <climits>
 
 namespace crv::division {
@@ -18,21 +18,48 @@ namespace crv::division {
 /// performs unsigned long division, splitting dividend into high and low halves
 template <unsigned_integral dividend_t, unsigned_integral divisor_t, typename hardware_divider_t> struct long_divider_t;
 
-/// specializes explicitly on wide dividend, narrow divisor
-template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t>
-struct long_divider_t<wider_t<narrow_t>, narrow_t, hardware_divider_t>
+/// divides a wide dividend by a narrow divisor, then rounds using a rounding mode
+template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t> struct divider_t
 {
-    using wide_t   = wider_t<narrow_t>;
-    using result_t = result_t<wide_t, narrow_t>;
+    using wide_t = wider_t<narrow_t>;
+
+    static constexpr auto const narrow_width = static_cast<int_t>(sizeof(narrow_t) * CHAR_BIT);
 
     [[no_unique_address]] hardware_divider_t hardware_divider;
 
-    /// invokes hardware divider with high and low halves of dividend
+    /// brackets division with rounding mode
     ///
-    /// This function takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then
-    /// performs long division, invoking the hardware divider to divide each half, strictly satisfying the hardware
-    /// divider's precondition that the upper half of the passed dividend must be strictly less than the passed divisor.
-    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t
+    /// This method applies the rounding mode's bias before division and carry after. It dispatches directly to hardware
+    /// division when the quotient fits in a narrow register and falls back to long division otherwise. The carry is
+    /// applied inside each branch to preserve the narrow-range information for the optimizer.
+    template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept -> wide_t
+    {
+        auto const biased        = rounding_mode.bias(dividend, divisor);
+        auto const high_word     = static_cast<narrow_t>(biased >> narrow_width);
+        auto const quotient_fits = high_word < divisor;
+        if (quotient_fits) return apply_hardware_division(biased, divisor, rounding_mode);
+        else return apply_long_division(biased, divisor, rounding_mode);
+    }
+
+private:
+    // invokes hardware divider directly
+    template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
+    constexpr auto apply_hardware_division(wide_t dividend, narrow_t divisor,
+                                           rounding_mode_t rounding_mode) const noexcept -> wide_t
+    {
+        auto const result = hardware_divider(dividend, divisor);
+        return rounding_mode.carry(int_cast<wide_t>(result.quotient), divisor, result.remainder);
+    }
+
+    // invokes hardware divider with high and low halves of dividend
+    //
+    // This method takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then performs
+    // long division, invoking the hardware divider to divide each half, strictly satisfying the hardware divider's
+    // precondition that the upper half of the passed dividend must be strictly less than the passed divisor.
+    template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
+    constexpr auto apply_long_division(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
+        -> wide_t
     {
         // [x] := floor(x)
         // x = [x/y]y + x%y ; division identity
@@ -56,22 +83,21 @@ struct long_divider_t<wider_t<narrow_t>, narrow_t, hardware_divider_t>
         //     a/d -> (0c | a) >> shift < d
         //     ((a%d)c | b)/d -> ((a%d)c | b) >> shift < d
 
-        constexpr auto const width    = sizeof(dividend) * CHAR_BIT;
-        constexpr auto const shift    = width / 2;
-        constexpr auto const low_mask = (wide_t{1} << shift) - 1;
+        constexpr auto const low_mask = int_cast<wide_t>((wide_t{1} << narrow_width) - 1);
 
-        auto const high = dividend >> shift;
-        auto const low  = dividend & low_mask;
+        auto const high_dividend_high = int_cast<narrow_t>(dividend >> narrow_width);
+        auto const high_dividend_low  = int_cast<narrow_t>(dividend & low_mask);
 
         // upper half is 0, by definition
-        auto const high_result = hardware_divider(high, divisor);
+        auto const high_result = hardware_divider(high_dividend_high, divisor);
 
         // upper half is remainder of dividing by divisor, so it is strictly less than divisor
-        auto const remaining_result
-            = hardware_divider((int_cast<wide_t>(high_result.remainder) << shift) | low, divisor);
+        auto const low_dividend = (int_cast<wide_t>(high_result.remainder) << narrow_width) | high_dividend_low;
+        auto const low_result   = hardware_divider(low_dividend, divisor);
 
-        return result_t{.quotient  = (int_cast<wide_t>(high_result.quotient) << shift) + remaining_result.quotient,
-                        .remainder = remaining_result.remainder};
+        auto const quotient
+            = int_cast<wide_t>((int_cast<wide_t>(high_result.quotient) << narrow_width) + low_result.quotient);
+        return rounding_mode.carry(quotient, divisor, low_result.remainder);
     }
 };
 
