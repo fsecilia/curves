@@ -32,15 +32,16 @@ concept is_hardware_divider
 
 /// takes unsigned wide dividend, unsigned narrow divisor, and rounding mode; returns wide quotient
 template <typename divider_t, typename narrow_t, typename rounding_mode_t>
-concept is_divider = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, wider_t<narrow_t>, narrow_t>
-                     && requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor,
-                                 rounding_mode_t rounding_mode) {
-                            { divider(dividend, divisor, rounding_mode) } -> std::same_as<wider_t<narrow_t>>;
-                        };
+concept is_wide_divider
+    = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, wider_t<narrow_t>, narrow_t>
+      && requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor,
+                  rounding_mode_t rounding_mode) {
+             { divider(dividend, divisor, rounding_mode) } -> std::same_as<wider_t<narrow_t>>;
+         };
 
 /// takes unsigned narrow dividend, unsigned divisor, and rounding mode; returns wide quotient
 template <typename divider_t, typename narrow_t, typename rounding_mode_t>
-concept is_rounded_divider
+concept is_narrow_divider
     = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, wider_t<narrow_t>, narrow_t>
       && requires(divider_t const& divider, narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) {
              { divider(dividend, divisor, rounding_mode) } -> std::same_as<wider_t<narrow_t>>;

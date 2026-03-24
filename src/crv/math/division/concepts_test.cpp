@@ -107,38 +107,38 @@ struct valid_divider_t
     constexpr auto operator()(wide_t, narrow_t, rounding_mode_t) const noexcept -> wide_t;
 };
 
-static_assert(is_divider<valid_divider_t, narrow_t, rounding_mode_t>);
-static_assert(!is_divider<arbitrary_t, narrow_t, rounding_mode_t>);
+static_assert(is_wide_divider<valid_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_wide_divider<arbitrary_t, narrow_t, rounding_mode_t>);
 
 struct wrong_return_divider_t
 {
     constexpr auto operator()(wide_t, narrow_t, rounding_mode_t) const noexcept -> narrow_t;
 };
-static_assert(!is_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_wide_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
 
 } // namespace is_divider_test
 
 // ====================================================================================================================
-// is_rounded_divider
+// is_narrow_divider
 // ====================================================================================================================
 
-namespace is_rounded_divider_test {
+namespace is_narrow_divider_test {
 
-struct valid_rounded_divider_t
+struct valid_narrow_divider_t
 {
     constexpr auto operator()(narrow_t, narrow_t, rounding_mode_t) const noexcept -> wide_t;
 };
 
-static_assert(is_rounded_divider<valid_rounded_divider_t, narrow_t, rounding_mode_t>);
-static_assert(!is_rounded_divider<arbitrary_t, narrow_t, rounding_mode_t>);
+static_assert(is_narrow_divider<valid_narrow_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_narrow_divider<arbitrary_t, narrow_t, rounding_mode_t>);
 
 struct wrong_return_divider_t
 {
     constexpr auto operator()(narrow_t, narrow_t, rounding_mode_t) const noexcept -> narrow_t;
 };
-static_assert(!is_rounded_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
+static_assert(!is_narrow_divider<wrong_return_divider_t, narrow_t, rounding_mode_t>);
 
-} // namespace is_rounded_divider_test
+} // namespace is_narrow_divider_test
 
 } // namespace
 } // namespace crv::division

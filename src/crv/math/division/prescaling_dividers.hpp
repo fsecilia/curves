@@ -41,7 +41,7 @@ template <unsigned_integral narrow_t, int total_shift, typename divider_t> struc
     [[no_unique_address]] divider_t divide;
 
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
-        requires(is_divider<divider_t, narrow_t, rounding_mode_t>)
+        requires(is_wide_divider<divider_t, narrow_t, rounding_mode_t>)
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> wide_t
     {
@@ -68,7 +68,7 @@ template <unsigned_integral narrow_t, narrow_t constant_dividend, int total_shif
     static constexpr auto shifted_dividend = wide_dividend << total_shift;
 
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
-        requires(is_divider<divider_t, narrow_t, rounding_mode_t>)
+        requires(is_wide_divider<divider_t, narrow_t, rounding_mode_t>)
     constexpr auto operator()([[maybe_unused]] narrow_t dividend, narrow_t divisor,
                               rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
