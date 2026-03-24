@@ -34,13 +34,14 @@ template <integral integral_t> constexpr auto safe_clz(integral_t src) noexcept 
 } // namespace detail
 
 /// dynamically pre-shifts a variable dividend
-template <unsigned_integral narrow_t, int total_shift, typename wide_divider_t> struct variable_t
+template <unsigned_integral narrow_t, int total_shift, typename divider_t> struct variable_t
 {
     using wide_t = wider_t<narrow_t>;
 
-    [[no_unique_address]] wide_divider_t divide;
+    [[no_unique_address]] divider_t divide;
 
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
+        requires(is_divider<divider_t, narrow_t, rounding_mode_t>)
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> wide_t
     {
@@ -54,12 +55,11 @@ template <unsigned_integral narrow_t, int total_shift, typename wide_divider_t> 
 };
 
 /// statically pre-shifts a known constant dividend
-template <unsigned_integral narrow_t, narrow_t constant_dividend, int total_shift, typename wide_divider_t>
-struct constant_t
+template <unsigned_integral narrow_t, narrow_t constant_dividend, int total_shift, typename divider_t> struct constant_t
 {
     using wide_t = wider_t<narrow_t>;
 
-    [[no_unique_address]] wide_divider_t divide;
+    [[no_unique_address]] divider_t divide;
 
     static constexpr auto headroom = detail::safe_clz(int_cast<wide_t>(constant_dividend));
     static_assert(total_shift <= headroom, "crz::division::prescaling_dividers::constant_t: pre-shift would overflow");
@@ -68,6 +68,7 @@ struct constant_t
     static constexpr auto shifted_dividend = wide_dividend << total_shift;
 
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
+        requires(is_divider<divider_t, narrow_t, rounding_mode_t>)
     constexpr auto operator()([[maybe_unused]] narrow_t dividend, narrow_t divisor,
                               rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
