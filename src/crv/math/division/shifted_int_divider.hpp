@@ -52,7 +52,7 @@ template <typename prescaling_divider_t, bool saturates = true> struct shifted_i
 
         if constexpr (saturates)
         {
-            // Negative side has 1 more value than positive side (e.g. [-128, 127]). asymmetric_bound is that magnitude.
+            // negative side has 1 more value than positive side (e.g. [-128, 127]); asymmetric_bound is that magnitude
             auto const asymmetric_bound = static_cast<wide_t>(max<narrow_t>()) + static_cast<wide_t>(negative);
             auto const saturated_result = negative ? min<narrow_t>() : max<narrow_t>();
             return (wide_quotient > asymmetric_bound) ? saturated_result : signed_result;
