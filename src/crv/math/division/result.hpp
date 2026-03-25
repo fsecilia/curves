@@ -12,13 +12,13 @@
 namespace crv::division {
 
 /// result of division in full (quotient, remainder) form
-template <typename narrow_t> struct result_t
+template <typename narrow_t> struct qr_pair_t
 {
     narrow_t quotient;
     narrow_t remainder;
 
-    auto operator<=>(result_t const&) const noexcept -> auto = default;
-    auto operator==(result_t const&) const noexcept -> bool  = default;
+    auto operator<=>(qr_pair_t const&) const noexcept -> auto = default;
+    auto operator==(qr_pair_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv::division

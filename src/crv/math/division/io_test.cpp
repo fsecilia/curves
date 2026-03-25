@@ -13,19 +13,19 @@ namespace crv::division {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
-// result_t
+// qr_pair_t
 // --------------------------------------------------------------------------------------------------------------------
 
-struct division_result_param_t
+struct qr_pair_param_t
 {
-    division::result_t<uint32_t> sut;
-    std::string                  expected;
+    qr_pair_t<uint32_t> sut;
+    std::string         expected;
 };
 
-struct math_io_division_result_test_t : TestWithParam<division_result_param_t>
+struct math_division_qr_pair_io_test_t : TestWithParam<qr_pair_param_t>
 {};
 
-TEST_P(math_io_division_result_test_t, result)
+TEST_P(math_division_qr_pair_io_test_t, result)
 {
     auto const expected = GetParam().expected;
 
@@ -36,7 +36,7 @@ TEST_P(math_io_division_result_test_t, result)
     EXPECT_EQ(expected, actual);
 }
 
-division_result_param_t const division_result_test_params[] = {
+qr_pair_param_t const qr_pair_vectors[] = {
     {{.quotient = 0, .remainder = 0}, "{.quotient = 0, .remainder = 0}"},
     {{.quotient = 0, .remainder = 1}, "{.quotient = 0, .remainder = 1}"},
     {{.quotient = 1, .remainder = 0}, "{.quotient = 1, .remainder = 0}"},
@@ -53,7 +53,7 @@ division_result_param_t const division_result_test_params[] = {
         "{.quotient = 4294967295, .remainder = 4294967295}",
     },
 };
-INSTANTIATE_TEST_SUITE_P(cases, math_io_division_result_test_t, ValuesIn(division_result_test_params));
+INSTANTIATE_TEST_SUITE_P(qr_pair_vectors, math_division_qr_pair_io_test_t, ValuesIn(qr_pair_vectors));
 
 } // namespace
 } // namespace crv::division

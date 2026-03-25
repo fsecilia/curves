@@ -18,7 +18,7 @@ namespace crv::division {
 template <typename divider_t, typename narrow_t>
 concept is_hardware_divider
     = unsigned_integral<narrow_t> && requires(divider_t const& divider, wider_t<narrow_t> dividend, narrow_t divisor) {
-          { divider(dividend, divisor) } -> std::same_as<result_t<narrow_t>>;
+          { divider(dividend, divisor) } -> std::same_as<qr_pair_t<narrow_t>>;
       };
 
 /// takes unsigned wide dividend, unsigned narrow divisor, and rounding mode; returns wide quotient

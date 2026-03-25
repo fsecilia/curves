@@ -20,7 +20,7 @@ template <typename t_narrow_t> struct hardware_divider_test_t : Test
 {
     using narrow_t = t_narrow_t;
     using wide_t   = wider_t<narrow_t>;
-    using result_t = result_t<narrow_t>;
+    using result_t = qr_pair_t<narrow_t>;
     using sut_t    = hardware_divider_t<narrow_t>;
 
     // constructs wide dividend from individual words

@@ -15,7 +15,7 @@ namespace {
 template <typename narrow_t> struct fake_hardware_divider_t
 {
     using wide_t   = wider_t<narrow_t>;
-    using result_t = result_t<narrow_t>;
+    using result_t = qr_pair_t<narrow_t>;
 
     constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t
     {
@@ -130,7 +130,7 @@ struct division_divider_dispatch_test_t : TestWithParam<param_t>
     using wide_t   = param_t::wide_t;
     using narrow_t = param_t::narrow_t;
 
-    using result_t = result_t<narrow_t>;
+    using result_t = qr_pair_t<narrow_t>;
 
     static constexpr auto narrow_width = param_t::narrow_width;
     static constexpr auto narrow_mask  = param_t::narrow_mask;
@@ -235,7 +235,7 @@ template <typename t_narrow_t> struct divider_correctness_test_t : Test
 
     struct checking_hardware_divider_t
     {
-        auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<narrow_t>
+        auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
         {
             EXPECT_LT(dividend >> narrow_width, static_cast<wide_t>(divisor))
                 << "hardware divider precondition violated";
