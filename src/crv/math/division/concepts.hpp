@@ -14,15 +14,6 @@
 
 namespace crv::division {
 
-/// unsigned {quotient, remainder} pair
-template <typename result_t>
-concept is_result = requires(std::remove_cvref_t<result_t> result) {
-    result.quotient;
-    result.remainder;
-    requires unsigned_integral<decltype(result.quotient)>;
-    requires unsigned_integral<decltype(result.remainder)>;
-};
-
 /// takes unsigned wide dividend, unsigned narrow divisor, returns {quotient, remainder} pair
 template <typename divider_t, typename narrow_t>
 concept is_hardware_divider

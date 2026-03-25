@@ -22,61 +22,6 @@ struct rounding_mode_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// is_result
-// --------------------------------------------------------------------------------------------------------------------
-
-namespace is_result_test {
-
-struct valid_t
-{
-    wide_t   quotient;
-    narrow_t remainder;
-};
-
-struct reversed_sizes_t
-{
-    narrow_t quotient;
-    wide_t   remainder;
-};
-
-struct signed_types_t
-{
-    int64_t quotient;
-    int32_t remainder;
-};
-
-struct missing_remainder_t
-{
-    wide_t quotient;
-};
-
-struct missing_quotient_t
-{
-    narrow_t remainder;
-};
-
-struct nonadjacent_sizes_t
-{
-    uint64_t quotient;
-    uint8_t  remainder;
-};
-
-static_assert(is_result<valid_t>);
-static_assert(is_result<valid_t const>);
-static_assert(is_result<valid_t&>);
-static_assert(is_result<valid_t const&>);
-static_assert(is_result<valid_t volatile&&>);
-
-static_assert(is_result<reversed_sizes_t>);
-static_assert(is_result<nonadjacent_sizes_t>);
-
-static_assert(!is_result<signed_types_t>);
-static_assert(!is_result<missing_quotient_t>);
-static_assert(!is_result<missing_remainder_t>);
-
-} // namespace is_result_test
-
-// --------------------------------------------------------------------------------------------------------------------
 // is_hardware_divider
 // --------------------------------------------------------------------------------------------------------------------
 
