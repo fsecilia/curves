@@ -22,6 +22,7 @@ target_sources_kernel(lib
     lib.cpp
     math/division/concepts.hpp
     math/division/hardware_divider.hpp
+    math/division/divider.hpp
     math/division/io.hpp
     math/division/result.hpp
     math/division/shifted_int_divider.hpp
