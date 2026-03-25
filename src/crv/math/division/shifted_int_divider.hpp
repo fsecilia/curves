@@ -24,9 +24,9 @@ namespace detail {
 /// `clz(dividend | 1)`, the count only changes for the `dividend == 0` case, where it returns one less than the full
 /// bit-width, avoiding UB. Left shifting 0 is still 0, so the final result is correct in all cases. This saves a branch
 /// at the cost of a const ALU op.
-template <integral integral_t> constexpr auto safe_clz(integral_t src) noexcept -> integral_t
+template <unsigned_integral src_t> constexpr auto safe_clz(src_t src) noexcept -> src_t
 {
-    return int_cast<integral_t>(std::countl_zero(int_cast<integral_t>(src | 1)));
+    return int_cast<src_t>(std::countl_zero(int_cast<src_t>(src | 1)));
 }
 
 } // namespace detail
