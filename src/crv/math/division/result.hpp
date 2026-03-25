@@ -12,10 +12,10 @@
 namespace crv::division {
 
 /// result of division in full (quotient, remainder) form
-template <typename quotient_t, typename remainder_t = quotient_t> struct result_t
+template <typename narrow_t> struct result_t
 {
-    quotient_t  quotient;
-    remainder_t remainder;
+    narrow_t quotient;
+    narrow_t remainder;
 
     auto operator<=>(result_t const&) const noexcept -> auto = default;
     auto operator==(result_t const&) const noexcept -> bool  = default;

@@ -15,8 +15,7 @@ namespace crv::division {
 
 using crv::operator<<;
 
-template <typename quotient_t, typename remainder_t>
-auto operator<<(std::ostream& out, result_t<quotient_t, remainder_t> const& src) -> std::ostream&
+template <typename narrow_t> auto operator<<(std::ostream& out, result_t<narrow_t> const& src) -> std::ostream&
 {
     return out << "{.quotient = " << src.quotient << ", .remainder = " << src.remainder << "}";
 }

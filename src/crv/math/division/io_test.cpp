@@ -18,8 +18,8 @@ namespace {
 
 struct division_result_param_t
 {
-    division::result_t<uint64_t, uint32_t> sut;
-    std::string                            expected;
+    division::result_t<uint32_t> sut;
+    std::string                  expected;
 };
 
 struct math_io_division_result_test_t : TestWithParam<division_result_param_t>
@@ -43,14 +43,14 @@ division_result_param_t const division_result_test_params[] = {
     {{.quotient = 1, .remainder = 1}, "{.quotient = 1, .remainder = 1}"},
 
     {{.quotient = 0, .remainder = max<uint32_t>()}, "{.quotient = 0, .remainder = 4294967295}"},
-    {{.quotient = max<uint64_t>(), .remainder = 0}, "{.quotient = 18446744073709551615, .remainder = 0}"},
+    {{.quotient = max<uint32_t>(), .remainder = 0}, "{.quotient = 4294967295, .remainder = 0}"},
 
     {
         {
-            .quotient  = max<uint64_t>(),
+            .quotient  = max<uint32_t>(),
             .remainder = max<uint32_t>(),
         },
-        "{.quotient = 18446744073709551615, .remainder = 4294967295}",
+        "{.quotient = 4294967295, .remainder = 4294967295}",
     },
 };
 INSTANTIATE_TEST_SUITE_P(cases, math_io_division_result_test_t, ValuesIn(division_result_test_params));

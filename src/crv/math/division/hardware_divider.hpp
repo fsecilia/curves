@@ -26,9 +26,9 @@ template <unsigned_integral t_narrow_t> struct hardware_divider_t
     using wide_t   = wider_t<narrow_t>;
 
     /// generic division; uses compiler's existing division operator
-    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<wide_t, narrow_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<narrow_t>
     {
-        return {.quotient  = static_cast<wide_t>(dividend / divisor),
+        return {.quotient  = static_cast<narrow_t>(dividend / divisor),
                 .remainder = static_cast<narrow_t>(dividend % divisor)};
     }
 };
@@ -41,7 +41,7 @@ template <> struct hardware_divider_t<uint32_t>
     using wide_t   = uint64_t;
     using narrow_t = uint32_t;
 
-    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<wide_t, narrow_t>
+    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<narrow_t>
     {
         auto const high = int_cast<narrow_t>(dividend >> 32);
         auto const low  = int_cast<narrow_t>(dividend & 0xFFFFFFFF);
@@ -52,7 +52,7 @@ template <> struct hardware_divider_t<uint32_t>
         narrow_t remainder;
         asm("divl %[divisor]" : "=a"(quotient), "=d"(remainder) : "d"(high), "a"(low), [divisor] "r"(divisor) : "cc");
 
-        return {int_cast<wide_t>(quotient), remainder};
+        return {quotient, remainder};
     }
 };
 
@@ -62,7 +62,7 @@ template <> struct hardware_divider_t<uint64_t>
     using wide_t   = uint128_t;
     using narrow_t = uint64_t;
 
-    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<wide_t, narrow_t>
+    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t<narrow_t>
     {
         auto const high = int_cast<narrow_t>(dividend >> 64);
         auto const low  = int_cast<narrow_t>(dividend & 0xFFFFFFFFFFFFFFFFull);
@@ -73,7 +73,7 @@ template <> struct hardware_divider_t<uint64_t>
         narrow_t remainder;
         asm("divq %[divisor]" : "=a"(quotient), "=d"(remainder) : "d"(high), "a"(low), [divisor] "r"(divisor) : "cc");
 
-        return {int_cast<wide_t>(quotient), remainder};
+        return {quotient, remainder};
     }
 };
 
