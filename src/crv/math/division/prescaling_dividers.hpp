@@ -19,7 +19,7 @@
 namespace crv::division::prescaling_dividers {
 namespace detail {
 
-/// returns clz, clamped to one less than bit-width of integral, avoiding UB from `0 << safe_clz(0)`
+/// returns clz, clamped to one less than bit-width of integral, avoiding UB from `0 << clz(0)`
 ///
 /// In general, dividends are normalized via `dividend << clz(dividend)`. However, if `dividend` is 0, `clz` returns the
 /// full bit-width of integer type. This evaluates to `0 << width`, which invokes UB. By bitwise ORing in a 1,
