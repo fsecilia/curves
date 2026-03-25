@@ -97,8 +97,8 @@ template <typename narrow_t> struct unsigned_test_t
         test_common(sut);
 
         // truncation: non-saturating adapters truncate instead of clamping
-        constexpr auto truncated_val = static_cast<narrow_t>((static_cast<wide_t>(max_narrow) * 10) / 1);
-        static_assert(sut(max_narrow, narrow_t{1}, rounding_mode) == truncated_val);
+        constexpr auto truncated = static_cast<narrow_t>((static_cast<wide_t>(max_narrow) * 10) / 1);
+        static_assert(sut(max_narrow, narrow_t{1}, rounding_mode) == truncated);
     }
 };
 
@@ -167,10 +167,9 @@ template <typename narrow_t> struct signed_test_t
 
         // truncation on deep negative overflow
         constexpr auto abs_min_val = static_cast<wide_t>(max_narrow) + 1;
-        constexpr auto wide_quot   = (abs_min_val * 10) / 1;
-        constexpr auto trunc_mag   = static_cast<unsigned_t>(wide_quot);
-        constexpr auto trunc_val   = static_cast<narrow_t>(-trunc_mag);
-        static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == trunc_val);
+        constexpr auto truncated   = (abs_min_val * 10) / 1;
+        constexpr auto magnitude   = static_cast<unsigned_t>(truncated);
+        static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == static_cast<narrow_t>(-magnitude));
     }
 };
 
