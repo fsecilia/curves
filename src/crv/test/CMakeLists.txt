@@ -18,3 +18,4 @@ target_link_libraries(test PUBLIC
 add_subdirectory(accuracy)
 add_subdirectory(float128)
 add_subdirectory(integration)
+add_subdirectory(performance)
