@@ -53,6 +53,7 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     list(APPEND compile_options_common
+        -ftemplate-backtrace-limit=1
         -Wno-changes-meaning
     )
 endif()
