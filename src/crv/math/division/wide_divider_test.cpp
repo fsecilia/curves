@@ -256,8 +256,8 @@ TYPED_TEST_SUITE(divider_correctness_test_t, correctness_types_t);
 
 TYPED_TEST(divider_correctness_test_t, random_inputs)
 {
-    using wide_t   = typename TestFixture::wide_t;
-    using narrow_t = typename TestFixture::narrow_t;
+    using wide_t   = TestFixture::wide_t;
+    using narrow_t = TestFixture::narrow_t;
 
     constexpr auto narrow_width  = TestFixture::narrow_width;
     constexpr auto rounding_mode = TestFixture::rounding_mode;
@@ -280,8 +280,8 @@ TYPED_TEST(divider_correctness_test_t, random_inputs)
 
 TYPED_TEST(divider_correctness_test_t, edge_cases)
 {
-    using wide_t   = typename TestFixture::wide_t;
-    using narrow_t = typename TestFixture::narrow_t;
+    using wide_t   = TestFixture::wide_t;
+    using narrow_t = TestFixture::narrow_t;
 
     constexpr auto max_narrow    = TestFixture::max_narrow;
     constexpr auto max_wide      = static_cast<wide_t>(~wide_t{0});
