@@ -56,33 +56,4 @@ template <integral to_t, integral from_t> constexpr auto int_cast(from_t from) n
     return static_cast<to_t>(from);
 }
 
-/// converts to unsigned type, applying abs when negative
-template <signed_integral signed_t>
-constexpr auto to_unsigned_abs(signed_t src) noexcept -> std::make_unsigned_t<signed_t>
-{
-    using unsigned_t = std::make_unsigned_t<signed_t>;
-    return src < 0 ? -static_cast<unsigned_t>(src) : static_cast<unsigned_t>(src);
-}
-
-/// converts to signed type, negating if negative
-template <unsigned_integral unsigned_t>
-constexpr auto to_signed(unsigned_t src, bool negative) noexcept -> std::make_signed_t<unsigned_t>
-{
-    using dst_t = std::make_signed_t<unsigned_t>;
-
-    // result must be within [min(), max()] for signed range
-    assert(src <= (negative ? static_cast<unsigned_t>(min<dst_t>()) : static_cast<unsigned_t>(max<dst_t>()))
-           && "to_signed: input out of range");
-
-    // negation must occur before conversion because abs(min()) is not representable by signed types
-    return negative ? static_cast<dst_t>(-src) : static_cast<dst_t>(src);
-}
-
-/// converts to signed type, applying sign of sign to result
-template <unsigned_integral unsigned_t>
-constexpr auto to_signed_copysign(unsigned_t src, signed_integral auto sign) noexcept -> std::make_signed_t<unsigned_t>
-{
-    return to_signed(src, sign < 0);
-}
-
 } // namespace crv
