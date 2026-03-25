@@ -28,6 +28,20 @@ template <typename narrow_divider_t, bool saturates = true> struct saturating_di
     {
         using wide_t = wider_t<narrow_t>;
 
+        // handle divide by 0
+        if constexpr (saturates)
+        {
+            if (divisor == 0) [[unlikely]]
+            {
+                if (dividend == 0) return narrow_t{0};
+                return max<narrow_t>();
+            }
+        }
+        else
+        {
+            assert(divisor != 0);
+        }
+
         auto const wide_quotient = narrow_divider(dividend, divisor, rounding_mode);
 
         if constexpr (saturates)
@@ -46,6 +60,20 @@ template <typename narrow_divider_t, bool saturates = true> struct saturating_di
     {
         using unsigned_t = make_unsigned_t<narrow_t>;
         using wide_t     = wider_t<unsigned_t>;
+
+        // handle divide by 0
+        if constexpr (saturates)
+        {
+            if (divisor == 0) [[unlikely]]
+            {
+                if (dividend == 0) return narrow_t{0};
+                return dividend > 0 ? max<narrow_t>() : min<narrow_t>();
+            }
+        }
+        else
+        {
+            assert(divisor != 0);
+        }
 
         auto const abs_dividend = static_cast<unsigned_t>(dividend < 0 ? -static_cast<unsigned_t>(dividend)
                                                                        : static_cast<unsigned_t>(dividend));

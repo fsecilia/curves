@@ -68,7 +68,7 @@ template <typename narrow_t> struct unsigned_test_t
         // (5*10)/2 = 25
         static_assert(sut(narrow_t{5}, narrow_t{2}, rounding_mode) == narrow_t{25});
 
-        // zero handling
+        // zero dividend
         static_assert(sut(narrow_t{0}, narrow_t{5}, rounding_mode) == narrow_t{0});
     }
 
@@ -82,6 +82,10 @@ template <typename narrow_t> struct unsigned_test_t
 
         // saturation: (max*10)/1 would overflow narrow bounds, so must clamp
         static_assert(sut(max_narrow, narrow_t{1}, rounding_mode) == max_narrow);
+
+        // zero divisor
+        static_assert(sut(narrow_t{1}, narrow_t{0}, rounding_mode) == max_narrow);
+        static_assert(sut(narrow_t{0}, narrow_t{0}, rounding_mode) == narrow_t{0});
     }
 
     constexpr auto test_truncating() const noexcept -> void
@@ -125,7 +129,7 @@ template <typename narrow_t> struct signed_test_t
         static_assert(sut(narrow_t{6}, narrow_t{-2}, rounding_mode) == narrow_t{-30});
         static_assert(sut(narrow_t{-6}, narrow_t{-2}, rounding_mode) == narrow_t{30});
 
-        // zero handling
+        // zero dividend
         static_assert(sut(narrow_t{0}, narrow_t{5}, rounding_mode) == narrow_t{0});
         static_assert(sut(narrow_t{0}, narrow_t{-5}, rounding_mode) == narrow_t{0});
     }
@@ -146,6 +150,11 @@ template <typename narrow_t> struct signed_test_t
 
         // negative saturation (min*10/1 clamps to min)
         static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == min_narrow);
+
+        // zero divisor
+        static_assert(sut(narrow_t{1}, narrow_t{0}, rounding_mode) == max_narrow);
+        static_assert(sut(narrow_t{-1}, narrow_t{0}, rounding_mode) == min_narrow);
+        static_assert(sut(narrow_t{0}, narrow_t{0}, rounding_mode) == narrow_t{0});
     }
 
     constexpr auto test_truncating() noexcept -> void
