@@ -60,7 +60,7 @@ constexpr auto rounding_mode = fake_rounding_mode_t<narrow_t>{};
 constexpr auto narrow_width = 8;
 constexpr auto narrow_mask  = wide_t{0xFF};
 
-using sut_t = divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
+using sut_t = wide_divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
 
 constexpr auto sut = sut_t{};
 
@@ -163,7 +163,7 @@ struct division_divider_dispatch_test_t : TestWithParam<param_t>
     result_t const expected_high_result{19, 37};
     result_t const expected_low_result{23, 39};
 
-    using sut_t = divider_t<narrow_t, hardware_divider_t>;
+    using sut_t = wide_divider_t<narrow_t, hardware_divider_t>;
     sut_t sut{hardware_divider_t{&mock_hardware_divider}};
 };
 
@@ -247,7 +247,7 @@ template <typename t_narrow_t> struct divider_correctness_test_t : Test
 
     static constexpr auto rounding_mode = stub_rounding_mode_t<narrow_t>{};
 
-    using sut_t = divider_t<narrow_t, checking_hardware_divider_t>;
+    using sut_t = wide_divider_t<narrow_t, checking_hardware_divider_t>;
     sut_t sut{};
 };
 
