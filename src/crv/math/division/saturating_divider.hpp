@@ -52,18 +52,17 @@ template <typename narrow_divider_t, bool saturates = true> struct saturating_di
         auto const abs_divisor  = divisor < 0 ? -static_cast<unsigned_t>(divisor) : static_cast<unsigned_t>(divisor);
 
         auto const wide_quotient = narrow_divider(abs_dividend, abs_divisor, rounding_mode);
-        auto const magnitude     = static_cast<unsigned_t>(wide_quotient);
-        auto const signed_result = negative ? static_cast<narrow_t>(-magnitude) : static_cast<narrow_t>(magnitude);
 
         if constexpr (saturates)
         {
             // negative side has 1 more value than positive side (e.g. [-128, 127]); asymmetric_bound is that magnitude
             auto const asymmetric_bound = static_cast<wide_t>(max<narrow_t>()) + static_cast<wide_t>(negative);
-            auto const saturated_result = negative ? min<narrow_t>() : max<narrow_t>();
-            return (wide_quotient > asymmetric_bound) ? saturated_result : signed_result;
+            if (wide_quotient > asymmetric_bound) { return negative ? min<narrow_t>() : max<narrow_t>(); }
         }
 
-        return signed_result;
+        // calc narrow signed result only if we know it fits, or when truncating rather than saturating
+        auto const magnitude = static_cast<unsigned_t>(wide_quotient);
+        return negative ? static_cast<narrow_t>(-magnitude) : static_cast<narrow_t>(magnitude);
     }
 };
 
