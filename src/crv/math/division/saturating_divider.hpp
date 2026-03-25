@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief integer divider with a preshift
+/// \brief divider that optionally saturates before narrowing wide quotient
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -15,10 +15,12 @@
 
 namespace crv::division {
 
-template <typename narrow_divider_t, bool saturates = true> struct shifted_int_divider_t
+/// divides a narrow dividend by narrow divisor, then returns rounded narrow quotient, optionally saturating
+template <typename narrow_divider_t, bool saturates = true> struct saturating_divider_t
 {
     [[no_unique_address]] narrow_divider_t narrow_divider;
 
+    /// widens, delegates, optionally saturates, and narrows
     template <unsigned_integral narrow_t, typename rounding_mode_t>
         requires is_narrow_divider<narrow_divider_t, narrow_t, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
@@ -36,6 +38,7 @@ template <typename narrow_divider_t, bool saturates = true> struct shifted_int_d
         return static_cast<narrow_t>(wide_quotient);
     }
 
+    /// strips sign, widens, delegates, optionally saturates, narrows, and restores sign.
     template <signed_integral narrow_t, typename rounding_mode_t>
         requires is_narrow_divider<narrow_divider_t, make_unsigned_t<narrow_t>, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept

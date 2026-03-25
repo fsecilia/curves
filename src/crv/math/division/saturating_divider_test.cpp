@@ -64,7 +64,7 @@ using rounding_mode_t        = stub_rounding_mode_t<narrow_t>;
 constexpr auto rounding_mode = rounding_mode_t{};
 
 using forwarding_divider_t = forwarding_divider_t<wide_t, narrow_t, rounding_mode_t>;
-using forwarding_sut_t     = shifted_int_divider_t<forwarding_divider_t, true>;
+using forwarding_sut_t     = saturating_divider_t<forwarding_divider_t, true>;
 
 static_assert(forwarding_sut_t{}(dividend, divisor, rounding_mode) == narrow_t{(dividend * 3 + divisor) * 2});
 
@@ -73,7 +73,7 @@ static_assert(forwarding_sut_t{}(dividend, divisor, rounding_mode) == narrow_t{(
 // --------------------------------------------------------------------------------------------------------------------
 
 template <wide_t canned_value, bool saturates>
-using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
+using constant_sut_t = saturating_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
 
 // boundary, exactly max: representable, passes through regardless of saturation policy
 static_assert(constant_sut_t<wide_t{255}, true>{}(dividend, divisor, rounding_mode) == max<narrow_t>());
@@ -99,7 +99,7 @@ template <typename narrow_t> struct unsigned_boundary_check_t
     static constexpr auto rounding_mode = rounding_mode_t{};
 
     template <wide_t canned_value, bool saturates>
-    using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
+    using constant_sut_t = saturating_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
 
     static_assert(constant_sut_t<wide_t{max<narrow_t>()}, true>{}(narrow, narrow, rounding_mode) == max<narrow_t>());
     static_assert(constant_sut_t<wide_t{max<narrow_t>()} + 1, true>{}(narrow, narrow, rounding_mode)
@@ -137,7 +137,7 @@ constexpr auto rounding_mode = rounding_mode_t{};
 
 // forwarding divider receives unsigned_t args from the signed overload
 using forwarding_divider_t = forwarding_divider_t<wide_t, unsigned_t, rounding_mode_t>;
-using forwarding_sut_t     = shifted_int_divider_t<forwarding_divider_t, true>;
+using forwarding_sut_t     = saturating_divider_t<forwarding_divider_t, true>;
 
 // All four sign quadrants produce same magnitude: (11 * 3 + 13)*2 = 92
 // Only the final sign differs. If either abs were missing, the asymmetric combination would produce a different value.
@@ -152,7 +152,7 @@ static_assert(forwarding_sut_t{}(negative_dividend, negative_divisor, rounding_m
 // bound = max<int8_t>() = 127
 // --------------------------------------------------------------------------------------------------------------------
 
-template <wide_t v, bool sat> using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, v>, sat>;
+template <wide_t v, bool sat> using constant_sut_t = saturating_divider_t<constant_divider_t<wide_t, v>, sat>;
 
 // magnitude 127: exactly representable as +127
 static_assert(constant_sut_t<127, true>{}(positive_dividend, positive_divisor, rounding_mode) == narrow_t{127});
@@ -182,7 +182,7 @@ static_assert(constant_sut_t<129, false>{}(negative_dividend, positive_divisor, 
 // The constant divider here returns an arbitary, small, in-range value so saturation never triggers.
 // This tests the input-side abs/sign logic, not the output-side clamping.
 constexpr auto edge_const = narrow_t{31};
-using edge_case_sut_t     = shifted_int_divider_t<constant_divider_t<wide_t, edge_const>, true>;
+using edge_case_sut_t     = saturating_divider_t<constant_divider_t<wide_t, edge_const>, true>;
 
 // min dividend
 static_assert(edge_case_sut_t{}(min<narrow_t>(), narrow_t{1}, rounding_mode) == -edge_const);
@@ -215,7 +215,7 @@ template <typename narrow_t> struct signed_boundary_check_t
     static constexpr auto rounding_mode = rounding_mode_t{};
 
     template <wide_t canned_value, bool saturates>
-    using constant_sut_t = shifted_int_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
+    using constant_sut_t = saturating_divider_t<constant_divider_t<wide_t, canned_value>, saturates>;
 
     // positive result: max<narrow_t>() is the bound
     static_assert(constant_sut_t<wide_t(max<narrow_t>()), true>{}(positive, positive, rounding_mode)
