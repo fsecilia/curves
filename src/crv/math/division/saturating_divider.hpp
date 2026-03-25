@@ -47,10 +47,12 @@ template <typename narrow_divider_t, bool saturates = true> struct saturating_di
         using unsigned_t = make_unsigned_t<narrow_t>;
         using wide_t     = wider_t<unsigned_t>;
 
-        auto const negative     = (dividend ^ divisor) < 0;
-        auto const abs_dividend = dividend < 0 ? -static_cast<unsigned_t>(dividend) : static_cast<unsigned_t>(dividend);
-        auto const abs_divisor  = divisor < 0 ? -static_cast<unsigned_t>(divisor) : static_cast<unsigned_t>(divisor);
+        auto const abs_dividend = static_cast<unsigned_t>(dividend < 0 ? -static_cast<unsigned_t>(dividend)
+                                                                       : static_cast<unsigned_t>(dividend));
+        auto const abs_divisor  = static_cast<unsigned_t>(divisor < 0 ? -static_cast<unsigned_t>(divisor)
+                                                                      : static_cast<unsigned_t>(divisor));
 
+        auto const negative      = (dividend ^ divisor) < 0;
         auto const wide_quotient = narrow_divider(abs_dividend, abs_divisor, rounding_mode);
 
         if constexpr (saturates)
