@@ -25,7 +25,7 @@ target_sources_kernel(lib
     math/division/io.hpp
     math/division/prescaling_dividers.hpp
     math/division/result.hpp
-    math/division/saturating_divider.hpp
+    math/division/shifted_int_divider.hpp
     math/division/wide_divider.hpp
     math/fixed/fixed.hpp
     math/fixed/exp2.hpp
@@ -56,7 +56,7 @@ if (enable_testing)
         math/division/hardware_divider_test.cpp
         math/division/io_test.cpp
         math/division/prescaling_dividers_test.cpp
-        math/division/saturating_divider_test.cpp
+        math/division/shifted_int_divider_test.cpp
         math/division/wide_divider_test.cpp
         math/error_metrics_test.cpp
         math/fixed/exp2_neg_m1_test.cpp

@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "saturating_divider.hpp"
+#include "shifted_int_divider.hpp"
 #include <crv/math/division/result.hpp>
 #include <crv/test/test.hpp>
 
