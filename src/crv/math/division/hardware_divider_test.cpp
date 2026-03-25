@@ -27,7 +27,7 @@ template <typename t_narrow_t> struct hardware_divider_test_t : Test
     static constexpr auto make_dividend(narrow_t high, narrow_t low) -> wide_t
     {
         constexpr auto shift = std::numeric_limits<narrow_t>::digits;
-        return (int_cast<wide_t>(high) << shift) | low;
+        return int_cast<wide_t>((int_cast<wide_t>(high) << shift) | low);
     }
 };
 

@@ -64,7 +64,7 @@ template <typename wide_divider_t, int shift, bool saturate = true> struct shift
         auto const wide_dividend = int_cast<wide_t>(dividend);
         assert(shift <= detail::safe_clz(wide_dividend)
                && "crz::division::saturating_divider_t: pre-shift would overflow");
-        auto const wide_quotient = divide(wide_dividend << shift, divisor, rounding_mode);
+        auto const wide_quotient = divide(int_cast<wide_t>(wide_dividend << shift), divisor, rounding_mode);
 
         // handle saturation
         if constexpr (saturate)
@@ -113,7 +113,7 @@ template <typename wide_divider_t, int shift, bool saturate = true> struct shift
                && "crz::division::saturating_divider_t: pre-shift would overflow");
 
         auto const negative      = (dividend ^ divisor) < 0;
-        auto const wide_quotient = divide(wide_dividend << shift, abs_divisor, rounding_mode);
+        auto const wide_quotient = divide(int_cast<wide_t>(wide_dividend << shift), abs_divisor, rounding_mode);
 
         if constexpr (saturate)
         {

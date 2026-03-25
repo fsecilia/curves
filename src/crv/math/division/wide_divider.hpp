@@ -91,8 +91,9 @@ private:
         auto const high_result = hardware_divider(high_dividend_high, divisor);
 
         // upper half is remainder of dividing by divisor, so it is strictly less than divisor
-        auto const low_dividend = (int_cast<wide_t>(high_result.remainder) << narrow_width) | high_dividend_low;
-        auto const low_result   = hardware_divider(low_dividend, divisor);
+        auto const low_dividend
+            = int_cast<wide_t>((int_cast<wide_t>(high_result.remainder) << narrow_width) | high_dividend_low);
+        auto const low_result = hardware_divider(low_dividend, divisor);
 
         auto const quotient
             = int_cast<wide_t>((int_cast<wide_t>(high_result.quotient) << narrow_width) + low_result.quotient);

@@ -38,13 +38,13 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
 
         template <integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->bias(unshifted, shift);
+            return mock->bias(int_cast<int_t>(unshifted), shift);
         }
 
         template <integral value_t>
         constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->carry(shifted, unshifted, shift);
+            return mock->carry(int_cast<int_t>(shifted), int_cast<int_t>(unshifted), shift);
         }
     };
     rounding_mode_t rounding_mode{&mock_rounding_mode};
@@ -369,25 +369,25 @@ static_assert(typed_equal<fixed_t<uint128_t, 128>>(
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
                                                                            rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication to specific type failed");
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
                                                                            rounding_modes::shr::truncate)),
               "fixed_t: signed*unsigned multiplication to specific type failed");
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
                                                                            rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication to specific type failed");
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
                                                                            rounding_modes::shr::truncate)),
@@ -400,7 +400,7 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
     auto const rhs           = fixed_t<int16_t, 1>(3 << 1);
     auto const expected_bias = uint32_t{23};
     auto const expected      = out_t{29};
-    EXPECT_CALL(mock_rounding_mode, bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
     EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply<out_t>(lhs, rhs, rounding_mode);
@@ -412,22 +412,22 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
                                                        rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication with rounding mode failed");
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
                                               multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
                                                        rounding_modes::shr::truncate)),
               "fixed_t: signed*signed multiplication with rounding mode failed");
 
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{(2 * 3) << 1},
                                                multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
                                                         rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication with rounding mode failed");
 
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 * 3 << 1},
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{(2 * 3) << 1},
                                                multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
                                                         rounding_modes::shr::truncate)),
               "fixed_t: unsigned*signed multiplication with rounding mode failed");

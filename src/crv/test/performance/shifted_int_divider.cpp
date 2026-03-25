@@ -87,8 +87,6 @@ auto run_benchmark(std::vector<test_case_t> const& test_data, invocable_t&& divi
     return static_cast<double>(total_cycles) / static_cast<double>(test_data.size());
 }
 
-} // namespace
-
 auto main() -> int
 {
     constexpr auto const sample_size = 10'000'000u;
@@ -114,6 +112,7 @@ auto main() -> int
     return 0;
 }
 
+} // namespace
 } // namespace crv
 
 auto main() -> int

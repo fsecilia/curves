@@ -44,7 +44,7 @@ struct tracking_wide_divider_t
 
         auto const actual = dividend / divisor;
         assert(actual != poisoned_rounded_sentinel); // ensure sure sentinel doesn't come up naturally
-        return actual;
+        return int_cast<wide_t>(actual);
     }
 };
 

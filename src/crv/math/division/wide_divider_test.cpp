@@ -56,11 +56,7 @@ template <typename narrow_t> struct fake_rounding_mode_t
     }
 };
 constexpr auto rounding_mode = fake_rounding_mode_t<narrow_t>{};
-
-constexpr auto narrow_width = 8;
-constexpr auto narrow_mask  = wide_t{0xFF};
-
-using sut_t = wide_divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
+using sut_t                  = wide_divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
 
 constexpr auto sut = sut_t{};
 
@@ -69,9 +65,10 @@ namespace fast_path {
 constexpr auto dividend = wide_t{17};
 constexpr auto divisor  = narrow_t{23};
 
-constexpr auto biased_dividend          = 57;              // 17*2 + 23
-constexpr auto hardware_division_result = result_t{2, 11}; // {57/23, 57%23}
-constexpr auto expected                 = 292;             // 2*5 + 23*7 + 11*11
+// constexpr auto biased_dividend          = 57;              // 17*2 + 23
+// constexpr auto hardware_division_result = result_t{2, 11}; // {57/23, 57%23}
+
+constexpr auto expected = 292; // 2*5 + 23*7 + 11*11
 
 static_assert(sut(dividend, divisor, rounding_mode) == expected);
 
@@ -82,14 +79,15 @@ namespace slow_path {
 constexpr auto dividend = wide_t{18240};
 constexpr auto divisor  = narrow_t{23};
 
-constexpr auto biased_dividend    = 36503;           // 18240*2 + 23
-constexpr auto high_dividend_high = 142;             // 36503/256
-constexpr auto high_dividend_low  = 151;             // 36503&255
-constexpr auto high_result        = result_t{6, 4};  // {142/23, 142%23}
-constexpr auto low_dividend       = 1175;            // 4*256 | 151
-constexpr auto low_result         = result_t{51, 2}; // {1175/23, 1175%23}
-constexpr auto quotient           = 1587;            // 6*256 + 51
-constexpr auto expected           = 8118;            // 1587*5 + 23*7 + 2*11
+// constexpr auto biased_dividend    = 36503;           // 18240*2 + 23
+// constexpr auto high_dividend_high = 142;             // 36503/256
+// constexpr auto high_dividend_low  = 151;             // 36503&255
+// constexpr auto high_result        = result_t{6, 4};  // {142/23, 142%23}
+// constexpr auto low_dividend       = 1175;            // 4*256 | 151
+// constexpr auto low_result         = result_t{51, 2}; // {1175/23, 1175%23}
+// constexpr auto quotient           = 1587;            // 6*256 + 51
+
+constexpr auto expected = 8118; // 1587*5 + 23*7 + 2*11
 
 static_assert(sut(dividend, divisor, rounding_mode) == expected);
 
@@ -111,7 +109,7 @@ struct param_t
     using narrow_t = uint8_t;
 
     static constexpr auto narrow_width = 8;
-    static constexpr auto narrow_mask  = 0xFF;
+    static constexpr auto narrow_mask  = wide_t{0xFF};
 
     wide_t   dividend;
     narrow_t divisor;
@@ -179,11 +177,12 @@ TEST_P(division_divider_dispatch_test_t, result)
     {
         EXPECT_CALL(mock_hardware_divider, divide(dividend >> narrow_width, divisor))
             .WillOnce(Return(expected_high_result));
-        EXPECT_CALL(mock_hardware_divider,
-                    divide((dividend & narrow_mask) | (expected_high_result.remainder << narrow_width), divisor))
+        EXPECT_CALL(mock_hardware_divider, divide(int_cast<wide_t>((dividend & narrow_mask)
+                                                                   | (expected_high_result.remainder << narrow_width)),
+                                                  divisor))
             .WillOnce(Return(expected_low_result));
 
-        expected = (expected_high_result.quotient << narrow_width) + expected_low_result.quotient;
+        expected = int_cast<wide_t>((expected_high_result.quotient << narrow_width) + expected_low_result.quotient);
     }
 
     auto const actual = sut(dividend, divisor, rounding_mode);
