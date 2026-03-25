@@ -15,7 +15,9 @@
 
 namespace crv::division {
 
-/// divides a wide dividend by a narrow divisor, then rounds using a rounding mode; returns wide quotient
+/// long division with rounding mode support
+///
+/// Divides a wide dividend by a narrow divisor, rounds using the provided mode, and returns a wide quotient.
 template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t> struct wide_divider_t
 {
     using wide_t = wider_t<narrow_t>;
@@ -26,9 +28,9 @@ template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_div
 
     /// brackets division with rounding mode
     ///
-    /// This method applies the rounding mode's bias before division and carry after. It dispatches directly to hardware
-    /// division when the quotient fits in a narrow register and falls back to long division otherwise. The carry is
-    /// applied inside each branch to preserve the narrow-range information for the optimizer.
+    /// Applies the rounding mode's bias before division and carry after. It dispatches directly to hardware division
+    /// when the quotient fits in a narrow register and falls back to long division otherwise. The carry is applied
+    /// inside each branch to preserve the narrow-range information for the optimizer.
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
     constexpr auto operator()(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
@@ -52,8 +54,8 @@ private:
     // invokes hardware divider with high and low halves of dividend
     //
     // This method takes an arbitrary dividend and divisor, splits the dividend into high and low halves, then performs
-    // long division, invoking the hardware divider to divide each half, strictly satisfying the hardware divider's
-    // precondition that the upper half of the passed dividend must be strictly less than the passed divisor.
+    // long division, invoking the hardware divider to divide each half, satisfying the hardware divider's precondition
+    // that the upper half of the passed dividend must be strictly less than the passed divisor.
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
     constexpr auto apply_long_division(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
         -> wide_t

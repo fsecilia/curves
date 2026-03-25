@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief divider that optionally saturates before narrowing wide quotient
+/// \brief scaling integer divider with optional saturation
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -17,13 +17,11 @@ namespace crv::division {
 
 namespace detail {
 
-/// returns clz, clamped to one less than bit-width of integral, avoiding UB from `0 << clz(0)`
+/// clz, safely handling input 0
 ///
-/// In general, dividends are normalized via `dividend << clz(dividend)`. However, if `dividend` is 0, `clz` returns the
-/// full bit-width of integer type. This evaluates to `0 << width`, which invokes UB. By bitwise ORing in a 1,
-/// `clz(dividend | 1)`, the count only changes for the `dividend == 0` case, where it returns one less than the full
-/// bit-width, avoiding UB. Left shifting 0 is still 0, so the final result is correct in all cases. This saves a branch
-/// at the cost of a const ALU op.
+/// ORs 1 into LSB before calling clz to limit max return to width - 1. This prevents UB when passing 0. Since shifting
+/// 0 left by any value is still 0, the final result is still correct in all cases. This saves a branch at the cost of a
+/// const ALU op.
 template <unsigned_integral src_t> constexpr auto safe_clz(src_t src) noexcept -> src_t
 {
     return int_cast<src_t>(std::countl_zero(int_cast<src_t>(src | 1)));
@@ -31,12 +29,16 @@ template <unsigned_integral src_t> constexpr auto safe_clz(src_t src) noexcept -
 
 } // namespace detail
 
-/// divides a narrow dividend by narrow divisor, shifting, then returns rounded narrow quotient, optionally saturating
-template <typename wide_divider_t, int total_shift, bool saturates = true> struct shifted_int_divider_t
+/// divides, scales, and rounds narrow integers via wide intermediate
+///
+/// Widens dividend, applies shift, divides via wide_divider_t, optionally saturates, and narrows.
+template <typename wide_divider_t, int shift, bool saturate = true> struct shifted_int_divider_t
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    /// widens, shifts, delegates, optionally saturates, and narrows
+    /// unsigned division
+    ///
+    /// Handles zero-division gracefully if saturating. Asserts headroom before shifting.
     template <unsigned_integral narrow_t, typename rounding_mode_t>
         requires is_wide_divider<wide_divider_t, narrow_t, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
@@ -45,7 +47,7 @@ template <typename wide_divider_t, int total_shift, bool saturates = true> struc
         using wide_t = wider_t<narrow_t>;
 
         // handle divide by 0
-        if constexpr (saturates)
+        if constexpr (saturate)
         {
             if (divisor == 0) [[unlikely]]
             {
@@ -58,23 +60,26 @@ template <typename wide_divider_t, int total_shift, bool saturates = true> struc
             assert(divisor != 0);
         }
 
+        // widen, shift, divide
         auto const wide_dividend = int_cast<wide_t>(dividend);
+        assert(shift <= detail::safe_clz(wide_dividend)
+               && "crz::division::saturating_divider_t: pre-shift would overflow");
+        auto const wide_quotient = divide(wide_dividend << shift, divisor, rounding_mode);
 
-        [[maybe_unused]] auto const headroom = detail::safe_clz(wide_dividend);
-        assert(total_shift <= headroom && "crz::division::saturating_divider_t: pre-shift would overflow");
-
-        auto const shifted_dividend = wide_dividend << total_shift;
-        auto const wide_quotient    = divide(shifted_dividend, divisor, rounding_mode);
-
-        if constexpr (saturates)
+        // handle saturation
+        if constexpr (saturate)
         {
             if (wide_quotient > int_cast<wide_t>(max<narrow_t>())) return max<narrow_t>();
         }
 
+        // return narrowed quotient
         return static_cast<narrow_t>(wide_quotient);
     }
 
-    /// strips sign, widens, shifts, delegates, optionally saturates, narrows, and restores sign.
+    /// signed division
+    ///
+    /// Strips sign, processes as unsigned wide integers, applies two's complement asymmetric bounds checking if
+    /// saturating, and restores sign upon narrowing. Prevents UB on INT_MIN negation.
     template <signed_integral narrow_t, typename rounding_mode_t>
         requires is_wide_divider<wide_divider_t, make_unsigned_t<narrow_t>, rounding_mode_t>
     constexpr auto operator()(narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept
@@ -84,7 +89,7 @@ template <typename wide_divider_t, int total_shift, bool saturates = true> struc
         using wide_t     = wider_t<unsigned_t>;
 
         // handle divide by 0
-        if constexpr (saturates)
+        if constexpr (saturate)
         {
             if (divisor == 0) [[unlikely]]
             {
@@ -97,22 +102,20 @@ template <typename wide_divider_t, int total_shift, bool saturates = true> struc
             assert(divisor != 0);
         }
 
+        // strip sign
         auto const abs_dividend = static_cast<unsigned_t>(dividend < 0 ? -static_cast<unsigned_t>(dividend)
                                                                        : static_cast<unsigned_t>(dividend));
         auto const abs_divisor  = static_cast<unsigned_t>(divisor < 0 ? -static_cast<unsigned_t>(divisor)
                                                                       : static_cast<unsigned_t>(divisor));
 
         auto const wide_dividend = int_cast<wide_t>(abs_dividend);
-
-        [[maybe_unused]] auto const headroom = detail::safe_clz(wide_dividend);
-        assert(total_shift <= headroom && "crz::division::saturating_divider_t: pre-shift would overflow");
-
-        auto const shifted_dividend = wide_dividend << total_shift;
+        assert(shift <= detail::safe_clz(wide_dividend)
+               && "crz::division::saturating_divider_t: pre-shift would overflow");
 
         auto const negative      = (dividend ^ divisor) < 0;
-        auto const wide_quotient = divide(shifted_dividend, abs_divisor, rounding_mode);
+        auto const wide_quotient = divide(wide_dividend << shift, abs_divisor, rounding_mode);
 
-        if constexpr (saturates)
+        if constexpr (saturate)
         {
             // negative side has 1 more value than positive side (e.g. [-128, 127]); asymmetric_bound is that magnitude
             auto const asymmetric_bound = static_cast<wide_t>(max<narrow_t>()) + static_cast<wide_t>(negative);

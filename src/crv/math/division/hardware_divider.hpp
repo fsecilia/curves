@@ -35,7 +35,9 @@ template <unsigned_integral t_narrow_t> struct hardware_divider_t
 
 #if defined __x86_64__
 
-/// x64-specific implementation; uses inline asm to execute u64/u32 division instruction directly
+/// uses inline asm to execute u64/u32 division instruction directly
+///
+/// x64-specific implementation
 template <> struct hardware_divider_t<uint32_t>
 {
     using wide_t   = uint64_t;
@@ -56,7 +58,9 @@ template <> struct hardware_divider_t<uint32_t>
     }
 };
 
-/// x64-specific implementation; uses inline asm to execute u128/u64 division instruction directly
+/// uses inline asm to execute u128/u64 division instruction directly
+///
+/// x64-specific implementation
 template <> struct hardware_divider_t<uint64_t>
 {
     using wide_t   = uint128_t;
