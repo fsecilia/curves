@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "shifted_int_divider.hpp"
-#include <crv/math/division/result.hpp>
+#include <crv/math/division/qr_pair.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::division {

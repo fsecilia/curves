@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/division/result.hpp>
+#include <crv/math/division/qr_pair.hpp>
 #include <crv/math/io.hpp>
 #include <ostream>
 

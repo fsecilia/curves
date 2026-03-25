@@ -24,7 +24,7 @@ target_sources_kernel(lib
     math/division/hardware_divider.hpp
     math/division/divider.hpp
     math/division/io.hpp
-    math/division/result.hpp
+    math/division/qr_pair.hpp
     math/division/shifted_int_divider.hpp
     math/division/wide_divider.hpp
     math/fixed/fixed.hpp
