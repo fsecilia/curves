@@ -138,7 +138,53 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto operator-(fixed_t src) noexcept -> fixed_t { return fixed_t{-src.value}; }
 
     // ----------------------------------------------------------------------------------------------------------------
-    // Binary Arithmetic
+    // Scalar Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    constexpr auto operator+=(value_t src) noexcept -> fixed_t&
+    {
+        value += src;
+        return *this;
+    }
+
+    friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += rhs; }
+    friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += lhs; }
+
+    constexpr auto operator-=(value_t src) noexcept -> fixed_t&
+    {
+        value -= src;
+        return *this;
+    }
+
+    friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
+    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
+    {
+        return fixed_t{lhs - rhs.value};
+    }
+
+    constexpr auto operator*=(value_t src) noexcept -> fixed_t&
+    {
+        value *= src;
+        return *this;
+    }
+
+    friend constexpr auto operator*(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
+    friend constexpr auto operator*(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs *= lhs; }
+
+    constexpr auto operator/=(value_t src) noexcept -> fixed_t&
+    {
+        value /= src;
+        return *this;
+    }
+
+    friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
+    friend constexpr auto operator/(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
+    {
+        return fixed_t{lhs / rhs.value};
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Fixed Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr auto operator+=(fixed_t src) noexcept -> fixed_t&

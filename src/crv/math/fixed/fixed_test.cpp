@@ -232,6 +232,97 @@ static_assert(-sut_t{-10}.value == 10);
 } // namespace unary_arithmetic
 
 // ====================================================================================================================
+// Scalar Arithmetic
+// ====================================================================================================================
+
+namespace scalar_arithmetic {
+
+// --------------------------------------------------------------------------------------------------------------------
+// Addition
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(sut_t{10} + 3 == sut_t{13});
+static_assert(sut_t{-10} + 3 == sut_t{-7});
+static_assert(3 + sut_t{10} == sut_t{13});
+static_assert(3 + sut_t{-10} == sut_t{-7});
+
+// --------------------------------------------------------------------------------------------------------------------
+// Subtraction
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(sut_t{10} - 3 == sut_t{7});
+static_assert(sut_t{-10} - 3 == sut_t{-13});
+static_assert(10 - sut_t{3} == sut_t{7});
+static_assert(10 - sut_t{-3} == sut_t{13});
+
+// subtraction is non-commutative
+static_assert(sut_t{10} - 3 != 3 - sut_t{10});
+
+// --------------------------------------------------------------------------------------------------------------------
+// Multiplication
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(sut_t{10} * 3 == sut_t{30});
+static_assert(sut_t{-10} * 3 == sut_t{-30});
+static_assert(3 * sut_t{10} == sut_t{30});
+static_assert(3 * sut_t{-10} == sut_t{-30});
+
+// identity and zero
+static_assert(sut_t{7} * 1 == sut_t{7});
+static_assert(sut_t{7} * 0 == sut_t{0});
+
+// --------------------------------------------------------------------------------------------------------------------
+// Division
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(sut_t{30} / 3 == sut_t{10});
+static_assert(sut_t{-30} / 3 == sut_t{-10});
+static_assert(30 / sut_t{3} == sut_t{10});
+static_assert(30 / sut_t{-3} == sut_t{-10});
+
+// truncation
+static_assert(sut_t{7} / 2 == sut_t{3});
+static_assert(sut_t{-7} / 2 == sut_t{-3});
+
+// division is non-commutative
+static_assert(sut_t{12} / 3 != 3 / sut_t{12});
+
+// --------------------------------------------------------------------------------------------------------------------
+// Compound Assignment
+// --------------------------------------------------------------------------------------------------------------------
+
+struct scalar_compound_assignment_t : Test
+{
+    sut_t sut{10};
+};
+
+TEST_F(scalar_compound_assignment_t, addition)
+{
+    EXPECT_EQ(&sut, &(sut += 3));
+    EXPECT_EQ(sut_t{13}, sut);
+}
+
+TEST_F(scalar_compound_assignment_t, subtraction)
+{
+    EXPECT_EQ(&sut, &(sut -= 3));
+    EXPECT_EQ(sut_t{7}, sut);
+}
+
+TEST_F(scalar_compound_assignment_t, multiplication)
+{
+    EXPECT_EQ(&sut, &(sut *= 3));
+    EXPECT_EQ(sut_t{30}, sut);
+}
+
+TEST_F(scalar_compound_assignment_t, division)
+{
+    EXPECT_EQ(&sut, &(sut /= 2));
+    EXPECT_EQ(sut_t{5}, sut);
+}
+
+} // namespace scalar_arithmetic
+
+// ====================================================================================================================
 // Fixed Arithmetic
 // ====================================================================================================================
 
