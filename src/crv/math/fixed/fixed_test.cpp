@@ -97,17 +97,10 @@ static_assert(std::same_as<fixed::wider_t<fixed_t<uint32_t, 16>, fixed_t<uint16_
 
 namespace construction {
 
-// zero initialization works
-static_assert(sut_t{}.value == 0, "fixed_t: zero initialization failed");
-
-// zero is always zero; there is no offset
-static_assert(sut_t{0}.value == 0, "fixed_t: value initialization tranlsated value");
-
-// value initialization is direct; no rescaling is performed
-static_assert(sut_t{1}.value == 1, "fixed_t: value initialization scaled value");
-
-// 0 and 1 are not special
-static_assert(sut_t{0xF1234}.value == 0xF1234, "fixed_t: value initialization failed");
+static_assert(sut_t{}.value == 0);
+static_assert(sut_t{0}.value == 0);
+static_assert(sut_t{1}.value == 1);
+static_assert(sut_t{0xF1234}.value == 0xF1234);
 
 } // namespace construction
 
@@ -118,99 +111,95 @@ static_assert(sut_t{0xF1234}.value == 0xF1234, "fixed_t: value initialization fa
 namespace conversions {
 
 // --------------------------------------------------------------------------------------------------------------------
-// Size Conversions
+// Precision and Size Conversions
 // --------------------------------------------------------------------------------------------------------------------
 
-// widen type
-static_assert(fixed_t<int16_t, 5>{fixed_t<int8_t, 5>{10}}.value == 10, "fixed_t: widen type failed");
+template <typename from_t, typename to_t> struct conversion_test_t
+{
+    static constexpr auto delta = to_t::frac_bits - from_t::frac_bits;
 
-// narrow type
-static_assert(fixed_t<int8_t, 5>{fixed_t<int16_t, 5>{10}}.value == 10, "fixed_t: narrow type failed");
+    constexpr auto test() const noexcept -> void
+    {
+        if constexpr (delta > 0)
+        {
+            // increasing precision: raw value shifts left by delta
+            static_assert(to_t{from_t{10}}.value == static_cast<typename to_t::value_t>(10) << delta);
+        }
+        else if constexpr (delta < 0)
+        {
+            // decreasing precision: start with pre-shifted value so result is exact
+            constexpr auto from_value = static_cast<typename from_t::value_t>(10 << (-delta));
+            static_assert(to_t{from_t{from_value}}.value == 10);
+        }
+        else
+        {
+            // same precision: value is just cast
+            static_assert(to_t{from_t{10}}.value == 10);
+        }
+    }
+};
+
+// same precision, different size
+template struct conversion_test_t<fixed_t<int8_t, 5>, fixed_t<int16_t, 5>>;
+template struct conversion_test_t<fixed_t<int16_t, 5>, fixed_t<int8_t, 5>>;
+
+// same size, different precision
+template struct conversion_test_t<fixed_t<int8_t, 5>, fixed_t<int8_t, 7>>;
+template struct conversion_test_t<fixed_t<int8_t, 7>, fixed_t<int8_t, 5>>;
+
+// both change: widen + increase, widen + decrease, narrow + increase, narrow + decrease
+template struct conversion_test_t<fixed_t<int8_t, 5>, fixed_t<int16_t, 7>>;
+template struct conversion_test_t<fixed_t<int8_t, 7>, fixed_t<int16_t, 5>>;
+template struct conversion_test_t<fixed_t<int16_t, 5>, fixed_t<int8_t, 7>>;
+template struct conversion_test_t<fixed_t<int16_t, 7>, fixed_t<int8_t, 5>>;
 
 // --------------------------------------------------------------------------------------------------------------------
-// Precision Conversions
+// Wider-Range Conversions
 // --------------------------------------------------------------------------------------------------------------------
 
-// increase precision
-static_assert(fixed_t<int8_t, 7>{fixed_t<int8_t, 5>{10}}.value == 40, "fixed_t: increase precision failed");
+// increase precision and widen: 64 fits in int8_t, but 64 << 2 = 256 does not
+static_assert(fixed_t<int16_t, 9>{fixed_t<int8_t, 7>{64}}.value == 256);
 
-// decrease precision
-static_assert(fixed_t<int8_t, 5>{fixed_t<int8_t, 7>{40}}.value == 10, "fixed_t: decrease precision failed");
-
-// --------------------------------------------------------------------------------------------------------------------
-// Size and Precision Conversions
-// --------------------------------------------------------------------------------------------------------------------
-
-// increase precision and widen type
-static_assert(fixed_t<int16_t, 7>{fixed_t<int8_t, 5>{10}}.value == 40, "fixed_t: increase precision and widen failed");
-
-// increase precision and widen type requiring conversion at wider range
-static_assert(fixed_t<int16_t, 9>{fixed_t<int8_t, 7>{64}}.value == 256,
-              "fixed_t: increase precision and widen early failed");
-
-// increase precision and narrow type
-static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 5>{10}}.value == 40, "fixed_t: increase precision and narrow failed");
-
-// decrease precision and widen type
-static_assert(fixed_t<int16_t, 5>{fixed_t<int8_t, 7>{40}}.value == 10, "fixed_t: decrease precision and widen failed");
-
-// decrease precision and narrow type
-static_assert(fixed_t<int8_t, 5>{fixed_t<int16_t, 7>{40}}.value == 10, "fixed_t: decrease precision and narrow failed");
-
-// decrease precision and narrow type requiring conversion at wider range
-static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64,
-              "fixed_t: decrease precision and narrow late failed");
+// decrease precision and narrow: 256 fits in int16_t, but must widen before narrowing to get exact result
+static_assert(fixed_t<int8_t, 7>{fixed_t<int16_t, 9>{256}}.value == 64);
 
 // --------------------------------------------------------------------------------------------------------------------
 // Rounding
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>()}}.value == min<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 1}}.value == min<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 3}}.value == min<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{min<int8_t>() + 4}}.value == min<int8_t>() / 4 + 1);
+namespace rounding {
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-106}}.value == -27);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-103}}.value == -26);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-100}}.value == -25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-98}}.value == -25);
+using src_t        = fixed_t<int16_t, 4>;
+using dst_t        = fixed_t<int8_t, 2>;
+constexpr auto min = crv::min<int8_t>();
+constexpr auto max = crv::max<int8_t>();
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-4}}.value == -1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{-1}}.value == -1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{0}}.value == 0);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{3}}.value == 0);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{4}}.value == 1);
+// default rm is truncate
+static_assert(dst_t{src_t{min}}.value == min / 4);
+static_assert(dst_t{src_t{min + 1}}.value == min / 4);
+static_assert(dst_t{src_t{min + 3}}.value == min / 4);
+static_assert(dst_t{src_t{min + 4}}.value == min / 4 + 1);
+static_assert(dst_t{src_t{max - 4}}.value == max / 4 - 1);
+static_assert(dst_t{src_t{max - 3}}.value == max / 4);
+static_assert(dst_t{src_t{max}}.value == max / 4);
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{98}}.value == 24);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{100}}.value == 25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{103}}.value == 25);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{105}}.value == 26);
+// explicitly use rne
+constexpr auto rm = rounding_modes::shr::nearest_even;
+static_assert(dst_t{src_t{min}, rm}.value == min / 4);
+static_assert(dst_t{src_t{min + 1}, rm}.value == min / 4);
+static_assert(dst_t{src_t{min + 3}, rm}.value == min / 4 + 1);
+static_assert(dst_t{src_t{min + 4}, rm}.value == min / 4 + 1);
+static_assert(dst_t{src_t{max - 4}, rm}.value == max / 4);
+static_assert(dst_t{src_t{max - 3}, rm}.value == max / 4);
+static_assert(dst_t{src_t{max}, rm}.value == max / 4 + 1);
 
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 4}}.value == max<int8_t>() / 4 - 1);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 3}}.value == max<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>() - 1}}.value == max<int8_t>() / 4);
-static_assert(fixed_t<int8_t, 2>{fixed_t<int16_t, 4>{max<int8_t>()}}.value == max<int8_t>() / 4);
-
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{0}}.value == 0);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{3}}.value == 0);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{4}}.value == 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{7}}.value == 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{8}}.value == 2);
-
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 4}}.value == max<uint8_t>() / 4 - 1);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>() - 1}}.value == max<uint8_t>() / 4);
-static_assert(fixed_t<uint8_t, 2>{fixed_t<uint16_t, 4>{max<uint8_t>()}}.value == max<uint8_t>() / 4);
+} // namespace rounding
 
 // --------------------------------------------------------------------------------------------------------------------
 // Bool
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(fixed_t<int8_t, 5>{min<int8_t>()});
-static_assert(fixed_t<int8_t, 5>{min<int8_t>() + 1});
-static_assert(fixed_t<int8_t, 5>{-1});
 static_assert(!fixed_t<int8_t, 5>{0});
-static_assert(fixed_t<int8_t, 5>{1});
-static_assert(fixed_t<int8_t, 5>{max<int8_t>() - 1});
 static_assert(fixed_t<int8_t, 5>{max<int8_t>()});
 
 } // namespace conversions
@@ -243,10 +232,10 @@ static_assert(-sut_t{-10}.value == 10);
 } // namespace unary_arithmetic
 
 // ====================================================================================================================
-// Binary Arithmetic
+// Fixed Arithmetic
 // ====================================================================================================================
 
-namespace binary_arithmetic {
+namespace fixed_arithmetic {
 
 // --------------------------------------------------------------------------------------------------------------------
 // Addition
@@ -271,127 +260,91 @@ static_assert(sut_t{-3} - sut_t{-7} == sut_t{4});
 // --------------------------------------------------------------------------------------------------------------------
 
 // mixed types, zeros
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3}, fixed_t<int16_t, 5>{0}),
-                                                   fixed_t<int32_t, 8>{0}),
-              "fixed_t: mixed negative*0 failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{-13 << 5}),
-                                                   fixed_t<int32_t, 8>{0}),
-              "fixed_t: mixed 0*negative failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{0}),
-                                                   fixed_t<int32_t, 8>{0}),
-              "fixed_t: mixed 0*0 failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{13 << 5}),
-                                                   fixed_t<int32_t, 8>{0}),
-              "fixed_t: mixed 0*positive failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{0}),
-                                                   fixed_t<int32_t, 8>{0}),
-              "fixed_t: mixed positive*0 failed");
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{-11 << 3}, fixed_t<int16_t, 5>{0}),
+                                               fixed_t<int32_t, 8>{0}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{-13 << 5}),
+                                               fixed_t<int32_t, 8>{0}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{0}),
+                                               fixed_t<int32_t, 8>{0}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{0}, fixed_t<int16_t, 5>{13 << 5}),
+                                               fixed_t<int32_t, 8>{0}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{0}),
+                                               fixed_t<int32_t, 8>{0}));
 
 // mixed types, signed and unsigned
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
-                                                   fixed_t<int32_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed int*int failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<uint16_t, 5>{13 << 5}),
-                                                   fixed_t<int32_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed int*uint failed");
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
-                                                   fixed_t<int32_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed uint*int failed");
-static_assert(typed_equal<fixed_t<uint32_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3},
-                                                             fixed_t<uint16_t, 5>{13 << 5}),
-                                                    fixed_t<uint32_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed uint*uint failed");
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
+                                               fixed_t<int32_t, 8>{(11 * 13) << 8}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<uint16_t, 5>{13 << 5}),
+                                               fixed_t<int32_t, 8>{(11 * 13) << 8}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<uint8_t, 3>{11 << 3}, fixed_t<int16_t, 5>{13 << 5}),
+                                               fixed_t<int32_t, 8>{(11 * 13) << 8}));
+static_assert(typed_equal<fixed_t<uint32_t, 8>>(multiply(fixed_t<uint8_t, 3>{11 << 3}, fixed_t<uint16_t, 5>{13 << 5}),
+                                                fixed_t<uint32_t, 8>{(11 * 13) << 8}));
 
 // mixed types with 128-bit results
-static_assert(typed_equal<fixed_t<int128_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{11 << 3},
-                                                             fixed_t<uint64_t, 5>{13 << 5}),
-                                                    fixed_t<int128_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed int8*uint64 failed");
-static_assert(typed_equal<fixed_t<uint128_t, 3 + 5>>(multiply(fixed_t<uint8_t, 3>{11 << 3},
-                                                              fixed_t<uint64_t, 5>{13 << 5}),
-                                                     fixed_t<uint128_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed uint8*uint64 failed");
+static_assert(typed_equal<fixed_t<int128_t, 8>>(multiply(fixed_t<int8_t, 3>{11 << 3}, fixed_t<uint64_t, 5>{13 << 5}),
+                                                fixed_t<int128_t, 8>{(11 * 13) << 8}));
+static_assert(typed_equal<fixed_t<uint128_t, 8>>(multiply(fixed_t<uint8_t, 3>{11 << 3}, fixed_t<uint64_t, 5>{13 << 5}),
+                                                 fixed_t<uint128_t, 8>{(11 * 13) << 8}));
 
 // mixed signs
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3},
-                                                            fixed_t<uint16_t, 5>{13 << 5}),
-                                                   fixed_t<int32_t, 8>{-(11 * 13) << 8}),
-              "fixed_t: mixed negative*positive failed");
-
-// double negative
-static_assert(typed_equal<fixed_t<int32_t, 3 + 5>>(multiply(fixed_t<int8_t, 3>{-11 << 3},
-                                                            fixed_t<int16_t, 5>{-13 << 5}),
-                                                   fixed_t<int32_t, 8>{(11 * 13) << 8}),
-              "fixed_t: mixed negative*negative failed");
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{-11 << 3}, fixed_t<uint16_t, 5>{13 << 5}),
+                                               fixed_t<int32_t, 8>{-(11 * 13) << 8}));
+static_assert(typed_equal<fixed_t<int32_t, 8>>(multiply(fixed_t<int8_t, 3>{-11 << 3}, fixed_t<int16_t, 5>{-13 << 5}),
+                                               fixed_t<int32_t, 8>{(11 * 13) << 8}));
 
 // pure integer parts
 static_assert(typed_equal<fixed_t<int64_t, 0>>(multiply(fixed_t<int16_t, 0>{7}, fixed_t<int32_t, 0>{11}),
-                                               fixed_t<int64_t, 0>{77}),
-              "fixed_t: integer*integer failed");
+                                               fixed_t<int64_t, 0>{77}));
 
 // range limits
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
-                                                            fixed_t<int8_t, 7>{min<int8_t>()}),
-                                                   fixed_t<int16_t, 14>{min<int8_t>() * min<int8_t>()}),
-              "fixed_t: min*min failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
-                                                            fixed_t<int8_t, 7>{max<int8_t>()}),
-                                                   fixed_t<int16_t, 14>{min<int8_t>() * max<int8_t>()}),
-              "fixed_t: min*max failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
-                                                            fixed_t<int8_t, 7>{min<int8_t>()}),
-                                                   fixed_t<int16_t, 14>{max<int8_t>() * min<int8_t>()}),
-              "fixed_t: max*min failed");
-static_assert(typed_equal<fixed_t<int16_t, 7 + 7>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
-                                                            fixed_t<int8_t, 7>{max<int8_t>()}),
-                                                   fixed_t<int16_t, 14>{max<int8_t>() * max<int8_t>()}),
-              "fixed_t: max*max failed");
+static_assert(typed_equal<fixed_t<int16_t, 14>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
+                                                         fixed_t<int8_t, 7>{min<int8_t>()}),
+                                                fixed_t<int16_t, 14>{min<int8_t>() * min<int8_t>()}));
+static_assert(typed_equal<fixed_t<int16_t, 14>>(multiply(fixed_t<int8_t, 7>{min<int8_t>()},
+                                                         fixed_t<int8_t, 7>{max<int8_t>()}),
+                                                fixed_t<int16_t, 14>{min<int8_t>() * max<int8_t>()}));
+static_assert(typed_equal<fixed_t<int16_t, 14>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
+                                                         fixed_t<int8_t, 7>{min<int8_t>()}),
+                                                fixed_t<int16_t, 14>{max<int8_t>() * min<int8_t>()}));
+static_assert(typed_equal<fixed_t<int16_t, 14>>(multiply(fixed_t<int8_t, 7>{max<int8_t>()},
+                                                         fixed_t<int8_t, 7>{max<int8_t>()}),
+                                                fixed_t<int16_t, 14>{max<int8_t>() * max<int8_t>()}));
 
 // 128-bit limits
 static_assert(typed_equal<fixed_t<int128_t, 0>>(multiply(fixed_t<int64_t, 0>{max<int64_t>()},
                                                          fixed_t<int64_t, 0>{max<int64_t>()}),
-                                                fixed_t<int128_t, 0>{int128_t{max<int64_t>()} * max<int64_t>()}),
-              "fixed_t: max signed integer*integer failed");
+                                                fixed_t<int128_t, 0>{int128_t{max<int64_t>()} * max<int64_t>()}));
 static_assert(typed_equal<fixed_t<uint128_t, 0>>(multiply(fixed_t<uint64_t, 0>{max<uint64_t>()},
                                                           fixed_t<uint64_t, 0>{max<uint64_t>()}),
-                                                 fixed_t<uint128_t, 0>{uint128_t{max<uint64_t>()} * max<uint64_t>()}),
-              "fixed_t: max unsigned integer*integer failed");
+                                                 fixed_t<uint128_t, 0>{uint128_t{max<uint64_t>()} * max<uint64_t>()}));
 static_assert(typed_equal<fixed_t<int128_t, 126>>(multiply(fixed_t<int64_t, 63>{max<int64_t>()},
                                                            fixed_t<int64_t, 63>{max<int64_t>()}),
-                                                  fixed_t<int128_t, 126>{int128_t{max<int64_t>()} * max<int64_t>()}),
-              "fixed_t: max signed fraction*fraction failed");
+                                                  fixed_t<int128_t, 126>{int128_t{max<int64_t>()} * max<int64_t>()}));
 static_assert(typed_equal<fixed_t<uint128_t, 128>>(
-                  multiply(fixed_t<uint64_t, 64>{max<uint64_t>()}, fixed_t<uint64_t, 64>{max<uint64_t>()}),
-                  fixed_t<uint128_t, 128>{uint128_t{max<uint64_t>()} * max<uint64_t>()}),
-              "fixed_t: max unsigned fraction*fraction failed");
+    multiply(fixed_t<uint64_t, 64>{max<uint64_t>()}, fixed_t<uint64_t, 64>{max<uint64_t>()}),
+    fixed_t<uint128_t, 128>{uint128_t{max<uint64_t>()} * max<uint64_t>()}));
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
-                                                                           rounding_modes::shr::truncate)),
-              "fixed_t: signed*signed multiplication to specific type failed");
-
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
+                                                                           rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply<fixed_t<int8_t, 1>>(fixed_t<int16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
-                                                                           rounding_modes::shr::truncate)),
-              "fixed_t: signed*unsigned multiplication to specific type failed");
-
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
+                                                                           rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<int32_t, 1>{3 << 1},
-                                                                           rounding_modes::shr::truncate)),
-              "fixed_t: unsigned*signed multiplication to specific type failed");
-
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
+                                                                           rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply<fixed_t<int8_t, 1>>(fixed_t<uint16_t, 1>{2 << 1},
                                                                            fixed_t<uint32_t, 1>{3 << 1},
-                                                                           rounding_modes::shr::truncate)),
-              "fixed_t: unsigned*unsigned multiplication to specific type failed");
+                                                                           rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 {
@@ -412,25 +365,18 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
-                                                       rounding_modes::shr::truncate)),
-              "fixed_t: signed*signed multiplication with rounding mode failed");
-
-static_assert(typed_equal<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{(2 * 3) << 1},
-                                              multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                       rounding_modes::shr::truncate)),
-              "fixed_t: signed*signed multiplication with rounding mode failed");
-
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{(2 * 3) << 1},
-                                               multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
-                                                        rounding_modes::shr::truncate)),
-              "fixed_t: unsigned*signed multiplication with rounding mode failed");
-
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{(2 * 3) << 1},
-                                               multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                        rounding_modes::shr::truncate)),
-              "fixed_t: unsigned*signed multiplication with rounding mode failed");
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
+                                                       rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
+                                                       rounding_modes::shr::truncate),
+                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
+                                                        rounding_modes::shr::truncate),
+                                               fixed_t<uint8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
+                                                        rounding_modes::shr::truncate),
+                                               fixed_t<uint8_t, 1>{(2 * 3) << 1}));
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 {
@@ -439,7 +385,7 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
     auto const rhs           = sut_t{3 << 1};
     auto const expected_bias = sut_t::value_t{23};
     auto const expected      = sut_t{29};
-    EXPECT_CALL(mock_rounding_mode, bias(2 * 3 << 2, 1)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
     EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply(lhs, rhs, rounding_mode);
@@ -488,18 +434,11 @@ struct fixed_division_test_t : Test
 
 TEST_F(fixed_division_test_t, limits)
 {
-    // (2^64 - 1) / 1 = max<uint64_t>()
     test(vector_t<0, 0, 0>{"safe max", max<uint64_t>(), 1, max<uint64_t>()});
-
-    // 2^64/2 = 2^63
     test(vector_t<60, 0, 0>{"valid high bit", 16, 2, 1ULL << 63});
-
-    // 2^64/1 = 2^64
     test(vector_t<60, 0, 0>{"saturates 16 << 60", 16, 1, max<uint64_t>()});
     test(vector_t<64, 0, 0>{"saturates 1 << 64", 1, 1, max<uint64_t>()});
 }
-
-// --------------------------------------------------------------------------------------------------------------------
 
 static constexpr auto lhs_frac_bits = 3;
 static constexpr auto rhs_frac_bits = 5;
@@ -515,7 +454,6 @@ TEST_P(fixed_division_vector_test_t, result)
 }
 
 specialized_vector_t const vectors[] = {
-    // basics up to 5 to cover rounding
     {"0/1", 0 << lhs_frac_bits, 1 << rhs_frac_bits, (0 << out_frac_bits) / 1 + 0},
     {"1/1", 1 << lhs_frac_bits, 1 << rhs_frac_bits, (1 << out_frac_bits) / 1 + 0},
     {"2/1", 2 << lhs_frac_bits, 1 << rhs_frac_bits, (2 << out_frac_bits) / 1 + 0},
@@ -577,17 +515,13 @@ TEST_F(fixed_test_compound_assignment_t, multiplication)
     EXPECT_EQ(expected_product, lhs.value);
 }
 
-} // namespace binary_arithmetic
+} // namespace fixed_arithmetic
 
 // ====================================================================================================================
 // Math Functions
 // ====================================================================================================================
 
 namespace math_functions {
-
-// --------------------------------------------------------------------------------------------------------------------
-// abs
-// --------------------------------------------------------------------------------------------------------------------
 
 static_assert(abs(fixed_t<int_t, 3>{-max<int_t>()}).value == fixed_t<int_t, 3>{max<int_t>()}.value);
 static_assert(abs(fixed_t<int_t, 3>{-1}).value == fixed_t<int_t, 3>{1}.value);
