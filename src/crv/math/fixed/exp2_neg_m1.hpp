@@ -38,7 +38,7 @@ public:
         auto const final_shift   = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
         acc = static_cast<int64_t>((final_product >> final_shift) + ((final_product >> (final_shift - 1)) & 1));
 
-        return out_t{static_cast<int64_t>(acc)};
+        return out_t::literal(static_cast<int64_t>(acc));
     }
 
 private:

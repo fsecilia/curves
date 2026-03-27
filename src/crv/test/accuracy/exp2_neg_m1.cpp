@@ -99,8 +99,7 @@ struct exp2_neg_m1_q64_to_q1_63_test_t
 
         using metrics_t = error_metrics_t<error_metrics_policy_t>;
 
-        auto const zero = in_t{0};
-        auto const max = in_t{crv::max<uint64_t>()};
+        auto const max = crv::max<uint64_t>();
 
         auto const approx_impl = impl_t{};
 
@@ -112,35 +111,35 @@ struct exp2_neg_m1_q64_to_q1_63_test_t
             },
         };
 
-        auto const iterations  = in_t{10000000ULL};
+        auto const iterations  = 10000000ull;
         auto const coarse_step = max / iterations;
 
         struct range_t
         {
-            in_t min;
-            in_t max;
-            in_t step_size;
+            in_t::value_t min;
+            in_t::value_t max;
+            in_t::value_t step_size;
         };
 
         range_t ranges[] = {
-            {zero, max / 4, coarse_step},
+            {0, max / 4, coarse_step},
             {max / 4, max / 2, coarse_step},
             {max / 2, 3 * (max / 4), coarse_step},
             {3 * (max / 4), max, coarse_step},
 
-            {zero, max / 2, coarse_step},
+            {0, max / 2, coarse_step},
             {max / 2, max, coarse_step},
 
-            {zero, max, coarse_step},
+            {0, max, coarse_step},
 
-            {zero, iterations, 1},
+            {0, iterations, 1},
             {max / 2 - iterations / 2, max / 2 + iterations / 2, 1},
             {max - iterations, max, 1},
         };
         for (auto const& range : ranges)
         {
             metrics_t metrics;
-            accuracy_test(metrics, range.min, range.max, range.step_size);
+            accuracy_test(metrics, in_t::literal(range.min), in_t::literal(range.max), in_t::literal(range.step_size));
         }
     }
 };

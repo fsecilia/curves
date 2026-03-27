@@ -74,14 +74,17 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     /// default initializer matches underlying
     constexpr fixed_t() = default;
 
-    /// value initializer - value is specified directly; it is not rescaled to frac_bits
-    explicit constexpr fixed_t(value_t value) noexcept : value{value} {}
-
     /// imports a semantic integer value, scaling to this type's fixed-point representation
-    static constexpr auto from(value_t src) noexcept -> fixed_t
+    explicit constexpr fixed_t(value_t value) noexcept : value{int_cast<value_t>(value << frac_bits)} {}
+
+    struct literal_t
     {
-        return fixed_t{static_cast<value_t>(src << frac_bits)};
-    }
+        value_t value;
+    };
+    explicit constexpr fixed_t(literal_t literal) noexcept : value{literal.value} {}
+
+    /// value initializer - value is specified directly; it is not rescaled to frac_bits
+    static constexpr auto literal(value_t value) noexcept -> fixed_t { return fixed_t{literal_t{value}}; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Copying
@@ -140,32 +143,21 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // ----------------------------------------------------------------------------------------------------------------
 
     friend constexpr auto operator+(fixed_t src) noexcept -> fixed_t { return src; }
-    friend constexpr auto operator-(fixed_t src) noexcept -> fixed_t { return fixed_t{-src.value}; }
+    friend constexpr auto operator-(fixed_t src) noexcept -> fixed_t { return literal(-src.value); }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Scalar Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator+=(value_t src) noexcept -> fixed_t&
-    {
-        value += src;
-        return *this;
-    }
+    constexpr auto operator+=(value_t src) noexcept -> fixed_t& { return *this += fixed_t{src}; }
 
-    friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += rhs; }
-    friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += lhs; }
+    friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += fixed_t{rhs}; }
+    friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += fixed_t{lhs}; }
 
-    constexpr auto operator-=(value_t src) noexcept -> fixed_t&
-    {
-        value -= src;
-        return *this;
-    }
+    constexpr auto operator-=(value_t src) noexcept -> fixed_t& { return *this -= fixed_t{src}; }
 
-    friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
-    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
-    {
-        return fixed_t{lhs - rhs.value};
-    }
+    friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= fixed_t{rhs}; }
+    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return fixed_t{lhs} - rhs; }
 
     constexpr auto operator*=(value_t src) noexcept -> fixed_t&
     {
@@ -185,7 +177,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
     {
-        return fixed_t{lhs / rhs.value};
+        return fixed_t{lhs << frac_bits} / rhs.value;
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -238,7 +230,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
         auto const product = int_cast<wider_value_t>(int_cast<wider_value_t>(lhs.value) * rhs.value);
 
-        return result_t{product};
+        return result_t::literal(product);
     }
 
     /// \returns product, widened or narrowed to output type and rescaled to output precision using given rounding mode
@@ -267,7 +259,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode, divider_t divider) noexcept
         -> out_t
     {
-        return out_t{divider(lhs.value, rhs.value, rounding_mode)};
+        return out_t::literal(divider(lhs.value, rhs.value, rounding_mode));
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -283,7 +275,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto abs(fixed_t src) noexcept -> fixed_t
         requires(std::signed_integral<value_t>)
     {
-        return src.value < 0 ? fixed_t{-src.value} : src;
+        return src.value < 0 ? -src : src;
     }
 };
 

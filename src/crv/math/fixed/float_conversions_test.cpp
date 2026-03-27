@@ -54,18 +54,18 @@ TEST_P(fixed_test_float_conversion_t, as_float64)
 }
 
 test_vector_t const test_vectors[] = {
-    // 1. Exact integers
-    {0.0, sut_t{0}, 0},
-    {1.0, sut_t{65536}, 0},
-    {-1.0, sut_t{-65536}, 0},
+    // exact integers
+    {0.0, sut_t::literal(0), 0},
+    {1.0, sut_t::literal(65536), 0},
+    {-1.0, sut_t::literal(-65536), 0},
 
     // exact powers of two
-    {0.5, sut_t{32768}, 0},
-    {0.25, sut_t{16384}, 0},
+    {0.5, sut_t::literal(32768), 0},
+    {0.25, sut_t::literal(16384), 0},
 
     // rounding
-    {1.0 + (0.4 / 65536.0), sut_t{65536}, 1e-5}, // rounds down
-    {1.0 + (0.6 / 65536.0), sut_t{65537}, 1e-5}  // rounds up
+    {1.0 + (0.4 / 65536.0), sut_t::literal(65536), 1e-5}, // rounds down
+    {1.0 + (0.6 / 65536.0), sut_t::literal(65537), 1e-5}  // rounds up
 };
 INSTANTIATE_TEST_SUITE_P(test_vectors, fixed_test_float_conversion_t, ValuesIn(test_vectors));
 

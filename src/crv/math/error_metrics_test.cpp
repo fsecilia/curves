@@ -225,7 +225,7 @@ struct error_metric_ulps_test_t : Test
         EXPECT_CALL(mock_error_accumulator, sample(arg, static_cast<value_t>(error)));
         EXPECT_CALL(mock_distribution, sample(error));
         EXPECT_CALL(mock_fr_frac, sample(error));
-        sut.sample(arg, fixed_t{actual_fixed.value + error}, from_fixed<value_t>(actual_fixed));
+        sut.sample(arg, actual_fixed + fixed_t::literal(error), from_fixed<value_t>(actual_fixed));
     }
 };
 

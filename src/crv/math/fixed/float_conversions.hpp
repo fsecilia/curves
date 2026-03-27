@@ -58,10 +58,10 @@ template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<valu
         // dispatch with llround when possible
         static constexpr auto llround_available
             = std::numeric_limits<value_t>::max() <= std::numeric_limits<long long>::max();
-        if constexpr (llround_available) { return target_t{static_cast<value_t>(llround(scaled))}; }
+        if constexpr (llround_available) { return target_t::literal(static_cast<value_t>(llround(scaled))); }
         else
         {
-            return target_t{static_cast<value_t>(round(scaled))};
+            return target_t::literal(static_cast<value_t>(round(scaled)));
         }
     }
 
