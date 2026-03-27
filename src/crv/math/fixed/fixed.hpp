@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/division/hardware_divider.hpp>
+#include <crv/math/division/divider.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
@@ -53,6 +53,9 @@ using wider_t = fixed_t<crv::wider_t<crv::promoted_t<typename lhs_t::value_t, ty
 
 inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
 using default_shr_rounding_mode_t               = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
+
+inline constexpr auto default_div_rounding_mode = rounding_modes::div::truncate;
+using default_div_rounding_mode_t               = std::remove_cv_t<decltype(default_div_rounding_mode)>;
 
 } // namespace fixed
 
@@ -204,13 +207,24 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return *this = multiply(*this, src, fixed::default_shr_rounding_mode);
     }
 
+    constexpr auto operator/=(fixed_t src) noexcept -> fixed_t&
+    {
+        return *this = divide(*this, src, fixed::default_div_rounding_mode);
+    }
+
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
     friend constexpr auto operator-(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
     friend constexpr auto operator*(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
+    friend constexpr auto operator/(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
         return multiply(lhs, rhs, fixed::default_shr_rounding_mode);
+    }
+
+    template <is_fixed other_t> friend constexpr auto operator/(fixed_t lhs, other_t rhs) noexcept -> fixed_t
+    {
+        return divide(lhs, rhs, fixed::default_shr_rounding_mode);
     }
 
     /// \returns wide product at higher precision
@@ -239,6 +253,34 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return multiply<fixed_t, rhs_t, rounding_mode_t>(lhs, rhs, rounding_mode);
     }
 
+    /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode
+    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t = fixed::default_div_rounding_mode_t>
+    friend constexpr auto divide(fixed_t lhs, rhs_t rhs,
+                                 rounding_mode_t rounding_mode = fixed::default_div_rounding_mode) noexcept -> out_t
+    {
+        using promoted_t = fixed::promoted_t<fixed_t, rhs_t>;
+        using narrow_t   = promoted_t::value_t;
+
+        static constexpr auto shift = rhs_t::frac_bits - fixed_t::frac_bits + out_t::frac_bits;
+
+        return divide<out_t>(lhs, rhs, rounding_mode, division::divide<narrow_t, shift>);
+    }
+
+    /// \returns quotient using divider
+    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t, typename divider_t>
+    friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode, divider_t divider) noexcept
+        -> out_t
+    {
+        return out_t{static_cast<typename out_t::value_t>(divider(lhs.value, rhs.value, rounding_mode))};
+    }
+
+    /// \returns quotient, narrowed to lhs type and rescaled to lhs precision using given rounding mode
+    template <is_fixed rhs_t, typename rounding_mode_t>
+    friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> fixed_t
+    {
+        return divide<fixed_t, rhs_t, rounding_mode_t>(lhs, rhs, rounding_mode);
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Math Functions
     // ----------------------------------------------------------------------------------------------------------------
@@ -255,34 +297,5 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return src.value < 0 ? fixed_t{-src.value} : src;
     }
 };
-
-/// division, stripped down for pipeline
-///
-/// This is not a general implementation. The pipeline has one big divide, and this implementation considers its
-/// constraints:
-///     - all values are unsigned
-///     - all values are 64-bit
-///     - the output precision is at least as high as the dividend
-/// This simplifies the implementation compared to a general fixed/fixed with mixed signs and sizes.
-template <int out_frac_bits, int lhs_frac_bits, int rhs_frac_bits>
-auto divide(fixed_t<uint64_t, lhs_frac_bits> lhs, fixed_t<uint64_t, rhs_frac_bits> rhs) noexcept
-    -> fixed_t<uint64_t, out_frac_bits>
-{
-    constexpr auto total_shift = rhs_frac_bits + out_frac_bits - lhs_frac_bits;
-
-    auto const divisor         = rhs.value;
-    auto const divides_by_zero = 0 == divisor;
-    if (divides_by_zero) [[unlikely]] { return {max<uint64_t>()}; }
-
-    auto const dividend           = int_cast<uint128_t>(lhs.value) << total_shift;
-    auto const quotient_overflows = (dividend >> 64) >= divisor;
-    if (quotient_overflows) [[unlikely]] { return {max<uint64_t>()}; }
-
-    auto [quotient, remainder] = division::hardware_divider_t<uint64_t>{}(dividend, divisor);
-
-    quotient += remainder >= (divisor - remainder);
-
-    return {int_cast<uint64_t>(quotient)};
-}
 
 } // namespace crv
