@@ -449,14 +449,17 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 static_assert(typed_equal<fixed_t<int8_t, 1>>(
     multiply<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1}, rounding_modes::shr::truncate),
     fixed_t<int8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply <fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                       rounding_modes::shr::truncate),
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 << 1},
+                                                                           fixed_t<uint8_t, 1>{3 << 1},
+                                                                           rounding_modes::shr::truncate),
                                               fixed_t<int8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
-                                                        rounding_modes::shr::truncate),
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1},
+                                                                             fixed_t<int8_t, 1>{3 << 1},
+                                                                             rounding_modes::shr::truncate),
                                                fixed_t<uint8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                        rounding_modes::shr::truncate),
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1},
+                                                                             fixed_t<uint8_t, 1>{3 << 1},
+                                                                             rounding_modes::shr::truncate),
                                                fixed_t<uint8_t, 1>{(2 * 3) << 1}));
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
@@ -479,6 +482,123 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace division {
+
+using i8_4_t   = fixed_t<int8_t, 4>;
+using u8_4_t   = fixed_t<uint8_t, 4>;
+using i16_4_t  = fixed_t<int16_t, 4>;
+using u16_4_t  = fixed_t<uint16_t, 4>;
+using i16_8_t  = fixed_t<int16_t, 8>;
+using u16_8_t  = fixed_t<uint16_t, 8>;
+using i16_12_t = fixed_t<int16_t, 12>;
+
+// same-type signed
+
+// exact, sign quadrants
+static_assert(divide<i16_8_t>(i16_8_t::from(6), i16_8_t::from(2)) == i16_8_t::from(3));
+static_assert(divide<i16_8_t>(i16_8_t::from(-6), i16_8_t::from(2)) == i16_8_t::from(-3));
+static_assert(divide<i16_8_t>(i16_8_t::from(6), i16_8_t::from(-2)) == i16_8_t::from(-3));
+static_assert(divide<i16_8_t>(i16_8_t::from(-6), i16_8_t::from(-2)) == i16_8_t::from(3));
+
+// identity and zero dividend
+static_assert(divide<i16_8_t>(i16_8_t::from(5), i16_8_t::from(1)) == i16_8_t::from(5));
+static_assert(divide<i16_8_t>(i16_8_t{0}, i16_8_t::from(5)) == i16_8_t{0});
+
+// truncation toward zero: floor(2/3 * 256) = 170
+static_assert(divide<i16_8_t>(i16_8_t::from(2), i16_8_t::from(3)).value == 170);
+static_assert(divide<i16_8_t>(i16_8_t::from(-2), i16_8_t::from(3)).value == -170);
+
+// same-type unsigned
+
+// exact
+static_assert(divide<u16_8_t>(u16_8_t::from(6), u16_8_t::from(2)) == u16_8_t::from(3));
+static_assert(divide<u16_8_t>(u16_8_t{0}, u16_8_t::from(5)) == u16_8_t{0});
+static_assert(divide<u16_8_t>(u16_8_t::from(2), u16_8_t::from(3)).value == 170);
+
+// mixed sign
+static_assert(divide<i16_8_t>(u16_8_t::from(6), i16_8_t::from(-2)) == i16_8_t::from(-3));
+static_assert(divide<i16_8_t>(i16_8_t::from(-6), u16_8_t::from(2)) == i16_8_t::from(-3));
+static_assert(divide<i16_8_t>(u16_8_t::from(6), i16_8_t::from(2)) == i16_8_t::from(3));
+
+// unsigned output from mixed-sign: negative mathematical result clamps to 0
+static_assert(divide<u16_8_t>(i16_8_t::from(-6), u16_8_t::from(2)) == u16_8_t{0});
+
+// mixed precision
+static_assert(divide<i16_8_t>(i16_4_t::from(6), i16_12_t::from(2)) == i16_8_t::from(3));
+static_assert(divide<i16_8_t>(i16_4_t::from(-6), i16_12_t::from(2)) == i16_8_t::from(-3));
+
+// output type widening
+static_assert(divide<i16_4_t>(i16_8_t::from(6), i16_8_t::from(2)) == i16_4_t::from(3));
+
+// output type narrowing
+static_assert(divide<i16_8_t>(i16_4_t::from(6), i16_4_t::from(2)) == i16_8_t::from(3));
+
+// rounding mode
+static_assert(divide<i16_8_t>(i16_8_t::from(2), i16_8_t::from(3)).value == 170);
+static_assert(divide<i16_8_t>(i16_8_t::from(2), i16_8_t::from(3), rounding_modes::div::nearest_away).value == 171);
+static_assert(divide<i16_8_t>(i16_8_t::from(-2), i16_8_t::from(3), rounding_modes::div::nearest_away).value == -171);
+
+// Saturation
+
+// divide by zero: positive → max, negative → min, zero → zero
+static_assert(divide<i16_8_t>(i16_8_t::from(5), i16_8_t{0}) == i16_8_t{max<int16_t>()});
+static_assert(divide<i16_8_t>(i16_8_t::from(-5), i16_8_t{0}) == i16_8_t{min<int16_t>()});
+static_assert(divide<i16_8_t>(i16_8_t{0}, i16_8_t{0}) == i16_8_t{0});
+
+// unsigned divide by zero
+static_assert(divide<u16_8_t>(u16_8_t::from(5), u16_8_t{0}) == u16_8_t{max<uint16_t>()});
+static_assert(divide<u16_8_t>(u16_8_t{0}, u16_8_t{0}) == u16_8_t{0});
+
+// overflow saturates to max
+static_assert(divide<i8_4_t>(i16_8_t::from(100), i16_8_t::from(1)) == i8_4_t{max<int8_t>()});
+
+// negative overflow saturates to min
+static_assert(divide<i8_4_t>(i16_8_t::from(-100), i16_8_t::from(1)) == i8_4_t{min<int8_t>()});
+
+// literal operators
+struct fixed_division_ops_t : Test
+{
+    using sut_t = i16_8_t;
+    sut_t lhs   = sut_t::from(6);
+    sut_t rhs   = sut_t::from(2);
+};
+
+TEST_F(fixed_division_ops_t, compound_assign)
+{
+    EXPECT_EQ(&lhs, &(lhs /= rhs));
+    EXPECT_EQ(sut_t::from(3), lhs);
+}
+
+TEST_F(fixed_division_ops_t, binary_op)
+{
+    EXPECT_EQ(sut_t::from(3), lhs / rhs);
+}
+
+TEST_F(fixed_division_ops_t, truncation)
+{
+    auto const actual = sut_t::from(7) / sut_t::from(3);
+    EXPECT_EQ(597, actual.value);
+}
+
+// operator/ with mixed fixed types
+TEST_F(fixed_division_ops_t, mixed_type_binary_op)
+{
+    auto const rhs_q4 = i16_4_t::from(2);
+    auto const actual = lhs / rhs_q4;
+
+    static_assert(std::same_as<decltype(actual), i16_8_t const>);
+    EXPECT_EQ(sut_t::from(3), actual);
+}
+
+TEST_F(fixed_division_ops_t, mixed_type_binary_op_unsigned_rhs)
+{
+    auto const rhs_unsigned = u16_8_t::from(2);
+    auto const actual       = lhs / rhs_unsigned;
+
+    static_assert(std::same_as<decltype(actual), i16_8_t const>);
+    EXPECT_EQ(sut_t::from(3), actual);
+}
+
+// uint64_t vector tests
 
 template <int t_out_frac_bits, int t_lhs_frac_bits, int t_rhs_frac_bits> struct vector_t
 {
@@ -519,7 +639,7 @@ TEST_F(fixed_division_test_t, limits)
     test(vector_t<0, 0, 0>{"safe max", max<uint64_t>(), 1, max<uint64_t>()});
     test(vector_t<60, 0, 0>{"valid high bit", 16, 2, 1ULL << 63});
     test(vector_t<60, 0, 0>{"saturates 16 << 60", 16, 1, max<uint64_t>()});
-    // test(vector_t<64, 0, 0>{"saturates 1 << 64", 1, 1, max<uint64_t>()});
+    test(vector_t<64, 0, 0>{"saturates 1 << 64", 1, 1, max<uint64_t>()});
 }
 
 static constexpr auto lhs_frac_bits = 3;
