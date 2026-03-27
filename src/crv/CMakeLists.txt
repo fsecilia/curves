@@ -20,6 +20,8 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     lib.hpp
     lib.cpp
+    kernel/cxx_build_test.h
+    kernel/cxx_build_test.cpp
     math/division/concepts.hpp
     math/division/hardware_divider.hpp
     math/division/divider.hpp
