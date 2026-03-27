@@ -258,12 +258,13 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto divide(fixed_t lhs, rhs_t rhs,
                                  rounding_mode_t rounding_mode = fixed::default_div_rounding_mode) noexcept -> out_t
     {
-        using promoted_t = fixed::promoted_t<fixed_t, rhs_t>;
-        using narrow_t   = promoted_t::value_t;
+        using out_value_t = out_t::value_t;
+        using lhs_value_t = fixed_t::value_t;
+        using rhs_value_t = rhs_t::value_t;
 
         static constexpr auto shift = rhs_t::frac_bits - fixed_t::frac_bits + out_t::frac_bits;
 
-        return divide<out_t>(lhs, rhs, rounding_mode, division::divide<narrow_t, shift>);
+        return divide<out_t>(lhs, rhs, rounding_mode, division::divide<out_value_t, lhs_value_t, rhs_value_t, shift>);
     }
 
     /// \returns quotient using divider
@@ -271,7 +272,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode, divider_t divider) noexcept
         -> out_t
     {
-        return out_t{static_cast<typename out_t::value_t>(divider(lhs.value, rhs.value, rounding_mode))};
+        return out_t{divider(lhs.value, rhs.value, rounding_mode)};
     }
 
     /// \returns quotient, narrowed to lhs type and rescaled to lhs precision using given rounding mode

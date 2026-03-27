@@ -488,7 +488,6 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 // Division
 // --------------------------------------------------------------------------------------------------------------------
 
-#if 1
 namespace division {
 
 template <int t_out_frac_bits, int t_lhs_frac_bits, int t_rhs_frac_bits> struct vector_t
@@ -577,7 +576,6 @@ INSTANTIATE_TEST_SUITE_P(cases, fixed_division_vector_test_t, ValuesIn(vectors),
                          test_name_generator_t<specialized_vector_t>{});
 
 } // namespace division
-#endif
 
 // --------------------------------------------------------------------------------------------------------------------
 // Compound Assignment
