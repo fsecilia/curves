@@ -22,6 +22,7 @@ target_sources_kernel(lib
     lib.cpp
     kernel/cxx_build_test.h
     kernel/cxx_build_test.cpp
+    math/cmp.hpp
     math/division/concepts.hpp
     math/division/hardware_divider.hpp
     math/division/divider.hpp
@@ -53,6 +54,7 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         math/arg_min_max_test.cpp
+        math/cmp_test.cpp
         math/compensated_accumulator_test.cpp
         math/division/concepts_test.cpp
         math/division/hardware_divider_test.cpp
