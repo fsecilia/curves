@@ -73,42 +73,72 @@ static_assert(!arithmetic<nonarithmetic_t>);
 
 namespace is_signed_tests {
 
+struct nonsigned_t
+{};
+
+// standard signed integer signedness
+static_assert(is_signed_v<int8_t>);
+static_assert(is_signed_v<int16_t const>);
+static_assert(is_signed_v<int32_t volatile>);
+static_assert(is_signed_v<int64_t>);
+static_assert(is_signed_v<int128_t>);
+
+// standard unsigned integer signedness
+static_assert(!is_signed_v<uint8_t>);
+static_assert(!is_signed_v<uint16_t const>);
+static_assert(!is_signed_v<uint32_t volatile>);
+static_assert(!is_signed_v<uint64_t>);
+static_assert(!is_signed_v<uint128_t>);
+
+// 128-bit integer signedness
+static_assert(is_signed_v<int128_t>);
+static_assert(!is_signed_v<uint128_t>);
+
+// arbitrary types are not signed
+static_assert(!is_signed_v<nonsigned_t>);
+
+// signed integers are signed integrals
 static_assert(signed_integral<int8_t>);
 static_assert(signed_integral<int16_t const>);
 static_assert(signed_integral<int32_t volatile>);
 static_assert(signed_integral<int64_t>);
 static_assert(signed_integral<int128_t>);
 
+// unsigned integers are not signed integrals
 static_assert(!signed_integral<uint8_t>);
 static_assert(!signed_integral<uint16_t const>);
 static_assert(!signed_integral<uint32_t volatile>);
 static_assert(!signed_integral<uint64_t>);
 static_assert(!signed_integral<uint128_t>);
 
+// floating point types are not signed integrals
 static_assert(!signed_integral<float>);
 static_assert(!signed_integral<double>);
 static_assert(!signed_integral<long double>);
 
+// arbitrary types are not signed integrals
+static_assert(!signed_integral<nonsigned_t>);
+
+// signed integers are not unsigned integrals
 static_assert(!unsigned_integral<int8_t>);
 static_assert(!unsigned_integral<int16_t const>);
 static_assert(!unsigned_integral<int32_t volatile>);
 static_assert(!unsigned_integral<int64_t>);
 static_assert(!unsigned_integral<int128_t>);
 
+// unsigned integers are unsigned integrals
 static_assert(unsigned_integral<uint8_t>);
 static_assert(unsigned_integral<uint16_t const>);
 static_assert(unsigned_integral<uint32_t volatile>);
 static_assert(unsigned_integral<uint64_t>);
 static_assert(unsigned_integral<uint128_t>);
 
+// floating point types are not unsigned integrals
 static_assert(!unsigned_integral<float>);
 static_assert(!unsigned_integral<double>);
 static_assert(!unsigned_integral<long double>);
 
-struct nonsigned_t
-{};
-
-static_assert(!signed_integral<nonsigned_t>);
+// arbitrary types are not unsigned integrals
 static_assert(!unsigned_integral<nonsigned_t>);
 
 } // namespace is_signed_tests
