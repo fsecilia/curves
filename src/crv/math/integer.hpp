@@ -11,7 +11,6 @@
 #include <crv/math/limits.hpp>
 #include <bit>
 #include <cassert>
-#include <type_traits>
 
 namespace crv {
 

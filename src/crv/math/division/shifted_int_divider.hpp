@@ -12,8 +12,8 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/rounding_mode.hpp>
+#include <algorithm>
 #include <cassert>
-#include <utility>
 
 namespace crv::division {
 

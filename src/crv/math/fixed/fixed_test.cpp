@@ -71,16 +71,6 @@ static_assert(!is_fixed<not_fixed_t>);
 // Type Traits
 // ====================================================================================================================
 
-static_assert(std::same_as<fixed::promoted_t<fixed_t<int16_t, 0>, fixed_t<int32_t, 4>>, fixed_t<int32_t, 4>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<int16_t, 1>, fixed_t<uint32_t, 4>>, fixed_t<int32_t, 4>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<uint16_t, 3>, fixed_t<int32_t, 4>>, fixed_t<int32_t, 4>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<uint16_t, 4>, fixed_t<uint32_t, 4>>, fixed_t<uint32_t, 4>>);
-
-static_assert(std::same_as<fixed::promoted_t<fixed_t<int32_t, 16>, fixed_t<int16_t, 0>>, fixed_t<int32_t, 16>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<int32_t, 16>, fixed_t<uint16_t, 1>>, fixed_t<int32_t, 16>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<uint32_t, 16>, fixed_t<int16_t, 15>>, fixed_t<int32_t, 16>>);
-static_assert(std::same_as<fixed::promoted_t<fixed_t<uint32_t, 16>, fixed_t<uint16_t, 16>>, fixed_t<uint32_t, 16>>);
-
 static_assert(std::same_as<fixed::wider_t<fixed_t<int16_t, 0>, fixed_t<int32_t, 4>>, fixed_t<int64_t, 4>>);
 static_assert(std::same_as<fixed::wider_t<fixed_t<uint16_t, 1>, fixed_t<int32_t, 4>>, fixed_t<int64_t, 5>>);
 static_assert(std::same_as<fixed::wider_t<fixed_t<int16_t, 3>, fixed_t<uint32_t, 4>>, fixed_t<int64_t, 7>>);

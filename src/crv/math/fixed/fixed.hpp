@@ -44,12 +44,10 @@ concept is_fixed = is_fixed_v<type_t>;
 namespace fixed {
 
 template <is_fixed lhs_t, is_fixed rhs_t>
-using promoted_t = fixed_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>,
-                           std::max(lhs_t::frac_bits, rhs_t::frac_bits)>;
-
-template <is_fixed lhs_t, is_fixed rhs_t>
-using wider_t = fixed_t<crv::wider_t<crv::promoted_t<typename lhs_t::value_t, typename rhs_t::value_t>>,
-                        lhs_t::frac_bits + rhs_t::frac_bits>;
+using wider_t
+    = fixed_t<sized_integer_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
+                              std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
+              lhs_t::frac_bits + rhs_t::frac_bits>;
 
 inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
 using default_shr_rounding_mode_t               = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
@@ -100,21 +98,25 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
     explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
     {
+        using other_value_t = typename other_t::value_t;
+
         static constexpr auto other_frac_bits = other_t::frac_bits;
 
-        using promoted_value_t = fixed::promoted_t<fixed_t, other_t>::value_t;
+        using intermediate_t
+            = sized_integer_t<std::max(sizeof(value_t), sizeof(other_value_t)), std::is_signed_v<other_value_t>>;
 
         if constexpr (frac_bits > other_frac_bits)
         {
             // shift left using wider type
-            value = int_cast<value_t>(int_cast<promoted_value_t>(other.value) << (frac_bits - other_frac_bits));
+            constexpr auto shift = frac_bits - other_frac_bits;
+            value                = int_cast<value_t>(int_cast<intermediate_t>(other.value) << shift);
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = rounding_mode.bias(int_cast<promoted_value_t>(other.value), shift);
-            auto const     shifted   = int_cast<promoted_value_t>(unshifted >> shift);
+            auto const     unshifted = rounding_mode.bias(int_cast<intermediate_t>(other.value), shift);
+            auto const     shifted   = int_cast<intermediate_t>(unshifted >> shift);
             value                    = int_cast<value_t>(rounding_mode.carry(shifted, unshifted, shift));
         }
         else

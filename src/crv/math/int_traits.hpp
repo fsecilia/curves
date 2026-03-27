@@ -12,7 +12,6 @@
 
 #include <crv/lib.hpp>
 #include <crv/traits.hpp>
-#include <algorithm>
 #include <cassert>
 #include <type_traits>
 
@@ -138,10 +137,6 @@ template <int size, bool is_signed> using sized_integer_t = detail::integer::siz
 // --------------------------------------------------------------------------------------------------------------------
 // Integer Promotions
 // --------------------------------------------------------------------------------------------------------------------
-
-/// integer type sized to the larger of lhs_t and rhs_t and signed if either is signed
-template <integral lhs_t, integral rhs_t>
-using promoted_t = sized_integer_t<std::max(sizeof(lhs_t), sizeof(rhs_t)), is_signed_v<lhs_t> || is_signed_v<rhs_t>>;
 
 template <integral value_t> using wider_t = sized_integer_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
 
