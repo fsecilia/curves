@@ -15,20 +15,6 @@
 
 namespace crv::division {
 
-namespace detail {
-
-/// clz, safely handling input 0
-///
-/// ORs 1 into LSB before calling clz to limit max return to width - 1. This prevents UB when passing 0. Since shifting
-/// 0 left by any value is still 0, the final result is still correct in all cases. This saves a branch at the cost of a
-/// const ALU op.
-template <unsigned_integral src_t> constexpr auto safe_clz(src_t src) noexcept -> src_t
-{
-    return int_cast<src_t>(std::countl_zero(int_cast<src_t>(src | 1)));
-}
-
-} // namespace detail
-
 /// divides, scales, and rounds narrow integers via wide intermediate
 ///
 /// Widens dividend, applies shift, divides via wide_divider_t, optionally saturates, and narrows.
@@ -62,7 +48,7 @@ template <typename wide_divider_t, int shift, bool saturate = true> struct shift
 
         // widen, shift, divide
         auto const wide_dividend = int_cast<wide_t>(dividend);
-        assert(shift <= detail::safe_clz(wide_dividend)
+        assert(wide_dividend <= (max<wide_t>() >> shift)
                && "crz::division::saturating_divider_t: pre-shift would overflow");
         auto const wide_quotient = divide(int_cast<wide_t>(wide_dividend << shift), divisor, rounding_mode);
 
@@ -109,7 +95,7 @@ template <typename wide_divider_t, int shift, bool saturate = true> struct shift
                                                                       : static_cast<unsigned_t>(divisor));
 
         auto const wide_dividend = int_cast<wide_t>(abs_dividend);
-        assert(shift <= detail::safe_clz(wide_dividend)
+        assert(wide_dividend <= (max<wide_t>() >> shift)
                && "crz::division::saturating_divider_t: pre-shift would overflow");
 
         auto const negative      = (dividend ^ divisor) < 0;
