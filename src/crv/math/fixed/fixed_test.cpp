@@ -446,16 +446,16 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
+static_assert(typed_equal<fixed_t<int8_t, 1>>(
+    multiply<fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1}, rounding_modes::shr::truncate),
+    fixed_t<int8_t, 1>{(2 * 3) << 1}));
+static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply <fixed_t<int8_t, 1>>(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
                                                        rounding_modes::shr::truncate),
                                               fixed_t<int8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<int8_t, 1>>(multiply(fixed_t<int8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
-                                                       rounding_modes::shr::truncate),
-                                              fixed_t<int8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<int8_t, 1>{3 << 1},
                                                         rounding_modes::shr::truncate),
                                                fixed_t<uint8_t, 1>{(2 * 3) << 1}));
-static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
+static_assert(typed_equal<fixed_t<uint8_t, 1>>(multiply<fixed_t<uint8_t, 1>>(fixed_t<uint8_t, 1>{2 << 1}, fixed_t<uint8_t, 1>{3 << 1},
                                                         rounding_modes::shr::truncate),
                                                fixed_t<uint8_t, 1>{(2 * 3) << 1}));
 
@@ -469,7 +469,7 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
     EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
     EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
-    auto const actual = multiply(lhs, rhs, rounding_mode);
+    auto const actual = multiply<sut_t>(lhs, rhs, rounding_mode);
 
     EXPECT_EQ(expected, actual);
 }
