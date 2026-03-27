@@ -99,7 +99,8 @@ struct exp2_neg_m1_q64_to_q1_63_test_t
 
         using metrics_t = error_metrics_t<error_metrics_policy_t>;
 
-        auto const max = crv::max<uint64_t>();
+        auto const zero = in_t{0};
+        auto const max = in_t{crv::max<uint64_t>()};
 
         auto const approx_impl = impl_t{};
 
@@ -111,7 +112,7 @@ struct exp2_neg_m1_q64_to_q1_63_test_t
             },
         };
 
-        auto const iterations  = 10000000ULL;
+        auto const iterations  = in_t{10000000ULL};
         auto const coarse_step = max / iterations;
 
         struct range_t
@@ -122,17 +123,17 @@ struct exp2_neg_m1_q64_to_q1_63_test_t
         };
 
         range_t ranges[] = {
-            {0, max / 4, coarse_step},
+            {zero, max / 4, coarse_step},
             {max / 4, max / 2, coarse_step},
             {max / 2, 3 * (max / 4), coarse_step},
             {3 * (max / 4), max, coarse_step},
 
-            {0, max / 2, coarse_step},
+            {zero, max / 2, coarse_step},
             {max / 2, max, coarse_step},
 
-            {0, max, coarse_step},
+            {zero, max, coarse_step},
 
-            {0, iterations, 1},
+            {zero, iterations, 1},
             {max / 2 - iterations / 2, max / 2 + iterations / 2, 1},
             {max - iterations, max, 1},
         };

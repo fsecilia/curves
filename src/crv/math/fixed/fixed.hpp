@@ -75,7 +75,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     constexpr fixed_t() = default;
 
     /// value initializer - value is specified directly; it is not rescaled to frac_bits
-    constexpr fixed_t(value_t value) noexcept : value{value} {}
+    explicit constexpr fixed_t(value_t value) noexcept : value{value} {}
 
     /// imports a semantic integer value, scaling to this type's fixed-point representation
     static constexpr auto from(value_t src) noexcept -> fixed_t

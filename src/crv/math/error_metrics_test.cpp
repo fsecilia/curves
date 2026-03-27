@@ -343,7 +343,7 @@ TEST_F(error_metric_mono_test_t, sample_no_prev)
 TEST_F(error_metric_mono_test_t, sample_with_prev_no_violation)
 {
     sut.prev = prev;
-    EXPECT_CALL(mock_dir_policy, call(prev, cur)).WillOnce(Return(0));
+    EXPECT_CALL(mock_dir_policy, call(prev, cur)).WillOnce(Return(fixed_t{0}));
     EXPECT_CALL(mock_error_accumulator, sample(arg, 0.0));
 
     sut.sample(arg, cur);

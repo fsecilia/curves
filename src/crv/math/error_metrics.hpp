@@ -138,7 +138,7 @@ struct ascending_t
 {
     template <typename fixed_t> constexpr auto operator()(fixed_t prev, fixed_t cur) const noexcept -> fixed_t
     {
-        return cur < prev ? prev - cur : 0;
+        return cur < prev ? prev - cur : fixed_t{0};
     }
 };
 
@@ -146,7 +146,7 @@ struct descending_t
 {
     template <typename fixed_t> constexpr auto operator()(fixed_t prev, fixed_t cur) const noexcept -> fixed_t
     {
-        return cur > prev ? cur - prev : 0;
+        return cur > prev ? cur - prev : fixed_t{0};
     }
 };
 
