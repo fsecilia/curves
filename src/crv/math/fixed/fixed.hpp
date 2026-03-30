@@ -56,6 +56,16 @@ using default_div_rounding_mode_t               = std::remove_cv_t<decltype(defa
 
 // --------------------------------------------------------------------------------------------------------------------
 
+template <is_fixed fixed_t> constexpr auto literal(typename fixed_t::value_t value) -> fixed_t
+{
+    return fixed_t::literal(value);
+}
+
+template <integral value_t, int frac_bits> constexpr auto literal(value_t value) -> fixed_t<value_t, frac_bits>
+{
+    return literal<fixed_t<value_t, frac_bits>>(value);
+}
+
 /// fixed-point arithmetic type with statically-configurable precision
 template <integral value_type, int t_frac_bits> struct fixed_t
 {
