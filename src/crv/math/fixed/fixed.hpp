@@ -69,9 +69,9 @@ template <integral value_t, int frac_bits> constexpr auto literal(value_t value)
 }
 
 /// fixed-point arithmetic type with statically-configurable precision
-template <integral value_type, int t_frac_bits> struct fixed_t
+template <integral t_value_t, int t_frac_bits> struct fixed_t
 {
-    using value_t                   = value_type;
+    using value_t                   = t_value_t;
     static constexpr auto frac_bits = t_frac_bits;
 
     value_t value;
