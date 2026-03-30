@@ -157,14 +157,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr auto operator+=(value_t src) noexcept -> fixed_t& { return *this += fixed_t{src}; }
-
-    friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += fixed_t{rhs}; }
-    friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += fixed_t{lhs}; }
-
     constexpr auto operator-=(value_t src) noexcept -> fixed_t& { return *this -= fixed_t{src}; }
-
-    friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= fixed_t{rhs}; }
-    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return fixed_t{lhs} - rhs; }
 
     constexpr auto operator*=(value_t src) noexcept -> fixed_t&
     {
@@ -172,14 +165,20 @@ template <integral value_type, int t_frac_bits> struct fixed_t
         return *this;
     }
 
-    friend constexpr auto operator*(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
-    friend constexpr auto operator*(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs *= lhs; }
-
     constexpr auto operator/=(value_t src) noexcept -> fixed_t&
     {
         value /= src;
         return *this;
     }
+
+    friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += fixed_t{rhs}; }
+    friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += fixed_t{lhs}; }
+
+    friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= fixed_t{rhs}; }
+    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return fixed_t{lhs} - rhs; }
+
+    friend constexpr auto operator*(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
+    friend constexpr auto operator*(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs *= lhs; }
 
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
