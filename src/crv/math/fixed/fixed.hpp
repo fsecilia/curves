@@ -101,8 +101,7 @@ template <integral value_type, int t_frac_bits> struct fixed_t
     template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
     explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
     {
-        using other_value_t = typename other_t::value_t;
-
+        using other_value_t                   = typename other_t::value_t;
         static constexpr auto other_frac_bits = other_t::frac_bits;
 
         using intermediate_t
@@ -110,12 +109,23 @@ template <integral value_type, int t_frac_bits> struct fixed_t
 
         if constexpr (frac_bits > other_frac_bits)
         {
-            // shift left using wider type
+            static_assert((frac_bits - other_frac_bits) < sizeof(value_t) * CHAR_BIT, "left-shift overflow");
+
             constexpr auto shift = frac_bits - other_frac_bits;
-            value                = int_cast<value_t>(int_cast<intermediate_t>(other.value) << shift);
+
+            assert(other.value <= (std::numeric_limits<value_t>::max() >> shift) && "left-shift overflow");
+            if constexpr (std::is_signed_v<other_value_t>)
+            {
+                assert(other.value >= (std::numeric_limits<value_t>::min() >> shift) && "left-shift underflow");
+            }
+
+            // shift left using wider type, letting int_cast catch any final truncation
+            value = int_cast<value_t>(int_cast<intermediate_t>(other.value) << shift);
         }
         else if constexpr (other_frac_bits > frac_bits)
         {
+            static_assert((other_frac_bits - frac_bits) < sizeof(other_value_t) * CHAR_BIT, "right-shift underflow");
+
             // right shift using rounding mode
             constexpr auto shift     = other_frac_bits - frac_bits;
             auto const     unshifted = rounding_mode.bias(int_cast<intermediate_t>(other.value), shift);
