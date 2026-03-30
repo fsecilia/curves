@@ -55,6 +55,8 @@ using default_div_rounding_mode_t               = std::remove_cv_t<decltype(defa
 } // namespace fixed
 
 // --------------------------------------------------------------------------------------------------------------------
+// fixed_t
+// --------------------------------------------------------------------------------------------------------------------
 
 template <is_fixed fixed_t> constexpr auto literal(typename fixed_t::value_t value) -> fixed_t
 {
