@@ -41,7 +41,7 @@ concept is_fixed = is_fixed_v<type_t>;
 namespace fixed {
 
 template <is_fixed lhs_t, is_fixed rhs_t>
-using wider_t
+using product_t
     = fixed_t<sized_integer_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
                               std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
               lhs_t::frac_bits + rhs_t::frac_bits>;
@@ -187,15 +187,15 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += fixed_t{lhs}; }
 
     friend constexpr auto operator-(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs -= fixed_t{rhs}; }
-    friend constexpr auto operator-(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t { return fixed_t{lhs} - rhs; }
+    friend constexpr auto operator-(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return fixed_t{lhs} - rhs; }
 
     friend constexpr auto operator*(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
     friend constexpr auto operator*(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs *= lhs; }
 
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
-    friend constexpr auto operator/(value_t lhs, fixed_t const& rhs) noexcept -> fixed_t
+    friend constexpr auto operator/(value_t lhs, fixed_t rhs) noexcept -> fixed_t
     {
-        return fixed_t{lhs << frac_bits} / rhs.value;
+        return fixed_t::literal((wider_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -241,9 +241,9 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// \returns wide product at higher precision
     template <is_fixed rhs_t>
-    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> fixed::wider_t<fixed_t, rhs_t>
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> fixed::product_t<fixed_t, rhs_t>
     {
-        using result_t      = fixed::wider_t<fixed_t, rhs_t>;
+        using result_t      = fixed::product_t<fixed_t, rhs_t>;
         using wider_value_t = result_t::value_t;
 
         auto const product = int_cast<wider_value_t>(int_cast<wider_value_t>(lhs.value) * rhs.value);
