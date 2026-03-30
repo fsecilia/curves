@@ -19,6 +19,17 @@ using value_t            = int_t;
 constexpr auto frac_bits = 21;
 using sut_t              = fixed_t<value_t, frac_bits>;
 
+using qi8_3    = fixed_t<int8_t, 3>;
+using qu16_5   = fixed_t<uint16_t, 5>;
+using qi16_5   = fixed_t<int16_t, 5>;
+using qi32_8   = fixed_t<int32_t, 8>;
+using qu64_0   = fixed_t<uint64_t, 0>;
+using qi64_0   = fixed_t<int64_t, 0>;
+using qi64_32  = fixed_t<int64_t, 32>;
+using qi128_0  = fixed_t<int128_t, 0>;
+using qu128_0  = fixed_t<uint128_t, 0>;
+using qi128_64 = fixed_t<int128_t, 64>;
+
 struct fixed_test_t : Test
 {};
 
@@ -55,9 +66,11 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
 // ====================================================================================================================
 
 static_assert(is_fixed<sut_t>);
-static_assert(is_fixed<fixed_q15_0_t>);
-static_assert(is_fixed<fixed_q32_32_t>);
-static_assert(is_fixed<fixed_q0_64_t>);
+static_assert(is_fixed<qi8_3>);
+static_assert(is_fixed<qu16_5>);
+static_assert(is_fixed<qi16_5>);
+static_assert(is_fixed<qu128_0>);
+static_assert(is_fixed<qi128_64>);
 static_assert(!is_fixed<int>);
 static_assert(!is_fixed<int_t>);
 static_assert(!is_fixed<float_t>);
