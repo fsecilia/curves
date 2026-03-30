@@ -18,6 +18,7 @@ target_sources(lib PRIVATE
     math/stats.hpp
 )
 target_sources_kernel(lib
+    bitwise_enum.hpp
     lib.hpp
     lib.cpp
     kernel/cxx_build_test.h
@@ -53,6 +54,7 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
+        bitwise_enum_test.cpp
         math/arg_min_max_test.cpp
         math/cmp_test.cpp
         math/compensated_accumulator_test.cpp
