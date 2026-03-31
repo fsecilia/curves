@@ -223,27 +223,17 @@ static_assert(std::same_as<make_unsigned_t<unsigned __int128 volatile>, unsigned
 
 namespace int_by_bytes_tests {
 
-// tests is_integral, is_signed, and size for the given int_by_bytes_t
-template <int_t expected_size, bool expected_is_signed> constexpr auto test_size() noexcept -> void
-{
-    using actual_t = int_by_bytes_t<expected_size, expected_is_signed>;
+static_assert(std::same_as<int8_t, int_by_bytes_t<1, true>>);
+static_assert(std::same_as<int16_t, int_by_bytes_t<2, true>>);
+static_assert(std::same_as<int32_t, int_by_bytes_t<4, true>>);
+static_assert(std::same_as<int64_t, int_by_bytes_t<8, true>>);
+static_assert(std::same_as<int128_t, int_by_bytes_t<16, true>>);
 
-    static_assert(integral<actual_t>, "int_by_bytes_t: result was not integral");
-    static_assert(expected_size == sizeof(actual_t), "int_by_bytes_t: size did not match");
-    static_assert(expected_is_signed == is_signed_v<actual_t>, "int_by_bytes_t: is_signed did not match");
-};
-
-// runs signed and unsigned test_size() for given sizes
-template <int_t... sizes> constexpr auto test_sizes() noexcept -> void
-{
-    (..., (test_size<sizes, true>(), test_size<sizes, false>()));
-}
-
-// runs test_sizes() for all supported integer sizes
-[[maybe_unused]] constexpr auto test_all_sizes() noexcept -> void
-{
-    test_sizes<1, 2, 4, 8, 16>();
-}
+static_assert(std::same_as<uint8_t, int_by_bytes_t<1, false>>);
+static_assert(std::same_as<uint16_t, int_by_bytes_t<2, false>>);
+static_assert(std::same_as<uint32_t, int_by_bytes_t<4, false>>);
+static_assert(std::same_as<uint64_t, int_by_bytes_t<8, false>>);
+static_assert(std::same_as<uint128_t, int_by_bytes_t<16, false>>);
 
 } // namespace int_by_bytes_tests
 
