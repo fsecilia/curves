@@ -38,7 +38,6 @@ using u32_8_t    = fixed_t<uint32_t, 8>;
 using i64_0_t    = fixed_t<int64_t, 0>;
 using u64_0_t    = fixed_t<uint64_t, 0>;
 using u64_4_t    = fixed_t<uint64_t, 4>;
-using i64_32_t   = fixed_t<int64_t, 32>;
 using i64_63_t   = fixed_t<int64_t, 63>;
 using u64_64_t   = fixed_t<uint64_t, 64>;
 using i128_0_t   = fixed_t<int128_t, 0>;
