@@ -218,7 +218,7 @@ static_assert(std::same_as<make_unsigned_t<unsigned __int128 volatile>, unsigned
 } // namespace make_unsigned_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// int_by_bytes_t
+// Sized Integers
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace int_by_bytes_tests {
@@ -236,6 +236,32 @@ static_assert(std::same_as<uint64_t, int_by_bytes_t<8, false>>);
 static_assert(std::same_as<uint128_t, int_by_bytes_t<16, false>>);
 
 } // namespace int_by_bytes_tests
+
+namespace int_by_bits_tests {
+
+static_assert(std::same_as<int8_t, int_by_bits_t<1, true>>);
+static_assert(std::same_as<int8_t, int_by_bits_t<8, true>>);
+static_assert(std::same_as<int16_t, int_by_bits_t<9, true>>);
+static_assert(std::same_as<int16_t, int_by_bits_t<16, true>>);
+static_assert(std::same_as<int32_t, int_by_bits_t<17, true>>);
+static_assert(std::same_as<int32_t, int_by_bits_t<32, true>>);
+static_assert(std::same_as<int64_t, int_by_bits_t<33, true>>);
+static_assert(std::same_as<int64_t, int_by_bits_t<64, true>>);
+static_assert(std::same_as<int128_t, int_by_bits_t<65, true>>);
+static_assert(std::same_as<int128_t, int_by_bits_t<128, true>>);
+
+static_assert(std::same_as<uint8_t, int_by_bits_t<1, false>>);
+static_assert(std::same_as<uint8_t, int_by_bits_t<8, false>>);
+static_assert(std::same_as<uint16_t, int_by_bits_t<9, false>>);
+static_assert(std::same_as<uint16_t, int_by_bits_t<16, false>>);
+static_assert(std::same_as<uint32_t, int_by_bits_t<17, false>>);
+static_assert(std::same_as<uint32_t, int_by_bits_t<32, false>>);
+static_assert(std::same_as<uint64_t, int_by_bits_t<33, false>>);
+static_assert(std::same_as<uint64_t, int_by_bits_t<64, false>>);
+static_assert(std::same_as<uint128_t, int_by_bits_t<65, false>>);
+static_assert(std::same_as<uint128_t, int_by_bits_t<128, false>>);
+
+} // namespace int_by_bits_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // Integer Promotions

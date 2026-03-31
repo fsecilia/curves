@@ -12,7 +12,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/traits.hpp>
+#include <bit>
 #include <cassert>
+#include <climits>
 #include <type_traits>
 
 namespace crv {
@@ -114,7 +116,7 @@ template <typename src_t> using make_unsigned_t = make_unsigned<src_t>::type;
 
 namespace detail::integer {
 
-template <int_t size, bool is_signed> struct int_by_bytes_t;
+template <int_t byte_count, bool is_signed> struct int_by_bytes_t;
 
 // clang-format off
 template <> struct int_by_bytes_t<1, false> { using type = uint8_t; };
@@ -133,7 +135,15 @@ template <> struct int_by_bytes_t<16, true> { using type = int128_t; };
 } // namespace detail::integer
 
 /// defines an integer with given size in bytes and signedness
-template <int size, bool is_signed> using int_by_bytes_t = detail::integer::int_by_bytes_t<size, is_signed>::type;
+template <int byte_count, bool is_signed>
+    requires(byte_count > 0)
+using int_by_bytes_t = detail::integer::int_by_bytes_t<byte_count, is_signed>::type;
+
+/// defines an integer with given size in bits and signedness
+template <int bit_count, bool is_signed>
+    requires(bit_count > 0)
+using int_by_bits_t
+    = int_by_bytes_t<std::bit_ceil(static_cast<uint_t>(bit_count + CHAR_BIT - 1) / CHAR_BIT), is_signed>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Integer Promotions
