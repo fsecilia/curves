@@ -39,12 +39,16 @@ constexpr auto fma(multipicand_t multiplicand, multiplier_t multiplier, addend_t
     // prevent negative shift UB
     static_assert(max_frac >= out_t::frac_bits, "fma upscaling is not supported");
 
-    using sum_value_t
-        = int_by_bytes_t<std::max(sizeof(typename product_t::value_t), sizeof(addend_value_t)), is_signed>;
-
     // radix alignment shifts
     constexpr auto product_shift = (max_frac > product_t::frac_bits) ? (max_frac - product_t::frac_bits) : 0;
     constexpr auto addend_shift  = (max_frac > addend_t::frac_bits) ? (max_frac - addend_t::frac_bits) : 0;
+
+    constexpr auto max_product_bits  = (sizeof(typename product_t::value_t) * CHAR_BIT) + product_shift;
+    constexpr auto max_addend_bits   = (sizeof(addend_value_t) * CHAR_BIT) + addend_shift;
+    constexpr auto raw_required_bits = std::max(max_product_bits, max_addend_bits);
+    constexpr auto required_bits     = raw_required_bits > 128 ? 128 : raw_required_bits;
+
+    using sum_value_t = int_by_bits_t<required_bits, is_signed>;
 
     static_assert(product_shift < sizeof(sum_value_t) * CHAR_BIT, "fma radix alignment shift exceeds container width");
     static_assert(addend_shift < sizeof(sum_value_t) * CHAR_BIT, "fma radix alignment shift exceeds container width");
