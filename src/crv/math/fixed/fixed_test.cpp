@@ -8,7 +8,6 @@
 #include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
-#include <crv/test/typed_equal.hpp>
 #include <concepts>
 #include <gmock/gmock.h>
 
