@@ -84,7 +84,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     constexpr fixed_t() = default;
 
     /// imports a semantic integer value, scaling to this type's fixed-point representation
-    explicit constexpr fixed_t(value_t value) noexcept : value{int_cast<value_t>(value << frac_bits)} {}
+    ///
+    /// \pre shift must be smaller than bit width of underlying
+    explicit constexpr fixed_t(value_t value) noexcept
+        requires(frac_bits < sizeof(value_t) * CHAR_BIT)
+        : value{int_cast<value_t>(value << frac_bits)}
+    {}
 
     struct literal_t
     {
