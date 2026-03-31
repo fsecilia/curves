@@ -32,6 +32,7 @@ target_sources_kernel(lib
     math/division/shifted_int_divider.hpp
     math/division/wide_divider.hpp
     math/fixed/fixed.hpp
+    math/fixed/fma.hpp
     math/fixed/exp2.hpp
     math/fixed/exp2_neg_m1.hpp
     math/int_traits.hpp
@@ -67,6 +68,7 @@ if (enable_testing)
         math/fixed/exp2_neg_m1_test.cpp
         math/fixed/fixed_test.cpp
         math/fixed/float_conversions_test.cpp
+        math/fixed/fma_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp
