@@ -48,6 +48,9 @@ using i128_64_t  = fixed_t<int128_t, 64>;
 using i128_126_t = fixed_t<int128_t, 126>;
 using u128_128_t = fixed_t<uint128_t, 128>;
 
+constexpr auto rne   = rounding_modes::shr::nearest_even;
+constexpr auto trunc = rounding_modes::shr::truncate;
+
 using value_t            = int_t;
 constexpr auto frac_bits = 21;
 using sut_t              = fixed_t<value_t, frac_bits>;
@@ -175,7 +178,6 @@ static_assert(dst_t{src_t::literal(max - 4)}.value == max / 4 - 1);
 static_assert(dst_t{src_t::literal(max)}.value == max / 4);
 
 // round nearest even
-constexpr auto rne = rounding_modes::shr::nearest_even;
 static_assert(dst_t{src_t::literal(min), rne}.value == min / 4);
 static_assert(dst_t{src_t::literal(min + 1), rne}.value == min / 4);
 static_assert(dst_t{src_t::literal(min + 3), rne}.value == min / 4 + 1);
@@ -386,14 +388,10 @@ static_assert(multiply(u64_64_t::literal(max<uint64_t>()), u64_64_t::literal(max
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}, rounding_modes::shr::truncate)
-              == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, rounding_modes::shr::truncate)
-              == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, rounding_modes::shr::truncate)
-              == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, rounding_modes::shr::truncate)
-              == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}, trunc) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, trunc) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, trunc) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, trunc) == i8_1_t{2 * 3});
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 {
@@ -414,10 +412,10 @@ TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(i8_1_t{2}, i8_1_t{3}, rounding_modes::shr::truncate) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, rounding_modes::shr::truncate) == i8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, rounding_modes::shr::truncate) == u8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, rounding_modes::shr::truncate) == u8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(i8_1_t{2}, i8_1_t{3}, trunc) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, trunc) == i8_1_t{2 * 3});
+static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, trunc) == u8_1_t{2 * 3});
+static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, trunc) == u8_1_t{2 * 3});
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 {
