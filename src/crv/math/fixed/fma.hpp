@@ -40,7 +40,7 @@ constexpr auto fma(multipicand_t multiplicand, multiplier_t multiplier, addend_t
     static_assert(max_frac >= out_t::frac_bits, "fma upscaling is not supported");
 
     using sum_value_t
-        = sized_integer_t<std::max(sizeof(typename product_t::value_t), sizeof(addend_value_t)), is_signed>;
+        = int_by_bytes_t<std::max(sizeof(typename product_t::value_t), sizeof(addend_value_t)), is_signed>;
 
     // radix alignment shifts
     constexpr auto product_shift = (max_frac > product_t::frac_bits) ? (max_frac - product_t::frac_bits) : 0;

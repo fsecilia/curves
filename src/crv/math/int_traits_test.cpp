@@ -218,19 +218,19 @@ static_assert(std::same_as<make_unsigned_t<unsigned __int128 volatile>, unsigned
 } // namespace make_unsigned_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// sized_integer_t
+// int_by_bytes_t
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace sized_integer_tests {
+namespace int_by_bytes_tests {
 
-// tests is_integral, is_signed, and size for the given sized_integer_t
+// tests is_integral, is_signed, and size for the given int_by_bytes_t
 template <int_t expected_size, bool expected_is_signed> constexpr auto test_size() noexcept -> void
 {
-    using actual_t = sized_integer_t<expected_size, expected_is_signed>;
+    using actual_t = int_by_bytes_t<expected_size, expected_is_signed>;
 
-    static_assert(integral<actual_t>, "sized_integer_t: result was not integral");
-    static_assert(expected_size == sizeof(actual_t), "sized_integer_t: size did not match");
-    static_assert(expected_is_signed == is_signed_v<actual_t>, "sized_integer_t: is_signed did not match");
+    static_assert(integral<actual_t>, "int_by_bytes_t: result was not integral");
+    static_assert(expected_size == sizeof(actual_t), "int_by_bytes_t: size did not match");
+    static_assert(expected_is_signed == is_signed_v<actual_t>, "int_by_bytes_t: is_signed did not match");
 };
 
 // runs signed and unsigned test_size() for given sizes
@@ -245,7 +245,7 @@ template <int_t... sizes> constexpr auto test_sizes() noexcept -> void
     test_sizes<1, 2, 4, 8, 16>();
 }
 
-} // namespace sized_integer_tests
+} // namespace int_by_bytes_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // Integer Promotions

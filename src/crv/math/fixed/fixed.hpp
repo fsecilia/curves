@@ -42,8 +42,8 @@ namespace fixed {
 
 template <is_fixed lhs_t, is_fixed rhs_t>
 using product_t
-    = fixed_t<sized_integer_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
-                              std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
+    = fixed_t<int_by_bytes_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
+                             std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
               lhs_t::frac_bits + rhs_t::frac_bits>;
 
 inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
@@ -119,7 +119,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         static constexpr auto other_frac_bits = other_t::frac_bits;
 
         using intermediate_t
-            = sized_integer_t<std::max(sizeof(value_t), sizeof(other_value_t)), std::is_signed_v<other_value_t>>;
+            = int_by_bytes_t<std::max(sizeof(value_t), sizeof(other_value_t)), std::is_signed_v<other_value_t>>;
 
         if constexpr (frac_bits > other_frac_bits)
         {

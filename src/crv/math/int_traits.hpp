@@ -109,35 +109,36 @@ template <typename src_t> struct make_unsigned : detail::make_unsigned_f<src_t, 
 template <typename src_t> using make_unsigned_t = make_unsigned<src_t>::type;
 
 // --------------------------------------------------------------------------------------------------------------------
-// sized_integer_t
+// Sized Integers
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace detail::integer {
 
-template <int_t size, bool is_signed> struct sized_integer_t;
+template <int_t size, bool is_signed> struct int_by_bytes_t;
 
 // clang-format off
-template <> struct sized_integer_t<1, false> { using type = uint8_t; };
-template <> struct sized_integer_t<2, false> { using type = uint16_t; };
-template <> struct sized_integer_t<4, false> { using type = uint32_t; };
-template <> struct sized_integer_t<8, false> { using type = uint64_t; };
-template <> struct sized_integer_t<16, false> { using type = uint128_t; };
+template <> struct int_by_bytes_t<1, false> { using type = uint8_t; };
+template <> struct int_by_bytes_t<2, false> { using type = uint16_t; };
+template <> struct int_by_bytes_t<4, false> { using type = uint32_t; };
+template <> struct int_by_bytes_t<8, false> { using type = uint64_t; };
+template <> struct int_by_bytes_t<16, false> { using type = uint128_t; };
 
-template <> struct sized_integer_t<1, true> { using type = int8_t; };
-template <> struct sized_integer_t<2, true> { using type = int16_t; };
-template <> struct sized_integer_t<4, true> { using type = int32_t; };
-template <> struct sized_integer_t<8, true> { using type = int64_t; };
-template <> struct sized_integer_t<16, true> { using type = int128_t; };
+template <> struct int_by_bytes_t<1, true> { using type = int8_t; };
+template <> struct int_by_bytes_t<2, true> { using type = int16_t; };
+template <> struct int_by_bytes_t<4, true> { using type = int32_t; };
+template <> struct int_by_bytes_t<8, true> { using type = int64_t; };
+template <> struct int_by_bytes_t<16, true> { using type = int128_t; };
 // clang-format on
 
 } // namespace detail::integer
 
-template <int size, bool is_signed> using sized_integer_t = detail::integer::sized_integer_t<size, is_signed>::type;
+/// defines an integer with given size in bytes and signedness
+template <int size, bool is_signed> using int_by_bytes_t = detail::integer::int_by_bytes_t<size, is_signed>::type;
 
 // --------------------------------------------------------------------------------------------------------------------
 // Integer Promotions
 // --------------------------------------------------------------------------------------------------------------------
 
-template <integral value_t> using wider_t = sized_integer_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
+template <integral value_t> using wider_t = int_by_bytes_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
 
 } // namespace crv

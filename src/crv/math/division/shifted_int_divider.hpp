@@ -31,7 +31,7 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 
     static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
 
-    using narrow_t = sized_integer_t<narrow_size, false>;
+    using narrow_t = int_by_bytes_t<narrow_size, false>;
     using wide_t   = wider_t<narrow_t>;
 
     static constexpr auto max_wide_pre_shift = max<wide_t>() >> shift;
@@ -88,7 +88,7 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 
     static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
 
-    using narrow_t      = sized_integer_t<narrow_size, false>;
+    using narrow_t      = int_by_bytes_t<narrow_size, false>;
     using wide_t        = wider_t<narrow_t>;
     using wide_signed_t = make_signed_t<wide_t>;
 
