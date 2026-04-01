@@ -684,25 +684,25 @@ static_assert([] {
 
 static_assert([] {
     auto val = sut_t{10};
-    return &val == &(val -= sut_t{3});
-}());
-
-static_assert([] {
-    auto val = sut_t{10};
-    return &val == &(val *= sut_t{2});
-}());
-
-static_assert([] {
-    auto val = sut_t{10};
     val += sut_t{3};
     return val;
 }() == sut_t{13});
 
 static_assert([] {
     auto val = sut_t{10};
+    return &val == &(val -= sut_t{3});
+}());
+
+static_assert([] {
+    auto val = sut_t{10};
     val -= sut_t{3};
     return val;
 }() == sut_t{7});
+
+static_assert([] {
+    auto val = sut_t{10};
+    return &val == &(val *= sut_t{2});
+}());
 
 static_assert([] {
     auto val = sut_t{10};
