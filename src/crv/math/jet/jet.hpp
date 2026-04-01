@@ -75,15 +75,17 @@ template <typename t_value_t> struct jet_t
 {
     using value_t = t_value_t;
 
-    value_t f{};
-    value_t df{};
+    value_t f;
+    value_t df;
 
     // ----------------------------------------------------------------------------------------------------------------
     // Construction
     // ----------------------------------------------------------------------------------------------------------------
 
+    /// default initializer matches underlying
     constexpr jet_t() noexcept = default;
-    constexpr jet_t(value_t f) noexcept : f{f} {}
+
+    constexpr jet_t(value_t f) noexcept : f{f}, df{} {}
     constexpr jet_t(value_t f, value_t df) noexcept : f{f}, df{df} {}
 
     /// scalar ctor
@@ -129,7 +131,10 @@ template <typename t_value_t> struct jet_t
         return lhs.f <=> rhs;
     }
 
-    friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool { return lhs.f == rhs && lhs.df == 0; }
+    friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
+    {
+        return lhs.f == rhs && lhs.df == 0;
+    }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Vector Comparison
