@@ -269,15 +269,15 @@ static_assert(std::same_as<uint128_t, int_by_bits_t<128, false>>);
 
 namespace integer_promotion_tests {
 
-static_assert(std::same_as<wider_t<int8_t>, int16_t>);
-static_assert(std::same_as<wider_t<int16_t>, int32_t>);
-static_assert(std::same_as<wider_t<int32_t>, int64_t>);
-static_assert(std::same_as<wider_t<int64_t>, int128_t>);
+static_assert(std::same_as<widened_t<int8_t>, int16_t>);
+static_assert(std::same_as<widened_t<int16_t>, int32_t>);
+static_assert(std::same_as<widened_t<int32_t>, int64_t>);
+static_assert(std::same_as<widened_t<int64_t>, int128_t>);
 
-static_assert(std::same_as<wider_t<uint8_t>, uint16_t>);
-static_assert(std::same_as<wider_t<uint16_t>, uint32_t>);
-static_assert(std::same_as<wider_t<uint32_t>, uint64_t>);
-static_assert(std::same_as<wider_t<uint64_t>, uint128_t>);
+static_assert(std::same_as<widened_t<uint8_t>, uint16_t>);
+static_assert(std::same_as<widened_t<uint16_t>, uint32_t>);
+static_assert(std::same_as<widened_t<uint32_t>, uint64_t>);
+static_assert(std::same_as<widened_t<uint64_t>, uint128_t>);
 
 } // namespace integer_promotion_tests
 

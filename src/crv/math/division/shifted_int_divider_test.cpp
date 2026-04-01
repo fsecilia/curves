@@ -21,7 +21,7 @@ constexpr auto poisoned_rounded_sentinel          = 0xBAD;
 // dummy rounding mode that carries a token to prove the adapter forwards it properly
 template <unsigned_integral narrow_t> struct tracking_rounding_mode_t
 {
-    using wide_t = wider_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     int_t id = 0;
 
@@ -33,11 +33,11 @@ template <unsigned_integral narrow_t> struct tracking_rounding_mode_t
 struct tracking_wide_divider_t
 {
     template <unsigned_integral narrow_t>
-    constexpr auto operator()(wider_t<narrow_t> dividend, narrow_t divisor,
+    constexpr auto operator()(widened_t<narrow_t> dividend, narrow_t divisor,
                               tracking_rounding_mode_t<make_unsigned_t<narrow_t>> rm) const noexcept
-        -> wider_t<narrow_t>
+        -> widened_t<narrow_t>
     {
-        using wide_t = wider_t<narrow_t>;
+        using wide_t = widened_t<narrow_t>;
 
         // verify correct rounding mode instance was forwarded
         if (rm.id != expected_tracking_rounding_mode_id) return static_cast<wide_t>(poisoned_rounded_sentinel);
@@ -94,7 +94,7 @@ struct heterogeneous_test_t
 
 template <typename narrow_t> struct unsigned_test_t
 {
-    using wide_t                        = wider_t<narrow_t>;
+    using wide_t                        = widened_t<narrow_t>;
     static constexpr auto rounding_mode = tracking_rounding_mode_t<narrow_t>{.id = expected_tracking_rounding_mode_id};
     static constexpr auto max_narrow    = max<narrow_t>();
 
@@ -149,7 +149,7 @@ template struct unsigned_test_t<uint32_t>;
 template <typename narrow_t> struct signed_test_t
 {
     using unsigned_t = make_unsigned_t<narrow_t>;
-    using wide_t     = wider_t<unsigned_t>;
+    using wide_t     = widened_t<unsigned_t>;
 
     static constexpr auto rounding_mode
         = tracking_rounding_mode_t<unsigned_t>{.id = expected_tracking_rounding_mode_id};

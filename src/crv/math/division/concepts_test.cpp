@@ -29,7 +29,7 @@ namespace is_hardware_divider_test {
 
 template <unsigned_integral narrow_t> struct valid_hardware_divider_t
 {
-    using wide_t = wider_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
     constexpr auto operator()(wide_t, narrow_t) const noexcept -> qr_pair_t<narrow_t>;
 };
 

@@ -20,7 +20,7 @@ namespace crv::division {
 /// Divides a wide dividend by a narrow divisor, rounds using the provided mode, and returns a wide quotient.
 template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t> struct wide_divider_t
 {
-    using wide_t = wider_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     static constexpr auto const narrow_width = static_cast<int_t>(sizeof(narrow_t) * CHAR_BIT);
 

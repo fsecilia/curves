@@ -23,7 +23,7 @@ namespace crv::division {
 template <unsigned_integral t_narrow_t> struct hardware_divider_t
 {
     using narrow_t = t_narrow_t;
-    using wide_t   = wider_t<narrow_t>;
+    using wide_t   = widened_t<narrow_t>;
 
     /// generic division; uses compiler's existing division operator
     constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>

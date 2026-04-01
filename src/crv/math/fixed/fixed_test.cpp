@@ -160,7 +160,7 @@ static_assert(i16_2_t{i8_4_t::literal(40)}.value == 10);
 static_assert(i8_4_t{i16_2_t::literal(10)}.value == 40);
 static_assert(i8_2_t{i16_4_t::literal(40)}.value == 10);
 
-// wider range edge cases
+// widended range edge cases
 static_assert(i16_9_t{i8_7_t::literal(64)}.value == 256);
 static_assert(i8_7_t{i16_9_t::literal(256)}.value == 64);
 

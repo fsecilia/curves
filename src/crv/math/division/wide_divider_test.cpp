@@ -14,7 +14,7 @@ namespace {
 
 template <typename narrow_t> struct fake_hardware_divider_t
 {
-    using wide_t   = wider_t<narrow_t>;
+    using wide_t   = widened_t<narrow_t>;
     using result_t = qr_pair_t<narrow_t>;
 
     constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t
@@ -25,7 +25,7 @@ template <typename narrow_t> struct fake_hardware_divider_t
 
 template <typename narrow_t> struct stub_rounding_mode_t
 {
-    using wide_t = wider_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
     constexpr auto bias(wide_t dividend, narrow_t) const noexcept -> wide_t { return dividend; }
     constexpr auto carry(wide_t quotient, narrow_t, narrow_t) const noexcept -> wide_t { return quotient; }
 };
@@ -39,14 +39,14 @@ template <typename narrow_t> struct stub_rounding_mode_t
 namespace rounding_contract {
 
 using narrow_t = uint8_t;
-using wide_t   = wider_t<narrow_t>;
+using wide_t   = widened_t<narrow_t>;
 
 using hardware_divider_t = fake_hardware_divider_t<narrow_t>;
 using result_t           = hardware_divider_t::result_t;
 
 template <typename narrow_t> struct fake_rounding_mode_t
 {
-    using wide_t = wider_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     constexpr auto bias(wide_t dividend, narrow_t divisor) const noexcept -> wide_t { return dividend * 2 + divisor; }
 
@@ -227,7 +227,7 @@ INSTANTIATE_TEST_SUITE_P(cases, division_divider_dispatch_test_t, ValuesIn(test_
 template <typename t_narrow_t> struct divider_correctness_test_t : Test
 {
     using narrow_t = t_narrow_t;
-    using wide_t   = wider_t<narrow_t>;
+    using wide_t   = widened_t<narrow_t>;
 
     static constexpr auto narrow_width = int_cast<narrow_t>(sizeof(narrow_t) * CHAR_BIT);
     static constexpr auto max_narrow   = static_cast<narrow_t>(~narrow_t{0});

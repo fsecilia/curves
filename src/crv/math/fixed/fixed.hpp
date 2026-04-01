@@ -134,7 +134,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
                 assert(other.value >= (std::numeric_limits<value_t>::min() >> shift) && "left-shift underflow");
             }
 
-            // shift left using wider type, letting int_cast catch any final truncation
+            // shift left using widened type, letting int_cast catch any final truncation
             value = int_cast<value_t>(int_cast<intermediate_t>(other.value) << shift);
         }
         else if constexpr (other_frac_bits > frac_bits)
@@ -219,7 +219,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t lhs, fixed_t rhs) noexcept -> fixed_t
     {
-        return fixed_t::literal((wider_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
+        return fixed_t::literal((widened_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
     }
 
     friend constexpr auto operator%(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs %= rhs; }

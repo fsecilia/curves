@@ -149,6 +149,6 @@ using int_by_bits_t
 // Integer Promotions
 // --------------------------------------------------------------------------------------------------------------------
 
-template <integral value_t> using wider_t = int_by_bytes_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
+template <integral value_t> using widened_t = int_by_bytes_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
 
 } // namespace crv
