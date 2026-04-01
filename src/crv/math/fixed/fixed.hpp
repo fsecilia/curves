@@ -13,6 +13,7 @@
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <algorithm>
+#include <climits>
 #include <type_traits>
 
 namespace crv {
@@ -356,6 +357,49 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     template <is_fixed divisor_t> friend constexpr auto mod(fixed_t dividend, divisor_t divisor) noexcept -> fixed_t
     {
         return mod<fixed_t>(dividend, divisor, fixed::default_shr_rounding_mode);
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
+    // Rounding and Extraction
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto ceil(fixed_t src) noexcept -> fixed_t
+    {
+        static_assert(frac_bits < sizeof(value_t) * CHAR_BIT, "ceil() undefined for pure fractional types");
+        if constexpr (frac_bits == 0) return src;
+        else
+        {
+            auto const floored = floor(src);
+            if (floored.value == src.value) return floored;
+
+            if constexpr (frac_bits >= sizeof(value_t) * CHAR_BIT) return literal(0);
+            else return literal(int_cast<value_t>(floored.value + (value_t{1} << frac_bits)));
+        }
+    }
+
+    friend constexpr auto floor(fixed_t src) noexcept -> fixed_t
+    {
+        static_assert(frac_bits < sizeof(value_t) * CHAR_BIT, "floor() undefined for pure fractional types");
+        if constexpr (frac_bits == 0) return src;
+        else
+        {
+            using unsigned_t        = std::make_unsigned_t<value_t>;
+            constexpr auto int_mask = ~((unsigned_t{1} << frac_bits) - 1);
+            return literal(static_cast<value_t>(static_cast<unsigned_t>(src.value) & int_mask));
+        }
+    }
+
+    /// \returns strictly positive fractional component
+    friend constexpr auto frac(fixed_t src) noexcept -> fixed_t
+    {
+        static_assert(frac_bits < sizeof(value_t) * CHAR_BIT, "frac() undefined for pure fractional types.");
+        if constexpr (frac_bits == 0) return literal(0);
+        else
+        {
+            using unsigned_t         = std::make_unsigned_t<value_t>;
+            constexpr auto frac_mask = (unsigned_t{1} << frac_bits) - 1;
+            return literal(int_cast<value_t>(static_cast<unsigned_t>(src.value) & frac_mask));
+        }
     }
 
     // ----------------------------------------------------------------------------------------------------------------
