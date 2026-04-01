@@ -273,7 +273,7 @@ TYPED_TEST(divider_correctness_test_t, random_inputs)
         auto const expected = dividend / divisor;
         auto const actual   = this->sut(dividend, divisor, rounding_mode);
 
-        ASSERT_EQ(expected, actual) << "dividend = " << dividend << " divisor = " << +divisor;
+        EXPECT_EQ(expected, actual) << "dividend = " << dividend << " divisor = " << +divisor;
     }
 }
 

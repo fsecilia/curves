@@ -461,7 +461,7 @@ TEST_F(stats_accumulator_test_default_constructed_t, ostream_inserter)
     auto actual = std::ostringstream{};
     EXPECT_EQ(&actual, &(actual << sut));
 
-    ASSERT_EQ(expected, actual.str());
+    EXPECT_EQ(expected, actual.str());
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -513,7 +513,7 @@ TEST_F(stats_accumulator_test_constructed_t, ostream_inserter)
     auto actual = std::ostringstream{};
     EXPECT_EQ(&actual, &(actual << sut));
 
-    ASSERT_EQ(expected.str(), actual.str());
+    EXPECT_EQ(expected.str(), actual.str());
 }
 
 } // namespace

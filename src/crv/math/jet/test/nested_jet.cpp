@@ -89,8 +89,8 @@ TEST_F(nested_jet_test_arithmetic_t, compound_plus_scalar)
     auto        sut    = x;
     auto const& actual = sut += s;
 
-    ASSERT_EQ(&sut, &actual);
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(&sut, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, jet_plus_scalar)
@@ -99,7 +99,7 @@ TEST_F(nested_jet_test_arithmetic_t, jet_plus_scalar)
 
     auto const actual = x + s;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
@@ -108,7 +108,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_plus_jet)
 
     auto const actual = s + x;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, compound_minus_scalar)
@@ -118,8 +118,8 @@ TEST_F(nested_jet_test_arithmetic_t, compound_minus_scalar)
     auto        sut    = x;
     auto const& actual = sut -= s;
 
-    ASSERT_EQ(&sut, &actual);
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(&sut, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, jet_minus_scalar)
@@ -128,7 +128,7 @@ TEST_F(nested_jet_test_arithmetic_t, jet_minus_scalar)
 
     auto const actual = x - s;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, scalar_minus_jet)
@@ -137,7 +137,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_minus_jet)
 
     auto const actual = s - x;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, compound_times_scalar)
@@ -147,8 +147,8 @@ TEST_F(nested_jet_test_arithmetic_t, compound_times_scalar)
     auto        sut    = x;
     auto const& actual = sut *= s;
 
-    ASSERT_EQ(&sut, &actual);
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(&sut, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
@@ -157,7 +157,7 @@ TEST_F(nested_jet_test_arithmetic_t, jet_times_scalar)
 
     auto const actual = x * s;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
@@ -166,7 +166,7 @@ TEST_F(nested_jet_test_arithmetic_t, scalar_times_jet)
 
     auto const actual = s * x;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, compound_over_scalar)
@@ -176,8 +176,8 @@ TEST_F(nested_jet_test_arithmetic_t, compound_over_scalar)
     auto        sut    = x;
     auto const& actual = sut /= s;
 
-    ASSERT_EQ(&sut, &actual);
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(&sut, &actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
@@ -186,7 +186,7 @@ TEST_F(nested_jet_test_arithmetic_t, jet_over_scalar)
 
     auto const actual = x / s;
 
-    ASSERT_EQ(expected, actual);
+    EXPECT_EQ(expected, actual);
 }
 
 TEST_F(nested_jet_test_arithmetic_t, scalar_over_jet)
@@ -408,68 +408,68 @@ TYPED_TEST_SUITE(jet_test_nested_scalar_ambiguity_resolution_t, jet_types_t);
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, ordering)
 {
-    ASSERT_LT(TypeParam{3.0}, 5.0);
-    ASSERT_LT(3.0, TypeParam{5.0});
+    EXPECT_LT(TypeParam{3.0}, 5.0);
+    EXPECT_LT(3.0, TypeParam{5.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, equality)
 {
-    ASSERT_EQ(TypeParam{3.0}, 3.0);
-    ASSERT_EQ(3.0, TypeParam{3.0});
+    EXPECT_EQ(TypeParam{3.0}, 3.0);
+    EXPECT_EQ(3.0, TypeParam{3.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_addition)
 {
     auto nested = TypeParam{3.0};
-    ASSERT_EQ(nested += 5.0, TypeParam{8.0});
+    EXPECT_EQ(nested += 5.0, TypeParam{8.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, addition)
 {
-    ASSERT_EQ(TypeParam{3.0} + 5.0, TypeParam{8.0});
-    ASSERT_EQ(3.0 + TypeParam{5.0}, TypeParam{8.0});
+    EXPECT_EQ(TypeParam{3.0} + 5.0, TypeParam{8.0});
+    EXPECT_EQ(3.0 + TypeParam{5.0}, TypeParam{8.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_subtraction)
 {
     auto nested = TypeParam{3.0};
-    ASSERT_EQ(nested -= 5.0, TypeParam{-2.0});
+    EXPECT_EQ(nested -= 5.0, TypeParam{-2.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, subtraction)
 {
-    ASSERT_EQ(TypeParam{3.0} - 5.0, TypeParam{-2.0});
-    ASSERT_EQ(3.0 - TypeParam{5.0}, TypeParam{-2.0});
+    EXPECT_EQ(TypeParam{3.0} - 5.0, TypeParam{-2.0});
+    EXPECT_EQ(3.0 - TypeParam{5.0}, TypeParam{-2.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_multiplication)
 {
     auto nested = TypeParam{3.0};
-    ASSERT_EQ(nested *= 5.0, TypeParam{15.0});
+    EXPECT_EQ(nested *= 5.0, TypeParam{15.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, multiplication)
 {
-    ASSERT_EQ(TypeParam{3.0} * 5.0, TypeParam{15.0});
-    ASSERT_EQ(3.0 * TypeParam{5.0}, TypeParam{15.0});
+    EXPECT_EQ(TypeParam{3.0} * 5.0, TypeParam{15.0});
+    EXPECT_EQ(3.0 * TypeParam{5.0}, TypeParam{15.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, compound_division)
 {
     auto nested = TypeParam{16.0};
-    ASSERT_EQ(nested /= 8.0, TypeParam{2.0});
+    EXPECT_EQ(nested /= 8.0, TypeParam{2.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, division)
 {
-    ASSERT_EQ(TypeParam{16.0} / 8.0, TypeParam{2.0});
-    ASSERT_EQ(16.0 / TypeParam{8.0}, TypeParam{2.0});
+    EXPECT_EQ(TypeParam{16.0} / 8.0, TypeParam{2.0});
+    EXPECT_EQ(16.0 / TypeParam{8.0}, TypeParam{2.0});
 }
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, pow)
 {
-    ASSERT_EQ(pow(TypeParam{2.0}, 3.0), TypeParam{8.0});
-    ASSERT_EQ(pow(2.0, TypeParam{3.0}), TypeParam{8.0});
+    EXPECT_EQ(pow(TypeParam{2.0}, 3.0), TypeParam{8.0});
+    EXPECT_EQ(pow(2.0, TypeParam{3.0}), TypeParam{8.0});
 }
 
 } // namespace
