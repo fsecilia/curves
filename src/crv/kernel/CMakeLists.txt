@@ -101,15 +101,6 @@ set(kernel_cxx_flags
     -g0
 )
 
-# conditionally enable asserts
-#
-# The kbuild is generated at config time, so we can't use generator expressions to determine whether this is a release
-# build or not. This means we either determine the build type statically, or provide an option.
-string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
-if(NOT _build_type STREQUAL "DEBUG")
-    list(APPEND kernel_cxx_flags "-DNDEBUG")
-endif()
-
 # =====================================================================================================================
 # User-Mode Targets
 # =====================================================================================================================
@@ -240,7 +231,7 @@ set(kbuild_make_command make -sC "${kbuild_root}" ${kbuild_flags} V=1 "M=${kbuil
 # main build
 add_custom_command(
     OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
-    COMMAND ${kbuild_make_command} $<$<CONFIG:DEBUG>:EXTRA_CFLAGS=-DCRV_ENABLE_ASSERTS> modules
+    COMMAND ${kbuild_make_command} $<$<CONFIG:DEBUG>:EXTRA_CFLAGS=-DNDEBUG> modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     DEPENDS ${srcs_kbuild_abs} ${srcs_kbuild_orig} "${makefile_dst}" "${kbuild_gen}"
     COMMENT "building kernel module"
