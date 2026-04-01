@@ -38,6 +38,7 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
+    math/mesh/error_metrics/chebyshev.hpp
     math/mesh/measured_error.hpp
     math/mesh/segment.hpp
     math/rounding_mode.hpp
@@ -77,6 +78,7 @@ if (enable_testing)
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
+        math/mesh/error_metrics/chebyshev_test.cpp
         math/mesh/measured_error_test.cpp
         math/mesh/segment_test.cpp
         math/rounding_mode_test.cpp
