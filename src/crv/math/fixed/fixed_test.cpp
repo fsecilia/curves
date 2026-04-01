@@ -35,6 +35,7 @@ using i16_12_t   = fixed_t<int16_t, 12>;
 using i32_0_t    = fixed_t<int32_t, 0>;
 using i32_8_t    = fixed_t<int32_t, 8>;
 using u32_8_t    = fixed_t<uint32_t, 8>;
+using i32_16_t   = fixed_t<int32_t, 16>;
 using i64_0_t    = fixed_t<int64_t, 0>;
 using u64_0_t    = fixed_t<uint64_t, 0>;
 using u64_4_t    = fixed_t<uint64_t, 4>;
@@ -330,6 +331,17 @@ static_assert([] {
     val /= 2;
     return val;
 }() == sut_t{5});
+
+static_assert([] {
+    auto val = sut_t{10};
+    return &val == &(val %= 3);
+}());
+
+static_assert([] {
+    auto val = sut_t{10};
+    val %= 3;
+    return val;
+}() == sut_t{1});
 
 static_assert([] {
     auto val = sut_t{80};
@@ -673,6 +685,57 @@ INSTANTIATE_TEST_SUITE_P(cases, fixed_division_vector_test_t, ValuesIn(vectors),
 
 } // namespace division
 
+// ====================================================================================================================
+// Modulo
+// ====================================================================================================================
+
+namespace modulo {
+
+// dividend sign
+static_assert(i16_8_t{5} % i16_8_t{3} == i16_8_t{2});
+static_assert(i16_8_t{-5} % i16_8_t{3} == i16_8_t{-2});
+static_assert(i16_8_t{5} % i16_8_t{-3} == i16_8_t{2});
+static_assert(i16_8_t{-5} % i16_8_t{-3} == i16_8_t{-2});
+
+// fractional divisor
+static_assert(i16_8_t::literal(704) % i16_8_t::literal(128) == i16_8_t::literal(64));
+
+// dividend < divisor
+static_assert(i16_8_t{2} % i16_8_t{5} == i16_8_t{2});
+static_assert(i16_8_t::literal(128) % i16_8_t{5} == i16_8_t::literal(128)); // 0.5 % 5 == 0.5
+
+// exact divisibility
+static_assert(i16_8_t{6} % i16_8_t{2} == i16_8_t{0});
+static_assert(i16_8_t::literal(768) % i16_8_t::literal(256) == i16_8_t{0}); // 3.0 % 1.0
+
+// extreme radix disparity
+static_assert(i32_0_t{5} % i32_16_t{2} == i32_0_t{1});
+static_assert(i32_16_t{5} % i32_0_t{2} == i32_16_t{1});
+
+// narrowing truncation
+static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
+
+// rounding via mock
+TEST_F(fixed_test_with_rounding_mode_t, modulo_to_specific_type)
+{
+    using out_t              = fixed_t<uint_t, 1>;
+    auto const lhs           = fixed_t<uint8_t, 3>::literal(27); // 3.375
+    auto const rhs           = fixed_t<int16_t, 3>::literal(12); // 1.5
+    auto const remainder     = int_t{27 % 12};                   // 3
+    auto const expected_bias = uint32_t{11};
+    auto const expected      = out_t::literal(5);
+
+    // out_shift = max(3, 3) - 1 = 2
+    EXPECT_CALL(mock_rounding_mode, bias(remainder, 2)).WillOnce(Return(expected_bias));
+    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 2, expected_bias, 2)).WillOnce(Return(expected.value));
+
+    auto const actual = mod<out_t>(lhs, rhs, rounding_mode);
+
+    EXPECT_EQ(expected, actual);
+}
+
+} // namespace modulo
+
 // --------------------------------------------------------------------------------------------------------------------
 // Compound Assignment
 // --------------------------------------------------------------------------------------------------------------------
@@ -720,6 +783,17 @@ static_assert([] {
     val /= constexpr_div_sut_t{2};
     return val;
 }() == constexpr_div_sut_t{5});
+
+static_assert([] {
+    auto val = sut_t{10};
+    return &val == &(val %= sut_t{3});
+}());
+
+static_assert([] {
+    auto val = sut_t{10};
+    val %= sut_t{3};
+    return val;
+}() == sut_t{1});
 
 } // namespace fixed_arithmetic
 

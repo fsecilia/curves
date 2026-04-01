@@ -188,6 +188,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         return *this;
     }
 
+    constexpr auto operator%=(value_t src) noexcept -> fixed_t&
+    {
+        value %= (src << frac_bits);
+        return *this;
+    }
+
     constexpr auto operator>>=(value_t src) noexcept -> fixed_t&
     {
         value >>= src;
@@ -214,6 +220,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     {
         return fixed_t::literal((wider_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
     }
+
+    friend constexpr auto operator%(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs %= rhs; }
 
     friend constexpr auto operator>>(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs >>= rhs; }
     friend constexpr auto operator<<(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs <<= rhs; }
@@ -244,10 +252,16 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         return *this = divide<fixed_t>(*this, src, fixed::default_div_rounding_mode);
     }
 
+    template <is_fixed other_t> constexpr auto operator%=(other_t src) noexcept -> fixed_t&
+    {
+        return *this = mod(*this, src);
+    }
+
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
     friend constexpr auto operator-(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs -= rhs; }
     friend constexpr auto operator*(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs *= rhs; }
     friend constexpr auto operator/(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
+    friend constexpr auto operator%(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs %= rhs; }
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
@@ -257,6 +271,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     template <is_fixed other_t> friend constexpr auto operator/(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
         return divide<fixed_t>(lhs, rhs, fixed::default_div_rounding_mode);
+    }
+
+    template <is_fixed other_t> friend constexpr auto operator%(fixed_t lhs, other_t rhs) noexcept -> fixed_t
+    {
+        return mod(lhs, rhs);
     }
 
     /// \returns wide product at higher precision
@@ -298,6 +317,45 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         -> out_t
     {
         return out_t::literal(divider(lhs.value, rhs.value, rounding_mode));
+    }
+
+    /// calcs remainder of lhs/rhs
+    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
+    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode = {}) noexcept -> out_t
+    {
+        // widen
+        using wide_t  = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
+                                       std::is_signed_v<value_t> || std::is_signed_v<typename rhs_t::value_t>>;
+        auto lhs_wide = int_cast<wide_t>(lhs.value);
+        auto rhs_wide = int_cast<wide_t>(rhs.value);
+
+        // align radix points
+        constexpr auto max_frac = std::max(frac_bits, rhs_t::frac_bits);
+        if constexpr (max_frac > frac_bits) lhs_wide <<= (max_frac - frac_bits);
+        if constexpr (max_frac > rhs_t::frac_bits) rhs_wide <<= (max_frac - rhs_t::frac_bits);
+
+        // modulo
+        auto const remainder = lhs_wide % rhs_wide;
+
+        // scale to output precision
+        constexpr auto out_shift = max_frac - out_t::frac_bits;
+        if constexpr (out_shift > 0)
+        {
+            auto const unshifted = rounding_mode.bias(remainder, out_shift);
+            auto const shifted   = unshifted >> out_shift;
+            return out_t::literal(
+                int_cast<typename out_t::value_t>(rounding_mode.carry(shifted, unshifted, out_shift)));
+        }
+        else
+        {
+            return out_t::literal(int_cast<typename out_t::value_t>(remainder << -out_shift));
+        }
+    }
+
+    /// calcs remainder of lhs/rhs, defaulting to dividend's type and precision
+    template <is_fixed divisor_t> friend constexpr auto mod(fixed_t dividend, divisor_t divisor) noexcept -> fixed_t
+    {
+        return mod<fixed_t>(dividend, divisor, fixed::default_shr_rounding_mode);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
