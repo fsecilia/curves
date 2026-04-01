@@ -235,7 +235,6 @@ static_assert(-sut_t{-10} == sut_t{10});
 // Scalar Arithmetic
 // ====================================================================================================================
 
-// these only need to test commutativity
 namespace scalar_arithmetic {
 
 static_assert(sut_t{10} + 3 == sut_t{13});
@@ -251,6 +250,34 @@ static_assert(3 * sut_t{10} == sut_t{30});
 static_assert(constexpr_div_sut_t{30} / 3 == constexpr_div_sut_t{10});
 static_assert(30 / constexpr_div_sut_t{3} == constexpr_div_sut_t{10});
 static_assert(constexpr_div_sut_t{12} / 3 != 3 / constexpr_div_sut_t{12});
+
+static_assert((i16_8_t{16} >> 1) == i16_8_t{8});
+static_assert((i16_8_t{16} >> 2) == i16_8_t{4});
+static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) >> 1)
+              == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 1)));
+static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) >> 2)
+              == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 2)));
+
+static_assert((u16_8_t{16} >> 1) == u16_8_t{8});
+static_assert((u16_8_t{16} >> 2) == u16_8_t{4});
+static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) >> 1)
+              == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 1)));
+static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) >> 2)
+              == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 2)));
+
+static_assert((i16_8_t{16} << 1) == i16_8_t{32});
+static_assert((i16_8_t{16} << 2) == i16_8_t{64});
+static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) << 1)
+              == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 1)));
+static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) << 2)
+              == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 2)));
+
+static_assert((u16_8_t{16} << 1) == u16_8_t{32});
+static_assert((u16_8_t{16} << 2) == u16_8_t{64});
+static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) << 1)
+              == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 1)));
+static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) << 2)
+              == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 2)));
 
 } // namespace scalar_arithmetic
 
@@ -303,6 +330,28 @@ static_assert([] {
     val /= 2;
     return val;
 }() == sut_t{5});
+
+static_assert([] {
+    auto val = sut_t{80};
+    return &val == &(val >>= 3);
+}());
+
+static_assert([] {
+    auto val = sut_t{80};
+    val >>= 3;
+    return val;
+}() == sut_t{10});
+
+static_assert([] {
+    auto val = sut_t{80};
+    return &val == &(val <<= 3);
+}());
+
+static_assert([] {
+    auto val = sut_t{80};
+    val <<= 3;
+    return val;
+}() == sut_t{640});
 
 } // namespace compound_assignment
 

@@ -188,6 +188,18 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         return *this;
     }
 
+    constexpr auto operator>>=(value_t src) noexcept -> fixed_t&
+    {
+        value >>= src;
+        return *this;
+    }
+
+    constexpr auto operator<<=(value_t src) noexcept -> fixed_t&
+    {
+        value <<= src;
+        return *this;
+    }
+
     friend constexpr auto operator+(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs += fixed_t{rhs}; }
     friend constexpr auto operator+(value_t lhs, fixed_t rhs) noexcept -> fixed_t { return rhs += fixed_t{lhs}; }
 
@@ -202,6 +214,9 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     {
         return fixed_t::literal((wider_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
     }
+
+    friend constexpr auto operator>>(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs >>= rhs; }
+    friend constexpr auto operator<<(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs <<= rhs; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Fixed Arithmetic
