@@ -56,12 +56,12 @@ concept is_not_jet = !is_jet<value_t>;
 // Scalar Fallbacks
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename scalar_t> constexpr auto primal(scalar_t const& scalar) noexcept -> scalar_t
+template <typename scalar_t> constexpr auto primal(scalar_t scalar) noexcept -> scalar_t
 {
     return scalar;
 }
 
-template <typename scalar_t> constexpr auto derivative(scalar_t const&) noexcept -> scalar_t
+template <typename scalar_t> constexpr auto derivative(scalar_t) noexcept -> scalar_t
 {
     return scalar_t{};
 }
@@ -83,8 +83,8 @@ template <typename t_value_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
 
     constexpr jet_t() noexcept = default;
-    constexpr jet_t(value_t const& f) noexcept : f{f} {}
-    constexpr jet_t(value_t const& f, value_t const& df) noexcept : f{f}, df{df} {}
+    constexpr jet_t(value_t f) noexcept : f{f} {}
+    constexpr jet_t(value_t f, value_t df) noexcept : f{f}, df{df} {}
 
     /// scalar ctor
     ///
@@ -95,7 +95,7 @@ template <typename t_value_t> struct jet_t
     /// value_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
     /// either the better value_t ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that
     /// the value_t ctor is not a better match for, and forwards it to the most nested jet in the composition.
-    constexpr jet_t(arithmetic auto const& scalar) noexcept : f(scalar), df(0) {}
+    constexpr jet_t(arithmetic auto scalar) noexcept : f(scalar), df(0) {}
 
     // ----------------------------------------------------------------------------------------------------------------
     // Conversions
@@ -129,10 +129,7 @@ template <typename t_value_t> struct jet_t
         return lhs.f <=> rhs;
     }
 
-    friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
-    {
-        return lhs.f == rhs && lhs.df == 0;
-    }
+    friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool { return lhs.f == rhs && lhs.df == 0; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Vector Comparison
@@ -151,60 +148,57 @@ template <typename t_value_t> struct jet_t
     // Accessors
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto primal(jet_t const& x) noexcept -> value_t { return x.f; }
-    friend constexpr auto derivative(jet_t const& x) noexcept -> value_t { return x.df; }
+    friend constexpr auto primal(jet_t x) noexcept -> value_t { return x.f; }
+    friend constexpr auto derivative(jet_t x) noexcept -> value_t { return x.df; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Unary Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto operator+(jet_t const& x) noexcept -> jet_t { return x; }
-    friend constexpr auto operator-(jet_t const& x) noexcept -> jet_t { return {-x.f, -x.df}; }
+    friend constexpr auto operator+(jet_t x) noexcept -> jet_t { return x; }
+    friend constexpr auto operator-(jet_t x) noexcept -> jet_t { return {-x.f, -x.df}; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Value Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator+=(value_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator+=(value_t rhs) noexcept -> jet_t&
     {
         f += rhs;
         return *this;
     }
 
-    friend constexpr auto operator+(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
-    friend constexpr auto operator+(value_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator+(jet_t lhs, value_t rhs) noexcept -> jet_t { return lhs += rhs; }
+    friend constexpr auto operator+(value_t lhs, jet_t rhs) noexcept -> jet_t
     {
         // commute
         return rhs += lhs;
     }
 
-    constexpr auto operator-=(value_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator-=(value_t rhs) noexcept -> jet_t&
     {
         f -= rhs;
         return *this;
     }
 
-    friend constexpr auto operator-(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
-    friend constexpr auto operator-(value_t const& lhs, jet_t const& rhs) noexcept -> jet_t
-    {
-        return jet_t{lhs - rhs.f, -rhs.df};
-    }
+    friend constexpr auto operator-(jet_t lhs, value_t rhs) noexcept -> jet_t { return lhs -= rhs; }
+    friend constexpr auto operator-(value_t lhs, jet_t rhs) noexcept -> jet_t { return jet_t{lhs - rhs.f, -rhs.df}; }
 
-    constexpr auto operator*=(value_t const& x) noexcept -> jet_t&
+    constexpr auto operator*=(value_t x) noexcept -> jet_t&
     {
         f *= x;
         df *= x;
         return *this;
     }
 
-    friend constexpr auto operator*(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
-    friend constexpr auto operator*(value_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator*(jet_t lhs, value_t rhs) noexcept -> jet_t { return lhs *= rhs; }
+    friend constexpr auto operator*(value_t lhs, jet_t rhs) noexcept -> jet_t
     {
         // commute
         return rhs *= lhs;
     }
 
-    constexpr auto operator/=(value_t const& x) noexcept -> jet_t&
+    constexpr auto operator/=(value_t x) noexcept -> jet_t&
     {
         auto const inv = 1 / x;
         f *= inv;
@@ -212,8 +206,8 @@ template <typename t_value_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator/(jet_t lhs, value_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
-    friend constexpr auto operator/(value_t const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator/(jet_t lhs, value_t rhs) noexcept -> jet_t { return lhs /= rhs; }
+    friend constexpr auto operator/(value_t lhs, jet_t rhs) noexcept -> jet_t
     {
         auto const inv = 1.0 / rhs.f;
         return jet_t{lhs, -lhs * rhs.df * inv} * inv;
@@ -223,26 +217,26 @@ template <typename t_value_t> struct jet_t
     // Jet Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator+=(jet_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator+=(jet_t rhs) noexcept -> jet_t&
     {
         f += rhs.f;
         df += rhs.df;
         return *this;
     }
 
-    friend constexpr auto operator+(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs += rhs; }
+    friend constexpr auto operator+(jet_t lhs, jet_t rhs) noexcept -> jet_t { return lhs += rhs; }
 
-    constexpr auto operator-=(jet_t const& rhs) noexcept -> jet_t&
+    constexpr auto operator-=(jet_t rhs) noexcept -> jet_t&
     {
         f -= rhs.f;
         df -= rhs.df;
         return *this;
     }
 
-    friend constexpr auto operator-(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs -= rhs; }
+    friend constexpr auto operator-(jet_t lhs, jet_t rhs) noexcept -> jet_t { return lhs -= rhs; }
 
     // d(xy) = x*dy + dx*y, product rule
-    constexpr auto operator*=(jet_t const& x) noexcept -> jet_t&
+    constexpr auto operator*=(jet_t x) noexcept -> jet_t&
     {
         // product rule, (uv)' = uv' + u'v:
         df = f * x.df + df * x.f;
@@ -250,10 +244,10 @@ template <typename t_value_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator*(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs *= rhs; }
+    friend constexpr auto operator*(jet_t lhs, jet_t rhs) noexcept -> jet_t { return lhs *= rhs; }
 
     // d(u/v) = (du*v - u*dv)/v^2 = (du - u*dv/v)/v, quotient rule
-    constexpr auto operator/=(jet_t const& x) noexcept -> jet_t&
+    constexpr auto operator/=(jet_t x) noexcept -> jet_t&
     {
         // This looks suspicious because we modify f then use it to calc df, but it's a deliberate optimization, similar
         // to horner's.
@@ -263,20 +257,20 @@ template <typename t_value_t> struct jet_t
         return *this;
     }
 
-    friend constexpr auto operator/(jet_t lhs, jet_t const& rhs) noexcept -> jet_t { return lhs /= rhs; }
+    friend constexpr auto operator/(jet_t lhs, jet_t rhs) noexcept -> jet_t { return lhs /= rhs; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Selection
     // ----------------------------------------------------------------------------------------------------------------
 
     // d(min(x, y)) = dx if x < y else dy
-    friend constexpr auto min(jet_t const& x, jet_t const& y) noexcept -> jet_t { return x.f < y.f ? x : y; }
+    friend constexpr auto min(jet_t x, jet_t y) noexcept -> jet_t { return x.f < y.f ? x : y; }
 
     // d(max(x, y)) = dx if y < x else dy
-    friend constexpr auto max(jet_t const& x, jet_t const& y) noexcept -> jet_t { return y.f < x.f ? x : y; }
+    friend constexpr auto max(jet_t x, jet_t y) noexcept -> jet_t { return y.f < x.f ? x : y; }
 
     // d(clamp(x, min, max)) = min.df if x < min else max.df if x > max else dx
-    friend constexpr auto clamp(jet_t const& x, jet_t const& min, jet_t const& max) noexcept -> jet_t
+    friend constexpr auto clamp(jet_t x, jet_t min, jet_t max) noexcept -> jet_t
     {
         if (x.f < min.f) return min;
         if (x.f > max.f) return max;
@@ -287,19 +281,19 @@ template <typename t_value_t> struct jet_t
     // Classification
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend auto isfinite(jet_t const& x) noexcept -> bool
+    friend auto isfinite(jet_t x) noexcept -> bool
     {
         using crv::isfinite;
         return isfinite(x.f) && isfinite(x.df);
     }
 
-    friend auto isinf(jet_t const& x) noexcept -> bool
+    friend auto isinf(jet_t x) noexcept -> bool
     {
         using crv::isinf;
         return (isinf(x.f) || isinf(x.df)) && !isnan(x);
     }
 
-    friend auto isnan(jet_t const& x) noexcept -> bool
+    friend auto isnan(jet_t x) noexcept -> bool
     {
         using crv::isnan;
         return isnan(x.f) || isnan(x.df);
@@ -310,7 +304,7 @@ template <typename t_value_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
 
     /// d(abs(x)) = sgn(x)*dx
-    friend constexpr auto abs(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto abs(jet_t x) noexcept -> jet_t
     {
         using crv::abs;
 
@@ -324,7 +318,7 @@ template <typename t_value_t> struct jet_t
     ///
     /// The dy term has a jump discontinuity at y = 0, producing a Dirac delta in the derivative. Returns df = +/- inf
     /// when y crosses zero with nonzero |x|.
-    friend constexpr auto copysign(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    friend constexpr auto copysign(jet_t x, jet_t y) noexcept -> jet_t
     {
         using crv::copysign;
 
@@ -347,7 +341,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(cos(x)) = -sin(x)*dx
-    friend constexpr auto cos(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto cos(jet_t x) noexcept -> jet_t
     {
         using crv::cos;
         using crv::sin;
@@ -356,7 +350,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(cosh(x)) = sinh(x)*dx
-    friend constexpr auto cosh(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto cosh(jet_t x) noexcept -> jet_t
     {
         using crv::cosh;
         using crv::sinh;
@@ -365,7 +359,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(exp(x)) = exp(x)*dx
-    friend constexpr auto exp(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto exp(jet_t x) noexcept -> jet_t
     {
         using crv::exp;
 
@@ -374,7 +368,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
-    friend auto hypot(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    friend auto hypot(jet_t x, jet_t y) noexcept -> jet_t
     {
         using crv::hypot;
 
@@ -386,7 +380,7 @@ template <typename t_value_t> struct jet_t
 
     /// \pre x > 0
     /// d(log(x)) = dx/x
-    friend constexpr auto log(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto log(jet_t x) noexcept -> jet_t
     {
         using crv::log;
 
@@ -397,7 +391,7 @@ template <typename t_value_t> struct jet_t
 
     /// \pre x > -1
     /// d(log1p(x)) = dx/(x + 1)
-    friend constexpr auto log1p(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto log1p(jet_t x) noexcept -> jet_t
     {
         using crv::log1p;
 
@@ -409,7 +403,7 @@ template <typename t_value_t> struct jet_t
     /// \pre x > 0 || (x == 0 && y >= 1)
     /// jet^element
     /// d(x^y) = x^(y - 1)*y*dx
-    friend constexpr auto pow(jet_t const& x, value_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(jet_t x, value_t y) noexcept -> jet_t
     {
         using crv::pow;
 
@@ -431,7 +425,7 @@ template <typename t_value_t> struct jet_t
     /// \pre x > 0
     /// element^jet
     /// d(x^y) = log(x)*x^y*dy
-    friend constexpr auto pow(value_t const& x, jet_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(value_t x, jet_t y) noexcept -> jet_t
     {
         using crv::pow;
 
@@ -446,7 +440,7 @@ template <typename t_value_t> struct jet_t
     /// \pre x > 0
     /// jet^jet
     /// d(x^y) = x^y*(log(x)*dy + y*dx/x) = x^y*log(x)*dy + x^(y - 1)*y*dx
-    friend constexpr auto pow(jet_t const& x, jet_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(jet_t x, jet_t y) noexcept -> jet_t
     {
         using crv::pow;
 
@@ -475,7 +469,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(sin(x)) = cos(x)*dx
-    friend constexpr auto sin(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto sin(jet_t x) noexcept -> jet_t
     {
         using crv::cos;
         using crv::sin;
@@ -484,7 +478,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(sinh(x)) = cosh(x)*dx
-    friend constexpr auto sinh(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto sinh(jet_t x) noexcept -> jet_t
     {
         using crv::cosh;
         using crv::sinh;
@@ -493,7 +487,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(sqrt(x)) = dx/(2*sqrt(x))
-    friend constexpr auto sqrt(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto sqrt(jet_t x) noexcept -> jet_t
     {
         using crv::sqrt;
 
@@ -506,7 +500,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(tan(x)) = (1 + tan(x)^2)*dx
-    friend constexpr auto tan(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto tan(jet_t x) noexcept -> jet_t
     {
         using crv::tan;
 
@@ -515,7 +509,7 @@ template <typename t_value_t> struct jet_t
     }
 
     // d(tanh(x)) = (1 - tanh(x)^2)*dx
-    friend constexpr auto tanh(jet_t const& x) noexcept -> jet_t
+    friend constexpr auto tanh(jet_t x) noexcept -> jet_t
     {
         using crv::tanh;
         auto const tanh_f = tanh(x.f);
@@ -526,7 +520,7 @@ template <typename t_value_t> struct jet_t
     // Standard Library Integration
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend auto operator<<(std::ostream& out, jet_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, jet_t src) -> std::ostream&
     {
         return out << "{.f = " << src.f << ", .df = " << src.df << "}";
     }
@@ -543,97 +537,97 @@ template <typename t_value_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
     // These disambiguate scalar operations on nested jets.
 
-    friend constexpr auto operator<=>(jet_t const& lhs, arithmetic auto const& rhs) noexcept -> auto
+    friend constexpr auto operator<=>(jet_t lhs, arithmetic auto rhs) noexcept -> auto
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs <=> static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator==(jet_t const& lhs, arithmetic auto const& rhs) noexcept -> auto
+    friend constexpr auto operator==(jet_t lhs, arithmetic auto rhs) noexcept -> auto
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs == static_cast<value_t>(rhs);
     }
 
-    constexpr auto operator+=(arithmetic auto const& rhs) noexcept -> jet_t&
+    constexpr auto operator+=(arithmetic auto rhs) noexcept -> jet_t&
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return *this += static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator+(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+    friend constexpr auto operator+(jet_t lhs, arithmetic auto rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs + static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator+(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator+(arithmetic auto lhs, jet_t rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return static_cast<value_t>(lhs) + rhs;
     }
 
-    constexpr auto operator-=(arithmetic auto const& rhs) noexcept -> jet_t&
+    constexpr auto operator-=(arithmetic auto rhs) noexcept -> jet_t&
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return *this -= static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator-(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+    friend constexpr auto operator-(jet_t lhs, arithmetic auto rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs - static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator-(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator-(arithmetic auto lhs, jet_t rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return static_cast<value_t>(lhs) - rhs;
     }
 
-    constexpr auto operator*=(arithmetic auto const& rhs) noexcept -> jet_t&
+    constexpr auto operator*=(arithmetic auto rhs) noexcept -> jet_t&
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return *this *= static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator*(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+    friend constexpr auto operator*(jet_t lhs, arithmetic auto rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs * static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator*(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator*(arithmetic auto lhs, jet_t rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return static_cast<value_t>(lhs) * rhs;
     }
 
-    constexpr auto operator/=(arithmetic auto const& rhs) noexcept -> jet_t&
+    constexpr auto operator/=(arithmetic auto rhs) noexcept -> jet_t&
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return *this /= static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator/(jet_t lhs, arithmetic auto const& rhs) noexcept -> jet_t
+    friend constexpr auto operator/(jet_t lhs, arithmetic auto rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return lhs / static_cast<value_t>(rhs);
     }
 
-    friend constexpr auto operator/(arithmetic auto const& lhs, jet_t rhs) noexcept -> jet_t
+    friend constexpr auto operator/(arithmetic auto lhs, jet_t rhs) noexcept -> jet_t
         requires(!std::is_same_v<decltype(rhs), value_t>)
     {
         return static_cast<value_t>(lhs) / rhs;
     }
 
-    friend constexpr auto pow(jet_t const& x, arithmetic auto const& y) noexcept -> jet_t
+    friend constexpr auto pow(jet_t x, arithmetic auto y) noexcept -> jet_t
         requires(!std::is_same_v<decltype(y), value_t>)
     {
         return pow(x, static_cast<value_t>(y));
     }
 
-    friend constexpr auto pow(arithmetic auto const& x, jet_t const& y) noexcept -> jet_t
+    friend constexpr auto pow(arithmetic auto x, jet_t y) noexcept -> jet_t
         requires(!std::is_same_v<decltype(x), value_t>)
     {
         return pow(static_cast<value_t>(x), y);
