@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/mesh/measured_error.hpp>
 #include <array>
 #include <cmath>
 #include <numbers>
@@ -36,5 +37,42 @@ node_cache_t<real_t, node_count>::nodes_t const node_cache_t<real_t, node_count>
 
     return result;
 }();
+
+// --------------------------------------------------------------------------------------------------------------------
+// Error Metric
+// --------------------------------------------------------------------------------------------------------------------
+
+/// error metric approximating L-infinity norm using Chebyshev nodes
+///
+/// This type evaluates the error between the generated payload and the ideal function at specifically chosen Chebyshev
+/// nodes of the first kind.
+template <typename real_t, typename node_cache_t, typename ideal_function_t, typename evaluator_t> struct error_metric_t
+{
+    ideal_function_t ideal_function;
+    evaluator_t      evaluator;
+
+    auto operator()(auto const& payload, real_t left, real_t right) const noexcept -> measured_error_t<real_t>
+    {
+        auto const center = (right + left) * 0.5;
+        auto const radius = (right - left) * 0.5;
+
+        auto result = measured_error_t<real_t>{.position = center, .magnitude = 0.0};
+        for (auto node : node_cache_t::nodes)
+        {
+            auto const position      = center + radius * node;
+            auto const ideal         = ideal_function(position);
+            auto const approximation = evaluator(payload, position);
+            auto const magnitude     = std::abs(ideal - approximation);
+
+            if (magnitude > result.magnitude)
+            {
+                result.position  = position;
+                result.magnitude = magnitude;
+            }
+        }
+
+        return result;
+    }
+};
 
 } // namespace crv::chebyshev
