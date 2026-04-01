@@ -890,5 +890,29 @@ static_assert(abs(u_4_t{max<int_t>()}) == u_4_t{max<int_t>()});
 
 } // namespace math_functions
 
+namespace numeric_limits_tests {
+
+using value_t = int32_t;
+using sut_t   = std::numeric_limits<i32_16_t>;
+using base_t  = std::numeric_limits<value_t>;
+
+// traits
+static_assert(sut_t::is_specialized);
+static_assert(!sut_t::is_integer);
+static_assert(sut_t::is_exact);
+static_assert(sut_t::is_signed == base_t::is_signed);
+static_assert(!sut_t::has_infinity);
+static_assert(!sut_t::has_quiet_NaN);
+
+// values
+static_assert(sut_t::max().value == base_t::max());
+static_assert(sut_t::lowest().value == base_t::lowest());
+static_assert(sut_t::min().value == 1); // min() is the smallest positive value, not the most negative
+
+// epsilon is the constant step size
+static_assert(sut_t::epsilon().value == 1);
+
+} // namespace numeric_limits_tests
+
 } // namespace
 } // namespace crv
