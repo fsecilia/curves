@@ -114,7 +114,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// converts from another fixed_t specialization, rescaling precision using rounding mode
     template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
-    explicit constexpr fixed_t(other_t other, rounding_mode_t rounding_mode = {}) noexcept
+    explicit constexpr fixed_t(other_t const& other, rounding_mode_t rounding_mode = {}) noexcept
     {
         using other_value_t                   = typename other_t::value_t;
         static constexpr auto other_frac_bits = other_t::frac_bits;
