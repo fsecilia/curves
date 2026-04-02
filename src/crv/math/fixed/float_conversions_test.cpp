@@ -25,7 +25,7 @@ struct test_vector_t
     }
 };
 
-struct fixed_test_float_conversion_t : public TestWithParam<test_vector_t>
+struct fixed_test_float_conversion_t : TestWithParam<test_vector_t>
 {
     float_t floating_point = GetParam().floating_point;
     sut_t   expected_fixed = GetParam().expected_fixed;
