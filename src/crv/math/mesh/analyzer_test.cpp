@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "equioscillation.hpp"
+#include "analyzer.hpp"
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
