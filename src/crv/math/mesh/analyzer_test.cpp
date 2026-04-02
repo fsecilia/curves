@@ -70,14 +70,20 @@ struct equioscillation_error_metric_test_t : Test
         auto operator()(real_t value) const noexcept -> real_t { return mock->call(value); }
     };
 
-    struct node_cache_t
+    struct sample_locator_t
     {
-        using nodes_t = std::array<real_t, 5>;
-        static constexpr nodes_t nodes{-1.0, -0.5, 0.0, 0.5, 1.0};
+        using sample_locations_t = std::array<real_t, 5>;
+        static constexpr sample_locations_t sample_locations{-1.0, -0.5, 0.0, 0.5, 1.0};
+        auto operator()() const noexcept -> sample_locations_t const& { return sample_locations; }
     };
 
-    using sut_t = error_metric_t<real_t, ideal_function_t, evaluator_t, quantizer_t, node_cache_t>;
-    sut_t sut{.ideal_function = {&mock_ideal_function}, .evaluator = {&mock_evaluator}, .quantizer{&mock_quantizer}};
+    using sut_t = error_metric_t<real_t, ideal_function_t, evaluator_t, quantizer_t, sample_locator_t>;
+    sut_t sut{
+        .ideal_function = {&mock_ideal_function},
+        .evaluator      = {&mock_evaluator},
+        .quantizer{&mock_quantizer},
+        .sample_locator{},
+    };
 
     // these must evaluate in ascending order to maximize quadrature cache hits
     InSequence seq;
@@ -95,7 +101,7 @@ struct equioscillation_error_metric_test_t : Test
     }
 };
 
-TEST_F(equioscillation_error_metric_test_t, max_error_at_first_node)
+TEST_F(equioscillation_error_metric_test_t, max_error_at_first_sample_location)
 {
     expect_iteration(0, expected_max_error_magnitude);
     expect_iteration(1, expected_max_error_magnitude / 2);
@@ -111,7 +117,7 @@ TEST_F(equioscillation_error_metric_test_t, max_error_at_first_node)
     EXPECT_EQ(actual, expected);
 }
 
-TEST_F(equioscillation_error_metric_test_t, max_error_at_last_node)
+TEST_F(equioscillation_error_metric_test_t, max_error_at_last_sample_location)
 {
     expect_iteration(0, expected_max_error_magnitude / 2);
     expect_iteration(1);
@@ -145,8 +151,9 @@ TEST_F(equioscillation_error_metric_test_t, handles_negative_error_correctly)
 
 // test subbing exact boundaries and center
 //
-// sut_t subs literal {left, center, right} explicitly for nodes at {-1, 0, +1}, respectively. This test deliberately
-// generates a segment that would normally truncate left or right and makes sure the literal positions are still subbed.
+// sut_t subs literal {left, center, right} explicitly for sample locations at {-1, 0, +1}, respectively. This test
+// deliberately generates a segment that would normally truncate left or right and makes sure the literal positions are
+// still subbed.
 TEST_F(equioscillation_error_metric_test_t, evaluates_exact_boundaries_despite_truncation)
 {
     real_t expected_left  = 0.0;
@@ -179,8 +186,8 @@ TEST_F(equioscillation_error_metric_test_t, evaluates_exact_boundaries_despite_t
     // cache expected values using same calcs as sut
     auto const expected_center     = (expected_right + expected_left) * 0.5;
     auto const expected_radius     = (expected_right - expected_left) * 0.5;
-    auto const expected_position_1 = expected_center + expected_radius * node_cache_t::nodes[1];
-    auto const expected_position_3 = expected_center + expected_radius * node_cache_t::nodes[3];
+    auto const expected_position_1 = expected_center + expected_radius * sample_locator_t::sample_locations[1];
+    auto const expected_position_3 = expected_center + expected_radius * sample_locator_t::sample_locations[3];
 
     // verify evaluations
 

@@ -6,25 +6,25 @@
 #include "sample_locator.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::equioscillation {
+namespace crv::sample_locators {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
-// Node Cache
+// sample Cache
 // --------------------------------------------------------------------------------------------------------------------
 
-struct equioscillation_cached_nodes_test_t : Test
+struct sample_locators_equioscillation_test_t : Test
 {
     auto compare(auto const& expected, auto const& actual) const noexcept -> void
     {
         constexpr auto count = std::size(expected);
         static_assert(count == std::size(actual));
 
-        for (auto node = 0u; node < count; ++node) { EXPECT_DOUBLE_EQ(expected[node], actual[node]); }
+        for (auto sample = 0u; sample < count; ++sample) { EXPECT_DOUBLE_EQ(expected[sample], actual[sample]); }
     }
 };
 
-TEST_F(equioscillation_cached_nodes_test_t, count_5)
+TEST_F(sample_locators_equioscillation_test_t, count_5)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -36,10 +36,10 @@ TEST_F(equioscillation_cached_nodes_test_t, count_5)
     };
     // clang-format on
 
-    compare(expected, node_cache_t<float_t, 5>::nodes);
+    compare(expected, equioscillation_t<float_t, 5>{}());
 }
 
-TEST_F(equioscillation_cached_nodes_test_t, count_7)
+TEST_F(sample_locators_equioscillation_test_t, count_7)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -53,8 +53,8 @@ TEST_F(equioscillation_cached_nodes_test_t, count_7)
     };
     // clang-format on
 
-    compare(expected, node_cache_t<float_t, 7>::nodes);
+    compare(expected, equioscillation_t<float_t, 7>{}());
 }
 
 } // namespace
-} // namespace crv::equioscillation
+} // namespace crv::sample_locators
