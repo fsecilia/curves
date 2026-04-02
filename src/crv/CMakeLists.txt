@@ -41,6 +41,7 @@ target_sources_kernel(lib
     math/mesh/analyzer.hpp
     math/mesh/measured_error.hpp
     math/mesh/quantizer.hpp
+    math/mesh/sample_locator.hpp
     math/mesh/segment.hpp
     math/rounding_mode.hpp
     traits.hpp
@@ -82,6 +83,7 @@ if (enable_testing)
         math/mesh/analyzer_test.cpp
         math/mesh/measured_error_test.cpp
         math/mesh/quantizer_test.cpp
+        math/mesh/sample_locator_test.cpp
         math/mesh/segment_test.cpp
         math/rounding_mode_test.cpp
         math/stats_test.cpp
