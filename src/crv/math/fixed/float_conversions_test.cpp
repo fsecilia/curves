@@ -54,18 +54,32 @@ TEST_P(fixed_test_float_conversion_t, as_float64)
 }
 
 test_vector_t const test_vectors[] = {
-    // exact integers
-    {0.0, sut_t::literal(0), 0},
-    {1.0, sut_t::literal(65536), 0},
-    {-1.0, sut_t::literal(-65536), 0},
+    // exact zero and bounds
+    {0.0, sut_t::literal(0), 0.0},
+    {1.0, sut_t::literal(65536), 0.0},
+    {-1.0, sut_t::literal(-65536), 0.0},
 
     // exact powers of two
-    {0.5, sut_t::literal(32768), 0},
-    {0.25, sut_t::literal(16384), 0},
+    {0.5, sut_t::literal(32768), 0.0},
+    {0.25, sut_t::literal(16384), 0.0},
 
-    // rounding
-    {1.0 + (0.4 / 65536.0), sut_t::literal(65536), 1e-5}, // rounds down
-    {1.0 + (0.6 / 65536.0), sut_t::literal(65537), 1e-5}  // rounds up
+    // standard rounding, no ties
+    {1.0 + (0.4 / 65536.0), sut_t::literal(65536), 1e-5},   // rounds down
+    {1.0 + (0.6 / 65536.0), sut_t::literal(65537), 1e-5},   // rounds up
+    {-1.0 - (0.4 / 65536.0), sut_t::literal(-65536), 1e-5}, // rounds up towards zero
+    {-1.0 - (0.6 / 65536.0), sut_t::literal(-65537), 1e-5}, // rounds down away from zero
+
+    // positive rne tie breakers
+    {0.5 / 65536.0, sut_t::literal(0), 1e-5}, // 0 (even) and 1 (odd) -> rounds to 0
+    {1.5 / 65536.0, sut_t::literal(2), 1e-5}, // 1 (odd) and 2 (even) -> rounds to 2
+    {2.5 / 65536.0, sut_t::literal(2), 1e-5}, // 2 (even) and 3 (odd) -> rounds to 2
+    {3.5 / 65536.0, sut_t::literal(4), 1e-5}, // 3 (odd) and 4 (even) -> rounds to 4
+
+    // negative rne tie breakers
+    {-0.5 / 65536.0, sut_t::literal(0), 1e-5},  // 0 (even) and -1 (odd) -> rounds to 0
+    {-1.5 / 65536.0, sut_t::literal(-2), 1e-5}, // -1 (odd) and -2 (even) -> rounds to -2
+    {-2.5 / 65536.0, sut_t::literal(-2), 1e-5}, // -2 (even) and -3 (odd) -> rounds to -2
+    {-3.5 / 65536.0, sut_t::literal(-4), 1e-5}, // -3 (odd) and -4 (even) -> rounds to -4
 };
 INSTANTIATE_TEST_SUITE_P(test_vectors, fixed_test_float_conversion_t, ValuesIn(test_vectors));
 

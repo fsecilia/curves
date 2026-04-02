@@ -49,25 +49,26 @@ template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<valu
     template <std::floating_point src_t> constexpr auto to(src_t src) const noexcept -> target_t
     {
         using std::ldexp;
-        using std::llround;
-        using std::round;
+        using std::llrint;
+        using std::rint;
 
         auto const scaled = ldexp(src, frac_bits);
         range_check(scaled);
 
-        // dispatch with llround when possible
-        static constexpr auto llround_available
+        // dispatch with llrint when possible
+        static constexpr auto llrint_available
             = std::numeric_limits<value_t>::max() <= std::numeric_limits<long long>::max();
-        if constexpr (llround_available) { return target_t::literal(static_cast<value_t>(llround(scaled))); }
+        if constexpr (llrint_available) { return target_t::literal(static_cast<value_t>(llrint(scaled))); }
         else
         {
-            return target_t::literal(static_cast<value_t>(round(scaled)));
+            return target_t::literal(static_cast<value_t>(rint(scaled)));
         }
     }
 
     template <std::floating_point dst_t> constexpr auto from(target_t src) const noexcept -> dst_t
     {
         using std::ldexp;
+
         return ldexp(static_cast<dst_t>(src.value), -frac_bits);
     }
 };
