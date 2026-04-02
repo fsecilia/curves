@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief error metric using Chebyshev nodes
+/// \brief error metric that samples at equioscillation nodes
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -12,7 +12,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace crv::chebyshev {
+namespace crv::equioscillation {
 
 // --------------------------------------------------------------------------------------------------------------------
 // Node Cache
@@ -45,7 +45,8 @@ node_cache_t<real_t, node_count>::nodes_t const node_cache_t<real_t, node_count>
 /// error metric approximating L-infinity norm using Chebyshev nodes
 ///
 /// This type evaluates the error between the generated payload and the ideal function at specifically chosen Chebyshev
-/// nodes of the first kind.
+/// nodes of the first kind. These nodes are at natural equiosciliation points, roughly minimizing the total error over
+/// the domain.
 template <typename real_t, typename node_cache_t, typename ideal_function_t, typename evaluator_t> struct error_metric_t
 {
     ideal_function_t ideal_function;
@@ -75,4 +76,4 @@ template <typename real_t, typename node_cache_t, typename ideal_function_t, typ
     }
 };
 
-} // namespace crv::chebyshev
+} // namespace crv::equioscillation

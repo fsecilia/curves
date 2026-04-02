@@ -3,18 +3,18 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/math/mesh/error_metrics/chebyshev.hpp>
+#include "equioscillation.hpp"
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv::chebyshev {
+namespace crv::equioscillation {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
 // Node Cache
 // --------------------------------------------------------------------------------------------------------------------
 
-struct chebyshev_cached_nodes_test_t : Test
+struct equioscillation_cached_nodes_test_t : Test
 {
     auto compare(auto const& expected, auto const& actual) const noexcept -> void
     {
@@ -25,7 +25,7 @@ struct chebyshev_cached_nodes_test_t : Test
     }
 };
 
-TEST_F(chebyshev_cached_nodes_test_t, count_5)
+TEST_F(equioscillation_cached_nodes_test_t, count_5)
 {
     static auto const expected = std::array{
         9.510565162951535311819384332921e-01,  5.877852522924731371034567928291e-01,
@@ -36,7 +36,7 @@ TEST_F(chebyshev_cached_nodes_test_t, count_5)
     compare(expected, node_cache_t<float_t, 5>::nodes);
 }
 
-TEST_F(chebyshev_cached_nodes_test_t, count_7)
+TEST_F(equioscillation_cached_nodes_test_t, count_7)
 {
     static auto const expected = std::array{
         9.749279121818236193419693336182e-01,  7.818314824680298036341241640912e-01,
@@ -52,7 +52,7 @@ TEST_F(chebyshev_cached_nodes_test_t, count_7)
 // Error Metric
 // --------------------------------------------------------------------------------------------------------------------
 
-struct chebyshev_error_metric_test_t : Test
+struct equioscillation_error_metric_test_t : Test
 {
     using real_t    = float_t;
     using payload_t = int_t;
@@ -105,7 +105,7 @@ struct chebyshev_error_metric_test_t : Test
     using sut_t = error_metric_t<real_t, node_cache_t, ideal_function_t, evaluator_t>;
     sut_t sut{.ideal_function = {&mock_ideal_function}, .evaluator = {&mock_evaluator}};
 
-    chebyshev_error_metric_test_t()
+    equioscillation_error_metric_test_t()
     {
         EXPECT_CALL(mock_ideal_function, call(expected_positions[0])).WillOnce(Return(0.0));
         EXPECT_CALL(mock_ideal_function, call(expected_positions[1])).WillOnce(Return(0.0));
@@ -113,7 +113,7 @@ struct chebyshev_error_metric_test_t : Test
     }
 };
 
-TEST_F(chebyshev_error_metric_test_t, max_error_at_first_node)
+TEST_F(equioscillation_error_metric_test_t, max_error_at_first_node)
 {
     EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0])).WillOnce(Return(expected_max_error_magnitude));
     EXPECT_CALL(mock_evaluator, call(payload, expected_positions[1]))
@@ -127,7 +127,7 @@ TEST_F(chebyshev_error_metric_test_t, max_error_at_first_node)
     EXPECT_EQ(actual, expected);
 }
 
-TEST_F(chebyshev_error_metric_test_t, max_error_at_last_node)
+TEST_F(equioscillation_error_metric_test_t, max_error_at_last_node)
 {
     EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0]))
         .WillOnce(Return(expected_max_error_magnitude / 2));
@@ -141,7 +141,7 @@ TEST_F(chebyshev_error_metric_test_t, max_error_at_last_node)
     EXPECT_EQ(actual, expected);
 }
 
-TEST_F(chebyshev_error_metric_test_t, handles_negative_error_correctly)
+TEST_F(equioscillation_error_metric_test_t, handles_negative_error_correctly)
 {
     EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0])).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_positions[1])).WillOnce(Return(-expected_max_error_magnitude));
@@ -156,4 +156,4 @@ TEST_F(chebyshev_error_metric_test_t, handles_negative_error_correctly)
 }
 
 } // namespace
-} // namespace crv::chebyshev
+} // namespace crv::equioscillation
