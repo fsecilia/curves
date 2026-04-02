@@ -40,6 +40,7 @@ target_sources_kernel(lib
     math/limits.hpp
     math/mesh/error_metrics/equioscillation.hpp
     math/mesh/measured_error.hpp
+    math/mesh/quantizer.hpp
     math/mesh/segment.hpp
     math/rounding_mode.hpp
     traits.hpp
@@ -80,6 +81,7 @@ if (enable_testing)
         math/limits_test.cpp
         math/mesh/error_metrics/equioscillation_test.cpp
         math/mesh/measured_error_test.cpp
+        math/mesh/quantizer_test.cpp
         math/mesh/segment_test.cpp
         math/rounding_mode_test.cpp
         math/stats_test.cpp
