@@ -31,8 +31,18 @@ node_cache_t<real_t, node_count>::nodes_t const node_cache_t<real_t, node_count>
 
     nodes_t result;
 
+    // calc mid-range values
     static constexpr auto scale = std::numbers::pi_v<real_t> / static_cast<real_t>(node_count - 1);
-    for (auto node = 0; node < node_count; ++node) { result[node] = std::cos(static_cast<real_t>(node) * scale); }
+    for (auto node = 1; node < node_count - 1; ++node)
+    {
+        auto const position = std::cos(static_cast<real_t>(node) * scale);
+        result[node]        = -position;
+    }
+
+    // punch in common values
+    result[0]              = -1.0;
+    result[node_count / 2] = 0.0;
+    result[node_count - 1] = 1.0;
 
     return result;
 }();
@@ -47,6 +57,8 @@ node_cache_t<real_t, node_count>::nodes_t const node_cache_t<real_t, node_count>
 /// points, capturing the maximum error across the interval.
 template <typename real_t, typename node_cache_t, typename ideal_function_t, typename evaluator_t> struct error_metric_t
 {
+    static_assert(!std::empty(node_cache_t::nodes), "at least 1 node required");
+
     ideal_function_t ideal_function;
     evaluator_t      evaluator;
 
@@ -55,14 +67,25 @@ template <typename real_t, typename node_cache_t, typename ideal_function_t, typ
         auto const center = (right + left) * 0.5;
         auto const radius = (right - left) * 0.5;
 
-        auto result = measured_error_t<real_t>{.position = center, .magnitude = 0.0};
+        auto result = measured_error_t<real_t>{}; // magnitude is always 0
         for (auto node : node_cache_t::nodes)
         {
-            auto const position      = center + radius * node;
+            // sub exact center and boundries with no truncation error using cmov
+            //
+            // Applying this to left and right prevents truncation from landing the evaluated position outside of the
+            // given range. We also apply it to center because it's trivial to and center tends to suffer from
+            // truncation.
+            auto position = center + radius * node;
+            if (node == -1.0) position = left;
+            if (node == 0.0) position = center;
+            if (node == 1.0) position = right;
+
+            // evaluate both ideal and the approxmation, measure error as difference
             auto const ideal         = ideal_function(position);
             auto const approximation = evaluator(payload, position);
             auto const magnitude     = std::abs(ideal - approximation);
 
+            // argmax on magnitude
             if (magnitude > result.magnitude)
             {
                 result.position  = position;
