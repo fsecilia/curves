@@ -55,12 +55,14 @@ node_cache_t<real_t, node_count>::nodes_t const node_cache_t<real_t, node_count>
 ///
 /// This type evaluates the error between the generated payload and the ideal function at natural equioscillation
 /// points, capturing the maximum error across the interval.
-template <typename real_t, typename node_cache_t, typename ideal_function_t, typename evaluator_t> struct error_metric_t
+template <typename real_t, typename ideal_function_t, typename evaluator_t, typename quantizer_t, typename node_cache_t>
+struct error_metric_t
 {
     static_assert(!std::empty(node_cache_t::nodes), "at least 1 node required");
 
     ideal_function_t ideal_function;
     evaluator_t      evaluator;
+    quantizer_t      quantizer;
 
     auto operator()(auto const& payload, real_t left, real_t right) const noexcept -> measured_error_t<real_t>
     {
@@ -75,20 +77,22 @@ template <typename real_t, typename node_cache_t, typename ideal_function_t, typ
             // Applying this to left and right prevents truncation from landing the evaluated position outside of the
             // given range. We also apply it to center because it's trivial to and center tends to suffer from
             // truncation.
-            auto position = center + radius * node;
-            if (node == -1.0) position = left;
-            if (node == 0.0) position = center;
-            if (node == 1.0) position = right;
+            auto ideal_position = center + radius * node;
+            if (node == -1.0) ideal_position = left;
+            if (node == 0.0) ideal_position = center;
+            if (node == 1.0) ideal_position = right;
 
-            // evaluate both ideal and the approxmation, measure error as difference
-            auto const ideal         = ideal_function(position);
-            auto const approximation = evaluator(payload, position);
+            auto const quantized_position = quantizer(ideal_position);
+
+            // evaluate both ideal at ideal position and approxmation at quantized position, measure error as difference
+            auto const ideal         = ideal_function(ideal_position);
+            auto const approximation = evaluator(payload, quantized_position);
             auto const magnitude     = std::abs(ideal - approximation);
 
             // argmax on magnitude
             if (magnitude > result.magnitude)
             {
-                result.position  = position;
+                result.position  = ideal_position;
                 result.magnitude = magnitude;
             }
         }

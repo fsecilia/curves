@@ -73,13 +73,8 @@ struct equioscillation_error_metric_test_t : Test
     using measured_error_t                             = measured_error_t<real_t>;
     static constexpr auto expected_max_error_magnitude = 10.0;
 
-    static constexpr auto expected_positions = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
-
-    struct node_cache_t
-    {
-        using nodes_t = std::array<real_t, 5>;
-        static constexpr nodes_t nodes{-1.0, -0.5, 0.0, 0.5, 1.0};
-    };
+    static constexpr auto expected_positions           = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
+    static constexpr auto expected_quantized_positions = std::array{1.1, 2.2, 3.3, 4.4, 5.5};
 
     struct mock_ideal_function_t
     {
@@ -112,30 +107,52 @@ struct equioscillation_error_metric_test_t : Test
         }
     };
 
-    using sut_t = error_metric_t<real_t, node_cache_t, ideal_function_t, evaluator_t>;
-    sut_t sut{.ideal_function = {&mock_ideal_function}, .evaluator = {&mock_evaluator}};
+    struct mock_quantizer_t
+    {
+        MOCK_METHOD(real_t, call, (real_t), (const, noexcept));
+        virtual ~mock_quantizer_t() = default;
+    };
+    StrictMock<mock_quantizer_t> mock_quantizer;
+
+    struct quantizer_t
+    {
+        mock_quantizer_t* mock = nullptr;
+
+        auto operator()(real_t value) const noexcept -> real_t { return mock->call(value); }
+    };
+
+    struct node_cache_t
+    {
+        using nodes_t = std::array<real_t, 5>;
+        static constexpr nodes_t nodes{-1.0, -0.5, 0.0, 0.5, 1.0};
+    };
+
+    using sut_t = error_metric_t<real_t, ideal_function_t, evaluator_t, quantizer_t, node_cache_t>;
+    sut_t sut{.ideal_function = {&mock_ideal_function}, .evaluator = {&mock_evaluator}, .quantizer{&mock_quantizer}};
 
     // these must evaluate in ascending order to maximize quadrature cache hits
     InSequence seq;
 
     equioscillation_error_metric_test_t() {}
+
+    auto expect_iteration(int_t position_index, real_t result = 0.0) -> void
+    {
+        auto const expected_position           = expected_positions[position_index];
+        auto const expected_quantized_position = expected_quantized_positions[position_index];
+
+        EXPECT_CALL(mock_quantizer, call(expected_position)).WillOnce(Return(expected_quantized_position));
+        EXPECT_CALL(mock_ideal_function, call(expected_position)).WillOnce(Return(0.0));
+        EXPECT_CALL(mock_evaluator, call(payload, expected_quantized_position)).WillOnce(Return(result));
+    }
 };
 
 TEST_F(equioscillation_error_metric_test_t, max_error_at_first_node)
 {
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[0])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0])).WillOnce(Return(expected_max_error_magnitude));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[1])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[1]))
-        .WillOnce(Return(expected_max_error_magnitude / 2));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[2])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[2])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[3])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[3])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[4])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[4])).WillOnce(Return(0.0));
+    expect_iteration(0, expected_max_error_magnitude);
+    expect_iteration(1, expected_max_error_magnitude / 2);
+    expect_iteration(2);
+    expect_iteration(3);
+    expect_iteration(4);
 
     auto const expected
         = measured_error_t{.position = expected_positions[0], .magnitude = expected_max_error_magnitude};
@@ -147,20 +164,11 @@ TEST_F(equioscillation_error_metric_test_t, max_error_at_first_node)
 
 TEST_F(equioscillation_error_metric_test_t, max_error_at_last_node)
 {
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[0])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0]))
-        .WillOnce(Return(expected_max_error_magnitude / 2));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[1])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[1])).WillOnce(Return(0.0));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[2])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[2])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[3])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[3])).WillOnce(Return(0.0));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[4])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[4])).WillOnce(Return(expected_max_error_magnitude));
+    expect_iteration(0, expected_max_error_magnitude / 2);
+    expect_iteration(1);
+    expect_iteration(2);
+    expect_iteration(3);
+    expect_iteration(4, expected_max_error_magnitude);
 
     auto const expected
         = measured_error_t{.position = expected_positions[4], .magnitude = expected_max_error_magnitude};
@@ -172,19 +180,11 @@ TEST_F(equioscillation_error_metric_test_t, max_error_at_last_node)
 
 TEST_F(equioscillation_error_metric_test_t, handles_negative_error_correctly)
 {
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[0])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[0])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[1])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[1])).WillOnce(Return(-expected_max_error_magnitude));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[2])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[2]))
-        .WillOnce(Return(expected_max_error_magnitude / 2));
-
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[3])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[3])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_ideal_function, call(expected_positions[4])).WillOnce(Return(0.0));
-    EXPECT_CALL(mock_evaluator, call(payload, expected_positions[4])).WillOnce(Return(0.0));
+    expect_iteration(0);
+    expect_iteration(1, -expected_max_error_magnitude);
+    expect_iteration(2);
+    expect_iteration(3, expected_max_error_magnitude / 2);
+    expect_iteration(4);
 
     auto const expected
         = measured_error_t{.position = expected_positions[1], .magnitude = expected_max_error_magnitude};
@@ -235,14 +235,19 @@ TEST_F(equioscillation_error_metric_test_t, evaluates_exact_boundaries_despite_t
 
     // verify evaluations
 
+    EXPECT_CALL(mock_quantizer, call(expected_left)).WillOnce(Return(expected_left));
     EXPECT_CALL(mock_ideal_function, call(expected_left)).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_left)).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_quantizer, call(expected_position_1)).WillOnce(Return(expected_position_1));
     EXPECT_CALL(mock_ideal_function, call(expected_position_1)).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_position_1)).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_quantizer, call(expected_center)).WillOnce(Return(expected_center));
     EXPECT_CALL(mock_ideal_function, call(expected_center)).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_center)).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_quantizer, call(expected_position_3)).WillOnce(Return(expected_position_3));
     EXPECT_CALL(mock_ideal_function, call(expected_position_3)).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_position_3)).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_quantizer, call(expected_right)).WillOnce(Return(expected_right));
     EXPECT_CALL(mock_ideal_function, call(expected_right)).WillOnce(Return(0.0));
     EXPECT_CALL(mock_evaluator, call(payload, expected_right)).WillOnce(Return(0.0));
 
