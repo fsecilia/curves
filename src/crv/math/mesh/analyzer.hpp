@@ -58,7 +58,7 @@ struct error_metric_t
             // argmax on magnitude
             if (magnitude > result.magnitude)
             {
-                result.position  = ideal_position;
+                result.position  = quantized_position;
                 result.magnitude = magnitude;
             }
         }

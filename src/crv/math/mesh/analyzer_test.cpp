@@ -110,7 +110,7 @@ TEST_F(equioscillation_error_metric_test_t, max_error_at_first_sample_location)
     expect_iteration(4);
 
     auto const expected
-        = measured_error_t{.position = expected_positions[0], .magnitude = expected_max_error_magnitude};
+        = measured_error_t{.position = expected_quantized_positions[0], .magnitude = expected_max_error_magnitude};
 
     auto const actual = sut(payload, left, right);
 
@@ -126,7 +126,7 @@ TEST_F(equioscillation_error_metric_test_t, max_error_at_last_sample_location)
     expect_iteration(4, expected_max_error_magnitude);
 
     auto const expected
-        = measured_error_t{.position = expected_positions[4], .magnitude = expected_max_error_magnitude};
+        = measured_error_t{.position = expected_quantized_positions[4], .magnitude = expected_max_error_magnitude};
 
     auto const actual = sut(payload, left, right);
 
@@ -142,7 +142,7 @@ TEST_F(equioscillation_error_metric_test_t, handles_negative_error_correctly)
     expect_iteration(4);
 
     auto const expected
-        = measured_error_t{.position = expected_positions[1], .magnitude = expected_max_error_magnitude};
+        = measured_error_t{.position = expected_quantized_positions[1], .magnitude = expected_max_error_magnitude};
 
     auto const actual = sut(payload, left, right);
 
