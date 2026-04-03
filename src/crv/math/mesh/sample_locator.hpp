@@ -15,7 +15,7 @@
 namespace crv::sample_locators {
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind
-template <typename real_t, int sample_count = 15> struct equioscillation_t
+template <typename real_t, int sample_count = 5> struct equioscillation_t
 {
     using samples_t = std::array<real_t, sample_count>;
     static samples_t const samples;
@@ -24,7 +24,8 @@ template <typename real_t, int sample_count = 15> struct equioscillation_t
 };
 
 template <typename real_t, int sample_count>
-equioscillation_t<real_t, sample_count>::samples_t const equioscillation_t<real_t, sample_count>::samples = []() {
+equioscillation_t<real_t, sample_count>::samples_t const equioscillation_t<real_t, sample_count>::samples
+    = []() noexcept -> samples_t {
     static_assert(sample_count > 1, "must have at least 2 samples to form an interval");
 
     samples_t result;
@@ -39,8 +40,10 @@ equioscillation_t<real_t, sample_count>::samples_t const equioscillation_t<real_
 
     // punch in common values
     result[0]                = -1.0;
-    result[sample_count / 2] = 0.0;
     result[sample_count - 1] = 1.0;
+
+    constexpr auto odd_count = sample_count & 1;
+    if constexpr (odd_count) result[sample_count / 2] = 0.0;
 
     return result;
 }();

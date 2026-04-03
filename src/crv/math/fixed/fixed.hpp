@@ -219,7 +219,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t lhs, fixed_t rhs) noexcept -> fixed_t
     {
-        return fixed_t::literal((widened_t<value_t>(lhs) << frac_bits * 2) / rhs.value);
+        return fixed_t::literal(int_cast<value_t>((widened_t<value_t>(lhs) << frac_bits * 2) / rhs.value));
     }
 
     friend constexpr auto operator%(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs %= rhs; }
@@ -369,11 +369,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (frac_bits == 0) return src;
         else
         {
-            auto const floored = floor(src);
-            if (floored.value == src.value) return floored;
-
-            if constexpr (frac_bits >= sizeof(value_t) * CHAR_BIT) return literal(0);
-            else return literal(int_cast<value_t>(floored.value + (value_t{1} << frac_bits)));
+            auto result = floor(src);
+            if (result.value != src.value)
+            {
+                result = literal(int_cast<value_t>(result.value + (value_t{1} << frac_bits)));
+            }
+            return result;
         }
     }
 

@@ -82,13 +82,13 @@ struct fixed_test_with_rounding_mode_t : fixed_test_t
 
         template <integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->bias(int_cast<int_t>(unshifted), shift);
+            return static_cast<value_t>(mock->bias(int_cast<int_t>(unshifted), shift));
         }
 
         template <integral value_t>
         constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
         {
-            return mock->carry(int_cast<int_t>(shifted), int_cast<int_t>(unshifted), shift);
+            return int_cast<value_t>(mock->carry(int_cast<int_t>(shifted), int_cast<int_t>(unshifted), shift));
         }
     };
     rounding_mode_t rounding_mode{&mock_rounding_mode};

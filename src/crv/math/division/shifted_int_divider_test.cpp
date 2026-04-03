@@ -64,28 +64,25 @@ struct heterogeneous_test_t
 {
     static constexpr auto rounding_mode = tracking_rounding_mode_t<uint32_t>{.id = expected_tracking_rounding_mode_id};
 
-    constexpr auto test() const noexcept -> void
-    {
-        using sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, int16_t, uint32_t, int8_t, true>;
-        constexpr auto sut = sut_t{};
+    using sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, int16_t, uint32_t, int8_t, true>;
+    static constexpr auto sut = sut_t{};
 
-        // fits: (100 << 3) / -2 = 800 / -2 = -400
-        static_assert(sut(uint32_t{100}, int8_t{-2}, rounding_mode) == int16_t{-400});
+    // fits: (100 << 3) / -2 = 800 / -2 = -400
+    static_assert(sut(uint32_t{100}, int8_t{-2}, rounding_mode) == int16_t{-400});
 
-        // bounds test: clamps to min<int16_t>
-        static_assert(sut(uint32_t{10000}, int8_t{-1}, rounding_mode) == min<int16_t>());
+    // bounds test: clamps to min<int16_t>
+    static_assert(sut(uint32_t{10000}, int8_t{-1}, rounding_mode) == min<int16_t>());
 
-        // bounds test: clamps to max<int16_t>
-        static_assert(sut(uint32_t{10000}, int8_t{1}, rounding_mode) == max<int16_t>());
+    // bounds test: clamps to max<int16_t>
+    static_assert(sut(uint32_t{10000}, int8_t{1}, rounding_mode) == max<int16_t>());
 
-        // Unsigned Output boundary test
-        using unsigned_out_sut_t
-            = shifted_int_divider_t<tracking_wide_divider_t, default_shift, uint16_t, int32_t, int32_t, true>;
-        constexpr auto u_sut = unsigned_out_sut_t{};
+    // Unsigned Output boundary test
+    using unsigned_out_sut_t
+        = shifted_int_divider_t<tracking_wide_divider_t, default_shift, uint16_t, int32_t, int32_t, true>;
+    static constexpr auto u_sut = unsigned_out_sut_t{};
 
-        // negative mathematical result correctly clamped to 0 for unsigned output type
-        static_assert(u_sut(int32_t{100}, int32_t{-2}, rounding_mode) == uint16_t{0});
-    }
+    // negative mathematical result correctly clamped to 0 for unsigned output type
+    static_assert(u_sut(int32_t{100}, int32_t{-2}, rounding_mode) == uint16_t{0});
 };
 
 // --------------------------------------------------------------------------------------------------------------------
