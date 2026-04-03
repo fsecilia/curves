@@ -13,12 +13,12 @@ namespace crv {
 
 /// represents single evaluated interval in an adaptive mesh
 ///
-/// Stores domain boundaries, payload, and max error measured across the segment.
-template <typename real_t, typename payload_t> struct mesh_segment_t
+/// Stores domain boundaries, approximant, and max error measured across the segment.
+template <typename real_t, typename approximant_t> struct mesh_segment_t
 {
     real_t                   left;
     real_t                   right;
-    payload_t                payload;
+    approximant_t            approximant;
     measured_error_t<real_t> max_measured_error;
 
     auto operator<=>(mesh_segment_t const& src) const noexcept -> auto = default;
