@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "sample_locator.hpp"
+#include "node_generator.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::sample_locators {
