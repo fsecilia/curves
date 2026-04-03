@@ -19,7 +19,6 @@ struct residual_estimator_test_t : Test
     static constexpr auto const left        = 0.0;
     static constexpr auto const right       = 10.0;
 
-    using measured_error_t                             = measured_error_t<real_t>;
     static constexpr auto expected_max_error_magnitude = 11.1;
 
     static constexpr auto expected_positions           = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
@@ -135,12 +134,9 @@ TEST_F(residual_estimator_test_t, max_error_at_first_sample_location)
     expect_iteration(3);
     expect_iteration(4);
 
-    auto const expected
-        = measured_error_t{.position = expected_quantized_positions[0], .magnitude = expected_max_error_magnitude};
-
     auto const actual = sut(approximant, left, right);
 
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(expected_max_error_magnitude, actual);
 }
 
 TEST_F(residual_estimator_test_t, max_error_at_last_sample_location)
@@ -151,12 +147,9 @@ TEST_F(residual_estimator_test_t, max_error_at_last_sample_location)
     expect_iteration(3);
     expect_iteration(4, expected_max_error_magnitude);
 
-    auto const expected
-        = measured_error_t{.position = expected_quantized_positions[4], .magnitude = expected_max_error_magnitude};
-
     auto const actual = sut(approximant, left, right);
 
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(expected_max_error_magnitude, actual);
 }
 
 TEST_F(residual_estimator_test_t, handles_negative_error_correctly)
@@ -167,12 +160,9 @@ TEST_F(residual_estimator_test_t, handles_negative_error_correctly)
     expect_iteration(3, expected_max_error_magnitude / 2);
     expect_iteration(4);
 
-    auto const expected
-        = measured_error_t{.position = expected_quantized_positions[1], .magnitude = expected_max_error_magnitude};
-
     auto const actual = sut(approximant, left, right);
 
-    EXPECT_EQ(actual, expected);
+    EXPECT_EQ(expected_max_error_magnitude, actual);
 }
 
 // test subbing exact boundaries and center
@@ -249,11 +239,9 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
         .WillOnce(Return(expected_approximations[4]));
     EXPECT_CALL(mock_error_norm, call(expected_targets[4], expected_approximations[4])).WillOnce(Return(0.0));
 
-    auto const expected = measured_error_t{expected_position_1, expected_max_error_magnitude};
-
     auto const actual = sut(approximant, expected_left, expected_right);
 
-    EXPECT_EQ(expected, actual);
+    EXPECT_EQ(expected_max_error_magnitude, actual);
 }
 
 } // namespace

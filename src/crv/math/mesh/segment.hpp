@@ -7,7 +7,6 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/mesh/measured_error.hpp>
 
 namespace crv {
 
@@ -16,23 +15,21 @@ namespace crv {
 /// Stores domain boundaries, approximant, and max error measured across the segment.
 template <typename real_t, typename approximant_t> struct mesh_segment_t
 {
-    real_t                   left;
-    real_t                   right;
-    approximant_t            approximant;
-    measured_error_t<real_t> max_measured_error;
+    real_t        left;
+    real_t        right;
+    approximant_t approximant;
+    real_t        max_error;
 
     auto operator<=>(mesh_segment_t const& src) const noexcept -> auto = default;
     auto operator==(mesh_segment_t const& src) const noexcept -> bool  = default;
 };
 
 /// ordered mesh segments by max_measured_error
-template <typename measured_error_pred_t> struct mesh_segment_pred_t
+struct mesh_segment_pred_t
 {
-    measured_error_pred_t measured_error_pred;
-
     constexpr auto operator()(auto const& left, auto const& right) const noexcept -> bool
     {
-        return measured_error_pred(left.max_measured_error, right.max_measured_error);
+        return left.max_error < right.max_error;
     }
 };
 

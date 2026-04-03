@@ -7,8 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/mesh/measured_error.hpp>
-#include <cmath>
+#include <algorithm>
 
 namespace crv {
 
@@ -27,12 +26,12 @@ struct residual_estimator_t
     quantizer_t             quantize;
     error_norm_t            measure_error;
 
-    auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> measured_error_t<real_t>
+    auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> real_t
     {
         auto const center = (right + left) * 0.5;
         auto const radius = (right - left) * 0.5;
 
-        auto result = measured_error_t<real_t>{};
+        auto max_magnitude = real_t{0};
 
         for (auto const node : generate_nodes())
         {
@@ -47,21 +46,17 @@ struct residual_estimator_t
 
             auto const quantized_position = quantize(target_position);
 
-            // evaluate both target at target position and approxmant at quantized position, measure error as
-            // difference
+            // evaluate target at target position and approxmant at quantized position
             auto const target        = evaluate_target(target_position);
             auto const approximation = evaluate_approximant(approximant, quantized_position);
-            auto const magnitude     = measure_error(target, approximation);
 
-            // argmax on magnitude
-            if (magnitude > result.magnitude)
-            {
-                result.position  = quantized_position;
-                result.magnitude = magnitude;
-            }
+            // measure magnitude of error using norm
+            auto const magnitude = measure_error(target, approximation);
+
+            max_magnitude = std::max(max_magnitude, magnitude);
         }
 
-        return result;
+        return max_magnitude;
     }
 };
 

@@ -40,7 +40,6 @@ target_sources_kernel(lib
     math/integer.hpp
     math/limits.hpp
     math/mesh/error_norm.hpp
-    math/mesh/measured_error.hpp
     math/mesh/node_generator.hpp
     math/mesh/quantizer.hpp
     math/mesh/residual_estimator.hpp
@@ -85,7 +84,6 @@ if (enable_testing)
         math/integer_test.cpp
         math/limits_test.cpp
         math/mesh/error_norm_test.cpp
-        math/mesh/measured_error_test.cpp
         math/mesh/node_generator_test.cpp
         math/mesh/quantizer_test.cpp
         math/mesh/residual_estimator_test.cpp

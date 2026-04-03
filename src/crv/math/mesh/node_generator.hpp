@@ -7,7 +7,6 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/mesh/measured_error.hpp>
 #include <array>
 #include <cmath>
 #include <numbers>
