@@ -130,21 +130,21 @@ struct residual_estimator_test_t : Test
 
     residual_estimator_test_t() {}
 
+    auto expect_iteration(real_t position, real_t quantized_position, real_t target, real_t approximation,
+                          real_t magnitude, real_t result = 0.0) -> void
+    {
+        EXPECT_CALL(mock_quantizer, call(position)).WillOnce(Return(quantized_position));
+        EXPECT_CALL(mock_target_function, call(position)).WillOnce(Return(target));
+        EXPECT_CALL(mock_approximant_evaluator, call(approximant, quantized_position)).WillOnce(Return(approximation));
+        EXPECT_CALL(mock_error_norm, call(target, approximation)).WillOnce(Return(magnitude));
+        EXPECT_CALL(mock_weight_function, call(magnitude, position)).WillOnce(Return(abs(result)));
+    }
+
     auto expect_iteration(int_t position_index, real_t result = 0.0) -> void
     {
-        auto const expected_position           = expected_positions[position_index];
-        auto const expected_quantized_position = expected_quantized_positions[position_index];
-        auto const expected_target             = expected_targets[position_index];
-        auto const expected_approximation      = expected_approximations[position_index];
-        auto const expected_magnitude          = expected_magnitudes[position_index];
-
-        EXPECT_CALL(mock_quantizer, call(expected_position)).WillOnce(Return(expected_quantized_position));
-        EXPECT_CALL(mock_target_function, call(expected_position)).WillOnce(Return(expected_target));
-        EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_quantized_position))
-            .WillOnce(Return(expected_approximation));
-        EXPECT_CALL(mock_error_norm, call(expected_target, expected_approximation))
-            .WillOnce(Return(expected_magnitude));
-        EXPECT_CALL(mock_weight_function, call(expected_magnitude, expected_position)).WillOnce(Return(abs(result)));
+        expect_iteration(expected_positions[position_index], expected_quantized_positions[position_index],
+                         expected_targets[position_index], expected_approximations[position_index],
+                         expected_magnitudes[position_index], result);
     }
 };
 
@@ -222,54 +222,22 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
     ASSERT_NE(expected_left, expected_right) << "failed to find truncation-inducing bounds";
 
     // cache expected values using same calcs as sut
-    auto const expected_center     = (expected_right + expected_left) * 0.5;
-    auto const expected_radius     = (expected_right - expected_left) * 0.5;
-    auto const expected_position_1 = expected_center + expected_radius * node_generator_t::sample_locations[1];
-    auto const expected_position_3 = expected_center + expected_radius * node_generator_t::sample_locations[3];
+    auto const expected_center      = (expected_right + expected_left) * 0.5;
+    auto const expected_radius      = (expected_right - expected_left) * 0.5;
+    auto const expected_inner_left  = expected_center + expected_radius * node_generator_t::sample_locations[1];
+    auto const expected_inner_right = expected_center + expected_radius * node_generator_t::sample_locations[3];
 
     // verify evaluations
-
-    EXPECT_CALL(mock_quantizer, call(expected_left)).WillOnce(Return(expected_left));
-    EXPECT_CALL(mock_target_function, call(expected_left)).WillOnce(Return(expected_targets[0]));
-    EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_left))
-        .WillOnce(Return(expected_approximations[0]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[0], expected_approximations[0]))
-        .WillOnce(Return(expected_magnitudes[0]));
-    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[0], expected_left)).WillOnce(Return(0.0));
-
-    // returns nonzero magnitude
-    EXPECT_CALL(mock_quantizer, call(expected_position_1)).WillOnce(Return(expected_position_1));
-    EXPECT_CALL(mock_target_function, call(expected_position_1)).WillOnce(Return(expected_targets[1]));
-    EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_position_1))
-        .WillOnce(Return(expected_approximations[1]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[1], expected_approximations[1]))
-        .WillOnce(Return(expected_magnitudes[1]));
-    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[1], expected_position_1))
-        .WillOnce(Return(expected_max_error_magnitude));
-
-    EXPECT_CALL(mock_quantizer, call(expected_center)).WillOnce(Return(expected_center));
-    EXPECT_CALL(mock_target_function, call(expected_center)).WillOnce(Return(expected_targets[2]));
-    EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_center))
-        .WillOnce(Return(expected_approximations[2]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[2], expected_approximations[2]))
-        .WillOnce(Return(expected_magnitudes[2]));
-    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[2], expected_center)).WillOnce(Return(0.0));
-
-    EXPECT_CALL(mock_quantizer, call(expected_position_3)).WillOnce(Return(expected_position_3));
-    EXPECT_CALL(mock_target_function, call(expected_position_3)).WillOnce(Return(expected_targets[3]));
-    EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_position_3))
-        .WillOnce(Return(expected_approximations[3]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[3], expected_approximations[3]))
-        .WillOnce(Return(expected_magnitudes[3]));
-    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[3], expected_position_3)).WillOnce(Return(0.0));
-
-    EXPECT_CALL(mock_quantizer, call(expected_right)).WillOnce(Return(expected_right));
-    EXPECT_CALL(mock_target_function, call(expected_right)).WillOnce(Return(expected_targets[4]));
-    EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_right))
-        .WillOnce(Return(expected_approximations[4]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[4], expected_approximations[4]))
-        .WillOnce(Return(expected_magnitudes[4]));
-    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[4], expected_right)).WillOnce(Return(0.0));
+    expect_iteration(expected_left, expected_left, expected_targets[0], expected_approximations[0],
+                     expected_magnitudes[0]);
+    expect_iteration(expected_inner_left, expected_inner_left, expected_targets[1], expected_approximations[1],
+                     expected_magnitudes[1], expected_max_error_magnitude);
+    expect_iteration(expected_center, expected_center, expected_targets[2], expected_approximations[2],
+                     expected_magnitudes[2]);
+    expect_iteration(expected_inner_right, expected_inner_right, expected_targets[3], expected_approximations[3],
+                     expected_magnitudes[3]);
+    expect_iteration(expected_right, expected_right, expected_targets[4], expected_approximations[4],
+                     expected_magnitudes[4]);
 
     auto const actual = sut(approximant, expected_left, expected_right);
 
