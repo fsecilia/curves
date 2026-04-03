@@ -12,23 +12,23 @@
 #include <cmath>
 #include <numbers>
 
-namespace crv::sample_locators {
+namespace crv::node_generators {
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind
 template <typename real_t, int sample_count = 5> struct equioscillation_t
 {
-    using samples_t = std::array<real_t, sample_count>;
-    static samples_t const samples;
+    using nodes_t = std::array<real_t, sample_count>;
+    static nodes_t const nodes;
 
-    auto operator()() const noexcept -> samples_t const& { return samples; }
+    auto operator()() const noexcept -> nodes_t const& { return nodes; }
 };
 
 template <typename real_t, int sample_count>
-equioscillation_t<real_t, sample_count>::samples_t const equioscillation_t<real_t, sample_count>::samples
-    = []() noexcept -> samples_t {
-    static_assert(sample_count > 1, "must have at least 2 samples to form an interval");
+equioscillation_t<real_t, sample_count>::nodes_t const equioscillation_t<real_t, sample_count>::nodes
+    = []() noexcept -> nodes_t {
+    static_assert(sample_count > 1, "must have at least 2 nodes to form an interval");
 
-    samples_t result;
+    nodes_t result;
 
     // calc mid-range values
     static constexpr auto scale = std::numbers::pi_v<real_t> / static_cast<real_t>(sample_count - 1);
@@ -48,4 +48,4 @@ equioscillation_t<real_t, sample_count>::samples_t const equioscillation_t<real_
     return result;
 }();
 
-} // namespace crv::sample_locators
+} // namespace crv::node_generators

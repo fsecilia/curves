@@ -6,14 +6,10 @@
 #include "node_generator.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::sample_locators {
+namespace crv::node_generators {
 namespace {
 
-// --------------------------------------------------------------------------------------------------------------------
-// sample Cache
-// --------------------------------------------------------------------------------------------------------------------
-
-struct sample_locators_equioscillation_test_t : Test
+struct node_generators_equioscillation_test_t : Test
 {
     auto compare(auto const& expected, auto const& actual) const noexcept -> void
     {
@@ -24,7 +20,7 @@ struct sample_locators_equioscillation_test_t : Test
     }
 };
 
-TEST_F(sample_locators_equioscillation_test_t, count_5)
+TEST_F(node_generators_equioscillation_test_t, count_5)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -39,7 +35,7 @@ TEST_F(sample_locators_equioscillation_test_t, count_5)
     compare(expected, equioscillation_t<float_t, 5>{}());
 }
 
-TEST_F(sample_locators_equioscillation_test_t, count_7)
+TEST_F(node_generators_equioscillation_test_t, count_7)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -57,4 +53,4 @@ TEST_F(sample_locators_equioscillation_test_t, count_7)
 }
 
 } // namespace
-} // namespace crv::sample_locators
+} // namespace crv::node_generators
