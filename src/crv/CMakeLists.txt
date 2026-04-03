@@ -23,6 +23,7 @@ target_sources_kernel(lib
     lib.cpp
     kernel/cxx_build_test.h
     kernel/cxx_build_test.cpp
+    math/abs.hpp
     math/cmp.hpp
     math/division/concepts.hpp
     math/division/hardware_divider.hpp
@@ -62,6 +63,7 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         bitwise_enum_test.cpp
+        math/abs_test.cpp
         math/arg_min_max_test.cpp
         math/cmp_test.cpp
         math/compensated_accumulator_test.cpp
