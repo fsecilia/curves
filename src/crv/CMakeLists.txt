@@ -39,6 +39,7 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
+    math/mesh/error_norm.hpp
     math/mesh/measured_error.hpp
     math/mesh/node_generator.hpp
     math/mesh/quantizer.hpp
@@ -83,6 +84,7 @@ if (enable_testing)
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
+        math/mesh/error_norm_test.cpp
         math/mesh/measured_error_test.cpp
         math/mesh/node_generator_test.cpp
         math/mesh/quantizer_test.cpp
