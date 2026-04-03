@@ -25,6 +25,7 @@ struct residual_estimator_test_t : Test
     static constexpr auto expected_quantized_positions = std::array{1.1, 2.2, 3.3, 4.4, 5.5};
     static constexpr auto expected_targets             = std::array{6.6, 7.7, 8.8, 9.9, 10.10};
     static constexpr auto expected_approximations      = std::array{-6.6, -7.7, -8.8, -9.9, -10.10};
+    static constexpr auto expected_magnitudes          = std::array{101.0, 202.0, 303.0, 404.0, 505.0};
 
     struct mock_target_function_t
     {
@@ -95,8 +96,25 @@ struct residual_estimator_test_t : Test
         }
     };
 
+    struct mock_weight_function_t
+    {
+        MOCK_METHOD(real_t, call, (real_t, real_t), (const, noexcept));
+        virtual ~mock_weight_function_t() = default;
+    };
+    StrictMock<mock_weight_function_t> mock_weight_function;
+
+    struct weight_function_t
+    {
+        mock_weight_function_t* mock = nullptr;
+
+        auto operator()(real_t magnitude, real_t target_position) const noexcept -> real_t
+        {
+            return mock->call(magnitude, target_position);
+        }
+    };
+
     using sut_t = residual_estimator_t<real_t, target_function_t, approximant_evaluator_t, node_generator_t,
-                                       quantizer_t, error_norm_t>;
+                                       quantizer_t, error_norm_t, weight_function_t>;
 
     sut_t sut{
         .evaluate_target      = {&mock_target_function},
@@ -104,6 +122,7 @@ struct residual_estimator_test_t : Test
         .generate_nodes{},
         .quantize{&mock_quantizer},
         .measure_error{&mock_error_norm},
+        .apply_weight{&mock_weight_function},
     };
 
     // these must evaluate in ascending order to maximize quadrature cache hits
@@ -117,12 +136,15 @@ struct residual_estimator_test_t : Test
         auto const expected_quantized_position = expected_quantized_positions[position_index];
         auto const expected_target             = expected_targets[position_index];
         auto const expected_approximation      = expected_approximations[position_index];
+        auto const expected_magnitude          = expected_magnitudes[position_index];
 
         EXPECT_CALL(mock_quantizer, call(expected_position)).WillOnce(Return(expected_quantized_position));
         EXPECT_CALL(mock_target_function, call(expected_position)).WillOnce(Return(expected_target));
         EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_quantized_position))
             .WillOnce(Return(expected_approximation));
-        EXPECT_CALL(mock_error_norm, call(expected_target, expected_approximation)).WillOnce(Return(abs(result)));
+        EXPECT_CALL(mock_error_norm, call(expected_target, expected_approximation))
+            .WillOnce(Return(expected_magnitude));
+        EXPECT_CALL(mock_weight_function, call(expected_magnitude, expected_position)).WillOnce(Return(abs(result)));
     }
 };
 
@@ -211,7 +233,9 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
     EXPECT_CALL(mock_target_function, call(expected_left)).WillOnce(Return(expected_targets[0]));
     EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_left))
         .WillOnce(Return(expected_approximations[0]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[0], expected_approximations[0])).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_error_norm, call(expected_targets[0], expected_approximations[0]))
+        .WillOnce(Return(expected_magnitudes[0]));
+    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[0], expected_left)).WillOnce(Return(0.0));
 
     // returns nonzero magnitude
     EXPECT_CALL(mock_quantizer, call(expected_position_1)).WillOnce(Return(expected_position_1));
@@ -219,25 +243,33 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
     EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_position_1))
         .WillOnce(Return(expected_approximations[1]));
     EXPECT_CALL(mock_error_norm, call(expected_targets[1], expected_approximations[1]))
+        .WillOnce(Return(expected_magnitudes[1]));
+    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[1], expected_position_1))
         .WillOnce(Return(expected_max_error_magnitude));
 
     EXPECT_CALL(mock_quantizer, call(expected_center)).WillOnce(Return(expected_center));
     EXPECT_CALL(mock_target_function, call(expected_center)).WillOnce(Return(expected_targets[2]));
     EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_center))
         .WillOnce(Return(expected_approximations[2]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[2], expected_approximations[2])).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_error_norm, call(expected_targets[2], expected_approximations[2]))
+        .WillOnce(Return(expected_magnitudes[2]));
+    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[2], expected_center)).WillOnce(Return(0.0));
 
     EXPECT_CALL(mock_quantizer, call(expected_position_3)).WillOnce(Return(expected_position_3));
     EXPECT_CALL(mock_target_function, call(expected_position_3)).WillOnce(Return(expected_targets[3]));
     EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_position_3))
         .WillOnce(Return(expected_approximations[3]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[3], expected_approximations[3])).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_error_norm, call(expected_targets[3], expected_approximations[3]))
+        .WillOnce(Return(expected_magnitudes[3]));
+    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[3], expected_position_3)).WillOnce(Return(0.0));
 
     EXPECT_CALL(mock_quantizer, call(expected_right)).WillOnce(Return(expected_right));
     EXPECT_CALL(mock_target_function, call(expected_right)).WillOnce(Return(expected_targets[4]));
     EXPECT_CALL(mock_approximant_evaluator, call(approximant, expected_right))
         .WillOnce(Return(expected_approximations[4]));
-    EXPECT_CALL(mock_error_norm, call(expected_targets[4], expected_approximations[4])).WillOnce(Return(0.0));
+    EXPECT_CALL(mock_error_norm, call(expected_targets[4], expected_approximations[4]))
+        .WillOnce(Return(expected_magnitudes[4]));
+    EXPECT_CALL(mock_weight_function, call(expected_magnitudes[4], expected_right)).WillOnce(Return(0.0));
 
     auto const actual = sut(approximant, expected_left, expected_right);
 
