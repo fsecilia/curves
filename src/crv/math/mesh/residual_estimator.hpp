@@ -18,13 +18,14 @@ namespace crv {
 /// and its generated approximant. The search space is defined by a node generator to find collocation points. The
 /// domain is quantized to fixed-point precision prior to evaluation.
 template <typename real_t, typename target_function_t, typename approximant_evaluator_t, typename node_generator_t,
-          typename quantizer_t>
+          typename quantizer_t, typename error_norm_t>
 struct residual_estimator_t
 {
     target_function_t       evaluate_target;
     approximant_evaluator_t evaluate_approximant;
     node_generator_t        generate_nodes;
     quantizer_t             quantize;
+    error_norm_t            measure_error;
 
     auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> measured_error_t<real_t>
     {
@@ -50,7 +51,7 @@ struct residual_estimator_t
             // difference
             auto const target        = evaluate_target(target_position);
             auto const approximation = evaluate_approximant(approximant, quantized_position);
-            auto const magnitude     = std::abs(target - approximation);
+            auto const magnitude     = measure_error(target, approximation);
 
             // argmax on magnitude
             if (magnitude > result.magnitude)
