@@ -1088,8 +1088,8 @@ TEST_P(jet_test_pow_t, jet_to_jet)
 {
     auto const actual = pow(x, y);
 
-    EXPECT_NEAR(expected.f, actual.f, eps);
-    EXPECT_NEAR(expected.df, actual.df, eps);
+    EXPECT_DOUBLE_EQ(expected.f, actual.f);
+    EXPECT_DOUBLE_EQ(expected.df, actual.df);
 }
 
 TEST_P(jet_test_pow_t, jet_to_element)
