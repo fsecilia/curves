@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/scalar_traits.hpp>
 #include <crv/test/test.hpp>
 #include <limits>
 #include <numbers>
@@ -57,27 +58,6 @@ TEST_F(jet_test_concepts_t, is_not_jet)
 {
     static_assert(!is_not_jet<sut_t>);
     static_assert(is_not_jet<nonjet_t>);
-}
-
-// ====================================================================================================================
-// Scalar Fallbacks
-// ====================================================================================================================
-
-struct jet_test_scalar_fallbacks_t : jet_test_t
-{};
-
-TEST_F(jet_test_scalar_fallbacks_t, primal)
-{
-    static_assert(f == primal(f));
-    static_assert(-f == primal(-f));
-    static_assert(df == primal(df));
-}
-
-TEST_F(jet_test_scalar_fallbacks_t, derivative)
-{
-    static_assert(value_t{} == derivative(f));
-    static_assert(value_t{} == derivative(-f));
-    static_assert(value_t{} == derivative(df));
 }
 
 // ====================================================================================================================

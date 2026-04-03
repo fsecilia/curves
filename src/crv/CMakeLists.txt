@@ -44,6 +44,7 @@ target_sources_kernel(lib
     math/mesh/residual_estimator.hpp
     math/mesh/segment.hpp
     math/rounding_mode.hpp
+    math/scalar_traits.hpp
     traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -86,6 +87,7 @@ if (enable_testing)
         math/mesh/residual_estimator_test.cpp
         math/mesh/segment_test.cpp
         math/rounding_mode_test.cpp
+        math/scalar_traits_test.cpp
         math/stats_test.cpp
         traits_test.cpp
     )
