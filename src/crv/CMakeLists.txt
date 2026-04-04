@@ -47,6 +47,7 @@ target_sources_kernel(lib
     math/mesh/weight_function.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
+    priority_queue.hpp
     traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -93,6 +94,7 @@ if (enable_testing)
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/stats_test.cpp
+        priority_queue_test.cpp
         traits_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
