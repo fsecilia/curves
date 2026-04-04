@@ -108,17 +108,6 @@ TEST_F(jet_test_conversion_t, ctor)
     static_assert(static_cast<value_t>(df_int) == sut.df);
 }
 
-TEST_F(jet_test_conversion_t, assign)
-{
-    constexpr auto jet_int = jet_t{f_int, df_int};
-    auto           sut     = sut_t{};
-
-    sut = jet_int;
-
-    EXPECT_DOUBLE_EQ(static_cast<value_t>(f_int), sut.f);
-    EXPECT_DOUBLE_EQ(static_cast<value_t>(df_int), sut.df);
-}
-
 TEST_F(jet_test_conversion_t, to_bool_true)
 {
     static_assert(static_cast<bool>(sut_t{1.0, 0.0}));

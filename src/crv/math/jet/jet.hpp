@@ -94,13 +94,6 @@ template <typename t_value_t> struct jet_t
         : f{static_cast<value_t>(other.f)}, df{static_cast<value_t>(other.df)}
     {}
 
-    template <typename other_value_t> constexpr auto operator=(jet_t<other_value_t> const& rhs) noexcept -> jet_t&
-    {
-        f  = static_cast<value_t>(rhs.f);
-        df = static_cast<value_t>(rhs.df);
-        return *this;
-    }
-
     explicit constexpr operator bool() const noexcept
     {
         // ignore derivative
