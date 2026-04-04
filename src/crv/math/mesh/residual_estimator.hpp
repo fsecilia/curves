@@ -13,7 +13,7 @@ namespace crv {
 
 /// \brief estimates the maximum residual error of an approximant over a specific domain interval
 ///
-/// This type is an orchestrater. It organizes a search to find the worst-case error between a target function and its
+/// This type is an orchestrator. It organizes a search to find the worst-case error between a target function and its
 /// generated approximant. The search space is defined by a node generator to find collocation points, the domain is
 /// quantized to fixed-point precision prior to evaluation, the residual is calculated using an error norm, and the
 /// magnitude of the residual is scaled by perceptual significance using a weight function.
