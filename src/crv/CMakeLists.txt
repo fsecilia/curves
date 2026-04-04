@@ -44,6 +44,7 @@ target_sources_kernel(lib
     math/mesh/quantizer.hpp
     math/mesh/residual_estimator.hpp
     math/mesh/segment.hpp
+    math/mesh/weight_function.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
     traits.hpp
@@ -88,6 +89,7 @@ if (enable_testing)
         math/mesh/quantizer_test.cpp
         math/mesh/residual_estimator_test.cpp
         math/mesh/segment_test.cpp
+        math/mesh/weight_function_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/stats_test.cpp
