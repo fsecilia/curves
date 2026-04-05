@@ -171,7 +171,7 @@ struct mono_t
             return;
         }
 
-        auto violation = dir_policy(*prev, actual);
+        auto const violation = dir_policy(*prev, actual);
         if (violation)
         {
             ++violation_count;
