@@ -17,14 +17,15 @@ struct gauss5_t
     template <typename real_t, typename func_t>
     constexpr auto operator()(real_t left, real_t right, func_t&& func) const noexcept -> real_t
     {
-        static constexpr real_t abscissas[] = {0.0, 0.538469310105683, 0.906179845938664};
-        static constexpr real_t weights[]   = {0.568888888888889, 0.478628670499366, 0.236926885056189};
+        static constexpr auto   sample_count            = 3;
+        static constexpr real_t abscissas[sample_count] = {0.0, 0.538469310105683, 0.906179845938664};
+        static constexpr real_t weights[sample_count]   = {0.568888888888889, 0.478628670499366, 0.236926885056189};
 
         auto const midpoint   = std::midpoint(left, right);
         auto const half_width = (right - left) / real_t{2};
 
         auto sum = weights[0] * func(midpoint);
-        for (auto i = 1; i < 3; ++i)
+        for (auto i = 1; i < sample_count; ++i)
         {
             auto const offset = abscissas[i] * half_width;
             sum += weights[i] * (func(midpoint + offset) + func(midpoint - offset));
