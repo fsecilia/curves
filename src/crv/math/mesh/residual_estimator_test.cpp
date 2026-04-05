@@ -187,9 +187,9 @@ TEST_F(residual_estimator_test_t, handles_negative_error_correctly)
     EXPECT_EQ(expected_max_error_magnitude, actual);
 }
 
-// test subbing exact boundaries and center
+// test subbing exact boundaries and midpoint
 //
-// sut_t subs literal {left, center, right} explicitly for sample locations at {-1, 0, +1}, respectively. This test
+// sut_t subs literal {left, midpoint, right} explicitly for sample locations at {-1, 0, +1}, respectively. This test
 // deliberately generates a segment that would normally truncate left or right and makes sure the literal positions are
 // still subbed.
 TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
@@ -203,12 +203,12 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
         auto const actual_left  = static_cast<real_t>(i) * 0.137;
         auto const actual_right = actual_left + 1.234;
 
-        auto const center = (actual_right + actual_left) * 0.5;
-        auto const radius = (actual_right - actual_left) * 0.5;
+        auto const midpoint   = (actual_right + actual_left) * 0.5;
+        auto const half_width = (actual_right - actual_left) * 0.5;
 
         // replicate sut calc
-        auto const calculated_left  = center + radius * -1.0;
-        auto const calculated_right = center + radius * 1.0;
+        auto const calculated_left  = midpoint + half_width * -1.0;
+        auto const calculated_right = midpoint + half_width * 1.0;
 
         if (calculated_right != actual_right || calculated_left != actual_left)
         {
@@ -222,17 +222,17 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
     ASSERT_NE(expected_left, expected_right) << "failed to find truncation-inducing bounds";
 
     // cache expected values using same calcs as sut
-    auto const expected_center      = (expected_right + expected_left) * 0.5;
-    auto const expected_radius      = (expected_right - expected_left) * 0.5;
-    auto const expected_inner_left  = expected_center + expected_radius * node_generator_t::sample_locations[1];
-    auto const expected_inner_right = expected_center + expected_radius * node_generator_t::sample_locations[3];
+    auto const expected_midpoint    = (expected_right + expected_left) * 0.5;
+    auto const expected_half_width  = (expected_right - expected_left) * 0.5;
+    auto const expected_inner_left  = expected_midpoint + expected_half_width * node_generator_t::sample_locations[1];
+    auto const expected_inner_right = expected_midpoint + expected_half_width * node_generator_t::sample_locations[3];
 
     // verify evaluations
     expect_iteration(expected_left, expected_left, expected_targets[0], expected_approximations[0],
                      expected_magnitudes[0]);
     expect_iteration(expected_inner_left, expected_inner_left, expected_targets[1], expected_approximations[1],
                      expected_magnitudes[1], expected_max_error_magnitude);
-    expect_iteration(expected_center, expected_center, expected_targets[2], expected_approximations[2],
+    expect_iteration(expected_midpoint, expected_midpoint, expected_targets[2], expected_approximations[2],
                      expected_magnitudes[2]);
     expect_iteration(expected_inner_right, expected_inner_right, expected_targets[3], expected_approximations[3],
                      expected_magnitudes[3]);
