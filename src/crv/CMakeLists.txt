@@ -15,6 +15,13 @@ target_sources(lib PRIVATE
     math/jet/jet.hpp
     math/io.hpp
     math/io.cpp
+    math/mesh/error_norm.hpp
+    math/mesh/mesher_workspace.hpp
+    math/mesh/node_generator.hpp
+    math/mesh/quantizer.hpp
+    math/mesh/residual_estimator.hpp
+    math/mesh/segment.hpp
+    math/mesh/weight_function.hpp
     math/quadrature/rules.hpp
     math/stats.hpp
 )
@@ -40,13 +47,6 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
-    math/mesh/error_norm.hpp
-    math/mesh/mesher_workspace.hpp
-    math/mesh/node_generator.hpp
-    math/mesh/quantizer.hpp
-    math/mesh/residual_estimator.hpp
-    math/mesh/segment.hpp
-    math/mesh/weight_function.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
     priority_queue.hpp
