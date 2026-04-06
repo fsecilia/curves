@@ -186,6 +186,11 @@ static_assert
 // addition, scalars and vectors or matrices
 // --------------------------------------------------------------------------------------------------------------------
 
+static_assert(0xa + vector_t<1>{0xb0} == vector_t<1>{0xa + 0xb0});
+static_assert(0xa + vector_t<2>{0xb0, 0xb1} == vector_t<2>{0xa + 0xb0, 0xa + 0xb1});
+static_assert(0xa + matrix_t<1, 1>{{{{0xb00}}}} == matrix_t<1, 1>{{{{0xa + 0xb00}}}});
+static_assert(0xa + matrix_t<1, 2>{{{{0xb00, 0xb01}}}} == matrix_t<1, 2>{{{{0xa + 0xb00, 0xa + 0xb01}}}});
+
 static_assert(scalar_t{0xa} + vector_t<1>{0xb0} == vector_t<1>{0xa + 0xb0});
 static_assert(scalar_t{0xa} + vector_t<2>{0xb0, 0xb1} == vector_t<2>{0xa + 0xb0, 0xa + 0xb1});
 static_assert(scalar_t{0xa} + matrix_t<1, 1>{{{{0xb00}}}} == matrix_t<1, 1>{{{{0xa + 0xb00}}}});
@@ -302,6 +307,7 @@ static_assert
 // subtraction, scalars and vectors or matrices
 // --------------------------------------------------------------------------------------------------------------------
 
+static_assert(0xa - vector_t<1>{0xb0} == vector_t<1>{0xa - 0xb0});
 static_assert(scalar_t{0xa} - vector_t<1>{0xb0} == vector_t<1>{0xa - 0xb0});
 static_assert(scalar_t{0xa} - vector_t<2>{0xb0, 0xb1} == vector_t<2>{0xa - 0xb0, 0xa - 0xb1});
 static_assert(scalar_t{0xa} - matrix_t<1, 1>{{{{0xb00}}}} == matrix_t<1, 1>{{{{0xa - 0xb00}}}});
@@ -320,6 +326,7 @@ static_assert
     matrix_t<2, 2>{{{{0xa - 0xb00, 0xa - 0xb01}, {0xa - 0xb10, 0xa - 0xb11}}}}
 );
 
+static_assert(vector_t<1>{0xa0} - 0xb == vector_t<1>{0xa0 - 0xb});
 static_assert(vector_t<1>{0xa0} - scalar_t{0xb} == vector_t<1>{0xa0 - 0xb});
 static_assert(vector_t<2>{0xa0, 0xa1} - scalar_t{0xb} == vector_t<2>{0xa0 - 0xb, 0xa1 - 0xb});
 static_assert(matrix_t<1, 1>{{{{0xa00}}}} - scalar_t{0xb} == matrix_t<1, 1>{{{{0xa00 - 0xb}}}});
@@ -339,9 +346,10 @@ static_assert
 );
 
 // --------------------------------------------------------------------------------------------------------------------
-// multiplication
-// --------------------------------------------------------------------------------------------------------------------
+// scalar multiplication
+// --------------------------------------------------------------------------------------------------------------------static_assert(scalar_t{0xa}*vector_t<1>{0xb0} == vector_t<1>{0xa*0xb0});
 
+static_assert(0xa*vector_t<1>{0xb0} == vector_t<1>{0xa*0xb0});
 static_assert(scalar_t{0xa}*vector_t<1>{0xb0} == vector_t<1>{0xa*0xb0});
 static_assert(scalar_t{0xa}*vector_t<2>{0xb0, 0xb1} == vector_t<2>{0xa*0xb0, 0xa*0xb1});
 static_assert(scalar_t{0xa}*matrix_t<1, 1>{{{{0xb00}}}} == matrix_t<1, 1>{{{{0xa*0xb00}}}});
@@ -354,6 +362,11 @@ static_assert
     matrix_t<2, 2>{{{{0xa*0xb00, 0xa*0xb01}, {0xa*0xb10, 0xa*0xb11}}}}
 );
 
+// --------------------------------------------------------------------------------------------------------------------
+// vector multiplication
+// --------------------------------------------------------------------------------------------------------------------static_assert(scalar_t{0xa}*vector_t<1>{0xb0} == vector_t<1>{0xa*0xb0});
+
+static_assert(vector_t<1>{0xa0}*0xb == vector_t<1>{0xa0*0xb});
 static_assert(vector_t<1>{0xa0}*scalar_t{0xb} == vector_t<1>{0xa0*0xb});
 static_assert(vector_t<1>{0xa0}*vector_t<1>{0xb0} == vector_t<1>{0xa0*0xb0});
 static_assert(vector_t<1>{0xa0}*matrix_t<1, 1>{{{{0xb00}}}} == vector_t<1>{0xa0*0xb00});
@@ -369,6 +382,11 @@ static_assert
     vector_t<2>{0xa0*0xb00 + 0xa1*0xb10, 0xa0*0xb01 + 0xa1*0xb11}
 );
 
+// --------------------------------------------------------------------------------------------------------------------
+// matrix multiplication
+// --------------------------------------------------------------------------------------------------------------------static_assert(scalar_t{0xa}*vector_t<1>{0xb0} == vector_t<1>{0xa*0xb0});
+
+static_assert(matrix_t<1, 1>{{{{0xa00}}}}*0xb == matrix_t<1, 1>{{{{0xa00*0xb}}}});
 static_assert(matrix_t<1, 1>{{{{0xa00}}}}*scalar_t{0xb} == matrix_t<1, 1>{{{{0xa00*0xb}}}});
 static_assert(matrix_t<1, 1>{{{{0xa00}}}}*vector_t<1>{0xb0} == vector_t<1>{0xa00*0xb0});
 static_assert(matrix_t<1, 1>{{{{0xa00}}}}*matrix_t<1, 1>{{{{0xb00}}}} ==  matrix_t<1, 1>{{{{0xa00*0xb00}}}});
@@ -379,6 +397,7 @@ static_assert
     matrix_t<1, 2>{{{{0xa00*0xb00, 0xa00*0xb01}}}}
 );
 
+static_assert(matrix_t<1, 2>{{{{0xa00, 0xa01}}}}*0xb == matrix_t<1, 2>{{{{0xa00*0xb, 0xa01*0xb}}}});
 static_assert(matrix_t<1, 2>{{{{0xa00, 0xa01}}}}*scalar_t{0xb} == matrix_t<1, 2>{{{{0xa00*0xb, 0xa01*0xb}}}});
 static_assert(matrix_t<1, 2>{{{{0xa00, 0xa01}}}}*vector_t<2>{0xb0, 0xb1} == vector_t<1>{0xa00*0xb0 + 0xa01*0xb1});
 static_assert
@@ -393,6 +412,13 @@ static_assert
     matrix_t<1, 2>{{{{0xa00, 0xa01}}}}*matrix_t<2, 2>{{{{0xb00, 0xb01}, {0xb10, 0xb11}}}}
     ==
     matrix_t<1, 2>{{{{0xa00*0xb00 + 0xa01*0xb10, 0xa00*0xb01 + 0xa01*0xb11}}}}
+);
+
+static_assert
+(
+    matrix_t<2, 1>{{{{0xa00}, {0xa10}}}}*0xb
+    ==
+    matrix_t<2, 1>{{{{0xa00*0xb}, {0xa10*0xb}}}}
 );
 
 static_assert
@@ -415,6 +441,13 @@ static_assert
     matrix_t<2, 1>{{{{0xa00}, {0xa10}}}}*matrix_t<1, 2>{{{{0xb00, 0xb01}}}}
     ==
     matrix_t<2, 2>{{{{0xa00*0xb00, 0xa00*0xb01}, {0xa10*0xb00, 0xa10*0xb01}}}}
+);
+
+static_assert
+(
+    matrix_t<2, 2>{{{{0xa00, 0xa01}, {0xa10, 0xa11}}}}*0xb
+    ==
+    matrix_t<2, 2>{{{{0xa00*0xb, 0xa01*0xb}, {0xa10*0xb, 0xa11*0xb}}}}
 );
 
 static_assert
@@ -499,6 +532,8 @@ static_assert
 // --------------------------------------------------------------------------------------------------------------------
 // scalar division
 // --------------------------------------------------------------------------------------------------------------------
+
+static_assert(2*3/vector_t<1>{3} == vector_t<1>{2});
 
 static_assert(scalar_t{2*3}/vector_t<1>{3} == vector_t<1>{2});
 static_assert(scalar_t{2*3*5}/vector_t<2>{3, 5} == vector_t<2>{2*5, 2*3});
