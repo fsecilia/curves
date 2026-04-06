@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <array>
-#include <concepts>
+#include <type_traits>
 
 namespace crv::math {
 
@@ -69,6 +69,9 @@ using mat3x3f_t = matrix_t<float_t, 3, 3>;
 using mat3x4f_t = matrix_t<float_t, 3, 4>;
 using mat4x4f_t = matrix_t<float_t, 4, 4>;
 
+/// deduces promoted element types
+template <typename left_t, typename right_t> using promoted_t = std::common_type_t<left_t, right_t>;
+
 // --------------------------------------------------------------------------------------------------------------------
 // implementation
 // --------------------------------------------------------------------------------------------------------------------
@@ -86,12 +89,11 @@ constexpr auto operator-(linear_t<element_t, dim, dims...> const& linear) noexce
 
 /// linear + linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator+(linear_t<left_element_t, dim, dims...> const&  left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right[index];
 
@@ -100,12 +102,11 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const&  left,
 
 /// n-d linear + (n-1)-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
                          linear_t<right_element_t, dims...> const&     right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right;
 
@@ -114,12 +115,11 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
 
 /// (n-1)-d linear + n-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator+(linear_t<left_element_t, dims...> const&       left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left + right[index];
 
@@ -128,11 +128,11 @@ constexpr auto operator+(linear_t<left_element_t, dims...> const&       left,
 
 /// linear + scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const& right) noexcept -> linear_t<left_element_t, dim, dims...>
+                         scalar_t<right_element_t> const&              right) noexcept
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right;
 
@@ -141,12 +141,11 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar + linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator+(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left + right[index];
 
@@ -155,12 +154,11 @@ constexpr auto operator+(scalar_t<left_element_t> const&                left,
 
 /// linear - linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator-(linear_t<left_element_t, dim, dims...> const&  left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right[index];
 
@@ -169,12 +167,11 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const&  left,
 
 /// n-d linear - (n-1)-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
                          linear_t<right_element_t, dims...> const&     right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right;
 
@@ -183,12 +180,11 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
 
 /// (n-1)-d linear - n-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator-(linear_t<left_element_t, dims...> const&       left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left - right[index];
 
@@ -197,11 +193,11 @@ constexpr auto operator-(linear_t<left_element_t, dims...> const&       left,
 
 /// linear - scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const& right) noexcept -> linear_t<left_element_t, dim, dims...>
+                         scalar_t<right_element_t> const&              right) noexcept
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right;
 
@@ -210,12 +206,11 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar - linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator-(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left - right[index];
 
@@ -229,13 +224,13 @@ constexpr auto operator-(scalar_t<left_element_t> const&                left,
 ///
 /// Matrices much larger than 4x4 will require a tiling implementation.
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t common_dim, std::size_t cols>
-    requires(std::convertible_to<right_element_t, left_element_t> && !(rows == 4 && common_dim == 4 && cols == 4))
+    requires(!(rows == 4 && common_dim == 4 && cols == 4))
 constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left,
                          matrix_t<right_element_t, common_dim, cols> const& right) noexcept
-    -> matrix_t<left_element_t, rows, cols>
+    -> matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols>
 {
     // default initialize to preserve cache
-    matrix_t<left_element_t, rows, cols> result;
+    matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols> result;
 
     // use ikj order to maximize cache
     for (auto row = 0u; row < rows; ++row)
@@ -257,11 +252,10 @@ constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left
 
 /// matrix*matrix, specialized for 4x4 with manually unrolled loop
 template <typename left_element_t, typename right_element_t>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(matrix_t<left_element_t, 4, 4> const& l, matrix_t<right_element_t, 4, 4> const& r) noexcept
-    -> matrix_t<left_element_t, 4, 4>
+    -> matrix_t<promoted_t<left_element_t, right_element_t>, 4, 4>
 {
-    matrix_t<left_element_t, 4, 4> result;
+    matrix_t<promoted_t<left_element_t, right_element_t>, 4, 4> result;
 
     result[0][0] = l[0][0] * r[0][0] + l[0][1] * r[1][0] + l[0][2] * r[2][0] + l[0][3] * r[3][0];
     result[0][1] = l[0][0] * r[0][1] + l[0][1] * r[1][1] + l[0][2] * r[2][1] + l[0][3] * r[3][1];
@@ -288,11 +282,11 @@ constexpr auto operator*(matrix_t<left_element_t, 4, 4> const& l, matrix_t<right
 
 /// matrix*vector
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t cols>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(matrix_t<left_element_t, rows, cols> const& left,
-                         vector_t<right_element_t, cols> const&      right) noexcept -> vector_t<left_element_t, rows>
+                         vector_t<right_element_t, cols> const&      right) noexcept
+    -> vector_t<promoted_t<left_element_t, right_element_t>, rows>
 {
-    vector_t<left_element_t, rows> result;
+    vector_t<promoted_t<left_element_t, right_element_t>, rows> result;
 
     for (auto row = 0u; row < rows; ++row)
     {
@@ -305,11 +299,11 @@ constexpr auto operator*(matrix_t<left_element_t, rows, cols> const& left,
 
 /// vector*matrix
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t cols>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(vector_t<left_element_t, rows> const&        left,
-                         matrix_t<right_element_t, rows, cols> const& right) noexcept -> vector_t<left_element_t, cols>
+                         matrix_t<right_element_t, rows, cols> const& right) noexcept
+    -> vector_t<promoted_t<left_element_t, right_element_t>, cols>
 {
-    vector_t<left_element_t, cols> result{};
+    vector_t<promoted_t<left_element_t, right_element_t>, cols> result{};
 
     for (auto row = 0u; row < rows; ++row)
     {
@@ -324,11 +318,11 @@ constexpr auto operator*(vector_t<left_element_t, rows> const&        left,
 /// Normally, 1xn*nx1 -> 1x1 would be the inner product and nx1*1xm -> nxm would be the outer, but modern convention in
 /// graphics is elementwise.
 template <typename left_element_t, typename right_element_t, std::size_t size>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(vector_t<left_element_t, size> const&  left,
-                         vector_t<right_element_t, size> const& right) noexcept -> vector_t<left_element_t, size>
+                         vector_t<right_element_t, size> const& right) noexcept
+    -> vector_t<promoted_t<left_element_t, right_element_t>, size>
 {
-    vector_t<left_element_t, size> result;
+    vector_t<promoted_t<left_element_t, right_element_t>, size> result;
 
     for (auto index = 0u; index < size; ++index) result[index] = left[index] * right[index];
 
@@ -337,11 +331,11 @@ constexpr auto operator*(vector_t<left_element_t, size> const&  left,
 
 /// linear*scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const& right) noexcept -> linear_t<left_element_t, dim, dims...>
+                         scalar_t<right_element_t> const&              right) noexcept
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] * right;
 
@@ -350,12 +344,11 @@ constexpr auto operator*(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar*linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator*(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left * right[index];
 
@@ -364,11 +357,11 @@ constexpr auto operator*(scalar_t<left_element_t> const&                left,
 
 /// linear/scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator/(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const& right) noexcept -> linear_t<left_element_t, dim, dims...>
+                         scalar_t<right_element_t> const&              right) noexcept
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left[index] / right;
 
@@ -377,12 +370,11 @@ constexpr auto operator/(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar/linear = linear{scalar}/linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-    requires(std::convertible_to<right_element_t, left_element_t>)
 constexpr auto operator/(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
-    -> linear_t<left_element_t, dim, dims...>
+    -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<left_element_t, dim, dims...> result;
+    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
 
     for (auto index = 0u; index < dim; ++index) result[index] = left / right[index];
 
