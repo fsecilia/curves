@@ -9,13 +9,16 @@
 namespace crv::math {
 namespace {
 
-using element_t = int;
+// ====================================================================================================================
+// integer tests
+// ====================================================================================================================
 
-using scalar_t = math::scalar_t<element_t>;
+namespace int_tests {
 
-template <int_t size> using vector_t = math::vector_t<element_t, size>;
-
-template <int_t rows, int_t cols> using matrix_t = math::matrix_t<element_t, rows, cols>;
+using element_t                                  = int_t;
+using scalar_t                                   = scalar_t<element_t>;
+template <int_t size> using vector_t             = vector_t<element_t, size>;
+template <int_t rows, int_t cols> using matrix_t = matrix_t<element_t, rows, cols>;
 
 // clang-format off
 
@@ -510,6 +513,61 @@ static_assert
 );
 
 // clang-format on
+
+} // namespace int_tests
+
+// ====================================================================================================================
+// float tests
+// ====================================================================================================================
+
+namespace float_tests {
+
+// --------------------------------------------------------------------------------------------------------------------
+// spot checks
+// --------------------------------------------------------------------------------------------------------------------
+
+using element_t                                  = float_t;
+using scalar_t                                   = scalar_t<element_t>;
+template <int_t size> using vector_t             = vector_t<float_t, size>;
+template <int_t rows, int_t cols> using matrix_t = matrix_t<float_t, rows, cols>;
+
+// clang-format off
+
+static_assert(vector_t<2>{1.5, 2.5} + vector_t<2>{0.25, 0.75} == vector_t<2>{1.75, 3.25});
+static_assert(vector_t<2>{3.0, 5.0} - vector_t<2>{1.0, 2.0} == vector_t<2>{2.0, 3.0});
+static_assert(vector_t<2>{1.5, 2.5} * scalar_t{2.0} == vector_t<2>{3.0, 5.0});
+static_assert(vector_t<2>{3.0, 6.0} / scalar_t{3.0} == vector_t<2>{1.0, 2.0});
+static_assert(vector_t<2>{1.5, 2.5} * vector_t<2>{2.0, 4.0} == vector_t<2>{3.0, 10.0});
+static_assert
+(
+    matrix_t<2, 2>{{{{1.0, 2.0}, {3.0, 4.0}}}} * matrix_t<2, 2>{{{{5.0, 6.0}, {7.0, 8.0}}}}
+    ==
+    matrix_t<2, 2>{{{{19.0, 22.0}, {43.0, 50.0}}}}
+);
+
+static_assert(matrix_t<2, 2>{{{{1.0, 2.0}, {3.0, 4.0}}}} * vector_t<2>{5.0, 6.0} == vector_t<2>{17.0, 39.0});
+
+// --------------------------------------------------------------------------------------------------------------------
+// mixed-type promotion: int op float -> float
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(vector_t<2>{1, 2} + vector_t<2>{0.5, 0.5} == vector_t<2>{1.5, 2.5});
+static_assert(vector_t<2>{0.5, 0.5} + vector_t<2>{1, 2} == vector_t<2>{1.5, 2.5});
+static_assert(vector_t<2>{3, 5} * scalar_t{0.5} == vector_t<2>{1.5, 2.5});
+static_assert(scalar_t{0.5} * vector_t<2>{3, 5} == vector_t<2>{1.5, 2.5});
+static_assert(vector_t<2>{3, 5} - vector_t<2>{0.5, 0.5} == vector_t<2>{2.5, 4.5});
+static_assert
+(
+    matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * matrix_t<2, 2>{{{{0.5, 1.5}, {2.5, 3.5}}}}
+    ==
+    matrix_t<2, 2>{{{{5.5, 8.5}, {11.5, 18.5}}}}
+);
+
+static_assert(matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * vector_t<2>{0.5, 1.5} == vector_t<2>{3.5, 7.5});
+
+// clang-format on
+
+} // namespace float_tests
 
 } // namespace
 } // namespace crv::math
