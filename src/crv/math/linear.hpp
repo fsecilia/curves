@@ -35,10 +35,16 @@ template <typename element_tp, std::size_t dim> struct linear_t<element_tp, dim>
     constexpr auto operator<=>(linear_t const& src) const noexcept -> auto = default;
 };
 
-/// scalars
+// --------------------------------------------------------------------------------------------------------------------
+// scalars
+// --------------------------------------------------------------------------------------------------------------------
+
 template <typename element_t> using scalar_t = element_t;
 
-/// vectors
+// --------------------------------------------------------------------------------------------------------------------
+// vectors
+// --------------------------------------------------------------------------------------------------------------------
+
 template <typename element_t, std::size_t size> using vector_t = linear_t<element_t, size>;
 
 using vec2i_t = vector_t<int_t, 2>;
@@ -46,7 +52,10 @@ using vec3i_t = vector_t<int_t, 3>;
 using vec2f_t = vector_t<float_t, 2>;
 using vec3f_t = vector_t<float_t, 3>;
 
-/// matrices
+// --------------------------------------------------------------------------------------------------------------------
+// matrices
+// --------------------------------------------------------------------------------------------------------------------
+
 template <typename element_t, std::size_t rows, std::size_t cols> using matrix_t = linear_t<element_t, rows, cols>;
 
 using mat2x2i_t = matrix_t<int_t, 2, 2>;
@@ -59,6 +68,10 @@ using mat2x3f_t = matrix_t<float_t, 2, 3>;
 using mat3x3f_t = matrix_t<float_t, 3, 3>;
 using mat3x4f_t = matrix_t<float_t, 3, 4>;
 using mat4x4f_t = matrix_t<float_t, 4, 4>;
+
+// --------------------------------------------------------------------------------------------------------------------
+// implementation
+// --------------------------------------------------------------------------------------------------------------------
 
 /// unary negation
 template <typename element_t, std::size_t dim, std::size_t... dims>
