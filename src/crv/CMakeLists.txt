@@ -47,6 +47,7 @@ target_sources_kernel(lib
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
+    math/linear.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
     priority_queue.hpp
@@ -87,6 +88,7 @@ if (enable_testing)
         math/int_traits_test.cpp
         math/integer_test.cpp
         math/limits_test.cpp
+        math/linear_test.cpp
         math/mesh/error_norm_test.cpp
         math/mesh/node_generator_test.cpp
         math/mesh/mesher_workspace_test.cpp
