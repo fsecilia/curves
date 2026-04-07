@@ -26,15 +26,16 @@ public:
         constexpr auto operator==(interval_t const&) const noexcept -> bool  = default;
     };
 
-    explicit integral_cache_t(std::flat_map<real_t, real_t> intervals) : intervals_{std::move(intervals)} {}
-
-    /// locates the interval containing given location
-    auto interval(real_t const& location) const -> interval_t
+    explicit integral_cache_t(std::flat_map<real_t, real_t> intervals) : intervals_{std::move(intervals)}
     {
         assert(!intervals_.empty() && "integral_cache_t: empty cache provided");
         assert(intervals_.begin()->first == real_t{0} && "integral_cache_t: origin must start at 0");
         assert(intervals_.begin()->second == real_t{0} && "integral_cache_t: cumulative sum must start at 0");
+    }
 
+    /// locates the interval containing given location
+    auto interval(real_t const& location) const -> interval_t
+    {
         assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
                && "integral_cache_t: domain error");
 
