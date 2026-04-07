@@ -19,7 +19,7 @@ template <int sample_count> struct gauss_t;
 template <> struct gauss_t<4>
 {
     template <std::floating_point real_t, std::invocable<real_t> integrand_t>
-    constexpr auto operator()(real_t left, real_t right, integrand_t&& integrand) const noexcept -> real_t
+    constexpr auto operator()(real_t left, real_t right, integrand_t const& integrand) const noexcept -> real_t
     {
         static constexpr auto   symmetric_sample_count            = 2;
         static constexpr real_t abscissas[symmetric_sample_count] = {0.3399810435848563, 0.8611363115940526};
@@ -43,7 +43,7 @@ template <> struct gauss_t<4>
 template <> struct gauss_t<5>
 {
     template <std::floating_point real_t, std::invocable<real_t> integrand_t>
-    constexpr auto operator()(real_t left, real_t right, integrand_t&& integrand) const noexcept -> real_t
+    constexpr auto operator()(real_t left, real_t right, integrand_t const& integrand) const noexcept -> real_t
     {
         static constexpr auto   symmetric_sample_count            = 3;
         static constexpr real_t abscissas[symmetric_sample_count] = {0.0, 0.538469310105683, 0.906179845938664};
