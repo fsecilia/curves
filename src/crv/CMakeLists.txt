@@ -25,6 +25,7 @@ target_sources(lib PRIVATE
     math/quadrature/antiderivative.hpp
     math/quadrature/integral_cache.hpp
     math/quadrature/rules.hpp
+    math/quadrature/segment.hpp
     math/stats.hpp
 )
 target_sources_kernel(lib
