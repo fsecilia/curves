@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <cassert>
 #include <flat_map>
-#include <ranges>
+#include <iterator>
 
 namespace crv::quadrature {
 
