@@ -34,7 +34,7 @@ public:
     }
 
     /// locates the interval containing given location
-    auto interval(real_t const& location) const -> interval_t
+    auto interval(real_t location) const -> interval_t
     {
         assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
                && "integral_cache_t: domain error");
