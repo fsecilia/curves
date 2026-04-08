@@ -13,9 +13,13 @@
 
 namespace crv::quadrature {
 
+/// common result of quadrature rules
 template <std::floating_point real_t> struct rule_result_t
 {
+    /// integral sum
     real_t value;
+
+    /// internal error estimate for value; must be non-negative
     real_t error;
 };
 
