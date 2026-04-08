@@ -15,6 +15,22 @@
 
 namespace crv::quadrature {
 
+/// callable that constructs a root segment from (left, right, tolerance)
+template <typename subdivider_t, typename real_t>
+concept is_root_subdivider = requires(subdivider_t const& subdivider, real_t value) {
+    { subdivider(value, value, value) } -> std::same_as<segment_t<real_t>>;
+};
+
+/// callable that constructs a bisection from a parent segment
+template <typename subdivider_t, typename real_t>
+concept is_bisector = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
+    { subdivider(segment) } -> std::same_as<bisection_t<real_t>>;
+};
+
+/// callable that constructs root segments and bisects parent segments
+template <typename subdivider_t, typename real_t>
+concept is_subdivider = is_root_subdivider<subdivider_t, real_t> && is_bisector<subdivider_t, real_t>;
+
 /// subdivides segments using integrand and rule
 template <typename real_t, typename integrand_t, typename rule_t> class subdivider_t
 {

@@ -62,7 +62,7 @@ public:
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
-        stack.push(subdivider(0, domain_max, global_tolerance));
+        stack.push(subdivider(real_t{0}, domain_max, global_tolerance));
     }
 
     /// seeds stack with multiple segments, splitting domain at critical points
@@ -82,6 +82,8 @@ public:
         for (auto const critical_point : critical_points | std::views::reverse)
         {
             auto const left = static_cast<real_t>(critical_point);
+            assert((real_t{0} < left && left < domain_max)
+                   && "stack_seeder_t: critical points must be in (0, domain_max)");
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
             auto const tolerance = global_tolerance * ((right - left) / domain_max);
@@ -90,7 +92,6 @@ public:
             right = left;
         }
 
-        assert(real_t{0} < right && "stack_seeder_t: critical points must be positive");
         stack.push(subdivider(real_t{0}, right, global_tolerance * (right / domain_max)));
     }
 };

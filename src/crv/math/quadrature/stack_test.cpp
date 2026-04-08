@@ -214,9 +214,7 @@ struct quadrature_stack_seeder_test_t : Test
     using stack_t = stack_t<real_t>;
     stack_t stack{};
 
-    inline static auto next_id = int_t{0};
-
-    static auto create_segment(real_t left, real_t right, real_t tolerance, int_t id) noexcept -> segment_t
+    static auto create_segment(real_t left, real_t right, real_t tolerance, int_t id = 0) noexcept -> segment_t
     {
         return segment_t{
             .left      = left,
@@ -227,16 +225,12 @@ struct quadrature_stack_seeder_test_t : Test
         };
     }
 
-    static auto create_segment(real_t left, real_t right, real_t tolerance) noexcept -> segment_t
-    {
-        return create_segment(left, right, tolerance, next_id++);
-    }
-
     struct subdivider_t
     {
-        auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
+        int_t next_id = 0;
+        auto  operator()(real_t left, real_t right, real_t tolerance) noexcept -> segment_t
         {
-            return create_segment(left, right, tolerance);
+            return create_segment(left, right, tolerance, next_id++);
         }
     };
     subdivider_t subdivider;
@@ -246,8 +240,6 @@ struct quadrature_stack_seeder_test_t : Test
 
     using sut_t = stack_seeder_t<real_t>;
     sut_t sut{};
-
-    quadrature_stack_seeder_test_t() noexcept { next_id = 0; }
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -334,48 +326,48 @@ TEST_F(quadrature_stack_seeder_death_tests_t, single_segment_asserts_on_non_empt
 {
     stack.push(create_segment(0.0, 1.0, 0.1));
 
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance), "empty before seeding");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance), "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, critical_points_asserts_on_non_empty_stack)
 {
     stack.push(create_segment(0.0, 1.0, 0.1));
 
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
-                 "empty before seeding");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
+                       "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_zero_critical_point)
 {
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
-                 "must be positive");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
+                       "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_negative_critical_point)
 {
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{-1.0}),
-                 "must be positive");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{-1.0}),
+                       "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_max_critical_point)
 {
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{domain_max}),
-                 "increasing and unique");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{domain_max}),
+                       "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_unsorted_critical_points)
 {
-    // passing them in reverse order (descending) should trip the assert
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
-                          std::initializer_list{domain_max / 2.0, domain_max / 3.0}),
-                 "increasing and unique");
+    // passing these in reverse order, descending, should trip the assert
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
+                                std::initializer_list{domain_max / 2.0, domain_max / 3.0}),
+                       "increasing and unique");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_points)
 {
-    EXPECT_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
-                          std::initializer_list{domain_max / 3.0, domain_max / 3.0}),
-                 "increasing and unique");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
+                                std::initializer_list{domain_max / 3.0, domain_max / 3.0}),
+                       "increasing and unique");
 }
 } // namespace
 } // namespace crv::quadrature
