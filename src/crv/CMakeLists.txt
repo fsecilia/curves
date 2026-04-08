@@ -26,6 +26,7 @@ target_sources(lib PRIVATE
     math/quadrature/cache.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
+    math/quadrature/subdivider.hpp
     math/stats.hpp
 )
 target_sources_kernel(lib
@@ -103,6 +104,7 @@ if (enable_testing)
         math/quadrature/antiderivative_test.cpp
         math/quadrature/cache_test.cpp
         math/quadrature/rules_test.cpp
+        math/quadrature/subdivider_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/stats_test.cpp
