@@ -48,6 +48,7 @@ struct quadrature_stack_test_t : Test
 
     auto expect_order(std::initializer_list<int_t> ids) -> void
     {
+        // ids are given in left-to-right physical order; reverse here is to match LIFO pop order
         for (auto id : ids | std::views::reverse) { EXPECT_EQ(id, sut.pop().depth); }
     }
 };
@@ -206,8 +207,8 @@ TEST_F(quadrature_stack_test_multiple_pushed_t, interleaved_push_and_pop)
 // ====================================================================================================================
 
 // These tests rely on segment_t::operator ==(), which tests doubles directly. Currently, they get lucky and the values
-// match, but changing any arithmetic in stack_seeder_t, even just the order of operations, will likely break these
-// If they become fragile, the solution is to switch to using a gmock matcher and testing field by field using near.
+// match, but changing any arithmetic in stack_seeder_t, even just the order of operations, will likely break these If
+// they become fragile, the solution is to switch to using a gmock matcher and testing field by field using DoubleNear.
 
 struct quadrature_stack_seeder_test_t : Test
 {
