@@ -58,6 +58,8 @@ private:
 template <typename real_t, typename accumulator_t, typename cache_t = cache_t<real_t>> class cache_builder_t
 {
 public:
+    using result_t = cache_t;
+
     using boundaries_t      = cache_t::boundaries_t;
     using cumulative_sums_t = cache_t::cumulative_sums_t;
 
