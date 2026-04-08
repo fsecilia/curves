@@ -604,19 +604,19 @@ static_assert(matrix_t<2, 2>{{{{1.0, 2.0}, {3.0, 4.0}}}} * vector_t<2>{5.0, 6.0}
 // mixed-type promotion: int op float -> float
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(vector_t<2>{1, 2} + vector_t<2>{0.5, 0.5} == vector_t<2>{1.5, 2.5});
-static_assert(vector_t<2>{0.5, 0.5} + vector_t<2>{1, 2} == vector_t<2>{1.5, 2.5});
-static_assert(vector_t<2>{3, 5} * scalar_t{0.5} == vector_t<2>{1.5, 2.5});
-static_assert(scalar_t{0.5} * vector_t<2>{3, 5} == vector_t<2>{1.5, 2.5});
-static_assert(vector_t<2>{3, 5} - vector_t<2>{0.5, 0.5} == vector_t<2>{2.5, 4.5});
+static_assert(int_tests::vector_t<2>{1, 2} + vector_t<2>{0.5, 0.5} == vector_t<2>{1.5, 2.5});
+static_assert(vector_t<2>{0.5, 0.5} + int_tests::vector_t<2>{1, 2} == vector_t<2>{1.5, 2.5});
+static_assert(int_tests::vector_t<2>{3, 5} * scalar_t{0.5} == vector_t<2>{1.5, 2.5});
+static_assert(scalar_t{0.5} * int_tests::vector_t<2>{3, 5} == vector_t<2>{1.5, 2.5});
+static_assert(int_tests::vector_t<2>{3, 5} - vector_t<2>{0.5, 0.5} == vector_t<2>{2.5, 4.5});
 static_assert
 (
-    matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * matrix_t<2, 2>{{{{0.5, 1.5}, {2.5, 3.5}}}}
+    int_tests::matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * matrix_t<2, 2>{{{{0.5, 1.5}, {2.5, 3.5}}}}
     ==
     matrix_t<2, 2>{{{{5.5, 8.5}, {11.5, 18.5}}}}
 );
 
-static_assert(matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * vector_t<2>{0.5, 1.5} == vector_t<2>{3.5, 7.5});
+static_assert(int_tests::matrix_t<2, 2>{{{{1, 2}, {3, 4}}}} * vector_t<2>{0.5, 1.5} == vector_t<2>{3.5, 7.5});
 
 // clang-format on
 
