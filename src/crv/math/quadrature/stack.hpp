@@ -15,6 +15,14 @@
 
 namespace crv::quadrature {
 
+/// stack that accepts segments and bisections
+template <typename stack_t, typename real_t>
+concept is_stack = requires(stack_t& stack, segment_t<real_t> segment, bisection_t<real_t> bisection) {
+    stack.push(segment);
+    stack.push(bisection);
+    { stack.empty() } -> std::convertible_to<bool>;
+};
+
 /// working stack of segments in strictly left-to-right order
 template <std::floating_point real_t> class stack_t
 {
