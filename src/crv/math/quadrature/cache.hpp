@@ -14,7 +14,7 @@
 namespace crv::quadrature {
 
 /// discrete partition and cumulative integral
-template <typename real_t> class integral_cache_t
+template <typename real_t> class cache_t
 {
 public:
     using map_t             = std::flat_map<real_t, real_t>;
@@ -30,38 +30,38 @@ public:
         constexpr auto operator==(interval_t const&) const noexcept -> bool  = default;
     };
 
-    explicit integral_cache_t(map_t intervals) noexcept : intervals_{std::move(intervals)}
+    explicit cache_t(map_t intervals) noexcept : intervals_{std::move(intervals)}
     {
-        assert(!intervals_.empty() && "integral_cache_t: empty cache provided");
-        assert(intervals_.begin()->first == real_t{0} && "integral_cache_t: origin must start at 0");
-        assert(intervals_.begin()->second == real_t{0} && "integral_cache_t: cumulative sum must start at 0");
+        assert(!intervals_.empty() && "cache_t: empty cache provided");
+        assert(intervals_.begin()->first == real_t{0} && "cache_t: origin must start at 0");
+        assert(intervals_.begin()->second == real_t{0} && "cache_t: cumulative sum must start at 0");
     }
 
     /// locates the interval containing given location
     auto interval(real_t location) const -> interval_t
     {
         assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
-               && "integral_cache_t: domain error");
+               && "cache_t: domain error");
 
         auto const right = intervals_.upper_bound(location);
         auto const left  = std::ranges::prev(right);
         return {left->first, left->second};
     }
 
-    auto operator<=>(integral_cache_t const&) const noexcept -> auto = default;
-    auto operator==(integral_cache_t const&) const noexcept -> bool  = default;
+    auto operator<=>(cache_t const&) const noexcept -> auto = default;
+    auto operator==(cache_t const&) const noexcept -> bool  = default;
 
 private:
     map_t intervals_;
 };
 
-template <typename real_t, typename integral_cache_t, typename accumulator_t> class integral_cache_builder_t
+template <typename real_t, typename cache_t, typename accumulator_t> class cache_builder_t
 {
 public:
-    using boundaries_t      = integral_cache_t::boundaries_t;
-    using cumulative_sums_t = integral_cache_t::cumulative_sums_t;
+    using boundaries_t      = cache_t::boundaries_t;
+    using cumulative_sums_t = cache_t::cumulative_sums_t;
 
-    integral_cache_builder_t()
+    cache_builder_t()
     {
         boundaries_.reserve(32);
         boundaries_.push_back(real_t{0});
@@ -72,7 +72,7 @@ public:
 
     auto append(real_t right_bound, real_t sum) -> void
     {
-        assert(right_bound > boundaries_.back() && "integral_cache_t: boundaries must be monotonically increasing");
+        assert(right_bound > boundaries_.back() && "cache_t: boundaries must be monotonically increasing");
 
         running_sum_ += sum;
 
@@ -80,9 +80,9 @@ public:
         cumulative_sums_.push_back(static_cast<real_t>(running_sum_));
     }
 
-    auto finalize() && noexcept -> integral_cache_t
+    auto finalize() && noexcept -> cache_t
     {
-        return integral_cache_t{std::flat_map{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)}};
+        return cache_t{std::flat_map{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)}};
     }
 
 private:
