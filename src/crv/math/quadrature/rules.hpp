@@ -11,13 +11,15 @@
 #include <concepts>
 #include <numeric>
 
-namespace crv::quadrature::rules {
+namespace crv::quadrature {
 
 template <std::floating_point real_t> struct rule_result_t
 {
     real_t value;
     real_t error;
 };
+
+namespace rules {
 
 template <int sample_count> struct gauss_kronrod_t;
 
@@ -94,4 +96,5 @@ template <> struct gauss_kronrod_t<15>
     }
 };
 
-} // namespace crv::quadrature::rules
+} // namespace rules
+} // namespace crv::quadrature
