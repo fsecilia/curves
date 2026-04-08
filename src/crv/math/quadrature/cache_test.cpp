@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "integral_cache.hpp"
+#include "cache.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::quadrature {

@@ -23,7 +23,7 @@ target_sources(lib PRIVATE
     math/mesh/segment.hpp
     math/mesh/weight_function.hpp
     math/quadrature/antiderivative.hpp
-    math/quadrature/integral_cache.hpp
+    math/quadrature/cache.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
     math/stats.hpp
@@ -101,7 +101,7 @@ if (enable_testing)
         math/mesh/segment_test.cpp
         math/mesh/weight_function_test.cpp
         math/quadrature/antiderivative_test.cpp
-        math/quadrature/integral_cache_test.cpp
+        math/quadrature/cache_test.cpp
         math/quadrature/rules_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
