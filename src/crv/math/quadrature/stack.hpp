@@ -35,7 +35,7 @@ public:
     auto clear() noexcept -> void { segments_.clear(); }
 
     auto push(segment_t segment) -> void { segments_.push_back(segment); }
-    auto push(bisection_t bisection) -> void
+    auto push(bisection_t const& bisection) -> void
     {
         // push right then left so left pops first
         push(bisection.right_child);
