@@ -135,7 +135,7 @@ struct cache_builder_test_t : Test
         map_t map;
     };
 
-    using sut_t = cache_builder_t<real_t, cache_t, accumulator_t>;
+    using sut_t = cache_builder_t<real_t, accumulator_t, cache_t>;
 
     sut_t sut{};
 };

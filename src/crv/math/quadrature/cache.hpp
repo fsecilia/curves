@@ -55,7 +55,7 @@ private:
     map_t intervals_;
 };
 
-template <typename real_t, typename cache_t, typename accumulator_t> class cache_builder_t
+template <typename real_t, typename accumulator_t, typename cache_t = cache_t<real_t>> class cache_builder_t
 {
 public:
     using boundaries_t      = cache_t::boundaries_t;
