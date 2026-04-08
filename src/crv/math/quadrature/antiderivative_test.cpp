@@ -10,6 +10,10 @@
 namespace crv::quadrature {
 namespace {
 
+// ====================================================================================================================
+// antiderivative_t
+// ====================================================================================================================
+
 struct quadrature_antiderivative_test_t : Test
 {
     using real_t = float_t;
@@ -93,6 +97,109 @@ TEST_F(quadrature_antiderivative_test_t, call)
     auto const actual = sut(expected_location);
 
     EXPECT_EQ(expected, actual);
+}
+
+// ====================================================================================================================
+// antiderivative_builder_t
+// ====================================================================================================================
+
+struct quadrature_antiderivative_builder_t : Test
+{
+    using real_t        = float_t;
+    using accumulator_t = real_t;
+
+    using move_only_id_t = std::unique_ptr<int_t>;
+    using integrand_t    = move_only_id_t;
+    using rule_t         = move_only_id_t;
+    using cache_t        = move_only_id_t;
+
+    struct antiderivative_t
+    {
+        integrand_t integrand_;
+        rule_t      rule_;
+        cache_t     cache_;
+    };
+
+    struct mock_cache_builder_t
+    {
+        MOCK_METHOD(void, append, (real_t, real_t));
+        MOCK_METHOD(cache_t, finalize, ());
+        virtual ~mock_cache_builder_t() = default;
+    };
+    StrictMock<mock_cache_builder_t> mock_cache_builder;
+
+    struct cache_builder_t
+    {
+        mock_cache_builder_t* mock = nullptr;
+
+        auto append(real_t right_bound, real_t sum) -> void { return mock->append(right_bound, sum); }
+        auto finalize() && -> cache_t { return mock->finalize(); }
+    };
+
+    static constexpr auto expected_integrand_id = 5;
+    static constexpr auto expected_rule_id      = 7;
+    static constexpr auto expected_cache_id     = 11;
+
+    using sut_t
+        = antiderivative_builder_t<real_t, integrand_t, rule_t, cache_builder_t, accumulator_t, antiderivative_t>;
+    sut_t sut{std::make_unique<int_t>(expected_integrand_id), std::make_unique<int_t>(expected_rule_id),
+              cache_builder_t{&mock_cache_builder}};
+
+    auto expect_ids(sut_t::result_t const& actual) const -> void
+    {
+        EXPECT_EQ(*actual.antiderivative.integrand_, expected_integrand_id);
+        EXPECT_EQ(*actual.antiderivative.rule_, expected_rule_id);
+        EXPECT_EQ(*actual.antiderivative.cache_, expected_cache_id);
+    }
+
+    quadrature_antiderivative_builder_t()
+    {
+        EXPECT_CALL(mock_cache_builder, finalize())
+            .WillOnce(Return(ByMove(std::make_unique<int_t>(expected_cache_id))));
+    }
+};
+
+TEST_F(quadrature_antiderivative_builder_t, append_none)
+{
+    auto const actual = std::move(sut).finalize();
+
+    expect_ids(actual);
+
+    EXPECT_DOUBLE_EQ(actual.achieved_error, 0.0);
+    EXPECT_DOUBLE_EQ(actual.max_error, 0.0);
+}
+
+TEST_F(quadrature_antiderivative_builder_t, append_one)
+{
+    EXPECT_CALL(mock_cache_builder, append(1.3, 5.7));
+    sut.append(1.3, 5.7, 7.11);
+
+    auto const actual = std::move(sut).finalize();
+
+    expect_ids(actual);
+
+    EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11);
+    EXPECT_DOUBLE_EQ(actual.max_error, 7.11);
+}
+
+TEST_F(quadrature_antiderivative_builder_t, append_many)
+{
+    auto const seq = InSequence{};
+
+    EXPECT_CALL(mock_cache_builder, append(1.3, 5.7));
+    EXPECT_CALL(mock_cache_builder, append(13.17, 17.19));
+    EXPECT_CALL(mock_cache_builder, append(23.29, 31.37));
+
+    sut.append(1.3, 5.7, 7.11);
+    sut.append(13.17, 17.19, 53.59); // max error does not come last
+    sut.append(23.29, 31.37, 41.43);
+
+    auto const actual = std::move(sut).finalize();
+
+    expect_ids(actual);
+
+    EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11 + 53.59 + 41.43);
+    EXPECT_DOUBLE_EQ(actual.max_error, 53.59);
 }
 
 } // namespace

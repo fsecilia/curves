@@ -45,4 +45,51 @@ private:
     cache_t     cache_;
 };
 
+template <std::floating_point real_t, typename integrand_t, typename rule_t, typename cache_builder_t,
+          typename accumulator_t,
+          typename antiderivative_t = antiderivative_t<real_t, integrand_t, rule_t, typename cache_builder_t::result_t>>
+class antiderivative_builder_t
+{
+public:
+    struct result_t
+    {
+        antiderivative_t antiderivative;
+        real_t           achieved_error;
+        real_t           max_error;
+    };
+
+    antiderivative_builder_t() = default;
+    explicit antiderivative_builder_t(integrand_t integrand, rule_t rule, cache_builder_t cache_builder) noexcept
+        : integrand_{std::move(integrand)}, rule_{std::move(rule)}, cache_builder_{std::move(cache_builder)}
+    {}
+
+    constexpr auto append(real_t right_bound, real_t sum, real_t error) -> void
+    {
+        cache_builder_.append(right_bound, sum);
+
+        running_error_ += error;
+        max_error_ = std::max(max_error_, error);
+    }
+
+    constexpr auto finalize() && noexcept -> result_t
+    {
+        return result_t{
+            antiderivative_t{
+                std::move(integrand_),
+                std::move(rule_),
+                std::move(cache_builder_).finalize(),
+            },
+            static_cast<real_t>(running_error_),
+            max_error_,
+        };
+    }
+
+private:
+    integrand_t     integrand_{};
+    rule_t          rule_{};
+    cache_builder_t cache_builder_{};
+    accumulator_t   running_error_{};
+    real_t          max_error_{0};
+};
+
 } // namespace crv::quadrature
