@@ -227,8 +227,9 @@ struct quadrature_stack_seeder_test_t : Test
 
     struct subdivider_t
     {
-        int_t next_id = 0;
-        auto  operator()(real_t left, real_t right, real_t tolerance) noexcept -> segment_t
+        mutable int_t next_id = 0;
+
+        auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
         {
             return create_segment(left, right, tolerance, next_id++);
         }
