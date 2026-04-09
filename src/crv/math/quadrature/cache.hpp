@@ -55,13 +55,13 @@ private:
     map_t intervals_;
 };
 
-template <typename real_t, typename accumulator_t, typename cache_t = cache_t<real_t>> class cache_builder_t
+template <typename real_t, typename accumulator_t, typename t_result_t> class cache_builder_t
 {
 public:
-    using result_t = cache_t;
+    using result_t = t_result_t;
 
-    using boundaries_t      = cache_t::boundaries_t;
-    using cumulative_sums_t = cache_t::cumulative_sums_t;
+    using boundaries_t      = result_t::boundaries_t;
+    using cumulative_sums_t = result_t::cumulative_sums_t;
 
     cache_builder_t()
     {
@@ -82,9 +82,9 @@ public:
         cumulative_sums_.push_back(static_cast<real_t>(running_sum_));
     }
 
-    auto finalize() && noexcept -> cache_t
+    auto finalize() && noexcept -> result_t
     {
-        return cache_t{std::flat_map{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)}};
+        return result_t{std::flat_map{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)}};
     }
 
 private:
