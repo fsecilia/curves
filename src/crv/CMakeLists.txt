@@ -104,6 +104,7 @@ if (enable_testing)
         math/mesh/weight_function_test.cpp
         math/quadrature/antiderivative_test.cpp
         math/quadrature/cache_test.cpp
+        math/quadrature/poc.cpp
         math/quadrature/rules_test.cpp
         math/quadrature/stack_test.cpp
         math/quadrature/subdivider_test.cpp
