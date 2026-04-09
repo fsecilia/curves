@@ -21,6 +21,9 @@ template <std::floating_point real_t> struct rule_result_t
 
     /// internal error estimate for value; must be non-negative
     real_t error;
+
+    auto operator<=>(rule_result_t const&) const noexcept -> auto = default;
+    auto operator==(rule_result_t const&) const noexcept -> bool  = default;
 };
 
 namespace rules {
