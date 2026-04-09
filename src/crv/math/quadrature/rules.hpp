@@ -39,37 +39,37 @@ template <> struct gauss_kronrod_t<15>
 
         // positive abscissas for the 15-point Kronrod rule
         static constexpr real_t abscissas[symmetric_sample_count] = {
-            static_cast<real_t>(0.207784955007898467600689403773244913L),
-            static_cast<real_t>(0.405845151377397166906606412076961463L),
-            static_cast<real_t>(0.586087235467691130294144838258729598L),
-            static_cast<real_t>(0.741531185599394439863864773280788407L),
-            static_cast<real_t>(0.864864423359769072789712788640926201L),
-            static_cast<real_t>(0.949107912342758524526189684047851262L),
-            static_cast<real_t>(0.991455371120812639206854697526328517L),
+            static_cast<real_t>(0x1.a98b2892e0c768600a87986cb9abp-3Q),
+            static_cast<real_t>(0x1.9f95df119fd61b073a662ad1b710p-2Q),
+            static_cast<real_t>(0x1.2c13a049dfa23d7b9520011f0c69p-1Q),
+            static_cast<real_t>(0x1.7ba9f9be3a1d5d160239fdb75338p-1Q),
+            static_cast<real_t>(0x1.bacf827b9bb3dc8eb243a23a7db2p-1Q),
+            static_cast<real_t>(0x1.e5f178e7c622958378458368364dp-1Q),
+            static_cast<real_t>(0x1.fba009d4d09b13f001a1ae4bce02p-1Q),
         };
 
         // weights for the 15-point Kronrod rule
-        static constexpr auto   kronrod_center_weight = static_cast<real_t>(0.209482141084727828012999174891714264L);
+        static constexpr auto   kronrod_center_weight = static_cast<real_t>(0x1.ad04f9087090f55f92f946c81e39p-3Q);
         static constexpr real_t kronrod_weights[symmetric_sample_count] = {
-            static_cast<real_t>(0.204432940075298892414161999234649085L),
-            static_cast<real_t>(0.190350578064785409913256402421013683L),
-            static_cast<real_t>(0.169004726639267902826583426598550284L),
-            static_cast<real_t>(0.140653259715525918745189590510237920L),
-            static_cast<real_t>(0.104790010322250183839876322541518017L),
-            static_cast<real_t>(0.0630920926299785532907006631892042867L),
-            static_cast<real_t>(0.0229353220105292249637320080589695920L),
+            static_cast<real_t>(0x1.a2adbcbec9cd83e2b52e31473ed2p-3Q),
+            static_cast<real_t>(0x1.85d6861c80eb0a74da6666816adcp-3Q),
+            static_cast<real_t>(0x1.5a1f266e47d5bba3643f24a3e1dep-3Q),
+            static_cast<real_t>(0x1.200ed0f46e8c0fdb57173cf54406p-3Q),
+            static_cast<real_t>(0x1.ad384a34814c5b7efab57bd3e8d4p-4Q),
+            static_cast<real_t>(0x1.026cdaa7b61c3ac5094c5937c40ap-4Q),
+            static_cast<real_t>(0x1.77c5b67d574702bf4cbbc5a25713p-6Q),
         };
 
         // weights for the embedded 7-point Gauss rule, padded with zeros
-        static constexpr real_t gauss_center_weight = static_cast<real_t>(0.417959183673469387755102040816326531L);
+        static constexpr real_t gauss_center_weight = static_cast<real_t>(0x1.abfd7e03c2fa5b8876b34df30b13p-2Q);
         static constexpr real_t gauss_weights[symmetric_sample_count] = {
-            static_cast<real_t>(0.000000000000000000000000000000000000L),
-            static_cast<real_t>(0.381830050505118944950369775488975134L),
-            static_cast<real_t>(0.000000000000000000000000000000000000L),
-            static_cast<real_t>(0.279705391489276667901467771423779582L),
-            static_cast<real_t>(0.000000000000000000000000000000000000L),
-            static_cast<real_t>(0.129484966168869693270611432679082018L),
-            static_cast<real_t>(0.000000000000000000000000000000000000L),
+            static_cast<real_t>(0x0.0000000000000000000000000000p+0Q),
+            static_cast<real_t>(0x1.86fe74ee32b3d64d2fa1cfb4c0c5p-2Q),
+            static_cast<real_t>(0x0.0000000000000000000000000000p+0Q),
+            static_cast<real_t>(0x1.1e6b1713d86446b4d09badbb8787p-2Q),
+            static_cast<real_t>(0x0.0000000000000000000000000000p+0Q),
+            static_cast<real_t>(0x1.092f69f826d56a7388d1b72c6454p-3Q),
+            static_cast<real_t>(0x0.0000000000000000000000000000p+0Q),
         };
 
         auto const midpoint   = std::midpoint(left, right);

@@ -56,6 +56,9 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -ftemplate-backtrace-limit=1
         -Wno-changes-meaning
     )
+    target_compile_options(project_options INTERFACE
+        -fext-numeric-literals
+    )
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
