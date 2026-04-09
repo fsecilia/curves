@@ -25,6 +25,7 @@ struct linear_t<element_tp, dim, dims...> : std::array<linear_t<element_tp, dims
     using element_t = element_tp;
 
     constexpr auto operator<=>(linear_t const& src) const noexcept -> auto = default;
+    constexpr auto operator==(linear_t const& src) const noexcept -> bool  = default;
 };
 
 /// 1-d array of elements
@@ -33,6 +34,7 @@ template <typename element_tp, std::size_t dim> struct linear_t<element_tp, dim>
     using element_t = element_tp;
 
     constexpr auto operator<=>(linear_t const& src) const noexcept -> auto = default;
+    constexpr auto operator==(linear_t const& src) const noexcept -> bool  = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
