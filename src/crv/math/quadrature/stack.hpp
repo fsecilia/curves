@@ -39,8 +39,8 @@ public:
     auto push(bisection_t const& bisection) -> void
     {
         // push right then left so left pops first
-        push(bisection.right_child);
-        push(bisection.left_child);
+        push(bisection.right);
+        push(bisection.left);
     }
 
     auto pop() noexcept -> segment_t

@@ -36,10 +36,10 @@ struct quadrature_stack_test_t : Test
     auto create_bisection(int_t left_id, int_t right_id) const noexcept -> bisection_t
     {
         return bisection_t{
-            .left_child        = create_segment(left_id),
-            .right_child       = create_segment(right_id),
-            .combined_integral = real_t{0.0},
-            .error_estimate    = real_t{0.0},
+            .left           = create_segment(left_id),
+            .right          = create_segment(right_id),
+            .integral       = real_t{0.0},
+            .error_estimate = real_t{0.0},
         };
     }
 

@@ -70,7 +70,7 @@ public:
 
         // clang-format off
         return bisection_t{
-            .left_child = segment_t
+            .left = segment_t
             {
                 .left      = parent.left,
                 .right     = parent_midpoint,
@@ -78,7 +78,7 @@ public:
                 .tolerance = child_tolerance,
                 .depth     = child_depth,
             },
-            .right_child = segment_t
+            .right = segment_t
             {
                 .left      = parent_midpoint,
                 .right     = parent.right,
@@ -86,7 +86,7 @@ public:
                 .tolerance = child_tolerance,
                 .depth     = child_depth,
             },
-            .combined_integral = combined_integral,
+            .integral = combined_integral,
             .error_estimate    = std::max(quadrature_error, subdivision_error),
         };
         // clang-format on

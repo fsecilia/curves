@@ -28,11 +28,12 @@ template <std::floating_point t_real_t> struct segment_t
 template <std::floating_point t_real_t> struct bisection_t
 {
     using real_t    = t_real_t;
+    using segment_t = segment_t<real_t>;
 
-    segment_t<real_t> left_child;
-    segment_t<real_t> right_child;
-    real_t            combined_integral;
-    real_t            error_estimate;
+    segment_t left;
+    segment_t right;
+    real_t    integral;
+    real_t    error_estimate;
 
     auto operator<=>(bisection_t const&) const noexcept -> auto = default;
     auto operator==(bisection_t const&) const noexcept -> bool  = default;
