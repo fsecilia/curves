@@ -130,6 +130,8 @@ struct quadrature_antiderivative_builder_t : Test
 
     struct cache_builder_t
     {
+        using result_t = cache_t;
+
         mock_cache_builder_t* mock = nullptr;
 
         auto append(real_t right_bound, real_t sum) -> void { return mock->append(right_bound, sum); }
@@ -140,12 +142,16 @@ struct quadrature_antiderivative_builder_t : Test
     static constexpr auto expected_rule_id      = 7;
     static constexpr auto expected_cache_id     = 11;
 
-    using sut_t
-        = antiderivative_builder_t<real_t, integrand_t, rule_t, cache_builder_t, accumulator_t, antiderivative_t>;
-    sut_t sut{std::make_unique<int_t>(expected_integrand_id), std::make_unique<int_t>(expected_rule_id),
-              cache_builder_t{&mock_cache_builder}};
+    using sut_t = antiderivative_builder_t<real_t, cache_builder_t, accumulator_t>;
+    sut_t sut{cache_builder_t{&mock_cache_builder}};
 
-    auto expect_ids(sut_t::result_t const& actual) const -> void
+    auto finalize() noexcept -> sut_t::result_t<antiderivative_t>
+    {
+        return std::move(sut).template finalize<integrand_t, rule_t, cache_t, antiderivative_t>(
+            std::make_unique<int_t>(expected_integrand_id), std::make_unique<int_t>(expected_rule_id));
+    }
+
+    auto expect_ids(sut_t::template result_t<antiderivative_t> const& actual) const -> void
     {
         EXPECT_EQ(*actual.antiderivative.integrand_, expected_integrand_id);
         EXPECT_EQ(*actual.antiderivative.rule_, expected_rule_id);
@@ -161,7 +167,7 @@ struct quadrature_antiderivative_builder_t : Test
 
 TEST_F(quadrature_antiderivative_builder_t, append_none)
 {
-    auto const actual = std::move(sut).finalize();
+    auto const actual = finalize();
 
     expect_ids(actual);
 
@@ -174,7 +180,7 @@ TEST_F(quadrature_antiderivative_builder_t, append_one)
     EXPECT_CALL(mock_cache_builder, append(1.3, 5.7));
     sut.append(1.3, 5.7, 7.11);
 
-    auto const actual = std::move(sut).finalize();
+    auto const actual = finalize();
 
     expect_ids(actual);
 
@@ -194,7 +200,7 @@ TEST_F(quadrature_antiderivative_builder_t, append_many)
     sut.append(13.17, 17.19, 53.59); // max error does not come last
     sut.append(23.29, 31.37, 41.43);
 
-    auto const actual = std::move(sut).finalize();
+    auto const actual = finalize();
 
     expect_ids(actual);
 
