@@ -224,7 +224,6 @@ constexpr auto operator-(scalar_t<left_element_t> const&                left,
 ///
 /// Matrices much larger than 4x4 will require a tiling implementation.
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t common_dim, std::size_t cols>
-    requires(!(rows == 4 && common_dim == 4 && cols == 4))
 constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left,
                          matrix_t<right_element_t, common_dim, cols> const& right) noexcept
     -> matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols>
@@ -246,36 +245,6 @@ constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left
             for (auto col = 0u; col < cols; ++col) result[row][col] += left_row_common * right[common][col];
         }
     }
-
-    return result;
-}
-
-/// matrix*matrix, specialized for 4x4 with manually unrolled loop
-template <typename left_element_t, typename right_element_t>
-constexpr auto operator*(matrix_t<left_element_t, 4, 4> const& l, matrix_t<right_element_t, 4, 4> const& r) noexcept
-    -> matrix_t<promoted_t<left_element_t, right_element_t>, 4, 4>
-{
-    matrix_t<promoted_t<left_element_t, right_element_t>, 4, 4> result;
-
-    result[0][0] = l[0][0] * r[0][0] + l[0][1] * r[1][0] + l[0][2] * r[2][0] + l[0][3] * r[3][0];
-    result[0][1] = l[0][0] * r[0][1] + l[0][1] * r[1][1] + l[0][2] * r[2][1] + l[0][3] * r[3][1];
-    result[0][2] = l[0][0] * r[0][2] + l[0][1] * r[1][2] + l[0][2] * r[2][2] + l[0][3] * r[3][2];
-    result[0][3] = l[0][0] * r[0][3] + l[0][1] * r[1][3] + l[0][2] * r[2][3] + l[0][3] * r[3][3];
-
-    result[1][0] = l[1][0] * r[0][0] + l[1][1] * r[1][0] + l[1][2] * r[2][0] + l[1][3] * r[3][0];
-    result[1][1] = l[1][0] * r[0][1] + l[1][1] * r[1][1] + l[1][2] * r[2][1] + l[1][3] * r[3][1];
-    result[1][2] = l[1][0] * r[0][2] + l[1][1] * r[1][2] + l[1][2] * r[2][2] + l[1][3] * r[3][2];
-    result[1][3] = l[1][0] * r[0][3] + l[1][1] * r[1][3] + l[1][2] * r[2][3] + l[1][3] * r[3][3];
-
-    result[2][0] = l[2][0] * r[0][0] + l[2][1] * r[1][0] + l[2][2] * r[2][0] + l[2][3] * r[3][0];
-    result[2][1] = l[2][0] * r[0][1] + l[2][1] * r[1][1] + l[2][2] * r[2][1] + l[2][3] * r[3][1];
-    result[2][2] = l[2][0] * r[0][2] + l[2][1] * r[1][2] + l[2][2] * r[2][2] + l[2][3] * r[3][2];
-    result[2][3] = l[2][0] * r[0][3] + l[2][1] * r[1][3] + l[2][2] * r[2][3] + l[2][3] * r[3][3];
-
-    result[3][0] = l[3][0] * r[0][0] + l[3][1] * r[1][0] + l[3][2] * r[2][0] + l[3][3] * r[3][0];
-    result[3][1] = l[3][0] * r[0][1] + l[3][1] * r[1][1] + l[3][2] * r[2][1] + l[3][3] * r[3][1];
-    result[3][2] = l[3][0] * r[0][2] + l[3][1] * r[1][2] + l[3][2] * r[2][2] + l[3][3] * r[3][2];
-    result[3][3] = l[3][0] * r[0][3] + l[3][1] * r[1][3] + l[3][2] * r[2][3] + l[3][3] * r[3][3];
 
     return result;
 }
