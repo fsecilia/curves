@@ -95,9 +95,20 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const&  left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right[index];
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left[index]) + static_cast<promoted_t>(right[index]);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right[index];
+    }
 
     return result;
 }
@@ -134,9 +145,20 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
                          scalar_t<right_element_t> const&              right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] + right;
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left[index]) + static_cast<promoted_t>(right);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) { result[index] = left[index] + right; }
+    }
 
     return result;
 }
@@ -147,9 +169,20 @@ constexpr auto operator+(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left + right[index];
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left) + static_cast<promoted_t>(right[index]);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) { result[index] = left + right[index]; }
+    }
 
     return result;
 }
@@ -160,9 +193,20 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const&  left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right[index];
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left[index]) - static_cast<promoted_t>(right[index]);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right[index];
+    }
 
     return result;
 }
@@ -199,10 +243,20 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
                          scalar_t<right_element_t> const&              right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right;
-
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left[index]) - static_cast<promoted_t>(right);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = left[index] - right;
+    }
     return result;
 }
 
@@ -212,9 +266,20 @@ constexpr auto operator-(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left - right[index];
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left) - static_cast<promoted_t>(right[index]);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = left - right[index];
+    }
 
     return result;
 }
@@ -230,8 +295,10 @@ constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left
                          matrix_t<right_element_t, common_dim, cols> const& right) noexcept
     -> matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols>
 {
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+
     // default initialize to preserve cache
-    matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols> result;
+    matrix_t<promoted_t, rows, cols> result;
 
     // use ikj order to maximize cache
     for (auto row = 0u; row < rows; ++row)
@@ -244,7 +311,11 @@ constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left
             // save common factor
             auto const left_row_common = left[row][common];
 
-            for (auto col = 0u; col < cols; ++col) result[row][col] += left_row_common * right[common][col];
+            for (auto col = 0u; col < cols; ++col)
+            {
+                result[row][col]
+                    += static_cast<promoted_t>(left_row_common) * static_cast<promoted_t>(right[common][col]);
+            }
         }
     }
 
@@ -257,12 +328,16 @@ constexpr auto operator*(matrix_t<left_element_t, rows, cols> const& left,
                          vector_t<right_element_t, cols> const&      right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, rows>
 {
-    vector_t<promoted_t<left_element_t, right_element_t>, rows> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    vector_t<promoted_t, rows> result;
 
     for (auto row = 0u; row < rows; ++row)
     {
         result[row] = 0;
-        for (auto col = 0u; col < cols; ++col) result[row] += left[row][col] * right[col];
+        for (auto col = 0u; col < cols; ++col)
+        {
+            result[row] += static_cast<promoted_t>(left[row][col]) * static_cast<promoted_t>(right[col]);
+        }
     }
 
     return result;
@@ -274,11 +349,15 @@ constexpr auto operator*(vector_t<left_element_t, rows> const&        left,
                          matrix_t<right_element_t, rows, cols> const& right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, cols>
 {
-    vector_t<promoted_t<left_element_t, right_element_t>, cols> result{};
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    vector_t<promoted_t, cols> result{};
 
     for (auto row = 0u; row < rows; ++row)
     {
-        for (auto col = 0u; col < cols; ++col) result[col] += left[row] * right[row][col];
+        for (auto col = 0u; col < cols; ++col)
+        {
+            result[col] += static_cast<promoted_t>(left[row]) * static_cast<promoted_t>(right[row][col]);
+        }
     }
 
     return result;
@@ -293,9 +372,13 @@ constexpr auto operator*(vector_t<left_element_t, size> const&  left,
                          vector_t<right_element_t, size> const& right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, size>
 {
-    vector_t<promoted_t<left_element_t, right_element_t>, size> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    vector_t<promoted_t, size> result;
 
-    for (auto index = 0u; index < size; ++index) result[index] = left[index] * right[index];
+    for (auto index = 0u; index < size; ++index)
+    {
+        result[index] = static_cast<promoted_t>(left[index]) * static_cast<promoted_t>(right[index]);
+    }
 
     return result;
 }
@@ -306,9 +389,20 @@ constexpr auto operator*(linear_t<left_element_t, dim, dims...> const& left,
                          scalar_t<right_element_t> const&              right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] * right;
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left[index]) * static_cast<promoted_t>(right);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = left[index] * static_cast<promoted_t>(right);
+    }
 
     return result;
 }
@@ -319,9 +413,20 @@ constexpr auto operator*(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left * right[index];
+    if constexpr (sizeof...(dims) == 0)
+    {
+        for (auto index = 0u; index < dim; ++index)
+        {
+            result[index] = static_cast<promoted_t>(left) * static_cast<promoted_t>(right[index]);
+        }
+    }
+    else
+    {
+        for (auto index = 0u; index < dim; ++index) result[index] = static_cast<promoted_t>(left) * right[index];
+    }
 
     return result;
 }
@@ -332,9 +437,10 @@ constexpr auto operator/(linear_t<left_element_t, dim, dims...> const& left,
                          scalar_t<right_element_t> const&              right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left[index] / right;
+    for (auto index = 0u; index < dim; ++index) { result[index] = left[index] / static_cast<promoted_t>(right); }
 
     return result;
 }
@@ -345,9 +451,10 @@ constexpr auto operator/(scalar_t<left_element_t> const&                left,
                          linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
-    linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
+    using promoted_t = promoted_t<left_element_t, right_element_t>;
+    linear_t<promoted_t, dim, dims...> result;
 
-    for (auto index = 0u; index < dim; ++index) result[index] = left / right[index];
+    for (auto index = 0u; index < dim; ++index) { result[index] = static_cast<promoted_t>(left) / right[index]; }
 
     return result;
 }
