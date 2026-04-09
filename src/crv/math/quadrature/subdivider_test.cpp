@@ -9,8 +9,6 @@
 namespace crv::quadrature {
 namespace {
 
-using real_t = float64_t;
-
 constexpr auto initial_tolerance = 7.65; // arbitrary
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -63,13 +61,20 @@ template <typename real_t> struct negative_quadratic_integrand_t
     constexpr auto operator()(real_t x) const noexcept -> real_t { return -(x * x); }
 };
 
+namespace float64_test_t {
+
+using real_t = float64_t;
+
+constexpr auto rule                = rule_t<real_t>{};
+constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
+
 // ====================================================================================================================
 // even function
 // ====================================================================================================================
 
 namespace even_function {
 
-constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{{}, {}};
+constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
 
 // --------------------------------------------------------------------------------------------------------------------
 // root segment creation
@@ -199,7 +204,9 @@ static_assert(reversed_bisection.error_estimate == 27.0);
 
 namespace odd_function {
 
-constexpr auto sut = subdivider_t<real_t, cubic_integrand_t<real_t>, rule_t<real_t>>{{}, {}};
+using integrand_t        = cubic_integrand_t<real_t>;
+constexpr auto integrand = integrand_t{};
+constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
 
 constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
 
@@ -227,7 +234,9 @@ static_assert(bisection.combined_integral == 0.0);
 
 namespace const_function {
 
-constexpr auto sut = subdivider_t<real_t, constant_integrand_t<real_t>, rule_t<real_t>>{{10.0}, {}};
+using integrand_t        = constant_integrand_t<real_t>;
+constexpr auto integrand = integrand_t{10.0};
+constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
 
 constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
 
@@ -258,7 +267,7 @@ static_assert(bisection.error_estimate == 0.4);
 namespace quadrature_dominant {
 
 // reuse the quadratic integrand on a narrow interval, so subdivision error shrinks below quadrature error
-constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{{}, {}};
+constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
 
 constexpr auto parent = sut(0.0, 0.5, initial_tolerance);
 
@@ -286,7 +295,9 @@ static_assert(bisection.error_estimate == 0.05);
 
 namespace negative_function {
 
-constexpr auto sut = subdivider_t<real_t, negative_quadratic_integrand_t<real_t>, rule_t<real_t>>{{}, {}};
+using integrand_t = negative_quadratic_integrand_t<real_t>;
+constexpr auto integrand = integrand_t{};
+constexpr auto sut = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
 
 constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
 
@@ -306,6 +317,7 @@ static_assert(bisection.combined_integral == -81.0);
 static_assert(bisection.error_estimate == 27.0);
 
 } // namespace negative_function
+} // namespace float64_test_t
 
 // ====================================================================================================================
 // float32
@@ -314,9 +326,12 @@ static_assert(bisection.error_estimate == 27.0);
 
 namespace float32_test {
 
-using real_t = float32_t;
+using real_t        = float32_t;
+constexpr auto rule = rule_t<real_t>{};
 
-constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{{}, {}};
+using integrand_t        = quadratic_integrand_t<real_t>;
+constexpr auto integrand = integrand_t{};
+constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
 
 constexpr auto parent    = sut(0.0f, 6.0f, 1.0f);
 constexpr auto bisection = sut(parent);

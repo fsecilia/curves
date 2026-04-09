@@ -11,7 +11,6 @@
 #include <crv/math/quadrature/segment.hpp>
 #include <cassert>
 #include <numeric>
-#include <utility>
 
 namespace crv::quadrature {
 
@@ -38,8 +37,8 @@ public:
     using segment_t   = segment_t<real_t>;
     using bisection_t = bisection_t<real_t>;
 
-    constexpr subdivider_t(integrand_t integrand, rule_t rule) noexcept
-        : integrand_{std::move(integrand)}, rule_{std::move(rule)}
+    constexpr subdivider_t(integrand_t const& integrand, rule_t const& rule) noexcept
+        : integrand_{integrand}, rule_{rule}
     {}
 
     /// creates root segments from simple ranges
@@ -94,8 +93,8 @@ public:
     }
 
 private:
-    integrand_t integrand_{};
-    rule_t      rule_{};
+    integrand_t const& integrand_{};
+    rule_t const&      rule_{};
 };
 
 } // namespace crv::quadrature
