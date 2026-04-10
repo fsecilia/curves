@@ -7,7 +7,7 @@
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv::quadrature {
+namespace crv::quadrature::generic {
 namespace {
 
 // ====================================================================================================================
@@ -277,4 +277,4 @@ TEST_F(quadrature_antiderivative_builder_t, append_many)
 }
 
 } // namespace
-} // namespace crv::quadrature
+} // namespace crv::quadrature::generic

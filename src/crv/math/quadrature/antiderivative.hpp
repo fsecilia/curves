@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <flat_map>
 #include <utility>
@@ -55,6 +56,8 @@ private:
     integral_t integral_;
     map_t      intervals_;
 };
+
+namespace generic {
 
 /// accumulates quadrature results and assembles final antiderivative
 template <std::floating_point real_t, typename accumulator_t, typename antiderivative_t> class antiderivative_builder_t
@@ -113,5 +116,11 @@ private:
     accumulator_t     running_error_{};
     real_t            max_error_{0};
 };
+
+} // namespace generic
+
+template <std::floating_point real_t, typename integral_t>
+using antiderivative_builder_t = generic::antiderivative_builder_t<real_t, compensated_accumulator_t<real_t>,
+                                                                   antiderivative_t<real_t, integral_t>>;
 
 } // namespace crv::quadrature
