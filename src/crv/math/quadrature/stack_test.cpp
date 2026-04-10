@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "stack.hpp"
+#include <crv/math/quadrature/segment.hpp>
 #include <crv/ranges.hpp>
 #include <crv/test/test.hpp>
 #include <initializer_list>
@@ -14,194 +15,7 @@ namespace {
 using real_t      = float_t;
 using segment_t   = segment_t<real_t>;
 using bisection_t = bisection_t<real_t>;
-using stack_t     = stack_t<real_t>;
-
-// ====================================================================================================================
-// stack_t
-// ====================================================================================================================
-
-struct quadrature_stack_test_t : Test
-{
-    // uses depth as a simple integer id
-    auto create_segment(int_t id) const noexcept -> segment_t
-    {
-        return segment_t{
-            .left      = real_t{0.0},
-            .right     = real_t{0.0},
-            .integral  = real_t{0.0},
-            .tolerance = real_t{0.0},
-            .depth     = id,
-        };
-    }
-
-    auto create_bisection(int_t left_id, int_t right_id) const noexcept -> bisection_t
-    {
-        return bisection_t{
-            .left           = create_segment(left_id),
-            .right          = create_segment(right_id),
-            .integral       = real_t{0.0},
-            .error_estimate = real_t{0.0},
-        };
-    }
-
-    using sut_t = stack_t;
-    sut_t sut{};
-
-    auto expect_order(std::initializer_list<int_t> ids) -> void
-    {
-        // ids are given in left-to-right physical order; reverse here is to match LIFO pop order
-        for (auto id : ids | std::views::reverse) { EXPECT_EQ(id, sut.pop().depth); }
-    }
-};
-
-// --------------------------------------------------------------------------------------------------------------------
-// empty stack
-// --------------------------------------------------------------------------------------------------------------------
-
-struct quadrature_stack_test_empty_t : quadrature_stack_test_t
-{};
-
-TEST_F(quadrature_stack_test_empty_t, starts_empty)
-{
-    EXPECT_TRUE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_empty_t, clear_succeeds)
-{
-    sut.clear();
-}
-
-TEST_F(quadrature_stack_test_empty_t, pop_on_empty_asserts)
-{
-    EXPECT_DEBUG_DEATH(sut.pop(), "empty");
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-// single segment
-// --------------------------------------------------------------------------------------------------------------------
-
-struct quadrature_stack_test_single_segment_t : quadrature_stack_test_t
-{
-    segment_t segment = create_segment(13);
-
-    quadrature_stack_test_single_segment_t() { sut.push(segment); }
-};
-
-TEST_F(quadrature_stack_test_single_segment_t, starts_not_empty)
-{
-    EXPECT_FALSE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_single_segment_t, clears_to_empty)
-{
-    sut.clear();
-    EXPECT_TRUE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_single_segment_t, segments)
-{
-    expect_order({13});
-}
-
-TEST_F(quadrature_stack_test_single_segment_t, pops_to_empty)
-{
-    sut.pop();
-    EXPECT_TRUE(sut.empty());
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-// single bisection
-// --------------------------------------------------------------------------------------------------------------------
-
-struct quadrature_stack_test_single_bisection_t : quadrature_stack_test_t
-{
-    bisection_t bisection = create_bisection(13, 17);
-
-    quadrature_stack_test_single_bisection_t() { sut.push(bisection); }
-};
-
-TEST_F(quadrature_stack_test_single_bisection_t, starts_not_empty)
-{
-    EXPECT_FALSE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_single_bisection_t, clears_to_empty)
-{
-    sut.clear();
-    EXPECT_TRUE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_single_bisection_t, segments)
-{
-    expect_order({17, 13});
-}
-
-TEST_F(quadrature_stack_test_single_bisection_t, pops_to_empty)
-{
-    sut.pop();
-    sut.pop();
-    EXPECT_TRUE(sut.empty());
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-// multiple_pushed
-// --------------------------------------------------------------------------------------------------------------------
-
-struct quadrature_stack_test_multiple_pushed_t : quadrature_stack_test_t
-{
-    segment_t   segment   = create_segment(13);
-    bisection_t bisection = create_bisection(17, 19);
-
-    quadrature_stack_test_multiple_pushed_t()
-    {
-        sut.push(segment);
-        sut.push(bisection);
-    }
-};
-
-TEST_F(quadrature_stack_test_multiple_pushed_t, starts_not_empty)
-{
-    EXPECT_FALSE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_multiple_pushed_t, clears_to_empty)
-{
-    sut.clear();
-    EXPECT_TRUE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_multiple_pushed_t, segments)
-{
-    expect_order({13, 19, 17});
-}
-
-TEST_F(quadrature_stack_test_multiple_pushed_t, pops_to_empty)
-{
-    sut.pop();
-    sut.pop();
-    sut.pop();
-    EXPECT_TRUE(sut.empty());
-}
-
-TEST_F(quadrature_stack_test_multiple_pushed_t, interleaved_push_and_pop)
-{
-    // pop the initial 17
-    auto const seg = sut.pop();
-    EXPECT_EQ(17, seg.depth);
-
-    // simulate bisection of 13 into 14 and 15
-    sut.push(create_bisection(14, 15));
-
-    // pop the left child (14)
-    auto const left = sut.pop();
-    EXPECT_EQ(14, left.depth);
-
-    // simulate bisection of 15 into 16 and 17
-    sut.push(create_bisection(16, 17));
-
-    // remaining order should be the original 13 and 19, then 17 (left of 15), 16 (right of 15), 14 (right of 13)
-    expect_order({13, 19, 15, 17, 16});
-}
+using stack_t     = std::vector<segment_t>;
 
 // ====================================================================================================================
 // stack_seeder_t
@@ -255,7 +69,7 @@ struct quadrature_stack_seeder_test_single_segment_t : quadrature_stack_seeder_t
 
 TEST_F(quadrature_stack_seeder_test_single_segment_t, segment)
 {
-    EXPECT_EQ(stack.pop(), create_segment(0.0, domain_max, global_tolerance, 0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max, global_tolerance, 0));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -272,7 +86,7 @@ struct quadrature_stack_seeder_test_no_critical_points_t : quadrature_stack_seed
 
 TEST_F(quadrature_stack_seeder_test_no_critical_points_t, segment)
 {
-    EXPECT_EQ(stack.pop(), create_segment(0.0, domain_max, global_tolerance, 0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max, global_tolerance, 0));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -289,9 +103,10 @@ struct quadrature_stack_seeder_test_one_critical_point_t : quadrature_stack_seed
 
 TEST_F(quadrature_stack_seeder_test_one_critical_point_t, segments)
 {
-    EXPECT_EQ(stack.pop(), create_segment(0.0, domain_max / 3.0, global_tolerance / 3.0, 1));
-    EXPECT_EQ(stack.pop(), create_segment(domain_max / 3.0, domain_max,
-                                          global_tolerance * (domain_max - domain_max / 3.0) / domain_max, 0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max / 3.0, global_tolerance / 3.0, 1));
+    stack.pop_back();
+    EXPECT_EQ(stack.back(), create_segment(domain_max / 3.0, domain_max,
+                                           global_tolerance * (domain_max - domain_max / 3.0) / domain_max, 0));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -309,12 +124,18 @@ struct quadrature_stack_seeder_test_many_critical_points_t : quadrature_stack_se
 
 TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
 {
-    EXPECT_EQ(stack.pop(), create_segment(0.0, domain_max / 5.0, global_tolerance / 5.0, 3));
-    EXPECT_EQ(stack.pop(), create_segment(domain_max / 5.0, domain_max / 3.0,
-                                          global_tolerance * (domain_max / 3.0 - domain_max / 5.0) / domain_max, 2));
-    EXPECT_EQ(stack.pop(), create_segment(domain_max / 3.0, domain_max / 2.0,
-                                          global_tolerance * (domain_max / 2.0 - domain_max / 3.0) / domain_max, 1));
-    EXPECT_EQ(stack.pop(), create_segment(domain_max / 2.0, domain_max, global_tolerance / 2.0, 0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max / 5.0, global_tolerance / 5.0, 3));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(), create_segment(domain_max / 5.0, domain_max / 3.0,
+                                           global_tolerance * (domain_max / 3.0 - domain_max / 5.0) / domain_max, 2));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(), create_segment(domain_max / 3.0, domain_max / 2.0,
+                                           global_tolerance * (domain_max / 2.0 - domain_max / 3.0) / domain_max, 1));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(), create_segment(domain_max / 2.0, domain_max, global_tolerance / 2.0, 0));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -326,14 +147,14 @@ struct quadrature_stack_seeder_death_tests_t : quadrature_stack_seeder_test_t
 
 TEST_F(quadrature_stack_seeder_death_tests_t, single_segment_asserts_on_non_empty_stack)
 {
-    stack.push(create_segment(0.0, 1.0, 0.1));
+    stack.push_back(create_segment(0.0, 1.0, 0.1));
 
     EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance), "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, critical_points_asserts_on_non_empty_stack)
 {
-    stack.push(create_segment(0.0, 1.0, 0.1));
+    stack.push_back(create_segment(0.0, 1.0, 0.1));
 
     EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
                        "empty before seeding");
