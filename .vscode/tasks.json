@@ -16,7 +16,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc",
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            }
         },
         {
             "label": "kbuild",
@@ -33,7 +36,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc"
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            }
         },
         {
             "label": "all + kbuild",
@@ -51,7 +57,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc",
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -70,7 +79,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc"
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            }
         },
         {
             "label": "clean kbuild",
@@ -88,7 +100,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc"
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            }
         },
         {
             "label": "clean all",
@@ -106,7 +121,10 @@
                 "reveal": "always",
                 "showReuseMessage": false
             },
-            "problemMatcher": "$gcc"
+            "problemMatcher": {
+                "base": "$gcc",
+                "owner": "cpp"
+            }
         }
     ]
 }
