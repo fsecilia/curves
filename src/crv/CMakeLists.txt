@@ -24,7 +24,6 @@ target_sources(lib PRIVATE
     math/mesh/weight_function.hpp
     math/quadrature/antiderivative.hpp
     math/quadrature/bisector.hpp
-    math/quadrature/cache.hpp
     math/quadrature/integral.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
@@ -105,7 +104,6 @@ if (enable_testing)
         math/mesh/weight_function_test.cpp
         math/quadrature/antiderivative_test.cpp
         math/quadrature/bisector_test.cpp
-        math/quadrature/cache_test.cpp
         math/quadrature/integral_test.cpp
         math/quadrature/rules_test.cpp
         math/quadrature/stack_test.cpp
