@@ -21,6 +21,8 @@ template <typename stack_t, typename real_t>
 concept is_stack = requires(stack_t& stack, segment_t<real_t> segment, bisection_t<real_t> bisection) {
     stack.push(segment);
     stack.push(bisection);
+    { stack.pop() } -> std::same_as<segment_t<real_t>>;
+    stack.clear();
     { stack.empty() } -> std::convertible_to<bool>;
 };
 
@@ -31,42 +33,43 @@ public:
     using segment_t   = segment_t<real_t>;
     using bisection_t = bisection_t<real_t>;
 
-    stack_t() { segments_.reserve(32); }
+    constexpr stack_t() noexcept { segments_.reserve(32); }
 
-    auto clear() noexcept -> void { segments_.clear(); }
+    /// pushes root segment directly
+    constexpr auto push(segment_t segment) -> void { segments_.push_back(segment); }
 
-    auto push(segment_t segment) -> void { segments_.push_back(segment); }
-    auto push(bisection_t const& bisection) -> void
+    /// pushes bisected children
+    constexpr auto push(bisection_t const& bisection) -> void
     {
         // push right then left so left pops first
         push(bisection.right);
         push(bisection.left);
     }
 
-    auto pop() noexcept -> segment_t
+    /// \pre !empty()
+    constexpr auto pop() -> segment_t
     {
-        assert(!segments_.empty() && "stack_t: pop on empty");
+        assert(!empty() && "stack_t: pop on empty");
         auto result = segments_.back();
         segments_.pop_back();
         return result;
     }
 
-    auto empty() const noexcept -> bool { return segments_.empty(); }
+    constexpr auto clear() noexcept -> void { segments_.clear(); }
+    constexpr auto empty() const noexcept -> bool { return segments_.empty(); }
 
 private:
     std::vector<segment_t> segments_{};
 };
 
 /// seeds empty stack with domain-level segments
-template <std::floating_point real_t> class stack_seeder_t
+class stack_seeder_t
 {
 public:
-    using segment_t   = segment_t<real_t>;
-    using bisection_t = bisection_t<real_t>;
-
     /// seeds stack with single segment across entire domain
     ///
     /// \pre stack.empty()
+    template <std::floating_point real_t>
     auto seed(is_stack<real_t> auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max,
               real_t global_tolerance) -> void
     {
@@ -82,6 +85,7 @@ public:
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
+    template <std::floating_point real_t>
     auto seed(is_stack<real_t> auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max,
               real_t global_tolerance, compatible_range<real_t> auto const& critical_points) -> void
     {

@@ -14,6 +14,7 @@ namespace {
 using real_t      = float_t;
 using segment_t   = segment_t<real_t>;
 using bisection_t = bisection_t<real_t>;
+using stack_t     = stack_t<real_t>;
 
 // ====================================================================================================================
 // stack_t
@@ -43,7 +44,7 @@ struct quadrature_stack_test_t : Test
         };
     }
 
-    using sut_t = stack_t<real_t>;
+    using sut_t = stack_t;
     sut_t sut{};
 
     auto expect_order(std::initializer_list<int_t> ids) -> void
@@ -207,12 +208,11 @@ TEST_F(quadrature_stack_test_multiple_pushed_t, interleaved_push_and_pop)
 // ====================================================================================================================
 
 // These tests rely on segment_t::operator ==(), which tests doubles directly. Currently, they get lucky and the values
-// match, but changing any arithmetic in stack_seeder_t, even just the order of operations, will likely break these If
+// match, but changing any arithmetic in stack_seeder_t, even just the order of operations, will likely break these. If
 // they become fragile, the solution is to switch to using a gmock matcher and testing field by field using DoubleNear.
 
 struct quadrature_stack_seeder_test_t : Test
 {
-    using stack_t = stack_t<real_t>;
     stack_t stack{};
 
     static auto create_segment(real_t left, real_t right, real_t tolerance, int_t id = 0) noexcept -> segment_t
@@ -240,7 +240,7 @@ struct quadrature_stack_seeder_test_t : Test
     static constexpr auto domain_max       = 1024.0;
     static constexpr auto global_tolerance = 1.0;
 
-    using sut_t = stack_seeder_t<real_t>;
+    using sut_t = stack_seeder_t;
     sut_t sut{};
 };
 
