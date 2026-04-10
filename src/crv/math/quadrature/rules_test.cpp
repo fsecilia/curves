@@ -74,13 +74,13 @@ constexpr auto total_exact = rule.estimate(0.0, 1.0, [](real_t x) { return power
 static_assert(near(total_exact.sum, 1.0 / 14.0));
 static_assert(near(total_exact.error, 0.0, 1e-14));
 
-// Kronrod exact
+// K15 exact
 //
 // K15 is exact up to degree 23 (3n + 2). G7 fails.
 // Integral of x^23 on [0, 1] = 1/24. K15 computes the exact value, but the error estimate is > 0.
-constexpr auto kronrod_exact = rule.estimate(0.0, 1.0, [](real_t x) { return power(x, 23); });
-static_assert(near(kronrod_exact.sum, 1.0 / 24.0));
-static_assert(kronrod_exact.error > 1e-8);
+constexpr auto k15_exact = rule.estimate(0.0, 1.0, [](real_t x) { return power(x, 23); });
+static_assert(near(k15_exact.sum, 1.0 / 24.0));
+static_assert(k15_exact.error > 1e-8);
 
 // demonstrated failure
 //
