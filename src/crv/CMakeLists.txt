@@ -23,12 +23,12 @@ target_sources(lib PRIVATE
     math/mesh/segment.hpp
     math/mesh/weight_function.hpp
     math/quadrature/antiderivative.hpp
+    math/quadrature/bisector.hpp
     math/quadrature/cache.hpp
     math/quadrature/integral.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
-    math/quadrature/subdivider.hpp
     math/stats.hpp
 )
 target_sources_kernel(lib
@@ -104,11 +104,11 @@ if (enable_testing)
         math/mesh/segment_test.cpp
         math/mesh/weight_function_test.cpp
         math/quadrature/antiderivative_test.cpp
+        math/quadrature/bisector_test.cpp
         math/quadrature/cache_test.cpp
         math/quadrature/integral_test.cpp
         math/quadrature/rules_test.cpp
         math/quadrature/stack_test.cpp
-        math/quadrature/subdivider_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/stats_test.cpp
