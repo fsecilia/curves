@@ -34,5 +34,37 @@ template <typename real_t> struct subdivision_predicate_t
     }
 };
 
+/// adaptively subdivides the contents of a segment stack
+template <typename real_t, typename subdivision_predicate_t> struct subdivider_t
+{
+    [[no_unique_address]] subdivision_predicate_t should_subdivide{};
+
+    constexpr auto run(auto& stack, is_nested_bisector<real_t> auto const& bisector, auto& builder,
+                       int_t depth_limit) const -> void
+    {
+        while (!stack.empty())
+        {
+            auto const segment = stack.back();
+            stack.pop_back();
+
+            auto const bisection = bisector(segment);
+
+            if (should_subdivide(segment, bisection.integral, bisection.error_estimate, depth_limit))
+            {
+                // push right then left so left pops first
+                stack.push_back(bisection.right);
+                stack.push_back(bisection.left);
+            }
+            else
+            {
+                builder.append(bisection.right.right, bisection.integral, bisection.error_estimate);
+            }
+        }
+    }
+};
+
 } // namespace generic
+
+template <typename real_t> using subdivider_t = generic::subdivider_t<real_t, generic::subdivision_predicate_t<real_t>>;
+
 } // namespace crv::quadrature

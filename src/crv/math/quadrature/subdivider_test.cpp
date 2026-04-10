@@ -10,8 +10,9 @@
 namespace crv::quadrature::generic {
 namespace {
 
-using real_t    = float_t;
-using segment_t = segment_t<real_t>;
+using real_t      = float_t;
+using segment_t   = segment_t<real_t>;
+using bisection_t = bisection_t<real_t>;
 
 // ====================================================================================================================
 // subdivision_predicate_t
@@ -134,6 +135,105 @@ static_assert(!sut(inverted_segment, base_area, base_error, base_limit));
 static_assert(!sut(base_segment, base_area, -1.0, base_limit));
 
 } // namespace subdivision_predicate_test
+
+// ====================================================================================================================
+// subdivider_t
+// ====================================================================================================================
+
+namespace subdivider_test {
+
+using stack_t = std::vector<segment_t>;
+
+// accumulates final results
+struct builder_t
+{
+    int_t  appended_segment_count = 0;
+    real_t total_integral         = 0.0;
+
+    constexpr auto append(real_t, real_t integral, real_t) -> void
+    {
+        ++appended_segment_count;
+        total_integral += integral;
+    }
+};
+
+// bisector that just increments depth and divides the integral
+struct stub_bisector_t
+{
+    constexpr auto operator()(segment_t const& seg) const -> bisection_t
+    {
+        return bisection_t
+        {
+            .left           = segment_t
+            {
+                .left       = 0.0,
+                .right      = seg.right/2.0,
+                .integral   = seg.integral / 2.0,
+                .tolerance  = 0.0,
+                .depth      = seg.depth + 1,
+            },
+            .right          = segment_t
+            {
+                .left       = seg.right/2.0,
+                .right      = seg.right,
+                .integral   = seg.integral / 2.0,
+                .tolerance  = 0.0,
+                .depth      = seg.depth + 1,
+            },
+            .integral       = seg.integral,
+            .error_estimate = 0.0,
+        };
+    }
+};
+
+// predicate that strictly stops at a given depth
+struct stub_predicate_t
+{
+    int_t depth;
+
+    constexpr auto operator()(segment_t const& seg, real_t, real_t, int_t) const noexcept -> bool
+    {
+        return seg.depth < depth;
+    }
+};
+
+constexpr auto test_immediate_termination() -> bool
+{
+    auto stack           = stack_t{};
+    auto builder         = builder_t{};
+    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
+
+    stack.push_back(initial_segment);
+
+    // predicate stops immediately at depth 0
+    auto sut = subdivider_t<real_t, stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 0}};
+
+    sut.run(stack, stub_bisector_t{}, builder, 10);
+
+    // halts immediately, bisects once, fails the predicate, and appends
+    return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
+}
+static_assert(test_immediate_termination());
+
+constexpr auto test_shallow_subdivision() -> bool
+{
+    auto stack           = stack_t{};
+    auto builder         = builder_t{};
+    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
+
+    stack.push_back(initial_segment);
+
+    // predicate allows exactly one level of subdivision
+    auto sut = subdivider_t<real_t, stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 1}};
+
+    sut.run(stack, stub_bisector_t{}, builder, 10);
+
+    // splits root into 2 segments, which then fail the predicate and append
+    return builder.appended_segment_count == 2 && builder.total_integral == 100.0;
+}
+static_assert(test_shallow_subdivision());
+
+} // namespace subdivider_test
 
 } // namespace
 } // namespace crv::quadrature::generic
