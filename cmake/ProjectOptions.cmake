@@ -84,6 +84,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-switch-default
         -Wno-unneeded-member-function
         -Wno-unsafe-buffer-usage
+        -Wno-unused-member-function
+        -Wno-unused-template
     )
 endif()
 
