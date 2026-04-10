@@ -8,85 +8,110 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <flat_map>
 #include <utility>
 
 namespace crv::quadrature {
 
 /// antiderivative, yielding a 1-jet via an accumulation function
-///
-/// This type is an orchestrator. It encapsulates an integrand, a quadrature rule, and an integral cache to form a
-/// continuous accumulation function, F(x).
-template <typename real_t, typename integrand_t, typename rule_t, typename cache_t> class antiderivative_t
+template <typename t_real_t, typename t_integral_t> class antiderivative_t
 {
 public:
-    using jet_t = jet_t<real_t>;
+    using real_t     = t_real_t;
+    using integral_t = t_integral_t;
 
-    antiderivative_t() = delete;
-    antiderivative_t(integrand_t f, rule_t rule, cache_t cache) noexcept
-        : integrand_{std::move(f)}, rule_{std::move(rule)}, cache_{std::move(cache)}
-    {}
+    using jet_t             = jet_t<real_t>;
+    using map_t             = std::flat_map<real_t, real_t>;
+    using boundaries_t      = map_t::key_container_type;
+    using cumulative_sums_t = map_t::mapped_container_type;
+
+    constexpr antiderivative_t(integral_t integral, map_t intervals) noexcept
+        : integral_{std::move(integral)}, intervals_{std::move(intervals)}
+    {
+        assert(!intervals_.empty() && "antiderivative_t: empty intervals");
+        assert(intervals_.begin()->first == real_t{0} && "antiderivative_t: origin must start at 0");
+        assert(intervals_.begin()->second == real_t{0} && "antiderivative_t: cumulative sum must start at 0");
+    }
 
     /// evaluates accumulation function F(x) and its derivative f(x).
     ///
     /// The primal of the integral is the sum of the nearest cached base integral and a local residual calculated using
     /// the quadrature rule and integrand. The tangent of the integral, by the First Fundamental Theorem of Calculus, is
     /// the original integrand itself, evaluated directly.
-    auto operator()(real_t location) const noexcept -> jet_t
+    constexpr auto operator()(real_t location) const noexcept -> jet_t
     {
-        auto const interval = cache_.interval(location);
-        auto const residual = rule_(interval.left_bound, location, integrand_);
-        auto const integral = interval.base_integral + residual;
-        return jet_t{integral, integrand_(location)};
+        assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
+               && "antiderivative_t: domain error");
+
+        auto const right    = intervals_.upper_bound(location);
+        auto const left     = std::ranges::prev(right);
+        auto const residual = integral_.integrate(left->first, location);
+        auto const integral = left->second + residual;
+
+        return jet_t{integral, integral_.evaluate_integrand(location)};
     }
 
 private:
-    integrand_t integrand_;
-    rule_t      rule_;
-    cache_t     cache_;
+    integral_t integral_;
+    map_t      intervals_;
 };
 
-/// tracks error metrics during quadrature and assembles the final antiderivative
-template <std::floating_point real_t, typename cache_builder_t, typename accumulator_t> class antiderivative_builder_t
+/// accumulates quadrature results and assembles final antiderivative
+template <std::floating_point real_t, typename accumulator_t, typename antiderivative_t> class antiderivative_builder_t
 {
 public:
-    template <typename antiderivative_t> struct result_t
+    using integral_t = antiderivative_t::integral_t;
+
+    struct result_t
     {
         antiderivative_t antiderivative;
         real_t           achieved_error;
         real_t           max_error;
     };
 
-    antiderivative_builder_t() = default;
-    explicit antiderivative_builder_t(cache_builder_t cache_builder) noexcept : cache_builder_{std::move(cache_builder)}
-    {}
-
-    constexpr auto append(real_t right_bound, real_t sum, real_t error) -> void
+    constexpr antiderivative_builder_t()
     {
-        cache_builder_.append(right_bound, sum);
+        boundaries_.reserve(32);
+        boundaries_.push_back(real_t{0});
 
-        running_error_ += error;
-        max_error_ = std::max(max_error_, error);
+        cumulative_sums_.reserve(32);
+        cumulative_sums_.push_back(real_t{0});
     }
 
-    template <typename integrand_t, typename rule_t, typename cache_t = typename cache_builder_t::result_t,
-              typename antiderivative_t = antiderivative_t<real_t, integrand_t, rule_t, cache_t>>
-    constexpr auto finalize(integrand_t integrand, rule_t rule) && -> result_t<antiderivative_t>
+    constexpr auto append(real_t right_bound, real_t area, real_t error) -> void
     {
-        return result_t<antiderivative_t>{
-            antiderivative_t{
-                std::move(integrand),
-                std::move(rule),
-                std::move(cache_builder_).finalize(),
-            },
+        assert(right_bound > boundaries_.back()
+               && "antiderivative_builder_t: boundaries must be monotonically increasing");
+
+        running_area_ += area;
+        running_error_ += error;
+        max_error_ = std::max(max_error_, error);
+
+        boundaries_.push_back(right_bound);
+        cumulative_sums_.push_back(static_cast<real_t>(running_area_));
+    }
+
+    constexpr auto finalize(integral_t integral) && -> result_t
+    {
+        using map_t    = antiderivative_t::map_t;
+        auto intervals = map_t{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)};
+
+        return result_t{
+            antiderivative_t{std::move(integral), std::move(intervals)},
             static_cast<real_t>(running_error_),
             max_error_,
         };
     }
 
 private:
-    cache_builder_t cache_builder_{};
-    accumulator_t   running_error_{};
-    real_t          max_error_{0};
+    using boundaries_t      = antiderivative_t::boundaries_t;
+    using cumulative_sums_t = antiderivative_t::cumulative_sums_t;
+
+    boundaries_t      boundaries_{};
+    cumulative_sums_t cumulative_sums_{};
+    accumulator_t     running_area_{};
+    accumulator_t     running_error_{};
+    real_t            max_error_{0};
 };
 
 } // namespace crv::quadrature
