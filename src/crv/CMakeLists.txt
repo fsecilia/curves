@@ -27,6 +27,7 @@ target_sources(lib PRIVATE
     math/quadrature/integral.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
+    math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
     math/stats.hpp
 )
@@ -106,6 +107,7 @@ if (enable_testing)
         math/quadrature/bisector_test.cpp
         math/quadrature/integral_test.cpp
         math/quadrature/rules_test.cpp
+        math/quadrature/subdivider_test.cpp
         math/quadrature/stack_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
