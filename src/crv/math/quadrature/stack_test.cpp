@@ -40,7 +40,7 @@ struct quadrature_stack_seeder_test_t : Test
         };
     }
 
-    struct subdivider_t
+    struct bisector_t
     {
         mutable int_t next_id = 0;
 
@@ -49,7 +49,7 @@ struct quadrature_stack_seeder_test_t : Test
             return create_segment(left, right, tolerance, next_id++);
         }
     };
-    subdivider_t subdivider;
+    bisector_t bisector;
 
     static constexpr auto domain_max       = 1024.0;
     static constexpr auto global_tolerance = 1.0;
@@ -64,7 +64,7 @@ struct quadrature_stack_seeder_test_t : Test
 
 struct quadrature_stack_seeder_test_single_segment_t : quadrature_stack_seeder_test_t
 {
-    quadrature_stack_seeder_test_single_segment_t() { sut.seed(stack, subdivider, domain_max, global_tolerance); }
+    quadrature_stack_seeder_test_single_segment_t() { sut.seed(stack, bisector, domain_max, global_tolerance); }
 };
 
 TEST_F(quadrature_stack_seeder_test_single_segment_t, segment)
@@ -80,7 +80,7 @@ struct quadrature_stack_seeder_test_no_critical_points_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_no_critical_points_t()
     {
-        sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list<real_t>{});
+        sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list<real_t>{});
     }
 };
 
@@ -97,7 +97,7 @@ struct quadrature_stack_seeder_test_one_critical_point_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_one_critical_point_t()
     {
-        sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list<real_t>{domain_max / 3.0});
+        sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list<real_t>{domain_max / 3.0});
     }
 };
 
@@ -117,7 +117,7 @@ struct quadrature_stack_seeder_test_many_critical_points_t : quadrature_stack_se
 {
     quadrature_stack_seeder_test_many_critical_points_t()
     {
-        sut.seed(stack, subdivider, domain_max, global_tolerance,
+        sut.seed(stack, bisector, domain_max, global_tolerance,
                  std::initializer_list{domain_max / 5.0, domain_max / 3.0, domain_max / 2.0});
     }
 };
@@ -149,46 +149,46 @@ TEST_F(quadrature_stack_seeder_death_tests_t, single_segment_asserts_on_non_empt
 {
     stack.push_back(create_segment(0.0, 1.0, 0.1));
 
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance), "empty before seeding");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance), "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, critical_points_asserts_on_non_empty_stack)
 {
     stack.push_back(create_segment(0.0, 1.0, 0.1));
 
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list{0.0}),
                        "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_zero_critical_point)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{0.0}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list{0.0}),
                        "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_negative_critical_point)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{-1.0}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list{-1.0}),
                        "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_max_critical_point)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance, std::initializer_list{domain_max}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance, std::initializer_list{domain_max}),
                        "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_unsorted_critical_points)
 {
     // passing these in reverse order, descending, should trip the assert
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance,
                                 std::initializer_list{domain_max / 2.0, domain_max / 3.0}),
                        "increasing and unique");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_points)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, subdivider, domain_max, global_tolerance,
+    EXPECT_DEBUG_DEATH(sut.seed(stack, bisector, domain_max, global_tolerance,
                                 std::initializer_list{domain_max / 3.0, domain_max / 3.0}),
                        "increasing and unique");
 }

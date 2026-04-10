@@ -22,12 +22,12 @@ public:
     ///
     /// \pre stack.empty()
     template <std::floating_point real_t>
-    auto seed(auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max, real_t global_tolerance)
+    auto seed(auto& stack, is_root_bisector<real_t> auto const& bisector, real_t domain_max, real_t global_tolerance)
         -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
-        stack.push_back(subdivider(real_t{0}, domain_max, global_tolerance));
+        stack.push_back(bisector(real_t{0}, domain_max, global_tolerance));
     }
 
     /// seeds stack with multiple segments, splitting domain at critical points
@@ -38,7 +38,7 @@ public:
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
     template <std::floating_point real_t>
-    auto seed(auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max, real_t global_tolerance,
+    auto seed(auto& stack, is_root_bisector<real_t> auto const& bisector, real_t domain_max, real_t global_tolerance,
               compatible_range<real_t> auto const& critical_points) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
@@ -53,12 +53,12 @@ public:
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
             auto const tolerance = global_tolerance * ((right - left) / domain_max);
-            stack.push_back(subdivider(left, right, tolerance));
+            stack.push_back(bisector(left, right, tolerance));
 
             right = left;
         }
 
-        stack.push_back(subdivider(real_t{0}, right, global_tolerance * (right / domain_max)));
+        stack.push_back(bisector(real_t{0}, right, global_tolerance * (right / domain_max)));
     }
 };
 
