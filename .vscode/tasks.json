@@ -98,7 +98,7 @@
             ],
             "dependsOrder": "sequence",
             "presentation": {
-                "clear": false,
+                "clear": true,
                 "echo": false,
                 "focus": false,
                 "group": "clean",
