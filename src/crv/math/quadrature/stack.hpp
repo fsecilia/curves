@@ -67,7 +67,7 @@ public:
     /// seeds stack with single segment across entire domain
     ///
     /// \pre stack.empty()
-    auto seed(is_stack<real_t> auto& stack, is_root_subdivider<real_t> auto const& subdivider, real_t domain_max,
+    auto seed(is_stack<real_t> auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max,
               real_t global_tolerance) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
@@ -82,7 +82,7 @@ public:
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
-    auto seed(is_stack<real_t> auto& stack, is_root_subdivider<real_t> auto const& subdivider, real_t domain_max,
+    auto seed(is_stack<real_t> auto& stack, is_root_bisector<real_t> auto const& subdivider, real_t domain_max,
               real_t global_tolerance, compatible_range<real_t> auto const& critical_points) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");

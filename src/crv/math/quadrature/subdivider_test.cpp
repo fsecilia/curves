@@ -15,16 +15,16 @@ constexpr auto initial_tolerance = 7.65; // arbitrary
 // fixtures
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename real_t> struct result_t
+template <std::floating_point real_t> struct rule_result_t
 {
     real_t value;
     real_t error;
 };
 
 // simple trapezoidal rule that reports a fake internal error
-template <typename real_t> struct rule_t
+template <std::floating_point real_t> struct rule_t
 {
-    constexpr auto operator()(real_t left, real_t right, auto const& integrand) const noexcept -> result_t<real_t>
+    constexpr auto operator()(real_t left, real_t right, auto const& integrand) const noexcept -> rule_result_t<real_t>
     {
         auto const width = right - left;
         auto const value = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
@@ -37,28 +37,40 @@ template <typename real_t> struct rule_t
 };
 
 // f(x) = x^2
-template <typename real_t> struct quadratic_integrand_t
+template <std::floating_point real_t> struct quadratic_integrand_t
 {
     constexpr auto operator()(real_t x) const noexcept -> real_t { return x * x; }
 };
 
 // f(x) = x^3
-template <typename real_t> struct cubic_integrand_t
+template <std::floating_point real_t> struct cubic_integrand_t
 {
     constexpr auto operator()(real_t x) const noexcept -> real_t { return x * x * x; }
 };
 
 // f(x) = value, stateful
-template <typename real_t> struct constant_integrand_t
+template <std::floating_point real_t> struct constant_integrand_t
 {
     real_t         value;
     constexpr auto operator()(real_t) const noexcept -> real_t { return value; }
 };
 
 // f(x) = -x^2
-template <typename real_t> struct negative_quadratic_integrand_t
+template <std::floating_point real_t> struct negative_quadratic_integrand_t
 {
     constexpr auto operator()(real_t x) const noexcept -> real_t { return -(x * x); }
+};
+
+template <typename integrand_t, typename rule_t> struct integral_t
+{
+    integrand_t integrand;
+    rule_t      rule;
+
+    template <std::floating_point real_t>
+    constexpr auto operator()(real_t left, real_t right) const noexcept -> rule_result_t<real_t>
+    {
+        return rule(left, right, integrand);
+    }
 };
 
 namespace float64_test_t {
@@ -74,7 +86,8 @@ constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
 
 namespace even_function {
 
-constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
+constexpr auto sut
+    = bisector_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
 
 // --------------------------------------------------------------------------------------------------------------------
 // root segment creation
@@ -206,7 +219,7 @@ namespace odd_function {
 
 using integrand_t        = cubic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
 
@@ -236,7 +249,7 @@ namespace const_function {
 
 using integrand_t        = constant_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{10.0};
-constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
 
@@ -267,7 +280,8 @@ static_assert(bisection.error_estimate == 0.4);
 namespace quadrature_dominant {
 
 // reuse the quadratic integrand on a narrow interval, so subdivision error shrinks below quadrature error
-constexpr auto sut = subdivider_t<real_t, quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
+constexpr auto sut
+    = bisector_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
 
 constexpr auto parent = sut(0.0, 0.5, initial_tolerance);
 
@@ -297,7 +311,7 @@ namespace negative_function {
 
 using integrand_t        = negative_quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
 
@@ -331,7 +345,7 @@ constexpr auto rule = rule_t<real_t>{};
 
 using integrand_t        = quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = subdivider_t<real_t, integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent    = sut(0.0f, 6.0f, 1.0f);
 constexpr auto bisection = sut(parent);
