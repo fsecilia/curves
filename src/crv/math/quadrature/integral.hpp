@@ -20,15 +20,21 @@ public:
         : integrand_{std::move(integrand)}, rule_{std::move(rule)}
     {}
 
-    /// integrates over [left, right]
+    /// integrates over [left, right], returns sum and error
     template <std::floating_point real_t>
-    constexpr auto operator()(real_t left, real_t right) const noexcept -> rule_result_t<real_t>
+    constexpr auto estimate(real_t left, real_t right) const noexcept -> rule_t::estimate_t
     {
-        return rule_(left, right, integrand_);
+        return rule_.estimate(left, right, integrand_);
+    }
+
+    /// integrates over [left, right], returns sum
+    template <std::floating_point real_t> constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    {
+        return rule_.integrate(left, right, integrand_);
     }
 
     /// evaluates integrand at a point
-    template <std::floating_point real_t> constexpr auto operator()(real_t position) const noexcept -> real_t
+    template <std::floating_point real_t> constexpr auto evaluate_integrand(real_t position) const noexcept -> real_t
     {
         return integrand_(position);
     }
