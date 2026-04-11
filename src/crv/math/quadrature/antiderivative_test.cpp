@@ -64,6 +64,11 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
     };
 };
 
+TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
+{
+    EXPECT_EQ(3, sut.segment_count());
+}
+
 // test absolute left edge of the domain
 TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min)
 {
@@ -160,6 +165,11 @@ struct quadrature_antiderivative_test_minimal_cache_t : quadrature_antiderivativ
         },
     };
 };
+
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, segment_count)
+{
+    EXPECT_EQ(1, sut.segment_count());
+}
 
 // test absolute left edge of the domain
 TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min)

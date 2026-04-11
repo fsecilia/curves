@@ -52,6 +52,11 @@ public:
         return jet_t{integral, integral_.evaluate_integrand(location)};
     }
 
+    /// number of accepted quadrature segments
+    ///
+    /// the interval map always carries the origin plus one entry per accepted segment, so the count is size - 1
+    constexpr auto segment_count() const noexcept -> int_t { return static_cast<int_t>(intervals_.size() - 1); }
+
 private:
     integral_t integral_;
     map_t      intervals_;
