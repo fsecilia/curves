@@ -15,24 +15,29 @@ constexpr auto initial_tolerance = 7.65; // arbitrary
 // fixtures
 // --------------------------------------------------------------------------------------------------------------------
 
-template <std::floating_point real_t> struct rule_result_t
-{
-    real_t value;
-    real_t error;
-};
-
 // simple trapezoidal rule that reports a fake internal error
 template <std::floating_point real_t> struct rule_t
 {
-    constexpr auto operator()(real_t left, real_t right, auto const& integrand) const noexcept -> rule_result_t<real_t>
+    struct estimate_t
+    {
+        real_t sum;
+        real_t error;
+    };
+
+    constexpr auto estimate(real_t left, real_t right, auto const& integrand) const noexcept -> estimate_t
     {
         auto const width = right - left;
-        auto const value = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
+        auto const sum   = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
 
         // fake a small internal error; abs() to honor the non-negative contract under reversed bounds
         auto const error = abs(width) * static_cast<real_t>(0.1);
 
-        return {value, error};
+        return {sum, error};
+    }
+
+    constexpr auto integrate(real_t left, real_t right, auto const& integrand) const noexcept -> real_t
+    {
+        return estimate(left, right, integrand).sum;
     }
 };
 
@@ -67,9 +72,14 @@ template <typename integrand_t, typename rule_t> struct integral_t
     rule_t      rule;
 
     template <std::floating_point real_t>
-    constexpr auto operator()(real_t left, real_t right) const noexcept -> rule_result_t<real_t>
+    constexpr auto estimate(real_t left, real_t right) const noexcept -> rule_t::estimate_t
     {
-        return rule(left, right, integrand);
+        return rule.estimate(left, right, integrand);
+    }
+
+    template <std::floating_point real_t> constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    {
+        return rule.integrate(left, right, integrand);
     }
 };
 

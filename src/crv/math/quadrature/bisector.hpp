@@ -40,7 +40,7 @@ public:
     template <std::floating_point real_t>
     constexpr auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t<real_t>
     {
-        return segment_t{left, right, integral_(left, right).value, tolerance, 0};
+        return segment_t{left, right, integral_.integrate(left, right), tolerance, 0};
     }
 
     /// bisects segment into two child segments
@@ -51,10 +51,10 @@ public:
         auto const child_tolerance = parent.tolerance / 2;
         auto const child_depth     = parent.depth + 1;
 
-        auto const left_rule_result  = integral_(parent.left, parent_midpoint);
-        auto const right_rule_result = integral_(parent_midpoint, parent.right);
+        auto const left_rule_result  = integral_.estimate(parent.left, parent_midpoint);
+        auto const right_rule_result = integral_.estimate(parent_midpoint, parent.right);
 
-        auto const combined_integral = left_rule_result.value + right_rule_result.value;
+        auto const combined_integral = left_rule_result.sum + right_rule_result.sum;
         auto const quadrature_error  = left_rule_result.error + right_rule_result.error;
         auto const subdivision_error = abs(combined_integral - parent.integral);
         auto const error_estimate    = std::max(quadrature_error, subdivision_error);
@@ -66,7 +66,7 @@ public:
             {
                 .left = parent.left,
                 .right = parent_midpoint,
-                .integral = left_rule_result.value,
+                .integral = left_rule_result.sum,
                 .tolerance = child_tolerance,
                 .depth = child_depth,
             },
@@ -74,7 +74,7 @@ public:
             {
                 .left = parent_midpoint,
                 .right = parent.right,
-                .integral = right_rule_result.value,
+                .integral = right_rule_result.sum,
                 .tolerance = child_tolerance,
                 .depth = child_depth,
             },
