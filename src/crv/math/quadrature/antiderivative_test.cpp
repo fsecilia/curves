@@ -150,7 +150,7 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, query_nan_aborts)
 // minimal cache
 // --------------------------------------------------------------------------------------------------------------------
 
-struct quadrature_antiderivative_test_minmal_cache_t : quadrature_antiderivative_test_t
+struct quadrature_antiderivative_test_minimal_cache_t : quadrature_antiderivative_test_t
 {
     sut_t sut{
         integral_t{&mock_integral},
@@ -162,7 +162,7 @@ struct quadrature_antiderivative_test_minmal_cache_t : quadrature_antiderivative
 };
 
 // test absolute left edge of the domain
-TEST_F(quadrature_antiderivative_test_minmal_cache_t, domain_min)
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min)
 {
     auto const location               = 0.0;
     auto const expected_left_position = 0.0;
@@ -174,7 +174,7 @@ TEST_F(quadrature_antiderivative_test_minmal_cache_t, domain_min)
 }
 
 // test interior
-TEST_F(quadrature_antiderivative_test_minmal_cache_t, interior)
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior)
 {
     auto const location               = 0.75;
     auto const expected_left_position = 0.0;
@@ -186,7 +186,7 @@ TEST_F(quadrature_antiderivative_test_minmal_cache_t, interior)
 }
 
 // test absolute right edge of the domain
-TEST_F(quadrature_antiderivative_test_minmal_cache_t, domain_max)
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max)
 {
     auto const location               = 1.5;
     auto const expected_left_position = 1.5;
