@@ -19,7 +19,7 @@ template <typename real_t> struct segment_t
 
     std::array<real_t, coeff_count> coeffs;
 
-    constexpr auto evaluate(real_t t) const noexcept -> real_t
+    [[nodiscard]] auto evaluate(real_t t) const noexcept -> real_t
     {
         auto result = coeffs[0];
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = std::fma(result, t, coeffs[coeff]);
