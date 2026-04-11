@@ -30,6 +30,7 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
+    math/spline/float/segment.hpp
     math/stats.hpp
 )
 target_sources_kernel(lib
@@ -114,6 +115,7 @@ if (enable_testing)
         math/quadrature/stack_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
+        math/spline/float/segment_test.cpp
         math/stats_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
