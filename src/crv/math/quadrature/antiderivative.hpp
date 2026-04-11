@@ -62,6 +62,17 @@ private:
     map_t      intervals_;
 };
 
+/// The standalone result of an adaptive integration pass
+template <std::floating_point real_t, typename antiderivative_t> struct integration_result_t
+{
+    antiderivative_t antiderivative;
+    real_t           achieved_error;
+    real_t           max_error;
+
+    auto operator<=>(integration_result_t const&) const noexcept -> auto = default;
+    auto operator==(integration_result_t const&) const noexcept -> bool  = default;
+};
+
 namespace generic {
 
 /// accumulates quadrature results and assembles final antiderivative
@@ -69,13 +80,7 @@ template <std::floating_point real_t, typename accumulator_t, typename antideriv
 {
 public:
     using integral_t = antiderivative_t::integral_t;
-
-    struct result_t
-    {
-        antiderivative_t antiderivative;
-        real_t           achieved_error;
-        real_t           max_error;
-    };
+    using result_t   = integration_result_t<real_t, antiderivative_t>;
 
     constexpr antiderivative_builder_t()
     {
