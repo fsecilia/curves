@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <array>
 #include <cassert>
+#include <cmath>
 
 namespace crv::spline::floating_point {
 
@@ -20,14 +21,8 @@ template <typename real_t> struct segment_t
 
     constexpr auto evaluate(real_t t) const noexcept -> real_t
     {
-        assert(0.0 <= t && t <= 1.0 && "floating_point::segment_t: t must be in [0, 1]");
-
         auto result = coeffs[0];
-        for (auto coeff = 1; coeff < coeff_count; ++coeff)
-        {
-            result *= t;
-            result += coeffs[coeff];
-        }
+        for (auto coeff = 1; coeff < coeff_count; ++coeff) result = std::fma(result, t, coeffs[coeff]);
         return result;
     }
 };
