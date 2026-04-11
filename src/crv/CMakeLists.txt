@@ -108,6 +108,7 @@ if (enable_testing)
         math/quadrature/antiderivative_test.cpp
         math/quadrature/bisector_test.cpp
         math/quadrature/integral_test.cpp
+        math/quadrature/integration_test.cpp
         math/quadrature/rules_test.cpp
         math/quadrature/subdivider_test.cpp
         math/quadrature/stack_test.cpp
