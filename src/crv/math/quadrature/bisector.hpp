@@ -84,7 +84,7 @@ public:
         // clang-format on
     }
 
-    constexpr auto finalize() && -> integral_t { return std::move(integral_); }
+    constexpr auto finalize() && noexcept -> integral_t { return std::move(integral_); }
 
 private:
     integral_t integral_{};

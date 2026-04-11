@@ -99,7 +99,7 @@ public:
         cumulative_sums_.push_back(static_cast<real_t>(running_area_));
     }
 
-    constexpr auto finalize(integral_t integral) && -> result_t
+    constexpr auto finalize(integral_t integral) && noexcept -> result_t
     {
         using map_t    = antiderivative_t::map_t;
         auto intervals = map_t{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)};
