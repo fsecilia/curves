@@ -22,6 +22,7 @@ target_sources(lib PRIVATE
     math/mesh/residual_estimator.hpp
     math/mesh/segment.hpp
     math/mesh/weight_function.hpp
+    math/quadrature/adaptive_integrator.hpp
     math/quadrature/antiderivative.hpp
     math/quadrature/bisector.hpp
     math/quadrature/integral.hpp
@@ -103,6 +104,7 @@ if (enable_testing)
         math/mesh/residual_estimator_test.cpp
         math/mesh/segment_test.cpp
         math/mesh/weight_function_test.cpp
+        math/quadrature/adaptive_integrator_test.cpp
         math/quadrature/antiderivative_test.cpp
         math/quadrature/bisector_test.cpp
         math/quadrature/integral_test.cpp
