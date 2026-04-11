@@ -138,6 +138,9 @@ template <typename real_t> struct gauss_kronrod_t<real_t, 15>
 
         return sum;
     }
+
+    constexpr auto operator<=>(gauss_kronrod_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(gauss_kronrod_t const&) const noexcept -> bool  = default;
 };
 
 } // namespace crv::quadrature::rules
