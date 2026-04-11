@@ -31,21 +31,24 @@ template <typename subdivider_t, typename real_t>
 concept is_bisector = is_root_bisector<subdivider_t, real_t> && is_nested_bisector<subdivider_t, real_t>;
 
 /// subdivides segments using integrand and rule
-template <typename integral_t> class bisector_t
+template <typename t_integral_t> class bisector_t
 {
 public:
+    using integral_t  = t_integral_t;
+    using real_t      = integral_t::real_t;
+    using segment_t   = segment_t<real_t>;
+    using bisection_t = bisection_t<real_t>;
+
     constexpr bisector_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
     /// creates a root segment from simple range, integrating over [left, right]
-    template <std::floating_point real_t>
-    constexpr auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t<real_t>
+    constexpr auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
     {
         return segment_t{left, right, integral_.integrate(left, right), tolerance, 0};
     }
 
     /// bisects segment into two child segments
-    template <std::floating_point real_t>
-    constexpr auto operator()(segment_t<real_t> const& parent) const noexcept -> bisection_t<real_t>
+    constexpr auto operator()(segment_t const& parent) const noexcept -> bisection_t
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
         auto const child_tolerance = parent.tolerance / 2;

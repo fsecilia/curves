@@ -13,11 +13,13 @@
 
 namespace crv::quadrature::rules {
 
-template <typename real_t, int_t sample_count> struct gauss_kronrod_t;
+template <typename t_real_t, int_t sample_count> struct gauss_kronrod_t;
 
 /// definite integral using 15-point Gauss-Kronrod quadrature (G7/K15)
-template <typename real_t> struct gauss_kronrod_t<real_t, 15>
+template <typename t_real_t> struct gauss_kronrod_t<t_real_t, 15>
 {
+    using real_t = t_real_t;
+
     struct estimate_t
     {
         /// integral sum

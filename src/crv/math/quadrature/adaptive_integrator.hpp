@@ -21,11 +21,8 @@
 
 namespace crv::quadrature {
 
-template <std::floating_point real_t, typename integral_t>
-using antiderivative_of_t = antiderivative_t<real_t, std::remove_cvref_t<integral_t>>;
-
-template <std::floating_point real_t, typename integral_t>
-using result_of_t = integration_result_t<real_t, antiderivative_of_t<real_t, integral_t>>;
+template <typename integral_t> using antiderivative_of_t = antiderivative_t<std::remove_cvref_t<integral_t>>;
+template <typename integral_t> using result_of_t         = integration_result_t<antiderivative_of_t<integral_t>>;
 
 namespace generic {
 
@@ -63,16 +60,16 @@ public:
     /// narrow overload: convenience, constructs ephemerals and delegates to wide
     template <typename integral_t>
     constexpr auto operator()(integral_t integral, real_t domain_max,
-                              compatible_range<real_t> auto const& critical_points) -> result_of_t<real_t, integral_t>
+                              compatible_range<real_t> auto const& critical_points) -> result_of_t<integral_t>
     {
-        using antiderivative_t         = antiderivative_t<real_t, integral_t>;
-        using antiderivative_builder_t = antiderivative_builder_t<real_t, accumulator_t, antiderivative_t>;
+        using antiderivative_t         = antiderivative_t<integral_t>;
+        using antiderivative_builder_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
         return operator()(bisector_t{std::move(integral)}, antiderivative_builder_t{}, domain_max, critical_points);
     }
 
     /// narrow overload: convenience, delegates with empty critial points
     template <typename integral_t>
-    constexpr auto operator()(integral_t integral, real_t domain_max) -> result_of_t<real_t, integral_t>
+    constexpr auto operator()(integral_t integral, real_t domain_max) -> result_of_t<integral_t>
     {
         return operator()(std::move(integral), domain_max, std::array<real_t, 0>{});
     }
@@ -91,7 +88,7 @@ private:
 } // namespace generic
 
 template <std::floating_point real_t>
-using adaptive_integrator_t
-    = generic::adaptive_integrator_t<real_t, compensated_accumulator_t<real_t>, subdivider_t<real_t>, stack_seeder_t>;
+using adaptive_integrator_t = generic::adaptive_integrator_t<real_t, compensated_accumulator_t<real_t>,
+                                                             subdivider_t<real_t>, stack_seeder_t<real_t>>;
 
 } // namespace crv::quadrature

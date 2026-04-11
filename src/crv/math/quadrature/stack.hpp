@@ -15,13 +15,14 @@
 namespace crv::quadrature {
 
 /// seeds empty stack with domain-level segments
-class stack_seeder_t
+template <std::floating_point t_real_t> class stack_seeder_t
 {
 public:
+    using real_t = t_real_t;
+
     /// seeds stack with single segment across entire domain
     ///
     /// \pre stack.empty()
-    template <std::floating_point real_t>
     auto seed(auto& stack, is_root_bisector<real_t> auto const& bisector, real_t domain_max, real_t global_tolerance)
         -> void
     {
@@ -37,7 +38,6 @@ public:
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
-    template <std::floating_point real_t>
     auto seed(auto& stack, is_root_bisector<real_t> auto const& bisector, real_t domain_max, real_t global_tolerance,
               compatible_range<real_t> auto const& critical_points) -> void
     {

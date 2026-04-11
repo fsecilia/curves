@@ -22,6 +22,8 @@ constexpr auto integrand = [](auto position) { return position * 2.0; };
 
 struct rule_t
 {
+    using real_t = float_t;
+
     struct estimate_t
     {
         real_t sum;
@@ -93,6 +95,7 @@ struct quadrature_integral_test_t : Test
 
     struct rule_t
     {
+        using real_t     = float_t;
         using estimate_t = estimate_t;
 
         mock_rule_t* mock = nullptr;

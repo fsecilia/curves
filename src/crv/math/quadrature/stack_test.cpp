@@ -54,7 +54,7 @@ struct quadrature_stack_seeder_test_t : Test
     static constexpr auto domain_max       = 1024.0;
     static constexpr auto global_tolerance = 1.0;
 
-    using sut_t = stack_seeder_t;
+    using sut_t = stack_seeder_t<real_t>;
     sut_t sut{};
 };
 

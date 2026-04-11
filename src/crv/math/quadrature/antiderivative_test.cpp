@@ -29,13 +29,15 @@ struct quadrature_antiderivative_test_t : Test
 
     struct integral_t
     {
+        using real_t = float_t;
+
         mock_integral_t* mock = nullptr;
 
         auto integrate(real_t left, real_t right) const noexcept -> real_t { return mock->integrate(left, right); }
         auto evaluate_integrand(real_t location) const noexcept -> real_t { return mock->evaluate_integrand(location); }
     };
 
-    using sut_t = antiderivative_t<real_t, integral_t>;
+    using sut_t = antiderivative_t<integral_t>;
 
     static constexpr auto expected_residual   = 0.3174;
     static constexpr auto expected_derivative = 1.7213;
@@ -224,6 +226,7 @@ struct quadrature_antiderivative_builder_t : Test
 
     struct antiderivative_t
     {
+        using real_t            = float_t;
         using map_t             = map_t;
         using boundaries_t      = map_t::key_container_type;
         using cumulative_sums_t = map_t::mapped_container_type;
@@ -233,7 +236,7 @@ struct quadrature_antiderivative_builder_t : Test
         map_t      intervals;
     };
 
-    using sut_t = antiderivative_builder_t<real_t, accumulator_t, antiderivative_t>;
+    using sut_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
     sut_t sut{};
 
     using result_t = sut_t::result_t;

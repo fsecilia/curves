@@ -16,8 +16,10 @@ constexpr auto initial_tolerance = 7.65; // arbitrary
 // --------------------------------------------------------------------------------------------------------------------
 
 // simple trapezoidal rule that reports a fake internal error
-template <std::floating_point real_t> struct rule_t
+template <std::floating_point t_real_t> struct rule_t
 {
+    using real_t = t_real_t;
+
     struct estimate_t
     {
         real_t sum;
@@ -68,16 +70,18 @@ template <std::floating_point real_t> struct negative_quadratic_integrand_t
 
 template <typename integrand_t, typename rule_t> struct integral_t
 {
+    using real_t     = typename rule_t::real_t;
+    using estimate_t = typename rule_t::estimate_t;
+
     integrand_t integrand;
     rule_t      rule;
 
-    template <std::floating_point real_t>
-    constexpr auto estimate(real_t left, real_t right) const noexcept -> rule_t::estimate_t
+    constexpr auto estimate(real_t left, real_t right) const noexcept -> estimate_t
     {
         return rule.estimate(left, right, integrand);
     }
 
-    template <std::floating_point real_t> constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
     {
         return rule.integrate(left, right, integrand);
     }

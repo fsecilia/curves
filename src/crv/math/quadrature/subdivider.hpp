@@ -17,8 +17,9 @@ namespace crv::quadrature {
 namespace generic {
 
 /// decides whether a segment should be subdivided
-template <typename real_t> struct subdivision_predicate_t
+template <typename t_real_t> struct subdivision_predicate_t
 {
+    using real_t    = t_real_t;
     using segment_t = segment_t<real_t>;
 
     static constexpr auto min_width             = epsilon<real_t>() * real_t{1024};
@@ -35,8 +36,11 @@ template <typename real_t> struct subdivision_predicate_t
 };
 
 /// adaptively subdivides the contents of a segment stack
-template <typename real_t, typename subdivision_predicate_t> struct subdivider_t
+template <typename t_subdivision_predicate_t> struct subdivider_t
 {
+    using subdivision_predicate_t = t_subdivision_predicate_t;
+    using real_t                  = subdivision_predicate_t::real_t;
+
     [[no_unique_address]] subdivision_predicate_t should_subdivide{};
 
     constexpr auto run(auto& stack, is_nested_bisector<real_t> auto const& bisector, auto& builder,
@@ -65,6 +69,6 @@ template <typename real_t, typename subdivision_predicate_t> struct subdivider_t
 
 } // namespace generic
 
-template <typename real_t> using subdivider_t = generic::subdivider_t<real_t, generic::subdivision_predicate_t<real_t>>;
+template <typename real_t> using subdivider_t = generic::subdivider_t<generic::subdivision_predicate_t<real_t>>;
 
 } // namespace crv::quadrature

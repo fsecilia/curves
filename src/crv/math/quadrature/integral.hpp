@@ -8,36 +8,36 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/quadrature/rules.hpp>
-#include <concepts>
 #include <utility>
 
 namespace crv::quadrature {
 
-template <typename integrand_t, typename rule_t> class integral_t
+template <typename t_integrand_t, typename t_rule_t> class integral_t
 {
 public:
+    using integrand_t = t_integrand_t;
+    using rule_t      = t_rule_t;
+    using real_t      = rule_t::real_t;
+    using estimate_t  = rule_t::estimate_t;
+
     constexpr integral_t(integrand_t integrand, rule_t rule) noexcept
         : integrand_{std::move(integrand)}, rule_{std::move(rule)}
     {}
 
     /// integrates over [left, right], returns sum and error
-    template <std::floating_point real_t>
-    constexpr auto estimate(real_t left, real_t right) const noexcept -> rule_t::estimate_t
+    constexpr auto estimate(real_t left, real_t right) const noexcept -> estimate_t
     {
         return rule_.estimate(left, right, integrand_);
     }
 
     /// integrates over [left, right], returns sum
-    template <std::floating_point real_t> constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
     {
         return rule_.integrate(left, right, integrand_);
     }
 
     /// evaluates integrand at a point
-    template <std::floating_point real_t> constexpr auto evaluate_integrand(real_t position) const noexcept -> real_t
-    {
-        return integrand_(position);
-    }
+    constexpr auto evaluate_integrand(real_t position) const noexcept -> real_t { return integrand_(position); }
 
 private:
     integrand_t integrand_;

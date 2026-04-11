@@ -15,11 +15,11 @@
 namespace crv::quadrature {
 
 /// antiderivative, yielding a 1-jet via an accumulation function
-template <typename t_real_t, typename t_integral_t> class antiderivative_t
+template <typename t_integral_t> class antiderivative_t
 {
 public:
-    using real_t     = t_real_t;
     using integral_t = t_integral_t;
+    using real_t     = integral_t::real_t;
 
     using jet_t             = jet_t<real_t>;
     using map_t             = std::flat_map<real_t, real_t>;
@@ -63,8 +63,11 @@ private:
 };
 
 /// The standalone result of an adaptive integration pass
-template <std::floating_point real_t, typename antiderivative_t> struct integration_result_t
+template <typename t_antiderivative_t> struct integration_result_t
 {
+    using antiderivative_t = t_antiderivative_t;
+    using real_t           = antiderivative_t::real_t;
+
     antiderivative_t antiderivative;
     real_t           achieved_error;
     real_t           max_error;
@@ -76,11 +79,14 @@ template <std::floating_point real_t, typename antiderivative_t> struct integrat
 namespace generic {
 
 /// accumulates quadrature results and assembles final antiderivative
-template <std::floating_point real_t, typename accumulator_t, typename antiderivative_t> class antiderivative_builder_t
+template <typename t_accumulator_t, typename t_antiderivative_t> class antiderivative_builder_t
 {
 public:
-    using integral_t = antiderivative_t::integral_t;
-    using result_t   = integration_result_t<real_t, antiderivative_t>;
+    using accumulator_t    = t_accumulator_t;
+    using antiderivative_t = t_antiderivative_t;
+    using real_t           = antiderivative_t::real_t;
+    using integral_t       = antiderivative_t::integral_t;
+    using result_t         = integration_result_t<antiderivative_t>;
 
     constexpr antiderivative_builder_t()
     {
@@ -129,8 +135,9 @@ private:
 
 } // namespace generic
 
-template <std::floating_point real_t, typename integral_t>
-using antiderivative_builder_t = generic::antiderivative_builder_t<real_t, compensated_accumulator_t<real_t>,
-                                                                   antiderivative_t<real_t, integral_t>>;
+template <typename integral_t>
+using antiderivative_builder_t
+    = generic::antiderivative_builder_t<compensated_accumulator_t<typename integral_t::real_t>,
+                                        antiderivative_t<integral_t>>;
 
 } // namespace crv::quadrature

@@ -47,20 +47,26 @@ struct quadrature_adaptive_integrator_test : Test
         auto finalize() && -> integral_t { return mock->finalize(); }
     };
 
-    using antiderivative_t               = int_t;
+    struct antiderivative_t
+    {
+        using real_t = float_t;
+        int_t id;
+
+        auto operator==(antiderivative_t const&) const noexcept -> bool = default;
+    };
     static constexpr auto antiderivative = antiderivative_t{371};
 
     struct mock_antiderivative_builder_t
     {
         virtual ~mock_antiderivative_builder_t() = default;
 
-        MOCK_METHOD((integration_result_t<real_t, antiderivative_t>), finalize, (integral_t), (noexcept));
+        MOCK_METHOD((integration_result_t<antiderivative_t>), finalize, (integral_t), (noexcept));
     };
     StrictMock<mock_antiderivative_builder_t> mock_antiderivative_builder;
 
     struct antiderivative_builder_t
     {
-        using result_t = integration_result_t<real_t, antiderivative_t>;
+        using result_t = integration_result_t<antiderivative_t>;
 
         mock_antiderivative_builder_t* mock = nullptr;
 
@@ -124,7 +130,7 @@ struct quadrature_adaptive_integrator_test : Test
 
 TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
 {
-    using result_t = integration_result_t<real_t, antiderivative_t>;
+    using result_t = integration_result_t<antiderivative_t>;
 
     auto const seq = InSequence{};
 
