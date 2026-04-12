@@ -3,8 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include "cmp.hpp"
 #include <crv/lib.hpp>
-#include <crv/math/cmp.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv {

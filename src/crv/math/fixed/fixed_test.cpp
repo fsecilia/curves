@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/math/fixed/fixed.hpp>
+#include "fixed.hpp"
 #include <crv/math/fixed/io.hpp>
 #include <crv/math/io.hpp>
 #include <crv/math/limits.hpp>

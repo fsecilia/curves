@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/math/fixed/exp2.hpp>
+#include "exp2.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv {

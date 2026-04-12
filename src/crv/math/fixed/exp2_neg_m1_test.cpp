@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/math/fixed/exp2_neg_m1.hpp>
+#include "exp2_neg_m1.hpp"
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
 
