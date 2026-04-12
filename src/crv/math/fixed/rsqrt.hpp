@@ -1,0 +1,181 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \brief fixed point fast rsqrt
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#pragma once
+
+#include <crv/lib.hpp>
+#include <crv/math/fixed/fixed.hpp>
+#include <crv/math/limits.hpp>
+#include <crv/math/rounding_mode.hpp>
+#include <bit>
+
+namespace crv {
+
+using u64                      = uint64_t;
+using u128                     = uint128_t;
+constexpr auto U64_MAX         = max<u64>();
+constexpr auto CURVES_U128_MAX = max<u128>();
+
+// Narrows a 128-bit value to 64 bits, saturating on overflow.
+static inline u64 curves_narrow_u128_u64(u128 value)
+{
+    if (value > static_cast<u128>(U64_MAX)) [[unlikely]]
+        return U64_MAX;
+
+    return static_cast<u64>(value);
+}
+
+static inline u128 curves_fixed_rescale_error_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
+{
+    // Zero values and right shifts return 0.
+    if (value == 0 || output_frac_bits < frac_bits) return 0;
+
+    return CURVES_U128_MAX;
+}
+
+// Shifts right, rounding towards nearest even (rne).
+// Preconditions:
+//   - shift must be in range [1, 127]
+//   - caller is responsible for validating shift ranges
+static inline u128 curves_fixed_shr_rne_u128(u128 value, unsigned int shift)
+{
+    u128 half      = static_cast<u128>(1) << (shift - 1);
+    u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
+
+    u128 int_part  = value >> shift;
+    u128 frac_part = value & frac_mask;
+
+    u128 is_odd = int_part & 1;
+
+    u128 bias  = half - 1 + is_odd;
+    u128 carry = (frac_part + bias) >> shift;
+
+    return int_part + carry;
+}
+
+// Shifts left, saturating if the value overflows.
+// Preconditions:
+//   - shift must be in range [0, 127]
+//   - caller is responsible for validating shift range
+static inline u128 curves_fixed_shl_sat_u128(u128 value, unsigned int shift)
+{
+    u128 max_safe_val;
+
+    // Find the maximum value that doesn't overflow.
+    max_safe_val = CURVES_U128_MAX >> shift;
+    if (value > max_safe_val) [[unlikely]]
+        return CURVES_U128_MAX;
+
+    // The value is safe to shift.
+    return value << shift;
+}
+
+// Shifts binary point from frac_bits to output_frac_bits, truncating or
+// saturating as necessary.
+static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
+{
+    // Handle invalid scales.
+    if (frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
+        return curves_fixed_rescale_error_u128(value, frac_bits, output_frac_bits);
+
+    if (output_frac_bits < frac_bits) return curves_fixed_shr_rne_u128(value, frac_bits - output_frac_bits);
+    else return curves_fixed_shl_sat_u128(value, output_frac_bits - frac_bits);
+}
+
+/**
+ * curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
+ *
+ * This function solves `y = 1/sqrt(x)` using Newton-Raphson. We define a
+ * function, `f(y)`, with the same roots as y, start with an initial guess near
+ * the solution, then iterate using the recurrence relation:
+ *
+ *     `y[n + 1] = y[n] - f(y[n])/f'(y[n])`
+ *
+ * Each step finds the line tangent to `f(y[n])`, finds the horizontal
+ * intercept of that tangent, then repeats with `y[n + 1]` set to that
+ * intercept. With a good initial guess for `y[0]`, this converges
+ * quadratically to the root of `f(y)`.
+ *
+ * In the case of `y = 1/sqrt(x)`, we choose `f(y) = y^-2 - x`:
+ *
+ *   y = 1/sqrt(x)   // given
+ *   y^2 = 1/x       // square both sides
+ *   xy^2 = 1        // multiply both sides by x
+ *   x = y^-2        // divide both sides by y^2
+ *   0 = y^-2 - x    // find root
+ *
+ * There are other choices, but this has an important property. Given
+ * `f'(y) = -2y^-3`:
+ *
+ *   y + f(y)/f'(y) = y - (y^-2 - x)/(-2y^-3)   // given
+ *                  = y + y^3(y^-2 - x)/2       // multiply right by -y^3/-y^3
+ *                  = y + y(1 - xy^2)/2         // distribute y^2
+ *                  = y(1 + (1 - xy^2)/2)       // factor out common y
+ *                  = y(3 - xy^2)/2             // combine constants
+ *
+ * This form allows calculating isqrt using only multiplication, subtraction,
+ * and a shift.
+ *
+ * The initial guess is found using a quadratic approximation of `1/sqrt(x)`
+ * using Horner's method: `C0 + -C1*x + C2*x^2 = C0 - x*(C1 - x*C2)`.
+ *
+ * Using a quadratic approximation balances Horner iterations against
+ * Newton-Raphson iterations. Each NR iteration uses 3 multiplies. Horner
+ * iterations use 1. For the same precision, a -log2/2 approximation requires 6
+ * iterations. Linear requires 4. Quadratic requires 3. Cubic also requires 3,
+ * so we use quadratic.
+ *
+ * Returns: inverse sqrt
+ */
+inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits, unsigned int output_frac_bits)
+{
+    // Quadratic approximation coefficients.
+    //
+    // The constants are in Q2.62, so they're scaled by 2^62 and rounded.
+    // See src/curves/tools/isqrt_initial_guess.sollya for more information
+    // about how these values are generated.
+    u64 c0_q62 = 10354071711462988194ULL;
+    u64 c1_q62 = 9674659108971248202ULL;
+    u64 c2_q62 = 3949952137299739940ULL;
+
+    unsigned int x_norm_frac_bits = 64;
+    unsigned int y_frac_bits      = 62;
+    u64          three_q62        = 3ULL << 62;
+    u64          sqrt2_q62        = 0x5A827999FCEF3242ULL;
+
+    unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
+    u64          c1, c2, x_norm, y, yy, factor;
+
+    if (x == 0) [[unlikely]]
+        return U64_MAX;
+
+    // Normalize x to Q0.64 [0.5, 1.0).
+    x_lz            = std::countl_zero(x);
+    x_norm          = x << x_lz;
+    x_norm_exponent = x_lz + frac_bits;
+
+    // Approximate 1/sqrt for initial guess using Horner's method.
+    c2 = static_cast<u64>((static_cast<u128>(x_norm) * c2_q62) >> x_norm_frac_bits);
+    c1 = static_cast<u64>((static_cast<u128>(x_norm) * (c1_q62 - c2)) >> x_norm_frac_bits);
+    y  = c0_q62 - c1;
+
+    // Newton-Raphson.
+    for (int i = 0; i < 3; ++i)
+    {
+        yy     = static_cast<u64>((static_cast<u128>(y) * y) >> y_frac_bits);
+        factor = static_cast<u64>((static_cast<u128>(x_norm) * yy) >> x_norm_frac_bits);
+        y      = static_cast<u64>((static_cast<u128>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
+    }
+
+    // Denormalize.
+    if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
+    y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
+
+    return curves_narrow_u128_u64(
+        curves_fixed_rescale_u128(static_cast<u128>(y), y_denorm_frac_bits, output_frac_bits));
+}
+
+} // namespace crv

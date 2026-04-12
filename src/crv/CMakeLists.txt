@@ -92,6 +92,7 @@ if (enable_testing)
         math/fixed/fixed_test.cpp
         math/fixed/float_conversions_test.cpp
         math/fixed/fma_test.cpp
+        math/fixed/rsqrt_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp
