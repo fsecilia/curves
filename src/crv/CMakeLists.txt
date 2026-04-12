@@ -33,6 +33,7 @@ target_sources(lib PRIVATE
     math/spline/float/io.hpp
     math/spline/float/segment.hpp
     math/stats.hpp
+    priority_queue.hpp
 )
 target_sources_kernel(lib
     bitwise_enum.hpp
@@ -59,7 +60,6 @@ target_sources_kernel(lib
     math/linear.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
-    priority_queue.hpp
     ranges.hpp
     traits.hpp
 )
