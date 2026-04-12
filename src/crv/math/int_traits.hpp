@@ -149,6 +149,10 @@ using int_by_bits_t
 // Integer Promotions
 // --------------------------------------------------------------------------------------------------------------------
 
+/// doubles width of value_t, retaining signedness
 template <integral value_t> using widened_t = int_by_bytes_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
+
+/// true when a type can be widened; true up to native word size
+template <integral value_t> inline constexpr auto can_widen = sizeof(value_t) <= sizeof(int_t);
 
 } // namespace crv

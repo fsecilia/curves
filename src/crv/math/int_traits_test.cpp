@@ -279,6 +279,18 @@ static_assert(std::same_as<widened_t<uint16_t>, uint32_t>);
 static_assert(std::same_as<widened_t<uint32_t>, uint64_t>);
 static_assert(std::same_as<widened_t<uint64_t>, uint128_t>);
 
+static_assert(can_widen<int8_t>);
+static_assert(can_widen<int16_t>);
+static_assert(can_widen<int32_t>);
+static_assert(can_widen<int64_t>);
+static_assert(!can_widen<int128_t>);
+
+static_assert(can_widen<uint8_t>);
+static_assert(can_widen<uint16_t>);
+static_assert(can_widen<uint32_t>);
+static_assert(can_widen<uint64_t>);
+static_assert(!can_widen<uint128_t>);
+
 } // namespace integer_promotion_tests
 
 } // namespace
