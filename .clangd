@@ -1,5 +1,7 @@
 CompileFlags:
-  Remove: [-mno-direct-extern-access]
+  Remove:
+    - -fext-numeric-literals
+    - -mno-direct-extern-access
 
 ---
 
