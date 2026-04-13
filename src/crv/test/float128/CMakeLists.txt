@@ -3,7 +3,6 @@
 #
 # optional 128-bit floating point support
 
-option(BUILD_INTEGRATION_TESTS "Build longer-running integration tests" OFF)
 option(polyfill_float128_exp2 "Define std::exp2(std::float128_t)" ON)
 option(polyfill_float128_ldexp "Define std::ldexp(std::float128_t, int)" ON)
 option(polyfill_float128_llround "Define std::llround(std::float128_t) polyfill" ON)

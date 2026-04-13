@@ -3,6 +3,8 @@
 #
 # testing library
 
+option(BUILD_INTEGRATION_TESTS "build longer-running integration tests" OFF)
+
 add_library(test
     test.cpp
     test.hpp
