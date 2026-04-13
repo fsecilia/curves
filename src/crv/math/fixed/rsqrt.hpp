@@ -19,23 +19,6 @@ using u128                     = uint128_t;
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
-// Shifts left, saturating if the value overflows.
-// Preconditions:
-//   - shift must be in range [0, 127]
-//   - caller is responsible for validating shift range
-static inline u128 curves_fixed_shl_sat_u128(u128 value, unsigned int shift)
-{
-    u128 max_safe_val;
-
-    // Find the maximum value that doesn't overflow.
-    max_safe_val = CURVES_U128_MAX >> shift;
-    if (value > max_safe_val) [[unlikely]]
-        return CURVES_U128_MAX;
-
-    // The value is safe to shift.
-    return value << shift;
-}
-
 // Shifts binary point from frac_bits to output_frac_bits, truncating or
 // saturating as necessary.
 static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
@@ -66,7 +49,18 @@ static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits,
 
         return int_part + carry;
     }
-    else return curves_fixed_shl_sat_u128(value, output_frac_bits - frac_bits);
+    else
+    {
+        unsigned int shift = output_frac_bits - frac_bits;
+
+        // Find the maximum value that doesn't overflow.
+        u128 max_safe_val = CURVES_U128_MAX >> shift;
+        if (value > max_safe_val) [[unlikely]]
+            return CURVES_U128_MAX;
+
+        // The value is safe to shift.
+        return value << shift;
+    }
 }
 
 /**
