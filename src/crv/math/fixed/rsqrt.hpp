@@ -19,26 +19,6 @@ using u128                     = uint128_t;
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
-// Shifts right, rounding towards nearest even (rne).
-// Preconditions:
-//   - shift must be in range [1, 127]
-//   - caller is responsible for validating shift ranges
-static inline u128 curves_fixed_shr_rne_u128(u128 value, unsigned int shift)
-{
-    u128 half      = static_cast<u128>(1) << (shift - 1);
-    u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
-
-    u128 int_part  = value >> shift;
-    u128 frac_part = value & frac_mask;
-
-    u128 is_odd = int_part & 1;
-
-    u128 bias  = half - 1 + is_odd;
-    u128 carry = (frac_part + bias) >> shift;
-
-    return int_part + carry;
-}
-
 // Shifts left, saturating if the value overflows.
 // Preconditions:
 //   - shift must be in range [0, 127]
@@ -69,7 +49,23 @@ static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits,
         return CURVES_U128_MAX;
     }
 
-    if (output_frac_bits < frac_bits) return curves_fixed_shr_rne_u128(value, frac_bits - output_frac_bits);
+    if (output_frac_bits < frac_bits)
+    {
+        unsigned int shift = frac_bits - output_frac_bits;
+
+        u128 half      = static_cast<u128>(1) << (shift - 1);
+        u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
+
+        u128 int_part  = value >> shift;
+        u128 frac_part = value & frac_mask;
+
+        u128 is_odd = int_part & 1;
+
+        u128 bias  = half - 1 + is_odd;
+        u128 carry = (frac_part + bias) >> shift;
+
+        return int_part + carry;
+    }
     else return curves_fixed_shl_sat_u128(value, output_frac_bits - frac_bits);
 }
 
