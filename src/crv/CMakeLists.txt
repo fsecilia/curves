@@ -60,6 +60,7 @@ target_sources_kernel(lib
     math/linear.hpp
     math/rounding_mode.hpp
     math/scalar_traits.hpp
+    math/shifter.hpp
     ranges.hpp
     traits.hpp
 )
@@ -117,6 +118,7 @@ if (enable_testing)
         math/quadrature/stack_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
+        math/shifter_test.cpp
         math/spline/float/io_test.cpp
         math/spline/float/segment_test.cpp
         math/stats_test.cpp
