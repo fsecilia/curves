@@ -19,14 +19,6 @@ using u128                     = uint128_t;
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
-static inline u128 curves_fixed_rescale_error_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
-{
-    // Zero values and right shifts return 0.
-    if (value == 0 || output_frac_bits < frac_bits) return 0;
-
-    return CURVES_U128_MAX;
-}
-
 // Shifts right, rounding towards nearest even (rne).
 // Preconditions:
 //   - shift must be in range [1, 127]
@@ -70,7 +62,12 @@ static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits,
 {
     // Handle invalid scales.
     if (frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
-        return curves_fixed_rescale_error_u128(value, frac_bits, output_frac_bits);
+    {
+        // Zero values and right shifts return 0.
+        if (value == 0 || output_frac_bits < frac_bits) return 0;
+
+        return CURVES_U128_MAX;
+    }
 
     if (output_frac_bits < frac_bits) return curves_fixed_shr_rne_u128(value, frac_bits - output_frac_bits);
     else return curves_fixed_shl_sat_u128(value, output_frac_bits - frac_bits);
