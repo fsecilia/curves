@@ -19,50 +19,6 @@ using u128                     = uint128_t;
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
-// Shifts binary point from frac_bits to output_frac_bits, truncating or
-// saturating as necessary.
-static inline u128 curves_fixed_rescale_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
-{
-    // Handle invalid scales.
-    if (frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
-    {
-        // Zero values and right shifts return 0.
-        if (value == 0 || output_frac_bits < frac_bits) return 0;
-
-        return CURVES_U128_MAX;
-    }
-
-    if (output_frac_bits < frac_bits)
-    {
-        unsigned int shift = frac_bits - output_frac_bits;
-
-        u128 half      = static_cast<u128>(1) << (shift - 1);
-        u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
-
-        u128 int_part  = value >> shift;
-        u128 frac_part = value & frac_mask;
-
-        u128 is_odd = int_part & 1;
-
-        u128 bias  = half - 1 + is_odd;
-        u128 carry = (frac_part + bias) >> shift;
-
-        return int_part + carry;
-    }
-    else
-    {
-        unsigned int shift = output_frac_bits - frac_bits;
-
-        // Find the maximum value that doesn't overflow.
-        u128 max_safe_val = CURVES_U128_MAX >> shift;
-        if (value > max_safe_val) [[unlikely]]
-            return CURVES_U128_MAX;
-
-        // The value is safe to shift.
-        return value << shift;
-    }
-}
-
 /**
  * curves_fixed_isqrt() - Newton-Raphson solver for inverse sqrt.
  *
@@ -152,10 +108,54 @@ inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits, unsigned int output
     if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
     y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
 
-    auto const result = curves_fixed_rescale_u128(static_cast<u128>(y), y_denorm_frac_bits, output_frac_bits);
-    if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
-        return U64_MAX;
-    return static_cast<u64>(result);
+    {
+        u128         value     = static_cast<u128>(y);
+        unsigned int frac_bits = y_denorm_frac_bits;
+
+        // Handle invalid scales.
+        if (frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
+        {
+            // Zero values and right shifts return 0.
+            if (value == 0 || output_frac_bits < frac_bits) return 0;
+
+            return U64_MAX;
+        }
+
+        u128 result;
+        if (output_frac_bits < frac_bits)
+        {
+            unsigned int shift = frac_bits - output_frac_bits;
+
+            u128 half      = static_cast<u128>(1) << (shift - 1);
+            u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
+
+            u128 int_part  = value >> shift;
+            u128 frac_part = value & frac_mask;
+
+            u128 is_odd = int_part & 1;
+
+            u128 bias  = half - 1 + is_odd;
+            u128 carry = (frac_part + bias) >> shift;
+
+            result = int_part + carry;
+        }
+        else
+        {
+            unsigned int shift = output_frac_bits - frac_bits;
+
+            // Find the maximum value that doesn't overflow.
+            u128 max_safe_val = CURVES_U128_MAX >> shift;
+            if (value > max_safe_val) [[unlikely]]
+                return U64_MAX;
+
+            // The value is safe to shift.
+            result = value << shift;
+        }
+
+        if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
+            return U64_MAX;
+        return static_cast<u64>(result);
+    }
 }
 
 } // namespace crv
