@@ -12,8 +12,11 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
+#include <crv/math/saturation.hpp>
+#include <crv/math/shifter.hpp>
 #include <algorithm>
 #include <climits>
+#include <concepts>
 #include <type_traits>
 
 namespace crv {
@@ -113,44 +116,65 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // ----------------------------------------------------------------------------------------------------------------
 
     /// converts from another fixed_t specialization, rescaling precision using rounding mode
-    template <is_fixed other_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
-    explicit constexpr fixed_t(other_t const& other, rounding_mode_t rounding_mode = {}) noexcept
+    template <is_fixed other_t, literal_saturation saturation = saturate, typename shifter_type = shifter_t<>>
+    explicit constexpr fixed_t(other_t const& other, shifter_type shifter = shifter_type{}) noexcept
     {
-        using other_value_t                   = typename other_t::value_t;
-        static constexpr auto other_frac_bits = other_t::frac_bits;
+        using other_value_t       = typename other_t::value_t;
+        constexpr auto shift_bits = frac_bits - other_t::frac_bits;
 
-        using intermediate_t
-            = int_by_bytes_t<std::max(sizeof(value_t), sizeof(other_value_t)), std::is_signed_v<other_value_t>>;
-
-        if constexpr (frac_bits > other_frac_bits)
+        if constexpr (shift_bits >= 0)
         {
-            static_assert((frac_bits - other_frac_bits) < sizeof(value_t) * CHAR_BIT, "left-shift overflow");
+            // upscaling: shift left
+            static_assert(shift_bits < sizeof(value_t) * CHAR_BIT, "fixed_t: left-shift exceeds target bit width");
 
-            constexpr auto shift = frac_bits - other_frac_bits;
-
-            assert(other.value <= (std::numeric_limits<value_t>::max() >> shift) && "left-shift overflow");
-            if constexpr (std::is_signed_v<other_value_t>)
+            if constexpr (std::same_as<saturation, saturate>)
             {
-                assert(other.value >= (std::numeric_limits<value_t>::min() >> shift) && "left-shift underflow");
+                // shift domain to range check safely
+                constexpr auto safe_max = max<value_t>() >> shift_bits;
+                constexpr auto safe_min = min<value_t>() >> shift_bits;
+
+                if (cmp_greater(other.value, safe_max))
+                {
+                    value = max<value_t>();
+                    return;
+                }
+
+                if (cmp_less(other.value, safe_min))
+                {
+                    value = min<value_t>();
+                    return;
+                }
             }
 
-            // shift left using widened type, letting int_cast catch any final truncation
-            value = int_cast<value_t>(int_cast<intermediate_t>(other.value) << shift);
-        }
-        else if constexpr (other_frac_bits > frac_bits)
-        {
-            static_assert((other_frac_bits - frac_bits) < sizeof(other_value_t) * CHAR_BIT, "right-shift underflow");
-
-            // right shift using rounding mode
-            constexpr auto shift     = other_frac_bits - frac_bits;
-            auto const     unshifted = rounding_mode.bias(int_cast<intermediate_t>(other.value), shift);
-            auto const     shifted   = int_cast<intermediate_t>(unshifted >> shift);
-            value                    = int_cast<value_t>(rounding_mode.carry(shifted, unshifted, shift));
+            value = shifter.template shl<shift_bits>(static_cast<value_t>(other.value));
         }
         else
         {
-            // no conversion necessary
-            value = int_cast<value_t>(other.value);
+            // downscaling: shift right
+            constexpr auto rshift_bits = -shift_bits;
+            static_assert(rshift_bits < sizeof(other_value_t) * CHAR_BIT,
+                          "fixed_t: right-shift exceeds source bit width");
+
+            // right shift in original container type first
+            auto const shifted = shifter.template shr<rshift_bits>(other.value);
+
+            // saturate before converting
+            if constexpr (std::same_as<saturation, saturate>)
+            {
+                if (cmp_greater(shifted, max<value_t>()))
+                {
+                    value = max<value_t>();
+                    return;
+                }
+
+                if (cmp_less(shifted, min<value_t>()))
+                {
+                    value = min<value_t>();
+                    return;
+                }
+            }
+
+            value = static_cast<value_t>(shifted);
         }
     }
 
@@ -245,7 +269,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
     {
-        return *this = multiply<fixed_t>(*this, src, fixed::default_shr_rounding_mode);
+        return *this = multiply<fixed_t>(*this, src, shifter_t<>{});
     }
 
     constexpr auto operator/=(fixed_t src) noexcept -> fixed_t&
@@ -266,7 +290,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply<fixed_t>(lhs, rhs, fixed::default_shr_rounding_mode);
+        return multiply<fixed_t>(lhs, rhs, shifter_t<>{});
     }
 
     template <is_fixed other_t> friend constexpr auto operator/(fixed_t lhs, other_t rhs) noexcept -> fixed_t
@@ -292,10 +316,10 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// \returns product, widened or narrowed to output type and rescaled to output precision using given rounding mode
-    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t>
-    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode) noexcept -> out_t
+    template <is_fixed out_t, is_fixed rhs_t, typename shifter_t>
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, shifter_t shifter) noexcept -> out_t
     {
-        return out_t{multiply(lhs, rhs), rounding_mode};
+        return out_t{multiply(lhs, rhs), std::move(shifter)};
     }
 
     /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode
@@ -321,8 +345,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// calcs remainder of lhs/rhs
-    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
-    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode = {}) noexcept -> out_t
+    template <is_fixed out_t, is_fixed rhs_t, typename shifter_t = shifter_t<>>
+    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
         // widen
         using wide_t  = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
@@ -339,24 +363,14 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         auto const remainder = lhs_wide % rhs_wide;
 
         // scale to output precision
-        constexpr auto out_shift = max_frac - out_t::frac_bits;
-        if constexpr (out_shift > 0)
-        {
-            auto const unshifted = rounding_mode.bias(remainder, out_shift);
-            auto const shifted   = unshifted >> out_shift;
-            return out_t::literal(
-                int_cast<typename out_t::value_t>(rounding_mode.carry(shifted, unshifted, out_shift)));
-        }
-        else
-        {
-            return out_t::literal(int_cast<typename out_t::value_t>(remainder << -out_shift));
-        }
+        constexpr auto out_shift = out_t::frac_bits - max_frac;
+        return out_t::literal(shifter.template shift<typename out_t::value_t, out_shift>(remainder));
     }
 
     /// calcs remainder of lhs/rhs, defaulting to dividend's type and precision
     template <is_fixed divisor_t> friend constexpr auto mod(fixed_t dividend, divisor_t divisor) noexcept -> fixed_t
     {
-        return mod<fixed_t>(dividend, divisor, fixed::default_shr_rounding_mode);
+        return mod<fixed_t>(dividend, divisor, shifter_t<>{});
     }
 
     // ----------------------------------------------------------------------------------------------------------------
