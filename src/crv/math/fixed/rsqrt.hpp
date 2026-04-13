@@ -19,15 +19,6 @@ using u128                     = uint128_t;
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
-// Narrows a 128-bit value to 64 bits, saturating on overflow.
-static inline u64 curves_narrow_u128_u64(u128 value)
-{
-    if (value > static_cast<u128>(U64_MAX)) [[unlikely]]
-        return U64_MAX;
-
-    return static_cast<u64>(value);
-}
-
 static inline u128 curves_fixed_rescale_error_u128(u128 value, unsigned int frac_bits, unsigned int output_frac_bits)
 {
     // Zero values and right shifts return 0.
@@ -174,8 +165,10 @@ inline u64 curves_fixed_isqrt(u64 x, unsigned int frac_bits, unsigned int output
     if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
     y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
 
-    return curves_narrow_u128_u64(
-        curves_fixed_rescale_u128(static_cast<u128>(y), y_denorm_frac_bits, output_frac_bits));
+    auto const result = curves_fixed_rescale_u128(static_cast<u128>(y), y_denorm_frac_bits, output_frac_bits);
+    if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
+        return U64_MAX;
+    return static_cast<u64>(result);
 }
 
 } // namespace crv
