@@ -36,7 +36,7 @@ TEST_P(ISqrtTest, expected_result)
     auto const expected_result = GetParam().expected_result;
     auto const expected_delta  = GetParam().tolerance;
 
-    auto const actual_result = curves_fixed_isqrt(GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits);
+    auto const actual_result = rsqrt(GetParam().value, GetParam().frac_bits, GetParam().output_frac_bits);
 
     auto const actual_delta
         = actual_result > expected_result ? actual_result - expected_result : expected_result - actual_result;
