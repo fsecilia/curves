@@ -135,6 +135,8 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max)
 // death tests
 // --------------------------------------------------------------------------------------------------------------------
 
+#if defined CRV_ENABLE_DEATH_TESTS
+
 // test queries below the valid domain bounds
 TEST_F(quadrature_antiderivative_test_small_cache_t, query_below_domain_aborts)
 {
@@ -152,6 +154,8 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, query_nan_aborts)
 {
     EXPECT_DEBUG_DEATH(sut(std::numeric_limits<real_t>::quiet_NaN()), "domain error");
 }
+
+#endif
 
 // --------------------------------------------------------------------------------------------------------------------
 // minimal cache

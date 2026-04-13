@@ -1444,7 +1444,7 @@ TEST_F(jet_test_chain_rule_composition_t, log_sqrt)
 // Assertion Death Tests
 // ====================================================================================================================
 
-#if !defined NDEBUG
+#if defined CRV_ENABLE_DEATH_TESTS
 
 struct jet_death_test_t : jet_test_t
 {};

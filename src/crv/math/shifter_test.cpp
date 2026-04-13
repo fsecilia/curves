@@ -223,18 +223,20 @@ static_assert(shr_test.test_shift_asym_dynamic_negative_count(),
 static_assert(shr_test.test_shift_asym_static_negative_count(),
               "shifter_t: test_shift_asym_static_negative_count failed");
 
+#if defined CRV_ENABLE_DEATH_TESTS
+
 TEST(shifter_death_test, shr_sym_dynamic_zero_count)
 {
     constexpr auto sut = shifter_t<rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shr(src_t{100}, 0), "shr count must be positive");
+    EXPECT_DEBUG_DEATH(sut.shr(src_t{100}, 0), "shr count must be positive");
 }
 
 TEST(shifter_death_test, shr_asym_dynamic_zero_count)
 {
     constexpr auto sut = shifter_t<rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shr<dst_t>(src_t{100}, 0), "shr count must be positive");
+    EXPECT_DEBUG_DEATH(sut.shr<dst_t>(src_t{100}, 0), "shr count must be positive");
 }
 
 TEST(shifter_death_test, shr_sym_dynamic_oversized_count)
@@ -242,7 +244,7 @@ TEST(shifter_death_test, shr_sym_dynamic_oversized_count)
     constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
     constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
-    EXPECT_DEATH(sut.shr(src_t{100}, src_bits), "shr count must be less than bit width");
+    EXPECT_DEBUG_DEATH(sut.shr(src_t{100}, src_bits), "shr count must be less than bit width");
 }
 
 TEST(shifter_death_test, shr_asym_dynamic_oversized_count)
@@ -250,8 +252,10 @@ TEST(shifter_death_test, shr_asym_dynamic_oversized_count)
     constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
     constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
-    EXPECT_DEATH(sut.shr<dst_t>(src_t{100}, src_bits), "shr count must be less than bit width");
+    EXPECT_DEBUG_DEATH(sut.shr<dst_t>(src_t{100}, src_bits), "shr count must be less than bit width");
 }
+
+#endif
 
 } // namespace shr
 
@@ -487,18 +491,20 @@ constexpr auto test_shift_asym_static_zero_count() noexcept -> bool
 }
 static_assert(test_shift_asym_static_zero_count(), "shifter_t: test_shift_asym_static_zero_count failed");
 
+#if defined CRV_ENABLE_DEATH_TESTS
+
 TEST(shifter_death_test, shl_sym_dynamic_negative_count)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl(src_t{100}, -1), "shl count must not be negative");
+    EXPECT_DEBUG_DEATH(sut.shl(src_t{100}, -1), "shl count must not be negative");
 }
 
 TEST(shifter_death_test, shl_asym_dynamic_negative_count)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl<dst_t>(src_t{100}, -1), "shl count must not be negative");
+    EXPECT_DEBUG_DEATH(sut.shl<dst_t>(src_t{100}, -1), "shl count must not be negative");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -509,56 +515,56 @@ TEST(shifter_death_test, shl_sym_dynamic_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl(largest_invalid_src_for_shl_4, 4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shl(largest_invalid_src_for_shl_4, 4), "negative overflow");
 }
 
 TEST(shifter_death_test, shl_sym_static_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl<4>(largest_invalid_src_for_shl_4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shl<4>(largest_invalid_src_for_shl_4), "negative overflow");
 }
 
 TEST(shifter_death_test, shl_asym_dynamic_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl<dst_t>(largest_invalid_src_for_shl_4, 4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shl<dst_t>(largest_invalid_src_for_shl_4, 4), "negative overflow");
 }
 
 TEST(shifter_death_test, shl_asym_static_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH((sut.shl<dst_t, 4>(largest_invalid_src_for_shl_4)), "negative overflow");
+    EXPECT_DEBUG_DEATH((sut.shl<dst_t, 4>(largest_invalid_src_for_shl_4)), "negative overflow");
 }
 
 TEST(shifter_death_test, shift_sym_dynamic_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift(largest_invalid_src_for_shl_4, 4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shift(largest_invalid_src_for_shl_4, 4), "negative overflow");
 }
 
 TEST(shifter_death_test, shift_sym_static_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift<4>(largest_invalid_src_for_shl_4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shift<4>(largest_invalid_src_for_shl_4), "negative overflow");
 }
 
 TEST(shifter_death_test, shift_asym_dynamic_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift<dst_t>(largest_invalid_src_for_shl_4, 4), "negative overflow");
+    EXPECT_DEBUG_DEATH(sut.shift<dst_t>(largest_invalid_src_for_shl_4, 4), "negative overflow");
 }
 
 TEST(shifter_death_test, shift_asym_static_negative_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH((sut.shift<dst_t, 4>(largest_invalid_src_for_shl_4)), "negative overflow");
+    EXPECT_DEBUG_DEATH((sut.shift<dst_t, 4>(largest_invalid_src_for_shl_4)), "negative overflow");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -569,56 +575,56 @@ TEST(shifter_death_test, shl_sym_dynamic_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl(smallest_invalid_src_for_shl_4, 4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shl(smallest_invalid_src_for_shl_4, 4), "positive overflow");
 }
 
 TEST(shifter_death_test, shl_sym_static_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl<4>(smallest_invalid_src_for_shl_4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shl<4>(smallest_invalid_src_for_shl_4), "positive overflow");
 }
 
 TEST(shifter_death_test, shl_asym_dynamic_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shl<dst_t>(smallest_invalid_src_for_shl_4, 4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shl<dst_t>(smallest_invalid_src_for_shl_4, 4), "positive overflow");
 }
 
 TEST(shifter_death_test, shl_asym_static_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH((sut.shl<dst_t, 4>(smallest_invalid_src_for_shl_4)), "positive overflow");
+    EXPECT_DEBUG_DEATH((sut.shl<dst_t, 4>(smallest_invalid_src_for_shl_4)), "positive overflow");
 }
 
 TEST(shifter_death_test, shift_sym_dynamic_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift(smallest_invalid_src_for_shl_4, 4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shift(smallest_invalid_src_for_shl_4, 4), "positive overflow");
 }
 
 TEST(shifter_death_test, shift_sym_static_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift<4>(smallest_invalid_src_for_shl_4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shift<4>(smallest_invalid_src_for_shl_4), "positive overflow");
 }
 
 TEST(shifter_death_test, shift_asym_dynamic_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH(sut.shift<dst_t>(smallest_invalid_src_for_shl_4, 4), "positive overflow");
+    EXPECT_DEBUG_DEATH(sut.shift<dst_t>(smallest_invalid_src_for_shl_4, 4), "positive overflow");
 }
 
 TEST(shifter_death_test, shift_asym_static_positive_overflow)
 {
     constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
 
-    EXPECT_DEATH((sut.shift<dst_t, 4>(smallest_invalid_src_for_shl_4)), "positive overflow");
+    EXPECT_DEBUG_DEATH((sut.shift<dst_t, 4>(smallest_invalid_src_for_shl_4)), "positive overflow");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -630,7 +636,7 @@ TEST(shifter_death_test, shl_sym_dynamic_oversized_count)
     constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
     constexpr auto dst_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
-    EXPECT_DEATH(sut.shl(src_t{100}, dst_bits), "shl count larger than target bit width");
+    EXPECT_DEBUG_DEATH(sut.shl(src_t{100}, dst_bits), "shl count larger than target bit width");
 }
 
 TEST(shifter_death_test, shl_asym_dynamic_oversized_count)
@@ -638,8 +644,10 @@ TEST(shifter_death_test, shl_asym_dynamic_oversized_count)
     constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
     constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
-    EXPECT_DEATH(sut.shl<dst_t>(src_t{100}, dst_bits), "shl count larger than target bit width");
+    EXPECT_DEBUG_DEATH(sut.shl<dst_t>(src_t{100}, dst_bits), "shl count larger than target bit width");
 }
+
+#endif
 
 } // namespace shl
 

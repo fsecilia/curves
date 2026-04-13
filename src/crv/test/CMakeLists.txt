@@ -17,6 +17,12 @@ target_link_libraries(test PUBLIC
     GTest::gtest
 )
 
+# make death tests optional
+option(RUN_DEATH_TESTS "run slow death tests when unit testing" ON)
+if (RUN_DEATH_TESTS)
+    target_compile_definitions(test PUBLIC "-DCRV_ENABLE_DEATH_TESTS")
+endif()
+
 add_subdirectory(accuracy)
 add_subdirectory(float128)
 add_subdirectory(integration)

@@ -142,6 +142,8 @@ TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
 // death tests
 // --------------------------------------------------------------------------------------------------------------------
 
+#if defined CRV_ENABLE_DEATH_TESTS
+
 struct quadrature_stack_seeder_death_tests_t : quadrature_stack_seeder_test_t
 {};
 
@@ -192,5 +194,8 @@ TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_poin
                                 std::initializer_list{domain_max / 3.0, domain_max / 3.0}),
                        "increasing and unique");
 }
+
+#endif
+
 } // namespace
 } // namespace crv::quadrature
