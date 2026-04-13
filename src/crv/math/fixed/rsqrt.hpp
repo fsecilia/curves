@@ -14,8 +14,14 @@
 
 namespace crv {
 
+using u64_62_t   = fixed_t<uint64_t, 62>;
+using u64_64_t   = fixed_t<uint64_t, 64>;
+using u128_128_t = fixed_t<uint128_t, 128>;
+
+using s64                      = int64_t;
 using u64                      = uint64_t;
 using u128                     = uint128_t;
+constexpr auto S64_MAX         = max<s64>();
 constexpr auto U64_MAX         = max<u64>();
 constexpr auto CURVES_U128_MAX = max<u128>();
 
@@ -59,7 +65,7 @@ constexpr auto CURVES_U128_MAX = max<u128>();
 /// Using a quadratic approximation balances Horner iterations against Newton-Raphson iterations. Each NR iteration uses
 /// 3 multiplies. Horner iterations use 1. For the same precision, a -log2/2 approximation requires 6 iterations. Linear
 /// requires 4. Quadratic requires 3. Cubic also requires 3, so we use quadratic.
-constexpr auto rsqrt(u64 x, unsigned int frac_bits, unsigned int output_frac_bits) noexcept -> u64
+template <unsigned int output_frac_bits, unsigned int frac_bits> constexpr auto rsqrt(u64 x) noexcept -> u64
 {
     // Quadratic approximation coefficients.
     //
