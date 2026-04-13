@@ -116,18 +116,20 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // ----------------------------------------------------------------------------------------------------------------
 
     /// converts from another fixed_t specialization, rescaling precision using rounding mode
-    template <is_fixed other_t, literal_saturation saturation = saturate, typename shifter_type = shifter_t<>>
+    template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
+              typename shifter_type = shifter_t<>>
     explicit constexpr fixed_t(other_t const& other, shifter_type shifter = shifter_type{}) noexcept
     {
         using other_value_t       = typename other_t::value_t;
         constexpr auto shift_bits = frac_bits - other_t::frac_bits;
+        constexpr auto saturate   = overflow_policy == overflow_policy_t::saturate;
 
         if constexpr (shift_bits >= 0)
         {
             // upscaling: shift left
             static_assert(shift_bits < sizeof(value_t) * CHAR_BIT, "fixed_t: left-shift exceeds target bit width");
 
-            if constexpr (std::same_as<saturation, saturate>)
+            if constexpr (saturate)
             {
                 // shift domain to range check safely
                 constexpr auto safe_max = max<value_t>() >> shift_bits;
@@ -159,7 +161,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
             auto const shifted = shifter.template shr<rshift_bits>(other.value);
 
             // saturate before converting
-            if constexpr (std::same_as<saturation, saturate>)
+            if constexpr (saturate)
             {
                 if (cmp_greater(shifted, max<value_t>()))
                 {

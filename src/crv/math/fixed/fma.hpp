@@ -8,11 +8,13 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/saturation.hpp>
 
 namespace crv {
 
 /// fused multiply-add for fixed-point types
-template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t, bool saturate = false>
+template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
+          overflow_policy_t overflow_policy = overflow_policy_t::wrap>
 struct fma_t
 {
     // wide intermediate
@@ -77,8 +79,9 @@ struct fma_t
     static constexpr auto narrowed_max = (out_shift < 0) ? ((sum_max >> -out_shift) + 1) : (sum_max << out_shift);
 
     // determine if saturation is possible
-    static constexpr auto lower_saturation_possible = narrowed_min < out_min;
-    static constexpr auto upper_saturation_possible = narrowed_max > out_max;
+    static constexpr auto saturate                  = overflow_policy == overflow_policy_t::saturate;
+    static constexpr auto lower_saturation_possible = saturate && (narrowed_min < out_min);
+    static constexpr auto upper_saturation_possible = saturate && (narrowed_max > out_max);
 
     /// fused multiply-add
     ///
@@ -116,18 +119,16 @@ struct fma_t
             sum <<= out_shift;
         }
 
-        // optionally saturate
-        if constexpr (saturate)
+        // optionally saturate upper
+        if constexpr (upper_saturation_possible)
         {
-            if constexpr (upper_saturation_possible)
-            {
-                if (sum > out_max) return out_t::literal(max<out_value_t>());
-            }
+            if (sum > out_max) return out_t::literal(max<out_value_t>());
+        }
 
-            if constexpr (lower_saturation_possible)
-            {
-                if (sum < out_min) return out_t::literal(min<out_value_t>());
-            }
+        // optionally saturate lower
+        if constexpr (lower_saturation_possible)
+        {
+            if (sum < out_min) return out_t::literal(min<out_value_t>());
         }
 
         return out_t::literal(int_cast<typename out_t::value_t>(sum));

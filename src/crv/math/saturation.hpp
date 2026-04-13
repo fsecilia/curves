@@ -11,28 +11,10 @@
 
 namespace crv {
 
-struct saturate : std::true_type
-{};
-
-struct no_saturation : std::false_type
-{};
-
-namespace detail {
-
-template <typename saturation_t> struct literal_saturation_t : std::false_type
-{};
-
-template <> struct literal_saturation_t<saturate> : std::true_type
-{};
-
-template <> struct literal_saturation_t<no_saturation> : std::true_type
-{};
-
-template <typename saturation_t> inline constexpr auto literal_saturation_v = literal_saturation_t<saturation_t>::value;
-
-} // namespace detail
-
-template <typename saturation_t>
-concept literal_saturation = detail::literal_saturation_v<saturation_t>;
+enum class overflow_policy_t
+{
+    saturate,
+    wrap
+};
 
 } // namespace crv
