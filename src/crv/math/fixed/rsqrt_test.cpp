@@ -23,49 +23,47 @@ constexpr auto test(u64 value, u64 tolerance, u64 expected_result) -> bool
 // identity
 // isqrt(1.0) = 1.0 = round(2^30) @Q30
 // baseline
-static_assert(rsqrt<30, 30>(1ULL << 30) == fixed_t<uint64_t, 30>(1).value);
+static_assert(rsqrt<30, 30>(1ULL << 30) == fixed_t<uint64_t, 30>(1));
 
 // high precision, under-unity
 // isqrt(2.0) ~= 0.707 ~= round(2^61/sqrt(2)) @Q61
 // fails if internal precision doesn't have guard bits for rne
-static_assert(rsqrt<61, 61>(2ULL << 61) == fixed_t<uint64_t, 61>::literal(1630477228166597777ULL - 1).value);
+static_assert(rsqrt<61, 61>(2ULL << 61) == fixed_t<uint64_t, 61>::literal(1630477228166597777ULL - 1));
 
 // high precision, over-unity
 // isqrt(0.5) ~= 1.414 ~= round(2^61/sqrt(0.5)) @Q61
 // overflow risk case
-static_assert(rsqrt<61, 61>(1ll << 60) == fixed_t<uint64_t, 61>::literal(3260954456333195553ULL - 1).value);
+static_assert(rsqrt<61, 61>(1ll << 60) == fixed_t<uint64_t, 61>::literal(3260954456333195553ULL - 1));
 
 // pure integer input
 // isqrt(100) = 0.1 ~= round(2^60/sqrt(100)) @Q60
 // checks standard integer handling and large rescaling
-static_assert(rsqrt<60, 0>(100) == fixed_t<uint64_t, 60>::literal(115292150460684698ULL).value);
+static_assert(rsqrt<60, 0>(100) == fixed_t<uint64_t, 60>::literal(115292150460684698ULL));
 
 // irrational non-power-of-2
 // isqrt(3.0) ~= 0.577350269 ~= round(2^60/sqrt(3)) @Q60.
 // checks rounding logic on typical but messy values
-static_assert(rsqrt<60, 60>(3ll << 60) == fixed_t<uint64_t, 60>::literal(665639541039271463ULL).value);
+static_assert(rsqrt<60, 60>(3ll << 60) == fixed_t<uint64_t, 60>::literal(665639541039271463ULL));
 
 // large upscale on small input
 // isqrt(0.001*2^30) ~= 0.000965051 ~= round(2^30/sqrt(trunc(0.001*2^30)/2^30)) @Q30
-static_assert(rsqrt<30, 30>(static_cast<u64>(0.001 * (1ULL << 30)))
-              == fixed_t<uint64_t, 30>::literal(33954710857ULL).value);
+static_assert(rsqrt<30, 30>(static_cast<u64>(0.001 * (1ULL << 30))) == fixed_t<uint64_t, 30>::literal(33954710857ULL));
 
 // floor
 // isqrt(2^63 - 1)
 //     ~= 3.2927225399135962335354494746864465592611776064343944463441e-10
 //     ~= round(2^60/sqrt(2^63 - 1)) @2^60
-static_assert(rsqrt<60, 0>(S64_MAX) == fixed_t<uint64_t, 60>::literal(379625062ULL).value);
+static_assert(rsqrt<60, 0>(S64_MAX) == fixed_t<uint64_t, 60>::literal(379625062ULL));
 
 // overflow saturation
-static_assert(rsqrt<50, 30>(1) == fixed_t<uint64_t, 50>::literal(U64_MAX).value);
+static_assert(rsqrt<50, 30>(1) == fixed_t<uint64_t, 50>::literal(U64_MAX));
 
 // underflow saturation
-static_assert(rsqrt<20, 0>(1ULL << 60) == fixed_t<uint64_t, 20>{0}.value);
+static_assert(rsqrt<20, 0>(1ULL << 60) == fixed_t<uint64_t, 20>{0});
 
 // max possible mouse input vector
 // round(2^32/sqrt(2*(2^15 - 1)*(2^15 - 1)))
-static_assert(rsqrt<32, 0>(2 * ((1ULL << 15) - 1) * ((1ULL << 15) - 1))
-              == fixed_t<uint64_t, 32>::literal(92685ULL).value);
+static_assert(rsqrt<32, 0>(2 * ((1ULL << 15) - 1) * ((1ULL << 15) - 1)) == fixed_t<uint64_t, 32>::literal(92685ULL));
 
 // worst initial guess
 //
@@ -94,7 +92,7 @@ static_assert(rsqrt<32, 0>(2 * ((1ULL << 15) - 1) * ((1ULL << 15) - 1))
 // ~= 1.28827803873778693366687619903387940212269313633441925048828125
 //
 // It starts with a guess of 1.2883 and must reach 1.2844 in NR steps alone.
-static_assert(rsqrt<62, 62>(2795303719243043561ULL) == fixed_t<uint64_t, 62>::literal(5923455028186719836ULL).value);
+static_assert(rsqrt<62, 62>(2795303719243043561ULL) == fixed_t<uint64_t, 62>::literal(5923455028186719836ULL));
 
 } // namespace
 } // namespace crv

@@ -65,7 +65,8 @@ constexpr auto CURVES_U128_MAX = max<u128>();
 /// Using a quadratic approximation balances Horner iterations against Newton-Raphson iterations. Each NR iteration uses
 /// 3 multiplies. Horner iterations use 1. For the same precision, a -log2/2 approximation requires 6 iterations. Linear
 /// requires 4. Quadratic requires 3. Cubic also requires 3, so we use quadratic.
-template <unsigned int output_frac_bits, unsigned int frac_bits> constexpr auto rsqrt(u64 x) noexcept -> u64
+template <unsigned int output_frac_bits, unsigned int frac_bits>
+constexpr auto rsqrt(u64 x) noexcept -> fixed_t<uint64_t, output_frac_bits>
 {
     // Quadratic approximation coefficients.
     //
@@ -83,7 +84,7 @@ template <unsigned int output_frac_bits, unsigned int frac_bits> constexpr auto 
     unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
     u64          c1, c2, x_norm, y, yy, factor;
 
-    if (x == 0) [[unlikely]] { return U64_MAX; }
+    if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
 
     // Normalize x to Q0.64 [0.5, 1.0).
     x_lz            = std::countl_zero(x);
@@ -113,9 +114,9 @@ template <unsigned int output_frac_bits, unsigned int frac_bits> constexpr auto 
     if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
     {
         // Zero values and right shifts return 0.
-        if (y_128 == 0 || output_frac_bits < y_denorm_frac_bits) return 0;
+        if (y_128 == 0 || output_frac_bits < y_denorm_frac_bits) return fixed_t<uint64_t, output_frac_bits>{0};
 
-        return U64_MAX;
+        return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
     }
 
     u128 result;
@@ -142,16 +143,18 @@ template <unsigned int output_frac_bits, unsigned int frac_bits> constexpr auto 
 
         // Find the maximum value that doesn't overflow.
         u128 max_safe_val = CURVES_U128_MAX >> shift;
-        if (y_128 > max_safe_val) [[unlikely]]
-            return U64_MAX;
+        if (y_128 > max_safe_val) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
 
         // The value is safe to shift.
         result = y_128 << shift;
     }
 
-    if (result > static_cast<u128>(U64_MAX)) [[unlikely]] { return U64_MAX; }
+    if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
+    {
+        return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
+    }
 
-    return static_cast<u64>(result);
+    return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<u64>(result));
 }
 
 } // namespace crv
