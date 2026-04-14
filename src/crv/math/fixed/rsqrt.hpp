@@ -20,11 +20,14 @@ namespace rsqrt_initial_guesses {
 
 struct quadratic_minimax_t
 {
+    using in_t    = fixed_t<uint64_t, 64>;
+    using coeff_t = fixed_t<uint64_t, 62>;
+    using out_t   = coeff_t;
+
     // Quadratic approximation coefficients.
     //
     // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
     // tools/sollya/gen_rsqrt_initial_guess.sollya for more information about how these values are generated.
-    using coeff_t                     = fixed_t<uint64_t, 62>;
     static constexpr auto coeff_count = 3;
     static constexpr auto coeffs      = std::array<coeff_t, coeff_count>{
         coeff_t::literal(10354071711462988194ULL),
@@ -32,12 +35,15 @@ struct quadratic_minimax_t
         coeff_t::literal(3949952137299739940ULL),
     };
 
-    // \pre in must be in [0.5, 1)
-    static constexpr auto operator()(coeff_t in) noexcept -> coeff_t
+    // \pre in must be in [0.5, 1); upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64
+    static constexpr auto operator()(in_t in) noexcept -> out_t
     {
-        assert((coeff_t{1} >> 1) <= in && in < coeff_t{1});
+        assert(in.value >= (in_t::value_t{1} << (in_t::frac_bits - 1)));
 
-        return coeff_t{coeffs[0] - coeff_t{in * (coeffs[1] - coeff_t{in * coeffs[2]})}};
+        // apply horner's method: C0 + -C1*x + C2*x^2 = C0 - x*(C1 - x*C2)
+        auto const inner = coeff_t::convert(multiply(in, coeffs[2]));
+        auto const outer = coeff_t::convert(multiply(in, coeffs[1] - inner));
+        return coeffs[0] - outer;
     }
 };
 

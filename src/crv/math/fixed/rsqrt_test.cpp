@@ -25,14 +25,15 @@ namespace {
 
 namespace quadratic_minimax {
 
-using coeff_t = quadratic_minimax_t::coeff_t;
+using in_t  = quadratic_minimax_t::in_t;
+using out_t = quadratic_minimax_t::out_t;
 
-struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<coeff_t>
+struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<in_t>
 {
     // This comes from the same sollya script that generated the constants: 2e + e^2 + 100
-    static constexpr auto tolerance = coeff_t::literal(35425386524623938ull);
+    static constexpr auto tolerance = out_t::literal(35425386524623938ull);
 
-    coeff_t const in = GetParam();
+    in_t const in = GetParam();
 
     using sut_t = quadratic_minimax_t;
     sut_t const sut{};
@@ -41,7 +42,7 @@ struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<coeff_t>
 // tests (1/sqrt(in))^2*in = 1
 TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_bounds)
 {
-    auto const expected = coeff_t{1};
+    auto const expected = out_t{1};
 
     auto const reciprocal_sqrt = sut(in);
     auto const reciprocal      = reciprocal_sqrt * reciprocal_sqrt;
@@ -52,13 +53,13 @@ TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_boun
 };
 
 // clang-format off
-constexpr auto epsilon   = coeff_t::literal(1);
-coeff_t const  vectors[] = {
-    {to_fixed<coeff_t>(1.0) - epsilon},
-    {to_fixed<coeff_t>(1.0) - epsilon * 2},
-    {to_fixed<coeff_t>(0.75)},
-    {to_fixed<coeff_t>(0.5) + epsilon},
-    {to_fixed<coeff_t>(0.5)},
+constexpr auto epsilon   = in_t::literal(1);
+in_t const     vectors[] = {
+    in_t::literal(max<uint64_t>()),
+    in_t::literal(max<uint64_t>()) - epsilon,
+    to_fixed<in_t>(0.75),
+    to_fixed<in_t>(0.5) + epsilon,
+    to_fixed<in_t>(0.5),
 };
 INSTANTIATE_TEST_SUITE_P(vectors, rsqrt_initial_guesses_quadratic_minimax_test_t, ValuesIn(vectors));
 // clang-format on
