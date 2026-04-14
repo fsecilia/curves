@@ -265,15 +265,11 @@ TEST(shifter_death_test, shr_asym_dynamic_oversized_count)
 
 namespace shl {
 
-constexpr auto const largest_invalid_underlying_for_shl_4  = (min<underlying_t>() >> 4) - 1;
-constexpr auto const smallest_valid_underlying_for_shl_4   = min<underlying_t>() >> 4;
-constexpr auto const largest_valid_underlying_for_shl_4    = max<underlying_t>() >> 4;
-constexpr auto const smallest_invalid_underlying_for_shl_4 = (max<underlying_t>() >> 4) + 1;
+constexpr auto smallest_valid_underlying_for_shl_4 = min<underlying_t>() >> 4;
+constexpr auto largest_valid_underlying_for_shl_4  = max<underlying_t>() >> 4;
 
-constexpr auto largest_invalid_src_for_shl_4  = src_t{largest_invalid_underlying_for_shl_4};
-constexpr auto smallest_valid_src_for_shl_4   = src_t{smallest_valid_underlying_for_shl_4};
-constexpr auto largest_valid_src_for_shl_4    = src_t{largest_valid_underlying_for_shl_4};
-constexpr auto smallest_invalid_src_for_shl_4 = src_t{smallest_invalid_underlying_for_shl_4};
+constexpr auto smallest_valid_src_for_shl_4 = src_t{smallest_valid_underlying_for_shl_4};
+constexpr auto largest_valid_src_for_shl_4  = src_t{largest_valid_underlying_for_shl_4};
 
 // --------------------------------------------------------------------------------------------------------------------
 // negative boundary
@@ -492,6 +488,12 @@ constexpr auto test_shift_asym_static_zero_count() noexcept -> bool
 static_assert(test_shift_asym_static_zero_count(), "shifter_t: test_shift_asym_static_zero_count failed");
 
 #if defined CRV_ENABLE_DEATH_TESTS
+
+constexpr auto largest_invalid_underlying_for_shl_4  = (min<underlying_t>() >> 4) - 1;
+constexpr auto smallest_invalid_underlying_for_shl_4 = (max<underlying_t>() >> 4) + 1;
+
+constexpr auto largest_invalid_src_for_shl_4  = src_t{largest_invalid_underlying_for_shl_4};
+constexpr auto smallest_invalid_src_for_shl_4 = src_t{smallest_invalid_underlying_for_shl_4};
 
 TEST(shifter_death_test, shl_sym_dynamic_negative_count)
 {
