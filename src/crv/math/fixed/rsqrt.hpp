@@ -49,17 +49,6 @@ struct quadratic_minimax_t
 
 } // namespace rsqrt_initial_guesses
 
-using u64_62_t   = fixed_t<uint64_t, 62>;
-using u64_64_t   = fixed_t<uint64_t, 64>;
-using u128_128_t = fixed_t<uint128_t, 128>;
-
-using s64                      = int64_t;
-using u64                      = uint64_t;
-using u128                     = uint128_t;
-constexpr auto S64_MAX         = max<s64>();
-constexpr auto U64_MAX         = max<u64>();
-constexpr auto CURVES_U128_MAX = max<u128>();
-
 /// reciprocal sqrt
 ///
 /// This function solves `y = 1/sqrt(x)` using Newton-Raphson. We define a function, `f(y)`, with the same roots as y,
@@ -119,7 +108,7 @@ struct rsqrt_t
     {
         auto const x = in.value;
 
-        if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
+        if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>()); }
 
         // Normalize x to Q0.64 [0.5, 1.0).
         auto const x_lz            = std::countl_zero(x);
@@ -130,13 +119,13 @@ struct rsqrt_t
         auto y = initial_guess(fixed_t<uint64_t, 64>::literal(x_norm)).value;
         for (int_t i = 0; i < nr_iteration_count; ++i)
         {
-            auto yy     = static_cast<u64>((static_cast<u128>(y) * y) >> y_frac_bits);
-            auto factor = static_cast<u64>((static_cast<u128>(x_norm) * yy) >> x_norm_frac_bits);
-            y           = static_cast<u64>((static_cast<u128>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
+            auto yy     = static_cast<uint64_t>((static_cast<uint128_t>(y) * y) >> y_frac_bits);
+            auto factor = static_cast<uint64_t>((static_cast<uint128_t>(x_norm) * yy) >> x_norm_frac_bits);
+            y = static_cast<uint64_t>((static_cast<uint128_t>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
         }
 
         // Denormalize.
-        if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
+        if (x_norm_exponent & 1) y = static_cast<uint64_t>((static_cast<uint128_t>(y) * sqrt2_q62) >> y_frac_bits);
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
 
@@ -146,16 +135,16 @@ struct rsqrt_t
             // Zero values and right shifts return 0.
             if (y == 0 || output_frac_bits < y_denorm_frac_bits) return fixed_t<uint64_t, output_frac_bits>{0};
 
-            return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
+            return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>());
         }
 
         auto const result = shifter.shift(static_cast<uint128_t>(y), output_frac_bits - y_denorm_frac_bits);
-        if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
+        if (result > static_cast<uint128_t>(max<uint64_t>())) [[unlikely]]
         {
-            return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
+            return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>());
         }
 
-        return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<u64>(result));
+        return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<uint64_t>(result));
     }
 };
 

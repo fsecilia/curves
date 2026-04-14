@@ -112,20 +112,20 @@ static_assert(rsqrt(fixed_t<uint64_t, 60>(3)) == fixed_t<uint64_t, 60>::literal(
 
 // large upscale on small input
 // isqrt(0.001*2^30) ~= 0.000965051 ~= round(2^30/sqrt(trunc(0.001*2^30)/2^30)) @Q30
-static_assert(rsqrt(fixed_t<uint64_t, 30>::literal(static_cast<u64>(0.001 * (1ULL << 30))))
+static_assert(rsqrt(fixed_t<uint64_t, 30>::literal(static_cast<uint64_t>(0.001 * (1ULL << 30))))
               == fixed_t<uint64_t, 30>::literal(33954710857ULL));
 
 // floor
 // isqrt(2^63 - 1)
 //     ~= 3.2927225399135962335354494746864465592611776064343944463441e-10
 //     ~= round(2^60/sqrt(2^63 - 1)) @2^60
-static_assert(rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(S64_MAX))
+static_assert(rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(max<int64_t>()))
               == fixed_t<uint64_t, 60>::literal(379625062ULL));
 
 // overflow saturation
 static_assert(rsqrt<fixed_t<uint64_t, 50>>(fixed_t<uint64_t, 30>::literal(1))
 
-              == fixed_t<uint64_t, 50>::literal(U64_MAX));
+              == fixed_t<uint64_t, 50>::literal(max<uint64_t>()));
 // underflow saturation
 static_assert(rsqrt<fixed_t<uint64_t, 20>>(fixed_t<uint64_t, 0>(1ULL << 60)) == fixed_t<uint64_t, 20>{0});
 
