@@ -24,5 +24,5 @@ extern "C" int reference_cxx(void)
     using namespace crv;
 
     auto const one = q63_0i_t{1};
-    return q47_16i_t{one}.value;
+    return q47_16i_t::convert(one).value;
 }

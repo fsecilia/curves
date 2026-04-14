@@ -118,7 +118,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     /// converts from another fixed_t specialization, rescaling precision using rounding mode
     template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
               typename shifter_type = shifter_t<>>
-    explicit constexpr fixed_t(other_t const& other, shifter_type shifter = shifter_type{}) noexcept
+    static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
     {
         using other_value_t       = typename other_t::value_t;
         constexpr auto shift_bits = frac_bits - other_t::frac_bits;
@@ -135,20 +135,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
                 constexpr auto safe_max = max<value_t>() >> shift_bits;
                 constexpr auto safe_min = min<value_t>() >> shift_bits;
 
-                if (cmp_greater(other.value, safe_max))
-                {
-                    value = max<value_t>();
-                    return;
-                }
-
-                if (cmp_less(other.value, safe_min))
-                {
-                    value = min<value_t>();
-                    return;
-                }
+                if (cmp_greater(other.value, safe_max)) { return literal(max<value_t>()); }
+                if (cmp_less(other.value, safe_min)) { return literal(min<value_t>()); }
             }
 
-            value = shifter.template shl<shift_bits>(static_cast<value_t>(other.value));
+            return literal(shifter.template shl<shift_bits>(static_cast<value_t>(other.value)));
         }
         else
         {
@@ -163,20 +154,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
             // saturate before converting
             if constexpr (saturate)
             {
-                if (cmp_greater(shifted, max<value_t>()))
-                {
-                    value = max<value_t>();
-                    return;
-                }
-
-                if (cmp_less(shifted, min<value_t>()))
-                {
-                    value = min<value_t>();
-                    return;
-                }
+                if (cmp_greater(shifted, max<value_t>())) { return literal(max<value_t>()); }
+                if (cmp_less(shifted, min<value_t>())) { return literal(min<value_t>()); }
             }
 
-            value = static_cast<value_t>(shifted);
+            return literal(static_cast<value_t>(shifted));
         }
     }
 
@@ -321,7 +303,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     template <is_fixed out_t, is_fixed rhs_t, typename shifter_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, shifter_t shifter) noexcept -> out_t
     {
-        return out_t{multiply(lhs, rhs), std::move(shifter)};
+        return out_t::convert(multiply(lhs, rhs), std::move(shifter));
     }
 
     /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode

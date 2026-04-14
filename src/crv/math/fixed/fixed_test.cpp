@@ -148,22 +148,22 @@ static_assert(sut_t{0xF1234}.value == 0xF1234ul << frac_bits);
 namespace conversions {
 
 // same precision, different size
-static_assert(i16_4_t{i8_4_t::literal(10)}.value == 10);
-static_assert(i8_4_t{i16_4_t::literal(10)}.value == 10);
+static_assert(i16_4_t::convert(i8_4_t::literal(10)).value == 10);
+static_assert(i8_4_t::convert(i16_4_t::literal(10)).value == 10);
 
 // same size, different precision
-static_assert(i8_4_t{i8_2_t::literal(10)}.value == 40);
-static_assert(i8_2_t{i8_4_t::literal(40)}.value == 10);
+static_assert(i8_4_t::convert(i8_2_t::literal(10)).value == 40);
+static_assert(i8_2_t::convert(i8_4_t::literal(40)).value == 10);
 
 // widen/narrow and precision changes
-static_assert(i16_4_t{i8_2_t::literal(10)}.value == 40);
-static_assert(i16_2_t{i8_4_t::literal(40)}.value == 10);
-static_assert(i8_4_t{i16_2_t::literal(10)}.value == 40);
-static_assert(i8_2_t{i16_4_t::literal(40)}.value == 10);
+static_assert(i16_4_t::convert(i8_2_t::literal(10)).value == 40);
+static_assert(i16_2_t::convert(i8_4_t::literal(40)).value == 10);
+static_assert(i8_4_t ::convert(i16_2_t::literal(10)).value == 40);
+static_assert(i8_2_t ::convert(i16_4_t::literal(40)).value == 10);
 
 // widended range edge cases
-static_assert(i16_9_t{i8_7_t::literal(64)}.value == 256);
-static_assert(i8_7_t{i16_9_t::literal(256)}.value == 64);
+static_assert(i16_9_t::convert(i8_7_t::literal(64)).value == 256);
+static_assert(i8_7_t ::convert(i16_9_t::literal(256)).value == 64);
 
 namespace rounding {
 
@@ -173,18 +173,18 @@ constexpr auto min = crv::min<int8_t>();
 constexpr auto max = crv::max<int8_t>();
 
 // default truncation
-static_assert(dst_t{src_t::literal(min), shifter_t{truncate}}.value == min / 4);
-static_assert(dst_t{src_t::literal(min + 1), shifter_t{truncate}}.value == min / 4);
-static_assert(dst_t{src_t::literal(min + 4), shifter_t{truncate}}.value == min / 4 + 1);
-static_assert(dst_t{src_t::literal(max - 4), shifter_t{truncate}}.value == max / 4 - 1);
-static_assert(dst_t{src_t::literal(max), shifter_t{truncate}}.value == max / 4);
+static_assert(dst_t::convert(src_t::literal(min), shifter_t{truncate}).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 1), shifter_t{truncate}).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 4), shifter_t{truncate}).value == min / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(max - 4), shifter_t{truncate}).value == max / 4 - 1);
+static_assert(dst_t::convert(src_t::literal(max), shifter_t{truncate}).value == max / 4);
 
 // round nearest even
-static_assert(dst_t{src_t::literal(min), shifter_t{rne}}.value == min / 4);
-static_assert(dst_t{src_t::literal(min + 1), shifter_t{rne}}.value == min / 4);
-static_assert(dst_t{src_t::literal(min + 3), shifter_t{rne}}.value == min / 4 + 1);
-static_assert(dst_t{src_t::literal(max - 4), shifter_t{rne}}.value == max / 4);
-static_assert(dst_t{src_t::literal(max), shifter_t{rne}}.value == max / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(min), shifter_t{rne}).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 1), shifter_t{rne}).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 3), shifter_t{rne}).value == min / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(max - 4), shifter_t{rne}).value == max / 4);
+static_assert(dst_t::convert(src_t::literal(max), shifter_t{rne}).value == max / 4 + 1);
 
 } // namespace rounding
 
@@ -194,22 +194,22 @@ constexpr auto i16_max = crv::max<int16_t>();
 constexpr auto i16_min = crv::min<int16_t>();
 
 // unsigned that exceeds signed bounds directly
-static_assert(i16_4_t{u32_8_t::literal(4'000'000'000u)}.value == i16_max);
+static_assert(i16_4_t::convert(u32_8_t::literal(4'000'000'000u)).value == i16_max);
 
 // unsigned that exceeds signed bound after rescaling; tricks mixed-signs checks
-static_assert(i16_4_t{u16_0_t::literal(40000)}.value == i16_max);
+static_assert(i16_4_t::convert(u16_0_t::literal(40000)).value == i16_max);
 
 // hard positive clamp
-static_assert(i16_4_t{u32_8_t::literal(4'000'000'000u)}.value == i16_max);
+static_assert(i16_4_t::convert(u32_8_t::literal(4'000'000'000u)).value == i16_max);
 
 // negative to unsigned, downscaling
-static_assert(u16_4_t{i32_8_t::literal(-100'000)}.value == 0);
+static_assert(u16_4_t::convert(i32_8_t::literal(-100'000)).value == 0);
 
 // negative to unsigned, upscaling
-static_assert(u16_4_t{i16_0_t::literal(-1000)}.value == 0);
+static_assert(u16_4_t::convert(i16_0_t::literal(-1000)).value == 0);
 
 // negative to smaller signed
-static_assert(i16_4_t{i32_8_t::literal(-2'000'000'000)}.value == i16_min);
+static_assert(i16_4_t::convert(i32_8_t::literal(-2'000'000'000)).value == i16_min);
 
 } // namespace saturation
 
