@@ -10,6 +10,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/fma.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/math/shifter.hpp>
 #include <array>
 #include <bit>
 
@@ -99,7 +100,8 @@ struct rsqrt_t
     static constexpr auto frac_bits        = in_t::frac_bits;
     static constexpr auto output_frac_bits = out_t::frac_bits;
 
-    constexpr auto operator()(in_t in) noexcept -> out_t
+    template <typename shifter_t = shifter_t<>>
+    constexpr auto operator()(in_t in, shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
         auto const x = in.value;
 
@@ -111,13 +113,13 @@ struct rsqrt_t
         u64 c1_q62 = 9674659108971248202ULL;
         u64 c2_q62 = 3949952137299739940ULL;
 
-        unsigned int x_norm_frac_bits = 64;
-        unsigned int y_frac_bits      = 62;
-        u64          three_q62        = 3ULL << 62;
-        u64          sqrt2_q62        = 0x5A827999FCEF3242ULL;
+        int_t x_norm_frac_bits = 64;
+        int_t y_frac_bits      = 62;
+        u64   three_q62        = 3ULL << 62;
+        u64   sqrt2_q62        = 0x5A827999FCEF3242ULL;
 
-        unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
-        u64          c1, c2, x_norm, y, yy, factor;
+        int_t x_lz, x_norm_exponent, y_denorm_frac_bits;
+        u64   c1, c2, x_norm, y, yy, factor;
 
         if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
 
@@ -132,7 +134,7 @@ struct rsqrt_t
         y  = c0_q62 - c1;
 
         // Newton-Raphson.
-        for (int i = 0; i < 3; ++i)
+        for (int_t i = 0; i < 3; ++i)
         {
             yy     = static_cast<u64>((static_cast<u128>(y) * y) >> y_frac_bits);
             factor = static_cast<u64>((static_cast<u128>(x_norm) * yy) >> x_norm_frac_bits);
@@ -154,35 +156,7 @@ struct rsqrt_t
             return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
         }
 
-        u128 result;
-        if (output_frac_bits < y_denorm_frac_bits)
-        {
-            unsigned int shift = y_denorm_frac_bits - output_frac_bits;
-
-            u128 half      = static_cast<u128>(1) << (shift - 1);
-            u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
-
-            u128 int_part  = y_128 >> shift;
-            u128 frac_part = y_128 & frac_mask;
-
-            u128 is_odd = int_part & 1;
-
-            u128 bias  = half - 1 + is_odd;
-            u128 carry = (frac_part + bias) >> shift;
-
-            result = int_part + carry;
-        }
-        else
-        {
-            unsigned int shift = output_frac_bits - y_denorm_frac_bits;
-
-            // Find the maximum value that doesn't overflow.
-            u128 max_safe_val = CURVES_U128_MAX >> shift;
-            if (y_128 > max_safe_val) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
-
-            // The value is safe to shift.
-            result = y_128 << shift;
-        }
+        u128 result = shifter.shift(y_128, output_frac_bits - y_denorm_frac_bits);
 
         if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
         {
