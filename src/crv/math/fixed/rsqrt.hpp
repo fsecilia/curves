@@ -106,18 +106,12 @@ struct rsqrt_t
     static constexpr auto frac_bits        = in_t::frac_bits;
     static constexpr auto output_frac_bits = out_t::frac_bits;
 
+    [[no_unique_address]] initial_guess_t initial_guess{};
+
     template <typename shifter_t = shifter_t<>>
     constexpr auto operator()(in_t in, shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
         auto const x = in.value;
-
-        // Quadratic approximation coefficients.
-        //
-        // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
-        // src/curves/tools/isqrt_initial_guess.sollya for more information about how these values are generated.
-        u64 c0_q62 = 10354071711462988194ULL;
-        u64 c1_q62 = 9674659108971248202ULL;
-        u64 c2_q62 = 3949952137299739940ULL;
 
         int_t x_norm_frac_bits = 64;
         int_t y_frac_bits      = 62;
@@ -125,7 +119,7 @@ struct rsqrt_t
         u64   sqrt2_q62        = 0x5A827999FCEF3242ULL;
 
         int_t x_lz, x_norm_exponent, y_denorm_frac_bits;
-        u64   c1, c2, x_norm, y, yy, factor;
+        u64   x_norm, y, yy, factor;
 
         if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
 
@@ -134,10 +128,8 @@ struct rsqrt_t
         x_norm          = x << x_lz;
         x_norm_exponent = x_lz + frac_bits;
 
-        // Approximate 1/sqrt for initial guess using Horner's method.
-        c2 = static_cast<u64>((static_cast<u128>(x_norm) * c2_q62) >> x_norm_frac_bits);
-        c1 = static_cast<u64>((static_cast<u128>(x_norm) * (c1_q62 - c2)) >> x_norm_frac_bits);
-        y  = c0_q62 - c1;
+        // approximate 1/sqrt for initial guess using Horner's method
+        y = initial_guess(fixed_t<uint64_t, 64>::literal(x_norm)).value;
 
         // Newton-Raphson.
         for (int_t i = 0; i < 3; ++i)
