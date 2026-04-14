@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/saturation.hpp>
+#include <crv/math/shifter.hpp>
 
 namespace crv {
 
@@ -88,9 +89,9 @@ struct fma_t
     /// Calculates (a*b) + c at maximum intermediate precision before narrowing and rounding once.
     ///
     /// \pre all 3 terms must share signedness
-    template <typename rounding_mode_t = fixed::default_shr_rounding_mode_t>
+    template <typename shifter_t = shifter_t<>>
     constexpr auto operator()(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend,
-                              rounding_mode_t rounding_mode = {}) noexcept -> out_t
+                              shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
         // multiply
         auto const product = multiply(multiplicand, multiplier);
@@ -104,20 +105,8 @@ struct fma_t
         // sum
         auto sum = aligned_product + aligned_addend;
 
-        // optionally shift to out_t precision
-        if constexpr (out_shift < 0)
-        {
-            // downscaling requires rounding
-            constexpr auto shr       = -out_shift;
-            auto const     unshifted = rounding_mode.bias(sum, shr);
-            auto const     shifted   = unshifted >> shr;
-            sum                      = rounding_mode.carry(shifted, unshifted, shr);
-        }
-        else if constexpr (out_shift > 0)
-        {
-            // upscaling requires no rounding
-            sum <<= out_shift;
-        }
+        // shift to out_t precision
+        sum = shifter.template shift<out_shift>(sum);
 
         // optionally saturate upper
         if constexpr (upper_saturation_possible)

@@ -5,6 +5,7 @@
 
 #include "fma.hpp"
 #include <crv/test/test.hpp>
+#include <utility>
 
 namespace crv {
 namespace {
@@ -16,20 +17,19 @@ using i32_15_t = fixed_t<int32_t, 15>;
 using i64_31_t = fixed_t<int64_t, 31>;
 
 // common rounding modes
-constexpr auto rne   = rounding_modes::shr::nearest_even;
-constexpr auto trunc = rounding_modes::shr::truncate;
+constexpr auto rne   = shifter_t{rounding_modes::shr::nearest_even};
+constexpr auto trunc = shifter_t{rounding_modes::shr::truncate};
 
 constexpr auto saturate      = overflow_policy_t::saturate;
 constexpr auto no_saturation = overflow_policy_t::wrap;
 
 // autodeducing wrapper
 template <typename out_t, overflow_policy_t saturation, typename multiplicand_t, typename multiplier_t,
-          typename addend_t, typename rounding_mode_t>
-constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, rounding_mode_t rounding_mode)
-    -> out_t
+          typename addend_t, typename shifter_t>
+constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, shifter_t shifter) -> out_t
 {
     return fma_t<out_t, multiplicand_t, multiplier_t, addend_t, saturation>{}(multiplicand, multiplier, addend,
-                                                                              rounding_mode);
+                                                                              std::move(shifter));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -75,32 +75,32 @@ using micro_frac_t = fixed_t<int64_t, 60>;
 static_assert(fma<micro_frac_t, saturate>(macro_int_t{2}, macro_int_t{3}, micro_frac_t{10}, trunc) == micro_frac_t{16});
 
 // --------------------------------------------------------------------------------------------------------------------
-// Rounding Modes
+// Shifting
 // --------------------------------------------------------------------------------------------------------------------
 
 // fractional resolution tests using nearest even (rne)
 
 // 2.4375 * 1.0 + 0.0 = 2.4375 -> rounds to 2
-static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(0), rne).value
-              == i16_0_t{2}.value);
+static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(0), rne)
+              == i16_0_t{2});
 
 // 2.4375 * 1.0 + 0.0625 = 2.5 -> breaks tie to even (2)
-static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(1), rne).value
-              == i16_0_t{2}.value);
+static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(1), rne)
+              == i16_0_t{2});
 
 // 2.4375 * 1.0 + 0.125 = 2.5625 -> rounds up to nearest (3)
-static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(2), rne).value
-              == i16_0_t{3}.value);
+static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(2), rne)
+              == i16_0_t{3});
 
 // negative rounding (away from zero / toward zero based on tie-breaking)
 
 // -2.5 -> -2
-static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(-39), i16_4_t::literal(16), i16_4_t::literal(-1), rne).value
-              == i16_0_t{-2}.value);
+static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(-39), i16_4_t::literal(16), i16_4_t::literal(-1), rne)
+              == i16_0_t{-2});
 
 // -3.5 -> -4
-static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(-55), i16_4_t::literal(16), i16_4_t::literal(-1), rne).value
-              == i16_0_t{-4}.value);
+static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(-55), i16_4_t::literal(16), i16_4_t::literal(-1), rne)
+              == i16_0_t{-4});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Saturation
