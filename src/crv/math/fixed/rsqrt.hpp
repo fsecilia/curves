@@ -8,8 +8,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/fixed/fma.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/rounding_mode.hpp>
+#include <crv/math/shifter.hpp>
 #include <bit>
 
 namespace crv {
@@ -65,9 +66,13 @@ constexpr auto CURVES_U128_MAX = max<u128>();
 /// Using a quadratic approximation balances Horner iterations against Newton-Raphson iterations. Each NR iteration uses
 /// 3 multiplies. Horner iterations use 1. For the same precision, a -log2/2 approximation requires 6 iterations. Linear
 /// requires 4. Quadratic requires 3. Cubic also requires 3, so we use quadratic.
-template <unsigned int output_frac_bits, unsigned int frac_bits>
-constexpr auto rsqrt(u64 x) noexcept -> fixed_t<uint64_t, output_frac_bits>
+template <is_fixed out_t, is_fixed in_t> constexpr auto rsqrt(in_t in) noexcept -> out_t
 {
+    constexpr auto frac_bits        = in_t::frac_bits;
+    constexpr auto output_frac_bits = out_t::frac_bits;
+
+    auto const x = in.value;
+
     // Quadratic approximation coefficients.
     //
     // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
@@ -155,6 +160,12 @@ constexpr auto rsqrt(u64 x) noexcept -> fixed_t<uint64_t, output_frac_bits>
     }
 
     return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<u64>(result));
+}
+
+/// rsqrt with symmetric input and output types
+template <is_fixed fixed_t> constexpr auto rsqrt(fixed_t in) noexcept -> fixed_t
+{
+    return rsqrt<fixed_t, fixed_t>(in);
 }
 
 } // namespace crv
