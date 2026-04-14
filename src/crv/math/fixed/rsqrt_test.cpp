@@ -73,14 +73,14 @@ INSTANTIATE_TEST_SUITE_P(vectors, rsqrt_initial_guesses_quadratic_minimax_test_t
 
 namespace {
 
-template <unsigned int output_frac_bits, unsigned int frac_bits>
-constexpr auto test(u64 value, u64 tolerance, u64 expected_result) -> bool
+template <is_fixed out_t, is_fixed in_t> constexpr auto rsqrt(in_t in) -> out_t
 {
-    auto const actual_result = rsqrt<output_frac_bits, frac_bits>(value);
+    return rsqrt_t<out_t, in_t>{}(in);
+}
 
-    auto const actual_delta
-        = actual_result > expected_result ? actual_result - expected_result : expected_result - actual_result;
-    return actual_delta <= tolerance;
+template <is_fixed fixed_t> constexpr auto rsqrt(fixed_t in) -> fixed_t
+{
+    return rsqrt<fixed_t, fixed_t>(in);
 }
 
 // identity

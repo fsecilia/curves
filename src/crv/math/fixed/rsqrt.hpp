@@ -10,7 +10,6 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/fma.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/shifter.hpp>
 #include <array>
 #include <bit>
 
@@ -94,106 +93,104 @@ constexpr auto CURVES_U128_MAX = max<u128>();
 /// Using a quadratic approximation balances Horner iterations against Newton-Raphson iterations. Each NR iteration uses
 /// 3 multiplies. Horner iterations use 1. For the same precision, a -log2/2 approximation requires 6 iterations. Linear
 /// requires 4. Quadratic requires 3. Cubic also requires 3, so we use quadratic.
-template <is_fixed out_t, is_fixed in_t> constexpr auto rsqrt(in_t in) noexcept -> out_t
+template <is_fixed out_t, is_fixed in_t = out_t, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t>
+struct rsqrt_t
 {
-    constexpr auto frac_bits        = in_t::frac_bits;
-    constexpr auto output_frac_bits = out_t::frac_bits;
+    static constexpr auto frac_bits        = in_t::frac_bits;
+    static constexpr auto output_frac_bits = out_t::frac_bits;
 
-    auto const x = in.value;
-
-    // Quadratic approximation coefficients.
-    //
-    // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
-    // src/curves/tools/isqrt_initial_guess.sollya for more information about how these values are generated.
-    u64 c0_q62 = 10354071711462988194ULL;
-    u64 c1_q62 = 9674659108971248202ULL;
-    u64 c2_q62 = 3949952137299739940ULL;
-
-    unsigned int x_norm_frac_bits = 64;
-    unsigned int y_frac_bits      = 62;
-    u64          three_q62        = 3ULL << 62;
-    u64          sqrt2_q62        = 0x5A827999FCEF3242ULL;
-
-    unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
-    u64          c1, c2, x_norm, y, yy, factor;
-
-    if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
-
-    // Normalize x to Q0.64 [0.5, 1.0).
-    x_lz            = std::countl_zero(x);
-    x_norm          = x << x_lz;
-    x_norm_exponent = x_lz + frac_bits;
-
-    // Approximate 1/sqrt for initial guess using Horner's method.
-    c2 = static_cast<u64>((static_cast<u128>(x_norm) * c2_q62) >> x_norm_frac_bits);
-    c1 = static_cast<u64>((static_cast<u128>(x_norm) * (c1_q62 - c2)) >> x_norm_frac_bits);
-    y  = c0_q62 - c1;
-
-    // Newton-Raphson.
-    for (int i = 0; i < 3; ++i)
+    constexpr auto operator()(in_t in) noexcept -> out_t
     {
-        yy     = static_cast<u64>((static_cast<u128>(y) * y) >> y_frac_bits);
-        factor = static_cast<u64>((static_cast<u128>(x_norm) * yy) >> x_norm_frac_bits);
-        y      = static_cast<u64>((static_cast<u128>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
+        auto const x = in.value;
+
+        // Quadratic approximation coefficients.
+        //
+        // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
+        // src/curves/tools/isqrt_initial_guess.sollya for more information about how these values are generated.
+        u64 c0_q62 = 10354071711462988194ULL;
+        u64 c1_q62 = 9674659108971248202ULL;
+        u64 c2_q62 = 3949952137299739940ULL;
+
+        unsigned int x_norm_frac_bits = 64;
+        unsigned int y_frac_bits      = 62;
+        u64          three_q62        = 3ULL << 62;
+        u64          sqrt2_q62        = 0x5A827999FCEF3242ULL;
+
+        unsigned int x_lz, x_norm_exponent, y_denorm_frac_bits;
+        u64          c1, c2, x_norm, y, yy, factor;
+
+        if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
+
+        // Normalize x to Q0.64 [0.5, 1.0).
+        x_lz            = std::countl_zero(x);
+        x_norm          = x << x_lz;
+        x_norm_exponent = x_lz + frac_bits;
+
+        // Approximate 1/sqrt for initial guess using Horner's method.
+        c2 = static_cast<u64>((static_cast<u128>(x_norm) * c2_q62) >> x_norm_frac_bits);
+        c1 = static_cast<u64>((static_cast<u128>(x_norm) * (c1_q62 - c2)) >> x_norm_frac_bits);
+        y  = c0_q62 - c1;
+
+        // Newton-Raphson.
+        for (int i = 0; i < 3; ++i)
+        {
+            yy     = static_cast<u64>((static_cast<u128>(y) * y) >> y_frac_bits);
+            factor = static_cast<u64>((static_cast<u128>(x_norm) * yy) >> x_norm_frac_bits);
+            y      = static_cast<u64>((static_cast<u128>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
+        }
+
+        // Denormalize.
+        if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
+        y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
+
+        u128 y_128 = static_cast<u128>(y);
+
+        // Handle invalid scales.
+        if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
+        {
+            // Zero values and right shifts return 0.
+            if (y_128 == 0 || output_frac_bits < y_denorm_frac_bits) return fixed_t<uint64_t, output_frac_bits>{0};
+
+            return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
+        }
+
+        u128 result;
+        if (output_frac_bits < y_denorm_frac_bits)
+        {
+            unsigned int shift = y_denorm_frac_bits - output_frac_bits;
+
+            u128 half      = static_cast<u128>(1) << (shift - 1);
+            u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
+
+            u128 int_part  = y_128 >> shift;
+            u128 frac_part = y_128 & frac_mask;
+
+            u128 is_odd = int_part & 1;
+
+            u128 bias  = half - 1 + is_odd;
+            u128 carry = (frac_part + bias) >> shift;
+
+            result = int_part + carry;
+        }
+        else
+        {
+            unsigned int shift = output_frac_bits - y_denorm_frac_bits;
+
+            // Find the maximum value that doesn't overflow.
+            u128 max_safe_val = CURVES_U128_MAX >> shift;
+            if (y_128 > max_safe_val) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
+
+            // The value is safe to shift.
+            result = y_128 << shift;
+        }
+
+        if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
+        {
+            return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
+        }
+
+        return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<u64>(result));
     }
-
-    // Denormalize.
-    if (x_norm_exponent & 1) y = static_cast<u64>((static_cast<u128>(y) * sqrt2_q62) >> y_frac_bits);
-    y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
-
-    u128 y_128 = static_cast<u128>(y);
-
-    // Handle invalid scales.
-    if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
-    {
-        // Zero values and right shifts return 0.
-        if (y_128 == 0 || output_frac_bits < y_denorm_frac_bits) return fixed_t<uint64_t, output_frac_bits>{0};
-
-        return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
-    }
-
-    u128 result;
-    if (output_frac_bits < y_denorm_frac_bits)
-    {
-        unsigned int shift = y_denorm_frac_bits - output_frac_bits;
-
-        u128 half      = static_cast<u128>(1) << (shift - 1);
-        u128 frac_mask = (static_cast<u128>(1) << shift) - 1;
-
-        u128 int_part  = y_128 >> shift;
-        u128 frac_part = y_128 & frac_mask;
-
-        u128 is_odd = int_part & 1;
-
-        u128 bias  = half - 1 + is_odd;
-        u128 carry = (frac_part + bias) >> shift;
-
-        result = int_part + carry;
-    }
-    else
-    {
-        unsigned int shift = output_frac_bits - y_denorm_frac_bits;
-
-        // Find the maximum value that doesn't overflow.
-        u128 max_safe_val = CURVES_U128_MAX >> shift;
-        if (y_128 > max_safe_val) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX); }
-
-        // The value is safe to shift.
-        result = y_128 << shift;
-    }
-
-    if (result > static_cast<u128>(U64_MAX)) [[unlikely]]
-    {
-        return fixed_t<uint64_t, output_frac_bits>::literal(U64_MAX);
-    }
-
-    return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<u64>(result));
-}
-
-/// rsqrt with symmetric input and output types
-template <is_fixed fixed_t> constexpr auto rsqrt(fixed_t in) noexcept -> fixed_t
-{
-    return rsqrt<fixed_t, fixed_t>(in);
-}
+};
 
 } // namespace crv
