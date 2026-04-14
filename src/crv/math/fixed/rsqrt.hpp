@@ -11,9 +11,37 @@
 #include <crv/math/fixed/fma.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/shifter.hpp>
+#include <array>
 #include <bit>
 
 namespace crv {
+
+namespace rsqrt_initial_guesses {
+
+struct quadratic_minimax_t
+{
+    // Quadratic approximation coefficients.
+    //
+    // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
+    // tools/sollya/gen_rsqrt_initial_guess.sollya for more information about how these values are generated.
+    using coeff_t                     = fixed_t<uint64_t, 62>;
+    static constexpr auto coeff_count = 3;
+    static constexpr auto coeffs      = std::array<coeff_t, coeff_count>{
+        coeff_t::literal(10354071711462988194ULL),
+        coeff_t::literal(9674659108971248202ULL),
+        coeff_t::literal(3949952137299739940ULL),
+    };
+
+    // \pre in must be in [0.5, 1)
+    static constexpr auto operator()(coeff_t in) noexcept -> coeff_t
+    {
+        assert((coeff_t{1} >> 1) <= in && in < coeff_t{1});
+
+        return coeff_t{coeffs[0] - coeff_t{in * (coeffs[1] - coeff_t{in * coeffs[2]})}};
+    }
+};
+
+} // namespace rsqrt_initial_guesses
 
 using u64_62_t   = fixed_t<uint64_t, 62>;
 using u64_64_t   = fixed_t<uint64_t, 64>;
