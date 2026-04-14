@@ -35,7 +35,6 @@ struct fma_t
 
     // prevent left shifts after sum
     static constexpr auto max_frac = std::max(product_t::frac_bits, addend_t::frac_bits);
-    // static_assert(max_frac >= out_t::frac_bits, "fma upscaling is not supported");
 
     // radix alignment shifts
     static constexpr auto product_shift = (max_frac > product_t::frac_bits) ? (max_frac - product_t::frac_bits) : 0;
@@ -120,7 +119,7 @@ struct fma_t
             if (sum < out_min) return out_t::literal(min<out_value_t>());
         }
 
-        return out_t::literal(int_cast<typename out_t::value_t>(sum));
+        return out_t::literal(static_cast<typename out_t::value_t>(sum));
     }
 };
 

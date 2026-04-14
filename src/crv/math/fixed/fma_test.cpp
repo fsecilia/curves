@@ -12,9 +12,14 @@ namespace {
 
 // common testing types
 using i16_0_t  = fixed_t<int16_t, 0>;
+using u16_0_t  = fixed_t<uint16_t, 0>;
 using i16_4_t  = fixed_t<int16_t, 4>;
 using i32_15_t = fixed_t<int32_t, 15>;
+using u32_15_t = fixed_t<uint32_t, 15>;
 using i64_31_t = fixed_t<int64_t, 31>;
+
+using pure_int_t = fixed_t<int16_t, 0>;
+using frac_t     = fixed_t<int16_t, 12>;
 
 // common rounding modes
 constexpr auto rne   = shifter_t{rounding_modes::shr::nearest_even};
@@ -75,10 +80,8 @@ using micro_frac_t = fixed_t<int64_t, 60>;
 static_assert(fma<micro_frac_t, saturate>(macro_int_t{2}, macro_int_t{3}, micro_frac_t{10}, trunc) == micro_frac_t{16});
 
 // --------------------------------------------------------------------------------------------------------------------
-// Shifting
+// Rounding (RNE)
 // --------------------------------------------------------------------------------------------------------------------
-
-// fractional resolution tests using nearest even (rne)
 
 // 2.4375 * 1.0 + 0.0 = 2.4375 -> rounds to 2
 static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(39), i16_4_t::literal(16), i16_4_t::literal(0), rne)
@@ -103,6 +106,29 @@ static_assert(fma<i16_0_t, no_saturation>(i16_4_t::literal(-55), i16_4_t::litera
               == i16_0_t{-4});
 
 // --------------------------------------------------------------------------------------------------------------------
+// Scaling
+// --------------------------------------------------------------------------------------------------------------------
+
+// upscaling without saturation
+// 3.5 * (1 << 15) = 114688
+static_assert(fma<i32_15_t, no_saturation>(i16_4_t::literal(24), i16_4_t::literal(32), i16_4_t::literal(8), trunc)
+              == i32_15_t::literal(114688));
+
+// upscaling with upper saturation
+// 3.0 * 2.0 + 3.0 = 9.0 > 7.999
+using i16_12_t = fixed_t<int16_t, 12>;
+static_assert(fma<i16_12_t, saturate>(i16_4_t::literal(48), i16_4_t::literal(32), i16_4_t::literal(48), trunc)
+              == i16_12_t::literal(max<int16_t>()));
+
+// upscaling with lower saturation
+// inputs: -3.0 * 2.0 + (-3.0) = -9.0 < -7.999
+static_assert(fma<i16_12_t, saturate>(i16_4_t::literal(-48), i16_4_t::literal(32), i16_4_t::literal(-48), trunc)
+              == i16_12_t::literal(min<int16_t>()));
+
+// downscaling to pure integer
+static_assert(fma<pure_int_t, no_saturation>(frac_t{1} / 4, frac_t{1} / 4, frac_t{1} / 8, trunc) == pure_int_t{0});
+
+// --------------------------------------------------------------------------------------------------------------------
 // Saturation
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -112,20 +138,74 @@ static_assert(fma<i32_15_t, saturate>(i32_15_t{1000}, i32_15_t{1000}, i32_15_t{0
 static_assert(fma<i32_15_t, saturate>(i32_15_t{-1000}, i32_15_t{1000}, i32_15_t{-50}, rne)
               == literal<i32_15_t>(min<int32_t>()));
 
-// riding the exact boundary vs 1 ULP over
-// exactly max: 1.0 * 1.0 + (max - 1.0) = max -> no saturation triggered
+// exactly max; no saturation triggered
 static_assert(fma<i16_4_t, saturate>(i16_4_t{1}, i16_4_t{1}, i16_4_t::literal(max<int16_t>() - (1 << 4)), trunc)
               == i16_4_t::literal(max<int16_t>()));
-// max + 1 ULP: saturates to exactly max
+
+// max + 1 ULP; saturates to exactly max
 static_assert(fma<i16_4_t, saturate>(i16_4_t{1}, i16_4_t{1}, i16_4_t::literal(max<int16_t>() - (1 << 4) + 1), trunc)
               == i16_4_t::literal(max<int16_t>()));
 
-// exactly min: -1.0 * 1.0 + (min + 1.0) = min -> no saturation triggered
+// exactly min; no saturation triggered
 static_assert(fma<i16_4_t, saturate>(i16_4_t{-1}, i16_4_t{1}, i16_4_t::literal(min<int16_t>() + (1 << 4)), trunc)
               == i16_4_t::literal(min<int16_t>()));
-// min - 1 ULP: saturates to exactly min
+
+// min - 1 ULP; saturates to exactly min
 static_assert(fma<i16_4_t, saturate>(i16_4_t{-1}, i16_4_t{1}, i16_4_t::literal(min<int16_t>() + (1 << 4) - 1), trunc)
               == i16_4_t::literal(min<int16_t>()));
+
+// --------------------------------------------------------------------------------------------------------------------
+// Wrapping
+// --------------------------------------------------------------------------------------------------------------------
+
+// sum below min of signed output container
+static_assert(fma<i16_0_t, no_saturation>(i16_0_t::literal(-0x100), i16_0_t::literal(0x100), i16_0_t::literal(-0x5),
+                                          trunc)
+              == i16_0_t::literal(-5));
+
+// sum above max of signed output container
+static_assert(fma<i16_0_t, no_saturation>(i16_0_t::literal(0x100), i16_0_t::literal(0x100), i16_0_t::literal(0x5),
+                                          trunc)
+              == i16_0_t::literal(0x5));
+
+// sum above max of unsigned output container
+static_assert(fma<u16_0_t, no_saturation>(u16_0_t::literal(0x100), u16_0_t::literal(0x100), u16_0_t::literal(0x5),
+                                          trunc)
+              == u16_0_t::literal(0x5));
+
+// --------------------------------------------------------------------------------------------------------------------
+// Intermediate Accumulator Bounds
+// --------------------------------------------------------------------------------------------------------------------
+
+// maximum intermediate expansion: max * max + max; 32-bit inputs require 63 bit internal
+static_assert(fma<i32_15_t, saturate>(i32_15_t::literal(max<int32_t>()), i32_15_t::literal(max<int32_t>()),
+                                      i32_15_t::literal(max<int32_t>()), trunc)
+              == i32_15_t::literal(max<int32_t>()));
+
+// minimum intermediate expansion: min * max + min.
+static_assert(fma<i32_15_t, saturate>(i32_15_t::literal(min<int32_t>()), i32_15_t::literal(max<int32_t>()),
+                                      i32_15_t::literal(min<int32_t>()), trunc)
+              == i32_15_t::literal(min<int32_t>()));
+
+// integer product is exactly offset by large addend before narrowing
+using wide_int_t    = fixed_t<int32_t, 0>;
+using wide_addend_t = fixed_t<int64_t, 0>;
+static_assert(fma<i16_4_t, no_saturation>(wide_int_t::literal(10000), wide_int_t::literal(10000),
+                                          wide_addend_t::literal(-100000000ll), rne)
+              == i16_4_t::literal(0));
+
+#if 0
+// unsigned maximum intermediate expansion
+static_assert(fma<u32_15_t, saturate>(u32_15_t::literal(max<uint32_t>()), u32_15_t::literal(max<uint32_t>()),
+                                      u32_15_t::literal(max<uint32_t>()), trunc)
+                  .value
+              == u32_15_t::literal(max<uint32_t>()).value);
+#endif
+
+// unsigned minimum, 0
+static_assert(fma<u32_15_t, saturate>(u32_15_t::literal(0), u32_15_t::literal(max<uint32_t>()), u32_15_t::literal(0),
+                                      trunc)
+              == u32_15_t::literal(0));
 
 // --------------------------------------------------------------------------------------------------------------------
 // Cascading Precision Bounds
