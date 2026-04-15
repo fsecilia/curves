@@ -119,9 +119,9 @@ struct rsqrt_t
         auto y = initial_guess(fixed_t<uint64_t, 64>::literal(x_norm)).value;
         for (int_t i = 0; i < nr_iteration_count; ++i)
         {
-            auto yy     = static_cast<uint64_t>((static_cast<uint128_t>(y) * y) >> y_frac_bits);
-            auto factor = static_cast<uint64_t>((static_cast<uint128_t>(x_norm) * yy) >> x_norm_frac_bits);
-            y = static_cast<uint64_t>((static_cast<uint128_t>(y) * (three_q62 - factor)) >> (y_frac_bits + 1));
+            auto const yy     = static_cast<uint64_t>((uint128_t{y} * y) >> y_frac_bits);
+            auto const factor = static_cast<uint64_t>((uint128_t{x_norm} * yy) >> x_norm_frac_bits);
+            y                 = static_cast<uint64_t>((uint128_t{y} * (three_q62 - factor)) >> (y_frac_bits + 1));
         }
 
         // Denormalize.
