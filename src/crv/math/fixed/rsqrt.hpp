@@ -111,16 +111,17 @@ namespace crv {
 
 namespace rsqrt_initial_guesses {
 
+/// uses a quadratic minimax approximation of 1/sqrt(x) to find the initial guess over the range [0.5, 1).
 struct quadratic_minimax_t
 {
     using in_t    = fixed_t<uint64_t, 64>;
     using coeff_t = fixed_t<uint64_t, 62>;
     using out_t   = coeff_t;
 
-    // Quadratic approximation coefficients.
+    // auadratic approximation coefficients
     //
-    // The constants are in Q2.62, so they're scaled by 2^62 and rounded. See
-    // tools/sollya/gen_rsqrt_initial_guess.sollya for more information about how these values are generated.
+    // The constants are in Q2.62, so they're scaled by 2^62 and rounded. They're generated using sollya.
+    // See tools/sollya/gen_rsqrt_initial_guess.sollya.
     static constexpr auto coeff_count = 3;
     static constexpr auto coeffs      = std::array<coeff_t, coeff_count>{
         coeff_t::literal(10354071711462988194ULL),
@@ -128,10 +129,12 @@ struct quadratic_minimax_t
         coeff_t::literal(3949952137299739940ULL),
     };
 
-    // \pre in must be in [0.5, 1); upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64
+    // \pre in must be in [0.5, 1)
     static constexpr auto operator()(in_t in) noexcept -> out_t
     {
-        assert(in.value >= (in_t::value_t{1} << (in_t::frac_bits - 1)));
+        // upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64, but lower bound must be checked
+        [[maybe_unused]] constexpr auto half = in_t::literal(1ULL << (in_t::frac_bits - 1));
+        assert(in >= half);
 
         // apply horner's method: C0 + -C1*x + C2*x^2 = C0 - x*(C1 - x*C2)
         auto const inner = coeff_t::convert(multiply(in, coeffs[2]));
