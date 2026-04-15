@@ -163,7 +163,7 @@ struct quadratic_minimax_t
 template <int_t nr_iteration_count = 3, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t,
           typename shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
     requires(nr_iteration_count > 0)
-struct normalized_sqrt_t
+struct normalized_rsqrt_t
 {
     using in_t  = fixed_t<uint64_t, 64>;
     using out_t = fixed_t<uint128_t, 62>;

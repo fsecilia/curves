@@ -81,7 +81,7 @@ namespace {
 
 namespace normalized_rsqrt_property_tests {
 
-using sut_t = normalized_sqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
+using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
 using in_t  = sut_t::in_t;
 using out_t = fixed_t<uint64_t, 62>;
 
@@ -128,7 +128,7 @@ INSTANTIATE_TEST_SUITE_P(vectors, normalized_rsqrt_property_test_t, ValuesIn(vec
 
 namespace normalized_rsqrt_value_tests {
 
-using sut_t = normalized_sqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
+using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
 using in_t  = sut_t::in_t;
 using out_t = fixed_t<uint64_t, 62>;
 
