@@ -132,8 +132,7 @@ struct quadratic_minimax_t
     //
     // The constants are in Q2.62, so they're scaled by 2^62 and rounded. They're generated using sollya.
     // See tools/sollya/gen_rsqrt_initial_guess.sollya.
-    static constexpr auto coeff_count = 3;
-    static constexpr auto coeffs      = std::array<coeff_t, coeff_count>{
+    static constexpr auto coeffs = std::array{
         coeff_t::literal(10354071711462988194ULL),
         coeff_t::literal(9674659108971248202ULL),
         coeff_t::literal(3949952137299739940ULL),
