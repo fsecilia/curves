@@ -215,7 +215,7 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
 
     // \pre x > 0
     template <typename shifter_t = shifter_t<>>
-    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) noexcept -> out_t
+    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
     {
         assert(x.value > 0);
 
