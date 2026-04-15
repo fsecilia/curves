@@ -171,7 +171,7 @@ struct normalized_rsqrt_t
     using narrow_t = nr_t::value_t;
     using wide_t   = widened_t<narrow_t>;
 
-    static constexpr auto three = nr_t{3}.value;
+    static constexpr auto three = nr_t{3};
 
     [[no_unique_address]] initial_guess_t initial_guess{};
 
@@ -185,13 +185,13 @@ struct normalized_rsqrt_t
             auto const yy  = nr_t::convert(multiply(y, y), shifter);
             auto const xyy = nr_t::convert(multiply(x, yy), shifter);
             y              = nr_t::literal(
-                int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy.value))));
+                int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy).value)));
         }
 
         // Final iteration does not narrow at the end.
         auto const yy  = nr_t::convert(multiply(y, y), shifter);
         auto const xyy = nr_t::convert(multiply(x, yy), shifter);
-        return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy.value)));
+        return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy).value));
     }
 };
 
