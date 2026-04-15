@@ -227,7 +227,7 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         auto y = normalized_rsqrt(x_norm);
 
         // denormalize
-        auto const odd_exponent = x_norm_exponent & 1;
+        auto const odd_exponent = (x_norm_exponent & 1) != 0;
         if (odd_exponent) y = normalized_rsqrt_t::out_t::convert(multiply(nr_t::convert(y, shifter), sqrt2), shifter);
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
@@ -236,7 +236,7 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         if (y_denorm_frac_bits >= 128 || out_t::frac_bits >= 128) [[unlikely]]
         {
             // zero values and right shifts return 0
-            if (!y || out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
+            if (y.value == 0 || out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
 
             // nonzero value left shifted 128 saturates
             return max<out_t>();
