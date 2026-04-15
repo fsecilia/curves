@@ -17,6 +17,11 @@ c0 = coeff(p, 0);
 c1 = coeff(p, 1);
 c2 = coeff(p, 2);
 
+display = hexadecimal;
+print("c0 =", abs(c0));
+print("c1 =", abs(c1));
+print("c2 =", abs(c2));
+display = decimal;
 
 /*
   The implementation stores these constants in Q2.62, so we scale the values by
@@ -30,13 +35,42 @@ print("c2_q62 =", nearestint(abs(c2) * 2^62));
 p_f_supnorm = supnorm(p, f, dom, absolute, 2^(-62));
 worst_error = sup(p_f_supnorm);
 print("worst error =", worst_error);
-print("tolerance =", nearestint((2*worst_error + worst_error^2)*2^62) + 100);
 
-p_worst_guess = c0 - x*(c1 - x*c2);
+error_bound = worst_error;
+nr_iteration_count = 3;
+for i from 1 to nr_iteration_count do {
+  error_bound = error_bound^2 * (3 - error_bound) / 2;
+  approximation_error_ulps = ceil(error_bound * 2^62);
+
+  // rough budget: 3 narrowings/iter × 1 ULP worst-case truncation × i iterations, plus a little slack
+  truncation_error_ulps = 3 * i + 2;
+  test_tolerance_ulps = max(approximation_error_ulps, truncation_error_ulps);
+
+  print("n =", i,
+    "approximation_error_ulps =", approximation_error_ulps,
+    "truncation_error_ulps =", truncation_error_ulps,
+    "test_tolerance_ulps =", test_tolerance_ulps);
+};
+
+print("initial guess propery test tolerance =", ceil((2*worst_error + worst_error^2)*2^62));
+print("reduced range propery test tolerance =", ceil(test_tolerance_ulps*test_tolerance_ulps));
+
 err = p - f;
-print("worst guess x =", dirtyfindzeros(diff(err), dom));
 
-display = hexadecimal;
-print("c0 =", abs(c0));
-print("c1 =", abs(c1));
-print("c2 =", abs(c2));
+// The perfect guesses: where error is exactly 0
+perfect_guess_x = dirtyfindzeros(err, dom);
+
+// The worst guesses: interior peaks/valleys PLUS the domain boundaries
+worst_guess_x = dirtyfindzeros(diff(err), dom);
+
+// Combine them with your specific adversarial test values
+reference_x_values = worst_guess_x @ perfect_guess_x
+    @ [|0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1.0 - 1.0/2^62, 1.0/sqrt(2), log(2), pi/4, exp(1)/4 |];
+
+print("reference values");
+for i from 1 to length(reference_x_values) do {
+    reference_x = reference_x_values[i - 1];
+    reference_y = ~(1.0/sqrt(reference_x));
+    print("    //", reference_x, "->", reference_y);
+    print("    {in_t::literal(" @nearestint(reference_x*2^64) @"ULL), out_t::literal(" @~nearestint(reference_y*2^62) @"ULL)},");
+};
