@@ -3,64 +3,94 @@
     "tasks": [
         {
             "label": "build",
-            "type": "cmake",
-            "command": "build",
-            "targets": [
-                "all"
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}",
+                "--target",
+                "all",
+                "--",
+                "-k",
+                "1"
             ],
+            "options": {
+                "env": {
+                    "CLICOLOR_FORCE": "1",
+                    "FORCE_COLOR": "1"
+                }
+            },
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
-                "panel": "shared",
+                "echo": true,
+                "focus": true,
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            }
+            "problemMatcher": []
         },
         {
             "label": "kbuild",
-            "type": "cmake",
-            "command": "build",
-            "targets": [
-                "kbuild"
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}",
+                "--target",
+                "kbuild",
+                "--",
+                "-k",
+                "1"
             ],
+            "options": {
+                "env": {
+                    "CLICOLOR_FORCE": "1",
+                    "FORCE_COLOR": "1"
+                }
+            },
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
-                "panel": "shared",
+                "echo": true,
+                "focus": true,
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            }
+            "problemMatcher": []
         },
         {
             "label": "all + kbuild",
-            "type": "cmake",
-            "command": "build",
-            "targets": [
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}",
+                "--target",
                 "all",
-                "kbuild"
+                "kbuild",
+                "--",
+                "-k",
+                "1"
             ],
+            "options": {
+                "env": {
+                    "CLICOLOR_FORCE": "1",
+                    "FORCE_COLOR": "1"
+                }
+            },
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
-                "panel": "shared",
+                "echo": true,
+                "focus": true,
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            },
+            "problemMatcher": [],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -68,63 +98,63 @@
         },
         {
             "label": "clean",
-            "type": "cmake",
-            "command": "clean",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}",
+                "--target",
+                "clean"
+            ],
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
+                "echo": true,
+                "focus": true,
                 "group": "clean",
-                "panel": "shared",
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            }
+            "problemMatcher": []
         },
         {
             "label": "clean kbuild",
-            "type": "cmake",
-            "command": "build",
-            "targets": [
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}",
+                "--target",
                 "clean_kbuild"
             ],
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
+                "echo": true,
+                "focus": true,
                 "group": "clean",
-                "panel": "shared",
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            }
+            "problemMatcher": []
         },
         {
             "label": "clean all",
-            "dependsOn": [
-                "clean_kbuild",
-                "clean"
-            ],
-            "dependsOrder": "sequence",
+            "type": "shell",
+            "command": "cmake --build ${command:cmake.buildDirectory} --target clean_kbuild && cmake --build ${command:cmake.buildDirectory} --target clean",
             "presentation": {
                 "clear": true,
-                "echo": false,
-                "focus": false,
+                "echo": true,
+                "focus": true,
                 "group": "clean",
-                "panel": "shared",
+                "panel": "dedicated",
                 "reveal": "always",
+                "revealProblems": "never",
                 "showReuseMessage": false
             },
-            "problemMatcher": {
-                "base": "$gcc",
-                "owner": "cpp"
-            }
+            "problemMatcher": []
         }
     ]
 }

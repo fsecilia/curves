@@ -2,12 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "debug cmake target",
-            "type": "lldb",
+            "name": "Debug Curves",
+            "type": "cppdbg",
             "request": "launch",
+            // This dynamically grabs the target you have selected in the CMake toolbar
             "program": "${command:cmake.launchTargetPath}",
             "args": [],
+            "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb", // Change to "lldb" if you are using lldb-vscode
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            // THE MAGIC LINK: This forces F5 to use your custom shell task
             "preLaunchTask": "all + kbuild"
         }
     ]
