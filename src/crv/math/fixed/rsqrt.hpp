@@ -229,13 +229,13 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
 
         // handle invalid scales
-        if (y_denorm_frac_bits >= 128 || out_t::frac_bits >= 128) [[unlikely]]
+        if (y_denorm_frac_bits >= 128) [[unlikely]]
         {
-            // zero values and right shifts return 0
-            if (y.value == 0 || out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
+            // right shift by >= 128 always underflows to 0
+            if (out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
 
-            // nonzero value left shifted 128 saturates
-            return max<out_t>();
+            // left shift by >= 128 of nonzero saturates; zero stays zero
+            return y.value == 0 ? out_t{0} : max<out_t>();
         }
 
         using wide_out_t  = fixed_t<uint128_t, out_t::frac_bits>;
