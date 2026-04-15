@@ -203,61 +203,51 @@ struct normalized_rsqrt_t
 };
 
 /// reciprocal sqrt
-template <is_fixed out_t, is_fixed in_t = out_t, int_t nr_iteration_count = 3,
-          typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t>
-    requires(nr_iteration_count > 0)
-struct rsqrt_t
+template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = normalized_rsqrt_t<>> struct rsqrt_t
 {
-    static constexpr auto frac_bits        = in_t::frac_bits;
-    static constexpr auto output_frac_bits = out_t::frac_bits;
+    using nr_t     = normalized_rsqrt_t::nr_t;
+    using x_norm_t = normalized_rsqrt_t::in_t;
 
-    static constexpr auto x_norm_frac_bits = 64;
-    static constexpr auto y_frac_bits      = initial_guess_t::out_t::frac_bits;
-    static constexpr auto three_q62        = 3ULL << y_frac_bits;
-    static constexpr auto sqrt2_q62        = 0x5A827999FCEF3242ULL;
+    static constexpr auto x_frac_bits = in_t::frac_bits;
+    static constexpr auto y_frac_bits = normalized_rsqrt_t::out_t::frac_bits;
 
-    [[no_unique_address]] initial_guess_t initial_guess{};
+    static constexpr auto sqrt2 = nr_t::literal(0x5A827999FCEF3242ULL);
 
+    [[no_unique_address]] normalized_rsqrt_t normalized_rsqrt{};
+
+    // \pre x > 0
     template <typename shifter_t = shifter_t<>>
-    constexpr auto operator()(in_t in, shifter_t shifter = shifter_t{}) noexcept -> out_t
+    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
-        auto const x = in.value;
+        assert(x.value > 0);
 
-        if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>()); }
+        // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
+        auto const x_lz            = std::countl_zero(x.value);
+        auto const x_norm          = x_norm_t::literal(x.value) << x_lz;
+        auto const x_norm_exponent = x_lz + x_frac_bits;
 
-        // normalize x to Q0.64 [0.5, 1.0)
-        auto const x_lz            = std::countl_zero(x);
-        auto const x_norm          = static_cast<uint64_t>(x << x_lz);
-        auto const x_norm_exponent = x_lz + frac_bits;
-
-        // Newton-Raphson
-        auto y = initial_guess(fixed_t<uint64_t, 64>::literal(x_norm)).value;
-        for (int_t i = 0; i < nr_iteration_count; ++i)
-        {
-            auto const yy  = static_cast<uint64_t>((uint128_t{y} * y) >> y_frac_bits);
-            auto const xyy = static_cast<uint64_t>((uint128_t{x_norm} * yy) >> x_norm_frac_bits);
-            y              = static_cast<uint64_t>((uint128_t{y} * (three_q62 - xyy)) >> (y_frac_bits + 1));
-        }
+        // apply normalized rsqrt
+        auto y = normalized_rsqrt(x_norm);
 
         // denormalize
-        if (x_norm_exponent & 1) y = static_cast<uint64_t>((static_cast<uint128_t>(y) * sqrt2_q62) >> y_frac_bits);
+        auto const odd_exponent = x_norm_exponent & 1;
+        if (odd_exponent) y = normalized_rsqrt_t::out_t::convert(multiply(nr_t::convert(y, shifter), sqrt2), shifter);
 
-        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
+        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
 
         // handle invalid scales
-        if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
+        if (y_denorm_frac_bits >= 128 || out_t::frac_bits >= 128) [[unlikely]]
         {
             // zero values and right shifts return 0
-            if (!y || output_frac_bits < y_denorm_frac_bits) return out_t{0};
+            if (!y || out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
 
             // nonzero value left shifted 128 saturates
             return max<out_t>();
         }
 
-        auto const result = shifter.shift(uint128_t{y}, output_frac_bits - y_denorm_frac_bits);
-        if (result > max<out_t>().value) [[unlikely]] { return max<out_t>(); }
-
-        return out_t::literal(static_cast<uint64_t>(result));
+        using wide_out_t  = fixed_t<uint128_t, out_t::frac_bits>;
+        auto const result = wide_out_t::literal(shifter.shift(y.value, out_t::frac_bits - y_denorm_frac_bits));
+        return out_t::convert(result);
     }
 };
 
