@@ -160,7 +160,8 @@ struct quadratic_minimax_t
 /// This type represents the inner portion of the rsqrt NR loop. It expects parameter in a specific Q-format and returns
 /// results in a specific Q-format. The number of iterations and the algorithm for the initial guess are tunable
 /// parameters
-template <int_t nr_iteration_count = 3, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t>
+template <int_t nr_iteration_count = 3, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t,
+          typename shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
     requires(nr_iteration_count > 0)
 struct normalized_sqrt_t
 {
@@ -177,24 +178,27 @@ struct normalized_sqrt_t
 
     [[no_unique_address]] initial_guess_t initial_guess{};
 
-    constexpr auto operator()(in_t in) const noexcept -> out_t
+    // \pre in must be in [0.5, 1)
+    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
     {
-        if (!in) [[unlikely]] { return out_t::literal(max<uint64_t>()); }
-
-        auto const x = uint128_t{in.value};
+        // upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64, but lower bound must be checked
+        [[maybe_unused]] constexpr auto half = in_t::literal(1ULL << (in_t::frac_bits - 1));
+        assert(x >= half);
 
         // Newton-Raphson
-        auto y = initial_guess(in).value;
+        auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
         {
-            auto const yy  = int_cast<narrow_t>(wide_t{y} * y >> y_frac_bits);
-            auto const xyy = int_cast<narrow_t>(x * yy >> x_frac_bits);
-            y              = int_cast<narrow_t>((wide_t{y} * (three - xyy) >> (nr_t::frac_bits + 1)));
+            auto const yy  = nr_t::convert(multiply(y, y), shifter);
+            auto const xyy = nr_t::convert(multiply(x, yy), shifter);
+            y              = nr_t::literal(
+                int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy.value))));
         }
 
-        auto const yy  = wide_t{y} * y >> y_frac_bits;
-        auto const xyy = x * yy >> x_frac_bits;
-        return out_t::literal(wide_t{y} * (three - xyy) >> (nr_t::frac_bits + 1));
+        // Final iteration does not narrow at the end.
+        auto const yy  = nr_t::convert(multiply(y, y), shifter);
+        auto const xyy = nr_t::convert(multiply(x, yy), shifter);
+        return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy.value)));
     }
 };
 
