@@ -132,19 +132,17 @@ struct rsqrt_t
         // Handle invalid scales.
         if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
         {
-            // Zero values and right shifts return 0.
-            if (y == 0 || output_frac_bits < y_denorm_frac_bits) return fixed_t<uint64_t, output_frac_bits>{0};
+            // zero values and right shifts return 0
+            if (!y || output_frac_bits < y_denorm_frac_bits) return out_t{0};
 
-            return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>());
+            // nonzero value left shifted 128 saturates
+            return max<out_t>();
         }
 
-        auto const result = shifter.shift(static_cast<uint128_t>(y), output_frac_bits - y_denorm_frac_bits);
-        if (result > static_cast<uint128_t>(max<uint64_t>())) [[unlikely]]
-        {
-            return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>());
-        }
+        auto const result = shifter.shift(uint128_t{y}, output_frac_bits - y_denorm_frac_bits);
+        if (result > max<out_t>().value) [[unlikely]] { return max<out_t>(); }
 
-        return fixed_t<uint64_t, output_frac_bits>::literal(static_cast<uint64_t>(result));
+        return out_t::literal(static_cast<uint64_t>(result));
     }
 };
 
