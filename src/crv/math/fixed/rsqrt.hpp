@@ -90,6 +90,16 @@
 /// requires 4. Quadratic requires 3. Cubic also requires 3, but is more expensive to evaluate than quadratic, so we use
 /// quadratic.
 ///
+/// Budget 3 narrowings per iteration, then add a consant slack of 2. Truncation error for iteration i is 3i + 2.
+/// With the quadratic aqpproximation, the worst case error
+/// becomes noise-limited after 3 iterations, dropping below the fixed-point rounding floor:
+///
+///     iterations | approximation error (ulps) | truncation error(ulps) | max error (ulps)
+///         1      |     101527141262302        |            5           | 101527141262302
+///         2      |          3352684267        |            8           |      3352684267
+///         3      |                   4        |           11           |              11
+///         4      |                   1        |           14           |              14
+///
 /// # Newton-Raphson
 ///
 /// NR iteration is performed in the reduced range [0.5, 1.0). Range reduction uses clz to normalize the input to this
