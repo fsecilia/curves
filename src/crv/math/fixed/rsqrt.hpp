@@ -169,7 +169,7 @@ struct normalized_rsqrt_t
     using nr_t  = initial_guess_t::coeff_t;
 
     using narrow_t = nr_t::value_t;
-    using wide_t   = uint128_t;
+    using wide_t   = widened_t<narrow_t>;
 
     static constexpr auto three = nr_t{3}.value;
 
