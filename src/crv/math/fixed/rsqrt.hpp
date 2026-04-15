@@ -142,7 +142,7 @@ struct quadratic_minimax_t
     static constexpr auto operator()(in_t in) noexcept -> out_t
     {
         // upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64, but lower bound must be checked
-        [[maybe_unused]] constexpr auto half = in_t::literal(1) << (in_t::frac_bits - 1);
+        [[maybe_unused]] constexpr auto half = in_t::literal(1ULL << (in_t::frac_bits - 1));
         assert(in >= half);
 
         // apply horner's method: C0 + -C1*x + C2*x^2 = C0 - x*(C1 - x*C2)
@@ -179,7 +179,7 @@ struct normalized_rsqrt_t
     constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
     {
         // upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64, but lower bound must be checked
-        [[maybe_unused]] constexpr auto half = in_t::literal(1) << (in_t::frac_bits - 1);
+        [[maybe_unused]] constexpr auto half = in_t::literal(1ULL << (in_t::frac_bits - 1));
         assert(x >= half);
 
         // Newton-Raphson
@@ -220,7 +220,7 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
 
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
         auto const x_lz            = std::countl_zero(x.value);
-        auto const x_norm          = x_norm_t::literal(x.value) << x_lz;
+        auto const x_norm          = x_norm_t::literal(x.value << x_lz);
         auto const x_norm_exponent = x_lz + x_frac_bits;
 
         // apply normalized rsqrt
