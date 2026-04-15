@@ -172,9 +172,7 @@ struct normalized_rsqrt_t
     using narrow_t = nr_t::value_t;
     using wide_t   = uint128_t;
 
-    static constexpr auto three       = nr_t{3}.value;
-    static constexpr auto x_frac_bits = in_t::frac_bits;
-    static constexpr auto y_frac_bits = out_t::frac_bits;
+    static constexpr auto three = nr_t{3}.value;
 
     [[no_unique_address]] initial_guess_t initial_guess{};
 
