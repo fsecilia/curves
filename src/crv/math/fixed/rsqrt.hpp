@@ -91,14 +91,15 @@ struct quadratic_minimax_t
 /// requires 4. Quadratic requires 3. Cubic also requires 3, so we use quadratic.
 template <is_fixed out_t, is_fixed in_t = out_t, int_t nr_iteration_count = 3,
           typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t>
+    requires(nr_iteration_count > 0)
 struct rsqrt_t
 {
     static constexpr auto frac_bits        = in_t::frac_bits;
     static constexpr auto output_frac_bits = out_t::frac_bits;
 
     static constexpr auto x_norm_frac_bits = 64;
-    static constexpr auto y_frac_bits      = 62;
-    static constexpr auto three_q62        = 3ULL << 62;
+    static constexpr auto y_frac_bits      = initial_guess_t::out_t::frac_bits;
+    static constexpr auto three_q62        = 3ULL << y_frac_bits;
     static constexpr auto sqrt2_q62        = 0x5A827999FCEF3242ULL;
 
     [[no_unique_address]] initial_guess_t initial_guess{};
@@ -110,26 +111,26 @@ struct rsqrt_t
 
         if (x == 0) [[unlikely]] { return fixed_t<uint64_t, output_frac_bits>::literal(max<uint64_t>()); }
 
-        // Normalize x to Q0.64 [0.5, 1.0).
+        // normalize x to Q0.64 [0.5, 1.0)
         auto const x_lz            = std::countl_zero(x);
         auto const x_norm          = static_cast<uint64_t>(x << x_lz);
         auto const x_norm_exponent = x_lz + frac_bits;
 
-        // Newton-Raphson.
+        // Newton-Raphson
         auto y = initial_guess(fixed_t<uint64_t, 64>::literal(x_norm)).value;
         for (int_t i = 0; i < nr_iteration_count; ++i)
         {
-            auto const yy     = static_cast<uint64_t>((uint128_t{y} * y) >> y_frac_bits);
-            auto const factor = static_cast<uint64_t>((uint128_t{x_norm} * yy) >> x_norm_frac_bits);
-            y                 = static_cast<uint64_t>((uint128_t{y} * (three_q62 - factor)) >> (y_frac_bits + 1));
+            auto const yy  = static_cast<uint64_t>((uint128_t{y} * y) >> y_frac_bits);
+            auto const xyy = static_cast<uint64_t>((uint128_t{x_norm} * yy) >> x_norm_frac_bits);
+            y              = static_cast<uint64_t>((uint128_t{y} * (three_q62 - xyy)) >> (y_frac_bits + 1));
         }
 
-        // Denormalize.
+        // denormalize
         if (x_norm_exponent & 1) y = static_cast<uint64_t>((static_cast<uint128_t>(y) * sqrt2_q62) >> y_frac_bits);
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_frac_bits >> 1) - (x_norm_exponent >> 1);
 
-        // Handle invalid scales.
+        // handle invalid scales
         if (y_denorm_frac_bits >= 128 || output_frac_bits >= 128) [[unlikely]]
         {
             // zero values and right shifts return 0
