@@ -178,10 +178,6 @@ struct normalized_rsqrt_t
     // \pre in must be in [0.5, 1)
     constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
     {
-        // upper bound is automatic since 1.0 is unrepresentable in unsigned Q0.64, but lower bound must be checked
-        [[maybe_unused]] constexpr auto half = in_t::literal(1ULL << (in_t::frac_bits - 1));
-        assert(x >= half);
-
         // Newton-Raphson
         auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
