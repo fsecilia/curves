@@ -17,4 +17,11 @@ if (BUILD_INTEGRATION_TESTS)
     )
     target_link_libraries(accuracy_rexp2m1 PRIVATE lib float128)
     set_target_properties(accuracy_rexp2m1 PROPERTIES CXX_EXTENSIONS TRUE)
+
+    add_executable(accuracy_rsqrt
+        accuracy_test_runner.hpp
+        rsqrt.cpp
+    )
+    target_link_libraries(accuracy_rsqrt PRIVATE lib float128)
+    set_target_properties(accuracy_rsqrt PROPERTIES CXX_EXTENSIONS TRUE)
 endif()

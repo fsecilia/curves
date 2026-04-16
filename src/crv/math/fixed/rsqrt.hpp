@@ -199,8 +199,12 @@ struct normalized_rsqrt_t
 };
 
 /// reciprocal sqrt
-template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = normalized_rsqrt_t<>> struct rsqrt_t
+template <is_fixed t_out_t, is_fixed t_in_t = t_out_t, typename normalized_rsqrt_t = normalized_rsqrt_t<>>
+struct rsqrt_t
 {
+    using out_t = t_out_t;
+    using in_t  = t_in_t;
+
     using nr_t       = normalized_rsqrt_t::nr_t;
     using x_norm_t   = normalized_rsqrt_t::in_t;
     using wide_out_t = fixed_t<widened_t<typename out_t::value_t>, out_t::frac_bits>;
