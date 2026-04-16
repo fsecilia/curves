@@ -23,6 +23,13 @@ public:
     static constexpr auto in_frac_bits  = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
+    static auto prefetch() noexcept -> void
+    {
+        constexpr auto read_only     = 0;
+        constexpr auto high_locality = 3; // Keep in L1
+        __builtin_prefetch(poly_coeffs, read_only, high_locality);
+    }
+
     constexpr auto eval(in_t const& input) const noexcept -> out_t
     {
         auto acc = poly_coeffs[0];
