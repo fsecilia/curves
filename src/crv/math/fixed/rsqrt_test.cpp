@@ -58,7 +58,9 @@ constexpr auto epsilon   = in_t::literal(1);
 in_t const     vectors[] = {
     in_t::literal(max<uint64_t>()),
     in_t::literal(max<uint64_t>()) - epsilon,
+    to_fixed<in_t>(0.75) + epsilon,
     to_fixed<in_t>(0.75),
+    to_fixed<in_t>(0.75) - epsilon,
     to_fixed<in_t>(0.5) + epsilon,
     to_fixed<in_t>(0.5),
 };
@@ -113,7 +115,9 @@ constexpr auto epsilon   = in_t::literal(1);
 in_t const     vectors[] = {
     in_t::literal(max<uint64_t>()),
     in_t::literal(max<uint64_t>()) - epsilon,
+    to_fixed<in_t>(0.75) + epsilon,
     to_fixed<in_t>(0.75),
+    to_fixed<in_t>(0.75) - epsilon,
     to_fixed<in_t>(0.5) + epsilon,
     to_fixed<in_t>(0.5),
 };
