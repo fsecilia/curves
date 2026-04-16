@@ -8,6 +8,7 @@
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
 #include <ostream>
+#include <random>
 
 namespace crv {
 
@@ -34,7 +35,7 @@ using out_t = sut_t::out_t;
 
 struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<in_t>
 {
-    // This comes from the same sollya script that generated the constants: 2e + e^2 + 100
+    // this comes from the same sollya script that generated the constants: 2e + e^2 + 100
     static constexpr auto tolerance = out_t::literal(35425386524623839ull);
 
     in_t const in = GetParam();
@@ -91,7 +92,7 @@ using out_t = fixed_t<uint64_t, 62>;
 
 struct normalized_rsqrt_property_test_t : TestWithParam<in_t>
 {
-    // This comes from the same sollya script that generated the initial guess constants: test_tolerance for i=3
+    // this comes from the same sollya script that generated the initial guess constants: test_tolerance for i=3
     static constexpr auto tolerance = out_t::literal(e_nr);
 
     in_t const in = GetParam();
@@ -225,6 +226,7 @@ using out_t = fixed_t<uint64_t, 56>;
 
 struct rsqrt_property_test_t : Test
 {
+    using in_value_t = in_t::value_t;
     using wide_out_t = fixed_t<widened_t<out_t::value_t>, out_t::frac_bits * 2>;
     using sut_t      = rsqrt_t<out_t, in_t, normalized_rsqrt_t<>>;
 
@@ -247,7 +249,7 @@ struct rsqrt_property_test_t : Test
     // The dominant error term is 2*d*sqrt(x), giving a tolerance of 2*e_nr*sqrt(x) ulps of Q56. We approximate
     // sqrt(x)*2^56 ~= x.value * y.value (since y ~= 1/sqrt(x) in Q56). e_nr = 11 is the max error after 3 NR iterations
     // from the sollya script (see rsqrt.hpp). Denormalization only reduces it (right-shift for integer Q0 inputs).
-    auto test_property(in_t x) -> void
+    auto test_property(in_t x) const noexcept -> void
     {
         auto const expected = wide_out_t{1};
 
@@ -262,6 +264,53 @@ struct rsqrt_property_test_t : Test
     }
 };
 
+TEST_F(rsqrt_property_test_t, fuzz)
+{
+    std::mt19937 rng{0xF012345678};
+    auto         literal_value_distribution = std::uniform_int_distribution<in_value_t>{0, max<in_value_t>()};
+
+    for (auto i = 0; i < 10000; ++i) test_property(in_t::literal(literal_value_distribution(rng)));
+}
+
+// sweeping test for specific ranges
+struct rsqrt_property_test_sweep_t : rsqrt_property_test_t
+{
+    static auto const sample_count = in_value_t{10000};
+
+    // sweeps [range_begin, range_begin + sample_count) densely
+    auto sweep_range(in_t range_begin) const noexcept -> void
+    {
+        for (auto sample = in_value_t{}; sample < sample_count; ++sample)
+        {
+            test_property(range_begin + in_t::literal(sample));
+        }
+    }
+};
+
+TEST_F(rsqrt_property_test_sweep_t, sweep_low)
+{
+    sweep_range(in_t::literal(1));
+}
+
+TEST_F(rsqrt_property_test_sweep_t, sweep_low_reduced_range)
+{
+    // Maps to 0.5 in the reduced range. Sweeping across this crosses a power-of-two boundary, testing both the
+    // transition of clz shifts and the minimax bounds.
+    sweep_range(in_t::literal(in_value_t{1} << 31) - in_t::literal(sample_count / 2));
+}
+
+TEST_F(rsqrt_property_test_sweep_t, sweep_mid_reduced_range)
+{
+    // Maps to exactly 0.75 in the reduced range.
+    sweep_range(in_t::literal(in_value_t{3} << 30) - in_t::literal(sample_count / 2));
+}
+
+TEST_F(rsqrt_property_test_sweep_t, sweep_high)
+{
+    sweep_range(in_t::literal(max<in_value_t>() - sample_count - 1));
+}
+
+// parameterized test for specific values
 struct rsqrt_property_test_parameterized_t : rsqrt_property_test_t, WithParamInterface<in_t>
 {
     in_t const x = GetParam();
