@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief fixed point integer type
+/// \brief fixed point approximation of 2^-x - 1
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
