@@ -142,7 +142,7 @@ TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
 // death tests
 // --------------------------------------------------------------------------------------------------------------------
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 struct quadrature_stack_seeder_death_tests_t : quadrature_stack_seeder_test_t
 {};

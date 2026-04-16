@@ -50,7 +50,7 @@ static_assert(log2<uint64_t>((1ULL << 63) + 1) == 63);
 // max boundary
 static_assert(log2<uint64_t>(max<uint64_t>()) == 63);
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 TEST(log2, asserts_on_log2_0)
 {
@@ -116,7 +116,7 @@ static_assert(int_cast<int8_t>(uint128_t{max<int8_t>()}) == max<int8_t>());
 static_assert(int_cast<uint8_t>(int128_t{max<uint8_t>()}) == max<uint8_t>());
 static_assert(int_cast<uint8_t>(uint128_t{max<uint8_t>()}) == max<uint8_t>());
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 TEST(int_cast, asserts_casting_negative_to_unsigned)
 {
