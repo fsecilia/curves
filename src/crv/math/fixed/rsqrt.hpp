@@ -111,7 +111,6 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/fma.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/shifter.hpp>
 #include <array>
