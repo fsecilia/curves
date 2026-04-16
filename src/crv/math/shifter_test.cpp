@@ -223,7 +223,7 @@ static_assert(shr_test.test_shift_asym_dynamic_negative_count(),
 static_assert(shr_test.test_shift_asym_static_negative_count(),
               "shifter_t: test_shift_asym_static_negative_count failed");
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 TEST(shifter_death_test, shr_sym_dynamic_zero_count)
 {
@@ -487,7 +487,7 @@ constexpr auto test_shift_asym_static_zero_count() noexcept -> bool
 }
 static_assert(test_shift_asym_static_zero_count(), "shifter_t: test_shift_asym_static_zero_count failed");
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 constexpr auto largest_invalid_underlying_for_shl_4  = (min<underlying_t>() >> 4) - 1;
 constexpr auto smallest_invalid_underlying_for_shl_4 = (max<underlying_t>() >> 4) + 1;

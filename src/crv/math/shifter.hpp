@@ -35,7 +35,7 @@ public:
 
     template <typename dst_t, typename src_t> constexpr auto shr(src_t src, int_t count) const noexcept -> dst_t
     {
-        constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
+        [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
         assert(count > 0 && "shifter_t: shr count must be positive");
         assert(count < src_bits && "shifter_t: shr count must be less than bit width");
@@ -47,7 +47,7 @@ public:
 
     template <typename dst_t, int_t count, typename src_t> constexpr auto shr(src_t src) const noexcept -> dst_t
     {
-        constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
+        [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
         static_assert(count > 0, "shifter_t: shr count must be positive");
         static_assert(count < src_bits, "shifter_t: shr count must be less than bit width");
@@ -69,7 +69,7 @@ public:
 
     template <typename dst_t, typename src_t> constexpr auto shl(src_t src, int_t count) const noexcept -> dst_t
     {
-        constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
+        [[maybe_unused]] constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
         assert(count >= 0 && "shifter_t: shl count must not be negative");
         assert(count < dst_bits && "shifter_t: shl count larger than target bit width");
@@ -90,7 +90,7 @@ public:
 
     template <typename dst_t, int_t count, typename src_t> constexpr auto shl(src_t src) const noexcept -> dst_t
     {
-        constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
+        [[maybe_unused]] constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
         static_assert(count >= 0, "shifter_t: shl count must not be negative");
         static_assert(count < dst_bits, "shifter_t: shl count larger than target bit width");
