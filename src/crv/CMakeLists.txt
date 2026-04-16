@@ -54,6 +54,7 @@ target_sources_kernel(lib
     math/fixed/fma.hpp
     math/fixed/exp2.hpp
     math/fixed/exp2_neg_m1.hpp
+    math/fixed/exp2_neg_m1.cpp
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
