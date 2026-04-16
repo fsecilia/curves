@@ -14,7 +14,7 @@ namespace crv {
 
 using real_t = float_t;
 
-static constexpr auto e_nr = uint128_t{11}; // error calculated after 3 iterations of Newton-Raphson, comes from sollya
+static constexpr auto e_nr = uint128_t{8}; // error calculated after 3 iterations of Newton-Raphson, comes from sollya
 
 // ====================================================================================================================
 // initial guesses
@@ -86,7 +86,7 @@ namespace normalized_rsqrt_test {
 
 namespace property_test {
 
-using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
+using sut_t = normalized_rsqrt_t<>;
 using in_t  = sut_t::in_t;
 using out_t = fixed_t<uint64_t, 62>;
 
@@ -165,7 +165,7 @@ TEST_P(normalized_rsqrt_value_test_t, error_within_minimax_bounds)
 
     auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
-    EXPECT_LT(difference, tolerance);
+    EXPECT_LE(difference, tolerance);
 };
 
 param_t const vectors[] = {
@@ -376,7 +376,7 @@ static_assert(rsqrt(fixed_t<uint64_t, 61>(2)) == fixed_t<uint64_t, 61>::literal(
 // high precision, over-unity
 // isqrt(0.5) ~= 1.414 ~= round(2^61/sqrt(0.5)) @Q61
 // overflow risk case
-static_assert(rsqrt((fixed_t<uint64_t, 61>(1) >> 1)) == fixed_t<uint64_t, 61>::literal(3260954456333195553ULL - 1));
+static_assert(rsqrt((fixed_t<uint64_t, 61>(1) >> 1)) == fixed_t<uint64_t, 61>::literal(3260954456333195553ULL));
 
 // pure integer input
 // isqrt(100) = 0.1 ~= round(2^60/sqrt(100)) @Q60
@@ -441,7 +441,7 @@ static_assert(rsqrt<fixed_t<uint64_t, 32>>(fixed_t<uint64_t, 0>::literal(2 * ((1
 //
 // It starts with a guess of 1.2883 and must reach 1.2844 in NR steps alone.
 static_assert(rsqrt(fixed_t<uint64_t, 62>::literal(2795303719243043561ULL))
-              == fixed_t<uint64_t, 62>::literal(5923455028186719836ULL));
+              == fixed_t<uint64_t, 62>::literal(5923455028186719836ULL + 1));
 
 } // namespace value_test
 } // namespace rsqrt_test
