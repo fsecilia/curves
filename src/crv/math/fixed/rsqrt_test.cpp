@@ -219,7 +219,73 @@ namespace rsqrt_test {
 
 namespace property_test {
 
+// test using pipeline case: mouse vector in 32 bit container -> 8 integer bits in 64-bit container
+using in_t       = fixed_t<uint32_t, 0>;
+using out_t      = fixed_t<uint64_t, 56>;
+using wide_out_t = fixed_t<widened_t<out_t::value_t>, out_t::frac_bits * 2>;
+using sut_t      = rsqrt_t<out_t, in_t, normalized_rsqrt_t<>>;
+
+struct rsqrt_property_test_t : TestWithParam<in_t>
+{
+    in_t const x = GetParam();
+
+    sut_t const sut{};
+};
+
+// tests (1/sqrt(x))^2*x = 1
 //
+// This test computes y^2*x with wide intermediates to avoid arithmetic precision loss native to the test.
+// Straightforward operator* narrows y^2 back to Q56 before multiplying by x, which discards fractional bits that would
+// have contributed to the final product. For large x this truncation dominates the result, masking the actual rsqrt
+// error. Instead, we crack fixed_t and multiply directly. multiply() keeps y^2 at full Q112 width, and we manually
+// compute yy.value * x.value in uint128. This is abusive, but safe because y^2*x ~= 1, so the raw product stays near
+// 2^112, well within uint128_t.
+//
+// The tolerance is input-dependent, but in a specific way that comes from the math. Expanding y = 1/sqrt(x) + d around
+// the true root:
+//
+//     y^2*x = 1 + 2*d*sqrt(x) + d^2*x
+//
+// The dominant error term is 2*d*sqrt(x), giving a tolerance of 2*e_nr*sqrt(x) ulps of Q56. We approximate
+// sqrt(x)*2^56 ~= x.value * y.value (since y ~= 1/sqrt(x) in Q56). e_nr = 11 is the max error after 3 NR iterations
+// from the sollya script (see rsqrt.hpp). Denormalization only reduces it (right-shift for integer Q0 inputs).
+TEST_P(rsqrt_property_test_t, error_within_minimax_bounds)
+{
+    auto const expected = wide_out_t{1};
+
+    auto const y  = out_t::convert(sut(x));
+    auto const yy = multiply(y, y);
+
+    auto const actual     = wide_out_t::literal(yy.value * uint128_t{x.value});
+    auto const difference = std::max(actual, expected) - std::min(actual, expected);
+    auto const tolerance  = wide_out_t::literal(2 * e_nr * uint128_t{x.value} * uint128_t{y.value});
+
+    EXPECT_LT(difference, tolerance);
+};
+
+in_t const vectors[] = {
+    // large, odd clz (33)
+    in_t::literal(max<int32_t>()),
+
+    // large - 1, odd clz (33)
+    in_t::literal(max<int32_t>() - 1),
+
+    // power-of-2, even clz (34)
+    in_t::literal(1u << 30),
+
+    // below power-of-2, even clz (34)
+    in_t::literal((1u << 30) - 1),
+
+    // ~mouse magnitude, even clz (34)
+    in_t::literal(2 * ((1u << 15) - 1) * ((1u << 15) - 1)),
+
+    // small, even clz (62)
+    in_t::literal(2),
+
+    // smallest, odd clz (63)
+    in_t::literal(1),
+};
+INSTANTIATE_TEST_SUITE_P(vectors, rsqrt_property_test_t, ValuesIn(vectors));
 
 } // namespace property_test
 
