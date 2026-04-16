@@ -54,7 +54,8 @@ template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<valu
         auto const scaled = ldexp(src, frac_bits);
         range_check(scaled);
 
-        return target_t::literal(static_cast<value_t>(llrint(scaled)));
+        if constexpr (is_signed_v<value_t>) return target_t::literal(static_cast<value_t>(llrint(scaled)));
+        else return target_t::literal(static_cast<value_t>(round(scaled)));
     }
 
     template <std::floating_point dst_t> constexpr auto from(target_t src) const noexcept -> dst_t
