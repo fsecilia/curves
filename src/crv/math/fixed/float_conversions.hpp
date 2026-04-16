@@ -31,7 +31,7 @@ template <integral value_t, int frac_bits> struct fixed_converter_t<fixed_t<valu
     {
         using std::ldexp;
 
-        if constexpr (std::is_signed_v<value_t>)
+        if constexpr (is_signed_v<value_t>)
         {
             auto const limit = ldexp(src_t{1}, std::numeric_limits<value_t>::digits);
             assert(scaled >= -limit && scaled < limit && "fixed_converter_t::to: input out of range");
