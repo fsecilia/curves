@@ -116,6 +116,8 @@
 #include <crv/math/shifter.hpp>
 #include <array>
 #include <bit>
+#include <climits>
+#include <limits>
 
 namespace crv {
 
@@ -200,14 +202,25 @@ struct normalized_rsqrt_t
 /// reciprocal sqrt
 template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = normalized_rsqrt_t<>> struct rsqrt_t
 {
-    // 128-bit types are reserved for intermediates
-    static_assert(sizeof(typename in_t::value_t) <= 8 && sizeof(typename out_t::value_t) <= 8);
-
-    using nr_t     = normalized_rsqrt_t::nr_t;
-    using x_norm_t = normalized_rsqrt_t::in_t;
+    using nr_t       = normalized_rsqrt_t::nr_t;
+    using x_norm_t   = normalized_rsqrt_t::in_t;
+    using wide_out_t = fixed_t<widened_t<typename out_t::value_t>, out_t::frac_bits>;
 
     static constexpr auto x_frac_bits = in_t::frac_bits;
     static constexpr auto y_frac_bits = normalized_rsqrt_t::out_t::frac_bits;
+
+    // constrain shift sizes to size of output
+    static constexpr auto max_shift_limit           = std::numeric_limits<typename wide_out_t::value_t>::digits;
+    static constexpr auto max_possible_x_norm_shift = static_cast<int_t>(sizeof(typename in_t::value_t) * CHAR_BIT - 1);
+    static constexpr auto max_x_norm_frac_bits      = max_possible_x_norm_shift + x_frac_bits;
+    static constexpr auto max_possible_y_denorm_frac_bits
+        = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_frac_bits >> 1);
+    static constexpr auto min_possible_y_denorm_frac_bits
+        = y_frac_bits + (x_norm_t::frac_bits >> 1) - (max_x_norm_frac_bits >> 1);
+    static constexpr auto max_possible_shift = out_t::frac_bits - min_possible_y_denorm_frac_bits;
+    static constexpr auto min_possible_shift = out_t::frac_bits - max_possible_y_denorm_frac_bits;
+    static_assert(max_possible_shift < max_shift_limit, "shift scale overflows container width");
+    static_assert(min_possible_shift > -max_shift_limit, "shift scale underflows container width");
 
     static constexpr auto sqrt2 = nr_t::literal(0x5A827999FCEF3242ULL);
 
@@ -238,7 +251,6 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_frac_bits >> 1);
         auto const shift              = out_t::frac_bits - y_denorm_frac_bits;
 
-        using wide_out_t  = fixed_t<uint128_t, out_t::frac_bits>;
         auto const result = wide_out_t::literal(shifter.shift(y.value, shift));
         return out_t::convert(result, shifter);
     }
