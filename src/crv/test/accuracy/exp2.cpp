@@ -3,215 +3,75 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#if 0
 #include <crv/lib.hpp>
-#include <crv/math/compensated_accumulator.hpp>
-#include <crv/math/error_metrics.hpp>
-#include <crv/math/fixed/conversions.hpp>
 #include <crv/math/fixed/exp2.hpp>
-#include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/io.hpp>
-#include <crv/math/limits.hpp>
-#include <crv/test/float128/float128.hpp>
-#include <chrono>
+#include <crv/test/accuracy/accuracy_test_runner.hpp>
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 
 namespace crv {
 namespace {
 
-#if defined CRV_FEATURE_FLOAT_128
-using reference_float_t = float128_t;
-#else
-using reference_float_t = float64_t;
-#endif
-
-template <typename func_approx_t, typename func_ref_t> struct accuracy_test_t
+struct exp2_test_t
 {
-    func_approx_t approx;
-    func_ref_t    ref;
-
-    template <typename in_t, typename error_metrics_t>
-    auto operator()(error_metrics_t& error_metrics, in_t min, in_t max, in_t delta) const -> void
-    {
-        auto const clear_line = "\r\033[2K";
-
-        std::cout << "[" << min << ", " << max << "], Δ = " << delta << std::endl;
-
-        using value_t = error_metrics_t::value_t;
-        using clock_t = std::chrono::steady_clock;
-
-        auto const            start_time      = clock_t::now();
-        auto                  prev_time       = start_time;
-        static constexpr auto update_interval = std::chrono::seconds(1);
-
-        auto       x_fixed          = min;
-        auto const total_iterations = (max.value - min.value) / delta.value;
-        auto       total_iteration  = typename in_t::value_t{0};
-        while (total_iteration < total_iterations)
-        {
-            static constexpr auto iterations_between_time_checks = 1'000'000;
-            for (auto iteration = 0; iteration < iterations_between_time_checks && total_iteration < total_iterations;
-                 ++iteration, ++total_iteration, x_fixed += delta)
-            {
-                auto const x_real = from_fixed<value_t>(x_fixed);
-                error_metrics.sample(x_fixed, approx(x_fixed), ref(x_real));
-            }
-
-            auto const cur_time = clock_t::now();
-            if (cur_time - prev_time > update_interval)
-            {
-                prev_time = cur_time;
-
-                auto const completed = static_cast<value_t>(x_fixed.value) - static_cast<value_t>(min.value);
-                auto const total     = static_cast<value_t>(max.value) - static_cast<value_t>(min.value);
-
-                auto const elapsed = cur_time - start_time;
-                auto const remaining
-                    = std::chrono::duration_cast<std::chrono::seconds>(elapsed * (total / completed - 1));
-
-                std::cout << clear_line << 100 * completed / total << "% (" << remaining << " remaining)" << std::flush;
-            }
-
-            ++total_iteration;
-            x_fixed += delta;
-        }
-
-        std::cout << clear_line << error_metrics << "\n" << std::endl;
-    }
-};
-
-struct exp2_test_32_t
-{
-    using in_t        = crv::fixed_t<int64_t, 32>;
-    using out_t       = crv::fixed_t<uint64_t, 32>;
-    using reference_t = reference_float_t;
-
-    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
-    {};
-
-    auto operator()() noexcept -> void
-    {
-        using std::log2;
-
-        using metrics_t = error_metrics_t<error_metrics_policy_t>;
-
-        auto const max_rep_float = log2(static_cast<reference_t>(max<in_t::value_t>() >> in_t::frac_bits));
-        auto const max_rep_int   = static_cast<in_t::value_t>(max_rep_float);
-        auto const max           = max_rep_int << in_t::frac_bits;
-        auto const min           = -max;
-
-        // auto const approx_impl = exp2_q32_t{};
-        // auto const approx_impl = preprod_exp2_t{};
-        auto const approx_impl = exp2_normalized_t{};
-
-        auto const accuracy_test = accuracy_test_t{
-            [&](in_t const& x) { return approx_impl.template eval<out_t::value_t, out_t::frac_bits>(x); },
-            [](reference_t const& x) {
-                using std::exp2;
-                return exp2(x);
-            },
-        };
-
-        auto const iterations  = 1000000;
-        auto const coarse_step = (max - min + iterations / 2) / iterations;
-
-        struct range_t
-        {
-            in_t min;
-            in_t max;
-            in_t step_size;
-        };
-
-        range_t ranges[] = {
-            {min, 0, coarse_step},
-            {min / 2, 0, coarse_step},
-            {min / 2, max / 2, coarse_step},
-            {0, max / 2, coarse_step},
-            {0, max, coarse_step},
-            {min, max, coarse_step},
-            {min, in_t{min} + to_fixed<in_t>(0.005), 1},
-            {to_fixed<in_t>(-0.5), to_fixed<in_t>(-0.495), 1},
-            {to_fixed<in_t>(-0.005), to_fixed<in_t>(0.005), 1},
-            {to_fixed<in_t>(0.495), to_fixed<in_t>(0.5), 1},
-            {in_t{max} - to_fixed<in_t>(0.005), max, 1},
-        };
-        for (auto const& range : ranges)
-        {
-            metrics_t metrics;
-            accuracy_test(metrics, range.min, range.max, range.step_size);
-        }
-    }
-};
-
-struct exp2_test_64_t
-{
-    // using impl_t = exp2_q64_to_q1_63_t;
-    using impl_t = exp2_normalized_q64_to_q1_63_t;
-
+    using impl_t      = exp2_normalized_q64_to_q1_63_t;
     using in_t        = impl_t::in_t;
     using out_t       = impl_t::out_t;
     using reference_t = reference_float_t;
 
-    struct error_metrics_policy_t : crv::error_metrics_policy_t<in_t, reference_t, out_t>
-    {};
+    using error_metrics_t = error_metrics_t<
+        error_metrics_policy_t<in_t, reference_t, out_t, error_metric::mono_dir_policies::ascending_t>>;
 
     auto operator()() noexcept -> void
     {
-        using std::log2;
-
-        using metrics_t = error_metrics_t<error_metrics_policy_t>;
-
-        auto const max = crv::max<uint64_t>();
+        using range_t = sweep_range_t<in_t>;
 
         auto const approx_impl = impl_t{};
+        auto const ref_impl    = [](reference_t const& x) { return std::exp2(x); };
 
-        auto const accuracy_test = accuracy_test_t{
-            [&](in_t const& x) { return approx_impl.eval(x); },
-            [](reference_t const& x) {
-                using std::exp2;
-                return exp2(x);
-            },
+        auto const runner
+            = accuracy_test_runner_t<decltype(approx_impl), decltype(ref_impl), error_metrics_t>{approx_impl, ref_impl};
+
+        auto const max_val  = crv::max<uint64_t>();
+        auto const half_val = 1ULL << (in_t::frac_bits - 1);
+        auto const qtr_val  = half_val / 2;
+
+        auto const min       = in_t::literal(0);
+        auto const max       = in_t::literal(max_val);
+        auto const qtr       = in_t::literal(qtr_val);
+        auto const half      = in_t::literal(half_val);
+        auto const three_qtr = in_t::literal(half_val + qtr_val);
+
+        auto const iterations  = 10'000'000ull;
+        auto const coarse_step = in_t::literal(max_val / iterations);
+
+        range_t uniform_ranges[] = {
+            // Quadrants
+            {min, qtr, coarse_step},
+            {qtr, half, coarse_step},
+            {half, three_qtr, coarse_step},
+            {three_qtr, max, coarse_step},
+            // Full span
+            {min, max, coarse_step},
+
+            // Dense uniform sweeps target the reduction boundaries
+            {min, in_t::literal(iterations), in_t::literal(1)},          // Near 0.0
+            {in_t::literal(half_val - iterations / 2), in_t::literal(half_val + iterations / 2),
+             in_t::literal(1)},                                          // The 0.5 internal reduction threshold
+            {in_t::literal(max_val - iterations), max, in_t::literal(1)} // Approaching 1.0
         };
 
-        auto const iterations  = 10000000ULL;
-        auto const coarse_step = max / iterations;
+        for (auto const& range : uniform_ranges) { runner.run_uniform(range); }
 
-        struct range_t
-        {
-            in_t min;
-            in_t max;
-            in_t step_size;
-        };
+        range_t fuzzed_ranges[] = {{min, max, in_t::literal(coarse_step.value * 2)}};
 
-        range_t ranges[] = {
-            {0, max / 4, coarse_step},
-            {max / 4, max / 2, coarse_step},
-            {max / 2, 3 * (max / 4), coarse_step},
-            {3 * (max / 4), max, coarse_step},
-
-            {0, max / 2, coarse_step},
-            {max / 2, max, coarse_step},
-
-            {0, max, coarse_step},
-
-            {0, iterations, 1},
-            {max / 2 - iterations / 2, max / 2 + iterations / 2, 1},
-            {max - iterations, max, 1},
-        };
-        for (auto const& range : ranges)
-        {
-            metrics_t metrics;
-            accuracy_test(metrics, range.min, range.max, range.step_size);
-        }
+        for (auto const& range : fuzzed_ranges) { runner.run_fuzzed(range); }
     }
 };
 
 auto main(int, char*[]) -> int
 {
-    // exp2_test_32_t{}();
-    exp2_test_64_t{}();
+    exp2_test_t{}();
     return EXIT_SUCCESS;
 }
 
@@ -222,4 +82,3 @@ auto main(int arg_count, char* args[]) -> int
 {
     return crv::main(arg_count, args);
 }
-#endif
