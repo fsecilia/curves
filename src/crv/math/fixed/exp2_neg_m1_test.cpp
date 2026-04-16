@@ -35,7 +35,7 @@ struct exp2_neg_m1_q64_to_q1_63_t_test_t : TestWithParam<vector_t>
 
 TEST_P(exp2_neg_m1_q64_to_q1_63_t_test_t, eval)
 {
-    auto const actual = sut.eval(input);
+    auto const actual = sut(input);
 
     EXPECT_EQ(expected, actual);
 }

@@ -30,7 +30,7 @@ public:
         __builtin_prefetch(poly_coeffs, read_only, high_locality);
     }
 
-    constexpr auto eval(in_t const& input) const noexcept -> out_t
+    constexpr auto operator()(in_t input) const noexcept -> out_t
     {
         auto acc = poly_coeffs[0];
 
