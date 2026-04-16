@@ -59,7 +59,7 @@ TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_boun
 constexpr auto epsilon   = in_t::literal(1);
 in_t const     vectors[] = {
     in_t::literal(max<uint64_t>()),
-    in_t::literal(max<uint64_t>()) - epsilon,
+    in_t::literal(max<uint64_t>() - 1),
     to_fixed<in_t>(0.75) + epsilon,
     to_fixed<in_t>(0.75),
     to_fixed<in_t>(0.75) - epsilon,
@@ -118,7 +118,7 @@ TEST_P(normalized_rsqrt_property_test_t, error_within_minimax_bounds)
 constexpr auto epsilon   = in_t::literal(1);
 in_t const     vectors[] = {
     in_t::literal(max<uint64_t>()),
-    in_t::literal(max<uint64_t>()) - epsilon,
+    in_t::literal(max<uint64_t>() - 1),
     to_fixed<in_t>(0.75) + epsilon,
     to_fixed<in_t>(0.75),
     to_fixed<in_t>(0.75) - epsilon,
