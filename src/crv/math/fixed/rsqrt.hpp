@@ -218,22 +218,22 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         assert(x.value > 0);
 
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
-        auto const x_lz            = std::countl_zero(x.value);
-        auto const x_norm          = x_norm_t::literal(x.value << x_lz);
-        auto const x_norm_exponent = x_lz + x_frac_bits;
+        auto const x_norm_shift     = std::countl_zero(x.value);
+        auto const x_norm           = x_norm_t::literal(x.value << x_norm_shift);
+        auto const x_norm_frac_bits = x_norm_shift + x_frac_bits;
 
         // apply normalized rsqrt
         auto y = normalized_rsqrt(x_norm);
 
         // denormalize
-        auto const odd_exponent = (x_norm_exponent & 1) != 0;
+        auto const odd_exponent = (x_norm_frac_bits & 1) != 0;
         if (odd_exponent)
         {
             auto const y_narrow = nr_t::convert(y, shifter);
             y                   = normalized_rsqrt_t::out_t::convert(multiply(y_narrow, sqrt2), shifter);
         }
 
-        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
+        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_frac_bits >> 1);
         auto const shift              = out_t::frac_bits - y_denorm_frac_bits;
 
         using wide_out_t  = fixed_t<uint128_t, out_t::frac_bits>;
