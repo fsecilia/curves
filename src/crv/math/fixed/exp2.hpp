@@ -307,7 +307,7 @@ public:
     static constexpr auto in_frac_bits  = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
-    constexpr auto eval(in_t const& input) const noexcept -> out_t
+    constexpr auto operator()(in_t input) const noexcept -> out_t
     {
         // ----------------------------------------------------------------
         // Range reduction to [-0.5, 0.5)
@@ -346,7 +346,7 @@ public:
         auto const rshift        = current_frac_bits - out_frac_bits - int_part;
         auto const acc_shifted   = (acc >> rshift) + ((acc >> (rshift - 1)) & 1);
         auto const one_in_output = static_cast<int128_t>(1) << (out_frac_bits + int_part);
-        return out_t{static_cast<uint64_t>(acc_shifted + one_in_output)};
+        return out_t::literal(static_cast<uint64_t>(acc_shifted + one_in_output));
     }
 
 private:
