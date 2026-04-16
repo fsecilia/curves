@@ -24,7 +24,7 @@ namespace {
 // quadratic minimiax
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace quadratic_minimax {
+namespace quadratic_minimax_test {
 
 using sut_t = quadratic_minimax_t;
 using in_t  = sut_t::in_t;
@@ -67,7 +67,7 @@ in_t const     vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, rsqrt_initial_guesses_quadratic_minimax_test_t, ValuesIn(vectors));
 // clang-format on
 
-} // namespace quadratic_minimax
+} // namespace quadratic_minimax_test
 } // namespace
 } // namespace rsqrt_initial_guesses
 
@@ -77,11 +77,13 @@ namespace {
 // normalized_rsqrt_t
 // ====================================================================================================================
 
+namespace normalized_rsqrt_test {
+
 // --------------------------------------------------------------------------------------------------------------------
 // property tests
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace normalized_rsqrt_property_tests {
+namespace property_test {
 
 using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
 using in_t  = sut_t::in_t;
@@ -124,13 +126,13 @@ in_t const     vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, normalized_rsqrt_property_test_t, ValuesIn(vectors));
 // clang-format on
 
-} // namespace normalized_rsqrt_property_tests
+} // namespace property_test
 
 // --------------------------------------------------------------------------------------------------------------------
 // value tests
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace normalized_rsqrt_value_tests {
+namespace value_test {
 
 using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
 using in_t  = sut_t::in_t;
@@ -207,19 +209,30 @@ param_t const     vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, normalized_rsqrt_value_test_t, ValuesIn(vectors));
 // clang-format on
 
-} // namespace normalized_rsqrt_value_tests
+} // namespace value_test
+} // namespace normalized_rsqrt_test
 
 // ====================================================================================================================
 // rsqrt_t
 // ====================================================================================================================
 
+namespace rsqrt_test {
+
 // --------------------------------------------------------------------------------------------------------------------
 // property tests
 // --------------------------------------------------------------------------------------------------------------------
 
+namespace property_test {
+
+//
+
+} // namespace property_test
+
 // --------------------------------------------------------------------------------------------------------------------
 // value tests
 // --------------------------------------------------------------------------------------------------------------------
+
+namespace value_test {
 
 template <is_fixed out_t, is_fixed in_t> constexpr auto rsqrt(in_t in) -> out_t
 {
@@ -310,6 +323,9 @@ static_assert(rsqrt<fixed_t<uint64_t, 32>>(fixed_t<uint64_t, 0>::literal(2 * ((1
 // It starts with a guess of 1.2883 and must reach 1.2844 in NR steps alone.
 static_assert(rsqrt(fixed_t<uint64_t, 62>::literal(2795303719243043561ULL))
               == fixed_t<uint64_t, 62>::literal(5923455028186719836ULL));
+
+} // namespace value_test
+} // namespace rsqrt_test
 
 } // namespace
 } // namespace crv
