@@ -5,6 +5,7 @@
 
 if (BUILD_INTEGRATION_TESTS)
     add_executable(accuracy_tests
+        accuracy_test_runner.hpp
         exp2.cpp
         exp2_neg_m1.cpp
     )
