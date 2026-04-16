@@ -184,6 +184,8 @@ struct normalized_rsqrt_t
             auto const yy      = nr_t::convert(multiply(y, y), shifter);
             auto const xyy     = nr_t::convert(multiply(x, yy), shifter);
             auto const product = multiply(y, three - xyy);
+
+            // this cracks the fixed_t to combine the rescale with division by 2 in a single fused shift
             y = nr_t::literal(int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(product.value)));
         }
 
