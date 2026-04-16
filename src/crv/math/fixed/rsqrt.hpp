@@ -233,8 +233,9 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
         assert(x.value > 0);
 
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
-        auto const x_norm_shift     = std::countl_zero(x.value);
-        auto const x_norm           = x_norm_t::literal(x.value << x_norm_shift);
+        auto const wide_x           = int_cast<typename x_norm_t::value_t>(x.value);
+        auto const x_norm_shift     = std::countl_zero(wide_x);
+        auto const x_norm           = x_norm_t::literal(wide_x << x_norm_shift);
         auto const x_norm_frac_bits = x_norm_shift + x_frac_bits;
 
         // apply normalized rsqrt
