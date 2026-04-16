@@ -169,7 +169,6 @@ struct normalized_rsqrt_t
     using nr_t  = initial_guess_t::coeff_t;
 
     using narrow_t = nr_t::value_t;
-    using wide_t   = widened_t<narrow_t>;
 
     static constexpr auto three = nr_t{3};
 
@@ -182,22 +181,26 @@ struct normalized_rsqrt_t
         auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
         {
-            auto const yy  = nr_t::convert(multiply(y, y), shifter);
-            auto const xyy = nr_t::convert(multiply(x, yy), shifter);
-            y              = nr_t::literal(
-                int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy).value)));
+            auto const yy      = nr_t::convert(multiply(y, y), shifter);
+            auto const xyy     = nr_t::convert(multiply(x, yy), shifter);
+            auto const product = multiply(y, three - xyy);
+            y = nr_t::literal(int_cast<narrow_t>(shifter.template shr<nr_t::frac_bits + 1>(product.value)));
         }
 
         // Final iteration does not narrow at the end.
-        auto const yy  = nr_t::convert(multiply(y, y), shifter);
-        auto const xyy = nr_t::convert(multiply(x, yy), shifter);
-        return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(wide_t{y.value} * (three - xyy).value));
+        auto const yy      = nr_t::convert(multiply(y, y), shifter);
+        auto const xyy     = nr_t::convert(multiply(x, yy), shifter);
+        auto const product = multiply(y, three - xyy);
+        return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(product.value));
     }
 };
 
 /// reciprocal sqrt
 template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = normalized_rsqrt_t<>> struct rsqrt_t
 {
+    // 128-bit types are reserved for intermediates
+    static_assert(sizeof(typename in_t::value_t) <= 8 && sizeof(typename out_t::value_t) <= 8);
+
     using nr_t     = normalized_rsqrt_t::nr_t;
     using x_norm_t = normalized_rsqrt_t::in_t;
 
@@ -224,23 +227,18 @@ template <is_fixed out_t, is_fixed in_t = out_t, typename normalized_rsqrt_t = n
 
         // denormalize
         auto const odd_exponent = (x_norm_exponent & 1) != 0;
-        if (odd_exponent) y = normalized_rsqrt_t::out_t::convert(multiply(nr_t::convert(y, shifter), sqrt2), shifter);
-
-        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
-
-        // handle invalid scales
-        if (y_denorm_frac_bits >= 128) [[unlikely]]
+        if (odd_exponent)
         {
-            // right shift by >= 128 always underflows to 0
-            if (out_t::frac_bits < y_denorm_frac_bits) return out_t{0};
-
-            // left shift by >= 128 of nonzero saturates; zero stays zero
-            return y.value == 0 ? out_t{0} : max<out_t>();
+            auto const y_narrow = nr_t::convert(y, shifter);
+            y                   = normalized_rsqrt_t::out_t::convert(multiply(y_narrow, sqrt2), shifter);
         }
 
+        auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_exponent >> 1);
+        auto const shift              = out_t::frac_bits - y_denorm_frac_bits;
+
         using wide_out_t  = fixed_t<uint128_t, out_t::frac_bits>;
-        auto const result = wide_out_t::literal(shifter.shift(y.value, out_t::frac_bits - y_denorm_frac_bits));
-        return out_t::convert(result);
+        auto const result = wide_out_t::literal(shifter.shift(y.value, shift));
+        return out_t::convert(result, shifter);
     }
 };
 
