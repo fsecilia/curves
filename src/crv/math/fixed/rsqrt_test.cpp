@@ -38,7 +38,7 @@ struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<in_t>
     // this comes from the same sollya script that generated the constants: 2e + e^2 + 100
     static constexpr auto tolerance = out_t::literal(35425386524623839ull);
 
-    in_t const in = GetParam();
+    in_t const x = GetParam();
 
     sut_t const sut{};
 };
@@ -48,10 +48,10 @@ TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_boun
 {
     auto const expected = out_t{1};
 
-    auto const reciprocal_sqrt = sut(in);
-    auto const reciprocal      = reciprocal_sqrt * reciprocal_sqrt;
-    auto const actual          = reciprocal * in;
-    auto const difference      = std::max(actual, expected) - std::min(actual, expected);
+    auto const y          = sut(x);
+    auto const yy         = y * y;
+    auto const actual     = yy * x;
+    auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
@@ -95,7 +95,7 @@ struct normalized_rsqrt_property_test_t : TestWithParam<in_t>
     // this comes from the same sollya script that generated the initial guess constants: test_tolerance for i=3
     static constexpr auto tolerance = out_t::literal(e_nr);
 
-    in_t const in = GetParam();
+    in_t const x = GetParam();
 
     sut_t const sut{};
 };
@@ -105,10 +105,10 @@ TEST_P(normalized_rsqrt_property_test_t, error_within_minimax_bounds)
 {
     auto const expected = out_t{1};
 
-    auto const reciprocal_sqrt = out_t::convert(sut(in));
-    auto const reciprocal      = reciprocal_sqrt * reciprocal_sqrt;
-    auto const actual          = reciprocal * in;
-    auto const difference      = std::max(actual, expected) - std::min(actual, expected);
+    auto const y          = out_t::convert(sut(x));
+    auto const yy         = y * y;
+    auto const actual     = yy * x;
+    auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
@@ -139,12 +139,12 @@ using out_t = fixed_t<uint64_t, 62>;
 
 struct param_t
 {
-    in_t  in;
+    in_t  x;
     out_t expected;
 
     friend auto operator<<(std::ostream& out, param_t const& param) -> std::ostream&
     {
-        return out << "{.in = " << param.in << ", .expected = " << param.expected << "}";
+        return out << "{.in = " << param.x << ", .expected = " << param.expected << "}";
     }
 };
 
@@ -152,7 +152,7 @@ struct normalized_rsqrt_value_test_t : TestWithParam<param_t>
 {
     static constexpr auto tolerance = out_t::literal(e_nr / 2);
 
-    in_t const  in       = GetParam().in;
+    in_t const  x        = GetParam().x;
     out_t const expected = GetParam().expected;
 
     sut_t const sut{};
@@ -161,7 +161,7 @@ struct normalized_rsqrt_value_test_t : TestWithParam<param_t>
 // tests (1/sqrt(in))^2*in = 1
 TEST_P(normalized_rsqrt_value_test_t, error_within_minimax_bounds)
 {
-    auto const actual = out_t::convert(sut(in));
+    auto const actual = out_t::convert(sut(x));
 
     auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
