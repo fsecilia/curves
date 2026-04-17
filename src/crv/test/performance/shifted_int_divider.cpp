@@ -7,12 +7,12 @@
 #include <crv/math/division/divider.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
+#include <crv/test/performance/performance.hpp>
 #include <climits>
 #include <iomanip>
 #include <iostream>
 #include <random>
 #include <vector>
-#include <x86intrin.h>
 
 namespace crv {
 namespace {
@@ -21,12 +21,6 @@ using wide_t   = uint128_t;
 using narrow_t = uint64_t;
 
 constexpr auto narrow_width = sizeof(narrow_t) * CHAR_BIT;
-
-/// forces the compiler to compute 'value' without executing additional instructions
-template <typename type_t> inline void do_not_optimize(type_t const& value) noexcept
-{
-    asm volatile("" : : "r,m"(value) : "memory");
-}
 
 struct test_case_t
 {
