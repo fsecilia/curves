@@ -9,4 +9,10 @@ if (BUILD_INTEGRATION_TESTS)
         shifted_int_divider.cpp
     )
     target_link_libraries(performance_test_shifted_int_divider PRIVATE lib)
+
+    add_executable(performance_test_pipeline
+        performance.hpp
+        pipeline.cpp
+    )
+    target_link_libraries(performance_test_pipeline PRIVATE lib)
 endif()
