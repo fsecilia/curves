@@ -24,6 +24,7 @@ if (RUN_DEATH_TESTS)
 endif()
 
 add_subdirectory(accuracy)
+add_subdirectory(characterization)
 add_subdirectory(float128)
 add_subdirectory(integration)
 add_subdirectory(performance)
