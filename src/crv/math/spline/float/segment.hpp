@@ -13,7 +13,7 @@
 
 namespace crv::spline::floating_point {
 
-template <typename real_t> struct segment_t
+template <std::floating_point real_t> struct segment_t
 {
     static constexpr auto coeff_count = 4;
 
