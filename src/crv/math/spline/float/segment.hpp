@@ -13,6 +13,7 @@
 
 namespace crv::spline::floating_point {
 
+/// floating-point cubic hermite segment in monomoial form
 template <std::floating_point real_t> struct segment_t
 {
     static constexpr auto coeff_count = 4;
