@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief ostream inserters for floating point spline modules
+/// \brief ostream inserters for floating-point spline modules
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -19,6 +19,7 @@ template <typename real_t> auto operator<<(std::ostream& out, segment_t<real_t> 
     out << "{" << src.coeffs[0];
     for (auto coeff = 1; coeff < src_t::coeff_count; ++coeff) out << ", " << src.coeffs[coeff];
     out << "}";
+
     return out;
 }
 
