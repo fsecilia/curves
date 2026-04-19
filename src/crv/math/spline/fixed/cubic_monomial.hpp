@@ -15,7 +15,7 @@
 namespace crv::spline::fixed_point {
 
 /// fixed-point cubic polynomial in monomial form with relative shifts between coefficients to align radices
-template <signed_integral t_value_t> struct cubic_monomial_t
+template <signed_integral t_value_t, typename shifter_t = shifter_t<>> struct cubic_monomial_t
 {
     using value_t = t_value_t;
 
@@ -28,9 +28,10 @@ template <signed_integral t_value_t> struct cubic_monomial_t
     std::array<int_t, coeff_count - 1> shifts;
     int                                final_frac_bits;
 
-    template <int out_frac_bits, typename shifter_t = shifter_t<>>
-    [[nodiscard]] constexpr auto evaluate(normalized_t t, shifter_t shifter = shifter_t{}) const noexcept
-        -> fixed_t<value_t, out_frac_bits>
+    [[no_unique_address]] shifter_t shifter = shifter_t{};
+
+    template <int out_frac_bits>
+    [[nodiscard]] constexpr auto evaluate(normalized_t t) const noexcept -> fixed_t<value_t, out_frac_bits>
     {
         using wide_t = widened_t<value_t>;
 

@@ -52,15 +52,15 @@ struct perturbing_shifter_t
 };
 
 template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
-constexpr auto evaluate(sut_t const& sut, normalized_value_t t_val, shifter_t shifter = shifter_t{}) noexcept -> value_t
+constexpr auto evaluate(cubic_monomial_t<value_t, shifter_t> const& sut, normalized_value_t t_val) noexcept -> value_t
 {
-    return sut.evaluate<out_frac_bits>(normalized_t::literal(t_val), shifter).value;
+    return sut.template evaluate<out_frac_bits>(normalized_t::literal(t_val)).value;
 }
 
 template <typename shifter_t = truncating_shifter_t>
-constexpr auto evaluate(sut_t const& sut, normalized_value_t t_val, shifter_t shifter = shifter_t{}) noexcept -> value_t
+constexpr auto evaluate(cubic_monomial_t<value_t, shifter_t> const& sut, normalized_value_t t_val) noexcept -> value_t
 {
-    return evaluate<out_frac_bits, shifter_t>(sut, t_val, shifter);
+    return evaluate<out_frac_bits>(sut, t_val);
 }
 
 // all zeros
@@ -115,10 +115,10 @@ static_assert(evaluate({{0, 0, 0, 4096}, {0, 0, 0}, 18}, 0) == 1024);
 static_assert(evaluate({{0, 0, 0, 256}, {0, 0, 0}, 14}, 0) == 1024);
 
 // subbed shifter, t = 0
-static_assert(evaluate({{0, 0, 0, 0}, {16, 16, 16}, out_frac_bits}, 0, perturbing_shifter_t{}) == 11);
+static_assert(evaluate<perturbing_shifter_t>({{0, 0, 0, 0}, {16, 16, 16}, out_frac_bits}, 0) == 11);
 
 // subbed shifter, non-zero t
-static_assert(evaluate({{256, 0, 0, 0}, {0, 0, 0}, out_frac_bits}, t_half, perturbing_shifter_t{}) == 43);
+static_assert(evaluate<perturbing_shifter_t>({{256, 0, 0, 0}, {0, 0, 0}, out_frac_bits}, t_half) == 43);
 
 // asymmetric output type
 static_assert(evaluate<8>({{0, 0, 0, 16384}, {0, 0, 0}, 16}, 0) == 64);
