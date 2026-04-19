@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/integer.hpp>
 #include <crv/math/shifter.hpp>
 #include <array>
 
