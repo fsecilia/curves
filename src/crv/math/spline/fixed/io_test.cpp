@@ -10,11 +10,16 @@
 namespace crv::spline::fixed_point {
 namespace {
 
-using value_t = int32_t;
+using out_t   = fixed_t<uint64_t, 16>;
+using in_t    = fixed_t<uint64_t, 64>;
+using coeff_t = int64_t;
+
+struct shifter_t
+{};
 
 TEST(spline_fixed_point_io, cubic_monomial)
 {
-    using sut_t         = cubic_monomial_t<value_t>;
+    using sut_t         = cubic_monomial_t<out_t, in_t, coeff_t, shifter_t>;
     auto const sut      = sut_t{.coeffs = {2, 3, 5, 7}, .shifts = {11, 13, 17}, .final_frac_bits = 19};
     auto const expected = "{.coeffs = {2, 3, 5, 7}, .shifts = {11, 13, 17}, .final_frac_bits = 19}";
 
