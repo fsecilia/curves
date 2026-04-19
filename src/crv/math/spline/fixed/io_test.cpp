@@ -10,7 +10,7 @@
 namespace crv::spline::fixed_point {
 namespace {
 
-using value_t = uint32_t;
+using value_t = int32_t;
 
 TEST(spline_fixed_point_io, cubic_monomial)
 {

@@ -15,9 +15,12 @@
 namespace crv::spline::fixed_point {
 
 /// fixed-point cubic polynomial in monomial form with relative shifts between coefficients to align radices
-template <integral t_value_t> struct cubic_monomial_t
+template <signed_integral t_value_t> struct cubic_monomial_t
 {
     using value_t = t_value_t;
+
+    static constexpr auto normalized_frac_bits = static_cast<int>(sizeof(value_t) * CHAR_BIT);
+    using normalized_t                         = fixed_t<make_unsigned_t<value_t>, normalized_frac_bits>;
 
     static constexpr auto coeff_count = 4;
 
@@ -25,9 +28,8 @@ template <integral t_value_t> struct cubic_monomial_t
     std::array<int_t, coeff_count - 1> shifts;
     int                                final_frac_bits;
 
-    template <int out_frac_bits, int in_frac_bits, typename shifter_t = shifter_t<>>
-    [[nodiscard]] constexpr auto evaluate(fixed_t<value_t, in_frac_bits> t,
-                                          shifter_t                      shifter = shifter_t{}) const noexcept
+    template <int out_frac_bits, typename shifter_t = shifter_t<>>
+    [[nodiscard]] constexpr auto evaluate(normalized_t t, shifter_t shifter = shifter_t{}) const noexcept
         -> fixed_t<value_t, out_frac_bits>
     {
         using wide_t = widened_t<value_t>;
@@ -36,7 +38,7 @@ template <integral t_value_t> struct cubic_monomial_t
         for (auto coeff = 1; coeff < coeff_count; ++coeff)
         {
             auto const product = wide_t{result} * t.value;
-            auto const sum     = shifter.shr(product, in_frac_bits + shifts[coeff - 1]) + coeffs[coeff];
+            auto const sum     = shifter.shr(product, normalized_frac_bits + shifts[coeff - 1]) + coeffs[coeff];
             result             = int_cast<value_t>(sum);
         }
 
