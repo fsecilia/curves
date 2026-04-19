@@ -9,6 +9,9 @@
 // Approximation
 // --------------------------------------------------------------------------------------------------------------------
 
+default_prec = prec;
+prec = 512!;
+
 // The implementation stores coefficients in unsigned Q2.62. All three coefficients fit in [0, 2.25], so 2 integer bits
 // is the minimum that avoids clamping, and 62 fractional bits maximizes precision in a 64-bit container.
 frac_bits = 62;
@@ -112,6 +115,8 @@ for i from 1 to length(worst_guess_x) do
 // --------------------------------------------------------------------------------------------------------------------
 // Reference Values
 // --------------------------------------------------------------------------------------------------------------------
+
+prec = default_prec!;
 
 reference_x_values = worst_guess_x @ perfect_guess_x
     @ [|0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1.0 - 1.0/2^frac_bits, 1.0/sqrt(2), log(2), pi/4, exp(1)/4|];
