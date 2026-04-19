@@ -56,7 +56,7 @@ print("");
 // Budget 3 narrowings per iteration, then add a constant slack of 2. Truncation error for iteration i is 3i + 2. With
 // the quadratic approximation, the worst case error becomes noise-limited after 3 iterations, dropping below the
 // fixed-point rounding floor.
-nr_iteration_count = 3;
+nr_iteration_count = 4;
 error_bound = approx_error;
 print("//     iterations | approximation error (ulps) | truncation error (ulps) | max error (ulps)");
 for i from 1 to nr_iteration_count do
