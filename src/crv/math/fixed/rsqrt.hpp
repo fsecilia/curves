@@ -95,8 +95,8 @@
 /// fixed-point rounding floor:
 ///
 ///     iterations | approximation error (ulps) | truncation error(ulps) | max error (ulps)
-///         1      |     101527141262302        |            5           | 101527141262302
-///         2      |          3352684267        |            8           |      3352684267
+///         1      |     101526740193507        |            5           | 101526740193507
+///         2      |          3352657778        |            8           |      3352657778
 ///         3      |                   4        |           11           |              11
 ///         4      |                   1        |           14           |              14
 ///
@@ -134,9 +134,9 @@ struct quadratic_minimax_t
     // The constants are in Q2.62, so they're scaled by 2^62 and rounded. They're generated using sollya.
     // See tools/sollya/gen_rsqrt_initial_guess.sollya.
     static constexpr auto coeffs = std::array{
-        coeff_t::literal(10354071711462988194ULL),
-        coeff_t::literal(9674659108971248202ULL),
-        coeff_t::literal(3949952137299739940ULL),
+        coeff_t::literal(10354071428996350879ULL),
+        coeff_t::literal(9674658516542619978ULL),
+        coeff_t::literal(3949951878332005776ULL),
     };
 
     // \pre in must be in [0.5, 1)
