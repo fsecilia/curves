@@ -76,14 +76,17 @@ static_assert(evaluate({{0, 0, 0, 1024}, {0, 0, 0}, out_frac_bits}, t_half) == 1
 // all coeffs
 static_assert(evaluate({{1024, 2048, 4096, 8192}, {0, 0, 0}, out_frac_bits}, t_half) == 10880);
 
-// negative early coeff
-static_assert(evaluate({{-16, 0, 0, 0}, {0, 0, 0}, out_frac_bits}, t_half) == -2);
+// negative a
+static_assert(evaluate({{-16, 0, 0, 4}, {0, 0, 0}, out_frac_bits}, t_half) == 2);
 
-// negative late coeff
-static_assert(evaluate({{0, 0, 0, -100}, {0, 0, 0}, out_frac_bits}, t_half) == -100);
+// negative b
+static_assert(evaluate({{0, -10, 10, 0}, {0, 0, 0}, out_frac_bits}, t_half) == 2);
 
-// all negative coeffs
-static_assert(evaluate({{-1024, -2048, -4096, -8192}, {0, 0, 0}, out_frac_bits}, t_half) == -10880);
+// negative c
+static_assert(evaluate({{0, 100, -12, 0}, {0, 0, 0}, out_frac_bits}, t_half) == 19);
+
+// negative d
+static_assert(evaluate({{0, 0, 62, -20}, {0, 0, 0}, out_frac_bits}, t_half) == 11);
 
 // t = 0 -> C3
 static_assert(evaluate({{9999, -8888, 7777, 42}, {0, 0, 0}, out_frac_bits}, t_zero) == 42);
