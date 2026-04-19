@@ -10,10 +10,9 @@
 namespace crv::spline::fixed_point {
 namespace {
 
-using coeff_t     = int64_t;
-using in_value_t  = uint64_t;
-using out_value_t = uint64_t;
-using in_t        = fixed_t<in_value_t, 64>;
+using coeff_t    = int64_t;
+using in_value_t = uint64_t;
+using in_t       = fixed_t<in_value_t, 64>;
 
 constexpr auto out_frac_bits = 16;
 
@@ -49,6 +48,14 @@ struct perturbing_shifter_t
         return ((bits < 0) ? (val >> -bits) : (val << bits)) + 10;
     }
 };
+
+// --------------------------------------------------------------------------------------------------------------------
+// symmetric types
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace symmetric_tests {
+
+using out_value_t = uint64_t;
 
 template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
 constexpr auto evaluate(cubic_monomial_t<fixed_t<out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
@@ -89,7 +96,7 @@ static_assert(evaluate({{0, 100, -12, 0}, {0, 0, 0}, out_frac_bits}, t_half) == 
 static_assert(evaluate({{0, 0, 62, -20}, {0, 0, 0}, out_frac_bits}, t_half) == 11);
 
 // t = 0 -> C3
-static_assert(evaluate({{9999, -8888, 7777, 42}, {0, 0, 0}, out_frac_bits}, t_zero) == 42);
+static_assert(evaluate({{9999, -8888, 7777, 35}, {0, 0, 0}, out_frac_bits}, t_zero) == 35);
 
 // t = 1/4
 static_assert(evaluate({{1024, 1024, 1024, 1024}, {0, 0, 0}, out_frac_bits}, t_quarter) == 1360);
@@ -124,8 +131,32 @@ static_assert(evaluate<perturbing_shifter_t>({{0, 0, 0, 0}, {16, 16, 16}, out_fr
 // subbed shifter, non-zero t
 static_assert(evaluate<perturbing_shifter_t>({{256, 0, 0, 0}, {0, 0, 0}, out_frac_bits}, t_half) == 43);
 
-// asymmetric output type
-static_assert(evaluate<8>({{0, 0, 0, 16384}, {0, 0, 0}, 16}, t_zero) == 64);
+// asymmetric output precision
+static_assert(evaluate<8>({{0, 0, 0, 16384}, {0, 0, 0}, out_frac_bits}, t_zero) == 64);
+
+} // namespace symmetric_tests
+
+// --------------------------------------------------------------------------------------------------------------------
+// asymmetric types
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace asymmetric {
+
+using asym_out_value_t = uint16_t;
+
+template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
+constexpr auto
+evaluate_asym(cubic_monomial_t<fixed_t<asym_out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
+              in_t t) noexcept -> asym_out_value_t
+{
+    return sut.evaluate(t).value;
+}
+
+static_assert(evaluate_asym<0>({{0, 0, 0, 1000000}, {0, 0, 0}, 4}, t_zero) == 62500);
+static_assert(evaluate_asym<8>({{0, 0, 0, 16384}, {0, 0, 0}, 12}, t_zero) == 1024);
+static_assert(evaluate_asym<8>({{2048, 2048, 2048, 2048}, {0, 0, 0}, 8}, t_half) == 3840);
+
+} // namespace asymmetric
 
 } // namespace
 } // namespace crv::spline::fixed_point
