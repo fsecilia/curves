@@ -42,7 +42,8 @@ struct cubic_monomial_t
             result             = int_cast<coeff_t>(sum);
         }
 
-        return out_t::literal(shifter.shift(result, out_t::frac_bits - final_frac_bits));
+        return out_t::literal(
+            int_cast<typename out_t::value_t>(shifter.shift(result, out_t::frac_bits - final_frac_bits)));
     }
 };
 
