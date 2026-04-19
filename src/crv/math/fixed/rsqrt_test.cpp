@@ -247,7 +247,7 @@ struct rsqrt_property_test_t : Test
     //     y^2*x = 1 + 2*d*sqrt(x) + d^2*x
     //
     // The dominant error term is 2*d*sqrt(x), giving a tolerance of 2*e_nr*sqrt(x) ulps of Q56. We approximate
-    // sqrt(x)*2^56 ~= x.value * y.value (since y ~= 1/sqrt(x) in Q56). e_nr = 11 is the max error after 3 NR iterations
+    // sqrt(x)*2^56 ~= x.value * y.value (since y ~= 1/sqrt(x) in Q56). e_nr is the max error after 3 NR iterations
     // from the sollya script (see rsqrt.hpp). Denormalization only reduces it (right-shift for integer Q0 inputs).
     auto test_property(in_t x) const noexcept -> void
     {
