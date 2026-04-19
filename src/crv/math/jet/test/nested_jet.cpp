@@ -317,58 +317,62 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
 
 // test second derivative of pow decomposed all the way to scalars
 //
-// This test verifies the full scalar expansion of the second derivative. Just writing the final expression out has a
-// lot of terms, many of which are repeated. It is large enough to be opaque. This test tries to document some of the
-// terms with meaningful names.
+// This test verifies the full scalar expansion of the second derivative. We compute the nested 1-jet representing
+// f(x + s, y + t), where:
+//   't' is the inner infinitesimal (first derivative)
+//   's' is the outer infinitesimal (second derivative)
+//
+// Just writing the final expression out has a lot of terms, many of which are repeated. It is large enough to be
+// opaque. This test tries to document some of the terms with meaningful names.
 TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 {
     // powers of base
     auto const f    = pow(u, v);     // u^v
-    auto const f_1  = pow(u, v - 1); // u^(v - 1), first derivative factor
-    auto const f_2  = pow(u, v - 2); // u^(v - 2), second derivative factor
+    auto const f_1  = pow(u, v - 1); // u^(v - 1), first derivative scale
+    auto const f_2  = pow(u, v - 2); // u^(v - 2), second derivative scale
     auto const ln_u = log(u);
 
     // first partial derivatives
     //
-    // Define psi as the sensitivity combining both input's contributions:
+    // Define w as the sensitivity combining both input's contributions:
     //
     //     d(u^v) = u^(v - 1)*(u*ln(u)*dv + v*du)
-    //     psi   := (u*ln(u)*dv + v*du)
-    //     d(u^v) = f_1*psi
+    //     w     := (u*ln(u)*dv + v*du)
+    //     d(u^v) = f_1 * w
 
-    auto const psi_t = u * ln_u * dv_inner + v * du_inner; // wrt inner variable t
-    auto const psi_s = u * ln_u * dv_outer + v * du_outer; // wrt outer variable s
+    auto const w_inner = u * ln_u * dv_inner + v * du_inner; // wrt t
+    auto const w_outer = u * ln_u * dv_outer + v * du_outer; // wrt s
 
-    auto const df_dt = f_1 * psi_t;
-    auto const df_ds = f_1 * psi_s;
+    auto const df_dt = f_1 * w_inner;
+    auto const df_ds = f_1 * w_outer;
 
     // second mixed partial derivatives
     //
-    // The second mixed partial is `@/@s[f_1*psi_t]`
-    // Applying the product rule gives `(@f_1/@s)*psi_t + f_1*(@psi_t/@s)`
+    // The second mixed partial is @/@s[f_1*w_inner]
+    // Applying the product rule gives: (@f_1/@s)*w_inner + f_1*(@w_inner/@s)
 
-    // term 1: (@f_1/@s)*psi_t
-    // @(u^(v - 1))/@s = u^(v - 2) * (u*ln(u)*dv_s + (v-1)*du_s)
-    auto const psi_s_shifted = u * ln_u * dv_outer + (v - 1) * du_outer; // psi for exponent v-1
-    auto const term1         = f_2 * psi_s_shifted * psi_t;
+    // left side product rule: (@f_1/@s)*w_inner
+    // @(u^(v - 1))/@s = u^(v - 2)*(u*ln(u)*dv_s + (v-1)*du_s)
+    auto const w_outer_shifted = u * ln_u * dv_outer + (v - 1) * du_outer; // w for exponent v-1
+    auto const product_left    = f_2 * w_outer_shifted * w_inner;
 
-    // term 2: f_1*(@psi_t/@s)
-    // @psi_t/@s = @(u*ln(u)*dv_t + v*du_t)/@s
-    //           = (ln(u) + 1)*du_s*dv_t + u*ln(u)*d²v + dv_s*du_t + v*d²u
-    auto const d_uln_ds  = (ln_u + 1) * du_outer; // d(u*ln(u))/ds
-    auto const dpsi_t_ds = d_uln_ds * dv_inner    // from u*ln(u) term
-                           + u * ln_u * d2v       // dv_t -> d²v
-                           + dv_outer * du_inner  // cross partial dv*du
-                           + v * d2u;             // du_t -> d²u
-    auto const term2 = f_1 * dpsi_t_ds;
+    // right side product rule: f_1*(@w_inner/@s)
+    // @w_inner/@s = @(u*ln(u)*dv_t + v*du_t)/@s
+    //             = (ln(u) + 1)*du_s*dv_t + u*ln(u)*d^2v + dv_s*du_t + v*d^2u
+    auto const d_u_ln_u_outer = (ln_u + 1) * du_outer;    // d(u*ln(u))/ds
+    auto const dw_inner_ds    = d_u_ln_u_outer * dv_inner // from u*ln(u) term
+                             + u * ln_u * d2v             // dv_inner -> d^2v
+                             + dv_outer * du_inner        // cross partial dv*du
+                             + v * d2u;                   // du_inner -> d^2u
 
-    auto const d2f_dsdt = term1 + term2;
+    auto const product_right = f_1 * dw_inner_ds;
+
+    auto const d2f_dsdt = product_left + product_right;
 
     // assemble nested jet
-
     auto const expected = sut_t{
         {f, df_dt},       // {primal, @/@t}
-        {df_ds, d2f_dsdt} // {@/@s, @²/@s@t}
+        {df_ds, d2f_dsdt} // {@/@s, @^2/@s@t}
     };
 
     compare(expected, pow(x, y));
