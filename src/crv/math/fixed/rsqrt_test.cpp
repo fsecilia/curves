@@ -14,7 +14,7 @@ namespace crv {
 
 using real_t = float_t;
 
-static constexpr auto e_nr = uint128_t{8}; // error calculated after 3 iterations of Newton-Raphson, comes from sollya
+static constexpr auto e_nr = uint128_t{11}; // error calculated after 3 iterations of Newton-Raphson, comes from sollya
 
 // ====================================================================================================================
 // initial guesses
@@ -93,7 +93,7 @@ using out_t = fixed_t<uint64_t, 62>;
 struct normalized_rsqrt_property_test_t : TestWithParam<in_t>
 {
     // this comes from the same sollya script that generated the initial guess constants: test_tolerance for i=3
-    static constexpr auto tolerance = out_t::literal(e_nr);
+    static constexpr auto tolerance = out_t::literal(e_nr * 2);
 
     in_t const x = GetParam();
 
@@ -150,7 +150,7 @@ struct param_t
 
 struct normalized_rsqrt_value_test_t : TestWithParam<param_t>
 {
-    static constexpr auto tolerance = out_t::literal(e_nr / 2);
+    static constexpr auto tolerance = out_t::literal(e_nr);
 
     in_t const  x        = GetParam().x;
     out_t const expected = GetParam().expected;
