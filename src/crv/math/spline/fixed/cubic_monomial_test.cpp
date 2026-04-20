@@ -25,27 +25,28 @@ constexpr auto t_max           = in_t::literal(max<in_value_t>());
 
 struct truncating_shifter_t
 {
-    template <typename val_t> [[nodiscard]] constexpr auto shr(val_t val, int_t bits) const noexcept -> val_t
+    template <typename value_t> [[nodiscard]] constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
     {
-        return val >> bits;
+        return value >> count;
     }
 
-    template <typename val_t> [[nodiscard]] constexpr auto shift(val_t val, int_t bits) const noexcept -> val_t
+    template <typename value_t> [[nodiscard]] constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
     {
-        return (bits < 0) ? (val >> -bits) : (val << bits);
+        return (count < 0) ? (value >> -count) : (value << count);
     }
 };
 
+// perturbs values detectibly to prove the shifter was used
 struct perturbing_shifter_t
 {
-    template <typename val_t> [[nodiscard]] constexpr auto shr(val_t val, int_t bits) const noexcept -> val_t
+    template <typename value_t> [[nodiscard]] constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
     {
-        return (val >> bits) + 1;
+        return (value >> count) + 1;
     }
 
-    template <typename val_t> [[nodiscard]] constexpr auto shift(val_t val, int_t bits) const noexcept -> val_t
+    template <typename value_t> [[nodiscard]] constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
     {
-        return ((bits < 0) ? (val >> -bits) : (val << bits)) + 10;
+        return ((count < 0) ? (value >> -count) : (value << count)) + 10;
     }
 };
 
