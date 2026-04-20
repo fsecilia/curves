@@ -7,7 +7,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/fixed/io.hpp>
 #include <crv/math/spline/fixed/cubic_monomial.hpp>
+#include <crv/math/spline/fixed/cubic_segment.hpp>
 #include <ostream>
 
 namespace crv::spline::fixed_point {
@@ -24,6 +26,13 @@ auto operator<<(std::ostream& out, cubic_monomial_t<out_t, in_t, coeff_t, shifte
     out << "}, .final_frac_bits = " << src.final_frac_bits << "}";
 
     return out;
+}
+
+template <typename monomial_t, typename in_t, typename shifter_t>
+auto operator<<(std::ostream& out, cubic_segment_t<monomial_t, in_t, shifter_t> const& src) -> std::ostream&
+{
+    return out << "{.monomial = " << src.monomial << ", .rwidth = " << src.rwidth
+               << ", .rwidth_frac_bits = " << src.rwidth_frac_bits << "}";
 }
 
 } // namespace crv::spline::fixed_point
