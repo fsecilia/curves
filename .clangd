@@ -2,6 +2,8 @@ CompileFlags:
   Remove:
     - -fext-numeric-literals
     - -mno-direct-extern-access
+  Add:
+    - -std=c++2c
 
 ---
 
