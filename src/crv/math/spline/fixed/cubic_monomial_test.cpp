@@ -61,7 +61,7 @@ template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
 constexpr auto evaluate(cubic_monomial_t<fixed_t<out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
                         in_t t) noexcept -> out_value_t
 {
-    return sut.evaluate(t).value;
+    return sut(t).value;
 }
 
 template <typename shifter_t = truncating_shifter_t>
@@ -149,7 +149,7 @@ constexpr auto
 evaluate_asym(cubic_monomial_t<fixed_t<asym_out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
               in_t t) noexcept -> asym_out_value_t
 {
-    return sut.evaluate(t).value;
+    return sut(t).value;
 }
 
 static_assert(evaluate_asym<0>({{0, 0, 0, 1000000}, {0, 0, 0}, 4}, t_zero) == 62500);
