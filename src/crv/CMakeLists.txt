@@ -65,6 +65,7 @@ target_sources_kernel(lib
     math/shifter.hpp
     math/spline/fixed/cubic_monomial.hpp
     math/spline/fixed/cubic_segment.hpp
+    prefetcher.hpp
     ranges.hpp
     traits.hpp
 )
@@ -129,6 +130,7 @@ if (enable_testing)
         math/spline/float/io_test.cpp
         math/spline/float/segment_test.cpp
         math/stats_test.cpp
+        prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
         traits_test.cpp
