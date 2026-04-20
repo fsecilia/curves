@@ -31,7 +31,7 @@ struct cubic_monomial_t
 
     [[no_unique_address]] shifter_t shifter = shifter_t{};
 
-    [[nodiscard]] constexpr auto evaluate(in_t t) const noexcept -> out_t
+    [[nodiscard]] constexpr auto operator()(in_t t) const noexcept -> out_t
     {
         using wide_t = widened_t<coeff_t>;
 
