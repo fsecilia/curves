@@ -8,7 +8,7 @@
 # ---------------------------------------------------------------------------------------------------------------------
 
 # c++ standard
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS FALSE)
 set(CMAKE_CXX_SCAN_FOR_MODULES FALSE)
@@ -72,6 +72,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-c++23-compat
         -Wno-c++98-compat
         -Wno-c++98-compat-pedantic
+        -Wno-c++2c-compat
+        -Wno-c++2c-extensions
         -Wno-c99-extensions
         -Wno-ctad-maybe-unsupported
         -Wno-documentation
