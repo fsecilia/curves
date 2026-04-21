@@ -8,41 +8,21 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <array>
+#include <bit>
 #include <new>
+#include <span>
 
 namespace crv::spline::fixed_point::segment_locator {
 
-template <typename location_t, int_t node_count, int_t node_key_count> struct data_t
+/// branchless quaternary bfs tree over spline segments
+///
+/// This indexing scheme has a slightly longer runtime than something branchless, but it has no jitter and loads fewer
+/// cache lines, so has fewer cache misses than a more speculative structure.
+template <typename t_location_t, int t_depth_max> class locator_t
 {
-    static constexpr auto cache_line_size = std::hardware_constructive_interference_size;
-    struct alignas(cache_line_size / 2) node_t
-    {
-        using keys_t = std::array<location_t, node_key_count>;
-        keys_t keys;
-
-        auto operator<=>(node_t const&) const noexcept -> auto = default;
-        auto operator==(node_t const&) const noexcept -> bool = default;
-    };
-
-    alignas(cache_line_size) std::array<node_t, node_count> nodes;
-
-    auto operator<=>(data_t const&) const noexcept -> auto = default;
-    auto operator==(data_t const&) const noexcept -> bool = default;
-};
-
-template <typename location_t> struct result_t
-{
-    int_t index;
-    location_t x_left;
-
-    auto operator<=>(result_t const&) const noexcept -> auto = default;
-    auto operator==(result_t const&) const noexcept -> bool = default;
-};
-
-template <typename t_location_t, int t_depth_max> struct traits_t
-{
+public:
     using location_t = t_location_t;
-
     static constexpr auto depth_max = int_t{t_depth_max};
 
     static constexpr auto branching_factor = 4;
@@ -50,30 +30,41 @@ template <typename t_location_t, int t_depth_max> struct traits_t
     static constexpr auto total_key_count = max_segment_count - 1;
     static constexpr auto node_key_count = branching_factor - 1;
     static constexpr auto node_count = total_key_count / node_key_count;
+    static constexpr auto cache_line_size = std::hardware_constructive_interference_size;
 
-    using data_t = data_t<location_t, node_count, node_key_count>;
-    using result_t = result_t<location_t>;
-};
-
-/// branchless quaternary bfs tree over spline segments
-///
-/// This indexing scheme has a slightly longer runtime than something branchless, but it has no jitter and loads fewer
-/// cache lines, so has fewer cache misses than a more speculative structure.
-template <typename traits_t> class locator_t
-{
-public:
-    using data_t = traits_t::data_t;
-    using location_t = traits_t::location_t;
-    using result_t = traits_t::result_t;
-
-    static auto constexpr depth_max = traits_t::depth_max;
-    static auto constexpr node_count = traits_t::node_count;
-
-    explicit constexpr locator_t(data_t&& data) noexcept : data_{std::move(data)}
+    struct result_t
     {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<locator_t>);
-    }
+        int_t index;
+        location_t x_left;
+
+        auto operator<=>(result_t const&) const noexcept -> auto = default;
+        auto operator==(result_t const&) const noexcept -> bool = default;
+    };
+
+    using node_keys_t = std::array<location_t, node_key_count>;
+    struct alignas(cache_line_size / 2) node_t
+    {
+        node_keys_t keys;
+
+        auto operator<=>(node_t const&) const noexcept -> auto = default;
+        auto operator==(node_t const&) const noexcept -> bool = default;
+    };
+
+    using nodes_t = std::array<node_t, node_count>;
+
+    struct row_offsets_t
+    {
+        /// index in node array of the first node at each depth
+        std::array<int_t, depth_max> base_index; // (4^depth - 1)/3
+
+        constexpr row_offsets_t() noexcept
+        {
+            for (auto depth = 0; depth < depth_max; ++depth)
+            {
+                base_index[depth] = ((1 << (2 * depth)) - 1) / node_key_count;
+            }
+        }
+    };
 
     constexpr auto operator()(location_t x) const noexcept -> result_t
     {
@@ -83,9 +74,9 @@ public:
         for (auto depth = 0; depth < depth_max; ++depth)
         {
             // each node contains keys in sorted order.
-            auto const key0 = data_.nodes[index].keys[0];
-            auto const key1 = data_.nodes[index].keys[1];
-            auto const key2 = data_.nodes[index].keys[2];
+            auto const key0 = nodes_[index].keys[0];
+            auto const key1 = nodes_[index].keys[1];
+            auto const key2 = nodes_[index].keys[2];
 
             // choose lower bound key
             x_left = (x >= key0) ? key0 : x_left;
@@ -101,10 +92,45 @@ public:
         return {.index = index - node_count, .x_left = x_left};
     }
 
-    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void { prefetcher.prefetch(&data_.nodes[0]); }
+    explicit constexpr locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
+    {
+        // this type goes over the ioctl boundary, so it must be trivially copyable
+        static_assert(std::is_trivially_copyable_v<locator_t>);
+
+        static constexpr auto branching_mask = branching_factor - 1;
+
+        // walk tree in-order and place next sorted key into each position
+        //
+        // The relationship between an in-order index and its flat position in the tree is bijective, closed form. The
+        // height is the number of trailing zeros in its quaternary representation, which is the number of pairs of
+        // trailing zeros in its binary representation. The index must be one-based so that the root has the maximum
+        // trailing-zero count rather than the degenerate all-zeros case. After stripping off the pairs of zeros, what
+        // remains is the offset of the key within the row. The bottom 2 bits contain the offset of the key within its
+        // containing node, and the remaining bits define the offset of the node within the row. The index of the node
+        // in the flat array is found relative to the offset to the base index of the row.
+        for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
+        {
+            // height above floor; intrinsic to ordering, independent of tree layout
+            auto const height_above_floor = std::countr_zero(int_cast<uint_t>(in_order_index)) >> 1; // trailing 0 pairs
+
+            auto const key_offset_in_row = in_order_index >> (2 * height_above_floor); // strip trailing 0 pairs
+            auto const key_offset_in_node = (key_offset_in_row & branching_mask) - 1; // low 2 bits, 0-based
+            auto const node_offset_in_row = key_offset_in_row >> 2; // remaining bits above low 2
+
+            // depth below root; a layout property depending on tree structure
+            auto const depth_below_root = depth_max - 1 - height_above_floor; // invert relative to depth, 0-based
+
+            auto const node_index = row_offsets.base_index[depth_below_root] + node_offset_in_row; // row base + offset
+            nodes_[node_index].keys[key_offset_in_node] = sorted_keys[in_order_index - 1];
+        }
+    }
+
+    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void { prefetcher.prefetch(&nodes_[0]); }
 
 private:
-    data_t data_;
+    static constexpr auto row_offsets = row_offsets_t{};
+
+    alignas(cache_line_size) nodes_t nodes_;
 };
 
 } // namespace crv::spline::fixed_point::segment_locator

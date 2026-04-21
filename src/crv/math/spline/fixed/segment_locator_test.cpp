@@ -6,8 +6,6 @@
 #include "segment_locator.hpp"
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/spline/fixed/segment_locator_builder.hpp>
-#include <crv/math/spline/fixed/segment_locator_test.hpp>
 #include <crv/test/test.hpp>
 #include <algorithm>
 
@@ -16,20 +14,53 @@ namespace {
 
 using location_t = int_t;
 
+template <typename sorted_keys_t> constexpr auto make_sequential_keys() -> sorted_keys_t
+{
+    sorted_keys_t result;
+    for (auto i = 0u; i < std::size(result); ++i) result[i] = location_t{i + 1};
+    return result;
+}
+
+template <typename sorted_keys_t> constexpr auto make_strided_keys(int_t offset, int_t stride) -> sorted_keys_t
+{
+    sorted_keys_t result;
+    for (auto i = 0u; i < std::size(result); ++i) result[i] = location_t{offset + i * stride};
+    return result;
+}
+
+// ====================================================================================================================
+// offsets_t
+// ====================================================================================================================
+
+namespace offsets_tests {
+
+template <int_t depth_max> using offsets_by_depth_t = locator_t<location_t, depth_max>::row_offsets_t;
+
+// (4^n - 1)/3
+static_assert(offsets_by_depth_t<0>{}.base_index == std::array<int_t, 0>{});
+static_assert(offsets_by_depth_t<1>{}.base_index == std::array<int_t, 1>{0});
+static_assert(offsets_by_depth_t<2>{}.base_index == std::array<int_t, 2>{0, 1});
+static_assert(offsets_by_depth_t<3>{}.base_index == std::array<int_t, 3>{0, 1, 5});
+static_assert(offsets_by_depth_t<4>{}.base_index == std::array<int_t, 4>{0, 1, 5, 21});
+static_assert(offsets_by_depth_t<5>{}.base_index == std::array<int_t, 5>{0, 1, 5, 21, 85});
+static_assert(offsets_by_depth_t<6>{}.base_index == std::array<int_t, 6>{0, 1, 5, 21, 85, 341});
+
+} // namespace offsets_tests
+
 // --------------------------------------------------------------------------------------------------------------------
 // sweep tests
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace sweep_tests {
 
-template <int_t t_depth> struct verify_locator_sweep
+template <int_t depth_max> struct verify_locator_sweep
 {
-    using traits_t = traits_t<location_t, t_depth>;
-    static constexpr auto total_key_count = traits_t::total_key_count;
-    using keys_t = std::array<location_t, total_key_count>;
+    using sut_t = locator_t<location_t, depth_max>;
+    static constexpr auto total_key_count = sut_t::total_key_count;
+    using sorted_keys_t = std::array<location_t, total_key_count>;
 
     // reference implementation: count of keys <= x is the segment index; last such key is x_left
-    constexpr auto expected_result(keys_t const& keys, location_t x) -> result_t<location_t>
+    constexpr auto expected_result(sorted_keys_t const& keys, location_t x) -> sut_t::result_t
     {
         auto const bound = std::upper_bound(keys.begin(), keys.end(), x);
         auto const index = int_cast<int_t>(bound - keys.begin());
@@ -37,10 +68,9 @@ template <int_t t_depth> struct verify_locator_sweep
         return {.index = index, .x_left = x_left};
     }
 
-    constexpr auto sweep(keys_t const& keys) -> bool
+    constexpr auto sweep(sorted_keys_t const& keys) -> bool
     {
-        using builder_t = builder_t<traits_t>;
-        auto const locator = locator_t<traits_t>{builder_t{}(keys)};
+        auto const locator = sut_t{keys};
 
         // sweep one below and n above expected range of keys
         auto prev_index = int_t{0};
@@ -60,8 +90,7 @@ template <int_t t_depth> struct verify_locator_sweep
 
     constexpr auto test() -> bool
     {
-        return sweep(test::make_sequential_keys<location_t, total_key_count>())
-            && sweep(test::make_strided_keys<location_t, total_key_count>(3, 5));
+        return sweep(make_sequential_keys<sorted_keys_t>()) && sweep(make_strided_keys<sorted_keys_t>(3, 5));
     }
 };
 
@@ -78,15 +107,18 @@ static_assert(verify_locator_sweep<4>{}.test());
 
 namespace prefetch_tests {
 
-using traits_t = traits_t<location_t, 3>;
-using sut_t = locator_t<traits_t>;
+using sut_t = locator_t<location_t, 3>;
+using node_keys_t = sut_t::node_keys_t;
+
+static constexpr auto total_key_count = sut_t::total_key_count;
+using sorted_keys_t = std::array<location_t, total_key_count>;
 
 struct tracking_prefetcher_t
 {
     mutable bool node_written = false;
-    mutable traits_t::data_t::node_t actual_node;
+    mutable sut_t::node_t actual_node;
 
-    constexpr auto prefetch(traits_t::data_t::node_t const* node) const noexcept
+    constexpr auto prefetch(sut_t::node_t const* node) const noexcept
     {
         node_written = true;
         actual_node = *node;
@@ -96,13 +128,11 @@ struct tracking_prefetcher_t
 constexpr auto test_prefetcher() noexcept -> bool
 {
     auto const prefetcher = tracking_prefetcher_t{};
-
-    using builder_t = builder_t<traits_t>;
-    auto const sut = sut_t{builder_t{}(test::make_sequential_keys<location_t, traits_t::total_key_count>())};
+    auto const sut = sut_t{make_sequential_keys<sorted_keys_t>()};
 
     sut.prefetch(prefetcher);
 
-    return prefetcher.node_written && prefetcher.actual_node.keys == traits_t::data_t::node_t::keys_t{{16, 32, 48}};
+    return prefetcher.node_written && prefetcher.actual_node.keys == node_keys_t{{16, 32, 48}};
 }
 static_assert(test_prefetcher());
 
