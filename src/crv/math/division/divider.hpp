@@ -25,10 +25,9 @@ using common_narrow_unsigned_t = int_by_bytes_t<std::max(sizeof(lhs_t), sizeof(r
 
 /// fully-composed division stack
 template <integral out_value_t, integral lhs_t, integral rhs_t, int shift, bool saturate = true>
-using divider_t
-    = shifted_int_divider_t<wide_divider_t<detail::common_narrow_unsigned_t<lhs_t, rhs_t>,
-                                           hardware_divider_t<detail::common_narrow_unsigned_t<lhs_t, rhs_t>>>,
-                            shift, out_value_t, lhs_t, rhs_t, saturate>;
+using divider_t = shifted_int_divider_t<wide_divider_t<detail::common_narrow_unsigned_t<lhs_t, rhs_t>,
+                                            hardware_divider_t<detail::common_narrow_unsigned_t<lhs_t, rhs_t>>>,
+    shift, out_value_t, lhs_t, rhs_t, saturate>;
 
 /// convenience variable template
 template <integral out_value_t, integral lhs_t, integral rhs_t, int shift, bool saturate = true>

@@ -99,7 +99,7 @@ static_assert(demonstrated_failure.error > 1e-8);
 TEST(quadrature_rules_test, endpoint_singularity_log)
 {
     auto constexpr expected = -1.0;
-    auto const actual       = rule.integrate(0.0, 1.0, [](real_t x) { return std::log(x); });
+    auto const actual = rule.integrate(0.0, 1.0, [](real_t x) { return std::log(x); });
     EXPECT_NEAR(actual, expected, 5e-2);
 }
 
@@ -107,7 +107,7 @@ TEST(quadrature_rules_test, endpoint_singularity_log)
 TEST(quadrature_rules_test, endpoint_singularity_sqrt)
 {
     auto constexpr expected = 2.0;
-    auto const actual       = rule.integrate(0.0, 1.0, [](real_t x) { return 1.0 / std::sqrt(x); });
+    auto const actual = rule.integrate(0.0, 1.0, [](real_t x) { return 1.0 / std::sqrt(x); });
     EXPECT_NEAR(actual, expected, 5e-2);
 }
 
@@ -115,7 +115,7 @@ TEST(quadrature_rules_test, endpoint_singularity_sqrt)
 TEST(quadrature_rules_test, fractional_power_law)
 {
     auto constexpr expected = 0.4;
-    auto const actual       = rule.estimate(0.0, 1.0, [](real_t x) { return std::pow(x, 1.5); });
+    auto const actual = rule.estimate(0.0, 1.0, [](real_t x) { return std::pow(x, 1.5); });
 
     EXPECT_NEAR(actual.sum, expected, 1e-7);
     EXPECT_GT(actual.error, 0.0);
@@ -127,7 +127,7 @@ TEST(quadrature_rules_test, fractional_power_law)
 TEST(quadrature_rules_test, smooth_transcendental_log)
 {
     auto const expected = 2.0 * std::log(2.0) - 1.0;
-    auto const actual   = rule.estimate(1.0, 2.0, [](real_t x) { return std::log(x); });
+    auto const actual = rule.estimate(1.0, 2.0, [](real_t x) { return std::log(x); });
 
     EXPECT_NEAR(actual.sum, expected, 1e-14);
     EXPECT_LE(crv::abs(expected - actual.sum), actual.error);
@@ -137,7 +137,7 @@ TEST(quadrature_rules_test, smooth_transcendental_log)
 TEST(quadrature_rules_test, oscillatory_sin)
 {
     auto constexpr expected = 0.0;
-    auto const actual       = rule.estimate(0.0, std::numbers::pi, [](real_t x) { return std::sin(10.0 * x); });
+    auto const actual = rule.estimate(0.0, std::numbers::pi, [](real_t x) { return std::sin(10.0 * x); });
 
     EXPECT_NEAR(actual.sum, expected, 1e-14);
     EXPECT_LE(crv::abs(expected - actual.sum), actual.error);

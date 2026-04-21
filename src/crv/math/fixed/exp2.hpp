@@ -28,8 +28,8 @@ public:
         -> fixed_t<out_value_t, out_frac_bits>
     {
         uint64_t result, frac_part_norm;
-        int      final_shift;
-        int      int_part;
+        int final_shift;
+        int int_part;
 
         // Validate.
         static_assert(in_frac_bits < 64 || out_frac_bits < 64);
@@ -54,10 +54,10 @@ public:
         result = poly_coeffs[poly_degree];
         for (int i = poly_degree; i > 0; --i)
         {
-            uint128_t product        = static_cast<uint128_t>(result) * frac_part_norm;
-            int       relative_shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
-            int       total_shift    = relative_shift + 64;
-            result                   = static_cast<uint64_t>(product >> total_shift) + poly_coeffs[i - 1];
+            uint128_t product = static_cast<uint128_t>(result) * frac_part_norm;
+            int relative_shift = poly_frac_bits[i] - poly_frac_bits[i - 1];
+            int total_shift = relative_shift + 64;
+            result = static_cast<uint64_t>(product >> total_shift) + poly_coeffs[i - 1];
         }
 
         // TODO: the last iteration should stay in 128 bits so we can shift into the final place.
@@ -92,15 +92,36 @@ public:
 
 private:
     // Output from tools/exp2.sollya.
-    static constexpr auto     poly_degree   = 12;
+    static constexpr auto poly_degree = 12;
     static constexpr uint64_t poly_coeffs[] = {
-        4611686018427387904ULL, 6393154322601327706ULL, 8862793787191508053ULL, 8190960700631508079ULL,
-        5677541315869497503ULL, 6296594800652510755ULL, 5819289539290670308ULL, 9219698356951991307ULL,
-        6390833165122234360ULL, 7870198308678324976ULL, 8802550243955206649ULL, 8162192809866154575ULL,
+        4611686018427387904ULL,
+        6393154322601327706ULL,
+        8862793787191508053ULL,
+        8190960700631508079ULL,
+        5677541315869497503ULL,
+        6296594800652510755ULL,
+        5819289539290670308ULL,
+        9219698356951991307ULL,
+        6390833165122234360ULL,
+        7870198308678324976ULL,
+        8802550243955206649ULL,
+        8162192809866154575ULL,
         5762355121894017757ULL,
     };
     static constexpr int8_t poly_frac_bits[] = {
-        62, 63, 65, 67, 69, 72, 75, 79, 82, 86, 90, 94, 97,
+        62,
+        63,
+        65,
+        67,
+        69,
+        72,
+        75,
+        79,
+        82,
+        86,
+        90,
+        94,
+        97,
     };
 };
 
@@ -113,18 +134,18 @@ public:
     {
         using out_limits_t = std::numeric_limits<out_value_t>;
 
-        auto const            int_part     = input.value >> in_frac_bits;
+        auto const int_part = input.value >> in_frac_bits;
         static constexpr auto max_int_part = out_limits_t::digits - out_frac_bits;
         assert(int_part < max_int_part && "exp2_q32: integer overflow");
         if (int_part >= max_int_part) [[unlikely]] { return out_limits_t::max(); }
 
         static constexpr auto frac_mask = (std::make_unsigned_t<in_value_t>{1} << in_frac_bits) - 1;
-        uint64_t              frac_part_q32;
+        uint64_t frac_part_q32;
         if constexpr (in_frac_bits > 32)
         {
             auto const shift = in_frac_bits - 32;
-            auto const val   = static_cast<std::make_unsigned_t<in_value_t>>(input.value & frac_mask);
-            frac_part_q32    = (val >> shift) + ((val >> (shift - 1)) & 1);
+            auto const val = static_cast<std::make_unsigned_t<in_value_t>>(input.value & frac_mask);
+            frac_part_q32 = (val >> shift) + ((val >> (shift - 1)) & 1);
         }
         else if constexpr (in_frac_bits < 32)
         {
@@ -143,7 +164,7 @@ public:
         }
 
         auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(frac_part_q32)
-                                       + (static_cast<uint128_t>(poly_coeffs[0]) << 32);
+            + (static_cast<uint128_t>(poly_coeffs[0]) << 32);
 
         auto const final_shift = out_frac_bits - 64 + int_part;
 
@@ -157,16 +178,23 @@ public:
     }
 
 private:
-    static constexpr auto     poly_degree   = 7;
+    static constexpr auto poly_degree = 7;
     static constexpr uint64_t poly_coeffs[] = {
-        4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
+        4294967296,
+        2977044495,
+        1031764415,
+        238393184,
+        41290194,
+        5767817,
+        614155,
+        93036,
     };
 };
 
 class exp2_q64_to_q1_63_t
 {
 public:
-    using in_t  = fixed_t<uint64_t, 64>;
+    using in_t = fixed_t<uint64_t, 64>;
     using out_t = fixed_t<uint64_t, 63>;
 
     constexpr auto eval(in_t const& input) const noexcept -> out_t
@@ -181,15 +209,22 @@ public:
         }
 
         auto const final_accumulator = static_cast<uint128_t>(accumulator) * static_cast<uint128_t>(x)
-                                       + (static_cast<uint128_t>(poly_coeffs[0]) << 64);
+            + (static_cast<uint128_t>(poly_coeffs[0]) << 64);
 
         return out_t{static_cast<uint64_t>((final_accumulator >> 33) + ((final_accumulator >> 32) & 1))};
     }
 
 private:
-    static constexpr auto     poly_degree   = 7;
+    static constexpr auto poly_degree = 7;
     static constexpr uint64_t poly_coeffs[] = {
-        4294967296, 2977044495, 1031764415, 238393184, 41290194, 5767817, 614155, 93036,
+        4294967296,
+        2977044495,
+        1031764415,
+        238393184,
+        41290194,
+        5767817,
+        614155,
+        93036,
     };
 };
 
@@ -209,7 +244,7 @@ public:
         //
         // This won't overflow for valid values, but because we do this before bounds checking, it may.
         constexpr auto half_bias = in_value_t(1) << (in_frac_bits - 1);
-        auto const     int_part  = (input.value + half_bias) >> in_frac_bits;
+        auto const int_part = (input.value + half_bias) >> in_frac_bits;
 
         // extract signed frac part
         auto const frac_part = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
@@ -219,7 +254,7 @@ public:
         // ------------------------------------------------------------------------------------------------------------
 
         static constexpr auto max_out_int = out_limits::digits - out_frac_bits;
-        auto const            overflows   = int_part >= max_out_int;
+        auto const overflows = int_part >= max_out_int;
         if (overflows) [[unlikely]] { return out_limits::max(); }
 
         auto const underflows = int_part < -out_frac_bits - 64;
@@ -236,7 +271,7 @@ public:
             acc *= frac_part;
 
             auto const shift = in_frac_bits + poly_shifts[i];
-            acc              = (acc >> shift) + ((acc >> (shift - 1)) & 1);
+            acc = (acc >> shift) + ((acc >> (shift - 1)) & 1);
 
             acc += poly_coeffs[i + 1];
         }
@@ -248,7 +283,7 @@ public:
         // Reconstruction
         // --------------------------------------------------------------------
 
-        auto const one             = int128_t{1} << (in_frac_bits + final_poly_shift);
+        auto const one = int128_t{1} << (in_frac_bits + final_poly_shift);
         auto const result_unscaled = one + acc;
 
         auto const final_rshift = (in_frac_bits + final_poly_shift) - out_frac_bits - static_cast<int_t>(int_part);
@@ -258,7 +293,7 @@ public:
 
             // shr, round via carry
             return (static_cast<out_value_t>(result_unscaled >> final_rshift))
-                   + (static_cast<out_value_t>((result_unscaled >> (final_rshift - 1)) & 1));
+                + (static_cast<out_value_t>((result_unscaled >> (final_rshift - 1)) & 1));
         }
         else
         {
@@ -269,12 +304,12 @@ public:
     }
 
 private:
-    static constexpr auto     poly_degree   = 8;
+    static constexpr auto poly_degree = 8;
     static constexpr uint64_t poly_coeffs[] = {
         12827672613015377259ULL, // 1.32635026120796961071225551672333477747078855912832295871339738368988037109375e-6*x^8
                                  // (Q-19.83)
-        9254333314362726772ULL,  // 1.531001019948890231315756106492999288892775666681700386106967926025390625e-5*x^7
-                                 // (Q-15.79)
+        9254333314362726772ULL, // 1.531001019948890231315756106492999288892775666681700386106967926025390625e-5*x^7
+                                // (Q-15.79)
         11638491654506743333ULL, // 1.540341544954910157923202955053583462774469126088661141693592071533203125e-4*x^6
                                  // (Q-12.76)
         12593088332330319349ULL, // 1.3333450906459365510579409574466736021491897190571762621402740478515625e-3*x^5
@@ -301,10 +336,10 @@ class exp2_normalized_q64_to_q1_63_t
 public:
     // Input:  Q0.64 unsigned — x in [0, 1)
     // Output: Q1.63 unsigned — exp2(x) in [1, 2)
-    using in_t  = fixed_t<uint64_t, 64>;
+    using in_t = fixed_t<uint64_t, 64>;
     using out_t = fixed_t<uint64_t, 63>;
 
-    static constexpr auto in_frac_bits  = in_t::frac_bits;
+    static constexpr auto in_frac_bits = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
     constexpr auto operator()(in_t input) const noexcept -> out_t
@@ -314,7 +349,7 @@ public:
         // ----------------------------------------------------------------
 
         auto const int_part = static_cast<int>(input.value >> (in_frac_bits - 1));
-        auto const frac     = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
+        auto const frac = static_cast<int128_t>(input.value) - (static_cast<int128_t>(int_part) << in_frac_bits);
 
         // ----------------------------------------------------------------
         // Polynomial Evaluation
@@ -343,14 +378,14 @@ public:
 
         constexpr auto current_frac_bits = final_poly_shift + in_frac_bits;
 
-        auto const rshift        = current_frac_bits - out_frac_bits - int_part;
-        auto const acc_shifted   = (acc >> rshift) + ((acc >> (rshift - 1)) & 1);
+        auto const rshift = current_frac_bits - out_frac_bits - int_part;
+        auto const acc_shifted = (acc >> rshift) + ((acc >> (rshift - 1)) & 1);
         auto const one_in_output = static_cast<int128_t>(1) << (out_frac_bits + int_part);
         return out_t::literal(static_cast<uint64_t>(acc_shifted + one_in_output));
     }
 
 private:
-    static constexpr auto     poly_degree   = 8;
+    static constexpr auto poly_degree = 8;
     static constexpr uint64_t poly_coeffs[] = {
         6413836306507499907ULL, // 1.3263502612079305838139673820319920476140662657371649402193725109100341796875e-6*x^8
                                 // (Q-19.82)

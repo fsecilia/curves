@@ -14,9 +14,9 @@ namespace {
 // Test Doubles
 // ====================================================================================================================
 
-constexpr auto default_shift                      = 3;
+constexpr auto default_shift = 3;
 constexpr auto expected_tracking_rounding_mode_id = 8675309;
-constexpr auto poisoned_rounded_sentinel          = 0xBAD;
+constexpr auto poisoned_rounded_sentinel = 0xBAD;
 
 // dummy rounding mode that carries a token to prove the adapter forwards it properly
 template <unsigned_integral narrow_t> struct tracking_rounding_mode_t
@@ -34,8 +34,7 @@ struct tracking_wide_divider_t
 {
     template <unsigned_integral narrow_t>
     constexpr auto operator()(widened_t<narrow_t> dividend, narrow_t divisor,
-                              tracking_rounding_mode_t<make_unsigned_t<narrow_t>> rm) const noexcept
-        -> widened_t<narrow_t>
+        tracking_rounding_mode_t<make_unsigned_t<narrow_t>> rm) const noexcept -> widened_t<narrow_t>
     {
         using wide_t = widened_t<narrow_t>;
 
@@ -91,9 +90,9 @@ struct heterogeneous_test_t
 
 template <typename narrow_t> struct unsigned_test_t
 {
-    using wide_t                        = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
     static constexpr auto rounding_mode = tracking_rounding_mode_t<narrow_t>{.id = expected_tracking_rounding_mode_id};
-    static constexpr auto max_narrow    = max<narrow_t>();
+    static constexpr auto max_narrow = max<narrow_t>();
 
     constexpr auto test_common(auto const& sut) const noexcept -> void
     {
@@ -146,7 +145,7 @@ template struct unsigned_test_t<uint32_t>;
 template <typename narrow_t> struct signed_test_t
 {
     using unsigned_t = make_unsigned_t<narrow_t>;
-    using wide_t     = widened_t<unsigned_t>;
+    using wide_t = widened_t<unsigned_t>;
 
     static constexpr auto rounding_mode
         = tracking_rounding_mode_t<unsigned_t>{.id = expected_tracking_rounding_mode_id};
@@ -201,8 +200,8 @@ template <typename narrow_t> struct signed_test_t
 
         // truncation on negative overflow
         constexpr auto abs_min_val = static_cast<wide_t>(max_narrow) + 1;
-        constexpr auto truncated   = (abs_min_val << default_shift) / 1;
-        constexpr auto magnitude   = static_cast<unsigned_t>(truncated);
+        constexpr auto truncated = (abs_min_val << default_shift) / 1;
+        constexpr auto magnitude = static_cast<unsigned_t>(truncated);
         static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == static_cast<narrow_t>(-magnitude));
     }
 };

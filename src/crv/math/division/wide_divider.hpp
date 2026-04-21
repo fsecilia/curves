@@ -34,8 +34,8 @@ template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_div
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
     constexpr auto operator()(wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
-        auto const biased        = rounding_mode.bias(dividend, divisor);
-        auto const high_word     = static_cast<narrow_t>(biased >> narrow_width);
+        auto const biased = rounding_mode.bias(dividend, divisor);
+        auto const high_word = static_cast<narrow_t>(biased >> narrow_width);
         auto const quotient_fits = high_word < divisor;
         if (quotient_fits) return apply_hardware_division(biased, divisor, rounding_mode);
         else return apply_long_division(biased, divisor, rounding_mode);
@@ -44,8 +44,8 @@ template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_div
 private:
     // invokes hardware divider directly
     template <is_div_rounding_mode<wide_t, narrow_t> rounding_mode_t>
-    constexpr auto apply_hardware_division(wide_t dividend, narrow_t divisor,
-                                           rounding_mode_t rounding_mode) const noexcept -> wide_t
+    constexpr auto apply_hardware_division(
+        wide_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) const noexcept -> wide_t
     {
         auto const result = hardware_divider(dividend, divisor);
         return rounding_mode.carry(int_cast<wide_t>(result.quotient), divisor, result.remainder);
@@ -85,7 +85,7 @@ private:
         constexpr auto const low_mask = int_cast<wide_t>((wide_t{1} << narrow_width) - 1);
 
         auto const high_dividend_high = int_cast<narrow_t>(dividend >> narrow_width);
-        auto const high_dividend_low  = int_cast<narrow_t>(dividend & low_mask);
+        auto const high_dividend_low = int_cast<narrow_t>(dividend & low_mask);
 
         // upper half is 0, by definition
         auto const high_result = hardware_divider(high_dividend_high, divisor);

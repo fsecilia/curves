@@ -17,15 +17,15 @@ class exp2_neg_m1_q64_to_q1_63_t
 public:
     // input:  Q0.64 unsigned — x in [0, 1)
     // output: Q1.63 unsigned — exp2(x) in (-0.5, 0]
-    using in_t  = fixed_t<uint64_t, 64>;
+    using in_t = fixed_t<uint64_t, 64>;
     using out_t = fixed_t<int64_t, 63>;
 
-    static constexpr auto in_frac_bits  = in_t::frac_bits;
+    static constexpr auto in_frac_bits = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
     static auto prefetch() noexcept -> void
     {
-        constexpr auto read_only     = 0;
+        constexpr auto read_only = 0;
         constexpr auto high_locality = 3; // Keep in L1
         __builtin_prefetch(poly_coeffs, read_only, high_locality);
     }
@@ -37,12 +37,12 @@ public:
         for (auto i = 0; i < poly_degree - 1; ++i)
         {
             auto const product = static_cast<int128_t>(acc) * static_cast<int128_t>(input.value);
-            auto const shift   = in_frac_bits + poly_shifts[i];
+            auto const shift = in_frac_bits + poly_shifts[i];
             acc = static_cast<int64_t>((product >> shift) + ((product >> (shift - 1)) & 1)) + poly_coeffs[i + 1];
         }
 
         auto const final_product = static_cast<int128_t>(acc) * static_cast<int128_t>(input.value);
-        auto const final_shift   = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
+        auto const final_shift = 64 + poly_shifts[poly_degree - 1] + in_frac_bits - out_frac_bits;
         acc = static_cast<int64_t>((final_product >> final_shift) + ((final_product >> (final_shift - 1)) & 1));
 
         return out_t::literal(static_cast<int64_t>(acc));

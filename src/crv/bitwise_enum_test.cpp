@@ -112,9 +112,9 @@ constexpr auto expected_or_value(enum_t lhs, enum_t rhs) noexcept -> enum_t
 }
 
 static_assert(expected_or_value(enum_t::value_0, enum_t::value_0)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) | std::to_underlying(enum_t::value_0)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) | std::to_underlying(enum_t::value_0)));
 static_assert(expected_or_value(enum_t::value_0, enum_t::value_1)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) | std::to_underlying(enum_t::value_1)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) | std::to_underlying(enum_t::value_1)));
 
 // --------------------------------------------------------------------------------------------------------------------
 // and
@@ -137,9 +137,9 @@ constexpr auto expected_and_value(enum_t lhs, enum_t rhs) noexcept -> enum_t
 }
 
 static_assert(expected_and_value(enum_t::value_0, enum_t::value_0)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) & std::to_underlying(enum_t::value_0)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) & std::to_underlying(enum_t::value_0)));
 static_assert(expected_and_value(enum_t::value_0, enum_t::value_1)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) & std::to_underlying(enum_t::value_1)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) & std::to_underlying(enum_t::value_1)));
 
 // --------------------------------------------------------------------------------------------------------------------
 // xor
@@ -162,9 +162,9 @@ constexpr auto expected_xor_value(enum_t lhs, enum_t rhs) noexcept -> enum_t
 }
 
 static_assert(expected_xor_value(enum_t::value_0, enum_t::value_0)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) ^ std::to_underlying(enum_t::value_0)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) ^ std::to_underlying(enum_t::value_0)));
 static_assert(expected_xor_value(enum_t::value_0, enum_t::value_1)
-              == static_cast<enum_t>(std::to_underlying(enum_t::value_0) ^ std::to_underlying(enum_t::value_1)));
+    == static_cast<enum_t>(std::to_underlying(enum_t::value_0) ^ std::to_underlying(enum_t::value_1)));
 
 } // namespace
 } // namespace crv

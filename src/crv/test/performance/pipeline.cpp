@@ -18,20 +18,20 @@ namespace {
 
 struct pipeline_t
 {
-    using mouse_dim_t      = int16_t;
-    using mouse_vector_t   = math::vector_t<mouse_dim_t, 2>;
+    using mouse_dim_t = int16_t;
+    using mouse_vector_t = math::vector_t<mouse_dim_t, 2>;
     using length_squared_t = fixed_t<uint32_t, 0>;
-    using length_t         = fixed_t<uint64_t, 62>;
-    using curve_input_t    = fixed_t<uint64_t, 56>;
-    using rsqrt_t          = rsqrt_t<length_t, length_squared_t>;
+    using length_t = fixed_t<uint64_t, 62>;
+    using curve_input_t = fixed_t<uint64_t, 56>;
+    using rsqrt_t = rsqrt_t<length_t, length_squared_t>;
 
     rsqrt_t rsqrt;
 
     auto run(mouse_vector_t in) -> mouse_vector_t
     {
         auto const length_squared = rsqrt_t::in_t::literal(in[0] * in[0] + in[1] * in[1]);
-        auto const rlength        = rsqrt(length_squared);
-        auto const length         = length_t::convert(length_squared * rlength);
+        auto const rlength = rsqrt(length_squared);
+        auto const length = length_t::convert(length_squared * rlength);
 
         do_not_optimize(length);
 

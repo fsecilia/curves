@@ -15,9 +15,9 @@ namespace curves {
 
 struct message_box_params_t
 {
-    QMessageBox::Icon icon  = QMessageBox::Information;
-    QString           title = "Curves Configuration";
-    QString           text  = "Package installed successfully!";
+    QMessageBox::Icon icon = QMessageBox::Information;
+    QString title = "Curves Configuration";
+    QString text = "Package installed successfully!";
 };
 
 struct default_message_box_t

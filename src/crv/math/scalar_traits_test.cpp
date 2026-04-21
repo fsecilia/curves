@@ -15,7 +15,7 @@ namespace {
 
 using scalar_t = float_t;
 
-static constexpr auto f  = 37.2; // arbitrary
+static constexpr auto f = 37.2; // arbitrary
 static constexpr auto df = 26.3; // arbitrary
 
 static_assert(f == primal(f));

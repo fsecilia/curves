@@ -130,7 +130,7 @@ struct priority_queue_test_t : Test
 TEST_F(priority_queue_test_t, emplace_constructs_in_place)
 {
     using sut_t = priority_queue_t<std::vector<std::string>>;
-    auto sut    = sut_t{};
+    auto sut = sut_t{};
 
     sut.push("apple");
     sut.emplace(5, 'z'); // variadic forwarding constructs std::string(5, 'z') -> "zzzzz"
@@ -143,7 +143,7 @@ TEST_F(priority_queue_test_t, custom_comparator)
 {
     // min-heap using std::greater
     using sut_t = priority_queue_t<std::vector<int_t>, std::greater<>>;
-    auto sut    = sut_t{};
+    auto sut = sut_t{};
 
     sut.push(10);
     sut.push(2);
@@ -167,7 +167,7 @@ TEST_F(priority_queue_test_t, heapifying_constructor_uses_comparator_and_project
 
     // min-heap using the 3-argument constructor
     using sut_t = priority_queue_t<std::vector<item_t>, std::greater<>, decltype(proj)>;
-    auto sut    = sut_t{std::move(items), std::greater<>{}, proj};
+    auto sut = sut_t{std::move(items), std::greater<>{}, proj};
 
     EXPECT_EQ(sut.top().priority, 2);
     sut.pop();
@@ -180,9 +180,9 @@ TEST_F(priority_queue_test_t, push_moves_with_projection)
     constexpr auto deref_proj = [](auto const& ptr) -> auto const& { return *ptr; };
 
     using sut_t = priority_queue_t<std::vector<std::unique_ptr<int_t>>, std::less<>, decltype(deref_proj)>;
-    auto sut    = sut_t{};
+    auto sut = sut_t{};
 
-    auto       expected_top      = std::make_unique<int_t>(5296);
+    auto expected_top = std::make_unique<int_t>(5296);
     auto const expected_top_data = expected_top.get();
 
     sut.push(std::make_unique<int_t>(3127));

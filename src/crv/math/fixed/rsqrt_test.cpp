@@ -30,7 +30,7 @@ namespace {
 namespace quadratic_minimax_test {
 
 using sut_t = quadratic_minimax_t;
-using in_t  = sut_t::in_t;
+using in_t = sut_t::in_t;
 using out_t = sut_t::out_t;
 
 struct rsqrt_initial_guesses_quadratic_minimax_test_t : TestWithParam<in_t>
@@ -48,16 +48,16 @@ TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_boun
 {
     auto const expected = out_t{1};
 
-    auto const y          = sut(x);
-    auto const yy         = y * y;
-    auto const actual     = yy * x;
+    auto const y = sut(x);
+    auto const yy = y * y;
+    auto const actual = yy * x;
     auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
 
-constexpr auto epsilon   = in_t::literal(1);
-in_t const     vectors[] = {
+constexpr auto epsilon = in_t::literal(1);
+in_t const vectors[] = {
     in_t::literal(max<uint64_t>()),
     in_t::literal(max<uint64_t>() - 1),
     to_fixed<in_t>(0.75) + epsilon,
@@ -87,7 +87,7 @@ namespace normalized_rsqrt_test {
 namespace property_test {
 
 using sut_t = normalized_rsqrt_t<>;
-using in_t  = sut_t::in_t;
+using in_t = sut_t::in_t;
 using out_t = fixed_t<uint64_t, 62>;
 
 struct normalized_rsqrt_property_test_t : TestWithParam<in_t>
@@ -105,16 +105,16 @@ TEST_P(normalized_rsqrt_property_test_t, error_within_minimax_bounds)
 {
     auto const expected = out_t{1};
 
-    auto const y          = out_t::convert(sut(x));
-    auto const yy         = y * y;
-    auto const actual     = yy * x;
+    auto const y = out_t::convert(sut(x));
+    auto const yy = y * y;
+    auto const actual = yy * x;
     auto const difference = std::max(actual, expected) - std::min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
 
-constexpr auto epsilon   = in_t::literal(1);
-in_t const     vectors[] = {
+constexpr auto epsilon = in_t::literal(1);
+in_t const vectors[] = {
     in_t::literal(max<uint64_t>()),
     in_t::literal(max<uint64_t>() - 1),
     to_fixed<in_t>(0.75) + epsilon,
@@ -134,12 +134,12 @@ INSTANTIATE_TEST_SUITE_P(vectors, normalized_rsqrt_property_test_t, ValuesIn(vec
 namespace value_test {
 
 using sut_t = normalized_rsqrt_t<3, rsqrt_initial_guesses::quadratic_minimax_t>;
-using in_t  = sut_t::in_t;
+using in_t = sut_t::in_t;
 using out_t = fixed_t<uint64_t, 62>;
 
 struct param_t
 {
-    in_t  x;
+    in_t x;
     out_t expected;
 
     friend auto operator<<(std::ostream& out, param_t const& param) -> std::ostream&
@@ -152,7 +152,7 @@ struct normalized_rsqrt_value_test_t : TestWithParam<param_t>
 {
     static constexpr auto tolerance = out_t::literal(e_nr);
 
-    in_t const  x        = GetParam().x;
+    in_t const x = GetParam().x;
     out_t const expected = GetParam().expected;
 
     sut_t const sut{};
@@ -223,14 +223,14 @@ namespace rsqrt_test {
 namespace property_test {
 
 // test using pipeline case: mouse vector in 32 bit container -> 8 integer bits in 64-bit container
-using in_t  = fixed_t<uint32_t, 0>;
+using in_t = fixed_t<uint32_t, 0>;
 using out_t = fixed_t<uint64_t, 56>;
 
 struct rsqrt_property_test_t : Test
 {
     using in_value_t = in_t::value_t;
     using wide_out_t = fixed_t<widened_t<out_t::value_t>, out_t::frac_bits * 2>;
-    using sut_t      = rsqrt_t<out_t, in_t, normalized_rsqrt_t<>>;
+    using sut_t = rsqrt_t<out_t, in_t, normalized_rsqrt_t<>>;
 
     sut_t const sut{};
 
@@ -255,12 +255,12 @@ struct rsqrt_property_test_t : Test
     {
         auto const expected = wide_out_t{1};
 
-        auto const y  = out_t::convert(sut(x));
+        auto const y = out_t::convert(sut(x));
         auto const yy = multiply(y, y);
 
-        auto const actual     = wide_out_t::literal(yy.value * uint128_t{x.value});
+        auto const actual = wide_out_t::literal(yy.value * uint128_t{x.value});
         auto const difference = std::max(actual, expected) - std::min(actual, expected);
-        auto const tolerance  = wide_out_t::literal(2 * e_nr * uint128_t{x.value} * uint128_t{y.value});
+        auto const tolerance = wide_out_t::literal(2 * e_nr * uint128_t{x.value} * uint128_t{y.value});
 
         EXPECT_LT(difference, tolerance);
     }
@@ -269,7 +269,7 @@ struct rsqrt_property_test_t : Test
 TEST_F(rsqrt_property_test_t, fuzz)
 {
     std::mt19937 rng{0xF012345678};
-    auto         literal_value_distribution = std::uniform_int_distribution<in_value_t>{0, max<in_value_t>()};
+    auto literal_value_distribution = std::uniform_int_distribution<in_value_t>{0, max<in_value_t>()};
 
     for (auto i = 0; i < 10000; ++i) test_property(in_t::literal(literal_value_distribution(rng)));
 }
@@ -383,8 +383,8 @@ static_assert(rsqrt((fixed_t<uint64_t, 61>(1) >> 1)) == fixed_t<uint64_t, 61>::l
 // pure integer input
 // isqrt(100) = 0.1 ~= round(2^60/sqrt(100)) @Q60
 // checks standard integer handling and large rescaling
-static_assert(rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(100))
-              == fixed_t<uint64_t, 60>::literal(115292150460684698ULL));
+static_assert(
+    rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(100)) == fixed_t<uint64_t, 60>::literal(115292150460684698ULL));
 
 // irrational non-power-of-2
 // isqrt(3.0) ~= 0.577350269 ~= round(2^60/sqrt(3)) @Q60.
@@ -394,26 +394,26 @@ static_assert(rsqrt(fixed_t<uint64_t, 60>(3)) == fixed_t<uint64_t, 60>::literal(
 // large upscale on small input
 // isqrt(0.001*2^30) ~= 0.000965051 ~= round(2^30/sqrt(trunc(0.001*2^30)/2^30)) @Q30
 static_assert(rsqrt(fixed_t<uint64_t, 30>::literal(static_cast<uint64_t>(0.001 * (1ULL << 30))))
-              == fixed_t<uint64_t, 30>::literal(33954710857ULL));
+    == fixed_t<uint64_t, 30>::literal(33954710857ULL));
 
 // floor
 // isqrt(2^63 - 1)
 //     ~= 3.2927225399135962335354494746864465592611776064343944463441e-10
 //     ~= round(2^60/sqrt(2^63 - 1)) @2^60
-static_assert(rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(max<int64_t>()))
-              == fixed_t<uint64_t, 60>::literal(379625062ULL));
+static_assert(
+    rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(max<int64_t>())) == fixed_t<uint64_t, 60>::literal(379625062ULL));
 
 // overflow saturation
 static_assert(rsqrt<fixed_t<uint64_t, 50>>(fixed_t<uint64_t, 30>::literal(1))
 
-              == fixed_t<uint64_t, 50>::literal(max<uint64_t>()));
+    == fixed_t<uint64_t, 50>::literal(max<uint64_t>()));
 // underflow saturation
 static_assert(rsqrt<fixed_t<uint64_t, 20>>(fixed_t<uint64_t, 0>(1ULL << 60)) == fixed_t<uint64_t, 20>{0});
 
 // max possible mouse input vector
 // round(2^32/sqrt(2*(2^15 - 1)*(2^15 - 1)))
 static_assert(rsqrt<fixed_t<uint64_t, 32>>(fixed_t<uint64_t, 0>::literal(2 * ((1ULL << 15) - 1) * ((1ULL << 15) - 1)))
-              == fixed_t<uint64_t, 32>::literal(92685ULL));
+    == fixed_t<uint64_t, 32>::literal(92685ULL));
 
 // worst initial guess
 //
@@ -443,7 +443,7 @@ static_assert(rsqrt<fixed_t<uint64_t, 32>>(fixed_t<uint64_t, 0>::literal(2 * ((1
 //
 // It starts with a guess of 1.2883 and must reach 1.2844 in NR steps alone.
 static_assert(rsqrt(fixed_t<uint64_t, 62>::literal(2795304025607940678ULL))
-              == fixed_t<uint64_t, 62>::literal(5923454703581824736ULL + 1));
+    == fixed_t<uint64_t, 62>::literal(5923454703581824736ULL + 1));
 
 } // namespace value_test
 } // namespace rsqrt_test

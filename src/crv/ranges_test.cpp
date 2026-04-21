@@ -63,7 +63,7 @@ struct base_t
 struct derived_t : base_t
 {};
 using derived_list_t = std::list<derived_t*>;
-using base_list_t    = std::list<base_t*>;
+using base_list_t = std::list<base_t*>;
 static_assert(compatible_range<derived_list_t, base_t*>);
 static_assert(!compatible_range<base_list_t, derived_t*>);
 

@@ -41,9 +41,9 @@ struct test_vector_t
 
 struct weight_functions_exponential_decay_test_t : TestWithParam<test_vector_t>
 {
-    real_t magnitude       = GetParam().magnitude;
+    real_t magnitude = GetParam().magnitude;
     real_t target_position = GetParam().target_position;
-    real_t expected        = GetParam().expected;
+    real_t expected = GetParam().expected;
 
     using sut_t = exponential_decay_t<real_t>;
     sut_t sut{sut_t::from_ratio_and_halflife(12.3, 5.6)};

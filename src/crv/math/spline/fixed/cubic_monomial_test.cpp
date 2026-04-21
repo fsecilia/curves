@@ -10,18 +10,18 @@
 namespace crv::spline::fixed_point {
 namespace {
 
-using coeff_t    = int64_t;
+using coeff_t = int64_t;
 using in_value_t = uint64_t;
-using in_t       = fixed_t<in_value_t, 64>;
+using in_t = fixed_t<in_value_t, 64>;
 
 constexpr auto out_frac_bits = 16;
 
-constexpr auto t_zero          = in_t::literal(0);
-constexpr auto t_half          = in_t::literal(1ULL << (in_t::frac_bits - 1));
-constexpr auto t_quarter       = in_t::literal(1ULL << (in_t::frac_bits - 2));
+constexpr auto t_zero = in_t::literal(0);
+constexpr auto t_half = in_t::literal(1ULL << (in_t::frac_bits - 1));
+constexpr auto t_quarter = in_t::literal(1ULL << (in_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
-constexpr auto t_messy         = in_t::literal(0xAAAAAAAAAAAAAAAAULL); // roughly 2/3
-constexpr auto t_max           = in_t::literal(max<in_value_t>());
+constexpr auto t_messy = in_t::literal(0xAAAAAAAAAAAAAAAAULL); // roughly 2/3
+constexpr auto t_max = in_t::literal(max<in_value_t>());
 
 struct truncating_shifter_t
 {
@@ -60,14 +60,14 @@ using out_value_t = uint64_t;
 
 template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
 constexpr auto evaluate(cubic_monomial_t<fixed_t<out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
-                        in_t t) noexcept -> out_value_t
+    in_t t) noexcept -> out_value_t
 {
     return sut(t).value;
 }
 
 template <typename shifter_t = truncating_shifter_t>
 constexpr auto evaluate(cubic_monomial_t<fixed_t<out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
-                        in_t t_val) noexcept -> out_value_t
+    in_t t_val) noexcept -> out_value_t
 {
     return evaluate<out_frac_bits, shifter_t>(sut, t_val);
 }
@@ -146,9 +146,9 @@ namespace asymmetric {
 using asym_out_value_t = uint16_t;
 
 template <int out_frac_bits, typename shifter_t = truncating_shifter_t>
-constexpr auto
-evaluate_asym(cubic_monomial_t<fixed_t<asym_out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut,
-              in_t t) noexcept -> asym_out_value_t
+constexpr auto evaluate_asym(
+    cubic_monomial_t<fixed_t<asym_out_value_t, out_frac_bits>, in_t, coeff_t, shifter_t> const& sut, in_t t) noexcept
+    -> asym_out_value_t
 {
     return sut(t).value;
 }

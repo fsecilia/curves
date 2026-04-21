@@ -25,7 +25,7 @@ struct linear_t<element_tp, dim, dims...> : std::array<linear_t<element_tp, dims
     using element_t = element_tp;
 
     constexpr auto operator<=>(linear_t const& src) const noexcept -> auto = default;
-    constexpr auto operator==(linear_t const& src) const noexcept -> bool  = default;
+    constexpr auto operator==(linear_t const& src) const noexcept -> bool = default;
 };
 
 /// 1-d array of elements
@@ -34,7 +34,7 @@ template <typename element_tp, std::size_t dim> struct linear_t<element_tp, dim>
     using element_t = element_tp;
 
     constexpr auto operator<=>(linear_t const& src) const noexcept -> auto = default;
-    constexpr auto operator==(linear_t const& src) const noexcept -> bool  = default;
+    constexpr auto operator==(linear_t const& src) const noexcept -> bool = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -91,8 +91,8 @@ constexpr auto operator-(linear_t<element_t, dim, dims...> const& linear) noexce
 
 /// linear + linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator+(linear_t<left_element_t, dim, dims...> const&  left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator+(
+    linear_t<left_element_t, dim, dims...> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -115,8 +115,8 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const&  left,
 
 /// n-d linear + (n-1)-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
-                         linear_t<right_element_t, dims...> const&     right) noexcept
+constexpr auto operator+(
+    linear_t<left_element_t, dim, dims...> const& left, linear_t<right_element_t, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
@@ -128,8 +128,8 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
 
 /// (n-1)-d linear + n-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator+(linear_t<left_element_t, dims...> const&       left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator+(
+    linear_t<left_element_t, dims...> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
@@ -141,8 +141,8 @@ constexpr auto operator+(linear_t<left_element_t, dims...> const&       left,
 
 /// linear + scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const&              right) noexcept
+constexpr auto operator+(
+    linear_t<left_element_t, dim, dims...> const& left, scalar_t<right_element_t> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -165,8 +165,8 @@ constexpr auto operator+(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar + linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator+(scalar_t<left_element_t> const&                left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator+(
+    scalar_t<left_element_t> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -189,8 +189,8 @@ constexpr auto operator+(scalar_t<left_element_t> const&                left,
 
 /// linear - linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator-(linear_t<left_element_t, dim, dims...> const&  left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator-(
+    linear_t<left_element_t, dim, dims...> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -213,8 +213,8 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const&  left,
 
 /// n-d linear - (n-1)-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
-                         linear_t<right_element_t, dims...> const&     right) noexcept
+constexpr auto operator-(
+    linear_t<left_element_t, dim, dims...> const& left, linear_t<right_element_t, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
@@ -226,8 +226,8 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
 
 /// (n-1)-d linear - n-d linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator-(linear_t<left_element_t, dims...> const&       left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator-(
+    linear_t<left_element_t, dims...> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...> result;
@@ -239,8 +239,8 @@ constexpr auto operator-(linear_t<left_element_t, dims...> const&       left,
 
 /// linear - scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const&              right) noexcept
+constexpr auto operator-(
+    linear_t<left_element_t, dim, dims...> const& left, scalar_t<right_element_t> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -262,8 +262,8 @@ constexpr auto operator-(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar - linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator-(scalar_t<left_element_t> const&                left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator-(
+    scalar_t<left_element_t> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -291,8 +291,8 @@ constexpr auto operator-(scalar_t<left_element_t> const&                left,
 ///
 /// Matrices much larger than 4x4 will require a tiling implementation.
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t common_dim, std::size_t cols>
-constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left,
-                         matrix_t<right_element_t, common_dim, cols> const& right) noexcept
+constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const& left,
+    matrix_t<right_element_t, common_dim, cols> const& right) noexcept
     -> matrix_t<promoted_t<left_element_t, right_element_t>, rows, cols>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -324,8 +324,8 @@ constexpr auto operator*(matrix_t<left_element_t, rows, common_dim> const&  left
 
 /// matrix*vector
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t cols>
-constexpr auto operator*(matrix_t<left_element_t, rows, cols> const& left,
-                         vector_t<right_element_t, cols> const&      right) noexcept
+constexpr auto operator*(
+    matrix_t<left_element_t, rows, cols> const& left, vector_t<right_element_t, cols> const& right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, rows>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -345,8 +345,8 @@ constexpr auto operator*(matrix_t<left_element_t, rows, cols> const& left,
 
 /// vector*matrix
 template <typename left_element_t, typename right_element_t, std::size_t rows, std::size_t cols>
-constexpr auto operator*(vector_t<left_element_t, rows> const&        left,
-                         matrix_t<right_element_t, rows, cols> const& right) noexcept
+constexpr auto operator*(
+    vector_t<left_element_t, rows> const& left, matrix_t<right_element_t, rows, cols> const& right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, cols>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -368,8 +368,8 @@ constexpr auto operator*(vector_t<left_element_t, rows> const&        left,
 /// Normally, 1xn*nx1 -> 1x1 would be the inner product and nx1*1xm -> nxm would be the outer, but modern convention in
 /// graphics is elementwise.
 template <typename left_element_t, typename right_element_t, std::size_t size>
-constexpr auto operator*(vector_t<left_element_t, size> const&  left,
-                         vector_t<right_element_t, size> const& right) noexcept
+constexpr auto operator*(
+    vector_t<left_element_t, size> const& left, vector_t<right_element_t, size> const& right) noexcept
     -> vector_t<promoted_t<left_element_t, right_element_t>, size>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -385,8 +385,8 @@ constexpr auto operator*(vector_t<left_element_t, size> const&  left,
 
 /// linear*scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator*(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const&              right) noexcept
+constexpr auto operator*(
+    linear_t<left_element_t, dim, dims...> const& left, scalar_t<right_element_t> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -409,8 +409,8 @@ constexpr auto operator*(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar*linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator*(scalar_t<left_element_t> const&                left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator*(
+    scalar_t<left_element_t> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -433,8 +433,8 @@ constexpr auto operator*(scalar_t<left_element_t> const&                left,
 
 /// linear/scalar
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator/(linear_t<left_element_t, dim, dims...> const& left,
-                         scalar_t<right_element_t> const&              right) noexcept
+constexpr auto operator/(
+    linear_t<left_element_t, dim, dims...> const& left, scalar_t<right_element_t> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;
@@ -447,8 +447,8 @@ constexpr auto operator/(linear_t<left_element_t, dim, dims...> const& left,
 
 /// scalar/linear = linear{scalar}/linear
 template <typename left_element_t, typename right_element_t, std::size_t dim, std::size_t... dims>
-constexpr auto operator/(scalar_t<left_element_t> const&                left,
-                         linear_t<right_element_t, dim, dims...> const& right) noexcept
+constexpr auto operator/(
+    scalar_t<left_element_t> const& left, linear_t<right_element_t, dim, dims...> const& right) noexcept
     -> linear_t<promoted_t<left_element_t, right_element_t>, dim, dims...>
 {
     using promoted_t = promoted_t<left_element_t, right_element_t>;

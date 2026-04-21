@@ -45,16 +45,15 @@ concept is_fixed = is_fixed_v<type_t>;
 namespace fixed {
 
 template <is_fixed lhs_t, is_fixed rhs_t>
-using product_t
-    = fixed_t<int_by_bytes_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
-                             std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
-              lhs_t::frac_bits + rhs_t::frac_bits>;
+using product_t = fixed_t<int_by_bytes_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
+                              std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
+    lhs_t::frac_bits + rhs_t::frac_bits>;
 
 inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
-using default_shr_rounding_mode_t               = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
+using default_shr_rounding_mode_t = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
 
 inline constexpr auto default_div_rounding_mode = rounding_modes::div::truncate;
-using default_div_rounding_mode_t               = std::remove_cv_t<decltype(default_div_rounding_mode)>;
+using default_div_rounding_mode_t = std::remove_cv_t<decltype(default_div_rounding_mode)>;
 
 } // namespace fixed
 
@@ -75,7 +74,7 @@ template <integral value_t, int frac_bits> constexpr auto literal(value_t value)
 /// fixed-point arithmetic type with statically-configurable precision
 template <integral t_value_t, int t_frac_bits> struct fixed_t
 {
-    using value_t                   = t_value_t;
+    using value_t = t_value_t;
     static constexpr auto frac_bits = t_frac_bits;
 
     value_t value;
@@ -108,7 +107,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // Copying
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr fixed_t(fixed_t const& src) noexcept                      = default;
+    constexpr fixed_t(fixed_t const& src) noexcept = default;
     constexpr auto operator=(fixed_t const& other) noexcept -> fixed_t& = default;
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -117,12 +116,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// converts from another fixed_t specialization, rescaling precision using rounding mode
     template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
-              typename shifter_type = shifter_t<>>
+        typename shifter_type = shifter_t<>>
     static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
     {
-        using other_value_t       = typename other_t::value_t;
+        using other_value_t = typename other_t::value_t;
         constexpr auto shift_bits = frac_bits - other_t::frac_bits;
-        constexpr auto saturate   = overflow_policy == overflow_policy_t::saturate;
+        constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
 
         if constexpr (shift_bits >= 0)
         {
@@ -145,8 +144,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         {
             // downscaling: shift right
             constexpr auto rshift_bits = -shift_bits;
-            static_assert(rshift_bits < sizeof(other_value_t) * CHAR_BIT,
-                          "fixed_t: right-shift exceeds source bit width");
+            static_assert(
+                rshift_bits < sizeof(other_value_t) * CHAR_BIT, "fixed_t: right-shift exceeds source bit width");
 
             // right shift in original container type first
             auto const shifted = shifter.template shr<rshift_bits>(other.value);
@@ -168,7 +167,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
-    constexpr auto operator==(fixed_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(fixed_t const&) const noexcept -> bool = default;
     constexpr auto operator<=>(fixed_t const&) const noexcept -> auto = default;
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -291,7 +290,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     template <is_fixed rhs_t>
     friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> fixed::product_t<fixed_t, rhs_t>
     {
-        using result_t      = fixed::product_t<fixed_t, rhs_t>;
+        using result_t = fixed::product_t<fixed_t, rhs_t>;
         using wider_value_t = result_t::value_t;
 
         auto const product = int_cast<wider_value_t>(int_cast<wider_value_t>(lhs.value) * rhs.value);
@@ -308,8 +307,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode
     template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t = fixed::default_div_rounding_mode_t>
-    friend constexpr auto divide(fixed_t lhs, rhs_t rhs,
-                                 rounding_mode_t rounding_mode = fixed::default_div_rounding_mode) noexcept -> out_t
+    friend constexpr auto divide(
+        fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode = fixed::default_div_rounding_mode) noexcept -> out_t
     {
         using out_value_t = out_t::value_t;
         using lhs_value_t = fixed_t::value_t;
@@ -333,8 +332,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto mod(fixed_t lhs, rhs_t rhs, shifter_t shifter = shifter_t{}) noexcept -> out_t
     {
         // widen
-        using wide_t  = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
-                                       std::is_signed_v<value_t> || std::is_signed_v<typename rhs_t::value_t>>;
+        using wide_t = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
+            std::is_signed_v<value_t> || std::is_signed_v<typename rhs_t::value_t>>;
         auto lhs_wide = int_cast<wide_t>(lhs.value);
         auto rhs_wide = int_cast<wide_t>(rhs.value);
 
@@ -382,7 +381,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (frac_bits == 0) return src;
         else
         {
-            using unsigned_t        = std::make_unsigned_t<value_t>;
+            using unsigned_t = std::make_unsigned_t<value_t>;
             constexpr auto int_mask = ~((unsigned_t{1} << frac_bits) - 1);
             return literal(static_cast<value_t>(static_cast<unsigned_t>(src.value) & int_mask));
         }
@@ -395,7 +394,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (frac_bits == 0) return literal(0);
         else
         {
-            using unsigned_t         = std::make_unsigned_t<value_t>;
+            using unsigned_t = std::make_unsigned_t<value_t>;
             constexpr auto frac_mask = (unsigned_t{1} << frac_bits) - 1;
             return literal(int_cast<value_t>(static_cast<unsigned_t>(src.value) & frac_mask));
         }
@@ -425,18 +424,18 @@ namespace std {
 template <typename value_t, int frac_bits>
 struct numeric_limits<crv::fixed_t<value_t, frac_bits>> : numeric_limits<value_t>
 {
-    using base_t  = numeric_limits<value_t>;
+    using base_t = numeric_limits<value_t>;
     using fixed_t = crv::fixed_t<value_t, frac_bits>;
 
     static constexpr bool is_specialized = true;
 
     // fixed-point represents fractions, but does so exactly
     static constexpr bool is_integer = false;
-    static constexpr bool is_exact   = true;
+    static constexpr bool is_exact = true;
 
     // fixed-point lacks float special values
-    static constexpr bool has_infinity      = false;
-    static constexpr bool has_quiet_NaN     = false;
+    static constexpr bool has_infinity = false;
+    static constexpr bool has_quiet_NaN = false;
     static constexpr bool has_signaling_NaN = false;
 
     // smallest strictly positive value is 1 in the underlying

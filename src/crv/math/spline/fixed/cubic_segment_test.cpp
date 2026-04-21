@@ -13,14 +13,14 @@ namespace crv::spline::fixed_point {
 namespace {
 
 using out_value_t = uint16_t;
-using out_t       = fixed_t<out_value_t, 16>;
+using out_t = fixed_t<out_value_t, 16>;
 
 using dx_value_t = uint32_t;
-using dx_t       = fixed_t<dx_value_t, 12>;
-using wide_t     = widened_t<dx_value_t>;
+using dx_t = fixed_t<dx_value_t, 12>;
+using wide_t = widened_t<dx_value_t>;
 
 using normalized_value_t = uint64_t;
-using normalized_t       = fixed_t<normalized_value_t, 64>;
+using normalized_t = fixed_t<normalized_value_t, 64>;
 
 struct truncating_shifter_t
 {
@@ -33,14 +33,14 @@ struct truncating_shifter_t
 template <typename t_out_t, typename t_in_t> struct monomial_t
 {
     using out_t = t_out_t;
-    using in_t  = t_in_t;
+    using in_t = t_in_t;
 
     [[nodiscard]] constexpr auto operator()(in_t t) const noexcept -> out_t { return out_t::convert(t); }
 };
 
 // segment is exactly 4.0 units wide; rwidth = 64 / 256 = 1 / 4.0 = 0.25
 constexpr auto rwidth_frac_bits = 8;
-constexpr auto rwidth           = dx_value_t{64};
+constexpr auto rwidth = dx_value_t{64};
 
 // --------------------------------------------------------------------------------------------------------------------
 // left shift tests
@@ -50,7 +50,7 @@ namespace left_shift_tests {
 
 using monomial_t = monomial_t<out_t, normalized_t>;
 
-using sut_t        = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
+using sut_t = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
 constexpr auto sut = sut_t{.monomial = monomial_t{}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
 
 // min
@@ -77,14 +77,14 @@ static_assert(sut(dx_max).value == 0xFFFC);
 namespace right_shift_tests {
 
 using out_value_t = uint16_t;
-using out_t       = fixed_t<out_value_t, 16>;
+using out_t = fixed_t<out_value_t, 16>;
 
 using dx_value_t = uint64_t;
-using dx_t       = fixed_t<dx_value_t, 60>;
+using dx_t = fixed_t<dx_value_t, 60>;
 
 using monomial_t = monomial_t<out_t, normalized_t>;
 
-using sut_t        = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
+using sut_t = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
 constexpr auto sut = sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
 
 // mid
@@ -113,7 +113,7 @@ struct perturbing_shifter_t
 
 using monomial_t = monomial_t<out_t, normalized_t>;
 
-using sut_t        = cubic_segment_t<monomial_t, dx_t, perturbing_shifter_t>;
+using sut_t = cubic_segment_t<monomial_t, dx_t, perturbing_shifter_t>;
 constexpr auto sut = sut_t{.monomial = monomial_t{}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
 
 // min
@@ -128,14 +128,14 @@ static_assert(sut(dx_t::literal(0)).value == 53);
 namespace zero_shift_tests {
 
 using out_value_t = uint16_t;
-using out_t       = fixed_t<out_value_t, 16>;
+using out_t = fixed_t<out_value_t, 16>;
 
 using dx_value_t = uint64_t;
-using dx_t       = fixed_t<dx_value_t, 56>; // 64 (normalized) - 56 (in) - 8 (rwidth) == 0
+using dx_t = fixed_t<dx_value_t, 56>; // 64 (normalized) - 56 (in) - 8 (rwidth) == 0
 
 using monomial_t = monomial_t<out_t, normalized_t>;
 
-using sut_t        = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
+using sut_t = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
 constexpr auto sut = sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
 
 constexpr auto dx_quarter = dx_t::literal(1ULL << dx_t::frac_bits);
@@ -152,20 +152,20 @@ static_assert(sut(dx_quarter).value == 0x4000);
 namespace widening_tests {
 
 using out_value_t = uint64_t;
-using out_t       = fixed_t<out_value_t, 44>;
+using out_t = fixed_t<out_value_t, 44>;
 
 using dx_value_t = uint32_t;
-using dx_t       = fixed_t<dx_value_t, 16>;
+using dx_t = fixed_t<dx_value_t, 16>;
 
 using normalized_t = fixed_t<uint64_t, 44>;
-using monomial_t   = monomial_t<out_t, normalized_t>;
+using monomial_t = monomial_t<out_t, normalized_t>;
 
 using sut_t = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
 
 // rwidth is 0.5 in Q28 (0x8000000)
 // normalizing_shift = 44 (normalized) - 16 (in) - 28 (rwidth) = 0
 constexpr auto rwidth = dx_value_t{0x8000000};
-constexpr auto sut    = sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = 28};
+constexpr auto sut = sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = 28};
 
 // rwidth is 0.5, dx max is 2.0, set dx to 1.5 in Q16 (1.5 * 0x10000 = 98304 = 0x00018000)
 constexpr auto large_dx = dx_t::literal(0x18000);
@@ -184,7 +184,7 @@ static_assert(sut(large_dx).value == 0xC0000000000ULL);
 namespace death_tests {
 
 using monomial_t = monomial_t<out_t, normalized_t>;
-using sut_t      = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
+using sut_t = cubic_segment_t<monomial_t, dx_t, truncating_shifter_t>;
 
 constexpr auto valid_dx = dx_t::literal(1 << dx_t::frac_bits);
 
@@ -202,10 +202,10 @@ TEST(spline_fixed_point_cubic_segment, violates_rwidth_frac_bits_positive)
 
 TEST(spline_fixed_point_cubic_segment, violates_dx_lower_bound)
 {
-    using signed_dx_t  = fixed_t<int32_t, 12>;
+    using signed_dx_t = fixed_t<int32_t, 12>;
     using signed_sut_t = cubic_segment_t<monomial_t, signed_dx_t, truncating_shifter_t>;
 
-    constexpr auto sut         = signed_sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
+    constexpr auto sut = signed_sut_t{.monomial = {}, .rwidth = rwidth, .rwidth_frac_bits = rwidth_frac_bits};
     constexpr auto negative_dx = signed_dx_t::literal(-1);
 
     EXPECT_DEBUG_DEATH(static_cast<void>(sut(negative_dx)), "0 <= dx.value");

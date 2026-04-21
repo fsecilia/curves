@@ -319,7 +319,7 @@ template <typename t_value_t> struct jet_t
         //         the result would be NaN, so only apply inf conditionally.
         //     - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
         auto const has_delta = (y.f == 0) & (x.f != 0) & (y.df != 0);
-        auto const dy_term   = has_delta ? infinity<value_t>() * y.df : 0;
+        auto const dy_term = has_delta ? infinity<value_t>() * y.df : 0;
 
         return {copysign(x.f, y.f), dx_term + dy_term};
     }
@@ -415,7 +415,7 @@ template <typename t_value_t> struct jet_t
 
         assert(x > 0 && "jet_t::pow(<element>, <jet>): domain error");
 
-        auto const power    = pow(x, y.f);
+        auto const power = pow(x, y.f);
         auto const log_base = log(x);
 
         return {power, log_base * power * y.df};
@@ -447,7 +447,7 @@ template <typename t_value_t> struct jet_t
         //             = x^y*log(x)*dy + x^(y - 1)*y*dx
         //
         // The familiar power rule is recovered when y is a constant because that makes dy = 0.
-        auto const pm1   = pow(x.f, y.f - 1);
+        auto const pm1 = pow(x.f, y.f - 1);
         auto const power = x.f * pm1;
         return {power, power * log(x.f) * y.df + pm1 * y.f * x.df};
     }

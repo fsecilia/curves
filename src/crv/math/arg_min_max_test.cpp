@@ -16,9 +16,9 @@ namespace {
 
 struct arg_max_test_t : Test
 {
-    using arg_t   = int_t;
+    using arg_t = int_t;
     using value_t = float_t;
-    using sut_t   = arg_max_t<arg_t, value_t>;
+    using sut_t = arg_max_t<arg_t, value_t>;
 
     static constexpr auto old_max = 3.0;
     static constexpr auto old_arg = 5;
@@ -76,9 +76,9 @@ TEST_F(arg_max_test_t, ostream_inserter)
 
 struct arg_min_test_t : Test
 {
-    using arg_t   = int_t;
+    using arg_t = int_t;
     using value_t = float_t;
-    using sut_t   = arg_min_t<arg_t, value_t>;
+    using sut_t = arg_min_t<arg_t, value_t>;
 
     static constexpr auto old_min = 3.0;
     static constexpr auto old_arg = 5;
@@ -136,24 +136,24 @@ TEST_F(arg_min_test_t, ostream_inserter)
 
 struct arg_min_max_test_t : Test
 {
-    using arg_t   = int_t;
+    using arg_t = int_t;
     using value_t = float_t;
 
-    static constexpr arg_t   arg_min     = 3;
-    static constexpr value_t min         = 1.1;
-    static constexpr arg_t   arg_max     = 5;
-    static constexpr value_t max         = 1.2;
-    static constexpr arg_t   arg_max_mag = arg_max;
-    static constexpr value_t max_mag     = 1.2;
+    static constexpr arg_t arg_min = 3;
+    static constexpr value_t min = 1.1;
+    static constexpr arg_t arg_max = 5;
+    static constexpr value_t max = 1.2;
+    static constexpr arg_t arg_max_mag = arg_max;
+    static constexpr value_t max_mag = 1.2;
 
     struct arg_min_t
     {
-        arg_t   arg{arg_min};
+        arg_t arg{arg_min};
         value_t value{min};
 
         constexpr auto sample(arg_t arg, value_t value) noexcept -> void
         {
-            this->arg   = arg;
+            this->arg = arg;
             this->value = value;
         }
 
@@ -162,12 +162,12 @@ struct arg_min_max_test_t : Test
 
     struct arg_max_t
     {
-        arg_t   arg{arg_min_max_test_t::arg_max};
+        arg_t arg{arg_min_max_test_t::arg_max};
         value_t value{arg_min_max_test_t::max};
 
         constexpr auto sample(arg_t arg, value_t value) noexcept -> void
         {
-            this->arg   = arg;
+            this->arg = arg;
             this->value = value;
         }
 
@@ -190,7 +190,7 @@ TEST_F(arg_min_max_test_t, arg_max_mag)
 
 TEST_F(arg_min_max_test_t, sample)
 {
-    static constexpr auto arg   = arg_t{19};
+    static constexpr auto arg = arg_t{19};
     static constexpr auto value = value_t{17.0};
 
     sut.sample(arg, value);

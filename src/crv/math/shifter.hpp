@@ -41,7 +41,7 @@ public:
         assert(count < src_bits && "shifter_t: shr count must be less than bit width");
 
         auto const unshifted = rounding_mode_.bias(src, count);
-        auto const shifted   = int_cast<src_t>(unshifted >> count);
+        auto const shifted = int_cast<src_t>(unshifted >> count);
         return int_cast<dst_t>(rounding_mode_.carry(shifted, unshifted, count));
     }
 
@@ -53,7 +53,7 @@ public:
         static_assert(count < src_bits, "shifter_t: shr count must be less than bit width");
 
         auto const unshifted = rounding_mode_.bias(src, count);
-        auto const shifted   = int_cast<src_t>(unshifted >> count);
+        auto const shifted = int_cast<src_t>(unshifted >> count);
         return int_cast<dst_t>(rounding_mode_.carry(shifted, unshifted, count));
     }
 

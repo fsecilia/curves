@@ -63,7 +63,7 @@ struct test_vector_t
 
 struct abs_vector_test_t : abs_test_t, WithParamInterface<test_vector_t>
 {
-    float_t input    = GetParam().input;
+    float_t input = GetParam().input;
     float_t expected = GetParam().expected;
 };
 
@@ -76,10 +76,10 @@ TEST_P(abs_vector_test_t, result)
     EXPECT_EQ(expected, actual);
 }
 
-constexpr auto inf  = std::numeric_limits<float_t>::infinity();
+constexpr auto inf = std::numeric_limits<float_t>::infinity();
 constexpr auto dmin = std::numeric_limits<float_t>::denorm_min();
-constexpr auto min  = std::numeric_limits<float_t>::min();
-constexpr auto max  = std::numeric_limits<float_t>::max();
+constexpr auto min = std::numeric_limits<float_t>::min();
+constexpr auto max = std::numeric_limits<float_t>::max();
 
 // clang-format off
 constexpr test_vector_t vectors[] = {

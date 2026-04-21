@@ -51,7 +51,7 @@ constexpr auto shr_carry(value_t unshifted, int_t shift, sut_t sut) -> value_t
 /// composed shr: bias -> shift -> carry
 template <typename value_t, typename sut_t> constexpr auto shr(value_t unshifted, int_t shift, sut_t sut) -> value_t
 {
-    auto const biased  = sut.bias(unshifted, shift);
+    auto const biased = sut.bias(unshifted, shift);
     auto const shifted = static_cast<value_t>(biased >> shift);
     return sut.carry(shifted, biased, shift);
 }
@@ -66,8 +66,8 @@ constexpr auto div_carry(value_t dividend, value_t divisor, sut_t sut) -> value_
 /// composed div: bias -> divide -> carry
 template <typename value_t, typename sut_t> constexpr auto div(value_t dividend, value_t divisor, sut_t sut) -> value_t
 {
-    auto const biased    = sut.bias(dividend, divisor);
-    auto const quotient  = static_cast<value_t>(biased / divisor);
+    auto const biased = sut.bias(dividend, divisor);
+    auto const quotient = static_cast<value_t>(biased / divisor);
     auto const remainder = static_cast<value_t>(biased % divisor);
     return sut.carry(quotient, divisor, remainder);
 }
@@ -78,8 +78,8 @@ struct preserves_shr_type_t
     constexpr auto operator()(auto rounding_mode) const noexcept -> bool
     {
         return std::same_as<uint8_t, decltype(rounding_mode.bias(std::declval<uint8_t>(), std::declval<int_t>()))>
-               && std::same_as<uint8_t, decltype(rounding_mode.carry(std::declval<uint8_t>(), std::declval<uint8_t>(),
-                                                                     std::declval<int_t>()))>;
+            && std::same_as<uint8_t,
+                decltype(rounding_mode.carry(std::declval<uint8_t>(), std::declval<uint8_t>(), std::declval<int_t>()))>;
     }
 };
 constexpr auto preserves_shr_type = preserves_shr_type_t{};
@@ -90,8 +90,9 @@ struct preserves_div_type_t
     constexpr auto operator()(auto rounding_mode) const noexcept -> bool
     {
         return std::same_as<uint8_t, decltype(rounding_mode.bias(std::declval<uint8_t>(), std::declval<uint8_t>()))>
-               && std::same_as<uint8_t, decltype(rounding_mode.carry(std::declval<uint8_t>(), std::declval<uint8_t>(),
-                                                                     std::declval<uint8_t>()))>;
+            && std::same_as<uint8_t,
+                decltype(rounding_mode.carry(
+                    std::declval<uint8_t>(), std::declval<uint8_t>(), std::declval<uint8_t>()))>;
     }
 };
 constexpr auto preserves_div_type = preserves_div_type_t{};
@@ -114,9 +115,9 @@ static_assert(shr::truncate.carry(3u, 7u, 1) == 3u);
 
 // composed: matches c++ default
 static_assert(shr(0, 2, shr::truncate) == 0);
-static_assert(shr(4, 1, shr::truncate) == 2);   // exact
+static_assert(shr(4, 1, shr::truncate) == 2); // exact
 static_assert(shr(-4, 1, shr::truncate) == -2); // exact
-static_assert(shr(3, 1, shr::truncate) == 1);   // inexact, floors toward -inf
+static_assert(shr(3, 1, shr::truncate) == 1); // inexact, floors toward -inf
 static_assert(shr(-3, 1, shr::truncate) == -2); // inexact, floors toward -inf
 static_assert(shr(3u, 1, shr::truncate) == 1u);
 
@@ -150,11 +151,11 @@ static_assert(shr_carry(3, 2, shr::nearest_up) == 1);
 static_assert(shr_carry(-3, 2, shr::nearest_up) == -1);
 
 // ties: toward +infinity
-static_assert(shr_carry(3, 1, shr::nearest_up) == 2);   // positive tie -> up
+static_assert(shr_carry(3, 1, shr::nearest_up) == 2); // positive tie -> up
 static_assert(shr_carry(-3, 1, shr::nearest_up) == -1); // negative tie -> up (toward +inf, i.e. less negative)
-static_assert(shr_carry(-1, 1, shr::nearest_up) == 0);  // negative tie -> up
-static_assert(shr_carry(2, 2, shr::nearest_up) == 1);   // tie -> up
-static_assert(shr_carry(-2, 2, shr::nearest_up) == 0);  // tie -> up
+static_assert(shr_carry(-1, 1, shr::nearest_up) == 0); // negative tie -> up
+static_assert(shr_carry(2, 2, shr::nearest_up) == 1); // tie -> up
+static_assert(shr_carry(-2, 2, shr::nearest_up) == 0); // tie -> up
 
 // unsigned
 static_assert(shr_carry(1u, 2, shr::nearest_up) == 0u);
@@ -163,9 +164,9 @@ static_assert(shr_carry(2u, 2, shr::nearest_up) == 1u); // tie -> up
 static_assert(shr_carry(3u, 2, shr::nearest_up) == 1u); // above half
 
 // boundaries
-static_assert(shr_carry<uint32_t>(0x80007FFFu, 16, shr::nearest_up) == 0x8000u);    // below half
+static_assert(shr_carry<uint32_t>(0x80007FFFu, 16, shr::nearest_up) == 0x8000u); // below half
 static_assert(shr_carry<uint32_t>(0xFFFFFFFFu, 1, shr::nearest_up) == 0x80000000u); // tie -> up
-static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_up) == 0x8001u);    // tie -> up
+static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_up) == 0x8001u); // tie -> up
 
 // ====================================================================================================================
 // shr::nearest_away_t
@@ -200,9 +201,9 @@ static_assert(shr_carry(3u, 1, shr::nearest_away) == 2u);
 static_assert(shr_carry(2u, 2, shr::nearest_away) == 1u);
 
 // boundaries
-static_assert(shr_carry<uint32_t>(0x80007FFFu, 16, shr::nearest_away) == 0x8000u);    // below half
+static_assert(shr_carry<uint32_t>(0x80007FFFu, 16, shr::nearest_away) == 0x8000u); // below half
 static_assert(shr_carry<uint32_t>(0xFFFFFFFFu, 1, shr::nearest_away) == 0x80000000u); // tie -> away
-static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_away) == 0x8001u);    // tie -> away
+static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_away) == 0x8001u); // tie -> away
 
 // ====================================================================================================================
 // shr::nearest_even_t
@@ -236,10 +237,10 @@ static_assert(shr_carry(2, 2, shr::nearest_even) == 0); // shifted=0 even -> kee
 static_assert(shr_carry(6, 2, shr::nearest_even) == 2); // shifted=1 odd  -> round
 
 // signed ties
-static_assert(shr_carry(-1, 1, shr::nearest_even) == 0);   // shifted=-1 odd  -> round (toward 0)
-static_assert(shr_carry(-3, 1, shr::nearest_even) == -2);  // shifted=-2 even -> keep
-static_assert(shr_carry(-2, 2, shr::nearest_even) == 0);   // shifted=-1 odd  -> round
-static_assert(shr_carry(-6, 2, shr::nearest_even) == -2);  // shifted=-2 even -> keep
+static_assert(shr_carry(-1, 1, shr::nearest_even) == 0); // shifted=-1 odd  -> round (toward 0)
+static_assert(shr_carry(-3, 1, shr::nearest_even) == -2); // shifted=-2 even -> keep
+static_assert(shr_carry(-2, 2, shr::nearest_even) == 0); // shifted=-1 odd  -> round
+static_assert(shr_carry(-6, 2, shr::nearest_even) == -2); // shifted=-2 even -> keep
 static_assert(shr_carry(-10, 2, shr::nearest_even) == -2); // shifted=-3 odd  -> round
 
 // unsigned ties
@@ -254,8 +255,8 @@ static_assert(shr_carry(6u, 2, shr::nearest_even) == 2u); // shifted=1 odd  -> r
 static_assert(shr_carry<uint32_t>(0xFFFFFFFEu, 1, shr::nearest_even) == 0x7FFFFFFFu); // exact
 static_assert(shr_carry<uint32_t>(0xFFFFFFFDu, 1, shr::nearest_even) == 0x7FFFFFFEu); // tie, shifted even -> keep
 static_assert(shr_carry<uint32_t>(0xFFFFFFFFu, 1, shr::nearest_even) == 0x80000000u); // tie, shifted odd  -> round
-static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_even) == 0x8000u);    // tie, shifted even -> keep
-static_assert(shr_carry<uint32_t>(0x80018000u, 16, shr::nearest_even) == 0x8002u);    // tie, shifted odd  -> round
+static_assert(shr_carry<uint32_t>(0x80008000u, 16, shr::nearest_even) == 0x8000u); // tie, shifted even -> keep
+static_assert(shr_carry<uint32_t>(0x80018000u, 16, shr::nearest_even) == 0x8002u); // tie, shifted odd  -> round
 
 // ====================================================================================================================
 // shr::fast::nearest_up_t
@@ -264,10 +265,10 @@ static_assert(shr_carry<uint32_t>(0x80018000u, 16, shr::nearest_even) == 0x8002u
 static_assert(preserves_shr_type(shr::fast::nearest_up));
 
 // shr_bias: adds half
-static_assert(shr::fast::nearest_up.bias(0, 1) == 1);    // 0 + (1 << 0) = 1
-static_assert(shr::fast::nearest_up.bias(3, 1) == 4);    // 3 + 1 = 4
-static_assert(shr::fast::nearest_up.bias(-3, 1) == -2);  // -3 + 1 = -2
-static_assert(shr::fast::nearest_up.bias(0u, 2) == 2u);  // 0 + (1 << 1) = 2
+static_assert(shr::fast::nearest_up.bias(0, 1) == 1); // 0 + (1 << 0) = 1
+static_assert(shr::fast::nearest_up.bias(3, 1) == 4); // 3 + 1 = 4
+static_assert(shr::fast::nearest_up.bias(-3, 1) == -2); // -3 + 1 = -2
+static_assert(shr::fast::nearest_up.bias(0u, 2) == 2u); // 0 + (1 << 1) = 2
 static_assert(shr::fast::nearest_up.bias(7u, 3) == 11u); // 7 + 4 = 11
 
 // shr_carry: pass-through
@@ -276,11 +277,11 @@ static_assert(shr::fast::nearest_up.carry(99u, 0u, 1) == 99u);
 
 // composed shr: must match safe nearest_up
 static_assert(shr(0, 2, shr::fast::nearest_up) == shr(0, 2, shr::nearest_up));
-static_assert(shr(3, 1, shr::fast::nearest_up) == shr(3, 1, shr::nearest_up));   // tie
+static_assert(shr(3, 1, shr::fast::nearest_up) == shr(3, 1, shr::nearest_up)); // tie
 static_assert(shr(-3, 1, shr::fast::nearest_up) == shr(-3, 1, shr::nearest_up)); // negative tie
 static_assert(shr(-1, 1, shr::fast::nearest_up) == shr(-1, 1, shr::nearest_up)); // negative tie
-static_assert(shr(1, 2, shr::fast::nearest_up) == shr(1, 2, shr::nearest_up));   // below half
-static_assert(shr(3, 2, shr::fast::nearest_up) == shr(3, 2, shr::nearest_up));   // above half
+static_assert(shr(1, 2, shr::fast::nearest_up) == shr(1, 2, shr::nearest_up)); // below half
+static_assert(shr(3, 2, shr::fast::nearest_up) == shr(3, 2, shr::nearest_up)); // above half
 static_assert(shr(3u, 1, shr::fast::nearest_up) == shr(3u, 1, shr::nearest_up)); // unsigned tie
 static_assert(shr(2u, 2, shr::fast::nearest_up) == shr(2u, 2, shr::nearest_up)); // unsigned tie
 
@@ -291,13 +292,13 @@ static_assert(shr(2u, 2, shr::fast::nearest_up) == shr(2u, 2, shr::nearest_up));
 static_assert(preserves_shr_type(shr::fast::nearest_away));
 
 // shr_bias unsigned: adds half
-static_assert(shr::fast::nearest_away.bias(0u, 1) == 1u);  // 0 + 1 = 1
-static_assert(shr::fast::nearest_away.bias(3u, 1) == 4u);  // 3 + 1 = 4
+static_assert(shr::fast::nearest_away.bias(0u, 1) == 1u); // 0 + 1 = 1
+static_assert(shr::fast::nearest_away.bias(3u, 1) == 4u); // 3 + 1 = 4
 static_assert(shr::fast::nearest_away.bias(7u, 3) == 11u); // 7 + 4 = 11
 
 // shr_bias signed: half for positive, half - 1 for negative
-static_assert(shr::fast::nearest_away.bias(3, 1) == 4);   // positive: 3 + 1 = 4
-static_assert(shr::fast::nearest_away.bias(0, 1) == 1);   // zero is non-negative: 0 + 1 = 1
+static_assert(shr::fast::nearest_away.bias(3, 1) == 4); // positive: 3 + 1 = 4
+static_assert(shr::fast::nearest_away.bias(0, 1) == 1); // zero is non-negative: 0 + 1 = 1
 static_assert(shr::fast::nearest_away.bias(-3, 1) == -3); // negative: -3 + (1 - 1) = -3
 static_assert(shr::fast::nearest_away.bias(-1, 1) == -1); // negative: -1 + 0 = -1
 static_assert(shr::fast::nearest_away.bias(-4, 2) == -3); // negative: -4 + (2 - 1) = -3
@@ -307,11 +308,11 @@ static_assert(shr::fast::nearest_away.carry(99, 0, 1) == 99);
 static_assert(shr::fast::nearest_away.carry(99u, 0u, 1) == 99u);
 
 // composed shr: must match safe nearest_away
-static_assert(shr(3, 1, shr::fast::nearest_away) == shr(3, 1, shr::nearest_away));   // positive tie
+static_assert(shr(3, 1, shr::fast::nearest_away) == shr(3, 1, shr::nearest_away)); // positive tie
 static_assert(shr(-3, 1, shr::fast::nearest_away) == shr(-3, 1, shr::nearest_away)); // negative tie
 static_assert(shr(-1, 1, shr::fast::nearest_away) == shr(-1, 1, shr::nearest_away)); // negative tie
-static_assert(shr(1, 2, shr::fast::nearest_away) == shr(1, 2, shr::nearest_away));   // below half
-static_assert(shr(3, 2, shr::fast::nearest_away) == shr(3, 2, shr::nearest_away));   // above half
+static_assert(shr(1, 2, shr::fast::nearest_away) == shr(1, 2, shr::nearest_away)); // below half
+static_assert(shr(3, 2, shr::fast::nearest_away) == shr(3, 2, shr::nearest_away)); // above half
 static_assert(shr(-1, 2, shr::fast::nearest_away) == shr(-1, 2, shr::nearest_away)); // below half, negative
 static_assert(shr(-3, 2, shr::fast::nearest_away) == shr(-3, 2, shr::nearest_away)); // above half, negative
 static_assert(shr(3u, 1, shr::fast::nearest_away) == shr(3u, 1, shr::nearest_away)); // unsigned tie
@@ -336,9 +337,9 @@ static_assert(div(3u, 2u, div::truncate) == 1u); // inexact
 
 // wide / narrow: quotient exceeds 32-bit max
 static_assert(div::truncate.carry(static_cast<uint64_t>(0x1FFFFFFFFull), // quotient (odd, requires carry)
-                                  static_cast<uint32_t>(2),              // divisor
-                                  static_cast<uint32_t>(1))              // remainder
-              == 0x1FFFFFFFFull);                                        // cleanly rolls over into the 34th bit
+                  static_cast<uint32_t>(2), // divisor
+                  static_cast<uint32_t>(1)) // remainder
+    == 0x1FFFFFFFFull); // cleanly rolls over into the 34th bit
 
 // ====================================================================================================================
 // div::nearest_away_t
@@ -426,9 +427,9 @@ static_assert(div_carry<uint32_t>(3221225471u, 2147483647u, div::nearest_even) =
 
 // wide / narrow unsigned: quotient exceeds 32-bit max
 static_assert(div::nearest_even.carry(static_cast<uint64_t>(0x1FFFFFFFFull), // quotient (odd, requires carry)
-                                      static_cast<uint32_t>(2),              // divisor
-                                      static_cast<uint32_t>(1))              // remainder
-              == 0x200000000ull);                                            // cleanly rolls over into the 34th bit
+                  static_cast<uint32_t>(2), // divisor
+                  static_cast<uint32_t>(1)) // remainder
+    == 0x200000000ull); // cleanly rolls over into the 34th bit
 
 // ====================================================================================================================
 // div::fast::nearest_away_t

@@ -33,9 +33,9 @@ namespace {
 
 template <typename real_t>
 auto is_close(char const* expected_expression, char const* actual_expression, char const*, char const*, real_t expected,
-              real_t actual, real_t rel_tol, real_t abs_floor) -> AssertionResult
+    real_t actual, real_t rel_tol, real_t abs_floor) -> AssertionResult
 {
-    auto const diff  = abs(expected - actual);
+    auto const diff = abs(expected - actual);
     auto const scale = std::max({abs_floor, rel_tol * abs(expected), rel_tol * abs(actual)});
     if (diff <= scale) return AssertionSuccess();
     return AssertionFailure() << expected_expression << " = " << expected << " vs " << actual_expression << " = "
@@ -54,7 +54,7 @@ using rule_t = rules::gauss_kronrod_t<real_t, 15>;
 
 struct integrand_t
 {
-    char const*                   name;
+    char const* name;
     std::function<real_t(real_t)> function;
 
     auto operator()(real_t x) const noexcept -> real_t { return function(x); }
@@ -64,7 +64,7 @@ struct integrand_t
 
 using integral_t = integral_t<integrand_t, rule_t>;
 
-constexpr auto domain_max  = real_t{256.0};
+constexpr auto domain_max = real_t{256.0};
 constexpr auto depth_limit = int_t{64};
 
 // ====================================================================================================================
@@ -80,7 +80,7 @@ struct param_t
 {
     integrand_t integrand;
     integrand_t expected_antiderivative;
-    int_t       max_segments;
+    int_t max_segments;
 
     friend auto operator<<(std::ostream& out, param_t const& src) -> std::ostream&
     {
@@ -91,9 +91,9 @@ struct param_t
 
 struct quadrature_integration_test_t : TestWithParam<param_t>
 {
-    integrand_t const& integrand               = GetParam().integrand;
+    integrand_t const& integrand = GetParam().integrand;
     integrand_t const& expected_antiderivative = GetParam().expected_antiderivative;
-    int_t const        max_segments            = GetParam().max_segments;
+    int_t const max_segments = GetParam().max_segments;
 
     static constexpr auto tolerance = real_t{1e-9};
 
@@ -109,13 +109,13 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
     EXPECT_LE(result.antiderivative.segment_count(), max_segments);
 
     auto const& antiderivative = result.antiderivative;
-    auto const  inputs
+    auto const inputs
         = std::array{0.0, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 100.0, domain_max / 3.0, domain_max / 2.0, domain_max};
 
     for (auto const x : inputs)
     {
         auto const expected = jet_t<real_t>{expected_antiderivative(x), integrand(x)};
-        auto const actual   = antiderivative(x);
+        auto const actual = antiderivative(x);
         EXPECT_CLOSE(expected.f, actual.f, 1e-12, 1e-14);
         EXPECT_CLOSE(expected.df, actual.df, 1e-12, 1e-14);
     }
@@ -126,9 +126,8 @@ param_t const smooth_integrands[] = {
     {{"x", [](real_t x) { return x; }}, {"(1/2)x^2", [](real_t x) { return x * x / 2.0; }}, 4},
     {{"x^2", [](real_t x) { return x * x; }}, {"(1/3)x^3", [](real_t x) { return x * x * x / 3.0; }}, 4},
     {{"1/(1+x)", [](real_t x) { return 1.0 / (1.0 + x); }}, {"log1p(x)", [](real_t x) { return std::log1p(x); }}, 128},
-    {{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }},
-     {"atan(x)", [](real_t x) { return std::atan(x); }},
-     128},
+    {{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }}, {"atan(x)", [](real_t x) { return std::atan(x); }},
+        128},
 };
 INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, ValuesIn(smooth_integrands));
 
@@ -143,8 +142,8 @@ INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, Value
 // it entirely.
 TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 {
-    constexpr auto sigma     = real_t{0.5};
-    constexpr auto center    = real_t{128.0};
+    constexpr auto sigma = real_t{0.5};
+    constexpr auto center = real_t{128.0};
     constexpr auto tolerance = real_t{1e-9};
 
     auto const bump = integrand_t{"gaussian_bump", [](real_t x) {
@@ -155,11 +154,11 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     // F(x) = (sigma * sqrt(pi) / 2) * (erf((x - center) / sigma) + erf(center / sigma)) chosen so that
     // F(0) = 0 (erf is odd, and erf(center / sigma) ~= 1 at these values)
     constexpr auto half_sqrt_pi = real_t{0.88622692545275794}; // sqrt(pi) / 2
-    auto const     analytic_antiderivative
+    auto const analytic_antiderivative
         = [](real_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
 
-    auto       integrator = adaptive_integrator_t<real_t>{tolerance, depth_limit};
-    auto const result     = integrator(integral_t{bump, rule_t{}}, domain_max);
+    auto integrator = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto const result = integrator(integral_t{bump, rule_t{}}, domain_max);
 
     EXPECT_LT(result.achieved_error, tolerance);
 
@@ -181,7 +180,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 {
     constexpr auto kink_location = real_t{3.0};
-    constexpr auto tolerance     = real_t{1e-9};
+    constexpr auto tolerance = real_t{1e-9};
 
     auto const kink = integrand_t{"abs(x-3)", [](real_t x) { return abs(x - kink_location); }};
 
@@ -189,15 +188,15 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
     //   x <= 3 : 3x - x^2/2
     //   x >  3 : 9/2 + (x-3)^2/2
     auto const analytic_antiderivative = [](real_t x) {
-        return x <= kink_location ? kink_location * x - x * x / real_t{2.0}
-                                  : (kink_location * kink_location) / real_t{2.0}
-                                        + (x - kink_location) * (x - kink_location) / real_t{2.0};
+        return x <= kink_location
+            ? kink_location * x - x * x / real_t{2.0}
+            : (kink_location * kink_location) / real_t{2.0} + (x - kink_location) * (x - kink_location) / real_t{2.0};
     };
 
-    auto blind  = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto blind = adaptive_integrator_t<real_t>{tolerance, depth_limit};
     auto guided = adaptive_integrator_t<real_t>{tolerance, depth_limit};
 
-    auto const blind_result  = blind(integral_t{kink, rule_t{}}, domain_max);
+    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_max);
     auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_max, std::array{kink_location});
 
     EXPECT_LT(blind_result.achieved_error, tolerance);
@@ -227,19 +226,19 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 
     constexpr auto tolerances = std::array{real_t{1e-6}, real_t{1e-9}, real_t{1e-12}};
 
-    auto prev_error    = infinity<real_t>();
+    auto prev_error = infinity<real_t>();
     auto prev_segments = int_t{0};
 
     for (auto const tol : tolerances)
     {
-        auto       integrator = adaptive_integrator_t<real_t>{tol, depth_limit};
-        auto const result     = integrator(integral_t{integrand, rule_t{}}, domain_max);
+        auto integrator = adaptive_integrator_t<real_t>{tol, depth_limit};
+        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_max);
 
         EXPECT_LT(result.achieved_error, tol);
         EXPECT_LE(result.achieved_error, prev_error);
         EXPECT_GE(result.antiderivative.segment_count(), prev_segments);
 
-        prev_error    = result.achieved_error;
+        prev_error = result.achieved_error;
         prev_segments = result.antiderivative.segment_count();
     }
 }
@@ -251,16 +250,16 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 // between segments.
 TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth_result)
 {
-    auto const     integrand = integrand_t{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }};
+    auto const integrand = integrand_t{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }};
     constexpr auto tolerance = real_t{1e-12};
 
-    auto bare  = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto bare = adaptive_integrator_t<real_t>{tolerance, depth_limit};
     auto split = adaptive_integrator_t<real_t>{tolerance, depth_limit};
 
-    auto const bare_result  = bare(integral_t{integrand, rule_t{}}, domain_max);
+    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_max);
     auto const split_result = split(integral_t{integrand, rule_t{}}, domain_max, std::array{32.0, 64.0, 128.0});
 
-    auto const& bare_antiderivative  = bare_result.antiderivative;
+    auto const& bare_antiderivative = bare_result.antiderivative;
     auto const& split_antiderivative = split_result.antiderivative;
 
     for (auto const x : std::array{0.0, 1.0, 32.0, 64.0, 128.0, 200.0, domain_max})

@@ -18,7 +18,7 @@ template <typename narrow_t> struct qr_pair_t
     narrow_t remainder;
 
     auto operator<=>(qr_pair_t const&) const noexcept -> auto = default;
-    auto operator==(qr_pair_t const&) const noexcept -> bool  = default;
+    auto operator==(qr_pair_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv::division

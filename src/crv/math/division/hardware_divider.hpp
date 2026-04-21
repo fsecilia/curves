@@ -23,13 +23,13 @@ namespace crv::division {
 template <unsigned_integral t_narrow_t> struct hardware_divider_t
 {
     using narrow_t = t_narrow_t;
-    using wide_t   = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     /// generic division; uses compiler's existing division operator
     constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
     {
-        return {.quotient  = static_cast<narrow_t>(dividend / divisor),
-                .remainder = static_cast<narrow_t>(dividend % divisor)};
+        return {.quotient = static_cast<narrow_t>(dividend / divisor),
+            .remainder = static_cast<narrow_t>(dividend % divisor)};
     }
 };
 
@@ -40,13 +40,13 @@ template <unsigned_integral t_narrow_t> struct hardware_divider_t
 /// x64-specific implementation
 template <> struct hardware_divider_t<uint32_t>
 {
-    using wide_t   = uint64_t;
+    using wide_t = uint64_t;
     using narrow_t = uint32_t;
 
     auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
     {
         auto const high = int_cast<narrow_t>(dividend >> 32);
-        auto const low  = int_cast<narrow_t>(dividend & 0xFFFFFFFF);
+        auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFF);
 
         assert(high < divisor && "division parameters will trap");
 
@@ -63,13 +63,13 @@ template <> struct hardware_divider_t<uint32_t>
 /// x64-specific implementation
 template <> struct hardware_divider_t<uint64_t>
 {
-    using wide_t   = uint128_t;
+    using wide_t = uint128_t;
     using narrow_t = uint64_t;
 
     auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
     {
         auto const high = int_cast<narrow_t>(dividend >> 64);
-        auto const low  = int_cast<narrow_t>(dividend & 0xFFFFFFFFFFFFFFFFull);
+        auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFFFFFFFFFFull);
 
         assert(high < divisor && "division parameters will trap");
 

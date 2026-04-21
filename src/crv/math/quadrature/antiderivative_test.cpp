@@ -17,7 +17,7 @@ namespace {
 struct quadrature_antiderivative_test_t : Test
 {
     using real_t = float_t;
-    using jet_t  = jet_t<real_t>;
+    using jet_t = jet_t<real_t>;
 
     struct mock_integral_t
     {
@@ -39,7 +39,7 @@ struct quadrature_antiderivative_test_t : Test
 
     using sut_t = antiderivative_t<integral_t>;
 
-    static constexpr auto expected_residual   = 0.3174;
+    static constexpr auto expected_residual = 0.3174;
     static constexpr auto expected_derivative = 1.7213;
 
     auto expect_location(real_t location, real_t expected_left, real_t) -> void
@@ -74,9 +74,9 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
 // test absolute left edge of the domain
 TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min)
 {
-    auto const location               = 0.0;
+    auto const location = 0.0;
     auto const expected_left_position = 0.0;
-    auto const expected_left_sum      = 0.0;
+    auto const expected_left_sum = 0.0;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -86,9 +86,9 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min)
 // tests point inside first segment, 0.0 <= x < 1.0
 TEST_F(quadrature_antiderivative_test_small_cache_t, first_segment)
 {
-    auto const location               = 0.5;
+    auto const location = 0.5;
     auto const expected_left_position = 0.0;
-    auto const expected_left_sum      = 0.0;
+    auto const expected_left_sum = 0.0;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -98,9 +98,9 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, first_segment)
 // tests point exactly on first boundary
 TEST_F(quadrature_antiderivative_test_small_cache_t, first_boundary)
 {
-    auto const location               = 1.0;
+    auto const location = 1.0;
     auto const expected_left_position = 1.0;
-    auto const expected_left_sum      = 2.5;
+    auto const expected_left_sum = 2.5;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -110,9 +110,9 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, first_boundary)
 // test point inside a middle interval, 1.0 < x < 2.0
 TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval)
 {
-    auto const location               = 1.5;
+    auto const location = 1.5;
     auto const expected_left_position = 1.0;
-    auto const expected_left_sum      = 2.5;
+    auto const expected_left_sum = 2.5;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -122,9 +122,9 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval)
 // test absolute right edge of the domain
 TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max)
 {
-    auto const location               = 3.0;
+    auto const location = 3.0;
     auto const expected_left_position = 3.0;
-    auto const expected_left_sum      = 8.5;
+    auto const expected_left_sum = 8.5;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -180,9 +180,9 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, segment_count)
 // test absolute left edge of the domain
 TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min)
 {
-    auto const location               = 0.0;
+    auto const location = 0.0;
     auto const expected_left_position = 0.0;
-    auto const expected_left_sum      = 0.0;
+    auto const expected_left_sum = 0.0;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -192,9 +192,9 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min)
 // test interior
 TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior)
 {
-    auto const location               = 0.75;
+    auto const location = 0.75;
     auto const expected_left_position = 0.0;
-    auto const expected_left_sum      = 0.0;
+    auto const expected_left_sum = 0.0;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -204,9 +204,9 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior)
 // test absolute right edge of the domain
 TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max)
 {
-    auto const location               = 1.5;
+    auto const location = 1.5;
     auto const expected_left_position = 1.5;
-    auto const expected_left_sum      = 3.0;
+    auto const expected_left_sum = 3.0;
     EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
     EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
 
@@ -219,25 +219,25 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max)
 
 struct quadrature_antiderivative_builder_t : Test
 {
-    using real_t        = float_t;
+    using real_t = float_t;
     using accumulator_t = real_t;
-    using real_vec_t    = std::vector<real_t>;
+    using real_vec_t = std::vector<real_t>;
 
     using move_only_id_t = std::unique_ptr<int_t>;
-    using integral_t     = move_only_id_t;
+    using integral_t = move_only_id_t;
 
     using map_t = std::flat_map<real_t, real_t>;
 
     struct antiderivative_t
     {
-        using real_t            = float_t;
-        using map_t             = map_t;
-        using boundaries_t      = map_t::key_container_type;
+        using real_t = float_t;
+        using map_t = map_t;
+        using boundaries_t = map_t::key_container_type;
         using cumulative_sums_t = map_t::mapped_container_type;
-        using integral_t        = integral_t;
+        using integral_t = integral_t;
 
         integral_t integral;
-        map_t      intervals;
+        map_t intervals;
     };
 
     using sut_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
@@ -287,7 +287,7 @@ TEST_F(quadrature_antiderivative_builder_t, append_many)
 
     EXPECT_EQ(*actual.antiderivative.integral, expected_integral_id);
     EXPECT_EQ((map_t{{0, 0}, {1.3, 5.7}, {13.17, 5.7 + 17.19}, {23.29, 5.7 + 17.19 + 31.37}}),
-              actual.antiderivative.intervals);
+        actual.antiderivative.intervals);
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11 + 53.59 + 41.43);
     EXPECT_DOUBLE_EQ(actual.max_error, 53.59);

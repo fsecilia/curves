@@ -16,14 +16,14 @@ namespace {
 struct nested_jet_test_t : Test
 {
     using scalar_t = double;
-    using value_t  = jet_t<scalar_t>;
-    using sut_t    = jet_t<value_t>;
+    using value_t = jet_t<scalar_t>;
+    using sut_t = jet_t<value_t>;
 
     // seed with primish numbers
     static constexpr scalar_t s{1.3};
-    static constexpr value_t  v{1.7, 1.9};
-    static constexpr sut_t    x{{2.3, 3.1}, {5.3, 7.1}};
-    static constexpr sut_t    y{{5.9, 7.3}, {8.3, 9.7}};
+    static constexpr value_t v{1.7, 1.9};
+    static constexpr sut_t x{{2.3, 3.1}, {5.3, 7.1}};
+    static constexpr sut_t y{{5.9, 7.3}, {8.3, 9.7}};
 
     static constexpr scalar_t eps = 1e-10;
 
@@ -86,7 +86,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_plus_scalar)
 {
     auto const expected = sut_t{{x.f.f + s, x.f.df}, x.df};
 
-    auto        sut    = x;
+    auto sut = x;
     auto const& actual = sut += s;
 
     EXPECT_EQ(&sut, &actual);
@@ -115,7 +115,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_minus_scalar)
 {
     auto const expected = sut_t{{x.f.f - s, x.f.df}, x.df};
 
-    auto        sut    = x;
+    auto sut = x;
     auto const& actual = sut -= s;
 
     EXPECT_EQ(&sut, &actual);
@@ -144,7 +144,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_times_scalar)
 {
     auto const expected = sut_t{x.f * s, x.df * s};
 
-    auto        sut    = x;
+    auto sut = x;
     auto const& actual = sut *= s;
 
     EXPECT_EQ(&sut, &actual);
@@ -173,7 +173,7 @@ TEST_F(nested_jet_test_arithmetic_t, compound_over_scalar)
 {
     auto const expected = sut_t{x.f / s, x.df / s};
 
-    auto        sut    = x;
+    auto sut = x;
     auto const& actual = sut /= s;
 
     EXPECT_EQ(&sut, &actual);
@@ -202,7 +202,7 @@ TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
 {
     // f(x) = 3x^2 + 2x + v + s
     // f'(x) = 6x*dx + 2*dx
-    auto const expected_primal     = 3.0 * x.f * x.f + 2.0 * x.f + v + s;
+    auto const expected_primal = 3.0 * x.f * x.f + 2.0 * x.f + v + s;
     auto const expected_derivative = 6.0 * x.f * x.df + 2.0 * x.df;
 
     auto const actual = 3.0 * x * x + 2.0 * x + v + s;
@@ -214,11 +214,11 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
 {
     // f(x) = x^4
     // f'(x) = 4x^3*dx
-    auto const expected_primal     = x.f * x.f * x.f * x.f;
+    auto const expected_primal = x.f * x.f * x.f * x.f;
     auto const expected_derivative = 4.0 * x.f * x.f * x.f * x.df;
 
-    auto const x2     = x * x;
-    auto const x4     = x2 * x2;
+    auto const x2 = x * x;
+    auto const x4 = x2 * x2;
     auto const actual = x4;
 
     compare(actual, {expected_primal, expected_derivative});
@@ -230,15 +230,15 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
 
 struct nested_jet_second_derivative_t : nested_jet_test_t
 {
-    static constexpr auto u        = x.f.f;   // scalar value
-    static constexpr auto du_inner = x.f.df;  // derivative wrt inner variable
-    static constexpr auto du_outer = x.df.f;  // derivative wrt outer variable
-    static constexpr auto d2u      = x.df.df; // cross derivative
+    static constexpr auto u = x.f.f; // scalar value
+    static constexpr auto du_inner = x.f.df; // derivative wrt inner variable
+    static constexpr auto du_outer = x.df.f; // derivative wrt outer variable
+    static constexpr auto d2u = x.df.df; // cross derivative
 
-    static constexpr auto v        = y.f.f;
+    static constexpr auto v = y.f.f;
     static constexpr auto dv_inner = y.f.df;
     static constexpr auto dv_outer = y.df.f;
-    static constexpr auto d2v      = y.df.df;
+    static constexpr auto d2v = y.df.df;
 };
 
 TEST_F(nested_jet_second_derivative_t, cos)
@@ -287,7 +287,7 @@ TEST_F(nested_jet_second_derivative_t, x_exp)
 
 TEST_F(nested_jet_second_derivative_t, log_sin)
 {
-    auto const t        = 1.0 / u;
+    auto const t = 1.0 / u;
     auto const expected = sut_t{
         value_t{
             log(u) * sin(u),
@@ -327,9 +327,9 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_values)
 TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 {
     // powers of base
-    auto const f    = pow(u, v);     // u^v
-    auto const f_1  = pow(u, v - 1); // u^(v - 1), first derivative scale
-    auto const f_2  = pow(u, v - 2); // u^(v - 2), second derivative scale
+    auto const f = pow(u, v); // u^v
+    auto const f_1 = pow(u, v - 1); // u^(v - 1), first derivative scale
+    auto const f_2 = pow(u, v - 2); // u^(v - 2), second derivative scale
     auto const ln_u = log(u);
 
     // first partial derivatives
@@ -354,16 +354,16 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
     // left side product rule: (@f_1/@s)*w_inner
     // @(u^(v - 1))/@s = u^(v - 2)*(u*ln(u)*dv_s + (v-1)*du_s)
     auto const w_outer_shifted = u * ln_u * dv_outer + (v - 1) * du_outer; // w for exponent v-1
-    auto const product_left    = f_2 * w_outer_shifted * w_inner;
+    auto const product_left = f_2 * w_outer_shifted * w_inner;
 
     // right side product rule: f_1*(@w_inner/@s)
     // @w_inner/@s = @(u*ln(u)*dv_t + v*du_t)/@s
     //             = (ln(u) + 1)*du_s*dv_t + u*ln(u)*d^2v + dv_s*du_t + v*d^2u
-    auto const d_u_ln_u_outer = (ln_u + 1) * du_outer;    // d(u*ln(u))/ds
-    auto const dw_inner_ds    = d_u_ln_u_outer * dv_inner // from u*ln(u) term
-                             + u * ln_u * d2v             // dv_inner -> d^2v
-                             + dv_outer * du_inner        // cross partial dv*du
-                             + v * d2u;                   // du_inner -> d^2u
+    auto const d_u_ln_u_outer = (ln_u + 1) * du_outer; // d(u*ln(u))/ds
+    auto const dw_inner_ds = d_u_ln_u_outer * dv_inner // from u*ln(u) term
+        + u * ln_u * d2v // dv_inner -> d^2v
+        + dv_outer * du_inner // cross partial dv*du
+        + v * d2u; // du_inner -> d^2u
 
     auto const product_right = f_1 * dw_inner_ds;
 
@@ -371,7 +371,7 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 
     // assemble nested jet
     auto const expected = sut_t{
-        {f, df_dt},       // {primal, @/@t}
+        {f, df_dt}, // {primal, @/@t}
         {df_ds, d2f_dsdt} // {@/@s, @^2/@s@t}
     };
 

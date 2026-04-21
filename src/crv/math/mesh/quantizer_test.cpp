@@ -29,7 +29,7 @@ struct test_vector_t
 // common fixture
 struct quantizers_fixed_point_test_t : TestWithParam<test_vector_t>
 {
-    real_t const input    = GetParam().input;
+    real_t const input = GetParam().input;
     real_t const expected = GetParam().expected;
 };
 
@@ -63,7 +63,7 @@ test_vector_t const test_vectors_frac2[] = {
     {1.75, 1.75},
 
     // standard rounding to nearest 0.25
-    {0.1, 0.0},  // 0.4 -> 0.0 -> 0.0
+    {0.1, 0.0}, // 0.4 -> 0.0 -> 0.0
     {0.2, 0.25}, // 0.8 -> 1.0 -> 0.25
     {-0.1, 0.0},
     {-0.2, -0.25},
@@ -95,16 +95,13 @@ TEST_P(quantizers_fixed_point_test_frac_bits_8_t, test)
 // resolution is 1/(2^8) = 0.00390625
 test_vector_t const test_vectors_frac8[] = {
     // exact
-    {0.0, 0.0},
-    {1.0, 1.0},
-    {0.00390625, 0.00390625},
+    {0.0, 0.0}, {1.0, 1.0}, {0.00390625, 0.00390625},
 
     // rounding
-    {0.001, 0.0},
-    {0.003, 0.00390625},
+    {0.001, 0.0}, {0.003, 0.00390625},
 
     // halfway cases
-    {0.001953125, 0.0},      // 0.001953125*256 = 0.5
+    {0.001953125, 0.0}, // 0.001953125*256 = 0.5
     {0.005859375, 0.0078125} // 1.5 -> 2.0
 };
 INSTANTIATE_TEST_SUITE_P(test_vectors, quantizers_fixed_point_test_frac_bits_8_t, ValuesIn(test_vectors_frac8));

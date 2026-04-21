@@ -44,7 +44,7 @@ template <typename float_t> struct fr_frac_t
     friend auto operator<<(std::ostream& out, fr_frac_t const& src) -> std::ostream& { return out << src.result(); }
 
     constexpr auto operator<=>(fr_frac_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(fr_frac_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(fr_frac_t const&) const noexcept -> bool = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ struct diff_t
     }
 
     constexpr auto operator<=>(diff_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(diff_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(diff_t const&) const noexcept -> bool = default;
 };
 
 /// tracks signed relative diff, diff/expected
@@ -93,18 +93,18 @@ struct rel_t
     }
 
     constexpr auto operator<=>(rel_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(rel_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(rel_t const&) const noexcept -> bool = default;
 };
 
 /// tracks signed ulps
 template <typename arg_t, typename value_t, typename fixed_t,
-          typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>,
-          typename distribution_t = distribution_t<int_t>, typename fr_frac_t = fr_frac_t<value_t>>
+    typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>, typename distribution_t = distribution_t<int_t>,
+    typename fr_frac_t = fr_frac_t<value_t>>
 struct ulps_t
 {
     error_accumulator_t error_accumulator{};
-    distribution_t      distribution{};
-    fr_frac_t           fr_frac{};
+    distribution_t distribution{};
+    fr_frac_t fr_frac{};
 
     constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
@@ -125,7 +125,7 @@ struct ulps_t
     }
 
     constexpr auto operator<=>(ulps_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(ulps_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(ulps_t const&) const noexcept -> bool = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -154,14 +154,14 @@ struct descending_t
 
 /// tracks monotonicity per sample
 template <typename arg_t, typename value_t, typename fixed_t, typename dir_policy_t = mono_dir_policies::ascending_t,
-          typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
+    typename error_accumulator_t = stats_accumulator_t<arg_t, value_t>>
 struct mono_t
 {
     [[no_unique_address]] dir_policy_t dir_policy{};
 
-    error_accumulator_t    error_accumulator{};
+    error_accumulator_t error_accumulator{};
     std::optional<fixed_t> prev{};
-    int_t                  violation_count{};
+    int_t violation_count{};
 
     constexpr auto sample(arg_t arg, fixed_t actual) noexcept -> void
     {
@@ -198,7 +198,7 @@ struct mono_t
     }
 
     constexpr auto operator<=>(mono_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(mono_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(mono_t const&) const noexcept -> bool = default;
 };
 
 } // namespace error_metric
@@ -209,15 +209,15 @@ struct mono_t
 
 /// default policy used in prod
 template <typename t_arg_t = int_t, typename t_value_t = float_t, typename t_fixed_t = fixed_t<int_t, 32>,
-          typename mono_metric_dir_policy = error_metric::mono_dir_policies::ascending_t>
+    typename mono_metric_dir_policy = error_metric::mono_dir_policies::ascending_t>
 struct error_metrics_policy_t
 {
-    using arg_t   = t_arg_t;
+    using arg_t = t_arg_t;
     using value_t = t_value_t;
     using fixed_t = t_fixed_t;
 
     template <typename arg_t, typename value_t> using diff_metric_t = error_metric::diff_t<arg_t, value_t>;
-    template <typename arg_t, typename value_t> using rel_metric_t  = error_metric::rel_t<arg_t, value_t>;
+    template <typename arg_t, typename value_t> using rel_metric_t = error_metric::rel_t<arg_t, value_t>;
 
     template <typename arg_t, typename value_t, typename fixed_t>
     using ulps_metric_t = error_metric::ulps_t<arg_t, value_t, fixed_t>;
@@ -229,16 +229,16 @@ struct error_metrics_policy_t
 /// collects metrics about various types of error
 template <typename policy_t = error_metrics_policy_t<>> struct error_metrics_t
 {
-    using arg_t         = policy_t::arg_t;
-    using value_t       = policy_t::value_t;
-    using fixed_t       = policy_t::fixed_t;
+    using arg_t = policy_t::arg_t;
+    using value_t = policy_t::value_t;
+    using fixed_t = policy_t::fixed_t;
     using diff_metric_t = policy_t::template diff_metric_t<arg_t, value_t>;
-    using rel_metric_t  = policy_t::template rel_metric_t<arg_t, value_t>;
+    using rel_metric_t = policy_t::template rel_metric_t<arg_t, value_t>;
     using ulps_metric_t = policy_t::template ulps_metric_t<arg_t, value_t, fixed_t>;
     using mono_metric_t = policy_t::template mono_metric_t<arg_t, value_t, fixed_t>;
 
     diff_metric_t diff_metric;
-    rel_metric_t  rel_metric;
+    rel_metric_t rel_metric;
     ulps_metric_t ulps_metric;
     mono_metric_t mono_metric;
 
@@ -263,7 +263,7 @@ template <typename policy_t = error_metrics_policy_t<>> struct error_metrics_t
     }
 
     constexpr auto operator<=>(error_metrics_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(error_metrics_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(error_metrics_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv

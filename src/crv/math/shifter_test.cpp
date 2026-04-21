@@ -36,12 +36,12 @@ template <typename t_underlying_t, typename tag_t> struct strong_type_t
     }
 
     constexpr auto operator<=>(strong_type_t const& other) const noexcept -> auto = default;
-    constexpr auto operator==(strong_type_t const& other) const noexcept -> bool  = default;
+    constexpr auto operator==(strong_type_t const& other) const noexcept -> bool = default;
 };
 
 using underlying_t = int_t;
-using src_t        = strong_type_t<underlying_t, struct src_tag_t>;
-using dst_t        = strong_type_t<underlying_t, struct dst_tag_t>;
+using src_t = strong_type_t<underlying_t, struct src_tag_t>;
+using dst_t = strong_type_t<underlying_t, struct dst_tag_t>;
 
 } // namespace crv
 
@@ -84,15 +84,15 @@ constexpr auto int_cast(strong_type_t<src_underlying_t, src_tag_t> src) -> dst_t
 }
 
 template <typename lhs_underlying_t, typename lhs_tag_t, typename rhs_underlying_t, typename rhs_tag_t>
-constexpr auto cmp_less(strong_type_t<lhs_underlying_t, lhs_tag_t> lhs,
-                        strong_type_t<rhs_underlying_t, rhs_tag_t> rhs) noexcept -> bool
+constexpr auto cmp_less(
+    strong_type_t<lhs_underlying_t, lhs_tag_t> lhs, strong_type_t<rhs_underlying_t, rhs_tag_t> rhs) noexcept -> bool
 {
     return cmp_less(lhs.underlying, rhs.underlying);
 }
 
 template <typename lhs_underlying_t, typename lhs_tag_t, typename rhs_underlying_t, typename rhs_tag_t>
-constexpr auto cmp_greater(strong_type_t<lhs_underlying_t, lhs_tag_t> lhs,
-                           strong_type_t<rhs_underlying_t, rhs_tag_t> rhs) noexcept -> bool
+constexpr auto cmp_greater(
+    strong_type_t<lhs_underlying_t, lhs_tag_t> lhs, strong_type_t<rhs_underlying_t, rhs_tag_t> rhs) noexcept -> bool
 {
     return cmp_greater(lhs.underlying, rhs.underlying);
 }
@@ -134,17 +134,17 @@ namespace shr {
 struct shr_test_t
 {
     static constexpr rounding_mode_t rounding_mode{
-        .expected_src       = 100,
-        .expected_count     = 2,
-        .bias_result        = 104,
-        .expected_shifted   = 104 >> 2,
+        .expected_src = 100,
+        .expected_count = 2,
+        .bias_result = 104,
+        .expected_shifted = 104 >> 2,
         .expected_unshifted = 104,
-        .carry_result       = 27,
+        .carry_result = 27,
     };
 
     constexpr auto test_shr_sym_dynamic() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shr(src_t{100}, 2);
         if (result.underlying != (27)) throw "test_shr_sym_dynamic";
         return true;
@@ -152,7 +152,7 @@ struct shr_test_t
 
     constexpr auto test_shr_sym_static() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shr<2>(src_t{100});
         if (result.underlying != (27)) throw "test_shr_sym_static";
         return true;
@@ -160,7 +160,7 @@ struct shr_test_t
 
     constexpr auto test_shr_asym_dynamic() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shr<dst_t>(src_t{100}, 2);
         if (result.underlying != (27)) throw "test_shr_asym_dynamic";
         return true;
@@ -168,7 +168,7 @@ struct shr_test_t
 
     constexpr auto test_shr_asym_static() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shr<dst_t, 2>(src_t{100});
         if (result.underlying != (27)) throw "test_shr_asym_static";
         return true;
@@ -176,7 +176,7 @@ struct shr_test_t
 
     constexpr auto test_shift_sym_dynamic_negative_count() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shift(src_t{100}, -2);
         if (result.underlying != (27)) throw "test_shift_sym_dynamic_negative_count";
         return true;
@@ -184,7 +184,7 @@ struct shr_test_t
 
     constexpr auto test_shift_sym_static_negative_count() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shift<-2>(src_t{100});
         if (result.underlying != (27)) throw "test_shift_sym_static_negative_count";
         return true;
@@ -192,7 +192,7 @@ struct shr_test_t
 
     constexpr auto test_shift_asym_dynamic_negative_count() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shift<dst_t>(src_t{100}, -2);
         if (result.underlying != (27)) throw "test_shift_asym_dynamic_negative_count";
         return true;
@@ -200,7 +200,7 @@ struct shr_test_t
 
     constexpr auto test_shift_asym_static_negative_count() const
     {
-        constexpr auto sut    = shifter_t{rounding_mode};
+        constexpr auto sut = shifter_t{rounding_mode};
         constexpr auto result = sut.shift<dst_t, -2>(src_t{100});
         if (result.underlying != (27)) throw "test_shift_asym_static_positive_count";
         return true;
@@ -214,14 +214,14 @@ static_assert(shr_test.test_shr_sym_static(), "shifter_t: test_shr_sym_static fa
 static_assert(shr_test.test_shr_asym_dynamic(), "shifter_t: test_shr_asym_dynamic failed");
 static_assert(shr_test.test_shr_asym_static(), "shifter_t: test_shr_asym_static failed");
 
-static_assert(shr_test.test_shift_sym_dynamic_negative_count(),
-              "shifter_t: test_shift_sym_dynamic_negative_count failed");
-static_assert(shr_test.test_shift_sym_static_negative_count(),
-              "shifter_t: test_shift_sym_static_negative_count failed");
-static_assert(shr_test.test_shift_asym_dynamic_negative_count(),
-              "shifter_t: test_shift_asym_dynamic_negative_count failed");
-static_assert(shr_test.test_shift_asym_static_negative_count(),
-              "shifter_t: test_shift_asym_static_negative_count failed");
+static_assert(
+    shr_test.test_shift_sym_dynamic_negative_count(), "shifter_t: test_shift_sym_dynamic_negative_count failed");
+static_assert(
+    shr_test.test_shift_sym_static_negative_count(), "shifter_t: test_shift_sym_static_negative_count failed");
+static_assert(
+    shr_test.test_shift_asym_dynamic_negative_count(), "shifter_t: test_shift_asym_dynamic_negative_count failed");
+static_assert(
+    shr_test.test_shift_asym_static_negative_count(), "shifter_t: test_shift_asym_static_negative_count failed");
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -241,7 +241,7 @@ TEST(shifter_death_test, shr_asym_dynamic_zero_count)
 
 TEST(shifter_death_test, shr_sym_dynamic_oversized_count)
 {
-    constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
+    constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
     constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
     EXPECT_DEBUG_DEATH(sut.shr(src_t{100}, src_bits), "shr count must be less than bit width");
@@ -249,7 +249,7 @@ TEST(shifter_death_test, shr_sym_dynamic_oversized_count)
 
 TEST(shifter_death_test, shr_asym_dynamic_oversized_count)
 {
-    constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
+    constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
     constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
     EXPECT_DEBUG_DEATH(sut.shr<dst_t>(src_t{100}, src_bits), "shr count must be less than bit width");
@@ -266,10 +266,10 @@ TEST(shifter_death_test, shr_asym_dynamic_oversized_count)
 namespace shl {
 
 constexpr auto smallest_valid_underlying_for_shl_4 = min<underlying_t>() >> 4;
-constexpr auto largest_valid_underlying_for_shl_4  = max<underlying_t>() >> 4;
+constexpr auto largest_valid_underlying_for_shl_4 = max<underlying_t>() >> 4;
 
 constexpr auto smallest_valid_src_for_shl_4 = src_t{smallest_valid_underlying_for_shl_4};
-constexpr auto largest_valid_src_for_shl_4  = src_t{largest_valid_underlying_for_shl_4};
+constexpr auto largest_valid_src_for_shl_4 = src_t{largest_valid_underlying_for_shl_4};
 
 // --------------------------------------------------------------------------------------------------------------------
 // negative boundary
@@ -489,10 +489,10 @@ static_assert(test_shift_asym_static_zero_count(), "shifter_t: test_shift_asym_s
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-constexpr auto largest_invalid_underlying_for_shl_4  = (min<underlying_t>() >> 4) - 1;
+constexpr auto largest_invalid_underlying_for_shl_4 = (min<underlying_t>() >> 4) - 1;
 constexpr auto smallest_invalid_underlying_for_shl_4 = (max<underlying_t>() >> 4) + 1;
 
-constexpr auto largest_invalid_src_for_shl_4  = src_t{largest_invalid_underlying_for_shl_4};
+constexpr auto largest_invalid_src_for_shl_4 = src_t{largest_invalid_underlying_for_shl_4};
 constexpr auto smallest_invalid_src_for_shl_4 = src_t{smallest_invalid_underlying_for_shl_4};
 
 TEST(shifter_death_test, shl_sym_dynamic_negative_count)
@@ -635,7 +635,7 @@ TEST(shifter_death_test, shift_asym_static_positive_overflow)
 
 TEST(shifter_death_test, shl_sym_dynamic_oversized_count)
 {
-    constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
+    constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
     constexpr auto dst_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
     EXPECT_DEBUG_DEATH(sut.shl(src_t{100}, dst_bits), "shl count larger than target bit width");
@@ -643,7 +643,7 @@ TEST(shifter_death_test, shl_sym_dynamic_oversized_count)
 
 TEST(shifter_death_test, shl_asym_dynamic_oversized_count)
 {
-    constexpr auto sut      = shifter_t<crv::rounding_mode_t>{};
+    constexpr auto sut = shifter_t<crv::rounding_mode_t>{};
     constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
     EXPECT_DEBUG_DEATH(sut.shl<dst_t>(src_t{100}, dst_bits), "shl count larger than target bit width");

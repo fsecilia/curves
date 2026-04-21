@@ -10,7 +10,7 @@ namespace crv::division {
 namespace {
 
 using narrow_t = uint32_t;
-using wide_t   = uint64_t;
+using wide_t = uint64_t;
 
 struct arbitrary_t
 {};

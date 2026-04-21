@@ -12,7 +12,7 @@ extern "C" {
 namespace crv {
 
 using q47_16i_t = fixed_t<int, 16>;
-using q63_0i_t  = fixed_t<int64_t, 0>;
+using q63_0i_t = fixed_t<int64_t, 0>;
 
 template struct fixed_t<int, 16>;
 template struct fixed_t<int64_t, 0>;

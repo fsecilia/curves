@@ -51,8 +51,8 @@ public:
     constexpr auto reserve(std::size_t capacity) -> void { container_.reserve(capacity); }
 
 private:
-    container_t                        container_{};
-    [[no_unique_address]] compare_t    compare_{};
+    container_t container_{};
+    [[no_unique_address]] compare_t compare_{};
     [[no_unique_address]] projection_t projection_{};
 };
 

@@ -37,7 +37,7 @@ template <typename in_t> struct sweep_range_t
 template <typename approximation_t, typename reference_t, typename metrics_t> struct accuracy_test_runner_t
 {
     approximation_t approximation;
-    reference_t     reference;
+    reference_t reference;
 
     using value_t = metrics_t::value_t;
     using clock_t = std::chrono::steady_clock;
@@ -58,7 +58,7 @@ template <typename approximation_t, typename reference_t, typename metrics_t> st
         auto label = std::ostringstream{};
         label << "Fuzzed Walk, Avg Δ ≈ " << avg_step_val << " (" << in_t::literal(avg_step_val) << ")";
 
-        std::mt19937_64                                       rng(std::random_device{}());
+        std::mt19937_64 rng(std::random_device{}());
         std::uniform_int_distribution<typename in_t::value_t> step_dist(min_step.value, range.step.value);
 
         run_sweep(range, label.str(), [&]() { return step_dist(rng); });
@@ -74,9 +74,9 @@ private:
 
         metrics_t metrics;
 
-        auto const            start_time                     = clock_t::now();
-        auto                  prev_time                      = start_time;
-        static constexpr auto update_interval                = std::chrono::seconds(1);
+        auto const start_time = clock_t::now();
+        auto prev_time = start_time;
+        static constexpr auto update_interval = std::chrono::seconds(1);
         static constexpr auto iterations_between_time_checks = 1'000'000;
 
         auto x_fixed = range.min;
@@ -100,8 +100,8 @@ private:
                 prev_time = cur_time;
 
                 auto const completed = static_cast<value_t>(x_fixed.value) - static_cast<value_t>(range.min.value);
-                auto const total     = static_cast<value_t>(range.max.value) - static_cast<value_t>(range.min.value);
-                auto const elapsed   = cur_time - start_time;
+                auto const total = static_cast<value_t>(range.max.value) - static_cast<value_t>(range.min.value);
+                auto const elapsed = cur_time - start_time;
 
                 auto remaining = std::chrono::seconds(0);
                 if (completed > 0)

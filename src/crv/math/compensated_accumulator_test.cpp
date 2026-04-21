@@ -13,7 +13,7 @@ namespace {
 struct compensated_accumulator_test_t : Test
 {
     using real_t = float32_t;
-    using sut_t  = compensated_accumulator_t<real_t>;
+    using sut_t = compensated_accumulator_t<real_t>;
 
     static constexpr auto iterations = int_t{1'000'000};
 };
@@ -29,12 +29,12 @@ TEST_F(compensated_accumulator_test_t, sums_normally)
 
 TEST_F(compensated_accumulator_test_t, catches_vanishing_udates)
 {
-    auto const large_value     = real_t{1.0};
-    auto const small_value     = epsilon<real_t>() / 10;
+    auto const large_value = real_t{1.0};
+    auto const small_value = epsilon<real_t>() / 10;
     auto const expected_change = small_value * iterations;
 
     auto reference = large_value;
-    auto sut       = sut_t{large_value};
+    auto sut = sut_t{large_value};
     for (int i = 0; i < iterations; ++i)
     {
         reference += small_value;

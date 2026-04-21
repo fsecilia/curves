@@ -17,14 +17,14 @@
 namespace crv {
 namespace {
 
-using wide_t   = uint128_t;
+using wide_t = uint128_t;
 using narrow_t = uint64_t;
 
 constexpr auto narrow_width = sizeof(narrow_t) * CHAR_BIT;
 
 struct test_case_t
 {
-    wide_t   dividend;
+    wide_t dividend;
     narrow_t divisor;
 };
 
