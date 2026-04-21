@@ -15,7 +15,7 @@ using sut_t = fixed_t<int64_t, 16>;
 struct test_vector_t
 {
     float_t floating_point;
-    sut_t   expected_fixed;
+    sut_t expected_fixed;
     float_t tolerance;
 
     friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
@@ -28,14 +28,14 @@ struct test_vector_t
 struct fixed_test_float_conversion_t : TestWithParam<test_vector_t>
 {
     float_t floating_point = GetParam().floating_point;
-    sut_t   expected_fixed = GetParam().expected_fixed;
-    float_t tolerance      = GetParam().tolerance;
+    sut_t expected_fixed = GetParam().expected_fixed;
+    float_t tolerance = GetParam().tolerance;
 
     template <typename input_float_t> auto test() const noexcept -> void
     {
         auto const input_float = static_cast<input_float_t>(floating_point);
 
-        auto const test_fixed   = to_fixed<sut_t>(input_float);
+        auto const test_fixed = to_fixed<sut_t>(input_float);
         auto const output_float = from_fixed<input_float_t>(test_fixed);
 
         EXPECT_EQ(expected_fixed, test_fixed);
@@ -64,8 +64,8 @@ test_vector_t const test_vectors[] = {
     {0.25, sut_t::literal(16384), 0.0},
 
     // standard rounding, no ties
-    {1.0 + (0.4 / 65536.0), sut_t::literal(65536), 1e-5},   // rounds down
-    {1.0 + (0.6 / 65536.0), sut_t::literal(65537), 1e-5},   // rounds up
+    {1.0 + (0.4 / 65536.0), sut_t::literal(65536), 1e-5}, // rounds down
+    {1.0 + (0.6 / 65536.0), sut_t::literal(65537), 1e-5}, // rounds up
     {-1.0 - (0.4 / 65536.0), sut_t::literal(-65536), 1e-5}, // rounds up towards zero
     {-1.0 - (0.6 / 65536.0), sut_t::literal(-65537), 1e-5}, // rounds down away from zero
 
@@ -76,7 +76,7 @@ test_vector_t const test_vectors[] = {
     {3.5 / 65536.0, sut_t::literal(4), 1e-5}, // 3 (odd) and 4 (even) -> rounds to 4
 
     // negative rne tie breakers
-    {-0.5 / 65536.0, sut_t::literal(0), 1e-5},  // 0 (even) and -1 (odd) -> rounds to 0
+    {-0.5 / 65536.0, sut_t::literal(0), 1e-5}, // 0 (even) and -1 (odd) -> rounds to 0
     {-1.5 / 65536.0, sut_t::literal(-2), 1e-5}, // -1 (odd) and -2 (even) -> rounds to -2
     {-2.5 / 65536.0, sut_t::literal(-2), 1e-5}, // -2 (even) and -3 (odd) -> rounds to -2
     {-3.5 / 65536.0, sut_t::literal(-4), 1e-5}, // -3 (odd) and -4 (even) -> rounds to -4

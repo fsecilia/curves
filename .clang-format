@@ -11,16 +11,14 @@ IndentRequiresClause: true
 IndentWrappedFunctionNames: false
 
 # alignment
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: DontAlign
 AlignArrayOfStructures: None
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
-AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None
 AlignEscapedNewlines: Left
-AlignOperands: Align
-AlignTrailingComments:
-  Kind: Always
-  OverEmptyLines: 1
+AlignOperands: DontAlign
+AlignTrailingComments: false
 PointerAlignment: Left
 QualifierAlignment: Right
 ReferenceAlignment: Pointer

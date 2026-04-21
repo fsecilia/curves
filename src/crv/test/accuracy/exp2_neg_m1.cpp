@@ -14,9 +14,9 @@ namespace {
 
 struct rexp2_m1_test_t
 {
-    using impl_t      = exp2_neg_m1_q64_to_q1_63_t;
-    using in_t        = impl_t::in_t;
-    using out_t       = impl_t::out_t;
+    using impl_t = exp2_neg_m1_q64_to_q1_63_t;
+    using in_t = impl_t::in_t;
+    using out_t = impl_t::out_t;
     using reference_t = reference_float_t;
 
     using error_metrics_t = error_metrics_t<
@@ -24,17 +24,17 @@ struct rexp2_m1_test_t
 
     auto operator()() noexcept -> void
     {
-        using range_t      = sweep_range_t<in_t>;
+        using range_t = sweep_range_t<in_t>;
         auto const max_val = crv::max<uint64_t>();
-        auto const max     = in_t::literal(max_val);
+        auto const max = in_t::literal(max_val);
 
         auto const approx_impl = impl_t{};
-        auto const ref_impl    = [](reference_t const& x) { return std::exp2(-x) - static_cast<reference_t>(1.0); };
+        auto const ref_impl = [](reference_t const& x) { return std::exp2(-x) - static_cast<reference_t>(1.0); };
 
         auto const runner
             = accuracy_test_runner_t<decltype(approx_impl), decltype(ref_impl), error_metrics_t>{approx_impl, ref_impl};
 
-        auto const iterations  = 10'000'000ull;
+        auto const iterations = 10'000'000ull;
         auto const coarse_step = in_t::literal(max_val / iterations);
 
         range_t uniform_ranges[] = {

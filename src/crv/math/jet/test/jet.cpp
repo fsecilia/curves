@@ -15,19 +15,19 @@ namespace crv {
 namespace {
 
 using value_t = float_t;
-using sut_t   = jet_t<value_t>;
+using sut_t = jet_t<value_t>;
 
 static constexpr auto eps = epsilon<value_t>();
 static constexpr auto inf = infinity<value_t>();
 static constexpr auto nan = std::numeric_limits<value_t>::quiet_NaN();
-static constexpr auto e   = std::numbers::e;
-static constexpr auto pi  = std::numbers::pi;
+static constexpr auto e = std::numbers::e;
+static constexpr auto pi = std::numbers::pi;
 
 struct jet_test_t : Test
 {
-    static constexpr value_t f  = 37.2; // arbitrary
+    static constexpr value_t f = 37.2; // arbitrary
     static constexpr value_t df = 26.3; // arbitrary
-    static constexpr sut_t   x{f, df};
+    static constexpr sut_t x{f, df};
 };
 
 // ====================================================================================================================
@@ -95,14 +95,14 @@ TEST_F(jet_test_construction_t, pair)
 
 struct jet_test_conversion_t : jet_test_t
 {
-    static constexpr int_t f_int  = 7;
+    static constexpr int_t f_int = 7;
     static constexpr int_t df_int = 11;
 };
 
 TEST_F(jet_test_conversion_t, ctor)
 {
     constexpr auto jet_int = jet_t{f_int, df_int};
-    constexpr auto sut     = sut_t{jet_int};
+    constexpr auto sut = sut_t{jet_int};
 
     static_assert(static_cast<value_t>(f_int) == sut.f);
     static_assert(static_cast<value_t>(df_int) == sut.df);
@@ -196,7 +196,7 @@ struct jet_test_unary_arithmetic_t : jet_test_t
 TEST_F(jet_test_unary_arithmetic_t, plus)
 {
     constexpr auto expected = sut_t{x.f, x.df};
-    constexpr auto actual   = +x;
+    constexpr auto actual = +x;
 
     static_assert(expected == actual);
 }
@@ -204,7 +204,7 @@ TEST_F(jet_test_unary_arithmetic_t, plus)
 TEST_F(jet_test_unary_arithmetic_t, minus)
 {
     constexpr auto expected = sut_t{-x.f, -x.df};
-    constexpr auto actual   = -x;
+    constexpr auto actual = -x;
 
     static_assert(expected == actual);
 }
@@ -216,9 +216,9 @@ TEST_F(jet_test_unary_arithmetic_t, minus)
 struct value_op_test_vector_t
 {
     std::string name;
-    sut_t       jet;
-    value_t     value;
-    sut_t       expected;
+    sut_t jet;
+    value_t value;
+    sut_t expected;
 
     friend auto operator<<(std::ostream& out, value_op_test_vector_t const& src) -> std::ostream&
     {
@@ -228,9 +228,9 @@ struct value_op_test_vector_t
 
 struct jet_test_value_op_t : jet_test_t, WithParamInterface<value_op_test_vector_t>
 {
-    sut_t         jet      = GetParam().jet;
-    value_t const value    = GetParam().value;
-    sut_t const&  expected = GetParam().expected;
+    sut_t jet = GetParam().jet;
+    value_t const value = GetParam().value;
+    sut_t const& expected = GetParam().expected;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -272,7 +272,7 @@ value_op_test_vector_t const value_addition_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(value_addition, jet_test_value_addition_t, ValuesIn(value_addition_vectors),
-                         test_name_generator_t<value_op_test_vector_t>{});
+    test_name_generator_t<value_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Value Subtraction
@@ -313,7 +313,7 @@ value_op_test_vector_t const value_subtraction_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(value_subtraction, jet_test_value_subtraction_t, ValuesIn(value_subtraction_vectors),
-                         test_name_generator_t<value_op_test_vector_t>{});
+    test_name_generator_t<value_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Value Multiplication
@@ -356,7 +356,7 @@ value_op_test_vector_t const value_multiplication_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(value_multiplication, jet_test_value_multiplication_t, ValuesIn(value_multiplication_vectors),
-                         test_name_generator_t<value_op_test_vector_t>{});
+    test_name_generator_t<value_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Value Division
@@ -382,7 +382,7 @@ TEST_P(jet_test_value_division_t, jet_divided_by_value)
 
 TEST_P(jet_test_value_division_t, value_divided_by_jet)
 {
-    auto const actual   = value / jet;
+    auto const actual = value / jet;
     auto const identity = actual * expected;
 
     EXPECT_NEAR(1.0, identity.f, 1e-15);
@@ -398,7 +398,7 @@ value_op_test_vector_t const value_division_vectors[] = {
 };
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(value_division, jet_test_value_division_t, ValuesIn(value_division_vectors),
-                         test_name_generator_t<value_op_test_vector_t>{});
+    test_name_generator_t<value_op_test_vector_t>{});
 
 // ====================================================================================================================
 // Jet Arithmetic
@@ -407,9 +407,9 @@ INSTANTIATE_TEST_SUITE_P(value_division, jet_test_value_division_t, ValuesIn(val
 struct jet_op_test_vector_t
 {
     std::string name;
-    sut_t       lhs;
-    sut_t       rhs;
-    sut_t       expected;
+    sut_t lhs;
+    sut_t rhs;
+    sut_t expected;
 
     friend auto operator<<(std::ostream& out, jet_op_test_vector_t const& src) -> std::ostream&
     {
@@ -419,8 +419,8 @@ struct jet_op_test_vector_t
 
 struct jet_test_jet_op_t : jet_test_t, WithParamInterface<jet_op_test_vector_t>
 {
-    sut_t       lhs      = GetParam().lhs;
-    sut_t const rhs      = GetParam().rhs;
+    sut_t lhs = GetParam().lhs;
+    sut_t const rhs = GetParam().rhs;
     sut_t const expected = GetParam().expected;
 };
 
@@ -460,7 +460,7 @@ jet_op_test_vector_t const jet_addition_vectors[] = {
     {"mixed zeros", {5.0, 0.0}, {0.0, 3.0}, {5.0, 3.0}},
 };
 INSTANTIATE_TEST_SUITE_P(jet_addition, jet_test_jet_addition_t, ValuesIn(jet_addition_vectors),
-                         test_name_generator_t<jet_op_test_vector_t>{});
+    test_name_generator_t<jet_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Subtraction
@@ -499,7 +499,7 @@ jet_op_test_vector_t const jet_subtraction_vectors[] = {
     {"mixed zeros", {5.0, 0.0}, {0.0, 7.0}, {5.0, -7.0}},
 };
 INSTANTIATE_TEST_SUITE_P(jet_subtraction, jet_test_jet_subtraction_t, ValuesIn(jet_subtraction_vectors),
-                         test_name_generator_t<jet_op_test_vector_t>{});
+    test_name_generator_t<jet_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication
@@ -547,7 +547,7 @@ jet_op_test_vector_t const jet_multiplication_vectors[] = {
     {"identity", {3.0, 2.0}, {1.0, 0.0}, {3.0, 2.0}},
 };
 INSTANTIATE_TEST_SUITE_P(jet_multiplication, jet_test_jet_multiplication_t, ValuesIn(jet_multiplication_vectors),
-                         test_name_generator_t<jet_op_test_vector_t>{});
+    test_name_generator_t<jet_op_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
@@ -573,7 +573,7 @@ TEST_P(jet_test_jet_division_t, binary_op)
 
 TEST_P(jet_test_jet_division_t, binary_op_inverse)
 {
-    auto const actual   = rhs / lhs;
+    auto const actual = rhs / lhs;
     auto const identity = actual * expected;
 
     EXPECT_NEAR(1.0, identity.f, 1e-15);
@@ -593,7 +593,7 @@ jet_op_test_vector_t const jet_division_vectors[] = {
     {"scaled_variable/variable", {6.0, 5.0}, {2.0, 1.0}, {3.0, 1.0}},
 };
 INSTANTIATE_TEST_SUITE_P(jet_division, jet_test_jet_division_t, ValuesIn(jet_division_vectors),
-                         test_name_generator_t<jet_op_test_vector_t>{});
+    test_name_generator_t<jet_op_test_vector_t>{});
 
 // ====================================================================================================================
 // Selection
@@ -606,10 +606,10 @@ INSTANTIATE_TEST_SUITE_P(jet_division, jet_test_jet_division_t, ValuesIn(jet_div
 struct selection_min_max_test_vector_t
 {
     std::string name;
-    sut_t       x;
-    sut_t       y;
-    sut_t       expected_min;
-    sut_t       expected_max;
+    sut_t x;
+    sut_t y;
+    sut_t expected_min;
+    sut_t expected_max;
 
     friend auto operator<<(std::ostream& out, selection_min_max_test_vector_t const& src) -> std::ostream&
     {
@@ -620,8 +620,8 @@ struct selection_min_max_test_vector_t
 
 struct jet_test_selection_min_max_t : jet_test_t, WithParamInterface<selection_min_max_test_vector_t>
 {
-    sut_t const x            = GetParam().x;
-    sut_t const y            = GetParam().y;
+    sut_t const x = GetParam().x;
+    sut_t const y = GetParam().y;
     sut_t const expected_min = GetParam().expected_min;
     sut_t const expected_max = GetParam().expected_max;
 };
@@ -653,7 +653,7 @@ selection_min_max_test_vector_t const selection_vectors[] = {
     {"x == y = x, y", {3.0, 10.0}, {3.0, 20.0}, {3.0, 20.0}, {3.0, 20.0}},
 };
 INSTANTIATE_TEST_SUITE_P(selection, jet_test_selection_min_max_t, ValuesIn(selection_vectors),
-                         test_name_generator_t<selection_min_max_test_vector_t>{});
+    test_name_generator_t<selection_min_max_test_vector_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Clamp
@@ -693,10 +693,10 @@ TEST_F(jet_test_selection_clamp_t, within)
 struct classification_test_vector_t
 {
     std::string name;
-    sut_t       sut;
-    bool        expected_isfinite;
-    bool        expected_isinf;
-    bool        expected_isnan;
+    sut_t sut;
+    bool expected_isfinite;
+    bool expected_isinf;
+    bool expected_isnan;
 
     friend auto operator<<(std::ostream& out, classification_test_vector_t const& src) -> std::ostream&
     {
@@ -711,8 +711,8 @@ struct jet_test_classification_t : jet_test_t, WithParamInterface<classification
     sut_t const& sut = GetParam().sut;
 
     bool const expected_isfinite = GetParam().expected_isfinite;
-    bool const expected_isinf    = GetParam().expected_isinf;
-    bool const expected_isnan    = GetParam().expected_isnan;
+    bool const expected_isinf = GetParam().expected_isinf;
+    bool const expected_isnan = GetParam().expected_isnan;
 };
 
 TEST_P(jet_test_classification_t, isfinite)
@@ -745,7 +745,7 @@ classification_test_vector_t const classification_vectors[] = {
     {"nan primal, infinite derivative", {nan, inf}, false, false, true},
 };
 INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
-                         test_name_generator_t<classification_test_vector_t>{});
+    test_name_generator_t<classification_test_vector_t>{});
 
 // ====================================================================================================================
 // Math Functions
@@ -758,8 +758,8 @@ INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(cla
 struct math_func_test_vector_x_t
 {
     std::string name;
-    sut_t       x;
-    sut_t       expected;
+    sut_t x;
+    sut_t expected;
 
     friend auto operator<<(std::ostream& out, math_func_test_vector_x_t const& src) -> std::ostream&
     {
@@ -769,7 +769,7 @@ struct math_func_test_vector_x_t
 
 struct jet_test_math_func_x_t : jet_test_t, WithParamInterface<math_func_test_vector_x_t>
 {
-    sut_t const& x        = GetParam().x;
+    sut_t const& x = GetParam().x;
     sut_t const& expected = GetParam().expected;
 };
 
@@ -780,9 +780,9 @@ struct jet_test_math_func_x_t : jet_test_t, WithParamInterface<math_func_test_ve
 struct math_func_test_vector_xy_t
 {
     std::string name;
-    sut_t       x;
-    sut_t       y;
-    sut_t       expected;
+    sut_t x;
+    sut_t y;
+    sut_t expected;
 
     friend auto operator<<(std::ostream& out, math_func_test_vector_xy_t const& src) -> std::ostream&
     {
@@ -793,8 +793,8 @@ struct math_func_test_vector_xy_t
 
 struct jet_test_math_func_xy_t : jet_test_t, WithParamInterface<math_func_test_vector_xy_t>
 {
-    sut_t const& x        = GetParam().x;
-    sut_t const& y        = GetParam().y;
+    sut_t const& x = GetParam().x;
+    sut_t const& y = GetParam().y;
     sut_t const& expected = GetParam().expected;
 };
 
@@ -827,8 +827,8 @@ math_func_test_vector_x_t const abs_vectors[] = {
     {"positive, positive", { 7.0,  13.0}, {7.0,  13.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(abs, jet_test_abs_t, ValuesIn(abs_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    abs, jet_test_abs_t, ValuesIn(abs_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // copysign
@@ -863,8 +863,8 @@ math_func_test_vector_xy_t const copysign_vectors[] = {
     {"pp, 00", { 7.0,  11.0}, { 0.0,   0.0}, { 7.0,  11.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(copysign, jet_test_copysign_t, ValuesIn(copysign_vectors),
-                         test_name_generator_t<math_func_test_vector_xy_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    copysign, jet_test_copysign_t, ValuesIn(copysign_vectors), test_name_generator_t<math_func_test_vector_xy_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // copysign Edge Cases
@@ -914,8 +914,8 @@ const math_func_test_vector_x_t cos_vectors[] = {
     {"pi", {pi, 1.3}, {-1.0, 0.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(cos, jet_test_cos_t, ValuesIn(cos_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    cos, jet_test_cos_t, ValuesIn(cos_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // cosh
@@ -950,8 +950,8 @@ math_func_test_vector_x_t const cosh_vectors[] = {
     {cosh_vector("1", 1.0)},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(cosh, jet_test_cosh_t, ValuesIn(cosh_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    cosh, jet_test_cosh_t, ValuesIn(cosh_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // exp
@@ -978,8 +978,8 @@ const math_func_test_vector_x_t exp_vectors[] = {
     {"2", {2.0, 1.3}, {e*e, e*e*1.3}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(exp, jet_test_exp_t, ValuesIn(exp_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    exp, jet_test_exp_t, ValuesIn(exp_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // hypot
@@ -1006,8 +1006,8 @@ math_func_test_vector_xy_t const hypot_vectors[] = {
     {"{3, 1.3}, {4, 1.3}}", {3.0, 1.3}, {4.0, 1.3}, {5.0, 1.82}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(hypot, jet_test_hypot_t, ValuesIn(hypot_vectors),
-                         test_name_generator_t<math_func_test_vector_xy_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    hypot, jet_test_hypot_t, ValuesIn(hypot_vectors), test_name_generator_t<math_func_test_vector_xy_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // log
@@ -1034,8 +1034,8 @@ const math_func_test_vector_x_t log_vectors[] = {
     {"10", {10.0, 1.3}, {log(10), 1.3/10}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(log, jet_test_log_t, ValuesIn(log_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    log, jet_test_log_t, ValuesIn(log_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // log1p
@@ -1063,8 +1063,8 @@ const math_func_test_vector_x_t log1p_vectors[] = {
     {"10", {10.0, 1.3}, {log1p(10), 1.3/11}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(log1p, jet_test_log1p_t, ValuesIn(log1p_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    log1p, jet_test_log1p_t, ValuesIn(log1p_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // pow
@@ -1084,7 +1084,7 @@ TEST_P(jet_test_pow_t, jet_to_jet)
 TEST_P(jet_test_pow_t, jet_to_element)
 {
     auto const reference = pow(x, jet_t{y.f, 0.0});
-    auto const actual    = pow(x, y.f);
+    auto const actual = pow(x, y.f);
 
     EXPECT_NEAR(reference.f, actual.f, eps);
     EXPECT_NEAR(reference.df, actual.df, eps);
@@ -1093,7 +1093,7 @@ TEST_P(jet_test_pow_t, jet_to_element)
 TEST_P(jet_test_pow_t, element_to_jet)
 {
     auto const reference = pow(jet_t{x.f, 0.0}, y);
-    auto const actual    = pow(x.f, y);
+    auto const actual = pow(x.f, y);
 
     EXPECT_NEAR(reference.f, actual.f, eps);
     EXPECT_NEAR(reference.df, actual.df, eps);
@@ -1102,8 +1102,8 @@ TEST_P(jet_test_pow_t, element_to_jet)
 // d(x^y) = x^y*log(x)*dy + x^(y - 1)*y*dx
 auto pow_reference(sut_t const& lhs, sut_t const& rhs) noexcept -> sut_t
 {
-    auto const x  = lhs.f;
-    auto const y  = rhs.f;
+    auto const x = lhs.f;
+    auto const y = rhs.f;
     auto const dx = lhs.df;
     auto const dy = rhs.df;
     return {pow(x, y), pow(x, y) * log(x) * dy + pow(x, y - 1.0) * y * dx};
@@ -1127,8 +1127,8 @@ const math_func_test_vector_xy_t pow_vectors[] = {
     pow_vector("cube", {5.1, 1.3}, {3.0, 2.4}),
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(pow, jet_test_pow_t, ValuesIn(pow_vectors),
-                         test_name_generator_t<math_func_test_vector_xy_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    pow, jet_test_pow_t, ValuesIn(pow_vectors), test_name_generator_t<math_func_test_vector_xy_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // sin
@@ -1156,8 +1156,8 @@ const math_func_test_vector_x_t sin_vectors[] = {
     {"pi", {pi, 1.3}, {0.0, -1.3}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(sin, jet_test_sin_t, ValuesIn(sin_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    sin, jet_test_sin_t, ValuesIn(sin_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // sinh
@@ -1192,8 +1192,8 @@ math_func_test_vector_x_t const sinh_vectors[] = {
     {sinh_vector("1", 1.0)},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(sinh, jet_test_sinh_t, ValuesIn(sinh_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    sinh, jet_test_sinh_t, ValuesIn(sinh_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // sqrt
@@ -1222,8 +1222,8 @@ const math_func_test_vector_x_t sqrt_vectors[] = {
     {"16.0", {16.0, 1.3}, {4.0, 1.3/8.0}},
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(sqrt, jet_test_sqrt_t, ValuesIn(sqrt_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    sqrt, jet_test_sqrt_t, ValuesIn(sqrt_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // tan
@@ -1244,7 +1244,7 @@ TEST_P(jet_test_tan_t, result)
 constexpr auto tan_vector(std::string name, value_t a) noexcept -> math_func_test_vector_x_t
 {
     auto const tan_a = tan(a);
-    auto const dx    = 1.3;
+    auto const dx = 1.3;
     return {std::move(name), jet_t{a, dx}, jet_t{tan_a, (1.0 + tan_a * tan_a) * dx}};
 }
 
@@ -1259,8 +1259,8 @@ const math_func_test_vector_x_t tan_vectors[] = {
     tan_vector("pi", pi),
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(tan, jet_test_tan_t, ValuesIn(tan_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    tan, jet_test_tan_t, ValuesIn(tan_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
 // tanh
@@ -1281,7 +1281,7 @@ TEST_P(jet_test_tanh_t, result)
 constexpr auto tanh_vector(std::string name, value_t a) noexcept -> math_func_test_vector_x_t
 {
     auto const tanh_a = tanh(a);
-    auto const dx     = 1.3;
+    auto const dx = 1.3;
     return {std::move(name), jet_t{a, dx}, jet_t{tanh_a, (1.0 - tanh_a * tanh_a) * dx}};
 }
 
@@ -1293,8 +1293,8 @@ const math_func_test_vector_x_t tanh_vectors[] = {
     tanh_vector("5", 5.0),
 };
 // clang-format on
-INSTANTIATE_TEST_SUITE_P(tanh, jet_test_tanh_t, ValuesIn(tanh_vectors),
-                         test_name_generator_t<math_func_test_vector_x_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    tanh, jet_test_tanh_t, ValuesIn(tanh_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // ====================================================================================================================
 // Standard Library Integration
@@ -1310,7 +1310,7 @@ struct jet_test_ostream_inserter_t : jet_test_t
 TEST_F(jet_test_ostream_inserter_t, format)
 {
     auto const expected = "{.f = 3.5, .df = 2.5}";
-    auto const sut      = jet_t{3.5, 2.5};
+    auto const sut = jet_t{3.5, 2.5};
 
     auto actual = std::ostringstream{};
     EXPECT_EQ(&actual, &(actual << sut));
@@ -1420,7 +1420,7 @@ TEST_F(jet_test_chain_rule_composition_t, tanh_exp)
     // tanh(exp(x)) = {tanh(exp(x.f)), (1 - tanh(exp(x.f))^2)*exp(x.f)*x.df}
     auto const actual = tanh(exp(x));
 
-    auto const exp_f      = exp(x.f);
+    auto const exp_f = exp(x.f);
     auto const tanh_exp_f = tanh(exp_f);
     EXPECT_NEAR(actual.f, tanh_exp_f, eps);
     EXPECT_NEAR(actual.df, (1.0 - tanh_exp_f * tanh_exp_f) * exp_f * x.df, eps);
@@ -1434,7 +1434,7 @@ TEST_F(jet_test_chain_rule_composition_t, log_sqrt)
     //              = {log(sqrt(x.f)), x.df/(2*sqrt(x.f)*sqrt(x.f))}
     auto const actual = log(sqrt(x));
 
-    auto const sqrt_f     = sqrt(x.f);
+    auto const sqrt_f = sqrt(x.f);
     auto const log_sqrt_f = log(sqrt_f);
     EXPECT_NEAR(actual.f, log_sqrt_f, eps);
     EXPECT_NEAR(actual.df, x.df / (2 * sqrt_f * sqrt_f), eps);

@@ -14,7 +14,7 @@ namespace {
 
 template <typename narrow_t> struct fake_hardware_divider_t
 {
-    using wide_t   = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
     using result_t = qr_pair_t<narrow_t>;
 
     constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> result_t
@@ -39,10 +39,10 @@ template <typename narrow_t> struct stub_rounding_mode_t
 namespace rounding_contract {
 
 using narrow_t = uint8_t;
-using wide_t   = widened_t<narrow_t>;
+using wide_t = widened_t<narrow_t>;
 
 using hardware_divider_t = fake_hardware_divider_t<narrow_t>;
-using result_t           = hardware_divider_t::result_t;
+using result_t = hardware_divider_t::result_t;
 
 template <typename narrow_t> struct fake_rounding_mode_t
 {
@@ -56,14 +56,14 @@ template <typename narrow_t> struct fake_rounding_mode_t
     }
 };
 constexpr auto rounding_mode = fake_rounding_mode_t<narrow_t>{};
-using sut_t                  = wide_divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
+using sut_t = wide_divider_t<narrow_t, fake_hardware_divider_t<narrow_t>>;
 
 constexpr auto sut = sut_t{};
 
 namespace fast_path {
 
 constexpr auto dividend = wide_t{17};
-constexpr auto divisor  = narrow_t{23};
+constexpr auto divisor = narrow_t{23};
 
 // constexpr auto biased_dividend          = 57;              // 17*2 + 23
 // constexpr auto hardware_division_result = result_t{2, 11}; // {57/23, 57%23}
@@ -77,7 +77,7 @@ static_assert(sut(dividend, divisor, rounding_mode) == expected);
 namespace slow_path {
 
 constexpr auto dividend = wide_t{18240};
-constexpr auto divisor  = narrow_t{23};
+constexpr auto divisor = narrow_t{23};
 
 // constexpr auto biased_dividend    = 36503;           // 18240*2 + 23
 // constexpr auto high_dividend_high = 142;             // 36503/256
@@ -105,15 +105,15 @@ namespace dispatch_boundaries {
 
 struct param_t
 {
-    using wide_t   = uint16_t;
+    using wide_t = uint16_t;
     using narrow_t = uint8_t;
 
     static constexpr auto narrow_width = 8;
-    static constexpr auto narrow_mask  = wide_t{0xFF};
+    static constexpr auto narrow_mask = wide_t{0xFF};
 
-    wide_t   dividend;
+    wide_t dividend;
     narrow_t divisor;
-    bool     dispatches_to_hardware;
+    bool dispatches_to_hardware;
 
     friend auto operator<<(std::ostream& dst, param_t const& src) -> std::ostream&
     {
@@ -125,17 +125,17 @@ struct param_t
 
 struct division_divider_dispatch_test_t : TestWithParam<param_t>
 {
-    using wide_t   = param_t::wide_t;
+    using wide_t = param_t::wide_t;
     using narrow_t = param_t::narrow_t;
 
     using result_t = qr_pair_t<narrow_t>;
 
     static constexpr auto narrow_width = param_t::narrow_width;
-    static constexpr auto narrow_mask  = param_t::narrow_mask;
+    static constexpr auto narrow_mask = param_t::narrow_mask;
 
-    wide_t const   dividend               = GetParam().dividend;
-    narrow_t const divisor                = GetParam().divisor;
-    bool const     dispatches_to_hardware = GetParam().dispatches_to_hardware;
+    wide_t const dividend = GetParam().dividend;
+    narrow_t const divisor = GetParam().divisor;
+    bool const dispatches_to_hardware = GetParam().dispatches_to_hardware;
 
     static constexpr auto rounding_mode = stub_rounding_mode_t<narrow_t>{};
 
@@ -177,9 +177,9 @@ TEST_P(division_divider_dispatch_test_t, result)
     {
         EXPECT_CALL(mock_hardware_divider, divide(dividend >> narrow_width, divisor))
             .WillOnce(Return(expected_high_result));
-        EXPECT_CALL(mock_hardware_divider, divide(int_cast<wide_t>((dividend & narrow_mask)
-                                                                   | (expected_high_result.remainder << narrow_width)),
-                                                  divisor))
+        EXPECT_CALL(mock_hardware_divider,
+            divide(
+                int_cast<wide_t>((dividend & narrow_mask) | (expected_high_result.remainder << narrow_width)), divisor))
             .WillOnce(Return(expected_low_result));
 
         expected = int_cast<wide_t>((expected_high_result.quotient << narrow_width) + expected_low_result.quotient);
@@ -227,10 +227,10 @@ INSTANTIATE_TEST_SUITE_P(cases, division_divider_dispatch_test_t, ValuesIn(test_
 template <typename t_narrow_t> struct divider_correctness_test_t : Test
 {
     using narrow_t = t_narrow_t;
-    using wide_t   = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     static constexpr auto narrow_width = int_cast<narrow_t>(sizeof(narrow_t) * CHAR_BIT);
-    static constexpr auto max_narrow   = static_cast<narrow_t>(~narrow_t{0});
+    static constexpr auto max_narrow = static_cast<narrow_t>(~narrow_t{0});
 
     struct checking_hardware_divider_t
     {
@@ -239,8 +239,8 @@ template <typename t_narrow_t> struct divider_correctness_test_t : Test
             EXPECT_LT(dividend >> narrow_width, static_cast<wide_t>(divisor))
                 << "hardware divider precondition violated";
 
-            return {.quotient  = int_cast<narrow_t>(dividend / divisor),
-                    .remainder = int_cast<narrow_t>(dividend % divisor)};
+            return {.quotient = int_cast<narrow_t>(dividend / divisor),
+                .remainder = int_cast<narrow_t>(dividend % divisor)};
         }
     };
 
@@ -255,23 +255,23 @@ TYPED_TEST_SUITE(divider_correctness_test_t, correctness_types_t);
 
 TYPED_TEST(divider_correctness_test_t, random_inputs)
 {
-    using wide_t   = TestFixture::wide_t;
+    using wide_t = TestFixture::wide_t;
     using narrow_t = TestFixture::narrow_t;
 
-    constexpr auto narrow_width  = TestFixture::narrow_width;
+    constexpr auto narrow_width = TestFixture::narrow_width;
     constexpr auto rounding_mode = TestFixture::rounding_mode;
 
     auto rng = std::mt19937{42};
 
     for (int i = 0; i < 10'000; ++i)
     {
-        auto const hi       = static_cast<wide_t>(rng());
-        auto const lo       = static_cast<narrow_t>(rng());
+        auto const hi = static_cast<wide_t>(rng());
+        auto const lo = static_cast<narrow_t>(rng());
         auto const dividend = static_cast<wide_t>(static_cast<wide_t>(hi << narrow_width) | lo);
-        auto const divisor  = static_cast<narrow_t>(rng() | 1);
+        auto const divisor = static_cast<narrow_t>(rng() | 1);
 
         auto const expected = dividend / divisor;
-        auto const actual   = this->sut(dividend, divisor, rounding_mode);
+        auto const actual = this->sut(dividend, divisor, rounding_mode);
 
         EXPECT_EQ(expected, actual) << "dividend = " << dividend << " divisor = " << +divisor;
     }
@@ -279,11 +279,11 @@ TYPED_TEST(divider_correctness_test_t, random_inputs)
 
 TYPED_TEST(divider_correctness_test_t, edge_cases)
 {
-    using wide_t   = TestFixture::wide_t;
+    using wide_t = TestFixture::wide_t;
     using narrow_t = TestFixture::narrow_t;
 
-    constexpr auto max_narrow    = TestFixture::max_narrow;
-    constexpr auto max_wide      = static_cast<wide_t>(~wide_t{0});
+    constexpr auto max_narrow = TestFixture::max_narrow;
+    constexpr auto max_wide = static_cast<wide_t>(~wide_t{0});
     constexpr auto rounding_mode = TestFixture::rounding_mode;
 
     // zero dividend

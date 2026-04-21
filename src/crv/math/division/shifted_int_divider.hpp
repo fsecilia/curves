@@ -19,12 +19,12 @@ namespace crv::division {
 
 /// divides, scales, rounds and saturates integers via wide intermediate
 template <typename wide_divider_t, int shift, integral out_value_t, integral lhs_t, integral rhs_t,
-          bool saturate = true>
+    bool saturate = true>
 struct shifted_int_divider_t;
 
 /// strictly unsigned division
 template <typename wide_divider_t, int shift, integral out_value_t, unsigned_integral lhs_t, unsigned_integral rhs_t,
-          bool saturate>
+    bool saturate>
 struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, saturate>
 {
     [[no_unique_address]] wide_divider_t divide;
@@ -32,12 +32,12 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
     static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
 
     using narrow_t = int_by_bytes_t<narrow_size, false>;
-    using wide_t   = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
 
     static constexpr auto max_wide_pre_shift = max<wide_t>() >> shift;
 
-    static constexpr auto max_possible_dividend     = int_cast<wide_t>(max<lhs_t>());
-    static constexpr auto max_possible_quotient     = int_cast<wide_t>(max_possible_dividend << shift);
+    static constexpr auto max_possible_dividend = int_cast<wide_t>(max<lhs_t>());
+    static constexpr auto max_possible_quotient = int_cast<wide_t>(max_possible_dividend << shift);
     static constexpr bool upper_saturation_possible = cmp_greater(max_possible_quotient, max<out_value_t>());
 
     template <typename rounding_mode_t>
@@ -88,8 +88,8 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 
     static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
 
-    using narrow_t      = int_by_bytes_t<narrow_size, false>;
-    using wide_t        = widened_t<narrow_t>;
+    using narrow_t = int_by_bytes_t<narrow_size, false>;
+    using wide_t = widened_t<narrow_t>;
     using wide_signed_t = make_signed_t<wide_t>;
 
     static constexpr bool lhs_can_be_negative = std::is_signed_v<lhs_t>;
@@ -98,16 +98,15 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
     static constexpr auto max_wide_pre_shift = max<wide_t>() >> shift;
 
     static constexpr wide_t max_abs_dividend = lhs_can_be_negative
-                                                   ? int_cast<wide_t>(static_cast<make_unsigned_t<lhs_t>>(min<lhs_t>()))
-                                                   : int_cast<wide_t>(max<lhs_t>());
+        ? int_cast<wide_t>(static_cast<make_unsigned_t<lhs_t>>(min<lhs_t>()))
+        : int_cast<wide_t>(max<lhs_t>());
 
-    static constexpr wide_t max_shifted_dividend      = int_cast<wide_t>(max_abs_dividend << shift);
-    static constexpr bool   upper_saturation_possible = cmp_greater(max_shifted_dividend, max<out_value_t>());
+    static constexpr wide_t max_shifted_dividend = int_cast<wide_t>(max_abs_dividend << shift);
+    static constexpr bool upper_saturation_possible = cmp_greater(max_shifted_dividend, max<out_value_t>());
 
-    static constexpr wide_t max_abs_out_min
-        = std::is_signed_v<out_value_t>
-              ? static_cast<wide_t>(static_cast<make_unsigned_t<out_value_t>>(min<out_value_t>()))
-              : wide_t{0};
+    static constexpr wide_t max_abs_out_min = std::is_signed_v<out_value_t>
+        ? static_cast<wide_t>(static_cast<make_unsigned_t<out_value_t>>(min<out_value_t>()))
+        : wide_t{0};
 
     static constexpr bool lower_saturation_possible
         = std::is_unsigned_v<out_value_t> ? true : (max_shifted_dividend > max_abs_out_min);
@@ -133,7 +132,7 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
         // strip sign
         bool const lhs_negative = lhs_can_be_negative ? cmp_less(dividend, 0) : false;
         bool const rhs_negative = rhs_can_be_negative ? cmp_less(divisor, 0) : false;
-        bool const negative     = lhs_negative != rhs_negative;
+        bool const negative = lhs_negative != rhs_negative;
 
         auto const abs_dividend
             = static_cast<narrow_t>(lhs_negative ? -static_cast<narrow_t>(dividend) : static_cast<narrow_t>(dividend));

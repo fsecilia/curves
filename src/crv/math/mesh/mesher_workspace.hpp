@@ -20,7 +20,7 @@ namespace generic {
 template <typename result_t, typename queue_t> struct mesher_workspace_t
 {
     result_t result;
-    queue_t  queue;
+    queue_t queue;
 
     constexpr auto clear() noexcept -> void
     {

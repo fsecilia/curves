@@ -29,7 +29,7 @@ template <std::floating_point t_real_t> struct rule_t
     constexpr auto estimate(real_t left, real_t right, auto const& integrand) const noexcept -> estimate_t
     {
         auto const width = right - left;
-        auto const sum   = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
+        auto const sum = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
 
         // fake a small internal error; abs() to honor the non-negative contract under reversed bounds
         auto const error = abs(width) * static_cast<real_t>(0.1);
@@ -58,7 +58,7 @@ template <std::floating_point real_t> struct cubic_integrand_t
 // f(x) = value, stateful
 template <std::floating_point real_t> struct constant_integrand_t
 {
-    real_t         value;
+    real_t value;
     constexpr auto operator()(real_t) const noexcept -> real_t { return value; }
 };
 
@@ -70,11 +70,11 @@ template <std::floating_point real_t> struct negative_quadratic_integrand_t
 
 template <typename integrand_t, typename rule_t> struct integral_t
 {
-    using real_t     = typename rule_t::real_t;
+    using real_t = typename rule_t::real_t;
     using estimate_t = typename rule_t::estimate_t;
 
     integrand_t integrand;
-    rule_t      rule;
+    rule_t rule;
 
     constexpr auto estimate(real_t left, real_t right) const noexcept -> estimate_t
     {
@@ -91,7 +91,7 @@ namespace float64_test_t {
 
 using real_t = float64_t;
 
-constexpr auto rule                = rule_t<real_t>{};
+constexpr auto rule = rule_t<real_t>{};
 constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
 
 // ====================================================================================================================
@@ -231,9 +231,9 @@ static_assert(reversed_bisection.error_estimate == 27.0);
 
 namespace odd_function {
 
-using integrand_t        = cubic_integrand_t<real_t>;
+using integrand_t = cubic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
 
@@ -261,9 +261,9 @@ static_assert(bisection.integral == 0.0);
 
 namespace const_function {
 
-using integrand_t        = constant_integrand_t<real_t>;
+using integrand_t = constant_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{10.0};
-constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
 
@@ -323,9 +323,9 @@ static_assert(bisection.error_estimate == 0.05);
 
 namespace negative_function {
 
-using integrand_t        = negative_quadratic_integrand_t<real_t>;
+using integrand_t = negative_quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
 
@@ -354,14 +354,14 @@ static_assert(bisection.error_estimate == 27.0);
 
 namespace float32_test {
 
-using real_t        = float32_t;
+using real_t = float32_t;
 constexpr auto rule = rule_t<real_t>{};
 
-using integrand_t        = quadratic_integrand_t<real_t>;
+using integrand_t = quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut       = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = bisector_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
-constexpr auto parent    = sut(0.0f, 6.0f, 1.0f);
+constexpr auto parent = sut(0.0f, 6.0f, 1.0f);
 constexpr auto bisection = sut(parent);
 
 static_assert(bisection.integral == 81.0f);

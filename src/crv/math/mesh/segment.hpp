@@ -15,13 +15,13 @@ namespace crv {
 /// Stores domain boundaries, approximant, and max error measured across the segment.
 template <typename real_t, typename approximant_t> struct mesh_segment_t
 {
-    real_t        left;
-    real_t        right;
+    real_t left;
+    real_t right;
     approximant_t approximant;
-    real_t        max_error;
+    real_t max_error;
 
     auto operator<=>(mesh_segment_t const& src) const noexcept -> auto = default;
-    auto operator==(mesh_segment_t const& src) const noexcept -> bool  = default;
+    auto operator==(mesh_segment_t const& src) const noexcept -> bool = default;
 };
 
 /// ordered mesh segments by max_measured_error

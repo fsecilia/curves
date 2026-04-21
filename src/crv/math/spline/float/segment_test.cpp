@@ -14,9 +14,9 @@ namespace crv::spline::floating_point {
 namespace {
 
 using real_t = float_t;
-using sut_t  = segment_t<real_t>;
+using sut_t = segment_t<real_t>;
 
-auto const inf  = std::numeric_limits<real_t>::infinity();
+auto const inf = std::numeric_limits<real_t>::infinity();
 auto const qnan = std::numeric_limits<real_t>::quiet_NaN();
 auto const snan = std::numeric_limits<real_t>::signaling_NaN();
 
@@ -83,7 +83,7 @@ TEST_F(spline_floating_point_segment_test_range_t, inf)
 
 struct param_t
 {
-    sut_t  sut;
+    sut_t sut;
     real_t t;
     real_t expected;
 
@@ -96,8 +96,8 @@ struct param_t
 struct spline_floating_point_segment_parameterized_test_t : spline_floating_point_segment_test_t,
                                                             WithParamInterface<param_t>
 {
-    sut_t const& sut      = GetParam().sut;
-    real_t const t        = GetParam().t;
+    sut_t const& sut = GetParam().sut;
+    real_t const t = GetParam().t;
     real_t const expected = GetParam().expected;
 };
 

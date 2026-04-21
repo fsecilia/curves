@@ -18,7 +18,7 @@ namespace {
 
 struct uint128_param_t
 {
-    uint128_t   number;
+    uint128_t number;
     std::string string;
 };
 
@@ -58,7 +58,7 @@ INSTANTIATE_TEST_SUITE_P(cases, math_io_uint128_test_t, ValuesIn(uint128_t_test_
 
 struct int128_param_t
 {
-    int128_t    number;
+    int128_t number;
     std::string string;
 };
 

@@ -26,7 +26,7 @@ namespace crv {
 template <typename value_t>
 struct is_integral
     : std::bool_constant<std::is_integral_v<value_t> || std::is_same_v<std::remove_cv_t<value_t>, int128_t>
-                         || std::is_same_v<std::remove_cv_t<value_t>, uint128_t>>
+          || std::is_same_v<std::remove_cv_t<value_t>, uint128_t>>
 {};
 
 template <typename value_t> inline constexpr auto is_integral_v = is_integral<value_t>::value;

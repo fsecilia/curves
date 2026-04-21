@@ -84,10 +84,10 @@ struct quadrature_integral_test_t : Test
 
     struct mock_rule_t
     {
-        MOCK_METHOD(estimate_t, estimate, (real_t left, real_t right, mock_integrand_t const& integrand),
-                    (const, noexcept));
-        MOCK_METHOD(real_t, integrate, (real_t left, real_t right, mock_integrand_t const& integrand),
-                    (const, noexcept));
+        MOCK_METHOD(
+            estimate_t, estimate, (real_t left, real_t right, mock_integrand_t const& integrand), (const, noexcept));
+        MOCK_METHOD(
+            real_t, integrate, (real_t left, real_t right, mock_integrand_t const& integrand), (const, noexcept));
 
         virtual ~mock_rule_t() = default;
     };
@@ -95,7 +95,7 @@ struct quadrature_integral_test_t : Test
 
     struct rule_t
     {
-        using real_t     = float_t;
+        using real_t = float_t;
         using estimate_t = estimate_t;
 
         mock_rule_t* mock = nullptr;
@@ -117,8 +117,8 @@ struct quadrature_integral_test_t : Test
 
 TEST_F(quadrature_integral_test_t, estimate_delegates_to_rule)
 {
-    auto const left     = 3.0;
-    auto const right    = 5.0;
+    auto const left = 3.0;
+    auto const right = 5.0;
     auto const expected = estimate_t{.sum = 7.0, .error = 11.0};
     EXPECT_CALL(mock_rule, estimate(left, right, Ref(mock_integrand))).WillOnce(Return(expected));
 
@@ -129,8 +129,8 @@ TEST_F(quadrature_integral_test_t, estimate_delegates_to_rule)
 
 TEST_F(quadrature_integral_test_t, integrate_delegates_to_rule)
 {
-    auto const left     = 3.0;
-    auto const right    = 5.0;
+    auto const left = 3.0;
+    auto const right = 5.0;
     auto const expected = 7.0;
     EXPECT_CALL(mock_rule, integrate(left, right, Ref(mock_integrand))).WillOnce(Return(expected));
 

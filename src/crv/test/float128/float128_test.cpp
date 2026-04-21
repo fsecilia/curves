@@ -13,25 +13,25 @@ namespace {
 
 enum class format_flags_t
 {
-    none       = 0,
-    fixed      = std::ios_base::fixed,
+    none = 0,
+    fixed = std::ios_base::fixed,
     scientific = std::ios_base::scientific,
 };
 
 struct param_t
 {
-    format_flags_t  format_flags;
+    format_flags_t format_flags;
     std::streamsize precision;
-    float128_t      input;
-    std::string     expected;
+    float128_t input;
+    std::string expected;
 };
 
 struct float128_test_t : TestWithParam<param_t>
 {
-    format_flags_t  format_flags = GetParam().format_flags;
-    std::streamsize precision    = GetParam().precision;
-    float128_t      input        = GetParam().input;
-    std::string     expected     = GetParam().expected;
+    format_flags_t format_flags = GetParam().format_flags;
+    std::streamsize precision = GetParam().precision;
+    float128_t input = GetParam().input;
+    std::string expected = GetParam().expected;
 };
 
 TEST_P(float128_test_t, result)
@@ -45,8 +45,8 @@ TEST_P(float128_test_t, result)
     EXPECT_EQ(expected, actual);
 }
 
-using limits        = std::numeric_limits<float128_t>;
-constexpr auto inf  = limits::infinity();
+using limits = std::numeric_limits<float128_t>;
+constexpr auto inf = limits::infinity();
 constexpr auto qnan = limits::quiet_NaN();
 
 param_t const float128_test_params[] = {
@@ -74,13 +74,13 @@ param_t const float128_test_params[] = {
     {format_flags_t::none, 35, 3.14159265358979323846264338327950288Q, "3.1415926535897932384626433832795028"},
 
     {format_flags_t::none, 100, limits::max(),
-     "1.189731495357231765085759326628007016196469052641694045529698884212163579755312392324974012848462074e+4932"},
+        "1.189731495357231765085759326628007016196469052641694045529698884212163579755312392324974012848462074e+4932"},
     {format_flags_t::none, 100, limits::lowest(),
-     "-1.189731495357231765085759326628007016196469052641694045529698884212163579755312392324974012848462074e+4932"},
+        "-1.189731495357231765085759326628007016196469052641694045529698884212163579755312392324974012848462074e+4932"},
     {format_flags_t::none, 100, limits::min(),
-     "3.362103143112093506262677817321752602598079344846471240108827229808742699390728967043092706365056223e-4932"},
+        "3.362103143112093506262677817321752602598079344846471240108827229808742699390728967043092706365056223e-4932"},
     {format_flags_t::none, 100, limits::denorm_min(),
-     "6.47517511943802511092443895822764655249956933803468100968988438919703954012411937101767149127664994e-4966"},
+        "6.47517511943802511092443895822764655249956933803468100968988438919703954012411937101767149127664994e-4966"},
 };
 INSTANTIATE_TEST_SUITE_P(cases, float128_test_t, ValuesIn(float128_test_params));
 

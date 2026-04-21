@@ -125,9 +125,9 @@ namespace rsqrt_initial_guesses {
 /// uses a quadratic minimax approximation of 1/sqrt(x) to find the initial guess over the range [0.5, 1).
 struct quadratic_minimax_t
 {
-    using in_t    = fixed_t<uint64_t, 64>;
+    using in_t = fixed_t<uint64_t, 64>;
     using coeff_t = fixed_t<uint64_t, 62>;
-    using out_t   = coeff_t;
+    using out_t = coeff_t;
 
     // quadratic approximation coefficients
     //
@@ -161,13 +161,13 @@ struct quadratic_minimax_t
 /// results in a specific Q-format. The number of iterations and the algorithm for the initial guess are tunable
 /// parameters
 template <int_t nr_iteration_count = 4, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t,
-          typename shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
+    typename shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
     requires(nr_iteration_count > 0)
 struct normalized_rsqrt_t
 {
-    using in_t  = fixed_t<uint64_t, 64>;
+    using in_t = fixed_t<uint64_t, 64>;
     using out_t = fixed_t<uint128_t, 62>;
-    using nr_t  = initial_guess_t::coeff_t;
+    using nr_t = initial_guess_t::coeff_t;
 
     using narrow_t = nr_t::value_t;
 
@@ -182,8 +182,8 @@ struct normalized_rsqrt_t
         auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
         {
-            auto const yy      = nr_t::convert(multiply(y, y), shifter);
-            auto const xyy     = nr_t::convert(multiply(x, yy), shifter);
+            auto const yy = nr_t::convert(multiply(y, y), shifter);
+            auto const xyy = nr_t::convert(multiply(x, yy), shifter);
             auto const product = multiply(y, three - xyy);
 
             // this cracks the fixed_t to combine the rescale with division by 2 in a single fused shift
@@ -191,8 +191,8 @@ struct normalized_rsqrt_t
         }
 
         // Final iteration does not narrow at the end.
-        auto const yy      = nr_t::convert(multiply(y, y), shifter);
-        auto const xyy     = nr_t::convert(multiply(x, yy), shifter);
+        auto const yy = nr_t::convert(multiply(y, y), shifter);
+        auto const xyy = nr_t::convert(multiply(x, yy), shifter);
         auto const product = multiply(y, three - xyy);
         return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(product.value));
     }
@@ -203,19 +203,19 @@ template <is_fixed t_out_t, is_fixed t_in_t = t_out_t, typename normalized_rsqrt
 struct rsqrt_t
 {
     using out_t = t_out_t;
-    using in_t  = t_in_t;
+    using in_t = t_in_t;
 
-    using nr_t       = normalized_rsqrt_t::nr_t;
-    using x_norm_t   = normalized_rsqrt_t::in_t;
+    using nr_t = normalized_rsqrt_t::nr_t;
+    using x_norm_t = normalized_rsqrt_t::in_t;
     using wide_out_t = fixed_t<widened_t<typename out_t::value_t>, out_t::frac_bits>;
 
     static constexpr auto x_frac_bits = in_t::frac_bits;
     static constexpr auto y_frac_bits = normalized_rsqrt_t::out_t::frac_bits;
 
     // constrain shift sizes to size of output
-    static constexpr auto max_shift_limit           = std::numeric_limits<typename wide_out_t::value_t>::digits;
+    static constexpr auto max_shift_limit = std::numeric_limits<typename wide_out_t::value_t>::digits;
     static constexpr auto max_possible_x_norm_shift = static_cast<int_t>(sizeof(typename in_t::value_t) * CHAR_BIT - 1);
-    static constexpr auto max_x_norm_frac_bits      = max_possible_x_norm_shift + x_frac_bits;
+    static constexpr auto max_x_norm_frac_bits = max_possible_x_norm_shift + x_frac_bits;
     static constexpr auto max_possible_y_denorm_frac_bits
         = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_frac_bits >> 1);
     static constexpr auto min_possible_y_denorm_frac_bits
@@ -236,9 +236,9 @@ struct rsqrt_t
         assert(x.value > 0);
 
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
-        auto const wide_x           = int_cast<typename x_norm_t::value_t>(x.value);
-        auto const x_norm_shift     = std::countl_zero(wide_x);
-        auto const x_norm           = x_norm_t::literal(wide_x << x_norm_shift);
+        auto const wide_x = int_cast<typename x_norm_t::value_t>(x.value);
+        auto const x_norm_shift = std::countl_zero(wide_x);
+        auto const x_norm = x_norm_t::literal(wide_x << x_norm_shift);
         auto const x_norm_frac_bits = x_norm_shift + x_frac_bits;
 
         // apply normalized rsqrt
@@ -249,11 +249,11 @@ struct rsqrt_t
         if (odd_exponent)
         {
             auto const y_narrow = nr_t::convert(y, shifter);
-            y                   = normalized_rsqrt_t::out_t::convert(multiply(y_narrow, sqrt2), shifter);
+            y = normalized_rsqrt_t::out_t::convert(multiply(y_narrow, sqrt2), shifter);
         }
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_frac_bits >> 1);
-        auto const shift              = out_t::frac_bits - y_denorm_frac_bits;
+        auto const shift = out_t::frac_bits - y_denorm_frac_bits;
 
         auto const result = wide_out_t::literal(shifter.shift(y.value, shift));
         return out_t::convert(result, shifter);

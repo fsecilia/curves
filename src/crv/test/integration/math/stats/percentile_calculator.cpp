@@ -16,8 +16,8 @@ namespace {
 struct percentile_calculator_fuzz_test_t : Test
 {
     using histogram_t = histogram_t<int_t>;
-    using sut_t       = percentile_calculator_t<int_t, histogram_t>;
-    using result_t    = sut_t::result_t;
+    using sut_t = percentile_calculator_t<int_t, histogram_t>;
+    using result_t = sut_t::result_t;
     sut_t sut{};
 
     using data_t = std::vector<int_t>;

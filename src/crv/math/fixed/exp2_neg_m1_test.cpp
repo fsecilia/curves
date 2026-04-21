@@ -10,12 +10,12 @@
 namespace crv {
 namespace {
 
-using in_t  = exp2_neg_m1_q64_to_q1_63_t::in_t;
+using in_t = exp2_neg_m1_q64_to_q1_63_t::in_t;
 using out_t = exp2_neg_m1_q64_to_q1_63_t::out_t;
 
 struct vector_t
 {
-    in_t  input;
+    in_t input;
     out_t expected;
 
     friend auto operator<<(std::ostream& out, vector_t const& src) -> std::ostream&
@@ -26,7 +26,7 @@ struct vector_t
 
 struct exp2_neg_m1_q64_to_q1_63_t_test_t : TestWithParam<vector_t>
 {
-    in_t const&  input    = GetParam().input;
+    in_t const& input = GetParam().input;
     out_t const& expected = GetParam().expected;
 
     using sut_t = exp2_neg_m1_q64_to_q1_63_t;

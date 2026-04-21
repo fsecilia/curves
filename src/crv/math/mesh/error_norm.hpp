@@ -35,7 +35,7 @@ template <typename jet_t> struct first_order_uniform_t
         using crv::abs;
         using std::max;
 
-        auto const primal_error     = abs(primal(target) - primal(approximation));
+        auto const primal_error = abs(primal(target) - primal(approximation));
         auto const derivative_error = abs(derivative(target) - derivative(approximation)) * derivative_weight;
         return max(primal_error, derivative_error);
     }

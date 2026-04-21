@@ -14,9 +14,9 @@ namespace {
 
 struct rsqrt_test_t
 {
-    using impl_t      = rsqrt_t<fixed_t<uint64_t, 62>, fixed_t<uint64_t, 64>>;
-    using in_t        = impl_t::in_t;
-    using out_t       = impl_t::out_t;
+    using impl_t = rsqrt_t<fixed_t<uint64_t, 62>, fixed_t<uint64_t, 64>>;
+    using in_t = impl_t::in_t;
+    using out_t = impl_t::out_t;
     using reference_t = reference_float_t;
 
     using error_metrics_t = error_metrics_t<
@@ -30,7 +30,7 @@ struct rsqrt_test_t
 
         // Clamp output to the maximum fixed point value to prevent extreme errors near 0
         auto const max_out_float = from_fixed<reference_t>(max<out_t>());
-        auto const ref_impl      = [max_out_float](reference_t const& x) {
+        auto const ref_impl = [max_out_float](reference_t const& x) {
             auto const true_y = static_cast<reference_t>(1.0) / std::sqrt(x);
             return std::min(true_y, max_out_float);
         };
@@ -46,20 +46,19 @@ struct rsqrt_test_t
 
         auto const half_val = 1ULL << (in_t::frac_bits - 1);
 
-        auto const iterations  = 10'000'000ull;
+        auto const iterations = 10'000'000ull;
         auto const coarse_step = in_t::literal(max_val / iterations);
 
         range_t uniform_ranges[] = {
             {min, in_t::literal(max_val / 4), coarse_step},
             {in_t::literal(max_val / 4), in_t::literal(max_val / 2), coarse_step},
             {in_t::literal(max_val / 2), in_t::literal(3 * (max_val / 4)), coarse_step},
-            {in_t::literal(3 * (max_val / 4)), max, coarse_step},
-            {min, max, coarse_step},
+            {in_t::literal(3 * (max_val / 4)), max, coarse_step}, {min, max, coarse_step},
 
             // Dense uniform sweeps
-            {min, in_t::literal(iterations), in_t::literal(1)},          // Extreme bound approaching 0
+            {min, in_t::literal(iterations), in_t::literal(1)}, // Extreme bound approaching 0
             {in_t::literal(half_val - iterations / 2), in_t::literal(half_val + iterations / 2),
-             in_t::literal(1)},                                          // Reduction boundary at 0.5
+                in_t::literal(1)}, // Reduction boundary at 0.5
             {in_t::literal(max_val - iterations), max, in_t::literal(1)} // Upper limit
         };
 

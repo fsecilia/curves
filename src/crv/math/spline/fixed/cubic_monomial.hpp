@@ -19,15 +19,15 @@ namespace crv::spline::fixed_point {
 template <is_fixed t_out_t, is_fixed t_in_t, signed_integral t_coeff_t, typename shifter_t = shifter_t<>>
 struct cubic_monomial_t
 {
-    using out_t   = t_out_t;
-    using in_t    = t_in_t;
+    using out_t = t_out_t;
+    using in_t = t_in_t;
     using coeff_t = t_coeff_t;
 
     static constexpr auto coeff_count = 4;
 
-    std::array<coeff_t, coeff_count>   coeffs;
+    std::array<coeff_t, coeff_count> coeffs;
     std::array<int_t, coeff_count - 1> shifts;
-    int                                final_frac_bits;
+    int final_frac_bits;
 
     [[no_unique_address]] shifter_t shifter = shifter_t{};
 
@@ -39,8 +39,8 @@ struct cubic_monomial_t
         for (auto coeff = 1; coeff < coeff_count; ++coeff)
         {
             auto const product = wide_t{result} * t.value;
-            auto const sum     = shifter.shr(product, in_t::frac_bits + shifts[coeff - 1]) + coeffs[coeff];
-            result             = int_cast<coeff_t>(sum);
+            auto const sum = shifter.shr(product, in_t::frac_bits + shifts[coeff - 1]) + coeffs[coeff];
+            result = int_cast<coeff_t>(sum);
         }
 
         return out_t::literal(

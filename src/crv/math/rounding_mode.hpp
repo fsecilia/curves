@@ -131,15 +131,15 @@ struct nearest_away_t : private nearest_up_t
     {
         assert(shift > 0 && "nearest_away_t: shift must be positive");
 
-        using uval_t       = make_unsigned_t<value_t>;
+        using uval_t = make_unsigned_t<value_t>;
         constexpr auto one = uval_t{1};
 
         auto const half = one << (shift - 1);
         auto const mask = (one << shift) - 1;
 
-        auto const frac     = static_cast<uval_t>(unshifted) & mask;
+        auto const frac = static_cast<uval_t>(unshifted) & mask;
         auto const negative = static_cast<uval_t>(unshifted < 0);
-        auto const carry    = static_cast<value_t>(frac >= (half + negative));
+        auto const carry = static_cast<value_t>(frac >= (half + negative));
 
         return int_cast<value_t>(shifted + carry);
     }
@@ -169,15 +169,15 @@ struct nearest_even_t
     {
         assert(shift > 0 && "nearest_even_t: shift must be positive");
 
-        using uval_t       = make_unsigned_t<value_t>;
+        using uval_t = make_unsigned_t<value_t>;
         constexpr auto one = uval_t{1};
 
         auto const half = one << (shift - 1);
         auto const mask = (one << shift) - 1;
 
-        auto const frac   = static_cast<uval_t>(unshifted) & mask;
+        auto const frac = static_cast<uval_t>(unshifted) & mask;
         auto const is_odd = static_cast<uval_t>(shifted) & 1;
-        auto const carry  = static_cast<value_t>((frac + is_odd) > half);
+        auto const carry = static_cast<value_t>((frac + is_odd) > half);
 
         return int_cast<value_t>(shifted + carry);
     }
@@ -245,7 +245,7 @@ struct nearest_away_t
     {
         assert(shift > 0 && "fast::nearest_away_t: shift must be positive");
 
-        using uval_t    = make_unsigned_t<value_t>;
+        using uval_t = make_unsigned_t<value_t>;
         auto const half = static_cast<uval_t>(uval_t{1} << (shift - 1));
         auto const bias = static_cast<value_t>(half - static_cast<uval_t>(unshifted < 0));
 
@@ -365,7 +365,7 @@ struct nearest_even_t
         assert(divisor > 0 && "nearest_even_t: divisors must be positive");
 
         auto const is_odd = quotient & 1;
-        auto const carry  = (remainder + is_odd) > (divisor - remainder);
+        auto const carry = (remainder + is_odd) > (divisor - remainder);
 
         return int_cast<wide_t>(quotient + carry);
     }

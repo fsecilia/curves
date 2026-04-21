@@ -19,9 +19,9 @@ static_assert(hardware_divider_t<uint8_t>{}(100, 3).quotient == 33);
 template <typename t_narrow_t> struct hardware_divider_test_t : Test
 {
     using narrow_t = t_narrow_t;
-    using wide_t   = widened_t<narrow_t>;
+    using wide_t = widened_t<narrow_t>;
     using result_t = qr_pair_t<narrow_t>;
-    using sut_t    = hardware_divider_t<narrow_t>;
+    using sut_t = hardware_divider_t<narrow_t>;
 
     // constructs wide dividend from individual words
     static constexpr auto make_dividend(narrow_t high, narrow_t low) -> wide_t
@@ -39,7 +39,7 @@ TYPED_TEST_SUITE(hardware_divider_test_t, narrow_types_t);
 TYPED_TEST(hardware_divider_test_t, basics)
 {
     using result_t = TestFixture::result_t;
-    using sut_t    = TestFixture::sut_t;
+    using sut_t = TestFixture::sut_t;
 
     auto const sut = sut_t{};
 
@@ -57,12 +57,12 @@ TYPED_TEST(hardware_divider_test_t, max_dividend_divisor_one)
 {
     using narrow_t = TestFixture::narrow_t;
     using result_t = TestFixture::result_t;
-    using sut_t    = TestFixture::sut_t;
+    using sut_t = TestFixture::sut_t;
 
     auto const sut = sut_t{};
 
     constexpr auto expected = result_t{max<narrow_t>(), 0};
-    auto const     actual   = sut(max<narrow_t>(), 1);
+    auto const actual = sut(max<narrow_t>(), 1);
 
     EXPECT_EQ(expected, actual);
 }
@@ -72,13 +72,13 @@ TYPED_TEST(hardware_divider_test_t, high_bit_set)
 {
     using narrow_t = TestFixture::narrow_t;
     using result_t = TestFixture::result_t;
-    using sut_t    = TestFixture::sut_t;
+    using sut_t = TestFixture::sut_t;
 
-    auto const sut      = sut_t{};
+    auto const sut = sut_t{};
     auto const dividend = TestFixture::make_dividend(1, 0);
 
     constexpr auto expected = result_t{narrow_t{1} << (std::numeric_limits<narrow_t>::digits - 1), 0};
-    auto const     actual   = sut(dividend, 2);
+    auto const actual = sut(dividend, 2);
 
     EXPECT_EQ(expected, actual);
 }
@@ -88,13 +88,13 @@ TYPED_TEST(hardware_divider_test_t, max_remainder)
 {
     using narrow_t = TestFixture::narrow_t;
     using result_t = TestFixture::result_t;
-    using sut_t    = TestFixture::sut_t;
+    using sut_t = TestFixture::sut_t;
 
-    auto const sut      = sut_t{};
+    auto const sut = sut_t{};
     auto const dividend = TestFixture::make_dividend(0, max<narrow_t>() - 1);
 
     auto const expected = result_t{0, max<narrow_t>() - 1};
-    auto const actual   = sut(dividend, max<narrow_t>());
+    auto const actual = sut(dividend, max<narrow_t>());
 
     EXPECT_EQ(expected, actual);
 }
@@ -104,13 +104,13 @@ TYPED_TEST(hardware_divider_test_t, max_everything)
 {
     using narrow_t = TestFixture::narrow_t;
     using result_t = TestFixture::result_t;
-    using sut_t    = TestFixture::sut_t;
+    using sut_t = TestFixture::sut_t;
 
-    auto const sut      = sut_t{};
+    auto const sut = sut_t{};
     auto const dividend = TestFixture::make_dividend(max<narrow_t>() - 1, max<narrow_t>());
 
     auto const expected = result_t{max<narrow_t>(), max<narrow_t>() - 1};
-    auto const actual   = sut(dividend, max<narrow_t>());
+    auto const actual = sut(dividend, max<narrow_t>());
 
     EXPECT_EQ(expected, actual);
 }

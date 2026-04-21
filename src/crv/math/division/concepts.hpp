@@ -17,25 +17,25 @@ namespace crv::division {
 /// takes unsigned wide dividend, unsigned narrow divisor, returns {quotient, remainder} pair
 template <typename divider_t, typename narrow_t>
 concept is_hardware_divider = unsigned_integral<narrow_t>
-                              && requires(divider_t const& divider, widened_t<narrow_t> dividend, narrow_t divisor) {
-                                     { divider(dividend, divisor) } -> std::same_as<qr_pair_t<narrow_t>>;
-                                 };
+    && requires(divider_t const& divider, widened_t<narrow_t> dividend, narrow_t divisor) {
+           { divider(dividend, divisor) } -> std::same_as<qr_pair_t<narrow_t>>;
+       };
 
 /// takes unsigned wide dividend, unsigned narrow divisor, and rounding mode; returns wide quotient
 template <typename divider_t, typename narrow_t, typename rounding_mode_t>
 concept is_wide_divider
     = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, widened_t<narrow_t>, narrow_t>
-      && requires(divider_t const& divider, widened_t<narrow_t> dividend, narrow_t divisor,
-                  rounding_mode_t rounding_mode) {
-             { divider(dividend, divisor, rounding_mode) } -> std::same_as<widened_t<narrow_t>>;
-         };
+    && requires(
+        divider_t const& divider, widened_t<narrow_t> dividend, narrow_t divisor, rounding_mode_t rounding_mode) {
+           { divider(dividend, divisor, rounding_mode) } -> std::same_as<widened_t<narrow_t>>;
+       };
 
 /// takes unsigned narrow dividend, unsigned divisor, and rounding mode; returns wide quotient
 template <typename divider_t, typename narrow_t, typename rounding_mode_t>
 concept is_narrow_divider
     = unsigned_integral<narrow_t> && is_div_rounding_mode<rounding_mode_t, widened_t<narrow_t>, narrow_t>
-      && requires(divider_t const& divider, narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) {
-             { divider(dividend, divisor, rounding_mode) } -> std::same_as<widened_t<narrow_t>>;
-         };
+    && requires(divider_t const& divider, narrow_t dividend, narrow_t divisor, rounding_mode_t rounding_mode) {
+           { divider(dividend, divisor, rounding_mode) } -> std::same_as<widened_t<narrow_t>>;
+       };
 
 } // namespace crv::division

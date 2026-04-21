@@ -18,7 +18,7 @@ namespace {
 struct integer_histogram_test_t : Test
 {
     using value_t = int_t;
-    using sut_t   = histogram_t<value_t>;
+    using sut_t = histogram_t<value_t>;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -160,8 +160,8 @@ TEST_F(integer_histogram_test_constructed_t, ostream_inserter)
 struct percentile_calculator_test_t : Test
 {
     using histogram_t = histogram_t<int_t>;
-    using sut_t       = percentile_calculator_t<int_t, histogram_t>;
-    using result_t    = sut_t::result_t;
+    using sut_t = percentile_calculator_t<int_t, histogram_t>;
+    using result_t = sut_t::result_t;
     sut_t sut{};
 };
 
@@ -309,7 +309,7 @@ TEST_F(percentile_calculator_test_t, sparse_step)
 
 TEST_F(percentile_calculator_test_t, result_ostream_inserter)
 {
-    auto const sut      = result_t{.p50 = 3, .p90 = 7, .p95 = 13, .p99 = 19, .p100 = 29};
+    auto const sut = result_t{.p50 = 3, .p90 = 7, .p95 = 13, .p99 = 19, .p100 = 29};
     auto const expected = "p50 = 3, p90 = 7, p95 = 13, p99 = 19, p100 = 29";
 
     auto actual = std::ostringstream{};
@@ -335,13 +335,13 @@ struct distribution_test_t : Test
 
     struct histogram_t
     {
-        std::string_view  name;
+        std::string_view name;
         mock_histogram_t* mock = nullptr;
 
         auto sample(int_t value) -> void { mock->sample(value); }
     };
 
-    using percentile_result_t                        = int_t;
+    using percentile_result_t = int_t;
     static constexpr auto expected_percentile_result = percentile_result_t{17};
 
     struct mock_percentile_calculator_t
@@ -399,30 +399,30 @@ TEST_F(distribution_test_t, ostream_inserter)
 
 struct stats_accumulator_test_t : Test
 {
-    using arg_t         = int_t;
-    using value_t       = float_t;
+    using arg_t = int_t;
+    using value_t = float_t;
     using accumulator_t = float_t;
 
-    static constexpr auto arg          = arg_t{3};
-    static constexpr auto error        = value_t{15.2};
+    static constexpr auto arg = arg_t{3};
+    static constexpr auto error = value_t{15.2};
     static constexpr auto sample_count = int_t{11};
 
     static constexpr auto rmse = value_t{23.6};
-    static constexpr auto mse  = rmse * rmse;
-    static constexpr auto sse  = mse * sample_count;
+    static constexpr auto mse = rmse * rmse;
+    static constexpr auto sse = mse * sample_count;
 
-    static constexpr auto bias     = 7.3;
+    static constexpr auto bias = 7.3;
     static constexpr auto variance = mse - bias * bias;
-    static constexpr auto sum      = bias * sample_count;
+    static constexpr auto sum = bias * sample_count;
 
     struct arg_min_max_t
     {
-        arg_t   arg{};
+        arg_t arg{};
         value_t error{};
 
         constexpr auto sample(arg_t arg, value_t error) noexcept -> void
         {
-            this->arg   = arg;
+            this->arg = arg;
             this->error = error;
         }
 

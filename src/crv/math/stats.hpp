@@ -72,7 +72,7 @@ public:
     }
 
     constexpr auto operator<=>(histogram_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(histogram_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(histogram_t const&) const noexcept -> bool = default;
 
 private:
     int_t count_{};
@@ -100,7 +100,7 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
         }
 
         constexpr auto operator<=>(result_t const&) const noexcept -> auto = default;
-        constexpr auto operator==(result_t const&) const noexcept -> bool  = default;
+        constexpr auto operator==(result_t const&) const noexcept -> bool = default;
     };
 
     auto operator()(histogram_t const& histogram) const noexcept -> result_t
@@ -113,17 +113,20 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
         auto const limit = [total](value_t percentage) noexcept { return (total * percentage + 99) / 100; };
         struct thresholds_t
         {
-            value_t  limit;
+            value_t limit;
             value_t& dst;
         };
         thresholds_t const thresholds[] = {
-            {limit(50), result.p50}, {limit(90), result.p90}, {limit(95), result.p95},
-            {limit(99), result.p99}, {total, result.p100},
+            {limit(50), result.p50},
+            {limit(90), result.p90},
+            {limit(95), result.p95},
+            {limit(99), result.p99},
+            {total, result.p100},
         };
 
-        auto       running_sum = value_t{0};
-        auto       index       = 0;
-        auto const max_index   = std::ssize(thresholds);
+        auto running_sum = value_t{0};
+        auto index = 0;
+        auto const max_index = std::ssize(thresholds);
         histogram.visit([&](value_t value, int_t count) noexcept {
             running_sum += count;
 
@@ -142,7 +145,7 @@ template <typename value_t, typename histogram_t = histogram_t<value_t>> struct 
 // --------------------------------------------------------------------------------------------------------------------
 
 template <typename value_t, typename histogram_t = histogram_t<value_t>,
-          typename percentile_calculator_t = percentile_calculator_t<value_t>>
+    typename percentile_calculator_t = percentile_calculator_t<value_t>>
 class distribution_t
 {
 public:
@@ -165,11 +168,11 @@ public:
     }
 
     constexpr auto operator<=>(distribution_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(distribution_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(distribution_t const&) const noexcept -> bool = default;
 
 private:
     [[no_unique_address]] percentile_calculator_t calc_percentiles_{};
-    histogram_t                                   histogram_{};
+    histogram_t histogram_{};
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -178,7 +181,7 @@ private:
 
 /// accumulates stats to provide a summary
 template <typename arg_t, typename t_value_t, typename accumulator_t = compensated_accumulator_t<t_value_t>,
-          typename arg_min_max_t = arg_min_max_t<arg_t, t_value_t>>
+    typename arg_min_max_t = arg_min_max_t<arg_t, t_value_t>>
 struct stats_accumulator_t
 {
     using value_t = t_value_t;
@@ -186,7 +189,7 @@ struct stats_accumulator_t
     accumulator_t sse{};
     accumulator_t sum{};
     arg_min_max_t arg_min_max{};
-    int_t         sample_count{};
+    int_t sample_count{};
 
     constexpr auto sample(arg_t arg, value_t error) noexcept -> void
     {
@@ -233,7 +236,7 @@ struct stats_accumulator_t
     }
 
     constexpr auto operator<=>(stats_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(stats_accumulator_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(stats_accumulator_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv

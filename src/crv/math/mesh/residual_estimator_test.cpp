@@ -12,20 +12,20 @@ namespace {
 
 struct residual_estimator_test_t : Test
 {
-    using real_t        = float_t;
+    using real_t = float_t;
     using approximant_t = int_t;
 
     static constexpr auto const approximant = approximant_t{123};
-    static constexpr auto const left        = 0.0;
-    static constexpr auto const right       = 10.0;
+    static constexpr auto const left = 0.0;
+    static constexpr auto const right = 10.0;
 
     static constexpr auto expected_max_error_magnitude = 11.1;
 
-    static constexpr auto expected_positions           = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
+    static constexpr auto expected_positions = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
     static constexpr auto expected_quantized_positions = std::array{1.1, 2.2, 3.3, 4.4, 5.5};
-    static constexpr auto expected_targets             = std::array{6.6, 7.7, 8.8, 9.9, 10.10};
-    static constexpr auto expected_approximations      = std::array{-6.6, -7.7, -8.8, -9.9, -10.10};
-    static constexpr auto expected_magnitudes          = std::array{101.0, 202.0, 303.0, 404.0, 505.0};
+    static constexpr auto expected_targets = std::array{6.6, 7.7, 8.8, 9.9, 10.10};
+    static constexpr auto expected_approximations = std::array{-6.6, -7.7, -8.8, -9.9, -10.10};
+    static constexpr auto expected_magnitudes = std::array{101.0, 202.0, 303.0, 404.0, 505.0};
 
     struct mock_target_function_t
     {
@@ -114,10 +114,10 @@ struct residual_estimator_test_t : Test
     };
 
     using sut_t = residual_estimator_t<real_t, target_function_t, approximant_evaluator_t, node_generator_t,
-                                       quantizer_t, error_norm_t, weight_function_t>;
+        quantizer_t, error_norm_t, weight_function_t>;
 
     sut_t sut{
-        .evaluate_target      = {&mock_target_function},
+        .evaluate_target = {&mock_target_function},
         .evaluate_approximant = {&mock_approximant_evaluator},
         .generate_nodes{},
         .quantize{&mock_quantizer},
@@ -131,7 +131,7 @@ struct residual_estimator_test_t : Test
     residual_estimator_test_t() {}
 
     auto expect_iteration(real_t position, real_t quantized_position, real_t target, real_t approximation,
-                          real_t magnitude, real_t result = 0.0) -> void
+        real_t magnitude, real_t result = 0.0) -> void
     {
         EXPECT_CALL(mock_quantizer, call(position)).WillOnce(Return(quantized_position));
         EXPECT_CALL(mock_target_function, call(position)).WillOnce(Return(target));
@@ -143,8 +143,8 @@ struct residual_estimator_test_t : Test
     auto expect_iteration(int_t position_index, real_t result = 0.0) -> void
     {
         expect_iteration(expected_positions[position_index], expected_quantized_positions[position_index],
-                         expected_targets[position_index], expected_approximations[position_index],
-                         expected_magnitudes[position_index], result);
+            expected_targets[position_index], expected_approximations[position_index],
+            expected_magnitudes[position_index], result);
     }
 };
 
@@ -194,25 +194,25 @@ TEST_F(residual_estimator_test_t, handles_negative_error_correctly)
 // still subbed.
 TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
 {
-    real_t expected_left  = 0.0;
+    real_t expected_left = 0.0;
     real_t expected_right = 0.0;
 
     // hunt for pair of values that do not correctly reconstruct left and right boundries after truncation
     for (auto i = 1; i < 10000; ++i)
     {
-        auto const actual_left  = static_cast<real_t>(i) * 0.137;
+        auto const actual_left = static_cast<real_t>(i) * 0.137;
         auto const actual_right = actual_left + 1.234;
 
-        auto const midpoint   = (actual_right + actual_left) * 0.5;
+        auto const midpoint = (actual_right + actual_left) * 0.5;
         auto const half_width = (actual_right - actual_left) * 0.5;
 
         // replicate sut calc
-        auto const calculated_left  = midpoint + half_width * -1.0;
+        auto const calculated_left = midpoint + half_width * -1.0;
         auto const calculated_right = midpoint + half_width * 1.0;
 
         if (calculated_right != actual_right || calculated_left != actual_left)
         {
-            expected_left  = actual_left;
+            expected_left = actual_left;
             expected_right = actual_right;
             break;
         }
@@ -222,22 +222,22 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
     ASSERT_NE(expected_left, expected_right) << "failed to find truncation-inducing bounds";
 
     // cache expected values using same calcs as sut
-    auto const expected_midpoint    = (expected_right + expected_left) * 0.5;
-    auto const expected_half_width  = (expected_right - expected_left) * 0.5;
-    auto const expected_inner_left  = expected_midpoint + expected_half_width * node_generator_t::sample_locations[1];
+    auto const expected_midpoint = (expected_right + expected_left) * 0.5;
+    auto const expected_half_width = (expected_right - expected_left) * 0.5;
+    auto const expected_inner_left = expected_midpoint + expected_half_width * node_generator_t::sample_locations[1];
     auto const expected_inner_right = expected_midpoint + expected_half_width * node_generator_t::sample_locations[3];
 
     // verify evaluations
-    expect_iteration(expected_left, expected_left, expected_targets[0], expected_approximations[0],
-                     expected_magnitudes[0]);
+    expect_iteration(
+        expected_left, expected_left, expected_targets[0], expected_approximations[0], expected_magnitudes[0]);
     expect_iteration(expected_inner_left, expected_inner_left, expected_targets[1], expected_approximations[1],
-                     expected_magnitudes[1], expected_max_error_magnitude);
-    expect_iteration(expected_midpoint, expected_midpoint, expected_targets[2], expected_approximations[2],
-                     expected_magnitudes[2]);
+        expected_magnitudes[1], expected_max_error_magnitude);
+    expect_iteration(
+        expected_midpoint, expected_midpoint, expected_targets[2], expected_approximations[2], expected_magnitudes[2]);
     expect_iteration(expected_inner_right, expected_inner_right, expected_targets[3], expected_approximations[3],
-                     expected_magnitudes[3]);
-    expect_iteration(expected_right, expected_right, expected_targets[4], expected_approximations[4],
-                     expected_magnitudes[4]);
+        expected_magnitudes[3]);
+    expect_iteration(
+        expected_right, expected_right, expected_targets[4], expected_approximations[4], expected_magnitudes[4]);
 
     auto const actual = sut(approximant, expected_left, expected_right);
 

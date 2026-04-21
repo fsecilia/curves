@@ -16,9 +16,9 @@ template <typename t_integrand_t, typename t_rule_t> class integral_t
 {
 public:
     using integrand_t = t_integrand_t;
-    using rule_t      = t_rule_t;
-    using real_t      = rule_t::real_t;
-    using estimate_t  = rule_t::estimate_t;
+    using rule_t = t_rule_t;
+    using real_t = rule_t::real_t;
+    using estimate_t = rule_t::estimate_t;
 
     constexpr integral_t(integrand_t integrand, rule_t rule) noexcept
         : integrand_{std::move(integrand)}, rule_{std::move(rule)}
@@ -41,7 +41,7 @@ public:
 
 private:
     integrand_t integrand_;
-    rule_t      rule_;
+    rule_t rule_;
 };
 
 } // namespace crv::quadrature

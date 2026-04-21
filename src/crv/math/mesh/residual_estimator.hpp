@@ -19,19 +19,19 @@ namespace crv {
 /// quantized to fixed-point precision prior to evaluation, the residual is calculated using an error norm, and the
 /// magnitude of the residual is scaled by perceptual significance using a weight function.
 template <typename real_t, typename target_function_t, typename approximant_evaluator_t, typename node_generator_t,
-          typename quantizer_t, typename error_norm_t, typename weight_function_t>
+    typename quantizer_t, typename error_norm_t, typename weight_function_t>
 struct residual_estimator_t
 {
-    target_function_t       evaluate_target;
+    target_function_t evaluate_target;
     approximant_evaluator_t evaluate_approximant;
-    node_generator_t        generate_nodes;
-    quantizer_t             quantize;
-    error_norm_t            measure_error;
-    weight_function_t       apply_weight;
+    node_generator_t generate_nodes;
+    quantizer_t quantize;
+    error_norm_t measure_error;
+    weight_function_t apply_weight;
 
     auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> real_t
     {
-        auto const midpoint   = std::midpoint(right, left);
+        auto const midpoint = std::midpoint(right, left);
         auto const half_width = (right - left) * 0.5;
 
         auto max_magnitude = real_t{0};
@@ -49,13 +49,13 @@ struct residual_estimator_t
 
             // evaluate target at target position and approxmant at quantized position
             auto const quantized_position = quantize(target_position);
-            auto const target             = evaluate_target(target_position);
-            auto const approximation      = evaluate_approximant(approximant, quantized_position);
+            auto const target = evaluate_target(target_position);
+            auto const approximation = evaluate_approximant(approximant, quantized_position);
 
             // measure magnitude of error using norm, weight it using weight function
-            auto const magnitude          = measure_error(target, approximation);
+            auto const magnitude = measure_error(target, approximation);
             auto const weighted_magnitude = apply_weight(magnitude, target_position);
-            max_magnitude                 = std::max(max_magnitude, weighted_magnitude);
+            max_magnitude = std::max(max_magnitude, weighted_magnitude);
         }
 
         return max_magnitude;

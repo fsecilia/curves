@@ -39,7 +39,7 @@ public:
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
     auto seed(auto& stack, is_root_bisector<real_t> auto const& bisector, real_t domain_max, real_t global_tolerance,
-              compatible_range<real_t> auto const& critical_points) -> void
+        compatible_range<real_t> auto const& critical_points) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
@@ -49,7 +49,7 @@ public:
         {
             auto const left = static_cast<real_t>(critical_point);
             assert((real_t{0} < left && left < domain_max)
-                   && "stack_seeder_t: critical points must be in (0, domain_max)");
+                && "stack_seeder_t: critical points must be in (0, domain_max)");
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
             auto const tolerance = global_tolerance * ((right - left) / domain_max);

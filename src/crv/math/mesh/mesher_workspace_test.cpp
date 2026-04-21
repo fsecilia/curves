@@ -13,7 +13,7 @@ struct mesher_workspace_test_t : Test
 {
     struct container_t
     {
-        bool clear_called   = false;
+        bool clear_called = false;
         bool reserve_called = false;
 
         std::size_t reserved_capacity = 0;
@@ -22,7 +22,7 @@ struct mesher_workspace_test_t : Test
 
         constexpr auto reserve(std::size_t capacity) -> void
         {
-            reserve_called    = true;
+            reserve_called = true;
             reserved_capacity = capacity;
         }
     };

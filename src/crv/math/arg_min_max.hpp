@@ -22,14 +22,14 @@ namespace crv {
 template <typename arg_t, typename value_t> struct arg_min_t
 {
     value_t value{max<value_t>()};
-    arg_t   arg{};
+    arg_t arg{};
 
     constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {
         if (value < this->value)
         {
             this->value = value;
-            this->arg   = arg;
+            this->arg = arg;
         }
     }
 
@@ -39,21 +39,21 @@ template <typename arg_t, typename value_t> struct arg_min_t
     }
 
     constexpr auto operator<=>(arg_min_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(arg_min_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(arg_min_t const&) const noexcept -> bool = default;
 };
 
 /// tracks max@arg
 template <typename arg_t, typename value_t> struct arg_max_t
 {
     value_t value{min<value_t>()};
-    arg_t   arg{};
+    arg_t arg{};
 
     constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {
         if (this->value < value)
         {
             this->value = value;
-            this->arg   = arg;
+            this->arg = arg;
         }
     }
 
@@ -63,12 +63,12 @@ template <typename arg_t, typename value_t> struct arg_max_t
     }
 
     constexpr auto operator<=>(arg_max_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(arg_max_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(arg_max_t const&) const noexcept -> bool = default;
 };
 
 /// tracks arg min and arg max, and the max of both by magnitude
 template <typename arg_t, typename value_t, typename arg_min_t = arg_min_t<arg_t, value_t>,
-          typename arg_max_t = arg_max_t<arg_t, value_t>>
+    typename arg_max_t = arg_max_t<arg_t, value_t>>
 struct arg_min_max_t
 {
     arg_min_t min;
@@ -92,7 +92,7 @@ struct arg_min_max_t
     }
 
     constexpr auto operator<=>(arg_min_max_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(arg_min_max_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(arg_min_max_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv

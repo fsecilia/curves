@@ -19,11 +19,11 @@ template <typename t_integral_t> class antiderivative_t
 {
 public:
     using integral_t = t_integral_t;
-    using real_t     = integral_t::real_t;
+    using real_t = integral_t::real_t;
 
-    using jet_t             = jet_t<real_t>;
-    using map_t             = std::flat_map<real_t, real_t>;
-    using boundaries_t      = map_t::key_container_type;
+    using jet_t = jet_t<real_t>;
+    using map_t = std::flat_map<real_t, real_t>;
+    using boundaries_t = map_t::key_container_type;
     using cumulative_sums_t = map_t::mapped_container_type;
 
     constexpr antiderivative_t(integral_t integral, map_t intervals) noexcept
@@ -42,10 +42,10 @@ public:
     constexpr auto operator()(real_t location) const noexcept -> jet_t
     {
         assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
-               && "antiderivative_t: domain error");
+            && "antiderivative_t: domain error");
 
-        auto const right    = intervals_.upper_bound(location);
-        auto const left     = std::ranges::prev(right);
+        auto const right = intervals_.upper_bound(location);
+        auto const left = std::ranges::prev(right);
         auto const residual = integral_.integrate(left->first, location);
         auto const integral = left->second + residual;
 
@@ -59,21 +59,21 @@ public:
 
 private:
     integral_t integral_;
-    map_t      intervals_;
+    map_t intervals_;
 };
 
 /// The standalone result of an adaptive integration pass
 template <typename t_antiderivative_t> struct integration_result_t
 {
     using antiderivative_t = t_antiderivative_t;
-    using real_t           = antiderivative_t::real_t;
+    using real_t = antiderivative_t::real_t;
 
     antiderivative_t antiderivative;
-    real_t           achieved_error;
-    real_t           max_error;
+    real_t achieved_error;
+    real_t max_error;
 
     auto operator<=>(integration_result_t const&) const noexcept -> auto = default;
-    auto operator==(integration_result_t const&) const noexcept -> bool  = default;
+    auto operator==(integration_result_t const&) const noexcept -> bool = default;
 };
 
 namespace generic {
@@ -82,11 +82,11 @@ namespace generic {
 template <typename t_accumulator_t, typename t_antiderivative_t> class antiderivative_builder_t
 {
 public:
-    using accumulator_t    = t_accumulator_t;
+    using accumulator_t = t_accumulator_t;
     using antiderivative_t = t_antiderivative_t;
-    using real_t           = antiderivative_t::real_t;
-    using integral_t       = antiderivative_t::integral_t;
-    using result_t         = integration_result_t<antiderivative_t>;
+    using real_t = antiderivative_t::real_t;
+    using integral_t = antiderivative_t::integral_t;
+    using result_t = integration_result_t<antiderivative_t>;
 
     constexpr antiderivative_builder_t()
     {
@@ -100,7 +100,7 @@ public:
     constexpr auto append(real_t right_bound, real_t area, real_t error) -> void
     {
         assert(right_bound > boundaries_.back()
-               && "antiderivative_builder_t: boundaries must be monotonically increasing");
+            && "antiderivative_builder_t: boundaries must be monotonically increasing");
 
         running_area_ += area;
         running_error_ += error;
@@ -112,7 +112,7 @@ public:
 
     constexpr auto finalize(integral_t integral) && noexcept -> result_t
     {
-        using map_t    = antiderivative_t::map_t;
+        using map_t = antiderivative_t::map_t;
         auto intervals = map_t{std::sorted_unique, std::move(boundaries_), std::move(cumulative_sums_)};
 
         return result_t{
@@ -123,14 +123,14 @@ public:
     }
 
 private:
-    using boundaries_t      = antiderivative_t::boundaries_t;
+    using boundaries_t = antiderivative_t::boundaries_t;
     using cumulative_sums_t = antiderivative_t::cumulative_sums_t;
 
-    boundaries_t      boundaries_{};
+    boundaries_t boundaries_{};
     cumulative_sums_t cumulative_sums_{};
-    accumulator_t     running_area_{};
-    accumulator_t     running_error_{};
-    real_t            max_error_{0};
+    accumulator_t running_area_{};
+    accumulator_t running_error_{};
+    real_t max_error_{0};
 };
 
 } // namespace generic
@@ -138,6 +138,6 @@ private:
 template <typename integral_t>
 using antiderivative_builder_t
     = generic::antiderivative_builder_t<compensated_accumulator_t<typename integral_t::real_t>,
-                                        antiderivative_t<integral_t>>;
+        antiderivative_t<integral_t>>;
 
 } // namespace crv::quadrature

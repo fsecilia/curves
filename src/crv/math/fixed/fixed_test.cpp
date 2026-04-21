@@ -17,45 +17,45 @@ namespace {
 using i_4_t = fixed_t<int_t, 4>;
 using u_4_t = fixed_t<uint_t, 4>;
 
-using i8_1_t     = fixed_t<int8_t, 1>;
-using u8_1_t     = fixed_t<uint8_t, 1>;
-using i8_2_t     = fixed_t<int8_t, 2>;
-using i8_4_t     = fixed_t<int8_t, 4>;
-using u8_4_t     = fixed_t<uint8_t, 4>;
-using i8_6_t     = fixed_t<int8_t, 6>;
-using i8_7_t     = fixed_t<int8_t, 7>;
-using i16_0_t    = fixed_t<int16_t, 0>;
-using u16_0_t    = fixed_t<uint16_t, 0>;
-using i16_2_t    = fixed_t<int16_t, 2>;
-using i16_4_t    = fixed_t<int16_t, 4>;
-using u16_4_t    = fixed_t<uint16_t, 4>;
-using i16_8_t    = fixed_t<int16_t, 8>;
-using u16_8_t    = fixed_t<uint16_t, 8>;
-using i16_9_t    = fixed_t<int16_t, 9>;
-using i16_12_t   = fixed_t<int16_t, 12>;
-using i32_0_t    = fixed_t<int32_t, 0>;
-using i32_8_t    = fixed_t<int32_t, 8>;
-using u32_8_t    = fixed_t<uint32_t, 8>;
-using i32_16_t   = fixed_t<int32_t, 16>;
-using i64_0_t    = fixed_t<int64_t, 0>;
-using u64_0_t    = fixed_t<uint64_t, 0>;
-using u64_4_t    = fixed_t<uint64_t, 4>;
-using i64_63_t   = fixed_t<int64_t, 63>;
-using u64_64_t   = fixed_t<uint64_t, 64>;
-using i128_0_t   = fixed_t<int128_t, 0>;
-using u128_0_t   = fixed_t<uint128_t, 0>;
-using i128_8_t   = fixed_t<int128_t, 8>;
-using u128_8_t   = fixed_t<uint128_t, 8>;
-using i128_64_t  = fixed_t<int128_t, 64>;
+using i8_1_t = fixed_t<int8_t, 1>;
+using u8_1_t = fixed_t<uint8_t, 1>;
+using i8_2_t = fixed_t<int8_t, 2>;
+using i8_4_t = fixed_t<int8_t, 4>;
+using u8_4_t = fixed_t<uint8_t, 4>;
+using i8_6_t = fixed_t<int8_t, 6>;
+using i8_7_t = fixed_t<int8_t, 7>;
+using i16_0_t = fixed_t<int16_t, 0>;
+using u16_0_t = fixed_t<uint16_t, 0>;
+using i16_2_t = fixed_t<int16_t, 2>;
+using i16_4_t = fixed_t<int16_t, 4>;
+using u16_4_t = fixed_t<uint16_t, 4>;
+using i16_8_t = fixed_t<int16_t, 8>;
+using u16_8_t = fixed_t<uint16_t, 8>;
+using i16_9_t = fixed_t<int16_t, 9>;
+using i16_12_t = fixed_t<int16_t, 12>;
+using i32_0_t = fixed_t<int32_t, 0>;
+using i32_8_t = fixed_t<int32_t, 8>;
+using u32_8_t = fixed_t<uint32_t, 8>;
+using i32_16_t = fixed_t<int32_t, 16>;
+using i64_0_t = fixed_t<int64_t, 0>;
+using u64_0_t = fixed_t<uint64_t, 0>;
+using u64_4_t = fixed_t<uint64_t, 4>;
+using i64_63_t = fixed_t<int64_t, 63>;
+using u64_64_t = fixed_t<uint64_t, 64>;
+using i128_0_t = fixed_t<int128_t, 0>;
+using u128_0_t = fixed_t<uint128_t, 0>;
+using i128_8_t = fixed_t<int128_t, 8>;
+using u128_8_t = fixed_t<uint128_t, 8>;
+using i128_64_t = fixed_t<int128_t, 64>;
 using i128_126_t = fixed_t<int128_t, 126>;
 using u128_128_t = fixed_t<uint128_t, 128>;
 
-constexpr auto rne      = rounding_modes::shr::nearest_even;
+constexpr auto rne = rounding_modes::shr::nearest_even;
 constexpr auto truncate = rounding_modes::shr::truncate;
 
-using value_t            = int_t;
+using value_t = int_t;
 constexpr auto frac_bits = 21;
-using sut_t              = fixed_t<value_t, frac_bits>;
+using sut_t = fixed_t<value_t, frac_bits>;
 
 // Standard division is not constexpr. This type forces a specific type to go through the constexpr path.
 using constexpr_div_sut_t = i16_4_t;
@@ -167,8 +167,8 @@ static_assert(i8_7_t ::convert(i16_9_t::literal(256)).value == 64);
 
 namespace rounding {
 
-using src_t        = i16_4_t;
-using dst_t        = i8_2_t;
+using src_t = i16_4_t;
+using dst_t = i8_2_t;
 constexpr auto min = crv::min<int8_t>();
 constexpr auto max = crv::max<int8_t>();
 
@@ -281,30 +281,30 @@ static_assert(constexpr_div_sut_t{12} / 3 != 3 / constexpr_div_sut_t{12});
 static_assert((i16_8_t{16} >> 1) == i16_8_t{8});
 static_assert((i16_8_t{16} >> 2) == i16_8_t{4});
 static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) >> 1)
-              == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 1)));
+    == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 1)));
 static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) >> 2)
-              == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 2)));
+    == i16_8_t::literal(int_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() >> 2)));
 
 static_assert((u16_8_t{16} >> 1) == u16_8_t{8});
 static_assert((u16_8_t{16} >> 2) == u16_8_t{4});
 static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) >> 1)
-              == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 1)));
+    == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 1)));
 static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) >> 2)
-              == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 2)));
+    == u16_8_t::literal(int_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() >> 2)));
 
 static_assert((i16_8_t{16} << 1) == i16_8_t{32});
 static_assert((i16_8_t{16} << 2) == i16_8_t{64});
 static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) << 1)
-              == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 1)));
+    == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 1)));
 static_assert((i16_8_t::literal(max<i16_8_t::value_t>()) << 2)
-              == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 2)));
+    == i16_8_t::literal(static_cast<i16_8_t::value_t>(max<i16_8_t::value_t>() << 2)));
 
 static_assert((u16_8_t{16} << 1) == u16_8_t{32});
 static_assert((u16_8_t{16} << 2) == u16_8_t{64});
 static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) << 1)
-              == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 1)));
+    == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 1)));
 static_assert((u16_8_t::literal(max<u16_8_t::value_t>()) << 2)
-              == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 2)));
+    == u16_8_t::literal(static_cast<u16_8_t::value_t>(max<u16_8_t::value_t>() << 2)));
 
 } // namespace scalar_arithmetic
 
@@ -453,23 +453,23 @@ static_assert(multiply(i16_0_t{3}, i32_0_t{5}) == i64_0_t{15});
 
 // range limits
 static_assert(multiply(i8_6_t::literal(min<int8_t>()), i8_6_t::literal(min<int8_t>()))
-              == i16_12_t::literal(min<int8_t>() * min<int8_t>()));
+    == i16_12_t::literal(min<int8_t>() * min<int8_t>()));
 static_assert(multiply(i8_6_t::literal(min<int8_t>()), i8_6_t::literal(max<int8_t>()))
-              == i16_12_t::literal(min<int8_t>() * max<int8_t>()));
+    == i16_12_t::literal(min<int8_t>() * max<int8_t>()));
 static_assert(multiply(i8_6_t::literal(max<int8_t>()), i8_6_t::literal(min<int8_t>()))
-              == i16_12_t::literal(max<int8_t>() * min<int8_t>()));
+    == i16_12_t::literal(max<int8_t>() * min<int8_t>()));
 static_assert(multiply(i8_6_t::literal(max<int8_t>()), i8_6_t::literal(max<int8_t>()))
-              == i16_12_t::literal(max<int8_t>() * max<int8_t>()));
+    == i16_12_t::literal(max<int8_t>() * max<int8_t>()));
 
 // 128-bit limits
 static_assert(multiply(i64_0_t::literal(max<int64_t>()), i64_0_t::literal(max<int64_t>()))
-              == i128_0_t::literal(int128_t{max<int64_t>()} * max<int64_t>()));
+    == i128_0_t::literal(int128_t{max<int64_t>()} * max<int64_t>()));
 static_assert(multiply(u64_0_t(max<uint64_t>()), u64_0_t::literal(max<uint64_t>()))
-              == u128_0_t::literal(uint128_t{max<uint64_t>()} * max<uint64_t>()));
+    == u128_0_t::literal(uint128_t{max<uint64_t>()} * max<uint64_t>()));
 static_assert(multiply(i64_63_t::literal(max<int64_t>()), i64_63_t::literal(max<int64_t>()))
-              == i128_126_t::literal(int128_t{max<int64_t>()} * max<int64_t>()));
+    == i128_126_t::literal(int128_t{max<int64_t>()} * max<int64_t>()));
 static_assert(multiply(u64_64_t::literal(max<uint64_t>()), u64_64_t::literal(max<uint64_t>()))
-              == u128_128_t::literal(uint128_t{max<uint64_t>()} * max<uint64_t>()));
+    == u128_128_t::literal(uint128_t{max<uint64_t>()} * max<uint64_t>()));
 
 // --------------------------------------------------------------------------------------------------------------------
 // Multiplication to Specific Type with Rounding Mode
@@ -482,11 +482,11 @@ static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3},
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
 {
-    using out_t              = fixed_t<uint_t, 1>;
-    auto const lhs           = u8_1_t{2};
-    auto const rhs           = fixed_t<int16_t, 1>{3};
+    using out_t = fixed_t<uint_t, 1>;
+    auto const lhs = u8_1_t{2};
+    auto const rhs = fixed_t<int16_t, 1>{3};
     auto const expected_bias = uint32_t{23};
-    auto const expected      = out_t::literal(29);
+    auto const expected = out_t::literal(29);
     EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
     EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
@@ -506,11 +506,11 @@ static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, shifter_t{truncate}) == u8_
 
 TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
 {
-    using sut_t              = fixed_t<int_t, 1>;
-    auto const lhs           = sut_t::literal(2 << 1);
-    auto const rhs           = sut_t::literal(3 << 1);
+    using sut_t = fixed_t<int_t, 1>;
+    auto const lhs = sut_t::literal(2 << 1);
+    auto const rhs = sut_t::literal(3 << 1);
     auto const expected_bias = sut_t::value_t{23};
-    auto const expected      = sut_t::literal(29);
+    auto const expected = sut_t::literal(29);
     EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
     EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
 
@@ -590,8 +590,8 @@ static_assert(divide<i8_4_t>(i16_8_t{-100}, i16_8_t{1}) == i8_4_t::literal(min<i
 struct fixed_division_ops_t : Test
 {
     using sut_t = i16_8_t;
-    sut_t lhs   = sut_t{6};
-    sut_t rhs   = sut_t{2};
+    sut_t lhs = sut_t{6};
+    sut_t rhs = sut_t{2};
 };
 
 TEST_F(fixed_division_ops_t, binary_op)
@@ -618,7 +618,7 @@ TEST_F(fixed_division_ops_t, mixed_type_binary_op)
 TEST_F(fixed_division_ops_t, mixed_type_binary_op_unsigned_rhs)
 {
     auto const rhs_unsigned = u16_8_t{2};
-    auto const actual       = lhs / rhs_unsigned;
+    auto const actual = lhs / rhs_unsigned;
 
     static_assert(std::same_as<decltype(actual), i16_8_t const>);
     EXPECT_EQ(sut_t{3}, actual);
@@ -631,9 +631,9 @@ template <int t_out_frac_bits, int t_lhs_frac_bits, int t_rhs_frac_bits> struct 
     static constexpr auto rhs_frac_bits = t_rhs_frac_bits;
 
     std::string name;
-    uint64_t    lhs;
-    uint64_t    rhs;
-    uint64_t    expected;
+    uint64_t lhs;
+    uint64_t rhs;
+    uint64_t expected;
 
     friend auto operator<<(std::ostream& out, vector_t const& src) -> std::ostream&
     {
@@ -647,9 +647,9 @@ struct fixed_division_test_t : Test
 {
     template <typename vector_t> void test(vector_t const& vector)
     {
-        using out_t         = fixed_t<uint64_t, vector_t::out_frac_bits>;
-        auto const lhs      = fixed_t<uint64_t, vector_t::lhs_frac_bits>::literal(vector.lhs);
-        auto const rhs      = fixed_t<uint64_t, vector_t::rhs_frac_bits>::literal(vector.rhs);
+        using out_t = fixed_t<uint64_t, vector_t::out_frac_bits>;
+        auto const lhs = fixed_t<uint64_t, vector_t::lhs_frac_bits>::literal(vector.lhs);
+        auto const rhs = fixed_t<uint64_t, vector_t::rhs_frac_bits>::literal(vector.rhs);
         auto const expected = out_t::literal(vector.expected);
 
         auto const actual = divide<out_t>(lhs, rhs);
@@ -669,7 +669,7 @@ TEST_F(fixed_division_test_t, limits)
 static constexpr auto lhs_frac_bits = 3;
 static constexpr auto rhs_frac_bits = 5;
 static constexpr auto out_frac_bits = 20;
-using specialized_vector_t          = vector_t<out_frac_bits, lhs_frac_bits, rhs_frac_bits>;
+using specialized_vector_t = vector_t<out_frac_bits, lhs_frac_bits, rhs_frac_bits>;
 
 struct fixed_division_vector_test_t : fixed_division_test_t, WithParamInterface<specialized_vector_t>
 {};
@@ -706,8 +706,8 @@ specialized_vector_t const vectors[] = {
     {"5/5", 5 << lhs_frac_bits, 5 << rhs_frac_bits, (5 << out_frac_bits) / 5},
     {"6/5", 6 << lhs_frac_bits, 5 << rhs_frac_bits, (6 << out_frac_bits) / 5},
 };
-INSTANTIATE_TEST_SUITE_P(cases, fixed_division_vector_test_t, ValuesIn(vectors),
-                         test_name_generator_t<specialized_vector_t>{});
+INSTANTIATE_TEST_SUITE_P(
+    cases, fixed_division_vector_test_t, ValuesIn(vectors), test_name_generator_t<specialized_vector_t>{});
 
 } // namespace division
 
@@ -744,12 +744,12 @@ static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
 // rounding via mock
 TEST_F(fixed_test_with_rounding_mode_t, modulo_to_specific_type)
 {
-    using out_t              = fixed_t<uint_t, 1>;
-    auto const lhs           = fixed_t<uint8_t, 3>::literal(27); // 3.375
-    auto const rhs           = fixed_t<int16_t, 3>::literal(12); // 1.5
-    auto const remainder     = int_t{27 % 12};                   // 3
+    using out_t = fixed_t<uint_t, 1>;
+    auto const lhs = fixed_t<uint8_t, 3>::literal(27); // 3.375
+    auto const rhs = fixed_t<int16_t, 3>::literal(12); // 1.5
+    auto const remainder = int_t{27 % 12}; // 3
     auto const expected_bias = uint32_t{11};
-    auto const expected      = out_t::literal(5);
+    auto const expected = out_t::literal(5);
 
     // out_shift = max(3, 3) - 1 = 2
     EXPECT_CALL(mock_rounding_mode, bias(remainder, 2)).WillOnce(Return(expected_bias));
@@ -919,8 +919,8 @@ static_assert(abs(u_4_t{max<int_t>()}) == u_4_t{max<int_t>()});
 namespace numeric_limits_tests {
 
 using value_t = int32_t;
-using sut_t   = std::numeric_limits<i32_16_t>;
-using base_t  = std::numeric_limits<value_t>;
+using sut_t = std::numeric_limits<i32_16_t>;
+using base_t = std::numeric_limits<value_t>;
 
 // traits
 static_assert(sut_t::is_specialized);

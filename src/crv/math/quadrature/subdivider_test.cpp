@@ -10,8 +10,8 @@
 namespace crv::quadrature::generic {
 namespace {
 
-using real_t      = float_t;
-using segment_t   = segment_t<real_t>;
+using real_t = float_t;
+using segment_t = segment_t<real_t>;
 using bisection_t = bisection_t<real_t>;
 
 // ====================================================================================================================
@@ -20,7 +20,7 @@ using bisection_t = bisection_t<real_t>;
 
 namespace subdivision_predicate_test {
 
-using sut_t        = subdivision_predicate_t<real_t>;
+using sut_t = subdivision_predicate_t<real_t>;
 constexpr auto sut = sut_t{};
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -29,18 +29,18 @@ constexpr auto sut = sut_t{};
 // Everything here is well within limits. Predicate must return true, requiring subdivision.
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto base_limit     = 10;
-constexpr auto base_area      = 1.0;
-constexpr auto base_error     = 100.0; // huge error demands subdivision
+constexpr auto base_limit = 10;
+constexpr auto base_area = 1.0;
+constexpr auto base_error = 100.0; // huge error demands subdivision
 constexpr auto base_min_width = sut_t::min_width;
-constexpr auto base_noise     = base_area * sut_t::relative_noise_margin;
+constexpr auto base_noise = base_area * sut_t::relative_noise_margin;
 
 constexpr auto base_segment = segment_t{
-    .left      = 0.0,
-    .right     = base_min_width * 10.0, // plenty of width
-    .integral  = 0.0,
-    .tolerance = base_noise * 2.0,      // segment tolerance dominates noise floor
-    .depth     = 5,                     // safely below limit
+    .left = 0.0,
+    .right = base_min_width * 10.0, // plenty of width
+    .integral = 0.0,
+    .tolerance = base_noise * 2.0, // segment tolerance dominates noise floor
+    .depth = 5, // safely below limit
 };
 
 // baseline always passes
@@ -58,7 +58,7 @@ static_assert(!sut(base_segment, base_area, base_error, 5));
 
 // width dominates
 constexpr auto narrow_segment = [] {
-    auto segment  = base_segment;
+    auto segment = base_segment;
     segment.right = segment.left + (base_min_width / 2.0);
     return segment;
 }();
@@ -72,7 +72,7 @@ static_assert(!sut(base_segment, base_area, low_error, base_limit));
 
 // noise floor dominates, becoming the ceiling
 constexpr auto low_tolerance_segment = [] {
-    auto segment      = base_segment;
+    auto segment = base_segment;
     segment.tolerance = base_noise / 2.0; // error is now lower than noise floor
     return segment;
 }();
@@ -89,7 +89,7 @@ static_assert(!sut(low_tolerance_segment, base_area, noise_dominated_error, base
 //
 // logic should still hold when both tolerances are the same
 constexpr auto tie_segment = [] {
-    auto segment      = base_segment;
+    auto segment = base_segment;
     segment.tolerance = base_noise;
     return segment;
 }();
@@ -104,7 +104,7 @@ static_assert(!sut(tie_segment, base_area, base_noise, base_limit));
 //
 // noise_floor becomes 0.0, so local_tolerance must fall back to segment.tolerance.
 constexpr auto zero_area_segment = [] {
-    auto segment      = base_segment;
+    auto segment = base_segment;
     segment.tolerance = 1.0;
     return segment;
 }();
@@ -122,8 +122,8 @@ static_assert(!sut(base_segment, negative_area, low_error, base_limit));
 //
 // If the geometry is corrupted or inverted, current_width becomes negative, which is definitely smaller than min width.
 constexpr auto inverted_segment = [] {
-    auto s  = base_segment;
-    s.left  = 100.0;
+    auto s = base_segment;
+    s.left = 100.0;
     s.right = 0.0; // width is now -100.0
     return s;
 }();
@@ -147,8 +147,8 @@ using stack_t = std::vector<segment_t>;
 // accumulates final results
 struct builder_t
 {
-    int_t  appended_segment_count = 0;
-    real_t total_integral         = 0.0;
+    int_t appended_segment_count = 0;
+    real_t total_integral = 0.0;
 
     constexpr auto append(real_t, real_t integral, real_t) -> void
     {
@@ -201,8 +201,8 @@ struct stub_predicate_t
 
 constexpr auto test_immediate_termination() -> bool
 {
-    auto stack           = stack_t{};
-    auto builder         = builder_t{};
+    auto stack = stack_t{};
+    auto builder = builder_t{};
     auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);
@@ -219,8 +219,8 @@ static_assert(test_immediate_termination());
 
 constexpr auto test_shallow_subdivision() -> bool
 {
-    auto stack           = stack_t{};
-    auto builder         = builder_t{};
+    auto stack = stack_t{};
+    auto builder = builder_t{};
     auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);

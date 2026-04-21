@@ -34,11 +34,11 @@ equioscillation_t<real_t, sample_count>::nodes_t const equioscillation_t<real_t,
     for (auto sample = 1; sample < sample_count - 1; ++sample)
     {
         auto const position = std::cos(static_cast<real_t>(sample) * scale);
-        result[sample]      = -position;
+        result[sample] = -position;
     }
 
     // punch in common values
-    result[0]                = -1.0;
+    result[0] = -1.0;
     result[sample_count - 1] = 1.0;
 
     constexpr auto odd_count = sample_count & 1;

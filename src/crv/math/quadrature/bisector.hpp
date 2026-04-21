@@ -34,9 +34,9 @@ concept is_bisector = is_root_bisector<subdivider_t, real_t> && is_nested_bisect
 template <typename t_integral_t> class bisector_t
 {
 public:
-    using integral_t  = t_integral_t;
-    using real_t      = integral_t::real_t;
-    using segment_t   = segment_t<real_t>;
+    using integral_t = t_integral_t;
+    using real_t = integral_t::real_t;
+    using segment_t = segment_t<real_t>;
     using bisection_t = bisection_t<real_t>;
 
     constexpr bisector_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
@@ -52,15 +52,15 @@ public:
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
         auto const child_tolerance = parent.tolerance / 2;
-        auto const child_depth     = parent.depth + 1;
+        auto const child_depth = parent.depth + 1;
 
-        auto const left_rule_result  = integral_.estimate(parent.left, parent_midpoint);
+        auto const left_rule_result = integral_.estimate(parent.left, parent_midpoint);
         auto const right_rule_result = integral_.estimate(parent_midpoint, parent.right);
 
         auto const combined_integral = left_rule_result.sum + right_rule_result.sum;
-        auto const quadrature_error  = left_rule_result.error + right_rule_result.error;
+        auto const quadrature_error = left_rule_result.error + right_rule_result.error;
         auto const subdivision_error = abs(combined_integral - parent.integral);
-        auto const error_estimate    = std::max(quadrature_error, subdivision_error);
+        auto const error_estimate = std::max(quadrature_error, subdivision_error);
 
         // clang-format off
         return bisection_t

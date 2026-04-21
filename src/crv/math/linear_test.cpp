@@ -15,9 +15,9 @@ namespace {
 
 namespace int_tests {
 
-using element_t                                  = int_t;
-using scalar_t                                   = scalar_t<element_t>;
-template <int_t size> using vector_t             = vector_t<element_t, size>;
+using element_t = int_t;
+using scalar_t = scalar_t<element_t>;
+template <int_t size> using vector_t = vector_t<element_t, size>;
 template <int_t rows, int_t cols> using matrix_t = matrix_t<element_t, rows, cols>;
 
 // clang-format off
@@ -579,9 +579,9 @@ namespace float_tests {
 // spot checks
 // --------------------------------------------------------------------------------------------------------------------
 
-using element_t                                  = float_t;
-using scalar_t                                   = scalar_t<element_t>;
-template <int_t size> using vector_t             = vector_t<float_t, size>;
+using element_t = float_t;
+using scalar_t = scalar_t<element_t>;
+template <int_t size> using vector_t = vector_t<float_t, size>;
 template <int_t rows, int_t cols> using matrix_t = matrix_t<float_t, rows, cols>;
 
 // clang-format off

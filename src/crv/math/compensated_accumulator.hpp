@@ -19,7 +19,7 @@ namespace crv {
 /// operator +=, then reading the final value.
 template <typename real_t> struct compensated_accumulator_t
 {
-    real_t sum          = real_t{0};
+    real_t sum = real_t{0};
     real_t compensation = real_t{0};
 
     constexpr auto operator+=(real_t value) -> void
@@ -27,13 +27,13 @@ template <typename real_t> struct compensated_accumulator_t
         auto const y = value - compensation;
         auto const t = sum + y;
         compensation = (t - sum) - y;
-        sum          = t;
+        sum = t;
     }
 
     constexpr operator real_t() const { return sum + compensation; }
 
     constexpr auto operator<=>(compensated_accumulator_t const&) const noexcept -> auto = default;
-    constexpr auto operator==(compensated_accumulator_t const&) const noexcept -> bool  = default;
+    constexpr auto operator==(compensated_accumulator_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv

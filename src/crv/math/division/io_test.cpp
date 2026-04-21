@@ -19,7 +19,7 @@ namespace {
 struct qr_pair_param_t
 {
     qr_pair_t<uint32_t> sut;
-    std::string         expected;
+    std::string expected;
 };
 
 struct math_division_qr_pair_io_test_t : TestWithParam<qr_pair_param_t>
@@ -47,7 +47,7 @@ qr_pair_param_t const qr_pair_vectors[] = {
 
     {
         {
-            .quotient  = max<uint32_t>(),
+            .quotient = max<uint32_t>(),
             .remainder = max<uint32_t>(),
         },
         "{.quotient = 4294967295, .remainder = 4294967295}",
