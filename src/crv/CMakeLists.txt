@@ -32,6 +32,7 @@ target_sources(lib PRIVATE
     math/quadrature/stack.hpp
     math/spline/float/io.hpp
     math/spline/float/segment.hpp
+    math/spline/fixed/segment_locator_builder.hpp
     math/stats.hpp
     priority_queue.hpp
 )
@@ -65,6 +66,7 @@ target_sources_kernel(lib
     math/shifter.hpp
     math/spline/fixed/cubic_monomial.hpp
     math/spline/fixed/cubic_segment.hpp
+    math/spline/fixed/segment_locator.hpp
     prefetcher.hpp
     ranges.hpp
     traits.hpp
@@ -127,6 +129,9 @@ if (enable_testing)
         math/spline/fixed/cubic_monomial_test.cpp
         math/spline/fixed/cubic_segment_test.cpp
         math/spline/fixed/io_test.cpp
+        math/spline/fixed/segment_locator_builder_test.cpp
+        math/spline/fixed/segment_locator_test.cpp
+        math/spline/fixed/segment_locator_test.hpp
         math/spline/float/io_test.cpp
         math/spline/float/segment_test.cpp
         math/stats_test.cpp
