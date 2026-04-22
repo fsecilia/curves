@@ -13,7 +13,7 @@
 #include <new>
 #include <span>
 
-namespace crv::spline::fixed_point::segment_locator {
+namespace crv::spline::fixed_point {
 
 /// branchless quaternary bfs tree over spline segments
 ///
@@ -26,7 +26,7 @@ namespace crv::spline::fixed_point::segment_locator {
 /// overall. It performs 3 comparisons per fetch, so it must fetch fewer times than a binary tree. Each node stores 3
 /// keys, and the top nodes of the tree are stored adjacently, so the first cache line contains the first few conditions
 /// with a single fetch.
-template <typename t_location_t, int t_depth_max> class locator_t
+template <typename t_location_t, int t_depth_max> class segment_locator_t
 {
 public:
     using location_t = t_location_t;
@@ -99,10 +99,10 @@ public:
         return {.index = index - node_count, .x_left = x_left};
     }
 
-    explicit constexpr locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
+    explicit constexpr segment_locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<locator_t>);
+        static_assert(std::is_trivially_copyable_v<segment_locator_t>);
 
         static constexpr auto branching_mask = branching_factor - 1;
 
@@ -140,4 +140,4 @@ private:
     alignas(cache_line_size) nodes_t nodes_;
 };
 
-} // namespace crv::spline::fixed_point::segment_locator
+} // namespace crv::spline::fixed_point

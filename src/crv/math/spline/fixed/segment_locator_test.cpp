@@ -9,7 +9,7 @@
 #include <crv/test/test.hpp>
 #include <algorithm>
 
-namespace crv::spline::fixed_point::segment_locator {
+namespace crv::spline::fixed_point {
 namespace {
 
 using location_t = int_t;
@@ -34,7 +34,7 @@ template <typename sorted_keys_t> constexpr auto make_strided_keys(int_t offset,
 
 namespace offsets_tests {
 
-template <int_t depth_max> using offsets_by_depth_t = locator_t<location_t, depth_max>::row_offsets_t;
+template <int_t depth_max> using offsets_by_depth_t = segment_locator_t<location_t, depth_max>::row_offsets_t;
 
 // (4^n - 1)/3
 static_assert(offsets_by_depth_t<0>{}.base_index == std::array<int_t, 0>{});
@@ -55,7 +55,7 @@ namespace sweep_tests {
 
 template <int_t depth_max> struct verify_locator_sweep
 {
-    using sut_t = locator_t<location_t, depth_max>;
+    using sut_t = segment_locator_t<location_t, depth_max>;
     static constexpr auto total_key_count = sut_t::total_key_count;
     using sorted_keys_t = std::array<location_t, total_key_count>;
 
@@ -107,7 +107,7 @@ static_assert(verify_locator_sweep<4>{}.test());
 
 namespace prefetch_tests {
 
-using sut_t = locator_t<location_t, 3>;
+using sut_t = segment_locator_t<location_t, 3>;
 using node_keys_t = sut_t::node_keys_t;
 
 static constexpr auto total_key_count = sut_t::total_key_count;
@@ -139,4 +139,4 @@ static_assert(test_prefetcher());
 } // namespace prefetch_tests
 
 } // namespace
-} // namespace crv::spline::fixed_point::segment_locator
+} // namespace crv::spline::fixed_point
