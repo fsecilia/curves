@@ -5,7 +5,6 @@
 
 #include "fma.hpp"
 #include <crv/test/test.hpp>
-#include <utility>
 
 namespace crv {
 namespace {
@@ -35,8 +34,8 @@ template <typename out_t, overflow_policy_t saturation, typename multiplicand_t,
     typename addend_t, typename shifter_t>
 constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, shifter_t shifter) -> out_t
 {
-    return fma_t<out_t, multiplicand_t, multiplier_t, addend_t, saturation>{}(
-        multiplicand, multiplier, addend, std::move(shifter));
+    return fma_t<out_t, multiplicand_t, multiplier_t, addend_t, shifter_t, saturation>{std::move(shifter)}(
+        multiplicand, multiplier, addend);
 }
 
 // --------------------------------------------------------------------------------------------------------------------

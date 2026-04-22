@@ -15,9 +15,11 @@ namespace crv {
 
 /// fused multiply-add for fixed-point types
 template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
-    overflow_policy_t overflow_policy = overflow_policy_t::wrap>
+    typename shifter_t = shifter_t<>, overflow_policy_t overflow_policy = overflow_policy_t::wrap>
 struct fma_t
 {
+    [[no_unique_address]] shifter_t shifter = shifter_t{};
+
     // wide intermediate
     using product_t = fixed::product_t<multiplicand_t, multiplier_t>;
 
@@ -106,9 +108,8 @@ struct fma_t
     /// Calculates (a*b) + c at maximum intermediate precision before narrowing and rounding once.
     ///
     /// \pre all 3 terms must share signedness
-    template <typename shifter_t = shifter_t<>>
-    constexpr auto operator()(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend,
-        shifter_t shifter = shifter_t{}) noexcept -> out_t
+    constexpr auto operator()(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend) const noexcept
+        -> out_t
     {
         // multiply
         auto const product = multiply(multiplicand, multiplier);
