@@ -108,9 +108,10 @@ struct ulps_t
 
     constexpr auto sample(arg_t arg, fixed_t actual, value_t expected) noexcept -> void
     {
+        using std::ldexp;
         using std::rint;
 
-        auto const expected_fixed = static_cast<fixed_t::value_t>(rint(std::ldexp(expected, fixed_t::frac_bits)));
+        auto const expected_fixed = static_cast<fixed_t::value_t>(rint(ldexp(expected, fixed_t::frac_bits)));
 
         // calc signed ulps from potentially unsigned values without widening
         auto const ulps = actual.value >= expected_fixed ? static_cast<int_t>(actual.value - expected_fixed)

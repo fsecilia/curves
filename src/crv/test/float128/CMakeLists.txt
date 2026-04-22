@@ -3,13 +3,17 @@
 #
 # optional 128-bit floating point support
 
+# handle clang ambiguities with thin polyfills
 option(polyfill_float128_exp2 "Define std::exp2(std::float128_t)" ON)
 option(polyfill_float128_ldexp "Define std::ldexp(std::float128_t, int)" ON)
+option(polyfill_float128_llrint "Define std::llrint(std::float128_t) polyfill" ON)
 option(polyfill_float128_llround "Define std::llround(std::float128_t) polyfill" ON)
 option(polyfill_float128_log2 "Define std::log2(std::float128_t)" ON)
 option(polyfill_float128_ostream_inserter "Define operator <<(std::ostream&, std::float128_t) polyfill" ON)
-option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
+option(polyfill_float128_nearbyint "Define std::nearbyint(std::float128_t) polyfill" ON)
 option(polyfill_float128_pow "Define std::pow(std::float128_t) polyfill" ON)
+option(polyfill_float128_rint "Define std::rint(std::float128_t) polyfill" ON)
+option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
 option(polyfill_float128_sqrt "Define std::sqrt(std::float128_t) polyfill" ON)
 
 if (BUILD_INTEGRATION_TESTS)
@@ -76,6 +80,10 @@ if (BUILD_INTEGRATION_TESTS)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LDEXP")
         endif()
 
+        if (polyfill_float128_llrint)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LLRINT")
+        endif()
+
         if (polyfill_float128_llround)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LLROUND")
         endif()
@@ -84,12 +92,20 @@ if (BUILD_INTEGRATION_TESTS)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_LOG2")
         endif()
 
+        if (polyfill_float128_nearbyint)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_NEARBYINT")
+        endif()
+
         if (polyfill_float128_ostream_inserter)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_OSTREAM_INSERTER")
         endif()
 
         if (polyfill_float128_pow)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_POW")
+        endif()
+
+        if (polyfill_float128_rint)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_RINT")
         endif()
 
         if (polyfill_float128_round)
