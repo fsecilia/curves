@@ -17,8 +17,15 @@ namespace crv::spline::fixed_point::segment_locator {
 
 /// branchless quaternary bfs tree over spline segments
 ///
-/// This indexing scheme has a slightly longer runtime than something branchless, but it has no jitter and loads fewer
-/// cache lines, so has fewer cache misses than a more speculative structure.
+/// A binary tree is a k-ary tree with 2 branches and 1 condition. A quaternary tree is a k-ary tree with 4 branches and
+/// 3 conditions.
+///
+/// This implementation is branchless, so as it descends through the tree, it chooses the next child arithmetically,
+/// rather than conditionally. This avoids branch mispredictions at the cost of data dependency. It is naturally
+/// shallower than an equivalent binary tree, so requires fewer iterations, though it may perform more comparisons
+/// overall. It performs 3 comparisons per fetch, so it must fetch fewer times than a binary tree. Each node stores 3
+/// keys, and the top nodes of the tree are stored adjacently, so the first cache line contains the first few conditions
+/// with a single fetch.
 template <typename t_location_t, int t_depth_max> class locator_t
 {
 public:
@@ -73,7 +80,7 @@ public:
 
         for (auto depth = 0; depth < depth_max; ++depth)
         {
-            // each node contains keys in sorted order.
+            // alias keys locally in sorted order
             auto const key0 = nodes_[index].keys[0];
             auto const key1 = nodes_[index].keys[1];
             auto const key2 = nodes_[index].keys[2];
