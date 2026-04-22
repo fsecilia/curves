@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/int_traits.hpp>
 #include <crv/math/limits.hpp>
 #include <cassert>
 #include <cmath>
@@ -42,9 +43,6 @@ using std::tanh;
 // --------------------------------------------------------------------------------------------------------------------
 // Concepts
 // --------------------------------------------------------------------------------------------------------------------
-
-template <typename value_t>
-concept arithmetic = std::is_arithmetic_v<value_t>;
 
 template <typename value_t>
 concept is_jet = !std::same_as<value_t, decltype(primal(std::declval<value_t const>()))>;
