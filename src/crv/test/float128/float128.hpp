@@ -37,6 +37,13 @@ inline auto ldexp(float128_t src, int exponent) noexcept -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_LLRINT
+inline auto llrint(float128_t src) noexcept -> long long int
+{
+    return llrintq(src);
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_LLROUND
 inline auto llround(float128_t src) noexcept -> long long int
 {
@@ -51,10 +58,24 @@ inline auto log2(float128_t src) noexcept -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_NEARBYINT
+inline auto nearbyint(float128_t src) noexcept -> float128_t
+{
+    return nearbyintq(src);
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_POW
 inline auto pow(float128_t src, float128_t exponent) noexcept -> float128_t
 {
     return powq(src, exponent);
+}
+#endif
+
+#if defined CRV_POLYFILL_FLOAT128_RINT
+inline auto rint(float128_t src) noexcept -> float128_t
+{
+    return rintq(src);
 }
 #endif
 
