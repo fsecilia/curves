@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "segment.hpp"
+#include <crv/math/fixed/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 
@@ -122,9 +123,23 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 // Evaluate at t=0.5 (dx=16 shifted right by 5).
 // This is the cubic term, so result is coeff0*(0.5)^3
 constexpr auto large_cubic_coeff = coeff_t{50};
-static_assert(sut_t({large_cubic_coeff, c0, c0, c0}, -5)(in_t{16}).value == (large_cubic_coeff.value >> 3));
+static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, -5}(in_t{16}).value == (large_cubic_coeff.value >> 3));
 
 } // namespace evaluation_tests
+
+// -----------------------------------------------------------------------------------------
+// extend_final_tangent
+// -----------------------------------------------------------------------------------------
+
+namespace extend_final_tangent_tests {
+
+static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, -2}.extend_final_tangent(in_t{7})
+    == sut_t::out_t::convert(coeff_t{8} + coeff_t{3} * (in_t{7} >> 2)));
+
+static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 2}.extend_final_tangent(in_t{17})
+    == sut_t::out_t::convert(coeff_t{36} + coeff_t{40} * (in_t{17} << 2)));
+
+} // namespace extend_final_tangent_tests
 
 // -----------------------------------------------------------------------------------------
 // death tests
