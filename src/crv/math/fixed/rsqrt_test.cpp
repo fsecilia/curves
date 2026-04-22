@@ -268,7 +268,7 @@ struct rsqrt_property_test_t : Test
 
 TEST_F(rsqrt_property_test_t, fuzz)
 {
-    std::mt19937 rng{0xF012345678};
+    std::mt19937_64 rng{0xF012345678};
     auto literal_value_distribution = std::uniform_int_distribution<in_value_t>{0, max<in_value_t>()};
 
     for (auto i = 0; i < 10000; ++i) test_property(in_t::literal(literal_value_distribution(rng)));

@@ -261,7 +261,7 @@ TYPED_TEST(divider_correctness_test_t, random_inputs)
     constexpr auto narrow_width = TestFixture::narrow_width;
     constexpr auto rounding_mode = TestFixture::rounding_mode;
 
-    auto rng = std::mt19937{42};
+    auto rng = std::mt19937_64{0xF012345678};
 
     for (int i = 0; i < 10'000; ++i)
     {

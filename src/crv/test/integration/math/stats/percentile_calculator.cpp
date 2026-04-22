@@ -41,7 +41,7 @@ struct percentile_calculator_fuzz_test_t : Test
 
     int_t const iteration_count = 1000;
 
-    std::mt19937 rng{0xF012345678};
+    std::mt19937_64 rng{0xF012345678};
 
     std::uniform_int_distribution<int_t> value_distribution{-1000, 1000};
     std::uniform_int_distribution<int_t> size_distribution{1, 10000};
