@@ -67,6 +67,7 @@ target_sources_kernel(lib
     math/spline/fixed/cubic_segment.hpp
     math/spline/fixed/segment_locator.hpp
     math/spline/fixed/segment.hpp
+    math/spline/fixed/spline.hpp
     prefetcher.hpp
     ranges.hpp
     traits.hpp
@@ -131,6 +132,7 @@ if (enable_testing)
         math/spline/fixed/io_test.cpp
         math/spline/fixed/segment_locator_test.cpp
         math/spline/fixed/segment_test.cpp
+        math/spline/fixed/spline_test.cpp
         math/spline/float/io_test.cpp
         math/spline/float/segment_test.cpp
         math/stats_test.cpp
