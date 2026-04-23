@@ -45,7 +45,7 @@ public:
         compatible_range<real_t> auto const& critical_points) -> typename antiderivative_builder_t::result_t
     {
         // TODO: Automatically clearing the stack here prevents issues if a previous run threw an exception. However,
-        // this becomes a slippery slope when we support incremental evaluation or resuming and interrupted integration.
+        // this becomes a slippery slope when we support incremental evaluation or resuming an interrupted integration.
         // When those features are added, this clear must be removed and replaced with explicit lifecycle management by
         // the caller.
         stack_.clear();
