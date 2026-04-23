@@ -141,9 +141,10 @@ if (enable_testing)
     )
     target_link_libraries(unit_tests PUBLIC
         lib
-        test
+        testing
     )
     gtest_discover_tests(unit_tests)
+    add_dependencies(build_tests unit_tests)
 endif()
 
 add_subdirectory(kernel)
