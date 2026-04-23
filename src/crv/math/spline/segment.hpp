@@ -82,6 +82,19 @@ public:
         return out_t::convert(p1 + m1 * t);
     }
 
+    /// validates segment data
+    constexpr auto is_valid() const noexcept -> bool
+    {
+        // maximum valid shift for the input type
+        static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename in_t::value_t) * CHAR_BIT);
+
+        // shift amount must be within (-max_shift, max_shift)
+        auto const dx_to_t_shift = unpack_dx_to_t_shift();
+        if (dx_to_t_shift <= -max_shift || dx_to_t_shift >= max_shift) return false;
+
+        return true;
+    }
+
 private:
     struct unpacked_coeff0_t
     {
