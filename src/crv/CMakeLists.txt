@@ -63,8 +63,6 @@ target_sources_kernel(lib
     math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/fixed/cubic_monomial.hpp
-    math/spline/fixed/cubic_segment.hpp
     math/spline/fixed/segment_locator.hpp
     math/spline/fixed/segment.hpp
     math/spline/fixed/spline.hpp
@@ -127,9 +125,6 @@ if (enable_testing)
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/fixed/cubic_monomial_test.cpp
-        math/spline/fixed/cubic_segment_test.cpp
-        math/spline/fixed/io_test.cpp
         math/spline/fixed/segment_locator_test.cpp
         math/spline/fixed/segment_test.cpp
         math/spline/fixed/spline_test.cpp
