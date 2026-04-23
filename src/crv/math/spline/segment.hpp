@@ -12,6 +12,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
+#include <climits>
 #include <new>
 
 namespace crv::spline {
@@ -58,12 +59,7 @@ public:
     // \pre 0.0 <= shift(dx, dx_to_t_shift) < 1.0
     [[nodiscard]] constexpr auto operator()(in_t dx) const noexcept -> out_t
     {
-        // unpack dx_to_t_shift from coeffs[0]
-        auto const dx_to_t_shift = static_cast<int8_t>(coeffs_[0].value & 0xFF);
-        auto const coeff0 = coeffs_[0] >> 8;
-
-        auto const t = dx_to_t_shift < 0 ? (dx >> -dx_to_t_shift) : (dx << dx_to_t_shift);
-        assert(in_t{0} <= dx);
+        auto const [coeff0, t] = unpack_coeff0(dx);
         assert(t < in_t{1});
 
         auto result = coeff0;
@@ -72,17 +68,12 @@ public:
         return out_t::convert(result);
     }
 
+    // \pre 0 <= dx
     [[nodiscard]] constexpr auto extend_final_tangent(in_t dx) const noexcept -> out_t
     {
-        // unpack dx_to_t_shift from coeffs[0]
-        auto const dx_to_t_shift = static_cast<int8_t>(coeffs_[0].value & 0xFF);
-        auto const coeff0 = coeffs_[0] >> 8;
+        auto const [coeff0, t] = unpack_coeff0(dx);
 
-        // convert from dx to t
-        auto const t = dx_to_t_shift < 0 ? (dx >> -dx_to_t_shift) : (dx << dx_to_t_shift);
-        assert(in_t{0} <= dx);
-
-        // p1 is the segment evaluated at t=1; the result is the same as the sum of coefficients
+        // p1 is the segment evaluated at t=1; 1^n = 1, so the result is the same as the sum of coefficients
         auto const p1 = coeff0 + coeffs_[1] + coeffs_[2] + coeffs_[3];
 
         // final tangent is the derivative evaluated at t=1
@@ -92,6 +83,25 @@ public:
     }
 
 private:
+    struct unpacked_coeff0_t
+    {
+        coeff_t coeff0;
+        in_t t;
+    };
+
+    constexpr auto unpack_coeff0(in_t dx) const noexcept -> unpacked_coeff0_t
+    {
+        assert(in_t{0} <= dx);
+
+        auto const dx_to_t_shift = unpack_dx_to_t_shift();
+        return {coeffs_[0] >> 8, dx_to_t_shift < 0 ? (dx >> -dx_to_t_shift) : (dx << dx_to_t_shift)};
+    }
+
+    constexpr auto unpack_dx_to_t_shift() const noexcept -> int8_t
+    {
+        return static_cast<int8_t>(coeffs_[0].value & 0xFF);
+    }
+
     [[no_unique_address]] fma_t fma_;
     coeffs_t coeffs_;
 };
