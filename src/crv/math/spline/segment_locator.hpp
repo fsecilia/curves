@@ -73,6 +73,19 @@ public:
         }
     };
 
+    explicit constexpr segment_locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
+    {
+        // this type goes over the ioctl boundary, so it must be trivially copyable
+        static_assert(std::is_trivially_copyable_v<segment_locator_t>);
+
+        // walk tree in-order and place next sorted key into each position
+        for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
+        {
+            auto const node_location = node_location_t{in_order_index};
+            nodes_[node_location.node_index].keys[node_location.key_offset] = sorted_keys[in_order_index - 1];
+        }
+    }
+
     constexpr auto operator()(location_t x) const noexcept -> result_t
     {
         auto index = 0;
@@ -97,19 +110,6 @@ public:
         }
 
         return {.index = index - node_count, .origin = origin};
-    }
-
-    explicit constexpr segment_locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
-    {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<segment_locator_t>);
-
-        // walk tree in-order and place next sorted key into each position
-        for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
-        {
-            auto const node_location = node_location_t{in_order_index};
-            nodes_[node_location.node_index].keys[node_location.key_offset] = sorted_keys[in_order_index - 1];
-        }
     }
 
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void { prefetcher.prefetch(&nodes_[0]); }
