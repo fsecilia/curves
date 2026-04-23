@@ -148,6 +148,7 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 2}.exten
 #if defined CRV_ENABLE_DEATH_TESTS
 
 namespace death_tests {
+
 constexpr auto valid_dx = in_t::literal(1ULL << (in_t::frac_bits - 1));
 
 TEST(spline_segment, violates_dx_lower_bound)
