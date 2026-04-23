@@ -59,13 +59,13 @@ template <int_t depth_max> struct verify_locator_sweep
     static constexpr auto total_key_count = sut_t::total_key_count;
     using sorted_keys_t = std::array<location_t, total_key_count>;
 
-    // reference implementation: count of keys <= x is the segment index; last such key is x_left
+    // reference implementation: count of keys <= x is the segment index; last such key is origin
     constexpr auto expected_result(sorted_keys_t const& keys, location_t x) -> sut_t::result_t
     {
         auto const bound = std::upper_bound(keys.begin(), keys.end(), x);
         auto const index = int_cast<int_t>(bound - keys.begin());
-        auto const x_left = (bound == keys.begin()) ? location_t{0} : *(bound - 1);
-        return {.index = index, .x_left = x_left};
+        auto const origin = (bound == keys.begin()) ? location_t{0} : *(bound - 1);
+        return {.index = index, .origin = origin};
     }
 
     constexpr auto sweep(sorted_keys_t const& keys) -> bool
@@ -80,7 +80,7 @@ template <int_t depth_max> struct verify_locator_sweep
             auto const result = locator(x);
 
             if (result != expected_result(keys, x)) return false;
-            if (result.x_left > x) return false; // x_left <= x
+            if (result.origin > x) return false; // origin <= x
             if (result.index < prev_index) return false; // monotonic in x
             prev_index = result.index;
         }

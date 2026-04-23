@@ -44,8 +44,8 @@ public:
         assert((!is_signed_v<decltype(location)> || location.index >= 0) && location.index < segment_count_
             && "spline_t: located segment index out of bounds");
 
-        assert(location.x_left <= x && "spline_t: located segment origin underflows");
-        return segments_[location.index](x - location.x_left);
+        assert(location.origin <= x && "spline_t: located segment origin underflows");
+        return segments_[location.index](x - location.origin);
     }
 
 private:

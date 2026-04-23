@@ -36,7 +36,7 @@ struct segment_locator_t
     struct result_t
     {
         int_t index;
-        in_t x_left;
+        in_t origin;
 
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
@@ -45,7 +45,7 @@ struct segment_locator_t
     constexpr auto operator()(in_t x) const noexcept -> result_t
     {
         in_t const index = x / 2;
-        return {.index = static_cast<int_t>(index), .x_left = static_cast<in_t>(index * 2)};
+        return {.index = static_cast<int_t>(index), .origin = static_cast<in_t>(index * 2)};
     }
 };
 
@@ -123,7 +123,7 @@ TEST(spline_death_test, index_out_of_bounds_locator)
     {
         using result_t = segment_locator_t::result_t;
 
-        constexpr auto operator()(in_t) const noexcept -> result_t { return {.index = 999, .x_left = 0}; }
+        constexpr auto operator()(in_t) const noexcept -> result_t { return {.index = 999, .origin = 0}; }
     };
 
     using oob_sut_t = spline_t<segment_t, index_out_of_bounds_locator_t>;
@@ -133,22 +133,22 @@ TEST(spline_death_test, index_out_of_bounds_locator)
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
-TEST(spline_death_test, x_left_underflow_locator)
+TEST(spline_death_test, origin_underflow_locator)
 {
-    // malicious locator returning x_left > x
-    struct x_left_underflow_locator_t
+    // malicious locator returning origin > x
+    struct origin_underflow_locator_t
     {
         using result_t = segment_locator_t::result_t;
 
         constexpr auto operator()(in_t x) const noexcept -> result_t
         {
-            return {.index = 0, .x_left = static_cast<in_t>(x + 1)};
+            return {.index = 0, .origin = static_cast<in_t>(x + 1)};
         }
     };
 
-    using oob_sut_t = spline_t<segment_t, x_left_underflow_locator_t>;
+    using oob_sut_t = spline_t<segment_t, origin_underflow_locator_t>;
     auto const sut
-        = oob_sut_t{x_left_underflow_locator_t{}, std::array<segment_t, oob_sut_t::max_segments>{{{10}}}, 1, x_max};
+        = oob_sut_t{origin_underflow_locator_t{}, std::array<segment_t, oob_sut_t::max_segments>{{{10}}}, 1, x_max};
 
     EXPECT_DEATH(sut(0), "origin underflows");
 }

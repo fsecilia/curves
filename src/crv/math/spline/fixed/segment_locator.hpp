@@ -42,7 +42,7 @@ public:
     struct result_t
     {
         int_t index;
-        location_t x_left;
+        location_t origin;
 
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
@@ -76,7 +76,7 @@ public:
     constexpr auto operator()(location_t x) const noexcept -> result_t
     {
         auto index = 0;
-        auto x_left = location_t{0};
+        auto origin = location_t{0};
 
         for (auto depth = 0; depth < depth_max; ++depth)
         {
@@ -86,9 +86,9 @@ public:
             auto const key2 = nodes_[index].keys[2];
 
             // choose lower bound key
-            x_left = (x >= key0) ? key0 : x_left;
-            x_left = (x >= key1) ? key1 : x_left;
-            x_left = (x >= key2) ? key2 : x_left;
+            origin = (x >= key0) ? key0 : origin;
+            origin = (x >= key1) ? key1 : origin;
+            origin = (x >= key2) ? key2 : origin;
 
             // choose lower bound offset
             auto const child_offset = (x >= key0) + (x >= key1) + (x >= key2);
@@ -96,7 +96,7 @@ public:
             index = 4 * index + 1 + child_offset;
         }
 
-        return {.index = index - node_count, .x_left = x_left};
+        return {.index = index - node_count, .origin = origin};
     }
 
     explicit constexpr segment_locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
