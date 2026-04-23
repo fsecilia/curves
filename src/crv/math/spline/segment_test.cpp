@@ -8,7 +8,7 @@
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 namespace {
 
 using coeff_value_t = int64_t;
@@ -189,4 +189,4 @@ TEST(spline_segment, violates_coeff0_negative_packing_bounds)
 #endif
 
 } // namespace
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline

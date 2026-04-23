@@ -9,7 +9,7 @@
 #include <crv/test/test.hpp>
 #include <algorithm>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 namespace {
 
 using location_t = int_t;
@@ -139,4 +139,4 @@ static_assert(test_prefetcher());
 } // namespace prefetch_tests
 
 } // namespace
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline

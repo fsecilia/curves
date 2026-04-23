@@ -12,7 +12,7 @@
 #include <cassert>
 #include <utility>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 
 /// fixed-point cubic spline approximating a function over a specific domain
 template <typename segment_t, typename segment_locator_t> class spline_t
@@ -61,4 +61,4 @@ private:
     segments_t segments_{};
 };
 
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline

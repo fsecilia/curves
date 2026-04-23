@@ -7,7 +7,7 @@
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 namespace {
 
 using in_t = uint8_t; // smaller than out, unsigned
@@ -158,4 +158,4 @@ TEST(spline_death_test, origin_underflow_locator)
 #endif
 
 } // namespace
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline
