@@ -112,6 +112,27 @@ public:
         return {.index = index - node_count, .origin = origin};
     }
 
+    /// validates tree structure and capacity
+    constexpr auto is_valid(int_t segment_count) const noexcept -> bool
+    {
+        // validate segment_count is in valid range
+        if (segment_count <= 0 || max_segment_count < segment_count) return false;
+
+        // validate sorted order
+        auto previous_key = min<location_t>();
+        for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
+        {
+            auto const node_location = node_location_t{in_order_index};
+            auto const current_key = nodes_[node_location.node_index].keys[node_location.key_offset];
+
+            if (current_key <= previous_key) return false;
+
+            previous_key = current_key;
+        }
+
+        return true;
+    }
+
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void { prefetcher.prefetch(&nodes_[0]); }
 
 private:

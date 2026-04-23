@@ -138,5 +138,78 @@ static_assert(test_prefetcher());
 
 } // namespace prefetch_tests
 
+// --------------------------------------------------------------------------------------------------------------------
+// is_valid tests
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace is_valid_tests {
+
+using sut_t = segment_locator_t<location_t, 2>;
+static constexpr auto total_key_count = sut_t::total_key_count;
+using sorted_keys_t = std::array<location_t, total_key_count>;
+
+// valid bounds and midpoint
+static_assert(sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(1));
+static_assert(sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(sut_t::max_segment_count / 2));
+static_assert(sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(sut_t::max_segment_count));
+
+// out of bounds: zero, negative, and strictly greater than max
+static_assert(!sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(0));
+static_assert(!sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(-1));
+static_assert(!sut_t{make_sequential_keys<sorted_keys_t>()}.is_valid(sut_t::max_segment_count + 1));
+
+constexpr auto test_duplicate_keys() -> bool
+{
+    auto keys = make_sequential_keys<sorted_keys_t>();
+
+    // create a duplicate adjacent key
+    keys[5] = keys[4];
+
+    return !sut_t{keys}.is_valid(sut_t::max_segment_count);
+}
+static_assert(test_duplicate_keys());
+
+constexpr auto test_out_of_order_keys() -> bool
+{
+    auto keys = make_sequential_keys<sorted_keys_t>();
+
+    // break monotonic sort
+    keys[5] = keys[4] - location_t{1};
+
+    return !sut_t{keys}.is_valid(sut_t::max_segment_count);
+}
+static_assert(test_out_of_order_keys());
+
+constexpr auto test_minimum_bound_key() -> bool
+{
+    auto keys = make_sequential_keys<sorted_keys_t>();
+
+    // min is not a valid location for a key; it must come before all keys
+    keys.front() = min<location_t>();
+
+    return !sut_t{keys}.is_valid(sut_t::max_segment_count);
+}
+static_assert(test_minimum_bound_key());
+
+constexpr auto test_duplicate_at_min_boundary() -> bool
+{
+    auto keys = make_sequential_keys<sorted_keys_t>();
+    keys[1] = keys.front();
+
+    return !sut_t{keys}.is_valid(sut_t::max_segment_count);
+}
+static_assert(test_duplicate_at_min_boundary());
+
+constexpr auto test_duplicate_at_max_boundary() -> bool
+{
+    auto keys = make_sequential_keys<sorted_keys_t>();
+    keys.back() = keys[keys.size() - 2];
+
+    return !sut_t{keys}.is_valid(sut_t::max_segment_count);
+}
+static_assert(test_duplicate_at_max_boundary());
+
+} // namespace is_valid_tests
+
 } // namespace
 } // namespace crv::spline
