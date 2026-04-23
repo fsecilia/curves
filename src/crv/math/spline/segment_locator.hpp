@@ -104,31 +104,11 @@ public:
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_locator_t>);
 
-        static constexpr auto branching_mask = branching_factor - 1;
-
         // walk tree in-order and place next sorted key into each position
-        //
-        // The relationship between an in-order index and its flat position in the tree is bijective, closed form. The
-        // height is the number of trailing zeros in its quaternary representation, which is the number of pairs of
-        // trailing zeros in its binary representation. The index must be one-based so that the root has the maximum
-        // trailing-zero count rather than the degenerate all-zeros case. After stripping off the pairs of zeros, what
-        // remains is the offset of the key within the row. The bottom 2 bits contain the offset of the key within its
-        // containing node, and the remaining bits define the offset of the node within the row. The index of the node
-        // in the flat array is found relative to the offset to the base index of the row.
         for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
         {
-            // height above floor; intrinsic to ordering, independent of tree layout
-            auto const height_above_floor = std::countr_zero(int_cast<uint_t>(in_order_index)) >> 1; // trailing 0 pairs
-
-            auto const key_offset_in_row = in_order_index >> (2 * height_above_floor); // strip trailing 0 pairs
-            auto const key_offset_in_node = (key_offset_in_row & branching_mask) - 1; // low 2 bits, 0-based
-            auto const node_offset_in_row = key_offset_in_row >> 2; // remaining bits above low 2
-
-            // depth below root; a layout property depending on tree structure
-            auto const depth_below_root = depth_max - 1 - height_above_floor; // invert relative to depth, 0-based
-
-            auto const node_index = row_offsets.base_index[depth_below_root] + node_offset_in_row; // row base + offset
-            nodes_[node_index].keys[key_offset_in_node] = sorted_keys[in_order_index - 1];
+            auto const node_location = node_location_t{in_order_index};
+            nodes_[node_location.node_index].keys[node_location.key_offset] = sorted_keys[in_order_index - 1];
         }
     }
 
@@ -136,6 +116,39 @@ public:
 
 private:
     static constexpr auto row_offsets = row_offsets_t{};
+
+    struct node_location_t
+    {
+        int_t node_index;
+        int_t key_offset;
+
+        constexpr node_location_t(int_t in_order_index) noexcept
+        {
+            static constexpr auto branching_mask = branching_factor - 1;
+
+            // The relationship between an in-order index and its flat position in the tree is bijective, closed form.
+            // The height is the number of trailing zeros in its quaternary representation, which is the number of pairs
+            // of trailing zeros in its binary representation. The index must be one-based so that the root has the
+            // maximum trailing-zero count rather than the degenerate all-zeros case.
+            //
+            // After stripping off the pairs of zeros, what remains is the offset of the key within the row. The bottom
+            // 2 bits contain the offset of the key within its containing node, and the remaining bits define the offset
+            // of the node within the row. The index of the node in the flat array is found relative to the offset to
+            // the base index of the row.
+
+            // height above floor; intrinsic to ordering, independent of tree layout
+            auto const height_above_floor = std::countr_zero(int_cast<uint_t>(in_order_index)) >> 1;
+
+            auto const key_offset_in_row = in_order_index >> (2 * height_above_floor); // strip trailing 0 pairs
+            auto const node_offset_in_row = key_offset_in_row >> 2; // remaining bits above low 2
+
+            // depth below root; a layout property depending on tree structure
+            auto const depth_below_root = depth_max - 1 - height_above_floor;
+
+            node_index = row_offsets.base_index[depth_below_root] + node_offset_in_row;
+            key_offset = (key_offset_in_row & branching_mask) - 1; // low 2 bits, 0-based
+        }
+    };
 
     alignas(cache_line_size) nodes_t nodes_;
 };
