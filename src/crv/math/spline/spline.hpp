@@ -48,6 +48,27 @@ public:
         return segments_[location.index](x - location.origin);
     }
 
+    /// validates data the driver receives
+    constexpr auto is_valid() const noexcept -> bool
+    {
+        // segment count must be in [0, max_segments]
+        if (segment_count_ <= 0 || max_segments < segment_count_) return false;
+
+        // domain must not be degenerate or empty
+        if (x_max_ <= in_t{0}) return false;
+
+        // dispatch to segment locator
+        if (!locate_segment_.is_valid(segment_count_)) return false;
+
+        // dispatch to each segment
+        for (int_t i = 0; i < segment_count_; ++i)
+        {
+            if (!segments_[i].is_valid()) return false;
+        }
+
+        return true;
+    }
+
 private:
     constexpr auto extend_final_tangent(in_t x) const noexcept -> out_t
     {
