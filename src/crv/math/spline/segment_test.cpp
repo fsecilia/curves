@@ -142,6 +142,31 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 2}.exten
 } // namespace extend_final_tangent_tests
 
 // -----------------------------------------------------------------------------------------
+// is_valid
+// -----------------------------------------------------------------------------------------
+
+namespace is_valid_tests {
+
+constexpr auto coeffs = std::array<coeff_t, 4>{c0, c0, c0, c0};
+
+// zero is a valid shift
+static_assert(sut_t{coeffs, 0}.is_valid());
+
+// bounds of valid shifts (-63 to 63 for a 64-bit type)
+static_assert(sut_t{coeffs, 63}.is_valid());
+static_assert(sut_t{coeffs, -63}.is_valid());
+
+// strictly out of bounds (>= 64 or <= -64)
+static_assert(!sut_t{coeffs, 64}.is_valid());
+static_assert(!sut_t{coeffs, -64}.is_valid());
+
+// capacity for int8_t
+static_assert(!sut_t{coeffs, 127}.is_valid());
+static_assert(!sut_t{coeffs, -128}.is_valid());
+
+} // namespace is_valid_tests
+
+// -----------------------------------------------------------------------------------------
 // death tests
 // -----------------------------------------------------------------------------------------
 
