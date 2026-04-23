@@ -30,8 +30,6 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
-    math/spline/float/io.hpp
-    math/spline/float/segment.hpp
     math/stats.hpp
     priority_queue.hpp
 )
@@ -128,8 +126,6 @@ if (enable_testing)
         math/spline/fixed/segment_locator_test.cpp
         math/spline/fixed/segment_test.cpp
         math/spline/fixed/spline_test.cpp
-        math/spline/float/io_test.cpp
-        math/spline/float/segment_test.cpp
         math/stats_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
