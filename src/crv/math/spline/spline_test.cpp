@@ -28,6 +28,8 @@ struct segment_t
     {
         return static_cast<out_t>(-(base_val + dx));
     }
+
+    constexpr auto is_valid() const noexcept -> bool { return true; }
 };
 
 // maps subdomains of width 2 to sequential indices
@@ -47,6 +49,8 @@ struct segment_locator_t
         in_t const index = x / 2;
         return {.index = static_cast<int_t>(index), .origin = static_cast<in_t>(index * 2)};
     }
+
+    constexpr auto is_valid(int_t) const noexcept -> bool { return true; }
 };
 
 using sut_t = spline_t<segment_t, segment_locator_t>;
@@ -94,6 +98,66 @@ static_assert(min_sut(2) == -10); // -(10 + (2 - 2))
 static_assert(min_sut(3) == -11); // -(10 + (3 - 2))
 
 } // namespace minimum_valid_domain
+
+// -----------------------------------------------------------------------------------------
+// is_valid tests
+// -----------------------------------------------------------------------------------------
+
+namespace is_valid_tests {
+
+struct segment_t
+{
+    using in_t = in_t;
+    using out_t = out_t;
+
+    bool valid{true};
+
+    constexpr auto operator()(in_t) const noexcept -> out_t { return 0; }
+    constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return 0; }
+    constexpr auto is_valid() const noexcept -> bool { return valid; }
+};
+using segments_t = std::array<segment_t, sut_t::max_segments>;
+
+struct locator_t
+{
+    struct result_t
+    {
+        int_t index;
+        in_t origin;
+    };
+
+    bool valid{true};
+
+    constexpr auto operator()(in_t) const noexcept -> result_t { return {0, 0}; }
+    constexpr auto is_valid(int_t) const noexcept -> bool { return valid; }
+};
+
+using sut_t = spline_t<segment_t, locator_t>;
+
+constexpr auto make_segments(bool s0_valid, bool s1_valid) -> segments_t
+{
+    auto segments = segments_t{};
+    segments[0].valid = s0_valid;
+    segments[1].valid = s1_valid;
+    return segments;
+}
+
+// all valid
+static_assert(sut_t{locator_t{.valid = true}, make_segments(true, true), 2, 5}.is_valid());
+
+// invalid domain, x_max <= 0
+static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, true), 2, 0}.is_valid());
+
+// invalid locator
+static_assert(!sut_t{locator_t{.valid = false}, make_segments(true, true), 2, 5}.is_valid());
+
+// invalid first segment
+static_assert(!sut_t{locator_t{.valid = true}, make_segments(false, true), 2, 5}.is_valid());
+
+// invalid second segment
+static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, false), 2, 5}.is_valid());
+
+} // namespace is_valid_tests
 
 // -----------------------------------------------------------------------------------------
 // death tests
