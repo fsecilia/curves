@@ -13,7 +13,7 @@
 #include <new>
 #include <span>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 
 /// branchless quaternary bfs tree over spline segments
 ///
@@ -140,4 +140,4 @@ private:
     alignas(cache_line_size) nodes_t nodes_;
 };
 
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline

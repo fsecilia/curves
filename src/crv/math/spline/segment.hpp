@@ -14,7 +14,7 @@
 #include <crv/math/shifter.hpp>
 #include <new>
 
-namespace crv::spline::fixed_point {
+namespace crv::spline {
 
 // fma with common types and fast nearest_up rounding mode
 template <is_fixed in_t, is_fixed coeff_t>
@@ -96,4 +96,4 @@ private:
     coeffs_t coeffs_;
 };
 
-} // namespace crv::spline::fixed_point
+} // namespace crv::spline
