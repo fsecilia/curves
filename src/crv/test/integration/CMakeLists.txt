@@ -7,5 +7,5 @@ if (BUILD_INTEGRATION_TESTS)
     add_executable(integration_tests
         math/stats/percentile_calculator.cpp
     )
-    target_link_libraries(integration_tests PRIVATE lib test)
+    target_link_libraries(integration_tests PRIVATE lib testing)
 endif()
