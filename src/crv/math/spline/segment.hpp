@@ -55,8 +55,8 @@ public:
         coeffs_[0].value |= (static_cast<uint64_t>(dx_to_t_shift) & 0xFF);
     }
 
-    // \pre 0 <= dx
-    // \pre 0.0 <= shift(dx, dx_to_t_shift) < 1.0
+    /// \pre 0 <= dx
+    /// \pre 0.0 <= shift(dx, dx_to_t_shift) < 1.0
     [[nodiscard]] constexpr auto operator()(in_t dx) const noexcept -> out_t
     {
         auto const [coeff0, t] = unpack_coeff0(dx);
@@ -68,7 +68,9 @@ public:
         return out_t::convert(result);
     }
 
-    // \pre 0 <= dx
+    /// extends tangent at t=1 beyond end of segment
+    ///
+    /// \pre 0 <= dx
     [[nodiscard]] constexpr auto extend_final_tangent(in_t dx) const noexcept -> out_t
     {
         auto const [coeff0, t] = unpack_coeff0(dx);
