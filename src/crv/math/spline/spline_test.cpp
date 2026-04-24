@@ -127,8 +127,9 @@ struct locator_t
     };
 
     bool valid{true};
+    result_t result{1, 4};
 
-    constexpr auto operator()(in_t) const noexcept -> result_t { return {0, 0}; }
+    constexpr auto operator()(in_t) const noexcept -> result_t { return result; }
     constexpr auto is_valid(int_t) const noexcept -> bool { return valid; }
 };
 
@@ -143,19 +144,31 @@ constexpr auto make_segments(bool s0_valid, bool s1_valid) -> segments_t
 }
 
 // all valid
-static_assert(sut_t{locator_t{.valid = true}, make_segments(true, true), 2, 5}.is_valid());
+static_assert(sut_t{locator_t{}, make_segments(true, true), 2, 5, 0}.is_valid());
+
+// invalid domain, segment_count <= 0
+static_assert(!sut_t{locator_t{}, make_segments(true, true), 0, 5, 0}.is_valid());
+
+// invalid domain, segment_count > max_segments
+static_assert(!sut_t{locator_t{}, make_segments(true, true), sut_t::max_segments + 1, 5, 0}.is_valid());
+
+// invalid domain, prev_segment_index <= 0
+static_assert(!sut_t{locator_t{}, make_segments(true, true), 2, 5, -1}.is_valid());
+
+// invalid domain, prev_segment_index > max_segments
+static_assert(!sut_t{locator_t{}, make_segments(true, true), 2, 5, sut_t::max_segments + 1}.is_valid());
 
 // invalid domain, x_max <= 0
-static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, true), 2, 0}.is_valid());
+static_assert(!sut_t{locator_t{}, make_segments(true, true), 2, 0, 0}.is_valid());
 
 // invalid locator
-static_assert(!sut_t{locator_t{.valid = false}, make_segments(true, true), 2, 5}.is_valid());
+static_assert(!sut_t{locator_t{.valid = false}, make_segments(true, true), 2, 5, 0}.is_valid());
 
 // invalid first segment
-static_assert(!sut_t{locator_t{.valid = true}, make_segments(false, true), 2, 5}.is_valid());
+static_assert(!sut_t{locator_t{}, make_segments(false, true), 2, 5, 0}.is_valid());
 
 // invalid second segment
-static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, false), 2, 5}.is_valid());
+static_assert(!sut_t{locator_t{}, make_segments(true, false), 2, 5, 0}.is_valid());
 
 } // namespace is_valid_tests
 
