@@ -70,10 +70,14 @@ public:
 
     /// extends tangent at t=1 beyond end of segment
     ///
+    /// dx_extended is the x value relative to the end of the domain, which is relative to the end of the final segment,
+    /// which here means relative to t=1: dx_extended=0 -> t=1
+    ///
+    /// \param dx_extended x value relative to end of segment
     /// \pre 0 <= dx
-    [[nodiscard]] constexpr auto extend_final_tangent(in_t dx) const noexcept -> out_t
+    [[nodiscard]] constexpr auto extend_final_tangent(in_t dx_extended) const noexcept -> out_t
     {
-        auto const [coeff0, t] = unpack_coeff0(dx);
+        auto const [coeff0, t] = unpack_coeff0(dx_extended);
 
         // p1 is the segment evaluated at t=1; 1^n = 1, so the result is the same as the sum of coefficients
         auto const p1 = coeff0 + coeffs_[1] + coeffs_[2] + coeffs_[3];
