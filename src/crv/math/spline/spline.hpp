@@ -11,7 +11,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
-#include <utility>
 
 namespace crv::spline {
 
@@ -28,8 +27,7 @@ public:
     /// \pre segment_count > 0
     constexpr spline_t(
         segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max) noexcept
-        : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{std::move(locator)},
-          segments_{std::move(segments)}
+        : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{locator}, segments_{segments}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
