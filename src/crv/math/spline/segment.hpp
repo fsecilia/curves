@@ -32,12 +32,12 @@ public:
     using out_t = t_out_t;
     using coeff_t = t_coeff_t;
 
-    static_assert(sizeof(coeff_t) > 1); // must have room to pack dx_to_t_shift
+    static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
 
     static constexpr auto coeff_count = 4;
     using coeffs_t = std::array<coeff_t, coeff_count>;
 
-    constexpr segment_t(coeffs_t coeffs, int8_t dx_to_t_shift, fma_t fma = {}) noexcept
+    constexpr segment_t(coeffs_t coeffs, int8_t log2_width, fma_t fma = {}) noexcept
         : fma_{std::move(fma)}, coeffs_{coeffs}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
@@ -47,20 +47,20 @@ public:
         static_assert(sizeof(segment_t) == 32); // nominal for x64
         static_assert(sizeof(segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
 
-        // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack dx_to_t_shift in the bottom bits
+        // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
         assert(coeffs[0] == ((coeffs[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
 
-        // pack dx_to_t_shift into bottom 8 bits of coeff[0]
+        // pack log2_width into bottom 8 bits of coeff[0]
         coeffs_[0] <<= 8;
-        coeffs_[0].value |= (static_cast<uint64_t>(dx_to_t_shift) & 0xFF);
+        coeffs_[0].value |= (static_cast<uint64_t>(log2_width) & 0xFF);
     }
 
     /// \pre 0 <= dx
-    /// \pre 0.0 <= shift(dx, dx_to_t_shift) < 1.0
+    /// \pre dx < (1 << log2_width)
     [[nodiscard]] constexpr auto operator()(in_t dx) const noexcept -> out_t
     {
         auto const [coeff0, t] = unpack_coeff0(dx);
-        assert(t < in_t{1});
+        assert(t < in_t{1}); // dx < 1 << log2_width)
 
         auto result = coeff0;
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = fma_(result, t, coeffs_[coeff]);
@@ -91,8 +91,8 @@ public:
         static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename in_t::value_t) * CHAR_BIT);
 
         // shift amount must be within (-max_shift, max_shift)
-        auto const dx_to_t_shift = unpack_dx_to_t_shift();
-        if (dx_to_t_shift <= -max_shift || dx_to_t_shift >= max_shift) return false;
+        auto const log2_width = unpack_log2_width();
+        if (log2_width <= -max_shift || max_shift <= log2_width) return false;
 
         return true;
     }
@@ -108,14 +108,16 @@ private:
     {
         assert(in_t{0} <= dx);
 
-        auto const dx_to_t_shift = unpack_dx_to_t_shift();
-        return {coeffs_[0] >> 8, dx_to_t_shift < 0 ? (dx >> -dx_to_t_shift) : (dx << dx_to_t_shift)};
+        auto const log2_width = unpack_log2_width();
+
+        // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
+        // x/2^k = x*2^-k = x << -k == x >> k
+        auto const t = log2_width < 0 ? (dx << -log2_width) : (dx >> log2_width);
+
+        return {coeffs_[0] >> 8, t};
     }
 
-    constexpr auto unpack_dx_to_t_shift() const noexcept -> int8_t
-    {
-        return static_cast<int8_t>(coeffs_[0].value & 0xFF);
-    }
+    constexpr auto unpack_log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
 
     [[no_unique_address]] fma_t fma_;
     coeffs_t coeffs_;

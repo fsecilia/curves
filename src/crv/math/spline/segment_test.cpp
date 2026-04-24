@@ -52,13 +52,13 @@ static_assert(sut0(dx_quarter).value == dx_quarter.value);
 // positive shift (left shift dx, segment is narrower than 1.0)
 // dx is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
 constexpr auto dx_eighth = in_t::literal(1ULL << (in_t::frac_bits - 3));
-constexpr auto sut_left = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 2);
+constexpr auto sut_left = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, -2);
 static_assert(sut_left(dx_eighth).value == (dx_eighth.value << 2));
 
 // negative shift (right shift dx, segment is wider than 1.0)
 // dx is 2.0, shift is -2 (divide by 4), resulting t should be 0.5
 constexpr auto dx_two = in_t::literal(2ULL << in_t::frac_bits);
-constexpr auto sut_right = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, -2);
+constexpr auto sut_right = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 2);
 static_assert(sut_right(dx_two).value == (dx_two.value >> 2));
 
 } // namespace normalization_shift_tests
@@ -123,7 +123,7 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 // Evaluate at t=0.5 (dx=16 shifted right by 5).
 // This is the cubic term, so result is coeff0*(0.5)^3
 constexpr auto large_cubic_coeff = coeff_t{50};
-static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, -5}(in_t{16}).value == (large_cubic_coeff.value >> 3));
+static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}(in_t{16}).value == (large_cubic_coeff.value >> 3));
 
 } // namespace evaluation_tests
 
@@ -133,10 +133,10 @@ static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, -5}(in_t{16}).value == (lar
 
 namespace extend_final_tangent_tests {
 
-static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, -2}.extend_final_tangent(in_t{7})
+static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_final_tangent(in_t{7})
     == sut_t::out_t::convert(coeff_t{8} + coeff_t{3} * (in_t{7} >> 2)));
 
-static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 2}.extend_final_tangent(in_t{17})
+static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(in_t{17})
     == sut_t::out_t::convert(coeff_t{36} + coeff_t{40} * (in_t{17} << 2)));
 
 } // namespace extend_final_tangent_tests
