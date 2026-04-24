@@ -25,7 +25,7 @@ using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_
 template <is_fixed t_in_t, is_fixed t_coeff_t, is_fixed t_out_t = t_coeff_t,
     typename fma_t = segment_fma_t<t_in_t, t_coeff_t>>
     requires(is_signed_v<typename t_coeff_t::value_t>)
-class alignas(std::hardware_constructive_interference_size / 2) segment_t
+class alignas(32) segment_t
 {
 public:
     using in_t = t_in_t;

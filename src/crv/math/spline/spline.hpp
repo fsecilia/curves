@@ -11,7 +11,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
-#include <new>
 #include <utility>
 
 namespace crv::spline {
@@ -112,7 +111,7 @@ private:
     segment_locator_t locate_segment_{};
 
     // *must* be aligned or the prefetching scheme is useless
-    alignas(std::hardware_constructive_interference_size) segments_t segments_{};
+    alignas(64) segments_t segments_{};
 
     mutable int_t prev_segment_index_ = 0;
 };
