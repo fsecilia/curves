@@ -11,6 +11,7 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <limits>
 
 namespace crv::spline {
 
@@ -27,12 +28,18 @@ public:
     /// \pre 0 < segment_count <= max_segments
     constexpr spline_t(
         segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max) noexcept
-        : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{locator}, segments_{segments}
+        : spline_t{locator, segments, segment_count, x_max, 0}
+    {
+        assert(fields_are_valid() && "spline_t: local fields invalid");
+    }
+
+    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max,
+        int_t prev_segment_index) noexcept
+        : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{locator}, segments_{segments},
+          prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
-
-        assert(0 < segment_count_ && segment_count_ <= max_segments && "spline_t: segment count out of bounds");
     }
 
     /// \pre 0 <= x
@@ -53,28 +60,7 @@ public:
     }
 
     /// validates data the driver receives
-    constexpr auto is_valid() const noexcept -> bool
-    {
-        // segment count must be in [1, max_segments]
-        if (segment_count_ <= 1 || max_segments < segment_count_) return false;
-
-        // domain must not be degenerate or empty
-        if (x_max_ <= in_t{0}) return false;
-
-        // prev_segment_index_ must be in [0, segment_count_)
-        if (prev_segment_index_ < 0 || segment_count_ <= prev_segment_index_) return false;
-
-        // dispatch to segment locator
-        if (!locate_segment_.is_valid(segment_count_)) return false;
-
-        // dispatch to each segment
-        for (int_t i = 0; i < segment_count_; ++i)
-        {
-            if (!segments_[i].is_valid()) return false;
-        }
-
-        return true;
-    }
+    constexpr auto is_valid() const noexcept -> bool { return fields_are_valid() && components_are_valid(); }
 
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
@@ -86,6 +72,34 @@ private:
     constexpr auto extend_final_tangent(in_t x) const noexcept -> out_t
     {
         return segments_[segment_count_ - 1].extend_final_tangent(x - x_max_);
+    }
+
+    constexpr auto fields_are_valid() const noexcept -> bool
+    {
+        // segment count must be in [1, max_segments]
+        if (segment_count_ < 1 || max_segments < segment_count_) return false;
+
+        // domain must not be degenerate or empty
+        if (x_max_ <= in_t{0}) return false;
+
+        // prev_segment_index_ must be in [0, segment_count_)
+        if (prev_segment_index_ < 0 || segment_count_ <= prev_segment_index_) return false;
+
+        return true;
+    }
+
+    constexpr auto components_are_valid() const noexcept -> bool
+    {
+        // dispatch to segment locator
+        if (!locate_segment_.is_valid(segment_count_)) return false;
+
+        // dispatch to each segment
+        for (int_t i = 0; i < segment_count_; ++i)
+        {
+            if (!segments_[i].is_valid()) return false;
+        }
+
+        return true;
     }
 
     /// prefetches the most recently selected segment and the two adjacent
