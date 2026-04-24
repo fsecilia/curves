@@ -6,6 +6,8 @@
 #include "spline.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
+#include <gmock/gmock.h>
+#include <new>
 
 namespace crv::spline {
 namespace {
@@ -159,9 +161,131 @@ static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, false), 2, 5}
 
 } // namespace is_valid_tests
 
-// -----------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
+// prefetch tests
+// --------------------------------------------------------------------------------------------------------------------
+
+struct spline_prefetch_test_t : Test
+{
+    struct segment_t
+    {
+        using in_t = in_t;
+        using out_t = out_t;
+
+        alignas(std::hardware_constructive_interference_size / 2) std::array<std::byte, 32> padding;
+
+        constexpr auto operator()(in_t) const noexcept -> out_t { return out_t{0}; }
+        constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return out_t{0}; }
+        constexpr auto is_valid() const noexcept -> bool { return true; }
+    };
+
+    struct mock_prefetcher_t
+    {
+        MOCK_METHOD(void, prefetch, (void const* address), (const, noexcept));
+
+        virtual ~mock_prefetcher_t() = default;
+    };
+    StrictMock<mock_prefetcher_t> mock_prefetcher;
+
+    struct prefetcher_t
+    {
+        mock_prefetcher_t* mock = nullptr;
+
+        auto prefetch(void const* address) const noexcept -> void { mock->prefetch(address); }
+    };
+    prefetcher_t prefetcher{&mock_prefetcher};
+
+    struct mock_locator_t
+    {
+        using result_t = segment_locator_t::result_t;
+
+        virtual ~mock_locator_t() = default;
+
+        MOCK_METHOD(result_t, call, (in_t), (const, noexcept));
+        MOCK_METHOD(bool, is_valid, (int_t), (const, noexcept));
+        MOCK_METHOD(void, prefetch, (mock_prefetcher_t const& prefetcher), (const, noexcept));
+    };
+    StrictMock<mock_locator_t> mock_locator;
+
+    struct locator_t
+    {
+        using result_t = mock_locator_t::result_t;
+
+        mock_locator_t* mock = nullptr;
+
+        auto operator()(in_t in) const noexcept -> result_t { return mock->call(in); };
+        auto is_valid(int_t segment_count) const noexcept -> bool { return mock->is_valid(segment_count); }
+        auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
+    };
+
+    using sut_t = spline_t<segment_t, locator_t>;
+    sut_t sut{locator_t{&mock_locator}, std::array<segment_t, sut_t::max_segments>{}, 5, x_max};
+
+    static constexpr auto expected_fetch_distance = 2 * sizeof(segment_t);
+};
+
+TEST_F(spline_prefetch_test_t, initial_state_prefetches_adjacents_at_head)
+{
+    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
+
+    void const* prefetched_cache_lines[2];
+    {
+        auto const seq = InSequence{};
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[0]));
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
+    }
+
+    sut.prefetch(prefetcher);
+
+    auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
+        - static_cast<std::byte const*>(prefetched_cache_lines[0]);
+
+    EXPECT_EQ(expected_fetch_distance, actual_distance);
+}
+
+TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
+{
+    // prefetch initial to find location of segments
+    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
+    void const* initial_prefetched_cache_lines[2];
+    {
+        auto const seq = InSequence{};
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&initial_prefetched_cache_lines[0]));
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&initial_prefetched_cache_lines[1]));
+    }
+    sut.prefetch(prefetcher);
+    auto const* segments = static_cast<std::byte const*>(initial_prefetched_cache_lines[0]) + sizeof(segment_t);
+
+    // call into sut to get it to cache a new previous segment; previous_cache_line_ should become 2
+    auto const expected_segment = 2;
+    auto const x = in_t{expected_segment};
+    EXPECT_CALL(mock_locator, call(x))
+        .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
+    sut(x);
+
+    // prefetch again to see that previous_cache_line_ moved correctly
+    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
+
+    void const* prefetched_cache_lines[2];
+    {
+        auto const seq = InSequence{};
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[0]));
+        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
+    }
+
+    sut.prefetch(prefetcher);
+
+    auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
+        - static_cast<std::byte const*>(prefetched_cache_lines[0]);
+    EXPECT_EQ(expected_fetch_distance, actual_distance);
+
+    auto const expected_cache_line_0 = segments + (expected_segment - 1) * sizeof(segment_t);
+    EXPECT_EQ(expected_cache_line_0, static_cast<std::byte const*>(prefetched_cache_lines[0]));
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 // death tests
-// -----------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 
 #if defined CRV_ENABLE_DEATH_TESTS
 
