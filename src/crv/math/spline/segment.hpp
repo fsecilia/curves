@@ -59,7 +59,7 @@ public:
     /// \pre dx < (1 << log2_width)
     [[nodiscard]] constexpr auto operator()(in_t dx) const noexcept -> out_t
     {
-        auto const [coeff0, t] = unpack_coeff0(dx);
+        auto const [coeff0, t] = unpack(dx);
         assert(t < in_t{1}); // dx < 1 << log2_width)
 
         auto result = coeff0;
@@ -77,7 +77,7 @@ public:
     /// \pre 0 <= dx
     [[nodiscard]] constexpr auto extend_final_tangent(in_t dx_extended) const noexcept -> out_t
     {
-        auto const [coeff0, t] = unpack_coeff0(dx_extended);
+        auto const [coeff0, t] = unpack(dx_extended);
 
         // p1 is the segment evaluated at t=1; 1^n = 1, so the result is the same as the sum of coefficients
         auto const p1 = coeff0 + coeffs_[1] + coeffs_[2] + coeffs_[3];
@@ -102,13 +102,13 @@ public:
     }
 
 private:
-    struct unpacked_coeff0_t
+    struct unpacked_t
     {
         coeff_t coeff0;
         in_t t;
     };
 
-    constexpr auto unpack_coeff0(in_t dx) const noexcept -> unpacked_coeff0_t
+    constexpr auto unpack(in_t dx) const noexcept -> unpacked_t
     {
         assert(in_t{0} <= dx);
 
