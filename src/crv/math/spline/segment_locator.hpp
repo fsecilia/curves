@@ -10,7 +10,6 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <array>
 #include <bit>
-#include <new>
 #include <span>
 
 namespace crv::spline {
@@ -37,7 +36,6 @@ public:
     static constexpr auto total_key_count = max_segment_count - 1;
     static constexpr auto node_key_count = branching_factor - 1;
     static constexpr auto node_count = total_key_count / node_key_count;
-    static constexpr auto cache_line_size = std::hardware_constructive_interference_size;
 
     struct result_t
     {
@@ -49,7 +47,7 @@ public:
     };
 
     using node_keys_t = std::array<location_t, node_key_count>;
-    struct alignas(cache_line_size / 2) node_t
+    struct alignas(32) node_t
     {
         node_keys_t keys;
 
@@ -175,7 +173,7 @@ private:
         }
     };
 
-    alignas(cache_line_size) nodes_t nodes_;
+    alignas(64) nodes_t nodes_;
 };
 
 } // namespace crv::spline

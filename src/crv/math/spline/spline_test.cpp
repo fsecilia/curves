@@ -172,7 +172,7 @@ struct spline_prefetch_test_t : Test
         using in_t = in_t;
         using out_t = out_t;
 
-        alignas(std::hardware_constructive_interference_size / 2) std::array<std::byte, 32> padding;
+        alignas(32) std::array<std::byte, 32> padding;
 
         constexpr auto operator()(in_t) const noexcept -> out_t { return out_t{0}; }
         constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return out_t{0}; }
