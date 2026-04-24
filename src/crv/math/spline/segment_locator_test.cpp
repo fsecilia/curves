@@ -115,13 +115,13 @@ using sorted_keys_t = std::array<location_t, total_key_count>;
 
 struct tracking_prefetcher_t
 {
-    mutable bool node_written = false;
     mutable sut_t::node_t actual_node;
+    mutable int_t actual_cache_line_count = 0;
 
-    constexpr auto prefetch(sut_t::node_t const* node) const noexcept
+    constexpr auto prefetch(sut_t::node_t const* node, int_t cache_line_count) const noexcept
     {
-        node_written = true;
         actual_node = *node;
+        actual_cache_line_count = cache_line_count;
     }
 };
 
@@ -130,9 +130,12 @@ constexpr auto test_prefetcher() noexcept -> bool
     auto const prefetcher = tracking_prefetcher_t{};
     auto const sut = sut_t{make_sequential_keys<sorted_keys_t>()};
 
+    auto const expected_cache_line_count = 2;
+
     sut.prefetch(prefetcher);
 
-    return prefetcher.node_written && prefetcher.actual_node.keys == node_keys_t{{16, 32, 48}};
+    return expected_cache_line_count == prefetcher.actual_cache_line_count
+        && node_keys_t{{16, 32, 48}} == prefetcher.actual_node.keys;
 }
 static_assert(test_prefetcher());
 

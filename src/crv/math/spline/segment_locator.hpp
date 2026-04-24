@@ -133,7 +133,11 @@ public:
         return true;
     }
 
-    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void { prefetcher.prefetch(&nodes_[0]); }
+    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
+    {
+        // prefetch first two cache lines at head of tree; this includes the first two levels of comparison
+        prefetcher.prefetch(&nodes_[0], 2);
+    }
 
 private:
     static constexpr auto row_offsets = row_offsets_t{};
