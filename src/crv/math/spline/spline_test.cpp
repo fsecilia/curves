@@ -7,13 +7,12 @@
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
-#include <new>
 
 namespace crv::spline {
 namespace {
 
-using in_t = uint8_t; // smaller than out, unsigned
-using out_t = int16_t; // wider than in, signed
+using in_t = int8_t; // smaller than out
+using out_t = int16_t; // wider than in
 constexpr auto segment_count = 3;
 constexpr auto x_max = 5;
 
@@ -52,14 +51,13 @@ struct segment_locator_t
         return {.index = static_cast<int_t>(index), .origin = static_cast<in_t>(index * 2)};
     }
 
-    constexpr auto is_valid(int_t) const noexcept -> bool { return true; }
+    constexpr auto is_valid(int_t, int_t) const noexcept -> bool { return true; }
 };
 
 using sut_t = spline_t<segment_t, segment_locator_t>;
 
-// initialize 3 segments needed for the domain up to x_max
-constexpr auto const sut
-    = sut_t{segment_locator_t{}, std::array<segment_t, sut_t::max_segments>{{{10}, {20}, {30}}}, segment_count, x_max};
+constexpr auto segments = std::array<segment_t, sut_t::max_segments>{{{10}, {20}, {30}}};
+constexpr auto const sut = sut_t{segment_locator_t{}, segments, segment_count, x_max};
 
 // x in [0, 1] -> base 10
 static_assert(sut(0) == 10);
@@ -72,18 +70,18 @@ static_assert(sut(3) == 21);
 // x in [4] -> base 30
 static_assert(sut(4) == 30);
 
-// maximum input value; x_max is 5, max_in is 255, dx = 250.
-// segment 2 base_val is 30, result should be -(30 + 250) = -280.
-static_assert(sut(max<in_t>()) == -280);
+// maximum input value; x_max is 5, max_in is 127, dx = 122.
+// segment 2 base_val is 30, result should be -(30 + 122) = -152.
+static_assert(sut(max<in_t>()) == -152);
 
 // extended final tangent: x >= x_max (5)
 // routes to segment 2, passing dx = (x - x_max)
 static_assert(sut(5) == -30); // -(30 + (5 - 5))
 static_assert(sut(6) == -31); // -(30 + (6 - 5))
 
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 // minimum valid domain
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 
 namespace minimum_valid_domain {
 
@@ -101,9 +99,9 @@ static_assert(min_sut(3) == -11); // -(10 + (3 - 2))
 
 } // namespace minimum_valid_domain
 
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 // is_valid
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 
 namespace is_valid_tests {
 
@@ -161,9 +159,9 @@ static_assert(!sut_t{locator_t{.valid = true}, make_segments(true, false), 2, 5}
 
 } // namespace is_valid_tests
 
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 // prefetch
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 
 struct spline_prefetch_test_t : Test
 {
@@ -283,62 +281,77 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
     EXPECT_EQ(expected_cache_line_0, static_cast<std::byte const*>(prefetched_cache_lines[0]));
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 // death tests
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 
 #if defined CRV_ENABLE_DEATH_TESTS
 
 namespace death_tests {
 
-TEST(spline_death_test, catches_zero_segment_count)
+constexpr auto segments = std::array<segment_t, sut_t::max_segments>{};
+
+TEST(spline_death_test, ctor_catches_zero_segment_count)
 {
-    EXPECT_DEATH(
-        (sut_t{segment_locator_t{}, std::array<segment_t, sut_t::max_segments>{}, 0, x_max}), "nonzero segment count");
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 0, x_max}), "segment count out of bounds");
 }
 
-TEST(spline_death_test, catches_max_segments_exceeded)
+TEST(spline_death_test, ctor_catches_oor_segment_count)
 {
-    EXPECT_DEATH(
-        (sut_t{segment_locator_t{}, std::array<segment_t, sut_t::max_segments>{}, sut_t::max_segments + 1, x_max}),
-        "segment count exceeds capacity");
+    [[maybe_unused]] auto const final_safe = sut_t{segment_locator_t{}, segments, sut_t::max_segments, x_max};
+
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, sut_t::max_segments + 1, x_max}), "segment count out of bounds");
 }
 
-TEST(spline_death_test, index_out_of_bounds_locator)
+TEST(spline_death_test, call_operator_catches_negative_x)
 {
-    // malicious locator returning an oob index
-    struct index_out_of_bounds_locator_t
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 1, x_max}(in_t{-1})), "input out of bounds");
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// call operator interactions with segment_locator_t
+// --------------------------------------------------------------------------------------------------------------------
+
+struct spline_death_test_cal_operator_malicious_locator_t : Test
+{
+    struct malicious_locator_t
     {
         using result_t = segment_locator_t::result_t;
 
-        constexpr auto operator()(in_t) const noexcept -> result_t { return {.index = 999, .origin = 0}; }
+        in_t index = 0;
+        in_t origin = 0;
+
+        constexpr auto operator()(in_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
     };
 
-    using oob_sut_t = spline_t<segment_t, index_out_of_bounds_locator_t>;
-    auto const sut = oob_sut_t{index_out_of_bounds_locator_t{},
-        std::array<segment_t, oob_sut_t::max_segments>{{{10}, {20}, {30}}}, segment_count, x_max};
+    using sut_t = spline_t<segment_t, malicious_locator_t>;
+};
+
+TEST_F(spline_death_test_cal_operator_malicious_locator_t, negative_index)
+{
+    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments, segment_count, x_max};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
-TEST(spline_death_test, origin_underflow_locator)
+TEST_F(spline_death_test_cal_operator_malicious_locator_t, oor_index)
 {
-    // malicious locator returning origin > x
-    struct origin_underflow_locator_t
-    {
-        using result_t = segment_locator_t::result_t;
+    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments, segment_count, x_max};
+    EXPECT_DEATH(sut(0), "index out of bounds");
+}
 
-        constexpr auto operator()(in_t x) const noexcept -> result_t
-        {
-            return {.index = 0, .origin = static_cast<in_t>(x + 1)};
-        }
-    };
+TEST_F(spline_death_test_cal_operator_malicious_locator_t, negative_origin)
+{
+    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments, segment_count, x_max};
 
-    using oob_sut_t = spline_t<segment_t, origin_underflow_locator_t>;
-    auto const sut
-        = oob_sut_t{origin_underflow_locator_t{}, std::array<segment_t, oob_sut_t::max_segments>{{{10}}}, 1, x_max};
+    EXPECT_DEATH(sut(0), "origin out of range");
+}
 
-    EXPECT_DEATH(sut(0), "origin underflows");
+TEST_F(spline_death_test_cal_operator_malicious_locator_t, oor_origin)
+{
+    auto x = in_t{x_max - 2};
+    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<in_t>(x + 1)}, segments, segment_count, x_max};
+    EXPECT_DEATH(sut(x), "origin out of range");
 }
 
 } // namespace death_tests

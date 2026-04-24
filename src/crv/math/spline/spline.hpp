@@ -24,7 +24,7 @@ public:
     static constexpr auto max_segments = 256;
     using segments_t = std::array<segment_t, max_segments>;
 
-    /// \pre segment_count > 0
+    /// \pre 0 < segment_count <= max_segments
     constexpr spline_t(
         segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max) noexcept
         : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{locator}, segments_{segments}
@@ -32,19 +32,20 @@ public:
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
 
-        assert(segment_count_ && "spline_t: requires nonzero segment count");
-        assert(segment_count_ <= max_segments && "spline_t: segment count exceeds capacity");
+        assert(0 < segment_count_ && segment_count_ <= max_segments && "spline_t: segment count out of bounds");
     }
 
+    /// \pre 0 <= x
     constexpr auto operator()(in_t x) const noexcept -> out_t
     {
+        assert(in_t{0} <= x && "spline_t: input out of bounds");
+
         if (x >= x_max_) return extend_final_tangent(x);
 
         auto const location = locate_segment_(x);
-        assert((!is_signed_v<decltype(location)> || location.index >= 0) && location.index < segment_count_
-            && "spline_t: located segment index out of bounds");
-
-        assert(location.origin <= x && "spline_t: located segment origin underflows");
+        assert(
+            0 <= location.index && location.index < segment_count_ && "spline_t: located segment index out of bounds");
+        assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
 
         if !consteval { prev_segment_index_ = location.index; }
 
@@ -54,11 +55,14 @@ public:
     /// validates data the driver receives
     constexpr auto is_valid() const noexcept -> bool
     {
-        // segment count must be in [0, max_segments]
-        if (segment_count_ <= 0 || max_segments < segment_count_) return false;
+        // segment count must be in [1, max_segments]
+        if (segment_count_ <= 1 || max_segments < segment_count_) return false;
 
         // domain must not be degenerate or empty
         if (x_max_ <= in_t{0}) return false;
+
+        // prev_segment_index_ must be in [0, segment_count_)
+        if (prev_segment_index_ < 0 || segment_count_ <= prev_segment_index_) return false;
 
         // dispatch to segment locator
         if (!locate_segment_.is_valid(segment_count_)) return false;
