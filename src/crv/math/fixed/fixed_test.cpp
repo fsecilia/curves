@@ -309,6 +309,62 @@ static_assert(u8_4_t::literal(max<uint8_t>()));
 
 } // namespace operator_bool
 
+struct vector_t
+{
+    int8_t src;
+    int16_t expected_widened;
+};
+
+struct fixed_point_test_conversions_t : TestWithParam<vector_t>
+{
+    using src_t = fixed_t<int8_t, 4>;
+    using wide_t = fixed_t<int16_t, 8>; // widened underlying, 4 extra frac bits
+
+    src_t const src = src_t::literal(GetParam().src);
+    wide_t const expected = wide_t::literal(GetParam().expected_widened);
+};
+
+TEST_P(fixed_point_test_conversions_t, round_trip_identity)
+{
+    auto const widened = wide_t::convert(src);
+    EXPECT_EQ(widened.value, GetParam().expected_widened);
+
+    auto const narrowed = src_t::convert(widened);
+    EXPECT_EQ(narrowed.value, src.value);
+}
+
+TEST_P(fixed_point_test_conversions_t, monotonicity)
+{
+    if (GetParam().src > std::numeric_limits<int8_t>::max() - 1) return;
+
+    auto const next = src_t::literal(int_cast<int8_t>(GetParam().src + 1));
+    EXPECT_LE(wide_t::convert(src).value, wide_t::convert(next).value);
+}
+
+TEST_P(fixed_point_test_conversions_t, negative_clamps_to_zero)
+{
+    if (GetParam().src >= 0) return;
+
+    auto const unsigned_val = fixed_t<make_unsigned_t<src_t::value_t>, src_t::frac_bits>::convert(src);
+    EXPECT_EQ(unsigned_val.value, 0);
+}
+
+vector_t const vectors[] = {
+    // zero boundary
+    {0, 0},
+    {-1, -16},
+    {1, 16},
+
+    // max boundary
+    {127, 2032},
+    {126, 2016},
+
+    // min boundary
+    {-128, -2048},
+    {-127, -2032},
+};
+INSTANTIATE_TEST_SUITE_P(vectors, fixed_point_test_conversions_t, ValuesIn(vectors));
+
 } // namespace conversions
 
 // ====================================================================================================================
