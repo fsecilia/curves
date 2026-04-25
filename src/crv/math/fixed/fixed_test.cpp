@@ -953,77 +953,61 @@ static_assert([] {
 } // namespace fixed_arithmetic
 
 // ====================================================================================================================
-// Extraction and Rounding
+// Extraction
 // ====================================================================================================================
 
 namespace extraction {
 
-constexpr auto p_2_00 = i16_4_t::literal(32);
-constexpr auto p_2_25 = i16_4_t::literal(36);
-constexpr auto p_2_50 = i16_4_t::literal(40);
-constexpr auto p_2_75 = i16_4_t::literal(44);
-constexpr auto p_3_00 = i16_4_t::literal(48);
+struct vector_t
+{
+    int_t raw_input;
+    int_t expected_floor;
+    int_t expected_ceil;
+    int_t expected_frac;
+};
 
-constexpr auto p_0_00 = i16_4_t::literal(0);
-constexpr auto p_0_25 = i16_4_t::literal(4);
-constexpr auto p_0_50 = i16_4_t::literal(8);
-constexpr auto p_0_75 = i16_4_t::literal(12);
+struct fixed_point_test_extraction_t : TestWithParam<vector_t>
+{
+    using sut_t = i16_4_t;
+    sut_t const sut = sut_t::literal(GetParam().raw_input);
+};
 
-constexpr auto n_2_00 = i16_4_t::literal(-32);
-constexpr auto n_2_25 = i16_4_t::literal(-36);
-constexpr auto n_2_50 = i16_4_t::literal(-40);
-constexpr auto n_2_75 = i16_4_t::literal(-44);
-constexpr auto n_3_00 = i16_4_t::literal(-48);
+TEST_P(fixed_point_test_extraction_t, floor)
+{
+    EXPECT_EQ(floor(sut).value, GetParam().expected_floor);
+}
 
-constexpr auto p_int = i16_0_t::literal(5);
-constexpr auto n_int = i16_0_t::literal(-5);
+TEST_P(fixed_point_test_extraction_t, ceil)
+{
+    EXPECT_EQ(ceil(sut).value, GetParam().expected_ceil);
+}
 
-// ----------------------------------------------------------------------------------------------------------------
-// Ceil
-// ----------------------------------------------------------------------------------------------------------------
+TEST_P(fixed_point_test_extraction_t, frac)
+{
+    EXPECT_EQ(frac(sut).value, GetParam().expected_frac);
+}
 
-static_assert(ceil(p_2_00) == p_2_00);
-static_assert(ceil(p_2_25) == p_3_00);
-static_assert(ceil(p_2_75) == p_3_00);
+vector_t const vectors[] = {
+    // standard_values
+    {36, 32, 48, 4}, //  2.25
+    {-36, -48, -32, 12}, // -2.25
 
-static_assert(ceil(n_2_00) == n_2_00);
-static_assert(ceil(n_2_25) == n_2_00);
-static_assert(ceil(n_2_75) == n_2_00);
+    // zero boundaries
+    {0, 0, 0, 0}, // exact 0
+    {1, 0, 16, 1}, // epsilon (0.0625)
+    {-1, -16, 0, 15}, // negative epsilon (-0.0625)
 
-static_assert(ceil(p_int) == p_int);
-static_assert(ceil(n_int) == n_int);
+    // whole number boundaries
+    {15, 0, 16, 15}, // just under 1.0 (0.9375)
+    {16, 16, 16, 0}, // exact 1.0
+    {-15, -16, 0, 1}, // just over -1.0 (-0.9375)
+    {-16, -16, -16, 0}, // exact -1.0
 
-// ----------------------------------------------------------------------------------------------------------------
-// Floor
-// ----------------------------------------------------------------------------------------------------------------
-
-static_assert(floor(p_2_00) == p_2_00);
-static_assert(floor(p_2_25) == p_2_00);
-static_assert(floor(p_2_75) == p_2_00);
-
-static_assert(floor(n_2_00) == n_2_00);
-static_assert(floor(n_2_25) == n_3_00);
-static_assert(floor(n_2_75) == n_3_00);
-
-static_assert(floor(p_int) == p_int);
-static_assert(floor(n_int) == n_int);
-
-// ----------------------------------------------------------------------------------------------------------------
-// Frac
-// ----------------------------------------------------------------------------------------------------------------
-
-static_assert(frac(p_2_00) == p_0_00);
-static_assert(frac(p_2_25) == p_0_25);
-static_assert(frac(p_2_50) == p_0_50);
-static_assert(frac(p_2_75) == p_0_75);
-
-static_assert(frac(n_2_00) == p_0_00);
-static_assert(frac(n_2_25) == p_0_75);
-static_assert(frac(n_2_50) == p_0_50);
-static_assert(frac(n_2_75) == p_0_25);
-
-static_assert(frac(p_int) == i16_0_t{0});
-static_assert(frac(n_int) == i16_0_t{0});
+    // hardware limits
+    {32752, 32752, 32752, 0},
+    {-32768, -32768, -32768, 0},
+};
+INSTANTIATE_TEST_SUITE_P(vectors, fixed_point_test_extraction_t, testing::ValuesIn(vectors));
 
 } // namespace extraction
 
