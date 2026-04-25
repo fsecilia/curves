@@ -25,10 +25,10 @@ namespace crv::spline {
 /// overall. It performs 3 comparisons per fetch, so it must fetch fewer times than a binary tree. Each node stores 3
 /// keys, and the top nodes of the tree are stored adjacently, so the first cache line contains the first few conditions
 /// with a single fetch.
-template <typename t_location_t, int t_depth_max> class segment_locator_t
+template <typename t_x_t, int t_depth_max> class segment_locator_t
 {
 public:
-    using location_t = t_location_t;
+    using x_t = t_x_t;
     static constexpr auto depth_max = int_t{t_depth_max};
 
     static constexpr auto branching_factor = 4;
@@ -40,13 +40,13 @@ public:
     struct result_t
     {
         int_t index;
-        location_t origin;
+        x_t origin;
 
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
     };
 
-    using node_keys_t = std::array<location_t, node_key_count>;
+    using node_keys_t = std::array<x_t, node_key_count>;
     struct alignas(32) node_t
     {
         node_keys_t keys;
@@ -71,8 +71,7 @@ public:
         }
     };
 
-    explicit constexpr segment_locator_t(
-        std::span<location_t const, total_key_count> sorted_keys, location_t x_max) noexcept
+    explicit constexpr segment_locator_t(std::span<x_t const, total_key_count> sorted_keys, x_t x_max) noexcept
         : x_max_{x_max}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
@@ -86,10 +85,10 @@ public:
         }
     }
 
-    constexpr auto locate(location_t x) const noexcept -> result_t
+    constexpr auto locate(x_t x) const noexcept -> result_t
     {
         auto index = 0;
-        auto origin = location_t{0};
+        auto origin = x_t{0};
 
         for (auto depth = 0; depth < depth_max; ++depth)
         {
@@ -113,7 +112,7 @@ public:
     }
 
     /// end of final segment
-    constexpr auto x_max() const noexcept -> location_t { return x_max_; }
+    constexpr auto x_max() const noexcept -> x_t { return x_max_; }
 
     /// validates tree structure and capacity
     constexpr auto is_valid(int_t segment_count) const noexcept -> bool
@@ -122,9 +121,9 @@ public:
         if (segment_count <= 0 || max_segment_count < segment_count) return false;
 
         // validate x_max is nonnegative
-        if (x_max_ <= location_t{0}) return false;
+        if (x_max_ <= x_t{0}) return false;
 
-        auto previous_key = min<location_t>();
+        auto previous_key = min<x_t>();
 
         // validate real breakpoints in sorted order
         for (auto i = 1; i < segment_count; ++i)
@@ -189,14 +188,14 @@ private:
         }
     };
 
-    constexpr auto key_at(int_t in_order_index) const noexcept -> location_t
+    constexpr auto key_at(int_t in_order_index) const noexcept -> x_t
     {
         auto const node_location = node_location_t{in_order_index};
         return nodes_[node_location.node_index].keys[node_location.key_offset];
     }
 
     alignas(64) nodes_t nodes_;
-    location_t x_max_;
+    x_t x_max_;
 };
 
 } // namespace crv::spline

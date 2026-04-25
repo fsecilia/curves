@@ -12,7 +12,7 @@
 namespace crv::spline {
 namespace {
 
-using location_t = int_t;
+using x_t = int_t;
 
 // ====================================================================================================================
 // row_offsets_t
@@ -20,7 +20,7 @@ using location_t = int_t;
 
 namespace offsets_tests {
 
-template <int_t depth_max> using offsets_by_depth_t = segment_locator_t<location_t, depth_max>::row_offsets_t;
+template <int_t depth_max> using offsets_by_depth_t = segment_locator_t<x_t, depth_max>::row_offsets_t;
 
 // (4^n - 1)/3
 static_assert(offsets_by_depth_t<0>{}.base_index == std::array<int_t, 0>{});
@@ -43,9 +43,9 @@ static_assert(offsets_by_depth_t<6>{}.base_index == std::array<int_t, 6>{0, 1, 5
 
 namespace depth_zero_tests {
 
-using sut_t = segment_locator_t<location_t, 0>;
+using sut_t = segment_locator_t<x_t, 0>;
 
-constexpr auto empty_keys = std::array<location_t, 0>{};
+constexpr auto empty_keys = std::array<x_t, 0>{};
 constexpr auto sut = sut_t{empty_keys, 5};
 
 // validation
@@ -64,8 +64,8 @@ static_assert(sut.locate(100) == sut_t::result_t{0, 0});
 
 namespace boundary_query_tests {
 
-using sut_t = segment_locator_t<location_t, 1>;
-constexpr auto keys = std::array<location_t, 3>{10, 20, 30};
+using sut_t = segment_locator_t<x_t, 1>;
+constexpr auto keys = std::array<x_t, 3>{10, 20, 30};
 constexpr auto sut = sut_t{keys, 40};
 
 // smallest value
@@ -97,7 +97,7 @@ static_assert(sut.locate(100) == sut_t::result_t{3, 30});
 
 namespace prefetch_tests {
 
-using sut_t = segment_locator_t<location_t, 3>;
+using sut_t = segment_locator_t<x_t, 3>;
 using node_keys_t = sut_t::node_keys_t;
 
 struct tracking_prefetcher_t
@@ -116,8 +116,8 @@ constexpr auto test_prefetcher() noexcept -> bool
 {
     auto const prefetcher = tracking_prefetcher_t{};
 
-    auto keys = std::array<location_t, sut_t::total_key_count>{};
-    for (auto i = 0u; i < keys.size(); ++i) keys[i] = location_t{i + 1};
+    auto keys = std::array<x_t, sut_t::total_key_count>{};
+    for (auto i = 0u; i < keys.size(); ++i) keys[i] = x_t{i + 1};
 
     auto const sut = sut_t{keys, 0};
     sut.prefetch(prefetcher);
@@ -134,8 +134,8 @@ static_assert(test_prefetcher());
 
 namespace is_valid_tests {
 
-using sut_t = segment_locator_t<location_t, 1>;
-using segments_t = std::array<location_t, 3>;
+using sut_t = segment_locator_t<x_t, 1>;
+using segments_t = std::array<x_t, 3>;
 
 // valid baseline
 static_assert(sut_t{segments_t{10, 20, 30}, 40}.is_valid(4));
@@ -150,7 +150,7 @@ static_assert(!sut_t{segments_t{10, 20, 20}, 40}.is_valid(4));
 static_assert(!sut_t{segments_t{10, 30, 20}, 40}.is_valid(4));
 
 // min bound key
-static_assert(!sut_t{segments_t{min<location_t>(), 20, 30}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{min<x_t>(), 20, 30}, 40}.is_valid(4));
 
 // padding validation with fewer than max segments, all padding >= x_max
 static_assert(sut_t{segments_t{10, 50, 60}, 20}.is_valid(2));
@@ -170,29 +170,29 @@ static_assert(!sut_t{segments_t{10, 60, 50}, 20}.is_valid(2));
 namespace sweep_tests {
 
 // reference implementation: count of keys <= x is the segment index; last such key is origin
-template <int_t depth_max> constexpr auto expected_result(std::span<location_t const> keys, location_t x)
+template <int_t depth_max> constexpr auto expected_result(std::span<x_t const> keys, x_t x)
 {
-    using sut_t = segment_locator_t<location_t, depth_max>;
+    using sut_t = segment_locator_t<x_t, depth_max>;
     auto const bound = std::upper_bound(keys.begin(), keys.end(), x);
     auto const index = static_cast<int_t>(bound - keys.begin());
-    auto const origin = (bound == keys.begin()) ? location_t{0} : *(bound - 1);
+    auto const origin = (bound == keys.begin()) ? x_t{0} : *(bound - 1);
     return typename sut_t::result_t{.index = index, .origin = origin};
 }
 
 template <int_t depth_max> constexpr auto test_sweep(int_t offset, int_t stride) -> bool
 {
-    using sut_t = segment_locator_t<location_t, depth_max>;
-    std::array<location_t, sut_t::total_key_count> keys{};
+    using sut_t = segment_locator_t<x_t, depth_max>;
+    std::array<x_t, sut_t::total_key_count> keys{};
 
     // generate strided keys
-    for (auto i = 0u; i < keys.size(); ++i) { keys[i] = location_t{offset + static_cast<int_t>(i) * stride}; }
+    for (auto i = 0u; i < keys.size(); ++i) { keys[i] = x_t{offset + static_cast<int_t>(i) * stride}; }
 
-    auto const x_max = location_t{offset + static_cast<int_t>(keys.size()) * stride};
+    auto const x_max = x_t{offset + static_cast<int_t>(keys.size()) * stride};
     auto const sut = sut_t{keys, x_max};
 
     // sweep one below and n above expected range of keys
     auto prev_index = int_t{0};
-    for (auto x = location_t{0}; x <= x_max; ++x)
+    for (auto x = x_t{0}; x <= x_max; ++x)
     {
         auto const result = sut.locate(x);
 
