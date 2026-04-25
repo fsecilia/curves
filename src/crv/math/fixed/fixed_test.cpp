@@ -952,11 +952,82 @@ static_assert([] {
 
 } // namespace fixed_arithmetic
 
+// --------------------------------------------------------------------------------------------------------------------
+// Saturating Arithmetic
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace saturating {
+
+// non-overflowing cases pass through exact
+static_assert(saturating_add(sut_t{3}, sut_t{7}) == sut_t{10});
+static_assert(saturating_add(sut_t{-3}, sut_t{-7}) == sut_t{-10});
+static_assert(saturating_sub(sut_t{10}, sut_t{3}) == sut_t{7});
+static_assert(saturating_sub(sut_t{3}, sut_t{10}) == sut_t{-7});
+
+// signed add: positive overflow clamps to max
+static_assert(saturating_add(i16_4_t::literal(crv::max<int16_t>()), i16_4_t::literal(1))
+    == i16_4_t::literal(crv::max<int16_t>()));
+static_assert(saturating_add(i16_4_t::literal(crv::max<int16_t>()), i16_4_t::literal(crv::max<int16_t>()))
+    == i16_4_t::literal(crv::max<int16_t>()));
+
+// signed add: negative overflow clamps to min
+static_assert(saturating_add(i16_4_t::literal(crv::min<int16_t>()), i16_4_t::literal(-1))
+    == i16_4_t::literal(crv::min<int16_t>()));
+static_assert(saturating_add(i16_4_t::literal(crv::min<int16_t>()), i16_4_t::literal(crv::min<int16_t>()))
+    == i16_4_t::literal(crv::min<int16_t>()));
+
+// signed add: mixed signs cannot overflow
+static_assert(saturating_add(i16_4_t::literal(crv::max<int16_t>()), i16_4_t::literal(crv::min<int16_t>()))
+    == i16_4_t::literal(-1));
+
+// unsigned add: only direction is upward
+static_assert(saturating_add(u16_4_t::literal(crv::max<uint16_t>()), u16_4_t::literal(1))
+    == u16_4_t::literal(crv::max<uint16_t>()));
+static_assert(saturating_add(u16_4_t::literal(crv::max<uint16_t>()), u16_4_t::literal(crv::max<uint16_t>()))
+    == u16_4_t::literal(crv::max<uint16_t>()));
+
+// signed sub: positive overflow (max - negative)
+static_assert(saturating_sub(i16_4_t::literal(crv::max<int16_t>()), i16_4_t::literal(-1))
+    == i16_4_t::literal(crv::max<int16_t>()));
+
+// signed sub: negative overflow (min - positive)
+static_assert(saturating_sub(i16_4_t::literal(crv::min<int16_t>()), i16_4_t::literal(1))
+    == i16_4_t::literal(crv::min<int16_t>()));
+
+// signed sub: same-sign operands cannot overflow
+static_assert(saturating_sub(i16_4_t::literal(crv::max<int16_t>()), i16_4_t::literal(crv::max<int16_t>()))
+    == i16_4_t::literal(0));
+static_assert(saturating_sub(i16_4_t::literal(crv::min<int16_t>()), i16_4_t::literal(crv::min<int16_t>()))
+    == i16_4_t::literal(0));
+
+// unsigned sub: underflow clamps to zero
+static_assert(saturating_sub(u16_4_t::literal(0), u16_4_t::literal(1)) == u16_4_t::literal(0));
+static_assert(saturating_sub(u16_4_t::literal(5), u16_4_t::literal(10)) == u16_4_t::literal(0));
+
+// 64-bit boundaries: confirms the builtin still works at the requires-clause limit
+static_assert(saturating_add(i64_0_t::literal(crv::max<int64_t>()), i64_0_t::literal(1))
+    == i64_0_t::literal(crv::max<int64_t>()));
+static_assert(saturating_add(i64_0_t::literal(crv::min<int64_t>()), i64_0_t::literal(-1))
+    == i64_0_t::literal(crv::min<int64_t>()));
+static_assert(saturating_add(u64_0_t::literal(crv::max<uint64_t>()), u64_0_t::literal(1))
+    == u64_0_t::literal(crv::max<uint64_t>()));
+static_assert(saturating_sub(i64_0_t::literal(crv::min<int64_t>()), i64_0_t::literal(1))
+    == i64_0_t::literal(crv::min<int64_t>()));
+static_assert(saturating_sub(u64_0_t::literal(0), u64_0_t::literal(1)) == u64_0_t::literal(0));
+
+// frac_bits is irrelevant to overflow: same raw values saturate identically across precisions
+static_assert(
+    saturating_add(i8_1_t::literal(crv::max<int8_t>()), i8_1_t::literal(1)) == i8_1_t::literal(crv::max<int8_t>()));
+static_assert(
+    saturating_add(i8_7_t::literal(crv::max<int8_t>()), i8_7_t::literal(1)) == i8_7_t::literal(crv::max<int8_t>()));
+
+} // namespace saturating
+
 // ====================================================================================================================
-// Extraction
+// Rounding and Extraction
 // ====================================================================================================================
 
-namespace extraction {
+namespace rounding_and_extraction {
 
 struct vector_t
 {
@@ -1009,7 +1080,7 @@ vector_t const vectors[] = {
 };
 INSTANTIATE_TEST_SUITE_P(vectors, fixed_point_test_extraction_t, testing::ValuesIn(vectors));
 
-} // namespace extraction
+} // namespace rounding_and_extraction
 
 // ====================================================================================================================
 // Math Functions
