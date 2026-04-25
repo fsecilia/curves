@@ -65,34 +65,42 @@ using constexpr_div_sut_t = i16_4_t;
 // ====================================================================================================================
 
 struct fixed_test_t : Test
-{};
-
-struct fixed_test_with_rounding_mode_t : fixed_test_t
 {
-    struct mock_rounding_mode_t
+    struct mock_shifter_t
     {
-        MOCK_METHOD(int_t, bias, (int_t, int_t), (const, noexcept));
-        MOCK_METHOD(int_t, carry, (int_t, int_t, int_t), (const, noexcept));
-        virtual ~mock_rounding_mode_t() = default;
+        virtual ~mock_shifter_t() = default;
+
+        MOCK_METHOD(int_t, shl, (int_t value, int_t count), (const, noexcept));
+        MOCK_METHOD(int_t, shr, (int_t value, int_t count), (const, noexcept));
+        MOCK_METHOD(int_t, shift, (int_t value, int_t count), (const, noexcept));
     };
-    StrictMock<mock_rounding_mode_t> mock_rounding_mode{};
+    StrictMock<mock_shifter_t> mock_shifter{};
 
-    struct rounding_mode_t
+    struct shifter_t
     {
-        mock_rounding_mode_t* mock = nullptr;
+        mock_shifter_t* mock = nullptr;
 
-        template <integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
+        template <int_t count, integral value_t> constexpr auto shl(value_t value) const noexcept -> value_t
         {
-            return static_cast<value_t>(mock->bias(int_cast<int_t>(unshifted), shift));
+            return static_cast<value_t>(mock->shl(int_cast<int_t>(value), count));
         }
 
-        template <integral value_t>
-        constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+        template <int_t count, integral value_t> constexpr auto shr(value_t value) const noexcept -> value_t
         {
-            return int_cast<value_t>(mock->carry(int_cast<int_t>(shifted), int_cast<int_t>(unshifted), shift));
+            return static_cast<value_t>(mock->shr(int_cast<int_t>(value), count));
+        }
+
+        template <int_t count, integral value_t> constexpr auto shift(value_t value) const noexcept -> value_t
+        {
+            return static_cast<value_t>(mock->shift(int_cast<int_t>(value), count));
+        }
+
+        template <integral dst_t, int_t count, integral src_t> constexpr auto shift(src_t src) const noexcept -> dst_t
+        {
+            return static_cast<value_t>(mock->shift(int_cast<int_t>(src), count));
         }
     };
-    shifter_t<rounding_mode_t> shifter{rounding_mode_t{&mock_rounding_mode}};
+    shifter_t shifter{shifter_t{&mock_shifter}};
 };
 
 // ====================================================================================================================
@@ -169,6 +177,46 @@ static_assert(i8_2_t ::convert(i16_4_t::literal(40)).value == 10);
 static_assert(i16_9_t::convert(i8_7_t::literal(64)).value == 256);
 static_assert(i8_7_t ::convert(i16_9_t::literal(256)).value == 64);
 
+TEST_F(fixed_test_t, calls_shl_with_correct_shift)
+{
+    using src_t = fixed_t<int16_t, 2>;
+    using dst_t = fixed_t<int16_t, 6>; // +4 shift
+
+    auto const input = src_t::literal(7);
+    EXPECT_CALL(mock_shifter, shl(7, 4)).WillOnce(Return(7 << 4));
+
+    auto const result = dst_t::convert(input, shifter);
+
+    EXPECT_EQ(result.value, 7 << 4);
+}
+
+TEST_F(fixed_test_t, calls_shr_with_correct_shift)
+{
+    using src_t = fixed_t<int16_t, 6>;
+    using dst_t = fixed_t<int16_t, 2>; // -4 shift
+
+    auto const input = src_t::literal(112); // raw = 112
+    EXPECT_CALL(mock_shifter, shr(112, 4)).WillOnce(Return(112 >> 4));
+
+    auto const result = dst_t::convert(input, shifter);
+
+    EXPECT_EQ(result.value, 112 >> 4);
+}
+
+TEST_F(fixed_test_t, no_shift_does_not_call_shifter)
+{
+    using src_t = fixed_t<int16_t, 4>;
+    using dst_t = fixed_t<int16_t, 4>;
+
+    auto const input = src_t::literal(42);
+
+    // no EXPECT_CALL; test should fail if shifter is called during no-shift conversion
+
+    auto const result = dst_t::convert(input, shifter);
+
+    EXPECT_EQ(result.value, 42);
+}
+
 namespace rounding {
 
 using src_t = i16_4_t;
@@ -214,6 +262,34 @@ static_assert(u16_4_t::convert(i16_0_t::literal(-1000)).value == 0);
 
 // negative to smaller signed
 static_assert(i16_4_t::convert(i32_8_t::literal(-2'000'000'000)).value == i16_min);
+
+TEST_F(fixed_test_t, upscale_saturates_without_calling_shifter)
+{
+    using src_t = fixed_t<int16_t, 0>;
+    using dst_t = fixed_t<int8_t, 4>;
+
+    auto const big = src_t::literal(1000); // will overflow after shift
+
+    // no EXPECT_CALL; test should fail if shifter is called during upscale saturation
+
+    auto const result = dst_t::convert(big, shifter);
+
+    EXPECT_EQ(result.value, max<int8_t>());
+}
+
+TEST_F(fixed_test_t, downscale_calls_shifter_before_saturation)
+{
+    using src_t = fixed_t<int16_t, 8>;
+    using dst_t = fixed_t<int8_t, 0>;
+
+    auto const input = src_t::literal(30000);
+
+    EXPECT_CALL(mock_shifter, shr(30000, 8)).WillOnce(Return(200)); // still overflows int8_t
+
+    auto const result = dst_t::convert(input, shifter);
+
+    EXPECT_EQ(result.value, max<int8_t>());
+}
 
 } // namespace saturation
 
@@ -484,15 +560,13 @@ static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, 
 static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
 static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
 
-TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_specific_type)
+TEST_F(fixed_test_t, multiplication_to_specific_type)
 {
     using out_t = fixed_t<uint_t, 1>;
     auto const lhs = u8_1_t{2};
     auto const rhs = fixed_t<int16_t, 1>{3};
-    auto const expected_bias = uint32_t{23};
     auto const expected = out_t::literal(29);
-    EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
-    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
+    EXPECT_CALL(mock_shifter, shr((2 * 3) << 2, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply<out_t>(lhs, rhs, shifter);
 
@@ -508,15 +582,13 @@ static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, shifter_t{truncate}) == i8_
 static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, shifter_t{truncate}) == u8_1_t{2 * 3});
 static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, shifter_t{truncate}) == u8_1_t{2 * 3});
 
-TEST_F(fixed_test_with_rounding_mode_t, multiplication_to_lhs_type)
+TEST_F(fixed_test_t, multiplication_to_lhs_type)
 {
     using sut_t = fixed_t<int_t, 1>;
     auto const lhs = sut_t::literal(2 << 1);
     auto const rhs = sut_t::literal(3 << 1);
-    auto const expected_bias = sut_t::value_t{23};
     auto const expected = sut_t::literal(29);
-    EXPECT_CALL(mock_rounding_mode, bias((2 * 3) << 2, 1)).WillOnce(Return(expected_bias));
-    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 1, expected_bias, 1)).WillOnce(Return(expected.value));
+    EXPECT_CALL(mock_shifter, shr((2 * 3) << 2, 1)).WillOnce(Return(expected.value));
 
     auto const actual = multiply<sut_t>(lhs, rhs, shifter);
 
@@ -746,18 +818,15 @@ static_assert(i32_16_t{5} % i32_0_t{2} == i32_16_t{1});
 static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
 
 // rounding via mock
-TEST_F(fixed_test_with_rounding_mode_t, modulo_to_specific_type)
+TEST_F(fixed_test_t, modulo_to_specific_type)
 {
     using out_t = fixed_t<uint_t, 1>;
     auto const lhs = fixed_t<uint8_t, 3>::literal(27); // 3.375
     auto const rhs = fixed_t<int16_t, 3>::literal(12); // 1.5
     auto const remainder = int_t{27 % 12}; // 3
-    auto const expected_bias = uint32_t{11};
     auto const expected = out_t::literal(5);
 
-    // out_shift = max(3, 3) - 1 = 2
-    EXPECT_CALL(mock_rounding_mode, bias(remainder, 2)).WillOnce(Return(expected_bias));
-    EXPECT_CALL(mock_rounding_mode, carry(expected_bias >> 2, expected_bias, 2)).WillOnce(Return(expected.value));
+    EXPECT_CALL(mock_shifter, shift(remainder, -2)).WillOnce(Return(expected.value));
 
     auto const actual = mod<out_t>(lhs, rhs, shifter);
 
