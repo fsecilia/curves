@@ -129,6 +129,7 @@ public:
         for (auto i = 1; i < segment_count; ++i)
         {
             auto const key = key_at(i);
+            if (key < x_t{0}) return false;
             if (key <= previous_key) return false;
             if (key >= x_max_) return false;
             previous_key = key;
