@@ -140,6 +140,9 @@ using segments_t = std::array<x_t, 3>;
 // valid baseline
 static_assert(sut_t{segments_t{10, 20, 30}, 40}.is_valid(4));
 
+// negative key
+static_assert(!sut_t{segments_t{-10, 20, 30}, 40}.is_valid(4));
+
 // duplicate first pair
 static_assert(!sut_t{segments_t{10, 10, 20}, 40}.is_valid(4));
 
