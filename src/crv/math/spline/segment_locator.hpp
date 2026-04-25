@@ -195,8 +195,8 @@ private:
         return nodes_[node_location.node_index].keys[node_location.key_offset];
     }
 
-    alignas(64) nodes_t nodes_;
     x_t x_max_;
+    alignas(64) nodes_t nodes_;
 };
 
 } // namespace crv::spline
