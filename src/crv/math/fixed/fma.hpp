@@ -18,7 +18,7 @@ template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fix
     typename shifter_t = shifter_t<>, overflow_policy_t overflow_policy = overflow_policy_t::wrap>
 struct fma_t
 {
-    [[no_unique_address]] shifter_t shifter = shifter_t{};
+    [[no_unique_address]] shifter_t shifter = {};
 
     // wide intermediate
     using product_t = fixed::product_t<multiplicand_t, multiplier_t>;
