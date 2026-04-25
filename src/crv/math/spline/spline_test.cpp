@@ -45,7 +45,7 @@ struct segment_locator_t
         auto operator==(result_t const&) const noexcept -> bool = default;
     };
 
-    constexpr auto operator()(in_t x) const noexcept -> result_t
+    constexpr auto locate(in_t x) const noexcept -> result_t
     {
         in_t const index = x / 2;
         return {.index = static_cast<int_t>(index), .origin = static_cast<in_t>(index * 2)};
@@ -129,7 +129,7 @@ struct locator_t
         in_t origin;
     };
 
-    constexpr auto operator()(in_t) const noexcept -> result_t { return {0, 0}; }
+    constexpr auto locate(in_t) const noexcept -> result_t { return {0, 0}; }
     constexpr auto x_max() const noexcept -> in_t { return spline::x_max; }
 
     bool valid{true};
@@ -212,7 +212,7 @@ struct spline_prefetch_test_t : Test
 
         virtual ~mock_locator_t() = default;
 
-        MOCK_METHOD(result_t, call, (in_t), (const, noexcept));
+        MOCK_METHOD(result_t, locate, (in_t), (const, noexcept));
         MOCK_METHOD(in_t, x_max, (), (const, noexcept));
         MOCK_METHOD(bool, is_valid, (int_t), (const, noexcept));
         MOCK_METHOD(void, prefetch, (mock_prefetcher_t const& prefetcher), (const, noexcept));
@@ -225,7 +225,7 @@ struct spline_prefetch_test_t : Test
 
         mock_locator_t* mock = nullptr;
 
-        auto operator()(in_t in) const noexcept -> result_t { return mock->call(in); };
+        auto locate(in_t in) const noexcept -> result_t { return mock->locate(in); };
         auto x_max() const noexcept -> in_t { return mock->x_max(); }
         auto is_valid(int_t segment_count) const noexcept -> bool { return mock->is_valid(segment_count); }
         auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
@@ -273,7 +273,7 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
     auto const expected_segment = 2;
     auto const x = in_t{expected_segment};
     EXPECT_CALL(mock_locator, x_max()).WillOnce(Return(x_max));
-    EXPECT_CALL(mock_locator, call(x))
+    EXPECT_CALL(mock_locator, locate(x))
         .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
     sut(x);
 
@@ -337,7 +337,7 @@ struct spline_death_test_cal_operator_malicious_locator_t : Test
         in_t index = 0;
         in_t origin = 0;
 
-        constexpr auto operator()(in_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
+        constexpr auto locate(in_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
     };
 
     using sut_t = spline_t<segment_t, malicious_locator_t>;

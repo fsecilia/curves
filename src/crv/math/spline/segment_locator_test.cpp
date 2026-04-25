@@ -53,8 +53,8 @@ static_assert(sut.is_valid(1));
 static_assert(!sut.is_valid(0));
 
 // bypass tree descent
-static_assert(sut(10) == sut_t::result_t{0, 0});
-static_assert(sut(100) == sut_t::result_t{0, 0});
+static_assert(sut.locate(10) == sut_t::result_t{0, 0});
+static_assert(sut.locate(100) == sut_t::result_t{0, 0});
 
 } // namespace depth_zero_tests
 
@@ -69,25 +69,25 @@ constexpr auto keys = std::array<location_t, 3>{10, 20, 30};
 constexpr auto sut = sut_t{keys, 40};
 
 // smallest value
-static_assert(sut(0) == sut_t::result_t{0, 0});
+static_assert(sut.locate(0) == sut_t::result_t{0, 0});
 
 // before the first key
-static_assert(sut(9) == sut_t::result_t{0, 0});
+static_assert(sut.locate(9) == sut_t::result_t{0, 0});
 
 // first key exact
-static_assert(sut(10) == sut_t::result_t{1, 10});
+static_assert(sut.locate(10) == sut_t::result_t{1, 10});
 
 // second key exact
-static_assert(sut(20) == sut_t::result_t{2, 20});
+static_assert(sut.locate(20) == sut_t::result_t{2, 20});
 
 // just before x_max
-static_assert(sut(39) == sut_t::result_t{3, 30});
+static_assert(sut.locate(39) == sut_t::result_t{3, 30});
 
 // x_max
-static_assert(sut(40) == sut_t::result_t{3, 30});
+static_assert(sut.locate(40) == sut_t::result_t{3, 30});
 
 // after x_max
-static_assert(sut(100) == sut_t::result_t{3, 30});
+static_assert(sut.locate(100) == sut_t::result_t{3, 30});
 
 } // namespace boundary_query_tests
 
@@ -194,7 +194,7 @@ template <int_t depth_max> constexpr auto test_sweep(int_t offset, int_t stride)
     auto prev_index = int_t{0};
     for (auto x = location_t{0}; x <= x_max; ++x)
     {
-        auto const result = sut(x);
+        auto const result = sut.locate(x);
 
         if (result != expected_result<depth_max>(keys, x)) return false;
         if (result.origin > x) return false; // origin <= x

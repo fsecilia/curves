@@ -34,7 +34,7 @@ public:
 
     constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count,
         int_t prev_segment_index) noexcept
-        : segment_count_{segment_count}, locate_segment_{locator}, segments_{segments},
+        : segment_count_{segment_count}, segment_locator_{locator}, segments_{segments},
           prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
@@ -46,10 +46,10 @@ public:
     {
         assert(in_t{0} <= x && "spline_t: input out of bounds");
 
-        auto const x_max = locate_segment_.x_max();
+        auto const x_max = segment_locator_.x_max();
         if (x >= x_max) return extend_final_tangent(x - x_max);
 
-        auto const location = locate_segment_(x);
+        auto const location = segment_locator_.locate(x);
         assert(
             0 <= location.index && location.index < segment_count_ && "spline_t: located segment index out of bounds");
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
@@ -65,7 +65,7 @@ public:
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
         prefetch_segments(prefetcher);
-        locate_segment_.prefetch(prefetcher);
+        segment_locator_.prefetch(prefetcher);
     }
 
 private:
@@ -88,7 +88,7 @@ private:
     constexpr auto components_are_valid() const noexcept -> bool
     {
         // dispatch to segment locator
-        if (!locate_segment_.is_valid(segment_count_)) return false;
+        if (!segment_locator_.is_valid(segment_count_)) return false;
 
         // dispatch to each segment
         for (int_t i = 0; i < segment_count_; ++i)
@@ -120,7 +120,7 @@ private:
 
     // these are ordered for overall cache-friendliness in operator ()
     int_t segment_count_{};
-    segment_locator_t locate_segment_{};
+    segment_locator_t segment_locator_{};
 
     // *must* be aligned or the prefetching scheme is useless
     alignas(64) segments_t segments_{};
