@@ -86,7 +86,7 @@ public:
         }
     }
 
-    constexpr auto operator()(location_t x) const noexcept -> result_t
+    constexpr auto locate(location_t x) const noexcept -> result_t
     {
         auto index = 0;
         auto origin = location_t{0};
