@@ -101,10 +101,11 @@ private:
     /// prefetches the most recently selected segment and the two adjacent
     ///
     /// Prefetching these 3 segments serves as our hint to exploit the natural temporal locality of mouse velocity.
-    constexpr auto prefetch_segments(auto const& prefetcher) const noexcept -> void
+    auto prefetch_segments(auto const& prefetcher) const noexcept -> void
     {
         // these casts are required to prevent ub when forming addresses outside of the array
-        auto const* base = static_cast<std::byte const*>(static_cast<void const*>(segments_.data()));
+        auto const base_address = reinterpret_cast<std::uintptr_t>(segments_.data());
+        auto const offset = sizeof(segment_t);
 
         // prefetch most recent segment
         //
@@ -113,15 +114,15 @@ private:
         // or segment_count_ - 1, these both technically are out of bounds, either prefetching the end of the segment
         // locator or whatever follows this type as a whole, but prefetching is built to be resiliant to this pattern.
         // We do not have to guard it with an condition, saving a pair of misprediction sources.
-        prefetcher.prefetch(base + ((prev_segment_index_ - 1) * sizeof(segment_t)));
-        prefetcher.prefetch(base + ((prev_segment_index_ + 1) * sizeof(segment_t)));
+        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ - 1) * offset));
+        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ + 1) * offset));
     }
 
     // these are ordered for overall cache-friendliness in operator ()
     int_t segment_count_{};
     segment_locator_t segment_locator_{};
 
-    // *must* be aligned or the prefetching scheme is useless
+    // this *must* be aligned or the prefetching scheme is useless
     alignas(64) segments_t segments_{};
 
     mutable int_t prev_segment_index_ = 0;
