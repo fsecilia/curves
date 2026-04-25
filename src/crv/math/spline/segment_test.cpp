@@ -18,8 +18,11 @@ using x_value_t = int64_t;
 using x_t = fixed_t<x_value_t, 48>;
 
 using sut_t = segment_t<x_t, coeff_t>;
+using coeffs_t = sut_t::coeffs_t;
+using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
 
 constexpr auto c0 = coeff_t{0};
+constexpr auto c1 = coeff_t{1};
 
 constexpr auto t0 = x_t::literal(0);
 constexpr auto t_half = x_t::literal(1ULL << (x_t::frac_bits - 1));
@@ -67,12 +70,16 @@ static_assert(sut_right.evaluate(dx_two).value == (dx_two.value >> 2));
 // polynomial evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto evaluate(std::array<coeff_t::value_t, sut_t::coeff_count> coeff_vals, int8_t dx_to_t_shift,
-    x_t dx) noexcept -> typename coeff_t::value_t
+constexpr auto evaluate(coeffs_t const& coeffs, int8_t log2_width, x_t dx) noexcept -> typename coeff_t::value_t
 {
-    std::array<coeff_t, sut_t::coeff_count> coeffs{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
-        coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])};
-    return sut_t{coeffs, dx_to_t_shift}.evaluate(dx).value;
+    return sut_t{coeffs, log2_width}.evaluate(dx).value;
+}
+
+constexpr auto evaluate(vals_t const& coeff_vals, int8_t log2_width, x_t dx) noexcept -> typename coeff_t::value_t
+{
+    return evaluate(coeffs_t{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
+                        coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])},
+        log2_width, dx);
 }
 
 namespace evaluation_tests {
@@ -124,6 +131,26 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 // This is the cubic term, so result is coeff0*(0.5)^3
 constexpr auto large_cubic_coeff = coeff_t{50};
 static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}.evaluate(x_t{16}).value == (large_cubic_coeff.value >> 3));
+
+// --------------------------------------------------------------------------------------------------------------------
+// nearest_up_t rounding behavior during dx -> t normalization
+// --------------------------------------------------------------------------------------------------------------------
+// By setting only the linear coefficient C2 to 1, evaluate() will return exactly t.
+// A log2_width of 2 means dx is shifted right by 2 (divided by 4), dropping 2 bits.
+
+constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
+
+// Discarded bits: 16/4 -> 4.00, no rounding
+static_assert(evaluate(rounding_coeffs, 2, x_t::literal(16)) == 4);
+
+// Discarded bits: 17/4 -> 4.25, rounds down
+static_assert(evaluate(rounding_coeffs, 2, x_t::literal(17)) == 4);
+
+// Discarded bits: 18/4 -> 4.50, half up rounds up; truncate would round down
+static_assert(evaluate(rounding_coeffs, 2, x_t::literal(18)) == 5);
+
+// Discarded bits: 19/4 -> 4.75, half up rounds up
+static_assert(evaluate(rounding_coeffs, 2, x_t::literal(19)) == 5);
 
 } // namespace evaluation_tests
 
