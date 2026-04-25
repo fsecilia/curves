@@ -147,6 +147,10 @@ static_assert(sut_t{0xF1234}.value == 0xF1234ul << frac_bits);
 
 namespace conversions {
 
+// same/same
+static_assert(i16_4_t::convert(i16_4_t::literal(10)).value == 10);
+static_assert(u32_8_t::convert(u32_8_t::literal(10)).value == 10);
+
 // same precision, different size
 static_assert(i16_4_t::convert(i8_4_t::literal(10)).value == 10);
 static_assert(i8_4_t::convert(i16_4_t::literal(10)).value == 10);
