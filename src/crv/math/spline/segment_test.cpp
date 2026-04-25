@@ -47,19 +47,19 @@ struct passthrough_fma_t
 // zero shift
 constexpr auto dx_quarter = in_t::literal(1ULL << (in_t::frac_bits - 2));
 constexpr auto sut0 = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 0);
-static_assert(sut0(dx_quarter).value == dx_quarter.value);
+static_assert(sut0.evaluate(dx_quarter).value == dx_quarter.value);
 
 // positive shift (left shift dx, segment is narrower than 1.0)
 // dx is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
 constexpr auto dx_eighth = in_t::literal(1ULL << (in_t::frac_bits - 3));
 constexpr auto sut_left = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, -2);
-static_assert(sut_left(dx_eighth).value == (dx_eighth.value << 2));
+static_assert(sut_left.evaluate(dx_eighth).value == (dx_eighth.value << 2));
 
 // negative shift (right shift dx, segment is wider than 1.0)
 // dx is 2.0, shift is -2 (divide by 4), resulting t should be 0.5
 constexpr auto dx_two = in_t::literal(2ULL << in_t::frac_bits);
 constexpr auto sut_right = segment_t<in_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 2);
-static_assert(sut_right(dx_two).value == (dx_two.value >> 2));
+static_assert(sut_right.evaluate(dx_two).value == (dx_two.value >> 2));
 
 } // namespace normalization_shift_tests
 
@@ -72,7 +72,7 @@ constexpr auto evaluate(std::array<coeff_t::value_t, sut_t::coeff_count> coeff_v
 {
     std::array<coeff_t, sut_t::coeff_count> coeffs{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
         coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])};
-    return sut_t{coeffs, dx_to_t_shift}(dx).value;
+    return sut_t{coeffs, dx_to_t_shift}.evaluate(dx).value;
 }
 
 namespace evaluation_tests {
@@ -123,7 +123,7 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 // Evaluate at t=0.5 (dx=16 shifted right by 5).
 // This is the cubic term, so result is coeff0*(0.5)^3
 constexpr auto large_cubic_coeff = coeff_t{50};
-static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}(in_t{16}).value == (large_cubic_coeff.value >> 3));
+static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}.evaluate(in_t{16}).value == (large_cubic_coeff.value >> 3));
 
 } // namespace evaluation_tests
 
@@ -180,15 +180,15 @@ TEST(spline_segment, violates_dx_lower_bound)
 {
     // dx = -1.0; it is unconditionally out of bounds
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
-    EXPECT_DEBUG_DEATH(static_cast<void>(sut(in_t::literal(-1))), "<= dx");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(in_t::literal(-1))), "<= dx");
 }
 
 TEST(spline_segment, violates_t_upper_bound)
 {
-    // dx is 1.0, but left-shifting by 1 makes t = 2.0, which is out of bounds
-    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 1);
+    // dx is 1.0, but dividing by 2^-1 makes t = 2.0, which is out of bounds
+    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, -1);
     constexpr auto dx_one = in_t::literal(1ULL << in_t::frac_bits);
-    EXPECT_DEBUG_DEATH(static_cast<void>(sut(dx_one)), "t <");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(dx_one)), "t <");
 }
 
 TEST(spline_segment, violates_coeff0_positive_packing_bounds)
