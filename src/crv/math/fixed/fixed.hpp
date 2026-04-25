@@ -119,45 +119,49 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         typename shifter_type = shifter_t<>>
     static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
     {
-        using other_value_t = typename other_t::value_t;
-        constexpr auto shift_bits = frac_bits - other_t::frac_bits;
-        constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
-
-        if constexpr (shift_bits >= 0)
-        {
-            // upscaling: shift left
-            static_assert(shift_bits < sizeof(value_t) * CHAR_BIT, "fixed_t: left-shift exceeds target bit width");
-
-            if constexpr (saturate)
-            {
-                // shift domain to range check safely
-                constexpr auto safe_max = max<value_t>() >> shift_bits;
-                constexpr auto safe_min = min<value_t>() >> shift_bits;
-
-                if (cmp_greater(other.value, safe_max)) { return literal(max<value_t>()); }
-                if (cmp_less(other.value, safe_min)) { return literal(min<value_t>()); }
-            }
-
-            return literal(shifter.template shl<shift_bits>(static_cast<value_t>(other.value)));
-        }
+        if constexpr (std::same_as<fixed_t, other_t>) { return other; }
         else
         {
-            // downscaling: shift right
-            constexpr auto rshift_bits = -shift_bits;
-            static_assert(
-                rshift_bits < sizeof(other_value_t) * CHAR_BIT, "fixed_t: right-shift exceeds source bit width");
+            using other_value_t = typename other_t::value_t;
+            constexpr auto shift_bits = frac_bits - other_t::frac_bits;
+            constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
 
-            // right shift in original container type first
-            auto const shifted = shifter.template shr<rshift_bits>(other.value);
-
-            // saturate before converting
-            if constexpr (saturate)
+            if constexpr (shift_bits >= 0)
             {
-                if (cmp_greater(shifted, max<value_t>())) { return literal(max<value_t>()); }
-                if (cmp_less(shifted, min<value_t>())) { return literal(min<value_t>()); }
-            }
+                // upscaling: shift left
+                static_assert(shift_bits < sizeof(value_t) * CHAR_BIT, "fixed_t: left-shift exceeds target bit width");
 
-            return literal(static_cast<value_t>(shifted));
+                if constexpr (saturate)
+                {
+                    // shift domain to range check safely
+                    constexpr auto safe_max = max<value_t>() >> shift_bits;
+                    constexpr auto safe_min = min<value_t>() >> shift_bits;
+
+                    if (cmp_greater(other.value, safe_max)) { return literal(max<value_t>()); }
+                    if (cmp_less(other.value, safe_min)) { return literal(min<value_t>()); }
+                }
+
+                return literal(shifter.template shl<shift_bits>(static_cast<value_t>(other.value)));
+            }
+            else
+            {
+                // downscaling: shift right
+                constexpr auto rshift_bits = -shift_bits;
+                static_assert(
+                    rshift_bits < sizeof(other_value_t) * CHAR_BIT, "fixed_t: right-shift exceeds source bit width");
+
+                // right shift in original container type first
+                auto const shifted = shifter.template shr<rshift_bits>(other.value);
+
+                // saturate before converting
+                if constexpr (saturate)
+                {
+                    if (cmp_greater(shifted, max<value_t>())) { return literal(max<value_t>()); }
+                    if (cmp_less(shifted, min<value_t>())) { return literal(min<value_t>()); }
+                }
+
+                return literal(static_cast<value_t>(shifted));
+            }
         }
     }
 
