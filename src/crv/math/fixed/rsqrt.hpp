@@ -176,7 +176,7 @@ struct normalized_rsqrt_t
     [[no_unique_address]] initial_guess_t initial_guess{};
 
     // \pre in must be in [0.5, 1)
-    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
+    constexpr auto operator()(in_t x, shifter_t shifter = {}) const noexcept -> out_t
     {
         // Newton-Raphson
         auto y = initial_guess(x);
@@ -231,7 +231,7 @@ struct rsqrt_t
 
     // \pre x > 0
     template <typename shifter_t = shifter_t<>>
-    constexpr auto operator()(in_t x, shifter_t shifter = shifter_t{}) const noexcept -> out_t
+    constexpr auto operator()(in_t x, shifter_t shifter = {}) const noexcept -> out_t
     {
         assert(x.value > 0);
 

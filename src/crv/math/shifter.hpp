@@ -20,8 +20,9 @@ namespace crv {
 template <typename rounding_mode_t = rounding_modes::shr::nearest_even_t> class shifter_t
 {
 public:
-    explicit constexpr shifter_t(rounding_mode_t rounding_mode = {}) noexcept : rounding_mode_{std::move(rounding_mode)}
-    {}
+    constexpr shifter_t() noexcept = default;
+
+    explicit constexpr shifter_t(rounding_mode_t rounding_mode) noexcept : rounding_mode_{std::move(rounding_mode)} {}
 
     template <typename value_t> constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
     {

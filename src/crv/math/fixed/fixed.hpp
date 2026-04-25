@@ -333,7 +333,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// calcs remainder of lhs/rhs
     template <is_fixed out_t, is_fixed rhs_t, typename shifter_t = shifter_t<>>
-    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, shifter_t shifter = shifter_t{}) noexcept -> out_t
+    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, shifter_t shifter = {}) noexcept -> out_t
     {
         // widen
         using wide_t = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
