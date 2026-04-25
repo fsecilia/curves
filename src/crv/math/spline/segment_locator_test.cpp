@@ -46,7 +46,7 @@ namespace depth_zero_tests {
 using sut_t = segment_locator_t<location_t, 0>;
 
 constexpr auto empty_keys = std::array<location_t, 0>{};
-constexpr auto sut = sut_t{empty_keys};
+constexpr auto sut = sut_t{empty_keys, 5};
 
 // validation
 static_assert(sut.is_valid(1));
@@ -66,7 +66,7 @@ namespace boundary_query_tests {
 
 using sut_t = segment_locator_t<location_t, 1>;
 constexpr auto keys = std::array<location_t, 3>{10, 20, 30};
-constexpr auto sut = sut_t{keys};
+constexpr auto sut = sut_t{keys, 40};
 
 // smallest value
 static_assert(sut(0) == sut_t::result_t{0, 0});
@@ -119,7 +119,7 @@ constexpr auto test_prefetcher() noexcept -> bool
     auto keys = std::array<location_t, sut_t::total_key_count>{};
     for (auto i = 0u; i < keys.size(); ++i) keys[i] = location_t{i + 1};
 
-    auto const sut = sut_t{keys};
+    auto const sut = sut_t{keys, 0};
     sut.prefetch(prefetcher);
 
     return prefetcher.actual_cache_line_count == 2 && prefetcher.actual_node.keys == node_keys_t{{16, 32, 48}};
@@ -135,20 +135,31 @@ static_assert(test_prefetcher());
 namespace is_valid_tests {
 
 using sut_t = segment_locator_t<location_t, 1>;
+using segments_t = std::array<location_t, 3>;
 
 // valid baseline
-constexpr auto valid_keys = std::array<location_t, 3>{10, 20, 30};
-static_assert(sut_t{valid_keys}.is_valid(4));
+static_assert(sut_t{segments_t{10, 20, 30}, 40}.is_valid(4));
 
-// structural flaws
-constexpr auto duplicate_keys = std::array<location_t, 3>{10, 20, 20};
-static_assert(!sut_t{duplicate_keys}.is_valid(4));
+// duplicate first pair
+static_assert(!sut_t{segments_t{10, 10, 20}, 40}.is_valid(4));
 
-constexpr auto out_of_order_keys = std::array<location_t, 3>{10, 30, 20};
-static_assert(!sut_t{out_of_order_keys}.is_valid(4));
+// duplicate last pair
+static_assert(!sut_t{segments_t{10, 20, 20}, 40}.is_valid(4));
 
-constexpr auto min_bound_key = std::array<location_t, 3>{min<location_t>(), 20, 30};
-static_assert(!sut_t{min_bound_key}.is_valid(4));
+// out of order
+static_assert(!sut_t{segments_t{10, 30, 20}, 40}.is_valid(4));
+
+// min bound key
+static_assert(!sut_t{segments_t{min<location_t>(), 20, 30}, 40}.is_valid(4));
+
+// padding validation with fewer than max segments, all padding >= x_max
+static_assert(sut_t{segments_t{10, 50, 60}, 20}.is_valid(2));
+
+// padding validation with fewer than max segments
+static_assert(!sut_t{segments_t{10, 15, 60}, 20}.is_valid(2));
+
+// padding validation not monotonic
+static_assert(!sut_t{segments_t{10, 60, 50}, 20}.is_valid(2));
 
 } // namespace is_valid_tests
 
@@ -177,7 +188,7 @@ template <int_t depth_max> constexpr auto test_sweep(int_t offset, int_t stride)
     for (auto i = 0u; i < keys.size(); ++i) { keys[i] = location_t{offset + static_cast<int_t>(i) * stride}; }
 
     auto const x_max = location_t{offset + static_cast<int_t>(keys.size()) * stride};
-    auto const sut = sut_t{keys};
+    auto const sut = sut_t{keys, x_max};
 
     // sweep one below and n above expected range of keys
     auto prev_index = int_t{0};

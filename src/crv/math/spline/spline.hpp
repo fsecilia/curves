@@ -26,16 +26,15 @@ public:
     using segments_t = std::array<segment_t, max_segments>;
 
     /// \pre 0 < segment_count <= max_segments
-    constexpr spline_t(
-        segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max) noexcept
-        : spline_t{locator, segments, segment_count, x_max, 0}
+    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count) noexcept
+        : spline_t{locator, segments, segment_count, 0}
     {
         assert(fields_are_valid() && "spline_t: local fields invalid");
     }
 
-    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count, in_t x_max,
+    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count,
         int_t prev_segment_index) noexcept
-        : x_max_{x_max}, segment_count_{segment_count}, locate_segment_{locator}, segments_{segments},
+        : segment_count_{segment_count}, locate_segment_{locator}, segments_{segments},
           prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
@@ -47,7 +46,8 @@ public:
     {
         assert(in_t{0} <= x && "spline_t: input out of bounds");
 
-        if (x >= x_max_) return extend_final_tangent(x);
+        auto const x_max = locate_segment_.x_max();
+        if (x >= x_max) return extend_final_tangent(x - x_max);
 
         auto const location = locate_segment_(x);
         assert(
@@ -69,18 +69,15 @@ public:
     }
 
 private:
-    constexpr auto extend_final_tangent(in_t x) const noexcept -> out_t
+    constexpr auto extend_final_tangent(in_t dx_extended) const noexcept -> out_t
     {
-        return segments_[segment_count_ - 1].extend_final_tangent(x - x_max_);
+        return segments_[segment_count_ - 1].extend_final_tangent(dx_extended);
     }
 
     constexpr auto fields_are_valid() const noexcept -> bool
     {
         // segment count must be in [1, max_segments]
         if (segment_count_ < 1 || max_segments < segment_count_) return false;
-
-        // domain must not be degenerate or empty
-        if (x_max_ <= in_t{0}) return false;
 
         // prev_segment_index_ must be in [0, segment_count_)
         if (prev_segment_index_ < 0 || segment_count_ <= prev_segment_index_) return false;
@@ -122,7 +119,6 @@ private:
     }
 
     // these are ordered for overall cache-friendliness in operator ()
-    in_t x_max_{};
     int_t segment_count_{};
     segment_locator_t locate_segment_{};
 
