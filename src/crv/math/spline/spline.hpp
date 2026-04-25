@@ -11,7 +11,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
-#include <limits>
 
 namespace crv::spline {
 
