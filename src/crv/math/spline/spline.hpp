@@ -18,8 +18,8 @@ namespace crv::spline {
 template <typename segment_t, typename segment_locator_t> class spline_t
 {
 public:
-    using in_t = segment_t::in_t;
-    using out_t = segment_t::out_t;
+    using x_t = segment_t::x_t;
+    using y_t = segment_t::y_t;
 
     static constexpr auto max_segments = 256;
     using segments_t = std::array<segment_t, max_segments>;
@@ -41,9 +41,9 @@ public:
     }
 
     /// \pre 0 <= x
-    constexpr auto operator()(in_t x) const noexcept -> out_t
+    constexpr auto operator()(x_t x) const noexcept -> y_t
     {
-        assert(in_t{0} <= x && "spline_t: input out of bounds");
+        assert(x_t{0} <= x && "spline_t: input out of bounds");
 
         auto const x_max = segment_locator_.x_max();
         if (x >= x_max) return extend_final_tangent(x - x_max);
@@ -68,7 +68,7 @@ public:
     }
 
 private:
-    constexpr auto extend_final_tangent(in_t dx_extended) const noexcept -> out_t
+    constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
     {
         return segments_[segment_count_ - 1].extend_final_tangent(dx_extended);
     }
@@ -90,7 +90,7 @@ private:
         if (!segment_locator_.is_valid(segment_count_)) return false;
 
         // dispatch to each segment
-        for (int_t i = 0; i < segment_count_; ++i)
+        for (auto i = 0; i < segment_count_; ++i)
         {
             if (!segments_[i].is_valid()) return false;
         }

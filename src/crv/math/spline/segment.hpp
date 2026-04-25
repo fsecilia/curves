@@ -22,14 +22,14 @@ template <is_fixed in_t, is_fixed coeff_t>
 using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_modes::shr::fast::nearest_up_t>>;
 
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_in_t, is_fixed t_coeff_t, is_fixed t_out_t = t_coeff_t,
-    typename fma_t = segment_fma_t<t_in_t, t_coeff_t>>
+template <is_fixed t_x_t, is_fixed t_coeff_t, is_fixed t_y_t = t_coeff_t,
+    typename fma_t = segment_fma_t<t_x_t, t_coeff_t>>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
 public:
-    using in_t = t_in_t;
-    using out_t = t_out_t;
+    using x_t = t_x_t;
+    using y_t = t_y_t;
     using coeff_t = t_coeff_t;
 
     static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
@@ -57,15 +57,15 @@ public:
 
     /// \pre 0 <= dx
     /// \pre dx < (1 << log2_width)
-    [[nodiscard]] constexpr auto evaluate(in_t dx) const noexcept -> out_t
+    [[nodiscard]] constexpr auto evaluate(x_t dx) const noexcept -> y_t
     {
         auto const [coeff0, t] = unpack(dx);
-        assert(t < in_t{1}); // dx < 1 << log2_width)
+        assert(t < x_t{1}); // dx < 1 << log2_width)
 
         auto result = coeff0;
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = fma_(result, t, coeffs_[coeff]);
 
-        return out_t::convert(result);
+        return y_t::convert(result);
     }
 
     /// extends tangent at t=1 beyond end of segment
@@ -75,7 +75,7 @@ public:
     ///
     /// \param dx_extended x value relative to end of segment
     /// \pre 0 <= dx
-    [[nodiscard]] constexpr auto extend_final_tangent(in_t dx_extended) const noexcept -> out_t
+    [[nodiscard]] constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
     {
         auto const [coeff0, t] = unpack(dx_extended);
 
@@ -85,14 +85,14 @@ public:
         // final tangent is the derivative evaluated at t=1
         auto const m1 = 3 * coeff0 + 2 * coeffs_[1] + coeffs_[2];
 
-        return out_t::convert(p1 + m1 * t);
+        return y_t::convert(p1 + m1 * t);
     }
 
     /// validates segment data
     constexpr auto is_valid() const noexcept -> bool
     {
         // maximum valid shift for the input type
-        static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename in_t::value_t) * CHAR_BIT);
+        static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
 
         // shift amount must be within (-max_shift, max_shift)
         auto const log2_width = unpack_log2_width();
@@ -105,12 +105,12 @@ private:
     struct unpacked_t
     {
         coeff_t coeff0;
-        in_t t;
+        x_t t;
     };
 
-    constexpr auto unpack(in_t dx) const noexcept -> unpacked_t
+    constexpr auto unpack(x_t dx) const noexcept -> unpacked_t
     {
-        assert(in_t{0} <= dx);
+        assert(x_t{0} <= dx);
 
         auto const log2_width = unpack_log2_width();
 

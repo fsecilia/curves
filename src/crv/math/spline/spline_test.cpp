@@ -11,24 +11,21 @@
 namespace crv::spline {
 namespace {
 
-using in_t = int8_t; // smaller than out
-using out_t = int16_t; // wider than in
+using x_t = int8_t; // smaller than out
+using y_t = int16_t; // wider than in
 constexpr auto segment_count = 3;
-constexpr auto x_max = in_t{5};
+constexpr auto x_max = x_t{5};
 
 // adds dx to a distinct base_val; returns negative for extended tangents
 struct segment_t
 {
-    using in_t = in_t;
-    using out_t = out_t;
+    using x_t = x_t;
+    using y_t = y_t;
 
-    out_t base_val;
+    y_t base_val;
 
-    constexpr auto evaluate(in_t dx) const noexcept -> out_t { return static_cast<out_t>(base_val + dx); }
-    constexpr auto extend_final_tangent(in_t dx) const noexcept -> out_t
-    {
-        return static_cast<out_t>(-(base_val + dx));
-    }
+    constexpr auto evaluate(x_t dx) const noexcept -> y_t { return static_cast<y_t>(base_val + dx); }
+    constexpr auto extend_final_tangent(x_t dx) const noexcept -> y_t { return static_cast<y_t>(-(base_val + dx)); }
 
     constexpr auto is_valid() const noexcept -> bool { return true; }
 };
@@ -39,20 +36,20 @@ struct segment_locator_t
     struct result_t
     {
         int_t index;
-        in_t origin;
+        x_t origin;
 
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
     };
 
-    constexpr auto locate(in_t x) const noexcept -> result_t
+    constexpr auto locate(x_t x) const noexcept -> result_t
     {
-        in_t const index = x / 2;
-        return {.index = static_cast<int_t>(index), .origin = static_cast<in_t>(index * 2)};
+        x_t const index = x / 2;
+        return {.index = static_cast<int_t>(index), .origin = static_cast<x_t>(index * 2)};
     }
 
-    in_t x_max_ = spline::x_max;
-    constexpr auto x_max() const noexcept -> in_t { return x_max_; }
+    x_t x_max_ = spline::x_max;
+    constexpr auto x_max() const noexcept -> x_t { return x_max_; }
 
     constexpr auto is_valid(int_t, int_t) const noexcept -> bool { return true; }
 };
@@ -75,7 +72,7 @@ static_assert(sut(4) == 30);
 
 // maximum input value; x_max is 5, max_in is 127, dx = 122.
 // segment 2 base_val is 30, result should be -(30 + 122) = -152.
-static_assert(sut(max<in_t>()) == -152);
+static_assert(sut(max<x_t>()) == -152);
 
 // extended final tangent: x >= x_max (5)
 // routes to segment 2, passing dx = (x - x_max)
@@ -110,13 +107,13 @@ namespace is_valid_tests {
 
 struct segment_t
 {
-    using in_t = in_t;
-    using out_t = out_t;
+    using x_t = x_t;
+    using y_t = y_t;
 
     bool valid{true};
 
-    constexpr auto evaluate(in_t) const noexcept -> out_t { return 0; }
-    constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return 0; }
+    constexpr auto evaluate(x_t) const noexcept -> y_t { return 0; }
+    constexpr auto extend_final_tangent(x_t) const noexcept -> y_t { return 0; }
     constexpr auto is_valid() const noexcept -> bool { return valid; }
 };
 using segments_t = std::array<segment_t, sut_t::max_segments>;
@@ -126,11 +123,11 @@ struct locator_t
     struct result_t
     {
         int_t index;
-        in_t origin;
+        x_t origin;
     };
 
-    constexpr auto locate(in_t) const noexcept -> result_t { return {0, 0}; }
-    constexpr auto x_max() const noexcept -> in_t { return spline::x_max; }
+    constexpr auto locate(x_t) const noexcept -> result_t { return {0, 0}; }
+    constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
 
     bool valid{true};
     constexpr auto is_valid(int_t) const noexcept -> bool { return valid; }
@@ -180,13 +177,13 @@ struct spline_prefetch_test_t : Test
 {
     struct segment_t
     {
-        using in_t = in_t;
-        using out_t = out_t;
+        using x_t = x_t;
+        using y_t = y_t;
 
         alignas(32) std::array<std::byte, 32> padding;
 
-        constexpr auto evaluate(in_t) const noexcept -> out_t { return out_t{0}; }
-        constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return out_t{0}; }
+        constexpr auto evaluate(x_t) const noexcept -> y_t { return y_t{0}; }
+        constexpr auto extend_final_tangent(x_t) const noexcept -> y_t { return y_t{0}; }
         constexpr auto is_valid() const noexcept -> bool { return true; }
     };
 
@@ -212,8 +209,8 @@ struct spline_prefetch_test_t : Test
 
         virtual ~mock_locator_t() = default;
 
-        MOCK_METHOD(result_t, locate, (in_t), (const, noexcept));
-        MOCK_METHOD(in_t, x_max, (), (const, noexcept));
+        MOCK_METHOD(result_t, locate, (x_t), (const, noexcept));
+        MOCK_METHOD(x_t, x_max, (), (const, noexcept));
         MOCK_METHOD(bool, is_valid, (int_t), (const, noexcept));
         MOCK_METHOD(void, prefetch, (mock_prefetcher_t const& prefetcher), (const, noexcept));
     };
@@ -225,8 +222,8 @@ struct spline_prefetch_test_t : Test
 
         mock_locator_t* mock = nullptr;
 
-        auto locate(in_t in) const noexcept -> result_t { return mock->locate(in); };
-        auto x_max() const noexcept -> in_t { return mock->x_max(); }
+        auto locate(x_t in) const noexcept -> result_t { return mock->locate(in); };
+        auto x_max() const noexcept -> x_t { return mock->x_max(); }
         auto is_valid(int_t segment_count) const noexcept -> bool { return mock->is_valid(segment_count); }
         auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
     };
@@ -271,7 +268,7 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
 
     // call into sut to get it to cache a new previous segment; previous_cache_line_ should become 2
     auto const expected_segment = 2;
-    auto const x = in_t{expected_segment};
+    auto const x = x_t{expected_segment};
     EXPECT_CALL(mock_locator, x_max()).WillOnce(Return(x_max));
     EXPECT_CALL(mock_locator, locate(x))
         .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
@@ -327,7 +324,7 @@ TEST_F(spline_death_test_t, ctor_catches_oor_segment_count)
 
 TEST_F(spline_death_test_t, call_operator_catches_negative_x)
 {
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 1}(in_t{-1})), "input out of bounds");
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 1}(x_t{-1})), "input out of bounds");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -340,11 +337,11 @@ struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
     {
         using result_t = segment_locator_t::result_t;
 
-        in_t index = 0;
-        in_t origin = 0;
-        constexpr auto locate(in_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
+        x_t index = 0;
+        x_t origin = 0;
+        constexpr auto locate(x_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
 
-        constexpr auto x_max() const noexcept -> in_t { return spline::x_max; }
+        constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
     };
 
     using sut_t = spline_t<segment_t, malicious_locator_t>;
@@ -373,8 +370,8 @@ TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
 {
-    auto const x = in_t{x_max - 2};
-    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<in_t>(x + 1)}, segments, segment_count};
+    auto const x = x_t{x_max - 2};
+    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, segment_count};
 
     EXPECT_DEATH(sut(x), "origin out of range");
 }
