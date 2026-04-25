@@ -57,7 +57,7 @@ public:
 
     /// \pre 0 <= dx
     /// \pre dx < (1 << log2_width)
-    [[nodiscard]] constexpr auto operator()(in_t dx) const noexcept -> out_t
+    [[nodiscard]] constexpr auto evaluate(in_t dx) const noexcept -> out_t
     {
         auto const [coeff0, t] = unpack(dx);
         assert(t < in_t{1}); // dx < 1 << log2_width)

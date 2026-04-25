@@ -24,7 +24,7 @@ struct segment_t
 
     out_t base_val;
 
-    constexpr auto operator()(in_t dx) const noexcept -> out_t { return static_cast<out_t>(base_val + dx); }
+    constexpr auto evaluate(in_t dx) const noexcept -> out_t { return static_cast<out_t>(base_val + dx); }
     constexpr auto extend_final_tangent(in_t dx) const noexcept -> out_t
     {
         return static_cast<out_t>(-(base_val + dx));
@@ -115,7 +115,7 @@ struct segment_t
 
     bool valid{true};
 
-    constexpr auto operator()(in_t) const noexcept -> out_t { return 0; }
+    constexpr auto evaluate(in_t) const noexcept -> out_t { return 0; }
     constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return 0; }
     constexpr auto is_valid() const noexcept -> bool { return valid; }
 };
@@ -185,7 +185,7 @@ struct spline_prefetch_test_t : Test
 
         alignas(32) std::array<std::byte, 32> padding;
 
-        constexpr auto operator()(in_t) const noexcept -> out_t { return out_t{0}; }
+        constexpr auto evaluate(in_t) const noexcept -> out_t { return out_t{0}; }
         constexpr auto extend_final_tangent(in_t) const noexcept -> out_t { return out_t{0}; }
         constexpr auto is_valid() const noexcept -> bool { return true; }
     };

@@ -55,7 +55,7 @@ public:
 
         if !consteval { prev_segment_index_ = location.index; }
 
-        return segments_[location.index](x - location.origin);
+        return segments_[location.index].evaluate(x - location.origin);
     }
 
     /// validates data the driver receives
