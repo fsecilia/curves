@@ -361,6 +361,44 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     // ----------------------------------------------------------------------------------------------------------------
+    // Saturating Arithmetic
+    // ----------------------------------------------------------------------------------------------------------------
+
+    friend constexpr auto saturating_add(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
+        requires(sizeof(value_t) < sizeof(int128_t))
+    {
+        value_t result;
+        if (!__builtin_add_overflow(lhs.value, rhs.value, &result)) return literal(result);
+
+        if constexpr (signed_integral<value_t>)
+        {
+            // signed add overflow requires shared sign, so lhs's sign indicates direction
+            return lhs.value < 0 ? min<fixed_t>() : max<fixed_t>();
+        }
+        else
+        {
+            return max<fixed_t>();
+        }
+    }
+
+    friend constexpr auto saturating_sub(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
+        requires(sizeof(value_t) < sizeof(int128_t))
+    {
+        value_t result;
+        if (!__builtin_sub_overflow(lhs.value, rhs.value, &result)) return literal(result);
+
+        if constexpr (signed_integral<value_t>)
+        {
+            // signed sub overflow requires differing signs, so lhs >= 0 indicates wrapping past max
+            return lhs.value >= 0 ? max<fixed_t>() : min<fixed_t>();
+        }
+        else
+        {
+            return literal(0);
+        }
+    }
+
+    // ----------------------------------------------------------------------------------------------------------------
     // Rounding and Extraction
     // ----------------------------------------------------------------------------------------------------------------
 
