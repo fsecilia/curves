@@ -71,7 +71,9 @@ public:
         }
     };
 
-    explicit constexpr segment_locator_t(std::span<location_t const, total_key_count> sorted_keys) noexcept
+    explicit constexpr segment_locator_t(
+        std::span<location_t const, total_key_count> sorted_keys, location_t x_max) noexcept
+        : x_max_{x_max}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_locator_t>);
@@ -110,22 +112,36 @@ public:
         return {.index = index - node_count, .origin = origin};
     }
 
+    /// end of final segment
+    constexpr auto x_max() const noexcept -> location_t { return x_max_; }
+
     /// validates tree structure and capacity
     constexpr auto is_valid(int_t segment_count) const noexcept -> bool
     {
         // validate segment_count is in valid range
         if (segment_count <= 0 || max_segment_count < segment_count) return false;
 
-        // validate sorted order
+        // validate x_max is nonnegative
+        if (x_max_ <= location_t{0}) return false;
+
         auto previous_key = min<location_t>();
-        for (auto in_order_index = 1; in_order_index <= total_key_count; ++in_order_index) // 1-based
+
+        // validate real breakpoints in sorted order
+        for (auto i = 1; i < segment_count; ++i)
         {
-            auto const node_location = node_location_t{in_order_index};
-            auto const current_key = nodes_[node_location.node_index].keys[node_location.key_offset];
+            auto const key = key_at(i);
+            if (key <= previous_key) return false;
+            if (key >= x_max_) return false;
+            previous_key = key;
+        }
 
-            if (current_key <= previous_key) return false;
-
-            previous_key = current_key;
+        // padding keys: must be >= x_max_ and remain monotonic so descent remains structurally sound
+        for (auto i = segment_count; i <= total_key_count; ++i)
+        {
+            auto const key = key_at(i);
+            if (key <= previous_key) return false;
+            if (key < x_max_) return false;
+            previous_key = key;
         }
 
         return true;
@@ -173,7 +189,14 @@ private:
         }
     };
 
+    constexpr auto key_at(int_t in_order_index) const noexcept -> location_t
+    {
+        auto const node_location = node_location_t{in_order_index};
+        return nodes_[node_location.node_index].keys[node_location.key_offset];
+    }
+
     alignas(64) nodes_t nodes_;
+    location_t x_max_;
 };
 
 } // namespace crv::spline
