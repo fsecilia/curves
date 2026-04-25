@@ -23,7 +23,8 @@ using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_
 
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_coeff_t, is_fixed t_y_t = t_coeff_t,
-    typename fma_t = segment_fma_t<t_x_t, t_coeff_t>>
+    typename fma_t = segment_fma_t<t_x_t, t_coeff_t>,
+    typename shifter_t = shifter_t<rounding_modes::shr::fast::nearest_up_t>>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
@@ -37,8 +38,8 @@ public:
     static constexpr auto coeff_count = 4;
     using coeffs_t = std::array<coeff_t, coeff_count>;
 
-    constexpr segment_t(coeffs_t coeffs, int8_t log2_width, fma_t fma = {}) noexcept
-        : fma_{std::move(fma)}, coeffs_{coeffs}
+    constexpr segment_t(coeffs_t coeffs, int8_t log2_width, fma_t fma = {}, shifter_t shifter = {}) noexcept
+        : fma_{std::move(fma)}, shifter_{std::move(shifter)}, coeffs_{coeffs}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_t>);
@@ -116,7 +117,7 @@ private:
 
         // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
         // x/2^k = x*2^-k = x << -k == x >> k
-        auto const t = log2_width < 0 ? (dx << -log2_width) : (dx >> log2_width);
+        auto const t = x_t::literal(shifter_.shift(dx.value, -log2_width));
 
         return {coeffs_[0] >> 8, t};
     }
@@ -124,6 +125,7 @@ private:
     constexpr auto unpack_log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
 
     [[no_unique_address]] fma_t fma_;
+    [[no_unique_address]] shifter_t shifter_;
     coeffs_t coeffs_;
 };
 
