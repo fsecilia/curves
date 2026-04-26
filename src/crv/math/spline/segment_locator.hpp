@@ -71,8 +71,9 @@ public:
         }
     };
 
-    explicit constexpr segment_locator_t(std::span<x_t const, total_key_count> sorted_keys, x_t x_max) noexcept
-        : x_max_{x_max}
+    explicit constexpr segment_locator_t(
+        std::span<x_t const, total_key_count> sorted_keys, x_t x_max, int_t segment_count) noexcept
+        : x_max_{x_max}, segment_count_{segment_count}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_locator_t>);
@@ -111,14 +112,17 @@ public:
         return {.index = index - node_count, .origin = origin};
     }
 
+    /// number of real segments; the rest of the key array is padding
+    constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
+
     /// end of final segment
     constexpr auto x_max() const noexcept -> x_t { return x_max_; }
 
     /// validates tree structure and capacity
-    constexpr auto is_valid(int_t segment_count) const noexcept -> bool
+    constexpr auto is_valid() const noexcept -> bool
     {
         // validate segment_count is in valid range
-        if (segment_count <= 0 || max_segment_count < segment_count) return false;
+        if (segment_count_ <= 0 || max_segment_count < segment_count_) return false;
 
         // validate x_max is nonnegative
         if (x_max_ <= x_t{0}) return false;
@@ -126,7 +130,7 @@ public:
         auto previous_key = min<x_t>();
 
         // validate real breakpoints in sorted order
-        for (auto i = 1; i < segment_count; ++i)
+        for (auto i = 1; i < segment_count_; ++i)
         {
             auto const key = key_at(i);
             if (key < x_t{0}) return false;
@@ -136,7 +140,7 @@ public:
         }
 
         // padding keys: must be >= x_max_ and remain monotonic so descent remains structurally sound
-        for (auto i = segment_count; i <= total_key_count; ++i)
+        for (auto i = segment_count_; i <= total_key_count; ++i)
         {
             auto const key = key_at(i);
             if (key <= previous_key) return false;
@@ -196,6 +200,7 @@ private:
     }
 
     x_t x_max_;
+    int_t segment_count_;
     alignas(64) nodes_t nodes_;
 };
 

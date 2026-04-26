@@ -46,17 +46,32 @@ namespace depth_zero_tests {
 using sut_t = segment_locator_t<x_t, 0>;
 
 constexpr auto empty_keys = std::array<x_t, 0>{};
-constexpr auto sut = sut_t{empty_keys, 5};
 
 // validation
-static_assert(sut.is_valid(1));
-static_assert(!sut.is_valid(0));
+static_assert(sut_t{empty_keys, 5, 1}.is_valid());
+static_assert(!sut_t{empty_keys, 5, 0}.is_valid());
 
 // bypass tree descent
+constexpr auto sut = sut_t{empty_keys, 5, 1};
 static_assert(sut.locate(10) == sut_t::result_t{0, 0});
 static_assert(sut.locate(100) == sut_t::result_t{0, 0});
 
 } // namespace depth_zero_tests
+
+// --------------------------------------------------------------------------------------------------------------------
+// propeties
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace property_tests {
+
+using sut_t = segment_locator_t<x_t, 1>;
+constexpr auto keys = std::array<x_t, 3>{10, 20, 30};
+constexpr auto x_max = x_t{40};
+
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_count() == sut_t::max_segment_count);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.x_max() == x_max);
+
+} // namespace property_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // query boundaries
@@ -66,7 +81,7 @@ namespace boundary_query_tests {
 
 using sut_t = segment_locator_t<x_t, 1>;
 constexpr auto keys = std::array<x_t, 3>{10, 20, 30};
-constexpr auto sut = sut_t{keys, 40};
+constexpr auto sut = sut_t{keys, 40, sut_t::max_segment_count};
 
 // smallest value
 static_assert(sut.locate(0) == sut_t::result_t{0, 0});
@@ -119,7 +134,7 @@ constexpr auto test_prefetcher() noexcept -> bool
     auto keys = std::array<x_t, sut_t::total_key_count>{};
     for (auto i = 0u; i < keys.size(); ++i) keys[i] = x_t{i + 1};
 
-    auto const sut = sut_t{keys, 0};
+    auto const sut = sut_t{keys, 0, sut_t::max_segment_count};
     sut.prefetch(prefetcher);
 
     return prefetcher.actual_cache_line_count == 2 && prefetcher.actual_node.keys == node_keys_t{{16, 32, 48}};
@@ -138,31 +153,31 @@ using sut_t = segment_locator_t<x_t, 1>;
 using segments_t = std::array<x_t, 3>;
 
 // valid baseline
-static_assert(sut_t{segments_t{10, 20, 30}, 40}.is_valid(4));
+static_assert(sut_t{segments_t{10, 20, 30}, 40, 4}.is_valid());
 
 // negative key
-static_assert(!sut_t{segments_t{-10, 20, 30}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{-10, 20, 30}, 40, 4}.is_valid());
 
 // duplicate first pair
-static_assert(!sut_t{segments_t{10, 10, 20}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{10, 10, 20}, 40, 4}.is_valid());
 
 // duplicate last pair
-static_assert(!sut_t{segments_t{10, 20, 20}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{10, 20, 20}, 40, 4}.is_valid());
 
 // out of order
-static_assert(!sut_t{segments_t{10, 30, 20}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{10, 30, 20}, 40, 4}.is_valid());
 
 // min bound key
-static_assert(!sut_t{segments_t{min<x_t>(), 20, 30}, 40}.is_valid(4));
+static_assert(!sut_t{segments_t{min<x_t>(), 20, 30}, 40, 4}.is_valid());
 
 // padding validation with fewer than max segments, all padding >= x_max
-static_assert(sut_t{segments_t{10, 50, 60}, 20}.is_valid(2));
+static_assert(sut_t{segments_t{10, 50, 60}, 20, 2}.is_valid());
 
 // padding validation with fewer than max segments
-static_assert(!sut_t{segments_t{10, 15, 60}, 20}.is_valid(2));
+static_assert(!sut_t{segments_t{10, 15, 60}, 20, 2}.is_valid());
 
 // padding validation not monotonic
-static_assert(!sut_t{segments_t{10, 60, 50}, 20}.is_valid(2));
+static_assert(!sut_t{segments_t{10, 60, 50}, 20, 2}.is_valid());
 
 } // namespace is_valid_tests
 
@@ -191,7 +206,7 @@ template <int_t depth_max> constexpr auto test_sweep(int_t offset, int_t stride)
     for (auto i = 0u; i < keys.size(); ++i) { keys[i] = x_t{offset + static_cast<int_t>(i) * stride}; }
 
     auto const x_max = x_t{offset + static_cast<int_t>(keys.size()) * stride};
-    auto const sut = sut_t{keys, x_max};
+    auto const sut = sut_t{keys, x_max, sut_t::max_segment_count};
 
     // sweep one below and n above expected range of keys
     auto prev_index = int_t{0};
