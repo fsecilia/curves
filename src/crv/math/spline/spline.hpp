@@ -61,11 +61,11 @@ public:
         // dispatch to segment locator
         if (!segment_locator_.is_valid()) return false;
 
-        // dispatch to each segment, then cross-check that each segment's domain matches its interval. The cross-check
-        // depends on segment.is_valid() having already bounded log2_width, so segment.max_dx() is well-defined.
+        // dispatch to each segment, then cross-check that each segment's domain matches its interval
         for (auto i = 0; i < segment_count; ++i)
         {
             if (!segments_[i].is_valid()) return false;
+            if (segment_locator_.interval_width(i) != segments_[i].width()) return false;
         }
 
         return true;
