@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief segment subdivision
+/// \brief segment refinement
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once

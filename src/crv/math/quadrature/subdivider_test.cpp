@@ -26,12 +26,12 @@ constexpr auto sut = sut_t{};
 // --------------------------------------------------------------------------------------------------------------------
 // baseline
 //
-// Everything here is well within limits. Predicate must return true, requiring subdivision.
+// Everything here is well within limits. Predicate must return true, requiring refinement.
 // --------------------------------------------------------------------------------------------------------------------
 
 constexpr auto base_limit = 10;
 constexpr auto base_area = 1.0;
-constexpr auto base_error = 100.0; // huge error demands subdivision
+constexpr auto base_error = 100.0; // huge error demands refinement
 constexpr auto base_min_width = sut_t::min_width;
 constexpr auto base_noise = base_area * sut_t::relative_noise_margin;
 
@@ -50,7 +50,7 @@ static_assert(sut(base_segment, base_area, base_error, base_limit));
 // isolated failures
 //
 // Each case here isolates one failure condition by altering the baseline. Predicate must return false, indicating
-// halt subdivision.
+// halt refinement.
 // --------------------------------------------------------------------------------------------------------------------
 
 // depth dominates
@@ -94,10 +94,10 @@ constexpr auto tie_segment = [] {
     return segment;
 }();
 
-// error slightly above tie requires subdivision
+// error slightly above tie requires refinement
 static_assert(sut(tie_segment, base_area, base_noise + 0.1, base_limit));
 
-// error exactly equal to tie must halt subdivision
+// error exactly equal to tie must halt refinement
 static_assert(!sut(tie_segment, base_area, base_noise, base_limit));
 
 // zero area
@@ -225,7 +225,7 @@ constexpr auto test_shallow_subdivision() -> bool
 
     stack.push_back(initial_segment);
 
-    // predicate allows exactly one level of subdivision
+    // predicate allows exactly one level of refinement
     auto sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
