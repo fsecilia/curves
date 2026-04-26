@@ -15,20 +15,20 @@
 namespace crv::quadrature {
 
 /// callable that constructs a root segment from (left, right, tolerance)
-template <typename subdivider_t, typename real_t>
-concept is_root_evaluator = requires(subdivider_t const& subdivider, real_t value) {
-    { subdivider.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
+template <typename evaluator_t, typename real_t>
+concept is_root_evaluator = requires(evaluator_t const& evaluator, real_t value) {
+    { evaluator.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
 /// callable that constructs a refinement from a parent segment
-template <typename subdivider_t, typename real_t>
-concept is_refiner = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
-    { subdivider.refine(segment) } -> std::same_as<refinement_t<real_t>>;
+template <typename evaluator_t, typename real_t>
+concept is_refiner = requires(evaluator_t const& evaluator, segment_t<real_t> segment) {
+    { evaluator.refine(segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
 /// callable that constructs root segments and refines parent segments
-template <typename subdivider_t, typename real_t>
-concept is_evaluator = is_root_evaluator<subdivider_t, real_t> && is_refiner<subdivider_t, real_t>;
+template <typename evaluator_t, typename real_t>
+concept is_evaluator = is_root_evaluator<evaluator_t, real_t> && is_refiner<evaluator_t, real_t>;
 
 /// subdivides segments using integrand and rule
 template <typename t_integral_t> class evaluator_t
