@@ -44,7 +44,7 @@ struct quadrature_stack_seeder_test_t : Test
     {
         mutable int_t next_id = 0;
 
-        auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
+        auto evaluate(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
         {
             return create_segment(left, right, tolerance, next_id++);
         }

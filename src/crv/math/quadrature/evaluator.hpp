@@ -17,7 +17,7 @@ namespace crv::quadrature {
 /// callable that constructs a root segment from (left, right, tolerance)
 template <typename subdivider_t, typename real_t>
 concept is_root_evaluator = requires(subdivider_t const& subdivider, real_t value) {
-    { subdivider(value, value, value) } -> std::same_as<segment_t<real_t>>;
+    { subdivider.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
 /// callable that constructs a refinement from a parent segment
@@ -42,7 +42,7 @@ public:
     constexpr evaluator_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
     /// creates a root segment from simple range, integrating over [left, right]
-    constexpr auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
+    constexpr auto evaluate(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
     {
         return segment_t{left, right, integral_.integrate(left, right), tolerance, 0};
     }
