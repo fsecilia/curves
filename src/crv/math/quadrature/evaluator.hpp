@@ -60,7 +60,7 @@ public:
         auto const refined_integral = left_rule_result.sum + right_rule_result.sum;
         auto const quadrature_error = left_rule_result.error + right_rule_result.error;
         auto const subdivision_error = abs(refined_integral - parent.coarse_integral);
-        auto const error_estimate = std::max(quadrature_error, subdivision_error);
+        auto const refined_error = std::max(quadrature_error, subdivision_error);
 
         // clang-format off
         return refinement_t
@@ -82,7 +82,7 @@ public:
                 .depth = child_depth,
             },
             .refined_integral = refined_integral,
-            .error_estimate = error_estimate,
+            .refined_error = refined_error,
         };
         // clang-format on
     }
