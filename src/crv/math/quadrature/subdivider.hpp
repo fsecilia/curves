@@ -44,14 +44,14 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
     [[no_unique_address]] subdivision_predicate_t should_subdivide{};
 
     constexpr auto run(
-        auto& stack, is_nested_bisector<real_t> auto const& bisector, auto& builder, int_t depth_limit) const -> void
+        auto& stack, is_nested_evaluator<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const -> void
     {
         while (!stack.empty())
         {
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const bisection = bisector(segment);
+            auto const bisection = evaluator(segment);
 
             if (should_subdivide(segment, bisection.integral, bisection.error_estimate, depth_limit))
             {
