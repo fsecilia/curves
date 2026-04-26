@@ -118,6 +118,14 @@ public:
     /// end of final segment
     constexpr auto x_max() const noexcept -> x_t { return x_max_; }
 
+    /// width of segment[segment_index]'s interval
+    constexpr auto interval_width(int_t segment_index) const noexcept -> x_t
+    {
+        auto const lower = (segment_index == 0) ? x_t{0} : key_at(segment_index);
+        auto const upper = (segment_index + 1 == segment_count_) ? x_max_ : key_at(segment_index + 1);
+        return upper - lower;
+    }
+
     /// validates tree structure and capacity
     constexpr auto is_valid() const noexcept -> bool
     {
