@@ -19,7 +19,8 @@ namespace crv::spline {
 
 // fma with common types and fast nearest_up rounding mode
 template <is_fixed in_t, is_fixed coeff_t>
-using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_modes::shr::fast::nearest_up_t>>;
+using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_modes::shr::fast::nearest_up_t>,
+    overflow_policy_t::saturate>;
 
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_coeff_t, is_fixed t_y_t = t_coeff_t,
@@ -61,7 +62,7 @@ public:
     [[nodiscard]] constexpr auto evaluate(x_t dx) const noexcept -> y_t
     {
         auto const [coeff0, t] = unpack(dx);
-        assert(t < x_t{1}); // dx < 1 << log2_width)
+        assert(t < x_t{1}); // dx < (1 << log2_width)
 
         auto result = coeff0;
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = fma_(result, t, coeffs_[coeff]);
