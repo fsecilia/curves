@@ -38,7 +38,7 @@ constexpr auto base_noise = base_area * sut_t::relative_noise_margin;
 constexpr auto base_segment = segment_t{
     .left = 0.0,
     .right = base_min_width * 10.0, // plenty of width
-    .integral = 0.0,
+    .coarse_integral = 0.0,
     .tolerance = base_noise * 2.0, // segment tolerance dominates noise floor
     .depth = 5, // safely below limit
 };
@@ -164,23 +164,23 @@ struct stub_evaluator_t
     {
         return refinement_t
         {
-            .left           = segment_t
+            .left = segment_t
             {
-                .left       = 0.0,
-                .right      = seg.right/2.0,
-                .integral   = seg.integral / 2.0,
-                .tolerance  = 0.0,
-                .depth      = seg.depth + 1,
+                .left = 0.0,
+                .right = seg.right/2.0,
+                .coarse_integral   = seg.coarse_integral / 2.0,
+                .tolerance = 0.0,
+                .depth = seg.depth + 1,
             },
-            .right          = segment_t
+            .right = segment_t
             {
-                .left       = seg.right/2.0,
-                .right      = seg.right,
-                .integral   = seg.integral / 2.0,
-                .tolerance  = 0.0,
-                .depth      = seg.depth + 1,
+                .left = seg.right/2.0,
+                .right = seg.right,
+                .coarse_integral = seg.coarse_integral / 2.0,
+                .tolerance = 0.0,
+                .depth = seg.depth + 1,
             },
-            .integral       = seg.integral,
+            .integral = seg.coarse_integral,
             .error_estimate = 0.0,
         };
     }
@@ -203,7 +203,7 @@ constexpr auto test_immediate_termination() -> bool
 {
     auto stack = stack_t{};
     auto builder = builder_t{};
-    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
+    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);
 
@@ -221,7 +221,7 @@ constexpr auto test_shallow_subdivision() -> bool
 {
     auto stack = stack_t{};
     auto builder = builder_t{};
-    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .integral = 100.0, .tolerance = 0.0, .depth = 0};
+    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);
 
