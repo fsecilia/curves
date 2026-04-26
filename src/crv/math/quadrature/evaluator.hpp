@@ -16,22 +16,22 @@ namespace crv::quadrature {
 
 /// callable that constructs a root segment from (left, right, tolerance)
 template <typename subdivider_t, typename real_t>
-concept is_root_bisector = requires(subdivider_t const& subdivider, real_t value) {
+concept is_root_evaluator = requires(subdivider_t const& subdivider, real_t value) {
     { subdivider(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
 /// callable that constructs a bisection from a parent segment
 template <typename subdivider_t, typename real_t>
-concept is_nested_bisector = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
+concept is_nested_evaluator = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
     { subdivider(segment) } -> std::same_as<bisection_t<real_t>>;
 };
 
 /// callable that constructs root segments and bisects parent segments
 template <typename subdivider_t, typename real_t>
-concept is_bisector = is_root_bisector<subdivider_t, real_t> && is_nested_bisector<subdivider_t, real_t>;
+concept is_evaluator = is_root_evaluator<subdivider_t, real_t> && is_nested_evaluator<subdivider_t, real_t>;
 
 /// subdivides segments using integrand and rule
-template <typename t_integral_t> class bisector_t
+template <typename t_integral_t> class evaluator_t
 {
 public:
     using integral_t = t_integral_t;
@@ -39,7 +39,7 @@ public:
     using segment_t = segment_t<real_t>;
     using bisection_t = bisection_t<real_t>;
 
-    constexpr bisector_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
+    constexpr evaluator_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
     /// creates a root segment from simple range, integrating over [left, right]
     constexpr auto operator()(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t

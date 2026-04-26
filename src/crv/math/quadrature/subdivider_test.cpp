@@ -157,8 +157,8 @@ struct builder_t
     }
 };
 
-// bisector that just increments depth and divides the integral
-struct stub_bisector_t
+// evaluator that just increments depth and divides the integral
+struct stub_evaluator_t
 {
     constexpr auto operator()(segment_t const& seg) const -> bisection_t
     {
@@ -210,7 +210,7 @@ constexpr auto test_immediate_termination() -> bool
     // predicate stops immediately at depth 0
     auto sut = subdivider_t<stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 0}};
 
-    sut.run(stack, stub_bisector_t{}, builder, 10);
+    sut.run(stack, stub_evaluator_t{}, builder, 10);
 
     // halts immediately, bisects once, fails the predicate, and appends
     return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
@@ -228,7 +228,7 @@ constexpr auto test_shallow_subdivision() -> bool
     // predicate allows exactly one level of subdivision
     auto sut = subdivider_t<stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 1}};
 
-    sut.run(stack, stub_bisector_t{}, builder, 10);
+    sut.run(stack, stub_evaluator_t{}, builder, 10);
 
     // splits root into 2 segments, which then fail the predicate and append
     return builder.appended_segment_count == 2 && builder.total_integral == 100.0;

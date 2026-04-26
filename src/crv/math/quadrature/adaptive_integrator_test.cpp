@@ -32,17 +32,17 @@ struct quadrature_adaptive_integrator_test : Test
         auto operator==(integral_t const&) const noexcept -> bool = default;
     };
 
-    struct mock_bisector_t
+    struct mock_evaluator_t
     {
-        virtual ~mock_bisector_t() = default;
+        virtual ~mock_evaluator_t() = default;
 
         MOCK_METHOD(integral_t, finalize, (), (noexcept));
     };
-    StrictMock<mock_bisector_t> mock_bisector;
+    StrictMock<mock_evaluator_t> mock_evaluator;
 
-    struct bisector_t
+    struct evaluator_t
     {
-        mock_bisector_t* mock = nullptr;
+        mock_evaluator_t* mock = nullptr;
 
         auto finalize() && -> integral_t { return mock->finalize(); }
     };
@@ -78,7 +78,7 @@ struct quadrature_adaptive_integrator_test : Test
         virtual ~mock_subdivider_t() = default;
 
         MOCK_METHOD(void, run,
-            (stack_t & stack, mock_bisector_t const& bisector, mock_antiderivative_builder_t& antiderivative_builder,
+            (stack_t & stack, mock_evaluator_t const& evaluator, mock_antiderivative_builder_t& antiderivative_builder,
                 int_t depth_limit),
             (const));
     };
@@ -88,10 +88,10 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_subdivider_t* mock = nullptr;
 
-        auto run(stack_t& stack, bisector_t const& bisector, antiderivative_builder_t& antiderivative_builder,
+        auto run(stack_t& stack, evaluator_t const& evaluator, antiderivative_builder_t& antiderivative_builder,
             int_t depth_limit) -> void
         {
-            mock->run(stack, *bisector.mock, *antiderivative_builder.mock, depth_limit);
+            mock->run(stack, *evaluator.mock, *antiderivative_builder.mock, depth_limit);
         }
     };
 
@@ -100,7 +100,7 @@ struct quadrature_adaptive_integrator_test : Test
         virtual ~mock_stack_seeder_t() = default;
 
         MOCK_METHOD(void, seed,
-            (stack_t & stack, mock_bisector_t const& bisector, real_t domain_max, real_t global_tolerance,
+            (stack_t & stack, mock_evaluator_t const& evaluator, real_t domain_max, real_t global_tolerance,
                 critical_points_t const& critical_points),
             (const));
     };
@@ -110,10 +110,10 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_stack_seeder_t* mock = nullptr;
 
-        auto seed(stack_t& stack, bisector_t const& bisector, real_t domain_max, real_t global_tolerance,
+        auto seed(stack_t& stack, evaluator_t const& evaluator, real_t domain_max, real_t global_tolerance,
             critical_points_t const& critical_points) -> void
         {
-            mock->seed(stack, *bisector.mock, domain_max, global_tolerance, critical_points);
+            mock->seed(stack, *evaluator.mock, domain_max, global_tolerance, critical_points);
         }
     };
 
@@ -135,15 +135,15 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
     auto const seq = InSequence{};
 
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
-    EXPECT_CALL(mock_stack_seeder, seed(_, Ref(mock_bisector), domain_max, tolerance, critical_points));
-    EXPECT_CALL(mock_subdivider, run(_, Ref(mock_bisector), Ref(mock_antiderivative_builder), depth_limit));
-    EXPECT_CALL(mock_bisector, finalize()).WillOnce(Return(integral));
+    EXPECT_CALL(mock_stack_seeder, seed(_, Ref(mock_evaluator), domain_max, tolerance, critical_points));
+    EXPECT_CALL(mock_subdivider, run(_, Ref(mock_evaluator), Ref(mock_antiderivative_builder), depth_limit));
+    EXPECT_CALL(mock_evaluator, finalize()).WillOnce(Return(integral));
 
     auto const expected_result
         = result_t{.antiderivative = antiderivative, .achieved_error = achieved_error, .max_error = max_error};
     EXPECT_CALL(mock_antiderivative_builder, finalize(integral)).WillOnce(Return(expected_result));
 
-    [[maybe_unused]] result_t actual_result = sut(bisector_t{&mock_bisector},
+    [[maybe_unused]] result_t actual_result = sut(evaluator_t{&mock_evaluator},
         antiderivative_builder_t{&mock_antiderivative_builder}, domain_max, critical_points);
 
     EXPECT_EQ(expected_result, actual_result);
