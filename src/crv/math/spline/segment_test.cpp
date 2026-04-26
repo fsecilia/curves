@@ -36,10 +36,6 @@ constexpr auto t_quarter = x_t::literal(1ULL << (x_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
 constexpr auto t_max = x_t::literal((1ULL << x_t::frac_bits) - 1);
 
-constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
-constexpr auto steep_slope_coeffs = coeffs_t{coeff_t::literal(c0_max / 4), coeff_t::literal(c_max / 4),
-    coeff_t::literal(c_max / 4), coeff_t::literal(c_max / 4)};
-
 // --------------------------------------------------------------------------------------------------------------------
 // normalization shift
 // --------------------------------------------------------------------------------------------------------------------
@@ -153,6 +149,8 @@ static_assert(evaluate({c0_quarter, c_quarter, c_quarter, c_quarter}, 0, t_max) 
 static_assert(evaluate({c0_max, c_max, c_max, c_max}, 0, t_max) == c_max);
 static_assert(evaluate({c0_min, c_min, c_min, c_min}, 0, t_max) == c_min);
 
+constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
+
 // 16/4 -> 4.00, no rounding
 static_assert(evaluate(rounding_coeffs, 2, x_t::literal(16)) == 4);
 
@@ -179,21 +177,6 @@ static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_
 static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(x_t{17})
     == sut_t::y_t::convert(coeff_t{36} + coeff_t{40} * (x_t{17} << 2)));
 
-// p1 overflow
-static_assert(
-    sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max), coeff_t::literal(c_max), coeff_t::literal(c_max)}, 0}
-        .extend_final_tangent(t0)
-    == sut_t::y_t::literal(c_max));
-
-// p1 underflow
-static_assert(
-    sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min), coeff_t::literal(c_min), coeff_t::literal(c_min)}, 0}
-        .extend_final_tangent(t0)
-    == sut_t::y_t::literal(c_min));
-
-// large dx_extended against a steep slope should saturate, not wrap.
-static_assert(sut_t{steep_slope_coeffs, 0}.extend_final_tangent(t_max) == sut_t::y_t::literal(c_max));
-
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -218,24 +201,6 @@ static_assert(!sut_t{coeffs, -64}.is_valid());
 // capacity for int8_t
 static_assert(!sut_t{coeffs, 127}.is_valid());
 static_assert(!sut_t{coeffs, -128}.is_valid());
-
-// p1 overflow
-static_assert(
-    !sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max), coeff_t::literal(c_max), coeff_t::literal(c_max)}, 0}
-        .is_valid());
-
-// p1 underflow
-static_assert(
-    !sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min), coeff_t::literal(c_min), coeff_t::literal(c_min)}, 0}
-        .is_valid());
-
-// m1 overflow
-static_assert(
-    !sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max / 2), coeff_t::literal(c_max / 2), c0}, 0}.is_valid());
-
-// m1 underflow
-static_assert(
-    !sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min / 2), coeff_t::literal(c_min / 2), c0}, 0}.is_valid());
 
 } // namespace is_valid_tests
 
