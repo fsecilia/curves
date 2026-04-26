@@ -16,7 +16,7 @@
 namespace crv::quadrature {
 namespace generic {
 
-/// decides whether a segment should be subdivided
+/// decides whether a segment should be refined further
 template <typename t_real_t> struct refinement_predicate_t
 {
     using real_t = t_real_t;
