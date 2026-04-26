@@ -179,6 +179,25 @@ static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_
 static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(x_t{17})
     == sut_t::y_t::convert(coeff_t{36} + coeff_t{40} * (x_t{17} << 2)));
 
+// saturation at the upper bound when computing p1
+static_assert(
+    sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max), coeff_t::literal(c_max), coeff_t::literal(c_max)}, 0}
+        .extend_final_tangent(t0)
+    == sut_t::y_t::literal(c_max));
+
+// saturation at the lower bound when computing p1
+static_assert(
+    sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min), coeff_t::literal(c_min), coeff_t::literal(c_min)}, 0}
+        .extend_final_tangent(t0)
+    == sut_t::y_t::literal(c_min));
+
+// overflow driven specifically by the extrapolated tangent (m1 * t)
+//
+// Pushing a large dx_extended against a steep slope should saturate, not wrap.
+constexpr auto steep_slope_coeffs = std::array<coeff_t, 4>{coeff_t::literal(c0_max / 4), coeff_t::literal(c_max / 4),
+    coeff_t::literal(c_max / 4), coeff_t::literal(c_max / 4)};
+static_assert(sut_t{steep_slope_coeffs, 0}.extend_final_tangent(t_max) == sut_t::y_t::literal(c_max));
+
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------

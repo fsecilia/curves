@@ -81,13 +81,20 @@ public:
     {
         auto const [coeff0, t] = unpack(dx_extended);
 
+        using wide_t = fixed_t<widened_t<typename coeff_t::value_t>, coeff_t::frac_bits>;
+
+        auto const c0 = wide_t::convert(coeff0);
+        auto const c1 = wide_t::convert(coeffs_[1]);
+        auto const c2 = wide_t::convert(coeffs_[2]);
+        auto const c3 = wide_t::convert(coeffs_[3]);
+
         // p1 is the segment evaluated at t=1; 1^n = 1, so the result is the same as the sum of coefficients
-        auto const p1 = coeff0 + coeffs_[1] + coeffs_[2] + coeffs_[3];
+        auto const p1 = c0 + c1 + c2 + c3;
 
-        // final tangent is the derivative evaluated at t=1
-        auto const m1 = 3 * coeff0 + 2 * coeffs_[1] + coeffs_[2];
+        // final tangent is the derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
+        auto const m1 = coeff_t::convert(3 * c0 + 2 * c1 + c2); // must narrow for multiplication by t
 
-        return y_t::convert(p1 + m1 * t);
+        return y_t::convert(p1 + wide_t::convert(multiply(m1, t)));
     }
 
     /// validates segment data
