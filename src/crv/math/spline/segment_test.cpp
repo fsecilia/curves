@@ -36,6 +36,8 @@ constexpr auto t_quarter = x_t::literal(1ULL << (x_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
 constexpr auto t_max = x_t::literal((1ULL << x_t::frac_bits) - 1);
 
+constexpr auto coeffs = coeffs_t{};
+
 // --------------------------------------------------------------------------------------------------------------------
 // normalization shift
 // --------------------------------------------------------------------------------------------------------------------
@@ -180,19 +182,41 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.exte
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// width
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace width_tests {
+
+// bounds of valid log2_widths: [-frac_bits, bits-frac_bits-2] = [-48, 14] for fixed_t<int64_t, 48>
+static_assert(sut_t{coeffs, -48}.width() == x_t{1} >> 48);
+static_assert(sut_t{coeffs, -47}.width() == x_t{1} >> 47);
+static_assert(sut_t{coeffs, -1}.width() == x_t{1} >> 1);
+static_assert(sut_t{coeffs, 0}.width() == x_t{1} << 0);
+static_assert(sut_t{coeffs, 1}.width() == x_t{1} << 1);
+static_assert(sut_t{coeffs, 13}.width() == x_t{1} << 13);
+static_assert(sut_t{coeffs, 14}.width() == x_t{1} << 14);
+
+} // namespace width_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // is_valid
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace is_valid_tests {
 
-constexpr auto coeffs = std::array<coeff_t, 4>{c0, c0, c0, c0};
-
 // zero is a valid shift
 static_assert(sut_t{coeffs, 0}.is_valid());
 
-// bounds of valid shifts (-63 to 63 for a 64-bit type)
-static_assert(sut_t{coeffs, 63}.is_valid());
-static_assert(sut_t{coeffs, -63}.is_valid());
+// bounds of valid log2_widths: [-frac_bits, bits-frac_bits-2] = [-48, 14] for fixed_t<int64_t, 48>
+static_assert(!sut_t{coeffs, -49}.is_valid());
+static_assert(sut_t{coeffs, -48}.is_valid());
+static_assert(sut_t{coeffs, -47}.is_valid());
+static_assert(sut_t{coeffs, -1}.is_valid());
+static_assert(sut_t{coeffs, 0}.is_valid());
+static_assert(sut_t{coeffs, 1}.is_valid());
+static_assert(sut_t{coeffs, 13}.is_valid());
+static_assert(sut_t{coeffs, 14}.is_valid());
+static_assert(!sut_t{coeffs, 15}.is_valid());
 
 // strictly out of bounds (>= 64 or <= -64)
 static_assert(!sut_t{coeffs, 64}.is_valid());
@@ -226,7 +250,7 @@ TEST(spline_segment, violates_t_upper_bound)
     // dx is 1.0, but dividing by 2^-1 makes t = 2.0, which is out of bounds
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, -1);
     constexpr auto dx_one = x_t::literal(1ULL << x_t::frac_bits);
-    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(dx_one)), "t <");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(dx_one)), "dx <");
 }
 
 TEST(spline_segment, violates_coeff0_positive_packing_bounds)

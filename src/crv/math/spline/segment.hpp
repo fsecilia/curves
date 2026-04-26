@@ -58,12 +58,12 @@ public:
     }
 
     /// \pre 0 <= dx
-    /// \pre dx < (1 << log2_width)
+    /// \pre dx < width()
     [[nodiscard]] constexpr auto evaluate(x_t dx) const noexcept -> y_t
     {
-        auto const t = dx_to_t(dx);
-        assert(t < x_t{1}); // dx < (1 << log2_width)
+        assert(dx < width());
 
+        auto const t = dx_to_t(dx);
         auto result = unpack_coeff0();
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = fma_(result, t, coeffs_[coeff]);
 
@@ -95,13 +95,24 @@ public:
         return y_t::convert(p1 + m1 * t);
     }
 
-    /// validates segment data
+    /// width of segment in input format
+    constexpr auto width() const noexcept -> x_t
+    {
+        // this doesn't use the shifter because the width is exact.
+        return x_t::literal(1ll << (x_t::frac_bits + unpack_log2_width()));
+    }
+
+    /// validates invariants
+    ///
+    /// This type goes over the ioctl boundary, so its invariants must be validated before the driver can accept it.
     constexpr auto is_valid() const noexcept -> bool
     {
-        // shift amount must be within maximum valid shift for input type
-        static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
+        constexpr auto bit_width = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
+        constexpr auto min_log2_width = static_cast<int8_t>(-x_t::frac_bits);
+        constexpr auto max_log2_width = static_cast<int8_t>(bit_width - x_t::frac_bits - 2);
+
         auto const log2_width = unpack_log2_width();
-        if (log2_width <= -max_shift || max_shift <= log2_width) return false;
+        return min_log2_width <= log2_width && log2_width <= max_log2_width;
 
         return true;
     }
