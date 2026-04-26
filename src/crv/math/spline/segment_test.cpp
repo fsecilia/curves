@@ -30,13 +30,15 @@ constexpr auto c_min = min<coeff_value_t>();
 constexpr auto c0_max = coeff_value_t{c_max >> 8};
 constexpr auto c0_min = coeff_value_t{c_min >> 8};
 
-constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
-
 constexpr auto t0 = x_t::literal(0);
 constexpr auto t_half = x_t::literal(1ULL << (x_t::frac_bits - 1));
 constexpr auto t_quarter = x_t::literal(1ULL << (x_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
 constexpr auto t_max = x_t::literal((1ULL << x_t::frac_bits) - 1);
+
+constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
+constexpr auto steep_slope_coeffs = coeffs_t{coeff_t::literal(c0_max / 4), coeff_t::literal(c_max / 4),
+    coeff_t::literal(c_max / 4), coeff_t::literal(c_max / 4)};
 
 // --------------------------------------------------------------------------------------------------------------------
 // normalization shift
@@ -90,8 +92,6 @@ constexpr auto evaluate(vals_t const& coeff_vals, int8_t log2_width, x_t dx) noe
 }
 
 namespace evaluation_tests {
-
-constexpr auto t_half = x_t::literal(1ULL << (x_t::frac_bits - 1));
 
 // all zeros
 static_assert(evaluate({0, 0, 0, 0}, 0, t_half) == 0);
@@ -179,23 +179,19 @@ static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_
 static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(x_t{17})
     == sut_t::y_t::convert(coeff_t{36} + coeff_t{40} * (x_t{17} << 2)));
 
-// saturation at the upper bound when computing p1
+// p1 overflow
 static_assert(
     sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max), coeff_t::literal(c_max), coeff_t::literal(c_max)}, 0}
         .extend_final_tangent(t0)
     == sut_t::y_t::literal(c_max));
 
-// saturation at the lower bound when computing p1
+// p1 underflow
 static_assert(
     sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min), coeff_t::literal(c_min), coeff_t::literal(c_min)}, 0}
         .extend_final_tangent(t0)
     == sut_t::y_t::literal(c_min));
 
-// overflow driven specifically by the extrapolated tangent (m1 * t)
-//
-// Pushing a large dx_extended against a steep slope should saturate, not wrap.
-constexpr auto steep_slope_coeffs = std::array<coeff_t, 4>{coeff_t::literal(c0_max / 4), coeff_t::literal(c_max / 4),
-    coeff_t::literal(c_max / 4), coeff_t::literal(c_max / 4)};
+// large dx_extended against a steep slope should saturate, not wrap.
 static_assert(sut_t{steep_slope_coeffs, 0}.extend_final_tangent(t_max) == sut_t::y_t::literal(c_max));
 
 } // namespace extend_final_tangent_tests
@@ -222,6 +218,24 @@ static_assert(!sut_t{coeffs, -64}.is_valid());
 // capacity for int8_t
 static_assert(!sut_t{coeffs, 127}.is_valid());
 static_assert(!sut_t{coeffs, -128}.is_valid());
+
+// p1 overflow
+static_assert(
+    !sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max), coeff_t::literal(c_max), coeff_t::literal(c_max)}, 0}
+        .is_valid());
+
+// p1 underflow
+static_assert(
+    !sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min), coeff_t::literal(c_min), coeff_t::literal(c_min)}, 0}
+        .is_valid());
+
+// m1 overflow
+static_assert(
+    !sut_t{{coeff_t::literal(c0_max), coeff_t::literal(c_max / 2), coeff_t::literal(c_max / 2), c0}, 0}.is_valid());
+
+// m1 underflow
+static_assert(
+    !sut_t{{coeff_t::literal(c0_min), coeff_t::literal(c_min / 2), coeff_t::literal(c_min / 2), c0}, 0}.is_valid());
 
 } // namespace is_valid_tests
 

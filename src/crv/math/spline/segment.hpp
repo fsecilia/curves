@@ -61,10 +61,10 @@ public:
     /// \pre dx < (1 << log2_width)
     [[nodiscard]] constexpr auto evaluate(x_t dx) const noexcept -> y_t
     {
-        auto const [coeff0, t] = unpack(dx);
+        auto const t = dx_to_t(dx);
         assert(t < x_t{1}); // dx < (1 << log2_width)
 
-        auto result = coeff0;
+        auto result = unpack_coeff0();
         for (auto coeff = 1; coeff < coeff_count; ++coeff) result = fma_(result, t, coeffs_[coeff]);
 
         return y_t::convert(result);
@@ -79,22 +79,9 @@ public:
     /// \pre 0 <= dx
     [[nodiscard]] constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
     {
-        auto const [coeff0, t] = unpack(dx_extended);
-
-        using wide_t = fixed_t<widened_t<typename coeff_t::value_t>, coeff_t::frac_bits>;
-
-        auto const c0 = wide_t::convert(coeff0);
-        auto const c1 = wide_t::convert(coeffs_[1]);
-        auto const c2 = wide_t::convert(coeffs_[2]);
-        auto const c3 = wide_t::convert(coeffs_[3]);
-
-        // p1 is the segment evaluated at t=1; 1^n = 1, so the result is the same as the sum of coefficients
-        auto const p1 = c0 + c1 + c2 + c3;
-
-        // final tangent is the derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
-        auto const m1 = coeff_t::convert(3 * c0 + 2 * c1 + c2); // must narrow for multiplication by t
-
-        return y_t::convert(p1 + wide_t::convert(multiply(m1, t)));
+        auto const t = dx_to_t(dx_extended);
+        auto const final_tangent = calc_final_tangent();
+        return y_t::convert(fma_(coeff_t::convert(final_tangent.m1), t, coeff_t::convert(final_tangent.p1)));
     }
 
     /// validates segment data
@@ -107,17 +94,39 @@ public:
         auto const log2_width = unpack_log2_width();
         if (log2_width <= -max_shift || max_shift <= log2_width) return false;
 
+        auto const final_tangent = calc_final_tangent();
+        if (final_tangent.p1 < wide_t::convert(min<y_t>()) || wide_t::convert(max<y_t>()) < final_tangent.p1
+            || final_tangent.m1 < wide_t::convert(min<coeff_t>()) || wide_t::convert(max<coeff_t>()) < final_tangent.m1)
+        {
+            return false;
+        }
+
         return true;
     }
 
 private:
-    struct unpacked_t
+    using wide_t = fixed_t<widened_t<typename coeff_t::value_t>, coeff_t::frac_bits>;
+
+    struct final_tangent_t
     {
-        coeff_t coeff0;
-        x_t t;
+        wide_t p1;
+        wide_t m1;
     };
 
-    constexpr auto unpack(x_t dx) const noexcept -> unpacked_t
+    [[nodiscard]] constexpr auto calc_final_tangent() const noexcept -> final_tangent_t
+    {
+        auto const c0 = wide_t::convert(unpack_coeff0());
+        auto const c1 = wide_t::convert(coeffs_[1]);
+        auto const c2 = wide_t::convert(coeffs_[2]);
+        auto const c3 = wide_t::convert(coeffs_[3]);
+
+        return {
+            .p1 = c0 + c1 + c2 + c3, // segment evaluated at t=1; 1^n = 1, so result is same as sum of coefficients
+            .m1 = 3 * c0 + 2 * c1 + c2 // derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
+        };
+    }
+
+    constexpr auto dx_to_t(x_t dx) const noexcept -> x_t
     {
         assert(x_t{0} <= dx);
 
@@ -125,11 +134,10 @@ private:
 
         // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
         // x/2^k = x*2^-k = x << -k == x >> k
-        auto const t = x_t::literal(shifter_.shift(dx.value, -log2_width));
-
-        return {coeffs_[0] >> 8, t};
+        return x_t::literal(shifter_.shift(dx.value, -log2_width));
     }
 
+    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
     constexpr auto unpack_log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
 
     [[no_unique_address]] fma_t fma_;
