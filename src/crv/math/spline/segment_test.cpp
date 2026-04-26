@@ -23,6 +23,14 @@ using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
 
 constexpr auto c0 = coeff_t{0};
 constexpr auto c1 = coeff_t{1};
+constexpr auto c_max = max<coeff_value_t>();
+constexpr auto c_min = min<coeff_value_t>();
+
+// 56-bit bounds for C0 since it also packs log2_width
+constexpr auto c0_max = coeff_value_t{c_max >> 8};
+constexpr auto c0_min = coeff_value_t{c_min >> 8};
+
+constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
 
 constexpr auto t0 = x_t::literal(0);
 constexpr auto t_half = x_t::literal(1ULL << (x_t::frac_bits - 1));
@@ -37,7 +45,6 @@ constexpr auto t_max = x_t::literal((1ULL << x_t::frac_bits) - 1);
 namespace normalization_shift_tests {
 
 // fma that bypasses the math to just expose parameter t
-// useful for proving dx correctly normalized into t based on the shift
 struct passthrough_fma_t
 {
     template <is_fixed y_t>
@@ -126,30 +133,36 @@ static_assert(evaluate({256, 256, 256, 256}, 0, t_three_quarter) == 700);
 static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 
 // coeff[0] survives bit packing shift round-trip
-//
-// Evaluate at t=0.5 (dx=16 shifted right by 5).
-// This is the cubic term, so result is coeff0*(0.5)^3
 constexpr auto large_cubic_coeff = coeff_t{50};
 static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}.evaluate(x_t{16}).value == (large_cubic_coeff.value >> 3));
 
-// --------------------------------------------------------------------------------------------------------------------
-// nearest_up_t rounding behavior during dx -> t normalization
-// --------------------------------------------------------------------------------------------------------------------
-// By setting only the linear coefficient C2 to 1, evaluate() will return exactly t.
-// A log2_width of 2 means dx is shifted right by 2 (divided by 4), dropping 2 bits.
+// c0: just check sign; anything more would be a tautology
+static_assert(evaluate({c0_max, 0, 0, 0}, 0, t_max) > 0);
+static_assert(evaluate({c0_min, 0, 0, 0}, 0, t_max) < 0);
 
-constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
+// c3
+static_assert(evaluate({0, 0, 0, c_max}, 0, t0) == c_max);
+static_assert(evaluate({0, 0, 0, c_min}, 0, t0) == c_min);
 
-// Discarded bits: 16/4 -> 4.00, no rounding
+// dense polynomial does not overflow
+constexpr auto c0_quarter = c0_max / 4;
+constexpr auto c_quarter = c_max / 4;
+static_assert(evaluate({c0_quarter, c_quarter, c_quarter, c_quarter}, 0, t_max) > (c_max / 2));
+
+// saturation ceiling
+static_assert(evaluate({c0_max, c_max, c_max, c_max}, 0, t_max) == c_max);
+static_assert(evaluate({c0_min, c_min, c_min, c_min}, 0, t_max) == c_min);
+
+// 16/4 -> 4.00, no rounding
 static_assert(evaluate(rounding_coeffs, 2, x_t::literal(16)) == 4);
 
-// Discarded bits: 17/4 -> 4.25, rounds down
+// 17/4 -> 4.25, rounds down
 static_assert(evaluate(rounding_coeffs, 2, x_t::literal(17)) == 4);
 
-// Discarded bits: 18/4 -> 4.50, half up rounds up; truncate would round down
+// 18/4 -> 4.50, half up rounds up; truncate would round down
 static_assert(evaluate(rounding_coeffs, 2, x_t::literal(18)) == 5);
 
-// Discarded bits: 19/4 -> 4.75, half up rounds up
+// 19/4 -> 4.75, half up rounds up
 static_assert(evaluate(rounding_coeffs, 2, x_t::literal(19)) == 5);
 
 } // namespace evaluation_tests
