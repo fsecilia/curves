@@ -35,10 +35,10 @@ template <typename real_t> struct exponential_decay_t
     }
 
     /// scales the given error magnitude based on its position along the curve
-    constexpr auto operator()(real_t target_position) const noexcept -> real_t
+    constexpr auto operator()(real_t node) const noexcept -> real_t
     {
         using std::exp;
-        return amplitude * exp(-decay_rate * target_position) + baseline_offset;
+        return amplitude * exp(-decay_rate * node) + baseline_offset;
     }
 };
 

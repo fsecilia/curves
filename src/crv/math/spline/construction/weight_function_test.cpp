@@ -13,12 +13,12 @@ using real_t = float_t;
 
 struct test_vector_t
 {
-    real_t target_position;
+    real_t node;
     real_t expected;
 
     friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
     {
-        return out << "{.target_position = " << src.target_position << ", .expected = " << src.expected << "}";
+        return out << "{.node = " << src.node << ", .expected = " << src.expected << "}";
     }
 };
 
@@ -57,7 +57,7 @@ TEST_F(weight_functions_exponential_decay_test_t, from_ratio_and_halflife)
 struct weight_functions_exponential_decay_vector_test_t : weight_functions_exponential_decay_test_t,
                                                           WithParamInterface<test_vector_t>
 {
-    real_t target_position = GetParam().target_position;
+    real_t node = GetParam().node;
     real_t expected = GetParam().expected;
 
     using sut_t = exponential_decay_t<real_t>;
@@ -66,7 +66,7 @@ struct weight_functions_exponential_decay_vector_test_t : weight_functions_expon
 
 TEST_P(weight_functions_exponential_decay_vector_test_t, result)
 {
-    auto const actual = sut(target_position);
+    auto const actual = sut(node);
 
     EXPECT_DOUBLE_EQ(expected, actual);
 }

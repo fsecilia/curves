@@ -36,25 +36,26 @@ struct residual_estimator_t
 
         auto max_magnitude = real_t{0};
 
-        for (auto const node : generate_nodes())
+        for (auto const standard_node : generate_nodes())
         {
-            // sub exact center and boundries with no truncation error using cmov
+            // convert from standard nodes in [-1, 1] to domain nodes in [left, right].
             //
-            // Applying this to left and right prevents truncation from landing the evaluated position outside of the
-            // domain. We also apply it to center because it's trivial to and center tends to suffer from truncation.
-            auto target_position = midpoint + half_width * node;
-            if (node == -1.0) target_position = left;
-            if (node == 0.0) target_position = midpoint;
-            if (node == 1.0) target_position = right;
+            // Here, we sub exact center and boundries with no truncation error using cmov. Applying this to left and
+            // right prevents truncation from landing the evaluated position outside of the domain. We also apply it to
+            // center because it's trivial to and center tends to suffer from truncation.
+            auto domain_node = midpoint + half_width * standard_node;
+            if (standard_node == -1.0) domain_node = left;
+            if (standard_node == 0.0) domain_node = midpoint;
+            if (standard_node == 1.0) domain_node = right;
 
             // evaluate target at target position and approxmant at quantized position
-            auto const quantized_position = quantize(target_position);
-            auto const target = evaluate_target(target_position);
-            auto const approximation = evaluate_approximant(approximant, quantized_position);
+            auto const quantized_node = quantize(domain_node);
+            auto const target = evaluate_target(domain_node);
+            auto const approximation = evaluate_approximant(approximant, quantized_node);
 
             // measure magnitude of error using norm, weight it using weight function
             auto const magnitude = measure_error(target, approximation);
-            auto const weighted_magnitude = magnitude * apply_weight(target_position);
+            auto const weighted_magnitude = magnitude * apply_weight(domain_node);
             max_magnitude = std::max(max_magnitude, weighted_magnitude);
         }
 

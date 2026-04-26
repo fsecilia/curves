@@ -107,7 +107,7 @@ struct residual_estimator_test_t : Test
     {
         mock_weight_function_t* mock = nullptr;
 
-        auto operator()(real_t target_position) const noexcept -> real_t { return mock->call(target_position); }
+        auto operator()(real_t node) const noexcept -> real_t { return mock->call(node); }
     };
 
     using sut_t = residual_estimator_t<real_t, target_function_t, approximant_evaluator_t, node_generator_t,
