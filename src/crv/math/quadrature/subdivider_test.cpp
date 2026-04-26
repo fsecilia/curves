@@ -208,7 +208,7 @@ constexpr auto test_immediate_termination() -> bool
     stack.push_back(initial_segment);
 
     // predicate stops immediately at depth 0
-    auto sut = subdivider_t<stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 0}};
+    auto sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
 
@@ -226,7 +226,7 @@ constexpr auto test_shallow_subdivision() -> bool
     stack.push_back(initial_segment);
 
     // predicate allows exactly one level of subdivision
-    auto sut = subdivider_t<stub_predicate_t>{.should_subdivide = stub_predicate_t{.depth = 1}};
+    auto sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
 

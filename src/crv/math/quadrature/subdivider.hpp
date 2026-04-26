@@ -41,7 +41,7 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
     using subdivision_predicate_t = t_subdivision_predicate_t;
     using real_t = subdivision_predicate_t::real_t;
 
-    [[no_unique_address]] subdivision_predicate_t should_subdivide{};
+    [[no_unique_address]] subdivision_predicate_t should_refine{};
 
     constexpr auto run(auto& stack, is_refiner<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const
         -> void
@@ -53,7 +53,7 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
 
             auto const refinement = evaluator.refine(segment);
 
-            if (should_subdivide(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
+            if (should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {
                 // push right then left so left pops first
                 stack.push_back(refinement.right);
