@@ -28,20 +28,17 @@ template <typename real_t> struct exponential_decay_t
     ///
     /// \param ratio weight multiplier at t=0 relative to the tail (e.g., 10 for 10x priority)
     /// \param halflife distance along the curve, t, where the ratio is halved
-    static auto from_ratio_and_halflife(real_t ratio, real_t halflife) noexcept -> exponential_decay_t
+    constexpr static auto from_ratio_and_halflife(real_t ratio, real_t halflife) noexcept -> exponential_decay_t
     {
         using std::log;
-
-        return {ratio - 1, log(2) / halflife, 1.0};
+        return {.amplitude = ratio - 1, .decay_rate = log(2) / halflife, .baseline_offset = 1.0};
     }
 
     /// scales the given error magnitude based on its position along the curve
-    auto operator()(real_t magnitude, real_t target_position) const noexcept -> real_t
+    constexpr auto operator()(real_t target_position) const noexcept -> real_t
     {
         using std::exp;
-
-        auto const weight = amplitude * exp(-decay_rate * target_position) + baseline_offset;
-        return weight * magnitude;
+        return amplitude * exp(-decay_rate * target_position) + baseline_offset;
     }
 };
 
