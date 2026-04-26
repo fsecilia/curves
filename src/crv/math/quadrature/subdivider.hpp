@@ -43,15 +43,15 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
 
     [[no_unique_address]] subdivision_predicate_t should_subdivide{};
 
-    constexpr auto run(
-        auto& stack, is_nested_evaluator<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const -> void
+    constexpr auto run(auto& stack, is_refiner<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const
+        -> void
     {
         while (!stack.empty())
         {
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const refinement = evaluator(segment);
+            auto const refinement = evaluator.refine(segment);
 
             if (should_subdivide(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {

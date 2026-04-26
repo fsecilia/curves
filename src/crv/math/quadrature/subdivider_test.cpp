@@ -160,7 +160,7 @@ struct builder_t
 // evaluator that just increments depth and divides the integral
 struct stub_evaluator_t
 {
-    constexpr auto operator()(segment_t const& seg) const -> refinement_t
+    constexpr auto refine(segment_t const& seg) const -> refinement_t
     {
         return refinement_t
         {
@@ -168,7 +168,7 @@ struct stub_evaluator_t
             {
                 .left = 0.0,
                 .right = seg.right/2.0,
-                .coarse_integral   = seg.coarse_integral / 2.0,
+                .coarse_integral = seg.coarse_integral / 2.0,
                 .tolerance = 0.0,
                 .depth = seg.depth + 1,
             },

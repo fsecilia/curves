@@ -22,13 +22,13 @@ concept is_root_evaluator = requires(subdivider_t const& subdivider, real_t valu
 
 /// callable that constructs a refinement from a parent segment
 template <typename subdivider_t, typename real_t>
-concept is_nested_evaluator = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
-    { subdivider(segment) } -> std::same_as<refinement_t<real_t>>;
+concept is_refiner = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
+    { subdivider.refine(segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
 /// callable that constructs root segments and refines parent segments
 template <typename subdivider_t, typename real_t>
-concept is_evaluator = is_root_evaluator<subdivider_t, real_t> && is_nested_evaluator<subdivider_t, real_t>;
+concept is_evaluator = is_root_evaluator<subdivider_t, real_t> && is_refiner<subdivider_t, real_t>;
 
 /// subdivides segments using integrand and rule
 template <typename t_integral_t> class evaluator_t
@@ -48,7 +48,7 @@ public:
     }
 
     /// refines segment into two child segments
-    constexpr auto operator()(segment_t const& parent) const noexcept -> refinement_t
+    constexpr auto refine(segment_t const& parent) const noexcept -> refinement_t
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
         auto const child_tolerance = parent.tolerance / 2;

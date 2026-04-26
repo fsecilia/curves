@@ -122,7 +122,7 @@ static_assert(parent.coarse_integral == 108.0);
 // root segment refinement
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 static_assert(refinement.refined_integral == 81.0); // 13.5 + 67.5
 
@@ -157,7 +157,7 @@ static_assert(refinement.refined_error == 27.0);
 // --------------------------------------------------------------------------------------------------------------------
 
 // refining a child verifies that depth and tolerance keep propagating past the first level
-constexpr auto nested_refinement = sut(refinement.left);
+constexpr auto nested_refinement = sut.refine(refinement.left);
 
 // depth increments off the child, not the root
 static_assert(nested_refinement.left.depth == 2);
@@ -182,7 +182,7 @@ static_assert(zero_width_parent.left == 5.0);
 static_assert(zero_width_parent.right == 5.0);
 static_assert(zero_width_parent.coarse_integral == 0.0);
 
-constexpr auto zero_width_refinement = sut(zero_width_parent);
+constexpr auto zero_width_refinement = sut.refine(zero_width_parent);
 static_assert(zero_width_refinement.left.coarse_integral == 0.0);
 static_assert(zero_width_refinement.right.coarse_integral == 0.0);
 static_assert(zero_width_refinement.refined_integral == 0.0);
@@ -201,7 +201,7 @@ static_assert(reversed_parent.tolerance == initial_tolerance);
 static_assert(reversed_parent.depth == 0);
 static_assert(reversed_parent.coarse_integral == -108.0);
 
-constexpr auto reversed_refinement = sut(reversed_parent);
+constexpr auto reversed_refinement = sut.refine(reversed_parent);
 
 // left child (6.0 to 3.0), width is -3.0, trapezoidal: -3.0 * (36 + 9) / 2 = -67.5
 static_assert(reversed_refinement.left.left == 6.0);
@@ -240,7 +240,7 @@ constexpr auto parent = sut.evaluate(-2.0, 2.0, initial_tolerance);
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
 static_assert(parent.coarse_integral == 0.0);
 
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 // left child (-2.0 to 0.0), width is 2.0, trapezoidal: 2.0 * (-8 + 0) / 2 = -8.0
 static_assert(refinement.left.coarse_integral == -8.0);
@@ -270,7 +270,7 @@ constexpr auto parent = sut.evaluate(0.0, 4.0, initial_tolerance);
 // parent integral: 4.0 * 10.0 = 40.0
 static_assert(parent.coarse_integral == 40.0);
 
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 // combined integral matches parent, meaning subdivision_error is 0.0
 static_assert(refinement.refined_integral == 40.0);
@@ -302,7 +302,7 @@ constexpr auto parent = sut.evaluate(0.0, 0.5, initial_tolerance);
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
 static_assert(parent.coarse_integral == 0.0625);
 
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 // left  [0, 0.25]:   0.25 * (0       + 0.0625) / 2 = 0.0078125
 // right [0.25, 0.5]: 0.25 * (0.0625  + 0.25)   / 2 = 0.0390625
@@ -332,7 +332,7 @@ constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
 static_assert(parent.coarse_integral == -108.0);
 
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 // left  [0, 3]: 3.0 * (0 + -9)   / 2 = -13.5
 // right [3, 6]: 3.0 * (-9 + -36) / 2 = -67.5
@@ -362,7 +362,7 @@ constexpr auto integrand = integrand_t{};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut.evaluate(0.0f, 6.0f, 1.0f);
-constexpr auto refinement = sut(parent);
+constexpr auto refinement = sut.refine(parent);
 
 static_assert(refinement.refined_integral == 81.0f);
 
