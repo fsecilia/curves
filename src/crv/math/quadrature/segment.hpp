@@ -33,7 +33,7 @@ template <std::floating_point t_real_t> struct refinement_t
     segment_t left;
     segment_t right;
     real_t refined_integral;
-    real_t error_estimate;
+    real_t refined_error;
 
     auto operator<=>(refinement_t const&) const noexcept -> auto = default;
     auto operator==(refinement_t const&) const noexcept -> bool = default;

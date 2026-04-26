@@ -150,7 +150,7 @@ static_assert(refinement.right.coarse_integral == 67.5);
 // quadrature error sum = 0.6
 // subdivision error = abs(81.0 - 108.0) = 27.0
 // max error = max(0.6, 27.0) = 27.0
-static_assert(refinement.error_estimate == 27.0);
+static_assert(refinement.refined_error == 27.0);
 
 // --------------------------------------------------------------------------------------------------------------------
 // nested refinement
@@ -186,7 +186,7 @@ constexpr auto zero_width_refinement = sut(zero_width_parent);
 static_assert(zero_width_refinement.left.coarse_integral == 0.0);
 static_assert(zero_width_refinement.right.coarse_integral == 0.0);
 static_assert(zero_width_refinement.refined_integral == 0.0);
-static_assert(zero_width_refinement.error_estimate == 0.0);
+static_assert(zero_width_refinement.refined_error == 0.0);
 
 // --------------------------------------------------------------------------------------------------------------------
 // reversed bounds
@@ -221,7 +221,7 @@ static_assert(reversed_refinement.right.coarse_integral == -13.5);
 static_assert(reversed_refinement.refined_integral == -81.0);
 
 // error estimate is still positive
-static_assert(reversed_refinement.error_estimate == 27.0);
+static_assert(reversed_refinement.refined_error == 27.0);
 
 } // namespace even_function
 
@@ -281,7 +281,7 @@ static_assert(refinement.refined_integral == 40.0);
 // quadrature error sum = 0.4
 // subdivision error = abs(40.0 - 40.0) = 0.0
 // max error = max(0.4, 0.0) = 0.4
-static_assert(refinement.error_estimate == 0.4);
+static_assert(refinement.refined_error == 0.4);
 
 } // namespace const_function
 
@@ -313,7 +313,7 @@ static_assert(refinement.refined_integral == 0.046875);
 // subdivision error:    abs(0.046875 - 0.0625)      = 0.015625
 // max(0.05, 0.015625) = 0.05
 // both positive, quadrature wins
-static_assert(refinement.error_estimate == 0.05);
+static_assert(refinement.refined_error == 0.05);
 
 } // namespace quadrature_dominant
 
@@ -342,7 +342,7 @@ static_assert(refinement.refined_integral == -81.0);
 
 // subdivision error = abs(-81.0 - (-108.0)) = 27.0
 // max error = max(0.6, 27.0) = 27.0
-static_assert(refinement.error_estimate == 27.0);
+static_assert(refinement.refined_error == 27.0);
 
 } // namespace negative_function
 } // namespace float64_test_t

@@ -181,7 +181,7 @@ struct stub_evaluator_t
                 .depth = seg.depth + 1,
             },
             .refined_integral = seg.coarse_integral,
-            .error_estimate = 0.0,
+            .refined_error = 0.0,
         };
     }
 };

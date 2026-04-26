@@ -53,7 +53,7 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
 
             auto const refinement = evaluator(segment);
 
-            if (should_subdivide(segment, refinement.refined_integral, refinement.error_estimate, depth_limit))
+            if (should_subdivide(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {
                 // push right then left so left pops first
                 stack.push_back(refinement.right);
@@ -61,7 +61,7 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
             }
             else
             {
-                builder.append(refinement.right.right, refinement.refined_integral, refinement.error_estimate);
+                builder.append(refinement.right.right, refinement.refined_integral, refinement.refined_error);
             }
         }
     }
