@@ -10,7 +10,7 @@
 #include <crv/math/limits.hpp>
 #include <crv/math/quadrature/adaptive_integrator.hpp>
 #include <crv/math/quadrature/antiderivative.hpp>
-#include <crv/math/quadrature/bisector.hpp>
+#include <crv/math/quadrature/evaluator.hpp>
 #include <crv/math/quadrature/integral.hpp>
 #include <crv/math/quadrature/rules.hpp>
 #include <crv/math/quadrature/segment.hpp>

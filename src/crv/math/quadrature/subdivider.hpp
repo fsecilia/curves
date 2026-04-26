@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/quadrature/bisector.hpp>
+#include <crv/math/quadrature/evaluator.hpp>
 #include <crv/math/quadrature/segment.hpp>
 #include <algorithm>
 
