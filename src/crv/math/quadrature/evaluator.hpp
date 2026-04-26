@@ -20,13 +20,13 @@ concept is_root_evaluator = requires(subdivider_t const& subdivider, real_t valu
     { subdivider(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
-/// callable that constructs a bisection from a parent segment
+/// callable that constructs a refinement from a parent segment
 template <typename subdivider_t, typename real_t>
 concept is_nested_evaluator = requires(subdivider_t const& subdivider, segment_t<real_t> segment) {
-    { subdivider(segment) } -> std::same_as<bisection_t<real_t>>;
+    { subdivider(segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
-/// callable that constructs root segments and bisects parent segments
+/// callable that constructs root segments and refines parent segments
 template <typename subdivider_t, typename real_t>
 concept is_evaluator = is_root_evaluator<subdivider_t, real_t> && is_nested_evaluator<subdivider_t, real_t>;
 
@@ -37,7 +37,7 @@ public:
     using integral_t = t_integral_t;
     using real_t = integral_t::real_t;
     using segment_t = segment_t<real_t>;
-    using bisection_t = bisection_t<real_t>;
+    using refinement_t = refinement_t<real_t>;
 
     constexpr evaluator_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
@@ -47,8 +47,8 @@ public:
         return segment_t{left, right, integral_.integrate(left, right), tolerance, 0};
     }
 
-    /// bisects segment into two child segments
-    constexpr auto operator()(segment_t const& parent) const noexcept -> bisection_t
+    /// refines segment into two child segments
+    constexpr auto operator()(segment_t const& parent) const noexcept -> refinement_t
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
         auto const child_tolerance = parent.tolerance / 2;
@@ -63,7 +63,7 @@ public:
         auto const error_estimate = std::max(quadrature_error, subdivision_error);
 
         // clang-format off
-        return bisection_t
+        return refinement_t
         {
             .left = segment_t
             {

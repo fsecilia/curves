@@ -208,7 +208,7 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
         EXPECT_CLOSE(analytic_antiderivative(x), guided_result.antiderivative(x).f, 1e-9, 1e-12);
     }
 
-    // guided path resolves each linear half exactly; blind path has to find the kink via bisection
+    // guided path resolves each linear half exactly; blind path has to find the kink via refinement
     EXPECT_LT(guided_result.antiderivative.segment_count(), blind_result.antiderivative.segment_count());
 }
 

@@ -12,7 +12,7 @@ namespace {
 
 using real_t = float_t;
 using segment_t = segment_t<real_t>;
-using bisection_t = bisection_t<real_t>;
+using refinement_t = refinement_t<real_t>;
 
 // ====================================================================================================================
 // subdivision_predicate_t
@@ -160,9 +160,9 @@ struct builder_t
 // evaluator that just increments depth and divides the integral
 struct stub_evaluator_t
 {
-    constexpr auto operator()(segment_t const& seg) const -> bisection_t
+    constexpr auto operator()(segment_t const& seg) const -> refinement_t
     {
-        return bisection_t
+        return refinement_t
         {
             .left           = segment_t
             {
@@ -212,7 +212,7 @@ constexpr auto test_immediate_termination() -> bool
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
 
-    // halts immediately, bisects once, fails the predicate, and appends
+    // halts immediately, refines once, fails the predicate, and appends
     return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
 }
 static_assert(test_immediate_termination());
