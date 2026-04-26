@@ -26,16 +26,22 @@ struct test_vector_t
 // uniform_t
 // ====================================================================================================================
 
-constexpr auto uniform = uniform_t<real_t>{};
+namespace uniform {
 
-static_assert(uniform(0.0) == 1.0);
-static_assert(uniform(0.5) == 1.0);
-static_assert(uniform(1.0) == 1.0);
-static_assert(uniform(10.0) == 1.0);
+constexpr auto sut = uniform_t<real_t>{};
+
+static_assert(sut(0.0) == 1.0);
+static_assert(sut(0.5) == 1.0);
+static_assert(sut(1.0) == 1.0);
+static_assert(sut(10.0) == 1.0);
+
+} // namespace uniform
 
 // ====================================================================================================================
 // exponential_decay_t
 // ====================================================================================================================
+
+namespace exponential_decay {
 
 struct weight_functions_exponential_decay_test_t : Test
 {
@@ -84,19 +90,27 @@ test_vector_t const vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, weight_functions_exponential_decay_vector_test_t, ValuesIn(vectors));
 // clang-format on
 
+} // namespace exponential_decay
+
 // ====================================================================================================================
 // hyperbolic_decay_t
 // ====================================================================================================================
 
-static_assert(hyperbolic_decay_t<real_t>{0}(1.0) == 1.0 / 1.0);
-static_assert(hyperbolic_decay_t<real_t>{0}(2.0) == 1.0 / 2.0);
-static_assert(hyperbolic_decay_t<real_t>{0}(7.0) == 1.0 / 7.0);
-static_assert(hyperbolic_decay_t<real_t>{0}(11.0) == 1.0 / 11.0);
+namespace hyperbolic_decay {
 
-static_assert(hyperbolic_decay_t<real_t>{3.1}(1.0) == 1.0 / (1.0 + 3.1));
-static_assert(hyperbolic_decay_t<real_t>{3.1}(2.0) == 1.0 / (2.0 + 3.1));
-static_assert(hyperbolic_decay_t<real_t>{3.1}(7.0) == 1.0 / (7.0 + 3.1));
-static_assert(hyperbolic_decay_t<real_t>{3.1}(11.0) == 1.0 / (11.0 + 3.1));
+using sut_t = hyperbolic_decay_t<real_t>;
+
+static_assert(sut_t{0}(1.0) == 1.0 / 1.0);
+static_assert(sut_t{0}(2.0) == 1.0 / 2.0);
+static_assert(sut_t{0}(7.0) == 1.0 / 7.0);
+static_assert(sut_t{0}(11.0) == 1.0 / 11.0);
+
+static_assert(sut_t{3.1}(1.0) == 1.0 / (1.0 + 3.1));
+static_assert(sut_t{3.1}(2.0) == 1.0 / (2.0 + 3.1));
+static_assert(sut_t{3.1}(7.0) == 1.0 / (7.0 + 3.1));
+static_assert(sut_t{3.1}(11.0) == 1.0 / (11.0 + 3.1));
+
+} // namespace hyperbolic_decay
 
 } // namespace
 } // namespace crv::weight_functions
