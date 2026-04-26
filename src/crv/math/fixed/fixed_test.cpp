@@ -1029,33 +1029,35 @@ static_assert(
 
 namespace rounding_and_extraction {
 
+using sut_t = i16_4_t;
+using value_t = sut_t::value_t;
+
 struct vector_t
 {
-    int_t raw_input;
-    int_t expected_floor;
-    int_t expected_ceil;
-    int_t expected_frac;
+    value_t input_value;
+    value_t expected_floor_value;
+    value_t expected_ceil_value;
+    value_t expected_frac_value;
 };
 
 struct fixed_point_test_extraction_t : TestWithParam<vector_t>
 {
-    using sut_t = i16_4_t;
-    sut_t const sut = sut_t::literal(GetParam().raw_input);
+    sut_t const sut = sut_t::literal(GetParam().input_value);
 };
 
 TEST_P(fixed_point_test_extraction_t, floor)
 {
-    EXPECT_EQ(floor(sut).value, GetParam().expected_floor);
+    EXPECT_EQ(floor(sut).value, GetParam().expected_floor_value);
 }
 
 TEST_P(fixed_point_test_extraction_t, ceil)
 {
-    EXPECT_EQ(ceil(sut).value, GetParam().expected_ceil);
+    EXPECT_EQ(ceil(sut).value, GetParam().expected_ceil_value);
 }
 
 TEST_P(fixed_point_test_extraction_t, frac)
 {
-    EXPECT_EQ(frac(sut).value, GetParam().expected_frac);
+    EXPECT_EQ(frac(sut).value, GetParam().expected_frac_value);
 }
 
 vector_t const vectors[] = {
