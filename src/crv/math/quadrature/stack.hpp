@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/quadrature/bisector.hpp>
+#include <crv/math/quadrature/evaluator.hpp>
 #include <crv/ranges.hpp>
 #include <cassert>
 #include <concepts>

@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "bisector.hpp"
+#include "evaluator.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::quadrature {
