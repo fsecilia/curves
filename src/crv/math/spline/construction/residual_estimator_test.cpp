@@ -98,7 +98,7 @@ struct residual_estimator_test_t : Test
 
     struct mock_weight_function_t
     {
-        MOCK_METHOD(real_t, call, (real_t, real_t), (const, noexcept));
+        MOCK_METHOD(real_t, call, (real_t), (const, noexcept));
         virtual ~mock_weight_function_t() = default;
     };
     StrictMock<mock_weight_function_t> mock_weight_function;
@@ -107,10 +107,7 @@ struct residual_estimator_test_t : Test
     {
         mock_weight_function_t* mock = nullptr;
 
-        auto operator()(real_t magnitude, real_t target_position) const noexcept -> real_t
-        {
-            return mock->call(magnitude, target_position);
-        }
+        auto operator()(real_t target_position) const noexcept -> real_t { return mock->call(target_position); }
     };
 
     using sut_t = residual_estimator_t<real_t, target_function_t, approximant_evaluator_t, node_generator_t,
@@ -137,7 +134,9 @@ struct residual_estimator_test_t : Test
         EXPECT_CALL(mock_target_function, call(position)).WillOnce(Return(target));
         EXPECT_CALL(mock_approximant_evaluator, call(approximant, quantized_position)).WillOnce(Return(approximation));
         EXPECT_CALL(mock_error_norm, call(target, approximation)).WillOnce(Return(magnitude));
-        EXPECT_CALL(mock_weight_function, call(magnitude, position)).WillOnce(Return(abs(result)));
+
+        auto const required_weight = (magnitude == 0.0) ? 0.0 : abs(result) / magnitude;
+        EXPECT_CALL(mock_weight_function, call(position)).WillOnce(Return(required_weight));
     }
 
     auto expect_iteration(int_t position_index, real_t result = 0.0) -> void

@@ -54,7 +54,7 @@ struct residual_estimator_t
 
             // measure magnitude of error using norm, weight it using weight function
             auto const magnitude = measure_error(target, approximation);
-            auto const weighted_magnitude = apply_weight(magnitude, target_position);
+            auto const weighted_magnitude = magnitude * apply_weight(target_position);
             max_magnitude = std::max(max_magnitude, weighted_magnitude);
         }
 
