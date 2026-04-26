@@ -51,17 +51,17 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const bisection = evaluator(segment);
+            auto const refinement = evaluator(segment);
 
-            if (should_subdivide(segment, bisection.integral, bisection.error_estimate, depth_limit))
+            if (should_subdivide(segment, refinement.integral, refinement.error_estimate, depth_limit))
             {
                 // push right then left so left pops first
-                stack.push_back(bisection.right);
-                stack.push_back(bisection.left);
+                stack.push_back(refinement.right);
+                stack.push_back(refinement.left);
             }
             else
             {
-                builder.append(bisection.right.right, bisection.integral, bisection.error_estimate);
+                builder.append(refinement.right.right, refinement.integral, refinement.error_estimate);
             }
         }
     }

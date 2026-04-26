@@ -14,7 +14,7 @@ namespace {
 
 using real_t = float_t;
 using segment_t = segment_t<real_t>;
-using bisection_t = bisection_t<real_t>;
+using refinement_t = refinement_t<real_t>;
 using stack_t = std::vector<segment_t>;
 
 // ====================================================================================================================

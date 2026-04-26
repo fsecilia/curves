@@ -119,30 +119,30 @@ static_assert(parent.depth == 0);
 static_assert(parent.integral == 108.0);
 
 // --------------------------------------------------------------------------------------------------------------------
-// root segment bisection
+// root segment refinement
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
-static_assert(bisection.integral == 81.0); // 13.5 + 67.5
+static_assert(refinement.integral == 81.0); // 13.5 + 67.5
 
 // left child bounds
-static_assert(bisection.left.left == 0.0);
-static_assert(bisection.left.right == 3.0);
-static_assert(bisection.left.tolerance == initial_tolerance * 0.5);
-static_assert(bisection.left.depth == 1);
+static_assert(refinement.left.left == 0.0);
+static_assert(refinement.left.right == 3.0);
+static_assert(refinement.left.tolerance == initial_tolerance * 0.5);
+static_assert(refinement.left.depth == 1);
 
 // trapezoidal of x^2 from 0 to 3: 3 * (0 + 9) / 2 = 13.5
-static_assert(bisection.left.integral == 13.5);
+static_assert(refinement.left.integral == 13.5);
 
 // right child bounds
-static_assert(bisection.right.left == 3.0);
-static_assert(bisection.right.right == 6.0);
-static_assert(bisection.right.tolerance == initial_tolerance * 0.5);
-static_assert(bisection.right.depth == 1);
+static_assert(refinement.right.left == 3.0);
+static_assert(refinement.right.right == 6.0);
+static_assert(refinement.right.tolerance == initial_tolerance * 0.5);
+static_assert(refinement.right.depth == 1);
 
 // trapezoidal of x^2 from 3 to 6: 3 * (9 + 36) / 2 = 67.5
-static_assert(bisection.right.integral == 67.5);
+static_assert(refinement.right.integral == 67.5);
 
 // error estimate is dominated by subdivision error
 // left rule quadrature error: 3.0 * 0.1 = 0.3
@@ -150,28 +150,28 @@ static_assert(bisection.right.integral == 67.5);
 // quadrature error sum = 0.6
 // subdivision error = abs(81.0 - 108.0) = 27.0
 // max error = max(0.6, 27.0) = 27.0
-static_assert(bisection.error_estimate == 27.0);
+static_assert(refinement.error_estimate == 27.0);
 
 // --------------------------------------------------------------------------------------------------------------------
-// nested bisection
+// nested refinement
 // --------------------------------------------------------------------------------------------------------------------
 
-// bisecting a child verifies that depth and tolerance keep propagating past the first level
-constexpr auto nested_bisection = sut(bisection.left);
+// refining a child verifies that depth and tolerance keep propagating past the first level
+constexpr auto nested_refinement = sut(refinement.left);
 
 // depth increments off the child, not the root
-static_assert(nested_bisection.left.depth == 2);
-static_assert(nested_bisection.right.depth == 2);
+static_assert(nested_refinement.left.depth == 2);
+static_assert(nested_refinement.right.depth == 2);
 
 // tolerance halves again, so 1/4 of the root tolerance
-static_assert(nested_bisection.left.tolerance == initial_tolerance * 0.25);
-static_assert(nested_bisection.right.tolerance == initial_tolerance * 0.25);
+static_assert(nested_refinement.left.tolerance == initial_tolerance * 0.25);
+static_assert(nested_refinement.right.tolerance == initial_tolerance * 0.25);
 
 // left child of [0, 3] is [0, 1.5]; right child is [1.5, 3]
-static_assert(nested_bisection.left.left == 0.0);
-static_assert(nested_bisection.left.right == 1.5);
-static_assert(nested_bisection.right.left == 1.5);
-static_assert(nested_bisection.right.right == 3.0);
+static_assert(nested_refinement.left.left == 0.0);
+static_assert(nested_refinement.left.right == 1.5);
+static_assert(nested_refinement.right.left == 1.5);
+static_assert(nested_refinement.right.right == 3.0);
 
 // --------------------------------------------------------------------------------------------------------------------
 // zero-width segment
@@ -182,11 +182,11 @@ static_assert(zero_width_parent.left == 5.0);
 static_assert(zero_width_parent.right == 5.0);
 static_assert(zero_width_parent.integral == 0.0);
 
-constexpr auto zero_width_bisection = sut(zero_width_parent);
-static_assert(zero_width_bisection.left.integral == 0.0);
-static_assert(zero_width_bisection.right.integral == 0.0);
-static_assert(zero_width_bisection.integral == 0.0);
-static_assert(zero_width_bisection.error_estimate == 0.0);
+constexpr auto zero_width_refinement = sut(zero_width_parent);
+static_assert(zero_width_refinement.left.integral == 0.0);
+static_assert(zero_width_refinement.right.integral == 0.0);
+static_assert(zero_width_refinement.integral == 0.0);
+static_assert(zero_width_refinement.error_estimate == 0.0);
 
 // --------------------------------------------------------------------------------------------------------------------
 // reversed bounds
@@ -201,27 +201,27 @@ static_assert(reversed_parent.tolerance == initial_tolerance);
 static_assert(reversed_parent.depth == 0);
 static_assert(reversed_parent.integral == -108.0);
 
-constexpr auto reversed_bisection = sut(reversed_parent);
+constexpr auto reversed_refinement = sut(reversed_parent);
 
 // left child (6.0 to 3.0), width is -3.0, trapezoidal: -3.0 * (36 + 9) / 2 = -67.5
-static_assert(reversed_bisection.left.left == 6.0);
-static_assert(reversed_bisection.left.right == 3.0);
-static_assert(reversed_bisection.left.tolerance == initial_tolerance * 0.5);
-static_assert(reversed_bisection.left.depth == 1);
-static_assert(reversed_bisection.left.integral == -67.5);
+static_assert(reversed_refinement.left.left == 6.0);
+static_assert(reversed_refinement.left.right == 3.0);
+static_assert(reversed_refinement.left.tolerance == initial_tolerance * 0.5);
+static_assert(reversed_refinement.left.depth == 1);
+static_assert(reversed_refinement.left.integral == -67.5);
 
 // right child (3.0 to 0.0), width is -3.0. trapezoidal: -3.0 * (9 + 0) / 2 = -13.5
-static_assert(reversed_bisection.right.left == 3.0);
-static_assert(reversed_bisection.right.right == 0.0);
-static_assert(reversed_bisection.right.tolerance == initial_tolerance * 0.5);
-static_assert(reversed_bisection.right.depth == 1);
-static_assert(reversed_bisection.right.integral == -13.5);
+static_assert(reversed_refinement.right.left == 3.0);
+static_assert(reversed_refinement.right.right == 0.0);
+static_assert(reversed_refinement.right.tolerance == initial_tolerance * 0.5);
+static_assert(reversed_refinement.right.depth == 1);
+static_assert(reversed_refinement.right.integral == -13.5);
 
 // combined integral is negative
-static_assert(reversed_bisection.integral == -81.0);
+static_assert(reversed_refinement.integral == -81.0);
 
 // error estimate is still positive
-static_assert(reversed_bisection.error_estimate == 27.0);
+static_assert(reversed_refinement.error_estimate == 27.0);
 
 } // namespace even_function
 
@@ -240,16 +240,16 @@ constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
 static_assert(parent.integral == 0.0);
 
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
 // left child (-2.0 to 0.0), width is 2.0, trapezoidal: 2.0 * (-8 + 0) / 2 = -8.0
-static_assert(bisection.left.integral == -8.0);
+static_assert(refinement.left.integral == -8.0);
 
 // right child (0.0 to 2.0), width is 2.0, trapezoidal: 2.0 * (0 + 8) / 2 = 8.0
-static_assert(bisection.right.integral == 8.0);
+static_assert(refinement.right.integral == 8.0);
 
 // combined should perfectly cancel back out to 0.0
-static_assert(bisection.integral == 0.0);
+static_assert(refinement.integral == 0.0);
 
 } // namespace odd_function
 
@@ -270,10 +270,10 @@ constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
 // parent integral: 4.0 * 10.0 = 40.0
 static_assert(parent.integral == 40.0);
 
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
 // combined integral matches parent, meaning subdivision_error is 0.0
-static_assert(bisection.integral == 40.0);
+static_assert(refinement.integral == 40.0);
 
 // error estimate is dominated by quadrature error
 // left rule error: 2.0 * 0.1 = 0.2
@@ -281,7 +281,7 @@ static_assert(bisection.integral == 40.0);
 // quadrature error sum = 0.4
 // subdivision error = abs(40.0 - 40.0) = 0.0
 // max error = max(0.4, 0.0) = 0.4
-static_assert(bisection.error_estimate == 0.4);
+static_assert(refinement.error_estimate == 0.4);
 
 } // namespace const_function
 
@@ -302,18 +302,18 @@ constexpr auto parent = sut(0.0, 0.5, initial_tolerance);
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
 static_assert(parent.integral == 0.0625);
 
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
 // left  [0, 0.25]:   0.25 * (0       + 0.0625) / 2 = 0.0078125
 // right [0.25, 0.5]: 0.25 * (0.0625  + 0.25)   / 2 = 0.0390625
 // sum                                              = 0.046875
-static_assert(bisection.integral == 0.046875);
+static_assert(refinement.integral == 0.046875);
 
 // quadrature error sum: 2 * (0.25 * 0.1)            = 0.05
 // subdivision error:    abs(0.046875 - 0.0625)      = 0.015625
 // max(0.05, 0.015625) = 0.05
 // both positive, quadrature wins
-static_assert(bisection.error_estimate == 0.05);
+static_assert(refinement.error_estimate == 0.05);
 
 } // namespace quadrature_dominant
 
@@ -332,17 +332,17 @@ constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
 static_assert(parent.integral == -108.0);
 
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
 // left  [0, 3]: 3.0 * (0 + -9)   / 2 = -13.5
 // right [3, 6]: 3.0 * (-9 + -36) / 2 = -67.5
-static_assert(bisection.left.integral == -13.5);
-static_assert(bisection.right.integral == -67.5);
-static_assert(bisection.integral == -81.0);
+static_assert(refinement.left.integral == -13.5);
+static_assert(refinement.right.integral == -67.5);
+static_assert(refinement.integral == -81.0);
 
 // subdivision error = abs(-81.0 - (-108.0)) = 27.0
 // max error = max(0.6, 27.0) = 27.0
-static_assert(bisection.error_estimate == 27.0);
+static_assert(refinement.error_estimate == 27.0);
 
 } // namespace negative_function
 } // namespace float64_test_t
@@ -362,9 +362,9 @@ constexpr auto integrand = integrand_t{};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut(0.0f, 6.0f, 1.0f);
-constexpr auto bisection = sut(parent);
+constexpr auto refinement = sut(parent);
 
-static_assert(bisection.integral == 81.0f);
+static_assert(refinement.integral == 81.0f);
 
 } // namespace float32_test
 
