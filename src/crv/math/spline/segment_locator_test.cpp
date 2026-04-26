@@ -74,6 +74,32 @@ static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.x_max() == x_max);
 } // namespace property_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// interval_width
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace interval_width_tests {
+
+using sut_t = segment_locator_t<x_t, 1>;
+constexpr auto keys = std::array<x_t, 3>{4, 9, 16};
+constexpr auto x_max = x_t{25};
+
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.interval_width(0) == 4);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.interval_width(1) == 5);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.interval_width(2) == 7);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.interval_width(3) == 9);
+
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 1}.interval_width(0) == 4);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 1}.interval_width(1) == 5);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 1}.interval_width(2) == 16);
+
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 2}.interval_width(0) == 4);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 2}.interval_width(1) == 21);
+
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count - 3}.interval_width(0) == 25);
+
+} // namespace interval_width_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // query boundaries
 // --------------------------------------------------------------------------------------------------------------------
 
