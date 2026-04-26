@@ -10,7 +10,6 @@
 #include <crv/math/int_traits.hpp>
 #include <array>
 #include <cassert>
-#include <cstddef>
 
 namespace crv::spline {
 
@@ -24,17 +23,10 @@ public:
     static constexpr auto max_segments = 256;
     using segments_t = std::array<segment_t, max_segments>;
 
-    /// \pre 0 < segment_count <= max_segments
-    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count) noexcept
-        : spline_t{locator, segments, segment_count, 0}
-    {
-        assert(fields_are_valid() && "spline_t: local fields invalid");
-    }
-
-    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments, int_t segment_count,
-        int_t prev_segment_index) noexcept
-        : segment_count_{segment_count}, segment_locator_{locator}, segments_{segments},
-          prev_segment_index_{prev_segment_index}
+    /// \pre 0 < locator.segment_count() <= max_segments
+    constexpr spline_t(
+        segment_locator_t const& locator, segments_t const& segments, int_t prev_segment_index = 0) noexcept
+        : segment_locator_{locator}, segments_{segments}, prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
@@ -49,8 +41,8 @@ public:
         if (x >= x_max) return extend_final_tangent(x - x_max);
 
         auto const location = segment_locator_.locate(x);
-        assert(
-            0 <= location.index && location.index < segment_count_ && "spline_t: located segment index out of bounds");
+        assert(0 <= location.index && location.index < segment_locator_.segment_count()
+            && "spline_t: located segment index out of bounds");
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
 
         if !consteval { prev_segment_index_ = location.index; }
@@ -59,7 +51,25 @@ public:
     }
 
     /// validates data the driver receives
-    constexpr auto is_valid() const noexcept -> bool { return fields_are_valid() && components_are_valid(); }
+    constexpr auto is_valid() const noexcept -> bool
+    {
+        auto const segment_count = segment_locator_.segment_count();
+
+        // prev_segment_index_ must be in [0, locator.segment_count()); locator.is_valid() owns the count's range check
+        if (prev_segment_index_ < 0 || segment_count <= prev_segment_index_) return false;
+
+        // dispatch to segment locator
+        if (!segment_locator_.is_valid()) return false;
+
+        // dispatch to each segment, then cross-check that each segment's domain matches its interval. The cross-check
+        // depends on segment.is_valid() having already bounded log2_width, so segment.max_dx() is well-defined.
+        for (auto i = 0; i < segment_count; ++i)
+        {
+            if (!segments_[i].is_valid()) return false;
+        }
+
+        return true;
+    }
 
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
@@ -70,32 +80,7 @@ public:
 private:
     constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
     {
-        return segments_[segment_count_ - 1].extend_final_tangent(dx_extended);
-    }
-
-    constexpr auto fields_are_valid() const noexcept -> bool
-    {
-        // segment count must be in [1, max_segments]
-        if (segment_count_ < 1 || max_segments < segment_count_) return false;
-
-        // prev_segment_index_ must be in [0, segment_count_)
-        if (prev_segment_index_ < 0 || segment_count_ <= prev_segment_index_) return false;
-
-        return true;
-    }
-
-    constexpr auto components_are_valid() const noexcept -> bool
-    {
-        // dispatch to segment locator
-        if (!segment_locator_.is_valid(segment_count_)) return false;
-
-        // dispatch to each segment
-        for (auto i = 0; i < segment_count_; ++i)
-        {
-            if (!segments_[i].is_valid()) return false;
-        }
-
-        return true;
+        return segments_[segment_locator_.segment_count() - 1].extend_final_tangent(dx_extended);
     }
 
     /// prefetches the most recently selected segment and the two adjacent
@@ -119,7 +104,6 @@ private:
     }
 
     // these are ordered for overall cache-friendliness in operator ()
-    int_t segment_count_{};
     segment_locator_t segment_locator_{};
 
     // this *must* be aligned or the prefetching scheme is useless

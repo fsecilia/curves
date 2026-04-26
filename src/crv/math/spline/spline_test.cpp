@@ -49,15 +49,17 @@ struct segment_locator_t
     }
 
     x_t x_max_ = spline::x_max;
+    int_t segment_count_ = spline::segment_count;
     constexpr auto x_max() const noexcept -> x_t { return x_max_; }
+    constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
 
-    constexpr auto is_valid(int_t, int_t) const noexcept -> bool { return true; }
+    constexpr auto is_valid() const noexcept -> bool { return true; }
 };
 
 using sut_t = spline_t<segment_t, segment_locator_t>;
 
 constexpr auto segments = std::array<segment_t, sut_t::max_segments>{{{10}, {20}, {30}}};
-constexpr auto const sut = sut_t{segment_locator_t{x_max}, segments, segment_count};
+constexpr auto const sut = sut_t{segment_locator_t{x_max, segment_count}, segments};
 
 // x in [0, 1] -> base 10
 static_assert(sut(0) == 10);
@@ -87,8 +89,8 @@ namespace minimum_valid_domain {
 
 // tests with single segment, checking that extend_final_tangent doesn't off-by-one when hitting segment_count_ - 1
 using min_sut_t = spline_t<segment_t, segment_locator_t>;
-constexpr auto const min_sut
-    = min_sut_t{segment_locator_t{.x_max_ = 2}, std::array<segment_t, min_sut_t::max_segments>{{{10}}}, 1};
+constexpr auto const min_sut = min_sut_t{
+    segment_locator_t{.x_max_ = 2, .segment_count_ = 1}, std::array<segment_t, min_sut_t::max_segments>{{{10}}}};
 
 static_assert(min_sut(0) == 10);
 static_assert(min_sut(1) == 11);
@@ -130,7 +132,10 @@ struct locator_t
     constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
 
     bool valid{true};
-    constexpr auto is_valid(int_t) const noexcept -> bool { return valid; }
+    x_t width{4};
+    int_t segment_count_{2};
+    constexpr auto is_valid() const noexcept -> bool { return valid; }
+    constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
 };
 
 using sut_t = spline_t<segment_t, locator_t>;
@@ -144,28 +149,25 @@ constexpr auto make_segments(bool s0_valid, bool s1_valid) -> segments_t
 }
 
 // all valid
-static_assert(sut_t{locator_t{}, make_segments(true, true), 2, 0}.is_valid());
+static_assert(sut_t{locator_t{}, make_segments(true, true), 0}.is_valid());
 
-// invalid domain, segment_count <= 0
-static_assert(!sut_t{locator_t{}, make_segments(true, true), 0, 0}.is_valid());
+// invalid prev_segment_index < 0
+static_assert(!sut_t{locator_t{}, make_segments(true, true), -1}.is_valid());
 
-// invalid domain, segment_count > max_segments
-static_assert(!sut_t{locator_t{}, make_segments(true, true), sut_t::max_segments + 1, 0}.is_valid());
+// invalid prev_segment_index >= segment_count
+static_assert(!sut_t{locator_t{}, make_segments(true, true), 2}.is_valid());
 
-// invalid domain, prev_segment_index <= 0
-static_assert(!sut_t{locator_t{}, make_segments(true, true), 2, -1}.is_valid());
-
-// invalid domain, prev_segment_index > max_segments
-static_assert(!sut_t{locator_t{}, make_segments(true, true), 2, sut_t::max_segments + 1}.is_valid());
+// locator reports zero segments: no valid prev_segment_index exists
+static_assert(!sut_t{locator_t{.segment_count_ = 0}, make_segments(true, true), 0}.is_valid());
 
 // invalid locator
-static_assert(!sut_t{locator_t{.valid = false}, make_segments(true, true), 2, 0}.is_valid());
+static_assert(!sut_t{locator_t{.valid = false}, make_segments(true, true), 0}.is_valid());
 
 // invalid first segment
-static_assert(!sut_t{locator_t{}, make_segments(false, true), 2, 0}.is_valid());
+static_assert(!sut_t{locator_t{}, make_segments(false, true), 0}.is_valid());
 
 // invalid second segment
-static_assert(!sut_t{locator_t{}, make_segments(true, false), 2, 0}.is_valid());
+static_assert(!sut_t{locator_t{}, make_segments(true, false), 0}.is_valid());
 
 } // namespace is_valid_tests
 
@@ -210,8 +212,6 @@ struct spline_prefetch_test_t : Test
         virtual ~mock_locator_t() = default;
 
         MOCK_METHOD(result_t, locate, (x_t), (const, noexcept));
-        MOCK_METHOD(x_t, x_max, (), (const, noexcept));
-        MOCK_METHOD(bool, is_valid, (int_t), (const, noexcept));
         MOCK_METHOD(void, prefetch, (mock_prefetcher_t const& prefetcher), (const, noexcept));
     };
     StrictMock<mock_locator_t> mock_locator;
@@ -222,15 +222,18 @@ struct spline_prefetch_test_t : Test
 
         mock_locator_t* mock = nullptr;
 
+        auto segment_count() const noexcept -> int_t { return spline::segment_count; }
+        auto x_max() const noexcept -> x_t { return spline::x_max; }
+        auto is_valid() const noexcept -> bool { return true; }
+
         auto locate(x_t in) const noexcept -> result_t { return mock->locate(in); };
-        auto x_max() const noexcept -> x_t { return mock->x_max(); }
-        auto is_valid(int_t segment_count) const noexcept -> bool { return mock->is_valid(segment_count); }
         auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
     };
 
     using sut_t = spline_t<segment_t, locator_t>;
-    sut_t sut{locator_t{&mock_locator}, std::array<segment_t, sut_t::max_segments>{}, 5};
+    sut_t sut{locator_t{.mock = &mock_locator}, std::array<segment_t, sut_t::max_segments>{}};
 
+    static constexpr auto expected_segment = segment_count - 1;
     static constexpr auto expected_fetch_distance = 2 * sizeof(segment_t);
 };
 
@@ -267,9 +270,7 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
     auto const* segments = static_cast<std::byte const*>(initial_prefetched_cache_lines[0]) + sizeof(segment_t);
 
     // call into sut to get it to cache a new previous segment; previous_cache_line_ should become 2
-    auto const expected_segment = 2;
     auto const x = x_t{expected_segment};
-    EXPECT_CALL(mock_locator, x_max()).WillOnce(Return(x_max));
     EXPECT_CALL(mock_locator, locate(x))
         .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
     sut(x);
@@ -307,24 +308,12 @@ struct spline_death_test_t : Test
 
 TEST_F(spline_death_test_t, establish_valid_case)
 {
-    static_cast<void>(sut_t{segment_locator_t{}, segments, 1});
-}
-
-TEST_F(spline_death_test_t, ctor_catches_zero_segment_count)
-{
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 0}), "local fields invalid");
-}
-
-TEST_F(spline_death_test_t, ctor_catches_oor_segment_count)
-{
-    [[maybe_unused]] auto const final_safe = sut_t{segment_locator_t{}, segments, sut_t::max_segments};
-
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, sut_t::max_segments + 1}), "local fields invalid");
+    static_cast<void>(sut_t{segment_locator_t{}, segments});
 }
 
 TEST_F(spline_death_test_t, call_operator_catches_negative_x)
 {
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, 1}(x_t{-1})), "input out of bounds");
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments}(x_t{-1})), "input out of bounds");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -342,6 +331,7 @@ struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
         constexpr auto locate(x_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
 
         constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
+        constexpr auto segment_count() const noexcept -> int_t { return spline::segment_count; }
     };
 
     using sut_t = spline_t<segment_t, malicious_locator_t>;
@@ -349,21 +339,21 @@ struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments, segment_count};
+    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments, segment_count};
+    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 {
-    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments, segment_count};
+    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments};
 
     EXPECT_DEATH(sut(0), "origin out of range");
 }
@@ -371,7 +361,7 @@ TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
 {
     auto const x = x_t{x_max - 2};
-    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, segment_count};
+    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments};
 
     EXPECT_DEATH(sut(x), "origin out of range");
 }
