@@ -42,4 +42,12 @@ template <typename real_t> struct exponential_decay_t
     }
 };
 
+/// weights error based on hyperbolic decay using 1/(t + a)
+template <typename real_t> struct hyperbolic_decay_t
+{
+    real_t halflife;
+
+    constexpr auto operator()(real_t node) const noexcept -> real_t { return 1.0 / (node + halflife); }
+};
+
 } // namespace crv::weight_functions
