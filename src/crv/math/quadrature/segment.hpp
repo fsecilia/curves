@@ -17,7 +17,7 @@ template <std::floating_point t_real_t> struct segment_t
 
     real_t left;
     real_t right;
-    real_t integral;
+    real_t coarse_integral;
     real_t tolerance;
     int_t depth;
 

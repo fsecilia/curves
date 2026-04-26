@@ -116,7 +116,7 @@ static_assert(parent.tolerance == initial_tolerance);
 static_assert(parent.depth == 0);
 
 // trapezoidal of x^2 from 0 to 6: 6 * (0 + 36) / 2 = 108
-static_assert(parent.integral == 108.0);
+static_assert(parent.coarse_integral == 108.0);
 
 // --------------------------------------------------------------------------------------------------------------------
 // root segment refinement
@@ -133,7 +133,7 @@ static_assert(refinement.left.tolerance == initial_tolerance * 0.5);
 static_assert(refinement.left.depth == 1);
 
 // trapezoidal of x^2 from 0 to 3: 3 * (0 + 9) / 2 = 13.5
-static_assert(refinement.left.integral == 13.5);
+static_assert(refinement.left.coarse_integral == 13.5);
 
 // right child bounds
 static_assert(refinement.right.left == 3.0);
@@ -142,7 +142,7 @@ static_assert(refinement.right.tolerance == initial_tolerance * 0.5);
 static_assert(refinement.right.depth == 1);
 
 // trapezoidal of x^2 from 3 to 6: 3 * (9 + 36) / 2 = 67.5
-static_assert(refinement.right.integral == 67.5);
+static_assert(refinement.right.coarse_integral == 67.5);
 
 // error estimate is dominated by subdivision error
 // left rule quadrature error: 3.0 * 0.1 = 0.3
@@ -180,11 +180,11 @@ static_assert(nested_refinement.right.right == 3.0);
 constexpr auto zero_width_parent = sut(5.0, 5.0, initial_tolerance);
 static_assert(zero_width_parent.left == 5.0);
 static_assert(zero_width_parent.right == 5.0);
-static_assert(zero_width_parent.integral == 0.0);
+static_assert(zero_width_parent.coarse_integral == 0.0);
 
 constexpr auto zero_width_refinement = sut(zero_width_parent);
-static_assert(zero_width_refinement.left.integral == 0.0);
-static_assert(zero_width_refinement.right.integral == 0.0);
+static_assert(zero_width_refinement.left.coarse_integral == 0.0);
+static_assert(zero_width_refinement.right.coarse_integral == 0.0);
 static_assert(zero_width_refinement.integral == 0.0);
 static_assert(zero_width_refinement.error_estimate == 0.0);
 
@@ -199,7 +199,7 @@ static_assert(reversed_parent.left == 6.0);
 static_assert(reversed_parent.right == 0.0);
 static_assert(reversed_parent.tolerance == initial_tolerance);
 static_assert(reversed_parent.depth == 0);
-static_assert(reversed_parent.integral == -108.0);
+static_assert(reversed_parent.coarse_integral == -108.0);
 
 constexpr auto reversed_refinement = sut(reversed_parent);
 
@@ -208,14 +208,14 @@ static_assert(reversed_refinement.left.left == 6.0);
 static_assert(reversed_refinement.left.right == 3.0);
 static_assert(reversed_refinement.left.tolerance == initial_tolerance * 0.5);
 static_assert(reversed_refinement.left.depth == 1);
-static_assert(reversed_refinement.left.integral == -67.5);
+static_assert(reversed_refinement.left.coarse_integral == -67.5);
 
 // right child (3.0 to 0.0), width is -3.0. trapezoidal: -3.0 * (9 + 0) / 2 = -13.5
 static_assert(reversed_refinement.right.left == 3.0);
 static_assert(reversed_refinement.right.right == 0.0);
 static_assert(reversed_refinement.right.tolerance == initial_tolerance * 0.5);
 static_assert(reversed_refinement.right.depth == 1);
-static_assert(reversed_refinement.right.integral == -13.5);
+static_assert(reversed_refinement.right.coarse_integral == -13.5);
 
 // combined integral is negative
 static_assert(reversed_refinement.integral == -81.0);
@@ -238,15 +238,15 @@ constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integr
 constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
 
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
-static_assert(parent.integral == 0.0);
+static_assert(parent.coarse_integral == 0.0);
 
 constexpr auto refinement = sut(parent);
 
 // left child (-2.0 to 0.0), width is 2.0, trapezoidal: 2.0 * (-8 + 0) / 2 = -8.0
-static_assert(refinement.left.integral == -8.0);
+static_assert(refinement.left.coarse_integral == -8.0);
 
 // right child (0.0 to 2.0), width is 2.0, trapezoidal: 2.0 * (0 + 8) / 2 = 8.0
-static_assert(refinement.right.integral == 8.0);
+static_assert(refinement.right.coarse_integral == 8.0);
 
 // combined should perfectly cancel back out to 0.0
 static_assert(refinement.integral == 0.0);
@@ -268,7 +268,7 @@ constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integr
 constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
 
 // parent integral: 4.0 * 10.0 = 40.0
-static_assert(parent.integral == 40.0);
+static_assert(parent.coarse_integral == 40.0);
 
 constexpr auto refinement = sut(parent);
 
@@ -300,7 +300,7 @@ constexpr auto sut
 constexpr auto parent = sut(0.0, 0.5, initial_tolerance);
 
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
-static_assert(parent.integral == 0.0625);
+static_assert(parent.coarse_integral == 0.0625);
 
 constexpr auto refinement = sut(parent);
 
@@ -330,14 +330,14 @@ constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integr
 constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
 
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
-static_assert(parent.integral == -108.0);
+static_assert(parent.coarse_integral == -108.0);
 
 constexpr auto refinement = sut(parent);
 
 // left  [0, 3]: 3.0 * (0 + -9)   / 2 = -13.5
 // right [3, 6]: 3.0 * (-9 + -36) / 2 = -67.5
-static_assert(refinement.left.integral == -13.5);
-static_assert(refinement.right.integral == -67.5);
+static_assert(refinement.left.coarse_integral == -13.5);
+static_assert(refinement.right.coarse_integral == -67.5);
 static_assert(refinement.integral == -81.0);
 
 // subdivision error = abs(-81.0 - (-108.0)) = 27.0

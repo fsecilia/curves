@@ -34,7 +34,7 @@ struct quadrature_stack_seeder_test_t : Test
         return segment_t{
             .left = left,
             .right = right,
-            .integral = left + right + tolerance,
+            .coarse_integral = left + right + tolerance,
             .tolerance = tolerance,
             .depth = id,
         };
