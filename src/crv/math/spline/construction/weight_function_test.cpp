@@ -84,5 +84,19 @@ test_vector_t const vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, weight_functions_exponential_decay_vector_test_t, ValuesIn(vectors));
 // clang-format on
 
+// ====================================================================================================================
+// hyperbolic_decay_t
+// ====================================================================================================================
+
+static_assert(hyperbolic_decay_t<real_t>{0}(1.0) == 1.0 / 1.0);
+static_assert(hyperbolic_decay_t<real_t>{0}(2.0) == 1.0 / 2.0);
+static_assert(hyperbolic_decay_t<real_t>{0}(7.0) == 1.0 / 7.0);
+static_assert(hyperbolic_decay_t<real_t>{0}(11.0) == 1.0 / 11.0);
+
+static_assert(hyperbolic_decay_t<real_t>{3.1}(1.0) == 1.0 / (1.0 + 3.1));
+static_assert(hyperbolic_decay_t<real_t>{3.1}(2.0) == 1.0 / (2.0 + 3.1));
+static_assert(hyperbolic_decay_t<real_t>{3.1}(7.0) == 1.0 / (7.0 + 3.1));
+static_assert(hyperbolic_decay_t<real_t>{3.1}(11.0) == 1.0 / (11.0 + 3.1));
+
 } // namespace
 } // namespace crv::weight_functions
