@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/priority_queue.hpp>
+#include <crv/math/spline/construction/priority_queue.hpp>
 #include <vector>
 
 namespace crv {

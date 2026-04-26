@@ -15,13 +15,6 @@ target_sources(lib PRIVATE
     math/jet/jet.hpp
     math/io.hpp
     math/io.cpp
-    math/mesh/error_norm.hpp
-    math/mesh/mesher_workspace.hpp
-    math/mesh/node_generator.hpp
-    math/mesh/quantizer.hpp
-    math/mesh/residual_estimator.hpp
-    math/mesh/segment.hpp
-    math/mesh/weight_function.hpp
     math/quadrature/adaptive_integrator.hpp
     math/quadrature/antiderivative.hpp
     math/quadrature/bisector.hpp
@@ -30,8 +23,15 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
+    math/spline/construction/error_norm.hpp
+    math/spline/construction/mesher_workspace.hpp
+    math/spline/construction/node_generator.hpp
+    math/spline/construction/priority_queue.hpp
+    math/spline/construction/quantizer.hpp
+    math/spline/construction/residual_estimator.hpp
+    math/spline/construction/segment.hpp
+    math/spline/construction/weight_function.hpp
     math/stats.hpp
-    priority_queue.hpp
 )
 target_sources_kernel(lib
     bitwise_enum.hpp
@@ -61,9 +61,9 @@ target_sources_kernel(lib
     math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/segment_locator.hpp
-    math/spline/segment.hpp
-    math/spline/spline.hpp
+    math/spline/evaluation/segment_locator.hpp
+    math/spline/evaluation/segment.hpp
+    math/spline/evaluation/spline.hpp
     prefetcher.hpp
     ranges.hpp
     traits.hpp
@@ -105,13 +105,6 @@ if (enable_testing)
         math/integer_test.cpp
         math/limits_test.cpp
         math/linear_test.cpp
-        math/mesh/error_norm_test.cpp
-        math/mesh/node_generator_test.cpp
-        math/mesh/mesher_workspace_test.cpp
-        math/mesh/quantizer_test.cpp
-        math/mesh/residual_estimator_test.cpp
-        math/mesh/segment_test.cpp
-        math/mesh/weight_function_test.cpp
         math/quadrature/adaptive_integrator_test.cpp
         math/quadrature/antiderivative_test.cpp
         math/quadrature/bisector_test.cpp
@@ -123,12 +116,19 @@ if (enable_testing)
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/segment_locator_test.cpp
-        math/spline/segment_test.cpp
-        math/spline/spline_test.cpp
+        math/spline/construction/error_norm_test.cpp
+        math/spline/construction/node_generator_test.cpp
+        math/spline/construction/mesher_workspace_test.cpp
+        math/spline/construction/priority_queue_test.cpp
+        math/spline/construction/quantizer_test.cpp
+        math/spline/construction/residual_estimator_test.cpp
+        math/spline/construction/segment_test.cpp
+        math/spline/construction/weight_function_test.cpp
+        math/spline/evaluation/segment_locator_test.cpp
+        math/spline/evaluation/segment_test.cpp
+        math/spline/evaluation/spline_test.cpp
         math/stats_test.cpp
         prefetcher_test.cpp
-        priority_queue_test.cpp
         ranges_test.cpp
         traits_test.cpp
     )
