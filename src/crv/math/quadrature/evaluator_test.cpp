@@ -107,7 +107,7 @@ constexpr auto sut
 // root segment creation
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
+constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
 
 // parent bounds
 static_assert(parent.left == 0.0);
@@ -177,7 +177,7 @@ static_assert(nested_refinement.right.right == 3.0);
 // zero-width segment
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto zero_width_parent = sut(5.0, 5.0, initial_tolerance);
+constexpr auto zero_width_parent = sut.evaluate(5.0, 5.0, initial_tolerance);
 static_assert(zero_width_parent.left == 5.0);
 static_assert(zero_width_parent.right == 5.0);
 static_assert(zero_width_parent.coarse_integral == 0.0);
@@ -192,7 +192,7 @@ static_assert(zero_width_refinement.refined_error == 0.0);
 // reversed bounds
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto reversed_parent = sut(6.0, 0.0, initial_tolerance);
+constexpr auto reversed_parent = sut.evaluate(6.0, 0.0, initial_tolerance);
 
 // parent (6.0 to 0.0), width is -6.0, trapezoidal: -6.0 * (36 + 0) / 2 = -108.0
 static_assert(reversed_parent.left == 6.0);
@@ -235,7 +235,7 @@ using integrand_t = cubic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
-constexpr auto parent = sut(-2.0, 2.0, initial_tolerance);
+constexpr auto parent = sut.evaluate(-2.0, 2.0, initial_tolerance);
 
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
 static_assert(parent.coarse_integral == 0.0);
@@ -265,7 +265,7 @@ using integrand_t = constant_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{10.0};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
-constexpr auto parent = sut(0.0, 4.0, initial_tolerance);
+constexpr auto parent = sut.evaluate(0.0, 4.0, initial_tolerance);
 
 // parent integral: 4.0 * 10.0 = 40.0
 static_assert(parent.coarse_integral == 40.0);
@@ -297,7 +297,7 @@ namespace quadrature_dominant {
 constexpr auto sut
     = evaluator_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
 
-constexpr auto parent = sut(0.0, 0.5, initial_tolerance);
+constexpr auto parent = sut.evaluate(0.0, 0.5, initial_tolerance);
 
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
 static_assert(parent.coarse_integral == 0.0625);
@@ -327,7 +327,7 @@ using integrand_t = negative_quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
-constexpr auto parent = sut(0.0, 6.0, initial_tolerance);
+constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
 
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
 static_assert(parent.coarse_integral == -108.0);
@@ -361,7 +361,7 @@ using integrand_t = quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
 constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
-constexpr auto parent = sut(0.0f, 6.0f, 1.0f);
+constexpr auto parent = sut.evaluate(0.0f, 6.0f, 1.0f);
 constexpr auto refinement = sut(parent);
 
 static_assert(refinement.refined_integral == 81.0f);

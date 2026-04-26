@@ -28,7 +28,7 @@ public:
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
-        stack.push_back(evaluator(real_t{0}, domain_max, global_tolerance));
+        stack.push_back(evaluator.evaluate(real_t{0}, domain_max, global_tolerance));
     }
 
     /// seeds stack with multiple segments, splitting domain at critical points
@@ -53,12 +53,12 @@ public:
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
             auto const tolerance = global_tolerance * ((right - left) / domain_max);
-            stack.push_back(evaluator(left, right, tolerance));
+            stack.push_back(evaluator.evaluate(left, right, tolerance));
 
             right = left;
         }
 
-        stack.push_back(evaluator(real_t{0}, right, global_tolerance * (right / domain_max)));
+        stack.push_back(evaluator.evaluate(real_t{0}, right, global_tolerance * (right / domain_max)));
     }
 };
 
