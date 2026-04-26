@@ -251,7 +251,7 @@ struct spline_prefetch_test_t : Test
         auto x_max() const noexcept -> x_t { return spline::x_max; }
         auto is_valid() const noexcept -> bool { return true; }
 
-        auto locate(x_t in) const noexcept -> result_t { return mock->locate(in); };
+        auto locate(x_t in) const noexcept -> result_t { return mock->locate(in); }
         auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
     };
 
