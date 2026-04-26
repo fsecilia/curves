@@ -124,7 +124,7 @@ static_assert(parent.coarse_integral == 108.0);
 
 constexpr auto refinement = sut(parent);
 
-static_assert(refinement.integral == 81.0); // 13.5 + 67.5
+static_assert(refinement.refined_integral == 81.0); // 13.5 + 67.5
 
 // left child bounds
 static_assert(refinement.left.left == 0.0);
@@ -185,7 +185,7 @@ static_assert(zero_width_parent.coarse_integral == 0.0);
 constexpr auto zero_width_refinement = sut(zero_width_parent);
 static_assert(zero_width_refinement.left.coarse_integral == 0.0);
 static_assert(zero_width_refinement.right.coarse_integral == 0.0);
-static_assert(zero_width_refinement.integral == 0.0);
+static_assert(zero_width_refinement.refined_integral == 0.0);
 static_assert(zero_width_refinement.error_estimate == 0.0);
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -218,7 +218,7 @@ static_assert(reversed_refinement.right.depth == 1);
 static_assert(reversed_refinement.right.coarse_integral == -13.5);
 
 // combined integral is negative
-static_assert(reversed_refinement.integral == -81.0);
+static_assert(reversed_refinement.refined_integral == -81.0);
 
 // error estimate is still positive
 static_assert(reversed_refinement.error_estimate == 27.0);
@@ -249,7 +249,7 @@ static_assert(refinement.left.coarse_integral == -8.0);
 static_assert(refinement.right.coarse_integral == 8.0);
 
 // combined should perfectly cancel back out to 0.0
-static_assert(refinement.integral == 0.0);
+static_assert(refinement.refined_integral == 0.0);
 
 } // namespace odd_function
 
@@ -273,7 +273,7 @@ static_assert(parent.coarse_integral == 40.0);
 constexpr auto refinement = sut(parent);
 
 // combined integral matches parent, meaning subdivision_error is 0.0
-static_assert(refinement.integral == 40.0);
+static_assert(refinement.refined_integral == 40.0);
 
 // error estimate is dominated by quadrature error
 // left rule error: 2.0 * 0.1 = 0.2
@@ -307,7 +307,7 @@ constexpr auto refinement = sut(parent);
 // left  [0, 0.25]:   0.25 * (0       + 0.0625) / 2 = 0.0078125
 // right [0.25, 0.5]: 0.25 * (0.0625  + 0.25)   / 2 = 0.0390625
 // sum                                              = 0.046875
-static_assert(refinement.integral == 0.046875);
+static_assert(refinement.refined_integral == 0.046875);
 
 // quadrature error sum: 2 * (0.25 * 0.1)            = 0.05
 // subdivision error:    abs(0.046875 - 0.0625)      = 0.015625
@@ -338,7 +338,7 @@ constexpr auto refinement = sut(parent);
 // right [3, 6]: 3.0 * (-9 + -36) / 2 = -67.5
 static_assert(refinement.left.coarse_integral == -13.5);
 static_assert(refinement.right.coarse_integral == -67.5);
-static_assert(refinement.integral == -81.0);
+static_assert(refinement.refined_integral == -81.0);
 
 // subdivision error = abs(-81.0 - (-108.0)) = 27.0
 // max error = max(0.6, 27.0) = 27.0
@@ -364,7 +364,7 @@ constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integr
 constexpr auto parent = sut(0.0f, 6.0f, 1.0f);
 constexpr auto refinement = sut(parent);
 
-static_assert(refinement.integral == 81.0f);
+static_assert(refinement.refined_integral == 81.0f);
 
 } // namespace float32_test
 

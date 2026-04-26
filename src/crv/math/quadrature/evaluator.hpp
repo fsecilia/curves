@@ -57,9 +57,9 @@ public:
         auto const left_rule_result = integral_.estimate(parent.left, parent_midpoint);
         auto const right_rule_result = integral_.estimate(parent_midpoint, parent.right);
 
-        auto const combined_integral = left_rule_result.sum + right_rule_result.sum;
+        auto const refined_integral = left_rule_result.sum + right_rule_result.sum;
         auto const quadrature_error = left_rule_result.error + right_rule_result.error;
-        auto const subdivision_error = abs(combined_integral - parent.coarse_integral);
+        auto const subdivision_error = abs(refined_integral - parent.coarse_integral);
         auto const error_estimate = std::max(quadrature_error, subdivision_error);
 
         // clang-format off
@@ -81,7 +81,7 @@ public:
                 .tolerance = child_tolerance,
                 .depth = child_depth,
             },
-            .integral = combined_integral,
+            .refined_integral = refined_integral,
             .error_estimate = error_estimate,
         };
         // clang-format on

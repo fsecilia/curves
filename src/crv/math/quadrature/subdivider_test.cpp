@@ -180,7 +180,7 @@ struct stub_evaluator_t
                 .tolerance = 0.0,
                 .depth = seg.depth + 1,
             },
-            .integral = seg.coarse_integral,
+            .refined_integral = seg.coarse_integral,
             .error_estimate = 0.0,
         };
     }
