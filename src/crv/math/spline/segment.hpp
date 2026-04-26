@@ -80,52 +80,33 @@ public:
     [[nodiscard]] constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
     {
         auto const t = dx_to_t(dx_extended);
-        auto const final_tangent = calc_final_tangent();
-        return y_t::convert(fma_(coeff_t::convert(final_tangent.m1), t, coeff_t::convert(final_tangent.p1)));
+
+        auto const c0 = unpack_coeff0();
+        auto const c1 = coeffs_[1];
+        auto const c2 = coeffs_[2];
+        auto const c3 = coeffs_[3];
+
+        // segment evaluated at t=1; 1^n = 1, so result is same as sum of coefficients
+        auto const p1 = c0 + c1 + c2 + c3;
+
+        // derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
+        auto const m1 = 3 * c0 + 2 * c1 + c2;
+
+        return y_t::convert(p1 + m1 * t);
     }
 
     /// validates segment data
     constexpr auto is_valid() const noexcept -> bool
     {
-        // maximum valid shift for the input type
+        // shift amount must be within maximum valid shift for input type
         static constexpr auto max_shift = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
-
-        // shift amount must be within (-max_shift, max_shift)
         auto const log2_width = unpack_log2_width();
         if (log2_width <= -max_shift || max_shift <= log2_width) return false;
-
-        auto const final_tangent = calc_final_tangent();
-        if (final_tangent.p1 < wide_t::convert(min<y_t>()) || wide_t::convert(max<y_t>()) < final_tangent.p1
-            || final_tangent.m1 < wide_t::convert(min<coeff_t>()) || wide_t::convert(max<coeff_t>()) < final_tangent.m1)
-        {
-            return false;
-        }
 
         return true;
     }
 
 private:
-    using wide_t = fixed_t<widened_t<typename coeff_t::value_t>, coeff_t::frac_bits>;
-
-    struct final_tangent_t
-    {
-        wide_t p1;
-        wide_t m1;
-    };
-
-    [[nodiscard]] constexpr auto calc_final_tangent() const noexcept -> final_tangent_t
-    {
-        auto const c0 = wide_t::convert(unpack_coeff0());
-        auto const c1 = wide_t::convert(coeffs_[1]);
-        auto const c2 = wide_t::convert(coeffs_[2]);
-        auto const c3 = wide_t::convert(coeffs_[3]);
-
-        return {
-            .p1 = c0 + c1 + c2 + c3, // segment evaluated at t=1; 1^n = 1, so result is same as sum of coefficients
-            .m1 = 3 * c0 + 2 * c1 + c2 // derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
-        };
-    }
-
     constexpr auto dx_to_t(x_t dx) const noexcept -> x_t
     {
         assert(x_t{0} <= dx);
