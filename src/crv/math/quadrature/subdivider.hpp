@@ -17,7 +17,7 @@ namespace crv::quadrature {
 namespace generic {
 
 /// decides whether a segment should be subdivided
-template <typename t_real_t> struct subdivision_predicate_t
+template <typename t_real_t> struct refinement_predicate_t
 {
     using real_t = t_real_t;
     using segment_t = segment_t<real_t>;
@@ -36,12 +36,12 @@ template <typename t_real_t> struct subdivision_predicate_t
 };
 
 /// adaptively subdivides the contents of a segment stack
-template <typename t_subdivision_predicate_t> struct subdivider_t
+template <typename t_refinement_predicate_t> struct subdivider_t
 {
-    using subdivision_predicate_t = t_subdivision_predicate_t;
-    using real_t = subdivision_predicate_t::real_t;
+    using refinement_predicate_t = t_refinement_predicate_t;
+    using real_t = refinement_predicate_t::real_t;
 
-    [[no_unique_address]] subdivision_predicate_t should_refine{};
+    [[no_unique_address]] refinement_predicate_t should_refine{};
 
     constexpr auto run(auto& stack, is_refiner<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const
         -> void
@@ -69,6 +69,6 @@ template <typename t_subdivision_predicate_t> struct subdivider_t
 
 } // namespace generic
 
-template <typename real_t> using subdivider_t = generic::subdivider_t<generic::subdivision_predicate_t<real_t>>;
+template <typename real_t> using subdivider_t = generic::subdivider_t<generic::refinement_predicate_t<real_t>>;
 
 } // namespace crv::quadrature

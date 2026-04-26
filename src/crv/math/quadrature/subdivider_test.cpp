@@ -15,12 +15,12 @@ using segment_t = segment_t<real_t>;
 using refinement_t = refinement_t<real_t>;
 
 // ====================================================================================================================
-// subdivision_predicate_t
+// refinement_predicate_t
 // ====================================================================================================================
 
-namespace subdivision_predicate_test {
+namespace refinement_predicate_test {
 
-using sut_t = subdivision_predicate_t<real_t>;
+using sut_t = refinement_predicate_t<real_t>;
 constexpr auto sut = sut_t{};
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ static_assert(!sut(inverted_segment, base_area, base_error, base_limit));
 // If error metric drops below zero, it is definitively lower than any valid positive tolerance.
 static_assert(!sut(base_segment, base_area, -1.0, base_limit));
 
-} // namespace subdivision_predicate_test
+} // namespace refinement_predicate_test
 
 // ====================================================================================================================
 // subdivider_t
