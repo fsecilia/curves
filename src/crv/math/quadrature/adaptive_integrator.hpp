@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/quadrature/antiderivative.hpp>
-#include <crv/math/quadrature/refiner.hpp>
+#include <crv/math/quadrature/bisector.hpp>
 #include <crv/math/quadrature/segment.hpp>
 #include <crv/math/quadrature/stack.hpp>
 #include <crv/math/quadrature/subdivider.hpp>
