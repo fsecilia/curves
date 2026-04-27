@@ -32,21 +32,6 @@ struct quadrature_adaptive_integrator_test : Test
         auto operator==(integral_t const&) const noexcept -> bool = default;
     };
 
-    struct mock_refiner_t
-    {
-        virtual ~mock_refiner_t() = default;
-
-        MOCK_METHOD(integral_t, finalize, (), (noexcept));
-    };
-    StrictMock<mock_refiner_t> mock_refiner;
-
-    struct refiner_t
-    {
-        mock_refiner_t* mock = nullptr;
-
-        auto finalize() && -> integral_t { return mock->finalize(); }
-    };
-
     struct antiderivative_t
     {
         using real_t = float_t;
@@ -73,13 +58,20 @@ struct quadrature_adaptive_integrator_test : Test
         auto finalize(integral_t integral) && -> result_t { return mock->finalize(integral); }
     };
 
+    struct refiner_t
+    {
+        int_t id = 0;
+        constexpr auto operator==(refiner_t const&) const noexcept -> bool = default;
+    };
+    static constexpr auto refiner = refiner_t{.id = 2367};
+
     struct mock_subdivider_t
     {
         virtual ~mock_subdivider_t() = default;
 
         MOCK_METHOD(void, run,
-            (stack_t & stack, mock_refiner_t const& refiner, mock_antiderivative_builder_t& antiderivative_builder,
-                int_t depth_limit),
+            (stack_t & stack, integral_t const& integral, refiner_t refiner,
+                mock_antiderivative_builder_t& antiderivative_builder, int_t depth_limit),
             (const));
     };
     StrictMock<mock_subdivider_t> mock_subdivider;
@@ -88,10 +80,10 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_subdivider_t* mock = nullptr;
 
-        auto run(stack_t& stack, refiner_t const& refiner, antiderivative_builder_t& antiderivative_builder,
-            int_t depth_limit) -> void
+        auto run(stack_t& stack, integral_t const& integral, refiner_t refiner,
+            antiderivative_builder_t& antiderivative_builder, int_t depth_limit) const -> void
         {
-            mock->run(stack, *refiner.mock, *antiderivative_builder.mock, depth_limit);
+            mock->run(stack, integral, refiner, *antiderivative_builder.mock, depth_limit);
         }
     };
 
@@ -100,7 +92,7 @@ struct quadrature_adaptive_integrator_test : Test
         virtual ~mock_stack_seeder_t() = default;
 
         MOCK_METHOD(void, seed,
-            (stack_t & stack, mock_refiner_t const& refiner, real_t domain_max, real_t global_tolerance,
+            (stack_t & stack, integral_t const& integral, real_t domain_max, real_t global_tolerance,
                 critical_points_t const& critical_points),
             (const));
     };
@@ -110,10 +102,10 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_stack_seeder_t* mock = nullptr;
 
-        auto seed(stack_t& stack, refiner_t const& refiner, real_t domain_max, real_t global_tolerance,
-            critical_points_t const& critical_points) -> void
+        auto seed(stack_t& stack, integral_t const& integral, real_t domain_max, real_t global_tolerance,
+            critical_points_t const& critical_points) const -> void
         {
-            mock->seed(stack, *refiner.mock, domain_max, global_tolerance, critical_points);
+            mock->seed(stack, integral, domain_max, global_tolerance, critical_points);
         }
     };
 
@@ -124,8 +116,8 @@ struct quadrature_adaptive_integrator_test : Test
     static constexpr auto achieved_error = 3.25e-10;
     static constexpr auto max_error = 6.98e-8;
 
-    using sut_t = adaptive_integrator_t<real_t, accumulator_t, subdivider_t, stack_seeder_t>;
-    sut_t sut{tolerance, depth_limit, subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}};
+    using sut_t = adaptive_integrator_t<real_t, accumulator_t, subdivider_t, stack_seeder_t, refiner_t>;
+    sut_t sut{tolerance, depth_limit, subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}, refiner};
 };
 
 TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
@@ -135,16 +127,15 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
     auto const seq = InSequence{};
 
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
-    EXPECT_CALL(mock_stack_seeder, seed(_, Ref(mock_refiner), domain_max, tolerance, critical_points));
-    EXPECT_CALL(mock_subdivider, run(_, Ref(mock_refiner), Ref(mock_antiderivative_builder), depth_limit));
-    EXPECT_CALL(mock_refiner, finalize()).WillOnce(Return(integral));
+    EXPECT_CALL(mock_stack_seeder, seed(_, integral, domain_max, tolerance, critical_points));
+    EXPECT_CALL(mock_subdivider, run(_, integral, refiner, Ref(mock_antiderivative_builder), depth_limit));
 
     auto const expected_result
         = result_t{.antiderivative = antiderivative, .achieved_error = achieved_error, .max_error = max_error};
     EXPECT_CALL(mock_antiderivative_builder, finalize(integral)).WillOnce(Return(expected_result));
 
-    [[maybe_unused]] result_t actual_result = sut(
-        refiner_t{&mock_refiner}, antiderivative_builder_t{&mock_antiderivative_builder}, domain_max, critical_points);
+    [[maybe_unused]] result_t actual_result
+        = sut(integral, antiderivative_builder_t{&mock_antiderivative_builder}, domain_max, critical_points);
 
     EXPECT_EQ(expected_result, actual_result);
 }

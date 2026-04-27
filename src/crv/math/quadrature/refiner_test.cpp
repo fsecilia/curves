@@ -87,6 +87,22 @@ template <typename integrand_t, typename rule_t> struct integral_t
     }
 };
 
+template <typename integral_t>
+constexpr auto make_parent(integral_t const& integral, typename integral_t::real_t left,
+    typename integral_t::real_t right, typename integral_t::real_t tolerance) noexcept
+    -> segment_t<typename integral_t::real_t>
+{
+    return segment_t<typename integral_t::real_t>{
+        .left = left,
+        .right = right,
+        .coarse_integral = integral.integrate(left, right),
+        .tolerance = tolerance,
+        .depth = 0,
+    };
+}
+
+constexpr auto sut = refiner_t{};
+
 namespace float64_test_t {
 
 using real_t = float64_t;
@@ -100,29 +116,13 @@ constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
 
 namespace even_function {
 
-constexpr auto sut
-    = refiner_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
-
-// --------------------------------------------------------------------------------------------------------------------
-// root segment creation
-// --------------------------------------------------------------------------------------------------------------------
-
-constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
-
-// parent bounds
-static_assert(parent.left == 0.0);
-static_assert(parent.right == 6.0);
-static_assert(parent.tolerance == initial_tolerance);
-static_assert(parent.depth == 0);
+constexpr auto integral = integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
 
 // trapezoidal of x^2 from 0 to 6: 6 * (0 + 36) / 2 = 108
+constexpr auto parent = make_parent(integral, 0.0, 6.0, initial_tolerance);
 static_assert(parent.coarse_integral == 108.0);
 
-// --------------------------------------------------------------------------------------------------------------------
-// root segment refinement
-// --------------------------------------------------------------------------------------------------------------------
-
-constexpr auto refinement = sut.refine(parent);
+constexpr auto refinement = sut.refine(integral, parent);
 
 static_assert(refinement.refined_integral == 81.0); // 13.5 + 67.5
 
@@ -157,7 +157,7 @@ static_assert(refinement.refined_error == 27.0);
 // --------------------------------------------------------------------------------------------------------------------
 
 // refining a child verifies that depth and tolerance keep propagating past the first level
-constexpr auto nested_refinement = sut.refine(refinement.left);
+constexpr auto nested_refinement = sut.refine(integral, refinement.left);
 
 // depth increments off the child, not the root
 static_assert(nested_refinement.left.depth == 2);
@@ -177,12 +177,10 @@ static_assert(nested_refinement.right.right == 3.0);
 // zero-width segment
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto zero_width_parent = sut.evaluate(5.0, 5.0, initial_tolerance);
-static_assert(zero_width_parent.left == 5.0);
-static_assert(zero_width_parent.right == 5.0);
+constexpr auto zero_width_parent = make_parent(integral, 5.0, 5.0, initial_tolerance);
 static_assert(zero_width_parent.coarse_integral == 0.0);
 
-constexpr auto zero_width_refinement = sut.refine(zero_width_parent);
+constexpr auto zero_width_refinement = sut.refine(integral, zero_width_parent);
 static_assert(zero_width_refinement.left.coarse_integral == 0.0);
 static_assert(zero_width_refinement.right.coarse_integral == 0.0);
 static_assert(zero_width_refinement.refined_integral == 0.0);
@@ -192,16 +190,11 @@ static_assert(zero_width_refinement.refined_error == 0.0);
 // reversed bounds
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto reversed_parent = sut.evaluate(6.0, 0.0, initial_tolerance);
-
 // parent (6.0 to 0.0), width is -6.0, trapezoidal: -6.0 * (36 + 0) / 2 = -108.0
-static_assert(reversed_parent.left == 6.0);
-static_assert(reversed_parent.right == 0.0);
-static_assert(reversed_parent.tolerance == initial_tolerance);
-static_assert(reversed_parent.depth == 0);
+constexpr auto reversed_parent = make_parent(integral, 6.0, 0.0, initial_tolerance);
 static_assert(reversed_parent.coarse_integral == -108.0);
 
-constexpr auto reversed_refinement = sut.refine(reversed_parent);
+constexpr auto reversed_refinement = sut.refine(integral, reversed_parent);
 
 // left child (6.0 to 3.0), width is -3.0, trapezoidal: -3.0 * (36 + 9) / 2 = -67.5
 static_assert(reversed_refinement.left.left == 6.0);
@@ -233,14 +226,13 @@ namespace odd_function {
 
 using integrand_t = cubic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
-
-constexpr auto parent = sut.evaluate(-2.0, 2.0, initial_tolerance);
+constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
 
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
+constexpr auto parent = make_parent(integral, -2.0, 2.0, initial_tolerance);
 static_assert(parent.coarse_integral == 0.0);
 
-constexpr auto refinement = sut.refine(parent);
+constexpr auto refinement = sut.refine(integral, parent);
 
 // left child (-2.0 to 0.0), width is 2.0, trapezoidal: 2.0 * (-8 + 0) / 2 = -8.0
 static_assert(refinement.left.coarse_integral == -8.0);
@@ -263,14 +255,13 @@ namespace const_function {
 
 using integrand_t = constant_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{10.0};
-constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
-
-constexpr auto parent = sut.evaluate(0.0, 4.0, initial_tolerance);
+constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
 
 // parent integral: 4.0 * 10.0 = 40.0
+constexpr auto parent = make_parent(integral, 0.0, 4.0, initial_tolerance);
 static_assert(parent.coarse_integral == 40.0);
 
-constexpr auto refinement = sut.refine(parent);
+constexpr auto refinement = sut.refine(integral, parent);
 
 // combined integral matches parent, meaning subdivision_error is 0.0
 static_assert(refinement.refined_integral == 40.0);
@@ -294,15 +285,13 @@ static_assert(refinement.refined_error == 0.4);
 namespace quadrature_dominant {
 
 // reuse the quadratic integrand on a narrow interval, so subdivision error shrinks below quadrature error
-constexpr auto sut
-    = refiner_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
-
-constexpr auto parent = sut.evaluate(0.0, 0.5, initial_tolerance);
+constexpr auto integral = integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
 
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
+constexpr auto parent = make_parent(integral, 0.0, 0.5, initial_tolerance);
 static_assert(parent.coarse_integral == 0.0625);
 
-constexpr auto refinement = sut.refine(parent);
+constexpr auto refinement = sut.refine(integral, parent);
 
 // left  [0, 0.25]:   0.25 * (0       + 0.0625) / 2 = 0.0078125
 // right [0.25, 0.5]: 0.25 * (0.0625  + 0.25)   / 2 = 0.0390625
@@ -325,14 +314,13 @@ namespace negative_function {
 
 using integrand_t = negative_quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
-
-constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
+constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
 
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
+constexpr auto parent = make_parent(integral, 0.0, 6.0, initial_tolerance);
 static_assert(parent.coarse_integral == -108.0);
 
-constexpr auto refinement = sut.refine(parent);
+constexpr auto refinement = sut.refine(integral, parent);
 
 // left  [0, 3]: 3.0 * (0 + -9)   / 2 = -13.5
 // right [3, 6]: 3.0 * (-9 + -36) / 2 = -67.5
@@ -359,10 +347,10 @@ constexpr auto rule = rule_t<real_t>{};
 
 using integrand_t = quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
 
-constexpr auto parent = sut.evaluate(0.0f, 6.0f, 1.0f);
-constexpr auto refinement = sut.refine(parent);
+constexpr auto parent = make_parent(integral, 0.0f, 6.0f, 1.0f);
+constexpr auto refinement = sut.refine(integral, parent);
 
 static_assert(refinement.refined_integral == 81.0f);
 

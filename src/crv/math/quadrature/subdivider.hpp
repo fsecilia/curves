@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/math/quadrature/integral.hpp>
 #include <crv/math/quadrature/refiner.hpp>
 #include <crv/math/quadrature/segment.hpp>
 #include <algorithm>
@@ -43,15 +44,16 @@ template <typename t_refinement_predicate_t> struct subdivider_t
 
     [[no_unique_address]] refinement_predicate_t should_refine{};
 
-    constexpr auto run(auto& stack, is_refiner<real_t> auto const& refiner, auto& builder, int_t depth_limit) const
-        -> void
+    template <is_integral<real_t> integral_t>
+    constexpr auto run(auto& stack, integral_t const& integral, is_refiner<integral_t, real_t> auto const& refiner,
+        auto& builder, int_t depth_limit) const -> void
     {
         while (!stack.empty())
         {
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const refinement = refiner.refine(segment);
+            auto const refinement = refiner.refine(integral, segment);
 
             if (should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {
