@@ -9,7 +9,7 @@
 namespace crv::generic {
 namespace {
 
-struct mesher_workspace_test_t : Test
+struct workspace_test_t : Test
 {
     struct container_t
     {
@@ -27,10 +27,10 @@ struct mesher_workspace_test_t : Test
         }
     };
 
-    using sut_t = mesher_workspace_t<container_t, container_t>;
+    using sut_t = workspace_t<container_t, container_t>;
 };
 
-TEST_F(mesher_workspace_test_t, clear_forwards_to_both_members)
+TEST_F(workspace_test_t, clear_forwards_to_both_members)
 {
     auto sut = sut_t{};
 
@@ -40,7 +40,7 @@ TEST_F(mesher_workspace_test_t, clear_forwards_to_both_members)
     EXPECT_TRUE(sut.queue.clear_called);
 }
 
-TEST_F(mesher_workspace_test_t, reserve_forwards_to_both_members)
+TEST_F(workspace_test_t, reserve_forwards_to_both_members)
 {
     auto sut = sut_t{};
 
