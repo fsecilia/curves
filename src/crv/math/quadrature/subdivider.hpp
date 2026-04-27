@@ -43,7 +43,7 @@ template <typename t_refinement_predicate_t> struct subdivider_t
 
     [[no_unique_address]] refinement_predicate_t should_refine{};
 
-    constexpr auto run(auto& stack, is_refiner<real_t> auto const& evaluator, auto& builder, int_t depth_limit) const
+    constexpr auto run(auto& stack, is_refiner<real_t> auto const& refiner, auto& builder, int_t depth_limit) const
         -> void
     {
         while (!stack.empty())
@@ -51,7 +51,7 @@ template <typename t_refinement_predicate_t> struct subdivider_t
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const refinement = evaluator.refine(segment);
+            auto const refinement = refiner.refine(segment);
 
             if (should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {

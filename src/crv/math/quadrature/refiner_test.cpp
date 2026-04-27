@@ -101,7 +101,7 @@ constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
 namespace even_function {
 
 constexpr auto sut
-    = evaluator_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
+    = refiner_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
 
 // --------------------------------------------------------------------------------------------------------------------
 // root segment creation
@@ -233,7 +233,7 @@ namespace odd_function {
 
 using integrand_t = cubic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut.evaluate(-2.0, 2.0, initial_tolerance);
 
@@ -263,7 +263,7 @@ namespace const_function {
 
 using integrand_t = constant_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{10.0};
-constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut.evaluate(0.0, 4.0, initial_tolerance);
 
@@ -295,7 +295,7 @@ namespace quadrature_dominant {
 
 // reuse the quadratic integrand on a narrow interval, so subdivision error shrinks below quadrature error
 constexpr auto sut
-    = evaluator_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
+    = refiner_t<integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>>{integral_t{quadratic_integrand, rule}};
 
 constexpr auto parent = sut.evaluate(0.0, 0.5, initial_tolerance);
 
@@ -325,7 +325,7 @@ namespace negative_function {
 
 using integrand_t = negative_quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut.evaluate(0.0, 6.0, initial_tolerance);
 
@@ -359,7 +359,7 @@ constexpr auto rule = rule_t<real_t>{};
 
 using integrand_t = quadratic_integrand_t<real_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto sut = evaluator_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
+constexpr auto sut = refiner_t<integral_t<integrand_t, rule_t<real_t>>>{integral_t{integrand, rule}};
 
 constexpr auto parent = sut.evaluate(0.0f, 6.0f, 1.0f);
 constexpr auto refinement = sut.refine(parent);

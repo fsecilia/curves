@@ -40,8 +40,8 @@ public:
     }
 
     /// wide overload: full DI, every ephemeral injected
-    template <typename evaluator_t, typename antiderivative_builder_t>
-    constexpr auto operator()(evaluator_t evaluator, antiderivative_builder_t antiderivative_builder, real_t domain_max,
+    template <typename refiner_t, typename antiderivative_builder_t>
+    constexpr auto operator()(refiner_t refiner, antiderivative_builder_t antiderivative_builder, real_t domain_max,
         compatible_range<real_t> auto const& critical_points) -> typename antiderivative_builder_t::result_t
     {
         // TODO: Automatically clearing the stack here prevents issues if a previous run threw an exception. However,
@@ -50,10 +50,10 @@ public:
         // the caller.
         stack_.clear();
 
-        stack_seeder_.seed(stack_, evaluator, domain_max, tolerance_, critical_points);
-        subdivider_.run(stack_, evaluator, antiderivative_builder, depth_limit_);
+        stack_seeder_.seed(stack_, refiner, domain_max, tolerance_, critical_points);
+        subdivider_.run(stack_, refiner, antiderivative_builder, depth_limit_);
 
-        return std::move(antiderivative_builder).finalize(std::move(evaluator).finalize());
+        return std::move(antiderivative_builder).finalize(std::move(refiner).finalize());
     }
 
     /// narrow overload: convenience, constructs ephemerals and delegates to wide
@@ -63,7 +63,7 @@ public:
     {
         using antiderivative_t = antiderivative_t<integral_t>;
         using antiderivative_builder_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
-        return operator()(evaluator_t{std::move(integral)}, antiderivative_builder_t{}, domain_max, critical_points);
+        return operator()(refiner_t{std::move(integral)}, antiderivative_builder_t{}, domain_max, critical_points);
     }
 
     /// narrow overload: convenience, delegates with empty critial points
