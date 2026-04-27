@@ -7,7 +7,7 @@
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv {
+namespace crv::spline {
 namespace {
 
 struct residual_estimator_test_t : Test
@@ -244,4 +244,4 @@ TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
 }
 
 } // namespace
-} // namespace crv
+} // namespace crv::spline

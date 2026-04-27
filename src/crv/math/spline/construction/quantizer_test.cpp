@@ -6,7 +6,7 @@
 #include "quantizer.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::quantizers {
+namespace crv::spline::quantizers {
 namespace {
 
 using real_t = float_t;
@@ -117,4 +117,4 @@ static_assert(no_op_t{}(1.0) == 1.0);
 static_assert(no_op_t{}(5.5) == 5.5);
 
 } // namespace
-} // namespace crv::quantizers
+} // namespace crv::spline::quantizers

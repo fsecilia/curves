@@ -10,7 +10,7 @@
 #include <crv/math/spline/construction/priority_queue.hpp>
 #include <vector>
 
-namespace crv {
+namespace crv::spline {
 namespace generic {
 
 /// mutable state for adaptive mesh refinement
@@ -41,4 +41,4 @@ template <typename segment_t, typename queue_pred_t>
 using workspace_t
     = generic::workspace_t<std::vector<segment_t>, priority_queue_t<std::vector<segment_t>, queue_pred_t>>;
 
-} // namespace crv
+} // namespace crv::spline

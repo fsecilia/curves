@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <numeric>
 
-namespace crv {
+namespace crv::spline {
 
 /// \brief estimates the maximum residual error of an approximant over a specific domain interval
 ///
@@ -63,4 +63,4 @@ struct residual_estimator_t
     }
 };
 
-} // namespace crv
+} // namespace crv::spline

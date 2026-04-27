@@ -6,7 +6,7 @@
 #include "weight_function.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::weight_functions {
+namespace crv::spline::weight_functions {
 namespace {
 
 using real_t = float_t;
@@ -113,4 +113,4 @@ static_assert(sut_t{3.1}(11.0) == 1.0 / (11.0 + 3.1));
 } // namespace hyperbolic_decay
 
 } // namespace
-} // namespace crv::weight_functions
+} // namespace crv::spline::weight_functions

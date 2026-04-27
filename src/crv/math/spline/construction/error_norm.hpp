@@ -11,7 +11,7 @@
 #include <crv/math/scalar_traits.hpp>
 #include <algorithm>
 
-namespace crv::error_norms {
+namespace crv::spline::error_norms {
 
 /// standard L-infinity uniform norm for scalars evaluating position error
 template <typename scalar_t> struct uniform_t
@@ -41,4 +41,4 @@ template <typename jet_t> struct first_order_uniform_t
     }
 };
 
-} // namespace crv::error_norms
+} // namespace crv::spline::error_norms

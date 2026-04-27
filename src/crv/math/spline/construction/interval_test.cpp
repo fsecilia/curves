@@ -7,7 +7,7 @@
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv {
+namespace crv::spline {
 namespace {
 
 using interval_t = interval_t<float_t, int_t>;
@@ -23,4 +23,4 @@ static_assert(!pred(greater, lesser));
 static_assert(!pred(greater, greater));
 
 } // namespace
-} // namespace crv
+} // namespace crv::spline

@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 
-namespace crv {
+namespace crv::spline {
 
 /// represents single evaluated interval in an adaptive mesh
 ///
@@ -36,4 +36,4 @@ struct interval_pred_t
     }
 };
 
-} // namespace crv
+} // namespace crv::spline

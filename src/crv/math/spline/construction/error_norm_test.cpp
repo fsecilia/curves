@@ -6,7 +6,7 @@
 #include "error_norm.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::error_norms {
+namespace crv::spline::error_norms {
 namespace {
 
 struct jet_t
@@ -61,4 +61,4 @@ static_assert(abs(jet_norm_custom_weight(target_jet, tan_error_approx) - 1.5) < 
 static_assert(abs(jet_norm_custom_weight(target_jet, mixed_error_approx) - 4.0) < 1e-9);
 
 } // namespace
-} // namespace crv::error_norms
+} // namespace crv::spline::error_norms
