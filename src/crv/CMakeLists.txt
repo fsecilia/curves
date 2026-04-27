@@ -17,7 +17,7 @@ target_sources(lib PRIVATE
     math/io.cpp
     math/quadrature/adaptive_integrator.hpp
     math/quadrature/antiderivative.hpp
-    math/quadrature/evaluator.hpp
+    math/quadrature/refiner.hpp
     math/quadrature/integral.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
@@ -107,7 +107,7 @@ if (enable_testing)
         math/linear_test.cpp
         math/quadrature/adaptive_integrator_test.cpp
         math/quadrature/antiderivative_test.cpp
-        math/quadrature/evaluator_test.cpp
+        math/quadrature/refiner_test.cpp
         math/quadrature/integral_test.cpp
         math/quadrature/integration_test.cpp
         math/quadrature/rules_test.cpp
