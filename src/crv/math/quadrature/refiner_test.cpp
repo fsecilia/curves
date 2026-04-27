@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "evaluator.hpp"
+#include "refiner.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::quadrature {
