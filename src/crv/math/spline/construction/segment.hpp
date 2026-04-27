@@ -17,19 +17,22 @@ template <typename real_t, typename approximant_t> struct mesh_segment_t
 {
     real_t left;
     real_t right;
-    approximant_t approximant;
     real_t max_error;
+    real_t tolerance;
+    int_t depth;
+    approximant_t approximant;
 
-    auto operator<=>(mesh_segment_t const& src) const noexcept -> auto = default;
-    auto operator==(mesh_segment_t const& src) const noexcept -> bool = default;
+    constexpr auto operator<=>(mesh_segment_t const& src) const noexcept -> auto = default;
+    constexpr auto operator==(mesh_segment_t const& src) const noexcept -> bool = default;
 };
 
 /// ordered mesh segments by max_measured_error
 struct mesh_segment_pred_t
 {
-    constexpr auto operator()(auto const& left, auto const& right) const noexcept -> bool
+    constexpr auto operator()(auto const& lhs, auto const& rhs) const noexcept -> bool
     {
-        return left.max_error < right.max_error;
+        if (auto const cmp = lhs.max_error <=> rhs.max_error; cmp != 0) return cmp < 0;
+        return lhs.left < rhs.left;
     }
 };
 
