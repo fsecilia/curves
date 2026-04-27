@@ -11,8 +11,10 @@ namespace crv {
 namespace {
 
 using mesh_segment_t = mesh_segment_t<float_t, int_t>;
-constexpr auto lesser = mesh_segment_t{.left = 0.0, .right = 0.0, .approximant = 0, .max_error = 1.0};
-constexpr auto greater = mesh_segment_t{.left = 0.0, .right = 0.0, .approximant = 0, .max_error = 2.0};
+constexpr auto lesser
+    = mesh_segment_t{.left = 0.0, .right = 0.0, .max_error = 1.0, .tolerance = 0.0, .depth = 0, .approximant = 0};
+constexpr auto greater
+    = mesh_segment_t{.left = 0.0, .right = 0.0, .max_error = 2.0, .tolerance = 0.0, .depth = 0, .approximant = 0};
 
 constexpr auto pred = mesh_segment_pred_t{};
 static_assert(!pred(lesser, lesser));
