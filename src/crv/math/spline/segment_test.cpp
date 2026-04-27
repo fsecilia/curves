@@ -31,10 +31,10 @@ constexpr auto c0_max = coeff_value_t{c_max >> 8};
 constexpr auto c0_min = coeff_value_t{c_min >> 8};
 
 constexpr auto t0 = x_t::literal(0);
-constexpr auto t_half = x_t::literal(1ULL << (x_t::frac_bits - 1));
-constexpr auto t_quarter = x_t::literal(1ULL << (x_t::frac_bits - 2));
+constexpr auto t_half = x_t::literal(1LL << (x_t::frac_bits - 1));
+constexpr auto t_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
-constexpr auto t_max = x_t::literal((1ULL << x_t::frac_bits) - 1);
+constexpr auto t_max = x_t::literal((1LL << x_t::frac_bits) - 1);
 
 constexpr auto coeffs = coeffs_t{};
 
@@ -55,13 +55,13 @@ struct passthrough_fma_t
 };
 
 // zero shift
-constexpr auto dx_quarter = x_t::literal(1ULL << (x_t::frac_bits - 2));
+constexpr auto dx_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
 constexpr auto sut0 = segment_t<x_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 0);
 static_assert(sut0.evaluate(dx_quarter).value == dx_quarter.value);
 
 // positive shift (left shift dx, segment is narrower than 1.0)
 // dx is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
-constexpr auto dx_eighth = x_t::literal(1ULL << (x_t::frac_bits - 3));
+constexpr auto dx_eighth = x_t::literal(1LL << (x_t::frac_bits - 3));
 constexpr auto sut_left = segment_t<x_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, -2);
 static_assert(sut_left.evaluate(dx_eighth).value == (dx_eighth.value << 2));
 
@@ -247,7 +247,7 @@ TEST(spline_segment, violates_t_upper_bound)
 {
     // dx is 1.0, but dividing by 2^-1 makes t = 2.0, which is out of bounds
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, -1);
-    constexpr auto dx_one = x_t::literal(1ULL << x_t::frac_bits);
+    constexpr auto dx_one = x_t::literal(1LL << x_t::frac_bits);
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(dx_one)), "dx <");
 }
 
