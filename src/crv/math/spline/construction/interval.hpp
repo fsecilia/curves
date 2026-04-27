@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief adaptive mesh interval
+/// \brief adaptive spline interval
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -10,7 +10,7 @@
 
 namespace crv::spline {
 
-/// represents single evaluated interval in an adaptive mesh
+/// represents single evaluated interval in an adaptive spline
 ///
 /// Stores domain boundaries, approximant, and max error measured across the segment.
 template <typename real_t, typename approximant_t> struct interval_t
@@ -26,7 +26,7 @@ template <typename real_t, typename approximant_t> struct interval_t
     constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
 };
 
-/// ordered mesh segments by max_measured_error
+/// orders intervals by fit priority
 struct interval_pred_t
 {
     constexpr auto operator()(auto const& lhs, auto const& rhs) const noexcept -> bool
