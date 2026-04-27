@@ -59,20 +59,6 @@ struct quadrature_stack_seeder_test_t : Test
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// single segment
-// --------------------------------------------------------------------------------------------------------------------
-
-struct quadrature_stack_seeder_test_single_segment_t : quadrature_stack_seeder_test_t
-{
-    quadrature_stack_seeder_test_single_segment_t() { sut.seed(stack, evaluator, domain_max, global_tolerance); }
-};
-
-TEST_F(quadrature_stack_seeder_test_single_segment_t, segment)
-{
-    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max, global_tolerance, 0));
-}
-
-// --------------------------------------------------------------------------------------------------------------------
 // no critical points
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -150,14 +136,7 @@ TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
 struct quadrature_stack_seeder_death_tests_t : quadrature_stack_seeder_test_t
 {};
 
-TEST_F(quadrature_stack_seeder_death_tests_t, single_segment_asserts_on_non_empty_stack)
-{
-    stack.push_back(create_segment(0.0, 1.0, 0.1));
-
-    EXPECT_DEBUG_DEATH(sut.seed(stack, evaluator, domain_max, global_tolerance), "empty before seeding");
-}
-
-TEST_F(quadrature_stack_seeder_death_tests_t, critical_points_asserts_on_non_empty_stack)
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_non_empty_stack)
 {
     stack.push_back(create_segment(0.0, 1.0, 0.1));
 
@@ -173,8 +152,8 @@ TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_zero_critical_point)
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_negative_critical_point)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, evaluator, domain_max, global_tolerance, std::initializer_list{-1.0}),
-        "in \\(0, domain_max\\)");
+    EXPECT_DEBUG_DEATH(
+        sut.seed(stack, evaluator, domain_max, global_tolerance, std::initializer_list{-1.0}), "in \\(0, domain_max\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_max_critical_point)
