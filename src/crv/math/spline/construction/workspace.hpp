@@ -17,7 +17,7 @@ namespace generic {
 ///
 /// This type encapsulates mutable state and separates memory allocation from the meshing logic. This way, the
 /// allocations can be done once and the buffers maintained between mesh generations while keeping the logic stateless.
-template <typename result_t, typename queue_t> struct mesher_workspace_t
+template <typename result_t, typename queue_t> struct workspace_t
 {
     result_t result;
     queue_t queue;
@@ -38,7 +38,7 @@ template <typename result_t, typename queue_t> struct mesher_workspace_t
 } // namespace generic
 
 template <typename segment_t, typename queue_pred_t>
-using mesher_workspace_t
-    = generic::mesher_workspace_t<std::vector<segment_t>, priority_queue_t<std::vector<segment_t>, queue_pred_t>>;
+using workspace_t
+    = generic::workspace_t<std::vector<segment_t>, priority_queue_t<std::vector<segment_t>, queue_pred_t>>;
 
 } // namespace crv
