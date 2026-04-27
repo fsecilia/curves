@@ -28,13 +28,13 @@ namespace generic {
 
 /// top-level adaptive quadrature entrypoint
 template <std::floating_point real_t, typename accumulator_t, typename subdivider_t, typename stack_seeder_t,
-    typename refiner_t>
+    typename bisector_t>
 class adaptive_integrator_t
 {
 public:
     constexpr adaptive_integrator_t(real_t tolerance, int_t depth_limit, subdivider_t subdivider = {},
-        stack_seeder_t stack_seeder = {}, refiner_t refiner = {})
-        : subdivider_{std::move(subdivider)}, stack_seeder_{std::move(stack_seeder)}, refiner_{std::move(refiner)},
+        stack_seeder_t stack_seeder = {}, bisector_t bisector = {})
+        : subdivider_{std::move(subdivider)}, stack_seeder_{std::move(stack_seeder)}, bisector_{std::move(bisector)},
           tolerance_{tolerance}, depth_limit_{depth_limit}
     {
         stack_.reserve(32);
@@ -52,7 +52,7 @@ public:
         stack_.clear();
 
         stack_seeder_.seed(stack_, integral, domain_max, tolerance_, critical_points);
-        subdivider_.run(stack_, integral, refiner_, antiderivative_builder, depth_limit_);
+        subdivider_.run(stack_, integral, bisector_, antiderivative_builder, depth_limit_);
 
         return std::move(antiderivative_builder).finalize(std::move(integral));
     }
@@ -73,7 +73,7 @@ private:
 
     [[no_unique_address]] subdivider_t subdivider_;
     [[no_unique_address]] stack_seeder_t stack_seeder_;
-    [[no_unique_address]] refiner_t refiner_;
+    [[no_unique_address]] bisector_t bisector_;
     stack_t stack_;
     real_t tolerance_;
     int_t depth_limit_;
@@ -83,6 +83,6 @@ private:
 
 template <std::floating_point real_t>
 using adaptive_integrator_t = generic::adaptive_integrator_t<real_t, compensated_accumulator_t<real_t>,
-    subdivider_t<real_t>, stack_seeder_t<real_t>, refiner_t>;
+    subdivider_t<real_t>, stack_seeder_t<real_t>, bisector_t>;
 
 } // namespace crv::quadrature

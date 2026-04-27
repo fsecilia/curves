@@ -165,10 +165,10 @@ struct builder_t
     }
 };
 
-// refiner that just increments depth and divides the integral
-struct stub_refiner_t
+// bisector that just increments depth and divides the integral
+struct stub_bisector_t
 {
-    constexpr auto refine(stub_integral_t const&, segment_t const& seg) const -> refinement_t
+    constexpr auto operator()(stub_integral_t const&, segment_t const& seg) const -> refinement_t
     {
         return refinement_t
         {
@@ -219,7 +219,7 @@ constexpr auto test_immediate_termination() -> bool
     // predicate stops immediately at depth 0
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
 
-    sut.run(stack, stub_integral_t{}, stub_refiner_t{}, builder, 10);
+    sut.run(stack, stub_integral_t{}, stub_bisector_t{}, builder, 10);
 
     // halts immediately, refines once, fails the predicate, and appends
     return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
@@ -238,7 +238,7 @@ constexpr auto test_shallow_subdivision() -> bool
     // predicate allows exactly one level of refinement
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
-    sut.run(stack, stub_integral_t{}, stub_refiner_t{}, builder, 10);
+    sut.run(stack, stub_integral_t{}, stub_bisector_t{}, builder, 10);
 
     // splits root into 2 segments, which then fail the predicate and append
     return builder.appended_segment_count == 2 && builder.total_integral == 100.0;
@@ -249,26 +249,22 @@ static_assert(test_shallow_subdivision());
 
 // ====================================================================================================================
 // subdivider_t refine call-count contract
-//
-// Belt and suspenders for the subdivider's refiner contract: with a real subdivider (stub predicate for determinism)
-// and a gMock refiner, verify that refine() is called exactly once per popped segment. A regression that double-refines
-// a segment, skips one, or processes the children in the wrong order would change the count.
 // ====================================================================================================================
 
-namespace subdivider_refiner_contract_test {
+namespace subdivider_bisector_contract_test {
 
-struct mock_refiner_t
+struct mock_bisector_t
 {
-    virtual ~mock_refiner_t() = default;
+    virtual ~mock_bisector_t() = default;
 
-    MOCK_METHOD(refinement_t, refine, (segment_t const&), (const));
+    MOCK_METHOD(refinement_t, call, (segment_t const&), (const));
 };
 
-struct refiner_t
+struct bisector_t
 {
-    mock_refiner_t* mock;
+    mock_bisector_t* mock;
 
-    auto refine(stub_integral_t const&, segment_t const& seg) const -> refinement_t { return mock->refine(seg); }
+    auto operator()(stub_integral_t const&, segment_t const& seg) const -> refinement_t { return mock->call(seg); }
 };
 
 struct builder_t
@@ -315,7 +311,7 @@ auto make_balanced_refinement(segment_t const& seg) -> refinement_t
     };
 }
 
-TEST(quadrature_subdivider_refiner_contract_test, refines_once_per_popped_segment_at_depth_two)
+TEST(quadrature_subdivider_bisector_contract_test, refines_once_per_popped_segment_at_depth_two)
 {
     // stub predicate halts at depth 2: the loop traverses a complete binary tree to depth 2, refining every node
     // (root + 2 at depth 1 + 4 at depth 2 = 7 calls) before appending the four leaves
@@ -323,31 +319,31 @@ TEST(quadrature_subdivider_refiner_contract_test, refines_once_per_popped_segmen
     auto builder = builder_t{};
     stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});
 
-    StrictMock<mock_refiner_t> mock_refiner;
-    EXPECT_CALL(mock_refiner, refine(_)).Times(7).WillRepeatedly(Invoke(make_balanced_refinement));
+    StrictMock<mock_bisector_t> mock_bisector;
+    EXPECT_CALL(mock_bisector, call(_)).Times(7).WillRepeatedly(Invoke(make_balanced_refinement));
 
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 2}};
-    sut.run(stack, stub_integral_t{}, refiner_t{&mock_refiner}, builder, 10);
+    sut.run(stack, stub_integral_t{}, bisector_t{&mock_bisector}, builder, 10);
 
     EXPECT_EQ(builder.appended_segment_count, 4);
 }
 
-TEST(quadrature_subdivider_refiner_contract_test, refines_once_when_predicate_stops_at_root)
+TEST(quadrature_subdivider_bisector_contract_test, refines_once_when_predicate_stops_at_root)
 {
     auto stack = stack_t{};
     auto builder = builder_t{};
     stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});
 
-    StrictMock<mock_refiner_t> mock_refiner;
-    EXPECT_CALL(mock_refiner, refine(_)).Times(1).WillOnce(Invoke(make_balanced_refinement));
+    StrictMock<mock_bisector_t> mock_bisector;
+    EXPECT_CALL(mock_bisector, call(_)).Times(1).WillOnce(Invoke(make_balanced_refinement));
 
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
-    sut.run(stack, stub_integral_t{}, refiner_t{&mock_refiner}, builder, 10);
+    sut.run(stack, stub_integral_t{}, bisector_t{&mock_bisector}, builder, 10);
 
     EXPECT_EQ(builder.appended_segment_count, 1);
 }
 
-} // namespace subdivider_refiner_contract_test
+} // namespace subdivider_bisector_contract_test
 
 } // namespace
 } // namespace crv::quadrature::generic

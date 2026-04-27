@@ -17,17 +17,16 @@
 namespace crv::quadrature {
 
 /// callable that refines a parent segment into two children and the parent's refined estimate
-template <typename refiner_t, typename integral_t, typename real_t>
-concept is_refiner = requires(refiner_t const& refiner, integral_t const& integral, segment_t<real_t> segment) {
-    { refiner.refine(integral, segment) } -> std::same_as<refinement_t<real_t>>;
+template <typename bisector_t, typename integral_t, typename real_t>
+concept is_bisector = requires(bisector_t const& bisector, integral_t const& integral, segment_t<real_t> segment) {
+    { bisector(integral, segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
-/// refines a parent segment into two children and the parent's level-N+1 estimate
-class refiner_t
+/// bisects a parent segment into two children and the parent's level-N+1 estimate
+struct bisector_t
 {
-public:
     template <std::floating_point real_t>
-    constexpr auto refine(is_integral<real_t> auto const& integral, segment_t<real_t> const& parent) const noexcept
+    constexpr auto operator()(is_integral<real_t> auto const& integral, segment_t<real_t> const& parent) const noexcept
         -> refinement_t<real_t>
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
