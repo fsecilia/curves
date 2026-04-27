@@ -113,8 +113,6 @@ public:
 
         auto const log2_width = unpack_log2_width();
         return min_log2_width <= log2_width && log2_width <= max_log2_width;
-
-        return true;
     }
 
 private:
