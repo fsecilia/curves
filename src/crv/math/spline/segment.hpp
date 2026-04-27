@@ -23,8 +23,7 @@ using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_
     overflow_policy_t::saturate>;
 
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_coeff_t, is_fixed t_y_t = t_coeff_t,
-    typename fma_t = segment_fma_t<t_x_t, t_coeff_t>,
+template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, typename fma_t = segment_fma_t<t_x_t, t_coeff_t>,
     typename shifter_t = shifter_t<rounding_modes::shr::fast::nearest_up_t>>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t

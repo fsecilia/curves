@@ -16,8 +16,9 @@ using coeff_t = fixed_t<coeff_value_t, 48>;
 
 using x_value_t = int64_t;
 using x_t = fixed_t<x_value_t, 48>;
+using y_t = x_t;
 
-using sut_t = segment_t<x_t, coeff_t>;
+using sut_t = segment_t<x_t, y_t, coeff_t>;
 using coeffs_t = sut_t::coeffs_t;
 using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
 
