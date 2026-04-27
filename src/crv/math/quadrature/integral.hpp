@@ -12,6 +12,13 @@
 
 namespace crv::quadrature {
 
+template <typename integral_t, typename real_t>
+concept is_integral = requires(integral_t const& integral, real_t value) {
+    typename integral_t::estimate_t;
+    { integral.estimate(value, value) } -> std::same_as<typename integral_t::estimate_t>;
+    { integral.integrate(value, value) } -> std::same_as<real_t>;
+};
+
 template <typename t_integrand_t, typename t_rule_t> class integral_t
 {
 public:

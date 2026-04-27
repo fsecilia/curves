@@ -6,6 +6,7 @@
 #include "subdivider.hpp"
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
+#include <numeric>
 
 namespace crv::quadrature::generic {
 namespace {
@@ -13,6 +14,15 @@ namespace {
 using real_t = float_t;
 using segment_t = segment_t<real_t>;
 using refinement_t = refinement_t<real_t>;
+
+using stack_t = std::vector<segment_t>;
+
+struct stub_integral_t
+{
+    using estimate_t = real_t;
+    auto estimate(real_t, real_t) const noexcept -> estimate_t;
+    auto integrate(real_t, real_t) const noexcept -> real_t;
+};
 
 // ====================================================================================================================
 // refinement_predicate_t
@@ -142,8 +152,6 @@ static_assert(!sut(base_segment, base_area, -1.0, base_limit));
 
 namespace subdivider_test {
 
-using stack_t = std::vector<segment_t>;
-
 // accumulates final results
 struct builder_t
 {
@@ -160,7 +168,7 @@ struct builder_t
 // refiner that just increments depth and divides the integral
 struct stub_refiner_t
 {
-    constexpr auto refine(segment_t const& seg) const -> refinement_t
+    constexpr auto refine(stub_integral_t const&, segment_t const& seg) const -> refinement_t
     {
         return refinement_t
         {
@@ -211,7 +219,7 @@ constexpr auto test_immediate_termination() -> bool
     // predicate stops immediately at depth 0
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
 
-    sut.run(stack, stub_refiner_t{}, builder, 10);
+    sut.run(stack, stub_integral_t{}, stub_refiner_t{}, builder, 10);
 
     // halts immediately, refines once, fails the predicate, and appends
     return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
@@ -230,7 +238,7 @@ constexpr auto test_shallow_subdivision() -> bool
     // predicate allows exactly one level of refinement
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
-    sut.run(stack, stub_refiner_t{}, builder, 10);
+    sut.run(stack, stub_integral_t{}, stub_refiner_t{}, builder, 10);
 
     // splits root into 2 segments, which then fail the predicate and append
     return builder.appended_segment_count == 2 && builder.total_integral == 100.0;
@@ -238,6 +246,108 @@ constexpr auto test_shallow_subdivision() -> bool
 static_assert(test_shallow_subdivision());
 
 } // namespace subdivider_test
+
+// ====================================================================================================================
+// subdivider_t refine call-count contract
+//
+// Belt and suspenders for the subdivider's refiner contract: with a real subdivider (stub predicate for determinism)
+// and a gMock refiner, verify that refine() is called exactly once per popped segment. A regression that double-refines
+// a segment, skips one, or processes the children in the wrong order would change the count.
+// ====================================================================================================================
+
+namespace subdivider_refiner_contract_test {
+
+struct mock_refiner_t
+{
+    virtual ~mock_refiner_t() = default;
+
+    MOCK_METHOD(refinement_t, refine, (segment_t const&), (const));
+};
+
+struct refiner_t
+{
+    mock_refiner_t* mock;
+
+    auto refine(stub_integral_t const&, segment_t const& seg) const -> refinement_t { return mock->refine(seg); }
+};
+
+struct builder_t
+{
+    int_t appended_segment_count = 0;
+
+    auto append(real_t, real_t, real_t) -> void { ++appended_segment_count; }
+};
+
+// predicate that strictly stops at a given depth
+struct stub_predicate_t
+{
+    using real_t = float_t;
+
+    int_t depth;
+
+    constexpr auto operator()(segment_t const& seg, real_t, real_t, int_t) const noexcept -> bool
+    {
+        return seg.depth < depth;
+    }
+};
+
+// returns a depth+1 balanced refinement; integral and error pass through unchanged
+auto make_balanced_refinement(segment_t const& seg) -> refinement_t
+{
+    auto const mid = std::midpoint(seg.left, seg.right);
+    return refinement_t{
+        .left = segment_t{
+            .left = seg.left,
+            .right = mid,
+            .coarse_integral = seg.coarse_integral / 2.0,
+            .tolerance = 0.0,
+            .depth = seg.depth + 1,
+        },
+        .right = segment_t{
+            .left = mid,
+            .right = seg.right,
+            .coarse_integral = seg.coarse_integral / 2.0,
+            .tolerance = 0.0,
+            .depth = seg.depth + 1,
+        },
+        .refined_integral = seg.coarse_integral,
+        .refined_error = 0.0,
+    };
+}
+
+TEST(quadrature_subdivider_refiner_contract_test, refines_once_per_popped_segment_at_depth_two)
+{
+    // stub predicate halts at depth 2: the loop traverses a complete binary tree to depth 2, refining every node
+    // (root + 2 at depth 1 + 4 at depth 2 = 7 calls) before appending the four leaves
+    auto stack = stack_t{};
+    auto builder = builder_t{};
+    stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});
+
+    StrictMock<mock_refiner_t> mock_refiner;
+    EXPECT_CALL(mock_refiner, refine(_)).Times(7).WillRepeatedly(Invoke(make_balanced_refinement));
+
+    auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 2}};
+    sut.run(stack, stub_integral_t{}, refiner_t{&mock_refiner}, builder, 10);
+
+    EXPECT_EQ(builder.appended_segment_count, 4);
+}
+
+TEST(quadrature_subdivider_refiner_contract_test, refines_once_when_predicate_stops_at_root)
+{
+    auto stack = stack_t{};
+    auto builder = builder_t{};
+    stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});
+
+    StrictMock<mock_refiner_t> mock_refiner;
+    EXPECT_CALL(mock_refiner, refine(_)).Times(1).WillOnce(Invoke(make_balanced_refinement));
+
+    auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
+    sut.run(stack, stub_integral_t{}, refiner_t{&mock_refiner}, builder, 10);
+
+    EXPECT_EQ(builder.appended_segment_count, 1);
+}
+
+} // namespace subdivider_refiner_contract_test
 
 } // namespace
 } // namespace crv::quadrature::generic

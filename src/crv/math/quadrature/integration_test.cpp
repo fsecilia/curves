@@ -66,6 +66,7 @@ using integral_t = integral_t<integrand_t, rule_t>;
 
 constexpr auto domain_max = real_t{256.0};
 constexpr auto depth_limit = int_t{64};
+constexpr auto empty_critical_points = std::array<real_t, 0>{};
 
 // ====================================================================================================================
 // correctness on smooth integrands
@@ -102,7 +103,7 @@ struct quadrature_integration_test_t : TestWithParam<param_t>
 
 TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 {
-    auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_max);
+    auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
 
     EXPECT_LT(result.achieved_error, tolerance);
     EXPECT_LT(result.max_error, tolerance);
@@ -158,7 +159,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
         = [](real_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
 
     auto integrator = adaptive_integrator_t<real_t>{tolerance, depth_limit};
-    auto const result = integrator(integral_t{bump, rule_t{}}, domain_max);
+    auto const result = integrator(integral_t{bump, rule_t{}}, domain_max, empty_critical_points);
 
     EXPECT_LT(result.achieved_error, tolerance);
 
@@ -196,7 +197,7 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
     auto blind = adaptive_integrator_t<real_t>{tolerance, depth_limit};
     auto guided = adaptive_integrator_t<real_t>{tolerance, depth_limit};
 
-    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_max);
+    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_max, empty_critical_points);
     auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_max, std::array{kink_location});
 
     EXPECT_LT(blind_result.achieved_error, tolerance);
@@ -232,7 +233,7 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
     for (auto const tol : tolerances)
     {
         auto integrator = adaptive_integrator_t<real_t>{tol, depth_limit};
-        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_max);
+        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
 
         EXPECT_LT(result.achieved_error, tol);
         EXPECT_LE(result.achieved_error, prev_error);
@@ -256,7 +257,7 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
     auto bare = adaptive_integrator_t<real_t>{tolerance, depth_limit};
     auto split = adaptive_integrator_t<real_t>{tolerance, depth_limit};
 
-    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_max);
+    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
     auto const split_result = split(integral_t{integrand, rule_t{}}, domain_max, std::array{32.0, 64.0, 128.0});
 
     auto const& bare_antiderivative = bare_result.antiderivative;
