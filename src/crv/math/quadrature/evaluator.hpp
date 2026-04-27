@@ -26,10 +26,6 @@ concept is_refiner = requires(evaluator_t const& evaluator, segment_t<real_t> se
     { evaluator.refine(segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
-/// callable that constructs root segments and refines parent segments
-template <typename evaluator_t, typename real_t>
-concept is_evaluator = is_root_evaluator<evaluator_t, real_t> && is_refiner<evaluator_t, real_t>;
-
 /// applies a rule to build initial segments and to refine parent segments into level-N+1 estimates
 template <typename t_integral_t> class evaluator_t
 {
