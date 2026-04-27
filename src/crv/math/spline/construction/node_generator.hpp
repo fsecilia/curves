@@ -11,7 +11,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace crv::node_generators {
+namespace crv::spline::node_generators {
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind
 template <typename real_t, int sample_count = 5> struct equioscillation_t
@@ -47,4 +47,4 @@ equioscillation_t<real_t, sample_count>::nodes_t const equioscillation_t<real_t,
     return result;
 }();
 
-} // namespace crv::node_generators
+} // namespace crv::spline::node_generators

@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <cmath>
 
-namespace crv::quantizers {
+namespace crv::spline::quantizers {
 
 /// simulates fixed-point precision loss
 template <typename real_t, int frac_bits> struct fixed_point_t
@@ -34,4 +34,4 @@ struct no_op_t
     template <typename real_t> static constexpr auto operator()(real_t value) noexcept -> real_t { return value; }
 };
 
-} // namespace crv::quantizers
+} // namespace crv::spline::quantizers

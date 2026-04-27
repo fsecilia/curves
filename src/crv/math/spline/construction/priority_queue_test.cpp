@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace crv {
+namespace crv::spline {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -192,4 +192,4 @@ TEST_F(priority_queue_test_t, push_moves_with_projection)
 }
 
 } // namespace
-} // namespace crv
+} // namespace crv::spline

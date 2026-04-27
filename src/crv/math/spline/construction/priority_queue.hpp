@@ -11,7 +11,7 @@
 #include <functional>
 #include <utility>
 
-namespace crv {
+namespace crv::spline {
 
 /// priority queue with minimal container api
 ///
@@ -56,4 +56,4 @@ private:
     [[no_unique_address]] projection_t projection_{};
 };
 
-} // namespace crv
+} // namespace crv::spline

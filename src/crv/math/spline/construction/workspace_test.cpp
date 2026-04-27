@@ -6,7 +6,7 @@
 #include "workspace.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::generic {
+namespace crv::spline::generic {
 namespace {
 
 struct workspace_test_t : Test
@@ -54,4 +54,4 @@ TEST_F(workspace_test_t, reserve_forwards_to_both_members)
 }
 
 } // namespace
-} // namespace crv::generic
+} // namespace crv::spline::generic

@@ -6,7 +6,7 @@
 #include "node_generator.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::node_generators {
+namespace crv::spline::node_generators {
 namespace {
 
 struct node_generators_equioscillation_test_t : Test
@@ -53,4 +53,4 @@ TEST_F(node_generators_equioscillation_test_t, count_7)
 }
 
 } // namespace
-} // namespace crv::node_generators
+} // namespace crv::spline::node_generators

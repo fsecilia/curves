@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <cmath>
 
-namespace crv::weight_functions {
+namespace crv::spline::weight_functions {
 
 /// neutral weighting, treats all domain coordinates equally
 template <typename real_t> struct uniform_t
@@ -50,4 +50,4 @@ template <typename real_t> struct hyperbolic_decay_t
     constexpr auto operator()(real_t node) const noexcept -> real_t { return 1.0 / (node + halflife); }
 };
 
-} // namespace crv::weight_functions
+} // namespace crv::spline::weight_functions
