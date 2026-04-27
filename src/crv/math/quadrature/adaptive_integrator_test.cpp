@@ -58,19 +58,19 @@ struct quadrature_adaptive_integrator_test : Test
         auto finalize(integral_t integral) && -> result_t { return mock->finalize(integral); }
     };
 
-    struct refiner_t
+    struct bisector_t
     {
         int_t id = 0;
-        constexpr auto operator==(refiner_t const&) const noexcept -> bool = default;
+        constexpr auto operator==(bisector_t const&) const noexcept -> bool = default;
     };
-    static constexpr auto refiner = refiner_t{.id = 2367};
+    static constexpr auto bisector = bisector_t{.id = 2367};
 
     struct mock_subdivider_t
     {
         virtual ~mock_subdivider_t() = default;
 
         MOCK_METHOD(void, run,
-            (stack_t & stack, integral_t const& integral, refiner_t refiner,
+            (stack_t & stack, integral_t const& integral, bisector_t const& bisector,
                 mock_antiderivative_builder_t& antiderivative_builder, int_t depth_limit),
             (const));
     };
@@ -80,10 +80,10 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_subdivider_t* mock = nullptr;
 
-        auto run(stack_t& stack, integral_t const& integral, refiner_t refiner,
+        auto run(stack_t& stack, integral_t const& integral, bisector_t const& bisector,
             antiderivative_builder_t& antiderivative_builder, int_t depth_limit) const -> void
         {
-            mock->run(stack, integral, refiner, *antiderivative_builder.mock, depth_limit);
+            mock->run(stack, integral, bisector, *antiderivative_builder.mock, depth_limit);
         }
     };
 
@@ -116,8 +116,8 @@ struct quadrature_adaptive_integrator_test : Test
     static constexpr auto achieved_error = 3.25e-10;
     static constexpr auto max_error = 6.98e-8;
 
-    using sut_t = adaptive_integrator_t<real_t, accumulator_t, subdivider_t, stack_seeder_t, refiner_t>;
-    sut_t sut{tolerance, depth_limit, subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}, refiner};
+    using sut_t = adaptive_integrator_t<real_t, accumulator_t, subdivider_t, stack_seeder_t, bisector_t>;
+    sut_t sut{tolerance, depth_limit, subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}, bisector};
 };
 
 TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
@@ -128,7 +128,7 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
 
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
     EXPECT_CALL(mock_stack_seeder, seed(_, integral, domain_max, tolerance, critical_points));
-    EXPECT_CALL(mock_subdivider, run(_, integral, refiner, Ref(mock_antiderivative_builder), depth_limit));
+    EXPECT_CALL(mock_subdivider, run(_, integral, bisector, Ref(mock_antiderivative_builder), depth_limit));
 
     auto const expected_result
         = result_t{.antiderivative = antiderivative, .achieved_error = achieved_error, .max_error = max_error};
