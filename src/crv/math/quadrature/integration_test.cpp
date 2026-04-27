@@ -163,7 +163,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     EXPECT_LT(result.achieved_error, tolerance);
 
     // Feature is a few sigma wide inside a 256-wide domain. Meaningful adaptive refinement must produce many more
-    // segments than the 1-4 that a smooth polynomial takes
+    // segments than the 1-4 that a smooth polynomial takes.
     EXPECT_GT(result.antiderivative.segment_count(), 8);
 
     auto const& numeric_antiderivative = result.antiderivative;
@@ -176,7 +176,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 // absolute value kink
 //
 // This test contains an absolute value kink at a known location. Passing the location as a critical point should cut
-// refinement dramatically, since each resulting half becomes linear and is integrated exactly by gauss-kronrod-15
+// refinement dramatically, since each resulting half becomes linear and is integrated exactly by gk15.
 TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 {
     constexpr auto kink_location = real_t{3.0};

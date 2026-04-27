@@ -203,12 +203,13 @@ constexpr auto test_immediate_termination() -> bool
 {
     auto stack = stack_t{};
     auto builder = builder_t{};
-    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
+    auto const initial_segment
+        = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);
 
     // predicate stops immediately at depth 0
-    auto sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
+    auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
 
@@ -221,12 +222,13 @@ constexpr auto test_shallow_subdivision() -> bool
 {
     auto stack = stack_t{};
     auto builder = builder_t{};
-    auto initial_segment = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
+    auto const initial_segment
+        = segment_t{.left = 0.0, .right = 0.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0};
 
     stack.push_back(initial_segment);
 
     // predicate allows exactly one level of refinement
-    auto sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
+    auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
     sut.run(stack, stub_evaluator_t{}, builder, 10);
 
