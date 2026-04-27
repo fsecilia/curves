@@ -236,8 +236,6 @@ static_assert(!sut_t{coeffs, -128}.is_valid());
 
 namespace death_tests {
 
-constexpr auto valid_dx = x_t::literal(1ULL << (x_t::frac_bits - 1));
-
 TEST(spline_segment, violates_dx_lower_bound)
 {
     // dx = -1.0; it is unconditionally out of bounds
