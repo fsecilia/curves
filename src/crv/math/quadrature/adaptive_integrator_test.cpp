@@ -16,7 +16,7 @@ struct quadrature_adaptive_integrator_test : Test
     using real_t = float_t;
     using segment_t = segment_t<real_t>;
     using accumulator_t = real_t;
-    using rule_t = rules::gauss_kronrod_t<real_t, 15>;
+    using rule_t = rules::gauss_kronrod_t<real_t>;
 
     using stack_t = std::vector<segment_t>;
     using critical_points_t = std::vector<real_t>;

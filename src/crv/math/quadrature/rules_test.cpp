@@ -30,7 +30,7 @@ constexpr auto power(real_t base, int exponent) noexcept -> real_t
     return result;
 }
 
-constexpr auto rule = gauss_kronrod_t<real_t, 15>{};
+constexpr auto rule = gauss_kronrod_t<real_t>{};
 
 // constant: f(x) = 5, integral [0, 2] = 10
 static_assert(near(rule.integrate(0.0, 2.0, [](real_t) { return 5.0; }), 10.0));

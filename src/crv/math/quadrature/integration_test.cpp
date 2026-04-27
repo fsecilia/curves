@@ -50,7 +50,7 @@ auto is_close(char const* expected_expression, char const* actual_expression, ch
 // --------------------------------------------------------------------------------------------------------------------
 
 using real_t = float_t;
-using rule_t = rules::gauss_kronrod_t<real_t, 15>;
+using rule_t = rules::gauss_kronrod_t<real_t>;
 
 struct integrand_t
 {
