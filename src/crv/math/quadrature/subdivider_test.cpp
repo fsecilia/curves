@@ -157,8 +157,8 @@ struct builder_t
     }
 };
 
-// evaluator that just increments depth and divides the integral
-struct stub_evaluator_t
+// refiner that just increments depth and divides the integral
+struct stub_refiner_t
 {
     constexpr auto refine(segment_t const& seg) const -> refinement_t
     {
@@ -211,7 +211,7 @@ constexpr auto test_immediate_termination() -> bool
     // predicate stops immediately at depth 0
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 0}};
 
-    sut.run(stack, stub_evaluator_t{}, builder, 10);
+    sut.run(stack, stub_refiner_t{}, builder, 10);
 
     // halts immediately, refines once, fails the predicate, and appends
     return builder.appended_segment_count == 1 && builder.total_integral == 100.0;
@@ -230,7 +230,7 @@ constexpr auto test_shallow_subdivision() -> bool
     // predicate allows exactly one level of refinement
     auto const sut = subdivider_t<stub_predicate_t>{.should_refine = stub_predicate_t{.depth = 1}};
 
-    sut.run(stack, stub_evaluator_t{}, builder, 10);
+    sut.run(stack, stub_refiner_t{}, builder, 10);
 
     // splits root into 2 segments, which then fail the predicate and append
     return builder.appended_segment_count == 2 && builder.total_integral == 100.0;

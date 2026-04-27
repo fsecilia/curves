@@ -15,19 +15,19 @@
 namespace crv::quadrature {
 
 /// callable that constructs a root segment from (left, right, tolerance)
-template <typename evaluator_t, typename real_t>
-concept is_root_evaluator = requires(evaluator_t const& evaluator, real_t value) {
-    { evaluator.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
+template <typename refiner_t, typename real_t>
+concept is_root_refiner = requires(refiner_t const& refiner, real_t value) {
+    { refiner.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
 /// callable that refines a parent segment into two children and the parent's refined estimate
-template <typename evaluator_t, typename real_t>
-concept is_refiner = requires(evaluator_t const& evaluator, segment_t<real_t> segment) {
-    { evaluator.refine(segment) } -> std::same_as<refinement_t<real_t>>;
+template <typename refiner_t, typename real_t>
+concept is_refiner = requires(refiner_t const& refiner, segment_t<real_t> segment) {
+    { refiner.refine(segment) } -> std::same_as<refinement_t<real_t>>;
 };
 
 /// applies a rule to build initial segments and to refine parent segments into level-N+1 estimates
-template <typename t_integral_t> class evaluator_t
+template <typename t_integral_t> class refiner_t
 {
 public:
     using integral_t = t_integral_t;
@@ -35,7 +35,7 @@ public:
     using segment_t = segment_t<real_t>;
     using refinement_t = refinement_t<real_t>;
 
-    constexpr evaluator_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
+    constexpr refiner_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
     /// builds an initial segment by integrating over [left, right]
     constexpr auto evaluate(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
