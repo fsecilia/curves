@@ -20,20 +20,10 @@ template <std::floating_point t_real_t> class stack_seeder_t
 public:
     using real_t = t_real_t;
 
-    /// seeds stack with single segment across entire domain
+    /// seeds stack with one segment per subdomain, splitting at critical points
     ///
-    /// \pre stack.empty()
-    auto seed(auto& stack, is_root_evaluator<real_t> auto const& evaluator, real_t domain_max, real_t global_tolerance)
-        -> void
-    {
-        assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
-
-        stack.push_back(evaluator.evaluate(real_t{0}, domain_max, global_tolerance));
-    }
-
-    /// seeds stack with multiple segments, splitting domain at critical points
-    ///
-    /// critical_points should not include 0 and domain_max; these are implied
+    /// critical_points should not include 0 and domain_max; these are implied. An empty range yields a single segment
+    /// across the full domain.
     ///
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
