@@ -23,6 +23,7 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
+    math/spline/construction/approximant.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
@@ -116,6 +117,7 @@ if (enable_testing)
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
+        math/spline/construction/approximant_test.cpp
         math/spline/construction/error_norm_test.cpp
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
