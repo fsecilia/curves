@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief segment refinement
+/// \brief segment building and refinement
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -20,7 +20,7 @@ concept is_root_evaluator = requires(evaluator_t const& evaluator, real_t value)
     { evaluator.evaluate(value, value, value) } -> std::same_as<segment_t<real_t>>;
 };
 
-/// callable that constructs a refinement from a parent segment
+/// callable that refines a parent segment into two children and the parent's refined estimate
 template <typename evaluator_t, typename real_t>
 concept is_refiner = requires(evaluator_t const& evaluator, segment_t<real_t> segment) {
     { evaluator.refine(segment) } -> std::same_as<refinement_t<real_t>>;
@@ -30,7 +30,7 @@ concept is_refiner = requires(evaluator_t const& evaluator, segment_t<real_t> se
 template <typename evaluator_t, typename real_t>
 concept is_evaluator = is_root_evaluator<evaluator_t, real_t> && is_refiner<evaluator_t, real_t>;
 
-/// subdivides segments using integrand and rule
+/// applies a rule to build initial segments and to refine parent segments into level-N+1 estimates
 template <typename t_integral_t> class evaluator_t
 {
 public:
@@ -41,13 +41,13 @@ public:
 
     constexpr evaluator_t(integral_t integral) noexcept : integral_{std::move(integral)} {}
 
-    /// creates a root segment from simple range, integrating over [left, right]
+    /// builds an initial segment by integrating over [left, right]
     constexpr auto evaluate(real_t left, real_t right, real_t tolerance) const noexcept -> segment_t
     {
         return segment_t{left, right, integral_.integrate(left, right), tolerance, 0};
     }
 
-    /// refines segment into two child segments
+    /// refines segment into two child segments and the parent's level-N+1 integral and error
     constexpr auto refine(segment_t const& parent) const noexcept -> refinement_t
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
