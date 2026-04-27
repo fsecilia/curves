@@ -235,6 +235,10 @@ struct rsqrt_t
     {
         assert(x.value > 0);
 
+        // saturate at the singularity: 1/sqrt(0) -> +inf. Also avoids shift-by-width UB below
+        // when countl_zero(0) returns the full container width.
+        if (x.value <= 0) return out_t::literal(max<typename out_t::value_t>());
+
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
         auto const wide_x = int_cast<typename x_norm_t::value_t>(x.value);
         auto const x_norm_shift = std::countl_zero(wide_x);

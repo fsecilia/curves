@@ -208,12 +208,24 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     constexpr auto operator>>=(value_t src) noexcept -> fixed_t&
     {
+        if constexpr (signed_integral<value_t>)
+        {
+            assert(src >= 0 && "fixed_t::operator>>=: shift count must be non-negative");
+        }
+        assert(cmp_less(src, sizeof(value_t) * CHAR_BIT)
+            && "fixed_t::operator>>=: shift count must be less than bit width");
         value >>= src;
         return *this;
     }
 
     constexpr auto operator<<=(value_t src) noexcept -> fixed_t&
     {
+        if constexpr (signed_integral<value_t>)
+        {
+            assert(src >= 0 && "fixed_t::operator<<=: shift count must be non-negative");
+        }
+        assert(cmp_less(src, sizeof(value_t) * CHAR_BIT)
+            && "fixed_t::operator<<=: shift count must be less than bit width");
         value <<= src;
         return *this;
     }
@@ -230,7 +242,14 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto operator/(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs /= rhs; }
     friend constexpr auto operator/(value_t lhs, fixed_t rhs) noexcept -> fixed_t
     {
-        return fixed_t::literal(int_cast<value_t>((widened_t<value_t>(lhs) << frac_bits * 2) / rhs.value));
+        using wide_t = widened_t<value_t>;
+        auto const wide_dividend = static_cast<wide_t>(static_cast<wide_t>(lhs) << frac_bits * 2);
+        if constexpr (signed_integral<value_t>)
+        {
+            // guard wide_t::min / -1 UB; the true quotient overflows wide_t, so saturate the narrowed result
+            if (rhs.value == value_t{-1} && wide_dividend == min<wide_t>()) return literal(max<value_t>());
+        }
+        return fixed_t::literal(int_cast<value_t>(wide_dividend / rhs.value));
     }
 
     friend constexpr auto operator%(fixed_t lhs, value_t rhs) noexcept -> fixed_t { return lhs %= rhs; }
@@ -346,6 +365,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (max_frac > frac_bits) lhs_wide <<= (max_frac - frac_bits);
         if constexpr (max_frac > rhs_t::frac_bits) rhs_wide <<= (max_frac - rhs_t::frac_bits);
 
+        // guard wide_t::min % -1 UB; mathematically x % -1 == 0 for all x
+        if constexpr (signed_integral<wide_t>)
+        {
+            if (rhs_wide == wide_t{-1}) return out_t::literal(0);
+        }
+
         // modulo
         auto const remainder = lhs_wide % rhs_wide;
 
@@ -411,7 +436,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
             auto result = floor(src);
             if (result.value != src.value)
             {
-                result = literal(int_cast<value_t>(result.value + (value_t{1} << frac_bits)));
+                // add step via unsigned to avoid signed overflow UB; saturate to max if it overflows
+                using unsigned_t = std::make_unsigned_t<value_t>;
+                constexpr auto step = static_cast<unsigned_t>(unsigned_t{1} << frac_bits);
+                auto const sum = static_cast<value_t>(static_cast<unsigned_t>(result.value) + step);
+                if (sum < result.value) return literal(max<value_t>());
+                result = literal(sum);
             }
             return result;
         }
@@ -455,7 +485,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto abs(fixed_t src) noexcept -> fixed_t
         requires(std::signed_integral<value_t>)
     {
-        return src.value < 0 ? -src : src;
+        // negate via unsigned to avoid signed overflow UB at min(); abs(min) saturates to max
+        if (src.value >= 0) return src;
+        if (src.value == min<value_t>()) return literal(max<value_t>());
+        using uval_t = std::make_unsigned_t<value_t>;
+        return literal(static_cast<value_t>(-static_cast<uval_t>(src.value)));
     }
 };
 
