@@ -22,7 +22,7 @@
 namespace crv::quadrature {
 
 template <typename integral_t> using antiderivative_of_t = antiderivative_t<std::remove_cvref_t<integral_t>>;
-template <typename integral_t> using result_of_t = integration_result_t<antiderivative_of_t<integral_t>>;
+template <typename integral_t> using integration_result_of_t = integration_result_t<antiderivative_of_t<integral_t>>;
 
 namespace generic {
 
@@ -59,7 +59,7 @@ public:
     /// narrow overload: convenience, constructs ephemerals and delegates to wide
     template <typename integral_t>
     constexpr auto operator()(integral_t integral, real_t domain_max,
-        compatible_range<real_t> auto const& critical_points) -> result_of_t<integral_t>
+        compatible_range<real_t> auto const& critical_points) -> integration_result_of_t<integral_t>
     {
         using antiderivative_t = antiderivative_t<integral_t>;
         using antiderivative_builder_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
@@ -68,7 +68,7 @@ public:
 
     /// narrow overload: convenience, delegates with empty critial points
     template <typename integral_t>
-    constexpr auto operator()(integral_t integral, real_t domain_max) -> result_of_t<integral_t>
+    constexpr auto operator()(integral_t integral, real_t domain_max) -> integration_result_of_t<integral_t>
     {
         return operator()(std::move(integral), domain_max, std::array<real_t, 0>{});
     }
