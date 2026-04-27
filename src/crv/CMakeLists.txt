@@ -24,12 +24,12 @@ target_sources(lib PRIVATE
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
     math/spline/construction/error_norm.hpp
+    math/spline/construction/interval.hpp
     math/spline/construction/mesher_workspace.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/priority_queue.hpp
     math/spline/construction/quantizer.hpp
     math/spline/construction/residual_estimator.hpp
-    math/spline/construction/segment.hpp
     math/spline/construction/weight_function.hpp
     math/stats.hpp
 )
@@ -117,12 +117,12 @@ if (enable_testing)
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
         math/spline/construction/error_norm_test.cpp
+        math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/mesher_workspace_test.cpp
         math/spline/construction/priority_queue_test.cpp
         math/spline/construction/quantizer_test.cpp
         math/spline/construction/residual_estimator_test.cpp
-        math/spline/construction/segment_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/evaluation/segment_locator_test.cpp
         math/spline/evaluation/segment_test.cpp
