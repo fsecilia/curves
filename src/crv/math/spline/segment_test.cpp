@@ -24,12 +24,14 @@ using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
 
 constexpr auto c0 = coeff_t{0};
 constexpr auto c1 = coeff_t{1};
-constexpr auto c_max = max<coeff_value_t>();
-constexpr auto c_min = min<coeff_value_t>();
+constexpr auto cv_max = max<coeff_value_t>();
+constexpr auto cv_min = min<coeff_value_t>();
 
 // 56-bit bounds for C0 since it also packs log2_width
-constexpr auto c0_max = coeff_value_t{c_max >> 8};
-constexpr auto c0_min = coeff_value_t{c_min >> 8};
+constexpr auto c00 = coeff_t{0};
+constexpr auto c01 = coeff_t{1};
+constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
+constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
 
 constexpr auto t0 = x_t::literal(0);
 constexpr auto t_half = x_t::literal(1LL << (x_t::frac_bits - 1));
@@ -132,25 +134,25 @@ static_assert(evaluate({256, 256, 256, 256}, 0, t_three_quarter) == 700);
 static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
 
 // coeff[0] survives bit packing shift round-trip
-constexpr auto large_cubic_coeff = coeff_t{50};
-static_assert(sut_t{{large_cubic_coeff, c0, c0, c0}, 5}.evaluate(x_t{16}).value == (large_cubic_coeff.value >> 3));
+constexpr auto c_large_cubic = coeff_t{50};
+static_assert(sut_t{{c_large_cubic, c0, c0, c0}, 5}.evaluate(x_t{16}).value == (c_large_cubic.value >> 3));
 
 // c0: just check sign; anything more would be a tautology
-static_assert(evaluate({c0_max, 0, 0, 0}, 0, t_max) > 0);
-static_assert(evaluate({c0_min, 0, 0, 0}, 0, t_max) < 0);
+static_assert(evaluate({cv0_max, 0, 0, 0}, 0, t_max) > 0);
+static_assert(evaluate({cv0_min, 0, 0, 0}, 0, t_max) < 0);
 
 // c3
-static_assert(evaluate({0, 0, 0, c_max}, 0, t0) == c_max);
-static_assert(evaluate({0, 0, 0, c_min}, 0, t0) == c_min);
+static_assert(evaluate({0, 0, 0, cv_max}, 0, t0) == cv_max);
+static_assert(evaluate({0, 0, 0, cv_min}, 0, t0) == cv_min);
 
 // dense polynomial does not overflow
-constexpr auto c0_quarter = c0_max / 4;
-constexpr auto c_quarter = c_max / 4;
-static_assert(evaluate({c0_quarter, c_quarter, c_quarter, c_quarter}, 0, t_max) > (c_max / 2));
+constexpr auto cv0_quarter = cv0_max / 4;
+constexpr auto cv_quarter = cv_max / 4;
+static_assert(evaluate({cv0_quarter, cv_quarter, cv_quarter, cv_quarter}, 0, t_max) > (cv_max / 2));
 
 // saturation ceiling
-static_assert(evaluate({c0_max, c_max, c_max, c_max}, 0, t_max) == c_max);
-static_assert(evaluate({c0_min, c_min, c_min, c_min}, 0, t_max) == c_min);
+static_assert(evaluate({cv0_max, cv_max, cv_max, cv_max}, 0, t_max) == cv_max);
+static_assert(evaluate({cv0_min, cv_min, cv_min, cv_min}, 0, t_max) == cv_min);
 
 constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
 
