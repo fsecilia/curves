@@ -64,15 +64,6 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
                 auto const t1 = (-b + sqrt_discriminant) * r3a;
                 if (0.0 < t1 && t1 < 1.0 && operator()(coeffs, to_fixed<normalized_t>(t1))) return true;
             }
-            else if (discriminant == 0.0)
-            {
-                auto const t_double_root = -b * r3a;
-                if (0.0 < t_double_root && t_double_root < 1.0
-                    && operator()(coeffs, to_fixed<normalized_t>(t_double_root)))
-                {
-                    return true;
-                }
-            }
         }
         else if (b)
         {
