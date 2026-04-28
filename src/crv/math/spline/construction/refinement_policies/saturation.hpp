@@ -32,10 +32,9 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
         if (operator()(coeffs, normalized_t{0})) return true;
         if (operator()(coeffs, normalized_t{1})) return true; // this pops if the type has no integer bits
 
-        // scale cancels out when f'(t) = 0, so cast and avoid division
-        auto const a = static_cast<real_t>(coeffs[0].value);
-        auto const b = static_cast<real_t>(coeffs[1].value);
-        auto const c = static_cast<real_t>(coeffs[2].value);
+        auto const a = from_fixed<real_t>(coeffs[0]);
+        auto const b = from_fixed<real_t>(coeffs[1]);
+        auto const c = from_fixed<real_t>(coeffs[2]);
 
         // find largest term
         if (a != 0.0)
