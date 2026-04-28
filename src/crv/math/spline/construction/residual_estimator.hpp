@@ -12,7 +12,7 @@
 
 namespace crv::spline {
 
-/// \brief estimates the maximum residual error of an approximant over a specific domain interval
+/// estimates the maximum residual error of an approximant over a specific domain interval
 ///
 /// This type is an orchestrator. It organizes a search to find the worst-case error between a target function and its
 /// generated approximant. The search space is defined by a node generator to find collocation points, the domain is
