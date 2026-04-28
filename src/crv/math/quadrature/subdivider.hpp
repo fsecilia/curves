@@ -45,7 +45,7 @@ template <typename t_refinement_predicate_t> struct subdivider_t
     [[no_unique_address]] refinement_predicate_t should_refine{};
 
     template <is_integral<real_t> integral_t>
-    constexpr auto run(auto& stack, integral_t const& integral, is_bisector<integral_t, real_t> auto const& bisector,
+    constexpr auto run(auto& stack, integral_t const& integral, is_bisector<integral_t, real_t> auto const& bisect,
         auto& builder, int_t depth_limit) const -> void
     {
         while (!stack.empty())
@@ -53,7 +53,7 @@ template <typename t_refinement_predicate_t> struct subdivider_t
             auto const segment = stack.back();
             stack.pop_back();
 
-            auto const refinement = bisector(integral, segment);
+            auto const refinement = bisect(integral, segment);
 
             if (should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
             {
