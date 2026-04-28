@@ -114,7 +114,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    /// converts from another fixed_t specialization, rescaling precision using rounding mode
+    /// converts from another fixed_t specialization, rescaling precision using shifter
     template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
         typename shifter_type = shifter_t<>>
     static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
@@ -163,6 +163,13 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
                 return literal(static_cast<value_t>(shifted));
             }
         }
+    }
+
+    /// overloads convert so overflow policy can be specified first
+    template <overflow_policy_t overflow_policy, is_fixed other_t, typename shifter_type = shifter_t<>>
+    static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
+    {
+        return convert<other_t, overflow_policy>(other, std::move(shifter));
     }
 
     explicit constexpr operator bool() const noexcept { return !!value; }
