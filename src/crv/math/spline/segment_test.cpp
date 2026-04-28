@@ -28,7 +28,6 @@ constexpr auto cv_max = max<coeff_value_t>();
 constexpr auto cv_min = min<coeff_value_t>();
 
 // 56-bit bounds for C0 since it also packs log2_width
-constexpr auto c00 = coeff_t{0};
 constexpr auto c01 = coeff_t{1};
 constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
 constexpr auto cv0_min = coeff_value_t{cv_min >> 8};

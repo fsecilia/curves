@@ -84,6 +84,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-padded
         -Wno-sign-conversion
         -Wno-shadow
+        -Wno-shadow-field
         -Wno-shadow-field-in-constructor
         -Wno-switch-default
         -Wno-unneeded-member-function

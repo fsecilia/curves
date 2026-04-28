@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <compare>
 
 namespace crv::spline {
 
@@ -31,7 +32,7 @@ struct interval_pred_t
 {
     constexpr auto operator()(auto const& lhs, auto const& rhs) const noexcept -> bool
     {
-        if (auto const cmp = lhs.max_error <=> rhs.max_error; cmp != 0) return cmp < 0;
+        if (auto const cmp = lhs.max_error <=> rhs.max_error; std::is_neq(cmp)) return std::is_lt(cmp);
         return lhs.left < rhs.left;
     }
 };
