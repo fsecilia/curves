@@ -49,7 +49,7 @@ public:
         static_assert(sizeof(segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
 
         // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
-        assert(coeffs[0] == ((coeffs[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
+        assert(coeffs_[0] == ((coeffs_[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
 
         // pack log2_width into bottom 8 bits of coeff[0]
         coeffs_[0] <<= 8;
