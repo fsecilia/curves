@@ -263,6 +263,10 @@ static_assert(u16_4_t::convert(i16_0_t::literal(-1000)).value == 0);
 // negative to smaller signed
 static_assert(i16_4_t::convert(i32_8_t::literal(-2'000'000'000)).value == i16_min);
 
+// convenience overload
+static_assert(u8_4_t::convert<overflow_policy_t::saturate>(u16_4_t{256}).value == 255);
+static_assert(u8_4_t::convert<overflow_policy_t::wrap>(u16_4_t{256}).value == 0);
+
 TEST_F(fixed_test_t, upscale_saturates_without_calling_shifter)
 {
     using src_t = fixed_t<int16_t, 0>;
