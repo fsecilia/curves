@@ -7,7 +7,6 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <type_traits>
 
 namespace crv {
 
