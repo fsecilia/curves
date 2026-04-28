@@ -28,6 +28,7 @@ target_sources(lib PRIVATE
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/quantizer.hpp
+    math/spline/construction/refinement_policies/monotonicity.hpp
     math/spline/construction/residual_estimator.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
@@ -122,6 +123,7 @@ if (enable_testing)
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/quantizer_test.cpp
+        math/spline/construction/refinement_policies/monotonicity_test.cpp
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
