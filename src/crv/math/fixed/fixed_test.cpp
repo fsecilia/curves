@@ -718,6 +718,10 @@ static_assert(divide<i8_4_t>(i16_8_t{100}, i16_8_t{1}) == i8_4_t::literal(max<in
 // negative overflow saturates to min
 static_assert(divide<i8_4_t>(i16_8_t{-100}, i16_8_t{1}) == i8_4_t::literal(min<int8_t>()));
 
+// scalar/fixed divide guards wide_t::min / -1 UB by saturating to value_t::max
+// for fixed_t<int8_t, 4>: dividend = (int16)(-128) << 8 = int16::min, divisor = -1
+static_assert(min<int8_t>() / i8_4_t::literal(-1) == i8_4_t::literal(max<int8_t>()));
+
 // literal operators
 struct fixed_division_ops_t : Test
 {
@@ -872,6 +876,11 @@ static_assert(i32_16_t{5} % i32_0_t{2} == i32_16_t{1});
 
 // narrowing truncation
 static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
+
+// guards INT_MIN % -1 UB; mathematically x % -1 == 0 for all x
+static_assert(i8_4_t::literal(min<int8_t>()) % i8_4_t::literal(-1) == i8_4_t::literal(0));
+static_assert(i16_4_t::literal(min<int16_t>()) % i16_4_t::literal(-1) == i16_4_t::literal(0));
+static_assert(i64_0_t::literal(min<int64_t>()) % i64_0_t::literal(-1) == i64_0_t::literal(0));
 
 // rounding via mock
 TEST_F(fixed_test_t, modulo_to_specific_type)
@@ -1082,6 +1091,16 @@ vector_t const vectors[] = {
 };
 INSTANTIATE_TEST_SUITE_P(vectors, fixed_point_test_extraction_t, testing::ValuesIn(vectors));
 
+// ceil saturates to max instead of UB-overflowing when the integer step would cross max
+// e.g. fixed_t<int8_t,4> max is 127 (= 7.9375); ceil would mathematically be 8.0, unrepresentable
+static_assert(ceil(i8_4_t::literal(max<int8_t>())) == i8_4_t::literal(max<int8_t>()));
+static_assert(ceil(i16_4_t::literal(max<int16_t>())) == i16_4_t::literal(max<int16_t>()));
+static_assert(ceil(u8_4_t::literal(max<uint8_t>())) == u8_4_t::literal(max<uint8_t>()));
+static_assert(ceil(u16_4_t::literal(max<uint16_t>())) == u16_4_t::literal(max<uint16_t>()));
+
+// just below the saturation edge: any fractional bit with integer-part-at-max saturates
+static_assert(ceil(i8_4_t::literal(static_cast<int8_t>(max<int8_t>() - 7))) == i8_4_t::literal(max<int8_t>()));
+
 } // namespace rounding_and_extraction
 
 // ====================================================================================================================
@@ -1095,6 +1114,13 @@ static_assert(abs(i_4_t::literal(-1)) == i_4_t::literal(1));
 static_assert(abs(i_4_t::literal(0)) == i_4_t::literal(0));
 static_assert(abs(i_4_t::literal(1)) == i_4_t::literal(1));
 static_assert(abs(i_4_t::literal(max<int_t>())) == i_4_t::literal(max<int_t>()));
+
+// abs(min) saturates to max instead of UB-negating
+static_assert(abs(i_4_t::literal(min<int_t>())) == i_4_t::literal(max<int_t>()));
+static_assert(abs(i8_4_t::literal(min<int8_t>())) == i8_4_t::literal(max<int8_t>()));
+static_assert(abs(i16_4_t::literal(min<int16_t>())) == i16_4_t::literal(max<int16_t>()));
+// re-enable once abs uses crv::signed_integral (which covers __int128) instead of std::signed_integral
+// static_assert(abs(i128_64_t::literal(min<int128_t>())) == i128_64_t::literal(max<int128_t>()));
 
 static_assert(abs(u_4_t::literal(0)) == u_4_t::literal(0));
 static_assert(abs(u_4_t::literal(1)) == u_4_t::literal(1));
@@ -1125,6 +1151,41 @@ static_assert(sut_t::min().value == 1); // min() is the smallest positive value,
 static_assert(sut_t::epsilon().value == 1);
 
 } // namespace numeric_limits_tests
+
+// ====================================================================================================================
+// Death Tests
+// ====================================================================================================================
+
+#if defined CRV_ENABLE_DEATH_TESTS
+
+struct fixed_death_test_t : Test
+{};
+
+TEST_F(fixed_death_test_t, scalar_shr_negative_count_aborts)
+{
+    auto val = i16_8_t{1};
+    EXPECT_DEATH(val >>= -1, "shift count must be non-negative");
+}
+
+TEST_F(fixed_death_test_t, scalar_shr_oversized_count_aborts)
+{
+    auto val = i16_8_t{1};
+    EXPECT_DEATH(val >>= 16, "shift count must be less than bit width");
+}
+
+TEST_F(fixed_death_test_t, scalar_shl_negative_count_aborts)
+{
+    auto val = i16_8_t{1};
+    EXPECT_DEATH(val <<= -1, "shift count must be non-negative");
+}
+
+TEST_F(fixed_death_test_t, scalar_shl_oversized_count_aborts)
+{
+    auto val = i16_8_t{1};
+    EXPECT_DEATH(val <<= 16, "shift count must be less than bit width");
+}
+
+#endif
 
 } // namespace
 } // namespace crv

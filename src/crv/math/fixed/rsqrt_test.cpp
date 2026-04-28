@@ -446,6 +446,39 @@ static_assert(rsqrt(fixed_t<uint64_t, 62>::literal(2795304025607940678ULL))
     == fixed_t<uint64_t, 62>::literal(5923454703581824736ULL + 1));
 
 } // namespace value_test
+
+// --------------------------------------------------------------------------------------------------------------------
+// zero-input contract
+// --------------------------------------------------------------------------------------------------------------------
+
+#if defined CRV_ENABLE_DEATH_TESTS
+
+struct rsqrt_death_test_t : Test
+{};
+
+TEST_F(rsqrt_death_test_t, asserts_on_zero_input)
+{
+    using in_t = fixed_t<uint64_t, 0>;
+    using out_t = fixed_t<uint64_t, 32>;
+    using sut_t = rsqrt_t<out_t, in_t>;
+    EXPECT_DEATH(sut_t{}(in_t::literal(0)), "x.value > 0");
+}
+
+#endif
+
+#if defined NDEBUG
+
+// in release, the assert is a no-op and the early-return saturates the singularity to max
+TEST(rsqrt_release_test, zero_input_saturates_to_max)
+{
+    using in_t = fixed_t<uint64_t, 0>;
+    using out_t = fixed_t<uint64_t, 32>;
+    auto const result = rsqrt_t<out_t, in_t>{}(in_t::literal(0));
+    EXPECT_EQ(result, out_t::literal(max<uint64_t>()));
+}
+
+#endif
+
 } // namespace rsqrt_test
 
 } // namespace
