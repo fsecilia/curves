@@ -404,9 +404,9 @@ static_assert(
     rsqrt<fixed_t<uint64_t, 60>>(fixed_t<uint64_t, 0>(max<int64_t>())) == fixed_t<uint64_t, 60>::literal(379625062ULL));
 
 // overflow saturation
-static_assert(rsqrt<fixed_t<uint64_t, 50>>(fixed_t<uint64_t, 30>::literal(1))
+static_assert(
+    rsqrt<fixed_t<uint64_t, 50>>(fixed_t<uint64_t, 30>::literal(1)) == fixed_t<uint64_t, 50>::literal(max<uint64_t>()));
 
-    == fixed_t<uint64_t, 50>::literal(max<uint64_t>()));
 // underflow saturation
 static_assert(rsqrt<fixed_t<uint64_t, 20>>(fixed_t<uint64_t, 0>(1ULL << 60)) == fixed_t<uint64_t, 20>{0});
 
