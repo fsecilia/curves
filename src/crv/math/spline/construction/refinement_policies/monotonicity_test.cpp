@@ -6,7 +6,6 @@
 #include "monotonicity.hpp"
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
-#include <array>
 
 namespace crv::spline::refinement_policies {
 namespace {
