@@ -110,7 +110,7 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_half) == 10880);
 static_assert(evaluate({-16, 0, 0, 4}, 0, t_half) == 2);
 
 // negative b
-static_assert(evaluate({0, -10, 10, 0}, 0, t_half) == 3);
+static_assert(evaluate({0, -10, 10, 0}, 0, t_half) == 2);
 
 // negative c
 static_assert(evaluate({0, 100, -12, 0}, 0, t_half) == 19);
@@ -125,13 +125,13 @@ static_assert(evaluate({9999, -8888, 7777, 35}, 0, t0) == 35);
 static_assert(evaluate({1024, 1024, 1024, 1024}, 0, t_quarter) == 1360);
 
 // t = 0xAAAA... (~2/3), isolates truncation behavior on non-power-of-two fractions
-static_assert(evaluate({0, 0, 81, 0}, 0, x_t::literal(0xAAAAAAAAAAAAULL)) == 54);
+static_assert(evaluate({0, 0, 81, 0}, 0, x_t::literal(0xAAAAAAAAAAAAULL)) == 53);
 
 // t = 3/4
 static_assert(evaluate({256, 256, 256, 256}, 0, t_three_quarter) == 700);
 
-// t = max -> C0(1 - epsilon) + C1(1 - epsilon) + C2(1 - epsilon) + C3 = C0 + C1 + C2 + C3
-static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15360);
+// t = max -> C0(1 - epsilon) + C1(1 - epsilon) + C2(1 - epsilon) + C3 = C0 + C1 + C2 + C3 - 3*epsilon
+static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == 15357);
 
 // coeff[0] survives bit packing shift round-trip
 constexpr auto c_large_cubic = coeff_t{50};

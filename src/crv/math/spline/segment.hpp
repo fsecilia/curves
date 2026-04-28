@@ -17,10 +17,12 @@
 
 namespace crv::spline {
 
-// fma with common types and fast nearest_up rounding mode
+// fma with common types and truncate rounding mode
+//
+// fma here doesn't round because we bake bias into the coefficients
 template <is_fixed in_t, is_fixed coeff_t>
-using segment_fma_t = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_modes::shr::fast::nearest_up_t>,
-    overflow_policy_t::saturate>;
+using segment_fma_t
+    = fma_t<coeff_t, in_t, coeff_t, coeff_t, shifter_t<rounding_modes::shr::truncate_t>, overflow_policy_t::saturate>;
 
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, typename fma_t = segment_fma_t<t_x_t, t_coeff_t>,
