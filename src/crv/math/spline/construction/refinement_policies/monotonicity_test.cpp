@@ -52,10 +52,22 @@ static_assert(is_monotonic(3, -3, 1)); // 3(3)(1) = 9 == (-3)^2 = 9, BVA: slope 
 // vertex is inside (0, 1); slope dips below zero
 static_assert(!is_monotonic(1, -2, 1)); // 3(1)(1) = 3 < (-2)^2 = 4
 
-// wide fixed-point boundary
-// use large values that would overflow standard 64-bit bounds if not for wide multiplication
-constexpr auto large_val = value_t{1} << 20;
-static_assert(is_monotonic(large_val, -large_val, large_val));
+// wide-multiply boundary
+//
+// Narrow `3a` overflows `coeff_t` once `a` exceeds ~21845, but each individual coefficient still constructs cleanly.
+// Here, we test that a narrow implementation would overflow, but the wide implementation does not. Inputs below have
+// `c >= 0`, so we always reach (or pass through) the right-endpoint check.
+
+// right-endpoint wide path: narrow `3a` overflows but wide `3a + 2b + c = 80000 >= 0` correctly continues;
+// also exercises the vertex-bound wide path (narrow `-3a` would overflow) and the discriminant wide path
+static_assert(is_monotonic(30000, -10000, 10000)); // `3a+2b+c = 80000`; vertex inside; `3ac = 9e8 >= b^2 = 1e8`
+
+// right-endpoint wide path returns false: narrow `3a` overflows but wide correctly computes `3a + 2b + c = -10000 < 0`
+static_assert(!is_monotonic(30000, -50000, 0));
+
+// right-endpoint passes (32000 >= 0), then vertex-bound wide path is taken with narrow-overflowing `-3a`;
+// vertex is inside (-90000 < -29000 < 0), discriminant rejects: `3ac = 0 < b^2 = 8.41e8`
+static_assert(!is_monotonic(30000, -29000, 0));
 
 } // namespace
 } // namespace crv::spline::refinement_policies
