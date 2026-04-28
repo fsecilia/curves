@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief
+/// \brief quadrature entrypoint
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
