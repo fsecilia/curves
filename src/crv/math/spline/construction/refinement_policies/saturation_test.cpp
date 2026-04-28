@@ -97,21 +97,35 @@ interval_param_t const interval_params[] = {
     // peak is at t = 0.5: p(0.5) = -50 + 150 + 3200 = 3300.
     {false, -400.0, 0.0, 300.0, 3200.0},
 
-    // monotonic cubic, d < 0: saturates purely at the endpoint (t=1)
-    // p(1) = 16000 + 16000 + 16000 + 0 = 48000 (> 32767)
-    {true, 16000.0, 16000.0, 16000.0, 0.0},
+    // pure linear, a = 0, b = 0: relies on endpoints
+    // p(1) = 30000 + 0 = 30000
+    {false, 0.0, 0.0, 30000.0, 0.0},
 
     // degenerate quadratic, a = 0: peak in (0, 1) saturates
     // peak is at t = 0.5: p(0.5) = -32000(0.25) + 32000(0.5) + 32000 = 40000 (> 32767)
     {true, 0.0, -32000.0, 32000.0, 32000.0},
 
-    // full cubic, d > 0: peak inside (0, 1) saturates
+    // intermediate quadratic saturates, but final cubic is safe
+    // q(t) = -200000t^2 + 200000t + 0. Peak at t=0.5 -> q(0.5) = 50000 (> 32767)
+    // p(t) = q(t)t - 20000. Peak around t=0.5 is 50000(0.5) - 20000 = 5000
+    {true, -32000.0, 32000.0, 30000.0, -10000.0},
+
+    // monotonic cubic, d < 0: saturates purely at the endpoint (t=1)
+    // p(1) = 16000 + 16000 + 16000 + 0 = 48000 (> 32767)
+    {true, 16000.0, 16000.0, 16000.0, 0.0},
+
+    // full cubic, d > 0: peak in (0, 1) saturates
     // peak is at t = 0.5: p(0.5) = -4000(0.125) + 0 + 3000(0.5) + 32000 = 33000 (> 32767)
     {true, -4000.0, 0.0, 3000.0, 32000.0},
 
-    // full cubic, d > 0: valley inside (0, 1), saturates negative
+    // full cubic, d > 0: valley in (0, 1), saturates negative
     // valley at t = 0.5: p(0.5) = 4000(0.125) + 0 - 3000(0.5) - 32000 = -33000 (< -32768)
     {true, 4000.0, 0.0, -3000.0, -32000.0},
+
+    // full cubic, d > 0: two roots in (0, 1), t0 is safe but t1 saturates
+    // roots of derivative are roughly at t=0.21 and t=0.78.
+    // valley at t0 is safe, peak at t1 exceeds bounds.
+    {true, 15000.0, -22500.0, 7200.0, -32000.0},
 };
 INSTANTIATE_TEST_SUITE_P(interval_params, spline_refinement_policies_interval_test_t, ValuesIn(interval_params));
 
