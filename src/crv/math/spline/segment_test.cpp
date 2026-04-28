@@ -183,12 +183,29 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.exte
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
+// log2_width
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace log2_width_tests {
+
+// bounds of valid log2_widths for fixed_t<int64_t, 48>: [-frac_bits, bits-frac_bits-2] = [-48, 14]
+static_assert(sut_t{coeffs, -48}.log2_width() == -48);
+static_assert(sut_t{coeffs, -47}.log2_width() == -47);
+static_assert(sut_t{coeffs, -1}.log2_width() == -1);
+static_assert(sut_t{coeffs, 0}.log2_width() == 0);
+static_assert(sut_t{coeffs, 1}.log2_width() == 1);
+static_assert(sut_t{coeffs, 13}.log2_width() == 13);
+static_assert(sut_t{coeffs, 14}.log2_width() == 14);
+
+} // namespace log2_width_tests
+
+// --------------------------------------------------------------------------------------------------------------------
 // width
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace width_tests {
 
-// bounds of valid log2_widths: [-frac_bits, bits-frac_bits-2] = [-48, 14] for fixed_t<int64_t, 48>
+// bounds of valid widths for fixed_t<int64_t, 48>: 2^[-frac_bits, bits-frac_bits-2] = 2^[-48, 14]
 static_assert(sut_t{coeffs, -48}.width() == x_t{1} >> 48);
 static_assert(sut_t{coeffs, -47}.width() == x_t{1} >> 47);
 static_assert(sut_t{coeffs, -1}.width() == x_t{1} >> 1);

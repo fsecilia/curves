@@ -94,11 +94,17 @@ public:
         return y_t::convert(p1 + m1 * t);
     }
 
+    /// width of segment as base-2 exponent
+    ///
+    /// During subdivision, segments are only ever bisected down from a power-of-2 domain, so each segment width has
+    /// a single bit set. We can describe that more compactly using this shift from 1.
+    constexpr auto log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
+
     /// width of segment in input format
     constexpr auto width() const noexcept -> x_t
     {
         // this doesn't use the shifter because the width is exact.
-        return x_t::literal(1ll << (x_t::frac_bits + unpack_log2_width()));
+        return x_t::literal(1ll << (x_t::frac_bits + log2_width()));
     }
 
     /// true if segment is monotonic
@@ -140,8 +146,8 @@ public:
         constexpr auto min_log2_width = static_cast<int8_t>(-x_t::frac_bits);
         constexpr auto max_log2_width = static_cast<int8_t>(bit_width - x_t::frac_bits - 2);
 
-        auto const log2_width = unpack_log2_width();
-        return min_log2_width <= log2_width && log2_width <= max_log2_width;
+        auto const actual_log2_width = log2_width();
+        return min_log2_width <= actual_log2_width && actual_log2_width <= max_log2_width;
     }
 
 private:
@@ -149,15 +155,12 @@ private:
     {
         assert(x_t{0} <= dx);
 
-        auto const log2_width = unpack_log2_width();
-
         // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
         // x/2^k = x*2^-k = x << -k == x >> k
-        return x_t::literal(shifter_.shift(dx.value, -log2_width));
+        return x_t::literal(shifter_.shift(dx.value, -log2_width()));
     }
 
     constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
-    constexpr auto unpack_log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
 
     [[no_unique_address]] fma_t fma_;
     [[no_unique_address]] shifter_t shifter_;
