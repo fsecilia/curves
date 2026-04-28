@@ -38,7 +38,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
         auto const c = static_cast<real_t>(coeffs[2].value);
 
         // find largest term
-        if (a)
+        if (a != 0.0)
         {
             // The cubic term is valid, so first check the absolute maximum the quadratic from the previous horner's
             // loop step could ever reach. If the full cubic is p(t) = at^3 + bt^2 + ct + d, the intermediate quadratic
@@ -65,7 +65,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
                 if (0.0 < t1 && t1 < 1.0 && operator()(coeffs, to_fixed<normalized_t>(t1))) return true;
             }
         }
-        else if (b)
+        else if (b != 0.0)
         {
             // The cubic term is invalid, but the quadratic term is valid. The full quadratic is p(t) = bt^2 + ct + d.
             // The peak of the final quadratic is at p'(t) = 2bt + c = 0 -> -c/2b
@@ -81,12 +81,12 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
     {
         using coeff_t = monomial_t::value_type;
         auto accumulator = coeffs[0];
-        for (auto coeff = 1u, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
+        for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
         {
             auto wide = multiply(accumulator, t) >> normalized_t::frac_bits;
             wide.value += coeffs[coeff].value;
             if (wide.value < min<coeff_t>().value || max<coeff_t>().value < wide.value) return true;
-            accumulator.value = wide.value;
+            accumulator.value = int_cast<typename coeff_t::value_t>(wide.value);
         }
         return false;
     }

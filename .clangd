@@ -4,6 +4,7 @@ CompileFlags:
     - -mno-direct-extern-access
   Add:
     - -std=c++2c
+    - -Wno-unused-function
 
 ---
 
