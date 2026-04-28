@@ -185,21 +185,46 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.exte
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// log2_width
+// packed values
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace log2_width_tests {
+namespace packed_values_tests {
 
-// bounds of valid log2_widths for fixed_t<int64_t, 48>: [-frac_bits, bits-frac_bits-2] = [-48, 14]
-static_assert(sut_t{coeffs, -48}.log2_width() == -48);
-static_assert(sut_t{coeffs, -47}.log2_width() == -47);
-static_assert(sut_t{coeffs, -1}.log2_width() == -1);
-static_assert(sut_t{coeffs, 0}.log2_width() == 0);
-static_assert(sut_t{coeffs, 1}.log2_width() == 1);
-static_assert(sut_t{coeffs, 13}.log2_width() == 13);
-static_assert(sut_t{coeffs, 14}.log2_width() == 14);
+constexpr auto test_coeffs(coeffs_t coeffs, int8_t log2_width) noexcept -> bool
+{
+    auto const sut = sut_t{coeffs, log2_width};
+    return sut.coeffs() == coeffs && sut.log2_width() == log2_width;
+}
 
-} // namespace log2_width_tests
+constexpr auto log2_width_max = max<int8_t>();
+constexpr auto log2_width_min = min<int8_t>();
+
+// zero
+static_assert(test_coeffs(coeffs, 0));
+
+// sign extension
+constexpr auto sign_extension_coeffs = coeffs_t{-c01, -c1, -c1, -c1};
+static_assert(test_coeffs(sign_extension_coeffs, log2_width_min));
+static_assert(test_coeffs(sign_extension_coeffs, log2_width_max));
+
+// safe boundaries
+constexpr auto boundaries_min = coeffs_t{coeff_t{cv0_min}, coeff_t{cv_min}, coeff_t{cv_min}, coeff_t{cv_min}};
+constexpr auto boundaries_max = coeffs_t{coeff_t{cv0_max}, coeff_t{cv_max}, coeff_t{cv_max}, coeff_t{cv_max}};
+static_assert(test_coeffs(boundaries_min, log2_width_min));
+static_assert(test_coeffs(boundaries_min, 0));
+static_assert(test_coeffs(boundaries_min, log2_width_max));
+static_assert(test_coeffs(boundaries_max, log2_width_min));
+static_assert(test_coeffs(boundaries_max, 0));
+static_assert(test_coeffs(boundaries_max, log2_width_max));
+
+// combs: test bitwise ops aren't bleeding into adjacent bits
+constexpr auto comb_even = coeff_t{0x2AAA'AAAA'AAAA'AAAALL};
+constexpr auto comb_odd = coeff_t{0x5555'5555'5555'5555LL};
+
+static_assert(test_coeffs({comb_even >> 8, comb_odd, comb_even, comb_odd}, 0xAA));
+static_assert(test_coeffs({comb_odd >> 8, comb_even, comb_odd, comb_even}, 0x55));
+
+} // namespace packed_values_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // width
