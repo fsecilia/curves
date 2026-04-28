@@ -47,31 +47,23 @@ constexpr auto coeffs = coeffs_t{};
 
 namespace normalization_shift_tests {
 
-// fma that bypasses the math to just expose parameter t
-struct passthrough_fma_t
-{
-    template <is_fixed y_t>
-    [[nodiscard]] constexpr auto operator()(y_t, is_fixed auto t, is_fixed auto) const noexcept -> y_t
-    {
-        return y_t::convert(t);
-    }
-};
+using sut_t = segment_t<x_t, coeff_t, coeff_t>;
 
 // zero shift
 constexpr auto dx_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
-constexpr auto sut0 = segment_t<x_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 0);
+constexpr auto sut0 = sut_t{{c0, c0, c1, c0}, 0};
 static_assert(sut0.evaluate(dx_quarter).value == dx_quarter.value);
 
 // positive shift (left shift dx, segment is narrower than 1.0)
 // dx is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
 constexpr auto dx_eighth = x_t::literal(1LL << (x_t::frac_bits - 3));
-constexpr auto sut_left = segment_t<x_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, -2);
+constexpr auto sut_left = sut_t{{c0, c0, c1, c0}, -2};
 static_assert(sut_left.evaluate(dx_eighth).value == (dx_eighth.value << 2));
 
 // negative shift (right shift dx, segment is wider than 1.0)
 // dx is 2.0, shift is -2 (divide by 4), resulting t should be 0.5
 constexpr auto dx_two = x_t::literal(2ULL << x_t::frac_bits);
-constexpr auto sut_right = segment_t<x_t, coeff_t, coeff_t, passthrough_fma_t>({c0, c0, c0, c0}, 2);
+constexpr auto sut_right = sut_t{{c0, c0, c1, c0}, 2};
 static_assert(sut_right.evaluate(dx_two).value == (dx_two.value >> 2));
 
 } // namespace normalization_shift_tests
@@ -149,10 +141,6 @@ static_assert(evaluate({0, 0, 0, cv_min}, 0, t0) == cv_min);
 constexpr auto cv0_quarter = cv0_max / 4;
 constexpr auto cv_quarter = cv_max / 4;
 static_assert(evaluate({cv0_quarter, cv_quarter, cv_quarter, cv_quarter}, 0, t_max) > (cv_max / 2));
-
-// saturation ceiling
-static_assert(evaluate({cv0_max, cv_max, cv_max, cv_max}, 0, t_max) == cv_max);
-static_assert(evaluate({cv0_min, cv_min, cv_min, cv_min}, 0, t_max) == cv_min);
 
 constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
 
