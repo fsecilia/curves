@@ -31,7 +31,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
-        if (operator()(coeffs, normalized_t{1})) return true; // this pops if the type has no integer bits
+        if (operator()(coeffs, normalized_t{1})) return true; // this won't compile if the type has no integer bits
 
         auto const a = from_fixed<real_t>(coeffs[0]);
         auto const b = from_fixed<real_t>(coeffs[1]);
@@ -83,10 +83,20 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
         auto accumulator = coeffs[0];
         for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
         {
-            auto wide = multiply(accumulator, t) >> normalized_t::frac_bits;
-            wide.value += coeffs[coeff].value;
-            if (wide.value < min<coeff_t>().value || max<coeff_t>().value < wide.value) return true;
-            accumulator.value = int_cast<typename coeff_t::value_t>(wide.value);
+            // calc wide product
+            auto wide_value = multiply(accumulator, t).value;
+
+            // align radices
+            wide_value >>= normalized_t::frac_bits;
+
+            // sum
+            wide_value += coeffs[coeff].value;
+
+            // check for saturation
+            if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
+
+            // accumulate
+            accumulator.value = int_cast<typename coeff_t::value_t>(wide_value);
         }
         return false;
     }
