@@ -67,43 +67,59 @@ using constexpr_div_sut_t = i16_4_t;
 // Test Fixtures
 // ====================================================================================================================
 
-struct fixed_test_t : Test
+// strict nttp mock that fails compilation if any shift operation is called
+struct strict_mock_shifter_t
 {
-    struct mock_shifter_t
+    template <int_t count, integral value_t> constexpr auto shl(value_t) const -> value_t
     {
-        virtual ~mock_shifter_t() = default;
+        throw "shl() called unexpectedly";
+        return {};
+    }
 
-        MOCK_METHOD(int_t, shl, (int_t value, int_t count), (const, noexcept));
-        MOCK_METHOD(int_t, shr, (int_t value, int_t count), (const, noexcept));
-        MOCK_METHOD(int_t, shift, (int_t value, int_t count), (const, noexcept));
-    };
-    StrictMock<mock_shifter_t> mock_shifter{};
-
-    struct shifter_t
+    template <int_t count, integral value_t> constexpr auto shr(value_t) const -> value_t
     {
-        mock_shifter_t* mock = nullptr;
+        throw "shr() called unexpectedly";
+        return {};
+    }
 
-        template <int_t count, integral value_t> constexpr auto shl(value_t value) const noexcept -> value_t
-        {
-            return static_cast<value_t>(mock->shl(int_cast<int_t>(value), count));
-        }
+    template <int_t count, integral value_t> constexpr auto shift(value_t) const -> value_t
+    {
+        throw "shift() called unexpectedly";
+        return {};
+    }
+};
 
-        template <int_t count, integral value_t> constexpr auto shr(value_t value) const noexcept -> value_t
-        {
-            return static_cast<value_t>(mock->shr(int_cast<int_t>(value), count));
-        }
+// nttp mock that expects shl, verifies inputs, and returns a mocked result
+template <auto expected_value, int_t expected_count, auto return_value> struct mock_shl_t : strict_mock_shifter_t
+{
+    template <int_t count, integral value_t> constexpr auto shl(value_t value) const -> value_t
+    {
+        if constexpr (count != expected_count) throw "shl() received incorrect shift count";
+        if (value != expected_value) throw "shl() received incorrect input value";
+        return static_cast<value_t>(return_value);
+    }
+};
 
-        template <int_t count, integral value_t> constexpr auto shift(value_t value) const noexcept -> value_t
-        {
-            return static_cast<value_t>(mock->shift(int_cast<int_t>(value), count));
-        }
+// nttp mock that expects shr, verifies inputs, and returns a mocked result
+template <auto expected_value, int_t expected_count, auto return_value> struct mock_shr_t : strict_mock_shifter_t
+{
+    template <int_t count, integral value_t> constexpr auto shr(value_t value) const -> value_t
+    {
+        if constexpr (count != expected_count) throw "shr()() received incorrect shift count";
+        if (value != expected_value) throw "shr() received incorrect input value";
+        return static_cast<value_t>(return_value);
+    }
+};
 
-        template <integral dst_t, int_t count, integral src_t> constexpr auto shift(src_t src) const noexcept -> dst_t
-        {
-            return static_cast<value_t>(mock->shift(int_cast<int_t>(src), count));
-        }
-    };
-    shifter_t shifter{shifter_t{&mock_shifter}};
+// Mock that expects shift
+template <auto expected_value, int expected_count, auto return_value> struct mock_shift_t : strict_mock_shifter_t
+{
+    template <int count, std::integral value_t> constexpr auto shift(value_t value) const -> value_t
+    {
+        if constexpr (count != expected_count) throw "shift() received incorrect shift count";
+        if (value != expected_value) throw "shift() received incorrect input value";
+        return static_cast<value_t>(return_value);
+    }
 };
 
 // ====================================================================================================================
@@ -180,45 +196,48 @@ static_assert(i8_2_t ::convert(i16_4_t::literal(40)).value == 10);
 static_assert(i16_9_t::convert(i8_7_t::literal(64)).value == 256);
 static_assert(i8_7_t ::convert(i16_9_t::literal(256)).value == 64);
 
-TEST_F(fixed_test_t, calls_shl_with_correct_shift)
+constexpr auto convert_calls_shl_with_correct_shift() noexcept -> bool
 {
+    constexpr auto expected_shift = 4;
     using src_t = fixed_t<int16_t, 2>;
-    using dst_t = fixed_t<int16_t, 6>; // +4 shift
+    using dst_t = fixed_t<int16_t, src_t::frac_bits + expected_shift>;
 
-    auto const input = src_t::literal(7);
-    EXPECT_CALL(mock_shifter, shl(7, 4)).WillOnce(Return(7 << 4));
+    constexpr auto input = src_t::literal(7);
+    constexpr auto shifter = mock_shl_t<input.value, expected_shift, input.value << expected_shift>{};
 
-    auto const result = dst_t::convert(input, shifter);
-
-    EXPECT_EQ(result.value, 7 << 4);
+    constexpr auto result = dst_t::convert<shifter>(input);
+    return result.value == input.value << expected_shift;
 }
+static_assert(convert_calls_shl_with_correct_shift());
 
-TEST_F(fixed_test_t, calls_shr_with_correct_shift)
+constexpr auto convert_calls_shr_with_correct_shift() noexcept -> bool
 {
+    constexpr auto expected_shift = 4;
     using src_t = fixed_t<int16_t, 6>;
-    using dst_t = fixed_t<int16_t, 2>; // -4 shift
+    using dst_t = fixed_t<int16_t, src_t::frac_bits - expected_shift>;
 
-    auto const input = src_t::literal(112); // raw = 112
-    EXPECT_CALL(mock_shifter, shr(112, 4)).WillOnce(Return(112 >> 4));
+    constexpr auto input = src_t::literal(112);
+    constexpr auto shifter = mock_shr_t<input.value, expected_shift, (input.value >> expected_shift)>{};
 
-    auto const result = dst_t::convert(input, shifter);
-
-    EXPECT_EQ(result.value, 112 >> 4);
+    constexpr auto result = dst_t::convert<shifter>(input);
+    return result.value == input.value >> expected_shift;
 }
+static_assert(convert_calls_shr_with_correct_shift());
 
-TEST_F(fixed_test_t, no_shift_does_not_call_shifter)
+constexpr auto convert_does_not_call_shifter_for_zero_shift() noexcept -> bool
 {
     using src_t = fixed_t<int16_t, 4>;
     using dst_t = fixed_t<int16_t, 4>;
 
-    auto const input = src_t::literal(42);
+    constexpr auto input = src_t::literal(37);
+    constexpr auto shifter = strict_mock_shifter_t{};
 
-    // no EXPECT_CALL; test should fail if shifter is called during no-shift conversion
+    // test should fail if shifter is called during no-shift conversion
 
-    auto const result = dst_t::convert(input, shifter);
-
-    EXPECT_EQ(result.value, 42);
+    constexpr auto result = dst_t::convert<shifter>(input);
+    return result == input;
 }
+static_assert(convert_does_not_call_shifter_for_zero_shift());
 
 namespace rounding {
 
@@ -228,18 +247,18 @@ constexpr auto min = crv::min<int8_t>();
 constexpr auto max = crv::max<int8_t>();
 
 // default truncation
-static_assert(dst_t::convert(src_t::literal(min), shifter_truncate).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 1), shifter_truncate).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 4), shifter_truncate).value == min / 4 + 1);
-static_assert(dst_t::convert(src_t::literal(max - 4), shifter_truncate).value == max / 4 - 1);
-static_assert(dst_t::convert(src_t::literal(max), shifter_truncate).value == max / 4);
+static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min)).value == min / 4);
+static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min + 1)).value == min / 4);
+static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min + 4)).value == min / 4 + 1);
+static_assert(dst_t::convert<shifter_truncate>(src_t::literal(max - 4)).value == max / 4 - 1);
+static_assert(dst_t::convert<shifter_truncate>(src_t::literal(max)).value == max / 4);
 
 // round nearest even
-static_assert(dst_t::convert(src_t::literal(min), shifter_rne).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 1), shifter_rne).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 3), shifter_rne).value == min / 4 + 1);
-static_assert(dst_t::convert(src_t::literal(max - 4), shifter_rne).value == max / 4);
-static_assert(dst_t::convert(src_t::literal(max), shifter_rne).value == max / 4 + 1);
+static_assert(dst_t::convert<shifter_rne>(src_t::literal(min)).value == min / 4);
+static_assert(dst_t::convert<shifter_rne>(src_t::literal(min + 1)).value == min / 4);
+static_assert(dst_t::convert<shifter_rne>(src_t::literal(min + 3)).value == min / 4 + 1);
+static_assert(dst_t::convert<shifter_rne>(src_t::literal(max - 4)).value == max / 4);
+static_assert(dst_t::convert<shifter_rne>(src_t::literal(max)).value == max / 4 + 1);
 
 } // namespace rounding
 
@@ -270,33 +289,37 @@ static_assert(i16_4_t::convert(i32_8_t::literal(-2'000'000'000)).value == i16_mi
 static_assert(u8_4_t::convert<overflow_policy_t::saturate>(u16_4_t{256}).value == 255);
 static_assert(u8_4_t::convert<overflow_policy_t::wrap>(u16_4_t{256}).value == 0);
 
-TEST_F(fixed_test_t, upscale_saturates_without_calling_shifter)
+// when upscaling, saturation can be detected before shifting
+constexpr auto upscale_saturates_without_calling_shifter() noexcept -> bool
 {
+    constexpr auto expected_shift = 4;
     using src_t = fixed_t<int16_t, 0>;
-    using dst_t = fixed_t<int8_t, 4>;
+    using dst_t = fixed_t<int8_t, src_t::frac_bits + expected_shift>;
 
-    auto const big = src_t::literal(1000); // will overflow after shift
+    constexpr auto input = src_t::literal(1000); // will overflow after shift
+    constexpr auto shifter = strict_mock_shifter_t{};
 
-    // no EXPECT_CALL; test should fail if shifter is called during upscale saturation
+    // test should fail if shifter is called during upscale saturation
 
-    auto const result = dst_t::convert(big, shifter);
-
-    EXPECT_EQ(result.value, max<int8_t>());
+    auto const result = dst_t::convert<shifter>(input);
+    return result == max<dst_t>();
 }
+static_assert(upscale_saturates_without_calling_shifter());
 
-TEST_F(fixed_test_t, downscale_calls_shifter_before_saturation)
+// when downscaling, saturation is detected after shifting
+constexpr auto downscale_calls_shifter_before_saturation() noexcept -> bool
 {
-    using src_t = fixed_t<int16_t, 8>;
-    using dst_t = fixed_t<int8_t, 0>;
+    constexpr auto expected_shift = 8;
+    using src_t = fixed_t<int32_t, 8>;
+    using dst_t = fixed_t<int8_t, src_t::frac_bits - expected_shift>;
 
-    auto const input = src_t::literal(30000);
+    constexpr auto input = src_t::literal((max<dst_t>().value + 1) << expected_shift);
+    constexpr auto shifter = mock_shr_t<input.value, expected_shift, (input.value >> expected_shift)>{};
 
-    EXPECT_CALL(mock_shifter, shr(30000, 8)).WillOnce(Return(200)); // still overflows int8_t
-
-    auto const result = dst_t::convert(input, shifter);
-
-    EXPECT_EQ(result.value, max<int8_t>());
+    constexpr auto result = dst_t::convert<shifter>(input);
+    return result == max<dst_t>();
 }
+static_assert(downscale_calls_shifter_before_saturation());
 
 } // namespace saturation
 
@@ -618,45 +641,53 @@ static_assert(multiply(u64_64_t::literal(max<uint64_t>()), u64_64_t::literal(max
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
 
-TEST_F(fixed_test_t, multiplication_to_specific_type)
+constexpr auto multiplication_to_specific_type_calls_shift_with_correct_type() noexcept -> bool
 {
     using out_t = fixed_t<uint_t, 1>;
-    auto const lhs = u8_1_t{2};
-    auto const rhs = fixed_t<int16_t, 1>{3};
-    auto const expected = out_t::literal(29);
-    EXPECT_CALL(mock_shifter, shr((2 * 3) << 2, 1)).WillOnce(Return(expected.value));
 
-    auto const actual = multiply<out_t>(lhs, rhs, shifter);
+    constexpr auto lhs = u8_1_t{2};
+    constexpr auto rhs = fixed_t<int16_t, 1>{3};
+    constexpr auto shift_input = multiply(lhs, rhs);
+    constexpr auto expected_shift = decltype(shift_input)::frac_bits - out_t::frac_bits;
+    constexpr auto expected = out_t::literal(shift_input.value << expected_shift);
 
-    EXPECT_EQ(expected, actual);
+    constexpr auto shifter = mock_shr_t<shift_input.value, expected_shift, expected.value>{};
+
+    constexpr auto result = multiply<out_t, shifter>(lhs, rhs);
+    return result == expected;
 }
+static_assert(multiplication_to_specific_type_calls_shift_with_correct_type());
 
 // --------------------------------------------------------------------------------------------------------------------
-// Multiplication to LHS Type with Rounding Mode
+// Multiplication to LHS Type with shifter
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(i8_1_t{2}, i8_1_t{3}, shifter_truncate) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, shifter_truncate) == i8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, shifter_truncate) == u8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, shifter_truncate) == u8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(i8_1_t{2}, i8_1_t{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, shifter_truncate>(i8_1_t{2}, u8_1_t{3}) == i8_1_t{2 * 3});
+static_assert(multiply<u8_1_t, shifter_truncate>(u8_1_t{2}, i8_1_t{3}) == u8_1_t{2 * 3});
+static_assert(multiply<u8_1_t, shifter_truncate>(u8_1_t{2}, u8_1_t{3}) == u8_1_t{2 * 3});
 
-TEST_F(fixed_test_t, multiplication_to_lhs_type)
+constexpr auto multiplication_to_lhs_type_calls_shift_with_correct_type() noexcept -> bool
 {
     using sut_t = fixed_t<int_t, 1>;
-    auto const lhs = sut_t::literal(2 << 1);
-    auto const rhs = sut_t::literal(3 << 1);
-    auto const expected = sut_t::literal(29);
-    EXPECT_CALL(mock_shifter, shr((2 * 3) << 2, 1)).WillOnce(Return(expected.value));
 
-    auto const actual = multiply<sut_t>(lhs, rhs, shifter);
+    constexpr auto lhs = sut_t{2};
+    constexpr auto rhs = sut_t{3};
+    constexpr auto shift_input = multiply(lhs, rhs);
+    constexpr auto expected_shift = sut_t::frac_bits;
+    constexpr auto expected = sut_t::literal(shift_input.value >> expected_shift);
 
-    EXPECT_EQ(expected, actual);
+    constexpr auto shifter = mock_shr_t<shift_input.value, expected_shift, expected.value>{};
+
+    constexpr auto result = multiply<shifter>(lhs, rhs);
+    return result == expected;
 }
+static_assert(multiplication_to_lhs_type_calls_shift_with_correct_type());
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
@@ -880,21 +911,23 @@ static_assert(i32_16_t{5} % i32_0_t{2} == i32_16_t{1});
 // narrowing truncation
 static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
 
-// rounding via mock
-TEST_F(fixed_test_t, modulo_to_specific_type)
+constexpr auto modulo_to_specific_type_calls_shift_with_correct_type() noexcept -> bool
 {
     using out_t = fixed_t<uint_t, 1>;
-    auto const lhs = fixed_t<uint8_t, 3>::literal(27); // 3.375
-    auto const rhs = fixed_t<int16_t, 3>::literal(12); // 1.5
-    auto const remainder = int_t{27 % 12}; // 3
-    auto const expected = out_t::literal(5);
 
-    EXPECT_CALL(mock_shifter, shift(remainder, -2)).WillOnce(Return(expected.value));
+    constexpr auto lhs = fixed_t<uint8_t, 3>::literal(31);
+    constexpr auto rhs = fixed_t<int16_t, 4>::literal(23);
 
-    auto const actual = mod<out_t>(lhs, rhs, shifter);
+    constexpr auto shift_input = (31 << 1) % 23;
+    constexpr auto expected_shift = 3;
+    constexpr auto expected = out_t::literal(shift_input >> expected_shift);
 
-    EXPECT_EQ(expected, actual);
+    constexpr auto shifter = mock_shr_t<shift_input, expected_shift, expected.value>{};
+
+    constexpr auto result = mod<out_t, shifter>(lhs, rhs);
+    return result == expected;
 }
+static_assert(modulo_to_specific_type_calls_shift_with_correct_type());
 
 } // namespace modulo
 

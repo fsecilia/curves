@@ -114,10 +114,12 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
+    static constexpr auto default_overflow_policy = overflow_policy_t::saturate;
+
     /// converts from another fixed_t specialization, rescaling precision using shifter
-    template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
-        typename shifter_t = shifter_t<>>
-    static constexpr auto convert(other_t other, shifter_t const& shifter = {}) noexcept -> fixed_t
+    template <is_fixed other_t, overflow_policy_t overflow_policy = default_overflow_policy,
+        auto shifter = shifter_t<>{}>
+    static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
         if constexpr (std::same_as<fixed_t, other_t>) { return other; }
         else
@@ -166,10 +168,26 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// overloads convert so overflow policy can be specified first
-    template <overflow_policy_t overflow_policy, is_fixed other_t, typename shifter_t = shifter_t<>>
-    static constexpr auto convert(other_t other, shifter_t shifter = shifter_t{}) noexcept -> fixed_t
+    template <overflow_policy_t overflow_policy, is_fixed other_t, auto shifter = shifter_t<>{}>
+    static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
-        return convert<other_t, overflow_policy>(other, std::move(shifter));
+        return convert<other_t, overflow_policy, shifter>(other);
+    }
+
+    /// overloads convert so shifter can be specified first
+    template <auto shifter, is_fixed other_t, overflow_policy_t overflow_policy = default_overflow_policy>
+        requires(!std::same_as<decltype(shifter), overflow_policy_t>)
+    static constexpr auto convert(other_t other) noexcept -> fixed_t
+    {
+        return convert<other_t, overflow_policy, shifter>(other);
+    }
+
+    /// overloads convert so wrap and shifter can be specified without specifying other_t
+    template <overflow_policy_t overflow_policy, auto shifter, is_fixed other_t>
+        requires(!is_fixed<decltype(shifter)>)
+    static constexpr auto convert(other_t other) noexcept -> fixed_t
+    {
+        return convert<other_t, overflow_policy, shifter>(other);
     }
 
     explicit constexpr operator bool() const noexcept { return !!value; }
@@ -263,7 +281,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
     {
-        return *this = multiply<fixed_t>(*this, src, shifter_t<>{});
+        return *this = multiply<fixed_t, shifter_t<>{}>(*this, src);
     }
 
     constexpr auto operator/=(fixed_t src) noexcept -> fixed_t&
@@ -273,7 +291,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> constexpr auto operator%=(other_t src) noexcept -> fixed_t&
     {
-        return *this = mod(*this, src);
+        return *this = mod<fixed_t, shifter_t<>{}>(*this, src);
     }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
@@ -284,7 +302,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply<fixed_t>(lhs, rhs, shifter_t<>{});
+        return multiply<fixed_t, shifter_t<>{}>(lhs, rhs);
     }
 
     template <is_fixed other_t> friend constexpr auto operator/(fixed_t lhs, other_t rhs) noexcept -> fixed_t
@@ -294,7 +312,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator%(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return mod(lhs, rhs);
+        return mod<fixed_t, shifter_t<>{}>(lhs, rhs);
     }
 
     /// \returns wide product at higher precision
@@ -309,11 +327,20 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         return result_t::literal(product);
     }
 
-    /// \returns product, widened or narrowed to output type and rescaled to output precision using given rounding mode
-    template <is_fixed out_t, is_fixed rhs_t, typename shifter_t>
-    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs, shifter_t shifter) noexcept -> out_t
+    /// \returns product, widened or narrowed to output type and rescaled to output precision using given shifter
+    template <is_fixed out_t, auto shifter, is_fixed rhs_t>
+        requires(!is_fixed<decltype(shifter)>)
+    friend constexpr auto multiply(fixed_t lhs, rhs_t rhs) noexcept -> out_t
     {
-        return out_t::convert(multiply(lhs, rhs), std::move(shifter));
+        return out_t::template convert<shifter>(multiply(lhs, rhs));
+    }
+
+    /// \returns product rescaled to input type using given shifter
+    template <auto shifter>
+        requires(!is_fixed<decltype(shifter)>)
+    friend constexpr auto multiply(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
+    {
+        return multiply<fixed_t, shifter>(lhs, rhs);
     }
 
     /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode
@@ -339,8 +366,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// calcs remainder of lhs/rhs
-    template <is_fixed out_t, is_fixed rhs_t, typename shifter_t = shifter_t<>>
-    friend constexpr auto mod(fixed_t lhs, rhs_t rhs, shifter_t shifter = {}) noexcept -> out_t
+    template <is_fixed out_t, is_fixed rhs_t, auto shifter = shifter_t<>{}>
+    friend constexpr auto mod(fixed_t lhs, rhs_t rhs) noexcept -> out_t
     {
         // widen
         using wide_t = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
@@ -354,11 +381,18 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (max_frac > rhs_t::frac_bits) rhs_wide <<= (max_frac - rhs_t::frac_bits);
 
         // modulo
-        auto const remainder = lhs_wide % rhs_wide;
+        auto const remainder = static_cast<wide_t>(lhs_wide % rhs_wide);
 
         // scale to output precision
-        constexpr auto out_shift = out_t::frac_bits - max_frac;
-        return out_t::literal(shifter.template shift<typename out_t::value_t, out_shift>(remainder));
+        return out_t::template convert<shifter>(fixed_t<wide_t, max_frac>::literal(remainder));
+    }
+
+    /// overloads mod to specify shifter
+    template <is_fixed out_t, auto shifter, is_fixed rhs_t>
+        requires(!is_fixed<decltype(shifter)>)
+    friend constexpr auto mod(fixed_t lhs, rhs_t rhs) noexcept -> out_t
+    {
+        return mod<out_t, rhs_t, shifter>(lhs, rhs);
     }
 
     /// calcs remainder of lhs/rhs, defaulting to dividend's type and precision
