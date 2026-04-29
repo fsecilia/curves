@@ -116,8 +116,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// converts from another fixed_t specialization, rescaling precision using shifter
     template <is_fixed other_t, overflow_policy_t overflow_policy = overflow_policy_t::saturate,
-        typename shifter_type = shifter_t<>>
-    static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
+        typename shifter_t = shifter_t<>>
+    static constexpr auto convert(other_t other, shifter_t const& shifter = {}) noexcept -> fixed_t
     {
         if constexpr (std::same_as<fixed_t, other_t>) { return other; }
         else
@@ -166,8 +166,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// overloads convert so overflow policy can be specified first
-    template <overflow_policy_t overflow_policy, is_fixed other_t, typename shifter_type = shifter_t<>>
-    static constexpr auto convert(other_t other, shifter_type shifter = shifter_type{}) noexcept -> fixed_t
+    template <overflow_policy_t overflow_policy, is_fixed other_t, typename shifter_t = shifter_t<>>
+    static constexpr auto convert(other_t other, shifter_t shifter = shifter_t{}) noexcept -> fixed_t
     {
         return convert<other_t, overflow_policy>(other, std::move(shifter));
     }
