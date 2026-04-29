@@ -17,13 +17,8 @@
 namespace crv {
 
 /// shifts using rounding mode; range checks via assert
-template <typename rounding_mode_t = rounding_modes::shr::nearest_even_t> class shifter_t
+template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter_t
 {
-public:
-    constexpr shifter_t() noexcept = default;
-
-    explicit constexpr shifter_t(rounding_mode_t rounding_mode) noexcept : rounding_mode_{std::move(rounding_mode)} {}
-
     template <typename value_t> constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
     {
         return shr<value_t, value_t>(value, count);
@@ -41,9 +36,9 @@ public:
         assert(count > 0 && "shifter_t: shr count must be positive");
         assert(count < src_bits && "shifter_t: shr count must be less than bit width");
 
-        auto const unshifted = rounding_mode_.bias(src, count);
+        auto const unshifted = rounding_mode.bias(src, count);
         auto const shifted = int_cast<src_t>(unshifted >> count);
-        return int_cast<dst_t>(rounding_mode_.carry(shifted, unshifted, count));
+        return int_cast<dst_t>(rounding_mode.carry(shifted, unshifted, count));
     }
 
     template <typename dst_t, int_t count, typename src_t> constexpr auto shr(src_t src) const noexcept -> dst_t
@@ -53,9 +48,9 @@ public:
         static_assert(count > 0, "shifter_t: shr count must be positive");
         static_assert(count < src_bits, "shifter_t: shr count must be less than bit width");
 
-        auto const unshifted = rounding_mode_.bias(src, count);
+        auto const unshifted = rounding_mode.bias(src, count);
         auto const shifted = int_cast<src_t>(unshifted >> count);
-        return int_cast<dst_t>(rounding_mode_.carry(shifted, unshifted, count));
+        return int_cast<dst_t>(rounding_mode.carry(shifted, unshifted, count));
     }
 
     template <typename value_t> constexpr auto shl(value_t value, int_t count) const noexcept -> value_t
@@ -130,9 +125,6 @@ public:
         if constexpr (count >= 0) return shl<dst_t, count>(value);
         else return shr<dst_t, -count, src_t>(value);
     }
-
-private:
-    [[no_unique_address]] rounding_mode_t rounding_mode_{};
 };
 
 } // namespace crv

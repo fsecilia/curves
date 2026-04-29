@@ -18,8 +18,8 @@ namespace crv::spline {
 
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t,
-    typename dx_to_t_shifter_t = shifter_t<rounding_modes::shr::fast::nearest_up_t>,
-    typename horners_loop_shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
+    typename dx_to_t_shifter_t = shifter_t<rounding_modes::shr::fast::nearest_up>,
+    typename horners_loop_shifter_t = shifter_t<rounding_modes::shr::truncate>>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {

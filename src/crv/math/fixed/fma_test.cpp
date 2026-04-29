@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "fma.hpp"
+#include <crv/math/rounding_mode.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv {
@@ -23,8 +24,8 @@ using pure_int_t = fixed_t<int16_t, 0>;
 using frac_t = fixed_t<int16_t, 12>;
 
 // common rounding modes
-constexpr auto rne = shifter_t{rounding_modes::shr::nearest_even};
-constexpr auto trunc = shifter_t{rounding_modes::shr::truncate};
+constexpr auto rne = shifter_t<rounding_modes::shr::nearest_even>{};
+constexpr auto trunc = shifter_t<rounding_modes::shr::truncate>{};
 
 constexpr auto saturate = overflow_policy_t::saturate;
 constexpr auto wrap = overflow_policy_t::wrap;

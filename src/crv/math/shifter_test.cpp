@@ -150,8 +150,8 @@ template <typename underlying_t> struct test_traits_t
         .expected_unshifted = bias_val,
         .carry_result = carry_val};
 
-    using sut_t = shifter_t<rounding_mode_t<src_t>>;
-    static constexpr auto sut = sut_t{rounding_mode};
+    using sut_t = shifter_t<rounding_mode>;
+    static constexpr auto sut = sut_t{};
     static constexpr auto src = src_t{src_val};
 };
 
@@ -249,10 +249,8 @@ template <typename underlying_t> struct test_t
     using src_t = strong_type_t<underlying_t, struct src_tag_t>;
     using dst_t = strong_type_t<underlying_t, struct fst_tag_t>;
 
-    static constexpr rounding_mode_t<src_t> rounding_mode{};
-
-    using sut_t = shifter_t<rounding_mode_t<src_t>>;
-    static constexpr auto sut = sut_t{rounding_mode};
+    using sut_t = shifter_t<rounding_mode_t<src_t>{}>;
+    static constexpr auto sut = sut_t{};
 
     static constexpr auto count = 4;
 
@@ -317,10 +315,8 @@ template <typename t_underlying_t> struct shl_death_tests_t : Test
     using src_t = strong_type_t<underlying_t, struct src_tag_t>;
     using dst_t = strong_type_t<underlying_t, struct fst_tag_t>;
 
-    static constexpr rounding_mode_t<src_t> rounding_mode{};
-
-    using sut_t = shifter_t<rounding_mode_t<src_t>>;
-    static constexpr auto sut = sut_t{rounding_mode};
+    using sut_t = shifter_t<rounding_mode_t<src_t>{}>;
+    static constexpr auto sut = sut_t{};
 
     static constexpr auto count = 4;
 
