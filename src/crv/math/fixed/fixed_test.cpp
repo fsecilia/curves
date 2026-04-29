@@ -405,8 +405,21 @@ namespace comparisons {
 
 static_assert(sut_t{5} == sut_t{5});
 static_assert(sut_t{3} != sut_t{7});
+static_assert(sut_t{7} != sut_t{3});
 static_assert(sut_t{3} < sut_t{7});
-static_assert(sut_t{-3} < sut_t{3});
+static_assert(!(sut_t{7} < sut_t{3}));
+
+static_assert(sut_t{5} == 5);
+static_assert(sut_t{3} != 7);
+static_assert(sut_t{7} != 3);
+static_assert(sut_t{3} < 7);
+static_assert(!(sut_t{7} < 3));
+
+static_assert(5 == sut_t{5});
+static_assert(3 != sut_t{7});
+static_assert(7 != sut_t{3});
+static_assert(3 < sut_t{7});
+static_assert(!(7 < sut_t{3}));
 
 } // namespace comparisons
 
