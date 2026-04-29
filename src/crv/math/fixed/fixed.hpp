@@ -199,6 +199,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     constexpr auto operator==(fixed_t const&) const noexcept -> bool = default;
     constexpr auto operator<=>(fixed_t const&) const noexcept -> auto = default;
 
+    friend constexpr auto operator==(fixed_t lhs, value_t rhs) noexcept -> bool { return lhs == fixed_t{rhs}; }
+    friend constexpr auto operator==(value_t lhs, fixed_t rhs) noexcept -> bool { return fixed_t{lhs} == rhs; }
+    friend constexpr auto operator<=>(fixed_t lhs, value_t rhs) noexcept -> auto { return lhs <=> fixed_t{rhs}; }
+    friend constexpr auto operator<=>(value_t lhs, fixed_t rhs) noexcept -> auto { return fixed_t{lhs} <=> rhs; }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Unary Arithmetic
     // ----------------------------------------------------------------------------------------------------------------
