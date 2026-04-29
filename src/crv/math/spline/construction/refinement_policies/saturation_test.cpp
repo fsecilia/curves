@@ -26,11 +26,6 @@ template <typename fixed_t> constexpr auto convert(fixed_t src) noexcept -> fixe
     return src;
 }
 
-template <typename fixed_t> constexpr auto convert(std::integral auto literal) noexcept -> fixed_t
-{
-    return fixed_t::literal(literal);
-}
-
 template <typename fixed_t> constexpr auto convert(std::floating_point auto floating_point) noexcept -> fixed_t
 {
     return to_fixed<fixed_t>(floating_point);
@@ -86,7 +81,7 @@ TEST_P(spline_refinement_policies_interval_test_t, result)
 }
 
 interval_param_t const interval_params[] = {
-    {false, 0, 0, 0, 0},
+    {false, 0.0, 0.0, 0.0, 0.0},
     {false, 1.0, 1.0, 1.0, 1.0},
 
     // degenerate quadratic, a = 0: peak in (0, 1) is safe
@@ -162,7 +157,7 @@ TEST_P(spline_refinement_policies_point_test_t, result)
 }
 
 point_param_t const point_params[] = {
-    {false, 0, 0, 0, 0, 0},
+    {false, 0.0, 0.0, 0.0, 0.0, 0.0},
     {false, 1.0, 1.0, 1.0, 1.0, 0.5},
 
     // saturates immediately on iteration 1
