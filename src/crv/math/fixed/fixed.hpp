@@ -123,8 +123,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         else
         {
             using other_value_t = typename other_t::value_t;
-            constexpr auto shift_bits = frac_bits - other_t::frac_bits;
-            constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
+            static constexpr auto shift_bits = frac_bits - other_t::frac_bits;
+            static constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
 
             if constexpr (shift_bits >= 0)
             {
