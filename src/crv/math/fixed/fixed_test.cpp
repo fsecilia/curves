@@ -53,6 +53,9 @@ using u128_128_t = fixed_t<uint128_t, 128>;
 constexpr auto rne = rounding_modes::shr::nearest_even;
 constexpr auto truncate = rounding_modes::shr::truncate;
 
+static auto const shifter_truncate = shifter_t<truncate>{};
+static auto const shifter_rne = shifter_t<rne>{};
+
 using value_t = int_t;
 constexpr auto frac_bits = 21;
 using sut_t = fixed_t<value_t, frac_bits>;
@@ -225,18 +228,18 @@ constexpr auto min = crv::min<int8_t>();
 constexpr auto max = crv::max<int8_t>();
 
 // default truncation
-static_assert(dst_t::convert(src_t::literal(min), shifter_t{truncate}).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 1), shifter_t{truncate}).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 4), shifter_t{truncate}).value == min / 4 + 1);
-static_assert(dst_t::convert(src_t::literal(max - 4), shifter_t{truncate}).value == max / 4 - 1);
-static_assert(dst_t::convert(src_t::literal(max), shifter_t{truncate}).value == max / 4);
+static_assert(dst_t::convert(src_t::literal(min), shifter_truncate).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 1), shifter_truncate).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 4), shifter_truncate).value == min / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(max - 4), shifter_truncate).value == max / 4 - 1);
+static_assert(dst_t::convert(src_t::literal(max), shifter_truncate).value == max / 4);
 
 // round nearest even
-static_assert(dst_t::convert(src_t::literal(min), shifter_t{rne}).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 1), shifter_t{rne}).value == min / 4);
-static_assert(dst_t::convert(src_t::literal(min + 3), shifter_t{rne}).value == min / 4 + 1);
-static_assert(dst_t::convert(src_t::literal(max - 4), shifter_t{rne}).value == max / 4);
-static_assert(dst_t::convert(src_t::literal(max), shifter_t{rne}).value == max / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(min), shifter_rne).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 1), shifter_rne).value == min / 4);
+static_assert(dst_t::convert(src_t::literal(min + 3), shifter_rne).value == min / 4 + 1);
+static_assert(dst_t::convert(src_t::literal(max - 4), shifter_rne).value == max / 4);
+static_assert(dst_t::convert(src_t::literal(max), shifter_rne).value == max / 4 + 1);
 
 } // namespace rounding
 
@@ -615,10 +618,10 @@ static_assert(multiply(u64_64_t::literal(max<uint64_t>()), u64_64_t::literal(max
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}, shifter_truncate) == i8_1_t{2 * 3});
 
 TEST_F(fixed_test_t, multiplication_to_specific_type)
 {
@@ -637,10 +640,10 @@ TEST_F(fixed_test_t, multiplication_to_specific_type)
 // Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t>(i8_1_t{2}, i8_1_t{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, shifter_t{truncate}) == i8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, shifter_t{truncate}) == u8_1_t{2 * 3});
-static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, shifter_t{truncate}) == u8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(i8_1_t{2}, i8_1_t{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t>(i8_1_t{2}, u8_1_t{3}, shifter_truncate) == i8_1_t{2 * 3});
+static_assert(multiply<u8_1_t>(u8_1_t{2}, i8_1_t{3}, shifter_truncate) == u8_1_t{2 * 3});
+static_assert(multiply<u8_1_t>(u8_1_t{2}, u8_1_t{3}, shifter_truncate) == u8_1_t{2 * 3});
 
 TEST_F(fixed_test_t, multiplication_to_lhs_type)
 {

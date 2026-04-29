@@ -161,7 +161,7 @@ struct quadratic_minimax_t
 /// results in a specific Q-format. The number of iterations and the algorithm for the initial guess are tunable
 /// parameters
 template <int_t nr_iteration_count = 4, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t,
-    typename shifter_t = shifter_t<rounding_modes::shr::truncate_t>>
+    typename shifter_t = shifter_t<rounding_modes::shr::truncate>>
     requires(nr_iteration_count > 0)
 struct normalized_rsqrt_t
 {
