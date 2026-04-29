@@ -19,9 +19,9 @@ concept is_monomial = requires(coeffs_t coeffs) {
     typename coeffs_t::value_type;
     requires is_fixed<typename coeffs_t::value_type>;
     { coeffs.size() } -> std::convertible_to<std::size_t>;
-    coeffs.size() == 4;
+    requires(coeffs.size() == 4);
     { coeffs[0] };
-    { coeffs[coeffs.size() - 1] };
+    { coeffs[3] };
 };
 
 /// predicate returning true if approximant saturates while evaluating anywhere over the interval
