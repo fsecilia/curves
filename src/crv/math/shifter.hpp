@@ -83,7 +83,7 @@ public:
         }
         else
         {
-            assert((!cmp_greater(src, max<dst_t>() >> count)) && "shifter_t: shl overflow");
+            assert((!cmp_greater(src, max<dst_t>() >> count)) && "shifter_t: shl positive overflow");
         }
 
         return int_cast<dst_t>(int_cast<dst_t>(src) << count);
@@ -104,7 +104,7 @@ public:
         }
         else
         {
-            assert((!cmp_greater(src, max<dst_t>() >> count)) && "shifter_t: shl overflow");
+            assert((!cmp_greater(src, max<dst_t>() >> count)) && "shifter_t: shl positive overflow");
         }
 
         return int_cast<dst_t>(int_cast<dst_t>(src) << count);
