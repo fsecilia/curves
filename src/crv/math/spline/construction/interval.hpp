@@ -42,7 +42,7 @@ template <typename interval_t> struct bisection_t
 };
 
 /// orders intervals by fit priority
-struct interval_pred_t
+struct fit_priority_t
 {
     constexpr auto operator()(auto const& lhs, auto const& rhs) const noexcept -> bool
     {
