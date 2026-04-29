@@ -101,8 +101,8 @@ interval_param_t const interval_params[] = {
     {true, 0.0, -32000.0, 32000.0, 32000.0},
 
     // intermediate quadratic saturates, but final cubic is safe
-    // q(t) = -200000t^2 + 200000t + 0. Peak at t=0.5 -> q(0.5) = 50000 (> 32767)
-    // p(t) = q(t)t - 20000. Peak around t=0.5 is 50000(0.5) - 20000 = 5000
+    // q(t) = -32000t^2 + 32000t + 30000. Peak at t=0.5 -> q(0.5) = 38000 (> 32767)
+    // p(t) = q(t)t - 10000. Peak around t=0.5 is 38000(0.5) - 10000 = 9000
     {true, -32000.0, 32000.0, 30000.0, -10000.0},
 
     // monotonic cubic, d < 0: saturates purely at the endpoint (t=1)
