@@ -14,8 +14,10 @@ namespace crv::spline {
 /// represents single evaluated interval in an adaptive spline
 ///
 /// Stores domain boundaries, approximant, and max error measured across the segment.
-template <typename real_t, typename approximant_t> struct interval_t
+template <typename t_real_t, typename approximant_t> struct interval_t
 {
+    using real_t = t_real_t;
+
     real_t left;
     real_t right;
     real_t max_error;
@@ -25,6 +27,18 @@ template <typename real_t, typename approximant_t> struct interval_t
 
     constexpr auto operator<=>(interval_t const& src) const noexcept -> auto = default;
     constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
+};
+
+template <typename interval_t> struct bisection_t
+{
+    using real_t = interval_t::real_t;
+
+    interval_t left;
+    interval_t right;
+    real_t refined_error;
+
+    constexpr auto operator<=>(bisection_t const& src) const noexcept -> auto = default;
+    constexpr auto operator==(bisection_t const& src) const noexcept -> bool = default;
 };
 
 /// orders intervals by fit priority
