@@ -16,7 +16,7 @@ constexpr auto lesser
 constexpr auto greater
     = interval_t{.left = 0.0, .right = 0.0, .max_error = 2.0, .tolerance = 0.0, .depth = 0, .approximant = 0};
 
-constexpr auto pred = interval_pred_t{};
+constexpr auto pred = fit_priority_t{};
 static_assert(!pred(lesser, lesser));
 static_assert(pred(lesser, greater));
 static_assert(!pred(greater, lesser));
