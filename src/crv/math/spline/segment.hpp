@@ -18,8 +18,8 @@ namespace crv::spline {
 
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t,
-    typename dx_to_t_shifter_t = shifter_t<rounding_modes::shr::fast::nearest_up>,
-    typename horners_loop_shifter_t = shifter_t<rounding_modes::shr::truncate>>
+    auto dx_to_t_shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
+    auto horners_loop_shifter = shifter_t<rounding_modes::shr::truncate>{}>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
@@ -33,10 +33,7 @@ public:
     static constexpr auto coeff_count = 4;
     using coeffs_t = std::array<coeff_t, coeff_count>;
 
-    constexpr segment_t(coeffs_t coeffs, int8_t log2_width, dx_to_t_shifter_t dx_to_t_shifter = {},
-        horners_loop_shifter_t horners_loop_shifter = {}) noexcept
-        : dx_to_t_shifter_{std::move(dx_to_t_shifter)}, horners_loop_shifter_{std::move(horners_loop_shifter)},
-          coeffs_{coeffs}
+    constexpr segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_t>);
@@ -68,7 +65,7 @@ public:
             // Saturation is checked during construction, so wrapping is fine. Relying on this is safe because were an
             // adversary to construct a segment that would overflow here, it just means a bad curve, not a cve. Don't
             // round because the biases are baked into the coefficients.
-            result = coeff_t::template convert<overflow_policy_t::wrap>(multiply(result, t), horners_loop_shifter_);
+            result = coeff_t::template convert<overflow_policy_t::wrap, horners_loop_shifter>(multiply(result, t));
             result += coeffs_[coeff];
         }
 
@@ -136,13 +133,11 @@ private:
 
         // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
         // x/2^k = x*2^-k = x << -k == x >> k
-        return x_t::literal(dx_to_t_shifter_.shift(dx.value, -log2_width()));
+        return x_t::literal(dx_to_t_shifter.shift(dx.value, -log2_width()));
     }
 
     constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
 
-    [[no_unique_address]] dx_to_t_shifter_t dx_to_t_shifter_;
-    [[no_unique_address]] horners_loop_shifter_t horners_loop_shifter_;
     coeffs_t coeffs_;
 };
 

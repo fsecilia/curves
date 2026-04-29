@@ -182,8 +182,8 @@ struct normalized_rsqrt_t
         auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
         {
-            auto const yy = nr_t::convert(multiply(y, y), shifter);
-            auto const xyy = nr_t::convert(multiply(x, yy), shifter);
+            auto const yy = multiply<shifter>(y, y);
+            auto const xyy = multiply<nr_t, shifter>(x, yy);
             auto const product = multiply(y, three - xyy);
 
             // this cracks the fixed_t to combine the rescale with division by 2 in a single fused shift
@@ -191,8 +191,8 @@ struct normalized_rsqrt_t
         }
 
         // Final iteration does not narrow at the end.
-        auto const yy = nr_t::convert(multiply(y, y), shifter);
-        auto const xyy = nr_t::convert(multiply(x, yy), shifter);
+        auto const yy = multiply<shifter>(y, y);
+        auto const xyy = multiply<nr_t, shifter>(x, yy);
         auto const product = multiply(y, three - xyy);
         return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(product.value));
     }
@@ -248,15 +248,15 @@ struct rsqrt_t
         auto const odd_exponent = (x_norm_frac_bits & 1) != 0;
         if (odd_exponent)
         {
-            auto const y_narrow = nr_t::convert(y, shifter);
-            y = normalized_rsqrt_t::out_t::convert(multiply(y_narrow, sqrt2), shifter);
+            auto const y_narrow = nr_t::template convert<shifter>(y);
+            y = multiply<typename normalized_rsqrt_t::out_t, shifter>(y_narrow, sqrt2);
         }
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_frac_bits >> 1);
         auto const shift = out_t::frac_bits - y_denorm_frac_bits;
 
         auto const result = wide_out_t::literal(shifter.shift(y.value, shift));
-        return out_t::convert(result, shifter);
+        return out_t::template convert<shifter>(result);
     }
 };
 

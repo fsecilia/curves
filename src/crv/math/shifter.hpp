@@ -12,7 +12,6 @@
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <climits>
-#include <utility>
 
 namespace crv {
 
