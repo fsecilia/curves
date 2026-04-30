@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/spline/monomial.hpp>
 
 namespace crv::spline::refinement_policies {
 
@@ -15,13 +16,15 @@ namespace crv::spline::refinement_policies {
 struct monotonicity_t
 {
     /// \returns true if interval should be refined
-    template <is_fixed coeff_t> constexpr auto operator()(coeff_t a, coeff_t b, coeff_t c) const noexcept -> bool
+    template <is_fixed coeff_t>
+    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
-        return !is_monotonic(a, b, c);
+        return !is_monotonic(coeffs);
     }
 
     /// \returns true if approximant is monotonic increasing over an interval
-    template <is_fixed coeff_t> constexpr auto is_monotonic(coeff_t a, coeff_t b, coeff_t c) const noexcept -> bool
+    template <is_fixed coeff_t>
+    constexpr auto is_monotonic(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         // For a cubic monomial `p(t) = At^3 + Bt^2 + Ct + D`, the derivative is a parabola `p'(t) = 3At^2 + 2Bt + C`
         // To guarantee monotonicity of `p(t)` on `t` in `[0, 1]`, `p'(t) >= 0` must be true on that interval.
@@ -29,6 +32,10 @@ struct monotonicity_t
         // `p'(v_t) < 0`
 
         using wide_t = fixed::product_t<coeff_t, coeff_t>;
+
+        auto const a = coeffs[0];
+        auto const b = coeffs[1];
+        auto const c = coeffs[2];
 
         // check the left endpoint: `p'(0) = C >= 0`
         if (c < 0) return false;
