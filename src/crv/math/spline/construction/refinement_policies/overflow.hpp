@@ -9,34 +9,24 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
+#include <crv/math/spline/monomial.hpp>
 #include <concepts>
 #include <iterator>
 
 namespace crv::spline::refinement_policies {
 
-template <typename coeffs_t>
-concept is_monomial = requires(coeffs_t coeffs) {
-    typename coeffs_t::value_type;
-    requires is_fixed<typename coeffs_t::value_type>;
-
-    { coeffs.size() } -> std::convertible_to<std::size_t>;
-    requires(coeffs.size() == 4);
-
-    { coeffs[0] };
-    { coeffs[3] };
-};
-
 /// predicate to test for overflow over an interval
-template <typename real_t, is_fixed normalized_t> struct overflow_t
+template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
 {
     /// \returns true if approximant overflows while evaluating anywhere over the interval
-    template <is_monomial monomial_t> constexpr auto operator()(monomial_t const& coeffs) const noexcept -> bool
+    template <is_fixed coeff_t>
+    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         return overflows(coeffs);
     }
 
     /// \returns true if approximant overflows any intermediate calc while evaluating over the interval
-    template <is_monomial monomial_t> constexpr auto overflows(monomial_t const& coeffs) const noexcept -> bool
+    template <is_fixed coeff_t> constexpr auto overflows(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
@@ -86,10 +76,9 @@ template <typename real_t, is_fixed normalized_t> struct overflow_t
     }
 
     /// returns true if approximant overflows while evaluating at a particular location
-    template <is_monomial monomial_t>
-    constexpr auto operator()(monomial_t const& coeffs, normalized_t t) const noexcept -> bool
+    template <is_fixed coeff_t>
+    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
     {
-        using coeff_t = monomial_t::value_type;
         auto accumulator = coeffs[0];
         for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
         {

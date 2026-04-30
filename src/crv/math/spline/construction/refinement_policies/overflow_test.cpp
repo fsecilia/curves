@@ -7,16 +7,13 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
-#include <array>
 
 namespace crv::spline::refinement_policies {
 namespace {
 
 using normalized_t = fixed_t<uint64_t, 32>;
 using coeff_t = fixed_t<int64_t, 48>;
-
-constexpr auto coeff_count = 4;
-using monomial_t = std::array<coeff_t, coeff_count>;
+using monomial_t = cubic_monomial_t<coeff_t>;
 
 using real_t = float_t;
 using sut_t = overflow_t<real_t, normalized_t>;
@@ -46,7 +43,7 @@ struct common_param_t
         out << "expected = " << src.expected;
 
         out << " .monomial = {" << src.monomial[0];
-        for (auto coeff = 1; coeff < coeff_count; ++coeff) out << ", " << src.monomial[coeff];
+        for (auto coeff = 1; coeff < cubic_coeff_count; ++coeff) out << ", " << src.monomial[coeff];
         out << "}";
 
         return out;
