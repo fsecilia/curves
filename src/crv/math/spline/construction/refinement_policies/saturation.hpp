@@ -18,16 +18,25 @@ template <typename coeffs_t>
 concept is_monomial = requires(coeffs_t coeffs) {
     typename coeffs_t::value_type;
     requires is_fixed<typename coeffs_t::value_type>;
+
     { coeffs.size() } -> std::convertible_to<std::size_t>;
     requires(coeffs.size() == 4);
+
     { coeffs[0] };
     { coeffs[3] };
 };
 
-/// predicate returning true if approximant saturates while evaluating anywhere over the interval
+/// predicate to test saturation over an interval
 template <typename real_t, is_fixed normalized_t> struct saturation_t
 {
+    /// \returns true if approximant saturates while evaluating anywhere over the interval
     template <is_monomial monomial_t> constexpr auto operator()(monomial_t const& coeffs) const noexcept -> bool
+    {
+        return saturates(coeffs);
+    }
+
+    /// \returns true if approximant saturates any intermediate calc while evaluating over the interval
+    template <is_monomial monomial_t> constexpr auto saturates(monomial_t const& coeffs) const noexcept -> bool
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
@@ -76,6 +85,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
         return false;
     }
 
+    /// returns true if approximant saturates while evaluating at a particular location
     template <is_monomial monomial_t>
     constexpr auto operator()(monomial_t const& coeffs, normalized_t t) const noexcept -> bool
     {
