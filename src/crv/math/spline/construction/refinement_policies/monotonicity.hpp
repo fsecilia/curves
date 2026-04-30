@@ -11,10 +11,17 @@
 
 namespace crv::spline::refinement_policies {
 
-/// predicate returning true if approximant is monotonic increasing over an interval
+/// predicate to test monotonicity over an interval
 struct monotonicity_t
 {
+    /// \returns true if interval should be refined
     template <is_fixed coeff_t> constexpr auto operator()(coeff_t a, coeff_t b, coeff_t c) const noexcept -> bool
+    {
+        return !is_monotonic(a, b, c);
+    }
+
+    /// \returns true if approximant is monotonic increasing over an interval
+    template <is_fixed coeff_t> constexpr auto is_monotonic(coeff_t a, coeff_t b, coeff_t c) const noexcept -> bool
     {
         // For a cubic monomial `p(t) = At^3 + Bt^2 + Ct + D`, the derivative is a parabola `p'(t) = 3At^2 + 2Bt + C`
         // To guarantee monotonicity of `p(t)` on `t` in `[0, 1]`, `p'(t) >= 0` must be true on that interval.

@@ -17,7 +17,8 @@ using coeff_t = fixed_t<value_t, 47>;
 // returns true if a segment with these coefficients is monotonic
 constexpr auto is_monotonic(value_t a, value_t b, value_t c) -> bool
 {
-    return sut_t{}(coeff_t{a}, coeff_t{b}, coeff_t{c});
+    // the predicate returns true if monotonicity is violated and the interval should be refined, so invert it here
+    return !sut_t{}(coeff_t{a}, coeff_t{b}, coeff_t{c});
 }
 
 // c < 0
