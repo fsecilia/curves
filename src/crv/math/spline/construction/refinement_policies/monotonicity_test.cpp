@@ -18,7 +18,7 @@ using coeff_t = fixed_t<value_t, 47>;
 constexpr auto is_monotonic(value_t a, value_t b, value_t c) -> bool
 {
     // the predicate returns true if monotonicity is violated and the interval should be refined, so invert it here
-    return !sut_t{}(coeff_t{a}, coeff_t{b}, coeff_t{c});
+    return !sut_t{}(cubic_monomial_t{coeff_t{a}, coeff_t{b}, coeff_t{c}, coeff_t{0}});
 }
 
 // c < 0
