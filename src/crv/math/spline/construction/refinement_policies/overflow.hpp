@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief saturation check
+/// \brief overflow check
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -26,17 +26,17 @@ concept is_monomial = requires(coeffs_t coeffs) {
     { coeffs[3] };
 };
 
-/// predicate to test saturation over an interval
-template <typename real_t, is_fixed normalized_t> struct saturation_t
+/// predicate to test for overflow over an interval
+template <typename real_t, is_fixed normalized_t> struct overflow_t
 {
-    /// \returns true if approximant saturates while evaluating anywhere over the interval
+    /// \returns true if approximant overflows while evaluating anywhere over the interval
     template <is_monomial monomial_t> constexpr auto operator()(monomial_t const& coeffs) const noexcept -> bool
     {
-        return saturates(coeffs);
+        return overflows(coeffs);
     }
 
-    /// \returns true if approximant saturates any intermediate calc while evaluating over the interval
-    template <is_monomial monomial_t> constexpr auto saturates(monomial_t const& coeffs) const noexcept -> bool
+    /// \returns true if approximant overflows any intermediate calc while evaluating over the interval
+    template <is_monomial monomial_t> constexpr auto overflows(monomial_t const& coeffs) const noexcept -> bool
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
@@ -85,7 +85,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
         return false;
     }
 
-    /// returns true if approximant saturates while evaluating at a particular location
+    /// returns true if approximant overflows while evaluating at a particular location
     template <is_monomial monomial_t>
     constexpr auto operator()(monomial_t const& coeffs, normalized_t t) const noexcept -> bool
     {
@@ -102,7 +102,7 @@ template <typename real_t, is_fixed normalized_t> struct saturation_t
             // sum
             wide_value += coeffs[coeff].value;
 
-            // check for saturation
+            // check for overflow
             if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
 
             // accumulate
