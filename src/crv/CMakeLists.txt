@@ -37,6 +37,7 @@ target_sources(lib PRIVATE
     priority_queue.hpp
 )
 target_sources_kernel(lib
+    algorithm.hpp
     bitwise_enum.hpp
     lib.hpp
     lib.cpp
@@ -86,6 +87,7 @@ if (enable_testing)
 
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
+        algorithm_test.cpp
         bitwise_enum_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
