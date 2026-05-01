@@ -149,6 +149,26 @@ template <std::floating_point real_t> struct function_sample_t
     jet_t<real_t> y;
 };
 
+// samples target function, returning the sample location and resulting 1-jet
+template <std::floating_point real_t, typename target_function_t> struct function_sampler_t
+{
+    using function_sample_t = function_sample_t<real_t>;
+    using jet_t = jet_t<real_t>;
+
+    target_function_t target_function;
+
+    constexpr auto operator()(real_t x) const noexcept -> function_sample_t
+    {
+        return {.x = x, .y = target_function(jet_t{x, 1.0})};
+    }
+};
+
+template <typename real_t, typename target_function_t>
+auto make_function_sampler(target_function_t target_function) noexcept -> function_sampler_t<real_t, target_function_t>
+{
+    return {.target_function = std::move(target_function)};
+}
+
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point real_t> struct residual_t
 {
@@ -207,7 +227,7 @@ struct residual_estimator_t
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
 
-    auto operator()(auto const& target_function, auto const& approximant, real_t left, real_t midpoint,
+    auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
         real_t right) const noexcept -> residual_t
     {
         auto const error_weight = apply_weight(midpoint);
@@ -223,12 +243,12 @@ struct residual_estimator_t
 
             // evaluate target function at target position and approxmant at quantized position
             auto const quantized_node = quantize(domain_node);
-            auto const target = target_function(domain_node);
+            auto const target_function_sample = sample_target_function(domain_node);
             auto const approximation = approximant(quantized_node);
-            max_scale = std::max(max_scale, abs(target));
+            max_scale = std::max(max_scale, abs(primal(target_function_sample.y)));
 
             // measure magnitude of error using norm, weight it using weight function
-            auto const error = measure_error(jet_t{target}, jet_t{approximation});
+            auto const error = measure_error(target_function_sample.y, jet_t{approximation});
             auto const weighted_error = error * error_weight;
             max_error = std::max(max_error, weighted_error);
         }
@@ -252,13 +272,9 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
     [[no_unique_address]] residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
 
-    constexpr auto sample_function(auto const& target_function, real_t x) const noexcept -> function_sample_t
-    {
-        return {.x = x, .y = target_function(jet_t{x, 1.0})};
-    }
-
-    constexpr auto build(auto const& target_function, function_sample_t const& left, function_sample_t const& midpoint,
-        function_sample_t const& right, real_t tolerance, int_t log2_width) const noexcept -> interval_t
+    constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
+        function_sample_t const& midpoint, function_sample_t const& right, real_t tolerance,
+        int_t log2_width) const noexcept -> interval_t
     {
         auto const x_origin = to_fixed<x_t>(left.x);
         auto const segment = build_segment(left.y, right.y, log2_width);
@@ -269,8 +285,8 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
             .right = right,
             .tolerance = tolerance,
             .log2_width = log2_width,
-            .residual = estimate_residual(
-                target_function, approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
+            .residual = estimate_residual(sample_target_function,
+                approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
             .segment = segment,
         };
     }
@@ -288,22 +304,21 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
 
     [[no_unique_address]] interval_builder_t interval_builder;
 
-    constexpr auto operator()(auto const& target_function, interval_t const& parent) const noexcept -> bisection_t
+    constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
+        -> bisection_t
     {
         // errors in a spline are max, not distributed like with quadrature; do not track this: always use global
         auto const child_tolerance = parent.tolerance; // / 2;
 
         auto const child_log2_width = parent.log2_width - 1;
 
-        auto const left_midpoint
-            = interval_builder.sample_function(target_function, std::midpoint(parent.left.x, parent.midpoint.x));
-        auto const right_midpoint
-            = interval_builder.sample_function(target_function, std::midpoint(parent.midpoint.x, parent.right.x));
+        auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
+        auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
 
         auto const left = interval_builder.build(
-            target_function, parent.left, left_midpoint, parent.midpoint, child_tolerance, child_log2_width);
+            sample_target_function, parent.left, left_midpoint, parent.midpoint, child_tolerance, child_log2_width);
         auto const right = interval_builder.build(
-            target_function, parent.midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
+            sample_target_function, parent.midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
 
         auto const refined_residual = residual_t{
             .max_error = std::max(left.residual.max_error, right.residual.max_error),
@@ -372,7 +387,7 @@ struct subdivider_t
 
     residual_t residual_max{};
 
-    constexpr auto subdivide(auto& queue, auto const& target_function) noexcept
+    constexpr auto subdivide(auto& queue, auto const& sample_target_function) noexcept
         -> std::expected<residual_t, bisection_error_t>
     {
         assert(!queue.empty());
@@ -398,7 +413,7 @@ struct subdivider_t
             auto const should_subdivide = interval.residual.max_error > local_tolerance;
             if (!should_subdivide) return interval.residual;
 
-            auto const bisection = bisect(target_function, interval);
+            auto const bisection = bisect(sample_target_function, interval);
             residual_max.max_error = std::max(residual_max.max_error, bisection.refined_residual.max_error);
             residual_max.max_scale = std::max(residual_max.max_scale, bisection.refined_residual.max_scale);
 
@@ -421,16 +436,16 @@ template <std::floating_point real_t, typename interval_builder_t> struct queue_
 
     // for now, just push one whole segment
     constexpr auto operator()(
-        auto& queue, auto const& target_function, int_t log2_domain_max, real_t global_tolerance) const -> void
+        auto& queue, auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance) const -> void
     {
         assert(queue.empty());
         auto const domain_max = std::ldexp(1.0, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
         auto const right = domain_max;
         auto const tolerance = global_tolerance * ((right - left) / domain_max);
-        queue.push(interval_builder.build(target_function, interval_builder.sample_function(target_function, left),
-            interval_builder.sample_function(target_function, std::midpoint(left, right)),
-            interval_builder.sample_function(target_function, right), tolerance, log2_domain_max));
+        queue.push(interval_builder.build(sample_target_function, sample_target_function(left),
+            sample_target_function(std::midpoint(left, right)), sample_target_function(right), tolerance,
+            log2_domain_max));
     }
 };
 
@@ -448,13 +463,13 @@ struct spliner_t
 
     queue_t queue;
 
-    auto operator()(auto const& target_function, int_t log2_domain_max, real_t global_tolerance)
+    auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
         -> std::optional<bisection_error_t>
     {
         assert(completed_segments.empty());
 
-        seed_queue(queue, target_function, log2_domain_max, global_tolerance);
-        auto const result = subdivider.subdivide(queue, target_function);
+        seed_queue(queue, sample_target_function, log2_domain_max, global_tolerance);
+        auto const result = subdivider.subdivide(queue, sample_target_function);
         if (!result.has_value()) return result.error();
 
         completed_segments.reserve(queue.size());
@@ -535,11 +550,10 @@ TEST(spline_builder, poc)
                                     .queue={}
         };
 
-    auto const result = spliner(
-        [](auto x) static noexcept -> decltype(x) {
-            using std::log1p;
-            return log1p(x);
-        },
+    auto const result = spliner(make_function_sampler<real_t>([](auto x) static noexcept -> decltype(x) {
+        using std::log1p;
+        return log1p(x);
+    }),
         8, 1e-8);
 
     EXPECT_FALSE(result.has_value());
