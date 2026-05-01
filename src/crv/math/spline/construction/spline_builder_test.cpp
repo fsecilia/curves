@@ -430,7 +430,7 @@ struct subdivider_t
 //
 // The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
 // critical points aligned ot widths
-template <std::floating_point real_t, typename interval_builder_t> struct queue_seeder_t
+template <std::floating_point real_t, typename interval_builder_t> struct refinement_pool_seeder_t
 {
     [[no_unique_address]] interval_builder_t interval_builder;
 
@@ -449,8 +449,8 @@ template <std::floating_point real_t, typename interval_builder_t> struct queue_
     }
 };
 
-template <std::floating_point real_t, typename queue_t, typename queue_seeder_t, typename subdivider_t,
-    typename completed_segments_t>
+template <std::floating_point real_t, typename refinement_pool_t, typename refinement_pool_seeder_t,
+    typename subdivider_t, typename completed_segments_t>
 struct spliner_t
 {
     using bisection_error_t = subdivider_t::bisection_error_t;
@@ -458,31 +458,31 @@ struct spliner_t
     using x_t = completed_segment_t::x_t;
 
     [[no_unique_address]] subdivider_t subdivider;
-    [[no_unique_address]] queue_seeder_t seed_queue;
+    [[no_unique_address]] refinement_pool_seeder_t seed_refinement_pool;
     completed_segments_t completed_segments;
 
-    queue_t queue;
+    refinement_pool_t refinement_pool;
 
     auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
         -> std::optional<bisection_error_t>
     {
         assert(completed_segments.empty());
 
-        seed_queue(queue, sample_target_function, log2_domain_max, global_tolerance);
-        auto const result = subdivider.subdivide(queue, sample_target_function);
+        seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max, global_tolerance);
+        auto const result = subdivider.subdivide(refinement_pool, sample_target_function);
         if (!result.has_value()) return result.error();
 
-        completed_segments.reserve(queue.size());
+        completed_segments.reserve(refinement_pool.size());
         // completed_segments.assign(std::begin(queue), std::end(queue));
-        while (!queue.empty())
+        while (!refinement_pool.empty())
         {
-            auto const& interval = queue.top();
+            auto const& interval = refinement_pool.top();
             completed_segments.push_back(completed_segment_t{
                 .origin = to_fixed<x_t>(interval.left.x),
                 .log2_width = interval.log2_width,
                 .segment = interval.segment,
             });
-            queue.pop();
+            refinement_pool.pop();
         }
 
         std::ranges::sort(
@@ -512,7 +512,7 @@ TEST(spline_builder, poc)
 
     using segment_t = segment_t<x_t, y_t, normalized_t, coeff_t>;
     using interval_t = interval_t<real_t, segment_t>;
-    using queue_t = priority_queue_t<std::vector<interval_t>>;
+    using refinement_pool_t = priority_queue_t<std::vector<interval_t>>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
     using quantizer_t = quantizers::fixed_point_t<real_t, x_t::frac_bits>;
     using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
@@ -522,15 +522,16 @@ TEST(spline_builder, poc)
     using hermite_to_monoimial_converter_t = hermite_to_monoimial_converter_t<jet_t, coeff_t>;
     using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monoimial_converter_t>;
     using interval_builder_t = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t>;
-    using queue_seeder_t = queue_seeder_t<real_t, interval_builder_t>;
-    using refinement_policies_t = refinement_policies_t<defect_detectors::monotonicity_t,
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
+    using defect_detectors_t = refinement_policies_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, refinement_policies_t, max_segment_count>;
+    using subdivider_t = subdivider_t<real_t, bisector_t, defect_detectors_t, max_segment_count>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
-    using spliner_t = spliner_t<real_t, queue_t, queue_seeder_t, subdivider_t, completed_segments_t>;
+    using spliner_t
+        = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t>;
 
     auto spliner = spliner_t{
         .subdivider = subdivider_t{.bisect = bisector_t{.interval_builder
@@ -545,9 +546,9 @@ TEST(spline_builder, poc)
                                         },
                                         .refinement_policies={}
                                     },
-                                    .seed_queue={},
+                                    .seed_refinement_pool={},
                                     .completed_segments={},
-                                    .queue={}
+                                    .refinement_pool={}
         };
 
     auto const result = spliner(make_function_sampler<real_t>([](auto x) static noexcept -> decltype(x) {
