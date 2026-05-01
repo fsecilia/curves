@@ -104,7 +104,7 @@ template <std::floating_point real_t, typename segment_t> struct approximant_t
 };
 
 /// converts float hermite to fixed monomial
-template <typename jet_t, typename coeff_t> struct hermite_to_monoimial_converter_t
+template <typename jet_t, typename coeff_t> struct hermite_to_monomial_converter_t
 {
     constexpr auto operator()(jet_t left, jet_t right) const noexcept -> cubic_monomial_t<coeff_t>
     {
@@ -123,14 +123,14 @@ template <typename jet_t, typename coeff_t> struct hermite_to_monoimial_converte
 };
 
 /// builds fixed segment from float hermite and log2_width; scales tangents by width
-template <typename t_real_t, typename t_segment_t, typename hermite_to_monoimial_converter_t> struct segment_builder_t
+template <typename t_real_t, typename t_segment_t, typename hermite_to_monomial_converter_t> struct segment_builder_t
 {
     using real_t = t_real_t;
     using segment_t = t_segment_t;
 
     using jet_t = jet_t<real_t>;
 
-    [[no_unique_address]] hermite_to_monoimial_converter_t hermite_to_monomial;
+    [[no_unique_address]] hermite_to_monomial_converter_t hermite_to_monomial;
 
     constexpr auto operator()(jet_t left, jet_t right, int_t log2_width) const noexcept -> segment_t
     {
@@ -505,8 +505,8 @@ TEST(spline_builder, poc)
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
-    using hermite_to_monoimial_converter_t = hermite_to_monoimial_converter_t<jet_t, coeff_t>;
-    using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monoimial_converter_t>;
+    using hermite_to_monomial_converter_t = hermite_to_monomial_converter_t<jet_t, coeff_t>;
+    using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monomial_converter_t>;
     using interval_builder_t = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using defect_detectors_t = refinement_policies_t<defect_detectors::monotonicity_t,
