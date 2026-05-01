@@ -206,8 +206,8 @@ struct residual_estimator_t
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
 
-    auto operator()(auto const& target_function, auto const& approximant, real_t left, real_t right,
-        real_t midpoint) const noexcept -> residual_t
+    auto operator()(auto const& target_function, auto const& approximant, real_t left, real_t midpoint,
+        real_t right) const noexcept -> residual_t
     {
         auto const error_weight = apply_weight(midpoint);
         auto const half_width = (right - left) * 0.5;
@@ -256,8 +256,8 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
         return {.x = x, .y = target_function(jet_t{x, 1.0})};
     }
 
-    constexpr auto build(auto const& target_function, function_sample_t const& left, function_sample_t const& right,
-        function_sample_t const& midpoint, real_t tolerance, int_t log2_width) const noexcept -> interval_t
+    constexpr auto build(auto const& target_function, function_sample_t const& left, function_sample_t const& midpoint,
+        function_sample_t const& right, real_t tolerance, int_t log2_width) const noexcept -> interval_t
     {
         auto const x_origin = to_fixed<x_t>(left.x);
         auto const segment = build_segment(left.y, right.y, log2_width);
@@ -268,7 +268,7 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
             .tolerance = tolerance,
             .log2_width = log2_width,
             .residual = estimate_residual(
-                target_function, approximant_t{.x_origin = x_origin, .segment = segment}, left.x, right.x, midpoint.x),
+                target_function, approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
             .segment = segment,
         };
     }
@@ -302,9 +302,9 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
             = interval_builder.sample_function(target_function, std::midpoint(midpoint.x, parent.right.x));
 
         auto const left = interval_builder.build(
-            target_function, parent.left, midpoint, left_midpoint, child_tolerance, child_log2_width);
+            target_function, parent.left, left_midpoint, midpoint, child_tolerance, child_log2_width);
         auto const right = interval_builder.build(
-            target_function, midpoint, parent.right, right_midpoint, child_tolerance, child_log2_width);
+            target_function, midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
 
         auto const refined_residual = residual_t{
             .max_error = std::max(left.residual.max_error, right.residual.max_error),
@@ -430,8 +430,8 @@ template <std::floating_point real_t, typename interval_builder_t> struct queue_
         auto const right = domain_max;
         auto const tolerance = global_tolerance * ((right - left) / domain_max);
         queue.push(interval_builder.build(target_function, interval_builder.sample_function(target_function, left),
-            interval_builder.sample_function(target_function, right),
-            interval_builder.sample_function(target_function, std::midpoint(left, right)), tolerance, log2_domain_max));
+            interval_builder.sample_function(target_function, std::midpoint(left, right)),
+            interval_builder.sample_function(target_function, right), tolerance, log2_domain_max));
     }
 };
 
