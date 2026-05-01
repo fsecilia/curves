@@ -7,12 +7,12 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/cmp.hpp>
 #include <crv/math/division/concepts.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/rounding_mode.hpp>
-#include <algorithm>
 #include <cassert>
 
 namespace crv::division {
@@ -29,7 +29,7 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
+    static constexpr auto narrow_size = max(sizeof(lhs_t), sizeof(rhs_t));
 
     using narrow_t = int_by_bytes_t<narrow_size, false>;
     using wide_t = widened_t<narrow_t>;
@@ -86,7 +86,7 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    static constexpr auto narrow_size = std::max(sizeof(lhs_t), sizeof(rhs_t));
+    static constexpr auto narrow_size = max(sizeof(lhs_t), sizeof(rhs_t));
 
     using narrow_t = int_by_bytes_t<narrow_size, false>;
     using wide_t = widened_t<narrow_t>;

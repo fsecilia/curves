@@ -29,10 +29,15 @@ conflicted_c_flags := -std=gnu% \
                       $(addprefix -Werror=, $(conflicting_c_warnings)) \
 
 # c flags, filtered for conflicts
-filtered_c_flags = $(filter-out $(conflicted_c_flags), $(ccflags-y) $(KBUILD_CFLAGS))
+filtered_c_flags = $(filter-out $(conflicted_c_flags), $(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(ccflags-y))
 
 # combine c++ flags
 cxx_flags = $(filtered_c_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
+
+# use exact target triple from kbuild's compiler
+raw_triple = $(shell $(CC) $(KBUILD_CFLAGS) -print-target-triple 2>/dev/null || $(CC) -dumpmachine 2>/dev/null)
+cxx_target_triple = $(shell echo $(raw_triple) | sed 's/-pc-/-unknown-/')
+cxx_flags += --target=$(cxx_target_triple)
 
 # find relative c++ compiler
 ifeq ($(CXX),)

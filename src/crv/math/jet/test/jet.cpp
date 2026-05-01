@@ -17,8 +17,8 @@ namespace {
 using value_t = float_t;
 using sut_t = jet_t<value_t>;
 
-static constexpr auto eps = epsilon<value_t>();
-static constexpr auto inf = infinity<value_t>();
+static constexpr auto eps = std::numeric_limits<value_t>::epsilon();
+static constexpr auto inf = std::numeric_limits<value_t>::infinity();
 static constexpr auto nan = std::numeric_limits<value_t>::quiet_NaN();
 static constexpr auto e = std::numbers::e;
 static constexpr auto pi = std::numbers::pi;
@@ -1336,6 +1336,26 @@ TEST_F(jet_test_swap_t, swap)
     EXPECT_EQ(lhs.df, 4.0);
     EXPECT_EQ(rhs.f, 1.0);
     EXPECT_EQ(rhs.df, 2.0);
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// min/max
+// --------------------------------------------------------------------------------------------------------------------
+
+template <typename value_t> constexpr auto test_type_limits() noexcept -> void
+{
+    static_assert(max<jet_t<value_t>>() == jet_t{std::numeric_limits<value_t>::max()});
+    static_assert(min<jet_t<value_t>>() == jet_t{std::numeric_limits<value_t>::lowest()});
+}
+
+template <typename... values_t> constexpr auto test_types_limits() noexcept -> void
+{
+    (..., test_type_limits<values_t>());
+}
+
+template <typename... values_t> [[maybe_unused]] constexpr auto test_all_types_limits() noexcept -> void
+{
+    test_types_limits<float32_t, float64_t>();
 }
 
 // --------------------------------------------------------------------------------------------------------------------

@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/jet/jet.hpp>
@@ -18,7 +19,6 @@
 #include <crv/math/quadrature/subdivider.hpp>
 #include <crv/ranges.hpp>
 #include <crv/test/test.hpp>
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <functional>
@@ -36,7 +36,7 @@ auto is_close(char const* expected_expression, char const* actual_expression, ch
     real_t actual, real_t rel_tol, real_t abs_floor) -> AssertionResult
 {
     auto const diff = abs(expected - actual);
-    auto const scale = std::max({abs_floor, rel_tol * abs(expected), rel_tol * abs(actual)});
+    auto const scale = max({abs_floor, rel_tol * abs(expected), rel_tol * abs(actual)});
     if (diff <= scale) return AssertionSuccess();
     return AssertionFailure() << expected_expression << " = " << expected << " vs " << actual_expression << " = "
                               << actual << "  (diff = " << diff << ", allowed = " << scale << ")";
@@ -227,7 +227,7 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 
     constexpr auto tolerances = std::array{real_t{1e-6}, real_t{1e-9}, real_t{1e-12}};
 
-    auto prev_error = infinity<real_t>();
+    auto prev_error = std::numeric_limits<real_t>::infinity();
     auto prev_segments = int_t{0};
 
     for (auto const tol : tolerances)

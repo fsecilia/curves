@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "rsqrt.hpp"
+#include <crv/algorithm.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
@@ -51,7 +52,7 @@ TEST_P(rsqrt_initial_guesses_quadratic_minimax_test_t, error_within_minimax_boun
     auto const y = sut(x);
     auto const yy = y * y;
     auto const actual = yy * x;
-    auto const difference = std::max(actual, expected) - std::min(actual, expected);
+    auto const difference = max(actual, expected) - min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
@@ -108,7 +109,7 @@ TEST_P(normalized_rsqrt_property_test_t, error_within_minimax_bounds)
     auto const y = out_t::convert(sut(x));
     auto const yy = y * y;
     auto const actual = yy * x;
-    auto const difference = std::max(actual, expected) - std::min(actual, expected);
+    auto const difference = max(actual, expected) - min(actual, expected);
 
     EXPECT_LT(difference, tolerance);
 };
@@ -163,7 +164,7 @@ TEST_P(normalized_rsqrt_value_test_t, error_within_minimax_bounds)
 {
     auto const actual = out_t::convert(sut(x));
 
-    auto const difference = std::max(actual, expected) - std::min(actual, expected);
+    auto const difference = max(actual, expected) - min(actual, expected);
 
     EXPECT_LE(difference, tolerance);
 };
@@ -259,7 +260,7 @@ struct rsqrt_property_test_t : Test
         auto const yy = multiply(y, y);
 
         auto const actual = wide_out_t::literal(yy.value * uint128_t{x.value});
-        auto const difference = std::max(actual, expected) - std::min(actual, expected);
+        auto const difference = max(actual, expected) - std::min(actual, expected);
         auto const tolerance = wide_out_t::literal(2 * e_nr * uint128_t{x.value} * uint128_t{y.value});
 
         EXPECT_LT(difference, tolerance);

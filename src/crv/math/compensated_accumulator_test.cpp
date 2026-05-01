@@ -30,7 +30,7 @@ TEST_F(compensated_accumulator_test_t, sums_normally)
 TEST_F(compensated_accumulator_test_t, catches_vanishing_udates)
 {
     auto const large_value = real_t{1.0};
-    auto const small_value = epsilon<real_t>() / 10;
+    auto const small_value = std::numeric_limits<real_t>::epsilon() / 10;
     auto const expected_change = small_value * iterations;
 
     auto reference = large_value;

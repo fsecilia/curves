@@ -84,10 +84,7 @@ list(FILTER srcs_shared_abs INCLUDE REGEX "\\.(c|cpp)$")
 #
 # These are also forwarded to the Kbuild for c++ files.
 
-set(kernel_c_flags
-    -ffreestanding
-)
-
+set(kernel_c_flags -ffreestanding)
 set(kernel_cxx_flags
     "${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}"
     ${compile_options_common}
@@ -225,8 +222,16 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # Build Targets
 # ---------------------------------------------------------------------------------------------------------------------
 
+# read kernel config to detect if it was built with clang or gcc
+file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG=y$")
+if(kernel_is_clang)
+    set(kbuild_compiler_flag "LLVM=1")
+endif()
+
 # encapsulate external make command
-set(kbuild_make_command make -sC "${kbuild_root}" ${kbuild_flags} V=1 "M=${kbuild_shadow_root}")
+set(kbuild_make_command
+    make "${kbuild_compiler_flag}" -sC "${kbuild_root}" ${kbuild_flags} V=1 "M=${kbuild_shadow_root}"
+)
 
 # main build
 add_custom_command(

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/float_limits.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/limits.hpp>
 #include <cassert>
@@ -317,7 +318,7 @@ template <typename t_value_t> struct jet_t
         //         the result would be NaN, so only apply inf conditionally.
         //     - When we know x.f != 0 and delta(y) = inf, |x|*(delta(y)*dy) == inf*dy.
         auto const has_delta = (y.f == 0) & (x.f != 0) & (y.df != 0);
-        auto const dy_term = has_delta ? infinity<value_t>() * y.df : 0;
+        auto const dy_term = has_delta ? std::numeric_limits<value_t>::infinity() * y.df : 0;
 
         return {copysign(x.f, y.f), dx_term + dy_term};
     }
@@ -476,7 +477,7 @@ template <typename t_value_t> struct jet_t
         assert(x.f >= 0 && "jet_t::sqrt domain error");
 
         auto const root = sqrt(x.f);
-        if (root == 0) return {0, infinity<value_t>()};
+        if (root == 0) return {0, std::numeric_limits<value_t>::infinity()};
 
         return {root, x.df / (2 * root)};
     }
@@ -614,6 +615,12 @@ template <typename t_value_t> struct jet_t
     {
         return pow(static_cast<value_t>(x), y);
     }
+};
+
+template <typename value_t> struct min_max_t<jet_t<value_t>>
+{
+    static constexpr auto min = jet_t<value_t>{crv::min<value_t>()};
+    static constexpr auto max = jet_t<value_t>{crv::max<value_t>()};
 };
 
 } // namespace crv

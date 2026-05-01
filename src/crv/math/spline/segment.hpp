@@ -11,6 +11,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
+#include <array>
 #include <climits>
 #include <new>
 

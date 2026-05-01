@@ -55,10 +55,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     list(APPEND compile_options_common
         -fdiagnostics-color=always
         -ftemplate-backtrace-limit=1
-        -Wno-changes-meaning
     )
     target_compile_options(project_options INTERFACE
         -fext-numeric-literals
+        -Wno-changes-meaning
     )
 endif()
 

@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <algorithm>
+#include <crv/algorithm.hpp>
 #include <numeric>
 
 namespace crv::spline {
@@ -56,7 +56,7 @@ struct residual_estimator_t
             // measure magnitude of error using norm, weight it using weight function
             auto const magnitude = measure_error(target, approximation);
             auto const weighted_magnitude = magnitude * apply_weight(domain_node);
-            max_magnitude = std::max(max_magnitude, weighted_magnitude);
+            max_magnitude = max(max_magnitude, weighted_magnitude);
         }
 
         return max_magnitude;

@@ -7,10 +7,10 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/division/hardware_divider.hpp>
 #include <crv/math/division/shifted_int_divider.hpp>
 #include <crv/math/division/wide_divider.hpp>
-#include <algorithm>
 
 namespace crv::division {
 
@@ -19,7 +19,7 @@ namespace detail {
 // computes the minimum unsigned narrow integer size capable of representing the absolute
 // values of the passed operands without data loss.
 template <integral lhs_t, integral rhs_t>
-using common_narrow_unsigned_t = int_by_bytes_t<std::max(sizeof(lhs_t), sizeof(rhs_t)), false>;
+using common_narrow_unsigned_t = int_by_bytes_t<max(sizeof(lhs_t), sizeof(rhs_t)), false>;
 
 } // namespace detail
 
