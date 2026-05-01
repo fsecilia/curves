@@ -23,7 +23,6 @@
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/priority_queue.hpp>
 #include <cmath>
-#include <expected>
 #include <numeric>
 
 #include <iomanip>
@@ -208,11 +207,9 @@ template <typename t_interval_t> struct bisection_t
 {
     using interval_t = t_interval_t;
     using real_t = interval_t::real_t;
-    using residual_t = residual_t<real_t>;
 
     interval_t left;
     interval_t right;
-    residual_t refined_residual;
 };
 
 /// estimates residual over a subdomain
@@ -320,15 +317,9 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
         auto const right = interval_builder.build(
             sample_target_function, parent.midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
 
-        auto const refined_residual = residual_t{
-            .max_error = std::max(left.residual.max_error, right.residual.max_error),
-            .max_scale = std::max(left.residual.max_scale, right.residual.max_scale),
-        };
-
         return {
             .left = left,
             .right = right,
-            .refined_residual = refined_residual,
         };
     }
 };
@@ -385,10 +376,8 @@ struct subdivider_t
     [[no_unique_address]] bisector_t bisect;
     [[no_unique_address]] refinement_policies_t refinement_policies;
 
-    residual_t residual_max{};
-
     constexpr auto subdivide(auto& queue, auto const& sample_target_function) noexcept
-        -> std::expected<residual_t, bisection_error_t>
+        -> std::optional<bisection_error_t>
     {
         assert(!queue.empty());
 
@@ -406,23 +395,21 @@ struct subdivider_t
 
             if (must_subdivide && !can_subdivide)
             {
-                return std::unexpected(bisection_error_t{
-                    .reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x});
+                return bisection_error_t{
+                    .reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x};
             }
 
             auto const should_subdivide = interval.residual.max_error > local_tolerance;
-            if (!should_subdivide) return interval.residual;
+            if (!should_subdivide) return std::nullopt;
 
             auto const bisection = bisect(sample_target_function, interval);
-            residual_max.max_error = std::max(residual_max.max_error, bisection.refined_residual.max_error);
-            residual_max.max_scale = std::max(residual_max.max_scale, bisection.refined_residual.max_scale);
 
             queue.pop();
             queue.push(bisection.left);
             queue.push(bisection.right);
         }
 
-        return queue.empty() ? residual_max : queue.top().residual;
+        return std::nullopt;
     }
 };
 
@@ -470,10 +457,9 @@ struct spliner_t
 
         seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max, global_tolerance);
         auto const result = subdivider.subdivide(refinement_pool, sample_target_function);
-        if (!result.has_value()) return result.error();
+        if (result.has_value()) return result.value();
 
         completed_segments.reserve(refinement_pool.size());
-        // completed_segments.assign(std::begin(queue), std::end(queue));
         while (!refinement_pool.empty())
         {
             auto const& interval = refinement_pool.top();
