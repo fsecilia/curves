@@ -476,7 +476,7 @@ struct spliner_t
         // completed_segments.assign(std::begin(queue), std::end(queue));
         while (!queue.empty())
         {
-            auto const& interval = std::move(queue).top();
+            auto const& interval = queue.top();
             completed_segments.push_back(completed_segment_t{
                 .origin = to_fixed<x_t>(interval.left.x),
                 .log2_width = interval.log2_width,
