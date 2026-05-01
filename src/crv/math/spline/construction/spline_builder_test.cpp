@@ -165,6 +165,7 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
 
     using function_sample_t = function_sample_t<real_t>;
     function_sample_t left;
+    function_sample_t midpoint;
     function_sample_t right;
 
     real_t tolerance;
@@ -264,6 +265,7 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
 
         return {
             .left = left,
+            .midpoint = midpoint,
             .right = right,
             .tolerance = tolerance,
             .log2_width = log2_width,
@@ -288,23 +290,20 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
 
     constexpr auto operator()(auto const& target_function, interval_t const& parent) const noexcept -> bisection_t
     {
-        auto const midpoint
-            = interval_builder.sample_function(target_function, std::midpoint(parent.left.x, parent.right.x));
-
         // errors in a spline are max, not distributed like with quadrature; do not track this: always use global
         auto const child_tolerance = parent.tolerance; // / 2;
 
         auto const child_log2_width = parent.log2_width - 1;
 
         auto const left_midpoint
-            = interval_builder.sample_function(target_function, std::midpoint(parent.left.x, midpoint.x));
+            = interval_builder.sample_function(target_function, std::midpoint(parent.left.x, parent.midpoint.x));
         auto const right_midpoint
-            = interval_builder.sample_function(target_function, std::midpoint(midpoint.x, parent.right.x));
+            = interval_builder.sample_function(target_function, std::midpoint(parent.midpoint.x, parent.right.x));
 
         auto const left = interval_builder.build(
-            target_function, parent.left, left_midpoint, midpoint, child_tolerance, child_log2_width);
+            target_function, parent.left, left_midpoint, parent.midpoint, child_tolerance, child_log2_width);
         auto const right = interval_builder.build(
-            target_function, midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
+            target_function, parent.midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
 
         auto const refined_residual = residual_t{
             .max_error = std::max(left.residual.max_error, right.residual.max_error),
