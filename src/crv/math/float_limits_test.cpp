@@ -3,9 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "limits.hpp"
+#include "float_limits.hpp"
 #include <crv/test/test.hpp>
-#include <limits>
 
 namespace crv {
 namespace {
@@ -23,7 +22,7 @@ template <typename... values_t> constexpr auto test_types_limits() noexcept -> v
 
 template <typename... values_t> [[maybe_unused]] constexpr auto test_all_types_limits() noexcept -> void
 {
-    test_types_limits<uint8_t, uint16_t, uint32_t, uint64_t, uint128_t, int8_t, int16_t, int32_t, int64_t, int128_t>();
+    test_types_limits<float32_t, float64_t>();
 }
 
 } // namespace

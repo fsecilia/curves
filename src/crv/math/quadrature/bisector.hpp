@@ -7,10 +7,10 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/quadrature/integral.hpp>
 #include <crv/math/quadrature/segment.hpp>
-#include <algorithm>
 #include <cassert>
 #include <numeric>
 
@@ -39,7 +39,7 @@ struct bisector_t
         auto const refined_integral = left_rule_result.sum + right_rule_result.sum;
         auto const quadrature_error = left_rule_result.error + right_rule_result.error;
         auto const subdivision_error = abs(refined_integral - parent.coarse_integral);
-        auto const refined_error = std::max(quadrature_error, subdivision_error);
+        auto const refined_error = max(quadrature_error, subdivision_error);
 
         // clang-format off
         return refinement_t<real_t>

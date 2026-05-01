@@ -10,8 +10,10 @@ target_sources(lib PRIVATE
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/error_metrics.hpp
+    math/fixed/fixed_limits.hpp
     math/fixed/float_conversions.hpp
     math/fixed/io.hpp
+    math/float_limits.hpp
     math/jet/jet.hpp
     math/io.hpp
     math/io.cpp
@@ -100,10 +102,12 @@ if (enable_testing)
         math/division/wide_divider_test.cpp
         math/error_metrics_test.cpp
         math/fixed/exp2_neg_m1_test.cpp
+        math/fixed/fixed_limits_test.cpp
         math/fixed/fixed_test.cpp
         math/fixed/float_conversions_test.cpp
         math/fixed/fma_test.cpp
         math/fixed/rsqrt_test.cpp
+        math/float_limits_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
         math/io_test.cpp

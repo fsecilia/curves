@@ -7,9 +7,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/limits.hpp>
-#include <algorithm>
-#include <cstdlib>
+#include <crv/algorithm.hpp>
+#include <crv/math/abs.hpp>
+#include <crv/math/float_limits.hpp>
 #include <ostream>
 
 namespace crv {
@@ -74,11 +74,8 @@ struct arg_min_max_t
     arg_min_t min;
     arg_max_t max;
 
-    constexpr auto max_mag() const noexcept -> value_t { return std::max(std::abs(min.value), std::abs(max.value)); }
-    constexpr auto arg_max_mag() const noexcept -> arg_t
-    {
-        return std::abs(min.value) < std::abs(max.value) ? max.arg : min.arg;
-    }
+    constexpr auto max_mag() const noexcept -> value_t { return crv::max(abs(min.value), abs(max.value)); }
+    constexpr auto arg_max_mag() const noexcept -> arg_t { return abs(min.value) < abs(max.value) ? max.arg : min.arg; }
 
     constexpr auto sample(arg_t arg, value_t value) noexcept -> void
     {

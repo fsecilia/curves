@@ -1155,29 +1155,38 @@ static_assert(abs(u_4_t{max<int_t>()}) == u_4_t{max<int_t>()});
 
 } // namespace math_functions
 
-namespace numeric_limits_tests {
+// ====================================================================================================================
+// min/max
+// ====================================================================================================================
 
-using value_t = int32_t;
-using sut_t = std::numeric_limits<i32_16_t>;
-using base_t = std::numeric_limits<value_t>;
+template <typename value_t> constexpr auto test_type_limits() noexcept -> void
+{
+    static_assert(max<fixed_t<value_t, 0>>() == std::numeric_limits<value_t>::max());
+    static_assert(min<fixed_t<value_t, 0>>() == std::numeric_limits<value_t>::lowest());
 
-// traits
-static_assert(sut_t::is_specialized);
-static_assert(!sut_t::is_integer);
-static_assert(sut_t::is_exact);
-static_assert(sut_t::is_signed == base_t::is_signed);
-static_assert(!sut_t::has_infinity);
-static_assert(!sut_t::has_quiet_NaN);
+    static_assert(max<fixed_t<value_t, 1>>() == fixed_t<value_t, 1>::literal(std::numeric_limits<value_t>::max()));
+    static_assert(min<fixed_t<value_t, 1>>() == fixed_t<value_t, 1>::literal(std::numeric_limits<value_t>::lowest()));
 
-// values
-static_assert(sut_t::max().value == base_t::max());
-static_assert(sut_t::lowest().value == base_t::lowest());
-static_assert(sut_t::min().value == 1); // min() is the smallest positive value, not the most negative
+    static_assert(max<fixed_t<value_t, sizeof(value_t) * CHAR_BIT - 1>>()
+        == fixed_t<value_t, sizeof(value_t) * CHAR_BIT - 1>::literal(std::numeric_limits<value_t>::max()));
+    static_assert(min<fixed_t<value_t, sizeof(value_t) * CHAR_BIT - 1>>()
+        == fixed_t<value_t, sizeof(value_t) * CHAR_BIT - 1>::literal(std::numeric_limits<value_t>::lowest()));
 
-// epsilon is the constant step size
-static_assert(sut_t::epsilon().value == 1);
+    static_assert(max<fixed_t<value_t, sizeof(value_t) * CHAR_BIT>>()
+        == fixed_t<value_t, sizeof(value_t) * CHAR_BIT>::literal(std::numeric_limits<value_t>::max()));
+    static_assert(min<fixed_t<value_t, sizeof(value_t) * CHAR_BIT>>()
+        == fixed_t<value_t, sizeof(value_t) * CHAR_BIT>::literal(std::numeric_limits<value_t>::lowest()));
+}
 
-} // namespace numeric_limits_tests
+template <typename... values_t> constexpr auto test_types_limits() noexcept -> void
+{
+    (..., test_type_limits<values_t>());
+}
+
+template <typename... values_t> [[maybe_unused]] constexpr auto test_all_types_limits() noexcept -> void
+{
+    test_types_limits<uint8_t, uint16_t, uint32_t, uint64_t, uint128_t, int8_t, int16_t, int32_t, int64_t, int128_t>();
+}
 
 } // namespace
 } // namespace crv

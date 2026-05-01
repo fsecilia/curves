@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <array>
 
 namespace crv::spline {
 

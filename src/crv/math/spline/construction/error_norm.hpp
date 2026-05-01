@@ -7,9 +7,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/scalar_traits.hpp>
-#include <algorithm>
 
 namespace crv::spline::error_norms {
 
@@ -33,7 +33,7 @@ template <typename jet_t> struct first_order_uniform_t
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
     {
         using crv::abs;
-        using std::max;
+        using crv::max;
 
         auto const primal_error = abs(primal(target) - primal(approximation));
         auto const derivative_error = abs(derivative(target) - derivative(approximation)) * derivative_weight;

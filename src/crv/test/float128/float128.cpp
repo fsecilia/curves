@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "float128.hpp"
+#include <algorithm>
 #include <array>
 #include <quadmath.h>
 

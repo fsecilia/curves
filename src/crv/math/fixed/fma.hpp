@@ -7,7 +7,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/limits.hpp>
 #include <crv/math/saturation.hpp>
 #include <crv/math/shifter.hpp>
 
@@ -37,7 +39,7 @@ struct fma_t
         "fma operands must have identical signedness");
 
     // radix alignment shifts
-    static constexpr auto max_frac = std::max(product_t::frac_bits, addend_t::frac_bits);
+    static constexpr auto max_frac = max(product_t::frac_bits, addend_t::frac_bits);
     static constexpr auto product_shift = (max_frac > product_t::frac_bits) ? (max_frac - product_t::frac_bits) : 0;
     static constexpr auto addend_shift = (max_frac > addend_t::frac_bits) ? (max_frac - addend_t::frac_bits) : 0;
     static constexpr auto out_shift = static_cast<int_t>(out_t::frac_bits) - static_cast<int_t>(max_frac);
@@ -45,9 +47,9 @@ struct fma_t
     // determine width of sum
     static constexpr auto max_product_bits = (sizeof(product_value_t) * CHAR_BIT) + product_shift;
     static constexpr auto max_addend_bits = (sizeof(addend_value_t) * CHAR_BIT) + addend_shift;
-    static constexpr auto max_aligned_bits = std::max(max_product_bits, max_addend_bits);
+    static constexpr auto max_aligned_bits = max(max_product_bits, max_addend_bits);
     static constexpr auto required_sum_width = (out_shift < 0) ? max_aligned_bits : (max_aligned_bits + out_shift);
-    static constexpr auto requested_sum_width = std::min(required_sum_width, 128ul);
+    static constexpr auto requested_sum_width = min(required_sum_width, 128ul);
 
     // wide intermediate sum
     using sum_t = int_by_bits_t<requested_sum_width, is_signed>;
@@ -73,13 +75,11 @@ struct fma_t
     static constexpr auto out_max = int_cast<sum_t>(max<out_value_t>());
 
     // saturation limits by operation
-    static constexpr auto product_min
-        = std::min(static_cast<sum_t>(multiplicand_max) * static_cast<sum_t>(multiplier_min),
-            static_cast<sum_t>(multiplicand_min) * static_cast<sum_t>(multiplier_max));
+    static constexpr auto product_min = min(static_cast<sum_t>(multiplicand_max) * static_cast<sum_t>(multiplier_min),
+        static_cast<sum_t>(multiplicand_min) * static_cast<sum_t>(multiplier_max));
 
-    static constexpr auto product_max
-        = std::max(static_cast<sum_t>(multiplicand_max) * static_cast<sum_t>(multiplier_max),
-            static_cast<sum_t>(multiplicand_min) * static_cast<sum_t>(multiplier_min));
+    static constexpr auto product_max = max(static_cast<sum_t>(multiplicand_max) * static_cast<sum_t>(multiplier_max),
+        static_cast<sum_t>(multiplicand_min) * static_cast<sum_t>(multiplier_min));
 
     static constexpr auto aligned_product_min = static_cast<unsigned_sum_t>(product_min) << product_shift;
     static constexpr auto aligned_addend_min = static_cast<unsigned_sum_t>(addend_min) << addend_shift;

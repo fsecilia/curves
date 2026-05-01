@@ -39,6 +39,12 @@ template <typename t_underlying_t, typename tag_t> struct strong_type_t
     constexpr auto operator==(strong_type_t const& other) const noexcept -> bool = default;
 };
 
+template <typename underlying_t, typename tag_t> struct min_max_t<strong_type_t<underlying_t, tag_t>>
+{
+    static constexpr auto min = strong_type_t<underlying_t, tag_t>{crv::min<underlying_t>()};
+    static constexpr auto max = strong_type_t<underlying_t, tag_t>{crv::max<underlying_t>()};
+};
+
 } // namespace crv
 
 namespace std {

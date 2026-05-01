@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <flat_map>
@@ -104,7 +105,7 @@ public:
 
         running_area_ += area;
         running_error_ += error;
-        max_error_ = std::max(max_error_, error);
+        max_error_ = max(max_error_, error);
 
         boundaries_.push_back(right_bound);
         cumulative_sums_.push_back(static_cast<real_t>(running_area_));

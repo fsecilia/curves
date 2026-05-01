@@ -83,7 +83,7 @@ struct rel_t
 
     constexpr auto sample(arg_t arg, value_t actual, value_t expected) noexcept -> void
     {
-        if (std::abs(expected) <= epsilon<value_t>()) return;
+        if (std::abs(expected) <= std::numeric_limits<value_t>::epsilon()) return;
         error_accumulator.sample(arg, (actual - expected) / expected);
     }
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/division/divider.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
@@ -14,7 +15,6 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturation.hpp>
 #include <crv/math/shifter.hpp>
-#include <algorithm>
 #include <climits>
 #include <concepts>
 #include <type_traits>
@@ -45,7 +45,7 @@ concept is_fixed = is_fixed_v<type_t>;
 namespace fixed {
 
 template <is_fixed lhs_t, is_fixed rhs_t>
-using product_t = fixed_t<int_by_bytes_t<std::max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
+using product_t = fixed_t<int_by_bytes_t<max(sizeof(typename lhs_t::value_t), sizeof(typename rhs_t::value_t)) * 2,
                               std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
     lhs_t::frac_bits + rhs_t::frac_bits>;
 
@@ -375,13 +375,13 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto mod(fixed_t lhs, rhs_t rhs) noexcept -> out_t
     {
         // widen
-        using wide_t = int_by_bytes_t<std::max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
+        using wide_t = int_by_bytes_t<max(sizeof(value_t), sizeof(typename rhs_t::value_t)) * 2,
             std::is_signed_v<value_t> || std::is_signed_v<typename rhs_t::value_t>>;
         auto lhs_wide = int_cast<wide_t>(lhs.value);
         auto rhs_wide = int_cast<wide_t>(rhs.value);
 
         // align radix points
-        constexpr auto max_frac = std::max(frac_bits, rhs_t::frac_bits);
+        constexpr auto max_frac = max(frac_bits, rhs_t::frac_bits);
         if constexpr (max_frac > frac_bits) lhs_wide <<= (max_frac - frac_bits);
         if constexpr (max_frac > rhs_t::frac_bits) rhs_wide <<= (max_frac - rhs_t::frac_bits);
 
@@ -505,43 +505,10 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 };
 
-} // namespace crv
-
-namespace std {
-
-template <typename value_t, int frac_bits>
-struct numeric_limits<crv::fixed_t<value_t, frac_bits>> : numeric_limits<value_t>
+template <typename value_t, int frac_bits> struct min_max_t<fixed_t<value_t, frac_bits>>
 {
-    using base_t = numeric_limits<value_t>;
-    using fixed_t = crv::fixed_t<value_t, frac_bits>;
-
-    static constexpr bool is_specialized = true;
-
-    // fixed-point represents fractions, but does so exactly
-    static constexpr bool is_integer = false;
-    static constexpr bool is_exact = true;
-
-    // fixed-point lacks float special values
-    static constexpr bool has_infinity = false;
-    static constexpr bool has_quiet_NaN = false;
-    static constexpr bool has_signaling_NaN = false;
-
-    // smallest strictly positive value is 1 in the underlying
-    static constexpr auto min() noexcept -> fixed_t { return fixed_t::literal(1); }
-
-    // max and lowest wrap the underlying integer's bounds
-    static constexpr auto max() noexcept -> fixed_t { return fixed_t::literal(base_t::max()); }
-    static constexpr auto lowest() noexcept -> fixed_t { return fixed_t::literal(base_t::lowest()); }
-
-    // the difference between 1.0 and the next representable value is always 1
-    static constexpr auto epsilon() noexcept -> fixed_t { return fixed_t::literal(1); }
-    static constexpr auto round_error() noexcept -> fixed_t { return fixed_t::literal(1); }
-
-    // Return zero-initialized representations for unsupported float concepts
-    static constexpr auto infinity() noexcept -> fixed_t { return fixed_t::literal(0); }
-    static constexpr auto quiet_NaN() noexcept -> fixed_t { return fixed_t::literal(0); }
-    static constexpr auto signaling_NaN() noexcept -> fixed_t { return fixed_t::literal(0); }
-    static constexpr auto denorm_min() noexcept -> fixed_t { return min(); }
+    static constexpr auto min = fixed_t<value_t, frac_bits>::literal(crv::min<value_t>());
+    static constexpr auto max = fixed_t<value_t, frac_bits>::literal(crv::max<value_t>());
 };
 
-} // namespace std
+} // namespace crv
