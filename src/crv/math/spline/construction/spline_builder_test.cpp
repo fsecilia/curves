@@ -37,7 +37,7 @@ constexpr int_t cubic_coeff_count = 4;
 enum class bisection_error_reason_t : int_t
 {
     monotonicity = 1 << 0,
-    saturation = 1 << 1,
+    overflow = 1 << 1,
 };
 
 } // namespace
@@ -355,7 +355,7 @@ template <typename monotonicity_t, typename overflow_t> struct refinement_polici
     {
         auto result = bisection_error_reason_t{};
         if (monotonicity(monomial)) result |= bisection_error_reason_t::monotonicity;
-        if (overflow(monomial)) result |= bisection_error_reason_t::saturation;
+        if (overflow(monomial)) result |= bisection_error_reason_t::overflow;
         return result;
     }
 };
