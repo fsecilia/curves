@@ -146,8 +146,8 @@ template <typename jet_t> struct first_order_relative_t
     using scalar_t = typename jet_t::value_t;
 
     // floor prevents weight blowup where target slope is near zero or unresolvable
-    scalar_t slope_floor{scalar_t{1} / (1 << 16)};
-    scalar_t value_floor{scalar_t{1} / (1 << 16)};
+    scalar_t primal_floor{scalar_t{1} / (1 << 16)};
+    scalar_t tangent_floor{scalar_t{1} / (1 << 16)};
 
     // soft floor: behaves like floor when value << floor, like value when value >> floor
     static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
@@ -164,15 +164,15 @@ template <typename jet_t> struct first_order_relative_t
         // this turns absolute slope error into relative slope error in flat regions
 
         auto const primal_error = abs(primal(target) - primal(approximation));
-        auto const slope_error = abs(derivative(target) - derivative(approximation));
+        auto const tangent_error = abs(derivative(target) - derivative(approximation));
 
-        auto const value_scale = soft_max(abs(primal(target)), value_floor);
-        auto const relative_primal_error = primal_error / value_scale;
+        auto const primal_scale = soft_max(abs(primal(target)), primal_floor);
+        auto const relative_primal_error = primal_error / primal_scale;
 
-        auto const slope_scale = soft_max(abs(derivative(target)), slope_floor);
-        auto const relative_slope_error = slope_error / slope_scale;
+        auto const tangent_scale = soft_max(abs(derivative(target)), tangent_floor);
+        auto const relative_tangent_error = tangent_error / tangent_scale;
 
-        return max(relative_primal_error, relative_slope_error);
+        return max(relative_primal_error, relative_tangent_error);
     }
 };
 
@@ -244,9 +244,18 @@ auto make_function_sampler(target_function_t target_function) noexcept -> functi
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point real_t> struct residual_t
 {
-    real_t max_error;
-    real_t weighted_error;
-    real_t max_scale;
+    real_t primal_error; // L-infinity of primal approx relative to target
+    real_t tangent_error; // L-infinity of tangent approx relative to target
+    real_t metric_error; // error based on norm error metric
+    real_t weighted_error; // metric_error weighted perceptually
+    real_t scale; // absolute magnitude of primal
+
+    friend auto operator<<(std::ostream& out, residual_t const& src) -> std::ostream&
+    {
+        return out << "{.primal_error = " << src.primal_error << ", .tangent_error = " << src.tangent_error
+                   << ", .metric_error = " << src.metric_error << ", .weighted_error = " << src.weighted_error
+                   << ", .scale = " << src.scale << "}";
+    }
 };
 
 /// unit of work over subdomain
@@ -298,8 +307,7 @@ struct residual_estimator_t
     auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
         real_t right) const noexcept -> residual_t
     {
-        auto max_scale = real_t{0};
-        auto max_error = real_t{0};
+        auto max_residual = residual_t{};
 
         // sample function at generated nodes
         auto const half_width = (right - left) * 0.5;
@@ -309,17 +317,21 @@ struct residual_estimator_t
 
             // evaluate target function at target position and approxmant at quantized position
             auto const quantized_node = quantize(domain_node);
-            auto const target_function_sample = sample_target_function(domain_node);
             auto const approximation = approximant(quantized_node);
-            max_scale = max(max_scale, abs(primal(target_function_sample.y)));
+            auto const target_function_sample = sample_target_function(domain_node);
+            auto const target = target_function_sample.y;
+            auto const primal_error = abs(primal(target) - primal(approximation));
+            auto const tangent_error = abs(derivative(target) - derivative(approximation));
+            auto const metric_error = measure_error(target, approximation);
 
-            // measure magnitude of error using norm, weight it using weight function
-            auto const error = measure_error(target_function_sample.y, approximation);
-            max_error = max(max_error, error);
+            max_residual.scale = max(max_residual.scale, abs(primal(target)));
+            max_residual.primal_error = max(max_residual.primal_error, primal_error);
+            max_residual.tangent_error = max(max_residual.tangent_error, tangent_error);
+            max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 
-        auto const weighted_error = max_error * apply_weight(midpoint);
-        return residual_t{.max_error = max_error, .weighted_error = weighted_error, .max_scale = max_scale};
+        max_residual.weighted_error = max_residual.metric_error * apply_weight(midpoint);
+        return max_residual;
     }
 };
 
@@ -450,17 +462,17 @@ template <std::floating_point real_t, typename bisector_t, typename refinement_p
         auto const refinement_reasons = refinement_policies(interval.segment.monomial);
         auto const must_subdivide = refinement_reasons != bisection_error_reason_t{0};
 
-        auto const noise_floor = interval.residual.max_scale * relative_noise_margin;
+        auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
-            = interval.segment.log2_width > min_log2_width && interval.residual.max_error >= local_tolerance;
+            = interval.segment.log2_width > min_log2_width && interval.residual.metric_error >= local_tolerance;
 
         if (must_subdivide && !can_subdivide)
         {
             return bisection_error_t{.reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x};
         }
 
-        auto const should_subdivide = interval.residual.max_error > local_tolerance;
+        auto const should_subdivide = interval.residual.metric_error > global_tolerance;
         if ((must_subdivide || should_subdivide) && can_subdivide) { return bisect(sample_target_function, interval); }
         else
         {
@@ -497,6 +509,7 @@ struct spliner_t
     using bisection_t = subdivider_t::bisection_t;
     using interval_t = subdivider_t::interval_t;
     using interval_complete_t = subdivider_t::interval_complete_t;
+    using residual_t = interval_t::residual_t;
     using completed_segment_t = completed_segments_t::value_type;
     using x_t = completed_segment_t::x_t;
 
@@ -506,8 +519,14 @@ struct spliner_t
     std::vector<interval_t> completed_intervals;
     refinement_pool_t refinement_pool;
 
+    struct result_t
+    {
+        completed_segments_t completed_segments;
+        residual_t max_residual;
+    };
+
     auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
-        -> std::expected<completed_segments_t, bisection_error_t>
+        -> std::expected<result_t, bisection_error_t>
     {
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
@@ -545,10 +564,15 @@ struct spliner_t
             refinement_pool.pop();
         }
 
-        auto max_error = real_t{0};
+        auto max_residual = residual_t{};
         for (auto const& interval : completed_intervals)
         {
-            max_error = std::max(max_error, interval.residual.max_error);
+            max_residual.primal_error = max(max_residual.primal_error, interval.residual.primal_error),
+            max_residual.tangent_error = max(max_residual.tangent_error, interval.residual.tangent_error),
+            max_residual.metric_error = max(max_residual.metric_error, interval.residual.metric_error),
+            max_residual.weighted_error = max(max_residual.weighted_error, interval.residual.weighted_error),
+            max_residual.scale = max(max_residual.scale, interval.residual.scale),
+
             completed_segments.push_back(completed_segment_t{
                 .origin = to_fixed<x_t>(interval.left.x),
                 .segment = interval.segment,
@@ -581,6 +605,7 @@ struct spliner_t
             }
             std::cout << std::endl;
         }
+        std::cout << "max residual: " << max_residual << std::endl;
 #else
         auto const mid_segment_index = completed_segments.size() / 2;
         auto const mid_segment = completed_segments[mid_segment_index];
@@ -588,7 +613,7 @@ struct spliner_t
                   << " .x_origin = " << mid_segment.origin << ", .d = " << mid_segment.segment.monomial[3] << std::endl;
 #endif
 
-        return completed_segments;
+        return result_t{.completed_segments = std::move(completed_segments), .max_residual = max_residual};
     }
 };
 
