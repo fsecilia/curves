@@ -50,8 +50,8 @@ namespace {
 
 /// fixed-point normalized monomial with width
 template <typename t_x_t, typename t_y_t, typename t_normalized_t, typename t_coeff_t,
-    auto dx_to_t_shifter = shifter_t<rounding_modes::shr::nearest_up>{},
-    auto eval_shifter = shifter_t<rounding_modes::shr::truncate>{}>
+    auto t_dx_to_t_shifter = shifter_t<rounding_modes::shr::nearest_up>{},
+    auto t_eval_shifter = shifter_t<rounding_modes::shr::truncate>{}>
 struct segment_t
 {
     using x_t = t_x_t;
@@ -61,6 +61,9 @@ struct segment_t
 
     using monomial_t = cubic_monomial_t<coeff_t>;
     static auto const coeff_count = cubic_coeff_count;
+
+    static constexpr auto dx_to_t_shifter = t_dx_to_t_shifter;
+    static constexpr auto eval_shifter = t_eval_shifter;
 
     monomial_t monomial;
     int_t log2_width;
@@ -87,19 +90,88 @@ struct segment_t
 template <std::floating_point real_t, typename segment_t> struct approximant_t
 {
     using x_t = segment_t::x_t;
+    using y_t = segment_t::y_t;
+    using normalized_t = segment_t::normalized_t;
+    using coeff_t = segment_t::coeff_t;
 
     x_t x_origin;
     segment_t segment;
 
-    constexpr auto operator()(real_t x) const noexcept -> real_t
+    constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
-        // this is *NOT* using a jet, which breaks sobolev.
-        // but running a jet through a fixed-point cubic seems like a bad idea
-        // we can add a derivative method to the cubic and just compose a real_t jet here instead
-        // will sobolev actually benefit?
-
         auto const dx = to_fixed<x_t>(x) - x_origin;
-        return from_fixed<real_t>(segment.evaluate(dx));
+        auto const primal = from_fixed<real_t>(segment.evaluate(dx));
+
+        auto const dx_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - segment.log2_width;
+        auto const t = normalized_t::literal(segment.dx_to_t_shifter.shift(dx.value, dx_to_t_shift));
+
+        static constexpr auto eval_shifter = segment_t::eval_shifter;
+
+        auto const a3 = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(
+            multiply(segment.monomial[0], coeff_t{3}));
+        auto const b2 = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(
+            multiply(segment.monomial[1], coeff_t{2}));
+        auto const c = segment.monomial[2];
+
+        // Horner for (3*a*t + 2*b)*t + c
+        auto result = a3;
+        result = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(multiply(result, t));
+        result += b2;
+        result = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(multiply(result, t));
+        result += c;
+
+        auto const dy_dt = from_fixed<real_t>(result);
+
+        // apply chain rule: dt/dx = 2^(-log2_width)
+        auto const dt_dx = std::ldexp(real_t{1}, -segment.log2_width);
+        auto const tangent = dy_dt * dt_dx;
+
+        return jet_t{primal, tangent};
+    }
+};
+
+template <typename scalar_t, typename jet_t> struct uniform_t
+{
+    static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> scalar_t
+    {
+        using crv::abs;
+        return abs(primal(target) - primal(approximation));
+    }
+};
+
+/// first-order uniform norm with target-derived relative-slope weighting
+template <typename jet_t> struct first_order_relative_t
+{
+    using scalar_t = typename jet_t::value_t;
+
+    // floor prevents weight blowup where target slope is near zero or unresolvable
+    scalar_t slope_floor{scalar_t{1} / (1 << 16)};
+    scalar_t value_floor{scalar_t{1} / (1 << 16)};
+
+    // soft floor: behaves like floor when value << floor, like value when value >> floor
+    static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
+    {
+        return std::sqrt(value * value + floor * floor);
+    }
+
+    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
+    {
+        using crv::abs;
+        using crv::max;
+
+        // weight derived from the target itself: 1 / max(|target_slope|, floor)
+        // this turns absolute slope error into relative slope error in flat regions
+
+        auto const primal_error = abs(primal(target) - primal(approximation));
+        auto const slope_error = abs(derivative(target) - derivative(approximation));
+
+        auto const value_scale = soft_max(abs(primal(target)), value_floor);
+        auto const relative_primal_error = primal_error / value_scale;
+
+        auto const slope_scale = soft_max(abs(derivative(target)), slope_floor);
+        auto const relative_slope_error = slope_error / slope_scale;
+
+        return max(relative_primal_error, relative_slope_error);
     }
 };
 
@@ -408,7 +480,7 @@ struct subdivider_t
             }
 
             auto const should_subdivide = interval.residual.max_error > local_tolerance;
-            if (must_subdivide || should_subdivide)
+            if ((must_subdivide || should_subdivide) && can_subdivide)
             {
                 auto const bisection = bisect(sample_target_function, interval);
 
@@ -503,15 +575,21 @@ struct spliner_t
             using std::log1p;
 
             auto const width = segment.log2_width < 0 ? x_t{1} >> -segment.log2_width : x_t{1} << segment.log2_width;
-            auto const dx_third = width / 3;
-            auto const x_fixed = segment.origin + dx_third;
-            auto const x_real = from_fixed<real_t>(x_fixed);
-            auto const expected_y = log1p(x_real);
-            auto const actual_y = from_fixed<real_t>(segment.segment.evaluate(dx_third));
-            auto const difference = actual_y - expected_y;
 
-            std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
-                      << ", y_actual = " << actual_y << ", Δy = " << difference << std::endl;
+            static auto const dx_denom = 10;
+            for (auto dx_numer = 0; dx_numer <= 10; ++dx_numer)
+            {
+                auto const dx = width * dx_numer / dx_denom;
+                auto const x_fixed = segment.origin + dx;
+                auto const x_real = from_fixed<real_t>(x_fixed);
+                auto const expected_y = log1p(x_real);
+                auto const actual_y = from_fixed<real_t>(segment.segment.evaluate(dx));
+                auto const difference = actual_y - expected_y;
+
+                std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
+                          << ", y_actual = " << actual_y << ", Δy = " << difference << std::endl;
+            }
+            std::cout << std::endl;
         }
 #else
         auto const mid_segment_index = completed_segments.size() / 2;
@@ -563,6 +641,7 @@ TEST(spline_builder, poc)
     auto spliner = spliner_t{
         .subdivider = subdivider_t{.bisect = bisector_t{.interval_builder
                                        = interval_builder_t{.estimate_residual = residual_estimator_t{
+                                                                // .measure_error = error_norm_t{.derivative_weight = 0.0},
                                                                 .measure_error = error_norm_t{},
                                                                 .apply_weight = weight_function_t{.halflife = 0.5},
                                                                 .generate_nodes = {},
