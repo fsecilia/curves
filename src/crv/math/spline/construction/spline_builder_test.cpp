@@ -260,8 +260,6 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     function_sample_t midpoint;
     function_sample_t right;
 
-    real_t tolerance;
-
     residual_t residual;
     segment_t segment;
 
@@ -340,8 +338,8 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
     [[no_unique_address]] segment_builder_t build_segment;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
-        function_sample_t const& midpoint, function_sample_t const& right, real_t tolerance,
-        int_t log2_width) const noexcept -> interval_t
+        function_sample_t const& midpoint, function_sample_t const& right, int_t log2_width) const noexcept
+        -> interval_t
     {
         auto const x_origin = to_fixed<x_t>(left.x);
         auto const segment = build_segment(left.y, right.y, log2_width);
@@ -350,7 +348,6 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
             .left = left,
             .midpoint = midpoint,
             .right = right,
-            .tolerance = tolerance,
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
             .segment = segment,
@@ -374,18 +371,15 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
     constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
         -> bisection_t
     {
-        // errors in a spline are max, not distributed like with quadrature; do not track this: always use global
-        auto const child_tolerance = parent.tolerance; // / 2;
-
         auto const child_log2_width = parent.segment.log2_width - 1;
 
         auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
         auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
 
         auto const left = interval_builder.build(
-            sample_target_function, parent.left, left_midpoint, parent.midpoint, child_tolerance, child_log2_width);
+            sample_target_function, parent.left, left_midpoint, parent.midpoint, child_log2_width);
         auto const right = interval_builder.build(
-            sample_target_function, parent.midpoint, right_midpoint, parent.right, child_tolerance, child_log2_width);
+            sample_target_function, parent.midpoint, right_midpoint, parent.right, child_log2_width);
 
         return {
             .left = left,
@@ -447,8 +441,8 @@ struct subdivider_t
     [[no_unique_address]] refinement_policies_t refinement_policies;
 
     // returns max error in completed segments, or description of failure
-    constexpr auto subdivide(auto& queue, auto& completed_segments, auto const& sample_target_function) noexcept
-        -> std::expected<real_t, bisection_error_t>
+    constexpr auto subdivide(auto& queue, auto& completed_segments, auto const& sample_target_function,
+        real_t global_tolerance) noexcept -> std::expected<real_t, bisection_error_t>
     {
         assert(!queue.empty());
         assert(completed_segments.empty());
@@ -466,7 +460,7 @@ struct subdivider_t
             auto const must_subdivide = refinement_reasons != bisection_error_reason_t{0};
 
             auto const noise_floor = interval.residual.max_scale * relative_noise_margin;
-            auto const local_tolerance = std::max(interval.tolerance, noise_floor);
+            auto const local_tolerance = std::max(global_tolerance, noise_floor);
             auto const can_subdivide
                 = interval.segment.log2_width > min_log2_width && interval.residual.max_error >= local_tolerance;
 
@@ -512,17 +506,14 @@ template <std::floating_point real_t, typename interval_builder_t> struct refine
     [[no_unique_address]] interval_builder_t interval_builder;
 
     // for now, just push one whole segment
-    constexpr auto operator()(
-        auto& queue, auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance) const -> void
+    constexpr auto operator()(auto& queue, auto const& sample_target_function, int_t log2_domain_max) const -> void
     {
         assert(queue.empty());
         auto const domain_max = std::ldexp(1.0, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
         auto const right = domain_max;
-        auto const tolerance = global_tolerance * ((right - left) / domain_max);
         queue.push(interval_builder.build(sample_target_function, sample_target_function(left),
-            sample_target_function(std::midpoint(left, right)), sample_target_function(right), tolerance,
-            log2_domain_max));
+            sample_target_function(std::midpoint(left, right)), sample_target_function(right), log2_domain_max));
     }
 };
 
@@ -543,8 +534,9 @@ struct spliner_t
     auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
         -> std::optional<bisection_error_t>
     {
-        seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max, global_tolerance);
-        auto const result = subdivider.subdivide(refinement_pool, completed_segments, sample_target_function);
+        seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max);
+        auto const result
+            = subdivider.subdivide(refinement_pool, completed_segments, sample_target_function, global_tolerance);
         if (!result.has_value()) return result.error();
 
         auto max_error = result.value();
