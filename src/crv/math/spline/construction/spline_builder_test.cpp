@@ -261,7 +261,6 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     function_sample_t right;
 
     real_t tolerance;
-    int_t log2_width;
 
     residual_t residual;
     segment_t segment;
@@ -352,7 +351,6 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
             .midpoint = midpoint,
             .right = right,
             .tolerance = tolerance,
-            .log2_width = log2_width,
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
             .segment = segment,
@@ -379,7 +377,7 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
         // errors in a spline are max, not distributed like with quadrature; do not track this: always use global
         auto const child_tolerance = parent.tolerance; // / 2;
 
-        auto const child_log2_width = parent.log2_width - 1;
+        auto const child_log2_width = parent.segment.log2_width - 1;
 
         auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
         auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
@@ -400,7 +398,6 @@ template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
 {
     using x_t = t_x_t;
     x_t origin;
-    int_t log2_width;
     segment_t segment;
 
     constexpr auto operator<=>(completed_segment_t const& src) const noexcept -> auto { return origin <=> src.origin; }
@@ -471,7 +468,7 @@ struct subdivider_t
             auto const noise_floor = interval.residual.max_scale * relative_noise_margin;
             auto const local_tolerance = std::max(interval.tolerance, noise_floor);
             auto const can_subdivide
-                = interval.log2_width > min_log2_width && interval.residual.max_error >= local_tolerance;
+                = interval.segment.log2_width > min_log2_width && interval.residual.max_error >= local_tolerance;
 
             if (must_subdivide && !can_subdivide)
             {
@@ -495,7 +492,6 @@ struct subdivider_t
                 max_error = max(max_error, interval.residual.max_error);
                 completed_segments.push_back(completed_segment_t{
                     .origin = to_fixed<x_t>(interval.left.x),
-                    .log2_width = interval.log2_width,
                     .segment = interval.segment,
                 });
 
@@ -560,7 +556,6 @@ struct spliner_t
             max_error = max(max_error, interval.residual.max_error);
             completed_segments.push_back(completed_segment_t{
                 .origin = to_fixed<x_t>(interval.left.x),
-                .log2_width = interval.log2_width,
                 .segment = interval.segment,
             });
             refinement_pool.pop();
@@ -574,7 +569,8 @@ struct spliner_t
         {
             using std::log1p;
 
-            auto const width = segment.log2_width < 0 ? x_t{1} >> -segment.log2_width : x_t{1} << segment.log2_width;
+            auto const log2_width = segment.segment.log2_width;
+            auto const width = log2_width < 0 ? x_t{1} >> -log2_width : x_t{1} << log2_width;
 
             static auto const dx_denom = 10;
             for (auto dx_numer = 0; dx_numer <= 10; ++dx_numer)
