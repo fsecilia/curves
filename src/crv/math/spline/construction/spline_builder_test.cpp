@@ -23,9 +23,9 @@
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/priority_queue.hpp>
 #include <cmath>
-#include <numeric>
-
+#include <expected>
 #include <iomanip>
+#include <numeric>
 
 namespace crv {
 namespace spline {
@@ -172,6 +172,7 @@ auto make_function_sampler(target_function_t target_function) noexcept -> functi
 template <std::floating_point real_t> struct residual_t
 {
     real_t max_error;
+    real_t weighted_error;
     real_t max_scale;
 };
 
@@ -193,10 +194,10 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     residual_t residual;
     segment_t segment;
 
-    /// orders by residual.max_error, then by left.x
+    /// orders by residual.weighted_error, then by left.x
     constexpr auto operator<=>(interval_t const& src) const noexcept -> std::partial_ordering
     {
-        if (auto const cmp = residual.max_error <=> src.residual.max_error; std::is_neq(cmp)) return cmp;
+        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; std::is_neq(cmp)) return cmp;
         return left.x <=> src.left.x;
     }
     constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
@@ -227,13 +228,11 @@ struct residual_estimator_t
     auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
         real_t right) const noexcept -> residual_t
     {
-        auto const error_weight = apply_weight(midpoint);
-        auto const half_width = (right - left) * 0.5;
-
         auto max_scale = real_t{0};
         auto max_error = real_t{0};
 
         // sample function at generated nodes
+        auto const half_width = (right - left) * 0.5;
         for (auto const standard_node : generate_nodes())
         {
             auto const domain_node = midpoint + half_width * standard_node;
@@ -246,11 +245,11 @@ struct residual_estimator_t
 
             // measure magnitude of error using norm, weight it using weight function
             auto const error = measure_error(target_function_sample.y, jet_t{approximation});
-            auto const weighted_error = error * error_weight;
-            max_error = std::max(max_error, weighted_error);
+            max_error = std::max(max_error, error);
         }
 
-        return residual_t{.max_error = max_error, .max_scale = max_scale};
+        auto const weighted_error = max_error * apply_weight(midpoint);
+        return residual_t{.max_error = max_error, .weighted_error = weighted_error, .max_scale = max_scale};
     }
 };
 
@@ -295,6 +294,7 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
     using bisection_t = t_bisection_t;
     using interval_t = bisection_t::interval_t;
     using segment_t = interval_t::segment_t;
+    using x_t = segment_t::x_t;
     using real_t = interval_t::real_t;
     using jet_t = jet_t<real_t>;
     using function_sample_t = function_sample_t<real_t>;
@@ -367,6 +367,7 @@ struct subdivider_t
     using bisection_t = bisector_t::bisection_t;
     using interval_t = bisector_t::interval_t;
     using residual_t = residual_t<real_t>;
+    using x_t = bisector_t::x_t;
 
     using bisection_error_t = bisection_error_t<real_t>;
 
@@ -376,14 +377,21 @@ struct subdivider_t
     [[no_unique_address]] bisector_t bisect;
     [[no_unique_address]] refinement_policies_t refinement_policies;
 
-    constexpr auto subdivide(auto& queue, auto const& sample_target_function) noexcept
-        -> std::optional<bisection_error_t>
+    // returns max error in completed segments, or description of failure
+    constexpr auto subdivide(auto& queue, auto& completed_segments, auto const& sample_target_function) noexcept
+        -> std::expected<real_t, bisection_error_t>
     {
         assert(!queue.empty());
+        assert(completed_segments.empty());
 
-        while (queue.size() < max_segment_count && !queue.empty())
+        // this should be done once at startup
+        completed_segments.reserve(max_segment_count);
+        queue.reserve(max_segment_count);
+
+        auto max_error = real_t{0};
+        while ((queue.size() + completed_segments.size()) < max_segment_count && !queue.empty())
         {
-            auto const interval = queue.top();
+            auto const& interval = queue.top();
 
             auto const refinement_reasons = refinement_policies(interval.segment.monomial);
             auto const must_subdivide = refinement_reasons != bisection_error_reason_t{0};
@@ -395,21 +403,35 @@ struct subdivider_t
 
             if (must_subdivide && !can_subdivide)
             {
-                return bisection_error_t{
-                    .reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x};
+                return std::unexpected(bisection_error_t{
+                    .reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x});
             }
 
             auto const should_subdivide = interval.residual.max_error > local_tolerance;
-            if (!should_subdivide) return std::nullopt;
+            if (must_subdivide || should_subdivide)
+            {
+                auto const bisection = bisect(sample_target_function, interval);
 
-            auto const bisection = bisect(sample_target_function, interval);
+                queue.pop();
 
-            queue.pop();
-            queue.push(bisection.left);
-            queue.push(bisection.right);
+                queue.push(bisection.left);
+                queue.push(bisection.right);
+            }
+            else
+            {
+                // this is duplicated but should not be
+                max_error = max(max_error, interval.residual.max_error);
+                completed_segments.push_back(completed_segment_t{
+                    .origin = to_fixed<x_t>(interval.left.x),
+                    .log2_width = interval.log2_width,
+                    .segment = interval.segment,
+                });
+
+                queue.pop();
+            }
         }
 
-        return std::nullopt;
+        return max_error;
     }
 };
 
@@ -453,16 +475,17 @@ struct spliner_t
     auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
         -> std::optional<bisection_error_t>
     {
-        assert(completed_segments.empty());
-
         seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max, global_tolerance);
-        auto const result = subdivider.subdivide(refinement_pool, sample_target_function);
-        if (result.has_value()) return result.value();
+        auto const result = subdivider.subdivide(refinement_pool, completed_segments, sample_target_function);
+        if (!result.has_value()) return result.error();
+
+        auto max_error = result.value();
 
         completed_segments.reserve(refinement_pool.size());
         while (!refinement_pool.empty())
         {
             auto const& interval = refinement_pool.top();
+            max_error = max(max_error, interval.residual.max_error);
             completed_segments.push_back(completed_segment_t{
                 .origin = to_fixed<x_t>(interval.left.x),
                 .log2_width = interval.log2_width,
@@ -474,10 +497,28 @@ struct spliner_t
         std::ranges::sort(
             completed_segments, std::ranges::less{}, [](auto const& elem) static noexcept { return elem.origin; });
 
+#if 1
+        for (auto const segment : completed_segments)
+        {
+            using std::log1p;
+
+            auto const width = segment.log2_width < 0 ? x_t{1} >> -segment.log2_width : x_t{1} << segment.log2_width;
+            auto const dx_third = width / 3;
+            auto const x_fixed = segment.origin + dx_third;
+            auto const x_real = from_fixed<real_t>(x_fixed);
+            auto const expected_y = log1p(x_real);
+            auto const actual_y = from_fixed<real_t>(segment.segment.evaluate(dx_third));
+            auto const difference = actual_y - expected_y;
+
+            std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
+                      << ", y_actual = " << actual_y << ", Δy = " << difference << std::endl;
+        }
+#else
         auto const mid_segment_index = completed_segments.size() / 2;
         auto const mid_segment = completed_segments[mid_segment_index];
         std::cout << std::setprecision(10) << "mid segment index: " << mid_segment_index
                   << " .x_origin = " << mid_segment.origin << ", .d = " << mid_segment.segment.monomial[3] << std::endl;
+#endif
 
         return std::nullopt;
     }
