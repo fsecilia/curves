@@ -270,13 +270,17 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     function_sample_t midpoint;
     function_sample_t right;
 
+    bisection_error_reason_t must_subdivide;
     residual_t residual;
     segment_t segment;
 
     /// orders by residual.weighted_error, then by left.x
     constexpr auto operator<=>(interval_t const& src) const noexcept -> std::partial_ordering
     {
-        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; std::is_neq(cmp)) return cmp;
+        auto const lhs_must_subdivide = must_subdivide != bisection_error_reason_t{0};
+        auto const rhs_must_subdivide = src.must_subdivide != bisection_error_reason_t{0};
+        if (auto const cmp = lhs_must_subdivide <=> rhs_must_subdivide; cmp != 0) return cmp;
+        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; cmp != 0) return cmp;
         return left.x <=> src.left.x;
     }
     constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
@@ -321,7 +325,7 @@ struct residual_estimator_t
             auto const target_function_sample = sample_target_function(domain_node);
             auto const target = target_function_sample.y;
             auto const primal_error = abs(primal(target) - primal(approximation));
-            auto const tangent_error = abs(derivative(target) - derivative(approximation));
+            auto const tangent_error = abs(tangent(target) - tangent(approximation));
             auto const metric_error = measure_error(target, approximation);
 
             max_residual.scale = max(max_residual.scale, abs(primal(target)));
@@ -336,7 +340,9 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename residual_estimator_t, typename segment_builder_t> struct interval_builder_t
+template <typename t_interval_t, typename residual_estimator_t, typename segment_builder_t,
+    typename refinement_policies_t>
+struct interval_builder_t
 {
     using interval_t = t_interval_t;
     using segment_t = interval_t::segment_t;
@@ -349,6 +355,7 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
 
     [[no_unique_address]] residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
+    [[no_unique_address]] refinement_policies_t must_subdivide;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
         function_sample_t const& midpoint, function_sample_t const& right, int_t log2_width) const noexcept
@@ -361,6 +368,7 @@ template <typename t_interval_t, typename residual_estimator_t, typename segment
             .left = left,
             .midpoint = midpoint,
             .right = right,
+            .must_subdivide = must_subdivide(segment.monomial),
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
             .segment = segment,
@@ -437,7 +445,7 @@ template <typename monotonicity_t, typename overflow_t> struct refinement_polici
 };
 
 /// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
-template <std::floating_point real_t, typename bisector_t, typename refinement_policies_t> struct subdivider_t
+template <std::floating_point real_t, typename bisector_t> struct subdivider_t
 {
     using bisection_t = bisector_t::bisection_t;
     using interval_t = bisector_t::interval_t;
@@ -450,7 +458,6 @@ template <std::floating_point real_t, typename bisector_t, typename refinement_p
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
 
     [[no_unique_address]] bisector_t bisect;
-    [[no_unique_address]] refinement_policies_t refinement_policies;
 
     struct interval_complete_t
     {};
@@ -459,21 +466,20 @@ template <std::floating_point real_t, typename bisector_t, typename refinement_p
     constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
         real_t global_tolerance) const noexcept -> result_t
     {
-        auto const refinement_reasons = refinement_policies(interval.segment.monomial);
-        auto const must_subdivide = refinement_reasons != bisection_error_reason_t{0};
-
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
             = interval.segment.log2_width > min_log2_width && interval.residual.metric_error >= local_tolerance;
+        auto const must_subdivide = interval.must_subdivide != bisection_error_reason_t{0};
 
         if (must_subdivide && !can_subdivide)
         {
-            return bisection_error_t{.reasons = refinement_reasons, .left = interval.left.x, .right = interval.right.x};
+            return bisection_error_t{
+                .reasons = interval.must_subdivide, .left = interval.left.x, .right = interval.right.x};
         }
 
         auto const should_subdivide = interval.residual.metric_error > global_tolerance;
-        if ((must_subdivide || should_subdivide) && can_subdivide) { return bisect(sample_target_function, interval); }
+        if ((must_subdivide || should_subdivide) && can_subdivide) return bisect(sample_target_function, interval);
         else
         {
             return interval_complete_t{};
@@ -641,36 +647,40 @@ TEST(spline_builder, poc)
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
     using hermite_to_monomial_converter_t = hermite_to_monomial_converter_t<jet_t, coeff_t>;
     using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monomial_converter_t>;
-    using interval_builder_t = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using defect_detectors_t = refinement_policies_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
+    using interval_builder_t
+        = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t, defect_detectors_t>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, defect_detectors_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
+    using subdivider_t = subdivider_t<real_t, bisector_t>;
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
     auto spliner = spliner_t{
-        .subdivide = subdivider_t{.bisect = bisector_t{.interval_builder
-                                       = interval_builder_t{.estimate_residual = residual_estimator_t{
-                                                                // .measure_error = error_norm_t{.derivative_weight = 0.0},
-                                                                .measure_error = error_norm_t{},
-                                                                .apply_weight = weight_function_t{.halflife = 0.5},
-                                                                .generate_nodes = {},
-                                                                .quantize = {},
-                                                                },
-                                                                .build_segment={},
-                                                            },
-                                        },
-                                        .refinement_policies={}
-                                    },
-                                    .seed_refinement_pool={},
-                                    .completed_intervals={},
-                                    .refinement_pool={}
-        };
+        .subdivide = subdivider_t{
+            .bisect = bisector_t{
+                .interval_builder
+                    = interval_builder_t{
+                    .estimate_residual = residual_estimator_t{
+                        // .measure_error = error_norm_t{.derivative_weight = 0.0},
+                        .measure_error = error_norm_t{},
+                        .apply_weight = weight_function_t{.halflife = 0.5},
+                        .generate_nodes = {},
+                        .quantize = {},
+                    },
+                    .build_segment={},
+                    .must_subdivide={},
+                },
+            },
+        },
+        .seed_refinement_pool={},
+        .completed_intervals={},
+        .refinement_pool={}
+    };
 
     auto const result = spliner(make_function_sampler<real_t>([](auto x) static noexcept -> decltype(x) {
         using std::log1p;
