@@ -152,7 +152,7 @@ template <typename jet_t> struct first_order_relative_t
     // soft floor: behaves like floor when value << floor, like value when value >> floor
     static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
     {
-        return std::sqrt(value * value + floor * floor);
+        return std::hypot(value, floor);
     }
 
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
