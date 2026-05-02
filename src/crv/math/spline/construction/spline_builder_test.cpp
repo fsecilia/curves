@@ -49,41 +49,78 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::bisection_err
 namespace spline {
 namespace {
 
+/// single, fixed-point multiply and carry step with normalized t
+///
+/// This is a standard horner's loop step for fixed-point. It has no mitigation for overflow; it presumes the
+/// polynomial's intermediate steps were already checked at the extrema.
+///
+/// \pre sum known to not overflow
+struct fast_mac_step_t
+{
+    template <is_fixed accumulator_t, is_fixed normalized_t>
+    constexpr auto operator()(accumulator_t accumulator, normalized_t t, accumulator_t coeff) const noexcept
+        -> accumulator_t
+    {
+        using narrow_t = typename accumulator_t::value_t;
+        using wide_t = widened_t<narrow_t>;
+        auto const wide_product = static_cast<wide_t>(accumulator.value) * t.value;
+        auto const narrow_product = static_cast<narrow_t>(wide_product >> normalized_t::frac_bits);
+        return accumulator_t::literal(narrow_product + coeff.value);
+    }
+};
+
+/// fixed-length horner's loop using fold
+template <auto mac_step> struct polynomial_evaluator_t
+{
+    template <typename coeff_t>
+    constexpr auto operator()(auto t, coeff_t highest_coefficient, std::same_as<coeff_t> auto... coeffs) const noexcept
+        -> coeff_t
+    {
+        auto accumulator = highest_coefficient;
+        ((accumulator = mac_step(accumulator, t, coeffs)), ...);
+        return accumulator;
+    }
+};
+
+/// normalizes from spline input space to a segment's local input space
+template <typename t_normalized_t, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
+struct segment_input_normalizer_t
+{
+    using normalized_t = t_normalized_t;
+
+    template <is_fixed x_t> constexpr auto operator()(x_t x, int_t log2_width) const noexcept -> normalized_t
+    {
+        auto const x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width;
+        return normalized_t::literal(shifter.shift(x.value, x_to_t_shift));
+    }
+};
+
 /// fixed-point normalized monomial with width
-template <typename t_x_t, typename t_y_t, typename t_normalized_t, typename t_coeff_t,
-    auto t_dx_to_t_shifter = shifter_t<rounding_modes::shr::nearest_up>{},
-    auto t_eval_shifter = shifter_t<rounding_modes::shr::truncate>{}>
+template <typename t_x_t, typename t_y_t, typename t_coeff_t, auto input_normalizer, auto polynomial_evaluator>
 struct segment_t
 {
     using x_t = t_x_t;
     using y_t = t_y_t;
-    using normalized_t = t_normalized_t;
+    using normalized_t = decltype(input_normalizer)::normalized_t;
     using coeff_t = t_coeff_t;
 
     using monomial_t = cubic_monomial_t<coeff_t>;
-    static auto const coeff_count = cubic_coeff_count;
-
-    static constexpr auto dx_to_t_shifter = t_dx_to_t_shifter;
-    static constexpr auto eval_shifter = t_eval_shifter;
 
     monomial_t monomial;
     int_t log2_width;
 
-    constexpr auto evaluate(x_t dx) const noexcept -> y_t
+    constexpr auto x_to_t(x_t x) const noexcept -> normalized_t { return input_normalizer(x, log2_width); }
+
+    constexpr auto primal(normalized_t t) const noexcept -> y_t
     {
-        // calc t in one shift
-        auto const dx_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width;
-        auto const t = normalized_t::literal(dx_to_t_shifter.shift(dx.value, dx_to_t_shift));
+        return y_t::convert(polynomial_evaluator(t, monomial[0], monomial[1], monomial[2], monomial[3]));
+    }
 
-        auto result = monomial[0];
-        for (auto coeff = 1; coeff < coeff_count; ++coeff)
-        {
-            // convert with wrap and no rounding
-            result = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(multiply(result, t));
-            result += monomial[coeff];
-        }
-
-        return y_t::convert(result);
+    constexpr auto tangent(normalized_t t) const noexcept -> y_t
+    {
+        // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
+        // This may overflow.
+        return y_t::convert(polynomial_evaluator(t, 3 * monomial[0], 2 * monomial[1], monomial[2]));
     }
 };
 
@@ -100,33 +137,10 @@ template <std::floating_point real_t, typename segment_t> struct approximant_t
 
     constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
-        auto const dx = to_fixed<x_t>(x) - x_origin;
-        auto const primal = from_fixed<real_t>(segment.evaluate(dx));
-
-        auto const dx_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - segment.log2_width;
-        auto const t = normalized_t::literal(segment.dx_to_t_shifter.shift(dx.value, dx_to_t_shift));
-
-        static constexpr auto eval_shifter = segment_t::eval_shifter;
-
-        auto const a3 = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(
-            multiply(segment.monomial[0], coeff_t{3}));
-        auto const b2 = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(
-            multiply(segment.monomial[1], coeff_t{2}));
-        auto const c = segment.monomial[2];
-
-        // Horner for (3*a*t + 2*b)*t + c
-        auto result = a3;
-        result = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(multiply(result, t));
-        result += b2;
-        result = coeff_t::template convert<overflow_policy_t::wrap, eval_shifter>(multiply(result, t));
-        result += c;
-
-        auto const dy_dt = from_fixed<real_t>(result);
-
-        // apply chain rule: dt/dx = 2^(-log2_width)
+        auto const t = segment.x_to_t(to_fixed<x_t>(x) - x_origin);
         auto const dt_dx = std::ldexp(real_t{1}, -segment.log2_width);
-        auto const tangent = dy_dt * dt_dx;
-
+        auto const primal = from_fixed<real_t>(segment.primal(t));
+        auto const tangent = from_fixed<real_t>(segment.tangent(t)) * dt_dx;
         return jet_t{primal, tangent};
     }
 };
@@ -603,7 +617,8 @@ struct spliner_t
                 auto const x_fixed = completed_segment.origin + dx;
                 auto const x_real = from_fixed<real_t>(x_fixed);
                 auto const expected_y = log1p(x_real);
-                auto const actual_y = from_fixed<real_t>(completed_segment.segment.evaluate(dx));
+                auto const segment = completed_segment.segment;
+                auto const actual_y = from_fixed<real_t>(segment.primal(segment.x_to_t(dx)));
                 auto const difference = actual_y - expected_y;
 
                 std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
@@ -636,7 +651,9 @@ TEST(spline_builder, poc)
 
     constexpr auto max_segment_count = 1 << 8;
 
-    using segment_t = segment_t<x_t, y_t, normalized_t, coeff_t>;
+    using segment_input_normalizer_t = segment_input_normalizer_t<normalized_t>;
+    using polynomial_evaluator_t = polynomial_evaluator_t<fast_mac_step_t{}>;
+    using segment_t = segment_t<x_t, y_t, coeff_t, segment_input_normalizer_t{}, polynomial_evaluator_t{}>;
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
