@@ -565,21 +565,21 @@ struct spliner_t
             completed_segments, std::ranges::less{}, [](auto const& elem) static noexcept { return elem.origin; });
 
 #if 1
-        for (auto const segment : completed_segments)
+        for (auto const completed_segment : completed_segments)
         {
             using std::log1p;
 
-            auto const log2_width = segment.segment.log2_width;
+            auto const log2_width = completed_segment.segment.log2_width;
             auto const width = log2_width < 0 ? x_t{1} >> -log2_width : x_t{1} << log2_width;
 
             static auto const dx_denom = 10;
             for (auto dx_numer = 0; dx_numer <= 10; ++dx_numer)
             {
                 auto const dx = width * dx_numer / dx_denom;
-                auto const x_fixed = segment.origin + dx;
+                auto const x_fixed = completed_segment.origin + dx;
                 auto const x_real = from_fixed<real_t>(x_fixed);
                 auto const expected_y = log1p(x_real);
-                auto const actual_y = from_fixed<real_t>(segment.segment.evaluate(dx));
+                auto const actual_y = from_fixed<real_t>(completed_segment.segment.evaluate(dx));
                 auto const difference = actual_y - expected_y;
 
                 std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
