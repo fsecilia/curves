@@ -26,12 +26,12 @@ target_sources(lib PRIVATE
     math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
     math/spline/construction/approximant.hpp
+    math/spline/construction/defect_detectors/monotonicity.hpp
+    math/spline/construction/defect_detectors/overflow.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/quantizer.hpp
-    math/spline/construction/refinement_policies/monotonicity.hpp
-    math/spline/construction/refinement_policies/overflow.hpp
     math/spline/construction/residual_estimator.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
@@ -127,12 +127,12 @@ if (enable_testing)
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
         math/spline/construction/approximant_test.cpp
+        math/spline/construction/defect_detectors/monotonicity_test.cpp
+        math/spline/construction/defect_detectors/overflow_test.cpp
         math/spline/construction/error_norm_test.cpp
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/quantizer_test.cpp
-        math/spline/construction/refinement_policies/monotonicity_test.cpp
-        math/spline/construction/refinement_policies/overflow_test.cpp
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
