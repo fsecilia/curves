@@ -155,13 +155,13 @@ template <typename scalar_t, typename jet_t> struct uniform_t
 };
 
 /// first-order uniform norm with target-derived relative-slope weighting
-template <typename jet_t> struct first_order_relative_t
+template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
 {
     using scalar_t = typename jet_t::value_t;
 
     // floor prevents weight blowup where target slope is near zero or unresolvable
-    scalar_t primal_floor{scalar_t{1} / (1 << 16)};
-    scalar_t tangent_floor{scalar_t{1} / (1 << 16)};
+    static constexpr scalar_t primal_floor{scalar_t{1} / (1 << -min_log2_width)};
+    static constexpr scalar_t tangent_floor{scalar_t{1} / (1 << -min_log2_width)};
 
     // soft floor: behaves like floor when value << floor, like value when value >> floor
     static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
@@ -451,7 +451,7 @@ template <typename monotonicity_t, typename overflow_t> struct refinement_polici
 };
 
 /// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
-template <std::floating_point real_t, typename bisector_t> struct subdivider_t
+template <std::floating_point real_t, typename bisector_t, int_t min_log2_width> struct subdivider_t
 {
     using bisection_t = bisector_t::bisection_t;
     using interval_t = bisector_t::interval_t;
@@ -460,7 +460,6 @@ template <std::floating_point real_t, typename bisector_t> struct subdivider_t
 
     using bisection_error_t = bisection_error_t<real_t>;
 
-    static constexpr auto min_log2_width = -16;
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
 
     [[no_unique_address]] bisector_t bisect;
@@ -652,6 +651,7 @@ TEST(spline_builder, poc)
     using coeff_t = fixed_t<int64_t, 47>;
 
     constexpr auto max_segment_count = 1 << 8;
+    static constexpr auto min_log2_width = -16;
 
     using segment_input_normalizer_t = segment_input_normalizer_t<normalized_t>;
     using polynomial_evaluator_t = polynomial_evaluator_t<fast_mac_step_t{}>;
@@ -675,7 +675,7 @@ TEST(spline_builder, poc)
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t>;
+    using subdivider_t = subdivider_t<real_t, bisector_t, min_log2_width>;
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
