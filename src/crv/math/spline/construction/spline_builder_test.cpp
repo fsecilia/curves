@@ -140,7 +140,7 @@ template <std::floating_point real_t, typename segment_t> struct approximant_t
     constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
         auto const t = segment.x_to_t(to_fixed<x_t>(x) - x_origin);
-        auto const dt_dx = std::ldexp(real_t{1}, -segment.log2_width);
+        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(-segment.log2_width));
         auto const primal = from_fixed<real_t>(segment.primal(t));
         auto const tangent = from_fixed<real_t>(segment.tangent(t)) * dt_dx;
         return jet_t{primal, tangent};
