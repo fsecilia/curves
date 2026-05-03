@@ -449,7 +449,7 @@ template <std::floating_point real_t> struct subdivision_error_t
 };
 
 // this is named poorly
-template <typename monotonicity_t, typename overflow_t> struct refinement_policies_t
+template <typename monotonicity_t, typename overflow_t> struct defect_detector_t
 {
     [[no_unique_address]] monotonicity_t monotonicity;
     [[no_unique_address]] overflow_t overflow;
@@ -680,10 +680,10 @@ TEST(spline_builder, poc)
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
     using hermite_to_monomial_converter_t = hermite_to_monomial_converter_t<jet_t, coeff_t>;
     using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monomial_converter_t>;
-    using defect_detectors_t = refinement_policies_t<defect_detectors::monotonicity_t,
+    using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
     using interval_builder_t
-        = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t, defect_detectors_t>;
+        = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t, defect_detector_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
