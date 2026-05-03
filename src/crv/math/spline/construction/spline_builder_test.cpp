@@ -236,24 +236,16 @@ template <std::floating_point real_t> struct function_sample_t
 };
 
 // samples target function, returning the sample location and resulting 1-jet
-template <std::floating_point real_t, typename target_function_t> struct function_sampler_t
+template <typename target_function_t> struct function_sampler_t
 {
-    using function_sample_t = function_sample_t<real_t>;
-    using jet_t = jet_t<real_t>;
-
     target_function_t target_function;
 
-    constexpr auto operator()(real_t x) const noexcept -> function_sample_t
+    template <std::floating_point real_t>
+    constexpr auto operator()(real_t x) const noexcept -> function_sample_t<real_t>
     {
-        return {.x = x, .y = target_function(jet_t{x, 1.0})};
+        return {.x = x, .y = target_function(jet_t<real_t>{x, 1.0})};
     }
 };
-
-template <typename real_t, typename target_function_t>
-auto make_function_sampler(target_function_t target_function) noexcept -> function_sampler_t<real_t, target_function_t>
-{
-    return {.target_function = std::move(target_function)};
-}
 
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point real_t> struct residual_t
@@ -545,8 +537,18 @@ struct spliner_t
         residual_t max_residual;
     };
 
-    auto operator()(auto const& sample_target_function, int_t log2_domain_max, real_t global_tolerance)
+    // optional overload to take a function directly
+    template <typename target_function_t>
+    auto operator()(target_function_t sample_target_function, int_t log2_domain_max, real_t global_tolerance)
         -> std::expected<result_t, bisection_error_t>
+    {
+        return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)}, log2_domain_max,
+            global_tolerance);
+    }
+
+    template <typename target_function_t>
+    auto operator()(function_sampler_t<target_function_t> sample_target_function, int_t log2_domain_max,
+        real_t global_tolerance) -> std::expected<result_t, bisection_error_t>
     {
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
@@ -699,10 +701,11 @@ TEST(spline_builder, poc)
         .refinement_pool={}
     };
 
-    auto const result = spliner(make_function_sampler<real_t>([](auto x) static noexcept -> decltype(x) {
-        using std::log1p;
-        return log1p(x);
-    }),
+    auto const result = spliner(
+        [](auto x) static noexcept -> decltype(x) {
+            using std::log1p;
+            return log1p(x);
+        },
         8, 1e-8);
 
     EXPECT_TRUE(result.has_value());
