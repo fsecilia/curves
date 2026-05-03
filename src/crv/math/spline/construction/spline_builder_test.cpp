@@ -37,7 +37,7 @@ namespace {
 template <typename value_t> using cubic_monomial_t = cubic_polynomial_t<value_t>;
 constexpr int_t cubic_coeff_count = 4;
 
-enum class bisection_error_reason_t : int_t
+enum class segment_defects_t : int_t
 {
     monotonicity = 1 << 0,
     overflow = 1 << 1,
@@ -46,7 +46,7 @@ enum class bisection_error_reason_t : int_t
 } // namespace
 } // namespace spline
 
-template <> inline constexpr auto bitwise_for_enum_enabled<spline::bisection_error_reason_t> = true;
+template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defects_t> = true;
 
 namespace spline {
 namespace {
@@ -285,17 +285,17 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     function_sample_t midpoint;
     function_sample_t right;
 
-    bisection_error_reason_t must_subdivide;
+    segment_defects_t segment_defects;
     residual_t residual;
     segment_t segment;
 
     /// orders by residual.weighted_error, then by left.x
     constexpr auto operator<=>(interval_t const& src) const noexcept -> std::partial_ordering
     {
-        auto const lhs_must_subdivide = must_subdivide != bisection_error_reason_t{0};
-        auto const rhs_must_subdivide = src.must_subdivide != bisection_error_reason_t{0};
-        if (auto const cmp = lhs_must_subdivide <=> rhs_must_subdivide; cmp != 0) return cmp;
-        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; cmp != 0) return cmp;
+        auto const lhs_must_subdivide = segment_defects != segment_defects_t{0};
+        auto const rhs_must_subdivide = src.segment_defects != segment_defects_t{0};
+        if (auto const cmp = lhs_must_subdivide <=> rhs_must_subdivide; std::is_neq(cmp)) return cmp;
+        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; std::is_neq(cmp)) return cmp;
         return left.x <=> src.left.x;
     }
     constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
@@ -305,7 +305,6 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
 template <typename t_interval_t> struct bisection_t
 {
     using interval_t = t_interval_t;
-    using real_t = interval_t::real_t;
 
     interval_t left;
     interval_t right;
@@ -323,7 +322,7 @@ struct residual_estimator_t
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
 
-    auto operator()(auto const& sample_target_function, auto const& approximant, real_t interval_width,
+    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t interval_width,
         real_t midpoint) const noexcept -> residual_t
     {
         auto max_residual = residual_t{};
@@ -358,8 +357,7 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename residual_estimator_t, typename segment_builder_t,
-    typename refinement_policies_t>
+template <typename t_interval_t, typename residual_estimator_t, typename segment_builder_t, typename defect_detector_t>
 struct interval_builder_t
 {
     using interval_t = t_interval_t;
@@ -373,7 +371,7 @@ struct interval_builder_t
 
     [[no_unique_address]] residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
-    [[no_unique_address]] refinement_policies_t must_subdivide;
+    [[no_unique_address]] defect_detector_t detect_defects;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
         function_sample_t const& midpoint, function_sample_t const& right, int_t log2_width) const noexcept
@@ -386,7 +384,7 @@ struct interval_builder_t
             .left = left,
             .midpoint = midpoint,
             .right = right,
-            .must_subdivide = must_subdivide(segment.monomial),
+            .segment_defects = detect_defects(segment.monomial),
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, right.x - left.x, midpoint.x),
             .segment = segment,
@@ -441,10 +439,10 @@ template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
     constexpr auto operator==(completed_segment_t const& src) const noexcept -> bool = default;
 };
 
-// tracks errors about why bisection failed and where
-template <std::floating_point real_t> struct bisection_error_t
+// tracks errors about why subdivision failed and where
+template <std::floating_point real_t> struct subdivision_error_t
 {
-    bisection_error_reason_t reasons;
+    segment_defects_t defects;
 
     real_t left;
     real_t right;
@@ -457,11 +455,11 @@ template <typename monotonicity_t, typename overflow_t> struct refinement_polici
     [[no_unique_address]] overflow_t overflow;
 
     template <typename coeff_t>
-    auto operator()(cubic_monomial_t<coeff_t> const& monomial) const noexcept -> bisection_error_reason_t
+    auto operator()(cubic_monomial_t<coeff_t> const& monomial) const noexcept -> segment_defects_t
     {
-        auto result = bisection_error_reason_t{};
-        if (monotonicity(monomial)) result |= bisection_error_reason_t::monotonicity;
-        if (overflow(monomial)) result |= bisection_error_reason_t::overflow;
+        auto result = segment_defects_t{};
+        if (monotonicity(monomial)) result |= segment_defects_t::monotonicity;
+        if (overflow(monomial)) result |= segment_defects_t::overflow;
         return result;
     }
 };
@@ -474,7 +472,7 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
     using residual_t = residual_t<real_t>;
     using x_t = bisector_t::x_t;
 
-    using bisection_error_t = bisection_error_t<real_t>;
+    using subdivision_error_t = subdivision_error_t<real_t>;
 
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
 
@@ -482,7 +480,7 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
 
     struct interval_complete_t
     {};
-    using result_t = std::variant<interval_complete_t, bisection_t, bisection_error_t>;
+    using result_t = std::variant<interval_complete_t, bisection_t, subdivision_error_t>;
 
     constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
         real_t global_tolerance) const noexcept -> result_t
@@ -491,12 +489,12 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
             = interval.segment.log2_width > min_log2_width && interval.residual.metric_error >= local_tolerance;
-        auto const must_subdivide = interval.must_subdivide != bisection_error_reason_t{0};
+        auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
 
         if (must_subdivide && !can_subdivide)
         {
-            return bisection_error_t{
-                .reasons = interval.must_subdivide, .left = interval.left.x, .right = interval.right.x};
+            return subdivision_error_t{
+                .defects = interval.segment_defects, .left = interval.left.x, .right = interval.right.x};
         }
 
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
@@ -532,7 +530,7 @@ template <std::floating_point real_t, typename refinement_pool_t, typename refin
     typename subdivider_t, typename completed_segments_t, int_t max_segment_count>
 struct spliner_t
 {
-    using bisection_error_t = subdivider_t::bisection_error_t;
+    using subdivision_error_t = subdivider_t::subdivision_error_t;
     using bisection_t = subdivider_t::bisection_t;
     using interval_t = subdivider_t::interval_t;
     using interval_complete_t = subdivider_t::interval_complete_t;
@@ -555,7 +553,7 @@ struct spliner_t
     // optional overload to take a function directly
     template <typename target_function_t>
     auto operator()(target_function_t sample_target_function, int_t log2_domain_max, real_t global_tolerance)
-        -> std::expected<result_t, bisection_error_t>
+        -> std::expected<result_t, subdivision_error_t>
     {
         return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)}, log2_domain_max,
             global_tolerance);
@@ -563,7 +561,7 @@ struct spliner_t
 
     template <typename target_function_t>
     auto operator()(function_sampler_t<target_function_t> sample_target_function, int_t log2_domain_max,
-        real_t global_tolerance) -> std::expected<result_t, bisection_error_t>
+        real_t global_tolerance) -> std::expected<result_t, subdivision_error_t>
     {
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
@@ -581,9 +579,9 @@ struct spliner_t
             // this uses a *reference*; pop must be very specifically placed
             auto const& interval = refinement_pool.top();
 
-            auto const result = subdivide(interval, sample_target_function, global_tolerance);
-            if (auto const* err = std::get_if<bisection_error_t>(&result)) return std::unexpected(*err);
-            else if (auto const* bisection = std::get_if<bisection_t>(&result))
+            auto const subdivision_result = subdivide(interval, sample_target_function, global_tolerance);
+            if (auto const* err = std::get_if<subdivision_error_t>(&subdivision_result)) return std::unexpected(*err);
+            else if (auto const* bisection = std::get_if<bisection_t>(&subdivision_result))
             {
                 refinement_pool.pop();
                 refinement_pool.push(bisection->left);
@@ -708,7 +706,7 @@ TEST(spline_builder, poc)
                         .quantize = {},
                     },
                     .build_segment={},
-                    .must_subdivide={},
+                    .detect_defects={},
                 },
             },
         },
