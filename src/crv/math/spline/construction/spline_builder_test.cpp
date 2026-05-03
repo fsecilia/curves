@@ -28,6 +28,7 @@
 #include <expected>
 #include <iomanip>
 #include <numeric>
+#include <ranges>
 #include <variant>
 
 namespace crv {
@@ -597,6 +598,7 @@ struct spliner_t
         seed_refinement_pool(refinement_pool, sample_target_function);
         assert(!refinement_pool.empty());
 
+        // subdivide until full
         while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
         {
             // this uses a *reference*; pop must be very specifically placed
@@ -617,27 +619,34 @@ struct spliner_t
             }
         }
 
+        // drain remaining
         while (!refinement_pool.empty())
         {
             completed_intervals.push_back(refinement_pool.top());
             refinement_pool.pop();
         }
 
-        auto max_residual = residual_t{};
-        for (auto const& interval : completed_intervals)
-        {
-            max_residual.primal_error = max(max_residual.primal_error, interval.residual.primal_error),
-            max_residual.tangent_error = max(max_residual.tangent_error, interval.residual.tangent_error),
-            max_residual.metric_error = max(max_residual.metric_error, interval.residual.metric_error),
-            max_residual.weighted_error = max(max_residual.weighted_error, interval.residual.weighted_error),
-            max_residual.scale = max(max_residual.scale, interval.residual.scale),
-
-            completed_segments.push_back(completed_segment_t{
-                .origin = to_fixed<x_t>(interval.left.x),
-                .segment = interval.segment,
+        // apply max to residual
+        auto const max_residual = std::ranges::fold_left(
+            completed_intervals, residual_t{}, [](auto accumulator, auto const& element) noexcept {
+                accumulator.primal_error = max(accumulator.primal_error, element.residual.primal_error);
+                accumulator.tangent_error = max(accumulator.tangent_error, element.residual.tangent_error);
+                accumulator.metric_error = max(accumulator.metric_error, element.residual.metric_error);
+                accumulator.weighted_error = max(accumulator.weighted_error, element.residual.weighted_error);
+                accumulator.scale = max(accumulator.scale, element.residual.scale);
+                return accumulator;
             });
-        }
 
+        // convert from segments to intervals
+        std::ranges::transform(
+            completed_intervals, std::back_inserter(completed_segments), [](auto const& interval) noexcept {
+                return completed_segment_t{
+                    .origin = to_fixed<x_t>(interval.left.x),
+                    .segment = interval.segment,
+                };
+            });
+
+        // sort by origin
         std::ranges::sort(completed_segments, std::ranges::less{}, &completed_segment_t::origin);
 
         return result_t{.completed_segments = std::move(completed_segments), .max_residual = max_residual};
