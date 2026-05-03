@@ -8,7 +8,7 @@
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::spline::refinement_policies {
+namespace crv::spline::defect_detectors {
 namespace {
 
 using normalized_t = fixed_t<uint64_t, 32>;
@@ -64,7 +64,7 @@ struct interval_param_t : common_param_t
     }
 };
 
-struct spline_refinement_policies_interval_test_t : TestWithParam<interval_param_t>
+struct spline_defect_detectors_interval_test_t : TestWithParam<interval_param_t>
 {
     bool expected = GetParam().expected;
     monomial_t const& monomial = GetParam().monomial;
@@ -72,7 +72,7 @@ struct spline_refinement_policies_interval_test_t : TestWithParam<interval_param
     sut_t sut{};
 };
 
-TEST_P(spline_refinement_policies_interval_test_t, result)
+TEST_P(spline_defect_detectors_interval_test_t, result)
 {
     EXPECT_EQ(expected, sut(monomial));
 }
@@ -155,7 +155,7 @@ interval_param_t const interval_params[] = {
     // endpoints: p(0) = -31900 (safe), p(1) = -19900 (safe)
     {true, 30000.0, -18000.0, 0.0, -31900.0},
 };
-INSTANTIATE_TEST_SUITE_P(interval_params, spline_refinement_policies_interval_test_t, ValuesIn(interval_params));
+INSTANTIATE_TEST_SUITE_P(interval_params, spline_defect_detectors_interval_test_t, ValuesIn(interval_params));
 
 // --------------------------------------------------------------------------------------------------------------------
 // point tests
@@ -175,7 +175,7 @@ struct point_param_t : common_param_t
     }
 };
 
-struct spline_refinement_policies_point_test_t : TestWithParam<point_param_t>
+struct spline_defect_detectors_point_test_t : TestWithParam<point_param_t>
 {
     bool expected = GetParam().expected;
     monomial_t const& monomial = GetParam().monomial;
@@ -184,7 +184,7 @@ struct spline_refinement_policies_point_test_t : TestWithParam<point_param_t>
     sut_t sut{};
 };
 
-TEST_P(spline_refinement_policies_point_test_t, result)
+TEST_P(spline_defect_detectors_point_test_t, result)
 {
     EXPECT_EQ(expected, sut(monomial, point));
 }
@@ -211,7 +211,7 @@ point_param_t const point_params[] = {
     // iter 3: 16000*0.5 + 32000 = 40000 (> 32767)
     {true, 32000.0, -16000.0, 16000.0, 32000.0, 0.5},
 };
-INSTANTIATE_TEST_SUITE_P(point_params, spline_refinement_policies_point_test_t, ValuesIn(point_params));
+INSTANTIATE_TEST_SUITE_P(point_params, spline_defect_detectors_point_test_t, ValuesIn(point_params));
 
 } // namespace
-} // namespace crv::spline::refinement_policies
+} // namespace crv::spline::defect_detectors

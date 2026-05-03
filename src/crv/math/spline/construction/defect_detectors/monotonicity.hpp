@@ -10,7 +10,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/spline/monomial.hpp>
 
-namespace crv::spline::refinement_policies {
+namespace crv::spline::defect_detectors {
 
 /// predicate to test monotonicity over an interval
 struct monotonicity_t
@@ -57,4 +57,4 @@ struct monotonicity_t
     }
 };
 
-} // namespace crv::spline::refinement_policies
+} // namespace crv::spline::defect_detectors
