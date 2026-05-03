@@ -208,8 +208,22 @@ template <typename scalar_t, typename jet_t> struct uniform_t
     }
 };
 
+// soft floor: behaves like floor when value << floor, like value when value >> floor
+template <typename real_t> struct soft_floor_t
+{
+    static constexpr auto operator()(real_t value, real_t floor) noexcept -> real_t
+    {
+        using std::hypot;
+        using std::isfinite;
+
+        auto const result = hypot(value, floor);
+        assert(isfinite(result));
+        return result;
+    }
+};
+
 /// first-order uniform norm with target-derived relative-slope weighting
-template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
+template <typename jet_t, int_t min_log2_width, typename soft_floor_t> struct first_order_relative_t
 {
     using scalar_t = typename jet_t::value_t;
 
@@ -217,13 +231,7 @@ template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
     static constexpr scalar_t primal_floor{scalar_t{1} / (1 << -min_log2_width)};
     static constexpr scalar_t tangent_floor{scalar_t{1} / (1 << -min_log2_width)};
 
-    // soft floor: behaves like floor when value << floor, like value when value >> floor
-    static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
-    {
-        auto const result = std::hypot(value, floor);
-        assert(std::isfinite(result));
-        return result;
-    }
+    [[no_unique_address]] soft_floor_t soft_floor;
 
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
     {
@@ -236,11 +244,11 @@ template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
         auto const primal_error = abs(primal(target) - primal(approximation));
         auto const tangent_error = abs(derivative(target) - derivative(approximation));
 
-        auto const primal_scale = soft_max(abs(primal(target)), primal_floor);
+        auto const primal_scale = soft_floor(abs(primal(target)), primal_floor);
         auto const relative_primal_error = primal_error / primal_scale;
         assert(std::isfinite(relative_primal_error));
 
-        auto const tangent_scale = soft_max(abs(derivative(target)), tangent_floor);
+        auto const tangent_scale = soft_floor(abs(derivative(target)), tangent_floor);
         auto const relative_tangent_error = tangent_error / tangent_scale;
         assert(std::isfinite(relative_tangent_error));
 
