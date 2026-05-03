@@ -22,7 +22,9 @@
 #include <crv/math/spline/construction/weight_function.hpp>
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/priority_queue.hpp>
+#include <algorithm>
 #include <cmath>
+#include <compare>
 #include <expected>
 #include <iomanip>
 #include <numeric>
