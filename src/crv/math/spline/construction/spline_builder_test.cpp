@@ -314,13 +314,13 @@ struct residual_estimator_t
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
 
-    auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
-        real_t right) const noexcept -> residual_t
+    auto operator()(auto const& sample_target_function, auto const& approximant, real_t interval_width,
+        real_t midpoint) const noexcept -> residual_t
     {
         auto max_residual = residual_t{};
 
         // sample function at generated nodes
-        auto const half_width = (right - left) * 0.5;
+        auto const half_width = interval_width * 0.5;
         for (auto const standard_node : generate_nodes())
         {
             auto const domain_node = midpoint + half_width * standard_node;
@@ -376,7 +376,7 @@ struct interval_builder_t
             .right = right,
             .must_subdivide = must_subdivide(segment.monomial),
             .residual = estimate_residual(sample_target_function,
-                approximant_t{.x_origin = x_origin, .segment = segment}, left.x, midpoint.x, right.x),
+                approximant_t{.x_origin = x_origin, .segment = segment}, right.x - left.x, midpoint.x),
             .segment = segment,
         };
     }
