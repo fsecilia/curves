@@ -103,8 +103,8 @@ struct segment_t
 {
     using x_t = t_x_t;
     using y_t = t_y_t;
-    using normalized_t = decltype(input_normalizer)::normalized_t;
     using coeff_t = t_coeff_t;
+    using normalized_t = decltype(input_normalizer)::normalized_t;
 
     using monomial_t = cubic_monomial_t<coeff_t>;
 
@@ -355,10 +355,10 @@ struct residual_estimator_t
 {
     using residual_t = residual_t<real_t>;
 
-    [[no_unique_address]] error_norm_t measure_error;
-    [[no_unique_address]] weight_function_t apply_weight;
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
+    error_norm_t measure_error;
+    weight_function_t apply_weight;
 
     constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t interval_width,
         real_t midpoint) const noexcept -> residual_t
@@ -409,7 +409,7 @@ struct interval_builder_t
     using jet_t = jet_t<real_t>;
     using function_sample_t = function_sample_t<real_t>;
 
-    [[no_unique_address]] residual_estimator_t estimate_residual;
+    residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
     [[no_unique_address]] defect_detector_t detect_defects;
 
@@ -731,24 +731,26 @@ TEST(spline_builder, poc)
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
+    auto const estimate_residual = residual_estimator_t{
+        .generate_nodes = {},
+        .quantize = {},
+        .measure_error = error_norm_t{},
+        .apply_weight = weight_function_t{.halflife = 0.5},
+    };
+
+    auto const interval_builder = interval_builder_t{
+        .estimate_residual = estimate_residual,
+        .build_segment = {},
+        .detect_defects = {},
+    };
+
     auto spliner = spliner_t{
         .subdivide = subdivider_t{
             .bisect = bisector_t{
-                .interval_builder
-                    = interval_builder_t{
-                    .estimate_residual = residual_estimator_t{
-                        // .measure_error = error_norm_t{.derivative_weight = 0.0},
-                        .measure_error = error_norm_t{},
-                        .apply_weight = weight_function_t{.halflife = 0.5},
-                        .generate_nodes = {},
-                        .quantize = {},
-                    },
-                    .build_segment={},
-                    .detect_defects={},
-                },
+                .interval_builder = interval_builder
             },
         },
-        .seed_refinement_pool={},
+        .seed_refinement_pool={.interval_builder = interval_builder},
         .completed_intervals={},
         .refinement_pool={}
     };
