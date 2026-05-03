@@ -13,7 +13,7 @@
 #include <concepts>
 #include <iterator>
 
-namespace crv::spline::refinement_policies {
+namespace crv::spline::defect_detectors {
 
 /// predicate to test for overflow over an interval
 template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
@@ -101,4 +101,4 @@ template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
     }
 };
 
-} // namespace crv::spline::refinement_policies
+} // namespace crv::spline::defect_detectors
