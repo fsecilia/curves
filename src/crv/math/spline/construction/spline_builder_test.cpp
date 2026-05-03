@@ -576,7 +576,8 @@ struct spliner_t
 
         while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
         {
-            auto const interval = refinement_pool.top();
+            // this uses a *reference*; pop must be very specifically placed
+            auto const& interval = refinement_pool.top();
 
             auto const result = subdivide(interval, sample_target_function, global_tolerance);
             if (auto const* err = std::get_if<bisection_error_t>(&result)) return std::unexpected(*err);
