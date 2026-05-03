@@ -174,9 +174,6 @@ template <std::floating_point t_real_t, typename segment_t, typename tangent_jac
 {
     using real_t = t_real_t;
     using x_t = segment_t::x_t;
-    using y_t = segment_t::y_t;
-    using normalized_t = segment_t::normalized_t;
-    using coeff_t = segment_t::coeff_t;
 
     x_t x_origin;
     segment_t segment;
@@ -228,16 +225,13 @@ template <typename jet_t, int_t min_log2_width, typename soft_floor_t> struct fi
     using scalar_t = typename jet_t::value_t;
 
     // floor prevents weight blowup where target slope is near zero or unresolvable
-    static constexpr scalar_t primal_floor{scalar_t{1} / (1 << -min_log2_width)};
-    static constexpr scalar_t tangent_floor{scalar_t{1} / (1 << -min_log2_width)};
+    static constexpr auto primal_floor = scalar_t{scalar_t{1} / (1 << -min_log2_width)};
+    static constexpr auto tangent_floor = scalar_t{scalar_t{1} / (1 << -min_log2_width)};
 
     [[no_unique_address]] soft_floor_t soft_floor;
 
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
     {
-        using crv::abs;
-        using crv::max;
-
         // weight derived from the target itself: 1 / max(|target_slope|, floor)
         // this turns absolute slope error into relative slope error in flat regions
 
@@ -314,8 +308,9 @@ template <std::floating_point real_t> struct residual_t
 /// unit of work over subdomain
 template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
 {
-    using segment_t = t_segment_t;
     using real_t = t_real_t;
+    using segment_t = t_segment_t;
+
     using residual_t = residual_t<real_t>;
 
     using function_sample_t = function_sample_t<real_t>;
@@ -395,28 +390,25 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename t_approximant_t, typename residual_estimator_t, typename segment_builder_t,
-    typename defect_detector_t>
+template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_detector_t,
+    typename residual_estimator_t>
 struct interval_builder_t
 {
     using interval_t = t_interval_t;
-    using approximant_t = t_approximant_t;
 
-    using x_t = approximant_t::x_t;
-    using segment_t = interval_t::segment_t;
     using real_t = interval_t::real_t;
-
-    using jet_t = jet_t<real_t>;
     using function_sample_t = function_sample_t<real_t>;
 
-    residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
     [[no_unique_address]] defect_detector_t detect_defects;
+    residual_estimator_t estimate_residual;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
         function_sample_t const& midpoint, function_sample_t const& right, int_t log2_width) const noexcept
         -> interval_t
     {
+        using x_t = approximant_t::x_t;
+
         auto const x_origin = to_fixed<x_t>(left.x);
         auto const segment = build_segment(left.y, right.y, log2_width);
 
@@ -437,11 +429,6 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
 {
     using bisection_t = t_bisection_t;
     using interval_t = bisection_t::interval_t;
-    using segment_t = interval_t::segment_t;
-    using x_t = segment_t::x_t;
-    using real_t = interval_t::real_t;
-    using jet_t = jet_t<real_t>;
-    using function_sample_t = function_sample_t<real_t>;
 
     [[no_unique_address]] interval_builder_t interval_builder;
 
@@ -510,8 +497,6 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
 {
     using bisection_t = bisector_t::bisection_t;
     using interval_t = bisector_t::interval_t;
-    using residual_t = residual_t<real_t>;
-    using x_t = bisector_t::x_t;
 
     using subdivision_error_t = subdivision_error_t<real_t>;
 
@@ -572,12 +557,8 @@ template <std::floating_point real_t, typename refinement_pool_t, typename refin
 struct spliner_t
 {
     using subdivision_error_t = subdivider_t::subdivision_error_t;
-    using bisection_t = subdivider_t::bisection_t;
     using interval_t = subdivider_t::interval_t;
-    using interval_complete_t = subdivider_t::interval_complete_t;
     using residual_t = interval_t::residual_t;
-    using completed_segment_t = completed_segments_t::value_type;
-    using x_t = completed_segment_t::x_t;
 
     [[no_unique_address]] subdivider_t subdivide;
     [[no_unique_address]] refinement_pool_seeder_t seed_refinement_pool;
@@ -604,6 +585,10 @@ struct spliner_t
     auto operator()(function_sampler_t<target_function_t> sample_target_function, int_t log2_domain_max,
         real_t global_tolerance) -> std::expected<result_t, subdivision_error_t>
     {
+        using bisection_t = subdivider_t::bisection_t;
+        using completed_segment_t = completed_segments_t::value_type;
+        using x_t = completed_segment_t::x_t;
+
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
 
@@ -721,7 +706,7 @@ TEST(spline_builder, poc)
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t>;
     using interval_builder_t
-        = interval_builder_t<interval_t, approximant_t, residual_estimator_t, segment_builder_t, defect_detector_t>;
+        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
@@ -739,9 +724,9 @@ TEST(spline_builder, poc)
     };
 
     auto const interval_builder = interval_builder_t{
-        .estimate_residual = estimate_residual,
         .build_segment = {},
         .detect_defects = {},
+        .estimate_residual = estimate_residual,
     };
 
     auto spliner = spliner_t{
