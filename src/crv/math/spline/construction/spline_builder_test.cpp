@@ -334,7 +334,7 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
 };
 
 /// result of bisecting an interval
-template <typename t_interval_t> struct bisection_t
+template <typename t_interval_t> struct subdivision_t
 {
     using interval_t = t_interval_t;
 
@@ -425,15 +425,15 @@ struct interval_builder_t
 };
 
 /// bisects intervals, unconditionally
-template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
+template <typename t_subdivision_t, typename interval_builder_t> struct bisector_t
 {
-    using bisection_t = t_bisection_t;
-    using interval_t = bisection_t::interval_t;
+    using subdivision_t = t_subdivision_t;
+    using interval_t = subdivision_t::interval_t;
 
     [[no_unique_address]] interval_builder_t interval_builder;
 
     constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
-        -> bisection_t
+        -> subdivision_t
     {
         auto const child_log2_width = parent.segment.log2_width - 1;
 
@@ -495,7 +495,7 @@ template <typename monotonicity_t, typename overflow_t> struct defect_detector_t
 /// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
 template <std::floating_point real_t, typename bisector_t, int_t log2_min_width> struct subdivider_t
 {
-    using bisection_t = bisector_t::bisection_t;
+    using subdivision_t = bisector_t::subdivision_t;
     using interval_t = bisector_t::interval_t;
 
     using subdivision_error_t = subdivision_error_t<real_t>;
@@ -506,7 +506,7 @@ template <std::floating_point real_t, typename bisector_t, int_t log2_min_width>
 
     struct interval_complete_t
     {};
-    using result_t = std::variant<interval_complete_t, bisection_t, subdivision_error_t>;
+    using result_t = std::variant<interval_complete_t, subdivision_t, subdivision_error_t>;
 
     constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
         real_t global_tolerance) const noexcept -> result_t
@@ -582,7 +582,7 @@ struct spliner_t
     auto operator()(function_sampler_t<target_function_t> sample_target_function, real_t global_tolerance)
         -> std::expected<result_t, subdivision_error_t>
     {
-        using bisection_t = subdivider_t::bisection_t;
+        using subdivision_t = subdivider_t::subdivision_t;
         using completed_segment_t = completed_segments_t::value_type;
         using x_t = completed_segment_t::x_t;
 
@@ -604,11 +604,11 @@ struct spliner_t
 
             auto const subdivision_result = subdivide(interval, sample_target_function, global_tolerance);
             if (auto const* err = std::get_if<subdivision_error_t>(&subdivision_result)) return std::unexpected(*err);
-            else if (auto const* bisection = std::get_if<bisection_t>(&subdivision_result))
+            else if (auto const* subdivision = std::get_if<subdivision_t>(&subdivision_result))
             {
                 refinement_pool.pop();
-                refinement_pool.push(bisection->left);
-                refinement_pool.push(bisection->right);
+                refinement_pool.push(subdivision->left);
+                refinement_pool.push(subdivision->right);
             }
             else
             {
@@ -679,8 +679,8 @@ TEST(spline_builder, poc)
     using interval_builder_t
         = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
-    using bisection_t = bisection_t<interval_t>;
-    using bisector_t = bisector_t<bisection_t, interval_builder_t>;
+    using subdivision_t = subdivision_t<interval_t>;
+    using bisector_t = bisector_t<subdivision_t, interval_builder_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
     using subdivider_t = subdivider_t<real_t, bisector_t, log2_min_width>;
