@@ -198,7 +198,6 @@ template <typename scalar_t, typename jet_t> struct uniform_t
 {
     static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> scalar_t
     {
-        using crv::abs;
         auto const result = abs(primal(target) - primal(approximation));
         assert(std::isfinite(result));
         return result;
@@ -220,13 +219,13 @@ template <typename real_t> struct soft_floor_t
 };
 
 /// first-order uniform norm with target-derived relative-slope weighting
-template <typename jet_t, int_t min_log2_width, typename soft_floor_t> struct first_order_relative_t
+template <typename jet_t, int_t log2_min_width, typename soft_floor_t> struct first_order_relative_t
 {
     using scalar_t = typename jet_t::value_t;
 
     // floor prevents weight blowup where target slope is near zero or unresolvable
-    static constexpr auto primal_floor = scalar_t{scalar_t{1} / (1 << -min_log2_width)};
-    static constexpr auto tangent_floor = scalar_t{scalar_t{1} / (1 << -min_log2_width)};
+    static constexpr auto primal_floor = scalar_t{scalar_t{1} / (1 << -log2_min_width)};
+    static constexpr auto tangent_floor = scalar_t{scalar_t{1} / (1 << -log2_min_width)};
 
     [[no_unique_address]] soft_floor_t soft_floor;
 
@@ -352,6 +351,7 @@ struct residual_estimator_t
 
     [[no_unique_address]] node_generator_t generate_nodes;
     [[no_unique_address]] quantizer_t quantize;
+
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
@@ -493,7 +493,7 @@ template <typename monotonicity_t, typename overflow_t> struct defect_detector_t
 };
 
 /// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
-template <std::floating_point real_t, typename bisector_t, int_t min_log2_width> struct subdivider_t
+template <std::floating_point real_t, typename bisector_t, int_t log2_min_width> struct subdivider_t
 {
     using bisection_t = bisector_t::bisection_t;
     using interval_t = bisector_t::interval_t;
@@ -514,7 +514,7 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
-            = interval.segment.log2_width > min_log2_width && interval.residual.metric_error >= local_tolerance;
+            = interval.segment.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
         auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
 
         if (must_subdivide && !can_subdivide)
@@ -525,10 +525,7 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
 
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
         if ((must_subdivide || should_subdivide) && can_subdivide) return bisect(sample_target_function, interval);
-        else
-        {
-            return interval_complete_t{};
-        }
+        else return interval_complete_t{};
     }
 };
 
@@ -536,12 +533,13 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
 //
 // The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
 // critical points aligned ot widths
-template <std::floating_point real_t, typename interval_builder_t> struct refinement_pool_seeder_t
+template <std::floating_point real_t, typename interval_builder_t, int_t log2_domain_max>
+struct refinement_pool_seeder_t
 {
     [[no_unique_address]] interval_builder_t interval_builder;
 
     // for now, just push one whole segment
-    constexpr auto operator()(auto& queue, auto const& sample_target_function, int_t log2_domain_max) const -> void
+    constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
     {
         assert(queue.empty());
         auto const domain_max = std::ldexp(1.0, int_cast<int>(log2_domain_max));
@@ -574,16 +572,15 @@ struct spliner_t
 
     // optional overload to take a function directly
     template <typename target_function_t>
-    auto operator()(target_function_t sample_target_function, int_t log2_domain_max, real_t global_tolerance)
+    auto operator()(target_function_t sample_target_function, real_t global_tolerance)
         -> std::expected<result_t, subdivision_error_t>
     {
-        return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)}, log2_domain_max,
-            global_tolerance);
+        return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)}, global_tolerance);
     }
 
     template <typename target_function_t>
-    auto operator()(function_sampler_t<target_function_t> sample_target_function, int_t log2_domain_max,
-        real_t global_tolerance) -> std::expected<result_t, subdivision_error_t>
+    auto operator()(function_sampler_t<target_function_t> sample_target_function, real_t global_tolerance)
+        -> std::expected<result_t, subdivision_error_t>
     {
         using bisection_t = subdivider_t::bisection_t;
         using completed_segment_t = completed_segments_t::value_type;
@@ -597,7 +594,7 @@ struct spliner_t
         completed_intervals.reserve(max_segment_count);
         refinement_pool.reserve(max_segment_count);
 
-        seed_refinement_pool(refinement_pool, sample_target_function, log2_domain_max);
+        seed_refinement_pool(refinement_pool, sample_target_function);
         assert(!refinement_pool.empty());
 
         while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
@@ -659,7 +656,8 @@ TEST(spline_builder, poc)
     using coeff_t = fixed_t<int64_t, 47>;
 
     constexpr auto max_segment_count = 1 << 8;
-    static constexpr auto min_log2_width = -16;
+    static constexpr auto log2_min_width = -16;
+    static constexpr auto log2_domain_max = 8;
 
     using segment_input_normalizer_t = segment_input_normalizer_t<normalized_t>;
     using polynomial_evaluator_t = polynomial_evaluator_t<fast_mac_step_t{}>;
@@ -680,12 +678,12 @@ TEST(spline_builder, poc)
     using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t>;
     using interval_builder_t
         = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, min_log2_width>;
+    using subdivider_t = subdivider_t<real_t, bisector_t, log2_min_width>;
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
@@ -718,7 +716,7 @@ TEST(spline_builder, poc)
             using std::log1p;
             return log1p(x);
         },
-        8, 1e-8);
+        1e-8);
 
     EXPECT_TRUE(result.has_value());
 
