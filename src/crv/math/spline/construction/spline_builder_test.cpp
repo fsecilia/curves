@@ -431,7 +431,11 @@ template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
     x_t origin;
     segment_t segment;
 
-    constexpr auto operator<=>(completed_segment_t const& src) const noexcept -> auto { return origin <=> src.origin; }
+    constexpr auto operator<=>(completed_segment_t const& src) const noexcept -> std::strong_ordering
+    {
+        return origin <=> src.origin;
+    }
+
     constexpr auto operator==(completed_segment_t const& src) const noexcept -> bool = default;
 };
 
