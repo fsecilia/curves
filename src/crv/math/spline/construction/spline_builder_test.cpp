@@ -126,9 +126,55 @@ struct segment_t
     }
 };
 
-/// adapts segment with float api, anchors to origin in fixed x
-template <std::floating_point real_t, typename segment_t> struct approximant_t
+/// converts between dy/dx and dy/dt using the jacobian, dx/dt
+struct tangent_jacobian_t
 {
+    template <std::floating_point real_t> constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t
+    {
+        return std::ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
+    }
+
+    template <std::floating_point real_t>
+    constexpr auto dy_dt_to_dy_dx(real_t dy_dt, int_t log2_dx_dt) const noexcept -> real_t
+    {
+        return std::ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
+    }
+
+    template <std::floating_point real_t>
+    constexpr auto dy_dx_to_dy_dt(real_t dy_dx, int_t log2_dx_dt) const noexcept -> real_t
+    {
+        return std::ldexp(dy_dx, int_cast<int>(log2_dx_dt));
+    }
+};
+
+/// builds fixed segment from float hermite and log2_width; scales tangents by width
+template <typename t_real_t, typename t_segment_t, typename tangent_jacobian_t,
+    typename hermite_to_monomial_converter_t>
+struct segment_builder_t
+{
+    using real_t = t_real_t;
+    using segment_t = t_segment_t;
+
+    using jet_t = jet_t<real_t>;
+
+    [[no_unique_address]] tangent_jacobian_t tangent_jacobian;
+    [[no_unique_address]] hermite_to_monomial_converter_t hermite_to_monomial;
+
+    constexpr auto operator()(jet_t left, jet_t right, int_t log2_width) const noexcept -> segment_t
+    {
+        // convert from spline-global dy/dx to segment-local dy/dt via chain rule
+        auto dx_dt = tangent_jacobian.template dx_dt<real_t>(log2_width);
+        left.df *= dx_dt;
+        right.df *= dx_dt;
+
+        return segment_t{hermite_to_monomial(left, right), log2_width};
+    }
+};
+
+/// adapts segment with float api, anchors to origin in fixed x
+template <std::floating_point t_real_t, typename segment_t, typename tangent_jacobian_t> struct approximant_t
+{
+    using real_t = t_real_t;
     using x_t = segment_t::x_t;
     using y_t = segment_t::y_t;
     using normalized_t = segment_t::normalized_t;
@@ -137,13 +183,18 @@ template <std::floating_point real_t, typename segment_t> struct approximant_t
     x_t x_origin;
     segment_t segment;
 
+    [[no_unique_address]] tangent_jacobian_t tangent_jacobian = {};
+
     constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
         auto const t = segment.x_to_t(to_fixed<x_t>(x) - x_origin);
-        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(-segment.log2_width));
         auto const primal = from_fixed<real_t>(segment.primal(t));
-        auto const tangent = from_fixed<real_t>(segment.tangent(t)) * dt_dx;
-        return jet_t{primal, tangent};
+
+        // convert from segment-local dy/dt to spline-global dy/dx via chain rule
+        auto const dy_dt = from_fixed<real_t>(segment.tangent(t));
+        auto const dy_dx = tangent_jacobian.dy_dt_to_dy_dx(dy_dt, segment.log2_width);
+
+        return jet_t{primal, dy_dx};
     }
 };
 
@@ -215,25 +266,6 @@ template <typename jet_t, typename coeff_t> struct hermite_to_monomial_converter
             to_fixed<coeff_t>(m0),
             to_fixed<coeff_t>(p0),
         }};
-    }
-};
-
-/// builds fixed segment from float hermite and log2_width; scales tangents by width
-template <typename t_real_t, typename t_segment_t, typename hermite_to_monomial_converter_t> struct segment_builder_t
-{
-    using real_t = t_real_t;
-    using segment_t = t_segment_t;
-
-    using jet_t = jet_t<real_t>;
-
-    [[no_unique_address]] hermite_to_monomial_converter_t hermite_to_monomial;
-
-    constexpr auto operator()(jet_t left, jet_t right, int_t log2_width) const noexcept -> segment_t
-    {
-        auto const width = std::ldexp(1.0, int_cast<int>(log2_width));
-        left.df *= width;
-        right.df *= width;
-        return segment_t{hermite_to_monomial(left, right), log2_width};
     }
 };
 
@@ -357,17 +389,19 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename residual_estimator_t, typename segment_builder_t, typename defect_detector_t>
+template <typename t_interval_t, typename t_approximant_t, typename residual_estimator_t, typename segment_builder_t,
+    typename defect_detector_t>
 struct interval_builder_t
 {
     using interval_t = t_interval_t;
+    using approximant_t = t_approximant_t;
+
+    using x_t = approximant_t::x_t;
     using segment_t = interval_t::segment_t;
     using real_t = interval_t::real_t;
+
     using jet_t = jet_t<real_t>;
     using function_sample_t = function_sample_t<real_t>;
-
-    using approximant_t = approximant_t<real_t, segment_t>;
-    using x_t = approximant_t::x_t;
 
     [[no_unique_address]] residual_estimator_t estimate_residual;
     [[no_unique_address]] segment_builder_t build_segment;
@@ -679,11 +713,12 @@ TEST(spline_builder, poc)
     using residual_estimator_t
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
     using hermite_to_monomial_converter_t = hermite_to_monomial_converter_t<jet_t, coeff_t>;
-    using segment_builder_t = segment_builder_t<real_t, segment_t, hermite_to_monomial_converter_t>;
+    using segment_builder_t = segment_builder_t<real_t, segment_t, tangent_jacobian_t, hermite_to_monomial_converter_t>;
     using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
+    using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t>;
     using interval_builder_t
-        = interval_builder_t<interval_t, residual_estimator_t, segment_builder_t, defect_detector_t>;
+        = interval_builder_t<interval_t, approximant_t, residual_estimator_t, segment_builder_t, defect_detector_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t>;
     using bisection_t = bisection_t<interval_t>;
     using bisector_t = bisector_t<bisection_t, interval_builder_t>;
