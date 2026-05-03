@@ -462,6 +462,7 @@ template <typename t_bisection_t, typename interval_builder_t> struct bisector_t
 template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
 {
     using x_t = t_x_t;
+
     x_t origin;
     segment_t segment;
 
@@ -676,11 +677,6 @@ struct spliner_t
             std::cout << std::endl;
         }
         std::cout << "max residual: " << max_residual << std::endl;
-#else
-        auto const mid_segment_index = completed_segments.size() / 2;
-        auto const mid_segment = completed_segments[mid_segment_index];
-        std::cout << std::setprecision(10) << "mid segment index: " << mid_segment_index
-                  << " .x_origin = " << mid_segment.origin << ", .d = " << mid_segment.segment.monomial[3] << std::endl;
 #endif
 
         return result_t{.completed_segments = std::move(completed_segments), .max_residual = max_residual};
