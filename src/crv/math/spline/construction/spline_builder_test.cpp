@@ -145,12 +145,15 @@ template <std::floating_point real_t, typename segment_t> struct approximant_t
     }
 };
 
+/// uniform error norm
 template <typename scalar_t, typename jet_t> struct uniform_t
 {
     static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> scalar_t
     {
         using crv::abs;
-        return abs(primal(target) - primal(approximation));
+        auto const result = abs(primal(target) - primal(approximation));
+        assert(std::isfinite(result));
+        return result;
     }
 };
 
@@ -166,7 +169,9 @@ template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
     // soft floor: behaves like floor when value << floor, like value when value >> floor
     static constexpr auto soft_max(scalar_t value, scalar_t floor) noexcept -> scalar_t
     {
-        return std::hypot(value, floor);
+        auto const result = std::hypot(value, floor);
+        assert(std::isfinite(result));
+        return result;
     }
 
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
@@ -182,9 +187,11 @@ template <typename jet_t, int_t min_log2_width> struct first_order_relative_t
 
         auto const primal_scale = soft_max(abs(primal(target)), primal_floor);
         auto const relative_primal_error = primal_error / primal_scale;
+        assert(std::isfinite(relative_primal_error));
 
         auto const tangent_scale = soft_max(abs(derivative(target)), tangent_floor);
         auto const relative_tangent_error = tangent_error / tangent_scale;
+        assert(std::isfinite(relative_tangent_error));
 
         return max(relative_primal_error, relative_tangent_error);
     }
@@ -333,6 +340,7 @@ struct residual_estimator_t
             auto const primal_error = abs(primal(target) - primal(approximation));
             auto const tangent_error = abs(tangent(target) - tangent(approximation));
             auto const metric_error = measure_error(target, approximation);
+            assert(std::isfinite(metric_error));
 
             max_residual.scale = max(max_residual.scale, abs(primal(target)));
             max_residual.primal_error = max(max_residual.primal_error, primal_error);
@@ -340,7 +348,9 @@ struct residual_estimator_t
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 
-        max_residual.weighted_error = max_residual.metric_error * apply_weight(midpoint);
+        auto const weight = apply_weight(midpoint);
+        assert(std::isfinite(weight));
+        max_residual.weighted_error = max_residual.metric_error * weight;
         return max_residual;
     }
 };
