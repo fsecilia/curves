@@ -75,11 +75,11 @@ struct fast_mac_step_t
 template <auto mac_step> struct polynomial_evaluator_t
 {
     template <typename coeff_t>
-    constexpr auto operator()(auto t, coeff_t highest_coefficient, std::same_as<coeff_t> auto... coeffs) const noexcept
-        -> coeff_t
+    constexpr auto operator()(
+        auto t, coeff_t highest_coeff, std::same_as<coeff_t> auto... remaining_coeffs) const noexcept -> coeff_t
     {
-        auto accumulator = highest_coefficient;
-        ((accumulator = mac_step(accumulator, t, coeffs)), ...);
+        auto accumulator = highest_coeff;
+        ((accumulator = mac_step(accumulator, t, remaining_coeffs)), ...);
         return accumulator;
     }
 };
