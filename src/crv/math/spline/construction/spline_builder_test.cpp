@@ -614,8 +614,7 @@ struct spliner_t
             });
         }
 
-        std::ranges::sort(
-            completed_segments, std::ranges::less{}, [](auto const& elem) static noexcept { return elem.origin; });
+        std::ranges::sort(completed_segments, std::ranges::less{}, &completed_segment_t::origin);
 
 #if 1
         for (auto const completed_segment : completed_segments)
