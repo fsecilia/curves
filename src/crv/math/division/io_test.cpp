@@ -20,6 +20,11 @@ struct qr_pair_param_t
 {
     qr_pair_t<uint32_t> sut;
     std::string expected;
+
+    friend auto operator<<(std::ostream& out, qr_pair_param_t const& src) -> std::ostream&
+    {
+        return out << "{.sut = " << src.sut << ", .expected = " << src.expected << "}";
+    }
 };
 
 struct math_division_qr_pair_io_test_t : TestWithParam<qr_pair_param_t>
@@ -27,9 +32,9 @@ struct math_division_qr_pair_io_test_t : TestWithParam<qr_pair_param_t>
 
 TEST_P(math_division_qr_pair_io_test_t, result)
 {
-    auto const expected = GetParam().expected;
+    auto const& expected = GetParam().expected;
 
-    std::ostringstream out;
+    auto out = std::ostringstream{};
     out << GetParam().sut;
     auto const actual = out.str();
 
