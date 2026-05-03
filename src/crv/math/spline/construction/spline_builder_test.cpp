@@ -66,7 +66,8 @@ struct fast_mac_step_t
     {
         using narrow_t = typename accumulator_t::value_t;
         using wide_t = widened_t<narrow_t>;
-        auto const wide_product = static_cast<wide_t>(accumulator.value) * t.value;
+        static constexpr auto rounding_bias = wide_t{1} << (normalized_t::frac_bits - 1);
+        auto const wide_product = static_cast<wide_t>(accumulator.value) * t.value + rounding_bias;
         auto const narrow_product = static_cast<narrow_t>(wide_product >> normalized_t::frac_bits);
         return accumulator_t::literal(narrow_product + coeff.value);
     }
