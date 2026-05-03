@@ -497,7 +497,7 @@ template <std::floating_point real_t, typename bisector_t, int_t min_log2_width>
                 .reasons = interval.must_subdivide, .left = interval.left.x, .right = interval.right.x};
         }
 
-        auto const should_subdivide = interval.residual.metric_error > global_tolerance;
+        auto const should_subdivide = interval.residual.metric_error > local_tolerance;
         if ((must_subdivide || should_subdivide) && can_subdivide) return bisect(sample_target_function, interval);
         else
         {
