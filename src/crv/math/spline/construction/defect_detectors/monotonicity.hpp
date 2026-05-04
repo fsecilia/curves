@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
-#include <crv/math/spline/monomial.hpp>
+#include <crv/math/spline/polynomial.hpp>
 
 namespace crv::spline::defect_detectors {
 
@@ -17,16 +17,16 @@ struct monotonicity_t
 {
     /// \returns true if interval should be refined
     template <is_fixed coeff_t>
-    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         return !is_monotonic(coeffs);
     }
 
     /// \returns true if approximant is monotonic increasing over an interval
     template <is_fixed coeff_t>
-    constexpr auto is_monotonic(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    constexpr auto is_monotonic(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
-        // For a cubic monomial `p(t) = At^3 + Bt^2 + Ct + D`, the derivative is a parabola `p'(t) = 3At^2 + 2Bt + C`
+        // For a cubic polynomial `p(t) = At^3 + Bt^2 + Ct + D`, the derivative is a parabola `p'(t) = 3At^2 + 2Bt + C`
         // To guarantee monotonicity of `p(t)` on `t` in `[0, 1]`, `p'(t) >= 0` must be true on that interval.
         // Check both endpoints. If the parabola opens upward, check if the vertex, `v_t = -b/3a`, is in `(0, 1)`, and
         // `p'(v_t) < 0`

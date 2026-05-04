@@ -18,7 +18,7 @@ template <typename real_t, typename segment_t> struct approximant_t
     jet_t left_knot;
     jet_t right_knot;
 
-    segment_t monomial;
+    segment_t polynomial;
 };
 
 } // namespace crv::spline

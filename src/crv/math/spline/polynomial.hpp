@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief cubic monomial
+/// \brief cubic polynomial
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -13,6 +13,6 @@
 namespace crv::spline {
 
 constexpr auto cubic_coeff_count = 4;
-template <is_fixed coeff_t> using cubic_monomial_t = std::array<coeff_t, cubic_coeff_count>;
+template <is_fixed coeff_t> using cubic_polynomial_t = std::array<coeff_t, cubic_coeff_count>;
 
 } // namespace crv::spline
