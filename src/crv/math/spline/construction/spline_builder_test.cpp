@@ -99,7 +99,7 @@ struct segment_input_normalizer_t
     }
 };
 
-/// fixed-point normalized monomial with width
+/// fixed-point normalized polynomial with width
 template <typename t_x_t, typename t_y_t, typename t_coeff_t, auto input_normalizer, auto polynomial_evaluator>
 struct segment_t
 {
@@ -108,23 +108,23 @@ struct segment_t
     using coeff_t = t_coeff_t;
     using normalized_t = decltype(input_normalizer)::normalized_t;
 
-    using monomial_t = cubic_monomial_t<coeff_t>;
+    using polynomial_t = cubic_polynomial_t<coeff_t>;
 
-    monomial_t monomial;
+    polynomial_t polynomial;
     int_t log2_width;
 
     constexpr auto x_to_t(x_t x) const noexcept -> normalized_t { return input_normalizer(x, log2_width); }
 
     constexpr auto primal(normalized_t t) const noexcept -> y_t
     {
-        return y_t::convert(polynomial_evaluator(t, monomial[0], monomial[1], monomial[2], monomial[3]));
+        return y_t::convert(polynomial_evaluator(t, polynomial[0], polynomial[1], polynomial[2], polynomial[3]));
     }
 
     constexpr auto tangent(normalized_t t) const noexcept -> y_t
     {
         // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
         // This may overflow.
-        return y_t::convert(polynomial_evaluator(t, 3 * monomial[0], 2 * monomial[1], monomial[2]));
+        return y_t::convert(polynomial_evaluator(t, 3 * polynomial[0], 2 * polynomial[1], polynomial[2]));
     }
 };
 
@@ -150,7 +150,7 @@ struct tangent_jacobian_t
 };
 
 /// builds fixed segment from float hermite and log2_width; scales tangents by width
-template <typename t_real_t, typename t_segment_t, typename tangent_jacobian_t, auto hermite_to_monomial_converter>
+template <typename t_real_t, typename t_segment_t, typename tangent_jacobian_t, auto hermite_to_polynomial_converter>
 struct segment_builder_t
 {
     using real_t = t_real_t;
@@ -167,7 +167,7 @@ struct segment_builder_t
         left.df *= dx_dt;
         right.df *= dx_dt;
 
-        return segment_t{hermite_to_monomial_converter(left, right), log2_width};
+        return segment_t{hermite_to_polynomial_converter(left, right), log2_width};
     }
 };
 
@@ -251,10 +251,10 @@ template <typename jet_t, int_t log2_min_width, typename soft_floor_t> struct fi
     }
 };
 
-/// converts float hermite to fixed monomial
-template <typename jet_t, typename coeff_t> struct hermite_to_monomial_converter_t
+/// converts float hermite to fixed polynomial
+template <typename jet_t, typename coeff_t> struct hermite_to_polynomial_converter_t
 {
-    constexpr auto operator()(jet_t left, jet_t right) const noexcept -> cubic_monomial_t<coeff_t>
+    constexpr auto operator()(jet_t left, jet_t right) const noexcept -> cubic_polynomial_t<coeff_t>
     {
         auto const p0 = primal(left);
         auto const p1 = primal(right);
@@ -430,7 +430,7 @@ struct interval_builder_t
             .left = left,
             .midpoint = midpoint,
             .right = right,
-            .segment_defects = detect_defects(segment.monomial),
+            .segment_defects = detect_defects(segment.polynomial),
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, right.x - left.x, midpoint.x),
             .segment = segment,
@@ -497,11 +497,11 @@ template <typename monotonicity_t, typename overflow_t> struct defect_detector_t
     [[no_unique_address]] overflow_t overflow;
 
     template <typename coeff_t>
-    auto operator()(cubic_monomial_t<coeff_t> const& monomial) const noexcept -> segment_defects_t
+    auto operator()(cubic_polynomial_t<coeff_t> const& polynomial) const noexcept -> segment_defects_t
     {
         auto result = segment_defects_t{};
-        if (monotonicity(monomial)) result |= segment_defects_t::monotonicity;
-        if (overflow(monomial)) result |= segment_defects_t::overflow;
+        if (monotonicity(polynomial)) result |= segment_defects_t::monotonicity;
+        if (overflow(polynomial)) result |= segment_defects_t::overflow;
         return result;
     }
 };
@@ -687,9 +687,9 @@ TEST(spline_builder, poc)
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
-    using hermite_to_monomial_converter_t = hermite_to_monomial_converter_t<jet_t, coeff_t>;
+    using hermite_to_polynomial_converter_t = hermite_to_polynomial_converter_t<jet_t, coeff_t>;
     using segment_builder_t
-        = segment_builder_t<real_t, segment_t, tangent_jacobian_t, hermite_to_monomial_converter_t{}>;
+        = segment_builder_t<real_t, segment_t, tangent_jacobian_t, hermite_to_polynomial_converter_t{}>;
     using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t>;
