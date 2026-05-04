@@ -686,6 +686,24 @@ TEST_F(jet_test_selection_clamp_t, within)
     EXPECT_DOUBLE_EQ(3.0, actual.df);
 }
 
+// --------------------------------------------------------------------------------------------------------------------
+// elementwise_max
+// --------------------------------------------------------------------------------------------------------------------
+
+static_assert(sut_t{0.0, 0.0} == elementwise_max(sut_t{0.0, 0.0}, sut_t{0.0, 0.0}));
+static_assert(sut_t{0.0, 1.0} == elementwise_max(sut_t{0.0, 0.0}, sut_t{0.0, 1.0}));
+static_assert(sut_t{0.0, 1.0} == elementwise_max(sut_t{0.0, 0.5}, sut_t{0.0, 1.0}));
+static_assert(sut_t{0.0, 1.0} == elementwise_max(sut_t{0.0, 1.0}, sut_t{0.0, 0.0}));
+static_assert(sut_t{0.0, 1.0} == elementwise_max(sut_t{0.0, 1.0}, sut_t{0.0, 0.5}));
+static_assert(sut_t{1.0, 0.0} == elementwise_max(sut_t{0.0, 0.0}, sut_t{1.0, 0.0}));
+static_assert(sut_t{1.0, 0.0} == elementwise_max(sut_t{0.5, 0.0}, sut_t{1.0, 0.0}));
+static_assert(sut_t{1.0, 0.0} == elementwise_max(sut_t{1.0, 0.0}, sut_t{0.0, 0.0}));
+static_assert(sut_t{1.0, 0.0} == elementwise_max(sut_t{1.0, 0.0}, sut_t{0.5, 0.0}));
+static_assert(sut_t{1.0, 1.0} == elementwise_max(sut_t{1.0, 0.0}, sut_t{0.0, 1.0}));
+static_assert(sut_t{1.0, 1.0} == elementwise_max(sut_t{1.0, 0.5}, sut_t{0.5, 1.0}));
+static_assert(sut_t{1.0, 1.0} == elementwise_max(sut_t{0.0, 1.0}, sut_t{1.0, 0.0}));
+static_assert(sut_t{1.0, 1.0} == elementwise_max(sut_t{0.5, 1.0}, sut_t{1.0, 0.5}));
+
 // ====================================================================================================================
 // Classification
 // ====================================================================================================================
