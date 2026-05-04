@@ -5,6 +5,8 @@
 
 #include "polynomial.hpp"
 #include <crv/test/test.hpp>
+#include <string>
+#include <string_view>
 
 namespace crv::spline {
 namespace {
@@ -13,9 +15,7 @@ namespace {
 // fast_mac_t
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace fast_mac_test {
-
-template <typename coeff_t, typename normalized_t> struct test_t
+template <typename coeff_t, typename normalized_t> struct fast_mac_test_t
 {
     using coeff_value_t = coeff_t::value_t;
     static constexpr auto coeff_frac_bits = coeff_t::frac_bits;
@@ -92,11 +92,29 @@ template <typename coeff_t, typename normalized_t> struct test_t
     static_assert(sut(max_bound_c, max<normalized_t>(), c0).value == max_bound_c.value);
 };
 
-template struct test_t<fixed_t<int64_t, 48>, fixed_t<uint64_t, 64>>;
-template struct test_t<fixed_t<int64_t, 12>, fixed_t<uint32_t, 32>>;
-template struct test_t<fixed_t<int32_t, 11>, fixed_t<uint16_t, 16>>;
+template struct fast_mac_test_t<fixed_t<int64_t, 48>, fixed_t<uint64_t, 64>>;
+template struct fast_mac_test_t<fixed_t<int64_t, 12>, fixed_t<uint32_t, 32>>;
+template struct fast_mac_test_t<fixed_t<int32_t, 11>, fixed_t<uint16_t, 16>>;
 
-} // namespace fast_mac_test
+// --------------------------------------------------------------------------------------------------------------------
+// polynomial_evaluator_t
+// --------------------------------------------------------------------------------------------------------------------
+
+// A mock MAC that builds a math equation string
+constexpr auto string_mac = [](std::string acc, std::string_view t, std::string_view coeff) {
+    return "(" + acc + "*" + std::string(t) + " + " + std::string(coeff) + ")";
+};
+
+// Requires C++20 for constexpr std::string
+constexpr auto test_structural_evaluation()
+{
+    using namespace std::literals;
+    auto evaluator = polynomial_evaluator_t<string_mac>{};
+
+    return evaluator("t"sv, "11"s, "17"s, "23"s, "29"s);
+}
+
+static_assert(test_structural_evaluation() == "(((11*t + 17)*t + 23)*t + 29)");
 
 } // namespace
 } // namespace crv::spline
