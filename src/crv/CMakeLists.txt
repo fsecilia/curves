@@ -68,7 +68,7 @@ target_sources_kernel(lib
     math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/monomial.hpp
+    math/spline/polynomial.hpp
     math/spline/segment_locator.hpp
     math/spline/segment.hpp
     math/spline/spline.hpp

@@ -13,7 +13,7 @@ namespace {
 
 using normalized_t = fixed_t<uint64_t, 32>;
 using coeff_t = fixed_t<int64_t, 48>;
-using monomial_t = cubic_monomial_t<coeff_t>;
+using polynomial_t = cubic_polynomial_t<coeff_t>;
 
 using real_t = float_t;
 using sut_t = overflow_t<real_t, normalized_t>;
@@ -31,19 +31,19 @@ template <typename fixed_t> constexpr auto convert(std::floating_point auto floa
 struct common_param_t
 {
     bool expected;
-    monomial_t monomial;
+    polynomial_t polynomial;
 
     common_param_t(bool expected, auto c0, auto c1, auto c2, auto c3) noexcept
         : expected{expected},
-          monomial{convert<coeff_t>(c0), convert<coeff_t>(c1), convert<coeff_t>(c2), convert<coeff_t>(c3)}
+          polynomial{convert<coeff_t>(c0), convert<coeff_t>(c1), convert<coeff_t>(c2), convert<coeff_t>(c3)}
     {}
 
     friend auto operator<<(std::ostream& out, common_param_t const& src) -> std::ostream&
     {
         out << "expected = " << src.expected;
 
-        out << " .monomial = {" << src.monomial[0];
-        for (auto coeff = 1; coeff < cubic_coeff_count; ++coeff) out << ", " << src.monomial[coeff];
+        out << " .polynomial = {" << src.polynomial[0];
+        for (auto coeff = 1; coeff < cubic_coeff_count; ++coeff) out << ", " << src.polynomial[coeff];
         out << "}";
 
         return out;
@@ -67,14 +67,14 @@ struct interval_param_t : common_param_t
 struct spline_defect_detectors_interval_test_t : TestWithParam<interval_param_t>
 {
     bool expected = GetParam().expected;
-    monomial_t const& monomial = GetParam().monomial;
+    polynomial_t const& polynomial = GetParam().polynomial;
 
     sut_t sut{};
 };
 
 TEST_P(spline_defect_detectors_interval_test_t, result)
 {
-    EXPECT_EQ(expected, sut(monomial));
+    EXPECT_EQ(expected, sut(polynomial));
 }
 
 interval_param_t const interval_params[] = {
@@ -178,7 +178,7 @@ struct point_param_t : common_param_t
 struct spline_defect_detectors_point_test_t : TestWithParam<point_param_t>
 {
     bool expected = GetParam().expected;
-    monomial_t const& monomial = GetParam().monomial;
+    polynomial_t const& polynomial = GetParam().polynomial;
     normalized_t const& point = GetParam().point;
 
     sut_t sut{};
@@ -186,7 +186,7 @@ struct spline_defect_detectors_point_test_t : TestWithParam<point_param_t>
 
 TEST_P(spline_defect_detectors_point_test_t, result)
 {
-    EXPECT_EQ(expected, sut(monomial, point));
+    EXPECT_EQ(expected, sut(polynomial, point));
 }
 
 point_param_t const point_params[] = {

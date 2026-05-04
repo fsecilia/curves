@@ -98,7 +98,7 @@ public:
         return y_t::convert(p1 + m1 * t);
     }
 
-    /// cubic monomial coefficients
+    /// cubic polynomial coefficients
     constexpr auto coeffs() const noexcept -> coeffs_t { return {unpack_coeff0(), coeffs_[1], coeffs_[2], coeffs_[3]}; }
 
     /// width of segment as base-2 exponent

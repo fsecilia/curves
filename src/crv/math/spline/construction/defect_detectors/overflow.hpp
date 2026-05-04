@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
-#include <crv/math/spline/monomial.hpp>
+#include <crv/math/spline/polynomial.hpp>
 #include <concepts>
 #include <iterator>
 
@@ -20,13 +20,14 @@ template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
 {
     /// \returns true if approximant overflows while evaluating anywhere over the interval
     template <is_fixed coeff_t>
-    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         return overflows(coeffs);
     }
 
     /// \returns true if approximant overflows any intermediate calc while evaluating over the interval
-    template <is_fixed coeff_t> constexpr auto overflows(cubic_monomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    template <is_fixed coeff_t>
+    constexpr auto overflows(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
@@ -77,7 +78,7 @@ template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
 
     /// returns true if approximant overflows while evaluating at a particular location
     template <is_fixed coeff_t>
-    constexpr auto operator()(cubic_monomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
+    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
     {
         auto accumulator = coeffs[0];
         for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
