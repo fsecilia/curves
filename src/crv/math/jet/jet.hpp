@@ -260,6 +260,12 @@ template <typename t_value_t> struct jet_t
         return x;
     }
 
+    friend constexpr auto elementwise_max(jet_t const& lhs, jet_t const& rhs) noexcept -> jet_t
+    {
+        using crv::max;
+        return {max(lhs.f, rhs.f), max(lhs.df, rhs.df)};
+    }
+
     // ----------------------------------------------------------------------------------------------------------------
     // Classification
     // ----------------------------------------------------------------------------------------------------------------
