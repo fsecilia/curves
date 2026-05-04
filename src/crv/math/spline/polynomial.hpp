@@ -35,4 +35,17 @@ struct fast_mac_t
     }
 };
 
+/// fixed-length horner's loop using fold
+template <auto mac> struct polynomial_evaluator_t
+{
+    template <typename coeff_t>
+    constexpr auto operator()(
+        auto t, coeff_t highest_coeff, std::same_as<coeff_t> auto... remaining_coeffs) const noexcept -> coeff_t
+    {
+        auto accumulator = highest_coeff;
+        ((accumulator = mac(accumulator, t, remaining_coeffs)), ...);
+        return accumulator;
+    }
+};
+
 } // namespace crv::spline
