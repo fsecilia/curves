@@ -11,6 +11,50 @@
 namespace crv::spline {
 namespace {
 
+// --------------------------------------------------------------------------------------------------------------------
+// segment_input_normalizer_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace segment_input_normalizer {
+
+using normalized_t = fixed_t<uint16_t, 16>;
+using x_t = fixed_t<int32_t, 8>;
+
+// combines inputs predictably
+struct shifter_t
+{
+    template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
+    {
+        return int_cast<value_t>((value * 100) + count);
+    }
+};
+
+constexpr auto test_segment_input_normalizer() -> bool
+{
+    auto const normalizer = segment_input_normalizer_t<normalized_t, shifter_t{}>{};
+
+    auto const x = x_t::literal(10);
+    auto const log2_width = int_t{3};
+
+    // x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width = 16 - 8 - 3 = 5
+    // shifter input: value = 10, count = 5
+    // shifter output: (10*100) + 5 = 1005
+    auto const expected = int_t{1005};
+
+    auto const actual = normalizer(x, log2_width);
+
+    return actual.value == expected;
+}
+static_assert(test_segment_input_normalizer());
+
+} // namespace segment_input_normalizer
+
+// --------------------------------------------------------------------------------------------------------------------
+// segment_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace segment_test {
+
 using coeff_value_t = int64_t;
 using coeff_t = fixed_t<coeff_value_t, 45>;
 
@@ -316,6 +360,8 @@ TEST(spline_segment, violates_coeff0_negative_packing_bounds)
 } // namespace death_tests
 
 #endif
+
+} // namespace segment_test
 
 } // namespace
 } // namespace crv::spline

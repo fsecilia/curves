@@ -17,6 +17,19 @@
 
 namespace crv::spline {
 
+/// normalizes from spline global input space to a segment's local input space
+template <typename t_normalized_t, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
+struct segment_input_normalizer_t
+{
+    using normalized_t = t_normalized_t;
+
+    template <is_fixed x_t> constexpr auto operator()(x_t x, int_t log2_width) const noexcept -> normalized_t
+    {
+        auto const x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width;
+        return normalized_t::literal(int_cast<typename normalized_t::value_t>(shifter.shift(x.value, x_to_t_shift)));
+    }
+};
+
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t,
     auto dx_to_t_shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
