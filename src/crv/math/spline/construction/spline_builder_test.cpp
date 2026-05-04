@@ -8,6 +8,7 @@
 
 #include <crv/bitwise_enum.hpp>
 #include <crv/math/abs.hpp>
+#include <crv/math/elementwise_max.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/math/integer.hpp>
@@ -28,7 +29,6 @@
 #include <expected>
 #include <iomanip>
 #include <numeric>
-#include <ranges>
 #include <variant>
 
 namespace crv {
@@ -297,6 +297,18 @@ template <std::floating_point real_t> struct residual_t
     real_t metric_error; // error based on norm error metric
     real_t weighted_error; // metric_error weighted perceptually
     real_t scale; // absolute magnitude of primal
+
+    friend auto elementwise_max(residual_t const& lhs, residual_t const& rhs) noexcept -> residual_t
+    {
+        using cpo::elementwise_max;
+        return residual_t{
+            .primal_error = elementwise_max(lhs.primal_error, rhs.primal_error),
+            .tangent_error = elementwise_max(lhs.tangent_error, rhs.tangent_error),
+            .metric_error = elementwise_max(lhs.metric_error, rhs.metric_error),
+            .weighted_error = elementwise_max(lhs.weighted_error, rhs.weighted_error),
+            .scale = elementwise_max(lhs.scale, rhs.scale),
+        };
+    }
 
     friend auto operator<<(std::ostream& out, residual_t const& src) -> std::ostream&
     {
@@ -629,13 +641,8 @@ struct spliner_t
 
         // apply max to residual
         auto const max_residual = std::ranges::fold_left(
-            completed_intervals, residual_t{}, [](auto accumulator, auto const& element) noexcept {
-                accumulator.primal_error = max(accumulator.primal_error, element.residual.primal_error);
-                accumulator.tangent_error = max(accumulator.tangent_error, element.residual.tangent_error);
-                accumulator.metric_error = max(accumulator.metric_error, element.residual.metric_error);
-                accumulator.weighted_error = max(accumulator.weighted_error, element.residual.weighted_error);
-                accumulator.scale = max(accumulator.scale, element.residual.scale);
-                return accumulator;
+            completed_intervals, residual_t{}, [](auto const& accumulator, auto const& element) noexcept {
+                return cpo::elementwise_max(accumulator, element.residual);
             });
 
         // convert from segments to intervals
