@@ -9,6 +9,7 @@ add_library(lib)
 target_sources(lib PRIVATE
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
+    math/elementwise_max.hpp
     math/error_metrics.hpp
     math/fixed/fixed_limits.hpp
     math/fixed/float_conversions.hpp
@@ -100,6 +101,7 @@ if (enable_testing)
         math/division/io_test.cpp
         math/division/shifted_int_divider_test.cpp
         math/division/wide_divider_test.cpp
+        math/elementwise_max_test.cpp
         math/error_metrics_test.cpp
         math/fixed/exp2_neg_m1_test.cpp
         math/fixed/fixed_limits_test.cpp
