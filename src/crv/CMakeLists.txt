@@ -138,6 +138,7 @@ if (enable_testing)
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
+        math/spline/polynomial_test.cpp
         math/spline/segment_locator_test.cpp
         math/spline/segment_test.cpp
         math/spline/spline_test.cpp
