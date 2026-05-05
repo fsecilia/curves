@@ -78,6 +78,10 @@ TEST_P(spline_defect_detectors_interval_test_t, result)
 }
 
 interval_param_t const interval_params[] = {
+    //
+    // primal
+    //
+
     {false, 0.0, 0.0, 0.0, 0.0},
     {false, 1.0, 1.0, 1.0, 1.0},
 
@@ -154,6 +158,83 @@ interval_param_t const interval_params[] = {
     //     p(0.4) = 30000(0.064) - 18000(0.16) + 0 + d = -960 + d = -32860 (overflows, just outside)
     // endpoints: p(0) = -31900 (safe), p(1) = -19900 (safe)
     {true, 30000.0, -18000.0, 0.0, -31900.0},
+
+    //
+    // tangent
+    //
+
+    // tangent c0 bounds check overflows: 3 * c0 > 32767
+    // c0 = 12000 -> 3 * c0 = 36000 (overflows).
+    // primal is safe: peak at t = 0.5 is 12000(0.125) - 12000(0.25) = -1500. endpoints are 0.
+    {true, 12000.0, -12000.0, 0.0, 0.0},
+
+    // tangent c1 bounds check overflows negative: 2 * c1 < -32768
+    // c1 = -17000 -> 2 * c1 = -34000 (overflows).
+    // primal is safe: peak at t = 0.5 is -17000(0.25) + 17000(0.5) = 4250. endpoints are 0.
+    {true, 0.0, -17000.0, 17000.0, 0.0},
+
+    // tangent evaluates to overflow at endpoint, but coeffs and primal are safe
+    // c0 = 10000, c1 = 10000. 3*c0 = 30000 (safe), 2*c1 = 20000 (safe).
+    // tangent q(t) = 30000t^2 + 20000t. q(1) = 50000 (> 32767).
+    // primal p(1) = 10000 + 10000 = 20000 (safe).
+    {true, 10000.0, 10000.0, 0.0, 0.0},
+
+    // tangent valley overflows negatively, but coeffs and primal are safe
+    // c0 = 10666, c1 = -16000, c2 = -26000. 3*c0 = 31998 (safe), 2*c1 = -32000 (safe).
+    // tangent q(t) = 31998t^2 - 32000t - 26000. valley at t ~= 0.5.
+    // q(0.5) ~= 32000(0.25) - 32000(0.5) - 26000 = -34000 (< -32768).
+    // primal p(1) = 10666 - 16000 - 26000 = -31334 (safe).
+    {true, 10666.0, -16000.0, -26000.0, 0.0},
+
+    // tangent intermediate (3a*t + 2b) overflows at t=1, but tangent value at t=1 is safe.
+    // 3*c0 = 21000, 2*c1 = 16000; iter 1 at t=1: 21000 + 16000 = 37000 (> 32767, overflows).
+    // tangent at t=1: 21000 + 16000 - 10000 = 27000 (would be safe).
+    // primal is safe and short-circuits: abs sum = 7000 + 8000 + 10000 + 0 = 25000 (< 32767).
+    // distinguishes the iter-1 intermediate check from the tangent-value check; without it,
+    // the existing endpoint test does not require the iter-1 check to be present.
+    {true, 7000.0, 8000.0, -10000.0, 0.0},
+
+    //
+    // fast paths
+    //
+
+    // primal fast filter passes (slow path skipped via &&), tangent fast filter fails,
+    // tangent eval is safe. asymmetric: verifies tangent runs even when primal short-circuits.
+    // primal abs sum: 8000 + 5000 + 4000 + 0 = 17000 (< 32767)
+    // tangent abs sum: 24000 + 10000 + 4000 = 38000 (> 32767)
+    // tangent q(t) = 24000t^2 - 10000t + 4000.
+    //   endpoints: q(0) = 4000, q(1) = 18000. peak at t = 5/24 ~= 0.208 -> q ~= 2958.
+    //   discriminant = 1e8 - 3*24000*4000 = -1.88e8 < 0; no synthetic cubic roots to check.
+    {false, 8000.0, -5000.0, 4000.0, 0.0},
+
+    // primal fast filter fails, tangent fast filter passes (slow path skipped via &&),
+    // primal eval is safe. asymmetric: verifies tangent fast filter saves work correctly.
+    // primal abs sum: 500 + 500 + 500 + 32000 = 33500 (> 32767)
+    // tangent abs sum: 1500 + 1000 + 500 = 3000 (< 32767)
+    // primal p(t) = 500t^3 + 500t^2 - 500t + 32000.
+    //   endpoints: p(0) = 32000, p(1) = 32500. t_quadratic = -0.5 (rejected, strict left).
+    //   discriminant = 1e6; roots at t = 1/3 (in) and t = -1 (out). p(1/3) ~= 31907 (safe).
+    {false, 500.0, 500.0, -500.0, 32000.0},
+
+    // fails both fast paths (sum of abs > 32767), but actual evaluation is completely safe
+    // primal abs sum: 8000 + 10000 + 8000 + 10000 = 36000 (> 32767)
+    // tangent abs sum: 24000 + 20000 + 8000 = 52000 (> 32767)
+    // tangent q(t) = 24000t^2 - 20000t + 8000. endpoints: 8000, 12000. valley at t=0.416 is safe.
+    // primal p(t) = 8000t^3 - 10000t^2 + 8000t - 10000. endpoints: -10000, -4000.
+    {false, 8000.0, -10000.0, 8000.0, -10000.0},
+
+    // both fast filters fail, both slow paths reject t_quadratic outside (0, 1) and find
+    // the cubic root inside (0, 1) safe. exercises the discriminant > 0 branch under
+    // a passing result; the existing both-fast-fail test has discriminant < 0 in both.
+    // primal abs sum: 4000 + 6000 + 15000 + 10000 = 35000 (> 32767)
+    // tangent abs sum: 12000 + 12000 + 15000 = 39000 (> 32767)
+    // primal: t_quadratic = -6000/8000 = -0.75 (rejected, strict left).
+    //   discriminant = 36e6 + 3*4000*15000 = 216e6; roots at t ~= 0.725 (in) and t ~= -1.725 (out).
+    //   p(0.725) ~= 3804 (safe).
+    // tangent synthetic [12000, 12000, -15000, 0]: t_quadratic = -0.5 (rejected, strict left).
+    //   discriminant = 144e6 + 3*12000*15000 = 684e6; roots at t ~= 0.393 (in) and t ~= -1.060 (out).
+    //   synthetic at t = 0.393 reaches ~= -3313 (safe).
+    {false, 4000.0, 6000.0, -15000.0, 10000.0},
 };
 INSTANTIATE_TEST_SUITE_P(interval_params, spline_defect_detectors_interval_test_t, ValuesIn(interval_params));
 
