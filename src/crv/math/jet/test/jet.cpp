@@ -181,9 +181,9 @@ TEST_F(jet_test_construction_t, primal)
     static_assert(x.f == primal(x));
 }
 
-TEST_F(jet_test_construction_t, derivative)
+TEST_F(jet_test_construction_t, tangent)
 {
-    static_assert(x.df == derivative(x));
+    static_assert(x.df == tangent(x));
 }
 
 // ====================================================================================================================
@@ -540,7 +540,7 @@ jet_op_test_vector_t const jet_multiplication_vectors[] = {
     {"scaled_variable*scaled_variable", {3.0, 2.0}, {5.0, 7.0}, {15.0, 31.0}},
 
     // zero cases
-    {"derivative*scaled_variable", {0.0, 2.0}, {5.0, 7.0}, {0.0, 10.0}},
+    {"tangent*scaled_variable", {0.0, 2.0}, {5.0, 7.0}, {0.0, 10.0}},
     {"scaled_variable*zero", {3.0, 2.0}, {0.0, 0.0}, {0.0, 0.0}},
 
     // identity
@@ -752,15 +752,15 @@ classification_test_vector_t const classification_vectors[] = {
     {"zero", {0.0, 0.0}, true, false, false},
     {"vector", {1.0, 2.0}, true, false, false},
     {"infinite primal", {inf, 0.0}, false, true, false},
-    {"infinite derivative", {0.0, inf}, false, true, false},
+    {"infinite tangent", {0.0, inf}, false, true, false},
     {"infinity", {inf, inf}, false, true, false},
 
     {"nan primal", {nan, 0.0}, false, false, true},
-    {"nan derivative", {0.0, nan}, false, false, true},
+    {"nan tangent", {0.0, nan}, false, false, true},
     {"nan", {nan, nan}, false, false, true},
 
-    {"infinite primal, nan derivative", {inf, nan}, false, false, true},
-    {"nan primal, infinite derivative", {nan, inf}, false, false, true},
+    {"infinite primal, nan tangent", {inf, nan}, false, false, true},
+    {"nan primal, infinite tangent", {nan, inf}, false, false, true},
 };
 INSTANTIATE_TEST_SUITE_P(classification, jet_test_classification_t, ValuesIn(classification_vectors),
     test_name_generator_t<classification_test_vector_t>{});

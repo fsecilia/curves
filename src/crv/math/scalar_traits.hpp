@@ -19,7 +19,7 @@ template <typename scalar_t> constexpr auto primal(scalar_t scalar) noexcept -> 
     return scalar;
 }
 
-template <typename scalar_t> constexpr auto derivative(scalar_t) noexcept -> scalar_t
+template <typename scalar_t> constexpr auto tangent(scalar_t) noexcept -> scalar_t
 {
     return scalar_t{};
 }

@@ -22,9 +22,9 @@ static_assert(f == primal(f));
 static_assert(-f == primal(-f));
 static_assert(df == primal(df));
 
-static_assert(scalar_t{} == derivative(f));
-static_assert(scalar_t{} == derivative(-f));
-static_assert(scalar_t{} == derivative(df));
+static_assert(scalar_t{} == tangent(f));
+static_assert(scalar_t{} == tangent(-f));
+static_assert(scalar_t{} == tangent(df));
 
 } // namespace
 } // namespace crv

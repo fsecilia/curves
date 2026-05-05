@@ -14,10 +14,10 @@ struct jet_t
     using value_t = float_t;
 
     value_t value;
-    value_t derivative;
+    value_t tangent;
 
     friend constexpr auto primal(jet_t j) noexcept -> value_t { return j.value; }
-    friend constexpr auto derivative(jet_t j) noexcept -> value_t { return j.derivative; }
+    friend constexpr auto tangent(jet_t j) noexcept -> value_t { return j.tangent; }
 };
 
 // ====================================================================================================================

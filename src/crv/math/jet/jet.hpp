@@ -95,7 +95,7 @@ template <typename t_value_t> struct jet_t
 
     explicit constexpr operator bool() const noexcept
     {
-        // ignore derivative
+        // ignore tangent
         return f != 0;
     }
 
@@ -118,7 +118,7 @@ template <typename t_value_t> struct jet_t
     // Vector Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
-    // jet_t ignores the derivative for ordering, so impose a weak ordering at best
+    // jet_t ignores the tangent for ordering, so impose a weak ordering at best
     constexpr auto operator<=>(jet_t const& other) const noexcept
         -> std::common_comparison_category_t<decltype(f <=> other.f), std::weak_ordering>
     {
@@ -132,7 +132,7 @@ template <typename t_value_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
 
     friend constexpr auto primal(jet_t x) noexcept -> value_t { return x.f; }
-    friend constexpr auto derivative(jet_t x) noexcept -> value_t { return x.df; }
+    friend constexpr auto tangent(jet_t x) noexcept -> value_t { return x.df; }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Unary Arithmetic
