@@ -91,10 +91,32 @@ using int_by_bits_t
 // promotions
 // --------------------------------------------------------------------------------------------------------------------
 
+/// true when a type can be widened; true up to native word size
+template <integral value_t> inline constexpr auto can_widen = sizeof(value_t) <= sizeof(int_t);
+
 /// doubles width of value_t, retaining signedness
 template <integral value_t> using widened_t = int_by_bytes_t<sizeof(value_t) * 2, is_signed_v<value_t>>;
 
-/// true when a type can be widened; true up to native word size
-template <integral value_t> inline constexpr auto can_widen = sizeof(value_t) <= sizeof(int_t);
+/// returns value in widened container
+template <integral value_t>
+    requires(can_widen<value_t>)
+constexpr auto widen(value_t value) noexcept -> widened_t<value_t>
+{
+    return static_cast<widened_t<value_t>>(value);
+}
+
+/// true when a type can be narrowed; true down to 1 byte
+template <integral value_t> inline constexpr auto can_narrow = sizeof(value_t) > 1;
+
+/// halves width of value_t, retaining signedness
+template <integral value_t> using narrowed_t = int_by_bytes_t<sizeof(value_t) / 2, is_signed_v<value_t>>;
+
+/// returns value in narrowed container, asserting range
+template <integral value_t>
+    requires(can_narrow<value_t>)
+constexpr auto narrow(value_t value) noexcept -> narrowed_t<value_t>
+{
+    return int_cast<narrowed_t<value_t>>(value);
+}
 
 } // namespace crv
