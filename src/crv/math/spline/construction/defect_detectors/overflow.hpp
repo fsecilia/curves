@@ -148,12 +148,27 @@ private:
         return primal_overflows(derivative);
     }
 
-    // test endpoints; this covers the linear intermediate in all cases
+    // simplified check to see if evaluating at right endpoint overflows
+    //
+    // At the right endpoint, when t=1, the result is just the sum of the coefficients; multiplying by 1, even in
+    // fixed-point, does not change the result, so just sum wide.
+    //
+    // This check covers the linear intermediate in all cases.
     template <std::ranges::range coeffs_t>
     constexpr auto endpoint_overflows(coeffs_t const& coeffs) const noexcept -> bool
         requires(is_fixed<std::ranges::range_value_t<coeffs_t>>)
     {
-        if (operator()(coeffs, normalized_t{1})) return true; // this won't compile if the type has no integer bits
+        using coeff_t = std::ranges::range_value_t<coeffs_t>;
+
+        auto coeff = std::begin(coeffs);
+        auto const coeffs_end = std::end(coeffs);
+
+        auto wide_accumulator = widen(coeff++->value);
+        while (coeff != coeffs_end)
+        {
+            wide_accumulator += coeff++->value;
+            if (wide_accumulator < min<coeff_t>().value || max<coeff_t>().value < wide_accumulator) return true;
+        }
         return false;
     }
 };
