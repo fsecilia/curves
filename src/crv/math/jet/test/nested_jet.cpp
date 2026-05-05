@@ -203,11 +203,11 @@ TEST_F(nested_jet_test_arithmetic_t, mixed_linear_combination)
     // f(x) = 3x^2 + 2x + v + s
     // f'(x) = 6x*dx + 2*dx
     auto const expected_primal = 3.0 * x.f * x.f + 2.0 * x.f + v + s;
-    auto const expected_derivative = 6.0 * x.f * x.df + 2.0 * x.df;
+    auto const expected_tangent = 6.0 * x.f * x.df + 2.0 * x.df;
 
     auto const actual = 3.0 * x * x + 2.0 * x + v + s;
 
-    compare(actual, {expected_primal, expected_derivative});
+    compare(actual, {expected_primal, expected_tangent});
 }
 
 TEST_F(nested_jet_test_arithmetic_t, quartic)
@@ -215,13 +215,13 @@ TEST_F(nested_jet_test_arithmetic_t, quartic)
     // f(x) = x^4
     // f'(x) = 4x^3*dx
     auto const expected_primal = x.f * x.f * x.f * x.f;
-    auto const expected_derivative = 4.0 * x.f * x.f * x.f * x.df;
+    auto const expected_tangent = 4.0 * x.f * x.f * x.f * x.df;
 
     auto const x2 = x * x;
     auto const x4 = x2 * x2;
     auto const actual = x4;
 
-    compare(actual, {expected_primal, expected_derivative});
+    compare(actual, {expected_primal, expected_tangent});
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -384,7 +384,7 @@ TEST_F(nested_jet_second_derivative_t, pow_decomposed_into_scalars)
 
 // For smooth functions, the two first derivative components should match:
 //
-//     derivative(primal(c)) == primal(derivative(c))
+//     tangent(primal(c)) == primal(tangent(c))
 //
 // This is Schwarz's theorem, the equality of mixed partials.
 struct nested_jet_test_mixed_partials_symmetry_t : nested_jet_test_t
@@ -396,21 +396,21 @@ TEST_F(nested_jet_test_mixed_partials_symmetry_t, exp)
 {
     auto const f = exp(c);
 
-    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+    EXPECT_NEAR(tangent(primal(f)), primal(tangent(f)), eps);
 }
 
 TEST_F(nested_jet_test_mixed_partials_symmetry_t, log)
 {
     auto const f = log(c);
 
-    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+    EXPECT_NEAR(tangent(primal(f)), primal(tangent(f)), eps);
 }
 
 TEST_F(nested_jet_test_mixed_partials_symmetry_t, sqrt)
 {
     auto const f = sqrt(c);
 
-    EXPECT_NEAR(derivative(primal(f)), primal(derivative(f)), eps);
+    EXPECT_NEAR(tangent(primal(f)), primal(tangent(f)), eps);
 }
 
 // --------------------------------------------------------------------------------------------------------------------

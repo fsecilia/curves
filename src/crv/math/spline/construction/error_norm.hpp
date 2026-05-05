@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief L-infinity norms for scalars and 1-jets used to measure error in position and derivative
+/// \brief L-infinity norms for scalars and 1-jets used to measure error in position and tangent
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -23,12 +23,12 @@ template <typename scalar_t> struct uniform_t
     }
 };
 
-/// first-order uniform norm for 1-jets evaluating position and derivative error
+/// first-order uniform norm for 1-jets evaluating position and tangent error
 template <typename jet_t> struct first_order_uniform_t
 {
     using scalar_t = jet_t::value_t;
 
-    scalar_t derivative_weight{1.0};
+    scalar_t tangent_weight{1.0};
 
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
     {
@@ -36,8 +36,8 @@ template <typename jet_t> struct first_order_uniform_t
         using crv::max;
 
         auto const primal_error = abs(primal(target) - primal(approximation));
-        auto const derivative_error = abs(derivative(target) - derivative(approximation)) * derivative_weight;
-        return max(primal_error, derivative_error);
+        auto const tangent_error = abs(tangent(target) - tangent(approximation)) * tangent_weight;
+        return max(primal_error, tangent_error);
     }
 };
 
