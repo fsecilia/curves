@@ -8,6 +8,8 @@
 #include <crv/math/fixed/io.hpp>
 #include <crv/test/test.hpp>
 
+#include <crv/math/spline/polynomial.hpp>
+
 namespace crv::spline::defect_detectors {
 namespace {
 
@@ -16,7 +18,7 @@ using coeff_t = fixed_t<int64_t, 48>;
 using polynomial_t = cubic_polynomial_t<coeff_t>;
 
 using real_t = float_t;
-using sut_t = overflow_t<real_t, normalized_t>;
+using sut_t = overflow_t<real_t, normalized_t, mac_t{}>;
 
 template <typename fixed_t> constexpr auto convert(fixed_t src) noexcept -> fixed_t
 {

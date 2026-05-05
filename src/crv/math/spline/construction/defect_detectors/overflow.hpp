@@ -19,7 +19,7 @@ namespace crv::spline::defect_detectors {
 /// predicate to test for overflow in primal and tangent
 ///
 /// This predicate tests intermediate and final calculations wide at extrema to see if they overflow.
-template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
+template <std::floating_point real_t, is_fixed normalized_t, auto mac> struct overflow_t
 {
     /// \returns true if approximant overflows primal or tangent while evaluating anywhere over the interval
     template <is_fixed coeff_t>
@@ -129,21 +129,16 @@ template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
         auto accumulator = coeffs[0];
         for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
         {
-            // calc wide product
-            auto wide_value = multiply(accumulator, t).value;
-
-            // align radices
-            wide_value >>= normalized_t::frac_bits;
-
-            // sum
-            wide_value += coeffs[coeff].value;
+            // get mac result in wide
+            auto const wide_value = mac(accumulator, t, coeffs[coeff]);
 
             // check for overflow
             if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
 
             // accumulate
-            accumulator.value = int_cast<typename coeff_t::value_t>(wide_value);
+            accumulator = coeff_t::literal(int_cast<typename coeff_t::value_t>(wide_value));
         }
+
         return false;
     }
 };
