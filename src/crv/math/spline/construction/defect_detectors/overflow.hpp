@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/abs.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/spline/polynomial.hpp>
@@ -15,19 +16,33 @@
 
 namespace crv::spline::defect_detectors {
 
-/// predicate to test for overflow over an interval
+/// predicate to test for overflow in primal and tangent
+///
+/// This predicate tests intermediate and final calculations wide at extrema to see if they overflow.
 template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
 {
-    /// \returns true if approximant overflows while evaluating anywhere over the interval
+    /// \returns true if approximant overflows primal or tangent while evaluating anywhere over the interval
     template <is_fixed coeff_t>
     constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
-        return overflows(coeffs);
+        return (primal_can_overflow(coeffs) && primal_overflows(coeffs))
+            || (tangent_can_overflow(coeffs) && tangent_overflows(coeffs));
     }
 
-    /// \returns true if approximant overflows any intermediate calc while evaluating over the interval
+    /// fast-path, lightweight filter for primal overflow
+    ///
+    /// \returns false if primal absolutely cannot overflow
     template <is_fixed coeff_t>
-    constexpr auto overflows(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    constexpr auto primal_can_overflow(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    {
+        auto const abs_sum = abs(widen(coeffs[0].value)) + abs(widen(coeffs[1].value)) + abs(widen(coeffs[2].value))
+            + abs(widen(coeffs[3].value));
+        return max<coeff_t>().value < abs_sum;
+    }
+
+    /// \returns true if polynomial overflows any intermediate calc while evaluating over the interval
+    template <is_fixed coeff_t>
+    constexpr auto primal_overflows(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
         // test endpoints; this covers the linear intermediate in all cases
         if (operator()(coeffs, normalized_t{0})) return true;
@@ -76,7 +91,38 @@ template <std::floating_point real_t, is_fixed normalized_t> struct overflow_t
         return false;
     }
 
-    /// returns true if approximant overflows while evaluating at a particular location
+    /// fast-path, lightweight filter for tangent overflow
+    ///
+    /// \returns false if tangent absolutely cannot overflow
+    template <is_fixed coeff_t>
+    constexpr auto tangent_can_overflow(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    {
+        auto const abs_sum
+            = abs(3 * widen(coeffs[0].value)) + abs(2 * widen(coeffs[1].value)) + abs(widen(coeffs[2].value));
+        return max<coeff_t>().value < abs_sum;
+    }
+
+    /// \returns true if polynomial overflows any intermediate calc while evaluating over the interval
+    template <is_fixed coeff_t>
+    constexpr auto tangent_overflows(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
+    {
+        // check 3*c0
+        auto const c0 = coeffs[0];
+        constexpr auto safe_c0_bound = max<coeff_t>().value / 3;
+        if (c0.value < -safe_c0_bound || safe_c0_bound < c0.value) return true;
+
+        // check 2*c1
+        auto const c1 = coeffs[1];
+        constexpr auto safe_c1_bound = max<coeff_t>().value / 2;
+        if (c1.value < -safe_c1_bound || safe_c1_bound < c1.value) return true;
+
+        // use primal predicate to check derivative polynomial
+        auto const derivative = cubic_polynomial_t<coeff_t>{
+            coeff_t::literal(3 * c0.value), coeff_t::literal(2 * c1.value), coeffs[2], coeff_t{0}};
+        return primal_overflows(derivative);
+    }
+
+    /// returns true if polynomial overflows while evaluating at a particular location
     template <is_fixed coeff_t>
     constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
     {
