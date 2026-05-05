@@ -45,7 +45,7 @@ struct common_param_t
         out << "expected = " << src.expected;
 
         out << " .polynomial = {" << src.polynomial[0];
-        for (auto coeff = 1; coeff < cubic_coeff_count; ++coeff) out << ", " << src.polynomial[coeff];
+        for (auto coeff = 1u; coeff < std::size(src.polynomial); ++coeff) out << ", " << src.polynomial[coeff];
         out << "}";
 
         return out;
