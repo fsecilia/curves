@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPx-License-Identifier: MIT
 
 /// \file
 /// \brief fixed-point cubic spline segment
@@ -11,7 +11,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
-#include <array>
+#include <crv/math/spline/polynomial.hpp>
 #include <climits>
 #include <new>
 
@@ -23,17 +23,21 @@ struct segment_input_normalizer_t
 {
     using normalized_t = t_normalized_t;
 
-    template <is_fixed x_t> constexpr auto operator()(x_t x, int_t log2_width) const noexcept -> normalized_t
+    template <is_fixed x_t> constexpr auto normalize(x_t x, int_t log2_width) const noexcept -> normalized_t
     {
-        auto const x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width;
-        return normalized_t::literal(int_cast<typename normalized_t::value_t>(shifter.shift(x.value, x_to_t_shift)));
+        return rescale<normalized_t>(x, log2_width);
+    }
+
+    template <is_fixed dst_t, is_fixed src_t>
+    constexpr auto rescale(src_t src, int_t log2_width) const noexcept -> dst_t
+    {
+        auto const shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width;
+        return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
     }
 };
 
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t,
-    auto dx_to_t_shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
-    auto horners_loop_shifter = shifter_t<rounding_modes::shr::truncate>{}>
+template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, auto input_normalizer, auto polynomial_evaluator>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
@@ -41,11 +45,12 @@ public:
     using x_t = t_x_t;
     using y_t = t_y_t;
     using coeff_t = t_coeff_t;
+    using normalized_t = decltype(input_normalizer)::normalized_t;
 
     static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
 
     static constexpr auto coeff_count = 4;
-    using coeffs_t = std::array<coeff_t, coeff_count>;
+    using coeffs_t = cubic_polynomial_t<coeff_t>;
 
     constexpr segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
@@ -64,39 +69,41 @@ public:
         coeffs_[0].value |= (static_cast<uint64_t>(log2_width) & 0xFF);
     }
 
-    /// \pre 0 <= dx
-    /// \pre dx < width()
-    [[nodiscard]] constexpr auto evaluate(x_t dx) const noexcept -> y_t
+    /// \pre 0 <= x
+    /// \pre x < width()
+    [[nodiscard]] constexpr auto evaluate(x_t x) const noexcept -> y_t
     {
-        assert(dx < width());
+        assert(x < width());
 
-        auto const t = dx_to_t(dx);
-        auto result = unpack_coeff0();
-        for (auto coeff = 1; coeff < coeff_count; ++coeff)
-        {
-            // convert with wrap and no rounding
-            //
-            // Saturation is checked during construction, so wrapping is fine. Relying on this is safe because were an
-            // adversary to construct a segment that would overflow here, it just means a bad curve, not a cve. Don't
-            // round because the biases are baked into the coefficients.
-            result = coeff_t::template convert<overflow_policy_t::wrap, horners_loop_shifter>(multiply(result, t));
-            result += coeffs_[coeff];
-        }
+        auto t = x_to_t(x);
+        return y_t::convert(primal(t));
+    }
 
-        return y_t::convert(result);
+    constexpr auto x_to_t(x_t x) const noexcept -> normalized_t
+    {
+        assert(x_t{0} <= x);
+        return input_normalizer.normalize(x, log2_width());
+    }
+
+    constexpr auto primal(normalized_t t) const noexcept -> y_t
+    {
+        return y_t::convert(polynomial_evaluator(t, coeffs()));
+    }
+
+    constexpr auto tangent(normalized_t t) const noexcept -> y_t
+    {
+        return y_t::convert(polynomial_evaluator(t, {3 * unpack_coeff0(), 2 * coeffs_[1], coeffs_[2]}));
     }
 
     /// extends tangent at t=1 beyond end of segment
     ///
-    /// dx_extended is the x value relative to the end of the domain, which is relative to the end of the final segment,
-    /// which here means relative to t=1: dx_extended=0 -> t=1
+    /// x_extended is the x value relative to the end of the domain, which is relative to the end of the final segment,
+    /// which here means relative to t=1: x_extended=0 -> t=1
     ///
-    /// \param dx_extended x value relative to end of segment
-    /// \pre 0 <= dx
-    [[nodiscard]] constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
+    /// \param x_extended x value relative to end of segment
+    /// \pre 0 <= x
+    [[nodiscard]] constexpr auto extend_final_tangent(x_t x_extended) const noexcept -> y_t
     {
-        auto const t = dx_to_t(dx_extended);
-
         auto const c0 = unpack_coeff0();
         auto const c1 = coeffs_[1];
         auto const c2 = coeffs_[2];
@@ -108,7 +115,9 @@ public:
         // derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
         auto const m1 = 3 * c0 + 2 * c1 + c2;
 
-        return y_t::convert(p1 + m1 * t);
+        auto const wide_product = multiply(m1, x_extended);
+        auto const tangent_term = input_normalizer.template rescale<coeff_t>(wide_product, log2_width());
+        return y_t::convert(p1 + tangent_term);
     }
 
     /// cubic polynomial coefficients
@@ -141,15 +150,6 @@ public:
     }
 
 private:
-    constexpr auto dx_to_t(x_t dx) const noexcept -> x_t
-    {
-        assert(x_t{0} <= dx);
-
-        // find t t by dividing dx by width. This shifts in the opposite direction log2 would:
-        // x/2^k = x*2^-k = x << -k == x >> k
-        return x_t::literal(dx_to_t_shifter.shift(dx.value, -log2_width()));
-    }
-
     constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
 
     coeffs_t coeffs_;
