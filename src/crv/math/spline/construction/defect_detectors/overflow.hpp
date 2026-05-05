@@ -72,7 +72,7 @@ private:
     template <is_fixed coeff_t>
     constexpr auto primal_overflows(cubic_polynomial_t<coeff_t> const& coeffs) const noexcept -> bool
     {
-        if (endpoints_overflow(coeffs)) return true;
+        if (endpoint_overflows(coeffs)) return true;
 
         auto const a = from_fixed<real_t>(coeffs[0]);
         auto const b = from_fixed<real_t>(coeffs[1]);
@@ -150,10 +150,9 @@ private:
 
     // test endpoints; this covers the linear intermediate in all cases
     template <std::ranges::range coeffs_t>
-    constexpr auto endpoints_overflow(coeffs_t const& coeffs) const noexcept -> bool
+    constexpr auto endpoint_overflows(coeffs_t const& coeffs) const noexcept -> bool
         requires(is_fixed<std::ranges::range_value_t<coeffs_t>>)
     {
-        if (operator()(coeffs, normalized_t{0})) return true;
         if (operator()(coeffs, normalized_t{1})) return true; // this won't compile if the type has no integer bits
         return false;
     }
