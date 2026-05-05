@@ -29,6 +29,27 @@ template <std::floating_point real_t, is_fixed normalized_t, auto mac> struct ov
             || (tangent_can_overflow(coeffs) && tangent_overflows(coeffs));
     }
 
+    /// returns true if polynomial overflows while evaluating at a particular location
+    template <is_fixed coeff_t>
+    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
+    {
+        auto accumulator = coeffs[0];
+        for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
+        {
+            // get mac result in wide
+            auto const wide_value = mac(accumulator, t, coeffs[coeff]);
+
+            // check for overflow
+            if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
+
+            // accumulate
+            accumulator = coeff_t::literal(int_cast<typename coeff_t::value_t>(wide_value));
+        }
+
+        return false;
+    }
+
+private:
     /// fast-path, lightweight filter for primal overflow
     ///
     /// \returns false if primal absolutely cannot overflow
@@ -120,26 +141,6 @@ template <std::floating_point real_t, is_fixed normalized_t, auto mac> struct ov
         auto const derivative = cubic_polynomial_t<coeff_t>{
             coeff_t::literal(3 * c0.value), coeff_t::literal(2 * c1.value), coeffs[2], coeff_t{0}};
         return primal_overflows(derivative);
-    }
-
-    /// returns true if polynomial overflows while evaluating at a particular location
-    template <is_fixed coeff_t>
-    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
-    {
-        auto accumulator = coeffs[0];
-        for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
-        {
-            // get mac result in wide
-            auto const wide_value = mac(accumulator, t, coeffs[coeff]);
-
-            // check for overflow
-            if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
-
-            // accumulate
-            accumulator = coeff_t::literal(int_cast<typename coeff_t::value_t>(wide_value));
-        }
-
-        return false;
     }
 };
 
