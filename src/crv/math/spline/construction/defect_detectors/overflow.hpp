@@ -11,6 +11,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/spline/polynomial.hpp>
+#include <crv/ranges.hpp>
 #include <concepts>
 #include <iterator>
 
@@ -30,14 +31,20 @@ template <std::floating_point real_t, is_fixed normalized_t, auto mac> struct ov
     }
 
     /// returns true if polynomial overflows while evaluating at a particular location
-    template <is_fixed coeff_t>
-    constexpr auto operator()(cubic_polynomial_t<coeff_t> const& coeffs, normalized_t t) const noexcept -> bool
+    template <std::ranges::range coeffs_t>
+    constexpr auto operator()(coeffs_t const& coeffs, normalized_t t) const noexcept -> bool
+        requires(is_fixed<std::ranges::range_value_t<coeffs_t>>)
     {
-        auto accumulator = coeffs[0];
-        for (auto coeff = std::size_t{1}, coeff_count = std::size(coeffs); coeff < coeff_count; ++coeff)
+        using coeff_t = std::ranges::range_value_t<coeffs_t>;
+
+        auto coeff = std::begin(coeffs);
+        auto const coeffs_end = std::end(coeffs);
+
+        auto accumulator = *coeff++;
+        while (coeff != coeffs_end)
         {
             // get mac result in wide
-            auto const wide_value = mac(accumulator, t, coeffs[coeff]);
+            auto const wide_value = mac(accumulator, t, *coeff++);
 
             // check for overflow
             if (wide_value < min<coeff_t>().value || max<coeff_t>().value < wide_value) return true;
