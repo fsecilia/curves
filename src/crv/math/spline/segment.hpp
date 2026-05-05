@@ -53,17 +53,10 @@ public:
 
     /// \pre 0 <= x
     /// \pre x < width()
-    [[nodiscard]] constexpr auto evaluate(x_t x) const noexcept -> y_t
-    {
-        assert(x < width());
-
-        auto t = x_to_t(x);
-        return y_t::convert(primal(t));
-    }
-
     constexpr auto x_to_t(x_t x) const noexcept -> normalized_t
     {
-        assert(x_t{0} <= x);
+        assert(0 <= x);
+        assert(x < width());
         return rescale<normalized_t>(x);
     }
 

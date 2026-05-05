@@ -41,61 +41,72 @@ constexpr auto c01 = coeff_t{1};
 constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
 constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
 
-constexpr auto t0 = x_t::literal(0);
-constexpr auto t_half = x_t::literal(1LL << (x_t::frac_bits - 1));
-constexpr auto t_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
+#if 0
+constexpr auto x0 = x_t::literal(0);
+constexpr auto x_half = x_t::literal(1LL << (x_t::frac_bits - 1));
+constexpr auto x_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
+constexpr auto x_three_quarter = x_half + x_quarter;
+constexpr auto x_max = x_t::literal((1LL << x_t::frac_bits) - 1);
+#endif
+
+constexpr auto t0 = normalized_t::literal(0);
+constexpr auto t_half = normalized_t::literal(1LL << (normalized_t::frac_bits - 1));
+constexpr auto t_quarter = normalized_t::literal(1LL << (normalized_t::frac_bits - 2));
 constexpr auto t_three_quarter = t_half + t_quarter;
-constexpr auto t_max = x_t::literal((1LL << x_t::frac_bits) - 1);
+constexpr auto t_max = max<normalized_t>();
 
 constexpr auto coeffs = coeffs_t{};
 
 // --------------------------------------------------------------------------------------------------------------------
-// normalization shift
+// x_to_t
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace normalization_shift_tests {
+namespace x_to_t_tests {
 
 using sut_t = segment_t<x_t, coeff_t, coeff_t, normalized_t, polynomial_evaluator_t{}>;
 
 // zero shift
 constexpr auto x_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
 constexpr auto sut0 = sut_t{{c0, c0, c1, c0}, 0};
-static_assert(sut0.evaluate(x_quarter) == coeff_t::convert(x_quarter));
+static_assert(sut0.x_to_t(x_quarter) == normalized_t::convert(x_quarter));
 
 // positive shift (left shift x, segment is narrower than 1.0)
 // x is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
 constexpr auto x_eighth = x_t::literal(1LL << (x_t::frac_bits - 3));
 constexpr auto sut_left = sut_t{{c0, c0, c1, c0}, -2};
-static_assert(sut_left.evaluate(x_eighth) == coeff_t::convert(x_t::literal(x_eighth.value << 2)));
+static_assert(sut_left.x_to_t(x_eighth) == normalized_t::convert(x_t::literal(x_eighth.value << 2)));
 
 // negative shift (right shift x, segment is wider than 1.0)
 // x is 2.0, shift is -2 (divide by 4), resulting t should be 0.5
 constexpr auto x_two = x_t::literal(2ULL << x_t::frac_bits);
 constexpr auto sut_right = sut_t{{c0, c0, c1, c0}, 2};
-static_assert(sut_right.evaluate(x_two) == coeff_t::convert(x_t::literal(x_two.value >> 2)));
+static_assert(sut_right.x_to_t(x_two) == normalized_t::convert(x_t::literal(x_two.value >> 2)));
 
-} // namespace normalization_shift_tests
+} // namespace x_to_t_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // polynomial evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto evaluate(coeffs_t const& coeffs, int8_t log2_width, x_t x) noexcept -> y_t
+constexpr auto evaluate(coeffs_t const& coeffs, int8_t log2_width, normalized_t t) noexcept -> y_t
 {
-    return sut_t{coeffs, log2_width}.evaluate(x);
+    return sut_t{coeffs, log2_width}.primal(t);
 }
 
-constexpr auto evaluate(vals_t const& coeff_vals, int8_t log2_width, x_t x) noexcept -> y_t
+constexpr auto evaluate(vals_t const& coeff_vals, int8_t log2_width, normalized_t t) noexcept -> y_t
 {
     return evaluate(coeffs_t{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
                         coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])},
-        log2_width, x);
+        log2_width, t);
 }
 
 namespace evaluation_tests {
 
 // expected polynomial output at coeff_t scale, lifted to y_t. Decouples expectations from y_t::frac_bits.
-constexpr auto expected = [](coeff_t::value_t coeff_value) { return y_t::convert(coeff_t::literal(coeff_value)); };
+constexpr auto expected(coeff_t::value_t coeff_value) -> y_t
+{
+    return y_t::convert(coeff_t::literal(coeff_value));
+}
 
 // all zeros
 static_assert(evaluate({0, 0, 0, 0}, 0, t_half) == expected(0));
@@ -128,17 +139,17 @@ static_assert(evaluate({9999, -8888, 7777, 35}, 0, t0) == expected(35));
 static_assert(evaluate({1024, 1024, 1024, 1024}, 0, t_quarter) == expected(1360));
 
 // t = 0xAAAA... (~2/3), isolates truncation behavior on non-power-of-two fractions
-static_assert(evaluate({0, 0, 81, 0}, 0, x_t::literal(0xAAAAAAAAAAAAULL)) == expected(54));
+static_assert(evaluate({0, 0, 81, 0}, 0, normalized_t::literal(0xAAAAAAAAAAAAAAAAULL)).value == expected(54).value);
 
 // t = 3/4
 static_assert(evaluate({256, 256, 256, 256}, 0, t_three_quarter) == expected(700));
 
-// t = max -> C0 + C1 + C2 + C3
+// t = max -> C0 + C1 + C2 + C3 because of round half up
 static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == expected(15360));
 
 // coeff[0] survives bit packing shift round-trip
 constexpr auto c_large_cubic = coeff_t{50};
-static_assert(sut_t{{c_large_cubic, c0, c0, c0}, 5}.evaluate(x_t{16}) == expected(c_large_cubic.value >> 3));
+static_assert(sut_t{{c_large_cubic, c0, c0, c0}, 5}.primal(t_half) == expected(c_large_cubic.value >> 3));
 
 // c0: just check sign; anything more would be a tautology
 static_assert(evaluate({cv0_max, 0, 0, 0}, 0, t_max).value > 0);
@@ -153,25 +164,29 @@ constexpr auto cv0_quarter = cv0_max / 4;
 constexpr auto cv_quarter = cv_max / 4;
 static_assert(evaluate({cv0_quarter, cv_quarter, cv_quarter, cv_quarter}, 0, t_max).value > (cv_max / 2));
 
-// The rounding tests below use small, raw x values (16..19) so that t.value lands at the x_to_t rounding boundary.
-// When coeff_t is narrower than x_t, those t values sit below coeff_t's representability floor
-// (2^-coeff_t::frac_bits), so storing c2*t back into coeff_t between Horner rounds collapses the result to zero and
-// the rounding behavior becomes invisible. Scaling c2 by 2^(x_t::frac_bits - coeff_t::frac_bits) lifts the intermediate
-// result into coeff_t's representable range. With same frac_bits, this reduces to coeff_t{1}.
-constexpr auto c2_unit = coeff_t::literal(coeff_t::value_t{1} << x_t::frac_bits);
-constexpr auto rounding_coeffs = coeffs_t{c0, c0, c2_unit, c0};
+// The final Horner mac computes round_half_up(c2.value * t.value / 2^normalized_t::frac_bits) in coeff_t. With
+// c2 = coeff_t{1}, a unit step in the output covers t_per_v t.value units, and round-half-up centers each output
+// range on v * t_per_v. Picking v_center away from the boundaries, the contiguous t.value range that rounds to
+// v_center is [v_center * t_per_v - t_per_v/2, v_center * t_per_v + t_per_v/2). Here, we probe one t.value past each
+// side.
+constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
+constexpr auto t_per_v = normalized_t::value_t{1} << (normalized_t::frac_bits - coeff_t::frac_bits);
+constexpr auto half_t_per_v = t_per_v / 2;
+constexpr auto v_center = coeff_t::value_t{16};
+constexpr auto v_center_t_start = v_center * t_per_v - half_t_per_v;
+constexpr auto v_center_t_end = v_center * t_per_v + half_t_per_v;
 
-// 16/4 -> 4.00, no rounding
-static_assert(evaluate(rounding_coeffs, 2, x_t::literal(16)) == expected(4));
+// last t in previous range still rounds down to v_center - 1
+static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_start - 1)) == expected(v_center - 1));
 
-// 17/4 -> 4.25, rounds down
-static_assert(evaluate(rounding_coeffs, 2, x_t::literal(17)) == expected(4));
+// first t in current range rounds up to v_center
+static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_start)) == expected(v_center));
 
-// 18/4 -> 4.50, half up rounds up; truncate would round down
-static_assert(evaluate(rounding_coeffs, 2, x_t::literal(18)) == expected(5));
+// last t in current range still rounds to v_center
+static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end - 1)) == expected(v_center));
 
-// 19/4 -> 4.75, half up rounds up
-static_assert(evaluate(rounding_coeffs, 2, x_t::literal(19)) == expected(5));
+// first t in next range rounds up to v_center + 1
+static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end)) == expected(v_center + 1));
 
 } // namespace evaluation_tests
 
@@ -290,7 +305,7 @@ TEST(spline_segment, violates_x_lower_bound)
 {
     // x = -1.0; it is unconditionally out of bounds
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
-    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(x_t::literal(-1))), "<= x");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.x_to_t(x_t::literal(-1))), "<= x");
 }
 
 TEST(spline_segment, violates_t_upper_bound)
@@ -298,10 +313,10 @@ TEST(spline_segment, violates_t_upper_bound)
     // x is 1.0, but dividing by 2^-1 makes t = 2.0, which is out of bounds
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, -1);
     constexpr auto x_one = x_t{1};
-    EXPECT_DEBUG_DEATH(static_cast<void>(sut.evaluate(x_one)), "x <");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.x_to_t(x_one)), "x <");
 }
 
-// coeff[0] packs log2_width into its bottom 8 bits, so underlying must fit in x_t::frac_bits + 7 bits with sign
+// coeff[0] packs log2_width into bottom 8 bits, so underlying must fit in x_t::frac_bits + 7 bits with sign
 constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (x_t::frac_bits + 8 - 1 - coeff_t::frac_bits);
 
 TEST(spline_segment, violates_coeff0_positive_packing_bounds)
