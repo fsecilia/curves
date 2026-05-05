@@ -13,6 +13,7 @@
 
 namespace crv::spline {
 
+template <is_fixed coeff_t> using quadratic_polynomial_t = std::array<coeff_t, 3>;
 template <is_fixed coeff_t> using cubic_polynomial_t = std::array<coeff_t, 4>;
 
 /// single, fixed-point multiply and carry with normalized t
