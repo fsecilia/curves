@@ -237,13 +237,13 @@ template <typename jet_t, int_t log2_min_width, typename soft_floor_t> struct fi
         // this turns absolute slope error into relative slope error in flat regions
 
         auto const primal_error = abs(primal(target) - primal(approximation));
-        auto const tangent_error = abs(derivative(target) - derivative(approximation));
+        auto const tangent_error = abs(tangent(target) - tangent(approximation));
 
         auto const primal_scale = soft_floor(abs(primal(target)), primal_floor);
         auto const relative_primal_error = primal_error / primal_scale;
         assert(std::isfinite(relative_primal_error));
 
-        auto const tangent_scale = soft_floor(abs(derivative(target)), tangent_floor);
+        auto const tangent_scale = soft_floor(abs(tangent(target)), tangent_floor);
         auto const relative_tangent_error = tangent_error / tangent_scale;
         assert(std::isfinite(relative_tangent_error));
 
