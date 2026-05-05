@@ -178,27 +178,77 @@ static_assert(std::same_as<uint128_t, int_by_bits_t<128, false>>);
 
 namespace integer_promotion_tests {
 
-static_assert(std::same_as<widened_t<int8_t>, int16_t>);
-static_assert(std::same_as<widened_t<int16_t>, int32_t>);
-static_assert(std::same_as<widened_t<int32_t>, int64_t>);
-static_assert(std::same_as<widened_t<int64_t>, int128_t>);
-
-static_assert(std::same_as<widened_t<uint8_t>, uint16_t>);
-static_assert(std::same_as<widened_t<uint16_t>, uint32_t>);
-static_assert(std::same_as<widened_t<uint32_t>, uint64_t>);
-static_assert(std::same_as<widened_t<uint64_t>, uint128_t>);
-
+// can widen
 static_assert(can_widen<int8_t>);
 static_assert(can_widen<int16_t>);
 static_assert(can_widen<int32_t>);
 static_assert(can_widen<int64_t>);
 static_assert(!can_widen<int128_t>);
-
 static_assert(can_widen<uint8_t>);
 static_assert(can_widen<uint16_t>);
 static_assert(can_widen<uint32_t>);
 static_assert(can_widen<uint64_t>);
 static_assert(!can_widen<uint128_t>);
+
+// widened
+static_assert(std::same_as<widened_t<int8_t>, int16_t>);
+static_assert(std::same_as<widened_t<int16_t>, int32_t>);
+static_assert(std::same_as<widened_t<int32_t>, int64_t>);
+static_assert(std::same_as<widened_t<int64_t>, int128_t>);
+static_assert(std::same_as<widened_t<uint8_t>, uint16_t>);
+static_assert(std::same_as<widened_t<uint16_t>, uint32_t>);
+static_assert(std::same_as<widened_t<uint32_t>, uint64_t>);
+static_assert(std::same_as<widened_t<uint64_t>, uint128_t>);
+
+// widen 8->16
+static_assert(typed_equal<int16_t>(widen(int8_t{min<int8_t>()}), int16_t{min<int8_t>()}));
+static_assert(typed_equal<int16_t>(widen(int8_t{0}), int16_t{0}));
+static_assert(typed_equal<int16_t>(widen(int8_t{max<int8_t>()}), int16_t{max<int8_t>()}));
+static_assert(typed_equal<uint16_t>(widen(uint8_t{0}), uint16_t{0}));
+static_assert(typed_equal<uint16_t>(widen(uint8_t{max<uint8_t>()}), uint16_t{max<uint8_t>()}));
+
+// widen 64->128
+static_assert(typed_equal<int128_t>(widen(int64_t{min<int64_t>()}), int128_t{min<int64_t>()}));
+static_assert(typed_equal<int128_t>(widen(int64_t{0}), int128_t{0}));
+static_assert(typed_equal<int128_t>(widen(int64_t{max<int64_t>()}), int128_t{max<int64_t>()}));
+static_assert(typed_equal<uint128_t>(widen(uint64_t{0}), uint128_t{0}));
+static_assert(typed_equal<uint128_t>(widen(uint64_t{max<uint64_t>()}), uint128_t{max<uint64_t>()}));
+
+// can kw
+static_assert(!can_narrow<int8_t>);
+static_assert(can_narrow<int16_t>);
+static_assert(can_narrow<int32_t>);
+static_assert(can_narrow<int64_t>);
+static_assert(can_narrow<int128_t>);
+static_assert(!can_narrow<uint8_t>);
+static_assert(can_narrow<uint16_t>);
+static_assert(can_narrow<uint32_t>);
+static_assert(can_narrow<uint64_t>);
+static_assert(can_narrow<uint128_t>);
+
+// narrowed
+static_assert(std::same_as<narrowed_t<int16_t>, int8_t>);
+static_assert(std::same_as<narrowed_t<int32_t>, int16_t>);
+static_assert(std::same_as<narrowed_t<int64_t>, int32_t>);
+static_assert(std::same_as<narrowed_t<int128_t>, int64_t>);
+static_assert(std::same_as<narrowed_t<uint16_t>, uint8_t>);
+static_assert(std::same_as<narrowed_t<uint32_t>, uint16_t>);
+static_assert(std::same_as<narrowed_t<uint64_t>, uint32_t>);
+static_assert(std::same_as<narrowed_t<uint128_t>, uint64_t>);
+
+// narrow 128->64
+static_assert(typed_equal<int64_t>(narrow(int128_t{min<int64_t>()}), int64_t{min<int64_t>()}));
+static_assert(typed_equal<int64_t>(narrow(int128_t{0}), int64_t{0}));
+static_assert(typed_equal<int64_t>(narrow(int128_t{max<int64_t>()}), int64_t{max<int64_t>()}));
+static_assert(typed_equal<uint64_t>(narrow(uint128_t{0}), uint64_t{0}));
+static_assert(typed_equal<uint64_t>(narrow(uint128_t{max<uint64_t>()}), uint64_t{max<uint64_t>()}));
+
+// narrow 16->8
+static_assert(typed_equal<int8_t>(narrow(int16_t{min<int8_t>()}), int8_t{min<int8_t>()}));
+static_assert(typed_equal<int8_t>(narrow(int16_t{0}), int8_t{0}));
+static_assert(typed_equal<int8_t>(narrow(int16_t{max<int8_t>()}), int8_t{max<int8_t>()}));
+static_assert(typed_equal<uint8_t>(narrow(uint16_t{0}), uint8_t{0}));
+static_assert(typed_equal<uint8_t>(narrow(uint16_t{max<uint8_t>()}), uint8_t{max<uint8_t>()}));
 
 } // namespace integer_promotion_tests
 
