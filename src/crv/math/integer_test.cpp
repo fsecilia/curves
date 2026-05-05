@@ -11,10 +11,6 @@
 namespace crv {
 namespace {
 
-// ====================================================================================================================
-// Math
-// ====================================================================================================================
-
 // --------------------------------------------------------------------------------------------------------------------
 // log2
 // --------------------------------------------------------------------------------------------------------------------
@@ -129,6 +125,82 @@ TEST(int_cast, asserts_casting_oor)
 }
 
 #endif
+
+// --------------------------------------------------------------------------------------------------------------------
+// types by size
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace int_by_bytes_tests {
+
+static_assert(std::same_as<int8_t, int_by_bytes_t<1, true>>);
+static_assert(std::same_as<int16_t, int_by_bytes_t<2, true>>);
+static_assert(std::same_as<int32_t, int_by_bytes_t<4, true>>);
+static_assert(std::same_as<int64_t, int_by_bytes_t<8, true>>);
+static_assert(std::same_as<int128_t, int_by_bytes_t<16, true>>);
+
+static_assert(std::same_as<uint8_t, int_by_bytes_t<1, false>>);
+static_assert(std::same_as<uint16_t, int_by_bytes_t<2, false>>);
+static_assert(std::same_as<uint32_t, int_by_bytes_t<4, false>>);
+static_assert(std::same_as<uint64_t, int_by_bytes_t<8, false>>);
+static_assert(std::same_as<uint128_t, int_by_bytes_t<16, false>>);
+
+} // namespace int_by_bytes_tests
+
+namespace int_by_bits_tests {
+
+static_assert(std::same_as<int8_t, int_by_bits_t<1, true>>);
+static_assert(std::same_as<int8_t, int_by_bits_t<8, true>>);
+static_assert(std::same_as<int16_t, int_by_bits_t<9, true>>);
+static_assert(std::same_as<int16_t, int_by_bits_t<16, true>>);
+static_assert(std::same_as<int32_t, int_by_bits_t<17, true>>);
+static_assert(std::same_as<int32_t, int_by_bits_t<32, true>>);
+static_assert(std::same_as<int64_t, int_by_bits_t<33, true>>);
+static_assert(std::same_as<int64_t, int_by_bits_t<64, true>>);
+static_assert(std::same_as<int128_t, int_by_bits_t<65, true>>);
+static_assert(std::same_as<int128_t, int_by_bits_t<128, true>>);
+
+static_assert(std::same_as<uint8_t, int_by_bits_t<1, false>>);
+static_assert(std::same_as<uint8_t, int_by_bits_t<8, false>>);
+static_assert(std::same_as<uint16_t, int_by_bits_t<9, false>>);
+static_assert(std::same_as<uint16_t, int_by_bits_t<16, false>>);
+static_assert(std::same_as<uint32_t, int_by_bits_t<17, false>>);
+static_assert(std::same_as<uint32_t, int_by_bits_t<32, false>>);
+static_assert(std::same_as<uint64_t, int_by_bits_t<33, false>>);
+static_assert(std::same_as<uint64_t, int_by_bits_t<64, false>>);
+static_assert(std::same_as<uint128_t, int_by_bits_t<65, false>>);
+static_assert(std::same_as<uint128_t, int_by_bits_t<128, false>>);
+
+} // namespace int_by_bits_tests
+
+// --------------------------------------------------------------------------------------------------------------------
+// promotions
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace integer_promotion_tests {
+
+static_assert(std::same_as<widened_t<int8_t>, int16_t>);
+static_assert(std::same_as<widened_t<int16_t>, int32_t>);
+static_assert(std::same_as<widened_t<int32_t>, int64_t>);
+static_assert(std::same_as<widened_t<int64_t>, int128_t>);
+
+static_assert(std::same_as<widened_t<uint8_t>, uint16_t>);
+static_assert(std::same_as<widened_t<uint16_t>, uint32_t>);
+static_assert(std::same_as<widened_t<uint32_t>, uint64_t>);
+static_assert(std::same_as<widened_t<uint64_t>, uint128_t>);
+
+static_assert(can_widen<int8_t>);
+static_assert(can_widen<int16_t>);
+static_assert(can_widen<int32_t>);
+static_assert(can_widen<int64_t>);
+static_assert(!can_widen<int128_t>);
+
+static_assert(can_widen<uint8_t>);
+static_assert(can_widen<uint16_t>);
+static_assert(can_widen<uint32_t>);
+static_assert(can_widen<uint64_t>);
+static_assert(!can_widen<uint128_t>);
+
+} // namespace integer_promotion_tests
 
 } // namespace
 } // namespace crv
