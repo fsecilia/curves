@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <array>
+#include <ranges>
 
 namespace crv::spline {
 
@@ -39,12 +40,15 @@ struct mac_t
 /// \pre sum known to not overflow
 template <auto mac> struct polynomial_evaluator_t
 {
-    template <typename coeff_t>
-    constexpr auto operator()(
-        auto t, coeff_t highest_coeff, std::same_as<coeff_t> auto... remaining_coeffs) const noexcept -> coeff_t
+    template <std::ranges::range coeffs_t>
+    constexpr auto operator()(auto t, coeffs_t const& coeffs) const noexcept -> std::ranges::range_value_t<coeffs_t>
     {
-        auto accumulator = highest_coeff;
-        ((accumulator = coeff_t::literal(narrow(mac(accumulator, t, remaining_coeffs)))), ...);
+        using coeff_t = std::ranges::range_value_t<coeffs_t>;
+
+        auto coeff = std::begin(coeffs);
+        auto const end = std::end(coeffs);
+        auto accumulator = *coeff++;
+        while (coeff != end) accumulator = coeff_t::literal(narrow(mac(accumulator, t, *coeff++)));
         return accumulator;
     }
 };

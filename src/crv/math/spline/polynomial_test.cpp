@@ -136,8 +136,9 @@ constexpr auto test_structural_evaluation()
     using namespace std::literals;
 
     auto evaluator = polynomial_evaluator_t<string_mac>{};
+    auto const coeffs = std::array{coeff_t{"11"}, coeff_t{"17"}, coeff_t{"23"}, coeff_t{"29"}};
 
-    return evaluator("t"sv, coeff_t{"11"}, coeff_t{"17"}, coeff_t{"23"}, coeff_t{"29"});
+    return evaluator("t"sv, coeffs);
 }
 static_assert(test_structural_evaluation() == "(((11*t + 17)*t + 23)*t + 29)");
 
