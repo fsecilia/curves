@@ -17,27 +17,9 @@
 
 namespace crv::spline {
 
-/// normalizes from spline global input space to a segment's local input space
-template <typename t_normalized_t, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
-struct segment_input_normalizer_t
-{
-    using normalized_t = t_normalized_t;
-
-    template <is_fixed x_t> constexpr auto normalize(x_t x, int_t log2_width) const noexcept -> normalized_t
-    {
-        return rescale<normalized_t>(x, log2_width);
-    }
-
-    template <is_fixed dst_t, is_fixed src_t>
-    constexpr auto rescale(src_t src, int_t log2_width) const noexcept -> dst_t
-    {
-        auto const shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width;
-        return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
-    }
-};
-
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, auto input_normalizer, auto polynomial_evaluator>
+template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, auto polynomial_evaluator,
+    auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
@@ -45,7 +27,7 @@ public:
     using x_t = t_x_t;
     using y_t = t_y_t;
     using coeff_t = t_coeff_t;
-    using normalized_t = decltype(input_normalizer)::normalized_t;
+    using normalized_t = t_normalized_t;
 
     static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
 
@@ -82,7 +64,7 @@ public:
     constexpr auto x_to_t(x_t x) const noexcept -> normalized_t
     {
         assert(x_t{0} <= x);
-        return input_normalizer.normalize(x, log2_width());
+        return rescale<normalized_t>(x);
     }
 
     constexpr auto primal(normalized_t t) const noexcept -> y_t
@@ -116,7 +98,7 @@ public:
         auto const m1 = 3 * c0 + 2 * c1 + c2;
 
         auto const wide_product = multiply(m1, x_extended);
-        auto const tangent_term = input_normalizer.template rescale<coeff_t>(wide_product, log2_width());
+        auto const tangent_term = rescale<coeff_t>(wide_product);
         return y_t::convert(p1 + tangent_term);
     }
 
@@ -151,6 +133,12 @@ public:
 
 private:
     constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
+
+    template <is_fixed dst_t, is_fixed src_t> constexpr auto rescale(src_t src) const noexcept -> dst_t
+    {
+        auto const shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width();
+        return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
+    }
 
     coeffs_t coeffs_;
 };

@@ -12,75 +12,6 @@ namespace crv::spline {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
-// segment_input_normalizer_t
-// --------------------------------------------------------------------------------------------------------------------
-
-namespace segment_input_normalizer {
-
-using normalized_t = fixed_t<uint16_t, 16>;
-
-// combines inputs predictably
-struct shifter_t
-{
-    template <typename dst_t, typename src_t> constexpr auto shift(src_t value, int_t count) const noexcept -> dst_t
-    {
-        return int_cast<dst_t>((value * 1000) + count);
-    }
-};
-
-constexpr auto test_normalize() -> bool
-{
-    using x_t = fixed_t<int32_t, 8>;
-
-    auto const normalizer = segment_input_normalizer_t<normalized_t, shifter_t{}>{};
-
-    auto const x = x_t::literal(10);
-    auto const log2_width = int_t{3};
-
-    // x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width = 16 - 8 - 3 = 5
-    // shifter input: value = 10, count = 5
-    // shifter output: (10*1000) + 5 = 10005
-    auto const expected = int_t{10005};
-
-    auto const actual = normalizer.normalize(x, log2_width);
-
-    return actual.value == expected;
-}
-static_assert(test_normalize());
-
-constexpr auto test_rescale() -> bool
-{
-    auto const normalizer = segment_input_normalizer_t<normalized_t, shifter_t{}>{};
-
-#if 0
-    template <is_fixed dst_t, is_fixed src_t>
-    constexpr auto rescale(src_t src, int_t log2_width) const noexcept -> dst_t
-    {
-        auto const shift_count = dst_t::frac_bits - src_t::frac_bit - log2_width;
-        return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
-    }
-#endif
-
-    using src_t = fixed_t<int64_t, 11>;
-    using dst_t = fixed_t<int32_t, 23>;
-    auto const log2_width = int_t{3};
-
-    auto const src = src_t::literal(73);
-
-    // shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width = 23 - 11 - 3 = 9
-    // shifter input: value = 73, count = 9
-    // shifter output: (73*1000) + 9 = 73009
-    auto const expected = int_t{73009};
-
-    auto const actual = normalizer.template rescale<dst_t>(src, log2_width);
-
-    return actual.value == expected;
-}
-static_assert(test_rescale());
-
-} // namespace segment_input_normalizer
-
-// --------------------------------------------------------------------------------------------------------------------
 // segment_t
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -94,10 +25,9 @@ using x_t = fixed_t<x_value_t, 48>;
 using y_t = x_t;
 
 using normalized_t = fixed_t<uint64_t, 64>;
-using input_normalizer_t = segment_input_normalizer_t<normalized_t>;
 using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
 
-using sut_t = segment_t<x_t, y_t, coeff_t, input_normalizer_t{}, polynomial_evaluator_t{}>;
+using sut_t = segment_t<x_t, y_t, coeff_t, normalized_t, polynomial_evaluator_t{}>;
 using coeffs_t = sut_t::coeffs_t;
 using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
 
@@ -125,7 +55,7 @@ constexpr auto coeffs = coeffs_t{};
 
 namespace normalization_shift_tests {
 
-using sut_t = segment_t<x_t, coeff_t, coeff_t, input_normalizer_t{}, polynomial_evaluator_t{}>;
+using sut_t = segment_t<x_t, coeff_t, coeff_t, normalized_t, polynomial_evaluator_t{}>;
 
 // zero shift
 constexpr auto x_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
