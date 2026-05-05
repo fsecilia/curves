@@ -26,11 +26,9 @@ struct fast_mac_t
     template <is_fixed coeff_t, is_fixed normalized_t>
     constexpr auto operator()(coeff_t accumulator, normalized_t t, coeff_t coeff) const noexcept -> coeff_t
     {
-        using narrow_t = typename coeff_t::value_t;
-        using wide_t = widened_t<narrow_t>;
-        static constexpr auto rounding_bias = wide_t{1} << (normalized_t::frac_bits - 1);
-        auto const wide_product = static_cast<wide_t>(accumulator.value) * t.value + rounding_bias;
-        auto const narrow_product = static_cast<narrow_t>(wide_product >> normalized_t::frac_bits);
+        static constexpr auto rounding_bias = typename normalized_t::value_t{1} << (normalized_t::frac_bits - 1);
+        auto const wide_product = widen(accumulator.value) * t.value + widen(rounding_bias);
+        auto const narrow_product = narrow(wide_product >> normalized_t::frac_bits);
         return coeff_t::literal(narrow_product + coeff.value);
     }
 };
