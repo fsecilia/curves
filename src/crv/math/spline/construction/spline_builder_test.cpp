@@ -52,40 +52,6 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defec
 namespace spline {
 namespace {
 
-/// single, fixed-point multiply and carry step with normalized t
-///
-/// This is a standard horner's loop step for fixed-point. It has no mitigation for overflow; it presumes the
-/// polynomial's intermediate steps were already checked at the extrema.
-///
-/// \pre sum known to not overflow
-struct fast_mac_step_t
-{
-    template <is_fixed accumulator_t, is_fixed normalized_t>
-    constexpr auto operator()(accumulator_t accumulator, normalized_t t, accumulator_t coeff) const noexcept
-        -> accumulator_t
-    {
-        using narrow_t = typename accumulator_t::value_t;
-        using wide_t = widened_t<narrow_t>;
-        static constexpr auto rounding_bias = wide_t{1} << (normalized_t::frac_bits - 1);
-        auto const wide_product = static_cast<wide_t>(accumulator.value) * t.value + rounding_bias;
-        auto const narrow_product = static_cast<narrow_t>(wide_product >> normalized_t::frac_bits);
-        return accumulator_t::literal(narrow_product + coeff.value);
-    }
-};
-
-/// fixed-length horner's loop using fold
-template <auto mac_step> struct polynomial_evaluator_t
-{
-    template <typename coeff_t>
-    constexpr auto operator()(
-        auto t, coeff_t highest_coeff, std::same_as<coeff_t> auto... remaining_coeffs) const noexcept -> coeff_t
-    {
-        auto accumulator = highest_coeff;
-        ((accumulator = mac_step(accumulator, t, remaining_coeffs)), ...);
-        return accumulator;
-    }
-};
-
 /// normalizes from spline input space to a segment's local input space
 template <typename t_normalized_t, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
 struct segment_input_normalizer_t
@@ -117,7 +83,7 @@ struct segment_t
 
     constexpr auto primal(normalized_t t) const noexcept -> y_t
     {
-        return y_t::convert(polynomial_evaluator(t, polynomial[0], polynomial[1], polynomial[2], polynomial[3]));
+        return y_t::convert(polynomial_evaluator(t, polynomial));
     }
 };
 
@@ -194,7 +160,8 @@ private:
         // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
         // This may overflow.
         auto const& polynomial = segment.polynomial;
-        return segment_t::y_t::convert(polynomial_evaluator(t, 3 * polynomial[0], 2 * polynomial[1], polynomial[2]));
+        return segment_t::y_t::convert(
+            polynomial_evaluator(t, quadratic_polynomial_t{3 * polynomial[0], 2 * polynomial[1], polynomial[2]}));
     }
 };
 
@@ -680,7 +647,7 @@ TEST(spline_builder, poc)
     static constexpr auto log2_domain_max = 8;
 
     using segment_input_normalizer_t = segment_input_normalizer_t<normalized_t>;
-    using polynomial_evaluator_t = polynomial_evaluator_t<fast_mac_step_t{}>;
+    using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
     using segment_t = segment_t<x_t, y_t, coeff_t, segment_input_normalizer_t{}, polynomial_evaluator_t{}>;
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>>;
