@@ -1,4 +1,4 @@
-// SPx-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
 /// \file
 /// \brief fixed-point cubic spline segment
