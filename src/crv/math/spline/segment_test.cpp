@@ -11,9 +11,105 @@
 namespace crv::spline {
 namespace {
 
+// ====================================================================================================================
+// packed_segment_t
+// ====================================================================================================================
+
+namespace packed_segment_test {
+
+using coeff_value_t = int64_t;
+using coeff_t = fixed_t<coeff_value_t, 45>;
+using sut_t = packed_segment_t<coeff_t>;
+using coeffs_t = sut_t::coeffs_t;
+
+constexpr auto c1 = coeff_t{1};
+constexpr auto cv_max = max<coeff_value_t>();
+constexpr auto cv_min = min<coeff_value_t>();
+constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
+constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
+
 // --------------------------------------------------------------------------------------------------------------------
+// packed values
+// --------------------------------------------------------------------------------------------------------------------
+
+constexpr auto unpack_coeffs(sut_t const& sut) noexcept -> coeffs_t
+{
+    return {sut.unpack_coeff0(), sut.unpack_coeff1(), sut.unpack_coeff2(), sut.unpack_coeff3()};
+}
+
+constexpr auto test_unpacked(coeffs_t coeffs, int8_t log2_width) noexcept -> bool
+{
+    auto const sut = sut_t{coeffs, log2_width};
+    return unpack_coeffs(sut) == coeffs && sut.unpack_log2_width() == log2_width;
+}
+
+constexpr auto log2_width_max = max<int8_t>();
+constexpr auto log2_width_min = min<int8_t>();
+
+// zero
+static_assert(test_unpacked(coeffs_t{}, 0));
+
+// sign extension
+constexpr auto sign_extension_coeffs = coeffs_t{-c1, -c1, -c1, -c1};
+static_assert(test_unpacked(sign_extension_coeffs, log2_width_min));
+static_assert(test_unpacked(sign_extension_coeffs, log2_width_max));
+
+// safe boundaries
+constexpr auto boundaries_min = coeffs_t{coeff_t{cv0_min}, coeff_t{cv_min}, coeff_t{cv_min}, coeff_t{cv_min}};
+constexpr auto boundaries_max = coeffs_t{coeff_t{cv0_max}, coeff_t{cv_max}, coeff_t{cv_max}, coeff_t{cv_max}};
+static_assert(test_unpacked(boundaries_min, log2_width_min));
+static_assert(test_unpacked(boundaries_min, 0));
+static_assert(test_unpacked(boundaries_min, log2_width_max));
+static_assert(test_unpacked(boundaries_max, log2_width_min));
+static_assert(test_unpacked(boundaries_max, 0));
+static_assert(test_unpacked(boundaries_max, log2_width_max));
+
+// combs: test bitwise ops aren't bleeding into adjacent bits
+constexpr auto comb_even = coeff_t{0x2AAA'AAAA'AAAA'AAAALL};
+constexpr auto comb_odd = coeff_t{0x5555'5555'5555'5555LL};
+
+static_assert(test_unpacked({comb_even >> 8, comb_odd, comb_even, comb_odd}, 0x55));
+static_assert(test_unpacked({comb_odd >> 8, comb_even, comb_odd, comb_even}, 0xAA));
+
+#if defined CRV_ENABLE_DEATH_TESTS
+
+namespace death_tests {
+
+// coeff[0] packs log2_width into bottom 8 bits, so underlying must fit in the remaining, with sign
+constexpr auto coeff_bits = sizeof(typename coeff_t::value_t) * CHAR_BIT;
+constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (coeff_bits - 8 - 1);
+
+TEST(spline_packed_segment, violates_coeff0_positive_packing_bounds)
+{
+    // this is safe and does not assert
+    [[maybe_unused]] auto safe
+        = sut_t({coeff_t::literal(coeff0_unsafe_bound - 1), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
+
+    // coeff0 is too large to safely shift left by 8 to store coeff0
+    EXPECT_DEBUG_DEATH(
+        sut_t({coeff_t::literal(coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
+}
+
+TEST(spline_packed_segment, violates_coeff0_negative_packing_bounds)
+{
+    // this is safe and does not assert
+    [[maybe_unused]] auto safe_neg
+        = sut_t({coeff_t::literal(-coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
+
+    // coeff0 is too large to safely shift left by 8 to store coeff0
+    EXPECT_DEBUG_DEATH(
+        sut_t({coeff_t::literal(-coeff0_unsafe_bound - 1), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
+}
+
+} // namespace death_tests
+
+#endif
+
+} // namespace packed_segment_test
+
+// ====================================================================================================================
 // segment_t
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 
 namespace segment_test {
 
@@ -37,7 +133,6 @@ constexpr auto cv_max = max<coeff_value_t>();
 constexpr auto cv_min = min<coeff_value_t>();
 
 // 56-bit bounds for C0 since it also packs log2_width
-constexpr auto c01 = coeff_t{1};
 constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
 constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
 
@@ -267,48 +362,6 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0}.exten
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// packed values
-// --------------------------------------------------------------------------------------------------------------------
-
-namespace packed_values_tests {
-
-constexpr auto test_coeffs(coeffs_t coeffs, int8_t log2_width) noexcept -> bool
-{
-    auto const sut = sut_t{coeffs, log2_width};
-    return sut.coeffs() == coeffs && sut.log2_width() == log2_width;
-}
-
-constexpr auto log2_width_max = max<int8_t>();
-constexpr auto log2_width_min = min<int8_t>();
-
-// zero
-static_assert(test_coeffs(coeffs, 0));
-
-// sign extension
-constexpr auto sign_extension_coeffs = coeffs_t{-c01, -c1, -c1, -c1};
-static_assert(test_coeffs(sign_extension_coeffs, log2_width_min));
-static_assert(test_coeffs(sign_extension_coeffs, log2_width_max));
-
-// safe boundaries
-constexpr auto boundaries_min = coeffs_t{coeff_t{cv0_min}, coeff_t{cv_min}, coeff_t{cv_min}, coeff_t{cv_min}};
-constexpr auto boundaries_max = coeffs_t{coeff_t{cv0_max}, coeff_t{cv_max}, coeff_t{cv_max}, coeff_t{cv_max}};
-static_assert(test_coeffs(boundaries_min, log2_width_min));
-static_assert(test_coeffs(boundaries_min, 0));
-static_assert(test_coeffs(boundaries_min, log2_width_max));
-static_assert(test_coeffs(boundaries_max, log2_width_min));
-static_assert(test_coeffs(boundaries_max, 0));
-static_assert(test_coeffs(boundaries_max, log2_width_max));
-
-// combs: test bitwise ops aren't bleeding into adjacent bits
-constexpr auto comb_even = coeff_t{0x2AAA'AAAA'AAAA'AAAALL};
-constexpr auto comb_odd = coeff_t{0x5555'5555'5555'5555LL};
-
-static_assert(test_coeffs({comb_even >> 8, comb_odd, comb_even, comb_odd}, 0xAA));
-static_assert(test_coeffs({comb_odd >> 8, comb_even, comb_odd, comb_even}, 0x55));
-
-} // namespace packed_values_tests
-
-// --------------------------------------------------------------------------------------------------------------------
 // width
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -382,27 +435,6 @@ TEST(spline_segment, violates_extend_final_tangent_lower_bound)
 {
     constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.extend_final_tangent(x_t::literal(-1))), "<= x");
-}
-
-// coeff[0] packs log2_width into bottom 8 bits, so underlying must fit in x_t::frac_bits + 7 bits with sign
-constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (x_t::frac_bits + 8 - 1 - coeff_t::frac_bits);
-
-TEST(spline_segment, violates_coeff0_positive_packing_bounds)
-{
-    // this is safe and does not assert
-    [[maybe_unused]] auto safe = sut_t({coeff_t{coeff0_unsafe_bound - 1}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
-
-    // coeff0 is too large to safely shift left by 8 to store coeff0
-    EXPECT_DEBUG_DEATH(sut_t({coeff_t{coeff0_unsafe_bound}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
-}
-
-TEST(spline_segment, violates_coeff0_negative_packing_bounds)
-{
-    // this is safe and does not assert
-    [[maybe_unused]] auto safe_neg = sut_t({coeff_t{-coeff0_unsafe_bound}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
-
-    // coeff0 is too large to safely shift left by 8 to store coeff0
-    EXPECT_DEBUG_DEATH(sut_t({coeff_t{-coeff0_unsafe_bound - 1}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
 }
 
 } // namespace death_tests
