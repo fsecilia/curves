@@ -268,6 +268,10 @@ static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_
 static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(x_t{17})
     == sut_t::y_t::convert(coeff_t{36} + coeff_t{40} * (x_t{17} << 2)));
 
+// at x=0 is the same as t=1: 5 + 7 + 11 + 13
+static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0}.extend_final_tangent(x_t{0})
+    == sut_t::y_t::convert(coeff_t{36}));
+
 } // namespace extend_final_tangent_tests
 
 // --------------------------------------------------------------------------------------------------------------------
