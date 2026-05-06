@@ -49,31 +49,37 @@ template <typename real_t> struct logsumexp_floor_t
     }
 };
 
-/// standard L-infinity uniform norm for scalars evaluating position error
-template <typename scalar_t> struct uniform_t
+/// absolute primal error
+struct absolute_t
 {
-    static constexpr auto operator()(scalar_t target, scalar_t approximation) noexcept -> scalar_t
+    template <typename jet_t>
+    static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> typename jet_t::value_t
     {
-        using crv::abs;
-        return abs(primal(target) - primal(approximation));
+        using std::isfinite;
+
+        auto const result = abs(primal(target) - primal(approximation));
+        assert(isfinite(result));
+
+        return result;
     }
 };
 
-/// first-order uniform norm for 1-jets evaluating position and tangent error
-template <typename jet_t> struct first_order_uniform_t
+/// max of absolute primal error and weighted absolute tangent error
+template <typename real_t> struct first_order_absolute_t
 {
-    using scalar_t = jet_t::value_t;
+    real_t tangent_weight{1.0};
 
-    scalar_t tangent_weight{1.0};
-
-    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
+    template <typename jet_t>
+    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> typename jet_t::value_t
     {
-        using crv::abs;
-        using crv::max;
+        using std::isfinite;
 
         auto const primal_error = abs(primal(target) - primal(approximation));
         auto const tangent_error = abs(tangent(target) - tangent(approximation)) * tangent_weight;
-        return max(primal_error, tangent_error);
+        auto const result = max(primal_error, tangent_error);
+        assert(isfinite(result));
+
+        return result;
     }
 };
 
