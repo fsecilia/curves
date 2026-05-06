@@ -23,7 +23,7 @@ struct jet_t
 };
 
 // ====================================================================================================================
-// logsumexp_floor
+// logsumexp_floor_t
 // ====================================================================================================================
 
 namespace logsumexp_floor_tests {
@@ -87,6 +87,8 @@ INSTANTIATE_TEST_SUITE_P(vectors, spline_error_norms_logsumexp_floor_test_t, Val
 // absolute_t
 // ====================================================================================================================
 
+namespace absolute_tests {
+
 constexpr auto absolute = absolute_t{};
 
 // typical
@@ -94,14 +96,21 @@ static_assert(abs(absolute(jet_t{5.0, 0.0}, jet_t{5.0, 0.0}) - 0.0) < 1e-9);
 static_assert(abs(absolute(jet_t{5.0, 0.0}, jet_t{3.0, 0.0}) - 2.0) < 1e-9);
 static_assert(abs(absolute(jet_t{3.0, 0.0}, jet_t{5.0, 0.0}) - 2.0) < 1e-9);
 
+// negative primal
+static_assert(abs(absolute(jet_t{-5.0, 0.0}, jet_t{-3.0, 0.0}) - 2.0) < 1e-9);
+
 // tangent does not apply
 static_assert(abs(absolute(jet_t{5.0, 0.0}, jet_t{5.0, 10.0}) - 0.0) < 1e-9);
 static_assert(abs(absolute(jet_t{5.0, 10.0}, jet_t{5.0, 0.0}) - 0.0) < 1e-9);
 static_assert(abs(absolute(jet_t{5.0, 10.0}, jet_t{5.0, 10.0}) - 0.0) < 1e-9);
 
+} // namespace absolute_tests
+
 // ====================================================================================================================
 // first_order_absolute_t
 // ====================================================================================================================
+
+namespace first_order_aboslute_test {
 
 // --------------------------------------------------------------------------------------------------------------------
 // default weight
@@ -113,21 +122,29 @@ constexpr auto target_jet = jet_t{10.0, 1.0};
 constexpr auto exact_approx = jet_t{10.0, 1.0};
 constexpr auto pos_error_approx = jet_t{8.0, 1.0}; // position error = 2, tangent = 0
 constexpr auto tan_error_approx = jet_t{10.0, -2.0}; // position error = 0, tangent = 3
-constexpr auto mixed_error_approx = jet_t{6.0, 0.0}; // position error = 4, tangent = 1
+constexpr auto mixed_error_approx_primal_dominates = jet_t{6.0, 0.0}; // position error = 4, tangent = 1
+constexpr auto mixed_error_approx_tangent_dominates = jet_t{9.0, 5.0}; // position error = 1, tangent = 4
 
 static_assert(abs(first_order_absolute_default_weight(target_jet, exact_approx) - 0.0) < 1e-9);
 static_assert(abs(first_order_absolute_default_weight(target_jet, pos_error_approx) - 2.0) < 1e-9);
 static_assert(abs(first_order_absolute_default_weight(target_jet, tan_error_approx) - 3.0) < 1e-9);
-static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_approx) - 4.0) < 1e-9);
+static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
+static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_tangent_dominates) - 4.0) < 1e-9);
 
 // --------------------------------------------------------------------------------------------------------------------
 // custom weight
 // --------------------------------------------------------------------------------------------------------------------
 
 constexpr auto first_order_absolute_custom_weight = first_order_absolute_t<real_t>{0.5};
+constexpr auto first_order_absolute_zero_weight = first_order_absolute_t<real_t>{0.0};
 
 static_assert(abs(first_order_absolute_custom_weight(target_jet, tan_error_approx) - 1.5) < 1e-9);
-static_assert(abs(first_order_absolute_custom_weight(target_jet, mixed_error_approx) - 4.0) < 1e-9);
+static_assert(abs(first_order_absolute_custom_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
+
+// tangent error is completely ignored when weight is 0
+static_assert(abs(first_order_absolute_zero_weight(target_jet, mixed_error_approx_tangent_dominates) - 1.0) < 1e-9);
+
+} // namespace first_order_aboslute_test
 
 } // namespace
 } // namespace crv::spline::error_norms
