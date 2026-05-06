@@ -89,16 +89,6 @@ public:
         return y_t::convert(polynomial_evaluator(t, coeffs()));
     }
 
-    constexpr auto tangent(normalized_t t) const noexcept -> y_t
-    {
-        return y_t::convert(polynomial_evaluator(t,
-            quadratic_polynomial_t{
-                3 * packed_segment_.unpack_coeff0(),
-                2 * packed_segment_.unpack_coeff1(),
-                packed_segment_.unpack_coeff2(),
-            }));
-    }
-
     /// extends tangent at t=1 beyond end of segment
     ///
     /// x_extended is the x value relative to the end of the domain, which is relative to the end of the final segment,

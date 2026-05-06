@@ -326,56 +326,6 @@ static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end)
 } // namespace primal_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// tangent evaluation
-// --------------------------------------------------------------------------------------------------------------------
-
-namespace tangent_tests {
-
-constexpr auto evaluate_tangent(vals_t const& vals, int8_t log2_width, normalized_t t) noexcept -> y_t
-{
-    return sut(vals, log2_width).tangent(t);
-}
-
-constexpr auto expected(coeff_t::value_t coeff_value) -> y_t
-{
-    return y_t::convert(coeff_t::literal(coeff_value));
-}
-
-// baseline
-static_assert(evaluate_tangent({0, 0, 0, 0}, 0, t_half) == expected(0));
-
-// constant tangent (only C2 is non-zero)
-// derivative of C2 * t is C2
-static_assert(evaluate_tangent({0, 0, 37, 0}, 0, t0) == expected(37));
-static_assert(evaluate_tangent({0, 0, 37, 0}, 0, t_half) == expected(37));
-static_assert(evaluate_tangent({0, 0, 37, 0}, 0, t_max) == expected(37));
-
-// linear tangent (only C1 is non-zero)
-// derivative of C1 * t^2 is 2 * C1 * t
-static_assert(evaluate_tangent({0, 100, 0, 0}, 0, t0) == expected(0));
-static_assert(evaluate_tangent({0, 100, 0, 0}, 0, t_half) == expected(100));
-static_assert(evaluate_tangent({0, 100, 0, 0}, 0, t_max) == expected(200));
-
-// quadratic tangent (only C0 is non-zero)
-// derivative of C0 * t^3 is 3 * C0 * t^2
-static_assert(evaluate_tangent({100, 0, 0, 0}, 0, t0) == expected(0));
-static_assert(evaluate_tangent({100, 0, 0, 0}, 0, t_half) == expected(75));
-static_assert(evaluate_tangent({100, 0, 0, 0}, 0, t_max) == expected(300));
-
-// full polynomial integration
-// y'(t) = 3*100*t^2 + 2*50*t + 25
-// at t=0.5 -> 3*100*(0.25) + 2*50*(0.5) + 25 = 75 + 50 + 25 = 150
-static_assert(evaluate_tangent({100, 50, 25, 0}, 0, t_half) == expected(150));
-
-// polarity
-static_assert(evaluate_tangent({-100, -50, -25, 0}, 0, t_half) == expected(-150));
-
-// final coefficient does not affect tangent
-static_assert(evaluate_tangent({0, 0, 0, 10000}, 0, t_half) == expected(0));
-
-} // namespace tangent_tests
-
-// --------------------------------------------------------------------------------------------------------------------
 // extend_final_tangent
 // --------------------------------------------------------------------------------------------------------------------
 
