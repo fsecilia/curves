@@ -369,6 +369,12 @@ TEST(spline_segment, violates_t_upper_bound)
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.x_to_t(x_one)), "x <");
 }
 
+TEST(spline_segment, violates_extend_final_tangent_lower_bound)
+{
+    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut.extend_final_tangent(x_t::literal(-1))), "<= x");
+}
+
 // coeff[0] packs log2_width into bottom 8 bits, so underlying must fit in x_t::frac_bits + 7 bits with sign
 constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (x_t::frac_bits + 8 - 1 - coeff_t::frac_bits);
 

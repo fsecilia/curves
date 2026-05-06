@@ -77,9 +77,11 @@ public:
     /// which here means relative to t=1: x_extended=0 -> t=1
     ///
     /// \param x_extended x value relative to end of segment
-    /// \pre 0 <= x
+    /// \pre 0 <= x_extended
     [[nodiscard]] constexpr auto extend_final_tangent(x_t x_extended) const noexcept -> y_t
     {
+        assert(0 <= x_extended);
+
         auto const c0 = unpack_coeff0();
         auto const c1 = coeffs_[1];
         auto const c2 = coeffs_[2];
