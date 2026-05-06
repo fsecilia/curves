@@ -9,9 +9,11 @@
 namespace crv::spline::error_norms {
 namespace {
 
+using real_t = float_t;
+
 struct jet_t
 {
-    using value_t = float_t;
+    using value_t = real_t;
 
     value_t value;
     value_t tangent;
@@ -19,6 +21,67 @@ struct jet_t
     friend constexpr auto primal(jet_t j) noexcept -> value_t { return j.value; }
     friend constexpr auto tangent(jet_t j) noexcept -> value_t { return j.tangent; }
 };
+
+// ====================================================================================================================
+// logsumexp_floor
+// ====================================================================================================================
+
+namespace logsumexp_floor_tests {
+
+struct vector_t
+{
+    real_t x;
+    real_t y;
+    real_t expected;
+};
+
+struct spline_error_norms_logsumexp_floor_test_t : TestWithParam<vector_t>
+{
+    real_t const x = GetParam().x;
+    real_t const y = GetParam().y;
+    real_t const expected = GetParam().expected;
+
+    using sut_t = logsumexp_floor_t<real_t>;
+    sut_t sut{};
+};
+
+TEST_P(spline_error_norms_logsumexp_floor_test_t, vector)
+{
+    auto const actual = sut(x, y);
+    EXPECT_NEAR(expected, actual, 1e-10);
+}
+
+// These values were generated using wolfram alpha:
+// log(exp(10*x) + exp(10*y)) / 10 where (x, y) = (1.0, 1.0)
+vector_t const vectors[] = {
+    // maximum deviation
+    // lse(x, x) = x + ln(2)/k
+    {1.0, 1.0, 1.0693147180559945},
+    {0.001, 0.001, 0.07031471805599453},
+
+    // y dominates
+    // output should asymptotically approch y
+    {0.1, 2.0, 2.00000000056028},
+    {0.00001, 0.01, 0.07444441634017054},
+
+    // x dominates
+    // output should asymptotically approach x
+    {2.0, 0.1, 2.00000000056028},
+    {1.5, 0.001, 1.5000000308976642},
+
+    // transition zone
+    // tests curvature near threshold
+    {1.2, 1.0, 1.2126928011042972},
+    {0.8, 1.0, 1.0126928011042973},
+
+    // overflow checks
+    // these values overflow without the stability trick
+    {100.0, 1.0, 100.0000000000000000},
+    {1.0, 100.0, 100.0000000000000000},
+};
+INSTANTIATE_TEST_SUITE_P(vectors, spline_error_norms_logsumexp_floor_test_t, ValuesIn(vectors));
+
+} // namespace logsumexp_floor_tests
 
 // ====================================================================================================================
 // uniform_t
