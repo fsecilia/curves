@@ -17,6 +17,35 @@
 
 namespace crv::spline {
 
+/// packs segments into a static layout
+template <is_fixed t_coeff_t> class packed_segment_t
+{
+public:
+    using coeff_t = t_coeff_t;
+    using coeffs_t = cubic_polynomial_t<coeff_t>;
+
+    static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
+
+    constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
+    {
+        // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
+        assert(coeffs_[0] == ((coeffs_[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
+
+        // pack log2_width into bottom 8 bits of coeff[0]
+        coeffs_[0] <<= 8;
+        coeffs_[0].value |= (static_cast<uint64_t>(log2_width) & 0xFF);
+    }
+
+    constexpr auto unpack_log2_width() const noexcept -> int_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
+    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
+    constexpr auto unpack_coeff1() const noexcept -> coeff_t { return coeffs_[1]; }
+    constexpr auto unpack_coeff2() const noexcept -> coeff_t { return coeffs_[2]; }
+    constexpr auto unpack_coeff3() const noexcept -> coeff_t { return coeffs_[3]; }
+
+private:
+    coeffs_t coeffs_;
+};
+
 /// fixed-point cubic spline segment packed into half a cache line
 template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, auto polynomial_evaluator,
     auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
@@ -29,12 +58,12 @@ public:
     using coeff_t = t_coeff_t;
     using normalized_t = t_normalized_t;
 
-    static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
+    using packed_segment_t = packed_segment_t<coeff_t>;
 
     static constexpr auto coeff_count = 4;
     using coeffs_t = cubic_polynomial_t<coeff_t>;
 
-    constexpr segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
+    constexpr segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : packed_segment_{coeffs, log2_width}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_t>);
@@ -42,13 +71,6 @@ public:
         // this type should fit into no more than half a cache line.
         static_assert(sizeof(segment_t) == 32); // nominal for x64
         static_assert(sizeof(segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
-
-        // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
-        assert(coeffs_[0] == ((coeffs_[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
-
-        // pack log2_width into bottom 8 bits of coeff[0]
-        coeffs_[0] <<= 8;
-        coeffs_[0].value |= (static_cast<uint64_t>(log2_width) & 0xFF);
     }
 
     /// \pre 0 <= x
@@ -67,8 +89,12 @@ public:
 
     constexpr auto tangent(normalized_t t) const noexcept -> y_t
     {
-        return y_t::convert(
-            polynomial_evaluator(t, quadratic_polynomial_t{3 * unpack_coeff0(), 2 * coeffs_[1], coeffs_[2]}));
+        return y_t::convert(polynomial_evaluator(t,
+            quadratic_polynomial_t{
+                3 * packed_segment_.unpack_coeff0(),
+                2 * packed_segment_.unpack_coeff1(),
+                packed_segment_.unpack_coeff2(),
+            }));
     }
 
     /// extends tangent at t=1 beyond end of segment
@@ -82,10 +108,10 @@ public:
     {
         assert(0 <= x_extended);
 
-        auto const c0 = unpack_coeff0();
-        auto const c1 = coeffs_[1];
-        auto const c2 = coeffs_[2];
-        auto const c3 = coeffs_[3];
+        auto const c0 = packed_segment_.unpack_coeff0();
+        auto const c1 = packed_segment_.unpack_coeff1();
+        auto const c2 = packed_segment_.unpack_coeff2();
+        auto const c3 = packed_segment_.unpack_coeff3();
 
         // segment evaluated at t=1; 1^n = 1, so result is same as sum of coefficients
         auto const p1 = c0 + c1 + c2 + c3;
@@ -99,13 +125,21 @@ public:
     }
 
     /// cubic polynomial coefficients
-    constexpr auto coeffs() const noexcept -> coeffs_t { return {unpack_coeff0(), coeffs_[1], coeffs_[2], coeffs_[3]}; }
+    constexpr auto coeffs() const noexcept -> coeffs_t
+    {
+        return {
+            packed_segment_.unpack_coeff0(),
+            packed_segment_.unpack_coeff1(),
+            packed_segment_.unpack_coeff2(),
+            packed_segment_.unpack_coeff3(),
+        };
+    }
 
     /// width of segment as base-2 exponent
     ///
     /// During subdivision, segments are only ever bisected down from a power-of-2 domain, so each segment width has
     /// a single bit set. We can describe that more compactly using this shift from 1.
-    constexpr auto log2_width() const noexcept -> int8_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
+    constexpr auto log2_width() const noexcept -> int_t { return packed_segment_.unpack_log2_width(); }
 
     /// width of segment in input format
     constexpr auto width() const noexcept -> x_t
@@ -128,15 +162,13 @@ public:
     }
 
 private:
-    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
-
     template <is_fixed dst_t, is_fixed src_t> constexpr auto rescale(src_t src) const noexcept -> dst_t
     {
         auto const shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width();
         return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
     }
 
-    coeffs_t coeffs_;
+    packed_segment_t packed_segment_;
 };
 
 } // namespace crv::spline
