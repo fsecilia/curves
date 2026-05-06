@@ -41,14 +41,6 @@ constexpr auto c01 = coeff_t{1};
 constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
 constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
 
-#if 0
-constexpr auto x0 = x_t::literal(0);
-constexpr auto x_half = x_t::literal(1LL << (x_t::frac_bits - 1));
-constexpr auto x_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
-constexpr auto x_three_quarter = x_half + x_quarter;
-constexpr auto x_max = x_t::literal((1LL << x_t::frac_bits) - 1);
-#endif
-
 constexpr auto t0 = normalized_t::literal(0);
 constexpr auto t_half = normalized_t::literal(1LL << (normalized_t::frac_bits - 1));
 constexpr auto t_quarter = normalized_t::literal(1LL << (normalized_t::frac_bits - 2));
