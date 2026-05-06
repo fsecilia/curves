@@ -28,6 +28,11 @@ public:
 
     constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
+        // this type should fit into no more than half a cache line.
+        static_assert(sizeof(packed_segment_t) == 32); // nominal for x64
+        static_assert(
+            sizeof(packed_segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
+
         // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
         assert(coeffs_[0] == ((coeffs_[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
 
@@ -47,8 +52,8 @@ private:
 };
 
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, auto polynomial_evaluator,
-    auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
+template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, typename packed_segment_t,
+    auto polynomial_evaluator, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
 {
@@ -58,19 +63,16 @@ public:
     using coeff_t = t_coeff_t;
     using normalized_t = t_normalized_t;
 
-    using packed_segment_t = packed_segment_t<coeff_t>;
-
-    static constexpr auto coeff_count = 4;
     using coeffs_t = cubic_polynomial_t<coeff_t>;
 
-    constexpr segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : packed_segment_{coeffs, log2_width}
+    constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_t>);
 
-        // this type should fit into no more than half a cache line.
-        static_assert(sizeof(segment_t) == 32); // nominal for x64
-        static_assert(sizeof(segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
+        // this type must be aligned to at least half a cache line; during prod it must be exactly 32, but during
+        // testing, it may be overaligned
+        static_assert(alignof(segment_t) >= 32);
     }
 
     /// \pre 0 <= x

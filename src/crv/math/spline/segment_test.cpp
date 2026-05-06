@@ -7,6 +7,7 @@
 #include <crv/math/fixed/io.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
+#include <tuple>
 
 namespace crv::spline {
 namespace {
@@ -123,9 +124,41 @@ using y_t = x_t;
 using normalized_t = fixed_t<uint64_t, 64>;
 using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
 
-using sut_t = segment_t<x_t, y_t, coeff_t, normalized_t, polynomial_evaluator_t{}>;
+struct packed_segment_t
+{
+    using coeff_t = segment_test::coeff_t;
+    using coeffs_t = cubic_polynomial_t<coeff_t>;
+
+    coeffs_t coeffs;
+    int_t log2_width;
+
+    constexpr auto unpack_log2_width() const noexcept -> int_t { return log2_width; }
+    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs[0]; }
+    constexpr auto unpack_coeff1() const noexcept -> coeff_t { return coeffs[1]; }
+    constexpr auto unpack_coeff2() const noexcept -> coeff_t { return coeffs[2]; }
+    constexpr auto unpack_coeff3() const noexcept -> coeff_t { return coeffs[3]; }
+};
+
+using sut_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
 using coeffs_t = sut_t::coeffs_t;
-using vals_t = std::array<coeff_t::value_t, sut_t::coeff_count>;
+using vals_t = std::array<coeff_t::value_t, std::tuple_size_v<coeffs_t>>;
+
+constexpr auto sut(coeffs_t coeffs, int_t log2_width) noexcept -> sut_t
+{
+    return sut_t{packed_segment_t{coeffs, log2_width}};
+}
+
+constexpr auto sut(vals_t vals, int_t log2_width) noexcept -> sut_t
+{
+    return sut(
+        coeffs_t{
+            coeff_t::literal(vals[0]),
+            coeff_t::literal(vals[1]),
+            coeff_t::literal(vals[2]),
+            coeff_t::literal(vals[3]),
+        },
+        log2_width);
+}
 
 constexpr auto c0 = coeff_t{0};
 constexpr auto c1 = coeff_t{1};
@@ -150,23 +183,21 @@ constexpr auto coeffs = coeffs_t{};
 
 namespace x_to_t_tests {
 
-using sut_t = segment_t<x_t, coeff_t, coeff_t, normalized_t, polynomial_evaluator_t{}>;
-
 // zero shift
 constexpr auto x_quarter = x_t::literal(1LL << (x_t::frac_bits - 2));
-constexpr auto sut0 = sut_t{{c0, c0, c1, c0}, 0};
+constexpr auto sut0 = sut({c0, c0, c1, c0}, 0);
 static_assert(sut0.x_to_t(x_quarter) == normalized_t::convert(x_quarter));
 
 // positive shift (left shift x, segment is narrower than 1.0)
 // x is 1/8, shift is 2 (multiply by 4), resulting t should be 0.5
 constexpr auto x_eighth = x_t::literal(1LL << (x_t::frac_bits - 3));
-constexpr auto sut_left = sut_t{{c0, c0, c1, c0}, -2};
+constexpr auto sut_left = sut({c0, c0, c1, c0}, -2);
 static_assert(sut_left.x_to_t(x_eighth) == normalized_t::convert(x_t::literal(x_eighth.value << 2)));
 
 // negative shift (right shift x, segment is wider than 1.0)
 // x is 2.0, shift is -2 (divide by 4), resulting t should be 0.5
 constexpr auto x_two = x_t::literal(2ULL << x_t::frac_bits);
-constexpr auto sut_right = sut_t{{c0, c0, c1, c0}, 2};
+constexpr auto sut_right = sut({c0, c0, c1, c0}, 2);
 static_assert(sut_right.x_to_t(x_two) == normalized_t::convert(x_t::literal(x_two.value >> 2)));
 
 // exactly zero should yield exactly zero regardless of shift
@@ -185,22 +216,25 @@ static_assert(sut0.x_to_t(x_almost_width)
 } // namespace x_to_t_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// polynomial evaluation
+// primal evaluation
 // --------------------------------------------------------------------------------------------------------------------
+
+namespace primal_tests {
+
+constexpr auto evaluate(sut_t const& sut, normalized_t t) noexcept -> y_t
+{
+    return sut.primal(t);
+}
 
 constexpr auto evaluate(coeffs_t const& coeffs, int8_t log2_width, normalized_t t) noexcept -> y_t
 {
-    return sut_t{coeffs, log2_width}.primal(t);
+    return evaluate(sut(coeffs, log2_width), t);
 }
 
-constexpr auto evaluate(vals_t const& coeff_vals, int8_t log2_width, normalized_t t) noexcept -> y_t
+constexpr auto evaluate(vals_t const& vals, int8_t log2_width, normalized_t t) noexcept -> y_t
 {
-    return evaluate(coeffs_t{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
-                        coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])},
-        log2_width, t);
+    return evaluate(sut(vals, log2_width), t);
 }
-
-namespace evaluation_tests {
 
 // expected polynomial output at coeff_t scale, lifted to y_t. Decouples expectations from y_t::frac_bits.
 constexpr auto expected(coeff_t::value_t coeff_value) -> y_t
@@ -249,7 +283,7 @@ static_assert(evaluate({1024, 2048, 4096, 8192}, 0, t_max) == expected(15360));
 
 // coeff[0] survives bit packing shift round-trip
 constexpr auto c_large_cubic = coeff_t{50};
-static_assert(sut_t{{c_large_cubic, c0, c0, c0}, 5}.primal(t_half) == expected(c_large_cubic.value >> 3));
+static_assert(evaluate({c_large_cubic, c0, c0, c0}, 5, t_half) == expected(c_large_cubic.value >> 3));
 
 // c0: just check sign; anything more would be a tautology
 static_assert(evaluate({cv0_max, 0, 0, 0}, 0, t_max).value > 0);
@@ -264,11 +298,12 @@ constexpr auto cv0_quarter = cv0_max / 4;
 constexpr auto cv_quarter = cv_max / 4;
 static_assert(evaluate({cv0_quarter, cv_quarter, cv_quarter, cv_quarter}, 0, t_max).value > (cv_max / 2));
 
-// The final Horner mac computes round_half_up(c2.value * t.value / 2^normalized_t::frac_bits) in coeff_t. With
-// c2 = coeff_t{1}, a unit step in the output covers t_per_v t.value units, and round-half-up centers each output
-// range on v * t_per_v. Picking v_center away from the boundaries, the contiguous t.value range that rounds to
-// v_center is [v_center * t_per_v - t_per_v/2, v_center * t_per_v + t_per_v/2). Here, we probe one t.value past each
-// side.
+// rounding boundary tests
+//
+// The final Horner mac computes round_half_up(c2.value*t.value / 2^normalized_t::frac_bits) in coeff_t. With
+// c2 = coeff_t{1}, a unit step in the output covers t_per_v t.value units, and round-half-up centers each output range
+// on v*t_per_v. Picking v_center away from the boundaries, the contiguous t.value range that rounds to v_center is
+// [v_center*t_per_v - t_per_v/2, v_center*t_per_v + t_per_v/2). Here, we probe one epsilon-t past each side.
 constexpr auto rounding_coeffs = coeffs_t{c0, c0, c1, c0};
 constexpr auto t_per_v = normalized_t::value_t{1} << (normalized_t::frac_bits - coeff_t::frac_bits);
 constexpr auto half_t_per_v = t_per_v / 2;
@@ -288,7 +323,7 @@ static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end 
 // first t in next range rounds up to v_center + 1
 static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end)) == expected(v_center + 1));
 
-} // namespace evaluation_tests
+} // namespace primal_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // tangent evaluation
@@ -296,12 +331,9 @@ static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end)
 
 namespace tangent_tests {
 
-constexpr auto evaluate_tangent(vals_t const& coeff_vals, int8_t log2_width, normalized_t t) noexcept -> y_t
+constexpr auto evaluate_tangent(vals_t const& vals, int8_t log2_width, normalized_t t) noexcept -> y_t
 {
-    auto const sut = sut_t{coeffs_t{coeff_t::literal(coeff_vals[0]), coeff_t::literal(coeff_vals[1]),
-                               coeff_t::literal(coeff_vals[2]), coeff_t::literal(coeff_vals[3])},
-        log2_width};
-    return sut.tangent(t);
+    return sut(vals, log2_width).tangent(t);
 }
 
 constexpr auto expected(coeff_t::value_t coeff_value) -> y_t
@@ -349,14 +381,14 @@ static_assert(evaluate_tangent({0, 0, 0, 10000}, 0, t_half) == expected(0));
 
 namespace extend_final_tangent_tests {
 
-static_assert(sut_t{{coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2}.extend_final_tangent(x_t{7})
+static_assert(sut({coeff_t{0}, coeff_t{0}, coeff_t{3}, coeff_t{5}}, 2).extend_final_tangent(x_t{7})
     == sut_t::y_t::convert(coeff_t{8} + coeff_t{3} * (x_t{7} >> 2)));
 
-static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2}.extend_final_tangent(x_t{17})
+static_assert(sut({coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, -2).extend_final_tangent(x_t{17})
     == sut_t::y_t::convert(coeff_t{36} + coeff_t{40} * (x_t{17} << 2)));
 
 // at x=0 is the same as t=1: 5 + 7 + 11 + 13
-static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0}.extend_final_tangent(x_t{0})
+static_assert(sut({coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0).extend_final_tangent(x_t{0})
     == sut_t::y_t::convert(coeff_t{36}));
 
 } // namespace extend_final_tangent_tests
@@ -368,13 +400,13 @@ static_assert(sut_t{{coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0}.exten
 namespace width_tests {
 
 // bounds of valid widths for fixed_t<int64_t, 48>: 2^[-frac_bits, bits-frac_bits-2] = 2^[-48, 14]
-static_assert(sut_t{coeffs, -48}.width() == x_t{1} >> 48);
-static_assert(sut_t{coeffs, -47}.width() == x_t{1} >> 47);
-static_assert(sut_t{coeffs, -1}.width() == x_t{1} >> 1);
-static_assert(sut_t{coeffs, 0}.width() == x_t{1} << 0);
-static_assert(sut_t{coeffs, 1}.width() == x_t{1} << 1);
-static_assert(sut_t{coeffs, 13}.width() == x_t{1} << 13);
-static_assert(sut_t{coeffs, 14}.width() == x_t{1} << 14);
+static_assert(sut(coeffs, -48).width() == x_t{1} >> 48);
+static_assert(sut(coeffs, -47).width() == x_t{1} >> 47);
+static_assert(sut(coeffs, -1).width() == x_t{1} >> 1);
+static_assert(sut(coeffs, 0).width() == x_t{1} << 0);
+static_assert(sut(coeffs, 1).width() == x_t{1} << 1);
+static_assert(sut(coeffs, 13).width() == x_t{1} << 13);
+static_assert(sut(coeffs, 14).width() == x_t{1} << 14);
 
 } // namespace width_tests
 
@@ -385,26 +417,26 @@ static_assert(sut_t{coeffs, 14}.width() == x_t{1} << 14);
 namespace is_valid_tests {
 
 // zero is a valid shift
-static_assert(sut_t{coeffs, 0}.is_valid());
+static_assert(sut(coeffs, 0).is_valid());
 
 // bounds of valid log2_widths: [-frac_bits, bits-frac_bits-2] = [-48, 14] for fixed_t<int64_t, 48>
-static_assert(!sut_t{coeffs, -49}.is_valid());
-static_assert(sut_t{coeffs, -48}.is_valid());
-static_assert(sut_t{coeffs, -47}.is_valid());
-static_assert(sut_t{coeffs, -1}.is_valid());
-static_assert(sut_t{coeffs, 0}.is_valid());
-static_assert(sut_t{coeffs, 1}.is_valid());
-static_assert(sut_t{coeffs, 13}.is_valid());
-static_assert(sut_t{coeffs, 14}.is_valid());
-static_assert(!sut_t{coeffs, 15}.is_valid());
+static_assert(!sut(coeffs, -49).is_valid());
+static_assert(sut(coeffs, -48).is_valid());
+static_assert(sut(coeffs, -47).is_valid());
+static_assert(sut(coeffs, -1).is_valid());
+static_assert(sut(coeffs, 0).is_valid());
+static_assert(sut(coeffs, 1).is_valid());
+static_assert(sut(coeffs, 13).is_valid());
+static_assert(sut(coeffs, 14).is_valid());
+static_assert(!sut(coeffs, 15).is_valid());
 
 // strictly out of bounds (>= 64 or <= -64)
-static_assert(!sut_t{coeffs, 64}.is_valid());
-static_assert(!sut_t{coeffs, -64}.is_valid());
+static_assert(!sut(coeffs, 64).is_valid());
+static_assert(!sut(coeffs, -64).is_valid());
 
 // capacity for int8_t
-static_assert(!sut_t{coeffs, 127}.is_valid());
-static_assert(!sut_t{coeffs, -128}.is_valid());
+static_assert(!sut(coeffs, 127).is_valid());
+static_assert(!sut(coeffs, -128).is_valid());
 
 } // namespace is_valid_tests
 
@@ -419,21 +451,21 @@ namespace death_tests {
 TEST(spline_segment, violates_x_lower_bound)
 {
     // x = -1.0; it is unconditionally out of bounds
-    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
+    constexpr auto sut = segment_test::sut({0, 0, 0, 0}, 0);
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.x_to_t(x_t::literal(-1))), "<= x");
 }
 
 TEST(spline_segment, violates_t_upper_bound)
 {
     // x is 1.0, but dividing by 2^-1 makes t = 2.0, which is out of bounds
-    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, -1);
+    constexpr auto sut = segment_test::sut({0, 0, 0, 0}, -1);
     constexpr auto x_one = x_t{1};
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.x_to_t(x_one)), "x <");
 }
 
 TEST(spline_segment, violates_extend_final_tangent_lower_bound)
 {
-    constexpr auto sut = sut_t({coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
+    constexpr auto sut = segment_test::sut({0, 0, 0, 0}, 0);
     EXPECT_DEBUG_DEATH(static_cast<void>(sut.extend_final_tangent(x_t::literal(-1))), "<= x");
 }
 
