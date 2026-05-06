@@ -67,7 +67,8 @@ public:
 
     constexpr auto tangent(normalized_t t) const noexcept -> y_t
     {
-        return y_t::convert(polynomial_evaluator(t, {3 * unpack_coeff0(), 2 * coeffs_[1], coeffs_[2]}));
+        return y_t::convert(
+            polynomial_evaluator(t, quadratic_polynomial_t{3 * unpack_coeff0(), 2 * coeffs_[1], coeffs_[2]}));
     }
 
     /// extends tangent at t=1 beyond end of segment
