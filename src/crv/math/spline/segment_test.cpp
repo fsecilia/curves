@@ -82,6 +82,19 @@ constexpr auto x_two = x_t::literal(2ULL << x_t::frac_bits);
 constexpr auto sut_right = sut_t{{c0, c0, c1, c0}, 2};
 static_assert(sut_right.x_to_t(x_two) == normalized_t::convert(x_t::literal(x_two.value >> 2)));
 
+// exactly zero should yield exactly zero regardless of shift
+constexpr auto x_zero = x_t::literal(0);
+static_assert(sut0.x_to_t(x_zero) == t0);
+static_assert(sut_left.x_to_t(x_zero) == t0);
+
+// upper bound approach
+// x just below width() should yield something very close to t_max
+constexpr auto x_almost_width = x_t::literal(sut0.width().value - 1);
+static_assert(max<normalized_t>().value - sut0.x_to_t(x_almost_width).value
+    == (normalized_t::convert(x_t::literal(1)).value - 1));
+static_assert(sut0.x_to_t(x_almost_width)
+    == max<normalized_t>() - normalized_t::convert(x_t::literal(1)) + normalized_t::literal(1));
+
 } // namespace x_to_t_tests
 
 // --------------------------------------------------------------------------------------------------------------------
