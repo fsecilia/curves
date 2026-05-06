@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "tangent.hpp"
+#include "segment_derivative.hpp"
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/test/test.hpp>
 
