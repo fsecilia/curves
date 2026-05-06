@@ -36,6 +36,7 @@ target_sources(lib PRIVATE
     math/spline/construction/residual_estimator.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
+    math/spline/construction/tangent.hpp
     math/stats.hpp
     priority_queue.hpp
 )
@@ -138,6 +139,7 @@ if (enable_testing)
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
+        math/spline/construction/tangent_test.cpp
         math/spline/polynomial_test.cpp
         math/spline/segment_locator_test.cpp
         math/spline/segment_test.cpp
