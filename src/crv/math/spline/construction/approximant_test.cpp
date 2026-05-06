@@ -6,67 +6,88 @@
 #include "approximant.hpp"
 #include <crv/math/abs.hpp>
 #include <crv/test/test.hpp>
-#include <stdexcept>
+#include <gmock/gmock.h>
 
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
-using x_t = fixed_t<int16_t, 3>;
-using y_t = fixed_t<int32_t, 2>;
-using normalized_t = int16_t; // normally Q0.64
-using coeffs_t = int32_t; // normally an array of signed fixed
-
-constexpr auto log2_width = 4;
-constexpr auto x_real = 5; // the initial input
-constexpr auto x0 = x_t{2};
-constexpr auto x_fixed = x_t::literal(24); // after converting via to_fixed<x_t>(x_real) - x0
-constexpr auto y_real = 7;
-constexpr auto y = y_t::literal(28); // y_real*2^y_t::frac_bits = 7*2^2 = 28
-constexpr auto t = normalized_t{17};
-constexpr auto coeffs = coeffs_t{37};
-constexpr auto dy_dx = 11.12;
-
-struct segment_t
+struct spline_approximant_test_t : Test
 {
-    using x_t = x_t;
+    using real_t = float_t;
+    using jet_t = jet_t<real_t>;
+    using x_t = fixed_t<int16_t, 2>;
+    using y_t = fixed_t<int32_t, 5>;
+    using normalized_t = fixed_t<uint64_t, 64>;
+    struct coeffs_t
+    {};
 
-    constexpr auto x_to_t(x_t x) const -> normalized_t
+    struct mock_segment_t
     {
-        if (x != spline::x_fixed) throw std::runtime_error{"unexpected x"};
-        return spline::t;
-    }
+        virtual ~mock_segment_t() = default;
 
-    constexpr auto evaluate(normalized_t t) const -> y_t
+        MOCK_METHOD(normalized_t, x_to_t, (x_t), (const, noexcept));
+        MOCK_METHOD(y_t, evaluate, (normalized_t), (const, noexcept));
+        MOCK_METHOD(coeffs_t const&, coeffs, (), (const, noexcept));
+        MOCK_METHOD(int_t, log2_width, (), (const, noexcept));
+    };
+    StrictMock<mock_segment_t> mock_segment;
+
+    struct segment_t
     {
-        if (t != spline::t) throw std::runtime_error{"unexpected t"};
-        return spline::y;
-    }
+        using x_t = spline_approximant_test_t::x_t;
 
-    constexpr auto log2_width() const noexcept -> int_t { return spline::log2_width; }
-    constexpr auto coeffs() const noexcept -> coeffs_t { return spline::coeffs; }
+        mock_segment_t* mock = nullptr;
+
+        auto x_to_t(x_t x) const noexcept -> normalized_t { return mock->x_to_t(x); }
+        auto evaluate(normalized_t t) const noexcept -> y_t { return mock->evaluate(t); }
+        auto coeffs() const noexcept -> coeffs_t const& { return mock->coeffs(); }
+        auto log2_width() const noexcept -> int_t { return mock->log2_width(); }
+    };
+
+    struct mock_segment_derivative_t
+    {
+        virtual ~mock_segment_derivative_t() = default;
+
+        MOCK_METHOD(real_t, dy_dx, (coeffs_t const&, normalized_t, int_t), (const, noexcept));
+    };
+    StrictMock<mock_segment_derivative_t> mock_segment_derivative;
+
+    struct segment_derivative_t
+    {
+        mock_segment_derivative_t* mock = nullptr;
+
+        auto dy_dx(coeffs_t const& coeffs, normalized_t t, int_t log2_width) const noexcept -> real_t
+        {
+            return mock->dy_dx(coeffs, t, log2_width);
+        }
+    };
+
+    static constexpr auto x0 = x_t::literal(3);
+
+    using sut_t = approximant_t<real_t, segment_t, segment_derivative_t>;
+    sut_t sut{x0, segment_t{&mock_segment}, segment_derivative_t{&mock_segment_derivative}};
 };
 
-struct segment_derivative_t
+TEST_F(spline_approximant_test_t, call_operator)
 {
-    constexpr auto dy_dx(coeffs_t coeffs, normalized_t t, int_t log2_width) const -> real_t
-    {
-        if (coeffs != spline::coeffs) throw std::runtime_error{"unexpected coeffs"};
-        if (t != spline::t) throw std::runtime_error{"unexpected t"};
-        if (log2_width != spline::log2_width) throw std::runtime_error{"unexpected log2_width"};
-        return spline::dy_dx;
-    }
-};
+    auto const x_real = float_t{7};
+    auto const x_fixed = x_t{7};
+    auto const t = normalized_t::literal(11);
+    auto const y_real = float_t{13};
+    auto const y_fixed = y_t{13};
+    auto const coeffs = coeffs_t{};
+    auto const dy_dx = real_t{19};
+    auto const log2_width = 4;
 
-using sut_t = approximant_t<real_t, segment_t, segment_derivative_t>;
-
-// execution logic
-TEST(spline_approximant_test, test)
-{
-    auto const sut = sut_t{.x0 = x0, .segment = segment_t{}, .segment_derivative = segment_derivative_t{}};
     auto const expected = jet_t{y_real, dy_dx};
+
+    EXPECT_CALL(mock_segment, x_to_t(x_fixed - x0)).WillOnce(Return(t));
+    EXPECT_CALL(mock_segment, evaluate(t)).WillOnce(Return(y_fixed));
+    EXPECT_CALL(mock_segment, coeffs()).WillOnce(ReturnRef(coeffs));
+    EXPECT_CALL(mock_segment, log2_width()).WillOnce(Return(log2_width));
+    EXPECT_CALL(mock_segment_derivative, dy_dx(Ref(coeffs), t, log2_width)).WillOnce(Return(dy_dx));
     auto const actual = sut(x_real);
+
     EXPECT_EQ(expected, actual);
 }
 
