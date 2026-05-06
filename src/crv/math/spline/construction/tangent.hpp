@@ -16,8 +16,13 @@
 
 namespace crv::spline {
 
-/// evaluates the derivative and converts between dy/dx and dy/dt using the jacobian, dx/dt
-template <std::floating_point real_t> struct tangent_t
+/// evaluates segment derivative and converts between dy/dx and dy/dt using the jacobian, dx/dt
+///
+/// Calculating a segment's derivative can't be part of segment_t directly. segment_t runs in the kernel and the only
+/// places we use the derivative are in user-mode floating point. The floating-point derivative is encapsulated here.
+/// This type also puts a name on the opaque ldexp calls necessary to transform the tangent between segment-local
+/// parameter t space and spline-global spatial x space.
+template <std::floating_point real_t> struct segment_derivative_t
 {
     /// jacobian
     constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t

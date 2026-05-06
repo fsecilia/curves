@@ -24,33 +24,33 @@ struct vector_t
     real_t expected_dy_dx;
 };
 
-struct tangent_test_t : TestWithParam<vector_t>
+struct spline_segment_derivative_test_t : TestWithParam<vector_t>
 {
-    using sut_t = tangent_t<real_t>;
+    using sut_t = segment_derivative_t<real_t>;
     sut_t sut{};
 };
 
-TEST_P(tangent_test_t, dx_dt)
+TEST_P(spline_segment_derivative_test_t, dx_dt)
 {
     EXPECT_NEAR(GetParam().expected_dx_dt, sut.dx_dt(GetParam().log2_width), 1e-10);
 }
 
-TEST_P(tangent_test_t, dy_dt)
+TEST_P(spline_segment_derivative_test_t, dy_dt)
 {
     EXPECT_NEAR(GetParam().expected_dy_dt, sut.dy_dt(GetParam().coeffs, GetParam().t), 1e-10);
 }
 
-TEST_P(tangent_test_t, dy_dx)
+TEST_P(spline_segment_derivative_test_t, dy_dx)
 {
     EXPECT_NEAR(GetParam().expected_dy_dx, sut.dy_dx(GetParam().coeffs, GetParam().t, GetParam().log2_width), 1e-10);
 }
 
-TEST_P(tangent_test_t, dy_dt_to_dy_dx)
+TEST_P(spline_segment_derivative_test_t, dy_dt_to_dy_dx)
 {
     EXPECT_NEAR(GetParam().expected_dy_dx, sut.dy_dt_to_dy_dx(GetParam().expected_dy_dt, GetParam().log2_width), 1e-10);
 }
 
-TEST_P(tangent_test_t, dy_dx_to_dy_dt)
+TEST_P(spline_segment_derivative_test_t, dy_dx_to_dy_dt)
 {
     EXPECT_NEAR(GetParam().expected_dy_dt, sut.dy_dx_to_dy_dt(GetParam().expected_dy_dx, GetParam().log2_width), 1e-10);
 }
@@ -146,8 +146,9 @@ vector_t const vectors[] = {
         .expected_dx_dt = 8.0,
         .expected_dy_dt = 0.25, // 3(-1)(0.25) + 2(2)(0.5) - 1 = -0.75 + 2 - 1 = 0.25
         .expected_dy_dx = 0.03125, // 0.25 / 8.0
-    }};
-INSTANTIATE_TEST_SUITE_P(vectors, tangent_test_t, ValuesIn(vectors));
+    },
+};
+INSTANTIATE_TEST_SUITE_P(vectors, spline_segment_derivative_test_t, ValuesIn(vectors));
 
 } // namespace
 } // namespace crv::spline
