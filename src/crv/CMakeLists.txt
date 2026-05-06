@@ -36,6 +36,7 @@ target_sources(lib PRIVATE
     math/spline/construction/quantizer.hpp
     math/spline/construction/residual_estimator.hpp
     math/spline/construction/segment_derivative.hpp
+    math/spline/construction/segment_factory.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
     math/stats.hpp
@@ -140,6 +141,7 @@ if (enable_testing)
         math/spline/construction/quantizer_test.cpp
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/segment_derivative_test.cpp
+        math/spline/construction/segment_factory_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
         math/spline/polynomial_test.cpp
