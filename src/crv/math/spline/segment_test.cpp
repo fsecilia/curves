@@ -216,14 +216,14 @@ static_assert(sut0.x_to_t(x_almost_width)
 } // namespace x_to_t_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// primal evaluation
+// polynomial evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace primal_tests {
+namespace polynomial_evaluation_tests {
 
 constexpr auto evaluate(sut_t const& sut, normalized_t t) noexcept -> y_t
 {
-    return sut.primal(t);
+    return sut.evaluate(t);
 }
 
 constexpr auto evaluate(coeffs_t const& coeffs, int8_t log2_width, normalized_t t) noexcept -> y_t
@@ -323,7 +323,7 @@ static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end 
 // first t in next range rounds up to v_center + 1
 static_assert(evaluate(rounding_coeffs, 0, normalized_t::literal(v_center_t_end)) == expected(v_center + 1));
 
-} // namespace primal_tests
+} // namespace polynomial_evaluation_tests
 
 // --------------------------------------------------------------------------------------------------------------------
 // extend_final_tangent

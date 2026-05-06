@@ -84,7 +84,7 @@ public:
         return rescale<normalized_t>(x);
     }
 
-    constexpr auto primal(normalized_t t) const noexcept -> y_t
+    constexpr auto evaluate(normalized_t t) const noexcept -> y_t
     {
         return y_t::convert(polynomial_evaluator(t, coeffs()));
     }
