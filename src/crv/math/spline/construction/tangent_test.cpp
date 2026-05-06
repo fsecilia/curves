@@ -96,6 +96,16 @@ vector_t const vectors[] = {
         .expected_dy_dx = 0.0,
     },
 
+    // degenerate: all values are 0
+    {
+        .coeffs = {coeff_t{0}, coeff_t{0}, coeff_t{0}, coeff_t{0}},
+        .log2_width = 0, // width = 1.0
+        .t = 0.0,
+        .expected_dx_dt = 1.0,
+        .expected_dy_dt = 0.0,
+        .expected_dy_dx = 0.0,
+    },
+
     // evaluation at t = 0
     {
         .coeffs = {coeff_t{2}, coeff_t{-3}, coeff_t{4}, coeff_t{1}},
