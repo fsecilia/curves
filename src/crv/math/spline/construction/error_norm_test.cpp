@@ -146,5 +146,60 @@ static_assert(abs(first_order_absolute_zero_weight(target_jet, mixed_error_appro
 
 } // namespace first_order_aboslute_test
 
+// ====================================================================================================================
+// first_order_relative_t
+// ====================================================================================================================
+
+namespace first_order_relative_tests {
+
+// predictable floor for testing
+struct hard_floor_t
+{
+    template <typename real_t> constexpr auto operator()(real_t val, real_t floor_val) const noexcept -> real_t
+    {
+        return max(val, floor_val);
+    }
+};
+
+using sut_t = first_order_relative_t<real_t, hard_floor_t>;
+constexpr auto sut = sut_t{.primal_floor = 2.0, .tangent_floor = 2.0, .floor = {}};
+
+// --------------------------------------------------------------------------------------------------------------------
+// standard relative scaling (targets above floor)
+// --------------------------------------------------------------------------------------------------------------------
+
+constexpr auto large_target = jet_t{10.0, 4.0};
+
+// exact match
+static_assert(abs(sut(large_target, large_target) - 0.0) < 1e-9);
+
+// pure primal error: error is 2.0, scale is 10.0 -> rel = 0.2
+static_assert(abs(sut(large_target, jet_t{8.0, 4.0}) - 0.2) < 1e-9);
+
+// pure tangent error: error is 2.0, scale is 4.0 -> rel = 0.5
+static_assert(abs(sut(large_target, jet_t{10.0, 2.0}) - 0.5) < 1e-9);
+
+// mixed error (tangent dominates): primal rel = 0.2, tangent rel = 0.5
+static_assert(abs(sut(large_target, jet_t{8.0, 2.0}) - 0.5) < 1e-9);
+
+// mixed error (primal dominates): primal error is 6.0 (rel = 0.6), tangent error is 1.0 (rel = 0.25)
+static_assert(abs(sut(large_target, jet_t{4.0, 3.0}) - 0.6) < 1e-9);
+
+// --------------------------------------------------------------------------------------------------------------------
+// floor clamping (targets below floor)
+// --------------------------------------------------------------------------------------------------------------------
+
+// both target values are 1.0, which is below the 2.0 floor.
+// the floor should clamp the scale divisor to 2.0 for both.
+constexpr auto small_target = jet_t{1.0, 1.0};
+
+// primal error is 1.0. scale clamped to 2.0 -> rel = 0.5
+static_assert(abs(sut(small_target, jet_t{0.0, 1.0}) - 0.5) < 1e-9);
+
+// tangent error is 1.0. scale clamped to 2.0 -> rel = 0.5
+static_assert(abs(sut(small_target, jet_t{1.0, 0.0}) - 0.5) < 1e-9);
+
+} // namespace first_order_relative_tests
+
 } // namespace
 } // namespace crv::spline::error_norms
