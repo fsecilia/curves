@@ -119,13 +119,6 @@ struct segment_t
     {
         return y_t::convert(polynomial_evaluator(t, polynomial[0], polynomial[1], polynomial[2], polynomial[3]));
     }
-
-    constexpr auto tangent(normalized_t t) const noexcept -> y_t
-    {
-        // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
-        // This may overflow.
-        return y_t::convert(polynomial_evaluator(t, 3 * polynomial[0], 2 * polynomial[1], polynomial[2]));
-    }
 };
 
 /// converts between dy/dx and dy/dt using the jacobian, dx/dt
@@ -172,7 +165,8 @@ struct segment_builder_t
 };
 
 /// adapts segment with float api, anchors to origin in fixed x
-template <std::floating_point t_real_t, typename segment_t, typename tangent_jacobian_t> struct approximant_t
+template <std::floating_point t_real_t, typename segment_t, typename tangent_jacobian_t, auto polynomial_evaluator>
+struct approximant_t
 {
     using real_t = t_real_t;
     using x_t = segment_t::x_t;
@@ -188,10 +182,19 @@ template <std::floating_point t_real_t, typename segment_t, typename tangent_jac
         auto const primal = from_fixed<real_t>(segment.primal(t));
 
         // convert from segment-local dy/dt to spline-global dy/dx via chain rule
-        auto const dy_dt = from_fixed<real_t>(segment.tangent(t));
+        auto const dy_dt = from_fixed<real_t>(tangent(t));
         auto const dy_dx = tangent_jacobian.dy_dt_to_dy_dx(dy_dt, segment.log2_width);
 
         return jet_t{primal, dy_dx};
+    }
+
+private:
+    constexpr auto tangent(segment_t::normalized_t t) const noexcept -> segment_t::y_t
+    {
+        // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
+        // This may overflow.
+        auto const& polynomial = segment.polynomial;
+        return segment_t::y_t::convert(polynomial_evaluator(t, 3 * polynomial[0], 2 * polynomial[1], polynomial[2]));
     }
 };
 
@@ -692,7 +695,7 @@ TEST(spline_builder, poc)
         = segment_builder_t<real_t, segment_t, tangent_jacobian_t, hermite_to_polynomial_converter_t{}>;
     using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
-    using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t>;
+    using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t, polynomial_evaluator_t{}>;
     using interval_builder_t
         = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
