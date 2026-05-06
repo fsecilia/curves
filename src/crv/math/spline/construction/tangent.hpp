@@ -22,7 +22,8 @@ template <std::floating_point real_t> struct tangent_t
     /// jacobian
     constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t
     {
-        return std::ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
+        using std::ldexp;
+        return ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
     }
 
     /// parametric derivative
@@ -43,13 +44,15 @@ template <std::floating_point real_t> struct tangent_t
     /// chain rule from t to x
     constexpr auto dy_dt_to_dy_dx(real_t dy_dt, int_t log2_dx_dt) const noexcept -> real_t
     {
-        return std::ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
+        using std::ldexp;
+        return ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
     }
 
     // chain rule from x to t
     constexpr auto dy_dx_to_dy_dt(real_t dy_dx, int_t log2_dx_dt) const noexcept -> real_t
     {
-        return std::ldexp(dy_dx, int_cast<int>(log2_dx_dt));
+        using std::ldexp;
+        return ldexp(dy_dx, int_cast<int>(log2_dx_dt));
     }
 };
 
