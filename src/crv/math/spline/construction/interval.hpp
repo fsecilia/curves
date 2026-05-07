@@ -7,48 +7,40 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/spline/construction/defect_analyzer.hpp>
+#include <crv/math/spline/construction/function_sampler.hpp>
+#include <crv/math/spline/construction/residual_estimator.hpp>
 #include <compare>
 
 namespace crv::spline {
 
-/// represents single evaluated interval in an adaptive spline
-///
-/// Stores domain boundaries, approximant, and max error measured across the segment.
-template <typename t_real_t, typename approximant_t> struct interval_t
+/// unit of work over subdomain
+template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
 {
     using real_t = t_real_t;
+    using segment_t = t_segment_t;
 
-    real_t left;
-    real_t right;
-    real_t max_error;
-    real_t tolerance;
-    int_t depth;
-    approximant_t approximant;
+    using residual_t = residual_t<real_t>;
 
-    constexpr auto operator<=>(interval_t const& src) const noexcept -> auto = default;
-    constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
-};
+    using function_sample_t = function_sample_t<real_t>;
+    function_sample_t left;
+    function_sample_t midpoint;
+    function_sample_t right;
 
-template <typename interval_t> struct bisection_t
-{
-    using real_t = interval_t::real_t;
+    segment_defects_t segment_defects;
+    residual_t residual;
+    segment_t segment;
 
-    interval_t left;
-    interval_t right;
-    real_t refined_error;
-
-    constexpr auto operator<=>(bisection_t const& src) const noexcept -> auto = default;
-    constexpr auto operator==(bisection_t const& src) const noexcept -> bool = default;
-};
-
-/// orders intervals by fit priority
-struct fit_priority_t
-{
-    constexpr auto operator()(auto const& lhs, auto const& rhs) const noexcept -> bool
+    /// orders by segment_defects, residual.weighted_error, and left.x
+    constexpr auto operator<=>(interval_t const& src) const noexcept -> std::partial_ordering
     {
-        if (auto const cmp = lhs.max_error <=> rhs.max_error; std::is_neq(cmp)) return std::is_lt(cmp);
-        return lhs.left < rhs.left;
+        auto const lhs_must_subdivide = segment_defects != segment_defects_t{0};
+        auto const rhs_must_subdivide = src.segment_defects != segment_defects_t{0};
+        if (auto const cmp = lhs_must_subdivide <=> rhs_must_subdivide; std::is_neq(cmp)) return cmp;
+        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; std::is_neq(cmp)) return cmp;
+        return left.x <=> src.left.x;
     }
+    constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
 };
 
 } // namespace crv::spline
