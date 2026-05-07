@@ -15,6 +15,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
+#include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/defect_detectors/monotonicity.hpp>
 #include <crv/math/spline/construction/defect_detectors/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
@@ -39,9 +40,6 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <typename value_t> using cubic_monomial_t = cubic_polynomial_t<value_t>;
-constexpr int_t cubic_coeff_count = 4;
-
 enum class segment_defects_t : int_t
 {
     monotonicity = 1 << 0,
@@ -55,140 +53,6 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defec
 
 namespace spline {
 namespace {
-
-/// converts between dy/dx and dy/dt using the jacobian, dx/dt
-struct tangent_jacobian_t
-{
-    template <std::floating_point real_t> constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t
-    {
-        return std::ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
-    }
-
-    template <std::floating_point real_t>
-    constexpr auto dy_dt_to_dy_dx(real_t dy_dt, int_t log2_dx_dt) const noexcept -> real_t
-    {
-        return std::ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
-    }
-
-    template <std::floating_point real_t>
-    constexpr auto dy_dx_to_dy_dt(real_t dy_dx, int_t log2_dx_dt) const noexcept -> real_t
-    {
-        return std::ldexp(dy_dx, int_cast<int>(log2_dx_dt));
-    }
-};
-
-/// adapts segment with float api, anchors to origin in fixed x
-template <std::floating_point t_real_t, typename segment_t, typename tangent_jacobian_t, auto polynomial_evaluator>
-struct approximant_t
-{
-    using real_t = t_real_t;
-    using x_t = segment_t::x_t;
-
-    x_t x_origin;
-    segment_t segment;
-
-    [[no_unique_address]] tangent_jacobian_t tangent_jacobian = {};
-
-    constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
-    {
-        auto x_local = to_fixed<x_t>(x) - x_origin;
-        if (x_local >= segment.width()) --x_local.value;
-
-        auto const t = segment.x_to_t(x_local);
-        auto const primal = from_fixed<real_t>(segment.evaluate(t));
-
-        // convert from segment-local dy/dt to spline-global dy/dx via chain rule
-        auto const dy_dt = from_fixed<real_t>(tangent(t));
-        auto const dy_dx = tangent_jacobian.dy_dt_to_dy_dx(dy_dt, segment.log2_width());
-
-        return jet_t{primal, dy_dx};
-    }
-
-private:
-    constexpr auto tangent(segment_t::normalized_t t) const noexcept -> segment_t::y_t
-    {
-        // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
-        // This may overflow.
-        auto const& polynomial = segment.coeffs();
-        return segment_t::y_t::convert(
-            polynomial_evaluator(t, quadratic_polynomial_t{3 * polynomial[0], 2 * polynomial[1], polynomial[2]}));
-    }
-};
-
-/// uniform error norm
-template <typename scalar_t, typename jet_t> struct uniform_t
-{
-    static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> scalar_t
-    {
-        auto const result = abs(primal(target) - primal(approximation));
-        assert(std::isfinite(result));
-        return result;
-    }
-};
-
-// soft floor: behaves like floor when value << floor, like value when value >> floor
-template <typename real_t> struct soft_floor_t
-{
-    static constexpr auto operator()(real_t value, real_t floor) noexcept -> real_t
-    {
-        using std::hypot;
-        using std::isfinite;
-
-        auto const result = hypot(value, floor);
-        assert(isfinite(result));
-        return result;
-    }
-};
-
-/// first-order uniform norm with target-derived relative-slope weighting
-template <typename jet_t, int_t log2_min_width, typename soft_floor_t> struct first_order_relative_t
-{
-    using scalar_t = typename jet_t::value_t;
-
-    // floor prevents weight blowup where target slope is near zero or unresolvable
-    static constexpr auto primal_floor = scalar_t{scalar_t{1} / (1 << -log2_min_width)};
-    static constexpr auto tangent_floor = scalar_t{scalar_t{1} / (1 << -log2_min_width)};
-
-    [[no_unique_address]] soft_floor_t soft_floor;
-
-    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
-    {
-        // weight derived from the target itself: 1 / max(|target_slope|, floor)
-        // this turns absolute slope error into relative slope error in flat regions
-
-        auto const primal_error = abs(primal(target) - primal(approximation));
-        auto const tangent_error = abs(tangent(target) - tangent(approximation));
-
-        auto const primal_scale = soft_floor(abs(primal(target)), primal_floor);
-        auto const relative_primal_error = primal_error / primal_scale;
-        assert(std::isfinite(relative_primal_error));
-
-        auto const tangent_scale = soft_floor(abs(tangent(target)), tangent_floor);
-        auto const relative_tangent_error = tangent_error / tangent_scale;
-        assert(std::isfinite(relative_tangent_error));
-
-        return max(relative_primal_error, relative_tangent_error);
-    }
-};
-
-/// converts float hermite to fixed polynomial
-template <typename jet_t, typename coeff_t> struct hermite_to_polynomial_converter_t
-{
-    constexpr auto operator()(jet_t left, jet_t right) const noexcept -> cubic_polynomial_t<coeff_t>
-    {
-        auto const p0 = primal(left);
-        auto const p1 = primal(right);
-        auto const m0 = tangent(left);
-        auto const m1 = tangent(right);
-        auto const dp = p1 - p0;
-        return {{
-            to_fixed<coeff_t>(-2.0 * dp + m0 + m1),
-            to_fixed<coeff_t>(3.0 * dp - 2.0 * m0 - m1),
-            to_fixed<coeff_t>(m0),
-            to_fixed<coeff_t>(p0),
-        }};
-    }
-};
 
 /// float x and jet y result of sampling a function at x
 template <std::floating_point real_t> struct function_sample_t
@@ -343,7 +207,7 @@ struct interval_builder_t
     {
         using x_t = approximant_t::x_t;
 
-        auto const x_origin = to_fixed<x_t>(left.x);
+        auto const x0 = to_fixed<x_t>(left.x);
         auto const segment = build_segment(left.y, right.y, log2_width);
 
         return {
@@ -351,8 +215,8 @@ struct interval_builder_t
             .midpoint = midpoint,
             .right = right,
             .segment_defects = detect_defects(segment.coeffs()),
-            .residual = estimate_residual(sample_target_function,
-                approximant_t{.x_origin = x_origin, .segment = segment}, right.x - left.x, midpoint.x),
+            .residual = estimate_residual(
+                sample_target_function, approximant_t{.x0 = x0, .segment = segment}, right.x - left.x, midpoint.x),
             .segment = segment,
         };
     }
@@ -611,7 +475,7 @@ TEST(spline_builder, poc)
     using segment_builder_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
     using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
-    using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t, polynomial_evaluator_t{}>;
+    using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
     using interval_builder_t
         = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
