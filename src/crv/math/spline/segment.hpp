@@ -52,7 +52,7 @@ private:
 };
 
 /// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, typename packed_segment_t,
+template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, typename t_packed_segment_t,
     auto polynomial_evaluator, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
     requires(is_signed_v<typename t_coeff_t::value_t>)
 class alignas(32) segment_t
@@ -62,6 +62,7 @@ public:
     using y_t = t_y_t;
     using coeff_t = t_coeff_t;
     using normalized_t = t_normalized_t;
+    using packed_segment_t = t_packed_segment_t;
 
     using coeffs_t = cubic_polynomial_t<coeff_t>;
 
