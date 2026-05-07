@@ -8,7 +8,6 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
-#include <numeric>
 
 namespace crv::spline {
 
@@ -31,22 +30,14 @@ struct residual_estimator_t
 
     auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> real_t
     {
-        auto const midpoint = std::midpoint(right, left);
-        auto const half_width = (right - left) * 0.5;
+        auto const width = right - left;
 
         auto max_magnitude = real_t{0};
 
         for (auto const standard_node : generate_nodes())
         {
-            // convert from standard nodes in [-1, 1] to domain nodes in [left, right].
-            //
-            // Here, we sub exact center and boundries with no truncation error using cmov. Applying this to left and
-            // right prevents truncation from landing the evaluated position outside of the domain. We also apply it to
-            // center because it's trivial to and center tends to suffer from truncation.
-            auto domain_node = midpoint + half_width * standard_node;
-            if (standard_node == -1.0) domain_node = left;
-            if (standard_node == 0.0) domain_node = midpoint;
-            if (standard_node == 1.0) domain_node = right;
+            // convert from standard nodes in [0, 1] to domain nodes in [left, right].
+            auto const domain_node = standard_node * width;
 
             // evaluate target at target position and approxmant at quantized position
             auto const quantized_node = quantize(domain_node);

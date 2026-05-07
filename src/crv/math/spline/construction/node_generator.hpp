@@ -13,8 +13,12 @@
 
 namespace crv::spline::node_generators {
 
-/// generates equioscillation extrema at Chebyshev nodes of the second kind
-template <typename real_t, int sample_count = 5> struct equioscillation_t
+// --------------------------------------------------------------------------------------------------------------------
+// equisocillation
+// --------------------------------------------------------------------------------------------------------------------
+
+/// generates equioscillation extrema at Chebyshev nodes of the second kind in [0, 1], excluding the endpoints
+template <typename real_t, int sample_count = 3> struct equioscillation_t
 {
     using nodes_t = std::array<real_t, sample_count>;
     static nodes_t const nodes;
@@ -30,19 +34,12 @@ equioscillation_t<real_t, sample_count>::nodes_t const equioscillation_t<real_t,
     nodes_t result;
 
     // calc mid-range values
-    static constexpr auto scale = std::numbers::pi_v<real_t> / static_cast<real_t>(sample_count - 1);
-    for (auto sample = 1; sample < sample_count - 1; ++sample)
+    static constexpr auto scale = std::numbers::pi_v<real_t> / static_cast<real_t>(sample_count + 1);
+    for (auto sample = 0; sample < sample_count; ++sample)
     {
-        auto const position = std::cos(static_cast<real_t>(sample) * scale);
-        result[sample] = -position;
+        auto const position = std::cos(static_cast<real_t>(sample + 1) * scale);
+        result[sample] = (1 - position) * 0.5;
     }
-
-    // punch in common values
-    result[0] = -1.0;
-    result[sample_count - 1] = 1.0;
-
-    constexpr auto odd_count = sample_count & 1;
-    if constexpr (odd_count) result[sample_count / 2] = 0.0;
 
     return result;
 }();

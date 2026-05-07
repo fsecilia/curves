@@ -21,7 +21,7 @@ struct residual_estimator_test_t : Test
 
     static constexpr auto expected_max_error_magnitude = 11.1;
 
-    static constexpr auto expected_positions = std::array{0.0, 2.5, 5.0, 7.5, 10.0};
+    static constexpr auto expected_positions = std::array{1.0, 2.5, 5.0, 7.5, 9.0};
     static constexpr auto expected_quantized_positions = std::array{1.1, 2.2, 3.3, 4.4, 5.5};
     static constexpr auto expected_targets = std::array{6.6, 7.7, 8.8, 9.9, 10.10};
     static constexpr auto expected_approximations = std::array{-6.6, -7.7, -8.8, -9.9, -10.10};
@@ -61,7 +61,7 @@ struct residual_estimator_test_t : Test
     struct node_generator_t
     {
         using sample_locations_t = std::array<real_t, 5>;
-        static constexpr sample_locations_t sample_locations{-1.0, -0.5, 0.0, 0.5, 1.0};
+        static constexpr sample_locations_t sample_locations{0.1, 0.25, 0.5, 0.75, 0.9};
         auto operator()() const noexcept -> sample_locations_t const& { return sample_locations; }
     };
 
@@ -182,63 +182,6 @@ TEST_F(residual_estimator_test_t, handles_negative_error_correctly)
     expect_iteration(4);
 
     auto const actual = sut(approximant, left, right);
-
-    EXPECT_EQ(expected_max_error_magnitude, actual);
-}
-
-// test subbing exact boundaries and midpoint
-//
-// sut_t subs literal {left, midpoint, right} explicitly for sample locations at {-1, 0, +1}, respectively. This test
-// deliberately generates a segment that would normally truncate left or right and makes sure the literal positions are
-// still subbed.
-TEST_F(residual_estimator_test_t, evaluates_exact_boundaries_despite_truncation)
-{
-    real_t expected_left = 0.0;
-    real_t expected_right = 0.0;
-
-    // hunt for pair of values that do not correctly reconstruct left and right boundries after truncation
-    for (auto i = 1; i < 10000; ++i)
-    {
-        auto const actual_left = static_cast<real_t>(i) * 0.137;
-        auto const actual_right = actual_left + 1.234;
-
-        auto const midpoint = (actual_right + actual_left) * 0.5;
-        auto const half_width = (actual_right - actual_left) * 0.5;
-
-        // replicate sut calc
-        auto const calculated_left = midpoint + half_width * -1.0;
-        auto const calculated_right = midpoint + half_width * 1.0;
-
-        if (calculated_right != actual_right || calculated_left != actual_left)
-        {
-            expected_left = actual_left;
-            expected_right = actual_right;
-            break;
-        }
-    }
-
-    // ensure search didn't fail
-    ASSERT_NE(expected_left, expected_right) << "failed to find truncation-inducing bounds";
-
-    // cache expected values using same calcs as sut
-    auto const expected_midpoint = (expected_right + expected_left) * 0.5;
-    auto const expected_half_width = (expected_right - expected_left) * 0.5;
-    auto const expected_inner_left = expected_midpoint + expected_half_width * node_generator_t::sample_locations[1];
-    auto const expected_inner_right = expected_midpoint + expected_half_width * node_generator_t::sample_locations[3];
-
-    // verify evaluations
-    expect_iteration(
-        expected_left, expected_left, expected_targets[0], expected_approximations[0], expected_magnitudes[0]);
-    expect_iteration(expected_inner_left, expected_inner_left, expected_targets[1], expected_approximations[1],
-        expected_magnitudes[1], expected_max_error_magnitude);
-    expect_iteration(
-        expected_midpoint, expected_midpoint, expected_targets[2], expected_approximations[2], expected_magnitudes[2]);
-    expect_iteration(expected_inner_right, expected_inner_right, expected_targets[3], expected_approximations[3],
-        expected_magnitudes[3]);
-    expect_iteration(
-        expected_right, expected_right, expected_targets[4], expected_approximations[4], expected_magnitudes[4]);
-
-    auto const actual = sut(approximant, expected_left, expected_right);
 
     EXPECT_EQ(expected_max_error_magnitude, actual);
 }
