@@ -459,8 +459,9 @@ TEST(spline_builder, poc)
     using coeff_t = fixed_t<int64_t, 47>;
 
     constexpr auto max_segment_count = 1 << 8;
-    static constexpr auto log2_min_width = -16;
     static constexpr auto log2_domain_max = 8;
+    static constexpr auto log2_min_width = -16;
+    static auto const min_width = std::ldexp(1.0, log2_min_width);
 
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
     using packed_segment_t = packed_segment_t<coeff_t>;
@@ -490,10 +491,11 @@ TEST(spline_builder, poc)
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
+    auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
         .quantize = {},
-        .measure_error = error_norm_t{},
+        .measure_error = error_norm,
         .apply_weight = weight_function_t{.halflife = 0.5},
     };
 
