@@ -153,16 +153,18 @@ struct residual_estimator_t
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t interval_width,
-        real_t midpoint) const noexcept -> residual_t
+    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left,
+        real_t right) const noexcept -> residual_t
     {
         auto max_residual = residual_t{};
 
+        auto const interval_width = (right - left) * 0.5;
+
         // sample function at generated nodes
-        auto const half_width = interval_width * 0.5;
         for (auto const standard_node : generate_nodes())
         {
-            auto const domain_node = midpoint + half_width * standard_node;
+            // convert from standard nodes in [0, 1] to domain nodes in [left, right].
+            auto const domain_node = left + standard_node * interval_width;
 
             // evaluate target function at target position and approxmant at quantized position
             auto const quantized_node = quantize(domain_node);
@@ -180,6 +182,7 @@ struct residual_estimator_t
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 
+        auto const midpoint = (left + right) * 0.5;
         auto const weight = apply_weight(midpoint);
         assert(std::isfinite(weight));
         max_residual.weighted_error = max_residual.metric_error * weight;
@@ -215,8 +218,8 @@ struct interval_builder_t
             .midpoint = midpoint,
             .right = right,
             .segment_defects = detect_defects(segment.coeffs()),
-            .residual = estimate_residual(
-                sample_target_function, approximant_t{.x0 = x0, .segment = segment}, right.x - left.x, midpoint.x),
+            .residual
+            = estimate_residual(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x),
             .segment = segment,
         };
     }
