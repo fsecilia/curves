@@ -11,6 +11,14 @@
 
 namespace crv::spline {
 
+/// max scale of target and error between target and approximant over a subdomain
+template <std::floating_point real_t> struct residual_t
+{
+    real_t metric_error; // error based on norm error metric
+    real_t weighted_error; // metric_error weighted perceptually
+    real_t scale; // absolute magnitude of primal
+};
+
 /// estimates the maximum residual error of an approximant over a specific domain interval
 ///
 /// This type is an orchestrator. It organizes a search to find the worst-case error between a target function and its

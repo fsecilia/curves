@@ -22,6 +22,7 @@
 #include <crv/math/spline/construction/hermite_converter.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/quantizer.hpp>
+#include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_derivative.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
@@ -53,14 +54,6 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defec
 
 namespace spline {
 namespace {
-
-/// max scale of target and error between target and approximant over a subdomain
-template <std::floating_point real_t> struct residual_t
-{
-    real_t metric_error; // error based on norm error metric
-    real_t weighted_error; // metric_error weighted perceptually
-    real_t scale; // absolute magnitude of primal
-};
 
 /// unit of work over subdomain
 template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
