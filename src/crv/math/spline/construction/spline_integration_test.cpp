@@ -6,7 +6,6 @@
 #include <crv/lib.hpp>
 #include <crv/test/test.hpp>
 
-#include <crv/bitwise_enum.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
@@ -15,6 +14,7 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
+#include <crv/math/spline/construction/defect_analyzer.hpp>
 #include <crv/math/spline/construction/defect_checks/monotonicity.hpp>
 #include <crv/math/spline/construction/defect_checks/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
@@ -38,20 +38,6 @@
 #include <variant>
 
 namespace crv {
-namespace spline {
-namespace {
-
-enum class segment_defects_t : int_t
-{
-    monotonicity = 1 << 0,
-    overflow = 1 << 1,
-};
-
-} // namespace
-} // namespace spline
-
-template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defects_t> = true;
-
 namespace spline {
 namespace {
 
@@ -224,21 +210,6 @@ template <std::floating_point real_t> struct subdivision_error_t
 
     real_t left;
     real_t right;
-};
-
-template <typename monotonicity_check_t, typename overflow_check_t> struct defect_analyzer_t
-{
-    [[no_unique_address]] monotonicity_check_t check_monotonicity;
-    [[no_unique_address]] overflow_check_t check_overflow;
-
-    template <typename coeff_t>
-    auto operator()(cubic_polynomial_t<coeff_t> const& polynomial) const noexcept -> segment_defects_t
-    {
-        auto result = segment_defects_t{};
-        if (check_monotonicity(polynomial)) result |= segment_defects_t::monotonicity;
-        if (check_overflow(polynomial)) result |= segment_defects_t::overflow;
-        return result;
-    }
 };
 
 /// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
