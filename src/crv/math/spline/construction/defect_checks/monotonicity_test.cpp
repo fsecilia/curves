@@ -7,7 +7,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::spline::defect_detectors {
+namespace crv::spline::defect_checks {
 namespace {
 
 using sut_t = monotonicity_t;
@@ -71,4 +71,4 @@ static_assert(!is_monotonic(30000, -50000, 0));
 static_assert(!is_monotonic(30000, -29000, 0));
 
 } // namespace
-} // namespace crv::spline::defect_detectors
+} // namespace crv::spline::defect_checks

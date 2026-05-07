@@ -10,7 +10,7 @@
 
 #include <crv/math/spline/polynomial.hpp>
 
-namespace crv::spline::defect_detectors {
+namespace crv::spline::defect_checks {
 namespace {
 
 using normalized_t = fixed_t<uint64_t, 64>;
@@ -66,7 +66,7 @@ struct interval_param_t : common_param_t
     }
 };
 
-struct spline_defect_detectors_interval_test_t : TestWithParam<interval_param_t>
+struct spline_defect_checks_interval_test_t : TestWithParam<interval_param_t>
 {
     bool expected = GetParam().expected;
     polynomial_t const& polynomial = GetParam().polynomial;
@@ -74,7 +74,7 @@ struct spline_defect_detectors_interval_test_t : TestWithParam<interval_param_t>
     sut_t sut{};
 };
 
-TEST_P(spline_defect_detectors_interval_test_t, result)
+TEST_P(spline_defect_checks_interval_test_t, result)
 {
     EXPECT_EQ(expected, sut(polynomial));
 }
@@ -300,7 +300,7 @@ interval_param_t const interval_params[] = {
     //  tangent peak at t = 0.5: 7500 - 15000 + 6300 = -1200 (safe)
     {false, 10000.0, -15000.0, 6300.0, 2000.0},
 };
-INSTANTIATE_TEST_SUITE_P(interval_params, spline_defect_detectors_interval_test_t, ValuesIn(interval_params));
+INSTANTIATE_TEST_SUITE_P(interval_params, spline_defect_checks_interval_test_t, ValuesIn(interval_params));
 
 // --------------------------------------------------------------------------------------------------------------------
 // point tests
@@ -320,7 +320,7 @@ struct point_param_t : common_param_t
     }
 };
 
-struct spline_defect_detectors_point_test_t : TestWithParam<point_param_t>
+struct spline_defect_checks_point_test_t : TestWithParam<point_param_t>
 {
     bool expected = GetParam().expected;
     polynomial_t const& polynomial = GetParam().polynomial;
@@ -329,7 +329,7 @@ struct spline_defect_detectors_point_test_t : TestWithParam<point_param_t>
     sut_t sut{};
 };
 
-TEST_P(spline_defect_detectors_point_test_t, result)
+TEST_P(spline_defect_checks_point_test_t, result)
 {
     EXPECT_EQ(expected, sut(polynomial, point));
 }
@@ -364,7 +364,7 @@ point_param_t const point_params[] = {
     // iter 3: 16000*0.5 + 32000 = 40000 (> 32767)
     {true, 32000.0, -16000.0, 16000.0, 32000.0, 0.5},
 };
-INSTANTIATE_TEST_SUITE_P(point_params, spline_defect_detectors_point_test_t, ValuesIn(point_params));
+INSTANTIATE_TEST_SUITE_P(point_params, spline_defect_checks_point_test_t, ValuesIn(point_params));
 
 } // namespace
-} // namespace crv::spline::defect_detectors
+} // namespace crv::spline::defect_checks
