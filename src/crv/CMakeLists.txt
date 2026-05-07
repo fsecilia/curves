@@ -28,6 +28,7 @@ target_sources(lib PRIVATE
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
     math/spline/construction/approximant.hpp
+    math/spline/construction/defect_analyzer.hpp
     math/spline/construction/defect_checks/monotonicity.hpp
     math/spline/construction/defect_checks/overflow.hpp
     math/spline/construction/error_norm.hpp
@@ -134,6 +135,7 @@ if (enable_testing)
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
         math/spline/construction/approximant_test.cpp
+        math/spline/construction/defect_analyzer_test.cpp
         math/spline/construction/defect_checks/monotonicity_test.cpp
         math/spline/construction/defect_checks/overflow_test.cpp
         math/spline/construction/error_norm_test.cpp
