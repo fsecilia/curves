@@ -163,6 +163,13 @@ if (enable_testing)
     )
     gtest_discover_tests(unit_tests)
     add_dependencies(build_tests unit_tests)
+
+    if (BUILD_INTEGRATION_TESTS)
+        add_executable(spline_integration_test
+            math/spline/construction/spline_integration_test.cpp
+        )
+        target_link_libraries(spline_integration_test PRIVATE lib testing)
+    endif()
 endif()
 
 add_subdirectory(kernel)
