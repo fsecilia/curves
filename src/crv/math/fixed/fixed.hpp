@@ -49,11 +49,13 @@ using product_t = fixed_t<int_by_bytes_t<max(sizeof(typename lhs_t::value_t), si
                               std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
     lhs_t::frac_bits + rhs_t::frac_bits>;
 
+inline constexpr auto default_div_rounding_mode = rounding_modes::div::truncate;
+using default_div_rounding_mode_t = std::remove_cv_t<decltype(default_div_rounding_mode)>;
+
 inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
 using default_shr_rounding_mode_t = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
 
-inline constexpr auto default_div_rounding_mode = rounding_modes::div::truncate;
-using default_div_rounding_mode_t = std::remove_cv_t<decltype(default_div_rounding_mode)>;
+inline constexpr auto default_shifter = shifter_t<default_shr_rounding_mode>{};
 
 } // namespace fixed
 
@@ -118,7 +120,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// converts from another fixed_t specialization, rescaling precision using shifter
     template <is_fixed other_t, overflow_policy_t overflow_policy = default_overflow_policy,
-        auto shifter = shifter_t<>{}>
+        auto shifter = fixed::default_shifter>
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
         if constexpr (std::same_as<fixed_t, other_t>) { return other; }
@@ -168,7 +170,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// overloads convert so overflow policy can be specified first
-    template <overflow_policy_t overflow_policy, is_fixed other_t, auto shifter = shifter_t<>{}>
+    template <overflow_policy_t overflow_policy, is_fixed other_t, auto shifter = fixed::default_shifter>
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
         return convert<other_t, overflow_policy, shifter>(other);
@@ -286,7 +288,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     constexpr auto operator*=(fixed_t src) noexcept -> fixed_t&
     {
-        return *this = multiply<fixed_t, shifter_t<>{}>(*this, src);
+        return *this = multiply<fixed_t, fixed::default_shifter>(*this, src);
     }
 
     constexpr auto operator/=(fixed_t src) noexcept -> fixed_t&
@@ -296,7 +298,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> constexpr auto operator%=(other_t src) noexcept -> fixed_t&
     {
-        return *this = mod<fixed_t, shifter_t<>{}>(*this, src);
+        return *this = mod<fixed_t, fixed::default_shifter>(*this, src);
     }
 
     friend constexpr auto operator+(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t { return lhs += rhs; }
@@ -307,7 +309,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator*(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return multiply<fixed_t, shifter_t<>{}>(lhs, rhs);
+        return multiply<fixed_t, fixed::default_shifter>(lhs, rhs);
     }
 
     template <is_fixed other_t> friend constexpr auto operator/(fixed_t lhs, other_t rhs) noexcept -> fixed_t
@@ -317,7 +319,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     template <is_fixed other_t> friend constexpr auto operator%(fixed_t lhs, other_t rhs) noexcept -> fixed_t
     {
-        return mod<fixed_t, shifter_t<>{}>(lhs, rhs);
+        return mod<fixed_t, fixed::default_shifter>(lhs, rhs);
     }
 
     /// \returns wide product at higher precision
@@ -371,7 +373,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// calcs remainder of lhs/rhs
-    template <is_fixed out_t, is_fixed rhs_t, auto shifter = shifter_t<>{}>
+    template <is_fixed out_t, is_fixed rhs_t, auto shifter = fixed::default_shifter>
     friend constexpr auto mod(fixed_t lhs, rhs_t rhs) noexcept -> out_t
     {
         // widen
@@ -403,7 +405,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     /// calcs remainder of lhs/rhs, defaulting to dividend's type and precision
     template <is_fixed divisor_t> friend constexpr auto mod(fixed_t dividend, divisor_t divisor) noexcept -> fixed_t
     {
-        return mod<fixed_t>(dividend, divisor, shifter_t<>{});
+        return mod<fixed_t>(dividend, divisor, fixed::default_shifter);
     }
 
     // ----------------------------------------------------------------------------------------------------------------
