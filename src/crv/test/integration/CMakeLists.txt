@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# integration tetss
+# integration tests
 
 if (BUILD_INTEGRATION_TESTS)
     add_executable(integration_tests
