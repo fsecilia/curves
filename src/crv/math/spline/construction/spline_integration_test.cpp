@@ -140,7 +140,7 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_check_t,
+template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_analyzer_t,
     typename residual_estimator_t>
 struct interval_builder_t
 {
@@ -150,7 +150,7 @@ struct interval_builder_t
     using function_sample_t = function_sample_t<real_t>;
 
     [[no_unique_address]] segment_builder_t build_segment;
-    [[no_unique_address]] defect_check_t detect_defects;
+    [[no_unique_address]] defect_analyzer_t analyze_defects;
     residual_estimator_t estimate_residual;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
@@ -166,7 +166,7 @@ struct interval_builder_t
             .left = left,
             .midpoint = midpoint,
             .right = right,
-            .segment_defects = detect_defects(segment.coeffs()),
+            .segment_defects = analyze_defects(segment.coeffs()),
             .residual
             = estimate_residual(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x),
             .segment = segment,
@@ -226,18 +226,17 @@ template <std::floating_point real_t> struct subdivision_error_t
     real_t right;
 };
 
-// this is named poorly
-template <typename monotonicity_t, typename overflow_t> struct defect_check_t
+template <typename monotonicity_check_t, typename overflow_check_t> struct defect_analyzer_t
 {
-    [[no_unique_address]] monotonicity_t monotonicity;
-    [[no_unique_address]] overflow_t overflow;
+    [[no_unique_address]] monotonicity_check_t check_monotonicity;
+    [[no_unique_address]] overflow_check_t check_overflow;
 
     template <typename coeff_t>
     auto operator()(cubic_polynomial_t<coeff_t> const& polynomial) const noexcept -> segment_defects_t
     {
         auto result = segment_defects_t{};
-        if (monotonicity(polynomial)) result |= segment_defects_t::monotonicity;
-        if (overflow(polynomial)) result |= segment_defects_t::overflow;
+        if (check_monotonicity(polynomial)) result |= segment_defects_t::monotonicity;
+        if (check_overflow(polynomial)) result |= segment_defects_t::overflow;
         return result;
     }
 };
@@ -419,11 +418,11 @@ TEST(spline_builder, poc)
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
     using segment_builder_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
-    using defect_check_t
-        = defect_check_t<defect_checks::monotonicity_t, defect_checks::overflow_t<real_t, normalized_t, mac_t{}>>;
+    using defect_analyzer_t
+        = defect_analyzer_t<defect_checks::monotonicity_t, defect_checks::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
     using interval_builder_t
-        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_check_t, residual_estimator_t>;
+        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_analyzer_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
     using subdivision_t = subdivision_t<interval_t>;
     using bisector_t = bisector_t<subdivision_t, interval_builder_t>;
@@ -443,7 +442,7 @@ TEST(spline_builder, poc)
 
     auto const interval_builder = interval_builder_t{
         .build_segment = {},
-        .detect_defects = {},
+        .analyze_defects = {},
         .estimate_residual = estimate_residual,
     };
 
