@@ -29,6 +29,7 @@ target_sources(lib PRIVATE
     math/spline/construction/approximant.hpp
     math/spline/construction/defect_detectors/monotonicity.hpp
     math/spline/construction/defect_detectors/overflow.hpp
+    math/spline/construction/function_sampler.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/hermite_converter.hpp
     math/spline/construction/interval.hpp
@@ -135,6 +136,7 @@ if (enable_testing)
         math/spline/construction/defect_detectors/monotonicity_test.cpp
         math/spline/construction/defect_detectors/overflow_test.cpp
         math/spline/construction/error_norm_test.cpp
+        math/spline/construction/function_sampler_test.cpp
         math/spline/construction/hermite_converter_test.cpp
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
