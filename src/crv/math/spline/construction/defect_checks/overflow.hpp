@@ -15,7 +15,7 @@
 #include <concepts>
 #include <iterator>
 
-namespace crv::spline::defect_detectors {
+namespace crv::spline::defect_checks {
 
 /// predicate to test for overflow in primal and tangent of fixed-point polynomial
 ///
@@ -182,4 +182,4 @@ private:
     }
 };
 
-} // namespace crv::spline::defect_detectors
+} // namespace crv::spline::defect_checks

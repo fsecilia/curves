@@ -15,8 +15,8 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
-#include <crv/math/spline/construction/defect_detectors/monotonicity.hpp>
-#include <crv/math/spline/construction/defect_detectors/overflow.hpp>
+#include <crv/math/spline/construction/defect_checks/monotonicity.hpp>
+#include <crv/math/spline/construction/defect_checks/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/hermite_converter.hpp>
@@ -140,7 +140,7 @@ struct residual_estimator_t
 };
 
 /// constructs intervals
-template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_detector_t,
+template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_check_t,
     typename residual_estimator_t>
 struct interval_builder_t
 {
@@ -150,7 +150,7 @@ struct interval_builder_t
     using function_sample_t = function_sample_t<real_t>;
 
     [[no_unique_address]] segment_builder_t build_segment;
-    [[no_unique_address]] defect_detector_t detect_defects;
+    [[no_unique_address]] defect_check_t detect_defects;
     residual_estimator_t estimate_residual;
 
     constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
@@ -227,7 +227,7 @@ template <std::floating_point real_t> struct subdivision_error_t
 };
 
 // this is named poorly
-template <typename monotonicity_t, typename overflow_t> struct defect_detector_t
+template <typename monotonicity_t, typename overflow_t> struct defect_check_t
 {
     [[no_unique_address]] monotonicity_t monotonicity;
     [[no_unique_address]] overflow_t overflow;
@@ -419,11 +419,11 @@ TEST(spline_builder, poc)
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
     using segment_builder_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
-    using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
-        defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
+    using defect_check_t
+        = defect_check_t<defect_checks::monotonicity_t, defect_checks::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
     using interval_builder_t
-        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_detector_t, residual_estimator_t>;
+        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_check_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
     using subdivision_t = subdivision_t<interval_t>;
     using bisector_t = bisector_t<subdivision_t, interval_builder_t>;
