@@ -18,10 +18,14 @@
 #include <crv/math/spline/construction/defect_detectors/monotonicity.hpp>
 #include <crv/math/spline/construction/defect_detectors/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
+#include <crv/math/spline/construction/hermite_converter.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/quantizer.hpp>
+#include <crv/math/spline/construction/segment_derivative.hpp>
+#include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
 #include <crv/math/spline/polynomial.hpp>
+#include <crv/math/spline/segment.hpp>
 #include <crv/priority_queue.hpp>
 #include <algorithm>
 #include <cmath>
@@ -52,41 +56,6 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defec
 namespace spline {
 namespace {
 
-/// normalizes from spline input space to a segment's local input space
-template <typename t_normalized_t, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
-struct segment_input_normalizer_t
-{
-    using normalized_t = t_normalized_t;
-
-    template <is_fixed x_t> constexpr auto operator()(x_t x, int_t log2_width) const noexcept -> normalized_t
-    {
-        auto const x_to_t_shift = normalized_t::frac_bits - x_t::frac_bits - log2_width;
-        return normalized_t::literal(shifter.shift(x.value, x_to_t_shift));
-    }
-};
-
-/// fixed-point normalized polynomial with width
-template <typename t_x_t, typename t_y_t, typename t_coeff_t, auto input_normalizer, auto polynomial_evaluator>
-struct segment_t
-{
-    using x_t = t_x_t;
-    using y_t = t_y_t;
-    using coeff_t = t_coeff_t;
-    using normalized_t = decltype(input_normalizer)::normalized_t;
-
-    using polynomial_t = cubic_polynomial_t<coeff_t>;
-
-    polynomial_t polynomial;
-    int_t log2_width;
-
-    constexpr auto x_to_t(x_t x) const noexcept -> normalized_t { return input_normalizer(x, log2_width); }
-
-    constexpr auto primal(normalized_t t) const noexcept -> y_t
-    {
-        return y_t::convert(polynomial_evaluator(t, polynomial));
-    }
-};
-
 /// converts between dy/dx and dy/dt using the jacobian, dx/dt
 struct tangent_jacobian_t
 {
@@ -108,28 +77,6 @@ struct tangent_jacobian_t
     }
 };
 
-/// builds fixed segment from float hermite and log2_width; scales tangents by width
-template <typename t_real_t, typename t_segment_t, typename tangent_jacobian_t, auto hermite_to_polynomial_converter>
-struct segment_builder_t
-{
-    using real_t = t_real_t;
-    using segment_t = t_segment_t;
-
-    using jet_t = jet_t<real_t>;
-
-    [[no_unique_address]] tangent_jacobian_t tangent_jacobian;
-
-    constexpr auto operator()(jet_t left, jet_t right, int_t log2_width) const noexcept -> segment_t
-    {
-        // convert from spline-global dy/dx to segment-local dy/dt via chain rule
-        auto dx_dt = tangent_jacobian.template dx_dt<real_t>(log2_width);
-        left.df *= dx_dt;
-        right.df *= dx_dt;
-
-        return segment_t{hermite_to_polynomial_converter(left, right), log2_width};
-    }
-};
-
 /// adapts segment with float api, anchors to origin in fixed x
 template <std::floating_point t_real_t, typename segment_t, typename tangent_jacobian_t, auto polynomial_evaluator>
 struct approximant_t
@@ -144,12 +91,15 @@ struct approximant_t
 
     constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
-        auto const t = segment.x_to_t(to_fixed<x_t>(x) - x_origin);
-        auto const primal = from_fixed<real_t>(segment.primal(t));
+        auto x_local = to_fixed<x_t>(x) - x_origin;
+        if (x_local >= segment.width()) --x_local.value;
+
+        auto const t = segment.x_to_t(x_local);
+        auto const primal = from_fixed<real_t>(segment.evaluate(t));
 
         // convert from segment-local dy/dt to spline-global dy/dx via chain rule
         auto const dy_dt = from_fixed<real_t>(tangent(t));
-        auto const dy_dx = tangent_jacobian.dy_dt_to_dy_dx(dy_dt, segment.log2_width);
+        auto const dy_dx = tangent_jacobian.dy_dt_to_dy_dx(dy_dt, segment.log2_width());
 
         return jet_t{primal, dy_dx};
     }
@@ -159,7 +109,7 @@ private:
     {
         // TODO: We check that the primal calc does not overflow any intermediate calcs, but not the tangent calc.
         // This may overflow.
-        auto const& polynomial = segment.polynomial;
+        auto const& polynomial = segment.coeffs();
         return segment_t::y_t::convert(
             polynomial_evaluator(t, quadratic_polynomial_t{3 * polynomial[0], 2 * polynomial[1], polynomial[2]}));
     }
@@ -400,7 +350,7 @@ struct interval_builder_t
             .left = left,
             .midpoint = midpoint,
             .right = right,
-            .segment_defects = detect_defects(segment.polynomial),
+            .segment_defects = detect_defects(segment.coeffs()),
             .residual = estimate_residual(sample_target_function,
                 approximant_t{.x_origin = x_origin, .segment = segment}, right.x - left.x, midpoint.x),
             .segment = segment,
@@ -419,7 +369,7 @@ template <typename t_subdivision_t, typename interval_builder_t> struct bisector
     constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
         -> subdivision_t
     {
-        auto const child_log2_width = parent.segment.log2_width - 1;
+        auto const child_log2_width = parent.segment.log2_width() - 1;
 
         auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
         auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
@@ -498,7 +448,7 @@ template <std::floating_point real_t, typename bisector_t, int_t log2_min_width>
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
-            = interval.segment.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
+            = interval.segment.log2_width() > log2_min_width && interval.residual.metric_error >= local_tolerance;
         auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
 
         if (must_subdivide && !can_subdivide)
@@ -634,11 +584,10 @@ struct spliner_t
 TEST(spline_builder, poc)
 {
     using real_t = float_t;
-    using jet_t = jet_t<real_t>;
 
     using x_t = fixed_t<uint64_t, 44>;
     using y_t = fixed_t<uint64_t, 48>;
-    using normalized_t = fixed_t<uint64_t, 63>;
+    using normalized_t = fixed_t<uint64_t, 64>;
 
     using coeff_t = fixed_t<int64_t, 47>;
 
@@ -646,9 +595,9 @@ TEST(spline_builder, poc)
     static constexpr auto log2_min_width = -16;
     static constexpr auto log2_domain_max = 8;
 
-    using segment_input_normalizer_t = segment_input_normalizer_t<normalized_t>;
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
-    using segment_t = segment_t<x_t, y_t, coeff_t, segment_input_normalizer_t{}, polynomial_evaluator_t{}>;
+    using packed_segment_t = packed_segment_t<coeff_t>;
+    using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
@@ -657,9 +606,9 @@ TEST(spline_builder, poc)
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
-    using hermite_to_polynomial_converter_t = hermite_to_polynomial_converter_t<jet_t, coeff_t>;
-    using segment_builder_t
-        = segment_builder_t<real_t, segment_t, tangent_jacobian_t, hermite_to_polynomial_converter_t{}>;
+    using segment_derivative_t = segment_derivative_t<real_t>;
+    using hermite_converter_t = hermite_converter_t<coeff_t>;
+    using segment_builder_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
     using defect_detector_t = defect_detector_t<defect_detectors::monotonicity_t,
         defect_detectors::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, tangent_jacobian_t, polynomial_evaluator_t{}>;
@@ -714,18 +663,18 @@ TEST(spline_builder, poc)
     {
         using std::log1p;
 
-        auto const log2_width = completed_segment.segment.log2_width;
+        auto const log2_width = completed_segment.segment.log2_width();
         auto const width = log2_width < 0 ? x_t{1} >> -log2_width : x_t{1} << log2_width;
 
-        static auto const dx_denom = 10;
-        for (auto dx_numer = 0; dx_numer <= 10; ++dx_numer)
+        static auto const x_denom = 10;
+        for (auto x_numer = 0; x_numer < 10; ++x_numer)
         {
-            auto const dx = width * dx_numer / dx_denom;
-            auto const x_fixed = completed_segment.origin + dx;
+            auto const x = width * x_numer / x_denom;
+            auto const x_fixed = completed_segment.origin + x;
             auto const x_real = from_fixed<real_t>(x_fixed);
             auto const expected_y = log1p(x_real);
             auto const segment = completed_segment.segment;
-            auto const actual_y = from_fixed<real_t>(segment.primal(segment.x_to_t(dx)));
+            auto const actual_y = from_fixed<real_t>(segment.evaluate(segment.x_to_t(x)));
             auto const difference = actual_y - expected_y;
 
             std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
@@ -733,7 +682,7 @@ TEST(spline_builder, poc)
         }
         std::cout << std::endl;
     }
-    std::cout << "max residual: " << result.value().max_residual << std::endl;
+    std::cout << std::setprecision(15) << "max residual: " << result.value().max_residual << std::endl;
 #endif
 }
 
