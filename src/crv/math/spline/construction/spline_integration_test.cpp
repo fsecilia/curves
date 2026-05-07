@@ -8,7 +8,6 @@
 
 #include <crv/bitwise_enum.hpp>
 #include <crv/math/abs.hpp>
-#include <crv/math/elementwise_max.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
 #include <crv/math/integer.hpp>
@@ -58,30 +57,9 @@ namespace {
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point real_t> struct residual_t
 {
-    real_t primal_error; // L-infinity of primal approx relative to target
-    real_t tangent_error; // L-infinity of tangent approx relative to target
     real_t metric_error; // error based on norm error metric
     real_t weighted_error; // metric_error weighted perceptually
     real_t scale; // absolute magnitude of primal
-
-    friend auto elementwise_max(residual_t const& lhs, residual_t const& rhs) noexcept -> residual_t
-    {
-        using cpo::elementwise_max;
-        return residual_t{
-            .primal_error = elementwise_max(lhs.primal_error, rhs.primal_error),
-            .tangent_error = elementwise_max(lhs.tangent_error, rhs.tangent_error),
-            .metric_error = elementwise_max(lhs.metric_error, rhs.metric_error),
-            .weighted_error = elementwise_max(lhs.weighted_error, rhs.weighted_error),
-            .scale = elementwise_max(lhs.scale, rhs.scale),
-        };
-    }
-
-    friend auto operator<<(std::ostream& out, residual_t const& src) -> std::ostream&
-    {
-        return out << "{.primal_error = " << src.primal_error << ", .tangent_error = " << src.tangent_error
-                   << ", .metric_error = " << src.metric_error << ", .weighted_error = " << src.weighted_error
-                   << ", .scale = " << src.scale << "}";
-    }
 };
 
 /// unit of work over subdomain
@@ -153,14 +131,10 @@ struct residual_estimator_t
             auto const approximation = approximant(quantized_node);
             auto const target_function_sample = sample_target_function(domain_node);
             auto const target = target_function_sample.y;
-            auto const primal_error = abs(primal(target) - primal(approximation));
-            auto const tangent_error = abs(tangent(target) - tangent(approximation));
             auto const metric_error = measure_error(target, approximation);
             assert(std::isfinite(metric_error));
 
             max_residual.scale = max(max_residual.scale, abs(primal(target)));
-            max_residual.primal_error = max(max_residual.primal_error, primal_error);
-            max_residual.tangent_error = max(max_residual.tangent_error, tangent_error);
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 
@@ -350,7 +324,6 @@ struct spliner_t
     struct result_t
     {
         completed_segments_t completed_segments;
-        residual_t max_residual;
     };
 
     // optional overload to take a function directly
@@ -408,12 +381,6 @@ struct spliner_t
             refinement_pool.pop();
         }
 
-        // apply max to residual
-        auto const max_residual = std::ranges::fold_left(
-            completed_intervals, residual_t{}, [](auto const& accumulator, auto const& element) noexcept {
-                return cpo::elementwise_max(accumulator, element.residual);
-            });
-
         // convert from segments to intervals
         std::ranges::transform(
             completed_intervals, std::back_inserter(completed_segments), [](auto const& interval) noexcept {
@@ -426,7 +393,7 @@ struct spliner_t
         // sort by origin
         std::ranges::sort(completed_segments, std::ranges::less{}, &completed_segment_t::origin);
 
-        return result_t{.completed_segments = std::move(completed_segments), .max_residual = max_residual};
+        return result_t{.completed_segments = std::move(completed_segments)};
     }
 };
 
@@ -533,7 +500,6 @@ TEST(spline_builder, poc)
         }
         std::cout << std::endl;
     }
-    std::cout << std::setprecision(15) << "max residual: " << result.value().max_residual << std::endl;
 #endif
 }
 
