@@ -10,7 +10,7 @@
 #include <crv/math/spline/construction/defect_analyzer.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
-#include <compare>
+#include <tuple>
 
 namespace crv::spline {
 
@@ -30,17 +30,27 @@ template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
     segment_defects_t segment_defects;
     residual_t residual;
     segment_t segment;
+};
 
-    /// orders by segment_defects, residual.weighted_error, and left.x
-    constexpr auto operator<=>(interval_t const& src) const noexcept -> std::partial_ordering
+/// orders by segment_defects, residual.weighted_error, then left.x
+struct interval_priority_less_t
+{
+    template <typename interval_t>
+    constexpr auto operator()(interval_t const& lhs, interval_t const& rhs) const noexcept -> bool
     {
-        auto const lhs_must_subdivide = segment_defects != segment_defects_t{0};
-        auto const rhs_must_subdivide = src.segment_defects != segment_defects_t{0};
-        if (auto const cmp = lhs_must_subdivide <=> rhs_must_subdivide; std::is_neq(cmp)) return cmp;
-        if (auto const cmp = residual.weighted_error <=> src.residual.weighted_error; std::is_neq(cmp)) return cmp;
-        return left.x <=> src.left.x;
+        using std::isfinite;
+        assert(isfinite(lhs.residual.weighted_error));
+        assert(isfinite(lhs.left.x));
+        assert(isfinite(rhs.residual.weighted_error));
+        assert(isfinite(rhs.left.x));
+
+        auto const lhs_defects = lhs.segment_defects != segment_defects_t{0};
+        auto const rhs_defects = rhs.segment_defects != segment_defects_t{0};
+
+        // tie applies lexicographical compare
+        return std::tie(lhs_defects, lhs.residual.weighted_error, lhs.left.x)
+            < std::tie(rhs_defects, rhs.residual.weighted_error, rhs.left.x);
     }
-    constexpr auto operator==(interval_t const& src) const noexcept -> bool = default;
 };
 
 } // namespace crv::spline
