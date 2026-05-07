@@ -22,14 +22,14 @@ template <std::floating_point t_real_t, typename segment_t, typename segment_der
     x_t x0;
     segment_t segment;
 
-    [[no_unique_address]] segment_derivative_t segment_derivative;
+    [[no_unique_address]] segment_derivative_t segment_derivative{};
 
     /// \returns jet in spline-global spatial coordinates, {y, dy/dx}
     constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
     {
         auto const t = segment.x_to_t(to_fixed<x_t>(x) - x0);
         auto const primal = from_fixed<real_t>(segment.evaluate(t));
-        auto const tangent = segment_derivative.dy_dx(segment.coeffs(), t, segment.log2_width());
+        auto const tangent = segment_derivative.dy_dx(segment.coeffs(), from_fixed<real_t>(t), segment.log2_width());
         return jet_t{primal, tangent};
     }
 };

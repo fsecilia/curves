@@ -48,7 +48,7 @@ struct spline_approximant_test_t : Test
     {
         virtual ~mock_segment_derivative_t() = default;
 
-        MOCK_METHOD(real_t, dy_dx, (coeffs_t const&, normalized_t, int_t), (const, noexcept));
+        MOCK_METHOD(real_t, dy_dx, (coeffs_t const&, real_t, int_t), (const, noexcept));
     };
     StrictMock<mock_segment_derivative_t> mock_segment_derivative;
 
@@ -56,7 +56,7 @@ struct spline_approximant_test_t : Test
     {
         mock_segment_derivative_t* mock = nullptr;
 
-        auto dy_dx(coeffs_t const& coeffs, normalized_t t, int_t log2_width) const noexcept -> real_t
+        auto dy_dx(coeffs_t const& coeffs, real_t t, int_t log2_width) const noexcept -> real_t
         {
             return mock->dy_dx(coeffs, t, log2_width);
         }
@@ -71,21 +71,22 @@ struct spline_approximant_test_t : Test
 TEST_F(spline_approximant_test_t, call_operator)
 {
     auto const x_real = float_t{7};
-    auto const x_fixed = x_t{7};
-    auto const t = normalized_t::literal(11);
+    auto const x_fixed = to_fixed<x_t>(x_real);
+    auto const t_real = float_t{0.5};
+    auto const t_fixed = to_fixed<normalized_t>(t_real);
     auto const y_real = float_t{13};
-    auto const y_fixed = y_t{13};
+    auto const y_fixed = to_fixed<y_t>(y_real);
     auto const coeffs = coeffs_t{};
     auto const dy_dx = real_t{19};
     auto const log2_width = 4;
 
     auto const expected = jet_t{y_real, dy_dx};
 
-    EXPECT_CALL(mock_segment, x_to_t(x_fixed - x0)).WillOnce(Return(t));
-    EXPECT_CALL(mock_segment, evaluate(t)).WillOnce(Return(y_fixed));
+    EXPECT_CALL(mock_segment, x_to_t(x_fixed - x0)).WillOnce(Return(t_fixed));
+    EXPECT_CALL(mock_segment, evaluate(t_fixed)).WillOnce(Return(y_fixed));
     EXPECT_CALL(mock_segment, coeffs()).WillOnce(ReturnRef(coeffs));
     EXPECT_CALL(mock_segment, log2_width()).WillOnce(Return(log2_width));
-    EXPECT_CALL(mock_segment_derivative, dy_dx(Ref(coeffs), t, log2_width)).WillOnce(Return(dy_dx));
+    EXPECT_CALL(mock_segment_derivative, dy_dx(Ref(coeffs), t_real, log2_width)).WillOnce(Return(dy_dx));
     auto const actual = sut(x_real);
 
     EXPECT_EQ(expected, actual);
