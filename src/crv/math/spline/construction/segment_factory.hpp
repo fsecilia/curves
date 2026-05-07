@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
 
 namespace crv::spline {
@@ -30,7 +31,8 @@ struct segment_factory_t
         left.df *= dx_dt;
         right.df *= dx_dt;
 
-        return segment_t{hermite_converter(left, right), log2_width};
+        using packed_segment_t = segment_t::packed_segment_t;
+        return segment_t{packed_segment_t{hermite_converter(left, right), int_cast<int8_t>(log2_width)}};
     }
 };
 

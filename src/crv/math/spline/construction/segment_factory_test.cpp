@@ -43,8 +43,13 @@ struct hermite_converter_t
 
 struct segment_t
 {
-    hermite_converter_t::result_t hermite_converter_result;
-    int_t log2_width;
+    struct packed_segment_t
+    {
+        hermite_converter_t::result_t hermite_converter_result;
+        int_t log2_width;
+        constexpr auto operator==(packed_segment_t const& src) const noexcept -> bool = default;
+    };
+    packed_segment_t packed_segment;
 
     constexpr auto operator==(segment_t const& src) const noexcept -> bool = default;
 };
@@ -71,9 +76,10 @@ constexpr auto eps = std::numeric_limits<real_t>::epsilon();
 
 constexpr auto test(jet_t left, jet_t right, int_t log2_width) noexcept -> bool
 {
+    using packed_segment_t = segment_t::packed_segment_t;
     auto width = signed_shift(log2_width);
     return sut(left, right, log2_width)
-        == segment_t{{{left.f, left.df * width}, {right.f, right.df * width}}, log2_width};
+        == segment_t{packed_segment_t{{{left.f, left.df * width}, {right.f, right.df * width}}, log2_width}};
 }
 
 // degenerate case
