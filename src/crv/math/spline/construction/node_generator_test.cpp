@@ -20,36 +20,32 @@ struct node_generators_equioscillation_test_t : Test
     }
 };
 
+TEST_F(node_generators_equioscillation_test_t, count_3)
+{
+    // clang-format off
+    static auto const expected = std::array{
+        1.4644660940672621e-01,
+        5.0000000000000000e-01,
+        8.5355339059327373e-01,
+    };
+    // clang-format on
+
+    compare(expected, equioscillation_t<float_t, 3>{}());
+}
+
 TEST_F(node_generators_equioscillation_test_t, count_5)
 {
     // clang-format off
     static auto const expected = std::array{
-        -1.000000000000000e+00,
-        -7.071067811865475e-01,
-         0.000000000000000e+00,
-         7.071067811865474e-01,
-         1.000000000000000e+00,
+        6.6987298107780646e-02,
+        2.4999999999999994e-01,
+        5.0000000000000000e-01,
+        7.4999999999999989e-01,
+        9.3301270189221919e-01,
     };
     // clang-format on
 
     compare(expected, equioscillation_t<float_t, 5>{}());
-}
-
-TEST_F(node_generators_equioscillation_test_t, count_7)
-{
-    // clang-format off
-    static auto const expected = std::array{
-        -1.000000000000000e+00,
-        -8.660254037844387e-01,
-        -5.000000000000001e-01,
-         0.000000000000000e+00,
-         4.999999999999997e-01,
-         8.660254037844384e-01,
-         1.000000000000000e+00,
-    };
-    // clang-format on
-
-    compare(expected, equioscillation_t<float_t, 7>{}());
 }
 
 } // namespace
