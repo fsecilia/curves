@@ -3,7 +3,8 @@
 #
 # main library cmake
 #
-# This file contains the main library. It contains just about all of the code other than the kernel, test, and ui.
+# This file contains the main library. It contains just about all of the code other than the kernel module itself,
+# tests, and ui.
 
 add_library(lib)
 target_sources(lib PRIVATE
