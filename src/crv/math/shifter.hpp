@@ -20,15 +20,78 @@ template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter
 {
     template <typename value_t> constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
     {
-        return shr<value_t, value_t>(value, count);
+        return shr_impl<value_t, value_t>(value, count);
     }
 
     template <int_t count, typename value_t> constexpr auto shr(value_t value) const noexcept -> value_t
     {
-        return shr<value_t, count, value_t>(value);
+        return shr_impl<value_t, count, value_t>(value);
     }
 
-    template <typename dst_t, typename src_t> constexpr auto shr(src_t src, int_t count) const noexcept -> dst_t
+    template <typename dst_t, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shr(src_t src, int_t count) const noexcept -> dst_t
+    {
+        return shr_impl<dst_t, src_t>(src, count);
+    }
+
+    template <typename dst_t, int_t count, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shr(src_t src) const noexcept -> dst_t
+    {
+        return shr_impl<dst_t, count, src_t>(src);
+    }
+
+    template <typename value_t> constexpr auto shl(value_t value, int_t count) const noexcept -> value_t
+    {
+        return shl_impl<value_t, value_t>(value, count);
+    }
+
+    template <int_t count, typename value_t> constexpr auto shl(value_t value) const noexcept -> value_t
+    {
+        return shl_impl<value_t, count, value_t>(value);
+    }
+
+    template <typename dst_t, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shl(src_t src, int_t count) const noexcept -> dst_t
+    {
+        return shl_impl<dst_t, src_t>(src, count);
+    }
+
+    template <typename dst_t, int_t count, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shl(src_t src) const noexcept -> dst_t
+    {
+        return shl_impl<dst_t, count, src_t>(src);
+    }
+
+    template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
+    {
+        return shift_impl<value_t, value_t>(value, count);
+    }
+
+    template <int_t count, typename value_t> constexpr auto shift(value_t value) const noexcept -> value_t
+    {
+        return shift_impl<value_t, count, value_t>(value);
+    }
+
+    template <typename dst_t, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shift(src_t src, int_t count) const noexcept -> dst_t
+    {
+        return shift_impl<dst_t, src_t>(src, count);
+    }
+
+    template <typename dst_t, int_t count, typename src_t>
+        requires(!std::same_as<dst_t, src_t>)
+    constexpr auto shift(src_t value) const noexcept -> dst_t
+    {
+        return shift_impl<dst_t, count, src_t>(value);
+    }
+
+private:
+    template <typename dst_t, typename src_t> constexpr auto shr_impl(src_t src, int_t count) const noexcept -> dst_t
     {
         [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
@@ -40,7 +103,7 @@ template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter
         return int_cast<dst_t>(rounding_mode.carry(shifted, unshifted, count));
     }
 
-    template <typename dst_t, int_t count, typename src_t> constexpr auto shr(src_t src) const noexcept -> dst_t
+    template <typename dst_t, int_t count, typename src_t> constexpr auto shr_impl(src_t src) const noexcept -> dst_t
     {
         [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
@@ -52,17 +115,7 @@ template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter
         return int_cast<dst_t>(rounding_mode.carry(shifted, unshifted, count));
     }
 
-    template <typename value_t> constexpr auto shl(value_t value, int_t count) const noexcept -> value_t
-    {
-        return shl<value_t, value_t>(value, count);
-    }
-
-    template <int_t count, typename value_t> constexpr auto shl(value_t value) const noexcept -> value_t
-    {
-        return shl<value_t, count, value_t>(value);
-    }
-
-    template <typename dst_t, typename src_t> constexpr auto shl(src_t src, int_t count) const noexcept -> dst_t
+    template <typename dst_t, typename src_t> constexpr auto shl_impl(src_t src, int_t count) const noexcept -> dst_t
     {
         [[maybe_unused]] constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
@@ -83,7 +136,7 @@ template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter
         return int_cast<dst_t>(int_cast<dst_t>(src) << count);
     }
 
-    template <typename dst_t, int_t count, typename src_t> constexpr auto shl(src_t src) const noexcept -> dst_t
+    template <typename dst_t, int_t count, typename src_t> constexpr auto shl_impl(src_t src) const noexcept -> dst_t
     {
         [[maybe_unused]] constexpr auto dst_bits = int_cast<int_t>(sizeof(dst_t) * CHAR_BIT);
 
@@ -104,25 +157,16 @@ template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter
         return int_cast<dst_t>(int_cast<dst_t>(src) << count);
     }
 
-    template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
+    template <typename dst_t, typename src_t> constexpr auto shift_impl(src_t src, int_t count) const noexcept -> dst_t
     {
-        return shift<value_t, value_t>(value, count);
+        return count >= 0 ? shl_impl<dst_t, src_t>(src, count) : shr_impl<dst_t, src_t>(src, -count);
     }
 
-    template <int_t count, typename value_t> constexpr auto shift(value_t value) const noexcept -> value_t
+    template <typename dst_t, int_t count, typename src_t>
+    constexpr auto shift_impl(src_t value) const noexcept -> dst_t
     {
-        return shift<value_t, count, value_t>(value);
-    }
-
-    template <typename dst_t, typename src_t> constexpr auto shift(src_t src, int_t count) const noexcept -> dst_t
-    {
-        return count >= 0 ? shl<dst_t, src_t>(src, count) : shr<dst_t, src_t>(src, -count);
-    }
-
-    template <typename dst_t, int_t count, typename src_t> constexpr auto shift(src_t value) const noexcept -> dst_t
-    {
-        if constexpr (count >= 0) return shl<dst_t, count>(value);
-        else return shr<dst_t, -count, src_t>(value);
+        if constexpr (count >= 0) return shl_impl<dst_t, count>(value);
+        else return shr_impl<dst_t, -count, src_t>(value);
     }
 };
 
