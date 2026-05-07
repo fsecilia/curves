@@ -19,6 +19,7 @@
 #include <crv/math/spline/construction/defect_detectors/monotonicity.hpp>
 #include <crv/math/spline/construction/defect_detectors/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
+#include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/hermite_converter.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/quantizer.hpp>
@@ -53,25 +54,6 @@ template <> inline constexpr auto bitwise_for_enum_enabled<spline::segment_defec
 
 namespace spline {
 namespace {
-
-/// float x and jet y result of sampling a function at x
-template <std::floating_point real_t> struct function_sample_t
-{
-    real_t x;
-    jet_t<real_t> y;
-};
-
-// samples target function, returning the sample location and resulting 1-jet
-template <typename target_function_t> struct function_sampler_t
-{
-    target_function_t target_function;
-
-    template <std::floating_point real_t>
-    constexpr auto operator()(real_t x) const noexcept -> function_sample_t<real_t>
-    {
-        return {.x = x, .y = target_function(jet_t<real_t>{x, 1.0})};
-    }
-};
 
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point real_t> struct residual_t
