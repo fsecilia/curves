@@ -351,7 +351,7 @@ TEST(spline_builder, poc)
     using packed_segment_t = packed_segment_t<coeff_t>;
     using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
     using interval_t = interval_t<real_t, segment_t>;
-    using refinement_pool_t = priority_queue_t<std::vector<interval_t>>;
+    using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
     using quantizer_t = quantizers::fixed_point_t<real_t, x_t::frac_bits>;
     using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
