@@ -10,17 +10,91 @@
 namespace crv::spline {
 namespace {
 
-using interval_t = interval_t<float_t, int_t>;
-constexpr auto lesser
-    = interval_t{.left = 0.0, .right = 0.0, .max_error = 1.0, .tolerance = 0.0, .depth = 0, .approximant = 0};
-constexpr auto greater
-    = interval_t{.left = 0.0, .right = 0.0, .max_error = 2.0, .tolerance = 0.0, .depth = 0, .approximant = 0};
+using real_t = float_t;
 
-constexpr auto pred = fit_priority_t{};
-static_assert(!pred(lesser, lesser));
-static_assert(pred(lesser, greater));
-static_assert(!pred(greater, lesser));
-static_assert(!pred(greater, greater));
+struct segment_t
+{};
+using sut_t = interval_t<real_t, segment_t>;
+
+constexpr auto defects = segment_defects_t{1};
+constexpr auto no_defects = segment_defects_t{0};
+
+constexpr auto construct_sut(segment_defects_t segment_defects, real_t weighted_error, real_t left_x) noexcept -> sut_t
+{
+    auto result = sut_t{};
+    result.left.x = left_x;
+    result.residual.weighted_error = weighted_error;
+    result.segment_defects = segment_defects;
+    return result;
+}
+
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::equivalent);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::equivalent);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::equivalent);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::equivalent);
+
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(defects, 0, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 0) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(defects, 0, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 0, 1) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(defects, 0, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 0) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(defects, 0, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(no_defects, 1, 1) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(no_defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(no_defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(no_defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(no_defects, 1, 1) == std::partial_ordering::greater);
+
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(defects, 0, 0) == std::partial_ordering::equivalent);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(defects, 0, 1) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 0, 0) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(defects, 0, 1) == std::partial_ordering::equivalent);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(defects, 1, 0) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 0, 1) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(defects, 1, 0) == std::partial_ordering::equivalent);
+static_assert(construct_sut(defects, 1, 0) <=> construct_sut(defects, 1, 1) == std::partial_ordering::less);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(defects, 0, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(defects, 0, 1) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(defects, 1, 0) == std::partial_ordering::greater);
+static_assert(construct_sut(defects, 1, 1) <=> construct_sut(defects, 1, 1) == std::partial_ordering::equivalent);
 
 } // namespace
 } // namespace crv::spline
