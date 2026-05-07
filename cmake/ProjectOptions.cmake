@@ -59,6 +59,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(project_options INTERFACE
         -fext-numeric-literals
         -Wno-changes-meaning
+        -Wno-psabi
     )
 endif()
 
