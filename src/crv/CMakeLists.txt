@@ -16,22 +16,22 @@ target_sources(lib PRIVATE
     math/fixed/float_conversions.hpp
     math/fixed/io.hpp
     math/float_limits.hpp
-    math/jet/jet.hpp
-    math/io.hpp
     math/io.cpp
+    math/io.hpp
+    math/jet/jet.hpp
     math/quadrature/adaptive_integrator.hpp
     math/quadrature/antiderivative.hpp
     math/quadrature/bisector.hpp
     math/quadrature/integral.hpp
     math/quadrature/rules.hpp
     math/quadrature/segment.hpp
-    math/quadrature/subdivider.hpp
     math/quadrature/stack.hpp
+    math/quadrature/subdivider.hpp
     math/spline/construction/approximant.hpp
     math/spline/construction/defect_detectors/monotonicity.hpp
     math/spline/construction/defect_detectors/overflow.hpp
-    math/spline/construction/function_sampler.hpp
     math/spline/construction/error_norm.hpp
+    math/spline/construction/function_sampler.hpp
     math/spline/construction/hermite_converter.hpp
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
@@ -47,24 +47,24 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
-    lib.hpp
-    lib.cpp
-    kernel/cxx_build_test.h
     kernel/cxx_build_test.cpp
+    kernel/cxx_build_test.h
+    lib.cpp
+    lib.hpp
     math/abs.hpp
     math/cmp.hpp
     math/division/concepts.hpp
-    math/division/hardware_divider.hpp
     math/division/divider.hpp
+    math/division/hardware_divider.hpp
     math/division/io.hpp
     math/division/qr_pair.hpp
     math/division/shifted_int_divider.hpp
     math/division/wide_divider.hpp
+    math/fixed/exp2_neg_m1.cpp
+    math/fixed/exp2_neg_m1.hpp
+    math/fixed/exp2.hpp
     math/fixed/fixed.hpp
     math/fixed/fma.hpp
-    math/fixed/exp2.hpp
-    math/fixed/exp2_neg_m1.hpp
-    math/fixed/exp2_neg_m1.cpp
     math/int_traits.hpp
     math/integer.hpp
     math/limits.hpp
@@ -115,11 +115,11 @@ if (enable_testing)
         math/fixed/fma_test.cpp
         math/fixed/rsqrt_test.cpp
         math/float_limits_test.cpp
-        math/jet/test/jet.cpp
-        math/jet/test/nested_jet.cpp
-        math/io_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
+        math/io_test.cpp
+        math/jet/test/jet.cpp
+        math/jet/test/nested_jet.cpp
         math/limits_test.cpp
         math/linear_test.cpp
         math/quadrature/adaptive_integrator_test.cpp
@@ -128,8 +128,8 @@ if (enable_testing)
         math/quadrature/integral_test.cpp
         math/quadrature/integration_test.cpp
         math/quadrature/rules_test.cpp
-        math/quadrature/subdivider_test.cpp
         math/quadrature/stack_test.cpp
+        math/quadrature/subdivider_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
