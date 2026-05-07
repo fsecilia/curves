@@ -90,7 +90,7 @@ template <typename real_t, typename floor_t> struct first_order_relative_t
     real_t primal_floor{1e-3};
     real_t tangent_floor{1e-3};
 
-    [[no_unique_address]] floor_t floor;
+    [[no_unique_address]] floor_t floor{};
 
     template <typename jet_t>
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> typename jet_t::value_t
