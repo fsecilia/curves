@@ -41,6 +41,7 @@ target_sources(lib PRIVATE
     math/spline/construction/workspace.hpp
     math/stats.hpp
     priority_queue.hpp
+    static_vector.hpp
 )
 target_sources_kernel(lib
     algorithm.hpp
@@ -152,6 +153,7 @@ if (enable_testing)
         prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
+        static_vector_test.cpp
         traits_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
