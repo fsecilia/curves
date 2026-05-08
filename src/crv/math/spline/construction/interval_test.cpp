@@ -5,18 +5,22 @@
 
 #include "interval.hpp"
 #include <crv/test/test.hpp>
-#include <limits>
+#include <gmock/gmock.h>
 
 namespace crv::spline {
 namespace {
 
 using real_t = float_t;
+using jet_t = jet_t<real_t>;
+
+// ====================================================================================================================
+// interval_priority_less_t
+// ====================================================================================================================
+
+namespace interval_priority_less_tests {
 
 struct segment_t
-{
-    auto operator<=>(segment_t const&) const noexcept -> auto = default;
-    auto operator==(segment_t const&) const noexcept -> bool = default;
-};
+{};
 using sut_t = interval_t<real_t, segment_t>;
 
 constexpr auto defects = segment_defects_t{1};
@@ -95,6 +99,159 @@ TEST(spline_interval_priority_less, death_by_rhs_left_x)
 } // namespace death_tests
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+} // namespace interval_priority_less_tests
+
+// ====================================================================================================================
+// interval_factory_t
+// ====================================================================================================================
+
+namespace interval_factory_tests {
+
+struct spline_interval_factory_test_t : Test
+{
+    using x_t = fixed_t<int_t, 0>;
+
+    using function_sample_t = function_sample_t<real_t>;
+
+    struct segment_t
+    {
+        using coeffs_t = int_t;
+        coeffs_t coeffs_ = 0;
+        constexpr auto coeffs() const noexcept -> coeffs_t { return coeffs_; }
+        constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
+    };
+
+    struct approximant_t
+    {
+        using x_t = spline_interval_factory_test_t::x_t;
+
+        x_t x0;
+        segment_t segment;
+
+        constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;
+    };
+
+    struct mock_segment_factory_t
+    {
+        virtual ~mock_segment_factory_t() = default;
+        MOCK_METHOD(segment_t, call, (jet_t left, jet_t right, int_t log2_width), (const, noexcept));
+    };
+    StrictMock<mock_segment_factory_t> mock_segment_factory;
+
+    struct segment_factory_t
+    {
+        mock_segment_factory_t* mock = nullptr;
+        auto operator()(jet_t left_y, jet_t right_y, int_t log2_width) const noexcept -> segment_t
+        {
+            return mock->call(left_y, right_y, log2_width);
+        }
+    };
+
+    struct segment_defects_t
+    {
+        segment_t segment;
+        auto operator==(segment_defects_t const&) const noexcept -> bool = default;
+    };
+
+    struct mock_defect_analyzer_t
+    {
+        virtual ~mock_defect_analyzer_t() = default;
+        MOCK_METHOD(segment_defects_t, call, (segment_t::coeffs_t coeffs), (const, noexcept));
+    };
+
+    struct defect_analyzer_t
+    {
+        mock_defect_analyzer_t* mock = nullptr;
+        auto operator()(segment_t::coeffs_t coeffs) const noexcept -> segment_defects_t { return mock->call(coeffs); }
+    };
+    StrictMock<mock_defect_analyzer_t> mock_defect_analyzer;
+
+    struct residual_t
+    {
+        int_t id = 0;
+        auto operator==(residual_t const&) const noexcept -> bool = default;
+    };
+
+    struct sample_target_function_t
+    {
+        int_t id = 0;
+        constexpr auto operator==(sample_target_function_t const&) const noexcept -> bool = default;
+    };
+
+    struct mock_residual_estimator_t
+    {
+        virtual ~mock_residual_estimator_t() = default;
+        MOCK_METHOD(residual_t, call,
+            (sample_target_function_t sample_target_function, approximant_t approximant, real_t left_x, real_t right_x),
+            (const, noexcept));
+    };
+    StrictMock<mock_residual_estimator_t> mock_residual_estimator;
+
+    struct residual_estimator_t
+    {
+        mock_residual_estimator_t* mock = nullptr;
+        auto operator()(sample_target_function_t sample_target_function, approximant_t approximant, real_t left_x,
+            real_t right_x) const noexcept -> residual_t
+        {
+            return mock->call(sample_target_function, approximant, left_x, right_x);
+        }
+    };
+
+    struct interval_t
+    {
+        using real_t = real_t;
+
+        function_sample_t left;
+        function_sample_t midpoint;
+        function_sample_t right;
+
+        segment_defects_t segment_defects;
+        residual_t residual;
+        segment_t segment;
+
+        constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
+    };
+
+    using sut_t
+        = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
+    sut_t sut{.create_segment = segment_factory_t{&mock_segment_factory},
+        .analyze_defects = defect_analyzer_t{&mock_defect_analyzer},
+        .estimate_residual = residual_estimator_t{&mock_residual_estimator}};
+
+    sample_target_function_t const sample_target_function{1};
+    function_sample_t const left{.x = 2.0, .y = {3.0, 4.0}};
+    function_sample_t const midpoint{.x = 5.0, .y = {6.0, 7.0}};
+    function_sample_t const right{.x = 8.0, .y = {9.0, 10.0}};
+    int_t log2_width = 11;
+    segment_defects_t const segment_defects{12};
+    segment_t const segment{.coeffs_ = 13};
+    residual_t const residual{14};
+
+    x_t x0 = to_fixed<x_t>(left.x);
+
+    interval_t const expected{.left = left,
+        .midpoint = midpoint,
+        .right = right,
+        .segment_defects = segment_defects,
+        .residual = residual,
+        .segment = segment};
+};
+
+TEST_F(spline_interval_factory_test_t, create)
+{
+    EXPECT_CALL(mock_segment_factory, call(left.y, right.y, log2_width)).WillOnce(Return(segment));
+    EXPECT_CALL(mock_defect_analyzer, call(segment.coeffs())).WillOnce(Return(segment_defects));
+    EXPECT_CALL(mock_residual_estimator,
+        call(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x))
+        .WillOnce(Return(residual));
+
+    auto const actual = sut.create(sample_target_function, left, midpoint, right, log2_width);
+
+    EXPECT_EQ(expected, actual);
+}
+
+} // namespace interval_factory_tests
 
 } // namespace
 } // namespace crv::spline
