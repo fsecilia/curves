@@ -175,10 +175,10 @@ struct refinement_pool_seeder_t
         using subdomain_t = interval_factory_t::subdomain_t;
         queue.push(interval_factory.create(sample_target_function,
             subdomain_t{
-                sample_target_function(left),
-                sample_target_function(std::midpoint(left, right)),
-                sample_target_function(right),
-                log2_domain_max,
+                .left = sample_target_function(left),
+                .midpoint = sample_target_function(std::midpoint(left, right)),
+                .right = sample_target_function(right),
+                .log2_width = log2_domain_max,
             }));
     }
 };
