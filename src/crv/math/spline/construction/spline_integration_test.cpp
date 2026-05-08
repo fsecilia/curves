@@ -306,7 +306,7 @@ TEST(spline_builder, poc)
     using real_t = float_t;
 #endif
 
-    using x_t = fixed_t<uint64_t, 44>;
+    using x_t = fixed_t<uint64_t, 40>;
     using y_t = fixed_t<uint64_t, 48>;
     using normalized_t = fixed_t<uint64_t, 64>;
 
