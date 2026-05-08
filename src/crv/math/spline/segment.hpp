@@ -18,13 +18,18 @@
 namespace crv::spline {
 
 /// packs segments into a static layout
-template <is_fixed t_coeff_t> class packed_segment_t
+template <is_fixed t_coeff_t, int_t t_log2_width_bit_count> class packed_segment_t
 {
 public:
     using coeff_t = t_coeff_t;
     using coeffs_t = cubic_polynomial_t<coeff_t>;
 
-    static_assert(sizeof(coeff_t) > 1); // must have room to pack log2_width
+    static constexpr auto log2_width_bit_count = t_log2_width_bit_count;
+    static constexpr auto log2_width_bit_mask = (1 << log2_width_bit_count) - 1;
+
+    // log2_width is stored biased so the field is unsigned: storage = log2_width + bias, log2_width = storage - bias.
+    // bias is chosen so that the supported signed range matches the field width.
+    static constexpr auto log2_width_bias = 1 << (log2_width_bit_count - 1);
 
     constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
@@ -33,16 +38,25 @@ public:
         static_assert(
             sizeof(packed_segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
 
-        // make sure the top 8 bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
-        assert(coeffs_[0] == ((coeffs_[0] << 8) >> 8) && "segment_t: top 8 bits of first coefficient must be clear");
+        // make sure the top bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
+        assert(coeffs_[0] == ((coeffs_[0] << log2_width_bit_count) >> log2_width_bit_count)
+            && "segment_t: top bits of first coefficient must be clear");
 
-        // pack log2_width into bottom 8 bits of coeff[0]
-        coeffs_[0] <<= 8;
-        coeffs_[0].value |= (static_cast<uint64_t>(log2_width) & 0xFF);
+        // log2_width must fit in log2_width_bit_count signed bits
+        assert(-log2_width_bias <= log2_width && log2_width < log2_width_bias
+            && "segment_t: log2_width out of range");
+
+        // pack biased log2_width into bottom bits of coeff[0]
+        coeffs_[0] <<= log2_width_bit_count;
+        coeffs_[0].value |= static_cast<uint64_t>(log2_width + log2_width_bias) & log2_width_bit_mask;
     }
 
-    constexpr auto unpack_log2_width() const noexcept -> int_t { return static_cast<int8_t>(coeffs_[0].value & 0xFF); }
-    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> 8; }
+    constexpr auto unpack_log2_width() const noexcept -> int_t
+    {
+        return static_cast<int_t>(coeffs_[0].value & log2_width_bit_mask) - log2_width_bias;
+    }
+
+    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> log2_width_bit_count; }
     constexpr auto unpack_coeff1() const noexcept -> coeff_t { return coeffs_[1]; }
     constexpr auto unpack_coeff2() const noexcept -> coeff_t { return coeffs_[2]; }
     constexpr auto unpack_coeff3() const noexcept -> coeff_t { return coeffs_[3]; }

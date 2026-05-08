@@ -12,6 +12,10 @@
 namespace crv::spline {
 namespace {
 
+constexpr auto log2_width_bit_count = 5;
+constexpr auto log2_width_max = 8;
+constexpr auto log2_width_min = -16;
+
 // ====================================================================================================================
 // packed_segment_t
 // ====================================================================================================================
@@ -19,15 +23,15 @@ namespace {
 namespace packed_segment_test {
 
 using coeff_value_t = int64_t;
-using coeff_t = fixed_t<coeff_value_t, 45>;
-using sut_t = packed_segment_t<coeff_t>;
+using coeff_t = fixed_t<coeff_value_t, 47>;
+using sut_t = packed_segment_t<coeff_t, log2_width_bit_count>;
 using coeffs_t = sut_t::coeffs_t;
 
 constexpr auto c1 = coeff_t{1};
 constexpr auto cv_max = max<coeff_value_t>();
 constexpr auto cv_min = min<coeff_value_t>();
-constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
-constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
+constexpr auto cv0_max = coeff_value_t{cv_max >> log2_width_bit_count};
+constexpr auto cv0_min = coeff_value_t{cv_min >> log2_width_bit_count};
 
 // --------------------------------------------------------------------------------------------------------------------
 // packed values
@@ -43,9 +47,6 @@ constexpr auto test_unpacked(coeffs_t coeffs, int8_t log2_width) noexcept -> boo
     auto const sut = sut_t{coeffs, log2_width};
     return unpack_coeffs(sut) == coeffs && sut.unpack_log2_width() == log2_width;
 }
-
-constexpr auto log2_width_max = max<int8_t>();
-constexpr auto log2_width_min = min<int8_t>();
 
 // zero
 static_assert(test_unpacked(coeffs_t{}, 0));
@@ -69,16 +70,16 @@ static_assert(test_unpacked(boundaries_max, log2_width_max));
 constexpr auto comb_even = coeff_t{0x2AAA'AAAA'AAAA'AAAALL};
 constexpr auto comb_odd = coeff_t{0x5555'5555'5555'5555LL};
 
-static_assert(test_unpacked({comb_even >> 8, comb_odd, comb_even, comb_odd}, 0x55));
-static_assert(test_unpacked({comb_odd >> 8, comb_even, comb_odd, comb_even}, 0xAA));
+static_assert(test_unpacked({comb_even >> log2_width_bit_count, comb_odd, comb_even, comb_odd}, log2_width_min));
+static_assert(test_unpacked({comb_odd >> log2_width_bit_count, comb_even, comb_odd, comb_even}, log2_width_max));
 
 #if defined CRV_ENABLE_DEATH_TESTS
 
 namespace death_tests {
 
-// coeff[0] packs log2_width into bottom 8 bits, so underlying must fit in the remaining, with sign
+// coeff[0] packs log2_width into bottom log2_width_bit_count bits, so underlying must fit in the remaining, with sign
 constexpr auto coeff_bits = sizeof(typename coeff_t::value_t) * CHAR_BIT;
-constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (coeff_bits - 8 - 1);
+constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (coeff_bits - log2_width_bit_count - 1);
 
 TEST(spline_packed_segment, violates_coeff0_positive_packing_bounds)
 {
@@ -86,9 +87,9 @@ TEST(spline_packed_segment, violates_coeff0_positive_packing_bounds)
     [[maybe_unused]] auto safe
         = sut_t({coeff_t::literal(coeff0_unsafe_bound - 1), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
 
-    // coeff0 is too large to safely shift left by 8 to store coeff0
+    // coeff0 is too large to safely shift left by log2_width_bit_count to store coeff0
     EXPECT_DEBUG_DEATH(
-        sut_t({coeff_t::literal(coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
+        sut_t({coeff_t::literal(coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top bits");
 }
 
 TEST(spline_packed_segment, violates_coeff0_negative_packing_bounds)
@@ -97,9 +98,9 @@ TEST(spline_packed_segment, violates_coeff0_negative_packing_bounds)
     [[maybe_unused]] auto safe_neg
         = sut_t({coeff_t::literal(-coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0);
 
-    // coeff0 is too large to safely shift left by 8 to store coeff0
+    // coeff0 is too large to safely shift left by log2_width_bit_count to store coeff0
     EXPECT_DEBUG_DEATH(
-        sut_t({coeff_t::literal(-coeff0_unsafe_bound - 1), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top 8 bits");
+        sut_t({coeff_t::literal(-coeff0_unsafe_bound - 1), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top bits");
 }
 
 } // namespace death_tests
@@ -165,9 +166,9 @@ constexpr auto c1 = coeff_t{1};
 constexpr auto cv_max = max<coeff_value_t>();
 constexpr auto cv_min = min<coeff_value_t>();
 
-// 56-bit bounds for C0 since it also packs log2_width
-constexpr auto cv0_max = coeff_value_t{cv_max >> 8};
-constexpr auto cv0_min = coeff_value_t{cv_min >> 8};
+// bounds for C0 since it also packs log2_width
+constexpr auto cv0_max = coeff_value_t{cv_max >> log2_width_bit_count};
+constexpr auto cv0_min = coeff_value_t{cv_min >> log2_width_bit_count};
 
 constexpr auto t0 = normalized_t::literal(0);
 constexpr auto t_half = normalized_t::literal(1LL << (normalized_t::frac_bits - 1));
@@ -349,14 +350,11 @@ static_assert(sut({coeff_t{5}, coeff_t{7}, coeff_t{11}, coeff_t{13}}, 0).extend_
 
 namespace width_tests {
 
-// bounds of valid widths for fixed_t<int64_t, 48>: 2^[-frac_bits, bits-frac_bits-2] = 2^[-48, 14]
-static_assert(sut(coeffs, -48).width() == x_t{1} >> 48);
-static_assert(sut(coeffs, -47).width() == x_t{1} >> 47);
+static_assert(sut(coeffs, log2_width_min).width() == x_t{1} >> -log2_width_min);
 static_assert(sut(coeffs, -1).width() == x_t{1} >> 1);
 static_assert(sut(coeffs, 0).width() == x_t{1} << 0);
 static_assert(sut(coeffs, 1).width() == x_t{1} << 1);
-static_assert(sut(coeffs, 13).width() == x_t{1} << 13);
-static_assert(sut(coeffs, 14).width() == x_t{1} << 14);
+static_assert(sut(coeffs, log2_width_max).width() == x_t{1} << log2_width_max);
 
 } // namespace width_tests
 
@@ -369,24 +367,16 @@ namespace is_valid_tests {
 // zero is a valid shift
 static_assert(sut(coeffs, 0).is_valid());
 
-// bounds of valid log2_widths: [-frac_bits, bits-frac_bits-2] = [-48, 14] for fixed_t<int64_t, 48>
-static_assert(!sut(coeffs, -49).is_valid());
-static_assert(sut(coeffs, -48).is_valid());
-static_assert(sut(coeffs, -47).is_valid());
+// the operational range is fully shifter-safe
+static_assert(sut(coeffs, log2_width_min).is_valid());
 static_assert(sut(coeffs, -1).is_valid());
-static_assert(sut(coeffs, 0).is_valid());
 static_assert(sut(coeffs, 1).is_valid());
-static_assert(sut(coeffs, 13).is_valid());
-static_assert(sut(coeffs, 14).is_valid());
-static_assert(!sut(coeffs, 15).is_valid());
+static_assert(sut(coeffs, log2_width_max).is_valid());
 
-// strictly out of bounds (>= 64 or <= -64)
-static_assert(!sut(coeffs, 64).is_valid());
-static_assert(!sut(coeffs, -64).is_valid());
-
-// capacity for int8_t
-static_assert(!sut(coeffs, 127).is_valid());
-static_assert(!sut(coeffs, -128).is_valid());
+// representable but outside x_t's shifter-safe range
+constexpr auto first_unsafe_log2_width
+    = static_cast<int_t>(sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - 1);
+static_assert(!sut(coeffs, first_unsafe_log2_width).is_valid());
 
 } // namespace is_valid_tests
 
