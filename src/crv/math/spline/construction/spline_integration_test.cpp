@@ -315,7 +315,15 @@ TEST(spline_builder, poc)
     constexpr auto max_segment_count = 1 << 8;
     static constexpr auto log2_domain_max = 8;
     static constexpr auto log2_min_width = -16;
-    static auto const min_width = std::ldexp(1.0, log2_min_width);
+
+#if 1
+    static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
+    using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
+    auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
+#else
+    using error_norm_t = error_norms::absolute_t;
+    auto const error_norm = error_norm_t{};
+#endif
 
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
     using packed_segment_t = packed_segment_t<coeff_t>;
@@ -324,7 +332,6 @@ TEST(spline_builder, poc)
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
     using quantizer_t = quantizers::fixed_point_t<real_t, x_t::frac_bits>;
-    using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
@@ -345,7 +352,6 @@ TEST(spline_builder, poc)
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
-    auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
         .quantize = {},
