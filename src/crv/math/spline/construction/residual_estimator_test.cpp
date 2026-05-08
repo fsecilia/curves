@@ -46,7 +46,7 @@ struct target_function_sample_t
 constexpr auto left = 3.0;
 constexpr auto right = 10.0;
 constexpr auto midpoint = (left + right) * 0.5;
-constexpr auto interval_width = (right - left) * 0.5;
+constexpr auto interval_width = right - left;
 
 constexpr auto domain_node = left + (max_node * interval_width);
 constexpr auto expected_max_scale = domain_node;

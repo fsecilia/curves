@@ -46,7 +46,7 @@ struct residual_estimator_t
 
         auto max_residual = residual_t{};
 
-        auto const interval_width = (right - left) * 0.5;
+        auto const interval_width = right - left;
 
         // sample function at generated nodes
         for (auto const standard_node : generate_nodes())
