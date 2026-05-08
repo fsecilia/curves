@@ -52,52 +52,6 @@ template <typename t_interval_t> struct subdivision_t
     interval_t right;
 };
 
-/// estimates residual over a subdomain
-template <std::floating_point real_t, typename node_generator_t, typename quantizer_t, typename error_norm_t,
-    typename weight_function_t>
-struct residual_estimator_t
-{
-    using residual_t = residual_t<real_t>;
-
-    [[no_unique_address]] node_generator_t generate_nodes;
-    [[no_unique_address]] quantizer_t quantize;
-
-    error_norm_t measure_error;
-    weight_function_t apply_weight;
-
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left,
-        real_t right) const noexcept -> residual_t
-    {
-        auto max_residual = residual_t{};
-
-        auto const interval_width = (right - left) * 0.5;
-
-        // sample function at generated nodes
-        for (auto const standard_node : generate_nodes())
-        {
-            // convert from standard nodes in [0, 1] to domain nodes in [left, right].
-            auto const domain_node = left + standard_node * interval_width;
-
-            // evaluate target function at target position and approxmant at quantized position
-            auto const quantized_node = quantize(domain_node);
-            auto const approximation = approximant(quantized_node);
-            auto const target_function_sample = sample_target_function(domain_node);
-            auto const target = target_function_sample.y;
-            auto const metric_error = measure_error(target, approximation);
-            assert(std::isfinite(metric_error));
-
-            max_residual.scale = max(max_residual.scale, abs(primal(target)));
-            max_residual.metric_error = max(max_residual.metric_error, metric_error);
-        }
-
-        auto const midpoint = (left + right) * 0.5;
-        auto const weight = apply_weight(midpoint);
-        assert(std::isfinite(weight));
-        max_residual.weighted_error = max_residual.metric_error * weight;
-        return max_residual;
-    }
-};
-
 /// bisects intervals, unconditionally
 template <typename t_subdivision_t, typename interval_factory_t> struct bisector_t
 {
@@ -150,7 +104,7 @@ template <std::floating_point real_t> struct subdivision_error_t
     real_t right;
 };
 
-/// runs subdivision loop over queue and completed segments, returns residual max or reason subdivision failed and where
+/// subdivides an interval, returns residual max or reason subdivision failed and where
 template <std::floating_point real_t, typename bisector_t, int_t log2_min_width> struct subdivider_t
 {
     using subdivision_t = bisector_t::subdivision_t;
@@ -208,6 +162,7 @@ struct refinement_pool_seeder_t
     }
 };
 
+// runs subdivision loop over queue and completed segments
 template <std::floating_point real_t, typename refinement_pool_t, typename refinement_pool_seeder_t,
     typename subdivider_t, typename completed_segments_t, int_t max_segment_count>
 struct spliner_t

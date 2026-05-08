@@ -8,6 +8,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
+#include <crv/math/abs.hpp>
+#include <cassert>
+#include <cmath>
 
 namespace crv::spline {
 
@@ -17,6 +20,8 @@ template <std::floating_point real_t> struct residual_t
     real_t metric_error; // error based on norm error metric
     real_t weighted_error; // metric_error weighted perceptually
     real_t scale; // absolute magnitude of primal
+
+    constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
 
 /// estimates the maximum residual error of an approximant over a specific domain interval
@@ -25,40 +30,50 @@ template <std::floating_point real_t> struct residual_t
 /// generated approximant. The search space is defined by a node generator to find collocation points, the domain is
 /// quantized to fixed-point precision prior to evaluation, the residual is calculated using an error norm, and the
 /// magnitude of the residual is scaled by perceptual significance using a weight function.
-template <typename real_t, typename target_function_t, typename approximant_evaluator_t, typename node_generator_t,
-    typename quantizer_t, typename error_norm_t, typename weight_function_t>
+template <std::floating_point real_t, typename node_generator_t, typename quantizer_t, typename error_norm_t,
+    typename weight_function_t>
 struct residual_estimator_t
 {
-    target_function_t evaluate_target;
-    approximant_evaluator_t evaluate_approximant;
-    node_generator_t generate_nodes;
-    quantizer_t quantize;
+    using residual_t = residual_t<real_t>;
+
+    [[no_unique_address]] node_generator_t generate_nodes;
+    [[no_unique_address]] quantizer_t quantize;
+
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
-    auto operator()(auto const& approximant, real_t left, real_t right) const noexcept -> real_t
+    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left,
+        real_t right) const noexcept -> residual_t
     {
-        auto const width = right - left;
+        using std::isfinite;
 
-        auto max_magnitude = real_t{0};
+        auto max_residual = residual_t{};
 
+        auto const interval_width = (right - left) * 0.5;
+
+        // sample function at generated nodes
         for (auto const standard_node : generate_nodes())
         {
             // convert from standard nodes in [0, 1] to domain nodes in [left, right].
-            auto const domain_node = standard_node * width;
+            auto const domain_node = left + standard_node * interval_width;
 
-            // evaluate target at target position and approxmant at quantized position
+            // evaluate target function at target position and approxmant at quantized position
             auto const quantized_node = quantize(domain_node);
-            auto const target = evaluate_target(domain_node);
-            auto const approximation = evaluate_approximant(approximant, quantized_node);
+            auto const approximation = approximant(quantized_node);
+            auto const target_function_sample = sample_target_function(domain_node);
+            auto const target = target_function_sample.y;
+            auto const metric_error = measure_error(target, approximation);
+            assert(isfinite(metric_error));
 
-            // measure magnitude of error using norm, weight it using weight function
-            auto const magnitude = measure_error(target, approximation);
-            auto const weighted_magnitude = magnitude * apply_weight(domain_node);
-            max_magnitude = max(max_magnitude, weighted_magnitude);
+            max_residual.scale = max(max_residual.scale, abs(primal(target)));
+            max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
         }
 
-        return max_magnitude;
+        auto const midpoint = (left + right) * 0.5;
+        auto const weight = apply_weight(midpoint);
+        assert(isfinite(weight));
+        max_residual.weighted_error = max_residual.metric_error * weight;
+        return max_residual;
     }
 };
 
