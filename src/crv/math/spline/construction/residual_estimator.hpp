@@ -30,15 +30,12 @@ template <std::floating_point real_t> struct residual_t
 /// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
 /// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
 /// weight function.
-template <std::floating_point real_t, typename node_generator_t, typename quantizer_t, typename error_norm_t,
-    typename weight_function_t>
+template <std::floating_point real_t, typename node_generator_t, typename error_norm_t, typename weight_function_t>
 struct residual_estimator_t
 {
     using residual_t = residual_t<real_t>;
 
     [[no_unique_address]] node_generator_t generate_nodes;
-    [[no_unique_address]] quantizer_t quantize;
-
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
@@ -57,10 +54,10 @@ struct residual_estimator_t
             // convert from standard nodes in [0, 1] to domain nodes in [left, right].
             auto const domain_node = left + standard_node * interval_width;
 
-            // evaluate target function at target position and approxmant at quantized position
-            auto const quantized_node = quantize(domain_node);
-            auto const approximation = approximant(quantized_node);
+            // evaluate target function and approximant
+            auto const approximation = approximant(domain_node);
             auto const target_function_sample = sample_target_function(domain_node);
+
             auto const target = target_function_sample.y;
             auto const metric_error = measure_error(target, approximation);
             assert(isfinite(metric_error));
