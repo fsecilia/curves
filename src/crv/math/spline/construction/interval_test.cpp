@@ -29,7 +29,7 @@ constexpr auto no_defects = segment_defects_t{0};
 constexpr auto construct_sut(segment_defects_t segment_defects, real_t weighted_error, real_t left_x) noexcept -> sut_t
 {
     auto result = sut_t{};
-    result.left.x = left_x;
+    result.subdomain.left.x = left_x;
     result.residual.weighted_error = weighted_error;
     result.segment_defects = segment_defects;
     return result;
@@ -112,6 +112,7 @@ struct spline_interval_factory_test_t : Test
 {
     using x_t = fixed_t<int_t, 0>;
 
+    using subdomain_t = subdomain_t<real_t>;
     using function_sample_t = function_sample_t<real_t>;
 
     struct segment_t
@@ -202,13 +203,10 @@ struct spline_interval_factory_test_t : Test
     {
         using real_t = real_t;
 
-        function_sample_t left;
-        function_sample_t midpoint;
-        function_sample_t right;
-
+        subdomain_t subdomain;
+        segment_t segment;
         segment_defects_t segment_defects;
         residual_t residual;
-        segment_t segment;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
@@ -230,12 +228,18 @@ struct spline_interval_factory_test_t : Test
 
     x_t x0 = to_fixed<x_t>(left.x);
 
-    interval_t const expected{.left = left,
-        .midpoint = midpoint,
-        .right = right,
+    interval_t const expected
+    {
+        .subdomain = subdomain_t{
+            .left = left,
+            .midpoint = midpoint,
+            .right = right,
+            .log2_width = log2_width,
+        },
+        .segment = segment,
         .segment_defects = segment_defects,
         .residual = residual,
-        .segment = segment};
+    };
 };
 
 TEST_F(spline_interval_factory_test_t, create)
@@ -246,7 +250,7 @@ TEST_F(spline_interval_factory_test_t, create)
         call(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x))
         .WillOnce(Return(residual));
 
-    auto const actual = sut.create(sample_target_function, left, midpoint, right, log2_width);
+    auto const actual = sut.create(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
 
     EXPECT_EQ(expected, actual);
 }
