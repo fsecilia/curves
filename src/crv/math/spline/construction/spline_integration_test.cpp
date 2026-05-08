@@ -64,13 +64,26 @@ template <typename t_subdivision_t, typename interval_factory_t> struct bisector
     {
         auto const child_log2_width = parent.segment.log2_width() - 1;
 
-        auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
-        auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
+        auto const left_midpoint
+            = sample_target_function(std::midpoint(parent.subdomain.left.x, parent.subdomain.midpoint.x));
+        auto const right_midpoint
+            = sample_target_function(std::midpoint(parent.subdomain.midpoint.x, parent.subdomain.right.x));
 
-        auto const left = interval_factory.create(
-            sample_target_function, parent.left, left_midpoint, parent.midpoint, child_log2_width);
-        auto const right = interval_factory.create(
-            sample_target_function, parent.midpoint, right_midpoint, parent.right, child_log2_width);
+        using subdomain_t = interval_factory_t::subdomain_t;
+        auto const left = interval_factory.create(sample_target_function,
+            subdomain_t{
+                parent.subdomain.left,
+                left_midpoint,
+                parent.subdomain.midpoint,
+                child_log2_width,
+            });
+        auto const right = interval_factory.create(sample_target_function,
+            subdomain_t{
+                parent.subdomain.midpoint,
+                right_midpoint,
+                parent.subdomain.right,
+                child_log2_width,
+            });
 
         return {
             .left = left,
@@ -131,7 +144,10 @@ template <std::floating_point real_t, typename bisector_t, int_t log2_min_width>
         if (must_subdivide && !can_subdivide)
         {
             return subdivision_error_t{
-                .defects = interval.segment_defects, .left = interval.left.x, .right = interval.right.x};
+                .defects = interval.segment_defects,
+                .left = interval.subdomain.left.x,
+                .right = interval.subdomain.right.x,
+            };
         }
 
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
@@ -156,8 +172,14 @@ struct refinement_pool_seeder_t
         auto const domain_max = std::ldexp(real_t{1}, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
         auto const right = domain_max;
-        queue.push(interval_factory.create(sample_target_function, sample_target_function(left),
-            sample_target_function(std::midpoint(left, right)), sample_target_function(right), log2_domain_max));
+        using subdomain_t = interval_factory_t::subdomain_t;
+        queue.push(interval_factory.create(sample_target_function,
+            subdomain_t{
+                sample_target_function(left),
+                sample_target_function(std::midpoint(left, right)),
+                sample_target_function(right),
+                log2_domain_max,
+            }));
     }
 };
 
@@ -240,7 +262,7 @@ struct spliner_t
         std::ranges::transform(
             completed_intervals, std::back_inserter(completed_segments), [](auto const& interval) noexcept {
                 return completed_segment_t{
-                    .origin = to_fixed<x_t>(interval.left.x),
+                    .origin = to_fixed<x_t>(interval.subdomain.left.x),
                     .segment = interval.segment,
                 };
             });
@@ -287,8 +309,7 @@ TEST(spline_builder, poc)
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
-    using residual_estimator_t
-        = residual_estimator_t<real_t, node_generator_t, error_norm_t, weight_function_t>;
+    using residual_estimator_t = residual_estimator_t<real_t, node_generator_t, error_norm_t, weight_function_t>;
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
     using segment_factory_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
