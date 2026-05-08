@@ -24,15 +24,15 @@ struct segment_factory_t
     [[no_unique_address]] segment_derivative_t segment_derivative;
     [[no_unique_address]] hermite_converter_t hermite_converter;
 
-    constexpr auto operator()(jet_t left, jet_t right, int_t log2_width) const noexcept -> segment_t
+    constexpr auto operator()(jet_t left_y, jet_t right_y, int_t log2_width) const noexcept -> segment_t
     {
         // convert from spline-global dy/dx to segment-local dy/dt via chain rule
         auto const dx_dt = segment_derivative.dx_dt(log2_width);
-        left.df *= dx_dt;
-        right.df *= dx_dt;
+        left_y.df *= dx_dt;
+        right_y.df *= dx_dt;
 
         using packed_segment_t = segment_t::packed_segment_t;
-        return segment_t{packed_segment_t{hermite_converter(left, right), int_cast<int8_t>(log2_width)}};
+        return segment_t{packed_segment_t{hermite_converter(left_y, right_y), int_cast<int8_t>(log2_width)}};
     }
 };
 
