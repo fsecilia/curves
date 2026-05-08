@@ -53,14 +53,18 @@ constexpr auto expected_max_scale = domain_node;
 
 constexpr auto identifies_maximum_error()
 {
-    auto sample_target = [](real_t node) constexpr { return target_function_sample_t{jet_t{node, 0.0}}; };
-    auto approximant = [](real_t node) constexpr { return jet_t{node * 0.5, 0.0}; };
-    auto const expected_metric_error = domain_node - domain_node * 0.5;
+    static constexpr auto target_scale = 1.1;
+    static constexpr auto approximant_scale = 0.9;
+
+    auto sample_target
+        = [](real_t node) constexpr { return target_function_sample_t{jet_t{node * target_scale, 0.0}}; };
+    auto approximant = [](real_t node) constexpr { return jet_t{node * approximant_scale, 0.0}; };
+    auto const expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
     auto const expected_weight = midpoint * weight;
 
     auto const actual = sut(sample_target, approximant, left, right);
 
-    return actual.scale == expected_max_scale && actual.metric_error == expected_metric_error
+    return actual.scale == expected_max_scale * target_scale && actual.metric_error == expected_metric_error
         && actual.weighted_error == actual.metric_error * expected_weight;
 }
 static_assert(identifies_maximum_error());
