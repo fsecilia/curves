@@ -26,10 +26,10 @@ template <std::floating_point real_t> struct residual_t
 
 /// estimates the maximum residual error of an approximant over a specific domain interval
 ///
-/// This type is an orchestrator. It organizes a search to find the worst-case error between a target function and its
-/// generated approximant. The search space is defined by a node generator to find collocation points, the domain is
-/// quantized to fixed-point precision prior to evaluation, the residual is calculated using an error norm, and the
-/// magnitude of the residual is scaled by perceptual significance using a weight function.
+/// This searches to find the worst-case error between a target function and its approximant. The search space is
+/// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
+/// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
+/// weight function.
 template <std::floating_point real_t, typename node_generator_t, typename quantizer_t, typename error_norm_t,
     typename weight_function_t>
 struct residual_estimator_t
