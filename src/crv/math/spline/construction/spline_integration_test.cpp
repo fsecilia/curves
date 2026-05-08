@@ -313,8 +313,9 @@ TEST(spline_builder, poc)
     using coeff_t = fixed_t<int64_t, 47>;
 
     constexpr auto max_segment_count = 1 << 8;
-    static constexpr auto log2_domain_max = 8;
-    static constexpr auto log2_min_width = -16;
+    constexpr auto log2_domain_max = 8;
+    constexpr auto log2_min_width = -16;
+    constexpr auto log2_width_bit_count = 5;
 
 #if 1
     static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
@@ -326,7 +327,7 @@ TEST(spline_builder, poc)
 #endif
 
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
-    using packed_segment_t = packed_segment_t<coeff_t>;
+    using packed_segment_t = packed_segment_t<coeff_t, log2_width_bit_count>;
     using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
