@@ -22,7 +22,6 @@
 #include <crv/math/spline/construction/hermite_converter.hpp>
 #include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
-#include <crv/math/spline/construction/quantizer.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_derivative.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
@@ -287,10 +286,9 @@ TEST(spline_builder, poc)
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
-    using quantizer_t = quantizers::fixed_point_t<real_t, x_t::frac_bits>;
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t
-        = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
+        = residual_estimator_t<real_t, node_generator_t, error_norm_t, weight_function_t>;
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
     using segment_factory_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
@@ -310,7 +308,6 @@ TEST(spline_builder, poc)
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
-        .quantize = {},
         .measure_error = error_norm,
         .apply_weight = weight_function_t{.halflife = 0.5},
     };

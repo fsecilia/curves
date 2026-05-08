@@ -21,14 +21,6 @@ struct fake_node_generator_t
     constexpr auto operator()() const noexcept { return nodes; }
 };
 
-struct truncating_quantizer_t
-{
-    constexpr auto operator()(real_t value) const noexcept -> real_t
-    {
-        return static_cast<real_t>(static_cast<int_t>(value));
-    }
-};
-
 struct uniform_norm_t
 {
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> real_t
@@ -43,9 +35,8 @@ struct linear_weight_function_t
     constexpr auto operator()(real_t node) const noexcept -> real_t { return node * weight; }
 };
 
-using sut_t = residual_estimator_t<real_t, fake_node_generator_t, truncating_quantizer_t, uniform_norm_t,
-    linear_weight_function_t>;
-constexpr auto sut = sut_t{.generate_nodes = {}, .quantize = {}, .measure_error = {}, .apply_weight = {}};
+using sut_t = residual_estimator_t<real_t, fake_node_generator_t, uniform_norm_t, linear_weight_function_t>;
+constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
 
 struct target_function_sample_t
 {
@@ -63,8 +54,8 @@ constexpr auto expected_max_scale = domain_node;
 constexpr auto identifies_maximum_error()
 {
     auto sample_target = [](real_t node) constexpr { return target_function_sample_t{jet_t{node, 0.0}}; };
-    auto approximant = [](real_t quantized_node) constexpr { return jet_t{quantized_node * 0.5, 0.0}; };
-    auto const expected_metric_error = domain_node - left;
+    auto approximant = [](real_t node) constexpr { return jet_t{node * 0.5, 0.0}; };
+    auto const expected_metric_error = domain_node - domain_node * 0.5;
     auto const expected_weight = midpoint * weight;
 
     auto const actual = sut(sample_target, approximant, left, right);
