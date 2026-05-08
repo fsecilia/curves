@@ -36,6 +36,7 @@
 #include <expected>
 #include <iomanip>
 #include <numeric>
+#include <stdfloat>
 #include <variant>
 
 namespace crv {
@@ -199,7 +200,7 @@ struct refinement_pool_seeder_t
     constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
     {
         assert(queue.empty());
-        auto const domain_max = std::ldexp(1.0, int_cast<int>(log2_domain_max));
+        auto const domain_max = std::ldexp(real_t{1}, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
         auto const right = domain_max;
         queue.push(interval_factory.create(sample_target_function, sample_target_function(left),
@@ -299,7 +300,11 @@ struct spliner_t
 
 TEST(spline_builder, poc)
 {
+#if 0
+    using real_t = std::float128_t;
+#else
     using real_t = float_t;
+#endif
 
     using x_t = fixed_t<uint64_t, 44>;
     using y_t = fixed_t<uint64_t, 48>;
@@ -395,8 +400,10 @@ TEST(spline_builder, poc)
             auto const actual_y = from_fixed<real_t>(segment.evaluate(segment.x_to_t(x)));
             auto const difference = actual_y - expected_y;
 
-            std::cout << std::setprecision(4) << "x = " << x_real << ", log1p(x) = " << expected_y
-                      << ", y_actual = " << actual_y << ", Δy = " << difference << std::endl;
+            std::cout << std::setprecision(4) << "x = " << static_cast<long double>(x_real)
+                      << ", log1p(x) = " << static_cast<long double>(expected_y)
+                      << ", y_actual = " << static_cast<long double>(actual_y)
+                      << ", Δy = " << static_cast<long double>(difference) << std::endl;
         }
         std::cout << std::endl;
     }
