@@ -18,12 +18,12 @@ namespace crv::spline {
 template <is_fixed coeff_t> struct hermite_converter_t
 {
     template <typename jet_t>
-    constexpr auto operator()(jet_t left, jet_t right) const noexcept -> cubic_polynomial_t<coeff_t>
+    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_polynomial_t<coeff_t>
     {
-        auto const p0 = primal(left);
-        auto const p1 = primal(right);
-        auto const m0 = tangent(left);
-        auto const m1 = tangent(right);
+        auto const p0 = primal(left_y);
+        auto const p1 = primal(right_y);
+        auto const m0 = tangent(left_y);
+        auto const m1 = tangent(right_y);
         auto const dp = p1 - p0;
         return {{
             to_fixed<coeff_t>(-2.0 * dp + m0 + m1),
