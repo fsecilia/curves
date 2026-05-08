@@ -42,7 +42,44 @@ namespace crv {
 namespace spline {
 namespace {
 
-/// result of bisecting an interval
+/// result of bisecting a subdomain
+template <typename t_subdomain_t> struct bisection_t
+{
+    using subdomain_t = t_subdomain_t;
+
+    subdomain_t left;
+    subdomain_t right;
+};
+
+/// bisects subdomains
+template <typename t_bisection_t> struct bisector_t
+{
+    using bisection_t = t_bisection_t;
+    using subdomain_t = bisection_t::subdomain_t;
+
+    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
+        -> bisection_t
+    {
+        auto const child_log2_width = parent.log2_width - 1;
+        return
+        {
+            .left = subdomain_t{
+                .left = parent.left,
+                .midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x)),
+                .right = parent.midpoint,
+                .log2_width = child_log2_width,
+            },
+            .right = subdomain_t{
+                .left = parent.midpoint,
+                .midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x)),
+                .right = parent.right,
+                .log2_width = child_log2_width,
+            },
+        };
+    }
+};
+
+/// result of subdividing an interval
 template <typename t_interval_t> struct subdivision_t
 {
     using interval_t = t_interval_t;
@@ -51,44 +88,88 @@ template <typename t_interval_t> struct subdivision_t
     interval_t right;
 };
 
-/// bisects intervals, unconditionally
-template <typename t_subdivision_t, typename interval_factory_t> struct bisector_t
+// tracks errors about why subdivision failed and where
+template <std::floating_point real_t> struct subdivision_error_t
 {
-    using subdivision_t = t_subdivision_t;
-    using interval_t = subdivision_t::interval_t;
+    segment_defects_t defects;
 
-    [[no_unique_address]] interval_factory_t interval_factory;
+    real_t left;
+    real_t right;
+};
 
-    constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
-        -> subdivision_t
+/// subdivides an interval, returns residual max or reason subdivision failed and where
+template <std::floating_point real_t, typename bisector_t, typename interval_factory_t, int_t log2_min_width>
+struct subdivider_t
+{
+    using interval_t = interval_factory_t::interval_t;
+    using subdivision_t = subdivision_t<interval_t>;
+
+    using subdivision_error_t = subdivision_error_t<real_t>;
+
+    static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
+
+    [[no_unique_address]] bisector_t bisect;
+    interval_factory_t interval_factory;
+
+    struct interval_complete_t
+    {};
+    using result_t = std::variant<interval_complete_t, subdivision_t, subdivision_error_t>;
+
+    constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
+        real_t global_tolerance) const noexcept -> result_t
     {
-        auto const child_log2_width = parent.segment.log2_width() - 1;
+        auto const noise_floor = interval.residual.scale * relative_noise_margin;
+        auto const local_tolerance = max(global_tolerance, noise_floor);
+        auto const can_subdivide
+            = interval.subdomain.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
+        auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
 
-        auto const left_midpoint
-            = sample_target_function(std::midpoint(parent.subdomain.left.x, parent.subdomain.midpoint.x));
-        auto const right_midpoint
-            = sample_target_function(std::midpoint(parent.subdomain.midpoint.x, parent.subdomain.right.x));
+        if (must_subdivide && !can_subdivide)
+        {
+            return subdivision_error_t{
+                .defects = interval.segment_defects,
+                .left = interval.subdomain.left.x,
+                .right = interval.subdomain.right.x,
+            };
+        }
 
-        using subdomain_t = interval_factory_t::subdomain_t;
-        auto const left = interval_factory.create(sample_target_function,
+        auto const should_subdivide = interval.residual.metric_error > local_tolerance;
+        if ((must_subdivide || should_subdivide) && can_subdivide)
+        {
+            auto const child_domains = bisect(sample_target_function, interval.subdomain);
+            return subdivision_t{
+                .left = interval_factory.create(sample_target_function, child_domains.left),
+                .right = interval_factory.create(sample_target_function, child_domains.right),
+            };
+        }
+        else return interval_complete_t{};
+    }
+};
+
+// seeds queue with initial set of segments
+//
+// The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
+// critical points aligned ot widths
+template <std::floating_point real_t, typename interval_factory_t, int_t log2_domain_max>
+struct refinement_pool_seeder_t
+{
+    interval_factory_t interval_factory;
+
+    // for now, just push one whole segment
+    constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
+    {
+        assert(queue.empty());
+        auto const domain_max = std::ldexp(real_t{1}, int_cast<int>(log2_domain_max));
+        auto const left = real_t{0};
+        auto const right = domain_max;
+        using subdomain_t = subdomain_t<real_t>;
+        queue.push(interval_factory.create(sample_target_function,
             subdomain_t{
-                parent.subdomain.left,
-                left_midpoint,
-                parent.subdomain.midpoint,
-                child_log2_width,
-            });
-        auto const right = interval_factory.create(sample_target_function,
-            subdomain_t{
-                parent.subdomain.midpoint,
-                right_midpoint,
-                parent.subdomain.right,
-                child_log2_width,
-            });
-
-        return {
-            .left = left,
-            .right = right,
-        };
+                .left = sample_target_function(left),
+                .midpoint = sample_target_function(std::midpoint(left, right)),
+                .right = sample_target_function(right),
+                .log2_width = log2_domain_max,
+            }));
     }
 };
 
@@ -105,82 +186,6 @@ template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
     }
 
     constexpr auto operator==(completed_segment_t const& src) const noexcept -> bool = default;
-};
-
-// tracks errors about why subdivision failed and where
-template <std::floating_point real_t> struct subdivision_error_t
-{
-    segment_defects_t defects;
-
-    real_t left;
-    real_t right;
-};
-
-/// subdivides an interval, returns residual max or reason subdivision failed and where
-template <std::floating_point real_t, typename bisector_t, int_t log2_min_width> struct subdivider_t
-{
-    using subdivision_t = bisector_t::subdivision_t;
-    using interval_t = bisector_t::interval_t;
-
-    using subdivision_error_t = subdivision_error_t<real_t>;
-
-    static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
-
-    [[no_unique_address]] bisector_t bisect;
-
-    struct interval_complete_t
-    {};
-    using result_t = std::variant<interval_complete_t, subdivision_t, subdivision_error_t>;
-
-    constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
-        real_t global_tolerance) const noexcept -> result_t
-    {
-        auto const noise_floor = interval.residual.scale * relative_noise_margin;
-        auto const local_tolerance = max(global_tolerance, noise_floor);
-        auto const can_subdivide
-            = interval.segment.log2_width() > log2_min_width && interval.residual.metric_error >= local_tolerance;
-        auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
-
-        if (must_subdivide && !can_subdivide)
-        {
-            return subdivision_error_t{
-                .defects = interval.segment_defects,
-                .left = interval.subdomain.left.x,
-                .right = interval.subdomain.right.x,
-            };
-        }
-
-        auto const should_subdivide = interval.residual.metric_error > local_tolerance;
-        if ((must_subdivide || should_subdivide) && can_subdivide) return bisect(sample_target_function, interval);
-        else return interval_complete_t{};
-    }
-};
-
-// seeds queue with initial set of segments
-//
-// The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
-// critical points aligned ot widths
-template <std::floating_point real_t, typename interval_factory_t, int_t log2_domain_max>
-struct refinement_pool_seeder_t
-{
-    [[no_unique_address]] interval_factory_t interval_factory;
-
-    // for now, just push one whole segment
-    constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
-    {
-        assert(queue.empty());
-        auto const domain_max = std::ldexp(real_t{1}, int_cast<int>(log2_domain_max));
-        auto const left = real_t{0};
-        auto const right = domain_max;
-        using subdomain_t = interval_factory_t::subdomain_t;
-        queue.push(interval_factory.create(sample_target_function,
-            subdomain_t{
-                .left = sample_target_function(left),
-                .midpoint = sample_target_function(std::midpoint(left, right)),
-                .right = sample_target_function(right),
-                .log2_width = log2_domain_max,
-            }));
-    }
 };
 
 // runs subdivision loop over queue and completed segments
@@ -305,6 +310,7 @@ TEST(spline_builder, poc)
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
     using packed_segment_t = packed_segment_t<coeff_t, log2_width_bit_count>;
     using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
+    using subdomain_t = subdomain_t<real_t>;
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
@@ -319,11 +325,11 @@ TEST(spline_builder, poc)
     using interval_factory_t
         = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_factory_t, log2_domain_max>;
-    using subdivision_t = subdivision_t<interval_t>;
-    using bisector_t = bisector_t<subdivision_t, interval_factory_t>;
+    using bisection_t = bisection_t<subdomain_t>;
+    using bisector_t = bisector_t<bisection_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, log2_min_width>;
+    using subdivider_t = subdivider_t<real_t, bisector_t, interval_factory_t, log2_min_width>;
     using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
         max_segment_count>;
 
@@ -339,15 +345,16 @@ TEST(spline_builder, poc)
         .estimate_residual = estimate_residual,
     };
 
-    auto spliner = spliner_t{
-        .subdivide = subdivider_t{
-            .bisect = bisector_t{
-                .interval_factory = interval_factory
-            },
+    auto spliner = spliner_t
+    {
+        .subdivide = subdivider_t
+        {
+            .bisect = bisector_t{},
+            .interval_factory = interval_factory,
         },
-        .seed_refinement_pool={.interval_factory = interval_factory},
-        .completed_intervals={},
-        .refinement_pool={}
+        .seed_refinement_pool = {.interval_factory = interval_factory},
+        .completed_intervals = {},
+        .refinement_pool = {},
     };
 
     auto const result = spliner(
