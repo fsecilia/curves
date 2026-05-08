@@ -97,48 +97,13 @@ struct residual_estimator_t
     }
 };
 
-/// constructs intervals
-template <typename t_interval_t, typename approximant_t, typename segment_builder_t, typename defect_analyzer_t,
-    typename residual_estimator_t>
-struct interval_builder_t
-{
-    using interval_t = t_interval_t;
-
-    using real_t = interval_t::real_t;
-    using function_sample_t = function_sample_t<real_t>;
-
-    [[no_unique_address]] segment_builder_t build_segment;
-    [[no_unique_address]] defect_analyzer_t analyze_defects;
-    residual_estimator_t estimate_residual;
-
-    constexpr auto build(auto const& sample_target_function, function_sample_t const& left,
-        function_sample_t const& midpoint, function_sample_t const& right, int_t log2_width) const noexcept
-        -> interval_t
-    {
-        using x_t = approximant_t::x_t;
-
-        auto const x0 = to_fixed<x_t>(left.x);
-        auto const segment = build_segment(left.y, right.y, log2_width);
-
-        return {
-            .left = left,
-            .midpoint = midpoint,
-            .right = right,
-            .segment_defects = analyze_defects(segment.coeffs()),
-            .residual
-            = estimate_residual(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x),
-            .segment = segment,
-        };
-    }
-};
-
 /// bisects intervals, unconditionally
-template <typename t_subdivision_t, typename interval_builder_t> struct bisector_t
+template <typename t_subdivision_t, typename interval_factory_t> struct bisector_t
 {
     using subdivision_t = t_subdivision_t;
     using interval_t = subdivision_t::interval_t;
 
-    [[no_unique_address]] interval_builder_t interval_builder;
+    [[no_unique_address]] interval_factory_t interval_factory;
 
     constexpr auto operator()(auto const& sample_target_function, interval_t const& parent) const noexcept
         -> subdivision_t
@@ -148,9 +113,9 @@ template <typename t_subdivision_t, typename interval_builder_t> struct bisector
         auto const left_midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x));
         auto const right_midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x));
 
-        auto const left = interval_builder.build(
+        auto const left = interval_factory.create(
             sample_target_function, parent.left, left_midpoint, parent.midpoint, child_log2_width);
-        auto const right = interval_builder.build(
+        auto const right = interval_factory.create(
             sample_target_function, parent.midpoint, right_midpoint, parent.right, child_log2_width);
 
         return {
@@ -225,10 +190,10 @@ template <std::floating_point real_t, typename bisector_t, int_t log2_min_width>
 //
 // The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
 // critical points aligned ot widths
-template <std::floating_point real_t, typename interval_builder_t, int_t log2_domain_max>
+template <std::floating_point real_t, typename interval_factory_t, int_t log2_domain_max>
 struct refinement_pool_seeder_t
 {
-    [[no_unique_address]] interval_builder_t interval_builder;
+    [[no_unique_address]] interval_factory_t interval_factory;
 
     // for now, just push one whole segment
     constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
@@ -237,7 +202,7 @@ struct refinement_pool_seeder_t
         auto const domain_max = std::ldexp(1.0, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
         auto const right = domain_max;
-        queue.push(interval_builder.build(sample_target_function, sample_target_function(left),
+        queue.push(interval_factory.create(sample_target_function, sample_target_function(left),
             sample_target_function(std::midpoint(left, right)), sample_target_function(right), log2_domain_max));
     }
 };
@@ -360,15 +325,15 @@ TEST(spline_builder, poc)
         = residual_estimator_t<real_t, node_generator_t, quantizer_t, error_norm_t, weight_function_t>;
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
-    using segment_builder_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
+    using segment_factory_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
     using defect_analyzer_t
         = defect_analyzer_t<defect_checks::monotonicity_t, defect_checks::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
-    using interval_builder_t
-        = interval_builder_t<interval_t, approximant_t, segment_builder_t, defect_analyzer_t, residual_estimator_t>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_builder_t, log2_domain_max>;
+    using interval_factory_t
+        = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_factory_t, log2_domain_max>;
     using subdivision_t = subdivision_t<interval_t>;
-    using bisector_t = bisector_t<subdivision_t, interval_builder_t>;
+    using bisector_t = bisector_t<subdivision_t, interval_factory_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
     using subdivider_t = subdivider_t<real_t, bisector_t, log2_min_width>;
@@ -383,8 +348,8 @@ TEST(spline_builder, poc)
         .apply_weight = weight_function_t{.halflife = 0.5},
     };
 
-    auto const interval_builder = interval_builder_t{
-        .build_segment = {},
+    auto const interval_factory = interval_factory_t{
+        .create_segment = {},
         .analyze_defects = {},
         .estimate_residual = estimate_residual,
     };
@@ -392,10 +357,10 @@ TEST(spline_builder, poc)
     auto spliner = spliner_t{
         .subdivide = subdivider_t{
             .bisect = bisector_t{
-                .interval_builder = interval_builder
+                .interval_factory = interval_factory
             },
         },
-        .seed_refinement_pool={.interval_builder = interval_builder},
+        .seed_refinement_pool={.interval_factory = interval_factory},
         .completed_intervals={},
         .refinement_pool={}
     };
