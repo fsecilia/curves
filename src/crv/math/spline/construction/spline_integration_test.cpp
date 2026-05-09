@@ -314,9 +314,47 @@ template <int_t domain_max> struct assembler_t
 template <std::floating_point real_t, typename spline_t, typename workspace_t, typename refinement_pool_t,
     typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t, int_t max_segment_count,
     int_t domain_max>
-struct spliner_t
+class spline_generator_t
 {
+public:
     using convergence_error_t = refiner_t::convergence_error_t;
+
+    constexpr spline_generator_t() : seed_refinement_pool_{}, refine_{}, assemble_{}, workspace_{} {}
+
+    constexpr spline_generator_t(refinement_pool_seeder_t seed_refinement_pool, refiner_t refine, assembler_t assemble)
+        : seed_refinement_pool_{std::move(seed_refinement_pool)}, refine_{std::move(refine)},
+          assemble_{std::move(assemble)}, workspace_{}
+    {}
+
+    constexpr auto operator()(auto& spline, auto target_function) -> std::expected<void, convergence_error_t>
+    {
+        assert(workspace_.empty());
+
+        workspace_.clear();
+
+        workspace_.completed_intervals.reserve(max_segment_count);
+        workspace_.refinement_pool.reserve(max_segment_count);
+
+        auto sample_target_function = function_sampler_t{std::move(target_function)};
+
+        auto convergence_result = unseeded_workspace_t{workspace_}
+                                      .next(seed_refinement_pool_, sample_target_function)
+                                      .next(refine_, sample_target_function);
+
+        if (!convergence_result)
+        {
+            workspace_.clear();
+            return std::unexpected(convergence_result.error());
+        }
+
+        std::move(*convergence_result).finalize(assemble_, spline);
+
+        assert(workspace_.empty());
+
+        return {};
+    }
+
+private:
     using interval_t = refiner_t::interval_t;
     using residual_t = interval_t::residual_t;
 
@@ -329,53 +367,13 @@ struct spliner_t
     struct unseeded_workspace_t : typestate_t<workspace_t, refinement_pool_seeder_t, seeded_workspace_t>
     {};
 
-    auto operator()(auto& spline, auto const& sample_target_function) -> std::expected<void, convergence_error_t>
-    {
-        assert(workspace.empty());
-
-        workspace.clear();
-
-        workspace.completed_intervals.reserve(max_segment_count);
-        workspace.refinement_pool.reserve(max_segment_count);
-
-        auto convergence_result = unseeded_workspace_t{workspace}
-                                      .next(seed_refinement_pool, sample_target_function)
-                                      .next(refine, sample_target_function);
-
-        if (!convergence_result) return std::unexpected(convergence_result.error());
-
-        std::move(*convergence_result).finalize(assemble, spline);
-
-        assert(workspace.empty());
-
-        return {};
-    }
-
-    refinement_pool_seeder_t seed_refinement_pool;
-    refiner_t refine;
-    assembler_t assemble;
-
-    workspace_t workspace;
-
-    // optional overload to take a function directly
-    template <typename target_function_t>
-    auto operator()(target_function_t target_function) -> std::expected<spline_t, convergence_error_t>
-    {
-        return operator()(function_sampler_t<target_function_t>{std::move(target_function)});
-    }
-
-    template <typename target_function_t>
-    auto operator()(function_sampler_t<target_function_t> sample_target_function)
-        -> std::expected<spline_t, convergence_error_t>
-    {
-        auto spline = spline_t{};
-        auto const convergence_result = operator()(spline, sample_target_function);
-        if (!convergence_result) return std::unexpected(convergence_result.error());
-        return spline;
-    }
+    refinement_pool_seeder_t seed_refinement_pool_;
+    refiner_t refine_;
+    assembler_t assemble_;
+    workspace_t workspace_;
 };
 
-TEST(spline_builder, poc)
+TEST(spline_generator, poc)
 {
 #if 0
     using real_t = std::float128_t;
@@ -441,8 +439,8 @@ TEST(spline_builder, poc)
     using assembler_t = assembler_t<domain_max>;
     using refiner_t = refiner_t<real_t, subdivider_t, convergence_test_t, max_segment_count>;
     // using pipeline_t = pipeline_t<real_t, workspace_t, refinement_pool_seeder_t, refiner_t, assembler_t>;
-    using spliner_t = spliner_t<real_t, spline_t, workspace_t, refinement_pool_t, refinement_pool_seeder_t, refiner_t,
-        assembler_t, max_segment_count, domain_max>;
+    using spline_generator_t = spline_generator_t<real_t, spline_t, workspace_t, refinement_pool_t,
+        refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count, domain_max>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
@@ -456,10 +454,10 @@ TEST(spline_builder, poc)
         .estimate_residual = estimate_residual,
     };
 
-    auto spliner = spliner_t
+    auto spline_generator = spline_generator_t
     {
-        .seed_refinement_pool = {.interval_factory = interval_factory},
-        .refine =
+        refinement_pool_seeder_t{.interval_factory = interval_factory},
+        refiner_t
         {
             .test_convergence = convergence_test_t{.global_tolerance=global_tolerance},
             .subdivide = subdivider_t
@@ -468,21 +466,18 @@ TEST(spline_builder, poc)
                 .interval_factory = interval_factory,
             },
         },
-        .assemble={},
-        .workspace={},
+        assembler_t{}
     };
 
-    auto const result = spliner([](auto x) static noexcept -> decltype(x) {
+    auto spline = spline_t{};
+    auto spline_generation_result = spline_generator(spline, [](auto x) static noexcept -> decltype(x) {
         using std::log1p;
         return log1p(x);
     });
 
-    EXPECT_TRUE(result.has_value());
+    EXPECT_TRUE(spline_generation_result.has_value());
 
 #if 1
-    // how do we nrvo this if it is std::expected? it will be writing over top of the instance in the ui model
-    auto const& spline = result.value();
-
     auto x_fixed = x_t{0};
     auto const sample_count = 100;
     auto const dx = x_t{domain_max} / sample_count;
