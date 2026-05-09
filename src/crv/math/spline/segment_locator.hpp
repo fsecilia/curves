@@ -71,6 +71,8 @@ public:
         }
     };
 
+    constexpr segment_locator_t() noexcept : x_max_{}, segment_count_{}, nodes_{} {}
+
     explicit constexpr segment_locator_t(
         std::span<x_t const, total_key_count> sorted_keys, x_t x_max, int_t segment_count) noexcept
         : x_max_{x_max}, segment_count_{segment_count}

@@ -26,6 +26,8 @@ public:
     static constexpr auto max_segments = 256;
     using segments_t = std::array<segment_t, max_segments>;
 
+    constexpr spline_t() noexcept : segment_locator_{}, segments_{}, prev_segment_index_{} {}
+
     /// \pre 0 < locator.segment_count() <= max_segments
     constexpr spline_t(
         segment_locator_t const& locator, segments_t const& segments, int_t prev_segment_index = 0) noexcept
