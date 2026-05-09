@@ -1,44 +1,35 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief mutable workspace for stateless mesher
+/// \brief mutable workspace for stateless spliner
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/spline/construction/interval.hpp>
 #include <crv/priority_queue.hpp>
 #include <vector>
 
 namespace crv::spline {
-namespace generic {
 
 /// mutable state for adaptive mesh refinement
-///
-/// This type encapsulates mutable state and separates memory allocation from the meshing logic. This way, the
-/// allocations can be done once and the buffers maintained between mesh generations while keeping the logic stateless.
-template <typename result_t, typename queue_t> struct workspace_t
+template <typename interval_t, int_t max_segments> struct workspace_t
 {
-    result_t result;
-    queue_t queue;
+    std::vector<interval_t> completed_intervals;
+    priority_queue_t<std::vector<interval_t>, interval_priority_less_t> refinement_pool;
 
     constexpr auto clear() noexcept -> void
     {
-        result.clear();
-        queue.clear();
+        completed_intervals.clear();
+        refinement_pool.clear();
     }
 
-    constexpr auto reserve(std::size_t max_segments) -> void
+    constexpr workspace_t()
     {
-        result.reserve(max_segments);
-        queue.reserve(max_segments);
+        completed_intervals.reserve(max_segments);
+        refinement_pool.reserve(max_segments);
     }
 };
-
-} // namespace generic
-
-template <typename segment_t, typename queue_pred_t>
-using workspace_t
-    = generic::workspace_t<std::vector<segment_t>, priority_queue_t<std::vector<segment_t>, queue_pred_t>>;
 
 } // namespace crv::spline

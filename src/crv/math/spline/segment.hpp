@@ -31,7 +31,7 @@ public:
     // bias is chosen so that the supported signed range matches the field width.
     static constexpr auto log2_width_bias = 1 << (log2_width_bit_count - 1);
 
-    constexpr packed_segment_t() = default;
+    constexpr packed_segment_t() noexcept : coeffs_{} {}
 
     constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
@@ -81,7 +81,7 @@ public:
 
     using coeffs_t = cubic_polynomial_t<coeff_t>;
 
-    constexpr segment_t() = default;
+    constexpr segment_t() noexcept : packed_segment_{} {}
 
     constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
     {
