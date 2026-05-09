@@ -79,8 +79,8 @@ template <typename t_bisection_t> struct bisector_t
     }
 };
 
-// tracks errors about why subdivision failed and where
-template <std::floating_point real_t> struct subdivision_error_t
+// tracks errors about why convergence failed and where
+template <std::floating_point real_t> struct convergence_error_t
 {
     segment_defects_t defects;
 
@@ -91,8 +91,8 @@ template <std::floating_point real_t> struct subdivision_error_t
 /// decides if an interval should subdivide; signals error if interval must subdivide but cannot
 template <std::floating_point real_t, int_t log2_min_width> struct convergence_test_t
 {
-    using subdivision_error_t = subdivision_error_t<real_t>;
-    using result_t = std::expected<bool, subdivision_error_t>;
+    using convergence_error_t = convergence_error_t<real_t>;
+    using result_t = std::expected<bool, convergence_error_t>;
 
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
     real_t global_tolerance;
@@ -107,7 +107,7 @@ template <std::floating_point real_t, int_t log2_min_width> struct convergence_t
 
         if (must_subdivide && !can_subdivide)
         {
-            return std::unexpected(subdivision_error_t{
+            return std::unexpected(convergence_error_t{
                 .defects = interval.segment_defects,
                 .left = interval.subdomain.left.x,
                 .right = interval.subdomain.right.x,
@@ -179,7 +179,7 @@ template <std::floating_point real_t, typename spline_t, typename refinement_poo
     typename convergence_test_t, typename subdivider_t, int_t max_segment_count, int_t domain_max>
 struct spliner_t
 {
-    using subdivision_error_t = convergence_test_t::subdivision_error_t;
+    using convergence_error_t = convergence_test_t::convergence_error_t;
     using interval_t = subdivider_t::interval_t;
     using residual_t = interval_t::residual_t;
 
@@ -192,14 +192,14 @@ struct spliner_t
 
     // optional overload to take a function directly
     template <typename target_function_t>
-    auto operator()(target_function_t sample_target_function) -> std::expected<spline_t, subdivision_error_t>
+    auto operator()(target_function_t sample_target_function) -> std::expected<spline_t, convergence_error_t>
     {
         return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)});
     }
 
     template <typename target_function_t>
     auto operator()(function_sampler_t<target_function_t> sample_target_function)
-        -> std::expected<spline_t, subdivision_error_t>
+        -> std::expected<spline_t, convergence_error_t>
     {
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
