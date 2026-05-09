@@ -431,7 +431,7 @@ TEST(spline_builder, poc)
     constexpr auto domain_max = 1 << log2_domain_max;
     constexpr auto log2_min_width = -16;
     constexpr auto log2_width_bit_count = 5;
-    constexpr auto global_tolerance = 1e-8; // should max against integral
+    constexpr auto global_tolerance = 1e-10; // should max against integral
 
 #if 1
     static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
@@ -442,6 +442,14 @@ TEST(spline_builder, poc)
     auto const error_norm = error_norm_t{};
 #endif
 
+#if 1
+    using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
+    auto const weight_function = weight_function_t{.halflife = 0.5};
+#else
+    using weight_function_t = weight_functions::uniform_t<real_t>;
+    auto const weight_function = weight_function_t{};
+#endif
+
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
     using packed_segment_t = packed_segment_t<coeff_t, log2_width_bit_count>;
     using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
@@ -449,7 +457,6 @@ TEST(spline_builder, poc)
     using interval_t = interval_t<real_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generators::equioscillation_t<real_t>;
-    using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     using residual_estimator_t = residual_estimator_t<real_t, node_generator_t, error_norm_t, weight_function_t>;
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
@@ -476,7 +483,7 @@ TEST(spline_builder, poc)
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
         .measure_error = error_norm,
-        .apply_weight = weight_function_t{.halflife = 0.5},
+        .apply_weight = weight_function,
     };
 
     auto const interval_factory = interval_factory_t{
@@ -513,7 +520,7 @@ TEST(spline_builder, poc)
     auto const& spline = result.value();
 
     auto x_fixed = x_t{0};
-    auto const sample_count = max_segment_count * 10;
+    auto const sample_count = 100;
     auto const dx = x_t{domain_max} / sample_count;
     for (auto sample = 0; sample < sample_count; ++sample, x_fixed += dx)
     {
