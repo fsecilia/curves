@@ -147,11 +147,11 @@ public:
             previous_key = key;
         }
 
-        // padding keys: must be >= x_max_ and remain monotonic so descent remains structurally sound
+        // padding keys: must be >= x_max_ so descent remains structurally sound
         for (auto i = segment_count_; i <= total_key_count; ++i)
         {
             auto const key = key_at(i);
-            if (key <= previous_key) return false;
+            if (key < previous_key) return false;
             if (key < x_max_) return false;
             previous_key = key;
         }

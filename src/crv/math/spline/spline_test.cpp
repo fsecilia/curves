@@ -13,6 +13,7 @@ namespace {
 
 using x_t = int8_t; // smaller than out
 using y_t = int16_t; // wider than in
+using normalized_t = int32_t; // larger than both
 constexpr auto segment_count = 3;
 constexpr auto x_max = x_t{5};
 
@@ -24,8 +25,9 @@ struct segment_t
 
     y_t base_val;
 
-    constexpr auto evaluate(x_t dx) const noexcept -> y_t { return static_cast<y_t>(base_val + dx); }
-    constexpr auto extend_final_tangent(x_t dx) const noexcept -> y_t { return static_cast<y_t>(-(base_val + dx)); }
+    constexpr auto x_to_t(x_t x) const noexcept -> normalized_t { return static_cast<normalized_t>(x); }
+    constexpr auto evaluate(normalized_t t) const noexcept -> y_t { return static_cast<y_t>(base_val + t); }
+    constexpr auto extend_final_tangent(x_t x) const noexcept -> y_t { return static_cast<y_t>(-(base_val + x)); }
 
     constexpr auto is_valid() const noexcept -> bool { return true; }
 };
@@ -116,7 +118,8 @@ struct segment_t
     bool valid{true};
     x_t width_{4};
 
-    constexpr auto evaluate(x_t) const noexcept -> y_t { return 0; }
+    constexpr auto x_to_t(x_t) const noexcept -> normalized_t { return 0; }
+    constexpr auto evaluate(normalized_t) const noexcept -> y_t { return 0; }
     constexpr auto extend_final_tangent(x_t) const noexcept -> y_t { return 0; }
     constexpr auto is_valid() const noexcept -> bool { return valid; }
     constexpr auto width() const noexcept -> x_t { return width_; }
@@ -209,7 +212,8 @@ struct spline_prefetch_test_t : Test
 
         alignas(32) std::array<std::byte, 32> padding;
 
-        constexpr auto evaluate(x_t) const noexcept -> y_t { return y_t{0}; }
+        constexpr auto x_to_t(x_t) const noexcept -> normalized_t { return normalized_t{0}; }
+        constexpr auto evaluate(normalized_t) const noexcept -> y_t { return y_t{0}; }
         constexpr auto extend_final_tangent(x_t) const noexcept -> y_t { return y_t{0}; }
         constexpr auto is_valid() const noexcept -> bool { return true; }
     };
