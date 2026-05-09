@@ -6,6 +6,14 @@
 # final kernel module output, the .ko itself
 obj-m += @kbuild_output@
 
+# disable lto when linking with ldd
+#
+# Building with lto causes our c++ modules to be built with -fpatchable-function-entry, which causes the linker problems
+# when it tries to fold comdats.
+ifdef CONFIG_LD_IS_LLD
+KBUILD_CFLAGS := $(filter-out -flto%, $(KBUILD_CFLAGS))
+endif
+
 # flags to build c files
 ccflags-y += -I$(src)/crv/kernel/cxx -I$(src) -DCRV_VERSION="@PROJECT_VERSION@-@git_hash@"
 
