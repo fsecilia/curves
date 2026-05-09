@@ -209,42 +209,6 @@ template <typename workspace_t, typename op_t> struct terminator_typestate_t
     }
 };
 
-#if 0
-// this is only a separate type while I see if it works. I will move this all into spliner, because otherwise spliner
-// would be just a thin wrapper around this.
-template <std::floating_point real_t, typename workspace_t, typename refinement_pool_seeder_t, typename refiner_t,
-    typename assembler_t>
-struct pipeline_t
-{
-    using convergence_error_t = refiner_t::convergence_error_t;
-
-    struct refined_workspace_t : terminator_typestate_t<workspace_t, assembler_t>
-    {};
-
-    struct seeded_workspace_t : fallable_typestate_t<workspace_t, refiner_t, refined_workspace_t, convergence_error_t>
-    {};
-
-    struct unseeded_workspace_t : typestate_t<workspace_t, refinement_pool_seeder_t, seeded_workspace_t>
-    {};
-
-    workspace_t workspace;
-
-    // in spliner, this doesn't have to take all of the params, it can reference the members directly
-    auto operator()(auto& spline, auto const& sample_target_function, refinement_pool_seeder_t& refinement_pool_seeder,
-        refiner_t& refiner, assembler_t& assembler) -> std::expected<void, convergence_error_t>
-    {
-        workspace.clear();
-        auto const convergence_result = unseeded_workspace_t{workspace}
-                                            .next(refinement_pool_seeder, sample_target_function)
-                                            .next(refiner, sample_target_function);
-
-        if (!convergence_result) return std::unexpected(convergence_result.error());
-
-        std::move(*convergence_result).finalize(assembler, spline);
-    }
-};
-#endif
-
 template <std::floating_point real_t, typename subdivider_t, typename convergence_test_t, int_t max_segment_count>
 struct refiner_t
 {
