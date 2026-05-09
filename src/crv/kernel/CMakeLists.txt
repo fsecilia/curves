@@ -225,13 +225,11 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # read kernel config to detect if it was built with clang or gcc
 file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG=y$")
 if(kernel_is_clang)
-    set(kbuild_compiler_flag "LLVM=1")
+    set(kbuild_compiler_flags "LLVM=1")
 endif()
 
 # encapsulate external make command
-set(kbuild_make_command
-    make "${kbuild_compiler_flag}" -sC "${kbuild_root}" ${kbuild_flags} V=1 "M=${kbuild_shadow_root}"
-)
+set(kbuild_make_command make -sC "${kbuild_root}" ${kbuild_compiler_flags} V=1 "M=${kbuild_shadow_root}")
 
 # main build
 add_custom_command(
