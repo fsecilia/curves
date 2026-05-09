@@ -79,15 +79,6 @@ template <typename t_bisection_t> struct bisector_t
     }
 };
 
-/// result of subdividing an interval
-template <typename t_interval_t> struct subdivision_t
-{
-    using interval_t = t_interval_t;
-
-    interval_t left;
-    interval_t right;
-};
-
 // tracks errors about why subdivision failed and where
 template <std::floating_point real_t> struct subdivision_error_t
 {
@@ -97,24 +88,16 @@ template <std::floating_point real_t> struct subdivision_error_t
     real_t right;
 };
 
-/// subdivides an interval, returns residual max or reason subdivision failed and where
-template <std::floating_point real_t, typename bisector_t, typename interval_factory_t, int_t log2_min_width>
-struct subdivider_t
+/// decides if an interval should subdivide; signals error if interval must subdivide but cannot
+template <std::floating_point real_t, int_t log2_min_width> struct convergence_test_t
 {
-    using interval_t = interval_factory_t::interval_t;
-    using subdivision_t = subdivision_t<interval_t>;
-
     using subdivision_error_t = subdivision_error_t<real_t>;
+    using result_t = std::expected<bool, subdivision_error_t>;
 
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
+    real_t global_tolerance;
 
-    [[no_unique_address]] bisector_t bisect;
-    interval_factory_t interval_factory;
-
-    using result_t = std::expected<std::optional<subdivision_t>, subdivision_error_t>;
-
-    constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
-        real_t global_tolerance) const noexcept -> result_t
+    constexpr auto operator()(auto const& interval) const noexcept -> result_t
     {
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
@@ -132,15 +115,36 @@ struct subdivider_t
         }
 
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
-        if ((must_subdivide || should_subdivide) && can_subdivide)
-        {
-            auto const child_domains = bisect(sample_target_function, interval.subdomain);
-            return subdivision_t{
-                .left = interval_factory.create(sample_target_function, child_domains.left),
-                .right = interval_factory.create(sample_target_function, child_domains.right),
-            };
-        }
-        else return std::nullopt;
+        return (must_subdivide || should_subdivide) && can_subdivide;
+    }
+};
+
+/// result of subdividing an interval
+template <typename t_interval_t> struct subdivision_t
+{
+    using interval_t = t_interval_t;
+
+    interval_t left;
+    interval_t right;
+};
+
+/// subdivides an interval
+template <std::floating_point real_t, typename bisector_t, typename interval_factory_t> struct subdivider_t
+{
+    using interval_t = interval_factory_t::interval_t;
+    using subdivision_t = subdivision_t<interval_t>;
+
+    [[no_unique_address]] bisector_t bisect;
+    interval_factory_t interval_factory;
+
+    constexpr auto operator()(interval_t const& interval, auto const& sample_target_function) const noexcept
+        -> subdivision_t
+    {
+        auto const child_domains = bisect(sample_target_function, interval.subdomain);
+        return subdivision_t{
+            .left = interval_factory.create(sample_target_function, child_domains.left),
+            .right = interval_factory.create(sample_target_function, child_domains.right),
+        };
     }
 };
 
@@ -188,15 +192,16 @@ template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
 
 // runs subdivision loop over queue and completed segments
 template <std::floating_point real_t, typename refinement_pool_t, typename refinement_pool_seeder_t,
-    typename subdivider_t, typename completed_segments_t, int_t max_segment_count>
+    typename convergence_test_t, typename subdivider_t, typename completed_segments_t, int_t max_segment_count>
 struct spliner_t
 {
-    using subdivision_error_t = subdivider_t::subdivision_error_t;
+    using subdivision_error_t = convergence_test_t::subdivision_error_t;
     using interval_t = subdivider_t::interval_t;
     using residual_t = interval_t::residual_t;
 
-    [[no_unique_address]] subdivider_t subdivide;
-    [[no_unique_address]] refinement_pool_seeder_t seed_refinement_pool;
+    refinement_pool_seeder_t seed_refinement_pool;
+    convergence_test_t test_convergence;
+    subdivider_t subdivide;
 
     std::vector<interval_t> completed_intervals;
     refinement_pool_t refinement_pool;
@@ -208,14 +213,13 @@ struct spliner_t
 
     // optional overload to take a function directly
     template <typename target_function_t>
-    auto operator()(target_function_t sample_target_function, real_t global_tolerance)
-        -> std::expected<result_t, subdivision_error_t>
+    auto operator()(target_function_t sample_target_function) -> std::expected<result_t, subdivision_error_t>
     {
-        return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)}, global_tolerance);
+        return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)});
     }
 
     template <typename target_function_t>
-    auto operator()(function_sampler_t<target_function_t> sample_target_function, real_t global_tolerance)
+    auto operator()(function_sampler_t<target_function_t> sample_target_function)
         -> std::expected<result_t, subdivision_error_t>
     {
         using completed_segment_t = completed_segments_t::value_type;
@@ -238,14 +242,17 @@ struct spliner_t
             // this uses a *reference*; pop must be very specifically placed
             auto const& interval = refinement_pool.top();
 
-            auto const result = subdivide(interval, sample_target_function, global_tolerance);
-            if (!result) return std::unexpected(result.error());
+            auto const convergence_result = test_convergence(interval);
+            if (!convergence_result) return std::unexpected(convergence_result.error());
 
-            if (auto& subdivision = *result)
+            auto const requires_subdivision = *convergence_result;
+
+            if (requires_subdivision)
             {
+                auto const children = subdivide(interval, sample_target_function);
                 refinement_pool.pop();
-                refinement_pool.push(subdivision->left);
-                refinement_pool.push(subdivision->right);
+                refinement_pool.push(children.left);
+                refinement_pool.push(children.right);
             }
             else
             {
@@ -295,6 +302,7 @@ TEST(spline_builder, poc)
     constexpr auto log2_domain_max = 8;
     constexpr auto log2_min_width = -16;
     constexpr auto log2_width_bit_count = 5;
+    constexpr auto global_tolerance = 1e-8; // should max against integral
 
 #if 1
     static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
@@ -327,9 +335,10 @@ TEST(spline_builder, poc)
     using bisector_t = bisector_t<bisection_t>;
     using completed_segment_t = completed_segment_t<x_t, segment_t>;
     using completed_segments_t = std::vector<completed_segment_t>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, interval_factory_t, log2_min_width>;
-    using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, subdivider_t, completed_segments_t,
-        max_segment_count>;
+    using convergence_test_t = convergence_test_t<real_t, log2_min_width>;
+    using subdivider_t = subdivider_t<real_t, bisector_t, interval_factory_t>;
+    using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, convergence_test_t, subdivider_t,
+        completed_segments_t, max_segment_count>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
@@ -345,22 +354,21 @@ TEST(spline_builder, poc)
 
     auto spliner = spliner_t
     {
+        .seed_refinement_pool = {.interval_factory = interval_factory},
+        .test_convergence = convergence_test_t{.global_tolerance=global_tolerance},
         .subdivide = subdivider_t
         {
             .bisect = bisector_t{},
             .interval_factory = interval_factory,
         },
-        .seed_refinement_pool = {.interval_factory = interval_factory},
         .completed_intervals = {},
         .refinement_pool = {},
     };
 
-    auto const result = spliner(
-        [](auto x) static noexcept -> decltype(x) {
-            using std::log1p;
-            return log1p(x);
-        },
-        1e-8);
+    auto const result = spliner([](auto x) static noexcept -> decltype(x) {
+        using std::log1p;
+        return log1p(x);
+    });
 
     EXPECT_TRUE(result.has_value());
 
