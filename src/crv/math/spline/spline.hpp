@@ -14,9 +14,12 @@
 namespace crv::spline {
 
 /// fixed-point cubic spline approximating a function over a specific domain
-template <typename segment_t, typename segment_locator_t> class spline_t
+template <typename t_segment_t, typename t_segment_locator_t> class spline_t
 {
 public:
+    using segment_t = t_segment_t;
+    using segment_locator_t = t_segment_locator_t;
+
     using x_t = segment_t::x_t;
     using y_t = segment_t::y_t;
 
@@ -47,7 +50,8 @@ public:
 
         if !consteval { prev_segment_index_ = location.index; }
 
-        return segments_[location.index].evaluate(x - location.origin);
+        auto const& segment = segments_[location.index];
+        return segment.evaluate(segment.x_to_t(x - location.origin));
     }
 
     /// validates data the driver receives

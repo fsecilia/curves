@@ -31,6 +31,8 @@ public:
     // bias is chosen so that the supported signed range matches the field width.
     static constexpr auto log2_width_bias = 1 << (log2_width_bit_count - 1);
 
+    constexpr packed_segment_t() = default;
+
     constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
         // this type should fit into no more than half a cache line.
@@ -43,8 +45,7 @@ public:
             && "segment_t: top bits of first coefficient must be clear");
 
         // log2_width must fit in log2_width_bit_count signed bits
-        assert(-log2_width_bias <= log2_width && log2_width < log2_width_bias
-            && "segment_t: log2_width out of range");
+        assert(-log2_width_bias <= log2_width && log2_width < log2_width_bias && "segment_t: log2_width out of range");
 
         // pack biased log2_width into bottom bits of coeff[0]
         coeffs_[0] <<= log2_width_bit_count;
@@ -79,6 +80,8 @@ public:
     using packed_segment_t = t_packed_segment_t;
 
     using coeffs_t = cubic_polynomial_t<coeff_t>;
+
+    constexpr segment_t() = default;
 
     constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
     {

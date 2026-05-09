@@ -28,14 +28,14 @@
 #include <crv/math/spline/construction/weight_function.hpp>
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/math/spline/segment.hpp>
+#include <crv/math/spline/segment_locator.hpp>
+#include <crv/math/spline/spline.hpp>
 #include <crv/priority_queue.hpp>
 #include <algorithm>
 #include <cmath>
-#include <compare>
 #include <expected>
 #include <iomanip>
 #include <numeric>
-#include <optional>
 #include <stdfloat>
 
 namespace crv {
@@ -152,7 +152,7 @@ template <std::floating_point real_t, typename bisector_t, typename interval_fac
 //
 // The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
 // critical points aligned ot widths
-template <std::floating_point real_t, typename interval_factory_t, int_t log2_domain_max>
+template <std::floating_point real_t, typename interval_factory_t, int_t log2_domain_max, int_t domain_max>
 struct refinement_pool_seeder_t
 {
     interval_factory_t interval_factory;
@@ -161,9 +161,8 @@ struct refinement_pool_seeder_t
     constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
     {
         assert(queue.empty());
-        auto const domain_max = std::ldexp(real_t{1}, int_cast<int>(log2_domain_max));
         auto const left = real_t{0};
-        auto const right = domain_max;
+        auto const right = static_cast<real_t>(domain_max);
         using subdomain_t = subdomain_t<real_t>;
         queue.push(interval_factory.create(sample_target_function,
             subdomain_t{
@@ -175,24 +174,9 @@ struct refinement_pool_seeder_t
     }
 };
 
-template <is_fixed t_x_t, typename segment_t> struct completed_segment_t
-{
-    using x_t = t_x_t;
-
-    x_t origin;
-    segment_t segment;
-
-    constexpr auto operator<=>(completed_segment_t const& src) const noexcept -> std::strong_ordering
-    {
-        return origin <=> src.origin;
-    }
-
-    constexpr auto operator==(completed_segment_t const& src) const noexcept -> bool = default;
-};
-
 // runs subdivision loop over queue and completed segments
-template <std::floating_point real_t, typename refinement_pool_t, typename refinement_pool_seeder_t,
-    typename convergence_test_t, typename subdivider_t, typename completed_segments_t, int_t max_segment_count>
+template <std::floating_point real_t, typename spline_t, typename refinement_pool_t, typename refinement_pool_seeder_t,
+    typename convergence_test_t, typename subdivider_t, int_t max_segment_count, int_t domain_max>
 struct spliner_t
 {
     using subdivision_error_t = convergence_test_t::subdivision_error_t;
@@ -206,30 +190,20 @@ struct spliner_t
     std::vector<interval_t> completed_intervals;
     refinement_pool_t refinement_pool;
 
-    struct result_t
-    {
-        completed_segments_t completed_segments;
-    };
-
     // optional overload to take a function directly
     template <typename target_function_t>
-    auto operator()(target_function_t sample_target_function) -> std::expected<result_t, subdivision_error_t>
+    auto operator()(target_function_t sample_target_function) -> std::expected<spline_t, subdivision_error_t>
     {
         return operator()(function_sampler_t<target_function_t>{std::move(sample_target_function)});
     }
 
     template <typename target_function_t>
     auto operator()(function_sampler_t<target_function_t> sample_target_function)
-        -> std::expected<result_t, subdivision_error_t>
+        -> std::expected<spline_t, subdivision_error_t>
     {
-        using completed_segment_t = completed_segments_t::value_type;
-        using x_t = completed_segment_t::x_t;
-
         assert(refinement_pool.empty());
         assert(completed_intervals.empty());
 
-        auto completed_segments = completed_segments_t{};
-        completed_segments.reserve(max_segment_count);
         completed_intervals.reserve(max_segment_count);
         refinement_pool.reserve(max_segment_count);
 
@@ -246,7 +220,6 @@ struct spliner_t
             if (!convergence_result) return std::unexpected(convergence_result.error());
 
             auto const requires_subdivision = *convergence_result;
-
             if (requires_subdivision)
             {
                 auto const children = subdivide(interval, sample_target_function);
@@ -268,19 +241,45 @@ struct spliner_t
             refinement_pool.pop();
         }
 
-        // convert from segments to intervals
-        std::ranges::transform(
-            completed_intervals, std::back_inserter(completed_segments), [](auto const& interval) noexcept {
-                return completed_segment_t{
-                    .origin = to_fixed<x_t>(interval.subdomain.left.x),
-                    .segment = interval.segment,
-                };
-            });
-
         // sort by origin
-        std::ranges::sort(completed_segments, std::ranges::less{}, &completed_segment_t::origin);
+        std::ranges::sort(completed_intervals, std::ranges::less{},
+            [](auto const& interval) noexcept { return interval.subdomain.left.x; });
 
-        return result_t{.completed_segments = std::move(completed_segments)};
+        // extract components
+        using segment_locator_t = spline_t::segment_locator_t;
+        using segments_t = spline_t::segments_t;
+        using segment_t = spline_t::segment_t;
+        using x_t = segment_t::x_t;
+
+        auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
+        assert(segment_locator_t::max_segment_count >= segment_count);
+        static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segments);
+
+        segments_t segments;
+        using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
+        sorted_keys_t sorted_keys;
+
+        segments[0] = completed_intervals[0].segment;
+        for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
+        {
+            auto const& interval = completed_intervals[segment_index];
+            segments[segment_index] = interval.segment;
+            sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
+        }
+
+        auto const x_max = x_t{domain_max};
+        for (auto key_padding_index = segment_count; key_padding_index < segment_locator_t::total_key_count;
+            ++key_padding_index)
+        {
+            sorted_keys[key_padding_index] = x_max;
+        }
+
+        static_assert(std::same_as<typename segments_t::value_type, typename spline_t::segment_t>);
+        static_assert(std::same_as<segment_locator_t, typename spline_t::segment_locator_t>);
+        static_assert(std::same_as<typename segment_locator_t::x_t, x_t>);
+
+        auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
+        return spline_t{segment_locator, segments};
     }
 };
 
@@ -298,13 +297,15 @@ TEST(spline_builder, poc)
 
     using coeff_t = fixed_t<int64_t, 47>;
 
-    constexpr auto max_segment_count = 1 << 8;
+    constexpr auto depth_max = 4;
+    constexpr auto max_segment_count = 1 << (depth_max * 2);
     constexpr auto log2_domain_max = 8;
+    constexpr auto domain_max = 1 << log2_domain_max;
     constexpr auto log2_min_width = -16;
     constexpr auto log2_width_bit_count = 5;
     constexpr auto global_tolerance = 1e-8; // should max against integral
 
-#if 1
+#if 0
     static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
     using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
     auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
@@ -330,15 +331,15 @@ TEST(spline_builder, poc)
     using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
     using interval_factory_t
         = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_factory_t, log2_domain_max>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<real_t, interval_factory_t, log2_domain_max, domain_max>;
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
-    using completed_segment_t = completed_segment_t<x_t, segment_t>;
-    using completed_segments_t = std::vector<completed_segment_t>;
     using convergence_test_t = convergence_test_t<real_t, log2_min_width>;
     using subdivider_t = subdivider_t<real_t, bisector_t, interval_factory_t>;
-    using spliner_t = spliner_t<real_t, refinement_pool_t, refinement_pool_seeder_t, convergence_test_t, subdivider_t,
-        completed_segments_t, max_segment_count>;
+    using segment_locator_t = segment_locator_t<x_t, depth_max>;
+    using spline_t = spline_t<segment_t, segment_locator_t>;
+    using spliner_t = spliner_t<real_t, spline_t, refinement_pool_t, refinement_pool_seeder_t, convergence_test_t,
+        subdivider_t, max_segment_count, domain_max>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
@@ -372,34 +373,31 @@ TEST(spline_builder, poc)
 
     EXPECT_TRUE(result.has_value());
 
-    auto const& completed_segments = result.value().completed_segments;
-
 #if 1
-    for (auto const completed_segment : completed_segments)
+    // how do we nrvo this if it is std::expected? it will be writing over top of the instance in the ui model
+    auto const& spline = result.value();
+
+    auto x_fixed = x_t{0};
+    auto const sample_count = max_segment_count * 10;
+    auto const dx = x_t{domain_max} / sample_count;
+    for (auto sample = 0; sample < sample_count; ++sample, x_fixed += dx)
     {
         using std::log1p;
 
-        auto const log2_width = completed_segment.segment.log2_width();
-        auto const width = log2_width < 0 ? x_t{1} >> -log2_width : x_t{1} << log2_width;
+        auto const x_real = from_fixed<real_t>(x_fixed);
 
-        static auto const x_denom = 10;
-        for (auto x_numer = 0; x_numer < 10; ++x_numer)
-        {
-            auto const x = width * x_numer / x_denom;
-            auto const x_fixed = completed_segment.origin + x;
-            auto const x_real = from_fixed<real_t>(x_fixed);
-            auto const expected_y = log1p(x_real);
-            auto const segment = completed_segment.segment;
-            auto const actual_y = from_fixed<real_t>(segment.evaluate(segment.x_to_t(x)));
-            auto const difference = actual_y - expected_y;
+        auto const expected_y = log1p(x_real);
+        auto const actual_y = from_fixed<real_t>(spline(x_fixed));
 
-            std::cout << std::setprecision(4) << "x = " << static_cast<long double>(x_real)
-                      << ", log1p(x) = " << static_cast<long double>(expected_y)
-                      << ", y_actual = " << static_cast<long double>(actual_y)
-                      << ", Δy = " << static_cast<long double>(difference) << std::endl;
-        }
-        std::cout << std::endl;
+        auto const difference = actual_y - expected_y;
+        ASSERT_LT(abs(difference), 1e-5);
+
+        std::cout << std::setprecision(4) << "x = " << static_cast<long double>(x_real)
+                  << ", log1p(x) = " << static_cast<long double>(expected_y)
+                  << ", y_actual = " << static_cast<long double>(actual_y)
+                  << ", Δy = " << static_cast<long double>(difference) << std::endl;
     }
+    std::cout << std::endl;
 #endif
 }
 
