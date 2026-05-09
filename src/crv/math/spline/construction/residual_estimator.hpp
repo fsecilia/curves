@@ -10,7 +10,6 @@
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <cassert>
-#include <cmath>
 
 namespace crv::spline {
 
@@ -26,7 +25,7 @@ template <std::floating_point real_t> struct residual_t
 
 /// estimates the maximum residual error of an approximant over a specific domain interval
 ///
-/// This searches to find the worst-case error between a target function and its approximant. The search space is
+/// This type searches to find the worst-case error between a target function and its approximant. The search space is
 /// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
 /// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
 /// weight function.
@@ -42,33 +41,27 @@ struct residual_estimator_t
     constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left,
         real_t right) const noexcept -> residual_t
     {
-        using std::isfinite;
-
-        auto max_residual = residual_t{};
-
         auto const interval_width = right - left;
 
-        // sample function at generated nodes
+        // sample function at generated nodes, calc error, and track extrema
+        auto max_residual = residual_t{};
         for (auto const standard_node : generate_nodes())
         {
             // convert from standard nodes in [0, 1] to domain nodes in [left, right].
             auto const domain_node = left + standard_node * interval_width;
 
-            // evaluate target function and approximant
+            // measure error between target function and approximant
             auto const approximation = approximant(domain_node);
-            auto const target_function_sample = sample_target_function(domain_node);
-
-            auto const target = target_function_sample.y;
+            auto const target = sample_target_function(domain_node).y;
             auto const metric_error = measure_error(target, approximation);
-            assert(isfinite(metric_error));
 
+            // track extrema
             max_residual.scale = max(max_residual.scale, abs(primal(target)));
             max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
         }
 
         auto const midpoint = (left + right) * 0.5;
         auto const weight = apply_weight(midpoint);
-        assert(isfinite(weight));
         max_residual.weighted_error = max_residual.metric_error * weight;
         return max_residual;
     }
