@@ -25,6 +25,8 @@ template <typename interval_t, int_t max_segments> struct workspace_t
         refinement_pool.clear();
     }
 
+    constexpr auto empty() const noexcept -> bool { return completed_intervals.empty() && refinement_pool.empty(); }
+
     constexpr workspace_t()
     {
         completed_intervals.reserve(max_segments);

@@ -159,13 +159,13 @@ struct refinement_pool_seeder_t
     interval_factory_t interval_factory;
 
     // for now, just push one whole segment
-    constexpr auto operator()(auto& queue, auto const& sample_target_function) const -> void
+    constexpr auto operator()(auto& workspace, auto const& sample_target_function) const -> void
     {
-        assert(queue.empty());
+        assert(workspace.empty());
         auto const left = real_t{0};
         auto const right = static_cast<real_t>(domain_max);
         using subdomain_t = subdomain_t<real_t>;
-        queue.push(interval_factory.create(sample_target_function,
+        workspace.refinement_pool.push(interval_factory.create(sample_target_function,
             subdomain_t{
                 .left = sample_target_function(left),
                 .midpoint = sample_target_function(std::midpoint(left, right)),
@@ -175,12 +175,11 @@ struct refinement_pool_seeder_t
     }
 };
 
-#if 0
 template <typename workspace_t, typename op_t, typename next_t> struct typestate_t
 {
     workspace_t& workspace;
 
-    template <typename... args_t> constexpr auto next(op_t& op, args_t&&... args) && -> next_t
+    template <typename... args_t> constexpr auto next(op_t& op, args_t&&... args) const&& -> next_t
     {
         op(workspace, std::forward<args_t>(args)...);
         return next_t{workspace};
@@ -191,10 +190,11 @@ template <typename workspace_t, typename op_t, typename next_t, typename error_t
 {
     workspace_t& workspace;
 
-    template <typename... args_t> constexpr auto next(op_t& op, args_t&&... args) && -> std::expected<next_t, error_t>
+    template <typename... args_t>
+    constexpr auto next(op_t& op, args_t&&... args) const&& -> std::expected<next_t, error_t>
     {
         auto const result = op(workspace, std::forward<args_t>(args)...);
-        if (result.is_error()) return std::unexpected(result.error);
+        if (!result) return std::unexpected(result.error());
         return next_t{workspace};
     }
 };
@@ -203,12 +203,13 @@ template <typename workspace_t, typename op_t> struct terminator_typestate_t
 {
     workspace_t& workspace;
 
-    template <typename... args_t> constexpr auto finalize(op_t& op, args_t&&... args) && -> void
+    template <typename... args_t> constexpr auto finalize(op_t& op, args_t&&... args) const&& -> void
     {
         op(workspace, std::forward<args_t>(args)...);
     }
 };
 
+#if 0
 // this is only a separate type while I see if it works. I will move this all into spliner, because otherwise spliner
 // would be just a thin wrapper around this.
 template <std::floating_point real_t, typename workspace_t, typename refinement_pool_seeder_t, typename refiner_t,
@@ -304,6 +305,8 @@ template <int_t domain_max> struct assembler_t
 {
     template <typename spline_t> auto operator()(auto& workspace, spline_t& spline) const -> void
     {
+        assert(workspace.refinement_pool.empty());
+
         // extract components
         using segment_locator_t = spline_t::segment_locator_t;
         using segments_t = spline_t::segments_t;
@@ -325,6 +328,7 @@ template <int_t domain_max> struct assembler_t
             segments[segment_index] = interval.segment;
             sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
         }
+        workspace.completed_intervals.clear();
 
         auto const x_max = x_t{domain_max};
         for (auto key_padding_index = segment_count; key_padding_index < segment_locator_t::total_key_count;
@@ -352,6 +356,37 @@ struct spliner_t
     using interval_t = refiner_t::interval_t;
     using residual_t = interval_t::residual_t;
 
+    struct refined_workspace_t : terminator_typestate_t<workspace_t, assembler_t>
+    {};
+
+    struct seeded_workspace_t : fallable_typestate_t<workspace_t, refiner_t, refined_workspace_t, convergence_error_t>
+    {};
+
+    struct unseeded_workspace_t : typestate_t<workspace_t, refinement_pool_seeder_t, seeded_workspace_t>
+    {};
+
+    auto operator()(auto& spline, auto const& sample_target_function) -> std::expected<void, convergence_error_t>
+    {
+        assert(workspace.empty());
+
+        workspace.clear();
+
+        workspace.completed_intervals.reserve(max_segment_count);
+        workspace.refinement_pool.reserve(max_segment_count);
+
+        auto convergence_result = unseeded_workspace_t{workspace}
+                                      .next(seed_refinement_pool, sample_target_function)
+                                      .next(refine, sample_target_function);
+
+        if (!convergence_result) return std::unexpected(convergence_result.error());
+
+        std::move(*convergence_result).finalize(assemble, spline);
+
+        assert(workspace.empty());
+
+        return {};
+    }
+
     refinement_pool_seeder_t seed_refinement_pool;
     refiner_t refine;
     assembler_t assemble;
@@ -369,20 +404,9 @@ struct spliner_t
     auto operator()(function_sampler_t<target_function_t> sample_target_function)
         -> std::expected<spline_t, convergence_error_t>
     {
-        assert(workspace.refinement_pool.empty());
-        assert(workspace.completed_intervals.empty());
-
-        workspace.completed_intervals.reserve(max_segment_count);
-        workspace.refinement_pool.reserve(max_segment_count);
-
-        seed_refinement_pool(workspace.refinement_pool, sample_target_function);
-        assert(!workspace.refinement_pool.empty());
-
-        auto const refinement_result = refine(workspace, sample_target_function);
-        if (!refinement_result) return std::unexpected(refinement_result.error());
-
         auto spline = spline_t{};
-        assemble(workspace, spline);
+        auto const convergence_result = operator()(spline, sample_target_function);
+        if (!convergence_result) return std::unexpected(convergence_result.error());
         return spline;
     }
 };
