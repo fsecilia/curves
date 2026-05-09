@@ -35,8 +35,8 @@
 #include <expected>
 #include <iomanip>
 #include <numeric>
+#include <optional>
 #include <stdfloat>
-#include <variant>
 
 namespace crv {
 namespace spline {
@@ -111,9 +111,7 @@ struct subdivider_t
     [[no_unique_address]] bisector_t bisect;
     interval_factory_t interval_factory;
 
-    struct interval_complete_t
-    {};
-    using result_t = std::variant<interval_complete_t, subdivision_t, subdivision_error_t>;
+    using result_t = std::expected<std::optional<subdivision_t>, subdivision_error_t>;
 
     constexpr auto operator()(interval_t const& interval, auto const& sample_target_function,
         real_t global_tolerance) const noexcept -> result_t
@@ -126,11 +124,11 @@ struct subdivider_t
 
         if (must_subdivide && !can_subdivide)
         {
-            return subdivision_error_t{
+            return std::unexpected(subdivision_error_t{
                 .defects = interval.segment_defects,
                 .left = interval.subdomain.left.x,
                 .right = interval.subdomain.right.x,
-            };
+            });
         }
 
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
@@ -142,7 +140,7 @@ struct subdivider_t
                 .right = interval_factory.create(sample_target_function, child_domains.right),
             };
         }
-        else return interval_complete_t{};
+        else return std::nullopt;
     }
 };
 
@@ -220,7 +218,6 @@ struct spliner_t
     auto operator()(function_sampler_t<target_function_t> sample_target_function, real_t global_tolerance)
         -> std::expected<result_t, subdivision_error_t>
     {
-        using subdivision_t = subdivider_t::subdivision_t;
         using completed_segment_t = completed_segments_t::value_type;
         using x_t = completed_segment_t::x_t;
 
@@ -241,9 +238,10 @@ struct spliner_t
             // this uses a *reference*; pop must be very specifically placed
             auto const& interval = refinement_pool.top();
 
-            auto const subdivision_result = subdivide(interval, sample_target_function, global_tolerance);
-            if (auto const* err = std::get_if<subdivision_error_t>(&subdivision_result)) return std::unexpected(*err);
-            else if (auto const* subdivision = std::get_if<subdivision_t>(&subdivision_result))
+            auto const result = subdivide(interval, sample_target_function, global_tolerance);
+            if (!result) return std::unexpected(result.error());
+
+            if (auto& subdivision = *result)
             {
                 refinement_pool.pop();
                 refinement_pool.push(subdivision->left);
