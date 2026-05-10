@@ -181,24 +181,47 @@ struct refinement_pool_seeder_t
 {
     interval_factory_t interval_factory;
 
-    // for now, just push one whole segment
-
     constexpr auto operator()(typestate_t state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
     {
+        using subdomain_t = subdomain_t<real_t>;
+
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        auto const left = real_t{0};
-        auto const right = static_cast<real_t>(domain_max);
-        using subdomain_t = subdomain_t<real_t>;
-        workspace.refinement_pool.push(interval_factory.create(sample_target_function,
-            subdomain_t{
-                .left = sample_target_function(left),
-                .midpoint = sample_target_function(std::midpoint(left, right)),
-                .right = sample_target_function(right),
-                .log2_width = log2_domain_max,
-            }));
+        // unconditionally decimate the curve into 16 segments
+        //
+        // Our bit packing format is riding the edge of overflow during the initial seed if it has a width of 256.
+        // We can either use more integer bits, or decimate the curve. Here, we split the initial range into 16 segments
+        // unconditionally. This is temporary until we support arbitary critical points.
+        //
+        // The critical points will still need to do this 16x subdivison, but they furthermore must also respect min
+        // segment width.
+
+        auto const log2_decimation_denominator = 4;
+        auto const log2_width = log2_domain_max - log2_decimation_denominator;
+        auto const decimated_segment_count = 1 << log2_decimation_denominator;
+
+        auto const domain_left = real_t{0};
+        auto const domain_right = static_cast<real_t>(domain_max);
+        auto const domain_width = domain_right - domain_left;
+        auto const segment_width = domain_width / decimated_segment_count;
+
+        auto left = sample_target_function(domain_left);
+        for (auto segment = 0; segment < decimated_segment_count; ++segment)
+        {
+            auto const right = sample_target_function(left.x + segment_width);
+
+            workspace.refinement_pool.push(interval_factory.create(sample_target_function,
+                subdomain_t{
+                    .left = left,
+                    .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
+                    .right = right,
+                    .log2_width = log2_width,
+                }));
+
+            left = right;
+        }
 
         return typename typestate_t::next_t{workspace};
     }
@@ -392,7 +415,9 @@ TEST(spline_generator, poc)
     auto const error_norm = error_norm_t{};
 #endif
 
-#if 1
+#if 0
+    // with the steepest log1p we support with 16 initial segments, 181.625x this always produces segments with
+    // error > 1e-5 near about x=50 unless you make it basically flat already
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
     auto const weight_function = weight_function_t{.halflife = 0.5};
 #else
@@ -458,17 +483,19 @@ TEST(spline_generator, poc)
         assembler_t{}
     };
 
-    auto spline = spline_t{};
-    auto spline_generation_result = spline_generator(spline, [](auto x) static noexcept -> decltype(x) {
+    auto const target_function = [](auto x) static noexcept -> decltype(x) {
         using std::log1p;
-        return log1p(x);
-    });
+        return 181.625 * log1p(x);
+    };
+
+    auto spline = spline_t{};
+    auto spline_generation_result = spline_generator(spline, std::ref(target_function));
 
     EXPECT_TRUE(spline_generation_result.has_value());
 
 #if 1
     auto x_fixed = x_t{0};
-    auto const sample_count = 100;
+    auto const sample_count = 255;
     auto const dx = x_t{domain_max} / sample_count;
     for (auto sample = 0; sample < sample_count; ++sample, x_fixed += dx)
     {
@@ -476,7 +503,7 @@ TEST(spline_generator, poc)
 
         auto const x_real = from_fixed<real_t>(x_fixed);
 
-        auto const expected_y = log1p(x_real);
+        auto const expected_y = target_function(x_real);
         auto const actual_y = from_fixed<real_t>(spline(x_fixed));
 
         auto const difference = actual_y - expected_y;
