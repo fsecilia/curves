@@ -25,12 +25,13 @@ template <is_fixed coeff_t> struct hermite_converter_t
         auto const m0 = tangent(left_y);
         auto const m1 = tangent(right_y);
         auto const dp = p1 - p0;
-        return {{
-            to_fixed<coeff_t>(-2.0 * dp + m0 + m1),
-            to_fixed<coeff_t>(3.0 * dp - 2.0 * m0 - m1),
-            to_fixed<coeff_t>(m0),
-            to_fixed<coeff_t>(p0),
-        }};
+
+        auto const a = -2.0 * dp + m0 + m1;
+        auto const b = 3.0 * dp - 2.0 * m0 - m1;
+        auto const c = m0;
+        auto const d = p0;
+
+        return {{to_fixed<coeff_t>(a), to_fixed<coeff_t>(b), to_fixed<coeff_t>(c), to_fixed<coeff_t>(d)}};
     }
 };
 
