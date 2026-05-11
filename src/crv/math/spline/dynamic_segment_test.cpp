@@ -128,7 +128,7 @@ template <typename t_segment_unpacker_t, is_fixed out_t> struct segment_evaluato
 // packing
 // --------------------------------------------------------------------------------------------------------------------
 
-using cubic_polynomial_t = std::array<float_t, fields_per_segment>;
+template <typename real_t> using cubic_polynomial_t = std::array<real_t, fields_per_segment>;
 
 // extracts integer mantissa and exponent from a float
 template <std::floating_point real_t> struct float_extractor_t;
@@ -186,91 +186,52 @@ struct field_packer_t
     }
 };
 
-template <typename t_field_packer_t, typename t_float_extractor_t, is_fixed t_in_t> struct packer_t
+template <typename t_float_extractor_t, typename t_field_packer_t, is_fixed t_in_t, is_fixed t_out_t>
+struct segment_packer_t
 {
-    using field_packer_t = t_field_packer_t;
     using float_extractor_t = t_float_extractor_t;
-    using in_t = t_in_t;
-
-    using real_t = float_extractor_t::real_t;
-    using extracted_real_t = float_extractor_t::extracted_real_t;
-
-    static constexpr auto mantissa_bits = field_width - shift_width;
-    static constexpr auto total_headroom = mantissa_bits - (float_extractor_t::frac_bits + 1) - 1;
-    static constexpr auto in_frac_bits = in_t::frac_bits;
-
-    // temporary sanity check during dev
-    static_assert(total_headroom == 4);
-
-    [[no_unique_address]] field_packer_t pack_field;
-
-    // this does not belong here, but the constants and types use its definitions
-    [[no_unique_address]] float_extractor_t extract_float;
-
-    constexpr auto operator()(extracted_real_t cur, extracted_real_t next, int_t log2_segment_width) const noexcept
-        -> std::expected<packed_field_t, segment_error_reason_t>
-    {
-        auto shift = in_frac_bits + log2_segment_width + next.exponent - cur.exponent;
-
-        // test for unrepresentable dynamic ranges
-        auto const dynamic_range_too_large = shift < 0;
-        if (dynamic_range_too_large)
-        {
-            // The relative shift is negative, but evaluator shifts right unconditionally. The negative shift must be
-            // canceled to bring it to 0. This proceeds in two phases, a lossless portion, then lossy. First, shift cur
-            // left through its headroom and increment shift by the amount shifted. This is destructive to cur, but it
-            // is lossless. If this does not bring shift to 0, then shift next right and increment shift. This is
-            // destructive to next and lossy.
-
-            // update: this happens so infrequently that it would require pathology to induce. Punt. It is now an error.
-            return std::unexpected{segment_error_reason_t::dynamic_range_packing};
-        }
-
-        return pack_field(unpacked_field_t{
-            .mantissa = cur.mantissa,
-            .shift = int_cast<uint8_t>(shift),
-        });
-    }
-};
-
-template <typename t_field_packer_t, typename t_packer_t, is_fixed t_out_t> struct segment_packer_t
-{
     using field_packer_t = t_field_packer_t;
-    using packer_t = t_packer_t;
+    using in_t = t_in_t;
     using out_t = t_out_t;
 
-    using real_t = packer_t::real_t;
+    using extracted_real_t = float_extractor_t::extracted_real_t;
+    using real_t = float_extractor_t::real_t;
+    using cubic_polynomial_t = cubic_polynomial_t<real_t>;
 
+    static constexpr auto in_frac_bits = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
     [[no_unique_address]] field_packer_t pack_field;
-    [[no_unique_address]] packer_t pack;
-
-    // this exists at the wrong level
-    using float_extractor_t = packer_t::float_extractor_t;
-    float_extractor_t const& extract_float = pack.extract_float;
+    [[no_unique_address]] float_extractor_t extract_float;
 
     constexpr auto operator()(cubic_polynomial_t const& cubic, int_t log2_width) const noexcept
         -> std::expected<packed_segment_t, segment_error_reason_t>
     {
         packed_segment_t packed_segment;
 
-        using extracted_real_t = float_extractor_t::extracted_real_t;
-
+        // pack all but final term, aligning relative shifts of each in turn
         extracted_real_t cur;
         extracted_real_t next = extract_float(cubic[0]);
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
             cur = next;
             next = extract_float(cubic[field_index + 1]);
-            auto const pack_result = pack(cur, next, log2_width);
-            if (!pack_result) return std::unexpected(pack_result.error());
-            packed_segment[field_index] = *pack_result;
+
+            auto const shift = in_frac_bits + log2_width + next.exponent - cur.exponent;
+
+            // punt on large dynamic ranges; this is technically recoverable, but pathological enough to not matter
+            auto const dynamic_range_too_large = shift < 0;
+            if (dynamic_range_too_large) return std::unexpected{segment_error_reason_t::dynamic_range_packing};
+
+            packed_segment[field_index] = pack_field(unpacked_field_t{
+                .mantissa = cur.mantissa,
+                .shift = int_cast<uint8_t>(shift),
+            });
         }
 
-        // align d to output radix
+        // align final term to output radix
         //
-        // d has no successor term; its shift is responsible for aligning to the output format.
+        // The final term has no successor term; its shift is responsible for aligning to the output format.
         auto final_shift = max(-next.exponent - out_frac_bits, int_t{0});
         packed_segment[3]
             = pack_field(unpacked_field_t{.mantissa = next.mantissa, .shift = int_cast<uint8_t>(final_shift)});
@@ -299,8 +260,7 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
     using segment_evaluator_t = segment_evaluator_t<segment_unpacker_t, out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
-    using packer_t = packer_t<field_packer_t, float_extractor_t, in_t>;
-    using segment_packer_t = segment_packer_t<field_packer_t, packer_t, out_t>;
+    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t>;
 
     real_t const input = GetParam().input;
     real_t const expected = GetParam().expected;
@@ -310,8 +270,8 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     segment_unpacker_t segment_unpacker;
     segment_evaluator_t segment_evaluator;
 
-    // p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
-    static constexpr auto cubic = cubic_polynomial_t{1.4, -2, 1.0, 0.1};
+    // hermite: p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
+    static constexpr auto cubic = cubic_polynomial_t{1.4, -2.0, 1.0, 0.1};
 
     auto test(int_t log2_width) -> void
     {
