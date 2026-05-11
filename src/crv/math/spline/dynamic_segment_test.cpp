@@ -15,6 +15,7 @@
 #include <expected>
 
 namespace crv::spline {
+namespace {
 
 enum class segment_error_reason_t
 {
@@ -126,6 +127,8 @@ template <typename t_segment_unpacker_t, is_fixed out_t> struct segment_evaluato
 // --------------------------------------------------------------------------------------------------------------------
 // packing
 // --------------------------------------------------------------------------------------------------------------------
+
+using cubic_polynomial_t = std::array<float_t, fields_per_segment>;
 
 // extracts integer mantissa and exponent from a float
 template <std::floating_point real_t> struct float_extractor_t;
@@ -244,30 +247,26 @@ template <typename t_field_packer_t, typename t_packer_t, is_fixed t_out_t> stru
     [[no_unique_address]] packer_t pack;
 
     // this exists at the wrong level
-    packer_t::float_extractor_t const& extract_float = pack.extract_float;
+    using float_extractor_t = packer_t::float_extractor_t;
+    float_extractor_t const& extract_float = pack.extract_float;
 
-    constexpr auto operator()(real_t a, real_t b, real_t c, real_t d, int_t log2_width) const noexcept
+    constexpr auto operator()(cubic_polynomial_t const& cubic, int_t log2_width) const noexcept
         -> std::expected<packed_segment_t, segment_error_reason_t>
     {
         packed_segment_t packed_segment;
 
-        auto cur = extract_float(a);
-        auto next = extract_float(b);
-        auto pack_result = pack(cur, next, log2_width);
-        if (!pack_result) return std::unexpected(pack_result.error());
-        packed_segment[0] = *pack_result;
+        using extracted_real_t = float_extractor_t::extracted_real_t;
 
-        cur = next;
-        next = extract_float(c);
-        pack_result = pack(cur, next, log2_width);
-        if (!pack_result) return std::unexpected(pack_result.error());
-        packed_segment[1] = *pack_result;
-
-        cur = next;
-        next = extract_float(d);
-        pack_result = pack(cur, next, log2_width);
-        if (!pack_result) return std::unexpected(pack_result.error());
-        packed_segment[2] = *pack_result;
+        extracted_real_t cur;
+        extracted_real_t next = extract_float(cubic[0]);
+        for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
+        {
+            cur = next;
+            next = extract_float(cubic[field_index + 1]);
+            auto const pack_result = pack(cur, next, log2_width);
+            if (!pack_result) return std::unexpected(pack_result.error());
+            packed_segment[field_index] = *pack_result;
+        }
 
         // align d to output radix
         //
@@ -279,8 +278,6 @@ template <typename t_field_packer_t, typename t_packer_t, is_fixed t_out_t> stru
         return packed_segment;
     }
 };
-
-namespace {
 
 using real_t = float_t;
 
@@ -314,19 +311,16 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     segment_evaluator_t segment_evaluator;
 
     // p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
-    static constexpr float64_t a = 1.4;
-    static constexpr float64_t b = -2;
-    static constexpr float64_t c = 1.0;
-    static constexpr float64_t d = 0.1;
+    static constexpr auto cubic = cubic_polynomial_t{1.4, -2, 1.0, 0.1};
 
     auto test(int_t log2_width) -> void
     {
         // double check float value
         auto const t = input;
-        auto const oracle = ((a * t + b) * t + c) * t + d;
+        auto const oracle = ((cubic[0] * t + cubic[1]) * t + cubic[2]) * t + cubic[3];
         EXPECT_NEAR(expected, oracle, 1e-10);
 
-        auto const packed_segment = segment_packer(a, b, c, d, log2_width);
+        auto const packed_segment = segment_packer(cubic, log2_width);
         EXPECT_TRUE(packed_segment.has_value());
         auto const unpacked_segment = segment_unpacker(*packed_segment);
 
@@ -376,5 +370,4 @@ vector_t const vectors[] = {
 INSTANTIATE_TEST_SUITE_P(vectors, spline_dynamic_segment_test_t, ValuesIn(vectors));
 
 } // namespace
-
 } // namespace crv::spline
