@@ -89,12 +89,8 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
 // evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename t_segment_unpacker_t, is_fixed out_t> struct segment_evaluator_t
+template <is_fixed out_t> struct segment_evaluator_t
 {
-    using segment_unpacker_t = t_segment_unpacker_t;
-
-    [[no_unique_address]] segment_unpacker_t unpack_segment;
-
     // should we constrain fixed width and signedness?
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, is_fixed auto const& dx) const noexcept
         -> out_t
@@ -258,7 +254,7 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     using in_t = fixed_t<int64_t, 44>;
     using out_t = fixed_t<int64_t, 48>;
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
-    using segment_evaluator_t = segment_evaluator_t<segment_unpacker_t, out_t>;
+    using segment_evaluator_t = segment_evaluator_t<out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t>;
 
