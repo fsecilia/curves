@@ -169,6 +169,7 @@ if (enable_testing)
     if (BUILD_INTEGRATION_TESTS)
         add_executable(spline_integration_test
             math/spline/construction/spline_integration_test.cpp
+            math/spline/dynamic_segment_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
     endif()
