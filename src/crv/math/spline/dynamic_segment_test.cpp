@@ -158,8 +158,19 @@ template <> struct float_extractor_t<float64_t>
     }
 };
 
-template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
+struct field_packer_t
 {
+    constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept -> packed_field_t
+    {
+        assert(unpacked_field.mantissa == (unpacked_field.mantissa << shift_width) >> shift_width);
+        assert(unpacked_field.shift == (unpacked_field.shift & shift_mask));
+        return packed_field_t{static_cast<uint64_t>(unpacked_field.mantissa << shift_width) | unpacked_field.shift};
+    }
+};
+
+template <typename t_field_packer_t, typename t_float_extractor_t, is_fixed t_in_t> struct packer_t
+{
+    using field_packer_t = t_field_packer_t;
     using float_extractor_t = t_float_extractor_t;
     using in_t = t_in_t;
 
@@ -173,15 +184,10 @@ template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
     // temporary sanity check during dev
     static_assert(total_headroom == 4);
 
+    [[no_unique_address]] field_packer_t pack_field;
+
     // this does not belong here, but the constants and types use its definitions
     [[no_unique_address]] float_extractor_t extract_float;
-
-    constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept -> packed_field_t
-    {
-        assert(unpacked_field.mantissa == (unpacked_field.mantissa << shift_width) >> shift_width);
-        assert(unpacked_field.shift == (unpacked_field.shift & shift_mask));
-        return packed_field_t{static_cast<uint64_t>(unpacked_field.mantissa << shift_width) | unpacked_field.shift};
-    }
 
     struct packing_step_result_t
     {
@@ -240,7 +246,7 @@ template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
         }
 
         return {
-            .packed_field = operator()(unpacked_field_t{
+            .packed_field = pack_field(unpacked_field_t{
                 .mantissa = cur.mantissa,
                 .shift = int_cast<uint8_t>(shift),
             }),
@@ -249,19 +255,21 @@ template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
     }
 };
 
-template <typename t_field_packer_t, is_fixed t_out_t> struct segment_packer_t
+template <typename t_field_packer_t, typename t_packer_t, is_fixed t_out_t> struct segment_packer_t
 {
     using field_packer_t = t_field_packer_t;
+    using packer_t = t_packer_t;
     using out_t = t_out_t;
 
-    using real_t = field_packer_t::real_t;
+    using real_t = packer_t::real_t;
 
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
     [[no_unique_address]] field_packer_t pack_field;
+    [[no_unique_address]] packer_t pack;
 
     // this exists at the wrong level
-    field_packer_t::float_extractor_t const& extract_float = pack_field.extract_float;
+    packer_t::float_extractor_t const& extract_float = pack.extract_float;
 
     constexpr auto operator()(real_t a, real_t b, real_t c, real_t d, int_t log2_width) const noexcept
         -> packed_segment_t
@@ -270,12 +278,12 @@ template <typename t_field_packer_t, is_fixed t_out_t> struct segment_packer_t
 
         auto cur = extract_float(a);
         auto next = extract_float(b);
-        auto packing_step = pack_field(cur, next, log2_width);
+        auto packing_step = pack(cur, next, log2_width);
         result[0] = packing_step.packed_field;
 
         cur = packing_step.modified_next;
         next = extract_float(c);
-        packing_step = pack_field(cur, next, log2_width);
+        packing_step = pack(cur, next, log2_width);
         result[1] = packing_step.packed_field;
 
         cur = packing_step.modified_next;
@@ -288,7 +296,7 @@ template <typename t_field_packer_t, is_fixed t_out_t> struct segment_packer_t
         if (pre_shift < 0)
         {
             auto const left_shift = -pre_shift;
-            if (left_shift <= field_packer_t::total_headroom)
+            if (left_shift <= packer_t::total_headroom)
             {
                 next_d.mantissa <<= left_shift;
                 next_d.exponent -= left_shift;
@@ -301,7 +309,7 @@ template <typename t_field_packer_t, is_fixed t_out_t> struct segment_packer_t
         }
 
         // align c*dx to d
-        packing_step = pack_field(cur, next_d, log2_width);
+        packing_step = pack(cur, next_d, log2_width);
         result[2] = packing_step.packed_field;
 
         // calc pure shift from d to the out_frac_bits
@@ -336,8 +344,8 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
     using segment_evaluator_t = segment_evaluator_t<segment_unpacker_t, out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
-    using field_packer_t = field_packer_t<float_extractor_t, in_t>;
-    using segment_packer_t = segment_packer_t<field_packer_t, out_t>;
+    using packer_t = packer_t<field_packer_t, float_extractor_t, in_t>;
+    using segment_packer_t = segment_packer_t<field_packer_t, packer_t, out_t>;
 
     real_t const input = GetParam().input;
     real_t const expected = GetParam().expected;
