@@ -196,7 +196,7 @@ struct segment_packer_t
 
     using extracted_real_t = float_extractor_t::extracted_real_t;
     using real_t = float_extractor_t::real_t;
-    using cubic_polynomial_t = cubic_polynomial_t<real_t>;
+    using polynomial_t = cubic_polynomial_t<real_t>;
 
     static constexpr auto in_frac_bits = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
@@ -204,18 +204,18 @@ struct segment_packer_t
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] float_extractor_t extract_float;
 
-    constexpr auto operator()(cubic_polynomial_t const& cubic, int_t log2_width) const noexcept
+    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
         -> std::expected<packed_segment_t, segment_error_reason_t>
     {
         packed_segment_t packed_segment;
 
         // pack all but final term, aligning relative shifts of each in turn
         extracted_real_t cur;
-        extracted_real_t next = extract_float(cubic[0]);
+        extracted_real_t next = extract_float(polynomial[0]);
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
             cur = next;
-            next = extract_float(cubic[field_index + 1]);
+            next = extract_float(polynomial[field_index + 1]);
 
             auto const shift = in_frac_bits + log2_width + next.exponent - cur.exponent;
 
@@ -233,7 +233,7 @@ struct segment_packer_t
         //
         // The final term has no successor term; its shift is responsible for aligning to the output format.
         auto final_shift = max(-next.exponent - out_frac_bits, int_t{0});
-        packed_segment[3]
+        packed_segment[fields_per_segment - 1]
             = pack_field(unpacked_field_t{.mantissa = next.mantissa, .shift = int_cast<uint8_t>(final_shift)});
 
         return packed_segment;
@@ -271,16 +271,16 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     segment_evaluator_t segment_evaluator;
 
     // hermite: p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
-    static constexpr auto cubic = cubic_polynomial_t{1.4, -2.0, 1.0, 0.1};
+    static constexpr auto polynomial = cubic_polynomial_t{1.4, -2.0, 1.0, 0.1};
 
     auto test(int_t log2_width) -> void
     {
         // double check float value
         auto const t = input;
-        auto const oracle = ((cubic[0] * t + cubic[1]) * t + cubic[2]) * t + cubic[3];
+        auto const oracle = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
         EXPECT_NEAR(expected, oracle, 1e-10);
 
-        auto const packed_segment = segment_packer(cubic, log2_width);
+        auto const packed_segment = segment_packer(polynomial, log2_width);
         EXPECT_TRUE(packed_segment.has_value());
         auto const unpacked_segment = segment_unpacker(*packed_segment);
 
