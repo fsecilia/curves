@@ -173,6 +173,7 @@ template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
     // temporary sanity check during dev
     static_assert(total_headroom == 4);
 
+    // this does not belong here, but the constants and types use its definitions
     [[no_unique_address]] float_extractor_t extract_float;
 
     constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept -> packed_field_t
@@ -214,13 +215,18 @@ template <typename t_float_extractor_t, is_fixed t_in_t> struct field_packer_t
             // if left shift still remains, scale the next term down by the remaining shift
             if (left_shift > 0)
             {
-                if (left_shift >= field_width) next.mantissa = 0;
-                else next.mantissa >>= left_shift;
-
-                next.exponent += left_shift;
+                if (left_shift >= field_width)
+                {
+                    next.mantissa = 0;
+                    next.exponent = 0;
+                }
+                else
+                {
+                    next.mantissa >>= left_shift;
+                    next.exponent += left_shift;
+                }
             }
 
-            assert(left_shift == 0);
             shift = 0;
         }
         else if (shift >= field_width)
@@ -275,9 +281,9 @@ template <typename t_field_packer_t, is_fixed t_out_t> struct segment_packer_t
         cur = packing_step.modified_next;
         auto next_d = extract_float(d);
 
-        // adjust d to hit the output frac_bits if it naturally falls short
+        // align d to output radix
         //
-        // This absorbs any left shifts so the evaluator only shifts right.
+        // d has no successor term; its shift is responsible for aligning to the output format.
         auto pre_shift = -next_d.exponent - out_frac_bits;
         if (pre_shift < 0)
         {
@@ -377,7 +383,7 @@ vector_t const vectors[] = {
     {3.0 / 4.0, 0.315625},
     {1.0 / 1.0, 0.5},
 };
-INSTANTIATE_TEST_CASE_P(vectors, spline_dynamic_segment_test_t, ValuesIn(vectors));
+INSTANTIATE_TEST_SUITE_P(vectors, spline_dynamic_segment_test_t, ValuesIn(vectors));
 
 } // namespace
 
