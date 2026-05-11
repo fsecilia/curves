@@ -360,26 +360,49 @@ struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
     static constexpr float64_t b = -2;
     static constexpr float64_t c = 1.0;
     static constexpr float64_t d = 0.1;
+
+    auto test(int_t log2_width) -> void
+    {
+        // double check float value
+        auto const t = input;
+        auto const oracle = ((a * t + b) * t + c) * t + d;
+        EXPECT_NEAR(expected, oracle, 1e-10);
+
+        auto const packed_segment = segment_packer(a, b, c, d, log2_width);
+        auto const unpacked_segment = segment_unpacker(packed_segment);
+
+        // check actual result
+        auto const width = std::ldexp(1.0, log2_width);
+        auto const dx = to_fixed<in_t>(input * width);
+        auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
+        auto const actual_float = from_fixed<real_t>(actual_fixed);
+        EXPECT_NEAR(expected, actual_float, 1e-12);
+    }
 };
+
+TEST_P(spline_dynamic_segment_test_t, log2_width_m8)
+{
+    test(-8);
+}
+
+TEST_P(spline_dynamic_segment_test_t, log2_width_m1)
+{
+    test(-1);
+}
 
 TEST_P(spline_dynamic_segment_test_t, log2_width_0)
 {
-    auto const log2_width = 0;
-    auto const width = real_t{1 << log2_width};
+    test(0);
+}
 
-    // double check float value
-    auto const t = input / width;
-    auto const oracle = ((a * t + b) * t + c) * t + d;
-    EXPECT_NEAR(expected, oracle, 1e-10);
+TEST_P(spline_dynamic_segment_test_t, log2_width_1)
+{
+    test(1);
+}
 
-    auto const packed_segment = segment_packer(a, b, c, d, log2_width);
-    auto const unpacked_segment = segment_unpacker(packed_segment);
-
-    // check actual result
-    auto const dx = to_fixed<in_t>(input);
-    auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
-    auto const actual_float = from_fixed<real_t>(actual_fixed);
-    EXPECT_NEAR(expected, actual_float, 1e-10);
+TEST_P(spline_dynamic_segment_test_t, log2_width_i)
+{
+    test(8);
 }
 
 vector_t const vectors[] = {
