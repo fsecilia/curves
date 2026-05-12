@@ -21,8 +21,9 @@ namespace {
 
 enum class segment_error_reason_t
 {
-    packing_dynamic_range,
-    packing_overflow,
+    bad_float,
+    coefficient_overflow,
+    intermediate_overflow
 };
 
 template <std::floating_point real_t> struct segment_error_t
@@ -37,6 +38,8 @@ template <std::floating_point real_t> struct segment_error_t
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
+
+constexpr auto log2_min_width = -16;
 
 using mantissa_t = int64_t;
 using shift_t = int8_t;
@@ -66,7 +69,7 @@ struct field_unpacker_t
     {
         auto const shift_masked = int_cast<uint8_t>(packed_field & shift_mask);
         auto const shift_signed = int_cast<int8_t>(
-            int_cast<int8_t>(shift_masked << shift_container_bit_padding) >> shift_container_bit_padding);
+            static_cast<int8_t>(shift_masked << shift_container_bit_padding) >> shift_container_bit_padding);
 
         return {
             .mantissa = static_cast<mantissa_t>(packed_field) >> shift_width,
@@ -182,12 +185,14 @@ template <> struct float_extractor_t<float64_t>
     static constexpr auto exponent_mask = unsigned_t{0x7FF};
     static constexpr auto implicit_bit = unsigned_t{0x0010000000000000};
 
-    constexpr auto operator()(real_t val) const noexcept -> extracted_real_t
+    constexpr auto operator()(real_t val) const noexcept -> std::expected<extracted_real_t, segment_error_reason_t>
     {
         auto const bits = std::bit_cast<unsigned_t>(val);
         auto const raw_exponent = (bits >> frac_bits) & exponent_mask;
 
-        assert(raw_exponent != exponent_mask && "float_extractor_t: inf and nan not supported");
+        // inf and nan are not supported
+        auto const bad_float = raw_exponent == exponent_mask;
+        if (bad_float) return std::unexpected(segment_error_reason_t::bad_float);
 
         // ftz
         if (raw_exponent == 0) return {};
@@ -198,7 +203,7 @@ template <> struct float_extractor_t<float64_t>
         auto const is_negative = (bits >> (float_width - 1)) != 0;
         if (is_negative) mantissa = -mantissa;
 
-        return {mantissa, exponent};
+        return extracted_real_t{.mantissa = mantissa, .exponent = exponent};
     }
 };
 
@@ -216,13 +221,14 @@ template <typename t_field_unpacker_t> struct field_packer_t
 
         if (unpacked_field != unpack_field(packed_field))
         {
-            return std::unexpected(segment_error_reason_t::packing_overflow);
+            return std::unexpected(segment_error_reason_t::coefficient_overflow);
         }
         return packed_field;
     }
 };
 
-template <typename t_float_extractor_t, typename t_field_packer_t, is_fixed t_in_t, is_fixed t_out_t>
+template <typename t_float_extractor_t, typename t_field_packer_t, is_fixed t_in_t, is_fixed t_out_t,
+    int_t min_log2_width>
 struct segment_packer_t
 {
     using float_extractor_t = t_float_extractor_t;
@@ -237,6 +243,8 @@ struct segment_packer_t
     static constexpr auto in_frac_bits = in_t::frac_bits;
     static constexpr auto out_frac_bits = out_t::frac_bits;
 
+    static_assert(in_frac_bits + min_log2_width > 0);
+
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] float_extractor_t extract_float;
 
@@ -245,39 +253,54 @@ struct segment_packer_t
     {
         packed_segment_t packed_segment;
 
-        // pack all but final term, aligning relative shifts of each in turn
-        extracted_real_t cur;
-        extracted_real_t next = extract_float(polynomial[0]);
+        // delta is the bit-growth from multiplying by dx (the segment-local input step).
+        // precondition: delta >= 0 (the segment has at least 1 bit of input resolution).
+        auto const delta = in_frac_bits + log2_width;
+
+        auto const initial = extract_float(polynomial[0]);
+        if (!initial) return std::unexpected(initial.error());
+
+        auto acc_exp = initial->exponent;
+        auto prev_mantissa = initial->mantissa;
+
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
-            cur = next;
-            next = extract_float(polynomial[field_index + 1]);
+            auto const next = extract_float(polynomial[field_index + 1]);
+            if (!next) return std::unexpected(next.error());
 
-            auto const shift = in_frac_bits + log2_width + next.exponent - cur.exponent;
+            // zero mantissa can't dominate the scale; treat it as matching the accumulator.
+            auto const next_exp = (next->mantissa == 0) ? acc_exp : next->exponent;
+            auto const exp_gap = next_exp - acc_exp;
 
-            // punt on large dynamic ranges for intermediate terms
-            //
-            // This is technically recoverable, but pathological enough to not matter.
-            auto const dynamic_range_too_large = shift < 0;
-            if (dynamic_range_too_large) return std::unexpected{segment_error_reason_t::packing_dynamic_range};
+            // delta absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
+            auto const acc_shift = delta + std::max(int_t{0}, exp_gap);
+            auto const coeff_shift = std::max(int_t{0}, -exp_gap);
 
-            auto const pack_field_result = pack_field(unpacked_field_t{
-                .mantissa = cur.mantissa,
-                .shift = int_cast<shift_t>(shift),
+            // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
+            auto const adjusted_mantissa = (coeff_shift >= 64) ? 0 : (next->mantissa >> coeff_shift);
+            auto const final_acc_mantissa = (acc_shift >= 64) ? 0 : prev_mantissa;
+            auto const final_acc_shift = (acc_shift >= 64) ? 0 : acc_shift;
+
+            auto const pack_result = pack_field(unpacked_field_t{
+                .mantissa = final_acc_mantissa,
+                .shift = int_cast<int8_t>(final_acc_shift),
             });
-            if (!pack_field_result) return std::unexpected(pack_field_result.error());
+            if (!pack_result) return std::unexpected(pack_result.error());
+            packed_segment[field_index] = *pack_result;
 
-            packed_segment[field_index] = *pack_field_result;
+            acc_exp = std::max(acc_exp, next_exp);
+            prev_mantissa = adjusted_mantissa;
         }
 
-        // align final term to output radix
-        //
-        // The final term has no successor term; its shift is responsible for aligning to the output format.
-        auto const final_shift = -next.exponent - out_frac_bits;
-        auto const final_pack_field_result
-            = pack_field(unpacked_field_t{.mantissa = next.mantissa, .shift = int_cast<shift_t>(final_shift)});
-        if (!final_pack_field_result) return std::unexpected(final_pack_field_result.error());
-        packed_segment[fields_per_segment - 1] = *final_pack_field_result;
+        // final term: no successor, so the shift aligns directly to the output radix.
+        auto const final_shift = std::clamp<int_t>(-acc_exp - out_frac_bits, -64, 63);
+
+        auto const final_pack = pack_field(unpacked_field_t{
+            .mantissa = prev_mantissa,
+            .shift = int_cast<int8_t>(final_shift),
+        });
+        if (!final_pack) return std::unexpected(final_pack.error());
+        packed_segment[fields_per_segment - 1] = *final_pack;
 
         return packed_segment;
     }
@@ -297,7 +320,7 @@ struct spline_dynamic_segment_test_t : Test
     using segment_evaluator_t = segment_evaluator_t<out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
     using field_packer_t = field_packer_t<field_unpacker_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t>;
+    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t, log2_min_width>;
     using cubic_polynomial_t = cubic_polynomial_t<real_t>;
 
     segment_packer_t segment_packer;
@@ -324,7 +347,7 @@ struct spline_dynamic_segment_test_t : Test
     }
 };
 
-#if 0
+#if 1
 TEST_F(spline_dynamic_segment_test_t, pathological_integral)
 {
     auto const polynomial = cubic_polynomial_t{0.0, 0.0, 1000.0, 0.0};
