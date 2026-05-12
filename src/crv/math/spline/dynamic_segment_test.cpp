@@ -238,23 +238,25 @@ template <> struct float_extractor_t<float64_t>
     }
 };
 
-template <typename t_field_unpacker_t> struct field_packer_t
+struct field_packer_t
 {
-    using field_unpacker_t = t_field_unpacker_t;
-
-    [[no_unique_address]] field_unpacker_t unpack_field;
-
     constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept
         -> std::expected<packed_field_t, segment_error_reason_t>
     {
-        auto const packed_field = static_cast<packed_field_t>(
-            (unpacked_field.mantissa << layout.shift_width) | (unpacked_field.shift & layout.shift_mask));
+        auto const mantissa_bits = field_width - layout.shift_width;
 
-        if (unpacked_field != unpack_field(packed_field, layout))
+        // 2^(N-1) - 1 for max, -2^(N-1) for min
+        auto const max_mantissa = (mantissa_t{1} << (mantissa_bits - 1)) - 1;
+        auto const min_mantissa = -(mantissa_t{1} << (mantissa_bits - 1));
+
+        if (unpacked_field.mantissa > max_mantissa || unpacked_field.mantissa < min_mantissa)
         {
             return std::unexpected(segment_error_reason_t::coefficient_overflow);
         }
-        return packed_field;
+
+        auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
+        auto const packed_shift = unpacked_field.shift & layout.shift_mask;
+        return packed_field_t{packed_mantissa | packed_shift};
     }
 };
 
@@ -432,7 +434,6 @@ struct spline_dynamic_segment_test_t : Test
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
     using segment_evaluator_t = segment_evaluator_t<out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
-    using field_packer_t = field_packer_t<field_unpacker_t>;
     using segment_builder_t = segment_builder_t<float_extractor_t::extracted_real_t, in_t, out_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
