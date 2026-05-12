@@ -40,7 +40,6 @@ template <std::floating_point real_t> struct segment_error_t
 
 using mantissa_t = int64_t;
 using shift_t = int8_t;
-using shift_mask_t = uint8_t;
 using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
 
 struct field_layout_t
@@ -48,10 +47,7 @@ struct field_layout_t
     int_t shift_width;
     bool is_signed;
 
-    constexpr auto shift_mask() const noexcept -> packed_field_t
-    {
-        return (packed_field_t{1} << shift_width) - 1;
-    }
+    constexpr auto shift_mask() const noexcept -> packed_field_t { return (packed_field_t{1} << shift_width) - 1; }
 };
 
 constexpr auto intermediate_layout = field_layout_t{
@@ -64,17 +60,9 @@ constexpr auto final_layout = field_layout_t{
     .is_signed = true,
 };
 
-constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
-constexpr auto field_width = int_t{sizeof(packed_field_t) * CHAR_BIT};
-
-constexpr auto min_final_shift = -(1 << (final_layout.shift_width - 1));
-constexpr auto max_final_shift = (1 << (final_layout.shift_width - 1)) - 1;
-
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
-
-constexpr auto log2_min_width = -16;
 
 struct unpacked_field_t
 {
@@ -92,7 +80,7 @@ struct field_unpacker_t
 {
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        auto const shift_masked = int_cast<shift_mask_t>(packed_field & layout.shift_mask());
+        auto const shift_masked = int_cast<std::make_unsigned_t<shift_t>>(packed_field & layout.shift_mask());
 
         int8_t shift_val = shift_masked;
         if (layout.is_signed)
@@ -242,6 +230,8 @@ template <> struct float_extractor_t<float64_t>
 
 struct field_packer_t
 {
+    static constexpr auto field_width = int_t{sizeof(packed_field_t) * CHAR_BIT};
+
     constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept
         -> std::expected<packed_field_t, segment_error_reason_t>
     {
@@ -270,6 +260,8 @@ template <typename t_extracted_real_t, is_fixed t_in_t, is_fixed t_out_t> struct
 
     static constexpr auto in_frac_bits = t_in_t::frac_bits;
     static constexpr auto out_frac_bits = t_out_t::frac_bits;
+
+    static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
 
     int_t delta;
     int_t acc_exp;
@@ -303,6 +295,9 @@ template <typename t_extracted_real_t, is_fixed t_in_t, is_fixed t_out_t> struct
     {
         static constexpr auto max_mantissa = max<mantissa_t>();
         static constexpr auto min_mantissa = min<mantissa_t>();
+
+        static constexpr auto min_final_shift = -(1 << (final_layout.shift_width - 1));
+        static constexpr auto max_final_shift = (1 << (final_layout.shift_width - 1)) - 1;
 
         // final term: no successor, so the shift aligns directly to the output radix
         auto const final_shift = -acc_exp - out_frac_bits;
@@ -423,6 +418,8 @@ using real_t = float_t;
 
 struct spline_dynamic_segment_test_t : Test
 {
+    static constexpr auto log2_min_width = -16;
+
     // A 32khz mouse fully saturating input at max rate produces a velocity of sqrt(2*(2^15 - 1)^2)*32 ~= 20.5 bits, so
     // we need 21 integer bits, which gives Q21.42. We could pragmatically put a soft limiter on x somewhere much lower
     // because sustained saturation isn't really possible by a human and a few more fractional bits here would improve
