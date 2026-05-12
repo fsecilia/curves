@@ -17,14 +17,14 @@ constexpr auto log2_width_max = 8;
 constexpr auto log2_width_min = -16;
 
 // ====================================================================================================================
-// packed_segment_t
+// static_packed_segment_t
 // ====================================================================================================================
 
-namespace packed_segment_test {
+namespace static_packed_segment_test {
 
 using coeff_value_t = int64_t;
 using coeff_t = fixed_t<coeff_value_t, 47>;
-using sut_t = packed_segment_t<coeff_t, log2_width_bit_count>;
+using sut_t = static_packed_segment_t<coeff_t, log2_width_bit_count>;
 using coeffs_t = sut_t::coeffs_t;
 
 constexpr auto c1 = coeff_t{1};
@@ -81,7 +81,7 @@ namespace death_tests {
 constexpr auto coeff_bits = sizeof(typename coeff_t::value_t) * CHAR_BIT;
 constexpr auto coeff0_unsafe_bound = coeff_t::value_t{1} << (coeff_bits - log2_width_bit_count - 1);
 
-TEST(spline_packed_segment, violates_coeff0_positive_packing_bounds)
+TEST(spline_static_packed_segment, violates_coeff0_positive_packing_bounds)
 {
     // this is safe and does not assert
     [[maybe_unused]] auto safe
@@ -92,7 +92,7 @@ TEST(spline_packed_segment, violates_coeff0_positive_packing_bounds)
         sut_t({coeff_t::literal(coeff0_unsafe_bound), coeff_t{0}, coeff_t{0}, coeff_t{0}}, 0), "top bits");
 }
 
-TEST(spline_packed_segment, violates_coeff0_negative_packing_bounds)
+TEST(spline_static_packed_segment, violates_coeff0_negative_packing_bounds)
 {
     // this is safe and does not assert
     [[maybe_unused]] auto safe_neg
@@ -107,7 +107,7 @@ TEST(spline_packed_segment, violates_coeff0_negative_packing_bounds)
 
 #endif
 
-} // namespace packed_segment_test
+} // namespace static_packed_segment_test
 
 // ====================================================================================================================
 // segment_t

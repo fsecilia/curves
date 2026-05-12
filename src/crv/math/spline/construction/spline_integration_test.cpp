@@ -426,7 +426,7 @@ TEST(spline_generator, poc)
 #endif
 
     using polynomial_evaluator_t = polynomial_evaluator_t<mac_t{}>;
-    using packed_segment_t = packed_segment_t<coeff_t, log2_width_bit_count>;
+    using packed_segment_t = static_packed_segment_t<coeff_t, log2_width_bit_count>;
     using segment_t = segment_t<x_t, y_t, coeff_t, normalized_t, packed_segment_t, polynomial_evaluator_t{}>;
     using subdomain_t = subdomain_t<real_t>;
     using interval_t = interval_t<real_t, segment_t>;
