@@ -46,19 +46,21 @@ using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
 struct field_layout_t
 {
     int_t shift_width;
-    packed_field_t shift_mask;
     bool is_signed;
+
+    constexpr auto shift_mask() const noexcept -> packed_field_t
+    {
+        return (packed_field_t{1} << shift_width) - 1;
+    }
 };
 
 constexpr auto intermediate_layout = field_layout_t{
     .shift_width = 6,
-    .shift_mask = 0x3f, // 6-bit unsigned [0, 63]
     .is_signed = false,
 };
 
 constexpr auto final_layout = field_layout_t{
     .shift_width = 7,
-    .shift_mask = 0x7f, // 7-bit signed [-64, 63]
     .is_signed = true,
 };
 
@@ -90,7 +92,7 @@ struct field_unpacker_t
 {
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        auto const shift_masked = int_cast<shift_mask_t>(packed_field & layout.shift_mask);
+        auto const shift_masked = int_cast<shift_mask_t>(packed_field & layout.shift_mask());
 
         int8_t shift_val = shift_masked;
         if (layout.is_signed)
@@ -255,7 +257,7 @@ struct field_packer_t
         }
 
         auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
-        auto const packed_shift = unpacked_field.shift & layout.shift_mask;
+        auto const packed_shift = unpacked_field.shift & layout.shift_mask();
         return packed_field_t{packed_mantissa | packed_shift};
     }
 };
