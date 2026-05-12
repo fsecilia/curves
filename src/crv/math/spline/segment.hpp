@@ -18,7 +18,7 @@
 namespace crv::spline {
 
 /// packs segments into a static layout
-template <is_fixed t_coeff_t, int_t t_log2_width_bit_count> class packed_segment_t
+template <is_fixed t_coeff_t, int_t t_log2_width_bit_count> class static_packed_segment_t
 {
 public:
     using coeff_t = t_coeff_t;
@@ -31,14 +31,14 @@ public:
     // bias is chosen so that the supported signed range matches the field width.
     static constexpr auto log2_width_bias = 1 << (log2_width_bit_count - 1);
 
-    constexpr packed_segment_t() noexcept : coeffs_{} {}
+    constexpr static_packed_segment_t() noexcept : coeffs_{} {}
 
-    constexpr packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
+    constexpr static_packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
     {
         // this type should fit into no more than half a cache line.
-        static_assert(sizeof(packed_segment_t) == 32); // nominal for x64
-        static_assert(
-            sizeof(packed_segment_t) * 2 <= std::hardware_constructive_interference_size); // future architectures
+        static_assert(sizeof(static_packed_segment_t) == 32); // nominal for x64
+        static_assert(sizeof(static_packed_segment_t) * 2
+            <= std::hardware_constructive_interference_size); // future architectures
 
         // make sure the top bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
         assert(coeffs_[0] == ((coeffs_[0] << log2_width_bit_count) >> log2_width_bit_count)
