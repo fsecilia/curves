@@ -23,15 +23,11 @@ struct segment_t
 {};
 using sut_t = interval_t<real_t, segment_t>;
 
-constexpr auto defects = segment_defects_t{1};
-constexpr auto no_defects = segment_defects_t{0};
-
-constexpr auto construct_sut(segment_defects_t segment_defects, real_t weighted_error, real_t left_x) noexcept -> sut_t
+constexpr auto construct_sut(real_t weighted_error, real_t left_x) noexcept -> sut_t
 {
     auto result = sut_t{};
     result.subdomain.left.x = left_x;
     result.residual.weighted_error = weighted_error;
-    result.segment_defects = segment_defects;
     return result;
 }
 
@@ -41,29 +37,13 @@ constexpr auto sut = interval_priority_less_t{};
 // lexicographic dominance
 // --------------------------------------------------------------------------------------------------------------------
 
-// defects dominate weighted error
-constexpr auto clean_but_huge_error = construct_sut(no_defects, 1e30, 1e30);
-constexpr auto defects_but_zero_error = construct_sut(defects, 0.0, 0.0);
-static_assert(sut(clean_but_huge_error, defects_but_zero_error));
-static_assert(!sut(defects_but_zero_error, clean_but_huge_error));
-
 // weighted error dominates left.x
-static_assert(sut(construct_sut(defects, 0.0, 1e30), construct_sut(defects, 1.0, 0.0)));
-static_assert(sut(construct_sut(no_defects, 0.0, 1e30), construct_sut(no_defects, 1.0, 0.0)));
+static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
+static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
 
 // left.x breaks ties
-static_assert(sut(construct_sut(defects, 5.0, 1.0), construct_sut(defects, 5.0, 2.0)));
-static_assert(!sut(construct_sut(defects, 5.0, 2.0), construct_sut(defects, 5.0, 1.0)));
-
-// --------------------------------------------------------------------------------------------------------------------
-// defect equivalence classes
-// --------------------------------------------------------------------------------------------------------------------
-
-// strict weak ordering
-constexpr auto defect_less = construct_sut(segment_defects_t{1}, 1.0, 1.0);
-constexpr auto defect_greater = construct_sut(segment_defects_t{2}, 1.0, 1.0);
-static_assert(!sut(defect_less, defect_greater));
-static_assert(!sut(defect_greater, defect_less));
+static_assert(sut(construct_sut(5.0, 1.0), construct_sut(5.0, 2.0)));
+static_assert(!sut(construct_sut(5.0, 2.0), construct_sut(5.0, 1.0)));
 
 // --------------------------------------------------------------------------------------------------------------------
 // nonfinite death tests
@@ -78,22 +58,22 @@ constexpr auto inf = std::numeric_limits<real_t>::infinity();
 
 TEST(spline_interval_priority_less, death_by_lhs_residual_weighted_error)
 {
-    EXPECT_DEBUG_DEATH(sut(construct_sut(no_defects, nan, 0.0), construct_sut(no_defects, 0.0, 0.0)), "isfinite");
+    EXPECT_DEBUG_DEATH(sut(construct_sut(nan, 0.0), construct_sut(0.0, 0.0)), "isfinite");
 }
 
 TEST(spline_interval_priority_less, death_by_lhs_left_x)
 {
-    EXPECT_DEBUG_DEATH(sut(construct_sut(no_defects, 0.0, inf), construct_sut(no_defects, 0.0, 0.0)), "isfinite");
+    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, inf), construct_sut(0.0, 0.0)), "isfinite");
 }
 
 TEST(spline_interval_priority_less, death_by_rhs_residual_weighted_error)
 {
-    EXPECT_DEBUG_DEATH(sut(construct_sut(no_defects, 0.0, 0.0), construct_sut(no_defects, -inf, 0.0)), "isfinite");
+    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, 0.0), construct_sut(-inf, 0.0)), "isfinite");
 }
 
 TEST(spline_interval_priority_less, death_by_rhs_left_x)
 {
-    EXPECT_DEBUG_DEATH(sut(construct_sut(no_defects, 0.0, 0.0), construct_sut(no_defects, 0.0, nan)), "isfinite");
+    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, 0.0), construct_sut(0.0, nan)), "isfinite");
 }
 
 } // namespace death_tests
@@ -149,25 +129,6 @@ struct spline_interval_factory_test_t : Test
         }
     };
 
-    struct segment_defects_t
-    {
-        segment_t segment;
-        auto operator==(segment_defects_t const&) const noexcept -> bool = default;
-    };
-
-    struct mock_defect_analyzer_t
-    {
-        virtual ~mock_defect_analyzer_t() = default;
-        MOCK_METHOD(segment_defects_t, call, (segment_t::coeffs_t coeffs), (const, noexcept));
-    };
-
-    struct defect_analyzer_t
-    {
-        mock_defect_analyzer_t* mock = nullptr;
-        auto operator()(segment_t::coeffs_t coeffs) const noexcept -> segment_defects_t { return mock->call(coeffs); }
-    };
-    StrictMock<mock_defect_analyzer_t> mock_defect_analyzer;
-
     struct residual_t
     {
         int_t id = 0;
@@ -205,16 +166,13 @@ struct spline_interval_factory_test_t : Test
 
         subdomain_t subdomain;
         segment_t segment;
-        segment_defects_t segment_defects;
         residual_t residual;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t
-        = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
+    using sut_t = interval_factory_t<interval_t, approximant_t, segment_factory_t, residual_estimator_t>;
     sut_t sut{.create_segment = segment_factory_t{&mock_segment_factory},
-        .analyze_defects = defect_analyzer_t{&mock_defect_analyzer},
         .estimate_residual = residual_estimator_t{&mock_residual_estimator}};
 
     sample_target_function_t const sample_target_function{1};
@@ -222,7 +180,6 @@ struct spline_interval_factory_test_t : Test
     function_sample_t const midpoint{.x = 5.0, .y = {6.0, 7.0}};
     function_sample_t const right{.x = 8.0, .y = {9.0, 10.0}};
     int_t log2_width = 11;
-    segment_defects_t const segment_defects{12};
     segment_t const segment{.coeffs_ = 13};
     residual_t const residual{14};
 
@@ -237,7 +194,6 @@ struct spline_interval_factory_test_t : Test
             .log2_width = log2_width,
         },
         .segment = segment,
-        .segment_defects = segment_defects,
         .residual = residual,
     };
 };
@@ -245,7 +201,6 @@ struct spline_interval_factory_test_t : Test
 TEST_F(spline_interval_factory_test_t, create)
 {
     EXPECT_CALL(mock_segment_factory, call(left.y, right.y, log2_width)).WillOnce(Return(segment));
-    EXPECT_CALL(mock_defect_analyzer, call(segment.coeffs())).WillOnce(Return(segment_defects));
     EXPECT_CALL(mock_residual_estimator,
         call(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x))
         .WillOnce(Return(residual));

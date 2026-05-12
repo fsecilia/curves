@@ -14,9 +14,6 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
-#include <crv/math/spline/construction/defect_analyzer.hpp>
-#include <crv/math/spline/construction/defect_checks/monotonicity.hpp>
-#include <crv/math/spline/construction/defect_checks/overflow.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/hermite_converter.hpp>
@@ -80,43 +77,20 @@ template <typename t_bisection_t> struct bisector_t
     }
 };
 
-// tracks errors about why convergence failed and where
-template <std::floating_point real_t> struct convergence_error_t
-{
-    segment_defects_t defects;
-
-    real_t left;
-    real_t right;
-};
-
 /// decides if an interval should subdivide; signals error if interval must subdivide but cannot
 template <std::floating_point real_t, int_t log2_min_width> struct convergence_test_t
 {
-    using convergence_error_t = convergence_error_t<real_t>;
-    using result_t = std::expected<bool, convergence_error_t>;
-
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
     real_t global_tolerance;
 
-    constexpr auto operator()(auto const& interval) const noexcept -> result_t
+    constexpr auto operator()(auto const& interval) const noexcept -> bool
     {
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
             = interval.subdomain.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
-        auto const must_subdivide = interval.segment_defects != segment_defects_t{0};
-
-        if (must_subdivide && !can_subdivide)
-        {
-            return std::unexpected(convergence_error_t{
-                .defects = interval.segment_defects,
-                .left = interval.subdomain.left.x,
-                .right = interval.subdomain.right.x,
-            });
-        }
-
         auto const should_subdivide = interval.residual.metric_error > local_tolerance;
-        return (must_subdivide || should_subdivide) && can_subdivide;
+        return should_subdivide && can_subdivide;
     }
 };
 
@@ -231,14 +205,12 @@ template <std::floating_point real_t, typename typestate_t, typename subdivider_
     int_t max_segment_count>
 struct refiner_t
 {
-    using convergence_error_t = convergence_error_t<real_t>;
     using interval_t = subdivider_t::interval_t;
 
-    convergence_test_t test_convergence;
+    convergence_test_t requires_subdivision;
     subdivider_t subdivide;
 
-    auto operator()(typestate_t state, auto const& sample_target_function)
-        -> std::expected<typename typestate_t::next_t, convergence_error_t>
+    auto operator()(typestate_t state, auto const& sample_target_function) -> typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
         auto& refinement_pool = workspace.refinement_pool;
@@ -251,12 +223,7 @@ struct refiner_t
         {
             // this uses a *reference*; pop must be very specifically placed
             auto const& interval = refinement_pool.top();
-
-            auto const convergence_result = test_convergence(interval);
-            if (!convergence_result) return std::unexpected(convergence_result.error());
-
-            auto const requires_subdivision = *convergence_result;
-            if (requires_subdivision)
+            if (requires_subdivision(interval))
             {
                 auto const children = subdivide(interval, sample_target_function);
                 refinement_pool.pop();
@@ -338,8 +305,6 @@ template <std::floating_point real_t, typename spline_t, typename typestates_t, 
 class spline_generator_t
 {
 public:
-    using convergence_error_t = refiner_t::convergence_error_t;
-
     constexpr spline_generator_t() : seed_refinement_pool_{}, refine_{}, assemble_{}, workspace_{} {}
 
     constexpr spline_generator_t(refinement_pool_seeder_t seed_refinement_pool, refiner_t refine, assembler_t assemble)
@@ -347,7 +312,7 @@ public:
           assemble_{std::move(assemble)}, workspace_{}
     {}
 
-    constexpr auto operator()(auto& spline, auto target_function) -> std::expected<void, convergence_error_t>
+    constexpr auto operator()(auto& spline, auto target_function) -> void
     {
         assert(workspace_.empty());
 
@@ -359,17 +324,10 @@ public:
 
         auto const seeded_state
             = seed_refinement_pool_(typename typestates_t::unseeded_t{workspace_}, sample_target_function);
-        auto const refinement_result = refine_(seeded_state, sample_target_function);
-        if (!refinement_result)
-        {
-            workspace_.clear();
-            return std::unexpected(refinement_result.error());
-        }
-
-        assemble_(*refinement_result, spline);
+        auto const refined_state = refine_(seeded_state, sample_target_function);
+        assemble_(refined_state, spline);
 
         assert(workspace_.empty());
-        return {};
     }
 
 private:
@@ -436,11 +394,8 @@ TEST(spline_generator, poc)
     using segment_derivative_t = segment_derivative_t<real_t>;
     using hermite_converter_t = hermite_converter_t<coeff_t>;
     using segment_factory_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
-    using defect_analyzer_t
-        = defect_analyzer_t<defect_checks::monotonicity_t, defect_checks::overflow_t<real_t, normalized_t, mac_t{}>>;
     using approximant_t = approximant_t<real_t, segment_t, segment_derivative_t>;
-    using interval_factory_t
-        = interval_factory_t<interval_t, approximant_t, segment_factory_t, defect_analyzer_t, residual_estimator_t>;
+    using interval_factory_t = interval_factory_t<interval_t, approximant_t, segment_factory_t, residual_estimator_t>;
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
     using convergence_test_t = convergence_test_t<real_t, log2_min_width>;
@@ -464,7 +419,6 @@ TEST(spline_generator, poc)
 
     auto const interval_factory = interval_factory_t{
         .create_segment = {},
-        .analyze_defects = {},
         .estimate_residual = estimate_residual,
     };
 
@@ -473,7 +427,7 @@ TEST(spline_generator, poc)
         refinement_pool_seeder_t{.interval_factory = interval_factory},
         refiner_t
         {
-            .test_convergence = convergence_test_t{.global_tolerance=global_tolerance},
+            .requires_subdivision = convergence_test_t{.global_tolerance=global_tolerance},
             .subdivide = subdivider_t
             {
                 .bisect = bisector_t{},
@@ -489,9 +443,7 @@ TEST(spline_generator, poc)
     };
 
     auto spline = spline_t{};
-    auto spline_generation_result = spline_generator(spline, std::ref(target_function));
-
-    EXPECT_TRUE(spline_generation_result.has_value());
+    spline_generator(spline, std::ref(target_function));
 
 #if 1
     auto x_fixed = x_t{0};
