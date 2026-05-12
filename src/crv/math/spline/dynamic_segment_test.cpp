@@ -47,21 +47,18 @@ struct field_layout_t
 {
     int_t shift_width;
     packed_field_t shift_mask;
-    packed_field_t valid_shift_mask;
     bool is_signed;
 };
 
 constexpr auto intermediate_layout = field_layout_t{
     .shift_width = 6,
     .shift_mask = 0x3f, // 6-bit unsigned [0, 63]
-    .valid_shift_mask = 0x3f, // bits 6 and 7 must be 0
     .is_signed = false,
 };
 
 constexpr auto final_layout = field_layout_t{
     .shift_width = 7,
     .shift_mask = 0x7f, // 7-bit signed [-64, 63]
-    .valid_shift_mask = 0x7f, // bit 7 must be 0
     .is_signed = true,
 };
 
@@ -130,27 +127,6 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
             unpack_field(packed_segment[2], intermediate_layout),
             unpack_field(packed_segment[3], final_layout),
         };
-    }
-};
-
-struct segment_validator_t
-{
-    constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> bool
-    {
-        for (auto field = 0; field < fields_per_segment - 1; ++field)
-        {
-            if (!is_field_valid(packed_segment[field], intermediate_layout)) return false;
-        }
-        return is_field_valid(packed_segment[fields_per_segment - 1], final_layout);
-    }
-
-private:
-    constexpr auto is_field_valid(packed_field_t packed, field_layout_t layout) const noexcept -> bool
-    {
-        // extract the lowest byte containing the shift
-        static_assert(sizeof(shift_t) == 1);
-        auto const raw_shift_bits = packed & max<shift_mask_t>();
-        return (raw_shift_bits & ~layout.valid_shift_mask) == 0;
     }
 };
 
