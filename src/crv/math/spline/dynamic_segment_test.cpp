@@ -22,8 +22,7 @@ namespace {
 enum class segment_error_reason_t
 {
     bad_float,
-    coefficient_overflow,
-    intermediate_overflow
+    coefficient_overflow
 };
 
 template <std::floating_point real_t> struct segment_error_t
