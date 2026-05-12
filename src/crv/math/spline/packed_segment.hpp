@@ -107,12 +107,14 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
 // evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-template <is_fixed out_t> struct segment_evaluator_t
+template <is_fixed t_x_t, is_fixed t_y_t> struct segment_evaluator_t
 {
-    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, is_fixed auto const& dx) const noexcept
-        -> out_t
+    using x_t = t_x_t;
+    using y_t = t_y_t;
+
+    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& dx) const noexcept -> y_t
     {
-        using narrow_t = out_t::value_t;
+        using narrow_t = make_signed_t<typename y_t::value_t>;
         using wide_t = widened_t<narrow_t>;
 
         auto accumulator = unpacked_segment[0].mantissa;
@@ -153,7 +155,7 @@ template <is_fixed out_t> struct segment_evaluator_t
         }
 
         accumulator = std::saturating_cast<narrow_t>(wide_accumulator);
-        return out_t::literal(accumulator);
+        return y_t::literal(accumulator);
     }
 };
 

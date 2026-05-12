@@ -164,11 +164,11 @@ public:
     constexpr auto is_valid() const noexcept -> bool
     {
         constexpr auto bit_width = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
-        constexpr auto min_log2_width = static_cast<int8_t>(-x_t::frac_bits);
+        constexpr auto log2_min_width = static_cast<int8_t>(-x_t::frac_bits);
         constexpr auto max_log2_width = static_cast<int8_t>(bit_width - x_t::frac_bits - 2);
 
         auto const actual_log2_width = log2_width();
-        return min_log2_width <= actual_log2_width && actual_log2_width <= max_log2_width;
+        return log2_min_width <= actual_log2_width && actual_log2_width <= max_log2_width;
     }
 
 private:

@@ -43,7 +43,10 @@ public:
         assert(x_t{0} <= x && "spline_t: input out of bounds");
 
         auto const x_max = segment_locator_.x_max();
-        if (x >= x_max) return extend_final_tangent(x - x_max);
+
+        // this will need to change to use an extension segment that isn't part of the array
+        if (x >= x_max) return y_t{0};
+        // if (x >= x_max) return extend_final_tangent(x - x_max);
 
         auto const location = segment_locator_.locate(x);
         assert(0 <= location.index && location.index < segment_locator_.segment_count()
@@ -53,7 +56,7 @@ public:
         if !consteval { prev_segment_index_ = location.index; }
 
         auto const& segment = segments_[location.index];
-        return segment.evaluate(segment.x_to_t(x - location.origin));
+        return segment(x - location.origin);
     }
 
     /// validates data the driver receives

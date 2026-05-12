@@ -38,7 +38,7 @@ struct residual_estimator_t
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left,
+    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
         real_t right) const noexcept -> residual_t
     {
         auto const interval_width = right - left;
@@ -60,7 +60,6 @@ struct residual_estimator_t
             max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
         }
 
-        auto const midpoint = (left + right) * 0.5;
         auto const weight = apply_weight(midpoint);
         max_residual.weighted_error = max_residual.metric_error * weight;
         return max_residual;
