@@ -13,17 +13,13 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
-#include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
-#include <crv/math/spline/construction/hermite_converter.hpp>
-#include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
+#include <crv/math/spline/construction/packed_segment_factory.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
-#include <crv/math/spline/construction/segment_derivative.hpp>
-#include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
-#include <crv/math/spline/construction/workspace.hpp>
+#include <crv/math/spline/packed_segment.hpp>
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
@@ -39,6 +35,215 @@
 namespace crv {
 namespace spline {
 namespace {
+
+/// adapts segment with float api, anchors to origin in fixed x, supplies derivative
+template <std::floating_point t_real_t, typename segment_t, typename segment_derivative_t> struct approximant_t
+{
+    using real_t = t_real_t;
+    using x_t = segment_t::x_t;
+
+    x_t x0;
+    segment_t segment;
+
+    [[no_unique_address]] segment_derivative_t segment_derivative{};
+
+    /// \returns jet in spline-global spatial coordinates, {y, dy/dx}
+    constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
+    {
+        auto const t = segment.x_to_t(to_fixed<x_t>(x) - x0);
+        auto const primal = from_fixed<real_t>(segment.evaluate(t));
+        auto const tangent = segment_derivative.dy_dx(segment.coeffs(), from_fixed<real_t>(t), segment.log2_width());
+        return jet_t{primal, tangent};
+    }
+};
+
+/// converts float hermite to fixed polynomial
+template <is_fixed coeff_t> struct hermite_converter_t
+{
+    template <typename jet_t>
+    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_polynomial_t<coeff_t>
+    {
+        auto const p0 = primal(left_y);
+        auto const p1 = primal(right_y);
+        auto const m0 = tangent(left_y);
+        auto const m1 = tangent(right_y);
+        auto const dp = p1 - p0;
+
+        auto const a = -2.0 * dp + m0 + m1;
+        auto const b = 3.0 * dp - 2.0 * m0 - m1;
+        auto const c = m0;
+        auto const d = p0;
+
+        return {{to_fixed<coeff_t>(a), to_fixed<coeff_t>(b), to_fixed<coeff_t>(c), to_fixed<coeff_t>(d)}};
+    }
+};
+
+/// geometry of a refinement subdomain
+///
+/// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
+template <std::floating_point real_t> struct subdomain_t
+{
+    using function_sample_t = function_sample_t<real_t>;
+
+    function_sample_t left;
+    function_sample_t midpoint;
+    function_sample_t right;
+    int_t log2_width;
+
+    constexpr auto operator==(subdomain_t const&) const noexcept -> bool = default;
+};
+
+/// unit of work over a subdomain
+template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
+{
+    using real_t = t_real_t;
+    using segment_t = t_segment_t;
+
+    using subdomain_t = subdomain_t<real_t>;
+    using residual_t = residual_t<real_t>;
+
+    subdomain_t subdomain;
+    segment_t segment;
+    residual_t residual;
+
+    constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
+};
+
+/// orders by residual.weighted_error then domain.left.x
+struct interval_priority_less_t
+{
+    template <typename interval_t>
+    constexpr auto operator()(interval_t const& lhs, interval_t const& rhs) const noexcept -> bool
+    {
+        using std::isfinite;
+        assert(isfinite(lhs.residual.weighted_error));
+        assert(isfinite(lhs.subdomain.left.x));
+        assert(isfinite(rhs.residual.weighted_error));
+        assert(isfinite(rhs.subdomain.left.x));
+
+        // tie applies lexicographical compare
+        return std::tie(lhs.residual.weighted_error, lhs.subdomain.left.x)
+            < std::tie(rhs.residual.weighted_error, rhs.subdomain.left.x);
+    }
+};
+
+/// constructs intervals from subdomains
+template <typename t_interval_t, typename approximant_t, typename segment_factory_t, typename residual_estimator_t>
+struct interval_factory_t
+{
+    using interval_t = t_interval_t;
+
+    using real_t = interval_t::real_t;
+    using subdomain_t = subdomain_t<real_t>;
+
+    [[no_unique_address]] segment_factory_t create_segment;
+    residual_estimator_t estimate_residual;
+
+    constexpr auto create(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept -> interval_t
+    {
+        using x_t = approximant_t::x_t;
+
+        auto const x0 = to_fixed<x_t>(subdomain.left.x);
+        auto const segment = create_segment(subdomain.left.y, subdomain.right.y, subdomain.log2_width);
+
+        return {
+            .subdomain = subdomain,
+            .segment = segment,
+            .residual = estimate_residual(sample_target_function, approximant_t{.x0 = x0, .segment = segment},
+                subdomain.left.x, subdomain.right.x),
+        };
+    }
+};
+
+/// evaluates segment derivative and converts between dy/dx and dy/dt using the jacobian, dx/dt
+///
+/// Calculating a segment's derivative can't be part of segment_t directly. segment_t runs in the kernel and the only
+/// places we use the derivative are in user-mode floating point. The floating-point derivative is encapsulated here.
+/// This type also puts a name on the opaque ldexp calls necessary to transform the tangent between segment-local
+/// parameter t space and spline-global spatial x space.
+template <std::floating_point real_t> struct segment_derivative_t
+{
+    /// jacobian
+    constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t
+    {
+        using std::ldexp;
+        return ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
+    }
+
+    /// parametric derivative
+    constexpr auto dy_dt(std::ranges::range auto coeffs, real_t t) const noexcept -> real_t
+        requires(is_fixed<std::ranges::range_value_t<decltype(coeffs)>>)
+    {
+        return (real_t{3.0} * from_fixed<real_t>(coeffs[0]) * t + real_t{2.0} * from_fixed<real_t>(coeffs[1])) * t
+            + from_fixed<real_t>(coeffs[2]);
+    }
+
+    /// spacial derivative
+    constexpr auto dy_dx(std::ranges::range auto coeffs, real_t t, int_t log2_dx_dt) const noexcept -> real_t
+        requires(is_fixed<std::ranges::range_value_t<decltype(coeffs)>>)
+    {
+        return dy_dt_to_dy_dx(dy_dt(coeffs, t), log2_dx_dt);
+    }
+
+    /// chain rule from t to x
+    constexpr auto dy_dt_to_dy_dx(real_t dy_dt, int_t log2_dx_dt) const noexcept -> real_t
+    {
+        using std::ldexp;
+        return ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
+    }
+
+    // chain rule from x to t
+    constexpr auto dy_dx_to_dy_dt(real_t dy_dx, int_t log2_dx_dt) const noexcept -> real_t
+    {
+        using std::ldexp;
+        return ldexp(dy_dx, int_cast<int>(log2_dx_dt));
+    }
+};
+
+/// creates fixed segment from a pair of float hermite knots and log2_width; scales tangents by segment width
+template <typename t_real_t, typename t_segment_t, typename segment_derivative_t, typename hermite_converter_t>
+struct segment_factory_t
+{
+    using real_t = t_real_t;
+    using segment_t = t_segment_t;
+
+    using jet_t = jet_t<real_t>;
+
+    [[no_unique_address]] segment_derivative_t segment_derivative;
+    [[no_unique_address]] hermite_converter_t hermite_converter;
+
+    constexpr auto operator()(jet_t left_y, jet_t right_y, int_t log2_width) const noexcept -> segment_t
+    {
+        // convert from spline-global dy/dx to segment-local dy/dt via chain rule
+        auto const dx_dt = segment_derivative.dx_dt(log2_width);
+        left_y.df *= dx_dt;
+        right_y.df *= dx_dt;
+
+        using packed_segment_t = segment_t::packed_segment_t;
+        return segment_t{packed_segment_t{hermite_converter(left_y, right_y), int_cast<int8_t>(log2_width)}};
+    }
+};
+
+/// mutable state for adaptive mesh refinement
+template <typename interval_t, int_t max_segments> struct workspace_t
+{
+    std::vector<interval_t> completed_intervals;
+    priority_queue_t<std::vector<interval_t>, interval_priority_less_t> refinement_pool;
+
+    constexpr auto clear() noexcept -> void
+    {
+        completed_intervals.clear();
+        refinement_pool.clear();
+    }
+
+    constexpr auto empty() const noexcept -> bool { return completed_intervals.empty() && refinement_pool.empty(); }
+
+    constexpr workspace_t()
+    {
+        completed_intervals.reserve(max_segments);
+        refinement_pool.reserve(max_segments);
+    }
+};
 
 /// result of bisecting a subdomain
 template <typename t_subdomain_t> struct bisection_t
