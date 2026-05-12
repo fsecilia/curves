@@ -25,16 +25,16 @@ struct spline_dynamic_segment_test_t : Test
     // we need 21 integer bits, which gives Q21.42. We could pragmatically put a soft limiter on x somewhere much lower
     // because sustained saturation isn't really possible by a human and a few more fractional bits here would improve
     // accuracy.
-    using in_t = fixed_t<int64_t, 42>;
+    using x_t = fixed_t<int64_t, 42>;
 
     // For a domain of [0, 2^8) and soft limiter on the integrand at y=1000, the largest integral possible is a pinned
     // straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
-    using out_t = fixed_t<int64_t, 45>;
+    using y_t = fixed_t<int64_t, 45>;
 
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
-    using segment_evaluator_t = segment_evaluator_t<out_t>;
+    using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
-    using segment_builder_t = segment_builder_t<float_extractor_t::extracted_real_t, in_t, out_t>;
+    using segment_builder_t = segment_builder_t<float_extractor_t::extracted_real_t, x_t, y_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using polynomial_t = polynomial_t<real_t>;
@@ -56,7 +56,7 @@ struct spline_dynamic_segment_test_t : Test
 
         // check actual result
         auto const width = std::ldexp(1.0, log2_width);
-        auto const dx = to_fixed<in_t>(input * width);
+        auto const dx = to_fixed<x_t>(input * width);
         auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
         auto const actual_float = from_fixed<real_t>(actual_fixed);
         EXPECT_NEAR(expected, actual_float, 1e-10);
