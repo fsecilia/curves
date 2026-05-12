@@ -11,15 +11,18 @@
 #include <crv/test/test.hpp>
 #include <array>
 #include <bit>
+#include <climits>
 #include <concepts>
 #include <expected>
+#include <numeric>
 
 namespace crv::spline {
 namespace {
 
 enum class segment_error_reason_t
 {
-    dynamic_range_packing,
+    packing_dynamic_range,
+    packing_overflow,
 };
 
 template <std::floating_point real_t> struct segment_error_t
@@ -35,14 +38,20 @@ template <std::floating_point real_t> struct segment_error_t
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto shift_width = 6;
-constexpr auto shift_limit = 1ULL << shift_width;
-constexpr auto shift_mask = shift_limit - 1;
+using mantissa_t = int64_t;
+using shift_t = int8_t;
+constexpr auto shift_width = 7;
+constexpr auto shift_container_bit_size = sizeof(shift_t) * CHAR_BIT;
+static_assert(shift_width <= shift_container_bit_size);
+constexpr auto shift_container_bit_padding = shift_container_bit_size - shift_width;
+constexpr auto shift_mask = (1LL << shift_width) - 1;
 
 struct unpacked_field_t
 {
-    int64_t mantissa;
-    uint8_t shift;
+    mantissa_t mantissa;
+    shift_t shift;
+
+    constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
 };
 using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
 constexpr auto field_width = 64;
@@ -55,9 +64,13 @@ struct field_unpacker_t
 {
     constexpr auto operator()(packed_field_t packed_field) const noexcept -> unpacked_field_t
     {
+        auto const shift_masked = int_cast<uint8_t>(packed_field & shift_mask);
+        auto const shift_signed = int_cast<int8_t>(
+            int_cast<int8_t>(shift_masked << shift_container_bit_padding) >> shift_container_bit_padding);
+
         return {
-            .mantissa = static_cast<int64_t>(packed_field) >> shift_width,
-            .shift = static_cast<uint8_t>(packed_field & shift_mask),
+            .mantissa = static_cast<mantissa_t>(packed_field) >> shift_width,
+            .shift = shift_signed,
         };
     }
 };
@@ -99,7 +112,7 @@ template <is_fixed out_t> struct segment_evaluator_t
         using wide_t = widened_t<narrow_t>;
 
         auto accumulator = unpacked_segment[0].mantissa;
-        for (auto field_index = 1; field_index < fields_per_segment; ++field_index)
+        for (auto field_index = 1; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const wide_product = static_cast<wide_t>(accumulator) * dx.value;
 
@@ -111,11 +124,28 @@ template <is_fixed out_t> struct segment_evaluator_t
             accumulator = rounded_product + mantissa;
         }
 
-        // Apply the 4th shift to align D's scale to the final output scale
-        auto const final_shift = unpacked_segment[fields_per_segment - 1].shift;
-        auto const final_rounding_bias = (1ULL << final_shift) >> 1;
-        accumulator = int_cast<narrow_t>((accumulator + final_rounding_bias) >> final_shift);
+        // unroll final loop iteration and do it wide with one shift, one round, aligning to the final output radix
+        auto const wide_product = static_cast<wide_t>(accumulator) * dx.value;
 
+        auto const intermediate_shift = unpacked_segment[2].shift;
+        auto const final_shift = unpacked_segment[3].shift;
+
+        auto const shifted_c3 = static_cast<wide_t>(unpacked_segment[3].mantissa) << intermediate_shift;
+        auto wide_accumulator = wide_product + shifted_c3;
+        auto const total_shift = intermediate_shift + final_shift;
+
+        // final shift is signed
+        if (total_shift >= 0)
+        {
+            auto const final_rounding_bias = (static_cast<wide_t>(1) << total_shift) >> 1;
+            wide_accumulator = (wide_accumulator + final_rounding_bias) >> total_shift;
+        }
+        else
+        {
+            wide_accumulator <<= -total_shift;
+        }
+
+        accumulator = std::saturating_cast<narrow_t>(wide_accumulator);
         return out_t::literal(accumulator);
     }
 };
@@ -172,13 +202,23 @@ template <> struct float_extractor_t<float64_t>
     }
 };
 
-struct field_packer_t
+template <typename t_field_unpacker_t> struct field_packer_t
 {
-    constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept -> packed_field_t
+    using field_unpacker_t = t_field_unpacker_t;
+
+    [[no_unique_address]] field_unpacker_t unpack_field;
+
+    constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept
+        -> std::expected<packed_field_t, segment_error_reason_t>
     {
-        assert(unpacked_field.mantissa == (unpacked_field.mantissa << shift_width) >> shift_width);
-        assert(unpacked_field.shift == (unpacked_field.shift & shift_mask));
-        return packed_field_t{static_cast<uint64_t>(unpacked_field.mantissa << shift_width) | unpacked_field.shift};
+        auto const packed_field = static_cast<packed_field_t>(
+            (unpacked_field.mantissa << shift_width) | (unpacked_field.shift & shift_mask));
+
+        if (unpacked_field != unpack_field(packed_field))
+        {
+            return std::unexpected(segment_error_reason_t::packing_overflow);
+        }
+        return packed_field;
     }
 };
 
@@ -215,28 +255,88 @@ struct segment_packer_t
 
             auto const shift = in_frac_bits + log2_width + next.exponent - cur.exponent;
 
-            // punt on large dynamic ranges; this is technically recoverable, but pathological enough to not matter
+            // punt on large dynamic ranges for intermediate terms
+            //
+            // This is technically recoverable, but pathological enough to not matter.
             auto const dynamic_range_too_large = shift < 0;
-            if (dynamic_range_too_large) return std::unexpected{segment_error_reason_t::dynamic_range_packing};
+            if (dynamic_range_too_large) return std::unexpected{segment_error_reason_t::packing_dynamic_range};
 
-            packed_segment[field_index] = pack_field(unpacked_field_t{
+            auto const pack_field_result = pack_field(unpacked_field_t{
                 .mantissa = cur.mantissa,
-                .shift = int_cast<uint8_t>(shift),
+                .shift = int_cast<shift_t>(shift),
             });
+            if (!pack_field_result) return std::unexpected(pack_field_result.error());
+
+            packed_segment[field_index] = *pack_field_result;
         }
 
         // align final term to output radix
         //
         // The final term has no successor term; its shift is responsible for aligning to the output format.
-        auto final_shift = max(-next.exponent - out_frac_bits, int_t{0});
-        packed_segment[fields_per_segment - 1]
-            = pack_field(unpacked_field_t{.mantissa = next.mantissa, .shift = int_cast<uint8_t>(final_shift)});
+        auto const final_shift = -next.exponent - out_frac_bits;
+        auto const final_pack_field_result
+            = pack_field(unpacked_field_t{.mantissa = next.mantissa, .shift = int_cast<shift_t>(final_shift)});
+        if (!final_pack_field_result) return std::unexpected(final_pack_field_result.error());
+        packed_segment[fields_per_segment - 1] = *final_pack_field_result;
 
         return packed_segment;
     }
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+// testing
+// --------------------------------------------------------------------------------------------------------------------
+
 using real_t = float_t;
+
+struct spline_dynamic_segment_test_t : Test
+{
+    using out_t = fixed_t<int64_t, 45>;
+    using in_t = fixed_t<int64_t, 44>;
+    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
+    using segment_evaluator_t = segment_evaluator_t<out_t>;
+    using float_extractor_t = float_extractor_t<float64_t>;
+    using field_packer_t = field_packer_t<field_unpacker_t>;
+    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t>;
+    using cubic_polynomial_t = cubic_polynomial_t<real_t>;
+
+    segment_packer_t segment_packer;
+    segment_unpacker_t segment_unpacker;
+    segment_evaluator_t segment_evaluator;
+
+    auto test(cubic_polynomial_t const& polynomial, int_t log2_width, real_t input, real_t expected) -> void
+    {
+        // double check float value
+        auto const t = input;
+        auto const oracle = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
+        EXPECT_NEAR(expected, oracle, 5e-13);
+
+        auto const packed_segment = segment_packer(polynomial, log2_width);
+        ASSERT_TRUE(packed_segment.has_value());
+        auto const unpacked_segment = segment_unpacker(*packed_segment);
+
+        // check actual result
+        auto const width = std::ldexp(1.0, log2_width);
+        auto const dx = to_fixed<in_t>(input * width);
+        auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
+        auto const actual_float = from_fixed<real_t>(actual_fixed);
+        EXPECT_NEAR(expected, actual_float, 1e-10);
+    }
+};
+
+#if 0
+TEST_F(spline_dynamic_segment_test_t, pathological_integral)
+{
+    auto const polynomial = cubic_polynomial_t{0.0, 0.0, 1000.0, 0.0};
+
+    // kaboom
+    test(polynomial, 8, 256, 256 * 1000);
+};
+#endif
+
+// --------------------------------------------------------------------------------------------------------------------
+// parameterized tests
+// --------------------------------------------------------------------------------------------------------------------
 
 struct vector_t
 {
@@ -249,67 +349,41 @@ struct vector_t
     }
 };
 
-struct spline_dynamic_segment_test_t : TestWithParam<vector_t>
+struct spline_dynamic_segment_param_test_t : spline_dynamic_segment_test_t, WithParamInterface<vector_t>
 {
-    using in_t = fixed_t<int64_t, 44>;
-    using out_t = fixed_t<int64_t, 48>;
-    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
-    using segment_evaluator_t = segment_evaluator_t<out_t>;
-    using float_extractor_t = float_extractor_t<float64_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t>;
-
     real_t const input = GetParam().input;
     real_t const expected = GetParam().expected;
-    out_t const expected_fixed = to_fixed<out_t>(expected);
-
-    segment_packer_t segment_packer;
-    segment_unpacker_t segment_unpacker;
-    segment_evaluator_t segment_evaluator;
 
     // hermite: p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
     static constexpr auto polynomial = cubic_polynomial_t{1.4, -2.0, 1.0, 0.1};
 
     auto test(int_t log2_width) -> void
     {
-        // double check float value
-        auto const t = input;
-        auto const oracle = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
-        EXPECT_NEAR(expected, oracle, 1e-10);
-
-        auto const packed_segment = segment_packer(polynomial, log2_width);
-        EXPECT_TRUE(packed_segment.has_value());
-        auto const unpacked_segment = segment_unpacker(*packed_segment);
-
-        // check actual result
-        auto const width = std::ldexp(1.0, log2_width);
-        auto const dx = to_fixed<in_t>(input * width);
-        auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
-        auto const actual_float = from_fixed<real_t>(actual_fixed);
-        EXPECT_NEAR(expected, actual_float, 1e-12);
+        spline_dynamic_segment_test_t::test(polynomial, log2_width, input, expected);
     }
 };
 
-TEST_P(spline_dynamic_segment_test_t, log2_width_m8)
+TEST_P(spline_dynamic_segment_param_test_t, log2_width_m8)
 {
     test(-8);
 }
 
-TEST_P(spline_dynamic_segment_test_t, log2_width_m1)
+TEST_P(spline_dynamic_segment_param_test_t, log2_width_m1)
 {
     test(-1);
 }
 
-TEST_P(spline_dynamic_segment_test_t, log2_width_0)
+TEST_P(spline_dynamic_segment_param_test_t, log2_width_0)
 {
     test(0);
 }
 
-TEST_P(spline_dynamic_segment_test_t, log2_width_1)
+TEST_P(spline_dynamic_segment_param_test_t, log2_width_1)
 {
     test(1);
 }
 
-TEST_P(spline_dynamic_segment_test_t, log2_width_i)
+TEST_P(spline_dynamic_segment_param_test_t, log2_width_i)
 {
     test(8);
 }
@@ -323,7 +397,7 @@ vector_t const vectors[] = {
     {3.0 / 4.0, 0.315625},
     {1.0 / 1.0, 0.5},
 };
-INSTANTIATE_TEST_SUITE_P(vectors, spline_dynamic_segment_test_t, ValuesIn(vectors));
+INSTANTIATE_TEST_SUITE_P(vectors, spline_dynamic_segment_param_test_t, ValuesIn(vectors));
 
 } // namespace
 } // namespace crv::spline
