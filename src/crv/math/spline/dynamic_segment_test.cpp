@@ -36,6 +36,37 @@ template <std::floating_point real_t> struct segment_error_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+// layouts
+// --------------------------------------------------------------------------------------------------------------------
+
+struct field_layout_t
+{
+    int_t shift_width;
+    uint64_t shift_mask;
+    uint64_t valid_shift_mask;
+    bool is_signed;
+};
+
+constexpr auto intermediate_layout = field_layout_t{
+    .shift_width = 6,
+    .shift_mask = 0x3F, // 6-bit unsigned [0, 63]
+    .valid_shift_mask = 0x3F, // bits 6 and 7 must be 0
+    .is_signed = false,
+};
+
+constexpr auto final_layout = field_layout_t{
+    .shift_width = 7,
+    .shift_mask = 0x7F, // 7-bit signed [-64, 63]
+    .valid_shift_mask = 0x7F, // bit 7 must be 0
+    .is_signed = true,
+};
+
+constexpr auto accumulator_width = 64;
+constexpr auto min_final_shift = -64;
+constexpr auto max_final_shift = 63;
+constexpr auto field_width = 64;
+
+// --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -43,11 +74,7 @@ constexpr auto log2_min_width = -16;
 
 using mantissa_t = int64_t;
 using shift_t = int8_t;
-constexpr auto shift_width = 7;
-constexpr auto shift_container_bit_size = sizeof(shift_t) * CHAR_BIT;
-static_assert(shift_width <= shift_container_bit_size);
-constexpr auto shift_container_bit_padding = shift_container_bit_size - shift_width;
-constexpr auto shift_mask = (1LL << shift_width) - 1;
+using shift_mask_t = uint8_t;
 
 struct unpacked_field_t
 {
@@ -57,7 +84,6 @@ struct unpacked_field_t
     constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
 };
 using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
-constexpr auto field_width = 64;
 
 constexpr auto fields_per_segment = 4;
 using packed_segment_t = std::array<packed_field_t, fields_per_segment>;
@@ -65,15 +91,20 @@ using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
 
 struct field_unpacker_t
 {
-    constexpr auto operator()(packed_field_t packed_field) const noexcept -> unpacked_field_t
+    constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        auto const shift_masked = int_cast<uint8_t>(packed_field & shift_mask);
-        auto const shift_signed = int_cast<int8_t>(
-            static_cast<int8_t>(shift_masked << shift_container_bit_padding) >> shift_container_bit_padding);
+        auto const shift_masked = int_cast<shift_mask_t>(packed_field & layout.shift_mask);
+
+        int8_t shift_val = shift_masked;
+        if (layout.is_signed)
+        {
+            auto const bit_padding = sizeof(shift_t) * CHAR_BIT - layout.shift_width;
+            shift_val = int_cast<shift_t>(static_cast<shift_t>(shift_masked << bit_padding) >> bit_padding);
+        }
 
         return {
-            .mantissa = static_cast<mantissa_t>(packed_field) >> shift_width,
-            .shift = shift_signed,
+            .mantissa = static_cast<mantissa_t>(packed_field) >> layout.shift_width,
+            .shift = shift_val,
         };
     }
 };
@@ -87,17 +118,39 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
     constexpr auto operator()(packed_segment_t const& packed_segment, int_t field_index) const noexcept
         -> unpacked_field_t
     {
-        return unpack_field(packed_segment[field_index]);
+        auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
+        return unpack_field(packed_segment[field_index], layout);
     }
 
     constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> unpacked_segment_t
     {
         return unpacked_segment_t{
-            unpack_field(packed_segment[0]),
-            unpack_field(packed_segment[1]),
-            unpack_field(packed_segment[2]),
-            unpack_field(packed_segment[3]),
+            unpack_field(packed_segment[0], intermediate_layout),
+            unpack_field(packed_segment[1], intermediate_layout),
+            unpack_field(packed_segment[2], intermediate_layout),
+            unpack_field(packed_segment[3], final_layout),
         };
+    }
+};
+
+struct segment_validator_t
+{
+    constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> bool
+    {
+        for (auto field = 0; field < fields_per_segment - 1; ++field)
+        {
+            if (!is_field_valid(packed_segment[field], intermediate_layout)) return false;
+        }
+        return is_field_valid(packed_segment[fields_per_segment - 1], final_layout);
+    }
+
+private:
+    constexpr auto is_field_valid(packed_field_t packed, field_layout_t layout) const noexcept -> bool
+    {
+        // extract the lowest byte containing the shift
+        static_assert(sizeof(shift_t) == 1);
+        auto const raw_shift_bits = packed & 0xFF;
+        return (raw_shift_bits & ~layout.valid_shift_mask) == 0;
     }
 };
 
@@ -107,7 +160,6 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
 
 template <is_fixed out_t> struct segment_evaluator_t
 {
-    // should we constrain fixed width and signedness?
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, is_fixed auto const& dx) const noexcept
         -> out_t
     {
@@ -127,7 +179,8 @@ template <is_fixed out_t> struct segment_evaluator_t
             accumulator = rounded_product + mantissa;
         }
 
-        // unroll final loop iteration and do it wide with one shift, one round, aligning to the final output radix
+        // unroll final loop iteration and do it wide with one shift and one round, aligning to the final output radix
+
         auto const wide_product = static_cast<wide_t>(accumulator) * dx.value;
 
         auto const intermediate_shift = unpacked_segment[2].shift;
@@ -213,13 +266,13 @@ template <typename t_field_unpacker_t> struct field_packer_t
 
     [[no_unique_address]] field_unpacker_t unpack_field;
 
-    constexpr auto operator()(unpacked_field_t unpacked_field) const noexcept
+    constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept
         -> std::expected<packed_field_t, segment_error_reason_t>
     {
         auto const packed_field = static_cast<packed_field_t>(
-            (unpacked_field.mantissa << shift_width) | (unpacked_field.shift & shift_mask));
+            (unpacked_field.mantissa << layout.shift_width) | (unpacked_field.shift & layout.shift_mask));
 
-        if (unpacked_field != unpack_field(packed_field))
+        if (unpacked_field != unpack_field(packed_field, layout))
         {
             return std::unexpected(segment_error_reason_t::coefficient_overflow);
         }
@@ -227,15 +280,97 @@ template <typename t_field_unpacker_t> struct field_packer_t
     }
 };
 
-template <typename t_float_extractor_t, typename t_field_packer_t, is_fixed t_in_t, is_fixed t_out_t,
-    int_t min_log2_width>
+template <typename t_extracted_real_t, is_fixed t_in_t, is_fixed t_out_t> struct segment_builder_t
+{
+    using extracted_real_t = t_extracted_real_t;
+    using in_t = t_in_t;
+    using out_t = t_out_t;
+
+    static constexpr auto in_frac_bits = t_in_t::frac_bits;
+    static constexpr auto out_frac_bits = t_out_t::frac_bits;
+
+    int_t delta;
+    int_t acc_exp;
+    mantissa_t prev_mantissa;
+
+    constexpr auto push(extracted_real_t const& next) noexcept -> unpacked_field_t
+    {
+        // zero mantissa can't dominate the scale; treat it as matching the accumulator.
+        auto const next_exp = (next.mantissa == 0) ? acc_exp : next.exponent;
+        auto const exp_gap = next_exp - acc_exp;
+
+        // delta absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
+        auto const acc_shift = delta + std::max<int_t>(0, exp_gap);
+        auto const coeff_shift = std::max<int_t>(0, -exp_gap);
+
+        // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
+        auto const adjusted_mantissa = (coeff_shift >= accumulator_width) ? 0 : (next.mantissa >> coeff_shift);
+        auto const final_acc_mantissa = (acc_shift >= accumulator_width) ? 0 : prev_mantissa;
+        auto const final_acc_shift = (acc_shift >= accumulator_width) ? 0 : acc_shift;
+
+        acc_exp = std::max(acc_exp, next_exp);
+        prev_mantissa = adjusted_mantissa;
+
+        return unpacked_field_t{
+            .mantissa = final_acc_mantissa,
+            .shift = int_cast<int8_t>(final_acc_shift),
+        };
+    }
+
+    constexpr auto finish() const noexcept -> unpacked_field_t
+    {
+        static constexpr auto max_mantissa = std::numeric_limits<int64_t>::max();
+        static constexpr auto min_mantissa = std::numeric_limits<int64_t>::min();
+
+        // final term: no successor, so the shift aligns directly to the output radix
+        auto const final_shift = -acc_exp - out_frac_bits;
+        auto const clamped_shift = std::clamp<int_t>(final_shift, min_final_shift, max_final_shift);
+        auto const delta_shift = final_shift - clamped_shift;
+
+        auto compensated_mantissa = prev_mantissa;
+
+        if (delta_shift > 0)
+        {
+            compensated_mantissa = (delta_shift >= accumulator_width) ? 0 : (prev_mantissa >> delta_shift);
+        }
+        else if (delta_shift < 0)
+        {
+            auto const left_shift = -delta_shift;
+            if (prev_mantissa == 0) { compensated_mantissa = 0; }
+            else if (left_shift >= accumulator_width)
+            {
+                compensated_mantissa = (prev_mantissa > 0) ? max_mantissa : min_mantissa;
+            }
+            else
+            {
+                auto const max_safe = max_mantissa >> left_shift;
+                auto const min_safe = min_mantissa >> left_shift;
+
+                if (prev_mantissa > max_safe) { compensated_mantissa = max_mantissa; }
+                else if (prev_mantissa < min_safe) { compensated_mantissa = min_mantissa; }
+                else
+                {
+                    compensated_mantissa = prev_mantissa << left_shift;
+                }
+            }
+        }
+
+        return unpacked_field_t{
+            .mantissa = compensated_mantissa,
+            .shift = int_cast<shift_t>(clamped_shift),
+        };
+    }
+};
+
+template <typename t_float_extractor_t, typename t_field_packer_t, typename t_segment_builder_t, int_t min_log2_width>
 struct segment_packer_t
 {
     using float_extractor_t = t_float_extractor_t;
     using field_packer_t = t_field_packer_t;
-    using in_t = t_in_t;
-    using out_t = t_out_t;
+    using segment_builder_t = t_segment_builder_t;
 
+    using in_t = segment_builder_t::in_t;
+    using out_t = segment_builder_t::out_t;
     using extracted_real_t = float_extractor_t::extracted_real_t;
     using real_t = float_extractor_t::real_t;
     using polynomial_t = cubic_polynomial_t<real_t>;
@@ -251,54 +386,30 @@ struct segment_packer_t
     constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
         -> std::expected<packed_segment_t, segment_error_reason_t>
     {
-        packed_segment_t packed_segment;
-
-        // delta is the bit-growth from multiplying by dx (the segment-local input step).
-        // precondition: delta >= 0 (the segment has at least 1 bit of input resolution).
-        auto const delta = in_frac_bits + log2_width;
-
         auto const initial = extract_float(polynomial[0]);
         if (!initial) return std::unexpected(initial.error());
 
-        auto acc_exp = initial->exponent;
-        auto prev_mantissa = initial->mantissa;
+        auto builder = segment_builder_t{
+            .delta = in_frac_bits + log2_width,
+            .acc_exp = initial->exponent,
+            .prev_mantissa = initial->mantissa,
+        };
+
+        packed_segment_t packed_segment;
 
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const next = extract_float(polynomial[field_index + 1]);
             if (!next) return std::unexpected(next.error());
 
-            // zero mantissa can't dominate the scale; treat it as matching the accumulator.
-            auto const next_exp = (next->mantissa == 0) ? acc_exp : next->exponent;
-            auto const exp_gap = next_exp - acc_exp;
-
-            // delta absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
-            auto const acc_shift = delta + std::max(int_t{0}, exp_gap);
-            auto const coeff_shift = std::max(int_t{0}, -exp_gap);
-
-            // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
-            auto const adjusted_mantissa = (coeff_shift >= 64) ? 0 : (next->mantissa >> coeff_shift);
-            auto const final_acc_mantissa = (acc_shift >= 64) ? 0 : prev_mantissa;
-            auto const final_acc_shift = (acc_shift >= 64) ? 0 : acc_shift;
-
-            auto const pack_result = pack_field(unpacked_field_t{
-                .mantissa = final_acc_mantissa,
-                .shift = int_cast<int8_t>(final_acc_shift),
-            });
+            auto const unpacked = builder.push(*next);
+            auto const pack_result = pack_field(unpacked, intermediate_layout);
             if (!pack_result) return std::unexpected(pack_result.error());
             packed_segment[field_index] = *pack_result;
-
-            acc_exp = std::max(acc_exp, next_exp);
-            prev_mantissa = adjusted_mantissa;
         }
 
-        // final term: no successor, so the shift aligns directly to the output radix.
-        auto const final_shift = std::clamp<int_t>(-acc_exp - out_frac_bits, -64, 63);
-
-        auto const final_pack = pack_field(unpacked_field_t{
-            .mantissa = prev_mantissa,
-            .shift = int_cast<int8_t>(final_shift),
-        });
+        auto const final_unpacked = builder.finish();
+        auto const final_pack = pack_field(final_unpacked, final_layout);
         if (!final_pack) return std::unexpected(final_pack.error());
         packed_segment[fields_per_segment - 1] = *final_pack;
 
@@ -320,7 +431,8 @@ struct spline_dynamic_segment_test_t : Test
     using segment_evaluator_t = segment_evaluator_t<out_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
     using field_packer_t = field_packer_t<field_unpacker_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, in_t, out_t, log2_min_width>;
+    using segment_builder_t = segment_builder_t<float_extractor_t::extracted_real_t, in_t, out_t>;
+    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, segment_builder_t, log2_min_width>;
     using cubic_polynomial_t = cubic_polynomial_t<real_t>;
 
     segment_packer_t segment_packer;
