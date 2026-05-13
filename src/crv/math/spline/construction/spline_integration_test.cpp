@@ -278,7 +278,7 @@ template <typename t_bisection_t> struct bisector_t
     }
 };
 
-/// decides if an interval should subdivide; signals error if interval must subdivide but cannot
+/// decides if an interval should subdivide
 template <std::floating_point real_t, int_t log2_min_width> struct convergence_test_t
 {
     static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
@@ -290,7 +290,7 @@ template <std::floating_point real_t, int_t log2_min_width> struct convergence_t
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
             = interval.subdomain.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
-        auto const should_subdivide = interval.residual.metric_error > local_tolerance;
+        auto const should_subdivide = interval.residual.metric_error > global_tolerance;
         return should_subdivide && can_subdivide;
     }
 };
