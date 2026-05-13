@@ -152,6 +152,19 @@ template <std::floating_point t_real_t> struct float_extractor_t
     }
 };
 
+template <auto shifter = saturating_shifter_t<>{}> struct exponent_renormalizer_t
+{
+    int_t exponent_min;
+    int_t exponent_max;
+
+    template <typename scaled_int_t> constexpr auto operator()(scaled_int_t src) const noexcept -> scaled_int_t
+    {
+        auto const exponent_clamped = std::clamp(src.exponent, exponent_min, exponent_max);
+        auto const left_shift = src.exponent - exponent_clamped;
+        return {.mantissa = shifter.shift(src.mantissa, left_shift), .exponent = exponent_clamped};
+    }
+};
+
 struct field_packer_t
 {
     static constexpr auto field_width = int_t{sizeof(packed_field_t) * CHAR_BIT};
