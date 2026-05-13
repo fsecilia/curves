@@ -370,42 +370,16 @@ struct refinement_pool_seeder_t
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        // unconditionally decimate the curve into 16 segments
-        //
-        // Our bit packing format is riding the edge of overflow during the initial seed if it has a width of 256.
-        // We can either use more integer bits, or decimate the curve. Here, we split the initial range into 16 segments
-        // unconditionally. This is temporary until we support arbitary critical points.
-        //
-        // The critical points will still need to do this 16x subdivison, but they furthermore must also respect min
-        // segment width.
-        //
-        // Update: Since changing to dynamic segment packing, this should no longer be necessary, but it has not been
-        // tested yet.
+        auto left = sample_target_function(0.0);
+        auto const right = sample_target_function(static_cast<real_t>(domain_max));
 
-        auto const log2_decimation_denominator = 4;
-        auto const log2_width = log2_domain_max - log2_decimation_denominator;
-        auto const decimated_segment_count = 1 << log2_decimation_denominator;
-
-        auto const domain_left = real_t{0};
-        auto const domain_right = static_cast<real_t>(domain_max);
-        auto const domain_width = domain_right - domain_left;
-        auto const segment_width = domain_width / decimated_segment_count;
-
-        auto left = sample_target_function(domain_left);
-        for (auto segment = 0; segment < decimated_segment_count; ++segment)
-        {
-            auto const right = sample_target_function(left.x + segment_width);
-
-            workspace.refinement_pool.push(interval_factory.create(sample_target_function,
-                subdomain_t{
-                    .left = left,
-                    .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
-                    .right = right,
-                    .log2_width = log2_width,
-                }));
-
-            left = right;
-        }
+        workspace.refinement_pool.push(interval_factory.create(sample_target_function,
+            subdomain_t{
+                .left = left,
+                .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
+                .right = right,
+                .log2_width = log2_domain_max,
+            }));
 
         return typename typestate_t::next_t{workspace};
     }
