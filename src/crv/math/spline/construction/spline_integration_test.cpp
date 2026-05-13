@@ -9,6 +9,7 @@
 #include <crv/math/abs.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/io.hpp>
+#include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/rounding_mode.hpp>
@@ -34,6 +35,17 @@
 namespace crv {
 namespace spline {
 namespace {
+
+template <arithmetic value_t> constexpr auto midpoint(value_t lhs, value_t rhs) noexcept -> value_t
+{
+    return std::midpoint(lhs, rhs);
+}
+
+constexpr auto midpoint(std::float128_t lhs, std::float128_t rhs) noexcept -> std::float128_t
+{
+    // not as robust as the real implementation, but sufficient for now.
+    return (lhs + rhs) * 0.5;
+}
 
 template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
 {
@@ -412,13 +424,13 @@ struct refinement_pool_seeder_t
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        auto left = sample_target_function(0.0);
+        auto left = sample_target_function(real_t{0});
         auto const right = sample_target_function(static_cast<real_t>(domain_max));
 
         workspace.refinement_pool.push(interval_factory.create(sample_target_function,
             subdomain_t{
                 .left = left,
-                .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
+                .midpoint = sample_target_function(midpoint(left.x, right.x)),
                 .right = right,
                 .log2_width = log2_domain_max,
             }));
