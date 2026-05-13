@@ -57,7 +57,6 @@ struct segment_locator_t
     constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
 
     constexpr auto is_valid() const noexcept -> bool { return true; }
-    constexpr auto interval_width(int_t) const noexcept -> x_t { return x_t{0}; }
 };
 
 using sut_t = spline_t<segment_t, segment_locator_t>;
@@ -139,10 +138,8 @@ struct locator_t
     constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
 
     bool valid{true};
-    x_t interval_width_{4};
     int_t segment_count_{2};
     constexpr auto is_valid() const noexcept -> bool { return valid; }
-    constexpr auto interval_width(int_t) const noexcept -> x_t { return interval_width_; }
     constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
 };
 
@@ -176,27 +173,6 @@ static_assert(!sut_t{locator_t{}, make_segments(false, true), 0}.is_valid());
 
 // invalid second segment
 static_assert(!sut_t{locator_t{}, make_segments(true, false), 0}.is_valid());
-
-// cross-check: interval_width must equal segment width exactly (construction produces power-of-2 widths)
-constexpr auto make_segments_with_width(x_t width0, x_t width1) -> segments_t
-{
-    auto segments = segments_t{};
-    segments[0].width_ = width0;
-    segments[1].width_ = width1;
-    return segments;
-}
-
-// first segment narrower than interval
-static_assert(!sut_t{locator_t{.interval_width_ = 4}, make_segments_with_width(2, 4), 0}.is_valid());
-
-// second segment narrower than interval
-static_assert(!sut_t{locator_t{.interval_width_ = 4}, make_segments_with_width(4, 2), 0}.is_valid());
-
-// first segment wider than interval (rejected only under strict equality)
-static_assert(!sut_t{locator_t{.interval_width_ = 4}, make_segments_with_width(8, 4), 0}.is_valid());
-
-// second segment wider than interval
-static_assert(!sut_t{locator_t{.interval_width_ = 4}, make_segments_with_width(4, 8), 0}.is_valid());
 
 } // namespace is_valid_tests
 

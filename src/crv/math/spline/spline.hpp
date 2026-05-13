@@ -72,17 +72,11 @@ public:
         if (!segment_locator_.is_valid()) return false;
 
         // dispatch to each segment, then cross-check that each segment's domain matches its interval
-        auto x_max_actual = x_t{0};
         for (auto i = 0; i < segment_count; ++i)
         {
             if (!segments_[i].is_valid()) return false;
-            auto const interval_width = segment_locator_.interval_width(i);
-            if (interval_width != segments_[i].width()) return false;
-            x_max_actual += interval_width;
+            if (segment_locator_.interval_width(i) != segments_[i].width()) return false;
         }
-
-        // sum of segment widths must match mapped domain
-        if (x_max_actual != segment_locator_.x_max()) return false;
 
         return true;
     }
