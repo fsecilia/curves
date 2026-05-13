@@ -88,6 +88,18 @@ template <auto shifter = shifter_t<>{}> struct saturating_shifter_t
 
 template <typename real_t> using polynomial_t = std::array<real_t, fields_per_segment>;
 
+template <typename t_mantissa_t> struct scaled_int_t
+{
+    using mantissa_t = t_mantissa_t;
+    using exponent_t = int8_t;
+
+    mantissa_t mantissa;
+    exponent_t exponent;
+
+    constexpr auto operator<=>(scaled_int_t const&) const noexcept -> auto = default;
+    constexpr auto operator==(scaled_int_t const&) const noexcept -> bool = default;
+};
+
 // extracts integer mantissa and exponent from a float
 template <std::floating_point t_real_t> struct float_extractor_t
 {
@@ -97,15 +109,7 @@ template <std::floating_point t_real_t> struct float_extractor_t
 
     using unsigned_t = int_by_bits_t<bit_count, false>;
     using signed_t = int_by_bits_t<bit_count, true>;
-
-    struct extracted_real_t
-    {
-        signed_t mantissa;
-        int_t exponent;
-
-        constexpr auto operator<=>(extracted_real_t const&) const noexcept -> auto = default;
-        constexpr auto operator==(extracted_real_t const&) const noexcept -> bool = default;
-    };
+    using extracted_real_t = scaled_int_t<signed_t>;
 
     // ieee constants
     static constexpr auto frac_bit_count = std::numeric_limits<real_t>::digits - 1; // -1 for implicit bit
