@@ -337,22 +337,28 @@ template <std::floating_point real_t, typename bisector_t, typename interval_fac
     }
 };
 
-template <typename t_interval_t, typename t_segment_factory_t> struct tangent_extender_t
+template <typename t_interval_t, typename t_segment_t, typename t_segment_packer_t, typename t_segment_unpacker_t,
+    typename t_field_packer_t, typename saturating_shifter_t>
+struct tangent_extender_t
 {
     using interval_t = t_interval_t;
-    using segment_factory_t = t_segment_factory_t;
+    using segment_t = t_segment_t;
+    using segment_packer_t = t_segment_packer_t;
+    using segment_unpacker_t = t_segment_unpacker_t;
+    using field_packer_t = t_field_packer_t;
 
-    using segment_t = segment_factory_t::segment_t;
     using x_t = segment_t::x_t;
-    using real_t = segment_factory_t::real_t;
-    using polynomial_t = segment_factory_t::polynomial_t;
+    using real_t = segment_packer_t::real_t;
+    using polynomial_t = segment_packer_t::polynomial_t;
 
-    segment_factory_t make_segment;
+    [[no_unique_address]] segment_packer_t pack_segment;
+    [[no_unique_address]] segment_unpacker_t unpack_segment;
+    [[no_unique_address]] field_packer_t pack_field;
+    [[no_unique_address]] saturating_shifter_t saturating_shifter;
 
     constexpr auto operator()(interval_t const& interval, segment_t const& segment) const noexcept
         -> std::expected<segment_t, segment_error_reason_t>
     {
-        auto const final_segment_width = x_t{1} << interval.subdomain.log2_width;
         auto const log2_x_max
             = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
 
@@ -360,30 +366,30 @@ template <typename t_interval_t, typename t_segment_factory_t> struct tangent_ex
         auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(log2_x_max - interval.subdomain.log2_width));
         auto const dy_dx_extended_segment = interval.polynomial(jet_t{t, dt_dx}).df;
 
-        // find y at dx = width
+        // find fixed y at dx = width
+        auto const final_segment_width = x_t{1} << interval.subdomain.log2_width;
         auto const y1_actual = segment(final_segment_width);
 
-        // bisect to find tangent polynomial that produces segment that outputs y1 actual at dx = 0
+        // pack proto and unpack to find shift
         auto y = from_fixed<real_t>(y1_actual);
-        auto y_min = y / 2.0;
-        auto y_max = y * 2.0;
         auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
-        auto const dx = x_t::literal(0);
-        for (;;)
-        {
-            auto const pack_segment_result = make_segment(tangent_polynomial, log2_x_max);
-            if (!pack_segment_result) return std::unexpected(segment_error_reason_t::bad_float);
-            auto const& segment = *pack_segment_result;
+        auto const packed_segment = pack_segment(tangent_polynomial, log2_x_max);
+        if (!packed_segment) return std::unexpected(segment_error_reason_t::bad_float);
+        auto const unpacked_segment = unpack_segment(*packed_segment);
+        auto const c3_shift = unpacked_segment[3].shift;
 
-            auto const y0 = segment(dx);
+        // solve target mantissa directly via renormalization
+        auto const y1_as_signed = std::saturating_cast<mantissa_t>(y1_actual.value);
+        auto const target_mantissa = saturating_shifter.shift(y1_as_signed, c3_shift);
 
-            auto const y_midpoint = (y_min + y_max) * 0.5;
-            if (y0 < y1_actual) y_min = y_midpoint;
-            if (y1_actual < y0) y_max = y_midpoint;
-            else return segment;
+        // repack new c3
+        auto const new_c3 = unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift};
+        auto const packed_c3 = pack_field(new_c3, final_layout);
+        if (!packed_c3) return std::unexpected(packed_c3.error());
 
-            tangent_polynomial[3] = y_midpoint;
-        }
+        auto fixed_packed = *packed_segment;
+        fixed_packed[fields_per_segment - 1] = *packed_c3;
+        return segment_t{fixed_packed};
     }
 };
 
@@ -686,7 +692,9 @@ TEST(spline_generator, poc)
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
-    using tangent_extender_t = tangent_extender_t<interval_t, segment_factory_t>;
+    using saturating_shifter_t = saturating_shifter_t<>;
+    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_packer_t, segment_unpacker_t,
+        field_packer_t, saturating_shifter_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<real_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t
