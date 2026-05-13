@@ -40,6 +40,15 @@ template <std::floating_point real_t> struct segment_error_t
 // packing
 // --------------------------------------------------------------------------------------------------------------------
 
+template <typename real_t> struct polynomial_t : std::array<real_t, fields_per_segment>
+{
+    template <typename value_t> constexpr auto operator()(value_t t) const noexcept -> value_t
+    {
+        auto const coeffs = this->data();
+        return ((coeffs[0] * t + coeffs[1]) * t + coeffs[2]) * t + coeffs[3];
+    }
+};
+
 template <auto shifter = shifter_t<>{}> struct saturating_shifter_t
 {
     template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
@@ -85,8 +94,6 @@ template <auto shifter = shifter_t<>{}> struct saturating_shifter_t
         }
     }
 };
-
-template <typename real_t> using polynomial_t = std::array<real_t, fields_per_segment>;
 
 template <typename t_mantissa_t> struct scaled_int_t
 {
