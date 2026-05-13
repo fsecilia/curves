@@ -42,13 +42,14 @@ template <std::floating_point real_t> struct segment_error_t
 template <typename real_t> using polynomial_t = std::array<real_t, fields_per_segment>;
 
 // extracts integer mantissa and exponent from a float
-template <std::floating_point real_t> struct float_extractor_t;
-
-template <> struct float_extractor_t<float64_t>
+template <std::floating_point t_real_t> struct float_extractor_t
 {
-    using real_t = float64_t;
-    using signed_t = int64_t;
-    using unsigned_t = uint64_t;
+    using real_t = t_real_t;
+
+    static constexpr auto bit_count = int_t{sizeof(real_t) * CHAR_BIT};
+
+    using unsigned_t = int_by_bits_t<bit_count, false>;
+    using signed_t = int_by_bits_t<bit_count, true>;
 
     struct extracted_real_t
     {
@@ -59,13 +60,13 @@ template <> struct float_extractor_t<float64_t>
         constexpr auto operator==(extracted_real_t const&) const noexcept -> bool = default;
     };
 
-    // ieee constants for float64
-    static constexpr auto bit_count = 64;
-    static constexpr auto frac_bit_count = signed_t{52};
-    static constexpr auto frac_mask = unsigned_t{0x000FFFFFFFFFFFFF};
-    static constexpr auto exponent_bias = signed_t{1023};
-    static constexpr auto exponent_mask = unsigned_t{0x7FF};
-    static constexpr auto implicit_bit = unsigned_t{0x0010000000000000};
+    // ieee constants
+    static constexpr auto frac_bit_count = std::numeric_limits<real_t>::digits - 1; // -1 for implicit bit
+    static constexpr auto frac_mask = (unsigned_t{1} << frac_bit_count) - 1;
+    static constexpr auto exp_bit_count = bit_count - 1 - frac_bit_count; // -1 for implicit bit
+    static constexpr auto exponent_mask = (unsigned_t{1} << exp_bit_count) - 1;
+    static constexpr auto exponent_bias = signed_t{(unsigned_t{1} << (exp_bit_count - 1)) - 1};
+    static constexpr auto implicit_bit = unsigned_t{1} << frac_bit_count;
 
     constexpr auto operator()(real_t val) const noexcept -> std::expected<extracted_real_t, segment_error_reason_t>
     {
@@ -78,14 +79,14 @@ template <> struct float_extractor_t<float64_t>
 
         // ftz
         if (raw_exponent == 0) return {};
-        auto const exponent = int_cast<signed_t>(raw_exponent) - exponent_bias - frac_bit_count;
+        auto const exponent = int_cast<signed_t>(raw_exponent) - exponent_bias - int_cast<signed_t>(frac_bit_count);
 
         auto const raw_magnitude = (bits & frac_mask) | implicit_bit;
         auto mantissa = static_cast<signed_t>(raw_magnitude);
         auto const is_negative = (bits >> (bit_count - 1)) != 0;
         if (is_negative) mantissa = -mantissa;
 
-        return extracted_real_t{.mantissa = mantissa, .exponent = exponent};
+        return extracted_real_t{.mantissa = mantissa, .exponent = int_cast<int_t>(exponent)};
     }
 };
 
