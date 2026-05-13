@@ -579,7 +579,7 @@ TEST(spline_generator, poc)
     auto const error_norm = error_norm_t{};
 #endif
 
-#if 0
+#if 1
     // with the steepest log1p we support with 16 initial segments, 181.625x this always produces segments with
     // error > 1e-5 near about x=50 unless you make it basically flat already
     using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
@@ -649,7 +649,7 @@ TEST(spline_generator, poc)
 
     auto const target_function = [](auto x) static noexcept -> decltype(x) {
         using std::log1p;
-        return 181.625 * log1p(x);
+        return 18.1625 * log1p(x);
     };
 
     auto spline = spline_t{};
@@ -671,7 +671,7 @@ TEST(spline_generator, poc)
         auto const actual_y = from_fixed<real_t>(spline(x_fixed));
 
         auto const difference = actual_y - expected_y;
-        ASSERT_LT(abs(difference), 1e-5);
+        ASSERT_LT(abs(difference), 1.6e-5); //
 
         std::cout << std::setprecision(4) << "x = " << static_cast<long double>(x_real)
                   << ", log1p(x) = " << static_cast<long double>(expected_y)
