@@ -23,8 +23,9 @@ public:
     using x_t = segment_t::x_t;
     using y_t = segment_t::y_t;
 
-    static constexpr auto max_segments = 256;
-    using segments_t = std::array<segment_t, max_segments>;
+    static constexpr auto max_segment_count = segment_locator_t::max_segment_count;
+
+    using segments_t = std::array<segment_t, max_segment_count>;
 
     constexpr spline_t() noexcept : segment_locator_{}, segments_{}, prev_segment_index_{} {}
 

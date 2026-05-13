@@ -457,7 +457,7 @@ template <typename typestate_t, typename t_segment_factory_t, int_t domain_max> 
 
         auto const segment_count = int_cast<int_t>(std::size(workspace.completed_intervals));
         assert(segment_locator_t::max_segment_count >= segment_count);
-        static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segments);
+        static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segment_count);
 
         segments_t segments;
         using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
