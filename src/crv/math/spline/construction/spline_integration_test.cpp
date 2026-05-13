@@ -685,8 +685,8 @@ TEST(spline_generator, poc)
     using workspace_t = workspace_t<interval_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<real_t>;
-    using extracted_real_t = float_extractor_t::extracted_real_t;
-    using segment_builder_t = segment_builder_t<extracted_real_t, x_t, y_t>;
+    using scaled_int_t = float_extractor_t::scaled_int_t;
+    using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using segment_factory_t = segment_factory_t<real_t, segment_t, segment_packer_t>;
