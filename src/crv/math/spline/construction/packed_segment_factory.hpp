@@ -254,10 +254,11 @@ struct segment_packer_t
 
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const next = extract_float(polynomial[field_index + 1]);
-            if (!next) return std::unexpected(next.error());
+            auto const extract_float_result = extract_float(polynomial[field_index + 1]);
+            if (!extract_float_result) return std::unexpected(extract_float_result.error());
+            auto const& next = *extract_float_result;
 
-            auto const unpacked = builder.push(*next);
+            auto const unpacked = builder.push(next);
             auto const pack_result = pack_field(unpacked, intermediate_layout);
             if (!pack_result) return std::unexpected(pack_result.error());
             packed_segment[field_index] = *pack_result;
