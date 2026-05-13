@@ -206,6 +206,8 @@ template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segmen
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
+        assert(delta >= 0);
+
         // zero mantissa can't dominate the scale; treat it as matching the accumulator.
         auto const next_exp = (next.mantissa == 0) ? acc_exp : next.exponent;
         auto const exp_gap = next_exp - acc_exp;
@@ -315,25 +317,41 @@ struct segment_packer_t
     constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
         -> std::expected<packed_segment_t, segment_error_reason_t>
     {
-        auto const initial = extract_float(polynomial[0]);
-        if (!initial) return std::unexpected(initial.error());
-
-        // delta is the bit-growth from multiplying by dx (the segment-local input step)
-        // precondition: delta >= 0 (the segment has at least 1 bit of input resolution)
-        auto const delta = in_frac_bits + log2_width;
-        assert(delta >= 0);
-
-        auto builder = make_builder(delta, initial->exponent, initial->mantissa);
-
         packed_segment_t packed_segment;
+        auto field_index = 0;
+        scaled_int_t seed;
 
-        for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
+        // skip zero prefix
+        for (; field_index < fields_per_segment; ++field_index)
         {
-            auto const extract_float_result = extract_float(polynomial[field_index + 1]);
-            if (!extract_float_result) return std::unexpected(extract_float_result.error());
-            auto const& next = *extract_float_result;
+            auto const scaled_int = extract_float(polynomial[field_index]);
+            if (!scaled_int) return std::unexpected(scaled_int.error());
 
-            auto const unpacked = builder.push(next);
+            if (scaled_int->mantissa != 0)
+            {
+                seed = *scaled_int;
+                break;
+            }
+
+            auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
+            auto const zero_packed = pack_field(unpacked_field_t{}, layout);
+            if (!zero_packed) return std::unexpected(zero_packed.error());
+            packed_segment[field_index] = *zero_packed;
+        }
+
+        // degenerate: polynomial is identically zero
+        if (field_index == fields_per_segment) return packed_segment;
+
+        // process non-trivial suffix
+        auto const delta = in_frac_bits + log2_width;
+        auto builder = make_builder(delta, seed.exponent, seed.mantissa);
+
+        for (; field_index < fields_per_segment - 1; ++field_index)
+        {
+            auto const scaled_int = extract_float(polynomial[field_index + 1]);
+            if (!scaled_int) return std::unexpected(scaled_int.error());
+
+            auto const unpacked = builder.push(*scaled_int);
             auto const pack_result = pack_field(unpacked, intermediate_layout);
             if (!pack_result) return std::unexpected(pack_result.error());
             packed_segment[field_index] = *pack_result;
