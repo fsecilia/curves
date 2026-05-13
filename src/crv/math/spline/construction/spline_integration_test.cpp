@@ -52,18 +52,19 @@ template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
     using real_t = t_real_t;
     using x_t = t_x_t;
 
+    using jet_t = jet_t<real_t>;
+
     polynomial_t<real_t> polynomial;
     x_t x0;
     int_t log2_width;
 
     /// \returns jet in spline-global spatial coordinates, {y, dy/dx}
-    constexpr auto operator()(real_t x) const noexcept -> jet_t<real_t>
+    constexpr auto operator()(real_t x) const noexcept -> jet_t
     {
-        auto const t = std::ldexp(from_fixed<real_t>(to_fixed<x_t>(x) - x0), int_cast<int>(-log2_width));
-        auto const y = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
-        auto const dy_dt = (3.0 * polynomial[0] * t + 2.0 * polynomial[1]) * t + polynomial[2];
-        auto const dy_dx = std::ldexp(dy_dt, -log2_width);
-        return jet_t{y, dy_dx};
+        auto const x_local = from_fixed<real_t>(to_fixed<x_t>(x) - x0);
+        auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
+        auto const dt_dx = std::ldexp(real_t{1}, -log2_width);
+        return polynomial(jet_t{t, dt_dx});
     }
 };
 
@@ -211,13 +212,13 @@ private:
 };
 
 /// creates fixed segment from a pair of float hermite knots and log2_width; scales tangents by segment width
-template <typename t_real_t, typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
+template <typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
 {
-    using real_t = t_real_t;
     using segment_t = t_segment_t;
     using segment_packer_t = t_segment_packer_t;
 
-    using polynomial_t = polynomial_t<real_t>;
+    using real_t = segment_packer_t::real_t;
+    using polynomial_t = segment_packer_t::polynomial_t;
     using function_sample_t = function_sample_t<real_t>;
     using segment_error_t = segment_error_t<real_t>;
 
@@ -351,11 +352,9 @@ template <typename t_segment_factory_t> struct final_tangent_extender_t
         polynomial_t const& final_segment_polynomial, int_t log2_x_max) const noexcept
         -> std::expected<segment_t, segment_error_reason_t>
     {
-        // find tangent at dx = width
-        auto const dy_dt_final_segment
-            = 3.0 * final_segment_polynomial[0] + 2.0 * final_segment_polynomial[1] + final_segment_polynomial[2];
-        auto const dy_dx_extended_segment
-            = std::ldexp(dy_dt_final_segment, int_cast<int>(log2_x_max - log2_final_segment_width));
+        auto const t = real_t{1};
+        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(log2_x_max - log2_final_segment_width));
+        auto const dy_dx_extended_segment = final_segment_polynomial(jet_t{t, dt_dx}).df;
 
         // find y at dx = width
         auto const y1_actual = final_segment(final_segment_width);
@@ -689,7 +688,7 @@ TEST(spline_generator, poc)
     using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
-    using segment_factory_t = segment_factory_t<real_t, segment_t, segment_packer_t>;
+    using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
     using final_tangent_extender_t = final_tangent_extender_t<segment_factory_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, final_tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<real_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
