@@ -109,7 +109,7 @@ template <std::floating_point t_real_t> struct float_extractor_t
 
     using unsigned_t = int_by_bits_t<bit_count, false>;
     using signed_t = int_by_bits_t<bit_count, true>;
-    using extracted_real_t = scaled_int_t<signed_t>;
+    using scaled_int_t = scaled_int_t<signed_t>;
 
     // ieee constants
     static constexpr auto frac_bit_count = std::numeric_limits<real_t>::digits - 1; // -1 for implicit bit
@@ -119,7 +119,7 @@ template <std::floating_point t_real_t> struct float_extractor_t
     static constexpr auto exponent_bias = signed_t{(unsigned_t{1} << (exp_bit_count - 1)) - 1};
     static constexpr auto implicit_bit = unsigned_t{1} << frac_bit_count;
 
-    constexpr auto operator()(real_t val) const noexcept -> std::expected<extracted_real_t, segment_error_reason_t>
+    constexpr auto operator()(real_t val) const noexcept -> std::expected<scaled_int_t, segment_error_reason_t>
     {
         auto const bits = std::bit_cast<unsigned_t>(val);
         auto const raw_exponent = (bits >> frac_bit_count) & exponent_mask;
@@ -130,14 +130,18 @@ template <std::floating_point t_real_t> struct float_extractor_t
 
         // ftz
         if (raw_exponent == 0) return {};
-        auto const exponent = int_cast<signed_t>(raw_exponent) - exponent_bias - int_cast<signed_t>(frac_bit_count);
 
+        using mantissa_t = scaled_int_t::mantissa_t;
         auto const raw_magnitude = (bits & frac_mask) | implicit_bit;
-        auto mantissa = static_cast<signed_t>(raw_magnitude);
+        auto mantissa = static_cast<mantissa_t>(raw_magnitude);
         auto const is_negative = (bits >> (bit_count - 1)) != 0;
         if (is_negative) mantissa = -mantissa;
 
-        return extracted_real_t{.mantissa = mantissa, .exponent = int_cast<int_t>(exponent)};
+        using exponent_t = scaled_int_t::exponent_t;
+        auto const exponent = int_cast<exponent_t>(
+            int_cast<signed_t>(raw_exponent) - exponent_bias - int_cast<signed_t>(frac_bit_count));
+
+        return scaled_int_t{.mantissa = mantissa, .exponent = exponent};
     }
 };
 
@@ -165,9 +169,9 @@ struct field_packer_t
     }
 };
 
-template <typename t_extracted_real_t, is_fixed t_x_t, is_fixed t_y_t> struct segment_builder_t
+template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segment_builder_t
 {
-    using extracted_real_t = t_extracted_real_t;
+    using scaled_int_t = t_scaled_int_t;
     using x_t = t_x_t;
     using y_t = t_y_t;
 
@@ -180,7 +184,7 @@ template <typename t_extracted_real_t, is_fixed t_x_t, is_fixed t_y_t> struct se
     int_t acc_exp;
     mantissa_t prev_mantissa;
 
-    constexpr auto push(extracted_real_t const& next) noexcept -> unpacked_field_t
+    constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
         // zero mantissa can't dominate the scale; treat it as matching the accumulator.
         auto const next_exp = (next.mantissa == 0) ? acc_exp : next.exponent;
@@ -273,7 +277,7 @@ struct segment_packer_t
 
     using x_t = segment_builder_t::x_t;
     using y_t = segment_builder_t::y_t;
-    using extracted_real_t = float_extractor_t::extracted_real_t;
+    using scaled_int_t = float_extractor_t::scaled_int_t;
     using real_t = float_extractor_t::real_t;
     using polynomial_t = polynomial_t<real_t>;
 
