@@ -50,10 +50,7 @@ template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
         auto const t = std::ldexp(from_fixed<real_t>(to_fixed<x_t>(x) - x0), int_cast<int>(-log2_width));
         auto const y = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
         auto const dy_dt = (3.0 * polynomial[0] * t + 2.0 * polynomial[1]) * t + polynomial[2];
-
-        // this may be the wrong sign!
         auto const dy_dx = std::ldexp(dy_dt, -log2_width);
-
         return jet_t{y, dy_dx};
     }
 };
@@ -214,14 +211,11 @@ template <typename t_real_t, typename t_segment_t, typename t_segment_packer_t> 
 
     [[no_unique_address]] segment_packer_t segment_packer;
 
-    constexpr auto operator()(real_t left, real_t right, polynomial_t const& polynomial,
-        int_t log2_width) const noexcept -> std::expected<segment_t, segment_error_t>
+    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
+        -> std::expected<segment_t, segment_error_reason_t>
     {
         auto const packed_segment_result = segment_packer(polynomial, log2_width);
-        if (!packed_segment_result)
-        {
-            return std::unexpected(segment_error_t{packed_segment_result.error(), left, right});
-        }
+        if (!packed_segment_result) return std::unexpected(packed_segment_result.error());
         return segment_t{*packed_segment_result};
     }
 };
@@ -327,6 +321,53 @@ template <std::floating_point real_t, typename bisector_t, typename interval_fac
             .left = interval_factory.create(sample_target_function, child_domains.left),
             .right = interval_factory.create(sample_target_function, child_domains.right),
         };
+    }
+};
+
+template <typename t_segment_factory_t> struct final_tangent_extender_t
+{
+    using segment_factory_t = t_segment_factory_t;
+
+    using segment_t = segment_factory_t::segment_t;
+    using x_t = segment_t::x_t;
+    using real_t = segment_factory_t::real_t;
+    using polynomial_t = segment_factory_t::polynomial_t;
+
+    segment_factory_t make_segment;
+
+    constexpr auto operator()(segment_t const& final_segment, x_t final_segment_width,
+        int_t /*log2_final_segment_width*/, polynomial_t const& final_segment_polynomial,
+        int_t log2_x_max) const noexcept -> std::expected<segment_t, segment_error_reason_t>
+    {
+        // find tangent at dx = width
+        auto const dy_dt_final_segment
+            = 3.0 * final_segment_polynomial[0] + 2.0 * final_segment_polynomial[1] + final_segment_polynomial[2];
+        auto const dy_dx_extended_segment = std::ldexp(dy_dt_final_segment, int_cast<int>(-log2_x_max));
+
+        // find y at dx = width
+        auto const y1_actual = final_segment(final_segment_width);
+
+        // bisect to find tangent polynomial that produces segment that outputs y1 actual at dx = 0
+        auto y = from_fixed<real_t>(y1_actual);
+        auto y_min = y / 2.0;
+        auto y_max = y * 2.0;
+        auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
+        auto const dx = x_t::literal(0);
+        for (;;)
+        {
+            auto const pack_segment_result = make_segment(tangent_polynomial, log2_x_max);
+            if (!pack_segment_result) return std::unexpected(segment_error_reason_t::bad_float);
+            auto const& segment = *pack_segment_result;
+
+            auto const y0 = segment(dx);
+
+            auto const y_midpoint = (y_min + y_max) * 0.5;
+            if (y0 < y1_actual) y_min = y_midpoint;
+            if (y1_actual < y0) y_max = y_midpoint;
+            else return segment;
+
+            tangent_polynomial[3] = y_midpoint;
+        }
     }
 };
 
@@ -436,13 +477,16 @@ struct refiner_t
     }
 };
 
-template <typename typestate_t, typename t_segment_factory_t, int_t domain_max> struct assembler_t
+template <typename typestate_t, typename t_segment_factory_t, typename t_final_tangent_extender_t, int_t domain_max>
+struct assembler_t
 {
     using segment_factory_t = t_segment_factory_t;
     using segment_error_t = segment_factory_t::segment_error_t;
     using segment_t = segment_factory_t::segment_t;
+    using final_tangent_extender_t = t_final_tangent_extender_t;
 
     [[no_unique_address]] segment_factory_t segment_factory;
+    [[no_unique_address]] final_tangent_extender_t extend_final_tangent;
 
     template <typename spline_t>
     [[nodiscard]] auto operator()(typestate_t state, spline_t& spline) const -> std::expected<void, segment_error_t>
@@ -474,8 +518,8 @@ template <typename typestate_t, typename t_segment_factory_t, int_t domain_max> 
             segments[segment_index] = *make_segment_result;
             sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
         }
-        workspace.completed_intervals.clear();
 
+        // pad keys
         auto const x_max = x_t{domain_max};
         for (auto key_padding_index = segment_count; key_padding_index < segment_locator_t::total_key_count;
             ++key_padding_index)
@@ -487,19 +531,37 @@ template <typename typestate_t, typename t_segment_factory_t, int_t domain_max> 
         static_assert(std::same_as<segment_locator_t, typename spline_t::segment_locator_t>);
         static_assert(std::same_as<typename segment_locator_t::x_t, x_t>);
 
+        // extend final tangent
+        auto const final_interval = workspace.completed_intervals[segment_count - 1];
+        auto const final_segment = segments[segment_count - 1];
+        auto const final_segment_width = x_t{1} << final_interval.subdomain.log2_width;
+        auto const log2_x_max = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits;
+        auto const extend_final_tangent_result = extend_final_tangent(final_segment, final_segment_width,
+            final_interval.subdomain.log2_width, final_interval.polynomial, log2_x_max);
+        if (!extend_final_tangent_result)
+        {
+            return std::unexpected(make_error(final_interval, extend_final_tangent_result.error()));
+        }
+
+        workspace.completed_intervals.clear();
+
         auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline = spline_t{segment_locator, segments};
+        spline = spline_t{segment_locator, segments, *extend_final_tangent_result};
 
         return {};
     }
 
 private:
-    auto make_segment(auto const& interval) const noexcept -> std::expected<segment_t, segment_error_t>
+    constexpr auto make_segment(auto const& interval) const noexcept -> std::expected<segment_t, segment_error_t>
     {
-        auto const segment_factory_result = segment_factory(
-            interval.subdomain.left.x, interval.subdomain.right.x, interval.polynomial, interval.subdomain.log2_width);
-        if (!segment_factory_result) return std::unexpected(segment_factory_result.error());
+        auto const segment_factory_result = segment_factory(interval.polynomial, interval.subdomain.log2_width);
+        if (!segment_factory_result) return std::unexpected(make_error(interval, segment_factory_result.error()));
         return *segment_factory_result;
+    }
+
+    constexpr auto make_error(auto const& interval, segment_error_reason_t reason) const noexcept -> segment_error_t
+    {
+        return segment_error_t{reason, interval.subdomain.left.x, interval.subdomain.right.x};
     }
 };
 
@@ -614,7 +676,8 @@ TEST(spline_generator, poc)
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using segment_factory_t = segment_factory_t<real_t, segment_t, segment_packer_t>;
-    using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, domain_max>;
+    using final_tangent_extender_t = final_tangent_extender_t<segment_factory_t>;
+    using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, final_tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<real_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t
         = refinement_pool_seeder_t<real_t, typestates_t::unseeded_t, interval_factory_t, log2_domain_max, domain_max>;

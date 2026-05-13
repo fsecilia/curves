@@ -30,9 +30,10 @@ public:
     constexpr spline_t() noexcept : segment_locator_{}, segments_{}, prev_segment_index_{} {}
 
     /// \pre 0 < locator.segment_count() <= max_segments
-    constexpr spline_t(
-        segment_locator_t const& locator, segments_t const& segments, int_t prev_segment_index = 0) noexcept
-        : segment_locator_{locator}, segments_{segments}, prev_segment_index_{prev_segment_index}
+    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments,
+        segment_t const& extended_tangent_segment, int_t prev_segment_index = 0) noexcept
+        : segment_locator_{locator}, segments_{segments}, extend_final_tangent_{extended_tangent_segment},
+          prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
@@ -46,8 +47,7 @@ public:
         auto const x_max = segment_locator_.x_max();
 
         // this will need to change to use an extension segment that isn't part of the array
-        if (x >= x_max) return y_t{0};
-        // if (x >= x_max) return extend_final_tangent(x - x_max);
+        if (x >= x_max) return extend_final_tangent_(x - x_max);
 
         auto const location = segment_locator_.locate(x);
         assert(0 <= location.index && location.index < segment_locator_.segment_count()
@@ -85,14 +85,10 @@ public:
     {
         prefetch_segments(prefetcher);
         segment_locator_.prefetch(prefetcher);
+        prefetcher.prefetch(&extend_final_tangent_);
     }
 
 private:
-    constexpr auto extend_final_tangent(x_t dx_extended) const noexcept -> y_t
-    {
-        return segments_[segment_locator_.segment_count() - 1].extend_final_tangent(dx_extended);
-    }
-
     /// prefetches the most recently selected segment and the two adjacent
     ///
     /// Prefetching these 3 segments serves as our hint to exploit the natural temporal locality of mouse velocity.
@@ -115,9 +111,8 @@ private:
 
     // these are ordered for overall cache-friendliness in operator ()
     segment_locator_t segment_locator_{};
-
-    // this *must* be aligned or the prefetching scheme is useless
-    alignas(64) segments_t segments_{};
+    alignas(64) segments_t segments_{}; // *must* be aligned or the prefetching scheme is useless
+    segment_t extend_final_tangent_{};
 
     mutable int_t prev_segment_index_ = 0;
 };
