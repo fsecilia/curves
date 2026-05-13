@@ -536,7 +536,8 @@ struct assembler_t
         auto const final_interval = workspace.completed_intervals[segment_count - 1];
         auto const final_segment = segments[segment_count - 1];
         auto const final_segment_width = x_t{1} << final_interval.subdomain.log2_width;
-        auto const log2_x_max = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits;
+        auto const log2_x_max
+            = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
         auto const extend_final_tangent_result = extend_final_tangent(final_segment, final_segment_width,
             final_interval.subdomain.log2_width, final_interval.polynomial, log2_x_max);
         if (!extend_final_tangent_result)
