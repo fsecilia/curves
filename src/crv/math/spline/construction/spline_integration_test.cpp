@@ -335,14 +335,15 @@ template <typename t_segment_factory_t> struct final_tangent_extender_t
 
     segment_factory_t make_segment;
 
-    constexpr auto operator()(segment_t const& final_segment, x_t final_segment_width,
-        int_t /*log2_final_segment_width*/, polynomial_t const& final_segment_polynomial,
-        int_t log2_x_max) const noexcept -> std::expected<segment_t, segment_error_reason_t>
+    constexpr auto operator()(segment_t const& final_segment, x_t final_segment_width, int_t log2_final_segment_width,
+        polynomial_t const& final_segment_polynomial, int_t log2_x_max) const noexcept
+        -> std::expected<segment_t, segment_error_reason_t>
     {
         // find tangent at dx = width
         auto const dy_dt_final_segment
             = 3.0 * final_segment_polynomial[0] + 2.0 * final_segment_polynomial[1] + final_segment_polynomial[2];
-        auto const dy_dx_extended_segment = std::ldexp(dy_dt_final_segment, int_cast<int>(-log2_x_max));
+        auto const dy_dx_extended_segment
+            = std::ldexp(dy_dt_final_segment, int_cast<int>(log2_x_max - log2_final_segment_width));
 
         // find y at dx = width
         auto const y1_actual = final_segment(final_segment_width);
