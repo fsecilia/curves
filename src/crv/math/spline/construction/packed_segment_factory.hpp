@@ -166,7 +166,8 @@ struct field_packer_t
     }
 };
 
-template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_renormalizer_t>
+template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_renormalizer_t,
+    auto shifter = shifter_t<>{}>
 struct segment_builder_t
 {
     using scaled_int_t = t_scaled_int_t;
@@ -197,7 +198,7 @@ struct segment_builder_t
         auto const coeff_shift = std::max<int_t>(0, -exp_gap);
 
         // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
-        auto const adjusted_mantissa = (coeff_shift >= accumulator_width) ? 0 : (next.mantissa >> coeff_shift);
+        auto const adjusted_mantissa = (coeff_shift >= accumulator_width) ? 0 : shifter.shr(next.mantissa, coeff_shift);
         auto const final_acc_mantissa = (acc_shift >= accumulator_width) ? 0 : prev_mantissa;
         auto const final_acc_shift = (acc_shift >= accumulator_width) ? 0 : acc_shift;
 
