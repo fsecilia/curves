@@ -6,14 +6,10 @@
 #include "quantizer.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::spline::quantizers {
+namespace crv {
 namespace {
 
 using scalar_t = float_t;
-
-// ====================================================================================================================
-// fixed_point_t
-// ====================================================================================================================
 
 struct test_vector_t
 {
@@ -27,16 +23,16 @@ struct test_vector_t
 };
 
 // common fixture
-struct quantizers_fixed_point_test_t : TestWithParam<test_vector_t>
+struct quantizer_test_t : TestWithParam<test_vector_t>
 {
     scalar_t const input = GetParam().input;
     scalar_t const expected = GetParam().expected;
 };
 
 // generic fixture
-template <int frac_bits> struct quantizers_fixed_point_test_frac_bits_t : quantizers_fixed_point_test_t
+template <int frac_bits> struct quantizers_fixed_point_test_frac_bits_t : quantizer_test_t
 {
-    using sut_t = fixed_point_t<scalar_t, frac_bits>;
+    using sut_t = quantizer_t<scalar_t, frac_bits>;
     sut_t sut{};
 
     auto test() -> void { EXPECT_DOUBLE_EQ(expected, sut(input)); }
@@ -106,15 +102,5 @@ test_vector_t const test_vectors_frac8[] = {
 };
 INSTANTIATE_TEST_SUITE_P(test_vectors, quantizers_fixed_point_test_frac_bits_8_t, ValuesIn(test_vectors_frac8));
 
-// ====================================================================================================================
-// no_op_t
-// ====================================================================================================================
-
-static_assert(no_op_t{}(-3.5) == -3.5);
-static_assert(no_op_t{}(-1.0) == -1.0);
-static_assert(no_op_t{}(0.0) == 0.0);
-static_assert(no_op_t{}(1.0) == 1.0);
-static_assert(no_op_t{}(5.5) == 5.5);
-
 } // namespace
-} // namespace crv::spline::quantizers
+} // namespace crv
