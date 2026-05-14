@@ -270,19 +270,19 @@ template <typename t_value_t> struct jet_t
     // Classification
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend auto isfinite(jet_t x) noexcept -> bool
+    friend constexpr auto isfinite(jet_t x) noexcept -> bool
     {
         using crv::isfinite;
         return isfinite(x.f) && isfinite(x.df);
     }
 
-    friend auto isinf(jet_t x) noexcept -> bool
+    friend constexpr auto isinf(jet_t x) noexcept -> bool
     {
         using crv::isinf;
         return (isinf(x.f) || isinf(x.df)) && !isnan(x);
     }
 
-    friend auto isnan(jet_t x) noexcept -> bool
+    friend constexpr auto isnan(jet_t x) noexcept -> bool
     {
         using crv::isnan;
         return isnan(x.f) || isnan(x.df);
