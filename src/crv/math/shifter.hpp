@@ -15,7 +15,7 @@
 
 namespace crv {
 
-/// shifts using rounding mode; range checks via assert
+/// shifts using rounding mode; range checks via static_assert when possible, via assert otherwise
 template <auto rounding_mode = rounding_modes::shr::nearest_even> struct shifter_t
 {
     template <typename value_t> constexpr auto shr(value_t value, int_t count) const noexcept -> value_t
@@ -167,6 +167,58 @@ private:
     {
         if constexpr (count >= 0) return shl_impl<dst_t, count>(value);
         else return shr_impl<dst_t, -count, src_t>(value);
+    }
+};
+
+/// shifts using shifter, saturates values that shift out all bits
+template <auto shifter = shifter_t<>{}> struct saturating_shifter_t
+{
+    template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
+    {
+        if (count == 0) return value;
+
+        constexpr auto width = int_t{sizeof(value_t) * CHAR_BIT};
+
+        if (count < 0)
+        {
+            auto const right_shift = -count;
+            if (right_shift >= width)
+            {
+                // right shift saturates positive values to zero when shift exhausts magnitude
+                if constexpr (is_signed_v<value_t>)
+                {
+                    // arithmetic right shift of a negative 2's complement value saturates to -1
+                    return value < 0 ? static_cast<value_t>(-1) : 0;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            return shifter.template shr<value_t>(value, right_shift);
+        }
+        else
+        {
+            if (value == 0) return 0;
+
+            auto const left_shift = count;
+            if constexpr (is_signed_v<value_t>)
+            {
+                if (left_shift >= width) return (value > 0) ? max<value_t>() : min<value_t>();
+
+                auto const min_safe = min<value_t>() >> left_shift;
+                if (value < min_safe) return min<value_t>();
+            }
+            else
+            {
+                if (left_shift >= width) return max<value_t>();
+            }
+
+            auto const max_safe = max<value_t>() >> left_shift;
+            if (value > max_safe) return max<value_t>();
+
+            return shifter.template shl<value_t>(value, left_shift);
+        }
     }
 };
 

@@ -34,52 +34,6 @@ template <typename real_t> struct polynomial_t : std::array<real_t, fields_per_s
     }
 };
 
-template <auto shifter = shifter_t<>{}> struct saturating_shifter_t
-{
-    template <typename value_t> constexpr auto shift(value_t value, int_t count) const noexcept -> value_t
-    {
-        if (count == 0) return value;
-
-        constexpr auto width = int_t{sizeof(mantissa_t) * CHAR_BIT};
-
-        if (count < 0)
-        {
-            auto const right_shift = -count;
-            if (right_shift >= width)
-            {
-                // right shift saturates to zero when shift exhausts magnitude
-                return 0;
-            }
-            return shifter.template shr<mantissa_t>(value, right_shift);
-        }
-        else
-        {
-            if (value == 0) return 0;
-
-            auto const left_shift = count;
-            if constexpr (is_signed_v<value_t>)
-            {
-                if (left_shift >= width) return (value > 0) ? max<mantissa_t>() : min<mantissa_t>();
-
-                auto const max_safe = max<mantissa_t>() >> count;
-                if (value > max_safe) return max<mantissa_t>();
-
-                auto const min_safe = min<mantissa_t>() >> count;
-                if (value < min_safe) return min<mantissa_t>();
-            }
-            else
-            {
-                if (left_shift >= width) return max<mantissa_t>();
-
-                auto const max_safe = max<mantissa_t>() >> count;
-                if (value > max_safe) return max<mantissa_t>();
-            }
-
-            return shifter.template shl<mantissa_t>(value, count);
-        }
-    }
-};
-
 template <typename t_mantissa_t> struct scaled_int_t
 {
     using mantissa_t = t_mantissa_t;
