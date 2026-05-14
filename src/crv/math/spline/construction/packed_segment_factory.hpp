@@ -13,6 +13,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/packed_segment.hpp>
+#include <crv/math/spline/polynomial.hpp>
 #include <algorithm>
 #include <bit>
 #include <climits>
@@ -24,15 +25,6 @@ namespace crv::spline {
 // --------------------------------------------------------------------------------------------------------------------
 // packing
 // --------------------------------------------------------------------------------------------------------------------
-
-template <typename real_t> struct polynomial_t : std::array<real_t, fields_per_segment>
-{
-    template <typename value_t> constexpr auto operator()(value_t t) const noexcept -> value_t
-    {
-        auto const coeffs = this->data();
-        return ((coeffs[0] * t + coeffs[1]) * t + coeffs[2]) * t + coeffs[3];
-    }
-};
 
 template <typename t_mantissa_t> struct scaled_int_t
 {
