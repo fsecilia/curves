@@ -27,13 +27,13 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
+    math/quantizer.hpp
     math/spline/construction/approximant.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/function_sampler.hpp
     math/spline/construction/hermite_converter.hpp
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
-    math/spline/construction/quantizer.hpp
     math/spline/construction/residual_estimator.hpp
     math/spline/construction/segment_factory.hpp
     math/spline/construction/weight_function.hpp
@@ -127,6 +127,7 @@ if (enable_testing)
         math/quadrature/rules_test.cpp
         math/quadrature/stack_test.cpp
         math/quadrature/subdivider_test.cpp
+        math/quantizer_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
@@ -136,7 +137,6 @@ if (enable_testing)
         math/spline/construction/hermite_converter_test.cpp
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
-        math/spline/construction/quantizer_test.cpp
         math/spline/construction/residual_estimator_test.cpp
         math/spline/construction/segment_factory_test.cpp
         math/spline/construction/weight_function_test.cpp
