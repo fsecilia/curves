@@ -52,7 +52,17 @@ namespace type_promotion {
 static_assert(polynomial_t{int8_t{3}, int8_t{5}, int8_t{7}}(int16_t{100}) == int16_t{30507});
 
 // coeffs are integer, evaluation t is float
-static_assert(polynomial_t{int_t{3}, int_t{5}, int_t{7}}(0.5) == (3 * 0.5 + 5) * 0.5 + 7);
+//
+// LET THIS REMAIN AS A WARNING!
+//
+// There is no reasonable way to mix ints and floats if we want to be able to mix jets and floats.
+// Either the casting required pessimizes jets, turning `jet + scalar` to `jet + jet{scalar}`, or the amount of
+// metaprogramming required exceeds the benefit. Our pragmatic conclusion is to disallow mixing ints and floats in
+// equations where we will be mixing jets and floats.
+//
+// This was the first of them we found.
+//
+// static_assert(polynomial_t{int_t{3}, int_t{5}, int_t{7}}(0.5) == (3 * 0.5 + 5) * 0.5 + 7);
 
 } // namespace type_promotion
 
@@ -85,7 +95,7 @@ struct real_t
 
     constexpr auto operator==(real_t const&) const noexcept -> bool = default;
 
-    friend auto operator<<(std::ostream& out, real_t const& src) -> std::ostream& { return out << src.expression; }
+    // friend auto operator<<(std::ostream& out, real_t const& src) -> std::ostream& { return out << src.expression; }
 };
 
 static_assert(polynomial_t{real_t{"a"}}(real_t{"t"}) == real_t{"a"});
