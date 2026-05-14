@@ -9,7 +9,7 @@
 namespace crv::spline::quantizers {
 namespace {
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 // ====================================================================================================================
 // fixed_point_t
@@ -17,8 +17,8 @@ using real_t = float_t;
 
 struct test_vector_t
 {
-    real_t input;
-    real_t expected;
+    scalar_t input;
+    scalar_t expected;
 
     friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
     {
@@ -29,14 +29,14 @@ struct test_vector_t
 // common fixture
 struct quantizers_fixed_point_test_t : TestWithParam<test_vector_t>
 {
-    real_t const input = GetParam().input;
-    real_t const expected = GetParam().expected;
+    scalar_t const input = GetParam().input;
+    scalar_t const expected = GetParam().expected;
 };
 
 // generic fixture
 template <int frac_bits> struct quantizers_fixed_point_test_frac_bits_t : quantizers_fixed_point_test_t
 {
-    using sut_t = fixed_point_t<real_t, frac_bits>;
+    using sut_t = fixed_point_t<scalar_t, frac_bits>;
     sut_t sut{};
 
     auto test() -> void { EXPECT_DOUBLE_EQ(expected, sut(input)); }

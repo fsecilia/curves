@@ -31,9 +31,9 @@ namespace {
 // hybrid tolerance check: |expected - actual| <= max(abs_floor, rel_tol * max(|expected|, |actual|))
 // --------------------------------------------------------------------------------------------------------------------
 
-template <typename real_t>
-auto is_close(char const* expected_expression, char const* actual_expression, char const*, char const*, real_t expected,
-    real_t actual, real_t rel_tol, real_t abs_floor) -> AssertionResult
+template <typename scalar_t>
+auto is_close(char const* expected_expression, char const* actual_expression, char const*, char const*,
+    scalar_t expected, scalar_t actual, scalar_t rel_tol, scalar_t abs_floor) -> AssertionResult
 {
     auto const diff = abs(expected - actual);
     auto const scale = max({abs_floor, rel_tol * abs(expected), rel_tol * abs(actual)});
@@ -49,24 +49,24 @@ auto is_close(char const* expected_expression, char const* actual_expression, ch
 // shared types
 // --------------------------------------------------------------------------------------------------------------------
 
-using real_t = float_t;
-using rule_t = rules::gauss_kronrod_t<real_t>;
+using scalar_t = float_t;
+using rule_t = rules::gauss_kronrod_t<scalar_t>;
 
 struct integrand_t
 {
     char const* name;
-    std::function<real_t(real_t)> function;
+    std::function<scalar_t(scalar_t)> function;
 
-    auto operator()(real_t x) const noexcept -> real_t { return function(x); }
+    auto operator()(scalar_t x) const noexcept -> scalar_t { return function(x); }
 
     friend auto operator<<(std::ostream& out, integrand_t const& src) -> std::ostream& { return out << src.name; }
 };
 
 using integral_t = integral_t<integrand_t, rule_t>;
 
-constexpr auto domain_max = real_t{256.0};
+constexpr auto domain_max = scalar_t{256.0};
 constexpr auto depth_limit = int_t{64};
-constexpr auto empty_critical_points = std::array<real_t, 0>{};
+constexpr auto empty_critical_points = std::array<scalar_t, 0>{};
 
 // ====================================================================================================================
 // correctness on smooth integrands
@@ -96,9 +96,9 @@ struct quadrature_integration_test_t : TestWithParam<param_t>
     integrand_t const& expected_antiderivative = GetParam().expected_antiderivative;
     int_t const max_segments = GetParam().max_segments;
 
-    static constexpr auto tolerance = real_t{1e-9};
+    static constexpr auto tolerance = scalar_t{1e-9};
 
-    adaptive_integrator_t<real_t> adaptive_integrator{tolerance, depth_limit};
+    adaptive_integrator_t<scalar_t> adaptive_integrator{tolerance, depth_limit};
 };
 
 TEST_P(quadrature_integration_test_t, matches_analytic_reference)
@@ -115,7 +115,7 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 
     for (auto const x : inputs)
     {
-        auto const expected = jet_t<real_t>{expected_antiderivative(x), integrand(x)};
+        auto const expected = jet_t<scalar_t>{expected_antiderivative(x), integrand(x)};
         auto const actual = antiderivative(x);
         EXPECT_CLOSE(expected.f, actual.f, 1e-12, 1e-14);
         EXPECT_CLOSE(expected.df, actual.df, 1e-12, 1e-14);
@@ -123,12 +123,13 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 }
 
 param_t const smooth_integrands[] = {
-    {{"1", [](real_t) { return 1.0; }}, {"x", [](real_t x) { return x; }}, 4},
-    {{"x", [](real_t x) { return x; }}, {"(1/2)x^2", [](real_t x) { return x * x / 2.0; }}, 4},
-    {{"x^2", [](real_t x) { return x * x; }}, {"(1/3)x^3", [](real_t x) { return x * x * x / 3.0; }}, 4},
-    {{"1/(1+x)", [](real_t x) { return 1.0 / (1.0 + x); }}, {"log1p(x)", [](real_t x) { return std::log1p(x); }}, 128},
-    {{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }}, {"atan(x)", [](real_t x) { return std::atan(x); }},
+    {{"1", [](scalar_t) { return 1.0; }}, {"x", [](scalar_t x) { return x; }}, 4},
+    {{"x", [](scalar_t x) { return x; }}, {"(1/2)x^2", [](scalar_t x) { return x * x / 2.0; }}, 4},
+    {{"x^2", [](scalar_t x) { return x * x; }}, {"(1/3)x^3", [](scalar_t x) { return x * x * x / 3.0; }}, 4},
+    {{"1/(1+x)", [](scalar_t x) { return 1.0 / (1.0 + x); }}, {"log1p(x)", [](scalar_t x) { return std::log1p(x); }},
         128},
+    {{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }},
+        {"atan(x)", [](scalar_t x) { return std::atan(x); }}, 128},
 };
 INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, ValuesIn(smooth_integrands));
 
@@ -143,22 +144,22 @@ INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, Value
 // it entirely.
 TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 {
-    constexpr auto sigma = real_t{0.5};
-    constexpr auto center = real_t{128.0};
-    constexpr auto tolerance = real_t{1e-9};
+    constexpr auto sigma = scalar_t{0.5};
+    constexpr auto center = scalar_t{128.0};
+    constexpr auto tolerance = scalar_t{1e-9};
 
-    auto const bump = integrand_t{"gaussian_bump", [](real_t x) {
+    auto const bump = integrand_t{"gaussian_bump", [](scalar_t x) {
                                       auto const d = (x - center) / sigma;
                                       return std::exp(-d * d);
                                   }};
 
     // F(x) = (sigma * sqrt(pi) / 2) * (erf((x - center) / sigma) + erf(center / sigma)) chosen so that
     // F(0) = 0 (erf is odd, and erf(center / sigma) ~= 1 at these values)
-    constexpr auto half_sqrt_pi = real_t{0.88622692545275794}; // sqrt(pi) / 2
+    constexpr auto half_sqrt_pi = scalar_t{0.88622692545275794}; // sqrt(pi) / 2
     auto const analytic_antiderivative
-        = [](real_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
+        = [](scalar_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
 
-    auto integrator = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto integrator = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
     auto const result = integrator(integral_t{bump, rule_t{}}, domain_max, empty_critical_points);
 
     EXPECT_LT(result.achieved_error, tolerance);
@@ -180,22 +181,22 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 // refinement dramatically, since each resulting half becomes linear and is integrated exactly by gk15.
 TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 {
-    constexpr auto kink_location = real_t{3.0};
-    constexpr auto tolerance = real_t{1e-9};
+    constexpr auto kink_location = scalar_t{3.0};
+    constexpr auto tolerance = scalar_t{1e-9};
 
-    auto const kink = integrand_t{"abs(x-3)", [](real_t x) { return abs(x - kink_location); }};
+    auto const kink = integrand_t{"abs(x-3)", [](scalar_t x) { return abs(x - kink_location); }};
 
     // F(x) on [0, max]:
     //   x <= 3 : 3x - x^2/2
     //   x >  3 : 9/2 + (x-3)^2/2
-    auto const analytic_antiderivative = [](real_t x) {
-        return x <= kink_location
-            ? kink_location * x - x * x / real_t{2.0}
-            : (kink_location * kink_location) / real_t{2.0} + (x - kink_location) * (x - kink_location) / real_t{2.0};
+    auto const analytic_antiderivative = [](scalar_t x) {
+        return x <= kink_location ? kink_location * x - x * x / scalar_t{2.0}
+                                  : (kink_location * kink_location) / scalar_t{2.0}
+                + (x - kink_location) * (x - kink_location) / scalar_t{2.0};
     };
 
-    auto blind = adaptive_integrator_t<real_t>{tolerance, depth_limit};
-    auto guided = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto blind = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
+    auto guided = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
 
     auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_max, empty_critical_points);
     auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_max, std::array{kink_location});
@@ -223,16 +224,16 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 // A regression in the refinement predicate, like a reversed comparison, would break one or both of these.
 TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 {
-    auto const integrand = integrand_t{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }};
+    auto const integrand = integrand_t{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }};
 
-    constexpr auto tolerances = std::array{real_t{1e-6}, real_t{1e-9}, real_t{1e-12}};
+    constexpr auto tolerances = std::array{scalar_t{1e-6}, scalar_t{1e-9}, scalar_t{1e-12}};
 
-    auto prev_error = std::numeric_limits<real_t>::infinity();
+    auto prev_error = std::numeric_limits<scalar_t>::infinity();
     auto prev_segments = int_t{0};
 
     for (auto const tol : tolerances)
     {
-        auto integrator = adaptive_integrator_t<real_t>{tol, depth_limit};
+        auto integrator = adaptive_integrator_t<scalar_t>{tol, depth_limit};
         auto const result = integrator(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
 
         EXPECT_LT(result.achieved_error, tol);
@@ -251,11 +252,11 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 // between segments.
 TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth_result)
 {
-    auto const integrand = integrand_t{"1/(1+x^2)", [](real_t x) { return 1.0 / (1.0 + x * x); }};
-    constexpr auto tolerance = real_t{1e-12};
+    auto const integrand = integrand_t{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }};
+    constexpr auto tolerance = scalar_t{1e-12};
 
-    auto bare = adaptive_integrator_t<real_t>{tolerance, depth_limit};
-    auto split = adaptive_integrator_t<real_t>{tolerance, depth_limit};
+    auto bare = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
+    auto split = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
 
     auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
     auto const split_result = split(integral_t{integrand, rule_t{}}, domain_max, std::array{32.0, 64.0, 128.0});

@@ -79,30 +79,31 @@ namespace symbolic_tests {
 
 using namespace std::literals;
 
-struct real_t
+struct scalar_t
 {
     std::string expression;
 
-    friend constexpr auto operator+(real_t const& lhs, real_t const& rhs) -> real_t
+    friend constexpr auto operator+(scalar_t const& lhs, scalar_t const& rhs) -> scalar_t
     {
-        return real_t{"(" + lhs.expression + " + " + rhs.expression + ")"};
+        return scalar_t{"(" + lhs.expression + " + " + rhs.expression + ")"};
     }
 
-    friend constexpr auto operator*(real_t const& lhs, real_t const& rhs) -> real_t
+    friend constexpr auto operator*(scalar_t const& lhs, scalar_t const& rhs) -> scalar_t
     {
-        return real_t{lhs.expression + "*" + rhs.expression};
+        return scalar_t{lhs.expression + "*" + rhs.expression};
     }
 
-    constexpr auto operator==(real_t const&) const noexcept -> bool = default;
+    constexpr auto operator==(scalar_t const&) const noexcept -> bool = default;
 
-    // friend auto operator<<(std::ostream& out, real_t const& src) -> std::ostream& { return out << src.expression; }
+    // friend auto operator<<(std::ostream& out, scalar_t const& src) -> std::ostream& { return out << src.expression; }
 };
 
-static_assert(polynomial_t{real_t{"a"}}(real_t{"t"}) == real_t{"a"});
-static_assert(polynomial_t{real_t{"a"}, real_t{"b"}}(real_t{"t"}) == real_t{"(a*t + b)"});
-static_assert(polynomial_t{real_t{"a"}, real_t{"b"}, real_t{"c"}}(real_t{"t"}) == real_t{"((a*t + b)*t + c)"});
-static_assert(polynomial_t{real_t{"a"}, real_t{"b"}, real_t{"c"}, real_t{"d"}}(real_t{"t"})
-    == real_t{"(((a*t + b)*t + c)*t + d)"});
+static_assert(polynomial_t{scalar_t{"a"}}(scalar_t{"t"}) == scalar_t{"a"});
+static_assert(polynomial_t{scalar_t{"a"}, scalar_t{"b"}}(scalar_t{"t"}) == scalar_t{"(a*t + b)"});
+static_assert(
+    polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}}(scalar_t{"t"}) == scalar_t{"((a*t + b)*t + c)"});
+static_assert(polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}, scalar_t{"d"}}(scalar_t{"t"})
+    == scalar_t{"(((a*t + b)*t + c)*t + d)"});
 
 } // namespace symbolic_tests
 

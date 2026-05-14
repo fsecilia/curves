@@ -39,25 +39,25 @@ template <typename t_mantissa_t> struct scaled_int_t
 };
 
 // extracts integer mantissa and exponent from a float
-template <std::floating_point t_real_t> struct float_extractor_t
+template <std::floating_point t_scalar_t> struct float_extractor_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
 
-    static constexpr auto bit_count = int_t{sizeof(real_t) * CHAR_BIT};
+    static constexpr auto bit_count = int_t{sizeof(scalar_t) * CHAR_BIT};
 
     using unsigned_t = int_by_bits_t<bit_count, false>;
     using signed_t = int_by_bits_t<bit_count, true>;
     using scaled_int_t = scaled_int_t<signed_t>;
 
     // ieee constants
-    static constexpr auto frac_bit_count = std::numeric_limits<real_t>::digits - 1; // -1 for implicit bit
+    static constexpr auto frac_bit_count = std::numeric_limits<scalar_t>::digits - 1; // -1 for implicit bit
     static constexpr auto frac_mask = (unsigned_t{1} << frac_bit_count) - 1;
     static constexpr auto exp_bit_count = bit_count - 1 - frac_bit_count; // -1 for implicit bit
     static constexpr auto exponent_mask = (unsigned_t{1} << exp_bit_count) - 1;
     static constexpr auto exponent_bias = signed_t{(unsigned_t{1} << (exp_bit_count - 1)) - 1};
     static constexpr auto implicit_bit = unsigned_t{1} << frac_bit_count;
 
-    constexpr auto operator()(real_t val) const noexcept -> scaled_int_t
+    constexpr auto operator()(scalar_t val) const noexcept -> scaled_int_t
     {
         auto const bits = std::bit_cast<unsigned_t>(val);
         auto const raw_exponent = (bits >> frac_bit_count) & exponent_mask;
@@ -196,8 +196,8 @@ struct segment_packer_t
     using x_t = segment_builder_t::x_t;
     using y_t = segment_builder_t::y_t;
     using scaled_int_t = float_extractor_t::scaled_int_t;
-    using real_t = float_extractor_t::real_t;
-    using polynomial_t = polynomial_t<real_t>;
+    using scalar_t = float_extractor_t::scalar_t;
+    using polynomial_t = polynomial_t<scalar_t>;
 
     static constexpr auto in_frac_bits = x_t::frac_bits;
     static constexpr auto out_frac_bits = y_t::frac_bits;

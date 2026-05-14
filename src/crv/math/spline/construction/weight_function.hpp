@@ -12,30 +12,30 @@
 namespace crv::spline::weight_functions {
 
 /// neutral weighting, treats all domain coordinates equally
-template <typename real_t> struct uniform_t
+template <typename scalar_t> struct uniform_t
 {
-    constexpr auto operator()(real_t) const noexcept -> real_t { return 1.0; }
+    constexpr auto operator()(scalar_t) const noexcept -> scalar_t { return 1.0; }
 };
 
 /// weights error based on exponential decay using ae^-bt + c
-template <typename real_t> struct exponential_decay_t
+template <typename scalar_t> struct exponential_decay_t
 {
-    real_t amplitude;
-    real_t decay_rate;
-    real_t baseline_offset;
+    scalar_t amplitude;
+    scalar_t decay_rate;
+    scalar_t baseline_offset;
 
     /// weights error using initial ratio and halflife
     ///
     /// \param ratio weight multiplier at t=0 relative to the tail (e.g., 10 for 10x priority)
     /// \param halflife distance along the curve, t, where the ratio is halved
-    constexpr static auto from_ratio_and_halflife(real_t ratio, real_t halflife) noexcept -> exponential_decay_t
+    constexpr static auto from_ratio_and_halflife(scalar_t ratio, scalar_t halflife) noexcept -> exponential_decay_t
     {
         using std::log;
         return {.amplitude = ratio - 1, .decay_rate = log(2) / halflife, .baseline_offset = 1.0};
     }
 
     /// scales the given error magnitude based on its position along the curve
-    constexpr auto operator()(real_t node) const noexcept -> real_t
+    constexpr auto operator()(scalar_t node) const noexcept -> scalar_t
     {
         using std::exp;
         return amplitude * exp(-decay_rate * node) + baseline_offset;
@@ -43,11 +43,11 @@ template <typename real_t> struct exponential_decay_t
 };
 
 /// weights error based on hyperbolic decay using 1/(t + a)
-template <typename real_t> struct hyperbolic_decay_t
+template <typename scalar_t> struct hyperbolic_decay_t
 {
-    real_t halflife;
+    scalar_t halflife;
 
-    constexpr auto operator()(real_t node) const noexcept -> real_t { return 1.0 / (node + halflife); }
+    constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return 1.0 / (node + halflife); }
 };
 
 } // namespace crv::spline::weight_functions

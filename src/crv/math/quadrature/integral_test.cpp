@@ -10,7 +10,7 @@
 namespace crv::quadrature {
 namespace {
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 // --------------------------------------------------------------------------------------------------------------------
 // compile-time tests
@@ -22,12 +22,12 @@ constexpr auto integrand = [](auto position) { return position * 2.0; };
 
 struct rule_t
 {
-    using real_t = float_t;
+    using scalar_t = float_t;
 
     struct estimate_t
     {
-        real_t sum;
-        real_t error;
+        scalar_t sum;
+        scalar_t error;
 
         constexpr auto operator==(estimate_t const&) const noexcept -> bool = default;
     };
@@ -37,7 +37,7 @@ struct rule_t
         return {integrate(left, right, integrand), 3.5};
     }
 
-    constexpr auto integrate(auto left, auto right, auto const& integrand) const noexcept -> real_t
+    constexpr auto integrate(auto left, auto right, auto const& integrand) const noexcept -> scalar_t
     {
         return integrand(left) + integrand(right);
     }
@@ -62,7 +62,7 @@ struct quadrature_integral_test_t : Test
 {
     struct mock_integrand_t
     {
-        MOCK_METHOD(real_t, call, (real_t), (const, noexcept));
+        MOCK_METHOD(scalar_t, call, (scalar_t), (const, noexcept));
         virtual ~mock_integrand_t() = default;
     };
     StrictMock<mock_integrand_t> mock_integrand;
@@ -71,23 +71,23 @@ struct quadrature_integral_test_t : Test
     {
         mock_integrand_t* mock = nullptr;
 
-        auto operator()(real_t position) const noexcept -> real_t { return mock->call(position); }
+        auto operator()(scalar_t position) const noexcept -> scalar_t { return mock->call(position); }
     };
 
     struct estimate_t
     {
-        real_t sum;
-        real_t error;
+        scalar_t sum;
+        scalar_t error;
 
         constexpr auto operator==(estimate_t const&) const noexcept -> bool = default;
     };
 
     struct mock_rule_t
     {
+        MOCK_METHOD(estimate_t, estimate, (scalar_t left, scalar_t right, mock_integrand_t const& integrand),
+            (const, noexcept));
         MOCK_METHOD(
-            estimate_t, estimate, (real_t left, real_t right, mock_integrand_t const& integrand), (const, noexcept));
-        MOCK_METHOD(
-            real_t, integrate, (real_t left, real_t right, mock_integrand_t const& integrand), (const, noexcept));
+            scalar_t, integrate, (scalar_t left, scalar_t right, mock_integrand_t const& integrand), (const, noexcept));
 
         virtual ~mock_rule_t() = default;
     };
@@ -95,17 +95,17 @@ struct quadrature_integral_test_t : Test
 
     struct rule_t
     {
-        using real_t = float_t;
+        using scalar_t = float_t;
         using estimate_t = estimate_t;
 
         mock_rule_t* mock = nullptr;
 
-        auto estimate(real_t left, real_t right, integrand_t const& integrand) const noexcept -> estimate_t
+        auto estimate(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> estimate_t
         {
             return mock->estimate(left, right, *integrand.mock);
         }
 
-        auto integrate(real_t left, real_t right, integrand_t const& integrand) const noexcept -> real_t
+        auto integrate(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
         {
             return mock->integrate(left, right, *integrand.mock);
         }

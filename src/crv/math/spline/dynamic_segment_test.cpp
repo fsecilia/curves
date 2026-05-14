@@ -15,7 +15,7 @@ namespace {
 // testing
 // --------------------------------------------------------------------------------------------------------------------
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 struct spline_dynamic_segment_test_t : Test
 {
@@ -38,13 +38,13 @@ struct spline_dynamic_segment_test_t : Test
     using segment_builder_t = segment_builder_t<float_extractor_t::scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
-    using polynomial_t = polynomial_t<real_t>;
+    using polynomial_t = polynomial_t<scalar_t>;
 
     segment_packer_t segment_packer;
     segment_unpacker_t segment_unpacker;
     segment_evaluator_t segment_evaluator;
 
-    auto test(polynomial_t const& polynomial, int_t log2_width, real_t input, real_t expected) -> void
+    auto test(polynomial_t const& polynomial, int_t log2_width, scalar_t input, scalar_t expected) -> void
     {
         // double check float value
         auto const t = input;
@@ -58,7 +58,7 @@ struct spline_dynamic_segment_test_t : Test
         auto const width = std::ldexp(1.0, static_cast<int>(log2_width));
         auto const dx = to_fixed<x_t>(input * width);
         auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
-        auto const actual_float = from_fixed<real_t>(actual_fixed);
+        auto const actual_float = from_fixed<scalar_t>(actual_fixed);
         EXPECT_NEAR(expected, actual_float, 1e-10);
     }
 };
@@ -75,8 +75,8 @@ TEST_F(spline_dynamic_segment_test_t, pathological_integral)
 
 struct vector_t
 {
-    real_t input;
-    real_t expected;
+    scalar_t input;
+    scalar_t expected;
 
     friend auto operator<<(std::ostream& out, vector_t const& src) -> std::ostream&
     {
@@ -86,8 +86,8 @@ struct vector_t
 
 struct spline_dynamic_segment_param_test_t : spline_dynamic_segment_test_t, WithParamInterface<vector_t>
 {
-    real_t const input = GetParam().input;
-    real_t const expected = GetParam().expected;
+    scalar_t const input = GetParam().input;
+    scalar_t const expected = GetParam().expected;
 
     // hermite: p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
     static constexpr auto polynomial = polynomial_t{1.4, -2.0, 1.0, 0.1};

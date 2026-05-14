@@ -16,10 +16,10 @@
 namespace crv::quadrature {
 
 /// seeds empty stack with domain-level segments
-template <std::floating_point t_real_t> class stack_seeder_t
+template <std::floating_point t_scalar_t> class stack_seeder_t
 {
 public:
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
 
     /// seeds stack with one segment per subdomain, splitting at critical points
     ///
@@ -29,8 +29,8 @@ public:
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_max)
-    auto seed(auto& stack, is_integral<real_t> auto const& integral, real_t domain_max, real_t global_tolerance,
-        compatible_range<real_t> auto const& critical_points) -> void
+    auto seed(auto& stack, is_integral<scalar_t> auto const& integral, scalar_t domain_max, scalar_t global_tolerance,
+        compatible_range<scalar_t> auto const& critical_points) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
@@ -38,12 +38,12 @@ public:
         auto right = domain_max;
         for (auto const critical_point : critical_points | std::views::reverse)
         {
-            auto const left = static_cast<real_t>(critical_point);
-            assert((real_t{0} < left && left < domain_max)
+            auto const left = static_cast<scalar_t>(critical_point);
+            assert((scalar_t{0} < left && left < domain_max)
                 && "stack_seeder_t: critical points must be in (0, domain_max)");
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
-            stack.push_back(segment_t<real_t>{
+            stack.push_back(segment_t<scalar_t>{
                 .left = left,
                 .right = right,
                 .coarse_integral = integral.integrate(left, right),
@@ -54,10 +54,10 @@ public:
             right = left;
         }
 
-        stack.push_back(segment_t<real_t>{
-            .left = real_t{0},
+        stack.push_back(segment_t<scalar_t>{
+            .left = scalar_t{0},
             .right = right,
-            .coarse_integral = integral.integrate(real_t{0}, right),
+            .coarse_integral = integral.integrate(scalar_t{0}, right),
             .tolerance = global_tolerance * (right / domain_max),
             .depth = 0,
         });

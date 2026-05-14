@@ -12,11 +12,11 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
+using scalar_t = float_t;
+using jet_t = jet_t<scalar_t>;
 using coeff_t = fixed_t<int32_t, 13>;
 using cubic_polynomial_t = cubic_polynomial_t<coeff_t>;
-using values_t = std::array<real_t, std::tuple_size_v<cubic_polynomial_t>>;
+using values_t = std::array<scalar_t, std::tuple_size_v<cubic_polynomial_t>>;
 
 struct vector_t
 {

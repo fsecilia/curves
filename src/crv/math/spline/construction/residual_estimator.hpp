@@ -14,11 +14,11 @@
 namespace crv::spline {
 
 /// max scale of target and error between target and approximant over a subdomain
-template <std::floating_point real_t> struct residual_t
+template <std::floating_point scalar_t> struct residual_t
 {
-    real_t metric_error; // error based on norm error metric
-    real_t weighted_error; // metric_error weighted perceptually
-    real_t scale; // absolute magnitude of primal
+    scalar_t metric_error; // error based on norm error metric
+    scalar_t weighted_error; // metric_error weighted perceptually
+    scalar_t scale; // absolute magnitude of primal
 
     constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
@@ -29,17 +29,17 @@ template <std::floating_point real_t> struct residual_t
 /// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
 /// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
 /// weight function.
-template <std::floating_point real_t, typename node_generator_t, typename error_norm_t, typename weight_function_t>
+template <std::floating_point scalar_t, typename node_generator_t, typename error_norm_t, typename weight_function_t>
 struct residual_estimator_t
 {
-    using residual_t = residual_t<real_t>;
+    using residual_t = residual_t<scalar_t>;
 
     [[no_unique_address]] node_generator_t generate_nodes;
     error_norm_t measure_error;
     weight_function_t apply_weight;
 
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, real_t left, real_t midpoint,
-        real_t right) const noexcept -> residual_t
+    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, scalar_t left,
+        scalar_t midpoint, scalar_t right) const noexcept -> residual_t
     {
         auto const interval_width = right - left;
 

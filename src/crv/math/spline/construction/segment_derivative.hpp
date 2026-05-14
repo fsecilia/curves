@@ -22,39 +22,40 @@ namespace crv::spline {
 /// places we use the derivative are in user-mode floating point. The floating-point derivative is encapsulated here.
 /// This type also puts a name on the opaque ldexp calls necessary to transform the tangent between segment-local
 /// parameter t space and spline-global spatial x space.
-template <std::floating_point real_t> struct segment_derivative_t
+template <std::floating_point scalar_t> struct segment_derivative_t
 {
     /// jacobian
-    constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> real_t
+    constexpr auto dx_dt(int_t log2_dx_dt) const noexcept -> scalar_t
     {
         using std::ldexp;
-        return ldexp(real_t{1.0}, int_cast<int>(log2_dx_dt));
+        return ldexp(scalar_t{1.0}, int_cast<int>(log2_dx_dt));
     }
 
     /// parametric derivative
-    constexpr auto dy_dt(std::ranges::range auto coeffs, real_t t) const noexcept -> real_t
+    constexpr auto dy_dt(std::ranges::range auto coeffs, scalar_t t) const noexcept -> scalar_t
         requires(is_fixed<std::ranges::range_value_t<decltype(coeffs)>>)
     {
-        return (real_t{3.0} * from_fixed<real_t>(coeffs[0]) * t + real_t{2.0} * from_fixed<real_t>(coeffs[1])) * t
-            + from_fixed<real_t>(coeffs[2]);
+        return (scalar_t{3.0} * from_fixed<scalar_t>(coeffs[0]) * t + scalar_t{2.0} * from_fixed<scalar_t>(coeffs[1]))
+            * t
+            + from_fixed<scalar_t>(coeffs[2]);
     }
 
     /// spacial derivative
-    constexpr auto dy_dx(std::ranges::range auto coeffs, real_t t, int_t log2_dx_dt) const noexcept -> real_t
+    constexpr auto dy_dx(std::ranges::range auto coeffs, scalar_t t, int_t log2_dx_dt) const noexcept -> scalar_t
         requires(is_fixed<std::ranges::range_value_t<decltype(coeffs)>>)
     {
         return dy_dt_to_dy_dx(dy_dt(coeffs, t), log2_dx_dt);
     }
 
     /// chain rule from t to x
-    constexpr auto dy_dt_to_dy_dx(real_t dy_dt, int_t log2_dx_dt) const noexcept -> real_t
+    constexpr auto dy_dt_to_dy_dx(scalar_t dy_dt, int_t log2_dx_dt) const noexcept -> scalar_t
     {
         using std::ldexp;
         return ldexp(dy_dt, int_cast<int>(-log2_dx_dt));
     }
 
     // chain rule from x to t
-    constexpr auto dy_dx_to_dy_dt(real_t dy_dx, int_t log2_dx_dt) const noexcept -> real_t
+    constexpr auto dy_dx_to_dy_dt(scalar_t dy_dx, int_t log2_dx_dt) const noexcept -> scalar_t
     {
         using std::ldexp;
         return ldexp(dy_dx, int_cast<int>(log2_dx_dt));

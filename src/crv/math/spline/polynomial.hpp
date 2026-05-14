@@ -11,9 +11,9 @@
 
 namespace crv::spline {
 
-template <typename t_real_t, int_t t_degree = 3> struct polynomial_t : std::array<t_real_t, t_degree + 1>
+template <typename t_scalar_t, int_t t_degree = 3> struct polynomial_t : std::array<t_scalar_t, t_degree + 1>
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
 
     static constexpr auto degree = t_degree;
     static constexpr auto term_count = degree + 1;
@@ -31,8 +31,8 @@ template <typename t_real_t, int_t t_degree = 3> struct polynomial_t : std::arra
     }
 };
 
-template <typename real_t, typename... remaining_t>
-polynomial_t(real_t, remaining_t...)
-    -> polynomial_t<std::enable_if_t<(std::same_as<real_t, remaining_t> && ...), real_t>, sizeof...(remaining_t)>;
+template <typename scalar_t, typename... remaining_t>
+polynomial_t(scalar_t, remaining_t...)
+    -> polynomial_t<std::enable_if_t<(std::same_as<scalar_t, remaining_t> && ...), scalar_t>, sizeof...(remaining_t)>;
 
 } // namespace crv::spline

@@ -13,8 +13,8 @@ namespace {
 
 struct spline_approximant_test_t : Test
 {
-    using real_t = float_t;
-    using jet_t = jet_t<real_t>;
+    using scalar_t = float_t;
+    using jet_t = jet_t<scalar_t>;
     using x_t = fixed_t<int16_t, 2>;
     using y_t = fixed_t<int32_t, 5>;
     using normalized_t = fixed_t<uint64_t, 64>;
@@ -48,7 +48,7 @@ struct spline_approximant_test_t : Test
     {
         virtual ~mock_segment_derivative_t() = default;
 
-        MOCK_METHOD(real_t, dy_dx, (coeffs_t const&, real_t, int_t), (const, noexcept));
+        MOCK_METHOD(scalar_t, dy_dx, (coeffs_t const&, scalar_t, int_t), (const, noexcept));
     };
     StrictMock<mock_segment_derivative_t> mock_segment_derivative;
 
@@ -56,7 +56,7 @@ struct spline_approximant_test_t : Test
     {
         mock_segment_derivative_t* mock = nullptr;
 
-        auto dy_dx(coeffs_t const& coeffs, real_t t, int_t log2_width) const noexcept -> real_t
+        auto dy_dx(coeffs_t const& coeffs, scalar_t t, int_t log2_width) const noexcept -> scalar_t
         {
             return mock->dy_dx(coeffs, t, log2_width);
         }
@@ -64,7 +64,7 @@ struct spline_approximant_test_t : Test
 
     static constexpr auto x0 = x_t::literal(3);
 
-    using sut_t = approximant_t<real_t, segment_t, segment_derivative_t>;
+    using sut_t = approximant_t<scalar_t, segment_t, segment_derivative_t>;
     sut_t sut{x0, segment_t{&mock_segment}, segment_derivative_t{&mock_segment_derivative}};
 };
 
@@ -77,7 +77,7 @@ TEST_F(spline_approximant_test_t, call_operator)
     auto const y_real = float_t{13};
     auto const y_fixed = to_fixed<y_t>(y_real);
     auto const coeffs = coeffs_t{};
-    auto const dy_dx = real_t{19};
+    auto const dy_dx = scalar_t{19};
     auto const log2_width = 4;
 
     auto const expected = jet_t{y_real, dy_dx};

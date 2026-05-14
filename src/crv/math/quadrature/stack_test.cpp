@@ -12,9 +12,9 @@
 namespace crv::quadrature {
 namespace {
 
-using real_t = float_t;
-using segment_t = segment_t<real_t>;
-using refinement_t = refinement_t<real_t>;
+using scalar_t = float_t;
+using segment_t = segment_t<scalar_t>;
+using refinement_t = refinement_t<scalar_t>;
 using stack_t = std::vector<segment_t>;
 
 // ====================================================================================================================
@@ -29,7 +29,7 @@ struct quadrature_stack_seeder_test_t : Test
 {
     stack_t stack{};
 
-    static auto create_segment(real_t left, real_t right, real_t tolerance) noexcept -> segment_t
+    static auto create_segment(scalar_t left, scalar_t right, scalar_t tolerance) noexcept -> segment_t
     {
         return segment_t{
             .left = left,
@@ -42,16 +42,16 @@ struct quadrature_stack_seeder_test_t : Test
 
     struct integral_t
     {
-        using estimate_t = real_t;
-        auto estimate(real_t, real_t) const noexcept -> estimate_t;
-        auto integrate(real_t left, real_t right) const noexcept -> real_t { return left + right; }
+        using estimate_t = scalar_t;
+        auto estimate(scalar_t, scalar_t) const noexcept -> estimate_t;
+        auto integrate(scalar_t left, scalar_t right) const noexcept -> scalar_t { return left + right; }
     };
     integral_t integral;
 
     static constexpr auto domain_max = 1024.0;
     static constexpr auto global_tolerance = 1.0;
 
-    using sut_t = stack_seeder_t<real_t>;
+    using sut_t = stack_seeder_t<scalar_t>;
     sut_t sut{};
 };
 
@@ -63,7 +63,7 @@ struct quadrature_stack_seeder_test_no_critical_points_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_no_critical_points_t()
     {
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<real_t>{});
+        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<scalar_t>{});
     }
 };
 
@@ -80,7 +80,7 @@ struct quadrature_stack_seeder_test_one_critical_point_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_one_critical_point_t()
     {
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<real_t>{domain_max / 3.0});
+        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<scalar_t>{domain_max / 3.0});
     }
 };
 

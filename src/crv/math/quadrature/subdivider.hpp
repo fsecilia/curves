@@ -18,16 +18,16 @@ namespace crv::quadrature {
 namespace generic {
 
 /// decides whether a segment should be refined further
-template <typename t_real_t> struct refinement_predicate_t
+template <typename t_scalar_t> struct refinement_predicate_t
 {
-    using real_t = t_real_t;
-    using segment_t = segment_t<real_t>;
+    using scalar_t = t_scalar_t;
+    using segment_t = segment_t<scalar_t>;
 
-    static constexpr auto epsilon = std::numeric_limits<real_t>::epsilon();
-    static constexpr auto min_width = epsilon * real_t{1024};
-    static constexpr auto relative_noise_margin = epsilon * real_t{64};
+    static constexpr auto epsilon = std::numeric_limits<scalar_t>::epsilon();
+    static constexpr auto min_width = epsilon * scalar_t{1024};
+    static constexpr auto relative_noise_margin = epsilon * scalar_t{64};
 
-    constexpr auto operator()(segment_t const& segment, real_t area, real_t error, int_t depth_limit) const noexcept
+    constexpr auto operator()(segment_t const& segment, scalar_t area, scalar_t error, int_t depth_limit) const noexcept
         -> bool
     {
         auto const current_width = segment.right - segment.left;
@@ -41,12 +41,12 @@ template <typename t_real_t> struct refinement_predicate_t
 template <typename t_refinement_predicate_t> struct subdivider_t
 {
     using refinement_predicate_t = t_refinement_predicate_t;
-    using real_t = refinement_predicate_t::real_t;
+    using scalar_t = refinement_predicate_t::scalar_t;
 
     [[no_unique_address]] refinement_predicate_t should_refine{};
 
-    template <is_integral<real_t> integral_t>
-    constexpr auto run(auto& stack, integral_t const& integral, is_bisector<integral_t, real_t> auto const& bisect,
+    template <is_integral<scalar_t> integral_t>
+    constexpr auto run(auto& stack, integral_t const& integral, is_bisector<integral_t, scalar_t> auto const& bisect,
         auto& builder, int_t depth_limit) const -> void
     {
         while (!stack.empty())
@@ -72,6 +72,6 @@ template <typename t_refinement_predicate_t> struct subdivider_t
 
 } // namespace generic
 
-template <typename real_t> using subdivider_t = generic::subdivider_t<generic::refinement_predicate_t<real_t>>;
+template <typename scalar_t> using subdivider_t = generic::subdivider_t<generic::refinement_predicate_t<scalar_t>>;
 
 } // namespace crv::quadrature

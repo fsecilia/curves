@@ -11,8 +11,8 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
+using scalar_t = float_t;
+using jet_t = jet_t<scalar_t>;
 
 // nan-aware jet comparison
 constexpr auto jet_eq(jet_t lhs, jet_t rhs) noexcept -> bool
@@ -54,25 +54,25 @@ struct segment_t
     constexpr auto operator==(segment_t const& src) const noexcept -> bool = default;
 };
 
-constexpr auto signed_shift(int_t log2_width) noexcept -> real_t
+constexpr auto signed_shift(int_t log2_width) noexcept -> scalar_t
 {
     if (log2_width < 0) return 1.0 / (1 << -log2_width);
-    else return static_cast<real_t>(1 << log2_width);
+    else return static_cast<scalar_t>(1 << log2_width);
 }
 
 struct segment_derivative_t
 {
-    constexpr auto dx_dt(int_t log2_width) const noexcept -> real_t { return signed_shift(log2_width); }
+    constexpr auto dx_dt(int_t log2_width) const noexcept -> scalar_t { return signed_shift(log2_width); }
 };
 
-using sut_t = segment_factory_t<real_t, segment_t, segment_derivative_t, hermite_converter_t>;
+using sut_t = segment_factory_t<scalar_t, segment_t, segment_derivative_t, hermite_converter_t>;
 constexpr sut_t sut{};
 
-constexpr auto inf = std::numeric_limits<real_t>::infinity();
-constexpr auto nan = std::numeric_limits<real_t>::quiet_NaN();
-constexpr auto max_val = std::numeric_limits<real_t>::max();
-constexpr auto lowest_val = std::numeric_limits<real_t>::lowest();
-constexpr auto eps = std::numeric_limits<real_t>::epsilon();
+constexpr auto inf = std::numeric_limits<scalar_t>::infinity();
+constexpr auto nan = std::numeric_limits<scalar_t>::quiet_NaN();
+constexpr auto max_val = std::numeric_limits<scalar_t>::max();
+constexpr auto lowest_val = std::numeric_limits<scalar_t>::lowest();
+constexpr auto eps = std::numeric_limits<scalar_t>::epsilon();
 
 constexpr auto test(jet_t left, jet_t right, int_t log2_width) noexcept -> bool
 {

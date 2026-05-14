@@ -18,26 +18,26 @@ namespace crv::spline::node_generators {
 // --------------------------------------------------------------------------------------------------------------------
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind in [0, 1], excluding the endpoints
-template <typename real_t, int sample_count = 3> struct equioscillation_t
+template <typename scalar_t, int sample_count = 3> struct equioscillation_t
 {
-    using nodes_t = std::array<real_t, sample_count>;
+    using nodes_t = std::array<scalar_t, sample_count>;
     static nodes_t const nodes;
 
     auto operator()() const noexcept -> nodes_t const& { return nodes; }
 };
 
-template <typename real_t, int sample_count>
-equioscillation_t<real_t, sample_count>::nodes_t const equioscillation_t<real_t, sample_count>::nodes
+template <typename scalar_t, int sample_count>
+equioscillation_t<scalar_t, sample_count>::nodes_t const equioscillation_t<scalar_t, sample_count>::nodes
     = []() noexcept -> nodes_t {
     static_assert(sample_count > 1, "must have at least 2 nodes to form an interval");
 
     nodes_t result;
 
     // calc mid-range values
-    static constexpr auto scale = std::numbers::pi_v<real_t> / static_cast<real_t>(sample_count + 1);
+    static constexpr auto scale = std::numbers::pi_v<scalar_t> / static_cast<scalar_t>(sample_count + 1);
     for (auto sample = 0; sample < sample_count; ++sample)
     {
-        auto const position = std::cos(static_cast<real_t>(sample + 1) * scale);
+        auto const position = std::cos(static_cast<scalar_t>(sample + 1) * scale);
         result[sample] = (1 - position) * 0.5;
     }
 

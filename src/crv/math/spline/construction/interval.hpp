@@ -17,9 +17,9 @@ namespace crv::spline {
 /// geometry of a refinement subdomain
 ///
 /// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
-template <std::floating_point real_t> struct subdomain_t
+template <std::floating_point scalar_t> struct subdomain_t
 {
-    using function_sample_t = function_sample_t<real_t>;
+    using function_sample_t = function_sample_t<scalar_t>;
 
     function_sample_t left;
     function_sample_t midpoint;
@@ -30,13 +30,13 @@ template <std::floating_point real_t> struct subdomain_t
 };
 
 /// unit of work over a subdomain
-template <std::floating_point t_real_t, typename t_segment_t> struct interval_t
+template <std::floating_point t_scalar_t, typename t_segment_t> struct interval_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
     using segment_t = t_segment_t;
 
-    using subdomain_t = subdomain_t<real_t>;
-    using residual_t = residual_t<real_t>;
+    using subdomain_t = subdomain_t<scalar_t>;
+    using residual_t = residual_t<scalar_t>;
 
     subdomain_t subdomain;
     segment_t segment;
@@ -69,8 +69,8 @@ struct interval_factory_t
 {
     using interval_t = t_interval_t;
 
-    using real_t = interval_t::real_t;
-    using subdomain_t = subdomain_t<real_t>;
+    using scalar_t = interval_t::scalar_t;
+    using subdomain_t = subdomain_t<scalar_t>;
 
     [[no_unique_address]] segment_factory_t create_segment;
     residual_estimator_t estimate_residual;

@@ -12,8 +12,9 @@ namespace {
 
 struct compensated_accumulator_test_t : Test
 {
-    using real_t = float32_t;
-    using sut_t = compensated_accumulator_t<real_t>;
+    // use float32_t so it drifts sooner than float64_t
+    using scalar_t = float32_t;
+    using sut_t = compensated_accumulator_t<scalar_t>;
 
     static constexpr auto iterations = int_t{1'000'000};
 };
@@ -22,15 +23,15 @@ TEST_F(compensated_accumulator_test_t, sums_normally)
 {
     auto sut = sut_t{};
 
-    for (auto i = 0; i < iterations; ++i) sut += static_cast<real_t>(i);
+    for (auto i = 0; i < iterations; ++i) sut += static_cast<scalar_t>(i);
 
     EXPECT_EQ(static_cast<float>(iterations * (iterations - 1)) / 2, static_cast<float>(sut));
 }
 
 TEST_F(compensated_accumulator_test_t, catches_vanishing_udates)
 {
-    auto const large_value = real_t{1.0};
-    auto const small_value = std::numeric_limits<real_t>::epsilon() / 10;
+    auto const large_value = scalar_t{1.0};
+    auto const small_value = std::numeric_limits<scalar_t>::epsilon() / 10;
     auto const expected_change = small_value * iterations;
 
     auto reference = large_value;
@@ -47,9 +48,9 @@ TEST_F(compensated_accumulator_test_t, catches_vanishing_udates)
 
 TEST_F(compensated_accumulator_test_t, final_conversion_includes_compensation)
 {
-    auto const sut = sut_t{.sum = real_t{1}, .compensation = real_t{2}};
+    auto const sut = sut_t{.sum = scalar_t{1}, .compensation = scalar_t{2}};
     EXPECT_DOUBLE_EQ(sut.sum, 1.0);
-    EXPECT_DOUBLE_EQ(static_cast<real_t>(sut), 3.0);
+    EXPECT_DOUBLE_EQ(static_cast<scalar_t>(sut), 3.0);
 }
 
 } // namespace

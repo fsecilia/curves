@@ -13,10 +13,10 @@
 namespace crv::spline {
 
 /// float x and jet y result of sampling a function at x
-template <std::floating_point real_t> struct function_sample_t
+template <std::floating_point scalar_t> struct function_sample_t
 {
-    real_t x;
-    jet_t<real_t> y;
+    scalar_t x;
+    jet_t<scalar_t> y;
 
     auto operator==(function_sample_t const& src) const noexcept -> bool = default;
 };
@@ -26,10 +26,10 @@ template <typename target_function_t> struct function_sampler_t
 {
     target_function_t target_function;
 
-    template <std::floating_point real_t>
-    constexpr auto operator()(real_t x) const noexcept -> function_sample_t<real_t>
+    template <std::floating_point scalar_t>
+    constexpr auto operator()(scalar_t x) const noexcept -> function_sample_t<scalar_t>
     {
-        auto const result = function_sample_t<real_t>{.x = x, .y = target_function(jet_t<real_t>{x, 1.0})};
+        auto const result = function_sample_t<scalar_t>{.x = x, .y = target_function(jet_t<scalar_t>{x, 1.0})};
 
         using std::isfinite;
         assert(isfinite(x));

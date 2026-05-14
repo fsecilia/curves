@@ -16,25 +16,31 @@ namespace {
 
 struct quadrature_antiderivative_test_t : Test
 {
-    using real_t = float_t;
-    using jet_t = jet_t<real_t>;
+    using scalar_t = float_t;
+    using jet_t = jet_t<scalar_t>;
 
     struct mock_integral_t
     {
-        MOCK_METHOD(real_t, integrate, (real_t left, real_t right), (const, noexcept));
-        MOCK_METHOD(real_t, evaluate_integrand, (real_t location), (const, noexcept));
+        MOCK_METHOD(scalar_t, integrate, (scalar_t left, scalar_t right), (const, noexcept));
+        MOCK_METHOD(scalar_t, evaluate_integrand, (scalar_t location), (const, noexcept));
         virtual ~mock_integral_t() = default;
     };
     StrictMock<mock_integral_t> mock_integral;
 
     struct integral_t
     {
-        using real_t = float_t;
+        using scalar_t = float_t;
 
         mock_integral_t* mock = nullptr;
 
-        auto integrate(real_t left, real_t right) const noexcept -> real_t { return mock->integrate(left, right); }
-        auto evaluate_integrand(real_t location) const noexcept -> real_t { return mock->evaluate_integrand(location); }
+        auto integrate(scalar_t left, scalar_t right) const noexcept -> scalar_t
+        {
+            return mock->integrate(left, right);
+        }
+        auto evaluate_integrand(scalar_t location) const noexcept -> scalar_t
+        {
+            return mock->evaluate_integrand(location);
+        }
     };
 
     using sut_t = antiderivative_t<integral_t>;
@@ -42,7 +48,7 @@ struct quadrature_antiderivative_test_t : Test
     static constexpr auto expected_residual = 0.3174;
     static constexpr auto expected_derivative = 1.7213;
 
-    auto expect_location(real_t location, real_t expected_left, real_t) -> void
+    auto expect_location(scalar_t location, scalar_t expected_left, scalar_t) -> void
     {
         EXPECT_CALL(mock_integral, integrate(expected_left, location)).WillOnce(Return(expected_residual));
         EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
@@ -152,7 +158,7 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, query_above_domain_aborts)
 // test NaN injection
 TEST_F(quadrature_antiderivative_test_small_cache_t, query_nan_aborts)
 {
-    EXPECT_DEBUG_DEATH(sut(std::numeric_limits<real_t>::quiet_NaN()), "domain error");
+    EXPECT_DEBUG_DEATH(sut(std::numeric_limits<scalar_t>::quiet_NaN()), "domain error");
 }
 
 #endif
@@ -219,18 +225,18 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max)
 
 struct quadrature_antiderivative_builder_t : Test
 {
-    using real_t = float_t;
-    using accumulator_t = real_t;
-    using real_vec_t = std::vector<real_t>;
+    using scalar_t = float_t;
+    using accumulator_t = scalar_t;
+    using real_vec_t = std::vector<scalar_t>;
 
     using move_only_id_t = std::unique_ptr<int_t>;
     using integral_t = move_only_id_t;
 
-    using map_t = std::flat_map<real_t, real_t>;
+    using map_t = std::flat_map<scalar_t, scalar_t>;
 
     struct antiderivative_t
     {
-        using real_t = float_t;
+        using scalar_t = float_t;
         using map_t = map_t;
         using boundaries_t = map_t::key_container_type;
         using cumulative_sums_t = map_t::mapped_container_type;

@@ -13,7 +13,7 @@
 
 namespace crv {
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 static constexpr auto e_nr = uint128_t{14}; // error calculated after 3 iterations of Newton-Raphson, comes from sollya
 

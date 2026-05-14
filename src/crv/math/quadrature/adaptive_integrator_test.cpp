@@ -13,15 +13,15 @@ namespace {
 
 struct quadrature_adaptive_integrator_test : Test
 {
-    using real_t = float_t;
-    using segment_t = segment_t<real_t>;
-    using accumulator_t = real_t;
-    using rule_t = rules::gauss_kronrod_t<real_t>;
+    using scalar_t = float_t;
+    using segment_t = segment_t<scalar_t>;
+    using accumulator_t = scalar_t;
+    using rule_t = rules::gauss_kronrod_t<scalar_t>;
 
     using stack_t = std::vector<segment_t>;
-    using critical_points_t = std::vector<real_t>;
+    using critical_points_t = std::vector<scalar_t>;
 
-    static constexpr auto integrand = [](real_t x) static noexcept -> real_t { return x * x; };
+    static constexpr auto integrand = [](scalar_t x) static noexcept -> scalar_t { return x * x; };
     using integrand_t = decltype(integrand);
 
     struct integral_t
@@ -34,7 +34,7 @@ struct quadrature_adaptive_integrator_test : Test
 
     struct antiderivative_t
     {
-        using real_t = float_t;
+        using scalar_t = float_t;
         int_t id;
 
         auto operator==(antiderivative_t const&) const noexcept -> bool = default;
@@ -92,7 +92,7 @@ struct quadrature_adaptive_integrator_test : Test
         virtual ~mock_stack_seeder_t() = default;
 
         MOCK_METHOD(void, seed,
-            (stack_t & stack, integral_t const& integral, real_t domain_max, real_t global_tolerance,
+            (stack_t & stack, integral_t const& integral, scalar_t domain_max, scalar_t global_tolerance,
                 critical_points_t const& critical_points),
             (const));
     };
@@ -102,7 +102,7 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_stack_seeder_t* mock = nullptr;
 
-        auto seed(stack_t& stack, integral_t const& integral, real_t domain_max, real_t global_tolerance,
+        auto seed(stack_t& stack, integral_t const& integral, scalar_t domain_max, scalar_t global_tolerance,
             critical_points_t const& critical_points) const -> void
         {
             mock->seed(stack, integral, domain_max, global_tolerance, critical_points);
@@ -116,7 +116,7 @@ struct quadrature_adaptive_integrator_test : Test
     static constexpr auto achieved_error = 3.25e-10;
     static constexpr auto max_error = 6.98e-8;
 
-    using sut_t = adaptive_integrator_t<real_t, accumulator_t, subdivider_t, stack_seeder_t, bisector_t>;
+    using sut_t = adaptive_integrator_t<scalar_t, accumulator_t, subdivider_t, stack_seeder_t, bisector_t>;
     sut_t sut{tolerance, depth_limit, subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}, bisector};
 };
 

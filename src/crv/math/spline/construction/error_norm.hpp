@@ -16,11 +16,11 @@
 namespace crv::spline::error_norms {
 
 /// soft floor using lse
-template <typename real_t> struct logsumexp_floor_t
+template <typename scalar_t> struct logsumexp_floor_t
 {
-    static constexpr auto sharpness = real_t{10};
+    static constexpr auto sharpness = scalar_t{10};
 
-    static constexpr auto operator()(real_t x, real_t y) noexcept -> real_t
+    static constexpr auto operator()(scalar_t x, scalar_t y) noexcept -> scalar_t
     {
         using std::exp;
         using std::isfinite;
@@ -65,9 +65,9 @@ struct absolute_t
 };
 
 /// max of absolute primal error and weighted absolute tangent error
-template <typename real_t> struct first_order_absolute_t
+template <typename scalar_t> struct first_order_absolute_t
 {
-    real_t tangent_weight{1.0};
+    scalar_t tangent_weight{1.0};
 
     template <typename jet_t>
     constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> typename jet_t::value_t
@@ -84,11 +84,11 @@ template <typename real_t> struct first_order_absolute_t
 };
 
 /// max of relative primal error and relative tangent error using a soft floor to prevent division by 0 near roots
-template <typename real_t, typename floor_t> struct first_order_relative_t
+template <typename scalar_t, typename floor_t> struct first_order_relative_t
 {
     // floor prevents weight blowup where target slope is near zero or unresolvable
-    real_t primal_floor{1e-3};
-    real_t tangent_floor{1e-3};
+    scalar_t primal_floor{1e-3};
+    scalar_t tangent_floor{1e-3};
 
     [[no_unique_address]] floor_t floor{};
 
