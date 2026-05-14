@@ -98,6 +98,35 @@ struct preserves_div_type_t
 constexpr auto preserves_div_type = preserves_div_type_t{};
 
 // ====================================================================================================================
+// shr::is_valid_shift
+// ====================================================================================================================
+
+static_assert(!shr::is_valid_shift<int8_t>(-1));
+static_assert(shr::is_valid_shift<int8_t>(0));
+static_assert(shr::is_valid_shift<int8_t>(7));
+static_assert(!shr::is_valid_shift<int8_t>(8));
+static_assert(!shr::is_valid_shift<int8_t>(9));
+
+static_assert(!shr::is_valid_shift<int16_t>(-1));
+static_assert(shr::is_valid_shift<int16_t>(0));
+static_assert(shr::is_valid_shift<int16_t>(15));
+static_assert(!shr::is_valid_shift<int16_t>(16));
+static_assert(!shr::is_valid_shift<int16_t>(17));
+
+static_assert(!shr::is_valid_shift<uint8_t>(-1));
+static_assert(shr::is_valid_shift<uint8_t>(0));
+static_assert(shr::is_valid_shift<uint8_t>(7));
+static_assert(!shr::is_valid_shift<uint8_t>(8));
+static_assert(!shr::is_valid_shift<uint8_t>(9));
+
+static_assert(!shr::is_valid_shift<uint16_t>(-1));
+static_assert(shr::is_valid_shift<uint16_t>(0));
+static_assert(shr::is_valid_shift<uint16_t>(14));
+static_assert(shr::is_valid_shift<uint16_t>(15));
+static_assert(!shr::is_valid_shift<uint16_t>(16));
+static_assert(!shr::is_valid_shift<uint16_t>(17));
+
+// ====================================================================================================================
 // shr::truncate_t
 // ====================================================================================================================
 
