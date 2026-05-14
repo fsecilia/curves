@@ -21,20 +21,6 @@
 
 namespace crv::spline {
 
-enum class segment_error_reason_t
-{
-    bad_float,
-};
-
-template <std::floating_point real_t> struct segment_error_t
-{
-    segment_error_reason_t reason;
-    real_t left;
-    real_t right;
-
-    constexpr auto operator==(segment_error_t const&) const noexcept -> bool = default;
-};
-
 // --------------------------------------------------------------------------------------------------------------------
 // packing
 // --------------------------------------------------------------------------------------------------------------------
@@ -125,14 +111,13 @@ template <std::floating_point t_real_t> struct float_extractor_t
     static constexpr auto exponent_bias = signed_t{(unsigned_t{1} << (exp_bit_count - 1)) - 1};
     static constexpr auto implicit_bit = unsigned_t{1} << frac_bit_count;
 
-    constexpr auto operator()(real_t val) const noexcept -> std::expected<scaled_int_t, segment_error_reason_t>
+    constexpr auto operator()(real_t val) const noexcept -> scaled_int_t
     {
         auto const bits = std::bit_cast<unsigned_t>(val);
         auto const raw_exponent = (bits >> frac_bit_count) & exponent_mask;
 
         // inf and nan are not supported
-        auto const bad_float = raw_exponent == exponent_mask;
-        if (bad_float) return std::unexpected(segment_error_reason_t::bad_float);
+        assert(raw_exponent != exponent_mask);
 
         // ftz
         if (raw_exponent == 0) return {};
@@ -302,8 +287,7 @@ struct segment_packer_t
     [[no_unique_address]] float_extractor_t extract_float;
     [[no_unique_address]] builder_factory_t make_builder;
 
-    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
-        -> std::expected<packed_segment_t, segment_error_reason_t>
+    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> packed_segment_t
     {
         packed_segment_t packed_segment;
         auto field_index = 0;
@@ -313,11 +297,9 @@ struct segment_packer_t
         for (; field_index < fields_per_segment; ++field_index)
         {
             auto const scaled_int = extract_float(polynomial[field_index]);
-            if (!scaled_int) return std::unexpected(scaled_int.error());
-
-            if (scaled_int->mantissa != 0)
+            if (scaled_int.mantissa != 0)
             {
-                seed = *scaled_int;
+                seed = scaled_int;
                 break;
             }
 
@@ -335,9 +317,7 @@ struct segment_packer_t
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const scaled_int = extract_float(polynomial[field_index + 1]);
-            if (!scaled_int) return std::unexpected(scaled_int.error());
-
-            auto const unpacked = builder.push(*scaled_int);
+            auto const unpacked = builder.push(scaled_int);
             packed_segment[field_index] = pack_field(unpacked, intermediate_layout);
         }
 

@@ -29,7 +29,13 @@ template <typename target_function_t> struct function_sampler_t
     template <std::floating_point real_t>
     constexpr auto operator()(real_t x) const noexcept -> function_sample_t<real_t>
     {
-        return {.x = x, .y = target_function(jet_t<real_t>{x, 1.0})};
+        auto const result = function_sample_t<real_t>{.x = x, .y = target_function(jet_t<real_t>{x, 1.0})};
+
+        using std::isfinite;
+        assert(isfinite(x));
+        assert(isfinite(result.y));
+
+        return result;
     }
 };
 

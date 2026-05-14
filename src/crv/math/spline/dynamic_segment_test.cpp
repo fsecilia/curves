@@ -51,8 +51,7 @@ struct spline_dynamic_segment_test_t : Test
         EXPECT_NEAR(expected, oracle, 5e-13);
 
         auto const packed_segment = segment_packer(polynomial, log2_width);
-        ASSERT_TRUE(packed_segment.has_value());
-        auto const unpacked_segment = segment_unpacker(*packed_segment);
+        auto const unpacked_segment = segment_unpacker(packed_segment);
 
         // check actual result
         auto const width = std::ldexp(1.0, log2_width);
