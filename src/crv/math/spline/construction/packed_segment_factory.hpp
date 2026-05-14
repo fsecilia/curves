@@ -24,7 +24,6 @@ namespace crv::spline {
 enum class segment_error_reason_t
 {
     bad_float,
-    coefficient_overflow
 };
 
 template <std::floating_point real_t> struct segment_error_t
@@ -169,20 +168,8 @@ struct field_packer_t
 {
     static constexpr auto field_width = int_t{sizeof(packed_field_t) * CHAR_BIT};
 
-    constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept
-        -> std::expected<packed_field_t, segment_error_reason_t>
+    constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept -> packed_field_t
     {
-        auto const mantissa_bits = field_width - layout.shift_width;
-
-        // 2^(N-1) - 1 for max, -2^(N-1) for min
-        auto const max_mantissa = (mantissa_t{1} << (mantissa_bits - 1)) - 1;
-        auto const min_mantissa = -(mantissa_t{1} << (mantissa_bits - 1));
-
-        if (unpacked_field.mantissa > max_mantissa || unpacked_field.mantissa < min_mantissa)
-        {
-            return std::unexpected(segment_error_reason_t::coefficient_overflow);
-        }
-
         auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
         auto const packed_shift = unpacked_field.shift & layout.shift_mask();
         return packed_field_t{packed_mantissa | packed_shift};
@@ -232,8 +219,9 @@ template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segmen
 
     constexpr auto finish() const noexcept -> unpacked_field_t
     {
-        static constexpr auto max_mantissa = max<mantissa_t>();
-        static constexpr auto min_mantissa = min<mantissa_t>();
+        static constexpr auto field_mantissa_bits = int_t{sizeof(packed_field_t) * CHAR_BIT} - final_layout.shift_width;
+        static constexpr auto max_mantissa = (mantissa_t{1} << (field_mantissa_bits - 1)) - 1;
+        static constexpr auto min_mantissa = -(mantissa_t{1} << (field_mantissa_bits - 1));
 
         static constexpr auto min_final_shift = -(1 << (final_layout.shift_width - 1));
         static constexpr auto max_final_shift = (1 << (final_layout.shift_width - 1)) - 1;
@@ -334,9 +322,7 @@ struct segment_packer_t
             }
 
             auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
-            auto const zero_packed = pack_field(unpacked_field_t{}, layout);
-            if (!zero_packed) return std::unexpected(zero_packed.error());
-            packed_segment[field_index] = *zero_packed;
+            packed_segment[field_index] = pack_field(unpacked_field_t{}, layout);
         }
 
         // degenerate: polynomial is identically zero
@@ -352,15 +338,11 @@ struct segment_packer_t
             if (!scaled_int) return std::unexpected(scaled_int.error());
 
             auto const unpacked = builder.push(*scaled_int);
-            auto const pack_result = pack_field(unpacked, intermediate_layout);
-            if (!pack_result) return std::unexpected(pack_result.error());
-            packed_segment[field_index] = *pack_result;
+            packed_segment[field_index] = pack_field(unpacked, intermediate_layout);
         }
 
         auto const final_unpacked = builder.finish();
-        auto const final_pack = pack_field(final_unpacked, final_layout);
-        if (!final_pack) return std::unexpected(final_pack.error());
-        packed_segment[fields_per_segment - 1] = *final_pack;
+        packed_segment[fields_per_segment - 1] = pack_field(final_unpacked, final_layout);
 
         return packed_segment;
     }
