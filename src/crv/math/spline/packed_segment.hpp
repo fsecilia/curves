@@ -110,7 +110,8 @@ template <typename t_field_unpacker_t> struct segment_unpacker_t
 // evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-template <is_fixed t_x_t, is_fixed t_y_t> struct segment_evaluator_t
+template <is_fixed t_x_t, is_fixed t_y_t, auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
+struct segment_evaluator_t
 {
     using x_t = t_x_t;
     using y_t = t_y_t;
@@ -130,39 +131,29 @@ template <is_fixed t_x_t, is_fixed t_y_t> struct segment_evaluator_t
         {
             auto const wide_product = widen(accumulator) * dx.value;
 
-            auto const shift = unpacked_segment[field_index - 1].shift;
-            auto const rounding_bias = (widen(1) << shift) >> 1;
-            auto const rounded_product = int_cast<narrow_t>((wide_product + rounding_bias) >> shift);
-
-            auto const mantissa = unpacked_segment[field_index].mantissa;
+            // align product to coeff
+            auto const relative_shift = unpacked_segment[field_index - 1].shift;
+            auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
+            auto const coeff = unpacked_segment[field_index].mantissa;
 
             // this can technically overflow, but it would require a malformed segment and it is not exploitable
-            accumulator = rounded_product + mantissa;
+            accumulator = aligned_product + coeff;
         }
 
-        // unroll final loop iteration and do it wide with one shift and one round, aligning to the final output radix
+        // unroll final loop iteration and do it wide with one shr and one round
 
         auto const wide_product = widen(accumulator) * dx.value;
 
-        auto const intermediate_shift = unpacked_segment[2].shift;
-        auto const final_shift = unpacked_segment[3].shift;
+        // align coeff to product
+        auto const relative_shift_c2_to_c3 = unpacked_segment[2].shift;
+        auto const aligned_c3 = widen(unpacked_segment[3].mantissa) << relative_shift_c2_to_c3;
 
-        auto const shifted_c3 = widen(unpacked_segment[3].mantissa) << intermediate_shift;
-        auto wide_accumulator = wide_product + shifted_c3;
-        auto const total_shift = intermediate_shift + final_shift;
+        auto const relative_shift_c3_to_y = unpacked_segment[3].shift;
+        auto const wide_accumulator = wide_product + aligned_c3;
+        auto const total_left_shift = -(relative_shift_c2_to_c3 + relative_shift_c3_to_y);
 
-        // final shift is signed
-        if (total_shift >= 0)
-        {
-            auto const final_rounding_bias = (widen(1) << total_shift) >> 1;
-            wide_accumulator = (wide_accumulator + final_rounding_bias) >> total_shift;
-        }
-        else
-        {
-            wide_accumulator <<= -total_shift;
-        }
-
-        accumulator = std::saturating_cast<narrow_t>(wide_accumulator);
+        // align to the final output radix
+        accumulator = std::saturating_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift));
         return y_t::literal(accumulator);
     }
 };
