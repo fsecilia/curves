@@ -9,12 +9,12 @@
 namespace crv::spline::weight_functions {
 namespace {
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 struct test_vector_t
 {
-    real_t node;
-    real_t expected;
+    scalar_t node;
+    scalar_t expected;
 
     friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
     {
@@ -28,7 +28,7 @@ struct test_vector_t
 
 namespace uniform {
 
-constexpr auto sut = uniform_t<real_t>{};
+constexpr auto sut = uniform_t<scalar_t>{};
 
 static_assert(sut(0.0) == 1.0);
 static_assert(sut(0.5) == 1.0);
@@ -45,7 +45,7 @@ namespace exponential_decay {
 
 struct weight_functions_exponential_decay_test_t : Test
 {
-    using sut_t = exponential_decay_t<real_t>;
+    using sut_t = exponential_decay_t<scalar_t>;
 };
 
 TEST_F(weight_functions_exponential_decay_test_t, from_ratio_and_halflife)
@@ -63,10 +63,10 @@ TEST_F(weight_functions_exponential_decay_test_t, from_ratio_and_halflife)
 struct weight_functions_exponential_decay_vector_test_t : weight_functions_exponential_decay_test_t,
                                                           WithParamInterface<test_vector_t>
 {
-    real_t node = GetParam().node;
-    real_t expected = GetParam().expected;
+    scalar_t node = GetParam().node;
+    scalar_t expected = GetParam().expected;
 
-    using sut_t = exponential_decay_t<real_t>;
+    using sut_t = exponential_decay_t<scalar_t>;
     sut_t sut{.amplitude = 7.11, .decay_rate = std::log(2.0) / 13.17, .baseline_offset = 2.3};
 };
 
@@ -98,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(vectors, weight_functions_exponential_decay_vector_test
 
 namespace hyperbolic_decay {
 
-using sut_t = hyperbolic_decay_t<real_t>;
+using sut_t = hyperbolic_decay_t<scalar_t>;
 
 static_assert(sut_t{0}(1.0) == 1.0 / 1.0);
 static_assert(sut_t{0}(2.0) == 1.0 / 2.0);

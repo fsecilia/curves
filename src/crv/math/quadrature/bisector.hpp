@@ -17,17 +17,17 @@
 namespace crv::quadrature {
 
 /// callable that refines a parent segment into two children and the parent's refined estimate
-template <typename bisector_t, typename integral_t, typename real_t>
-concept is_bisector = requires(bisector_t const& bisector, integral_t const& integral, segment_t<real_t> segment) {
-    { bisector(integral, segment) } -> std::same_as<refinement_t<real_t>>;
+template <typename bisector_t, typename integral_t, typename scalar_t>
+concept is_bisector = requires(bisector_t const& bisector, integral_t const& integral, segment_t<scalar_t> segment) {
+    { bisector(integral, segment) } -> std::same_as<refinement_t<scalar_t>>;
 };
 
 /// bisects a parent segment into two children and the parent's level-N+1 estimate
 struct bisector_t
 {
-    template <std::floating_point real_t>
-    constexpr auto operator()(is_integral<real_t> auto const& integral, segment_t<real_t> const& parent) const noexcept
-        -> refinement_t<real_t>
+    template <std::floating_point scalar_t>
+    constexpr auto operator()(is_integral<scalar_t> auto const& integral,
+        segment_t<scalar_t> const& parent) const noexcept -> refinement_t<scalar_t>
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
         auto const child_tolerance = parent.tolerance / 2;
@@ -42,9 +42,9 @@ struct bisector_t
         auto const refined_error = max(quadrature_error, subdivision_error);
 
         // clang-format off
-        return refinement_t<real_t>
+        return refinement_t<scalar_t>
         {
-            .left = segment_t<real_t>
+            .left = segment_t<scalar_t>
             {
                 .left = parent.left,
                 .right = parent_midpoint,
@@ -52,7 +52,7 @@ struct bisector_t
                 .tolerance = child_tolerance,
                 .depth = child_depth,
             },
-            .right = segment_t<real_t>
+            .right = segment_t<scalar_t>
             {
                 .left = parent_midpoint,
                 .right = parent.right,

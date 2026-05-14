@@ -9,11 +9,11 @@
 namespace crv::spline::error_norms {
 namespace {
 
-using real_t = float_t;
+using scalar_t = float_t;
 
 struct jet_t
 {
-    using value_t = real_t;
+    using value_t = scalar_t;
 
     value_t value;
     value_t tangent;
@@ -30,18 +30,18 @@ namespace logsumexp_floor_tests {
 
 struct vector_t
 {
-    real_t x;
-    real_t y;
-    real_t expected;
+    scalar_t x;
+    scalar_t y;
+    scalar_t expected;
 };
 
 struct spline_error_norms_logsumexp_floor_test_t : TestWithParam<vector_t>
 {
-    real_t const x = GetParam().x;
-    real_t const y = GetParam().y;
-    real_t const expected = GetParam().expected;
+    scalar_t const x = GetParam().x;
+    scalar_t const y = GetParam().y;
+    scalar_t const expected = GetParam().expected;
 
-    using sut_t = logsumexp_floor_t<real_t>;
+    using sut_t = logsumexp_floor_t<scalar_t>;
     sut_t sut{};
 };
 
@@ -116,7 +116,7 @@ namespace first_order_aboslute_test {
 // default weight
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto first_order_absolute_default_weight = first_order_absolute_t<real_t>{};
+constexpr auto first_order_absolute_default_weight = first_order_absolute_t<scalar_t>{};
 
 constexpr auto target_jet = jet_t{10.0, 1.0};
 constexpr auto exact_approx = jet_t{10.0, 1.0};
@@ -135,8 +135,8 @@ static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_ap
 // custom weight
 // --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto first_order_absolute_custom_weight = first_order_absolute_t<real_t>{0.5};
-constexpr auto first_order_absolute_zero_weight = first_order_absolute_t<real_t>{0.0};
+constexpr auto first_order_absolute_custom_weight = first_order_absolute_t<scalar_t>{0.5};
+constexpr auto first_order_absolute_zero_weight = first_order_absolute_t<scalar_t>{0.0};
 
 static_assert(abs(first_order_absolute_custom_weight(target_jet, tan_error_approx) - 1.5) < 1e-9);
 static_assert(abs(first_order_absolute_custom_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
@@ -155,13 +155,13 @@ namespace first_order_relative_tests {
 // predictable floor for testing
 struct hard_floor_t
 {
-    template <typename real_t> constexpr auto operator()(real_t val, real_t floor_val) const noexcept -> real_t
+    template <typename scalar_t> constexpr auto operator()(scalar_t val, scalar_t floor_val) const noexcept -> scalar_t
     {
         return max(val, floor_val);
     }
 };
 
-using sut_t = first_order_relative_t<real_t, hard_floor_t>;
+using sut_t = first_order_relative_t<scalar_t, hard_floor_t>;
 constexpr auto sut = sut_t{.primal_floor = 2.0, .tangent_floor = 2.0, .floor = {}};
 
 // --------------------------------------------------------------------------------------------------------------------

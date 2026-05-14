@@ -17,12 +17,12 @@ namespace crv {
 ///
 /// This is a minimal implementation meant to be a drop-in replacement for simple sums consisting soley as a series of
 /// operator +=, then reading the final value.
-template <typename real_t> struct compensated_accumulator_t
+template <typename scalar_t> struct compensated_accumulator_t
 {
-    real_t sum = real_t{0};
-    real_t compensation = real_t{0};
+    scalar_t sum = scalar_t{0};
+    scalar_t compensation = scalar_t{0};
 
-    constexpr auto operator+=(real_t value) -> void
+    constexpr auto operator+=(scalar_t value) -> void
     {
         auto const y = value - compensation;
         auto const t = sum + y;
@@ -30,7 +30,7 @@ template <typename real_t> struct compensated_accumulator_t
         sum = t;
     }
 
-    constexpr operator real_t() const { return sum + compensation; }
+    constexpr operator scalar_t() const { return sum + compensation; }
 
     constexpr auto operator<=>(compensated_accumulator_t const&) const noexcept -> auto = default;
     constexpr auto operator==(compensated_accumulator_t const&) const noexcept -> bool = default;

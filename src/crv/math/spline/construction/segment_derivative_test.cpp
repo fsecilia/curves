@@ -12,7 +12,7 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
+using scalar_t = float_t;
 using coeff_t = fixed_t<int32_t, 18>;
 using coeffs_t = cubic_polynomial_t<coeff_t>;
 
@@ -20,15 +20,15 @@ struct vector_t
 {
     coeffs_t coeffs;
     int_t log2_width;
-    real_t t;
-    real_t expected_dx_dt;
-    real_t expected_dy_dt;
-    real_t expected_dy_dx;
+    scalar_t t;
+    scalar_t expected_dx_dt;
+    scalar_t expected_dy_dt;
+    scalar_t expected_dy_dx;
 };
 
 struct spline_segment_derivative_test_t : TestWithParam<vector_t>
 {
-    using sut_t = segment_derivative_t<real_t>;
+    using sut_t = segment_derivative_t<scalar_t>;
     sut_t sut{};
 };
 

@@ -10,20 +10,20 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
+using scalar_t = float_t;
+using jet_t = jet_t<scalar_t>;
 
 constexpr auto max_node = 0.9;
 struct fake_node_generator_t
 {
     // to properly test the implementation uses max() correctly, the final node must not be the max node
-    static constexpr auto nodes = std::array<real_t, 3>{0.1, max_node, 0.5};
+    static constexpr auto nodes = std::array<scalar_t, 3>{0.1, max_node, 0.5};
     constexpr auto operator()() const noexcept { return nodes; }
 };
 
 struct uniform_norm_t
 {
-    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> real_t
+    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
     {
         return primal(target) - primal(approximation);
     }
@@ -32,10 +32,10 @@ struct uniform_norm_t
 constexpr auto weight = 2.0;
 struct linear_weight_function_t
 {
-    constexpr auto operator()(real_t node) const noexcept -> real_t { return node * weight; }
+    constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return node * weight; }
 };
 
-using sut_t = residual_estimator_t<real_t, fake_node_generator_t, uniform_norm_t, linear_weight_function_t>;
+using sut_t = residual_estimator_t<scalar_t, fake_node_generator_t, uniform_norm_t, linear_weight_function_t>;
 constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
 
 struct target_function_sample_t
@@ -57,8 +57,8 @@ constexpr auto identifies_maximum_error()
     static constexpr auto approximant_scale = 0.9;
 
     auto sample_target
-        = [](real_t node) constexpr { return target_function_sample_t{jet_t{node * target_scale, 0.0}}; };
-    auto approximant = [](real_t node) constexpr { return jet_t{node * approximant_scale, 0.0}; };
+        = [](scalar_t node) constexpr { return target_function_sample_t{jet_t{node * target_scale, 0.0}}; };
+    auto approximant = [](scalar_t node) constexpr { return jet_t{node * approximant_scale, 0.0}; };
     auto const expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
     auto const expected_weight = midpoint * weight;
 
@@ -71,8 +71,8 @@ static_assert(identifies_maximum_error());
 
 constexpr auto handles_negative_error()
 {
-    auto sample_target = [](real_t node) constexpr { return target_function_sample_t{jet_t{-node, 0.0}}; };
-    auto approximant = [](real_t) constexpr { return jet_t{0.0, 0.0}; };
+    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{jet_t{-node, 0.0}}; };
+    auto approximant = [](scalar_t) constexpr { return jet_t{0.0, 0.0}; };
 
     auto const actual = sut(sample_target, approximant, left, midpoint, right);
 

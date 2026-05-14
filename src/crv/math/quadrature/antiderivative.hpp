@@ -20,10 +20,10 @@ template <typename t_integral_t> class antiderivative_t
 {
 public:
     using integral_t = t_integral_t;
-    using real_t = integral_t::real_t;
+    using scalar_t = integral_t::scalar_t;
 
-    using jet_t = jet_t<real_t>;
-    using map_t = std::flat_map<real_t, real_t>;
+    using jet_t = jet_t<scalar_t>;
+    using map_t = std::flat_map<scalar_t, scalar_t>;
     using boundaries_t = map_t::key_container_type;
     using cumulative_sums_t = map_t::mapped_container_type;
 
@@ -31,8 +31,8 @@ public:
         : integral_{std::move(integral)}, intervals_{std::move(intervals)}
     {
         assert(!intervals_.empty() && "antiderivative_t: empty intervals");
-        assert(intervals_.begin()->first == real_t{0} && "antiderivative_t: origin must start at 0");
-        assert(intervals_.begin()->second == real_t{0} && "antiderivative_t: cumulative sum must start at 0");
+        assert(intervals_.begin()->first == scalar_t{0} && "antiderivative_t: origin must start at 0");
+        assert(intervals_.begin()->second == scalar_t{0} && "antiderivative_t: cumulative sum must start at 0");
     }
 
     /// evaluates accumulation function F(x) and its derivative f(x).
@@ -40,7 +40,7 @@ public:
     /// The primal of the integral is the sum of the nearest cached base integral and a local residual calculated using
     /// the quadrature rule and integrand. The tangent of the integral, by the First Fundamental Theorem of Calculus, is
     /// the original integrand itself, evaluated directly.
-    constexpr auto operator()(real_t location) const noexcept -> jet_t
+    constexpr auto operator()(scalar_t location) const noexcept -> jet_t
     {
         assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
             && "antiderivative_t: domain error");
@@ -67,11 +67,11 @@ private:
 template <typename t_antiderivative_t> struct integration_result_t
 {
     using antiderivative_t = t_antiderivative_t;
-    using real_t = antiderivative_t::real_t;
+    using scalar_t = antiderivative_t::scalar_t;
 
     antiderivative_t antiderivative;
-    real_t achieved_error;
-    real_t max_error;
+    scalar_t achieved_error;
+    scalar_t max_error;
 
     auto operator<=>(integration_result_t const&) const noexcept -> auto = default;
     auto operator==(integration_result_t const&) const noexcept -> bool = default;
@@ -85,20 +85,20 @@ template <typename t_accumulator_t, typename t_antiderivative_t> class antideriv
 public:
     using accumulator_t = t_accumulator_t;
     using antiderivative_t = t_antiderivative_t;
-    using real_t = antiderivative_t::real_t;
+    using scalar_t = antiderivative_t::scalar_t;
     using integral_t = antiderivative_t::integral_t;
     using result_t = integration_result_t<antiderivative_t>;
 
     constexpr antiderivative_builder_t()
     {
         boundaries_.reserve(32);
-        boundaries_.push_back(real_t{0});
+        boundaries_.push_back(scalar_t{0});
 
         cumulative_sums_.reserve(32);
-        cumulative_sums_.push_back(real_t{0});
+        cumulative_sums_.push_back(scalar_t{0});
     }
 
-    constexpr auto append(real_t right_bound, real_t area, real_t error) -> void
+    constexpr auto append(scalar_t right_bound, scalar_t area, scalar_t error) -> void
     {
         assert(right_bound > boundaries_.back()
             && "antiderivative_builder_t: boundaries must be monotonically increasing");
@@ -108,7 +108,7 @@ public:
         max_error_ = max(max_error_, error);
 
         boundaries_.push_back(right_bound);
-        cumulative_sums_.push_back(static_cast<real_t>(running_area_));
+        cumulative_sums_.push_back(static_cast<scalar_t>(running_area_));
     }
 
     constexpr auto finalize(integral_t integral) && noexcept -> result_t
@@ -118,7 +118,7 @@ public:
 
         return result_t{
             antiderivative_t{std::move(integral), std::move(intervals)},
-            static_cast<real_t>(running_error_),
+            static_cast<scalar_t>(running_error_),
             max_error_,
         };
     }
@@ -131,14 +131,14 @@ private:
     cumulative_sums_t cumulative_sums_{};
     accumulator_t running_area_{};
     accumulator_t running_error_{};
-    real_t max_error_{0};
+    scalar_t max_error_{0};
 };
 
 } // namespace generic
 
 template <typename integral_t>
 using antiderivative_builder_t
-    = generic::antiderivative_builder_t<compensated_accumulator_t<typename integral_t::real_t>,
+    = generic::antiderivative_builder_t<compensated_accumulator_t<typename integral_t::scalar_t>,
         antiderivative_t<integral_t>>;
 
 } // namespace crv::quadrature

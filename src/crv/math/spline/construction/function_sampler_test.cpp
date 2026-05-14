@@ -9,9 +9,9 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
-using function_sample_t = function_sample_t<real_t>;
+using scalar_t = float_t;
+using jet_t = jet_t<scalar_t>;
+using function_sample_t = function_sample_t<scalar_t>;
 
 struct target_function_t
 {

@@ -35,32 +35,32 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
+template <std::floating_point t_scalar_t, is_fixed t_x_t> struct approximant_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
     using x_t = t_x_t;
 
-    using jet_t = jet_t<real_t>;
+    using jet_t = jet_t<scalar_t>;
 
-    polynomial_t<real_t> polynomial;
+    polynomial_t<scalar_t> polynomial;
     x_t x0;
     int_t log2_width;
 
     /// \returns jet in spline-global spatial coordinates, {y, dy/dx}
-    constexpr auto operator()(real_t x) const noexcept -> jet_t
+    constexpr auto operator()(scalar_t x) const noexcept -> jet_t
     {
-        auto const x_local = from_fixed<real_t>(to_fixed<x_t>(x) - x0);
+        auto const x_local = from_fixed<scalar_t>(to_fixed<x_t>(x) - x0);
         auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
-        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(-log2_width));
+        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(-log2_width));
         return polynomial(jet_t{t, dt_dx});
     }
 };
 
 /// converts hermite basis to monomial basis
-template <std::floating_point real_t> struct hermite_converter_t
+template <std::floating_point scalar_t> struct hermite_converter_t
 {
     template <typename jet_t>
-    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> polynomial_t<real_t>
+    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> polynomial_t<scalar_t>
     {
         auto const p0 = primal(left_y);
         auto const p1 = primal(right_y);
@@ -80,9 +80,9 @@ template <std::floating_point real_t> struct hermite_converter_t
 /// geometry of a refinement subdomain
 ///
 /// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
-template <std::floating_point real_t> struct subdomain_t
+template <std::floating_point scalar_t> struct subdomain_t
 {
-    using function_sample_t = function_sample_t<real_t>;
+    using function_sample_t = function_sample_t<scalar_t>;
 
     function_sample_t left;
     function_sample_t midpoint;
@@ -93,13 +93,13 @@ template <std::floating_point real_t> struct subdomain_t
 };
 
 /// unit of work over a subdomain
-template <std::floating_point t_real_t> struct interval_t
+template <std::floating_point t_scalar_t> struct interval_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
 
-    using subdomain_t = subdomain_t<real_t>;
-    using residual_t = residual_t<real_t>;
-    using polynomial_t = polynomial_t<real_t>;
+    using subdomain_t = subdomain_t<scalar_t>;
+    using residual_t = residual_t<scalar_t>;
+    using polynomial_t = polynomial_t<scalar_t>;
 
     subdomain_t subdomain;
     polynomial_t polynomial;
@@ -132,8 +132,8 @@ struct interval_factory_t
 {
     using interval_t = t_interval_t;
 
-    using real_t = interval_t::real_t;
-    using subdomain_t = subdomain_t<real_t>;
+    using scalar_t = interval_t::scalar_t;
+    using subdomain_t = subdomain_t<scalar_t>;
 
     [[no_unique_address]] hermite_converter_t hermite_converter;
     residual_estimator_t estimate_residual;
@@ -205,9 +205,9 @@ template <typename t_segment_t, typename t_segment_packer_t> struct segment_fact
     using segment_t = t_segment_t;
     using segment_packer_t = t_segment_packer_t;
 
-    using real_t = segment_packer_t::real_t;
+    using scalar_t = segment_packer_t::scalar_t;
     using polynomial_t = segment_packer_t::polynomial_t;
-    using function_sample_t = function_sample_t<real_t>;
+    using function_sample_t = function_sample_t<scalar_t>;
 
     [[no_unique_address]] segment_packer_t pack_segment;
 
@@ -276,10 +276,10 @@ template <typename t_bisection_t> struct bisector_t
 };
 
 /// decides if an interval should subdivide
-template <std::floating_point real_t, int_t log2_min_width> struct convergence_test_t
+template <std::floating_point scalar_t, int_t log2_min_width> struct convergence_test_t
 {
-    static constexpr auto relative_noise_margin = std::numeric_limits<real_t>::epsilon() * real_t{64};
-    real_t global_tolerance;
+    static constexpr auto relative_noise_margin = std::numeric_limits<scalar_t>::epsilon() * scalar_t{64};
+    scalar_t global_tolerance;
 
     constexpr auto operator()(auto const& interval) const noexcept -> bool
     {
@@ -302,7 +302,7 @@ template <typename t_interval_t> struct subdivision_t
 };
 
 /// subdivides an interval
-template <std::floating_point real_t, typename bisector_t, typename interval_factory_t> struct subdivider_t
+template <std::floating_point scalar_t, typename bisector_t, typename interval_factory_t> struct subdivider_t
 {
     using interval_t = interval_factory_t::interval_t;
     using subdivision_t = subdivision_t<interval_t>;
@@ -332,7 +332,7 @@ struct tangent_extender_t
     using field_packer_t = t_field_packer_t;
 
     using x_t = segment_t::x_t;
-    using real_t = segment_packer_t::real_t;
+    using scalar_t = segment_packer_t::scalar_t;
     using polynomial_t = segment_packer_t::polynomial_t;
 
     [[no_unique_address]] segment_packer_t pack_segment;
@@ -345,8 +345,8 @@ struct tangent_extender_t
         auto const log2_x_max
             = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
 
-        auto const t = real_t{1};
-        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(log2_x_max - interval.subdomain.log2_width));
+        auto const t = scalar_t{1};
+        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(log2_x_max - interval.subdomain.log2_width));
         auto const dy_dx_extended_segment = interval.polynomial(jet_t{t, dt_dx}).df;
 
         // find fixed y at dx = width
@@ -354,7 +354,7 @@ struct tangent_extender_t
         auto const y1_actual = segment(final_segment_width);
 
         // pack proto and unpack to find shift
-        auto y = from_fixed<real_t>(y1_actual);
+        auto y = from_fixed<scalar_t>(y1_actual);
         auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
         auto packed_segment = pack_segment(tangent_polynomial, log2_x_max);
         auto const unpacked_segment = unpack_segment(packed_segment);
@@ -397,7 +397,7 @@ template <typename t_workspace_t> struct typestates_t
 //
 // The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
 // critical points aligned ot widths
-template <std::floating_point real_t, typename typestate_t, typename interval_factory_t, int_t log2_domain_max,
+template <std::floating_point scalar_t, typename typestate_t, typename interval_factory_t, int_t log2_domain_max,
     int_t domain_max>
 struct refinement_pool_seeder_t
 {
@@ -406,13 +406,13 @@ struct refinement_pool_seeder_t
     constexpr auto operator()(typestate_t state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
     {
-        using subdomain_t = subdomain_t<real_t>;
+        using subdomain_t = subdomain_t<scalar_t>;
 
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        auto left = sample_target_function(real_t{0});
-        auto const right = sample_target_function(static_cast<real_t>(domain_max));
+        auto left = sample_target_function(scalar_t{0});
+        auto const right = sample_target_function(static_cast<scalar_t>(domain_max));
 
         workspace.refinement_pool.push(interval_factory.create(sample_target_function,
             subdomain_t{
@@ -426,7 +426,7 @@ struct refinement_pool_seeder_t
     }
 };
 
-template <std::floating_point real_t, typename typestate_t, typename subdivider_t, typename convergence_test_t,
+template <std::floating_point scalar_t, typename typestate_t, typename subdivider_t, typename convergence_test_t,
     int_t max_segment_count>
 struct refiner_t
 {
@@ -544,7 +544,7 @@ private:
 };
 
 // runs subdivision loop over queue and completed segments
-template <std::floating_point real_t, typename spline_t, typename typestates_t, typename refinement_pool_t,
+template <std::floating_point scalar_t, typename spline_t, typename typestates_t, typename refinement_pool_t,
     typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t, int_t max_segment_count,
     int_t domain_max>
 class spline_generator_t
@@ -590,9 +590,9 @@ private:
 TEST(spline_generator, poc)
 {
 #if 0
-    using real_t = std::float128_t;
+    using scalar_t = std::float128_t;
 #else
-    using real_t = float_t;
+    using scalar_t = float_t;
 #endif
 
     using x_t = fixed_t<uint64_t, 42>;
@@ -606,8 +606,8 @@ TEST(spline_generator, poc)
     constexpr auto global_tolerance = 1e-10; // should max against integral
 
 #if 1
-    static auto const min_width = std::ldexp(real_t{1}, log2_min_width);
-    using error_norm_t = error_norms::first_order_relative_t<real_t, error_norms::logsumexp_floor_t<real_t>>;
+    static auto const min_width = std::ldexp(scalar_t{1}, log2_min_width);
+    using error_norm_t = error_norms::first_order_relative_t<scalar_t, error_norms::logsumexp_floor_t<scalar_t>>;
     auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
 #else
     using error_norm_t = error_norms::absolute_t;
@@ -617,33 +617,33 @@ TEST(spline_generator, poc)
 #if 1
     // with the steepest log1p we support with 16 initial segments, 181.625x this always produces segments with
     // error > 1e-5 near about x=50 unless you make it basically flat already
-    using weight_function_t = weight_functions::hyperbolic_decay_t<real_t>;
+    using weight_function_t = weight_functions::hyperbolic_decay_t<scalar_t>;
     auto const weight_function = weight_function_t{.halflife = 0.5};
 #else
-    using weight_function_t = weight_functions::uniform_t<real_t>;
+    using weight_function_t = weight_functions::uniform_t<scalar_t>;
     auto const weight_function = weight_function_t{};
 #endif
 
     using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
     using segment_t = segment_t<x_t, packed_segment_t, segment_unpacker_t, segment_evaluator_t>;
-    using subdomain_t = subdomain_t<real_t>;
-    using interval_t = interval_t<real_t>;
+    using subdomain_t = subdomain_t<scalar_t>;
+    using interval_t = interval_t<scalar_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
-    using node_generator_t = node_generators::equioscillation_t<real_t>;
-    using residual_estimator_t = residual_estimator_t<real_t, node_generator_t, error_norm_t, weight_function_t>;
-    using hermite_converter_t = hermite_converter_t<real_t>;
-    using approximant_t = approximant_t<real_t, x_t>;
+    using node_generator_t = node_generators::equioscillation_t<scalar_t>;
+    using residual_estimator_t = residual_estimator_t<scalar_t, node_generator_t, error_norm_t, weight_function_t>;
+    using hermite_converter_t = hermite_converter_t<scalar_t>;
+    using approximant_t = approximant_t<scalar_t, x_t>;
     using interval_factory_t = interval_factory_t<interval_t, approximant_t, hermite_converter_t, residual_estimator_t>;
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
-    using convergence_test_t = convergence_test_t<real_t, log2_min_width>;
-    using subdivider_t = subdivider_t<real_t, bisector_t, interval_factory_t>;
+    using convergence_test_t = convergence_test_t<scalar_t, log2_min_width>;
+    using subdivider_t = subdivider_t<scalar_t, bisector_t, interval_factory_t>;
     using segment_locator_t = segment_locator_t<x_t, depth_max>;
     using spline_t = spline_t<segment_t, segment_locator_t>;
     using workspace_t = workspace_t<interval_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
-    using float_extractor_t = float_extractor_t<real_t>;
+    using float_extractor_t = float_extractor_t<scalar_t>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
     using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
@@ -654,10 +654,10 @@ TEST(spline_generator, poc)
     using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_packer_t, segment_unpacker_t,
         field_packer_t, saturating_shifter_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
-    using refiner_t = refiner_t<real_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
+    using refiner_t = refiner_t<scalar_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t
-        = refinement_pool_seeder_t<real_t, typestates_t::unseeded_t, interval_factory_t, log2_domain_max, domain_max>;
-    using spline_generator_t = spline_generator_t<real_t, spline_t, typestates_t, refinement_pool_t,
+        = refinement_pool_seeder_t<scalar_t, typestates_t::unseeded_t, interval_factory_t, log2_domain_max, domain_max>;
+    using spline_generator_t = spline_generator_t<scalar_t, spline_t, typestates_t, refinement_pool_t,
         refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count, domain_max>;
 
     auto const estimate_residual = residual_estimator_t{
@@ -702,10 +702,10 @@ TEST(spline_generator, poc)
     {
         using std::log1p;
 
-        auto const x_real = from_fixed<real_t>(x_fixed);
+        auto const x_real = from_fixed<scalar_t>(x_fixed);
 
         auto const expected_y = target_function(x_real);
-        auto const actual_y = from_fixed<real_t>(spline(x_fixed));
+        auto const actual_y = from_fixed<scalar_t>(spline(x_fixed));
 
         auto const difference = actual_y - expected_y;
         ASSERT_LT(abs(difference), 1.6e-5); //

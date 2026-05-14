@@ -11,17 +11,17 @@
 namespace crv::quadrature::generic {
 namespace {
 
-using real_t = float_t;
-using segment_t = segment_t<real_t>;
-using refinement_t = refinement_t<real_t>;
+using scalar_t = float_t;
+using segment_t = segment_t<scalar_t>;
+using refinement_t = refinement_t<scalar_t>;
 
 using stack_t = std::vector<segment_t>;
 
 struct stub_integral_t
 {
-    using estimate_t = real_t;
-    auto estimate(real_t, real_t) const noexcept -> estimate_t;
-    auto integrate(real_t, real_t) const noexcept -> real_t;
+    using estimate_t = scalar_t;
+    auto estimate(scalar_t, scalar_t) const noexcept -> estimate_t;
+    auto integrate(scalar_t, scalar_t) const noexcept -> scalar_t;
 };
 
 // ====================================================================================================================
@@ -30,7 +30,7 @@ struct stub_integral_t
 
 namespace refinement_predicate_test {
 
-using sut_t = refinement_predicate_t<real_t>;
+using sut_t = refinement_predicate_t<scalar_t>;
 constexpr auto sut = sut_t{};
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -156,9 +156,9 @@ namespace subdivider_test {
 struct builder_t
 {
     int_t appended_segment_count = 0;
-    real_t total_integral = 0.0;
+    scalar_t total_integral = 0.0;
 
-    constexpr auto append(real_t, real_t integral, real_t) -> void
+    constexpr auto append(scalar_t, scalar_t integral, scalar_t) -> void
     {
         ++appended_segment_count;
         total_integral += integral;
@@ -197,11 +197,11 @@ struct stub_bisector_t
 // predicate that strictly stops at a given depth
 struct stub_predicate_t
 {
-    using real_t = float_t;
+    using scalar_t = float_t;
 
     int_t depth;
 
-    constexpr auto operator()(segment_t const& seg, real_t, real_t, int_t) const noexcept -> bool
+    constexpr auto operator()(segment_t const& seg, scalar_t, scalar_t, int_t) const noexcept -> bool
     {
         return seg.depth < depth;
     }
@@ -271,17 +271,17 @@ struct builder_t
 {
     int_t appended_segment_count = 0;
 
-    auto append(real_t, real_t, real_t) -> void { ++appended_segment_count; }
+    auto append(scalar_t, scalar_t, scalar_t) -> void { ++appended_segment_count; }
 };
 
 // predicate that strictly stops at a given depth
 struct stub_predicate_t
 {
-    using real_t = float_t;
+    using scalar_t = float_t;
 
     int_t depth;
 
-    constexpr auto operator()(segment_t const& seg, real_t, real_t, int_t) const noexcept -> bool
+    constexpr auto operator()(segment_t const& seg, scalar_t, scalar_t, int_t) const noexcept -> bool
     {
         return seg.depth < depth;
     }

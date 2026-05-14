@@ -13,13 +13,13 @@
 namespace crv::spline {
 
 /// creates fixed segment from a pair of float hermite knots and log2_width; scales tangents by segment width
-template <typename t_real_t, typename t_segment_t, typename segment_derivative_t, typename hermite_converter_t>
+template <typename t_scalar_t, typename t_segment_t, typename segment_derivative_t, typename hermite_converter_t>
 struct segment_factory_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
     using segment_t = t_segment_t;
 
-    using jet_t = jet_t<real_t>;
+    using jet_t = jet_t<scalar_t>;
 
     [[no_unique_address]] segment_derivative_t segment_derivative;
     [[no_unique_address]] hermite_converter_t hermite_converter;

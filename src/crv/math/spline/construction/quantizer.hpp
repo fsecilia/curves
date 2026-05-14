@@ -12,10 +12,10 @@
 namespace crv::spline::quantizers {
 
 /// simulates fixed-point precision loss
-template <typename real_t, int frac_bits> struct fixed_point_t
+template <typename scalar_t, int frac_bits> struct fixed_point_t
 {
     /// \returns rint(value*2^frac_bits)/2^frac_bits, optimized by ldexp
-    static auto operator()(real_t value) noexcept -> real_t
+    static auto operator()(scalar_t value) noexcept -> scalar_t
     {
         using std::ldexp;
         using std::rint;
@@ -31,7 +31,7 @@ template <typename real_t, int frac_bits> struct fixed_point_t
 /// passthrough policy when metrics need no quantization
 struct no_op_t
 {
-    template <typename real_t> static constexpr auto operator()(real_t value) noexcept -> real_t { return value; }
+    template <typename scalar_t> static constexpr auto operator()(scalar_t value) noexcept -> scalar_t { return value; }
 };
 
 } // namespace crv::spline::quantizers

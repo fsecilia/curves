@@ -10,8 +10,8 @@
 namespace crv::spline {
 namespace {
 
-using real_t = float_t;
-using jet_t = jet_t<real_t>;
+using scalar_t = float_t;
+using jet_t = jet_t<scalar_t>;
 
 // ====================================================================================================================
 // interval_priority_less_t
@@ -21,9 +21,9 @@ namespace interval_priority_less_tests {
 
 struct segment_t
 {};
-using sut_t = interval_t<real_t, segment_t>;
+using sut_t = interval_t<scalar_t, segment_t>;
 
-constexpr auto construct_sut(real_t weighted_error, real_t left_x) noexcept -> sut_t
+constexpr auto construct_sut(scalar_t weighted_error, scalar_t left_x) noexcept -> sut_t
 {
     auto result = sut_t{};
     result.subdomain.left.x = left_x;
@@ -53,8 +53,8 @@ static_assert(!sut(construct_sut(5.0, 2.0), construct_sut(5.0, 1.0)));
 
 namespace death_tests {
 
-constexpr auto nan = std::numeric_limits<real_t>::quiet_NaN();
-constexpr auto inf = std::numeric_limits<real_t>::infinity();
+constexpr auto nan = std::numeric_limits<scalar_t>::quiet_NaN();
+constexpr auto inf = std::numeric_limits<scalar_t>::infinity();
 
 TEST(spline_interval_priority_less, death_by_lhs_residual_weighted_error)
 {
@@ -92,8 +92,8 @@ struct spline_interval_factory_test_t : Test
 {
     using x_t = fixed_t<int_t, 0>;
 
-    using subdomain_t = subdomain_t<real_t>;
-    using function_sample_t = function_sample_t<real_t>;
+    using subdomain_t = subdomain_t<scalar_t>;
+    using function_sample_t = function_sample_t<scalar_t>;
 
     struct segment_t
     {
@@ -145,7 +145,8 @@ struct spline_interval_factory_test_t : Test
     {
         virtual ~mock_residual_estimator_t() = default;
         MOCK_METHOD(residual_t, call,
-            (sample_target_function_t sample_target_function, approximant_t approximant, real_t left_x, real_t right_x),
+            (sample_target_function_t sample_target_function, approximant_t approximant, scalar_t left_x,
+                scalar_t right_x),
             (const, noexcept));
     };
     StrictMock<mock_residual_estimator_t> mock_residual_estimator;
@@ -153,8 +154,8 @@ struct spline_interval_factory_test_t : Test
     struct residual_estimator_t
     {
         mock_residual_estimator_t* mock = nullptr;
-        auto operator()(sample_target_function_t sample_target_function, approximant_t approximant, real_t left_x,
-            real_t right_x) const noexcept -> residual_t
+        auto operator()(sample_target_function_t sample_target_function, approximant_t approximant, scalar_t left_x,
+            scalar_t right_x) const noexcept -> residual_t
         {
             return mock->call(sample_target_function, approximant, left_x, right_x);
         }
@@ -162,7 +163,7 @@ struct spline_interval_factory_test_t : Test
 
     struct interval_t
     {
-        using real_t = real_t;
+        using scalar_t = scalar_t;
 
         subdomain_t subdomain;
         segment_t segment;

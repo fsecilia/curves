@@ -12,11 +12,11 @@
 
 namespace crv::quadrature {
 
-template <typename integral_t, typename real_t>
-concept is_integral = requires(integral_t const& integral, real_t value) {
+template <typename integral_t, typename scalar_t>
+concept is_integral = requires(integral_t const& integral, scalar_t value) {
     typename integral_t::estimate_t;
     { integral.estimate(value, value) } -> std::same_as<typename integral_t::estimate_t>;
-    { integral.integrate(value, value) } -> std::same_as<real_t>;
+    { integral.integrate(value, value) } -> std::same_as<scalar_t>;
 };
 
 template <typename t_integrand_t, typename t_rule_t> class integral_t
@@ -24,7 +24,7 @@ template <typename t_integrand_t, typename t_rule_t> class integral_t
 public:
     using integrand_t = t_integrand_t;
     using rule_t = t_rule_t;
-    using real_t = rule_t::real_t;
+    using scalar_t = rule_t::scalar_t;
     using estimate_t = rule_t::estimate_t;
 
     constexpr integral_t(integrand_t integrand, rule_t rule) noexcept
@@ -32,19 +32,19 @@ public:
     {}
 
     /// integrates over [left, right], returns sum and error
-    constexpr auto estimate(real_t left, real_t right) const noexcept -> estimate_t
+    constexpr auto estimate(scalar_t left, scalar_t right) const noexcept -> estimate_t
     {
         return rule_.estimate(left, right, integrand_);
     }
 
     /// integrates over [left, right], returns sum
-    constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    constexpr auto integrate(scalar_t left, scalar_t right) const noexcept -> scalar_t
     {
         return rule_.integrate(left, right, integrand_);
     }
 
     /// evaluates integrand at a point
-    constexpr auto evaluate_integrand(real_t position) const noexcept -> real_t { return integrand_(position); }
+    constexpr auto evaluate_integrand(scalar_t position) const noexcept -> scalar_t { return integrand_(position); }
 
 private:
     integrand_t integrand_;

@@ -16,83 +16,83 @@ constexpr auto initial_tolerance = 7.65; // arbitrary
 // --------------------------------------------------------------------------------------------------------------------
 
 // simple trapezoidal rule that reports a fake internal error
-template <std::floating_point t_real_t> struct rule_t
+template <std::floating_point t_scalar_t> struct rule_t
 {
-    using real_t = t_real_t;
+    using scalar_t = t_scalar_t;
 
     struct estimate_t
     {
-        real_t sum;
-        real_t error;
+        scalar_t sum;
+        scalar_t error;
     };
 
-    constexpr auto estimate(real_t left, real_t right, auto const& integrand) const noexcept -> estimate_t
+    constexpr auto estimate(scalar_t left, scalar_t right, auto const& integrand) const noexcept -> estimate_t
     {
         auto const width = right - left;
-        auto const sum = width * (integrand(left) + integrand(right)) / static_cast<real_t>(2.0);
+        auto const sum = width * (integrand(left) + integrand(right)) / static_cast<scalar_t>(2.0);
 
         // fake a small internal error; abs() to honor the non-negative contract under reversed bounds
-        auto const error = abs(width) * static_cast<real_t>(0.1);
+        auto const error = abs(width) * static_cast<scalar_t>(0.1);
 
         return {sum, error};
     }
 
-    constexpr auto integrate(real_t left, real_t right, auto const& integrand) const noexcept -> real_t
+    constexpr auto integrate(scalar_t left, scalar_t right, auto const& integrand) const noexcept -> scalar_t
     {
         return estimate(left, right, integrand).sum;
     }
 };
 
 // f(x) = x^2
-template <std::floating_point real_t> struct quadratic_integrand_t
+template <std::floating_point scalar_t> struct quadratic_integrand_t
 {
-    constexpr auto operator()(real_t x) const noexcept -> real_t { return x * x; }
+    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return x * x; }
 };
 
 // f(x) = x^3
-template <std::floating_point real_t> struct cubic_integrand_t
+template <std::floating_point scalar_t> struct cubic_integrand_t
 {
-    constexpr auto operator()(real_t x) const noexcept -> real_t { return x * x * x; }
+    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return x * x * x; }
 };
 
 // f(x) = value, stateful
-template <std::floating_point real_t> struct constant_integrand_t
+template <std::floating_point scalar_t> struct constant_integrand_t
 {
-    real_t value;
-    constexpr auto operator()(real_t) const noexcept -> real_t { return value; }
+    scalar_t value;
+    constexpr auto operator()(scalar_t) const noexcept -> scalar_t { return value; }
 };
 
 // f(x) = -x^2
-template <std::floating_point real_t> struct negative_quadratic_integrand_t
+template <std::floating_point scalar_t> struct negative_quadratic_integrand_t
 {
-    constexpr auto operator()(real_t x) const noexcept -> real_t { return -(x * x); }
+    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return -(x * x); }
 };
 
 template <typename integrand_t, typename rule_t> struct integral_t
 {
-    using real_t = typename rule_t::real_t;
+    using scalar_t = typename rule_t::scalar_t;
     using estimate_t = typename rule_t::estimate_t;
 
     integrand_t integrand;
     rule_t rule;
 
-    constexpr auto estimate(real_t left, real_t right) const noexcept -> estimate_t
+    constexpr auto estimate(scalar_t left, scalar_t right) const noexcept -> estimate_t
     {
         return rule.estimate(left, right, integrand);
     }
 
-    constexpr auto integrate(real_t left, real_t right) const noexcept -> real_t
+    constexpr auto integrate(scalar_t left, scalar_t right) const noexcept -> scalar_t
     {
         return rule.integrate(left, right, integrand);
     }
 };
 
 template <typename integral_t>
-constexpr auto make_parent(integral_t const& integral, typename integral_t::real_t left,
-    typename integral_t::real_t right, typename integral_t::real_t tolerance) noexcept
-    -> segment_t<typename integral_t::real_t>
+constexpr auto make_parent(integral_t const& integral, typename integral_t::scalar_t left,
+    typename integral_t::scalar_t right, typename integral_t::scalar_t tolerance) noexcept
+    -> segment_t<typename integral_t::scalar_t>
 {
-    return segment_t<typename integral_t::real_t>{
+    return segment_t<typename integral_t::scalar_t>{
         .left = left,
         .right = right,
         .coarse_integral = integral.integrate(left, right),
@@ -105,10 +105,10 @@ constexpr auto sut = bisector_t{};
 
 namespace float64_test_t {
 
-using real_t = float64_t;
+using scalar_t = float64_t;
 
-constexpr auto rule = rule_t<real_t>{};
-constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
+constexpr auto rule = rule_t<scalar_t>{};
+constexpr auto quadratic_integrand = quadratic_integrand_t<scalar_t>{};
 
 // ====================================================================================================================
 // even function
@@ -116,7 +116,7 @@ constexpr auto quadratic_integrand = quadratic_integrand_t<real_t>{};
 
 namespace even_function {
 
-constexpr auto integral = integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
+constexpr auto integral = integral_t<quadratic_integrand_t<scalar_t>, rule_t<scalar_t>>{quadratic_integrand, rule};
 
 // trapezoidal of x^2 from 0 to 6: 6 * (0 + 36) / 2 = 108
 constexpr auto parent = make_parent(integral, 0.0, 6.0, initial_tolerance);
@@ -224,9 +224,9 @@ static_assert(reversed_refinement.refined_error == 27.0);
 
 namespace odd_function {
 
-using integrand_t = cubic_integrand_t<real_t>;
+using integrand_t = cubic_integrand_t<scalar_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto integral = integral_t<integrand_t, rule_t<scalar_t>>{integrand, rule};
 
 // width is 4.0, trapezoidal: 4.0 * (-8 + 8) / 2 = 0.0
 constexpr auto parent = make_parent(integral, -2.0, 2.0, initial_tolerance);
@@ -253,9 +253,9 @@ static_assert(refinement.refined_integral == 0.0);
 
 namespace const_function {
 
-using integrand_t = constant_integrand_t<real_t>;
+using integrand_t = constant_integrand_t<scalar_t>;
 constexpr auto integrand = integrand_t{10.0};
-constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto integral = integral_t<integrand_t, rule_t<scalar_t>>{integrand, rule};
 
 // parent integral: 4.0 * 10.0 = 40.0
 constexpr auto parent = make_parent(integral, 0.0, 4.0, initial_tolerance);
@@ -285,7 +285,7 @@ static_assert(refinement.refined_error == 0.4);
 namespace quadrature_dominant {
 
 // reuse the quadratic integrand on a narrow interval, so subdivision error shrinks below quadrature error
-constexpr auto integral = integral_t<quadratic_integrand_t<real_t>, rule_t<real_t>>{quadratic_integrand, rule};
+constexpr auto integral = integral_t<quadratic_integrand_t<scalar_t>, rule_t<scalar_t>>{quadratic_integrand, rule};
 
 // parent: 0.5 * (0 + 0.25) / 2 = 0.0625
 constexpr auto parent = make_parent(integral, 0.0, 0.5, initial_tolerance);
@@ -312,9 +312,9 @@ static_assert(refinement.refined_error == 0.05);
 
 namespace negative_function {
 
-using integrand_t = negative_quadratic_integrand_t<real_t>;
+using integrand_t = negative_quadratic_integrand_t<scalar_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto integral = integral_t<integrand_t, rule_t<scalar_t>>{integrand, rule};
 
 // width is 6.0, trapezoidal: 6.0 * (0 - 36) / 2 = -108.0
 constexpr auto parent = make_parent(integral, 0.0, 6.0, initial_tolerance);
@@ -342,12 +342,12 @@ static_assert(refinement.refined_error == 27.0);
 
 namespace float32_test {
 
-using real_t = float32_t;
-constexpr auto rule = rule_t<real_t>{};
+using scalar_t = float32_t;
+constexpr auto rule = rule_t<scalar_t>{};
 
-using integrand_t = quadratic_integrand_t<real_t>;
+using integrand_t = quadratic_integrand_t<scalar_t>;
 constexpr auto integrand = integrand_t{};
-constexpr auto integral = integral_t<integrand_t, rule_t<real_t>>{integrand, rule};
+constexpr auto integral = integral_t<integrand_t, rule_t<scalar_t>>{integrand, rule};
 
 constexpr auto parent = make_parent(integral, 0.0f, 6.0f, 1.0f);
 constexpr auto refinement = sut(integral, parent);
