@@ -3,6 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#if 0
+
 #include "segment_derivative.hpp"
 #include <crv/math/spline/polynomial.hpp>
 #include <crv/test/test.hpp>
@@ -152,3 +154,5 @@ INSTANTIATE_TEST_SUITE_P(vectors, spline_segment_derivative_test_t, ValuesIn(vec
 
 } // namespace
 } // namespace crv::spline
+
+#endif

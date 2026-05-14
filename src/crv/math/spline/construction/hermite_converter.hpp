@@ -6,6 +6,8 @@
 
 #pragma once
 
+#if 0
+
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
@@ -36,3 +38,5 @@ template <is_fixed coeff_t> struct hermite_converter_t
 };
 
 } // namespace crv::spline
+
+#endif

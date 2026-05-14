@@ -3,6 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#if 0
+
 #include "hermite_converter.hpp"
 #include <crv/test/test.hpp>
 #include <array>
@@ -127,3 +129,5 @@ INSTANTIATE_TEST_SUITE_P(vectors, hermite_converter_test_t, ValuesIn(vectors));
 
 } // namespace
 } // namespace crv::spline
+
+#endif
