@@ -115,18 +115,23 @@ template <is_fixed t_x_t, is_fixed t_y_t> struct segment_evaluator_t
     using x_t = t_x_t;
     using y_t = t_y_t;
 
+    using narrow_t = make_signed_t<typename y_t::value_t>;
+    using wide_t = widened_t<narrow_t>;
+
+    static constexpr auto max_intermediate_shift = intermediate_layout.shift_mask();
+    static constexpr auto max_final_shift = final_layout_max_shift;
+    static constexpr auto max_total_shift = max_intermediate_shift + max_final_shift;
+    static_assert(max_total_shift < static_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
+
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& dx) const noexcept -> y_t
     {
-        using narrow_t = make_signed_t<typename y_t::value_t>;
-        using wide_t = widened_t<narrow_t>;
-
         auto accumulator = unpacked_segment[0].mantissa;
         for (auto field_index = 1; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const wide_product = static_cast<wide_t>(accumulator) * dx.value;
+            auto const wide_product = widen(accumulator) * dx.value;
 
             auto const shift = unpacked_segment[field_index - 1].shift;
-            auto const rounding_bias = (static_cast<wide_t>(1) << shift) >> 1;
+            auto const rounding_bias = (widen(1) << shift) >> 1;
             auto const rounded_product = int_cast<narrow_t>((wide_product + rounding_bias) >> shift);
 
             auto const mantissa = unpacked_segment[field_index].mantissa;
@@ -137,19 +142,19 @@ template <is_fixed t_x_t, is_fixed t_y_t> struct segment_evaluator_t
 
         // unroll final loop iteration and do it wide with one shift and one round, aligning to the final output radix
 
-        auto const wide_product = static_cast<wide_t>(accumulator) * dx.value;
+        auto const wide_product = widen(accumulator) * dx.value;
 
         auto const intermediate_shift = unpacked_segment[2].shift;
         auto const final_shift = unpacked_segment[3].shift;
 
-        auto const shifted_c3 = static_cast<wide_t>(unpacked_segment[3].mantissa) << intermediate_shift;
+        auto const shifted_c3 = widen(unpacked_segment[3].mantissa) << intermediate_shift;
         auto wide_accumulator = wide_product + shifted_c3;
         auto const total_shift = intermediate_shift + final_shift;
 
         // final shift is signed
         if (total_shift >= 0)
         {
-            auto const final_rounding_bias = (static_cast<wide_t>(1) << total_shift) >> 1;
+            auto const final_rounding_bias = (widen(1) << total_shift) >> 1;
             wide_accumulator = (wide_accumulator + final_rounding_bias) >> total_shift;
         }
         else
