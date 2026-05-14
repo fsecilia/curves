@@ -374,7 +374,7 @@ struct tangent_extender_t
         auto y = from_fixed<real_t>(y1_actual);
         auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
         auto const packed_segment = pack_segment(tangent_polynomial, log2_x_max);
-        if (!packed_segment) return std::unexpected(segment_error_reason_t::bad_float);
+        if (!packed_segment) return std::unexpected(packed_segment.error());
         auto const unpacked_segment = unpack_segment(*packed_segment);
         auto const c3_shift = unpacked_segment[3].shift;
 
@@ -383,12 +383,9 @@ struct tangent_extender_t
         auto const target_mantissa = saturating_shifter.shift(y1_as_signed, c3_shift);
 
         // repack new c3
-        auto const new_c3 = unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift};
-        auto const packed_c3 = pack_field(new_c3, final_layout);
-        if (!packed_c3) return std::unexpected(packed_c3.error());
-
         auto fixed_packed = *packed_segment;
-        fixed_packed[fields_per_segment - 1] = *packed_c3;
+        fixed_packed[fields_per_segment - 1]
+            = pack_field(unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift}, final_layout);
         return segment_t{fixed_packed};
     }
 };
