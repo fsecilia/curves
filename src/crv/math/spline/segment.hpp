@@ -1,186 +1,161 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief fixed-point cubic spline segment
+/// \brief dynamic, fixed-point cubic spline segment
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
-#if 0
 #include <crv/lib.hpp>
+#include <crv/algorithm.hpp>
 #include <crv/math/fixed/fixed.hpp>
-#include <crv/math/int_traits.hpp>
-#include <crv/math/rounding_mode.hpp>
-#include <crv/math/shifter.hpp>
-#include <crv/math/spline/polynomial.hpp>
+#include <crv/math/fixed/float_conversions.hpp>
+#include <crv/math/integer.hpp>
+#include <array>
 #include <climits>
-#include <new>
+#include <numeric>
 
 namespace crv::spline {
 
-/// packs segments into a static layout
-template <is_fixed t_coeff_t, int_t t_log2_width_bit_count> class static_packed_segment_t
+// --------------------------------------------------------------------------------------------------------------------
+// layouts
+// --------------------------------------------------------------------------------------------------------------------
+
+using mantissa_t = int64_t;
+using shift_t = int8_t;
+using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
+
+struct field_layout_t
 {
-public:
-    using coeff_t = t_coeff_t;
-    using coeffs_t = cubic_polynomial_t<coeff_t>;
+    int_t shift_width;
+    bool is_signed;
 
-    static constexpr auto log2_width_bit_count = t_log2_width_bit_count;
-    static constexpr auto log2_width_bit_mask = (1 << log2_width_bit_count) - 1;
-
-    // log2_width is stored biased so the field is unsigned: storage = log2_width + bias, log2_width = storage - bias.
-    // bias is chosen so that the supported signed range matches the field width.
-    static constexpr auto log2_width_bias = 1 << (log2_width_bit_count - 1);
-
-    constexpr static_packed_segment_t() noexcept : coeffs_{} {}
-
-    constexpr static_packed_segment_t(coeffs_t coeffs, int8_t log2_width) noexcept : coeffs_{coeffs}
-    {
-        // this type should fit into no more than half a cache line.
-        static_assert(sizeof(static_packed_segment_t) == 32); // nominal for x64
-        static_assert(sizeof(static_packed_segment_t) * 2
-            <= std::hardware_constructive_interference_size); // future architectures
-
-        // make sure the top bits of coeff[0] are clear so we can shift it and pack log2_width in the bottom bits
-        assert(coeffs_[0] == ((coeffs_[0] << log2_width_bit_count) >> log2_width_bit_count)
-            && "segment_t: top bits of first coefficient must be clear");
-
-        // log2_width must fit in log2_width_bit_count signed bits
-        assert(-log2_width_bias <= log2_width && log2_width < log2_width_bias && "segment_t: log2_width out of range");
-
-        // pack biased log2_width into bottom bits of coeff[0]
-        coeffs_[0] <<= log2_width_bit_count;
-        coeffs_[0].value |= static_cast<uint64_t>(log2_width + log2_width_bias) & log2_width_bit_mask;
-    }
-
-    constexpr auto unpack_log2_width() const noexcept -> int_t
-    {
-        return static_cast<int_t>(coeffs_[0].value & log2_width_bit_mask) - log2_width_bias;
-    }
-
-    constexpr auto unpack_coeff0() const noexcept -> coeff_t { return coeffs_[0] >> log2_width_bit_count; }
-    constexpr auto unpack_coeff1() const noexcept -> coeff_t { return coeffs_[1]; }
-    constexpr auto unpack_coeff2() const noexcept -> coeff_t { return coeffs_[2]; }
-    constexpr auto unpack_coeff3() const noexcept -> coeff_t { return coeffs_[3]; }
-
-private:
-    coeffs_t coeffs_;
+    constexpr auto shift_mask() const noexcept -> packed_field_t { return (packed_field_t{1} << shift_width) - 1; }
 };
 
-/// fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, is_fixed t_y_t, is_fixed t_coeff_t, is_fixed t_normalized_t, typename t_packed_segment_t,
-    auto polynomial_evaluator, auto shifter = shifter_t<rounding_modes::shr::nearest_up>{}>
-    requires(is_signed_v<typename t_coeff_t::value_t>)
-class alignas(32) segment_t
+constexpr auto intermediate_layout = field_layout_t{
+    .shift_width = 6,
+    .is_signed = false,
+};
+
+constexpr auto final_layout = field_layout_t{
+    .shift_width = 7,
+    .is_signed = true,
+};
+
+constexpr auto final_layout_min_shift = -(1 << (final_layout.shift_width - 1));
+constexpr auto final_layout_max_shift = (1 << (final_layout.shift_width - 1)) - 1;
+
+// --------------------------------------------------------------------------------------------------------------------
+// unpacking
+// --------------------------------------------------------------------------------------------------------------------
+
+struct unpacked_field_t
 {
-public:
-    using x_t = t_x_t;
-    using y_t = t_y_t;
-    using coeff_t = t_coeff_t;
-    using normalized_t = t_normalized_t;
-    using packed_segment_t = t_packed_segment_t;
+    mantissa_t mantissa;
+    shift_t shift;
 
-    using coeffs_t = cubic_polynomial_t<coeff_t>;
+    constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
+};
 
-    constexpr segment_t() noexcept : packed_segment_{} {}
+constexpr auto fields_per_segment = 4;
+using packed_segment_t = std::array<packed_field_t, fields_per_segment>;
+using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
 
-    constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
+struct field_unpacker_t
+{
+    constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<segment_t>);
+        auto const shift_masked = int_cast<std::make_unsigned_t<shift_t>>(packed_field & layout.shift_mask());
 
-        // this type must be aligned to at least half a cache line; during prod it must be exactly 32, but during
-        // testing, it may be overaligned
-        static_assert(alignof(segment_t) >= 32);
-    }
+        int8_t shift_val = shift_masked;
+        if (layout.is_signed)
+        {
+            auto const bit_padding = sizeof(shift_t) * CHAR_BIT - layout.shift_width;
+            shift_val = int_cast<shift_t>(static_cast<shift_t>(shift_masked << bit_padding) >> bit_padding);
+        }
 
-    /// \pre 0 <= x
-    /// \pre x < width()
-    constexpr auto x_to_t(x_t x) const noexcept -> normalized_t
-    {
-        assert(0 <= x);
-        assert(x < width());
-        return rescale<normalized_t>(x);
-    }
-
-    constexpr auto evaluate(normalized_t t) const noexcept -> y_t
-    {
-        return y_t::convert(polynomial_evaluator(t, coeffs()));
-    }
-
-    /// extends tangent at t=1 beyond end of segment
-    ///
-    /// x_extended is the x value relative to the end of the domain, which is relative to the end of the final segment,
-    /// which here means relative to t=1: x_extended=0 -> t=1
-    ///
-    /// \param x_extended x value relative to end of segment
-    /// \pre 0 <= x_extended
-    [[nodiscard]] constexpr auto extend_final_tangent(x_t x_extended) const noexcept -> y_t
-    {
-        assert(0 <= x_extended);
-
-        auto const c0 = packed_segment_.unpack_coeff0();
-        auto const c1 = packed_segment_.unpack_coeff1();
-        auto const c2 = packed_segment_.unpack_coeff2();
-        auto const c3 = packed_segment_.unpack_coeff3();
-
-        // segment evaluated at t=1; 1^n = 1, so result is same as sum of coefficients
-        auto const p1 = c0 + c1 + c2 + c3;
-
-        // derivative evaluated at t=1: 3*c0*t^2 + 2*c1*t + c2|t=1 -> 3*c0 + 2*c1 + c2
-        auto const m1 = 3 * c0 + 2 * c1 + c2;
-
-        auto const wide_product = multiply(m1, x_extended);
-        auto const tangent_term = rescale<coeff_t>(wide_product);
-        return y_t::convert(p1 + tangent_term);
-    }
-
-    /// cubic polynomial coefficients
-    constexpr auto coeffs() const noexcept -> coeffs_t
-    {
         return {
-            packed_segment_.unpack_coeff0(),
-            packed_segment_.unpack_coeff1(),
-            packed_segment_.unpack_coeff2(),
-            packed_segment_.unpack_coeff3(),
+            .mantissa = static_cast<mantissa_t>(packed_field) >> layout.shift_width,
+            .shift = shift_val,
         };
     }
+};
 
-    /// width of segment as base-2 exponent
-    ///
-    /// During subdivision, segments are only ever bisected down from a power-of-2 domain, so each segment width has
-    /// a single bit set. We can describe that more compactly using this shift from 1.
-    constexpr auto log2_width() const noexcept -> int_t { return packed_segment_.unpack_log2_width(); }
+template <typename t_field_unpacker_t> struct segment_unpacker_t
+{
+    using field_unpacker_t = t_field_unpacker_t;
 
-    /// width of segment in input format
-    constexpr auto width() const noexcept -> x_t
+    [[no_unique_address]] field_unpacker_t unpack_field;
+
+    constexpr auto operator()(packed_segment_t const& packed_segment, int_t field_index) const noexcept
+        -> unpacked_field_t
     {
-        // this doesn't use the shifter because the width is exact.
-        return x_t::literal(1ll << (x_t::frac_bits + log2_width()));
+        auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
+        return unpack_field(packed_segment[field_index], layout);
     }
 
-    /// validates invariants
-    ///
-    /// This type goes over the ioctl boundary, so its invariants must be validated before the driver can accept it.
-    constexpr auto is_valid() const noexcept -> bool
+    constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> unpacked_segment_t
     {
-        constexpr auto bit_width = static_cast<int8_t>(sizeof(typename x_t::value_t) * CHAR_BIT);
-        constexpr auto log2_min_width = static_cast<int8_t>(-x_t::frac_bits);
-        constexpr auto max_log2_width = static_cast<int8_t>(bit_width - x_t::frac_bits - 2);
-
-        auto const actual_log2_width = log2_width();
-        return log2_min_width <= actual_log2_width && actual_log2_width <= max_log2_width;
+        return unpacked_segment_t{
+            unpack_field(packed_segment[0], intermediate_layout),
+            unpack_field(packed_segment[1], intermediate_layout),
+            unpack_field(packed_segment[2], intermediate_layout),
+            unpack_field(packed_segment[3], final_layout),
+        };
     }
+};
 
-private:
-    template <is_fixed dst_t, is_fixed src_t> constexpr auto rescale(src_t src) const noexcept -> dst_t
+// --------------------------------------------------------------------------------------------------------------------
+// evaluation
+// --------------------------------------------------------------------------------------------------------------------
+
+template <is_fixed t_x_t, is_fixed t_y_t, auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
+struct segment_evaluator_t
+{
+    using x_t = t_x_t;
+    using y_t = t_y_t;
+
+    using narrow_t = make_signed_t<typename y_t::value_t>;
+    using wide_t = widened_t<narrow_t>;
+
+    static constexpr auto max_intermediate_shift = intermediate_layout.shift_mask();
+    static constexpr auto max_final_shift = final_layout_max_shift;
+    static constexpr auto max_total_shift = max_intermediate_shift + max_final_shift;
+    static_assert(max_total_shift < static_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
+
+    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& dx) const noexcept -> y_t
     {
-        auto const shift_count = dst_t::frac_bits - src_t::frac_bits - log2_width();
-        return dst_t::literal(shifter.template shift<typename dst_t::value_t>(src.value, shift_count));
-    }
+        auto accumulator = unpacked_segment[0].mantissa;
+        for (auto field_index = 1; field_index < fields_per_segment - 1; ++field_index)
+        {
+            auto const wide_product = widen(accumulator) * dx.value;
 
-    packed_segment_t packed_segment_;
+            // align product to coeff
+            auto const relative_shift = unpacked_segment[field_index - 1].shift;
+            auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
+            auto const coeff = unpacked_segment[field_index].mantissa;
+
+            // this can technically overflow, but it would require a malformed segment and it is not exploitable
+            accumulator = aligned_product + coeff;
+        }
+
+        // unroll final loop iteration and do it wide with one shr and one round
+
+        auto const wide_product = widen(accumulator) * dx.value;
+
+        // align coeff to product
+        auto const relative_shift_c2_to_c3 = unpacked_segment[2].shift;
+        auto const aligned_c3 = widen(unpacked_segment[3].mantissa) << relative_shift_c2_to_c3;
+
+        auto const relative_shift_c3_to_y = unpacked_segment[3].shift;
+        auto const wide_accumulator = wide_product + aligned_c3;
+        auto const total_left_shift = -(relative_shift_c2_to_c3 + relative_shift_c3_to_y);
+
+        // align to the final output radix
+        accumulator = std::saturating_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift));
+        return y_t::literal(accumulator);
+    }
 };
 
 } // namespace crv::spline
-#endif
