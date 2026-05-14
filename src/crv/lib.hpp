@@ -31,7 +31,7 @@ __extension__ typedef unsigned __int128 uint128_t;
 
 using float32_t = float;
 using float64_t = double;
-using float_t = float64_t;
 using float_max_t = long double;
+using float_t = float64_t;
 
 } // namespace crv

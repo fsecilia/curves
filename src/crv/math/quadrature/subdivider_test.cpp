@@ -125,7 +125,7 @@ static_assert(!sut(zero_area_segment, 0.0, 0.5, base_limit));
 //
 // std::abs(area) must trigger and prevent a negative noise floor from breaking the math.
 // We use low_error to test logic behaves exactly as in positive area test.
-constexpr double negative_area = -base_area;
+constexpr auto negative_area = -base_area;
 static_assert(!sut(base_segment, negative_area, low_error, base_limit));
 
 // negative width, inverted segment, left > right

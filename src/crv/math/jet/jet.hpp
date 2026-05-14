@@ -75,7 +75,7 @@ template <typename t_value_t> struct jet_t
 
     /// scalar ctor
     ///
-    /// This ctor is deceptively simple, but it is the reason `jet_t<jet_t<jet_t<jet_t<double>>>>{double{}}` works.
+    /// This ctor is deceptively simple, but it is the reason `jet_t<jet_t<jet_t<jet_t<float_t>>>>{float_t{}}` works.
     ///
     /// Because of auto, this is a function template, so if you pass a value_t, the value_t ctor is a better match and
     /// this is not considered. So this doesn't affect normal usage. However, if you pass an arithmetic other than

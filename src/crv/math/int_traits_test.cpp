@@ -27,9 +27,9 @@ static_assert(integral<uint32_t volatile>);
 static_assert(integral<uint64_t>);
 static_assert(integral<uint128_t>);
 
-static_assert(!integral<float>);
-static_assert(!integral<double>);
-static_assert(!integral<long double>);
+static_assert(!integral<float32_t>);
+static_assert(!integral<float64_t>);
+static_assert(!integral<float_max_t>);
 
 struct nonintegral_t
 {};
@@ -56,9 +56,9 @@ static_assert(arithmetic<uint32_t volatile>);
 static_assert(arithmetic<uint64_t>);
 static_assert(arithmetic<uint128_t>);
 
-static_assert(arithmetic<float>);
-static_assert(arithmetic<double>);
-static_assert(arithmetic<long double>);
+static_assert(arithmetic<float32_t>);
+static_assert(arithmetic<float64_t>);
+static_assert(arithmetic<float_max_t>);
 
 struct nonarithmetic_t
 {};
@@ -112,9 +112,9 @@ static_assert(!signed_integral<uint64_t>);
 static_assert(!signed_integral<uint128_t>);
 
 // floating point types are not signed integrals
-static_assert(!signed_integral<float>);
-static_assert(!signed_integral<double>);
-static_assert(!signed_integral<long double>);
+static_assert(!signed_integral<float32_t>);
+static_assert(!signed_integral<float64_t>);
+static_assert(!signed_integral<float_max_t>);
 
 // arbitrary types are not signed integrals
 static_assert(!signed_integral<nonsigned_t>);
@@ -134,9 +134,9 @@ static_assert(unsigned_integral<uint64_t>);
 static_assert(unsigned_integral<uint128_t>);
 
 // floating point types are not unsigned integrals
-static_assert(!unsigned_integral<float>);
-static_assert(!unsigned_integral<double>);
-static_assert(!unsigned_integral<long double>);
+static_assert(!unsigned_integral<float32_t>);
+static_assert(!unsigned_integral<float64_t>);
+static_assert(!unsigned_integral<float_max_t>);
 
 // arbitrary types are not unsigned integrals
 static_assert(!unsigned_integral<nonsigned_t>);
