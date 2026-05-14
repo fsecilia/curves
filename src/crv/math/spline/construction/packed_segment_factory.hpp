@@ -180,21 +180,21 @@ struct segment_builder_t
 
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
 
-    int_t delta;
+    int_t t_to_dx_shift;
     int_t acc_exp;
     mantissa_t prev_mantissa;
     exponent_renormalizer_t renormalize_exponent;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
-        assert(delta >= 0);
+        assert(t_to_dx_shift >= 0);
 
         // zero mantissa can't dominate the scale; treat it as matching the accumulator.
         auto const next_exp = (next.mantissa == 0) ? acc_exp : next.exponent;
         auto const exp_gap = next_exp - acc_exp;
 
-        // delta absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
-        auto const acc_shift = delta + std::max<int_t>(0, exp_gap);
+        // t_to_dx_shift absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
+        auto const acc_shift = t_to_dx_shift + std::max<int_t>(0, exp_gap);
         auto const coeff_shift = std::max<int_t>(0, -exp_gap);
 
         // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
@@ -227,10 +227,10 @@ template <typename t_builder_t> struct builder_factory_t
 {
     using builder_t = t_builder_t;
 
-    constexpr auto operator()(int_t delta, int_t acc_exp, mantissa_t prev_mantissa) const noexcept -> builder_t
+    constexpr auto operator()(int_t t_to_dx_shift, int_t acc_exp, mantissa_t prev_mantissa) const noexcept -> builder_t
     {
         return builder_t{
-            .delta = delta,
+            .t_to_dx_shift = t_to_dx_shift,
             .acc_exp = acc_exp,
             .prev_mantissa = prev_mantissa,
             .renormalize_exponent = {},
@@ -287,8 +287,8 @@ struct segment_packer_t
         if (field_index == fields_per_segment) return packed_segment;
 
         // process remaining suffix
-        auto const delta = in_frac_bits + log2_width;
-        auto builder = make_builder(delta, seed.exponent, seed.mantissa);
+        auto const t_to_dx_shift = in_frac_bits + log2_width;
+        auto builder = make_builder(t_to_dx_shift, seed.exponent, seed.mantissa);
 
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
