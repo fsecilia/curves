@@ -17,11 +17,11 @@
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
-#include <crv/math/spline/construction/packed_segment_factory.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
+#include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
-#include <crv/math/spline/packed_segment.hpp>
 #include <crv/math/spline/polynomial.hpp>
+#include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
 #include <crv/math/spline/spline.hpp>
 #include <crv/priority_queue.hpp>

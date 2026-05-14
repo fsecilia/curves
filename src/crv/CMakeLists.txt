@@ -32,7 +32,6 @@ target_sources(lib PRIVATE
     math/spline/construction/function_sampler.hpp
     math/spline/construction/hermite_converter.hpp
     math/spline/construction/interval.hpp
-    math/spline/construction/packed_segment_factory.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/quantizer.hpp
     math/spline/construction/residual_estimator.hpp
@@ -72,7 +71,6 @@ target_sources_kernel(lib
     math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/packed_segment.hpp
     math/spline/polynomial.hpp
     math/spline/segment_locator.hpp
     math/spline/segment.hpp

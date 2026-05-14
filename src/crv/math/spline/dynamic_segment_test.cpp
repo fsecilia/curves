@@ -4,8 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
-#include <crv/math/spline/construction/packed_segment_factory.hpp>
-#include <crv/math/spline/packed_segment.hpp>
+#include <crv/math/spline/construction/segment_factory.hpp>
+#include <crv/math/spline/segment.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
