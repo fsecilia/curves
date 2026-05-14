@@ -595,7 +595,7 @@ TEST(spline_generator, poc)
     using real_t = float_t;
 #endif
 
-    using x_t = fixed_t<uint64_t, 40>;
+    using x_t = fixed_t<uint64_t, 42>;
     using y_t = fixed_t<uint64_t, 48>;
 
     constexpr auto depth_max = 4;
