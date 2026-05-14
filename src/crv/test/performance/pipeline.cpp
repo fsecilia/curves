@@ -61,7 +61,7 @@ auto generate_test_data(size_t sample_size) -> std::vector<test_case_t>
 
 /// executes the microbenchmark on a generic callable
 template <typename invocable_t>
-auto run_benchmark(std::vector<test_case_t> const& test_data, invocable_t&& func) -> double
+auto run_benchmark(std::vector<test_case_t> const& test_data, invocable_t&& func) -> float_t
 {
     // warmup pass; primes the instruction cache and branch predictor so cold misses don't skew the results
     for (auto const& test_case : test_data) { do_not_optimize(func(test_case)); }
@@ -80,7 +80,7 @@ auto run_benchmark(std::vector<test_case_t> const& test_data, invocable_t&& func
     _mm_lfence();
 
     auto const total_cycles = end_cycles - start_cycles;
-    return static_cast<double>(total_cycles) / static_cast<double>(test_data.size());
+    return static_cast<float_t>(total_cycles) / static_cast<float_t>(test_data.size());
 }
 
 auto main() -> int

@@ -3,7 +3,7 @@
 /// \file
 /// \brief tests jet composition over jets
 ///
-/// These tests verify that autodiff composes correctly to calc second derivatives via jet_t<jet_t<double>>.
+/// These tests verify that autodiff composes correctly to calc second derivatives via jet_t<jet_t<float_t>>.
 ///
 /// \copyright Copyright (C) 2026 Frank Secilia
 
@@ -15,7 +15,7 @@ namespace {
 
 struct nested_jet_test_t : Test
 {
-    using scalar_t = double;
+    using scalar_t = float_t;
     using value_t = jet_t<scalar_t>;
     using sut_t = jet_t<value_t>;
 
@@ -45,7 +45,7 @@ struct nested_jet_test_construction_t : nested_jet_test_t
 
 TEST_F(nested_jet_test_construction_t, value)
 {
-    constexpr auto sut = jet_t<jet_t<double>>{v};
+    constexpr auto sut = jet_t<jet_t<float_t>>{v};
 
     static_assert(v == sut.f);
     static_assert(jet_t{0.0} == sut.df);
@@ -53,7 +53,7 @@ TEST_F(nested_jet_test_construction_t, value)
 
 TEST_F(nested_jet_test_construction_t, scalar_level_1)
 {
-    constexpr auto sut = jet_t<jet_t<double>>{s};
+    constexpr auto sut = jet_t<jet_t<float_t>>{s};
 
     static_assert(jet_t{s} == sut.f);
     static_assert(jet_t{0.0} == sut.df);
@@ -61,18 +61,18 @@ TEST_F(nested_jet_test_construction_t, scalar_level_1)
 
 TEST_F(nested_jet_test_construction_t, scalar_level_2)
 {
-    constexpr auto sut = jet_t<jet_t<jet_t<double>>>{s};
+    constexpr auto sut = jet_t<jet_t<jet_t<float_t>>>{s};
 
-    static_assert(jet_t<jet_t<double>>{s} == sut.f);
-    static_assert(jet_t<jet_t<double>>{0.0} == sut.df);
+    static_assert(jet_t<jet_t<float_t>>{s} == sut.f);
+    static_assert(jet_t<jet_t<float_t>>{0.0} == sut.df);
 }
 
 TEST_F(nested_jet_test_construction_t, scalar_level_3)
 {
-    constexpr auto sut = jet_t<jet_t<jet_t<jet_t<double>>>>{s};
+    constexpr auto sut = jet_t<jet_t<jet_t<jet_t<float_t>>>>{s};
 
-    static_assert(jet_t<jet_t<jet_t<double>>>{s} == sut.f);
-    static_assert(jet_t<jet_t<jet_t<double>>>{0.0} == sut.df);
+    static_assert(jet_t<jet_t<jet_t<float_t>>>{s} == sut.f);
+    static_assert(jet_t<jet_t<jet_t<float_t>>>{0.0} == sut.df);
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -420,7 +420,7 @@ TEST_F(nested_jet_test_mixed_partials_symmetry_t, sqrt)
 template <typename jet_t> struct jet_test_nested_scalar_ambiguity_resolution_t : nested_jet_test_t
 {};
 
-using jet_types_t = Types<jet_t<double>, jet_t<jet_t<double>>, jet_t<jet_t<jet_t<double>>>>;
+using jet_types_t = Types<jet_t<float_t>, jet_t<jet_t<float_t>>, jet_t<jet_t<jet_t<float_t>>>>;
 TYPED_TEST_SUITE(jet_test_nested_scalar_ambiguity_resolution_t, jet_types_t);
 
 TYPED_TEST(jet_test_nested_scalar_ambiguity_resolution_t, ordering)

@@ -710,10 +710,10 @@ TEST(spline_generator, poc)
         auto const difference = actual_y - expected_y;
         ASSERT_LT(abs(difference), 1.6e-5); //
 
-        std::cout << std::setprecision(4) << "x = " << static_cast<long double>(x_real)
-                  << ", log1p(x) = " << static_cast<long double>(expected_y)
-                  << ", y_actual = " << static_cast<long double>(actual_y)
-                  << ", Δy = " << static_cast<long double>(difference) << std::endl;
+        std::cout << std::setprecision(4) << "x = " << static_cast<float_max_t>(x_real)
+                  << ", log1p(x) = " << static_cast<float_max_t>(expected_y)
+                  << ", y_actual = " << static_cast<float_max_t>(actual_y)
+                  << ", Δy = " << static_cast<float_max_t>(difference) << std::endl;
     }
     std::cout << std::endl;
 #endif
