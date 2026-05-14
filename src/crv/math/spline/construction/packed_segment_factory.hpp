@@ -118,12 +118,13 @@ template <std::floating_point t_real_t> struct float_extractor_t
         // inf and nan are not supported
         assert(raw_exponent != exponent_mask);
 
-        // ftz
+        // ftz, flush denormals to zero
         if (raw_exponent == 0) return {};
 
         using mantissa_t = scaled_int_t::mantissa_t;
         auto const raw_magnitude = (bits & frac_mask) | implicit_bit;
         auto mantissa = static_cast<mantissa_t>(raw_magnitude);
+        assert(static_cast<unsigned_t>(mantissa) == raw_magnitude);
         auto const is_negative = (bits >> (bit_count - 1)) != 0;
         if (is_negative) mantissa = -mantissa;
 
@@ -157,7 +158,11 @@ struct field_packer_t
     {
         auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
         auto const packed_shift = unpacked_field.shift & layout.shift_mask();
-        return packed_field_t{packed_mantissa | packed_shift};
+
+        auto const packed_field = packed_field_t{packed_mantissa | packed_shift};
+        assert(field_unpacker_t{}(packed_field, layout) == unpacked_field);
+
+        return packed_field;
     }
 };
 
