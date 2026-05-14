@@ -34,7 +34,8 @@ struct spline_dynamic_segment_test_t : Test
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
     using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
-    using segment_builder_t = segment_builder_t<float_extractor_t::scaled_int_t, x_t, y_t>;
+    using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
+    using segment_builder_t = segment_builder_t<float_extractor_t::scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using polynomial_t = polynomial_t<real_t>;
@@ -54,7 +55,7 @@ struct spline_dynamic_segment_test_t : Test
         auto const unpacked_segment = segment_unpacker(packed_segment);
 
         // check actual result
-        auto const width = std::ldexp(1.0, log2_width);
+        auto const width = std::ldexp(1.0, static_cast<int>(log2_width));
         auto const dx = to_fixed<x_t>(input * width);
         auto const actual_fixed = segment_evaluator(unpacked_segment, dx);
         auto const actual_float = from_fixed<real_t>(actual_fixed);

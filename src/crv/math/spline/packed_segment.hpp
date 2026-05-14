@@ -43,6 +43,9 @@ constexpr auto final_layout = field_layout_t{
     .is_signed = true,
 };
 
+constexpr auto final_layout_min_shift = -(1 << (final_layout.shift_width - 1));
+constexpr auto final_layout_max_shift = (1 << (final_layout.shift_width - 1)) - 1;
+
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------

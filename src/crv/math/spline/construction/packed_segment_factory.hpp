@@ -17,7 +17,6 @@
 #include <bit>
 #include <climits>
 #include <concepts>
-#include <expected>
 
 namespace crv::spline {
 
@@ -136,10 +135,11 @@ template <std::floating_point t_real_t> struct float_extractor_t
     }
 };
 
-template <auto shifter = saturating_shifter_t<>{}> struct exponent_renormalizer_t
+template <shift_t t_exponent_min, shift_t t_exponent_max, auto shifter = saturating_shifter_t<>{}>
+struct exponent_renormalizer_t
 {
-    int_t exponent_min;
-    int_t exponent_max;
+    static constexpr shift_t exponent_min = t_exponent_min;
+    static constexpr shift_t exponent_max = t_exponent_max;
 
     template <typename scaled_int_t> constexpr auto operator()(scaled_int_t src) const noexcept -> scaled_int_t
     {
@@ -161,11 +161,13 @@ struct field_packer_t
     }
 };
 
-template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segment_builder_t
+template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_renormalizer_t>
+struct segment_builder_t
 {
     using scaled_int_t = t_scaled_int_t;
     using x_t = t_x_t;
     using y_t = t_y_t;
+    using exponent_renormalizer_t = t_exponent_renormalizer_t;
 
     static constexpr auto in_frac_bits = t_x_t::frac_bits;
     static constexpr auto out_frac_bits = t_y_t::frac_bits;
@@ -175,6 +177,7 @@ template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segmen
     int_t delta;
     int_t acc_exp;
     mantissa_t prev_mantissa;
+    exponent_renormalizer_t renormalize_exponent;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
@@ -204,46 +207,12 @@ template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t> struct segmen
 
     constexpr auto finish() const noexcept -> unpacked_field_t
     {
-        static constexpr auto field_mantissa_bits = int_t{sizeof(packed_field_t) * CHAR_BIT} - final_layout.shift_width;
-        static constexpr auto max_mantissa = (mantissa_t{1} << (field_mantissa_bits - 1)) - 1;
-        static constexpr auto min_mantissa = -(mantissa_t{1} << (field_mantissa_bits - 1));
-
-        static constexpr auto min_final_shift = -(1 << (final_layout.shift_width - 1));
-        static constexpr auto max_final_shift = (1 << (final_layout.shift_width - 1)) - 1;
-
-        // final term: no successor, so the shift aligns directly to the output radix
-        auto const final_shift = -acc_exp - out_frac_bits;
-        auto const clamped_shift = std::clamp<int_t>(final_shift, min_final_shift, max_final_shift);
-        auto const delta_shift = final_shift - clamped_shift;
-
-        auto compensated_mantissa = prev_mantissa;
-
-        if (delta_shift > 0)
-        {
-            compensated_mantissa = (delta_shift >= accumulator_width) ? 0 : (prev_mantissa >> delta_shift);
-        }
-        else if (delta_shift < 0)
-        {
-            auto const left_shift = -delta_shift;
-            if (prev_mantissa == 0) compensated_mantissa = 0;
-            else if (left_shift >= accumulator_width)
-            {
-                compensated_mantissa = (prev_mantissa > 0) ? max_mantissa : min_mantissa;
-            }
-            else
-            {
-                auto const max_safe = max_mantissa >> left_shift;
-                auto const min_safe = min_mantissa >> left_shift;
-
-                if (prev_mantissa > max_safe) compensated_mantissa = max_mantissa;
-                else if (prev_mantissa < min_safe) compensated_mantissa = min_mantissa;
-                else compensated_mantissa = prev_mantissa << left_shift;
-            }
-        }
+        auto const renormalized = renormalize_exponent(
+            scaled_int_t{.mantissa = prev_mantissa, .exponent = int_cast<shift_t>(acc_exp + out_frac_bits)});
 
         return unpacked_field_t{
-            .mantissa = compensated_mantissa,
-            .shift = int_cast<shift_t>(clamped_shift),
+            .mantissa = renormalized.mantissa,
+            .shift = int_cast<shift_t>(-renormalized.exponent),
         };
     }
 };
@@ -258,6 +227,7 @@ template <typename t_builder_t> struct builder_factory_t
             .delta = delta,
             .acc_exp = acc_exp,
             .prev_mantissa = prev_mantissa,
+            .renormalize_exponent = {},
         };
     }
 };
