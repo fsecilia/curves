@@ -82,7 +82,7 @@ template <typename t_value_t> struct jet_t
     /// value_t, it forwards to the nested f ctor. This recurses, drilling down until it finds a leaf, then invokes
     /// either the better value_t ctor, or the conversion ctor. Since it's not explicit, this matches any scalar that
     /// the value_t ctor is not a better match for, and forwards it to the most nested jet in the composition.
-    constexpr jet_t(arithmetic auto scalar) noexcept : f(scalar), df(0) {}
+    constexpr jet_t(arithmetic auto scalar) noexcept : f{static_cast<value_t>(scalar)}, df(0) {}
 
     // ----------------------------------------------------------------------------------------------------------------
     // Conversions
