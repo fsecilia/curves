@@ -199,7 +199,7 @@ private:
     packed_segment_t packed_segment_;
 };
 
-/// creates fixed segment from a pair of float hermite knots and log2_width; scales tangents by segment width
+/// creates final segment from its polynomial and width
 template <typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
 {
     using segment_t = t_segment_t;

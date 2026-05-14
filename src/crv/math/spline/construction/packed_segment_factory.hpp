@@ -118,7 +118,7 @@ template <std::floating_point t_real_t> struct float_extractor_t
         // inf and nan are not supported
         assert(raw_exponent != exponent_mask);
 
-        // ftz, flush denormals to zero
+        // ftz; flush denormals to zero
         if (raw_exponent == 0) return {};
 
         using mantissa_t = scaled_int_t::mantissa_t;
@@ -286,7 +286,7 @@ struct segment_packer_t
         // degenerate: polynomial is identically zero
         if (field_index == fields_per_segment) return packed_segment;
 
-        // process non-trivial suffix
+        // process remaining suffix
         auto const delta = in_frac_bits + log2_width;
         auto builder = make_builder(delta, seed.exponent, seed.mantissa);
 
