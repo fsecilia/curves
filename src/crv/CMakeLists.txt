@@ -15,6 +15,7 @@ target_sources(lib PRIVATE
     math/fixed/fixed_limits.hpp
     math/fixed/float_conversions.hpp
     math/fixed/io.hpp
+    math/fixed/quantizer.hpp
     math/float_limits.hpp
     math/io.cpp
     math/io.hpp
@@ -27,7 +28,6 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
-    math/quantizer.hpp
     math/spline/construction/approximant.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/function_sampler.hpp
@@ -110,6 +110,7 @@ if (enable_testing)
         math/fixed/fixed_test.cpp
         math/fixed/float_conversions_test.cpp
         math/fixed/fma_test.cpp
+        math/fixed/quantizer_test.cpp
         math/fixed/rsqrt_test.cpp
         math/float_limits_test.cpp
         math/int_traits_test.cpp
@@ -127,7 +128,6 @@ if (enable_testing)
         math/quadrature/rules_test.cpp
         math/quadrature/stack_test.cpp
         math/quadrature/subdivider_test.cpp
-        math/quantizer_test.cpp
         math/rounding_mode_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
