@@ -4,9 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "approximant.hpp"
-#include <crv/math/abs.hpp>
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace crv::spline {
 namespace {
@@ -14,82 +13,60 @@ namespace {
 struct spline_approximant_test_t : Test
 {
     using scalar_t = float_t;
-    using jet_t = jet_t<scalar_t>;
     using x_t = fixed_t<int16_t, 2>;
-    using y_t = fixed_t<int32_t, 5>;
-    using normalized_t = fixed_t<uint64_t, 64>;
-    struct coeffs_t
-    {};
-
-    struct mock_segment_t
-    {
-        virtual ~mock_segment_t() = default;
-
-        MOCK_METHOD(normalized_t, x_to_t, (x_t), (const, noexcept));
-        MOCK_METHOD(y_t, evaluate, (normalized_t), (const, noexcept));
-        MOCK_METHOD(coeffs_t const&, coeffs, (), (const, noexcept));
-        MOCK_METHOD(int_t, log2_width, (), (const, noexcept));
-    };
-    StrictMock<mock_segment_t> mock_segment;
-
-    struct segment_t
-    {
-        using x_t = spline_approximant_test_t::x_t;
-
-        mock_segment_t* mock = nullptr;
-
-        auto x_to_t(x_t x) const noexcept -> normalized_t { return mock->x_to_t(x); }
-        auto evaluate(normalized_t t) const noexcept -> y_t { return mock->evaluate(t); }
-        auto coeffs() const noexcept -> coeffs_t const& { return mock->coeffs(); }
-        auto log2_width() const noexcept -> int_t { return mock->log2_width(); }
-    };
-
-    struct mock_segment_derivative_t
-    {
-        virtual ~mock_segment_derivative_t() = default;
-
-        MOCK_METHOD(scalar_t, dy_dx, (coeffs_t const&, scalar_t, int_t), (const, noexcept));
-    };
-    StrictMock<mock_segment_derivative_t> mock_segment_derivative;
-
-    struct segment_derivative_t
-    {
-        mock_segment_derivative_t* mock = nullptr;
-
-        auto dy_dx(coeffs_t const& coeffs, scalar_t t, int_t log2_width) const noexcept -> scalar_t
-        {
-            return mock->dy_dx(coeffs, t, log2_width);
-        }
-    };
-
-    static constexpr auto x0 = x_t::literal(3);
-
-    using sut_t = approximant_t<scalar_t, segment_t, segment_derivative_t>;
-    sut_t sut{x0, segment_t{&mock_segment}, segment_derivative_t{&mock_segment_derivative}};
+    using jet_t = jet_t<scalar_t>;
+    using sut_t = approximant_t<scalar_t, x_t>;
 };
 
-TEST_F(spline_approximant_test_t, call_operator)
+TEST_F(spline_approximant_test_t, evaluates_exact_polynomial_with_scale_and_offset)
 {
-    auto const x_real = float_t{7};
-    auto const x_fixed = to_fixed<x_t>(x_real);
-    auto const t_real = float_t{0.5};
-    auto const t_fixed = to_fixed<normalized_t>(t_real);
-    auto const y_real = float_t{13};
-    auto const y_fixed = to_fixed<y_t>(y_real);
-    auto const coeffs = coeffs_t{};
-    auto const dy_dx = scalar_t{19};
-    auto const log2_width = 4;
+    // P(t) = 1.0t^2 + 3.0t + 2.0
+    auto const poly = polynomial_t{0.0, 1.0, 3.0, 2.0};
 
-    auto const expected = jet_t{y_real, dy_dx};
+    auto const x0 = x_t{1};
+    auto const log2_width = 1; // width = 2.0
 
-    EXPECT_CALL(mock_segment, x_to_t(x_fixed - x0)).WillOnce(Return(t_fixed));
-    EXPECT_CALL(mock_segment, evaluate(t_fixed)).WillOnce(Return(y_fixed));
-    EXPECT_CALL(mock_segment, coeffs()).WillOnce(ReturnRef(coeffs));
-    EXPECT_CALL(mock_segment, log2_width()).WillOnce(Return(log2_width));
-    EXPECT_CALL(mock_segment_derivative, dy_dx(Ref(coeffs), t_real, log2_width)).WillOnce(Return(dy_dx));
-    auto const actual = sut(x_real);
+    sut_t const sut{poly, x0, log2_width};
 
-    EXPECT_EQ(expected, actual);
+    // input x = 2.0
+    auto const input_x = scalar_t{2.0f};
+
+    // x_local = 2.0 - 1.0 = 1.0
+    // t = x_local/2^1 = 0.5
+    // dt/dx = 1/2^1 = 0.5
+    // y = P(0.5) = 1.0(0.5)^2 + 3.0(0.5) + 2.0 = 3.75
+    // dy/dx = P'(0.5)dt/dx = (2.0*0.5 + 3.0)*0.5 = 4.0*0.5 = 2.0
+
+    auto const expected_y = scalar_t{3.75f};
+    auto const expected_tangent = scalar_t{2.0f};
+    auto const expected = jet_t{expected_y, expected_tangent};
+
+    auto const actual = sut(input_x);
+
+    EXPECT_FLOAT_EQ(primal(expected), primal(actual));
+    EXPECT_FLOAT_EQ(tangent(expected), tangent(actual));
+}
+
+TEST_F(spline_approximant_test_t, quantizes_floating_point_input_to_fixed_grid)
+{
+    // P(t) = t
+    auto const poly = polynomial_t{0.0, 0.0, 1.0, 0.0};
+    auto const x0 = x_t{0};
+    auto const log2_width = 0; // width = 1.0, t = x
+
+    sut_t const sut{poly, x0, log2_width};
+
+    // input x that falls exactly between fixed-point representations
+    auto const off_grid_input = scalar_t{0.125};
+
+    // expected output should match what happens if we passed exactly 0.0
+    auto const expected_y = scalar_t{0.0};
+    auto const expected_tangent = scalar_t{1.0};
+
+    auto const actual = sut(off_grid_input);
+
+    EXPECT_FLOAT_EQ(expected_y, primal(actual));
+    EXPECT_FLOAT_EQ(expected_tangent, tangent(actual));
 }
 
 } // namespace
