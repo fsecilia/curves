@@ -265,40 +265,29 @@ struct segment_packer_t
 
     constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> packed_segment_t
     {
-        packed_segment_t packed_segment;
-        auto field_index = 0;
-        scaled_int_t seed;
+        auto packed_segment = packed_segment_t{};
 
         // skip zero prefix
-        for (; field_index < fields_per_segment; ++field_index)
-        {
-            auto const scaled_int = extract_float(polynomial[field_index]);
-            if (scaled_int.mantissa != 0)
-            {
-                seed = scaled_int;
-                break;
-            }
+        auto const seed_it = std::ranges::find_if(polynomial, [](auto const& c) { return c != 0.0; });
 
-            auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
-            packed_segment[field_index] = pack_field(unpacked_field_t{}, layout);
-        }
+        // handle degenerate polynomials
+        if (seed_it == polynomial.end()) return packed_segment;
 
-        // degenerate: polynomial is identically zero
-        if (field_index == fields_per_segment) return packed_segment;
-
-        // process remaining suffix
+        // seed
         auto const t_to_dx_shift = in_frac_bits + log2_width;
+        auto const seed = extract_float(*seed_it);
         auto builder = make_builder(t_to_dx_shift, seed.exponent, seed.mantissa);
 
+        // process intermediate suffix
+        auto field_index = static_cast<int_t>(std::distance(polynomial.begin(), seed_it));
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const scaled_int = extract_float(polynomial[field_index + 1]);
-            auto const unpacked = builder.push(scaled_int);
-            packed_segment[field_index] = pack_field(unpacked, intermediate_layout);
+            packed_segment[field_index] = pack_field(builder.push(scaled_int), intermediate_layout);
         }
 
-        auto const final_unpacked = builder.finish();
-        packed_segment[fields_per_segment - 1] = pack_field(final_unpacked, final_layout);
+        // finish final field
+        packed_segment[fields_per_segment - 1] = pack_field(builder.finish(), final_layout);
 
         return packed_segment;
     }
