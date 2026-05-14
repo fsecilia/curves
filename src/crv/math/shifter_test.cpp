@@ -10,7 +10,7 @@
 namespace crv {
 
 // ====================================================================================================================
-// fixtures
+// shifter_t
 // ====================================================================================================================
 
 template <typename t_underlying_t, typename tag_t> struct strong_type_t
@@ -92,11 +92,12 @@ constexpr auto cmp_greater(
     return cmp_greater(lhs.underlying, rhs.underlying);
 }
 
+namespace shifter_tests {
 namespace {
 
-// compile-time stub+spy rounding mode
+// compile-time stub and spy rounding mode
 //
-// All shfiters require a rounding mode, but it is only used by shr and negative shift. shl and positive shifts just
+// All shifters require a rounding mode, but it is only used by shr and negative shift. shl and positive shifts just
 // shift left and range check.
 template <typename strong_type_t> struct rounding_mode_t
 {
@@ -124,9 +125,9 @@ template <typename underlying_t> struct death_test_t : Test
     using dst_t = strong_type_t<underlying_t, struct dst_tag_t>;
 };
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // shr
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace shr {
 
@@ -188,12 +189,12 @@ template struct test_t<int_t>::static_shift_test_t<test_t<int_t>::bit_width / 2>
 template struct test_t<int_t>::static_shift_test_t<test_t<int_t>::bit_width - 1>;
 
 // --------------------------------------------------------------------------------------------------------------------
-// death tests
+// shr death tests
 // --------------------------------------------------------------------------------------------------------------------
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-template <typename underlying_t> struct shr_death_tests_t : Test
+template <typename underlying_t> struct shifter_shr_death_tests_t : Test
 {
     using src_t = strong_type_t<underlying_t, struct src_tag_t>;
     using dst_t = strong_type_t<underlying_t, struct dst_tag_t>;
@@ -206,26 +207,26 @@ template <typename underlying_t> struct shr_death_tests_t : Test
 };
 
 using test_types_t = Types<int_t, uint_t>;
-TYPED_TEST_SUITE(shr_death_tests_t, test_types_t);
+TYPED_TEST_SUITE(shifter_shr_death_tests_t, test_types_t);
 
-TYPED_TEST(shr_death_tests_t, shr_sym_dynamic_negative_count)
+TYPED_TEST(shifter_shr_death_tests_t, shr_sym_dynamic_negative_count)
 {
     EXPECT_DEBUG_DEATH(TestFixture::sut.shr(TestFixture::src, -1), "shr count must not be negative");
 }
 
-TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_negative_count)
+TYPED_TEST(shifter_shr_death_tests_t, shr_asym_dynamic_negative_count)
 {
     using dst_t = TestFixture::dst_t;
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shr<dst_t>(TestFixture::src, -1), "shr count must not be negative");
 }
 
-TYPED_TEST(shr_death_tests_t, shr_sym_dynamic_oversized_count)
+TYPED_TEST(shifter_shr_death_tests_t, shr_sym_dynamic_oversized_count)
 {
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.shr(TestFixture::src, TestFixture::src_bits), "shr count must be less than bit width");
 }
 
-TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_oversized_count)
+TYPED_TEST(shifter_shr_death_tests_t, shr_asym_dynamic_oversized_count)
 {
     using dst_t = typename TestFixture::dst_t;
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shr<dst_t>(TestFixture::src, TestFixture::src_bits),
@@ -236,9 +237,9 @@ TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_oversized_count)
 
 } // namespace shr
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // shl
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace shl {
 
@@ -302,12 +303,12 @@ template struct test_t<int_t>;
 template struct test_t<uint_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
-// death tests
+// shl death tests
 // --------------------------------------------------------------------------------------------------------------------
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-template <typename t_underlying_t> struct shl_death_tests_t : Test
+template <typename t_underlying_t> struct shifter_shl_death_tests_t : Test
 {
     using underlying_t = t_underlying_t;
     using src_t = strong_type_t<underlying_t, struct src_tag_t>;
@@ -328,16 +329,16 @@ template <typename t_underlying_t> struct shl_death_tests_t : Test
 };
 
 using test_types_t = Types<int_t, uint_t>;
-TYPED_TEST_SUITE(shl_death_tests_t, test_types_t);
+TYPED_TEST_SUITE(shifter_shl_death_tests_t, test_types_t);
 
-TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_negative_count)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_negative_count)
 {
     using src_t = typename TestFixture::src_t;
 
     EXPECT_DEBUG_DEATH(TestFixture::sut.shl(src_t{100}, -1), "shl count must not be negative");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_negative_count)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_negative_count)
 {
     using src_t = TestFixture::src_t;
     using dst_t = TestFixture::dst_t;
@@ -345,7 +346,7 @@ TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_negative_count)
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shl<dst_t>(src_t{100}, -1), "shl count must not be negative");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -357,7 +358,7 @@ TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_negative_overflow)
         TestFixture::sut.shl(TestFixture::largest_invalid_src_for_shl, TestFixture::count), "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_sym_static_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_static_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -369,7 +370,7 @@ TYPED_TEST(shl_death_tests_t, shl_sym_static_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -384,7 +385,7 @@ TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_static_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_static_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -399,7 +400,7 @@ TYPED_TEST(shl_death_tests_t, shl_asym_static_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_sym_dynamic_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_sym_dynamic_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -411,7 +412,7 @@ TYPED_TEST(shl_death_tests_t, shift_sym_dynamic_negative_overflow)
         TestFixture::sut.shift(TestFixture::largest_invalid_src_for_shl, TestFixture::count), "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_sym_static_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_sym_static_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -423,7 +424,7 @@ TYPED_TEST(shl_death_tests_t, shift_sym_static_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_asym_dynamic_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_asym_dynamic_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -438,7 +439,7 @@ TYPED_TEST(shl_death_tests_t, shift_asym_dynamic_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_asym_static_negative_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_asym_static_negative_overflow)
 {
     if constexpr (!is_signed_v<typename TestFixture::underlying_t>)
     {
@@ -453,19 +454,19 @@ TYPED_TEST(shl_death_tests_t, shift_asym_static_negative_overflow)
         "negative overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_positive_overflow)
 {
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.shl(TestFixture::smallest_invalid_src_for_shl, TestFixture::count), "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_sym_static_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_static_positive_overflow)
 {
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shl<TestFixture::count>(TestFixture::smallest_invalid_src_for_shl),
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_positive_overflow)
 {
     using dst_t = typename TestFixture::dst_t;
 
@@ -474,7 +475,7 @@ TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_positive_overflow)
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_static_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_static_positive_overflow)
 {
     using dst_t = typename TestFixture::dst_t;
 
@@ -483,19 +484,19 @@ TYPED_TEST(shl_death_tests_t, shl_asym_static_positive_overflow)
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_sym_dynamic_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_sym_dynamic_positive_overflow)
 {
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.shift(TestFixture::smallest_invalid_src_for_shl, TestFixture::count), "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_sym_static_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_sym_static_positive_overflow)
 {
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shift<TestFixture::count>(TestFixture::smallest_invalid_src_for_shl),
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_asym_dynamic_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_asym_dynamic_positive_overflow)
 {
     using dst_t = typename TestFixture::dst_t;
 
@@ -504,7 +505,7 @@ TYPED_TEST(shl_death_tests_t, shift_asym_dynamic_positive_overflow)
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shift_asym_static_positive_overflow)
+TYPED_TEST(shifter_shl_death_tests_t, shift_asym_static_positive_overflow)
 {
     using dst_t = typename TestFixture::dst_t;
 
@@ -513,7 +514,7 @@ TYPED_TEST(shl_death_tests_t, shift_asym_static_positive_overflow)
         "positive overflow");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_oversized_count)
+TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_oversized_count)
 {
     using src_t = typename TestFixture::src_t;
 
@@ -521,7 +522,7 @@ TYPED_TEST(shl_death_tests_t, shl_sym_dynamic_oversized_count)
         TestFixture::sut.shl(src_t{100}, TestFixture::dst_bits), "shl count larger than target bit width");
 }
 
-TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_oversized_count)
+TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_oversized_count)
 {
     using src_t = typename TestFixture::src_t;
     using dst_t = typename TestFixture::dst_t;
@@ -533,6 +534,96 @@ TYPED_TEST(shl_death_tests_t, shl_asym_dynamic_oversized_count)
 #endif
 
 } // namespace shl
+} // namespace
+} // namespace shifter_tests
+
+// ====================================================================================================================
+// saturating_shifter_t
+// ====================================================================================================================
+
+namespace saturating_shifter_tests {
+namespace {
+
+/// minimal, blind shifter policy; presumes caller has already proven shift is safe and within bounds
+struct stub_shifter_t
+{
+    template <typename dst_t, typename src_t> constexpr auto shr(src_t src, int_t count) const noexcept -> dst_t
+    {
+        return int_cast<dst_t>(src >> count);
+    }
+
+    template <typename dst_t, typename src_t> constexpr auto shl(src_t src, int_t count) const noexcept -> dst_t
+    {
+        return int_cast<dst_t>(src << count);
+    }
+};
+
+constexpr auto sut = saturating_shifter_t<stub_shifter_t{}>{};
+
+// --------------------------------------------------------------------------------------------------------------------
+// signed
+// --------------------------------------------------------------------------------------------------------------------
+
+constexpr int8_t s8_max = max<int8_t>();
+constexpr int8_t s8_min = min<int8_t>();
+
+// zero rules
+static_assert(sut.shift(int8_t{37}, 0) == 37);
+static_assert(sut.shift(int8_t{0}, 5) == 0);
+static_assert(sut.shift(int8_t{0}, -5) == 0);
+
+// normal shifts, within bounds; no saturation
+static_assert(sut.shift(int8_t{5}, 3) == 40); // 5 * 8
+static_assert(sut.shift(int8_t{-5}, 3) == -40); // -5 * 8
+static_assert(sut.shift(int8_t{40}, -3) == 5); // 40 / 8
+static_assert(sut.shift(int8_t{-40}, -3) == -5); // -40 / 8
+
+// left shift; positive saturation
+static_assert(sut.shift(int8_t{63}, 1) == 126); // 63 << 1 = 126
+static_assert(sut.shift(int8_t{64}, 1) == s8_max); // overflow: 64 << 1 = 128
+static_assert(sut.shift(int8_t{100}, 2) == s8_max); // hard overflow
+
+// left shift; negative saturation
+static_assert(sut.shift(int8_t{-64}, 1) == -128); // -64 << 1 = -128
+static_assert(sut.shift(int8_t{-65}, 1) == s8_min); // underflow: -65 << 1 = -130
+static_assert(sut.shift(int8_t{-100}, 2) == s8_min); // hard underflow
+
+// left shift; overshift
+static_assert(sut.shift(int8_t{1}, 8) == s8_max);
+static_assert(sut.shift(int8_t{-1}, 8) == s8_min);
+
+// right shift: overshift
+static_assert(sut.shift(int8_t{100}, -8) == 0); // positive exhausts to 0
+static_assert(sut.shift(int8_t{100}, -99) == 0);
+static_assert(sut.shift(int8_t{-100}, -8) == -1); // negative exhausts to -1
+static_assert(sut.shift(int8_t{-100}, -99) == -1);
+
+// --------------------------------------------------------------------------------------------------------------------
+// unsigned
+// --------------------------------------------------------------------------------------------------------------------
+
+constexpr uint8_t u8_max = max<uint8_t>();
+
+// zero rules
+static_assert(sut.shift(uint8_t{37}, 0) == 37);
+static_assert(sut.shift(uint8_t{0}, 5) == 0);
+static_assert(sut.shift(uint8_t{0}, -5) == 0);
+
+// normal shifts
+static_assert(sut.shift(uint8_t{10}, 3) == 80); // 10 * 8
+static_assert(sut.shift(uint8_t{80}, -3) == 10); // 80 / 8
+
+// left shift; positive saturation
+static_assert(sut.shift(uint8_t{127}, 1) == 254); // 127 << 1 = 254
+static_assert(sut.shift(uint8_t{128}, 1) == u8_max); // overflow: 128 << 1 = 256
+static_assert(sut.shift(uint8_t{200}, 2) == u8_max); // hard overflow
+
+// overshifting
+static_assert(sut.shift(uint8_t{1}, 8) == u8_max); // overshift left saturates to max
+static_assert(sut.shift(uint8_t{200}, -8) == 0); // unsigned exhausts to 0
+static_assert(sut.shift(uint8_t{200}, -99) == 0);
 
 } // namespace
+} // namespace saturating_shifter_tests
+
 } // namespace crv
