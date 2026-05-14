@@ -27,7 +27,6 @@
 #include <crv/priority_queue.hpp>
 #include <algorithm>
 #include <cmath>
-#include <expected>
 #include <iomanip>
 #include <numeric>
 #include <stdfloat>
@@ -220,16 +219,12 @@ template <typename t_segment_t, typename t_segment_packer_t> struct segment_fact
     using real_t = segment_packer_t::real_t;
     using polynomial_t = segment_packer_t::polynomial_t;
     using function_sample_t = function_sample_t<real_t>;
-    using segment_error_t = segment_error_t<real_t>;
 
     [[no_unique_address]] segment_packer_t segment_packer;
 
-    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept
-        -> std::expected<segment_t, segment_error_reason_t>
+    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> segment_t
     {
-        auto const packed_segment_result = segment_packer(polynomial, log2_width);
-        if (!packed_segment_result) return std::unexpected(packed_segment_result.error());
-        return segment_t{*packed_segment_result};
+        return segment_t{segment_packer(polynomial, log2_width)};
     }
 };
 
@@ -356,8 +351,7 @@ struct tangent_extender_t
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] saturating_shifter_t saturating_shifter;
 
-    constexpr auto operator()(interval_t const& interval, segment_t const& segment) const noexcept
-        -> std::expected<segment_t, segment_error_reason_t>
+    constexpr auto operator()(interval_t const& interval, segment_t const& segment) const noexcept -> segment_t
     {
         auto const log2_x_max
             = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
@@ -373,9 +367,8 @@ struct tangent_extender_t
         // pack proto and unpack to find shift
         auto y = from_fixed<real_t>(y1_actual);
         auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
-        auto const packed_segment = pack_segment(tangent_polynomial, log2_x_max);
-        if (!packed_segment) return std::unexpected(packed_segment.error());
-        auto const unpacked_segment = unpack_segment(*packed_segment);
+        auto packed_segment = pack_segment(tangent_polynomial, log2_x_max);
+        auto const unpacked_segment = unpack_segment(packed_segment);
         auto const c3_shift = unpacked_segment[3].shift;
 
         // solve target mantissa directly via renormalization
@@ -383,10 +376,9 @@ struct tangent_extender_t
         auto const target_mantissa = saturating_shifter.shift(y1_as_signed, c3_shift);
 
         // repack new c3
-        auto fixed_packed = *packed_segment;
-        fixed_packed[fields_per_segment - 1]
+        packed_segment[fields_per_segment - 1]
             = pack_field(unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift}, final_layout);
-        return segment_t{fixed_packed};
+        return segment_t{packed_segment};
     }
 };
 
@@ -500,15 +492,13 @@ template <typename typestate_t, typename t_segment_factory_t, typename t_tangent
 struct assembler_t
 {
     using segment_factory_t = t_segment_factory_t;
-    using segment_error_t = segment_factory_t::segment_error_t;
     using segment_t = segment_factory_t::segment_t;
     using tangent_extender_t = t_tangent_extender_t;
 
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
-    template <typename spline_t>
-    [[nodiscard]] auto operator()(typestate_t state, spline_t& spline) const -> std::expected<void, segment_error_t>
+    template <typename spline_t> auto operator()(typestate_t state, spline_t& spline) const -> void
     {
         auto& workspace = state.workspace;
         assert(workspace.refinement_pool.empty());
@@ -526,15 +516,11 @@ struct assembler_t
         using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
         sorted_keys_t sorted_keys;
 
-        auto const make_segment_0_result = make_segment(workspace.completed_intervals[0]);
-        if (!make_segment_0_result) return std::unexpected(make_segment_0_result.error());
-        segments[0] = *make_segment_0_result;
+        segments[0] = make_segment(workspace.completed_intervals[0]);
         for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
         {
             auto const& interval = workspace.completed_intervals[segment_index];
-            auto const make_segment_result = make_segment(interval);
-            if (!make_segment_result) return std::unexpected(make_segment_result.error());
-            segments[segment_index] = *make_segment_result;
+            segments[segment_index] = make_segment(interval);
             sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
         }
 
@@ -553,28 +539,18 @@ struct assembler_t
         // extend final tangent
         auto const final_interval = workspace.completed_intervals[segment_count - 1];
         auto const final_segment = segments[segment_count - 1];
-        auto const extend_tangent_result = extend_tangent(final_interval, final_segment);
-        if (!extend_tangent_result) return std::unexpected(make_error(final_interval, extend_tangent_result.error()));
+        auto const extended_tangent = extend_tangent(final_interval, final_segment);
 
         workspace.completed_intervals.clear();
 
         auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline = spline_t{segment_locator, segments, *extend_tangent_result};
-
-        return {};
+        spline = spline_t{segment_locator, segments, extended_tangent};
     }
 
 private:
-    constexpr auto make_segment(auto const& interval) const noexcept -> std::expected<segment_t, segment_error_t>
+    constexpr auto make_segment(auto const& interval) const noexcept -> segment_t
     {
-        auto const segment_factory_result = segment_factory(interval.polynomial, interval.subdomain.log2_width);
-        if (!segment_factory_result) return std::unexpected(make_error(interval, segment_factory_result.error()));
-        return *segment_factory_result;
-    }
-
-    constexpr auto make_error(auto const& interval, segment_error_reason_t reason) const noexcept -> segment_error_t
-    {
-        return segment_error_t{reason, interval.subdomain.left.x, interval.subdomain.right.x};
+        return segment_factory(interval.polynomial, interval.subdomain.log2_width);
     }
 };
 
@@ -585,8 +561,6 @@ template <std::floating_point real_t, typename spline_t, typename typestates_t, 
 class spline_generator_t
 {
 public:
-    using segment_error_t = segment_error_t<real_t>;
-
     constexpr spline_generator_t() : seed_refinement_pool_{}, refine_{}, assemble_{}, workspace_{} {}
 
     constexpr spline_generator_t(refinement_pool_seeder_t seed_refinement_pool, refiner_t refine, assembler_t assemble)
@@ -594,7 +568,7 @@ public:
           assemble_{std::move(assemble)}, workspace_{}
     {}
 
-    constexpr auto operator()(auto& spline, auto target_function) -> std::expected<void, segment_error_t>
+    constexpr auto operator()(auto& spline, auto target_function) -> void
     {
         assert(workspace_.empty());
 
@@ -607,12 +581,9 @@ public:
         auto const seeded_state
             = seed_refinement_pool_(typename typestates_t::unseeded_t{workspace_}, sample_target_function);
         auto const refined_state = refine_(seeded_state, sample_target_function);
-        auto const assemble_result = assemble_(refined_state, spline);
-        if (!assemble_result) return std::unexpected(assemble_result.error());
+        assemble_(refined_state, spline);
 
         assert(workspace_.empty());
-
-        return {};
     }
 
 private:
@@ -731,9 +702,7 @@ TEST(spline_generator, poc)
     };
 
     auto spline = spline_t{};
-    auto const generate_spline_result = generate_spline(spline, std::ref(target_function));
-
-    ASSERT_TRUE(generate_spline_result.has_value());
+    generate_spline(spline, std::ref(target_function));
 
 #if 1
     auto x_fixed = x_t{0};
