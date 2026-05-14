@@ -3,7 +3,6 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#if 0
 #include "residual_estimator.hpp"
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
@@ -63,7 +62,7 @@ constexpr auto identifies_maximum_error()
     auto const expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
     auto const expected_weight = midpoint * weight;
 
-    auto const actual = sut(sample_target, approximant, left, right);
+    auto const actual = sut(sample_target, approximant, left, midpoint, right);
 
     return actual.scale == expected_max_scale * target_scale && actual.metric_error == expected_metric_error
         && actual.weighted_error == actual.metric_error * expected_weight;
@@ -75,7 +74,7 @@ constexpr auto handles_negative_error()
     auto sample_target = [](real_t node) constexpr { return target_function_sample_t{jet_t{-node, 0.0}}; };
     auto approximant = [](real_t) constexpr { return jet_t{0.0, 0.0}; };
 
-    auto const actual = sut(sample_target, approximant, left, right);
+    auto const actual = sut(sample_target, approximant, left, midpoint, right);
 
     return actual.scale == expected_max_scale && actual.metric_error == expected_max_scale;
 }
@@ -83,4 +82,3 @@ static_assert(handles_negative_error());
 
 } // namespace
 } // namespace crv::spline
-#endif
