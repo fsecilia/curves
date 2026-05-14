@@ -102,27 +102,19 @@ template <typename strong_type_t> struct rounding_mode_t
 {
     using underlying_t = strong_type_t::underlying_t;
 
-    underlying_t expected_src{};
-    underlying_t expected_count{};
-    underlying_t bias_result{};
+    static constexpr underlying_t bias_magic = 0x11;
+    static constexpr underlying_t carry_magic = 0x22;
 
-    constexpr auto bias(strong_type_t src, underlying_t count) const -> strong_type_t
+    // mutates input predictably to prove bias was called with correct parameters
+    constexpr auto bias(strong_type_t src, int_t count) const -> strong_type_t
     {
-        if (src.underlying != expected_src) throw "bias() received incorrect src";
-        if (count != expected_count) throw "bias() received incorrect count";
-        return strong_type_t{bias_result};
+        return strong_type_t{int_cast<underlying_t>(src.underlying + count + bias_magic)};
     }
 
-    underlying_t expected_shifted{};
-    underlying_t expected_unshifted{};
-    underlying_t carry_result{};
-
-    constexpr auto carry(strong_type_t shifted, strong_type_t unshifted, underlying_t count) const -> strong_type_t
+    // combines all parameters predictably to prove carry was called with correct parameters
+    constexpr auto carry(strong_type_t shifted, strong_type_t unshifted, int_t count) const -> strong_type_t
     {
-        if (shifted.underlying != expected_shifted) throw "carry() received incorrect shifted";
-        if (unshifted.underlying != expected_unshifted) throw "carry() received incorrect unshifted";
-        if (count != expected_count) throw "carry() received incorrect count";
-        return strong_type_t{carry_result};
+        return strong_type_t{int_cast<underlying_t>(shifted.underlying + unshifted.underlying + count + carry_magic)};
     }
 };
 
@@ -138,52 +130,62 @@ template <typename underlying_t> struct death_test_t : Test
 
 namespace shr {
 
-template <typename underlying_t> struct test_traits_t
+template <typename underlying_t> struct test_t
 {
     using src_t = strong_type_t<underlying_t, struct src_tag_t>;
     using dst_t = strong_type_t<underlying_t, struct dst_tag_t>;
 
-    static constexpr int_t shift_count = 2; // arbitrary small positive shift
-
-    static constexpr underlying_t src_val = 0xAA; // arbitrary, bit pattern
-    static constexpr underlying_t bias_val = 0xEE; // arbitrary
-    static constexpr underlying_t carry_val = 0xBB; // arbitrary
-
-    static constexpr rounding_mode_t<src_t> rounding_mode{.expected_src = src_val,
-        .expected_count = shift_count,
-        .bias_result = bias_val,
-        .expected_shifted = static_cast<underlying_t>(bias_val >> shift_count),
-        .expected_unshifted = bias_val,
-        .carry_result = carry_val};
-
-    using sut_t = shifter_t<rounding_mode>;
+    using rounding_mode_t = rounding_mode_t<src_t>;
+    using sut_t = shifter_t<rounding_mode_t{}>;
     static constexpr auto sut = sut_t{};
-    static constexpr auto src = src_t{src_val};
-};
 
-template <typename underlying_t> struct test_t
-{
-    using traits_t = test_traits_t<underlying_t>;
-    using dst_t = typename traits_t::dst_t;
+    static constexpr auto bit_width = int_cast<int_t>(sizeof(underlying_t) * CHAR_BIT);
+    static constexpr auto src = src_t{0xAA}; // arbitrary bit pattern
 
-    // shr
-    static_assert(traits_t::carry_val == traits_t::sut.shr(traits_t::src, traits_t::shift_count).underlying);
-    static_assert(traits_t::carry_val == traits_t::sut.template shr<traits_t::shift_count>(traits_t::src).underlying);
-    static_assert(
-        traits_t::carry_val == traits_t::sut.template shr<dst_t>(traits_t::src, traits_t::shift_count).underlying);
-    static_assert(
-        traits_t::carry_val == traits_t::sut.template shr<dst_t, traits_t::shift_count>(traits_t::src).underlying);
+    static constexpr auto expected_carry(underlying_t original_src, int_t count) -> underlying_t
+    {
+        auto const unshifted = static_cast<underlying_t>(original_src + count + rounding_mode_t::bias_magic);
+        auto const shifted = static_cast<underlying_t>(unshifted >> count);
+        return static_cast<underlying_t>(shifted + unshifted + count + rounding_mode_t::carry_magic);
+    }
 
-    // shift (negative counts route to shr)
-    static constexpr auto shift_count = -traits_t::shift_count;
-    static_assert(traits_t::carry_val == traits_t::sut.shift(traits_t::src, shift_count).underlying);
-    static_assert(traits_t::carry_val == traits_t::sut.template shift<shift_count>(traits_t::src).underlying);
-    static_assert(traits_t::carry_val == traits_t::sut.template shift<dst_t>(traits_t::src, shift_count).underlying);
-    static_assert(traits_t::carry_val == traits_t::sut.template shift<dst_t, shift_count>(traits_t::src).underlying);
+    template <int_t count> struct dynamic_shift_test_t
+    {
+        // shr
+        static auto const expected_shr = expected_carry(src.underlying, count);
+        static_assert(expected_shr == sut.shr(src, count).underlying);
+        static_assert(expected_shr == sut.template shr<dst_t>(src, count).underlying);
+
+        // shift
+        static auto const expected_shift = (count > 0) ? expected_shr : src.underlying;
+        static_assert(expected_shift == sut.shift(src, -count).underlying);
+        static_assert(expected_shift == sut.template shift<dst_t>(src, -count).underlying);
+    };
+
+    template <int_t count> struct static_shift_test_t
+    {
+        // shr
+        static auto const expected_shr = expected_carry(src.underlying, count);
+        static_assert(expected_shr == sut.template shr<count>(src).underlying);
+        static_assert(expected_shr == sut.template shr<dst_t, count>(src).underlying);
+
+        // shift
+        static auto const expected_shift = (count > 0) ? expected_shr : src.underlying;
+        static_assert(expected_shift == sut.template shift<-(count)>(src).underlying);
+        static_assert(expected_shift == sut.template shift<dst_t, -(count)>(src).underlying);
+    };
 };
 
 template struct test_t<int_t>;
 template struct test_t<uint_t>;
+
+template struct test_t<int_t>::dynamic_shift_test_t<0>;
+template struct test_t<int_t>::dynamic_shift_test_t<test_t<int_t>::bit_width / 2>;
+template struct test_t<int_t>::dynamic_shift_test_t<test_t<int_t>::bit_width - 1>;
+
+template struct test_t<int_t>::static_shift_test_t<0>;
+template struct test_t<int_t>::static_shift_test_t<test_t<int_t>::bit_width / 2>;
+template struct test_t<int_t>::static_shift_test_t<test_t<int_t>::bit_width - 1>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // death tests
@@ -193,9 +195,12 @@ template struct test_t<uint_t>;
 
 template <typename underlying_t> struct shr_death_tests_t : Test
 {
-    using traits = test_traits_t<underlying_t>;
-    using src_t = traits::src_t;
-    using dst_t = traits::dst_t;
+    using src_t = strong_type_t<underlying_t, struct src_tag_t>;
+    using dst_t = strong_type_t<underlying_t, struct dst_tag_t>;
+
+    using sut_t = shifter_t<rounding_mode_t<src_t>{}>;
+    static constexpr auto sut = sut_t{};
+    static constexpr auto src = src_t{0xAA};
 
     static constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 };
@@ -205,38 +210,25 @@ TYPED_TEST_SUITE(shr_death_tests_t, test_types_t);
 
 TYPED_TEST(shr_death_tests_t, shr_sym_dynamic_negative_count)
 {
-    EXPECT_DEBUG_DEATH(TestFixture::traits::sut.shr(TestFixture::traits::src, -1), "shr count must be positive");
+    EXPECT_DEBUG_DEATH(TestFixture::sut.shr(TestFixture::src, -1), "shr count must not be negative");
 }
 
 TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_negative_count)
 {
     using dst_t = TestFixture::dst_t;
-    EXPECT_DEBUG_DEATH(
-        TestFixture::traits::sut.template shr<dst_t>(TestFixture::traits::src, -1), "shr count must be positive");
-}
-
-TYPED_TEST(shr_death_tests_t, shr_sym_dynamic_zero_count)
-{
-    EXPECT_DEBUG_DEATH(TestFixture::traits::sut.shr(TestFixture::traits::src, 0), "shr count must be positive");
-}
-
-TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_zero_count)
-{
-    using dst_t = TestFixture::dst_t;
-    EXPECT_DEBUG_DEATH(
-        TestFixture::traits::sut.template shr<dst_t>(TestFixture::traits::src, 0), "shr count must be positive");
+    EXPECT_DEBUG_DEATH(TestFixture::sut.template shr<dst_t>(TestFixture::src, -1), "shr count must not be negative");
 }
 
 TYPED_TEST(shr_death_tests_t, shr_sym_dynamic_oversized_count)
 {
-    EXPECT_DEBUG_DEATH(TestFixture::traits::sut.shr(TestFixture::traits::src, TestFixture::src_bits),
-        "shr count must be less than bit width");
+    EXPECT_DEBUG_DEATH(
+        TestFixture::sut.shr(TestFixture::src, TestFixture::src_bits), "shr count must be less than bit width");
 }
 
 TYPED_TEST(shr_death_tests_t, shr_asym_dynamic_oversized_count)
 {
     using dst_t = typename TestFixture::dst_t;
-    EXPECT_DEBUG_DEATH(TestFixture::traits::sut.template shr<dst_t>(TestFixture::traits::src, TestFixture::src_bits),
+    EXPECT_DEBUG_DEATH(TestFixture::sut.template shr<dst_t>(TestFixture::src, TestFixture::src_bits),
         "shr count must be less than bit width");
 }
 

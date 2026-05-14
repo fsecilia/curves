@@ -25,6 +25,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
 #include <cassert>
+#include <climits>
 
 namespace crv {
 
@@ -51,6 +52,11 @@ namespace rounding_modes {
 // ====================================================================================================================
 
 namespace shr {
+
+template <typename value_t> constexpr auto is_valid_shift(int_t shift) noexcept -> bool
+{
+    return 0 <= shift && shift < int_cast<int_t>(sizeof(value_t) * CHAR_BIT);
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 // Safe Rounding Modes
@@ -97,13 +103,15 @@ struct nearest_up_t
         return unshifted;
     }
 
-    /// carry = (unshifted >> (shift - 1)) & 1
+    /// carry = (unshifted & mask) != 0
     template <integral value_t>
     constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "nearest_up_t: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::nearest_up_t: shift out of range");
 
-        auto const carry = static_cast<value_t>((unshifted >> (shift - 1)) & 1);
+        using unsigned_value_t = make_unsigned_t<value_t>;
+        auto const mask = (unsigned_value_t{1} << shift) >> 1;
+        auto const carry = static_cast<value_t>((static_cast<unsigned_value_t>(unshifted) & mask) != 0);
 
         return int_cast<value_t>(shifted + carry);
     }
@@ -129,16 +137,16 @@ struct nearest_away_t : private nearest_up_t
     template <signed_integral value_t>
     constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "nearest_away_t: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::nearest_away_t: shift out of range");
 
-        using uval_t = make_unsigned_t<value_t>;
-        constexpr auto one = uval_t{1};
+        using unsigned_value_t = make_unsigned_t<value_t>;
+        constexpr auto one = unsigned_value_t{1};
 
-        auto const half = one << (shift - 1);
+        auto const half = (one << shift) >> 1;
         auto const mask = (one << shift) - 1;
 
-        auto const frac = static_cast<uval_t>(unshifted) & mask;
-        auto const negative = static_cast<uval_t>(unshifted < 0);
+        auto const frac = static_cast<unsigned_value_t>(unshifted) & mask;
+        auto const negative = static_cast<unsigned_value_t>(unshifted < 0);
         auto const carry = static_cast<value_t>(frac >= (half + negative));
 
         return int_cast<value_t>(shifted + carry);
@@ -167,16 +175,16 @@ struct nearest_even_t
     template <integral value_t>
     constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "nearest_even_t: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::nearest_even_t: shift out of range");
 
-        using uval_t = make_unsigned_t<value_t>;
-        constexpr auto one = uval_t{1};
+        using unsigned_value_t = make_unsigned_t<value_t>;
+        constexpr auto one = unsigned_value_t{1};
 
-        auto const half = one << (shift - 1);
+        auto const half = (one << shift) >> 1;
         auto const mask = (one << shift) - 1;
 
-        auto const frac = static_cast<uval_t>(unshifted) & mask;
-        auto const is_odd = static_cast<uval_t>(shifted) & 1;
+        auto const frac = static_cast<unsigned_value_t>(unshifted) & mask;
+        auto const is_odd = static_cast<unsigned_value_t>(shifted) & 1;
         auto const carry = static_cast<value_t>((frac + is_odd) > half);
 
         return int_cast<value_t>(shifted + carry);
@@ -202,9 +210,10 @@ struct nearest_up_t
     /// \pre unshifted + (1 << (shift - 1)) does not overflow
     template <integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "shr::fast::nearest_up_t::bias: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::fast::nearest_up_t: shift out of range");
 
-        auto const half = static_cast<value_t>(value_t{1} << (shift - 1));
+        using unsigned_value_t = make_unsigned_t<value_t>;
+        auto const half = static_cast<value_t>((unsigned_value_t{1} << shift) >> 1);
 
         assert(max<value_t>() - half >= unshifted && "shr::fast::nearest_up_t::bias: integer overflow");
 
@@ -229,9 +238,9 @@ struct nearest_away_t
     /// \pre unshifted + (1 << (shift - 1)) does not overflow
     template <unsigned_integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "fast::nearest_away_t: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::fast::nearest_away_t: shift out of range");
 
-        auto const half = static_cast<value_t>(value_t{1} << (shift - 1));
+        auto const half = static_cast<value_t>((value_t{1} << shift) >> 1);
 
         assert(max<value_t>() - half >= unshifted && "fast::nearest_away_t::shr_bias: integer overflow");
 
@@ -243,11 +252,11 @@ struct nearest_away_t
     /// \pre unshifted + (1 << (shift - 1)) does not overflow
     template <signed_integral value_t> constexpr auto bias(value_t unshifted, int_t shift) const noexcept -> value_t
     {
-        assert(shift > 0 && "fast::nearest_away_t: shift must be positive");
+        assert(is_valid_shift<value_t>(shift) && "shr::fast::nearest_away_t: shift out of range");
 
-        using uval_t = make_unsigned_t<value_t>;
-        auto const half = static_cast<uval_t>(uval_t{1} << (shift - 1));
-        auto const bias = static_cast<value_t>(half - static_cast<uval_t>(unshifted < 0));
+        using unsigned_value_t = make_unsigned_t<value_t>;
+        auto const half = static_cast<unsigned_value_t>((unsigned_value_t{1} << shift) >> 1);
+        auto const bias = static_cast<value_t>(half - static_cast<unsigned_value_t>(unshifted < 0));
 
         assert(max<value_t>() - bias >= unshifted && "fast::nearest_away_t::shr_bias: integer overflow");
 

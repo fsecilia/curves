@@ -95,7 +95,7 @@ private:
     {
         [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
-        assert(count > 0 && "shifter_t: shr count must be positive");
+        assert(count >= 0 && "shifter_t: shr count must not be negative");
         assert(count < src_bits && "shifter_t: shr count must be less than bit width");
 
         auto const unshifted = rounding_mode.bias(src, count);
@@ -107,7 +107,7 @@ private:
     {
         [[maybe_unused]] constexpr auto src_bits = int_cast<int_t>(sizeof(src_t) * CHAR_BIT);
 
-        static_assert(count > 0, "shifter_t: shr count must be positive");
+        static_assert(count >= 0, "shifter_t: shr count must not be negative");
         static_assert(count < src_bits, "shifter_t: shr count must be less than bit width");
 
         auto const unshifted = rounding_mode.bias(src, count);
