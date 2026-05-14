@@ -4,145 +4,97 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "polynomial.hpp"
+#include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
 #include <string>
-#include <string_view>
 
 namespace crv::spline {
 namespace {
 
-// --------------------------------------------------------------------------------------------------------------------
-// mac_t
-// --------------------------------------------------------------------------------------------------------------------
+namespace numeric_boundaries {
 
-namespace mac_test {
+// default construction
+static_assert(polynomial_t<int_t, 0>{}(int_t{100}) == 0);
+static_assert(polynomial_t<int_t, 3>{}(int_t{100}) == 0);
 
-template <typename coeff_t, typename normalized_t> struct mac_test_t
-{
-    using coeff_value_t = coeff_t::value_t;
-    static constexpr auto coeff_frac_bits = coeff_t::frac_bits;
+// base behavior
+static_assert(polynomial_t{0, 0, 0, 0}(100) == 0);
+static_assert(polynomial_t{0, 0, 0, 5}(-50) == 5);
 
-    using normalized_value_t = normalized_t::value_t;
-    static constexpr auto normalized_frac_bits = normalized_t::frac_bits;
+// y-intercept, t = 0
+static_assert(polynomial_t{3, 5, 7, 11}(0) == 11);
+static_assert(polynomial_t{-3, 5, -7, 11}(0) == 11);
 
-    using sut_t = mac_t;
-    static constexpr auto sut = sut_t{};
+// identity (t = 1 is the sum of coefficients)
+static_assert(polynomial_t{3, 5, -7, 11}(int_t{1}) == 3 + 5 + -7 + 11);
 
-    static constexpr auto c0 = coeff_t{0};
-    static constexpr auto c1 = coeff_t{1};
-    static constexpr auto cm1 = -c1; // -1.0
-    static constexpr auto c1_2 = c1 >> 1; // 0.5
-    static constexpr auto cm1_2 = -c1_2; // -0.5
-    static constexpr auto c1_4 = c1_2 >> 1; // 0.25
-    static constexpr auto cm1_4 = -c1_4; // -0.25
-    static constexpr auto c1_8 = c1_4 >> 1; // 0.125
-    static constexpr auto cm3_4 = coeff_t::literal(cm1_2.value + cm1_4.value); // -0.75
-    static constexpr auto c5 = coeff_t{5};
-    static constexpr auto c_epsilon = coeff_t::literal(1);
+// alternating identity (t = -1)
+static_assert(polynomial_t{3, 5, 7, 11}(int_t{-1}) == -3 + 5 + -7 + 11);
 
-    static constexpr auto t0 = normalized_t::literal(0);
-    static constexpr auto t1_2 = normalized_t::literal(normalized_value_t{1} << (normalized_frac_bits - 1)); // 0.5
-    static constexpr auto t_epsilon = normalized_t::literal(1);
+// internal zeros bypass degrees
+static_assert(polynomial_t{-3, 0, -7, 11}(2) == (-3 * 2 * 2 + -7) * 2 + 11);
+static_assert(polynomial_t{-3, 5, 0, 11}(2) == (-3 * 2 + 5) * 2 * 2 + 11);
 
-    // zeros propagate correctly without shifting errors
-    static_assert(sut(c0, t0, c0) == 0);
-    static_assert(sut(c1, t0, c0) == 0);
-    static_assert(sut(c0, t1_2, c0) == 0);
+// full evaluation
+static_assert(polynomial_t{3, 5, 7, 11}(2) == ((3 * 2 + 5) * 2 + 7) * 2 + 11);
+static_assert(polynomial_t{-3, 5, -7, 11}(-2) == ((-3 * -2 + 5) * -2 + -7) * -2 + 11);
 
-    // addition of coefficient is exact when multiplication yields zero
-    static_assert(sut(c0, t0, c5) == c5.value);
+// varying degrees
+static_assert(polynomial_t{int_t{7}}(int_t{100}) == 7); // degree 0
+static_assert(polynomial_t{int_t{5}, int_t{7}}(int_t{10}) == 5 * 10 + 7); // degree 1
+static_assert(polynomial_t{int_t{3}, int_t{5}, int_t{7}}(int_t{10}) == (3 * 10 + 5) * 10 + 7); // degree 2
 
-    auto test() const noexcept -> void { EXPECT_EQ(sut(-c1_4 - c_epsilon, t1_2 - t_epsilon, c0), -c1_8.value); }
+} // namespace numeric_boundaries
 
-    // negative rounding boundaries
-    static_assert(sut(-c1_4 - c_epsilon, t1_2 - t_epsilon, c0) == -c1_8.value);
-    static_assert(sut(-c1_4 - c_epsilon, t1_2, c0) == -c1_8.value);
-    static_assert(sut(-c1_4 - c_epsilon, t1_2 + t_epsilon, c0) == -c1_8.value - 1);
-    static_assert(sut(-c1_4, t1_2 - t_epsilon, c0) == -c1_8.value);
-    static_assert(sut(-c1_4, t1_2, c0) == -c1_8.value);
-    static_assert(sut(-c1_4, t1_2 + t_epsilon, c0) == -c1_8.value);
-    static_assert(sut(-c1_4 + c_epsilon, t1_2 - t_epsilon, c0) == -c1_8.value + 1);
-    static_assert(sut(-c1_4 + c_epsilon, t1_2, c0) == -c1_8.value + 1);
-    static_assert(sut(-c1_4 + c_epsilon, t1_2 + t_epsilon, c0) == -c1_8.value);
+namespace type_promotion {
 
-    // positive rounding boundaries
-    static_assert(sut(c1_4 - c_epsilon, t1_2 - t_epsilon, c0) == c1_8.value - 1);
-    static_assert(sut(c1_4 - c_epsilon, t1_2, c0) == c1_8.value);
-    static_assert(sut(c1_4 - c_epsilon, t1_2 + t_epsilon, c0) == c1_8.value);
-    static_assert(sut(c1_4, t1_2 - t_epsilon, c0) == c1_8.value);
-    static_assert(sut(c1_4, t1_2, c0) == c1_8.value);
-    static_assert(sut(c1_4, t1_2 + t_epsilon, c0) == c1_8.value);
-    static_assert(sut(c1_4 + c_epsilon, t1_2 - t_epsilon, c0) == c1_8.value);
-    static_assert(sut(c1_4 + c_epsilon, t1_2, c0) == c1_8.value + 1);
-    static_assert(sut(c1_4 + c_epsilon, t1_2 + t_epsilon, c0) == c1_8.value + 1);
+// coeffs are 8-bit, evaluation t is 16-bit
+static_assert(polynomial_t{int8_t{3}, int8_t{5}, int8_t{7}}(int16_t{100}) == int16_t{30507});
 
-    // sign
-    static_assert(sut(cm1, t1_2, c0) == cm1_2.value);
-    static_assert(sut(cm1, t1_2, cm1_4) == cm3_4.value);
+// coeffs are integer, evaluation t is float
+static_assert(polynomial_t{int_t{3}, int_t{5}, int_t{7}}(0.5) == (3 * 0.5 + 5) * 0.5 + 7);
 
-    // limits
-    static_assert(sut(min<coeff_t>(), t0, min<coeff_t>()) == min<coeff_t>().value);
-    static_assert(sut(max<coeff_t>(), t0, min<coeff_t>()) == min<coeff_t>().value);
-    static_assert(sut(min<coeff_t>(), t0, c0) == 0);
-    static_assert(sut(max<coeff_t>(), t0, c0) == 0);
-    static_assert(sut(min<coeff_t>(), t0, max<coeff_t>()) == max<coeff_t>().value);
-    static_assert(sut(max<coeff_t>(), t0, max<coeff_t>()) == max<coeff_t>().value);
+} // namespace type_promotion
 
-    // to test against t_max through rounding we need headroom; |acc| must be less than 2^(normalized_frac_bits - 1)
-    static constexpr auto bound_value = coeff_value_t{1} << (normalized_frac_bits - 2);
-    static constexpr auto max_bound_c = coeff_t::literal(bound_value);
-    static constexpr auto min_bound_c = coeff_t::literal(-bound_value);
-    static_assert(sut(min_bound_c, max<normalized_t>(), c0) == min_bound_c.value);
-    static_assert(sut(max_bound_c, max<normalized_t>(), c0) == max_bound_c.value);
-};
+namespace jet_evaluation {
 
-template struct mac_test_t<fixed_t<int64_t, 48>, fixed_t<uint64_t, 64>>;
-template struct mac_test_t<fixed_t<int64_t, 12>, fixed_t<uint32_t, 32>>;
-template struct mac_test_t<fixed_t<int32_t, 11>, fixed_t<uint16_t, 16>>;
+// p(t) = -3t^2 + 5t + -7 = -3*((1.5)^2) + 5*(1.5) - 7 = −6.75 + 7.5 - 7 = -6.25
+// p'(t) = -6t*dt + 5dt = -6(1.5)*(-3.1) + 5(-3.1) = 27.9 + −15.5 = 12.4
+static_assert(polynomial_t{int_t{-3}, int_t{5}, int_t{-7}}(jet_t{1.5, -3.1}) == jet_t{-6.25, 12.4});
 
-} // namespace mac_test
+} // namespace jet_evaluation
 
-// --------------------------------------------------------------------------------------------------------------------
-// polynomial_evaluator_t
-// --------------------------------------------------------------------------------------------------------------------
+// These test that it is actually applying Horner's rule.
+namespace symbolic_tests {
 
-namespace polynomial_evaluator_test {
+using namespace std::literals;
 
-struct wide_t
-{
-    std::string expression;
-};
-
-constexpr auto narrow(wide_t w) -> wide_t
-{
-    return w;
-}
-
-struct coeff_t
+struct real_t
 {
     std::string expression;
 
-    static constexpr coeff_t literal(wide_t w) { return coeff_t{std::move(w.expression)}; }
+    friend constexpr auto operator+(real_t const& lhs, real_t const& rhs) -> real_t
+    {
+        return real_t{"(" + lhs.expression + " + " + rhs.expression + ")"};
+    }
 
-    constexpr bool operator==(std::string_view other) const { return expression == other; }
+    friend constexpr auto operator*(real_t const& lhs, real_t const& rhs) -> real_t
+    {
+        return real_t{lhs.expression + "*" + rhs.expression};
+    }
+
+    constexpr auto operator==(real_t const&) const noexcept -> bool = default;
+
+    friend auto operator<<(std::ostream& out, real_t const& src) -> std::ostream& { return out << src.expression; }
 };
 
-constexpr auto string_mac = [](coeff_t accumulator, std::string_view t, coeff_t coeff) {
-    return wide_t{"(" + accumulator.expression + "*" + std::string(t) + " + " + coeff.expression + ")"};
-};
+static_assert(polynomial_t{real_t{"a"}}(real_t{"t"}) == real_t{"a"});
+static_assert(polynomial_t{real_t{"a"}, real_t{"b"}}(real_t{"t"}) == real_t{"(a*t + b)"});
+static_assert(polynomial_t{real_t{"a"}, real_t{"b"}, real_t{"c"}}(real_t{"t"}) == real_t{"((a*t + b)*t + c)"});
+static_assert(polynomial_t{real_t{"a"}, real_t{"b"}, real_t{"c"}, real_t{"d"}}(real_t{"t"})
+    == real_t{"(((a*t + b)*t + c)*t + d)"});
 
-constexpr auto test_structural_evaluation()
-{
-    using namespace std::literals;
-
-    auto evaluator = polynomial_evaluator_t<string_mac>{};
-    auto const coeffs = std::array{coeff_t{"11"}, coeff_t{"17"}, coeff_t{"23"}, coeff_t{"29"}};
-
-    return evaluator("t"sv, coeffs);
-}
-static_assert(test_structural_evaluation() == "(((11*t + 17)*t + 23)*t + 29)");
-
-} // namespace polynomial_evaluator_test
+} // namespace symbolic_tests
 
 } // namespace
 } // namespace crv::spline
