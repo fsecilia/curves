@@ -17,6 +17,7 @@
 #include <bit>
 #include <climits>
 #include <concepts>
+#include <utility>
 
 namespace crv::spline {
 
@@ -211,7 +212,7 @@ struct segment_builder_t
         };
     }
 
-    constexpr auto finish() const noexcept -> unpacked_field_t
+    constexpr auto finish() const&& noexcept -> unpacked_field_t
     {
         auto const renormalized = renormalize_exponent(
             scaled_int_t{.mantissa = prev_mantissa, .exponent = int_cast<shift_t>(acc_exp + out_frac_bits)});
@@ -287,7 +288,7 @@ struct segment_packer_t
         }
 
         // finish final field
-        packed_segment[fields_per_segment - 1] = pack_field(builder.finish(), final_layout);
+        packed_segment[fields_per_segment - 1] = pack_field(std::move(builder).finish(), final_layout);
 
         return packed_segment;
     }
