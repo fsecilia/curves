@@ -35,17 +35,6 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <arithmetic value_t> constexpr auto midpoint(value_t lhs, value_t rhs) noexcept -> value_t
-{
-    return std::midpoint(lhs, rhs);
-}
-
-constexpr auto midpoint(std::float128_t lhs, std::float128_t rhs) noexcept -> std::float128_t
-{
-    // not as robust as the real implementation, but sufficient for now.
-    return (lhs + rhs) * 0.5;
-}
-
 template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
 {
     using real_t = t_real_t;
@@ -62,7 +51,7 @@ template <std::floating_point t_real_t, is_fixed t_x_t> struct approximant_t
     {
         auto const x_local = from_fixed<real_t>(to_fixed<x_t>(x) - x0);
         auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
-        auto const dt_dx = std::ldexp(real_t{1}, -log2_width);
+        auto const dt_dx = std::ldexp(real_t{1}, int_cast<int>(-log2_width));
         return polynomial(jet_t{t, dt_dx});
     }
 };
@@ -220,11 +209,11 @@ template <typename t_segment_t, typename t_segment_packer_t> struct segment_fact
     using polynomial_t = segment_packer_t::polynomial_t;
     using function_sample_t = function_sample_t<real_t>;
 
-    [[no_unique_address]] segment_packer_t segment_packer;
+    [[no_unique_address]] segment_packer_t pack_segment;
 
     constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> segment_t
     {
-        return segment_t{segment_packer(polynomial, log2_width)};
+        return segment_t{pack_segment(polynomial, log2_width)};
     }
 };
 
@@ -428,7 +417,7 @@ struct refinement_pool_seeder_t
         workspace.refinement_pool.push(interval_factory.create(sample_target_function,
             subdomain_t{
                 .left = left,
-                .midpoint = sample_target_function(midpoint(left.x, right.x)),
+                .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
                 .right = right,
                 .log2_width = log2_domain_max,
             }));
@@ -656,7 +645,8 @@ TEST(spline_generator, poc)
     using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<real_t>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
-    using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t>;
+    using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
+    using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
     using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
