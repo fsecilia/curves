@@ -6,6 +6,7 @@
 
 #pragma once
 
+#if 0
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
@@ -182,3 +183,4 @@ private:
 };
 
 } // namespace crv::spline
+#endif
