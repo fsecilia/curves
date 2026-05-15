@@ -12,6 +12,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/polynomial.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
@@ -21,7 +22,6 @@
 #include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
-#include <crv/math/spline/polynomial.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
 #include <crv/math/spline/spline.hpp>

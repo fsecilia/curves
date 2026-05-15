@@ -20,6 +20,7 @@ target_sources(lib PRIVATE
     math/io.cpp
     math/io.hpp
     math/jet/jet.hpp
+    math/polynomial.hpp
     math/quadrature/adaptive_integrator.hpp
     math/quadrature/antiderivative.hpp
     math/quadrature/bisector.hpp
@@ -70,7 +71,6 @@ target_sources_kernel(lib
     math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/polynomial.hpp
     math/spline/segment_locator.hpp
     math/spline/segment.hpp
     math/spline/spline.hpp
@@ -120,6 +120,7 @@ if (enable_testing)
         math/jet/test/nested_jet.cpp
         math/limits_test.cpp
         math/linear_test.cpp
+        math/polynomial_test.cpp
         math/quadrature/adaptive_integrator_test.cpp
         math/quadrature/antiderivative_test.cpp
         math/quadrature/bisector_test.cpp
@@ -141,7 +142,6 @@ if (enable_testing)
         math/spline/construction/segment_factory_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
-        math/spline/polynomial_test.cpp
         math/spline/segment_locator_test.cpp
         math/spline/segment_test.cpp
         math/spline/spline_test.cpp
