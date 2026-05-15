@@ -275,5 +275,71 @@ static_assert(evaluate({{{0, 0}, {0, 0}, {5, 14}, {12, -16}}}, x_t{1}) == y_t::l
 
 } // namespace segment_evaluator_tests
 
+// ====================================================================================================================
+// orchestration
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// segment_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace segment_tests {
+
+//
+// configure
+//
+
+// pipeline
+using narrow_t = int32_t;
+using x_t = fixed_t<narrow_t, 14>;
+using y_t = fixed_t<narrow_t, 18>;
+constexpr auto segment_layout = segment_layout_t{
+    .intermediate = {.shift_width = 4, .is_signed = false},
+    .final = {.shift_width = 4, .is_signed = true},
+};
+
+using unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
+using evaluator_t = segment_evaluator_t<x_t, y_t>;
+using sut_t = segment_t<x_t, packed_segment_t, unpacker_t, evaluator_t>;
+
+// test abi and memory invariants
+static_assert(std::is_trivially_copyable_v<sut_t>);
+static_assert(alignof(sut_t) >= 32);
+
+//
+// create sut from nontrivial segment
+//
+
+constexpr auto x = 10;
+constexpr auto a = 3 * 1024;
+constexpr auto a_shift = 1;
+constexpr auto b = 5 * 512;
+constexpr auto b_shift = 2;
+constexpr auto c = 7 * 128;
+constexpr auto c_shift = 3;
+constexpr auto d = 11 * 32;
+constexpr auto d_shift = 4;
+constexpr int_t y_expected
+    = ((((((a * x >> a_shift) + b) * x >> b_shift) + c) * x) + (d << c_shift)) >> (c_shift + d_shift);
+
+constexpr auto pack(mantissa_t mantissa, shift_t shift) noexcept -> packed_field_t
+{
+    auto const shift_mask = segment_layout.intermediate.shift_mask();
+    return (static_cast<packed_field_t>(mantissa) << segment_layout.intermediate.shift_width)
+        | (static_cast<packed_field_t>(shift) & shift_mask);
+}
+constexpr auto packed_segment
+    = packed_segment_t{pack(a, a_shift), pack(b, b_shift), pack(c, c_shift), pack(d, d_shift)};
+
+constexpr auto sut = sut_t{packed_segment};
+
+//
+// test
+//
+
+static_assert(sut(x_t::literal(x)) == y_t::literal(y_expected));
+
+} // namespace segment_tests
+
 } // namespace
 } // namespace crv::spline
