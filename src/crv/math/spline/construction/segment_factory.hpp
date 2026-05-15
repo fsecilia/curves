@@ -13,6 +13,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/cubic.hpp>
+#include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
 #include <bit>
@@ -237,6 +238,24 @@ struct segment_packer_t
         packed_segment[fields_per_segment - 1] = pack_field(std::move(builder).finish(), final_layout);
 
         return packed_segment;
+    }
+};
+
+/// creates final segment from its cubic and width
+template <typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
+{
+    using segment_t = t_segment_t;
+    using segment_packer_t = t_segment_packer_t;
+
+    using scalar_t = segment_packer_t::scalar_t;
+    using cubic_t = segment_packer_t::cubic_t;
+    using function_sample_t = function_sample_t<scalar_t>;
+
+    [[no_unique_address]] segment_packer_t pack_segment;
+
+    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
+    {
+        return segment_t{pack_segment(cubic, log2_width)};
     }
 };
 
