@@ -155,7 +155,7 @@ struct segment_builder_t
 
         return unpacked_field_t{
             .mantissa = final_acc_mantissa,
-            .shift = int_cast<int8_t>(final_acc_shift),
+            .shift = int_cast<shift_t>(final_acc_shift),
         };
     }
 
