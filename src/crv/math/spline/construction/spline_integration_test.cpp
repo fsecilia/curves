@@ -150,7 +150,7 @@ public:
 
     constexpr auto operator()(x_t dx) const noexcept -> y_t
     {
-        return y_t::convert(evaluate_segment(unpack_segment(packed_segment_), dx));
+        return evaluate_segment(unpack_segment(packed_segment_), dx);
     }
 
 private:
