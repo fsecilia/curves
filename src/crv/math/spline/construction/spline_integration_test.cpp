@@ -25,6 +25,7 @@
 #include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
+#include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
 #include <crv/math/spline/spline.hpp>
@@ -441,6 +442,8 @@ TEST(spline_generator, poc)
     constexpr auto domain_max = 1 << log2_domain_max;
     constexpr auto log2_min_width = -16;
     constexpr auto global_tolerance = 1e-10; // should max against integral
+    constexpr auto final_layout_min_shift = prod_pipeline_config.segment_layout.final.min_shift();
+    constexpr auto final_layout_max_shift = prod_pipeline_config.segment_layout.final.max_shift();
 
 #if 0
     static auto const min_width = std::ldexp(scalar_t{1}, log2_min_width);

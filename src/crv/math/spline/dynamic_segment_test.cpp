@@ -6,6 +6,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
+#include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/test/test.hpp>
 
@@ -21,6 +22,8 @@ using scalar_t = float_t;
 struct spline_dynamic_segment_test_t : Test
 {
     static constexpr auto log2_min_width = -16;
+    static constexpr auto final_layout_min_shift = prod_pipeline_config.segment_layout.final.min_shift();
+    static constexpr auto final_layout_max_shift = prod_pipeline_config.segment_layout.final.max_shift();
 
     // A 32khz mouse fully saturating input at max rate produces a velocity of sqrt(2*(2^15 - 1)^2)*32 ~= 20.5 bits, so
     // we need 21 integer bits, which gives Q21.42. We could pragmatically put a soft limiter on x somewhere much lower
