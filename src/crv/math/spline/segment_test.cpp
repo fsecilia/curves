@@ -14,22 +14,56 @@ namespace {
 // layouts
 // ====================================================================================================================
 
-static_assert(intermediate_layout.shift_mask() == 0x3F); // 6 bits
-static_assert(final_layout.shift_mask() == 0x7F); // 7 bits
+static_assert(intermediate_layout.shift_mask() == 0x3f); // 6 bits
+static_assert(final_layout.shift_mask() == 0x7f); // 7 bits
 
 // --------------------------------------------------------------------------------------------------------------------
 // field_layout_t
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(field_layout_t{0, false}.shift_mask() == 0x0);
-static_assert(field_layout_t{0, true}.shift_mask() == 0x0);
-static_assert(field_layout_t{1, false}.shift_mask() == 0x1);
-static_assert(field_layout_t{1, true}.shift_mask() == 0x1);
-static_assert(field_layout_t{4, true}.shift_mask() == 0xF);
-static_assert(field_layout_t{5, true}.shift_mask() == 0x1F);
-static_assert(field_layout_t{8, true}.shift_mask() == 0xFF);
-static_assert(field_layout_t{8, false}.shift_mask() == 0xFF);
-static_assert(field_layout_t{9, true}.shift_mask() == 0x1FF);
+//
+// shift mask
+//
+
+// unsigned boundaries
+static_assert(field_layout_t{0, false}.shift_mask() == 0x0ULL);
+static_assert(field_layout_t{1, false}.shift_mask() == 0x1ULL);
+static_assert(field_layout_t{8, false}.shift_mask() == 0xffULL);
+static_assert(field_layout_t{63, false}.shift_mask() == 0x7fffffffffffffffULL);
+
+// signed boundaries
+static_assert(field_layout_t{0, true}.shift_mask() == 0x0ULL);
+static_assert(field_layout_t{1, true}.shift_mask() == 0x1ULL);
+static_assert(field_layout_t{8, true}.shift_mask() == 0xffULL);
+
+//
+// min shift
+//
+
+// unsigned min is always 0
+static_assert(field_layout_t{0, false}.min_shift() == 0);
+static_assert(field_layout_t{63, false}.min_shift() == 0);
+
+// signed min scales by powers of two
+static_assert(field_layout_t{0, true}.min_shift() == 0x0);
+static_assert(field_layout_t{1, true}.min_shift() == -0x1);
+static_assert(field_layout_t{8, true}.min_shift() == -0x80);
+static_assert(field_layout_t{63, true}.min_shift() == -0x4000000000000000LL);
+
+//
+// max shift
+//
+
+// unsigned max matches the mask
+static_assert(field_layout_t{0, false}.max_shift() == 0x0);
+static_assert(field_layout_t{1, false}.max_shift() == 0x1);
+static_assert(field_layout_t{8, false}.max_shift() == 0xff);
+
+// signed max is positive half of the domain
+static_assert(field_layout_t{0, true}.max_shift() == -0x1); // empty domain
+static_assert(field_layout_t{1, true}.max_shift() == 0x0);
+static_assert(field_layout_t{8, true}.max_shift() == 0x7f);
+static_assert(field_layout_t{63, true}.max_shift() == 0x3fffffffffffffffLL);
 
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking

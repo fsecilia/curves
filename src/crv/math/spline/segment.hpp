@@ -32,6 +32,18 @@ struct field_layout_t
     bool is_signed;
 
     constexpr auto shift_mask() const noexcept -> packed_field_t { return (packed_field_t{1} << shift_width) - 1; }
+
+    constexpr auto min_shift() const noexcept -> int_t
+    {
+        if (!is_signed) return 0;
+        return -max_shift() - 1;
+    }
+
+    constexpr auto max_shift() const noexcept -> int_t
+    {
+        if (!is_signed) return static_cast<int_t>(shift_mask());
+        return static_cast<int_t>((packed_field_t{1} << shift_width) >> 1) - 1;
+    }
 };
 
 constexpr auto intermediate_layout = field_layout_t{
