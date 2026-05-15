@@ -11,7 +11,7 @@
 
 namespace crv {
 
-template <typename t_scalar_t, int_t t_degree = 3> struct polynomial_t : std::array<t_scalar_t, t_degree + 1>
+template <typename t_scalar_t, int_t t_degree> struct polynomial_t : std::array<t_scalar_t, t_degree + 1>
 {
     using scalar_t = t_scalar_t;
 
