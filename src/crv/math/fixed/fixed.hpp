@@ -13,7 +13,6 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
-#include <crv/math/saturation.hpp>
 #include <crv/math/shifter.hpp>
 #include <climits>
 #include <concepts>
@@ -56,6 +55,13 @@ inline constexpr auto default_shr_rounding_mode = rounding_modes::shr::truncate;
 using default_shr_rounding_mode_t = std::remove_cv_t<decltype(default_shr_rounding_mode)>;
 
 inline constexpr auto default_shifter = shifter_t<default_shr_rounding_mode>{};
+
+enum class overflow_policy_t
+{
+    saturate,
+    wrap
+};
+constexpr auto default_overflow_policy = overflow_policy_t::saturate;
 
 } // namespace fixed
 
@@ -116,10 +122,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     // Conversions
     // ----------------------------------------------------------------------------------------------------------------
 
-    static constexpr auto default_overflow_policy = overflow_policy_t::saturate;
-
     /// converts from another fixed_t specialization, rescaling precision using shifter
-    template <is_fixed other_t, overflow_policy_t overflow_policy = default_overflow_policy,
+    template <is_fixed other_t, fixed::overflow_policy_t overflow_policy = fixed::default_overflow_policy,
         auto shifter = fixed::default_shifter>
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
@@ -128,7 +132,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         {
             using other_value_t = typename other_t::value_t;
             static constexpr auto shift_bits = frac_bits - other_t::frac_bits;
-            static constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
+            static constexpr auto saturate = overflow_policy == fixed::overflow_policy_t::saturate;
 
             if constexpr (shift_bits >= 0)
             {
@@ -170,22 +174,22 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// overloads convert so overflow policy can be specified first
-    template <overflow_policy_t overflow_policy, is_fixed other_t, auto shifter = fixed::default_shifter>
+    template <fixed::overflow_policy_t overflow_policy, is_fixed other_t, auto shifter = fixed::default_shifter>
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
         return convert<other_t, overflow_policy, shifter>(other);
     }
 
     /// overloads convert so shifter can be specified first
-    template <auto shifter, is_fixed other_t, overflow_policy_t overflow_policy = default_overflow_policy>
-        requires(!std::same_as<decltype(shifter), overflow_policy_t>)
+    template <auto shifter, is_fixed other_t, fixed::overflow_policy_t overflow_policy = fixed::default_overflow_policy>
+        requires(!std::same_as<decltype(shifter), fixed::overflow_policy_t>)
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {
         return convert<other_t, overflow_policy, shifter>(other);
     }
 
     /// overloads convert so wrap and shifter can be specified without specifying other_t
-    template <overflow_policy_t overflow_policy, auto shifter, is_fixed other_t>
+    template <fixed::overflow_policy_t overflow_policy, auto shifter, is_fixed other_t>
         requires(!is_fixed<decltype(shifter)>)
     static constexpr auto convert(other_t other) noexcept -> fixed_t
     {

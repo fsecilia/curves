@@ -69,7 +69,6 @@ target_sources_kernel(lib
     math/limits.hpp
     math/linear.hpp
     math/rounding_mode.hpp
-    math/saturation.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
     math/spline/segment_locator.hpp

@@ -10,14 +10,13 @@
 #include <crv/algorithm.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/math/saturation.hpp>
 #include <crv/math/shifter.hpp>
 
 namespace crv {
 
 /// fused multiply-add for fixed-point types
 template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
-    typename shifter_t = shifter_t<>, overflow_policy_t overflow_policy = overflow_policy_t::wrap>
+    typename shifter_t = shifter_t<>, fixed::overflow_policy_t overflow_policy = fixed::overflow_policy_t::wrap>
 struct fma_t
 {
     [[no_unique_address]] shifter_t shifter = {};
@@ -95,7 +94,7 @@ struct fma_t
     static constexpr auto narrowed_max = (out_shift < 0) ? ((sum_max >> -out_shift) + 1) : (sum_max << out_shift);
 
     // determine if saturation is possible
-    static constexpr auto saturate = overflow_policy == overflow_policy_t::saturate;
+    static constexpr auto saturate = overflow_policy == fixed::overflow_policy_t::saturate;
     static constexpr auto lower_overflow_possible
         = is_signed && (product_min < 0) && (addend_min < 0) && (sum_min >= 0);
     static constexpr auto upper_overflow_possible
