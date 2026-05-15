@@ -442,8 +442,10 @@ TEST(spline_generator, poc)
     constexpr auto domain_max = 1 << log2_domain_max;
     constexpr auto log2_min_width = -16;
     constexpr auto global_tolerance = 1e-10; // should max against integral
-    constexpr auto final_layout_min_shift = prod_pipeline_config.segment_layout.final.min_shift();
-    constexpr auto final_layout_max_shift = prod_pipeline_config.segment_layout.final.max_shift();
+
+    constexpr auto segment_layout = prod_pipeline_config.segment_layout;
+    constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
+    constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
 #if 0
     static auto const min_width = std::ldexp(scalar_t{1}, log2_min_width);
@@ -467,7 +469,7 @@ TEST(spline_generator, poc)
 #endif
 
     using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
-    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
+    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
     using segment_t = segment_t<x_t, packed_segment_t, segment_unpacker_t, segment_evaluator_t>;
     using subdomain_t = subdomain_t<scalar_t>;
     using interval_t = interval_t<scalar_t>;

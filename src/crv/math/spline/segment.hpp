@@ -103,26 +103,30 @@ struct field_unpacker_t
     }
 };
 
-template <typename t_field_unpacker_t> struct segment_unpacker_t
+template <typename t_field_unpacker_t, segment_layout_t t_segment_layout> struct segment_unpacker_t
 {
     using field_unpacker_t = t_field_unpacker_t;
+
+    static constexpr auto segment_layout = t_segment_layout;
+    static constexpr auto max_total_shift = segment_layout.max_total_shift();
 
     [[no_unique_address]] field_unpacker_t unpack_field;
 
     constexpr auto operator()(packed_segment_t const& packed_segment, int_t field_index) const noexcept
         -> unpacked_field_t
     {
-        auto const layout = (field_index == fields_per_segment - 1) ? final_layout : intermediate_layout;
+        auto const layout
+            = (field_index == fields_per_segment - 1) ? segment_layout.final : segment_layout.intermediate;
         return unpack_field(packed_segment[field_index], layout);
     }
 
     constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> unpacked_segment_t
     {
         return unpacked_segment_t{
-            unpack_field(packed_segment[0], intermediate_layout),
-            unpack_field(packed_segment[1], intermediate_layout),
-            unpack_field(packed_segment[2], intermediate_layout),
-            unpack_field(packed_segment[3], final_layout),
+            unpack_field(packed_segment[0], segment_layout.intermediate),
+            unpack_field(packed_segment[1], segment_layout.intermediate),
+            unpack_field(packed_segment[2], segment_layout.intermediate),
+            unpack_field(packed_segment[3], segment_layout.final),
         };
     }
 };
@@ -140,10 +144,7 @@ struct segment_evaluator_t
     using narrow_t = make_signed_t<typename y_t::value_t>;
     using wide_t = widened_t<narrow_t>;
 
-    static constexpr auto max_intermediate_shift = intermediate_layout.shift_mask();
-    static constexpr auto max_final_shift = final_layout_max_shift;
-    static constexpr auto max_total_shift = max_intermediate_shift + max_final_shift;
-    static_assert(max_total_shift < static_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
+    static constexpr auto max_shift = static_cast<int_t>(sizeof(wide_t) * CHAR_BIT) - 1;
 
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept -> y_t
     {
@@ -216,6 +217,9 @@ public:
     using segment_evaluator_t = t_segment_evaluator_t;
 
     using y_t = segment_evaluator_t::y_t;
+
+    // enforce evaluator's accumulator is wide enough for layout's max shifts
+    static_assert(segment_unpacker_t::max_total_shift <= segment_evaluator_t::max_shift);
 
     constexpr segment_t() noexcept : packed_segment_{} {}
 
