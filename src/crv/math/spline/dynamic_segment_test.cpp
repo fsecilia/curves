@@ -26,15 +26,8 @@ struct spline_dynamic_segment_test_t : Test
     static constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     static constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
-    // A 32khz mouse fully saturating input at max rate produces a velocity of sqrt(2*(2^15 - 1)^2)*32 ~= 20.5 bits, so
-    // we need 21 integer bits, which gives Q21.42. We could pragmatically put a soft limiter on x somewhere much lower
-    // because sustained saturation isn't really possible by a human and a few more fractional bits here would improve
-    // accuracy.
-    using x_t = fixed_t<int64_t, 42>;
-
-    // For a domain of [0, 2^8) and soft limiter on the integrand at y=1000, the largest integral possible is a pinned
-    // straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
-    using y_t = fixed_t<int64_t, 45>;
+    using x_t = prod_pipeline_config_t::x_t;
+    using y_t = prod_pipeline_config_t::y_t;
 
     using segment_unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
     using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
