@@ -115,4 +115,33 @@ template <typename scalar_t, typename floor_t> struct first_order_relative_t
     }
 };
 
+/// max of primal error and tangent error weighted by local steepness, in y units
+///
+/// Tangent error is weighted more in steep regions and less in flat regions, using the local slope of the target jet.
+/// It is translation-invariant in x.
+///
+/// inverse_curvature has units x^2/y and is the required to land (steepness*tangent_error) in y units; physically, it's
+/// roughly the inverse of a characteristic curvature of the target function family. tangent_floor has units [y/x].
+template <typename scalar_t, typename floor_t> struct first_order_steepness_t
+{
+    scalar_t inverse_curvature{1.0}; // [x^2/y]
+    scalar_t tangent_floor{1.0}; // [y/x]; lower bound on steepness used to weight tangent error
+
+    [[no_unique_address]] floor_t floor{};
+
+    template <typename jet_t>
+    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> typename jet_t::value_t
+    {
+        using std::isfinite;
+
+        auto const primal_error = abs(primal(target) - primal(approximation));
+        auto const tangent_error = abs(tangent(target) - tangent(approximation));
+        auto const steepness = floor(abs(tangent(target)), tangent_floor);
+        auto const result = max(primal_error, inverse_curvature * steepness * tangent_error);
+        assert(isfinite(result));
+
+        return result;
+    }
+};
+
 } // namespace crv::spline::error_norms
