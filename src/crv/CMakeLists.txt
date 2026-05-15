@@ -30,6 +30,7 @@ target_sources(lib PRIVATE
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
     math/spline/construction/approximant.hpp
+    math/spline/construction/cubic.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/function_sampler.hpp
     math/spline/construction/hermite_converter.hpp
