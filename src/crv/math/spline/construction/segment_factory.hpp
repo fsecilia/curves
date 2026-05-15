@@ -11,8 +11,8 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/integer.hpp>
-#include <crv/math/polynomial.hpp>
 #include <crv/math/shifter.hpp>
+#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
 #include <bit>
@@ -197,7 +197,7 @@ struct segment_packer_t
     using y_t = segment_builder_t::y_t;
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using scalar_t = float_extractor_t::scalar_t;
-    using polynomial_t = polynomial_t<scalar_t>;
+    using cubic_t = cubic_t<scalar_t>;
 
     static constexpr auto in_frac_bits = x_t::frac_bits;
     static constexpr auto out_frac_bits = y_t::frac_bits;
@@ -210,15 +210,15 @@ struct segment_packer_t
     [[no_unique_address]] float_extractor_t extract_float;
     [[no_unique_address]] builder_factory_t make_builder;
 
-    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> packed_segment_t
+    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> packed_segment_t
     {
         auto packed_segment = packed_segment_t{};
 
         // skip zero prefix
-        auto const seed_it = std::ranges::find_if(polynomial, [](auto const& c) { return c != 0.0; });
+        auto const seed_it = std::ranges::find_if(cubic, [](auto const& c) { return c != 0.0; });
 
-        // handle degenerate polynomials
-        if (seed_it == polynomial.end()) return packed_segment;
+        // handle degenerate cubics
+        if (seed_it == cubic.end()) return packed_segment;
 
         // seed
         auto const t_to_dx_shift = in_frac_bits + log2_width;
@@ -226,10 +226,10 @@ struct segment_packer_t
         auto builder = make_builder(t_to_dx_shift, seed.exponent, seed.mantissa);
 
         // process intermediate suffix
-        auto field_index = static_cast<int_t>(std::distance(polynomial.begin(), seed_it));
+        auto field_index = static_cast<int_t>(std::distance(cubic.begin(), seed_it));
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const scaled_int = extract_float(polynomial[field_index + 1]);
+            auto const scaled_int = extract_float(cubic[field_index + 1]);
             packed_segment[field_index] = pack_field(builder.push(scaled_int), intermediate_layout);
         }
 

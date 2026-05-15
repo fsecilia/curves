@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/test/test.hpp>
@@ -38,20 +39,20 @@ struct spline_dynamic_segment_test_t : Test
     using segment_builder_t = segment_builder_t<float_extractor_t::scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
     using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
-    using polynomial_t = polynomial_t<scalar_t>;
+    using cubic_t = cubic_t<scalar_t>;
 
     segment_packer_t segment_packer;
     segment_unpacker_t segment_unpacker;
     segment_evaluator_t segment_evaluator;
 
-    auto test(polynomial_t const& polynomial, int_t log2_width, scalar_t input, scalar_t expected) -> void
+    auto test(cubic_t const& cubic, int_t log2_width, scalar_t input, scalar_t expected) -> void
     {
         // double check float value
         auto const t = input;
-        auto const oracle = ((polynomial[0] * t + polynomial[1]) * t + polynomial[2]) * t + polynomial[3];
+        auto const oracle = cubic(t);
         EXPECT_NEAR(expected, oracle, 5e-13);
 
-        auto const packed_segment = segment_packer(polynomial, log2_width);
+        auto const packed_segment = segment_packer(cubic, log2_width);
         auto const unpacked_segment = segment_unpacker(packed_segment);
 
         // check actual result
@@ -65,8 +66,8 @@ struct spline_dynamic_segment_test_t : Test
 
 TEST_F(spline_dynamic_segment_test_t, pathological_integral)
 {
-    auto const polynomial = polynomial_t{0.0, 0.0, 1000.0, 0.0};
-    test(polynomial, 8, 256, 256 * 1000);
+    auto const cubic = cubic_t{0.0, 0.0, 1000.0, 0.0};
+    test(cubic, 8, 256, 256 * 1000);
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -90,12 +91,9 @@ struct spline_dynamic_segment_param_test_t : spline_dynamic_segment_test_t, With
     scalar_t const expected = GetParam().expected;
 
     // hermite: p0 = 0.1, m0 = 1, p1 = 0.5, m1 = 1.2
-    static constexpr auto polynomial = polynomial_t{1.4, -2.0, 1.0, 0.1};
+    static constexpr auto cubic = cubic_t{1.4, -2.0, 1.0, 0.1};
 
-    auto test(int_t log2_width) -> void
-    {
-        spline_dynamic_segment_test_t::test(polynomial, log2_width, input, expected);
-    }
+    auto test(int_t log2_width) -> void { spline_dynamic_segment_test_t::test(cubic, log2_width, input, expected); }
 };
 
 TEST_P(spline_dynamic_segment_param_test_t, log2_width_m8)

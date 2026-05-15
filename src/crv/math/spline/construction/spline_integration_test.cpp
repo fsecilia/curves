@@ -12,10 +12,10 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/math/polynomial.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
+#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
@@ -39,8 +39,7 @@ namespace {
 /// converts hermite basis to monomial basis
 template <std::floating_point scalar_t> struct hermite_converter_t
 {
-    template <typename jet_t>
-    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> polynomial_t<scalar_t>
+    template <typename jet_t> constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_t<scalar_t>
     {
         auto const p0 = primal(left_y);
         auto const p1 = primal(right_y);
@@ -79,10 +78,10 @@ template <std::floating_point t_scalar_t> struct interval_t
 
     using subdomain_t = subdomain_t<scalar_t>;
     using residual_t = residual_t<scalar_t>;
-    using polynomial_t = polynomial_t<scalar_t>;
+    using cubic_t = cubic_t<scalar_t>;
 
     subdomain_t subdomain;
-    polynomial_t polynomial;
+    cubic_t cubic;
     residual_t residual;
 
     constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
@@ -128,14 +127,14 @@ struct interval_factory_t
         auto const dx_dt = std::ldexp(1.0, static_cast<int>(subdomain.log2_width));
         auto const local_left_y = jet_t{subdomain.left.y.f, subdomain.left.y.df * dx_dt};
         auto const local_right_y = jet_t{subdomain.right.y.f, subdomain.right.y.df * dx_dt};
-        auto const polynomial = hermite_converter(local_left_y, local_right_y);
+        auto const cubic = hermite_converter(local_left_y, local_right_y);
 
         return {
             .subdomain = subdomain,
-            .polynomial = polynomial,
+            .cubic = cubic,
             .residual = estimate_residual(sample_target_function,
                 approximant_t{
-                    .polynomial = polynomial,
+                    .cubic = cubic,
                     .x0 = x0,
                     .log2_width = subdomain.log2_width,
                 },
@@ -179,21 +178,21 @@ private:
     packed_segment_t packed_segment_;
 };
 
-/// creates final segment from its polynomial and width
+/// creates final segment from its cubic and width
 template <typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
 {
     using segment_t = t_segment_t;
     using segment_packer_t = t_segment_packer_t;
 
     using scalar_t = segment_packer_t::scalar_t;
-    using polynomial_t = segment_packer_t::polynomial_t;
+    using cubic_t = segment_packer_t::cubic_t;
     using function_sample_t = function_sample_t<scalar_t>;
 
     [[no_unique_address]] segment_packer_t pack_segment;
 
-    constexpr auto operator()(polynomial_t const& polynomial, int_t log2_width) const noexcept -> segment_t
+    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
     {
-        return segment_t{pack_segment(polynomial, log2_width)};
+        return segment_t{pack_segment(cubic, log2_width)};
     }
 };
 
@@ -313,7 +312,7 @@ struct tangent_extender_t
 
     using x_t = segment_t::x_t;
     using scalar_t = segment_packer_t::scalar_t;
-    using polynomial_t = segment_packer_t::polynomial_t;
+    using cubic_t = segment_packer_t::cubic_t;
 
     [[no_unique_address]] segment_packer_t pack_segment;
     [[no_unique_address]] segment_unpacker_t unpack_segment;
@@ -327,7 +326,7 @@ struct tangent_extender_t
 
         auto const t = scalar_t{1};
         auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(log2_x_max - interval.subdomain.log2_width));
-        auto const dy_dx_extended_segment = interval.polynomial(jet_t{t, dt_dx}).df;
+        auto const dy_dx_extended_segment = interval.cubic(jet_t{t, dt_dx}).df;
 
         // find fixed y at dx = width
         auto const final_segment_width = x_t{1} << interval.subdomain.log2_width;
@@ -335,8 +334,8 @@ struct tangent_extender_t
 
         // pack proto and unpack to find shift
         auto y = from_fixed<scalar_t>(y1_actual);
-        auto tangent_polynomial = polynomial_t{0, 0, dy_dx_extended_segment, y};
-        auto packed_segment = pack_segment(tangent_polynomial, log2_x_max);
+        auto tangent_cubic = cubic_t{0, 0, dy_dx_extended_segment, y};
+        auto packed_segment = pack_segment(tangent_cubic, log2_x_max);
         auto const unpacked_segment = unpack_segment(packed_segment);
         auto const c3_shift = unpacked_segment[3].shift;
 
@@ -519,7 +518,7 @@ struct assembler_t
 private:
     constexpr auto make_segment(auto const& interval) const noexcept -> segment_t
     {
-        return segment_factory(interval.polynomial, interval.subdomain.log2_width);
+        return segment_factory(interval.cubic, interval.subdomain.log2_width);
     }
 };
 
