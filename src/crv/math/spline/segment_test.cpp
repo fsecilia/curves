@@ -85,7 +85,7 @@ static_assert(segment_layout_t{.intermediate = {1, false}, .final = {8, true}}.m
 
 namespace field_unpacker_tests {
 
-constexpr auto test_unpack_round_trip(unpacked_field_t unpacked_field, field_layout_t field_layout) noexcept -> bool
+constexpr auto test_unpack(unpacked_field_t unpacked_field, field_layout_t field_layout) noexcept -> bool
 {
     static constexpr auto pack_field = field_packer_t{};
     static constexpr auto unpack_field = field_unpacker_t{};
@@ -98,32 +98,25 @@ constexpr auto test_unpack_round_trip(unpacked_field_t unpacked_field, field_lay
 }
 
 // positive value, unsigned shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = 5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = false}));
+static_assert(test_unpack({.mantissa = 5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = false}));
 
 // negative value, unsigned shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = -5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = false}));
+static_assert(test_unpack({.mantissa = -5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = false}));
 
 // positive value, positive shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = 5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = true}));
+static_assert(test_unpack({.mantissa = 5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = true}));
 
 // negative value, positive shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = -5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = true}));
+static_assert(test_unpack({.mantissa = -5, .shift = 3}, field_layout_t{.shift_width = 4, .is_signed = true}));
 
 // positive value, negative shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = 5, .shift = -3}, field_layout_t{.shift_width = 4, .is_signed = true}));
+static_assert(test_unpack({.mantissa = 5, .shift = -3}, field_layout_t{.shift_width = 4, .is_signed = true}));
 
 // negative value, negative shift
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = -5, .shift = -3}, field_layout_t{.shift_width = 4, .is_signed = true}));
+static_assert(test_unpack({.mantissa = -5, .shift = -3}, field_layout_t{.shift_width = 4, .is_signed = true}));
 
 // separate configuration
-static_assert(test_unpack_round_trip(
-    unpacked_field_t{.mantissa = 10, .shift = 5}, field_layout_t{.shift_width = 3, .is_signed = false}));
+static_assert(test_unpack({.mantissa = 10, .shift = 5}, field_layout_t{.shift_width = 3, .is_signed = false}));
 
 } // namespace field_unpacker_tests
 
