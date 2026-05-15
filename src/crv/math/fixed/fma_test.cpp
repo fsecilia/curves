@@ -27,11 +27,11 @@ using frac_t = fixed_t<int16_t, 12>;
 constexpr auto rne = shifter_t<rounding_modes::shr::nearest_even>{};
 constexpr auto trunc = shifter_t<rounding_modes::shr::truncate>{};
 
-constexpr auto saturate = overflow_policy_t::saturate;
-constexpr auto wrap = overflow_policy_t::wrap;
+constexpr auto saturate = fixed::overflow_policy_t::saturate;
+constexpr auto wrap = fixed::overflow_policy_t::wrap;
 
 // autodeducing wrapper
-template <typename out_t, overflow_policy_t saturation, typename multiplicand_t, typename multiplier_t,
+template <typename out_t, fixed::overflow_policy_t saturation, typename multiplicand_t, typename multiplier_t,
     typename addend_t, typename shifter_t>
 constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, shifter_t shifter) -> out_t
 {
