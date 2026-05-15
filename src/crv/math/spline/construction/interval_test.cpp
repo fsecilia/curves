@@ -199,7 +199,8 @@ TEST_F(spline_interval_factory_test_t, create)
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(cubic));
 
     EXPECT_CALL(mock_residual_estimator,
-        call(sample_target_function, approximant_t{.cubic = cubic, .x0 = x0, log2_width}, left.x, midpoint.x, right.x))
+        call(sample_target_function, approximant_t{.cubic = cubic, .x0 = x0, .log2_width = log2_width}, left.x,
+            midpoint.x, right.x))
         .WillOnce(Return(residual));
 
     auto const actual = sut.create(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
