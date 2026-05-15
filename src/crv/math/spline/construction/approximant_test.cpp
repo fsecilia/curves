@@ -29,7 +29,7 @@ TEST_F(spline_approximant_test_t, evaluates_exact_cubic_with_scale_and_offset)
     sut_t const sut{cubic, x0, log2_width};
 
     // input x = 2.0
-    auto const input_x = scalar_t{2.0f};
+    auto const input_x = scalar_t{2.0};
 
     // x_local = 2.0 - 1.0 = 1.0
     // t = x_local/2^1 = 0.5
@@ -37,14 +37,14 @@ TEST_F(spline_approximant_test_t, evaluates_exact_cubic_with_scale_and_offset)
     // y = P(0.5) = 1.0(0.5)^2 + 3.0(0.5) + 2.0 = 3.75
     // dy/dx = P'(0.5)dt/dx = (2.0*0.5 + 3.0)*0.5 = 4.0*0.5 = 2.0
 
-    auto const expected_y = scalar_t{3.75f};
-    auto const expected_tangent = scalar_t{2.0f};
+    auto const expected_y = scalar_t{3.75};
+    auto const expected_tangent = scalar_t{2.0};
     auto const expected = jet_t{expected_y, expected_tangent};
 
     auto const actual = sut(input_x);
 
-    EXPECT_FLOAT_EQ(primal(expected), primal(actual));
-    EXPECT_FLOAT_EQ(tangent(expected), tangent(actual));
+    EXPECT_DOUBLE_EQ(primal(expected), primal(actual));
+    EXPECT_DOUBLE_EQ(tangent(expected), tangent(actual));
 }
 
 TEST_F(spline_approximant_test_t, quantizes_floating_point_input_to_fixed_grid)
@@ -65,8 +65,8 @@ TEST_F(spline_approximant_test_t, quantizes_floating_point_input_to_fixed_grid)
 
     auto const actual = sut(off_grid_input);
 
-    EXPECT_FLOAT_EQ(expected_y, primal(actual));
-    EXPECT_FLOAT_EQ(expected_tangent, tangent(actual));
+    EXPECT_DOUBLE_EQ(expected_y, primal(actual));
+    EXPECT_DOUBLE_EQ(expected_tangent, tangent(actual));
 }
 
 } // namespace
