@@ -11,6 +11,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/integer.hpp>
+#include <crv/math/saturate_cast.hpp>
 #include <array>
 #include <climits>
 #include <numeric>
@@ -176,7 +177,7 @@ private:
         auto const total_left_shift = -(relative_shift_c2_to_c3 + relative_shift_c3_to_y);
 
         // align to the final output radix
-        return y_t::literal(std::saturating_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift)));
+        return y_t::literal(saturate_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift)));
     }
 };
 

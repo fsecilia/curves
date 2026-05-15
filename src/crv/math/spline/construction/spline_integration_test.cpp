@@ -13,6 +13,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/rounding_mode.hpp>
+#include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/cubic.hpp>
@@ -197,7 +198,7 @@ struct tangent_extender_t
         auto const c3_shift = unpacked_segment[3].shift;
 
         // solve target mantissa directly via renormalization
-        auto const y1_as_signed = std::saturating_cast<mantissa_t>(y1_actual.value);
+        auto const y1_as_signed = saturate_cast<mantissa_t>(y1_actual.value);
         auto const target_mantissa = saturating_shifter.shift(y1_as_signed, c3_shift);
 
         // repack new c3
