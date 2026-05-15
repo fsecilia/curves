@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief cubic polynomial
+/// \brief polynomial in monomial basis
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <array>
 
-namespace crv::spline {
+namespace crv {
 
 template <typename t_scalar_t, int_t t_degree = 3> struct polynomial_t : std::array<t_scalar_t, t_degree + 1>
 {
@@ -35,4 +35,4 @@ template <typename scalar_t, typename... remaining_t>
 polynomial_t(scalar_t, remaining_t...)
     -> polynomial_t<std::enable_if_t<(std::same_as<scalar_t, remaining_t> && ...), scalar_t>, sizeof...(remaining_t)>;
 
-} // namespace crv::spline
+} // namespace crv

@@ -8,7 +8,7 @@
 #include <crv/test/test.hpp>
 #include <string>
 
-namespace crv::spline {
+namespace crv {
 namespace {
 
 namespace numeric_boundaries {
@@ -108,4 +108,4 @@ static_assert(polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}, scalar_t
 } // namespace symbolic_tests
 
 } // namespace
-} // namespace crv::spline
+} // namespace crv
