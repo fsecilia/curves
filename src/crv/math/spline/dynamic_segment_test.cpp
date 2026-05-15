@@ -22,8 +22,9 @@ using scalar_t = float_t;
 struct spline_dynamic_segment_test_t : Test
 {
     static constexpr auto log2_min_width = -16;
-    static constexpr auto final_layout_min_shift = prod_pipeline_config.segment_layout.final.min_shift();
-    static constexpr auto final_layout_max_shift = prod_pipeline_config.segment_layout.final.max_shift();
+    static constexpr auto segment_layout = prod_pipeline_config.segment_layout;
+    static constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
+    static constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
     // A 32khz mouse fully saturating input at max rate produces a velocity of sqrt(2*(2^15 - 1)^2)*32 ~= 20.5 bits, so
     // we need 21 integer bits, which gives Q21.42. We could pragmatically put a soft limiter on x somewhere much lower
@@ -35,7 +36,7 @@ struct spline_dynamic_segment_test_t : Test
     // straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
     using y_t = fixed_t<int64_t, 45>;
 
-    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t>;
+    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
     using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
     using float_extractor_t = float_extractor_t<float64_t>;
     using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
