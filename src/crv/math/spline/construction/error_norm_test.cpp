@@ -128,8 +128,10 @@ constexpr auto mixed_error_approx_tangent_dominates = jet_t{9.0, 5.0}; // positi
 static_assert(abs(first_order_absolute_default_weight(target_jet, exact_approx) - 0.0) < 1e-9);
 static_assert(abs(first_order_absolute_default_weight(target_jet, pos_error_approx) - 2.0) < 1e-9);
 static_assert(abs(first_order_absolute_default_weight(target_jet, tan_error_approx) - 3.0) < 1e-9);
-static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
-static_assert(abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_tangent_dominates) - 4.0) < 1e-9);
+static_assert(
+    abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
+static_assert(
+    abs(first_order_absolute_default_weight(target_jet, mixed_error_approx_tangent_dominates) - 4.0) < 1e-9);
 
 // --------------------------------------------------------------------------------------------------------------------
 // custom weight
@@ -139,10 +141,12 @@ constexpr auto first_order_absolute_custom_weight = first_order_absolute_t<scala
 constexpr auto first_order_absolute_zero_weight = first_order_absolute_t<scalar_t>{0.0};
 
 static_assert(abs(first_order_absolute_custom_weight(target_jet, tan_error_approx) - 1.5) < 1e-9);
-static_assert(abs(first_order_absolute_custom_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
+static_assert(
+    abs(first_order_absolute_custom_weight(target_jet, mixed_error_approx_primal_dominates) - 4.0) < 1e-9);
 
 // tangent error is completely ignored when weight is 0
-static_assert(abs(first_order_absolute_zero_weight(target_jet, mixed_error_approx_tangent_dominates) - 1.0) < 1e-9);
+static_assert(
+    abs(first_order_absolute_zero_weight(target_jet, mixed_error_approx_tangent_dominates) - 1.0) < 1e-9);
 
 } // namespace first_order_aboslute_test
 
