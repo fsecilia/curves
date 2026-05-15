@@ -54,19 +54,6 @@ struct segment_layout_t
     constexpr auto max_total_shift() const noexcept -> int_t { return intermediate.max_shift() + final.max_shift(); }
 };
 
-constexpr auto intermediate_layout = field_layout_t{
-    .shift_width = 6,
-    .is_signed = false,
-};
-
-constexpr auto final_layout = field_layout_t{
-    .shift_width = 7,
-    .is_signed = true,
-};
-
-constexpr auto final_layout_min_shift = -(1 << (final_layout.shift_width - 1));
-constexpr auto final_layout_max_shift = (1 << (final_layout.shift_width - 1)) - 1;
-
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------

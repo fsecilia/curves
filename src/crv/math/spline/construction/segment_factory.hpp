@@ -186,7 +186,8 @@ template <typename t_builder_t> struct builder_factory_t
     }
 };
 
-template <typename t_float_extractor_t, typename t_field_packer_t, typename t_builder_factory_t, int_t log2_min_width>
+template <typename t_float_extractor_t, typename t_field_packer_t, typename t_builder_factory_t, int_t log2_min_width,
+    segment_layout_t segment_layout>
 struct segment_packer_t
 {
     using float_extractor_t = t_float_extractor_t;
@@ -231,11 +232,11 @@ struct segment_packer_t
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const scaled_int = extract_float(cubic[field_index + 1]);
-            packed_segment[field_index] = pack_field(builder.push(scaled_int), intermediate_layout);
+            packed_segment[field_index] = pack_field(builder.push(scaled_int), segment_layout.intermediate);
         }
 
         // finish final field
-        packed_segment[fields_per_segment - 1] = pack_field(std::move(builder).finish(), final_layout);
+        packed_segment[fields_per_segment - 1] = pack_field(std::move(builder).finish(), segment_layout.final);
 
         return packed_segment;
     }
