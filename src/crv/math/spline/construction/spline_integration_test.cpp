@@ -580,7 +580,11 @@ TEST(spline_generator, poc)
     constexpr auto log2_min_width = -16;
     constexpr auto global_tolerance = 1e-10; // should max against integral
 
-#if 1
+#if 0
+    static auto const min_width = std::ldexp(scalar_t{1}, log2_min_width);
+    using error_norm_t = error_norms::first_order_steepness_t<scalar_t, error_norms::logsumexp_floor_t<scalar_t>>;
+    auto const error_norm = error_norm_t{.inverse_curvature = 1.0, .tangent_floor = min_width};
+#elif 0
     static auto const min_width = std::ldexp(scalar_t{1}, log2_min_width);
     using error_norm_t = error_norms::first_order_relative_t<scalar_t, error_norms::logsumexp_floor_t<scalar_t>>;
     auto const error_norm = error_norm_t{.primal_floor = min_width, .tangent_floor = min_width};
@@ -590,8 +594,6 @@ TEST(spline_generator, poc)
 #endif
 
 #if 1
-    // with the steepest log1p we support with 16 initial segments, 181.625x this always produces segments with
-    // error > 1e-5 near about x=50 unless you make it basically flat already
     using weight_function_t = weight_functions::hyperbolic_decay_t<scalar_t>;
     auto const weight_function = weight_function_t{.halflife = 0.5};
 #else
@@ -651,7 +653,7 @@ TEST(spline_generator, poc)
         refinement_pool_seeder_t{.interval_factory = interval_factory},
         refiner_t
         {
-            .requires_subdivision = convergence_test_t{.global_tolerance=global_tolerance},
+            .requires_subdivision = convergence_test_t{.global_tolerance = global_tolerance},
             .subdivide = subdivider_t
             {
                 .bisect = bisector_t{},
@@ -663,7 +665,7 @@ TEST(spline_generator, poc)
 
     auto const target_function = [](auto x) static noexcept -> decltype(x) {
         using std::log1p;
-        return 18.1625 * log1p(x);
+        return 181.625 * log1p(x);
     };
 
     auto spline = spline_t{};
@@ -683,7 +685,9 @@ TEST(spline_generator, poc)
         auto const actual_y = from_fixed<scalar_t>(spline(x_fixed));
 
         auto const difference = actual_y - expected_y;
-        ASSERT_LT(abs(difference), 1.6e-5); //
+
+        // this is a constant tolerance against a nonconstant norm and weight with a scale of 180x
+        ASSERT_LT(abs(difference), 5e-5);
 
         std::cout << std::setprecision(4) << "x = " << static_cast<float_max_t>(x_real)
                   << ", log1p(x) = " << static_cast<float_max_t>(expected_y)
