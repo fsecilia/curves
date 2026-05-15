@@ -30,7 +30,7 @@ namespace crv::spline {
 template <typename t_mantissa_t> struct scaled_int_t
 {
     using mantissa_t = t_mantissa_t;
-    using exponent_t = int8_t;
+    using exponent_t = int_t;
 
     mantissa_t mantissa;
     exponent_t exponent;
@@ -84,11 +84,11 @@ template <std::floating_point t_scalar_t> struct float_extractor_t
     }
 };
 
-template <shift_t t_exponent_min, shift_t t_exponent_max, auto shifter = saturating_shifter_t<>{}>
+template <int_t t_exponent_min, int_t t_exponent_max, auto shifter = saturating_shifter_t<>{}>
 struct exponent_renormalizer_t
 {
-    static constexpr shift_t exponent_min = t_exponent_min;
-    static constexpr shift_t exponent_max = t_exponent_max;
+    static constexpr int_t exponent_min = t_exponent_min;
+    static constexpr int_t exponent_max = t_exponent_max;
 
     template <typename scaled_int_t> constexpr auto operator()(scaled_int_t src) const noexcept -> scaled_int_t
     {
