@@ -158,4 +158,43 @@ struct segment_evaluator_t
     }
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+// orchestration
+// --------------------------------------------------------------------------------------------------------------------
+
+/// dynamic, fixed-point cubic spline segment packed into half a cache line
+template <is_fixed t_x_t, typename t_packed_segment_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
+class alignas(32) segment_t
+{
+public:
+    using x_t = t_x_t;
+    using packed_segment_t = t_packed_segment_t;
+    using segment_unpacker_t = t_segment_unpacker_t;
+    using segment_evaluator_t = t_segment_evaluator_t;
+
+    using y_t = segment_evaluator_t::y_t;
+
+    constexpr segment_t() noexcept : packed_segment_{} {}
+
+    explicit constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
+    {
+        // this type goes over the ioctl boundary, so it must be trivially copyable
+        static_assert(std::is_trivially_copyable_v<segment_t>);
+
+        // this type must be aligned to at least half a cache line; during prod it must be exactly 32, but during
+        // testing, it may be overaligned
+        static_assert(alignof(segment_t) >= 32);
+    }
+
+    constexpr auto operator()(x_t x) const noexcept -> y_t
+    {
+        return evaluate_segment(unpack_segment(packed_segment_), x);
+    }
+
+private:
+    [[no_unique_address]] segment_unpacker_t unpack_segment;
+    [[no_unique_address]] segment_evaluator_t evaluate_segment;
+    packed_segment_t packed_segment_;
+};
+
 } // namespace crv::spline
