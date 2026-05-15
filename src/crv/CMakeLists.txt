@@ -30,10 +30,8 @@ target_sources(lib PRIVATE
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
     math/spline/construction/approximant.hpp
-    math/spline/construction/cubic.hpp
     math/spline/construction/error_norm.hpp
     math/spline/construction/function_sampler.hpp
-    math/spline/construction/hermite_converter.hpp
     math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/residual_estimator.hpp
@@ -138,7 +136,6 @@ if (enable_testing)
         math/spline/construction/approximant_test.cpp
         math/spline/construction/error_norm_test.cpp
         math/spline/construction/function_sampler_test.cpp
-        math/spline/construction/hermite_converter_test.cpp
         math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/residual_estimator_test.cpp

@@ -11,8 +11,8 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/integer.hpp>
+#include <crv/math/polynomial.hpp>
 #include <crv/math/shifter.hpp>
-#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>

@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
-#include <crv/math/spline/construction/cubic.hpp>
+#include <crv/math/polynomial.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>

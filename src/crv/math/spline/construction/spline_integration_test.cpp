@@ -12,14 +12,13 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/polynomial.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
-#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/error_norm.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
-#include <crv/math/spline/construction/hermite_converter.hpp>
 #include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
