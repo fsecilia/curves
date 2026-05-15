@@ -433,8 +433,8 @@ TEST(spline_generator, poc)
     using scalar_t = float_t;
 #endif
 
-    using x_t = fixed_t<uint64_t, 42>;
-    using y_t = fixed_t<uint64_t, 48>;
+    using x_t = prod_pipeline_config_t::x_t;
+    using y_t = prod_pipeline_config_t::y_t;
 
     constexpr auto depth_max = 4;
     constexpr auto max_segment_count = 1 << (depth_max * 2);
