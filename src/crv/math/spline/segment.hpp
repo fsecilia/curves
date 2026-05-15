@@ -14,7 +14,6 @@
 #include <crv/math/saturate_cast.hpp>
 #include <array>
 #include <climits>
-#include <numeric>
 
 namespace crv::spline {
 
