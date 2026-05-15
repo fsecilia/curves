@@ -18,15 +18,15 @@ struct spline_approximant_test_t : Test
     using sut_t = approximant_t<scalar_t, x_t>;
 };
 
-TEST_F(spline_approximant_test_t, evaluates_exact_polynomial_with_scale_and_offset)
+TEST_F(spline_approximant_test_t, evaluates_exact_cubic_with_scale_and_offset)
 {
     // P(t) = 1.0t^2 + 3.0t + 2.0
-    auto const poly = polynomial_t{0.0, 1.0, 3.0, 2.0};
+    auto const cubic = cubic_t{0.0, 1.0, 3.0, 2.0};
 
     auto const x0 = x_t{1};
     auto const log2_width = 1; // width = 2.0
 
-    sut_t const sut{poly, x0, log2_width};
+    sut_t const sut{cubic, x0, log2_width};
 
     // input x = 2.0
     auto const input_x = scalar_t{2.0f};
@@ -50,11 +50,11 @@ TEST_F(spline_approximant_test_t, evaluates_exact_polynomial_with_scale_and_offs
 TEST_F(spline_approximant_test_t, quantizes_floating_point_input_to_fixed_grid)
 {
     // P(t) = t
-    auto const poly = polynomial_t{0.0, 0.0, 1.0, 0.0};
+    auto const cubic = cubic_t{0.0, 0.0, 1.0, 0.0};
     auto const x0 = x_t{0};
     auto const log2_width = 0; // width = 1.0, t = x
 
-    sut_t const sut{poly, x0, log2_width};
+    sut_t const sut{cubic, x0, log2_width};
 
     // input x that falls exactly between fixed-point representations
     auto const off_grid_input = scalar_t{0.125};
