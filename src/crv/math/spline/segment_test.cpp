@@ -127,5 +127,51 @@ static_assert(test_unpack_round_trip(
 
 } // namespace field_unpacker_tests
 
+// --------------------------------------------------------------------------------------------------------------------
+// segment_unpacker_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace segment_unpacker_tests {
+
+constexpr auto intermediate_layout_shift = 5;
+constexpr auto final_layout_shift = 9;
+constexpr auto test_layout = segment_layout_t{
+    .intermediate = field_layout_t{.shift_width = intermediate_layout_shift, .is_signed = false},
+    .final = field_layout_t{.shift_width = final_layout_shift, .is_signed = true},
+};
+
+struct echoing_field_unpacker_t
+{
+    constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
+    {
+        // echo input into mantissa, and fingerprint layout into shift
+        return {.mantissa = static_cast<mantissa_t>(packed_field), .shift = static_cast<shift_t>(layout.shift_width)};
+    }
+};
+
+constexpr auto unpacker = segment_unpacker_t<echoing_field_unpacker_t, test_layout>{};
+constexpr auto packed_segment = packed_segment_t{10, 20, 30, 40};
+
+//
+// routing tests
+//
+
+// fields 0, 1, 2 get the intermediate layout
+static_assert(unpacker(packed_segment, 0) == unpacked_field_t{.mantissa = 10, .shift = intermediate_layout_shift});
+static_assert(unpacker(packed_segment, 1) == unpacked_field_t{.mantissa = 20, .shift = intermediate_layout_shift});
+static_assert(unpacker(packed_segment, 2) == unpacked_field_t{.mantissa = 30, .shift = intermediate_layout_shift});
+
+// field 3 gets the final layout
+static_assert(unpacker(packed_segment, 3) == unpacked_field_t{.mantissa = 40, .shift = final_layout_shift});
+
+// full segment
+constexpr auto unpacked_array = unpacker(packed_segment);
+static_assert(unpacked_array[0] == unpacked_field_t{.mantissa = 10, .shift = intermediate_layout_shift});
+static_assert(unpacked_array[1] == unpacked_field_t{.mantissa = 20, .shift = intermediate_layout_shift});
+static_assert(unpacked_array[2] == unpacked_field_t{.mantissa = 30, .shift = intermediate_layout_shift});
+static_assert(unpacked_array[3] == unpacked_field_t{.mantissa = 40, .shift = final_layout_shift});
+
+} // namespace segment_unpacker_tests
+
 } // namespace
 } // namespace crv::spline
