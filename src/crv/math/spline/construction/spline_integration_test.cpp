@@ -236,9 +236,24 @@ template <typename t_bisection_t> struct bisector_t
 };
 
 /// decides if an interval should subdivide
+///
+/// Compares the norm's metric_error directly against global_tolerance and a noise floor, both in the norm's units.
+/// abolute_t and first_order_steepness_t are in y units, but first_order_relative_t is unitless, so they do not compare
+/// the same.
+///
+/// This is a tuning issue we will resolve after we have a curve on hardware.
 template <std::floating_point scalar_t, int_t log2_min_width> struct convergence_test_t
 {
-    static constexpr auto relative_noise_margin = std::numeric_limits<scalar_t>::epsilon() * scalar_t{64};
+    // total noise budget in ulps relative to interval scale
+    //
+    // The margin is determined roughly by the number of ops per sample and error introduced by rounding after each op.
+    // The ops include hermite-to-monomial conversion, cubic Horner, and norm, each contrbuting up to ulps_per_op of
+    // error.
+    static constexpr auto ops_per_sample = int_t{16};
+    static constexpr auto ulps_per_op = int_t{4};
+    static constexpr auto relative_noise_margin
+        = std::numeric_limits<scalar_t>::epsilon() * scalar_t{ops_per_sample * ulps_per_op};
+
     scalar_t global_tolerance;
 
     constexpr auto operator()(auto const& interval) const noexcept -> bool
@@ -246,7 +261,7 @@ template <std::floating_point scalar_t, int_t log2_min_width> struct convergence
         auto const noise_floor = interval.residual.scale * relative_noise_margin;
         auto const local_tolerance = max(global_tolerance, noise_floor);
         auto const can_subdivide
-            = interval.subdomain.log2_width > log2_min_width && interval.residual.metric_error >= local_tolerance;
+            = interval.subdomain.log2_width > log2_min_width && interval.residual.metric_error > local_tolerance;
         auto const should_subdivide = interval.residual.metric_error > global_tolerance;
         return should_subdivide && can_subdivide;
     }
