@@ -134,26 +134,13 @@ struct segment_evaluator_t
 
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept -> y_t
     {
-        auto const accumulator = apply_coefficients(unpacked_segment, x);
+        auto accumulator = unpacked_segment[0].mantissa;
+        accumulator = apply_coefficient(unpacked_segment[1].mantissa, unpacked_segment[0].shift, x, accumulator);
+        accumulator = apply_coefficient(unpacked_segment[2].mantissa, unpacked_segment[1].shift, x, accumulator);
         return apply_final_coefficient(unpacked_segment, x, accumulator);
     }
 
 private:
-    // applies horner's loop using dynamic shifts; does not apply final coefficient
-    constexpr auto apply_coefficients(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept
-        -> mantissa_t
-    {
-        auto accumulator = unpacked_segment[0].mantissa;
-
-        for (auto field_index = 1; field_index < fields_per_segment - 1; ++field_index)
-        {
-            accumulator = apply_coefficient(
-                unpacked_segment[field_index].mantissa, unpacked_segment[field_index - 1].shift, x, accumulator);
-        }
-
-        return accumulator;
-    }
-
     constexpr auto apply_coefficient(
         mantissa_t coeff, shift_t relative_shift, x_t const& x, mantissa_t accumulator) const noexcept -> mantissa_t
     {
@@ -169,21 +156,20 @@ private:
         return aligned_product + coeff;
     }
 
-    // applies final xoefficient wide with one shr and one round
+    // applies final coefficient wide with one shr and one round
     constexpr auto apply_final_coefficient(
         unpacked_segment_t const& unpacked_segment, x_t const& x, mantissa_t accumulator) const noexcept -> y_t
     {
         auto const wide_product = widen(accumulator) * x.value;
 
         // align coeff to product
-        auto const relative_shift_c2_to_c3 = unpacked_segment[2].shift;
-        auto const aligned_c3 = widen(unpacked_segment[3].mantissa) << relative_shift_c2_to_c3;
-
-        auto const relative_shift_c3_to_y = unpacked_segment[3].shift;
-        auto const wide_accumulator = wide_product + aligned_c3;
-        auto const total_left_shift = -(relative_shift_c2_to_c3 + relative_shift_c3_to_y);
+        auto const relative_shift_c_to_d = unpacked_segment[2].shift;
+        auto const aligned_d = widen(unpacked_segment[3].mantissa) << relative_shift_c_to_d;
 
         // align to the final output radix
+        auto const relative_shift_d_to_y = unpacked_segment[3].shift;
+        auto const wide_accumulator = wide_product + aligned_d;
+        auto const total_left_shift = -(relative_shift_c_to_d + relative_shift_d_to_y);
         return y_t::literal(saturate_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift)));
     }
 };

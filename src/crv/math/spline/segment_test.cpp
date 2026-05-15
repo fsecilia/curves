@@ -173,5 +173,114 @@ static_assert(unpacked_array[3] == unpacked_field_t{.mantissa = 40, .shift = fin
 
 } // namespace segment_unpacker_tests
 
+// ====================================================================================================================
+// evaluation
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// segment_evaluator_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace segment_evaluator_tests {
+
+using narrow_t = int32_t;
+using x_t = fixed_t<narrow_t, 14>;
+using y_t = fixed_t<narrow_t, 18>;
+constexpr auto evaluate = segment_evaluator_t<x_t, y_t>{};
+
+//
+// zero and constant
+//
+
+// x = 0
+static_assert(evaluate({{{0, 0}, {0, 0}, {0, 0}, {11, 0}}}, x_t::literal(0)) == y_t::literal(11));
+
+// x != 0; x shouldn't affect a constant
+static_assert(evaluate({{{0, 0}, {0, 0}, {0, 0}, {11, 0}}}, x_t::literal(10)) == y_t::literal(11));
+
+//
+// linear
+//
+
+// 7*10 = 70
+static_assert(evaluate({{{0, 0}, {0, 0}, {7, 0}, {0, 0}}}, x_t::literal(10)) == y_t::literal(70));
+
+//
+// quadratic
+//
+
+// 5*10^2 = 500
+static_assert(evaluate({{{0, 0}, {5, 0}, {0, 0}, {0, 0}}}, x_t::literal(10)) == y_t::literal(500));
+
+//
+// cubic
+//
+
+// 3*100^3 = 3000
+static_assert(evaluate({{{3, 0}, {0, 0}, {0, 0}, {0, 0}}}, x_t::literal(10)) == y_t::literal(3000));
+
+//
+// mixed
+//
+
+// no shift
+// 3*100^2 + 5*10^2 + 7*10 + 11 = 3581
+static_assert(evaluate({{{3, 0}, {5, 0}, {7, 0}, {11, 0}}}, x_t::literal(10)) == y_t::literal(3581));
+
+// no shift, negative
+// -3*(-10)^3 + -5*(-10)^2 + -7*(-10) + -11 = 3000 - 500 + 70 - 11 = 2559
+static_assert(evaluate({{{-3, 0}, {-5, 0}, {-7, 0}, {-11, 0}}}, x_t::literal(-10)) == y_t::literal(2559));
+
+// with shifts
+// y = 3592
+constexpr auto y_expected
+    = ((((((3 * 1024 * 10 >> 1) + 5 * 512) * 10 >> 2) + 7 * 128) * 10) + (11 * 32 << 3)) >> (3 + 4);
+static_assert(evaluate({{{3 * 1024, 1}, {5 * 512, 2}, {7 * 128, 3}, {11 * 32, 4}}}, x_t::literal(10))
+    == y_t::literal(y_expected));
+
+//
+// saturation boundaries
+//
+
+// saturate positive after c3
+static_assert(
+    evaluate({{{0, 0}, {0, 0}, {0, 0}, {mantissa_t{max<narrow_t>()} + 1, 0}}}, x_t::literal(1)) == max<y_t>());
+
+// saturate negative after c3
+static_assert(
+    evaluate({{{0, 0}, {0, 0}, {0, 0}, {mantissa_t{min<narrow_t>()} - 1, 0}}}, x_t::literal(1)) == min<y_t>());
+
+//
+// dynamic alignment
+//
+
+// precision reduction / right shift
+//
+// c = 5, d = 12, x = 1.0 (16384 in 14-bit fixed)
+// sum and shift right by 1:
+//  - multiply = 5 * 16384 = 81920
+//  - align d, d <<= 14 = 12 << 14 = 196608
+//  - sum = 81920 + 196608 = 278528
+//  - total_left_shift must be -1:
+//      - (seg[2].shift + seg[3].shift) = -1
+//      - (14 + -13) = -1
+//  - 278528 >> 1 = 139264
+static_assert(evaluate({{{0, 0}, {0, 0}, {5, 14}, {12, -13}}}, x_t{1}) == y_t::literal(139264));
+
+// precision gain / left shift
+//
+// c = 5, d = 12, x = 1.0 (16384 in 14-bit fixed)
+// sum and shift right by 1:
+//  - multiply = 5 * 16384 = 81920
+//  - align d, d <<= 14 = 12 << 14 = 196608
+//  - sum = 81920 + 196608 = 278528
+//  - total_left_shift must be 2:
+//      - (seg[2].shift + seg[3].shift) = 2
+//      - (14 + -16) = 2
+//  - 278528 << 2 = 1114112
+static_assert(evaluate({{{0, 0}, {0, 0}, {5, 14}, {12, -16}}}, x_t{1}) == y_t::literal(1114112));
+
+} // namespace segment_evaluator_tests
+
 } // namespace
 } // namespace crv::spline
