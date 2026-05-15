@@ -7,10 +7,12 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
+#include <crv/math/jet/jet.hpp>
+#include <crv/math/spline/construction/cubic.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
-#include <tuple>
 
 namespace crv::spline {
 
@@ -30,16 +32,16 @@ template <std::floating_point scalar_t> struct subdomain_t
 };
 
 /// unit of work over a subdomain
-template <std::floating_point t_scalar_t, typename t_segment_t> struct interval_t
+template <std::floating_point t_scalar_t> struct interval_t
 {
     using scalar_t = t_scalar_t;
-    using segment_t = t_segment_t;
 
     using subdomain_t = subdomain_t<scalar_t>;
     using residual_t = residual_t<scalar_t>;
+    using cubic_t = cubic_t<scalar_t>;
 
     subdomain_t subdomain;
-    segment_t segment;
+    cubic_t cubic;
     residual_t residual;
 
     constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
@@ -64,7 +66,7 @@ struct interval_priority_less_t
 };
 
 /// constructs intervals from subdomains
-template <typename t_interval_t, typename approximant_t, typename segment_factory_t, typename residual_estimator_t>
+template <typename t_interval_t, typename approximant_t, typename hermite_converter_t, typename residual_estimator_t>
 struct interval_factory_t
 {
     using interval_t = t_interval_t;
@@ -72,7 +74,7 @@ struct interval_factory_t
     using scalar_t = interval_t::scalar_t;
     using subdomain_t = subdomain_t<scalar_t>;
 
-    [[no_unique_address]] segment_factory_t create_segment;
+    [[no_unique_address]] hermite_converter_t convert_hermite;
     residual_estimator_t estimate_residual;
 
     constexpr auto create(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept -> interval_t
@@ -80,13 +82,23 @@ struct interval_factory_t
         using x_t = approximant_t::x_t;
 
         auto const x0 = to_fixed<x_t>(subdomain.left.x);
-        auto const segment = create_segment(subdomain.left.y, subdomain.right.y, subdomain.log2_width);
+
+        // convert from spline-global dy/dx to segment-local dy/dt via chain rule
+        auto const dx_dt = std::ldexp(1.0, static_cast<int>(subdomain.log2_width));
+        auto const local_left_y = jet_t{subdomain.left.y.f, subdomain.left.y.df * dx_dt};
+        auto const local_right_y = jet_t{subdomain.right.y.f, subdomain.right.y.df * dx_dt};
+        auto const cubic = convert_hermite(local_left_y, local_right_y);
 
         return {
             .subdomain = subdomain,
-            .segment = segment,
-            .residual = estimate_residual(sample_target_function, approximant_t{.x0 = x0, .segment = segment},
-                subdomain.left.x, subdomain.right.x),
+            .cubic = cubic,
+            .residual = estimate_residual(sample_target_function,
+                approximant_t{
+                    .cubic = cubic,
+                    .x0 = x0,
+                    .log2_width = subdomain.log2_width,
+                },
+                subdomain.left.x, subdomain.midpoint.x, subdomain.right.x),
         };
     }
 };
