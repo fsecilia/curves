@@ -3,8 +3,6 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#if 0
-
 #include "hermite_converter.hpp"
 #include <crv/test/test.hpp>
 #include <array>
@@ -14,29 +12,24 @@ namespace {
 
 using scalar_t = float_t;
 using jet_t = jet_t<scalar_t>;
-using coeff_t = fixed_t<int32_t, 13>;
-using cubic_polynomial_t = cubic_polynomial_t<coeff_t>;
-using values_t = std::array<scalar_t, std::tuple_size_v<cubic_polynomial_t>>;
+using cubic_t = cubic_t<scalar_t>;
 
 struct vector_t
 {
     jet_t left;
     jet_t right;
-    cubic_polynomial_t expected;
+    cubic_t expected;
 
-    vector_t(jet_t left, jet_t right, values_t values) noexcept
-        : left{left}, right{right}, expected{to_fixed<coeff_t>(values[0]), to_fixed<coeff_t>(values[1]),
-                                        to_fixed<coeff_t>(values[2]), to_fixed<coeff_t>(values[3])}
-    {}
+    vector_t(jet_t left, jet_t right, cubic_t expected) noexcept : left{left}, right{right}, expected{expected} {}
 };
 
 struct hermite_converter_test_t : TestWithParam<vector_t>
 {
     jet_t const left = GetParam().left;
     jet_t const right = GetParam().right;
-    cubic_polynomial_t const& expected = GetParam().expected;
+    cubic_t const& expected = GetParam().expected;
 
-    using sut_t = hermite_converter_t<coeff_t>;
+    using sut_t = hermite_converter_t<scalar_t>;
     sut_t sut{};
 };
 
@@ -129,5 +122,3 @@ INSTANTIATE_TEST_SUITE_P(vectors, hermite_converter_test_t, ValuesIn(vectors));
 
 } // namespace
 } // namespace crv::spline
-
-#endif

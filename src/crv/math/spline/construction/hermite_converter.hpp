@@ -6,21 +6,16 @@
 
 #pragma once
 
-#if 0
-
 #include <crv/lib.hpp>
-#include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/math/polynomial.hpp>
+#include <crv/math/spline/construction/cubic.hpp>
 
 namespace crv::spline {
 
-/// converts float hermite to fixed polynomial
-template <is_fixed coeff_t> struct hermite_converter_t
+/// converts hermite basis to monomial basis
+template <std::floating_point scalar_t> struct hermite_converter_t
 {
-    template <typename jet_t>
-    constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_polynomial_t<coeff_t>
+    template <typename jet_t> constexpr auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_t<scalar_t>
     {
         auto const p0 = primal(left_y);
         auto const p1 = primal(right_y);
@@ -33,10 +28,8 @@ template <is_fixed coeff_t> struct hermite_converter_t
         auto const c = m0;
         auto const d = p0;
 
-        return {{to_fixed<coeff_t>(a), to_fixed<coeff_t>(b), to_fixed<coeff_t>(c), to_fixed<coeff_t>(d)}};
+        return {a, b, c, d};
     }
 };
 
 } // namespace crv::spline
-
-#endif
