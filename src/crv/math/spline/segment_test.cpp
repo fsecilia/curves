@@ -75,11 +75,15 @@ static_assert(segment_layout_t{.intermediate = {6, false}, .final = {7, true}}.m
 // asymmetric; tests intermediate and final are distinct
 static_assert(segment_layout_t{.intermediate = {1, false}, .final = {8, true}}.max_total_shift() == 0x1 + 0x7f);
 
-// --------------------------------------------------------------------------------------------------------------------
+// ====================================================================================================================
 // unpacking
+// ====================================================================================================================
+
+// --------------------------------------------------------------------------------------------------------------------
+// field_unpacker_t
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace unpacking_tests {
+namespace field_unpacker_tests {
 
 constexpr auto test_unpack_round_trip(unpacked_field_t unpacked_field, field_layout_t field_layout) noexcept -> bool
 {
@@ -121,7 +125,7 @@ static_assert(test_unpack_round_trip(
 static_assert(test_unpack_round_trip(
     unpacked_field_t{.mantissa = 10, .shift = 5}, field_layout_t{.shift_width = 3, .is_signed = false}));
 
-} // namespace unpacking_tests
+} // namespace field_unpacker_tests
 
 } // namespace
 } // namespace crv::spline
