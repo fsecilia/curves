@@ -69,6 +69,7 @@ target_sources_kernel(lib
     math/limits.hpp
     math/linear.hpp
     math/rounding_mode.hpp
+    math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
     math/spline/segment_locator.hpp
@@ -130,6 +131,7 @@ if (enable_testing)
         math/quadrature/stack_test.cpp
         math/quadrature/subdivider_test.cpp
         math/rounding_mode_test.cpp
+        math/saturate_cast_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
         math/spline/construction/approximant_test.cpp
