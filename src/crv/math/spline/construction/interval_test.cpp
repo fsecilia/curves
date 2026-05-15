@@ -19,9 +19,7 @@ using jet_t = jet_t<scalar_t>;
 
 namespace interval_priority_less_tests {
 
-struct segment_t
-{};
-using sut_t = interval_t<scalar_t, segment_t>;
+using sut_t = interval_t<scalar_t>;
 
 constexpr auto construct_sut(scalar_t weighted_error, scalar_t left_x) noexcept -> sut_t
 {
@@ -90,43 +88,34 @@ namespace interval_factory_tests {
 
 struct spline_interval_factory_test_t : Test
 {
-    using x_t = fixed_t<int_t, 0>;
-
     using subdomain_t = subdomain_t<scalar_t>;
     using function_sample_t = function_sample_t<scalar_t>;
 
-    struct segment_t
-    {
-        using coeffs_t = int_t;
-        coeffs_t coeffs_ = 0;
-        constexpr auto coeffs() const noexcept -> coeffs_t { return coeffs_; }
-        constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
-    };
+    using cubic_t = cubic_t<scalar_t>;
+    using x_t = fixed_t<int64_t, 0>;
 
     struct approximant_t
     {
         using x_t = spline_interval_factory_test_t::x_t;
 
+        cubic_t cubic;
         x_t x0;
-        segment_t segment;
+        int_t log2_width;
 
         constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;
     };
 
-    struct mock_segment_factory_t
+    struct mock_hermite_converter_t
     {
-        virtual ~mock_segment_factory_t() = default;
-        MOCK_METHOD(segment_t, call, (jet_t left, jet_t right, int_t log2_width), (const, noexcept));
+        virtual ~mock_hermite_converter_t() = default;
+        MOCK_METHOD(cubic_t, call, (jet_t left, jet_t right), (const, noexcept));
     };
-    StrictMock<mock_segment_factory_t> mock_segment_factory;
+    StrictMock<mock_hermite_converter_t> mock_hermite_converter;
 
-    struct segment_factory_t
+    struct hermite_converter_t
     {
-        mock_segment_factory_t* mock = nullptr;
-        auto operator()(jet_t left_y, jet_t right_y, int_t log2_width) const noexcept -> segment_t
-        {
-            return mock->call(left_y, right_y, log2_width);
-        }
+        mock_hermite_converter_t* mock = nullptr;
+        auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_t { return mock->call(left_y, right_y); }
     };
 
     struct residual_t
@@ -146,7 +135,7 @@ struct spline_interval_factory_test_t : Test
         virtual ~mock_residual_estimator_t() = default;
         MOCK_METHOD(residual_t, call,
             (sample_target_function_t sample_target_function, approximant_t approximant, scalar_t left_x,
-                scalar_t right_x),
+                scalar_t midpoint_x, scalar_t right_x),
             (const, noexcept));
     };
     StrictMock<mock_residual_estimator_t> mock_residual_estimator;
@@ -155,9 +144,9 @@ struct spline_interval_factory_test_t : Test
     {
         mock_residual_estimator_t* mock = nullptr;
         auto operator()(sample_target_function_t sample_target_function, approximant_t approximant, scalar_t left_x,
-            scalar_t right_x) const noexcept -> residual_t
+            scalar_t midpoint_x, scalar_t right_x) const noexcept -> residual_t
         {
-            return mock->call(sample_target_function, approximant, left_x, right_x);
+            return mock->call(sample_target_function, approximant, left_x, midpoint_x, right_x);
         }
     };
 
@@ -166,14 +155,14 @@ struct spline_interval_factory_test_t : Test
         using scalar_t = scalar_t;
 
         subdomain_t subdomain;
-        segment_t segment;
+        cubic_t cubic;
         residual_t residual;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t = interval_factory_t<interval_t, approximant_t, segment_factory_t, residual_estimator_t>;
-    sut_t sut{.create_segment = segment_factory_t{&mock_segment_factory},
+    using sut_t = interval_factory_t<interval_t, approximant_t, hermite_converter_t, residual_estimator_t>;
+    sut_t sut{.convert_hermite = hermite_converter_t{&mock_hermite_converter},
         .estimate_residual = residual_estimator_t{&mock_residual_estimator}};
 
     sample_target_function_t const sample_target_function{1};
@@ -181,7 +170,7 @@ struct spline_interval_factory_test_t : Test
     function_sample_t const midpoint{.x = 5.0, .y = {6.0, 7.0}};
     function_sample_t const right{.x = 8.0, .y = {9.0, 10.0}};
     int_t log2_width = 11;
-    segment_t const segment{.coeffs_ = 13};
+    cubic_t const cubic{1.0, 2.0, 3.0, 4.0};
     residual_t const residual{14};
 
     x_t x0 = to_fixed<x_t>(left.x);
@@ -194,16 +183,23 @@ struct spline_interval_factory_test_t : Test
             .right = right,
             .log2_width = log2_width,
         },
-        .segment = segment,
+        .cubic = cubic,
         .residual = residual,
     };
 };
 
 TEST_F(spline_interval_factory_test_t, create)
 {
-    EXPECT_CALL(mock_segment_factory, call(left.y, right.y, log2_width)).WillOnce(Return(segment));
+    // sut applies chain rule locally from dy/dx to dy/dt.
+    auto const dx_dt = static_cast<scalar_t>(1 << log2_width);
+    auto local_left_y = left.y;
+    auto local_right_y = right.y;
+    local_left_y.df *= dx_dt;
+    local_right_y.df *= dx_dt;
+    EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(cubic));
+
     EXPECT_CALL(mock_residual_estimator,
-        call(sample_target_function, approximant_t{.x0 = x0, .segment = segment}, left.x, right.x))
+        call(sample_target_function, approximant_t{.cubic = cubic, .x0 = x0, log2_width}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
 
     auto const actual = sut.create(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
