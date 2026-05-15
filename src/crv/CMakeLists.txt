@@ -72,6 +72,7 @@ target_sources_kernel(lib
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
+    math/spline/pipeline_config.hpp
     math/spline/segment_locator.hpp
     math/spline/segment.hpp
     math/spline/spline.hpp
@@ -144,6 +145,7 @@ if (enable_testing)
         math/spline/construction/segment_factory_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
+        math/spline/pipeline_config_test.cpp
         math/spline/segment_locator_test.cpp
         math/spline/segment_test.cpp
         math/spline/spline_test.cpp
