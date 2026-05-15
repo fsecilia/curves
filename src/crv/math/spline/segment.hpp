@@ -124,25 +124,48 @@ struct segment_evaluator_t
     static constexpr auto max_total_shift = max_intermediate_shift + max_final_shift;
     static_assert(max_total_shift < static_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
 
-    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& dx) const noexcept -> y_t
+    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept -> y_t
+    {
+        auto const accumulator = apply_coefficients(unpacked_segment, x);
+        return apply_final_coefficient(unpacked_segment, x, accumulator);
+    }
+
+private:
+    // applies horner's loop using dynamic shifts; does not apply final coefficient
+    constexpr auto apply_coefficients(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept
+        -> mantissa_t
     {
         auto accumulator = unpacked_segment[0].mantissa;
+
         for (auto field_index = 1; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const wide_product = widen(accumulator) * dx.value;
-
-            // align product to coeff
-            auto const relative_shift = unpacked_segment[field_index - 1].shift;
-            auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
-            auto const coeff = unpacked_segment[field_index].mantissa;
-
-            // this can technically overflow, but it would require a malformed segment and it is not exploitable
-            accumulator = aligned_product + coeff;
+            accumulator = apply_coefficient(
+                unpacked_segment[field_index].mantissa, unpacked_segment[field_index - 1].shift, x, accumulator);
         }
 
-        // unroll final loop iteration and do it wide with one shr and one round
+        return accumulator;
+    }
 
-        auto const wide_product = widen(accumulator) * dx.value;
+    constexpr auto apply_coefficient(
+        mantissa_t coeff, shift_t relative_shift, x_t const& x, mantissa_t accumulator) const noexcept -> mantissa_t
+    {
+        // multiply wide
+        auto const wide_product = widen(accumulator) * x.value;
+
+        // align product to coeff
+        auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
+
+        // sum aligned terms
+        //
+        // This can technically overflow, but it would require a malformed segment and it is not exploitable.
+        return aligned_product + coeff;
+    }
+
+    // applies final xoefficient wide with one shr and one round
+    constexpr auto apply_final_coefficient(
+        unpacked_segment_t const& unpacked_segment, x_t const& x, mantissa_t accumulator) const noexcept -> y_t
+    {
+        auto const wide_product = widen(accumulator) * x.value;
 
         // align coeff to product
         auto const relative_shift_c2_to_c3 = unpacked_segment[2].shift;
@@ -153,8 +176,7 @@ struct segment_evaluator_t
         auto const total_left_shift = -(relative_shift_c2_to_c3 + relative_shift_c3_to_y);
 
         // align to the final output radix
-        accumulator = std::saturating_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift));
-        return y_t::literal(accumulator);
+        return y_t::literal(std::saturating_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift)));
     }
 };
 
