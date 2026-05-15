@@ -66,6 +66,19 @@ static_assert(field_layout_t{8, true}.max_shift() == 0x7f);
 static_assert(field_layout_t{63, true}.max_shift() == 0x3fffffffffffffffLL);
 
 // --------------------------------------------------------------------------------------------------------------------
+// segment_layout_t
+// --------------------------------------------------------------------------------------------------------------------
+
+// zero
+static_assert(segment_layout_t{.intermediate = {0, false}, .final = {0, false}}.max_total_shift() == 0);
+
+// prod pipeline, 6-bit unsigned + 7-bit signed
+static_assert(segment_layout_t{.intermediate = {6, false}, .final = {7, true}}.max_total_shift() == 0x3f + 0x3f);
+
+// asymmetric; tests intermediate and final are distinct
+static_assert(segment_layout_t{.intermediate = {1, false}, .final = {8, true}}.max_total_shift() == 0x1 + 0x7f);
+
+// --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
 

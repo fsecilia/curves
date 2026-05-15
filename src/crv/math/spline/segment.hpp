@@ -46,6 +46,14 @@ struct field_layout_t
     }
 };
 
+struct segment_layout_t
+{
+    field_layout_t intermediate;
+    field_layout_t final;
+
+    constexpr auto max_total_shift() const noexcept -> int_t { return intermediate.max_shift() + final.max_shift(); }
+};
+
 constexpr auto intermediate_layout = field_layout_t{
     .shift_width = 6,
     .is_signed = false,
