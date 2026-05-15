@@ -160,7 +160,7 @@ template <std::floating_point scalar_t, typename bisector_t, typename interval_f
 };
 
 template <typename t_interval_t, typename t_segment_t, typename t_segment_packer_t, typename t_segment_unpacker_t,
-    typename t_field_packer_t, typename saturating_shifter_t>
+    typename t_field_packer_t, typename saturating_shifter_t, segment_layout_t segment_layout>
 struct tangent_extender_t
 {
     using interval_t = t_interval_t;
@@ -204,7 +204,7 @@ struct tangent_extender_t
 
         // repack new c3
         packed_segment[fields_per_segment - 1]
-            = pack_field(unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift}, final_layout);
+            = pack_field(unpacked_field_t{.mantissa = target_mantissa, .shift = c3_shift}, segment_layout.final);
         return segment_t{packed_segment};
     }
 };
@@ -492,11 +492,12 @@ TEST(spline_generator, poc)
     using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
     using segment_builder_t = segment_builder_t<scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
+    using segment_packer_t
+        = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
     using saturating_shifter_t = saturating_shifter_t<>;
     using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_packer_t, segment_unpacker_t,
-        field_packer_t, saturating_shifter_t>;
+        field_packer_t, saturating_shifter_t, segment_layout>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<scalar_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t

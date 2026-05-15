@@ -35,7 +35,8 @@ struct spline_dynamic_segment_test_t : Test
     using exponent_renormalizer_t = exponent_renormalizer_t<final_layout_min_shift, final_layout_max_shift>;
     using segment_builder_t = segment_builder_t<float_extractor_t::scaled_int_t, x_t, y_t, exponent_renormalizer_t>;
     using builder_factory_t = builder_factory_t<segment_builder_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width>;
+    using segment_packer_t
+        = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, log2_min_width, segment_layout>;
     using cubic_t = cubic_t<scalar_t>;
 
     segment_packer_t segment_packer;
