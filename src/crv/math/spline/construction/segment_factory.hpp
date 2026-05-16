@@ -28,8 +28,6 @@ namespace crv::spline {
 
 struct field_packer_t
 {
-    static constexpr auto field_width = int_t{sizeof(packed_field_t) * CHAR_BIT};
-
     constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept -> packed_field_t
     {
         auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
