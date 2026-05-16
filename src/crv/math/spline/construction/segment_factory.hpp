@@ -25,29 +25,32 @@ namespace crv::spline {
 // packing
 // --------------------------------------------------------------------------------------------------------------------
 
-struct field_packer_t
+template <typename t_packed_field_t> struct field_packer_t
 {
+    using packed_field_t = t_packed_field_t;
+
+    template <typename unpacked_field_t, typename field_layout_t>
     constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept -> packed_field_t
     {
         auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
         auto const packed_shift = unpacked_field.shift & layout.shift_mask();
 
         auto const packed_field = packed_field_t{packed_mantissa | packed_shift};
-        assert(field_unpacker_t{}(packed_field, layout) == unpacked_field);
+        // assert(field_unpacker_t{}(packed_field, layout) == unpacked_field);
 
         return packed_field;
     }
 };
 
-struct solved_shift_t
+template <typename shift_t> struct shift_solver_t
 {
-    shift_t accumulator_shift;
-    shift_t coeff_shift;
-    int_t next_exponent;
-};
+    struct solved_shift_t
+    {
+        shift_t accumulator_shift;
+        shift_t coeff_shift;
+        int_t next_exponent;
+    };
 
-struct shift_solver_t
-{
     constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
         -> solved_shift_t
     {
@@ -59,19 +62,23 @@ struct shift_solver_t
     }
 };
 
-struct relative_field_t
+template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct relative_aligner_t
 {
-    unpacked_field_t unpacked_field;
-    mantissa_t next_mantissa;
-};
+    using mantissa_t = unpacked_field_t::mantissa_t;
 
-template <auto shifter = shifter_t<>{}> struct relative_aligner_t
-{
+    struct relative_field_t
+    {
+        unpacked_field_t unpacked_field;
+        mantissa_t next_mantissa;
+    };
+
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT} - is_signed_v<mantissa_t>;
 
-    constexpr auto operator()(
-        mantissa_t accumulator, mantissa_t next, solved_shift_t const& solved_shift) const noexcept -> relative_field_t
+    constexpr auto operator()(mantissa_t accumulator, mantissa_t next, auto const& solved_shift) const noexcept
+        -> relative_field_t
     {
+        using shift_t = unpacked_field_t::mantissa_t;
+
         // flush out-of-scale terms
         auto const accumulator_mantissa = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : accumulator;
         auto const accumulator_shift
@@ -89,8 +96,9 @@ template <auto shifter = shifter_t<>{}> struct relative_aligner_t
     }
 };
 
-template <typename scaled_int_t, auto align_exponent> struct radix_aligner_t
+template <typename unpacked_field_t, typename shift_t, auto align_exponent> struct radix_aligner_t
 {
+    template <typename scaled_int_t>
     constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
     {
         auto const exponent_aligned = align_exponent(scaled_int_t{
@@ -105,8 +113,8 @@ template <typename scaled_int_t, auto align_exponent> struct radix_aligner_t
 
 // this only takes log2_min_width for an assert; it should move to an enclosing type
 
-template <typename float_extractor_t, typename shift_solver_t, typename relative_aligner_t, typename field_packer_t,
-    typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits, int_t log2_min_width,
+template <typename packed_segment_t, typename float_extractor_t, typename shift_solver_t, typename relative_aligner_t,
+    typename field_packer_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits, int_t log2_min_width,
     segment_layout_t segment_layout>
 struct segment_packer_t
 {

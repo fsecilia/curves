@@ -17,11 +17,11 @@ template <typename t_x_t, typename t_y_t, segment_layout_t t_segment_layout> str
     using x_t = t_x_t;
     using y_t = t_y_t;
 
-    segment_layout_t segment_layout = t_segment_layout;
+    static constexpr auto segment_layout = t_segment_layout;
 };
 
 constexpr auto prod_pipeline_config = pipeline_config_t<fixed_t<int64_t, 42>, fixed_t<int64_t, 45>,
-    segment_layout_t{
+    segment_layout_t<field_layout_t<uint64_t, int_t>>{
         .intermediate = {.shift_width = 6, .is_signed = false},
         .final = {.shift_width = 7, .is_signed = true},
     }>{};

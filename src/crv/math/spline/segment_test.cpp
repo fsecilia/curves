@@ -10,6 +10,20 @@
 namespace crv::spline {
 namespace {
 
+using traits_t = traits_t<unpacked_field_t<int_t, int_t>>;
+
+using packed_field_t = traits_t::packed_field_t;
+using unpacked_field_t = traits_t::unpacked_field_t;
+using mantissa_t = traits_t::mantissa_t;
+using shift_t = traits_t::shift_t;
+using packed_segment_t = traits_t::packed_segment_t;
+using unpacked_segment_t = traits_t::unpacked_segment_t;
+
+using field_layout_t = field_layout_t<packed_field_t, shift_t>;
+using field_packer_t = field_packer_t<packed_field_t>;
+using field_unpacker_t = field_unpacker_t<unpacked_field_t>;
+using segment_layout_t = segment_layout_t<field_layout_t>;
+
 // ====================================================================================================================
 // layouts
 // ====================================================================================================================
@@ -128,13 +142,15 @@ namespace segment_unpacker_tests {
 
 constexpr auto intermediate_layout_shift = 5;
 constexpr auto final_layout_shift = 9;
-constexpr auto test_layout = segment_layout_t{
+constexpr auto segment_layout = segment_layout_t{
     .intermediate = field_layout_t{.shift_width = intermediate_layout_shift, .is_signed = false},
     .final = field_layout_t{.shift_width = final_layout_shift, .is_signed = true},
 };
 
 struct echoing_field_unpacker_t
 {
+    using unpacked_field_t = unpacked_field_t;
+
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
         // echo input into mantissa, and fingerprint layout into shift
@@ -142,7 +158,8 @@ struct echoing_field_unpacker_t
     }
 };
 
-constexpr auto unpacker = segment_unpacker_t<echoing_field_unpacker_t, test_layout>{};
+constexpr auto unpacker
+    = segment_unpacker_t<packed_segment_t, unpacked_segment_t, echoing_field_unpacker_t, segment_layout>{};
 constexpr auto packed_segment = packed_segment_t{10, 20, 30, 40};
 
 //
@@ -179,7 +196,7 @@ namespace segment_evaluator_tests {
 using narrow_t = int32_t;
 using x_t = fixed_t<narrow_t, 14>;
 using y_t = fixed_t<narrow_t, 18>;
-constexpr auto evaluate = segment_evaluator_t<x_t, y_t>{};
+constexpr auto evaluate = segment_evaluator_t<traits_t, x_t, y_t>{};
 
 //
 // zero and constant
@@ -298,9 +315,9 @@ constexpr auto segment_layout = segment_layout_t{
     .final = {.shift_width = 4, .is_signed = true},
 };
 
-using unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
-using evaluator_t = segment_evaluator_t<x_t, y_t>;
-using sut_t = segment_t<x_t, packed_segment_t, unpacker_t, evaluator_t>;
+using unpacker_t = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
+using evaluator_t = segment_evaluator_t<traits_t, x_t, y_t>;
+using sut_t = segment_t<traits_t, x_t, unpacker_t, evaluator_t>;
 
 // test abi and memory invariants
 static_assert(std::is_trivially_copyable_v<sut_t>);
