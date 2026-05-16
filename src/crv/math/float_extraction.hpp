@@ -56,7 +56,7 @@ template <std::floating_point t_scalar_t> struct float_extractor_t
         // extract exponent
         auto const raw_exponent = (bits >> frac_bit_count) & exponent_mask;
         assert(raw_exponent != exponent_mask); // inf and nan are not supported
-        if (raw_exponent == 0) return {}; // ftz; flush denormals to zero
+        if (raw_exponent == 0) return {}; // ftz; flush subnormals to zero
         auto const exponent = int_cast<exponent_t>(int_cast<signed_t>(raw_exponent) - exponent_bias - frac_bit_count);
 
         return {.mantissa = extract_mantissa(bits), .exponent = exponent};

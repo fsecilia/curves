@@ -15,40 +15,44 @@ namespace {
 
 namespace float_extraction_tests {
 
-constexpr auto sut = float_extractor_t<float>{};
+namespace float32 {
+
+constexpr auto sut = float_extractor_t<float32_t>{};
+using scaled_int_t = scaled_int_t<int32_t>;
 
 // 1.0f -> 1.0 * 2^0 -> mantissa: (1<<23), exp: -23
-constexpr auto one = sut(1.0f);
-static_assert(one.mantissa == 0x00800000);
-static_assert(one.exponent == -23);
+static_assert(sut(1.0f) == scaled_int_t{0x00800000, -23});
 
 // 1.5f -> 1.5 * 2^0 -> mantissa: (1<<23) + (1<<22), exp: -23
-constexpr auto one_point_five = sut(1.5f);
-static_assert(one_point_five.mantissa == 0x00c00000);
-static_assert(one_point_five.exponent == -23);
+static_assert(sut(1.5f) == scaled_int_t{0x00c00000, -23});
 
 // -2.0f -> -1.0 * 2^1 -> mantissa: -(1<<23), exp: -22
-constexpr auto negative_two = sut(-2.0f);
-static_assert(negative_two.mantissa == -0x00800000);
-static_assert(negative_two.exponent == -22);
+static_assert(sut(-2.0f) == scaled_int_t{-0x00800000, -22});
 
 // exact zero triggers ftz branch
-constexpr auto zero = sut(0.0f);
-static_assert(zero.mantissa == 0);
-static_assert(zero.exponent == 0);
+static_assert(sut(0.0f) == scaled_int_t{});
+static_assert(sut(-0.0f) == scaled_int_t{});
 
-// negative zero also triggers ftz branch
-constexpr auto negative_zero = sut(-0.0f);
-static_assert(negative_zero.mantissa == 0);
-static_assert(negative_zero.exponent == 0);
+// subnormal triggers ftz branch
+constexpr auto smallest_positive_subnormal_float = std::bit_cast<float32_t>(0x00000001); // 2^-149 ~= 1.401298e-45
+static_assert(sut(smallest_positive_subnormal_float) == scaled_int_t{});
+static_assert(sut(-smallest_positive_subnormal_float) == scaled_int_t{});
+constexpr auto largest_positive_subnormal_float = std::bit_cast<float32_t>(0x007FFFFF); // 2^-126 ~= 1.17549421e-38
+static_assert(sut(largest_positive_subnormal_float) == scaled_int_t{});
+static_assert(sut(-largest_positive_subnormal_float) == scaled_int_t{});
+constexpr auto smallest_positive_normalized_float = std::bit_cast<float32_t>(0x00800000); // ~1.17549435e10^-38
+static_assert(sut(smallest_positive_normalized_float) != scaled_int_t{});
+static_assert(sut(-smallest_positive_normalized_float) != scaled_int_t{});
 
-// subnormal/denormal triggers ftz branch
-// 1.401298e-45f is the smallest positive subnormal for 32-bit floats
-constexpr auto smallest_positive_subnormal_float = std::bit_cast<float>(0x00000001);
-static_assert(smallest_positive_subnormal_float == 1.401298e-45f);
-constexpr auto subnormal = sut(smallest_positive_subnormal_float);
-static_assert(subnormal.mantissa == 0);
-static_assert(subnormal.exponent == 0);
+// max positive float
+static_assert(sut(std::numeric_limits<float>::max()) == scaled_int_t{0x00FFFFFF, 104});
+
+// max negative float
+static_assert(sut(std::numeric_limits<float>::lowest()) == scaled_int_t{-0x00FFFFFF, 104});
+
+} // namespace float32
+
+static_assert(float_extractor_t<float64_t>{}(1.0) == scaled_int_t<int64_t>{int64_t{1} << 52, -52});
 
 } // namespace float_extraction_tests
 
