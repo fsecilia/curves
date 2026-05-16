@@ -40,15 +40,10 @@ struct field_packer_t
     }
 };
 
-template <is_fixed t_x_t, is_fixed t_y_t, typename t_scaled_int_t, auto align_exponent, auto shifter = shifter_t<>{}>
+template <typename t_scaled_int_t, int_t out_frac_bits, auto align_exponent, auto shifter = shifter_t<>{}>
 struct segment_builder_t
 {
-    using x_t = t_x_t;
-    using y_t = t_y_t;
     using scaled_int_t = t_scaled_int_t;
-
-    static constexpr auto in_frac_bits = t_x_t::frac_bits;
-    static constexpr auto out_frac_bits = t_y_t::frac_bits;
 
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
 
