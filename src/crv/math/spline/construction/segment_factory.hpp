@@ -40,14 +40,12 @@ struct field_packer_t
     }
 };
 
-template <is_fixed t_x_t, is_fixed t_y_t, typename t_scaled_int_t, typename t_exponent_aligner_t,
-    auto shifter = shifter_t<>{}>
+template <is_fixed t_x_t, is_fixed t_y_t, typename t_scaled_int_t, auto align_exponent, auto shifter = shifter_t<>{}>
 struct segment_builder_t
 {
     using x_t = t_x_t;
     using y_t = t_y_t;
     using scaled_int_t = t_scaled_int_t;
-    using exponent_aligner_t = t_exponent_aligner_t;
 
     static constexpr auto in_frac_bits = t_x_t::frac_bits;
     static constexpr auto out_frac_bits = t_y_t::frac_bits;
@@ -56,7 +54,6 @@ struct segment_builder_t
 
     int_t t_to_dx_shift;
     scaled_int_t accumulator;
-    exponent_aligner_t align_exponent;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
@@ -104,11 +101,7 @@ template <typename t_builder_t> struct builder_factory_t
 
     constexpr auto operator()(int_t t_to_dx_shift, scaled_int_t accumulator) const noexcept -> builder_t
     {
-        return builder_t{
-            .t_to_dx_shift = t_to_dx_shift,
-            .accumulator = accumulator,
-            .align_exponent = {},
-        };
+        return builder_t{.t_to_dx_shift = t_to_dx_shift, .accumulator = accumulator};
     }
 };
 
