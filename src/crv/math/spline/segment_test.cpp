@@ -138,7 +138,7 @@ struct echoing_field_unpacker_t
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
         // echo input into mantissa, and fingerprint layout into shift
-        return {.mantissa = static_cast<mantissa_t>(packed_field), .shift = static_cast<shift_t>(layout.shift_width)};
+        return {.mantissa = static_cast<mantissa_t>(packed_field), .shift = layout.shift_width};
     }
 };
 
