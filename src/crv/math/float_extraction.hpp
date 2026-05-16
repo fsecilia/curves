@@ -79,8 +79,7 @@ private:
 };
 
 /// shifts integer mantissa to keep integer exponent within a range; saturates
-template <int_t t_exponent_min, int_t t_exponent_max, auto shifter = saturating_shifter_t<>{}>
-struct exponent_renormalizer_t
+template <int_t t_exponent_min, int_t t_exponent_max, auto shifter = saturating_shifter_t<>{}> struct exponent_aligner_t
 {
     static constexpr auto exponent_min = t_exponent_min;
     static constexpr auto exponent_max = t_exponent_max;
