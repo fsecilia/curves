@@ -52,5 +52,24 @@ static_assert(subnormal.exponent == 0);
 
 } // namespace float_extraction_tests
 
+// --------------------------------------------------------------------------------------------------------------------
+// exponent_renormalizer_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace exponent_renormalizer_tests {
+
+// arbitrary clamp bounds for testing
+constexpr auto sut = exponent_renormalizer_t<-20, 20>{};
+
+// pulling the 1.0f result from above: mantissa = 0x00800000, exponent = -23
+constexpr auto src = scaled_int_t<int_t>{.mantissa = 0x00800000, .exponent = -23};
+
+// clamping to -20 means shifting left by (-23 - (-20)) = -3, right-shifting the mantissa by 3
+constexpr auto clamped = sut(src);
+static_assert(clamped.exponent == -20);
+static_assert(clamped.mantissa == 0x00100000); // 0x00800000 >> 3 == 0x00100000
+
+} // namespace exponent_renormalizer_tests
+
 } // namespace
 } // namespace crv
