@@ -22,7 +22,7 @@ namespace crv::spline {
 // --------------------------------------------------------------------------------------------------------------------
 
 using mantissa_t = int64_t;
-using shift_t = int8_t;
+using shift_t = int_t;
 using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
 
 struct field_layout_t
@@ -73,13 +73,14 @@ struct field_unpacker_t
 {
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        auto const shift_masked = int_cast<std::make_unsigned_t<shift_t>>(packed_field & layout.shift_mask());
+        auto const shift_masked
+            = int_cast<shift_t>(static_cast<std::make_unsigned_t<shift_t>>(packed_field) & layout.shift_mask());
 
-        int8_t shift_val = shift_masked;
+        auto shift_val = shift_masked;
         if (layout.is_signed)
         {
             auto const bit_padding = sizeof(shift_t) * CHAR_BIT - layout.shift_width;
-            shift_val = int_cast<shift_t>(static_cast<shift_t>(shift_masked << bit_padding) >> bit_padding);
+            shift_val = int_cast<shift_t>((shift_masked << bit_padding) >> bit_padding);
         }
 
         return {

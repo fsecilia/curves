@@ -41,8 +41,8 @@ struct field_packer_t
 
 struct solved_shift_t
 {
-    int_t accumulator_shift;
-    int_t coeff_shift;
+    shift_t accumulator_shift;
+    shift_t coeff_shift;
     int_t next_exponent;
 };
 
