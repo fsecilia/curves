@@ -40,13 +40,13 @@ struct field_packer_t
     }
 };
 
-template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_aligner_t,
+template <is_fixed t_x_t, is_fixed t_y_t, typename t_scaled_int_t, typename t_exponent_aligner_t,
     auto shifter = shifter_t<>{}>
 struct segment_builder_t
 {
-    using scaled_int_t = t_scaled_int_t;
     using x_t = t_x_t;
     using y_t = t_y_t;
+    using scaled_int_t = t_scaled_int_t;
     using exponent_aligner_t = t_exponent_aligner_t;
 
     static constexpr auto in_frac_bits = t_x_t::frac_bits;
