@@ -55,40 +55,39 @@ struct segment_builder_t
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
 
     int_t t_to_dx_shift;
-    int_t acc_exp;
-    mantissa_t prev_mantissa;
+    scaled_int_t accumulator;
     exponent_aligner_t align_exponent;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
         assert(t_to_dx_shift >= 0);
 
-        // zero mantissa can't dominate the scale; treat it as matching the accumulator.
-        auto const next_exp = (next.mantissa == 0) ? acc_exp : next.exponent;
-        auto const exp_gap = next_exp - acc_exp;
+        // zero mantissa can't dominate scale; treat it as matching accumulator
+        auto const next_exponent = (next.mantissa == 0) ? accumulator.exponent : next.exponent;
+        auto const exp_gap = next_exponent - accumulator.exponent;
 
-        // t_to_dx_shift absorbs dx bit-growth; exp_gap lifts the accumulator when the next coeff is larger.
-        auto const acc_shift = t_to_dx_shift + std::max<int_t>(0, exp_gap);
+        // t_to_dx_shift absorbs x bit-growth; exp_gap lifts the accumulator when the next coeff is larger
+        auto const accumulator_shift = t_to_dx_shift + std::max<int_t>(0, exp_gap);
         auto const coeff_shift = std::max<int_t>(0, -exp_gap);
 
-        // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP.
+        // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP
         auto const adjusted_mantissa = (coeff_shift >= accumulator_width) ? 0 : shifter.shr(next.mantissa, coeff_shift);
-        auto const final_acc_mantissa = (acc_shift >= accumulator_width) ? 0 : prev_mantissa;
-        auto const final_acc_shift = (acc_shift >= accumulator_width) ? 0 : acc_shift;
+        auto const final_accumulator_mantissa = (accumulator_shift >= accumulator_width) ? 0 : accumulator.mantissa;
+        auto const final_accumulator_shift = (accumulator_shift >= accumulator_width) ? 0 : accumulator_shift;
 
-        acc_exp = std::max(acc_exp, next_exp);
-        prev_mantissa = adjusted_mantissa;
+        accumulator.mantissa = adjusted_mantissa;
+        accumulator.exponent = std::max(accumulator.exponent, next_exponent);
 
         return unpacked_field_t{
-            .mantissa = final_acc_mantissa,
-            .shift = int_cast<shift_t>(final_acc_shift),
+            .mantissa = final_accumulator_mantissa,
+            .shift = int_cast<shift_t>(final_accumulator_shift),
         };
     }
 
     constexpr auto finish() const&& noexcept -> unpacked_field_t
     {
-        auto const exponent_aligned = align_exponent(
-            scaled_int_t{.mantissa = prev_mantissa, .exponent = int_cast<shift_t>(acc_exp + out_frac_bits)});
+        auto const exponent_aligned = align_exponent(scaled_int_t{
+            .mantissa = accumulator.mantissa, .exponent = int_cast<shift_t>(accumulator.exponent + out_frac_bits)});
 
         return unpacked_field_t{
             .mantissa = exponent_aligned.mantissa,
@@ -101,12 +100,13 @@ template <typename t_builder_t> struct builder_factory_t
 {
     using builder_t = t_builder_t;
 
-    constexpr auto operator()(int_t t_to_dx_shift, int_t acc_exp, mantissa_t prev_mantissa) const noexcept -> builder_t
+    using scaled_int_t = builder_t::scaled_int_t;
+
+    constexpr auto operator()(int_t t_to_dx_shift, scaled_int_t accumulator) const noexcept -> builder_t
     {
         return builder_t{
             .t_to_dx_shift = t_to_dx_shift,
-            .acc_exp = acc_exp,
-            .prev_mantissa = prev_mantissa,
+            .accumulator = accumulator,
             .align_exponent = {},
         };
     }
@@ -151,7 +151,7 @@ struct segment_packer_t
         // seed
         auto const t_to_dx_shift = in_frac_bits + log2_width;
         auto const seed = extract_float(*seed_it);
-        auto builder = make_builder(t_to_dx_shift, seed.exponent, seed.mantissa);
+        auto builder = make_builder(t_to_dx_shift, seed);
 
         // process intermediate suffix
         auto field_index = static_cast<int_t>(std::distance(cubic.begin(), seed_it));
