@@ -10,6 +10,7 @@
 #include <crv/algorithm.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
+#include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/saturate_cast.hpp>
 #include <array>
@@ -18,81 +19,116 @@
 namespace crv::spline {
 
 // --------------------------------------------------------------------------------------------------------------------
+// traits
+// --------------------------------------------------------------------------------------------------------------------
+
+constexpr auto fields_per_segment = 4;
+
+template <typename t_unpacked_field_t> struct traits_t
+{
+    using unpacked_field_t = t_unpacked_field_t;
+    using mantissa_t = unpacked_field_t::mantissa_t;
+    using shift_t = unpacked_field_t::shift_t;
+
+    using packed_field_t = make_unsigned_t<mantissa_t>; // [signed mantissa | unsigned shift]
+
+    using packed_segment_t = std::array<packed_field_t, fields_per_segment>;
+    using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
+};
+
+// --------------------------------------------------------------------------------------------------------------------
 // layouts
 // --------------------------------------------------------------------------------------------------------------------
 
-using mantissa_t = int64_t;
-using shift_t = int_t;
-using packed_field_t = uint64_t; // [signed mantissa | unsigned shift]
-
-struct field_layout_t
+template <typename t_packed_field_t, typename t_shift_t> struct field_layout_t
 {
+    using packed_field_t = t_packed_field_t;
+    using shift_t = t_shift_t;
+
     int_t shift_width;
     bool is_signed;
 
     constexpr auto shift_mask() const noexcept -> packed_field_t { return (packed_field_t{1} << shift_width) - 1; }
 
-    constexpr auto min_shift() const noexcept -> int_t
+    constexpr auto min_shift() const noexcept -> shift_t
     {
         if (!is_signed) return 0;
         return -max_shift() - 1;
     }
 
-    constexpr auto max_shift() const noexcept -> int_t
+    constexpr auto max_shift() const noexcept -> shift_t
     {
         if (!is_signed) return static_cast<int_t>(shift_mask());
         return static_cast<int_t>((packed_field_t{1} << shift_width) >> 1) - 1;
     }
 };
 
-struct segment_layout_t
+template <typename field_layout_t> struct segment_layout_t
 {
     field_layout_t intermediate;
     field_layout_t final;
 
-    constexpr auto max_total_shift() const noexcept -> int_t { return intermediate.max_shift() + final.max_shift(); }
+    constexpr auto max_total_shift() const noexcept -> typename field_layout_t::shift_t
+    {
+        return intermediate.max_shift() + final.max_shift();
+    }
 };
 
 // --------------------------------------------------------------------------------------------------------------------
 // unpacking
 // --------------------------------------------------------------------------------------------------------------------
 
-struct unpacked_field_t
+template <signed_integral t_mantissa_t, signed_integral t_shift_t> struct unpacked_field_t
 {
+    using mantissa_t = t_mantissa_t;
+    using shift_t = t_shift_t;
+
     mantissa_t mantissa;
     shift_t shift;
 
     constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
 };
 
-constexpr auto fields_per_segment = 4;
-using packed_segment_t = std::array<packed_field_t, fields_per_segment>;
-using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
-
-struct field_unpacker_t
+template <typename t_unpacked_field_t> struct field_unpacker_t
 {
+    using unpacked_field_t = t_unpacked_field_t;
+
+    template <typename packed_field_t, typename field_layout_t>
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        auto const shift_masked
-            = int_cast<shift_t>(static_cast<std::make_unsigned_t<shift_t>>(packed_field) & layout.shift_mask());
+        using mantissa_t = unpacked_field_t::mantissa_t;
+        using shift_t = unpacked_field_t::shift_t;
 
-        auto shift_val = shift_masked;
+        auto const shift_masked = packed_field & layout.shift_mask();
+        shift_t shift;
         if (layout.is_signed)
         {
+            // use arithmetic shift to extend sign by msb into container's msb, then back
             auto const bit_padding = sizeof(shift_t) * CHAR_BIT - layout.shift_width;
-            shift_val = int_cast<shift_t>((shift_masked << bit_padding) >> bit_padding);
+            shift = static_cast<shift_t>(shift_masked << bit_padding) >> bit_padding;
+        }
+        else
+        {
+            shift = int_cast<shift_t>(shift_masked);
         }
 
+        // use arithmetic shift to extend sign
+        auto const mantissa = static_cast<mantissa_t>(packed_field) >> layout.shift_width;
+
         return {
-            .mantissa = static_cast<mantissa_t>(packed_field) >> layout.shift_width,
-            .shift = shift_val,
+            .mantissa = mantissa,
+            .shift = shift,
         };
     }
 };
 
-template <typename t_field_unpacker_t, segment_layout_t t_segment_layout> struct segment_unpacker_t
+template <typename packed_segment_t, typename t_unpacked_segment_t, typename field_unpacker_t,
+    segment_layout_t t_segment_layout>
+struct segment_unpacker_t
 {
-    using field_unpacker_t = t_field_unpacker_t;
+    using unpacked_segment_t = t_unpacked_segment_t;
+
+    using unpacked_field_t = field_unpacker_t::unpacked_field_t;
 
     static constexpr auto segment_layout = t_segment_layout;
     static constexpr auto max_total_shift = segment_layout.max_total_shift();
@@ -122,16 +158,20 @@ template <typename t_field_unpacker_t, segment_layout_t t_segment_layout> struct
 // evaluation
 // --------------------------------------------------------------------------------------------------------------------
 
-template <is_fixed t_x_t, is_fixed t_y_t, auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
+template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t,
+    auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
 struct segment_evaluator_t
 {
     using x_t = t_x_t;
     using y_t = t_y_t;
 
+    using unpacked_segment_t = traits_t::unpacked_segment_t;
+    using shift_t = traits_t::shift_t;
+
     using narrow_t = make_signed_t<typename y_t::value_t>;
     using wide_t = widened_t<narrow_t>;
 
-    static constexpr auto max_shift = static_cast<int_t>(sizeof(wide_t) * CHAR_BIT) - 1;
+    static constexpr auto max_shift = static_cast<shift_t>(sizeof(wide_t) * CHAR_BIT) - 1;
 
     constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept -> y_t
     {
@@ -142,6 +182,8 @@ struct segment_evaluator_t
     }
 
 private:
+    using mantissa_t = traits_t::mantissa_t;
+
     constexpr auto apply_coefficient(
         mantissa_t coeff, shift_t relative_shift, x_t const& x, mantissa_t accumulator) const noexcept -> mantissa_t
     {
@@ -180,14 +222,15 @@ private:
 // --------------------------------------------------------------------------------------------------------------------
 
 /// dynamic, fixed-point cubic spline segment packed into half a cache line
-template <is_fixed t_x_t, typename t_packed_segment_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
+template <typename traits_t, is_fixed t_x_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
 class alignas(32) segment_t
 {
 public:
     using x_t = t_x_t;
-    using packed_segment_t = t_packed_segment_t;
     using segment_unpacker_t = t_segment_unpacker_t;
     using segment_evaluator_t = t_segment_evaluator_t;
+
+    using packed_segment_t = traits_t::packed_segment_t;
 
     using y_t = segment_evaluator_t::y_t;
 

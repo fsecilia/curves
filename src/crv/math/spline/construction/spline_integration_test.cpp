@@ -169,6 +169,8 @@ struct tangent_extender_t
     using field_packer_t = t_field_packer_t;
 
     using x_t = segment_t::x_t;
+    using unpacked_field_t = segment_unpacker_t::unpacked_field_t;
+    using mantissa_t = unpacked_field_t::mantissa_t;
     using scalar_t = segment_packer_t::scalar_t;
     using cubic_t = segment_packer_t::cubic_t;
 
@@ -432,6 +434,13 @@ TEST(spline_generator, poc)
     using scalar_t = float_t;
 #endif
 
+    using traits_t = traits_t<unpacked_field_t<int_t, int_t>>;
+    using shift_t = traits_t::shift_t;
+    using unpacked_field_t = traits_t::unpacked_field_t;
+    using packed_field_t = traits_t::packed_field_t;
+    using unpacked_segment_t = traits_t::unpacked_segment_t;
+    using packed_segment_t = traits_t::packed_segment_t;
+
     using x_t = prod_pipeline_config_t::x_t;
     using y_t = prod_pipeline_config_t::y_t;
 
@@ -467,9 +476,11 @@ TEST(spline_generator, poc)
     auto const weight_function = weight_function_t{};
 #endif
 
-    using segment_evaluator_t = segment_evaluator_t<x_t, y_t>;
-    using segment_unpacker_t = segment_unpacker_t<field_unpacker_t, segment_layout>;
-    using segment_t = segment_t<x_t, packed_segment_t, segment_unpacker_t, segment_evaluator_t>;
+    using segment_evaluator_t = segment_evaluator_t<traits_t, x_t, y_t>;
+    using field_unpacker_t = field_unpacker_t<unpacked_field_t>;
+    using segment_unpacker_t
+        = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
+    using segment_t = segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
     using subdomain_t = subdomain_t<scalar_t>;
     using interval_t = interval_t<scalar_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
@@ -487,12 +498,13 @@ TEST(spline_generator, poc)
     using workspace_t = workspace_t<interval_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<scalar_t>;
-    using scaled_int_t = float_extractor_t::scaled_int_t;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
-    using relative_aligner_t = relative_aligner_t<>;
-    using radix_aligner_t = radix_aligner_t<scaled_int_t, exponent_aligner_t{}>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, shift_solver_t, relative_aligner_t, field_packer_t,
-        radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
+    using relative_aligner_t = relative_aligner_t<unpacked_field_t>;
+    using radix_aligner_t = radix_aligner_t<unpacked_field_t, shift_t, exponent_aligner_t{}>;
+    using shift_solver_t = shift_solver_t<shift_t>;
+    using field_packer_t = field_packer_t<packed_field_t>;
+    using segment_packer_t = segment_packer_t<packed_segment_t, float_extractor_t, shift_solver_t, relative_aligner_t,
+        field_packer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
     using saturating_shifter_t = saturating_shifter_t<>;
     using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_packer_t, segment_unpacker_t,

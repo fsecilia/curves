@@ -9,6 +9,16 @@
 namespace crv::spline {
 namespace {
 
+using traits_t = traits_t<unpacked_field_t<int_t, int_t>>;
+
+using packed_field_t = traits_t::packed_field_t;
+using unpacked_field_t = traits_t::unpacked_field_t;
+using mantissa_t = traits_t::mantissa_t;
+using shift_t = traits_t::shift_t;
+
+using field_layout_t = field_layout_t<packed_field_t, shift_t>;
+using field_packer_t = field_packer_t<packed_field_t>;
+
 // ====================================================================================================================
 // field_packer_t
 // ====================================================================================================================
