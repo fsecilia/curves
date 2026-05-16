@@ -59,18 +59,18 @@ struct shift_solver_t
     }
 };
 
-struct quantized_field_t
+struct relative_field_t
 {
     unpacked_field_t unpacked_field;
     mantissa_t next_mantissa;
 };
 
-template <auto shifter = shifter_t<>{}> struct field_quantizer_t
+template <auto shifter = shifter_t<>{}> struct relative_aligner_t
 {
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT} - is_signed_v<mantissa_t>;
 
     constexpr auto operator()(
-        mantissa_t accumulator, mantissa_t next, solved_shift_t const& solved_shift) const noexcept -> quantized_field_t
+        mantissa_t accumulator, mantissa_t next, solved_shift_t const& solved_shift) const noexcept -> relative_field_t
     {
         // flush out-of-scale terms
         auto const accumulator_mantissa = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : accumulator;
@@ -79,7 +79,7 @@ template <auto shifter = shifter_t<>{}> struct field_quantizer_t
         auto const next_mantissa
             = (solved_shift.coeff_shift >= accumulator_width) ? 0 : shifter.shr(next, solved_shift.coeff_shift);
 
-        return quantized_field_t{
+        return relative_field_t{
             .unpacked_field = {
                 .mantissa = accumulator_mantissa,
                 .shift = int_cast<shift_t>(accumulator_shift),
@@ -105,7 +105,7 @@ template <typename scaled_int_t, auto align_exponent> struct radix_aligner_t
 
 // this only takes log2_min_width for an assert; it should move to an enclosing type
 
-template <typename float_extractor_t, typename shift_solver_t, typename field_quantizer_t, typename field_packer_t,
+template <typename float_extractor_t, typename shift_solver_t, typename relative_aligner_t, typename field_packer_t,
     typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits, int_t log2_min_width,
     segment_layout_t segment_layout>
 struct segment_packer_t
@@ -120,7 +120,7 @@ struct segment_packer_t
 
     [[no_unique_address]] float_extractor_t extract_float;
     [[no_unique_address]] shift_solver_t solve_shift;
-    [[no_unique_address]] field_quantizer_t quantize_field;
+    [[no_unique_address]] relative_aligner_t align_relative;
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] radix_aligner_t align_radix;
 
@@ -149,13 +149,13 @@ struct segment_packer_t
             auto const shift = solve_shift(accumulator.exponent, effective_next_exp, t_to_x_shift);
 
             // quantize the mantissas into fields
-            auto const quantized_field = quantize_field(accumulator.mantissa, next_term.mantissa, shift);
+            auto const relative_field = align_relative(accumulator.mantissa, next_term.mantissa, shift);
 
             // update running state
-            accumulator.mantissa = quantized_field.next_mantissa;
+            accumulator.mantissa = relative_field.next_mantissa;
             accumulator.exponent = shift.next_exponent;
 
-            packed_segment[field_index] = pack_field(quantized_field.unpacked_field, segment_layout.intermediate);
+            packed_segment[field_index] = pack_field(relative_field.unpacked_field, segment_layout.intermediate);
         }
 
         // finish final field
