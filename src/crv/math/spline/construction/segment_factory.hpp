@@ -42,14 +42,14 @@ struct field_packer_t
     }
 };
 
-template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_renormalizer_t,
+template <typename t_scaled_int_t, is_fixed t_x_t, is_fixed t_y_t, typename t_exponent_aligner_t,
     auto shifter = shifter_t<>{}>
 struct segment_builder_t
 {
     using scaled_int_t = t_scaled_int_t;
     using x_t = t_x_t;
     using y_t = t_y_t;
-    using exponent_renormalizer_t = t_exponent_renormalizer_t;
+    using exponent_aligner_t = t_exponent_aligner_t;
 
     static constexpr auto in_frac_bits = t_x_t::frac_bits;
     static constexpr auto out_frac_bits = t_y_t::frac_bits;
@@ -59,7 +59,7 @@ struct segment_builder_t
     int_t t_to_dx_shift;
     int_t acc_exp;
     mantissa_t prev_mantissa;
-    exponent_renormalizer_t renormalize_exponent;
+    exponent_aligner_t align_exponent;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
@@ -89,12 +89,12 @@ struct segment_builder_t
 
     constexpr auto finish() const&& noexcept -> unpacked_field_t
     {
-        auto const renormalized = renormalize_exponent(
+        auto const exponent_aligned = align_exponent(
             scaled_int_t{.mantissa = prev_mantissa, .exponent = int_cast<shift_t>(acc_exp + out_frac_bits)});
 
         return unpacked_field_t{
-            .mantissa = renormalized.mantissa,
-            .shift = int_cast<shift_t>(-renormalized.exponent),
+            .mantissa = exponent_aligned.mantissa,
+            .shift = int_cast<shift_t>(-exponent_aligned.exponent),
         };
     }
 };
@@ -109,7 +109,7 @@ template <typename t_builder_t> struct builder_factory_t
             .t_to_dx_shift = t_to_dx_shift,
             .acc_exp = acc_exp,
             .prev_mantissa = prev_mantissa,
-            .renormalize_exponent = {},
+            .align_exponent = {},
         };
     }
 };

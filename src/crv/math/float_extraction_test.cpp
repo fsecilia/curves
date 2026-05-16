@@ -57,10 +57,10 @@ static_assert(float_extractor_t<float64_t>{}(1.0) == scaled_int_t<int64_t>{int64
 } // namespace float_extraction_tests
 
 // --------------------------------------------------------------------------------------------------------------------
-// exponent_renormalizer_t
+// exponent_aligner_t
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace exponent_renormalizer_tests {
+namespace exponent_aligner_tests {
 
 using mantissa_t = int32_t;
 using scaled_int_t = scaled_int_t<mantissa_t>;
@@ -70,7 +70,7 @@ constexpr auto mantissa_min = min<mantissa_t>();
 constexpr auto mantissa_max = max<mantissa_t>();
 
 // arbitrary clamp bounds for testing
-constexpr auto sut = exponent_renormalizer_t<exponent_min, exponent_max>{};
+constexpr auto sut = exponent_aligner_t<exponent_min, exponent_max>{};
 
 // exponent within range results in no shift
 static_assert(sut(scaled_int_t{.mantissa = 100, .exponent = 0}) == scaled_int_t{.mantissa = 100, .exponent = 0});
@@ -97,7 +97,7 @@ static_assert(
 static_assert(
     sut(scaled_int_t{.mantissa = -1000, .exponent = 55}) == scaled_int_t{.mantissa = mantissa_min, .exponent = 20});
 
-} // namespace exponent_renormalizer_tests
+} // namespace exponent_aligner_tests
 
 } // namespace
 } // namespace crv
