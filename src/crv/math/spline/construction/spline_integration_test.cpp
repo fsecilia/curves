@@ -489,10 +489,10 @@ TEST(spline_generator, poc)
     using float_extractor_t = float_extractor_t<scalar_t>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
-    using segment_builder_t = segment_builder_t<scaled_int_t, y_t::frac_bits, exponent_aligner_t{}>;
-    using builder_factory_t = builder_factory_t<segment_builder_t>;
-    using segment_packer_t = segment_packer_t<float_extractor_t, field_packer_t, builder_factory_t, x_t::frac_bits,
-        log2_min_width, segment_layout>;
+    using field_quantizer_t = field_quantizer_t<>;
+    using radix_aligner_t = radix_aligner_t<scaled_int_t, exponent_aligner_t{}>;
+    using segment_packer_t = segment_packer_t<float_extractor_t, shift_solver_t, field_quantizer_t, field_packer_t,
+        radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_packer_t>;
     using saturating_shifter_t = saturating_shifter_t<>;
     using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_packer_t, segment_unpacker_t,

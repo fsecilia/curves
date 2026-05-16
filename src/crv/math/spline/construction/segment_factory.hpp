@@ -18,7 +18,6 @@
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
 #include <climits>
-#include <utility>
 
 namespace crv::spline {
 
@@ -40,46 +39,62 @@ struct field_packer_t
     }
 };
 
-template <typename t_scaled_int_t, int_t out_frac_bits, auto align_exponent, auto shifter = shifter_t<>{}>
-struct segment_builder_t
+struct solved_shift_t
 {
-    using scaled_int_t = t_scaled_int_t;
+    int_t accumulator_shift;
+    int_t coeff_shift;
+    int_t next_exponent;
+};
 
-    static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
-
-    int_t t_to_x_shift;
-    scaled_int_t accumulator;
-
-    constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
+struct shift_solver_t
+{
+    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
+        -> solved_shift_t
     {
-        assert(t_to_x_shift >= 0);
+        auto const relative_shift = next_exponent - accumulator_exponent;
 
-        // zero mantissa can't dominate scale; treat it as matching accumulator
-        auto const next_exponent = (next.mantissa == 0) ? accumulator.exponent : next.exponent;
-        auto const exp_gap = next_exponent - accumulator.exponent;
+        return {.accumulator_shift = t_to_x_shift + std::max<int_t>(0, relative_shift),
+            .coeff_shift = std::max<int_t>(0, -relative_shift),
+            .next_exponent = std::max(accumulator_exponent, next_exponent)};
+    }
+};
 
-        // t_to_x_shift absorbs x bit-growth; exp_gap lifts the accumulator when the next coeff is larger
-        auto const accumulator_shift = t_to_x_shift + std::max<int_t>(0, exp_gap);
-        auto const coeff_shift = std::max<int_t>(0, -exp_gap);
+struct quantized_field_t
+{
+    unpacked_field_t unpacked_field;
+    mantissa_t next_mantissa;
+};
 
-        // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP
-        auto const adjusted_mantissa = (coeff_shift >= accumulator_width) ? 0 : shifter.shr(next.mantissa, coeff_shift);
-        auto const final_accumulator_mantissa = (accumulator_shift >= accumulator_width) ? 0 : accumulator.mantissa;
-        auto const final_accumulator_shift = (accumulator_shift >= accumulator_width) ? 0 : accumulator_shift;
+template <auto shifter = shifter_t<>{}> struct field_quantizer_t
+{
+    static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT} - is_signed_v<mantissa_t>;
 
-        accumulator.mantissa = adjusted_mantissa;
-        accumulator.exponent = std::max(accumulator.exponent, next_exponent);
+    constexpr auto operator()(
+        mantissa_t accumulator, mantissa_t next, solved_shift_t const& solved_shift) const noexcept -> quantized_field_t
+    {
+        // flush out-of-scale terms
+        auto const accumulator_mantissa = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : accumulator;
+        auto const accumulator_shift
+            = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : solved_shift.accumulator_shift;
+        auto const next_mantissa
+            = (solved_shift.coeff_shift >= accumulator_width) ? 0 : shifter.shr(next, solved_shift.coeff_shift);
 
-        return unpacked_field_t{
-            .mantissa = final_accumulator_mantissa,
-            .shift = int_cast<shift_t>(final_accumulator_shift),
+        return quantized_field_t{
+            .unpacked_field = {
+                .mantissa = accumulator_mantissa,
+                .shift = int_cast<shift_t>(accumulator_shift),
+            },
+            .next_mantissa = next_mantissa
         };
     }
+};
 
-    constexpr auto finish() const&& noexcept -> unpacked_field_t
+template <typename scaled_int_t, auto align_exponent> struct radix_aligner_t
+{
+    constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
     {
         auto const exponent_aligned = align_exponent(scaled_int_t{
-            .mantissa = accumulator.mantissa, .exponent = int_cast<shift_t>(accumulator.exponent + out_frac_bits)});
+            .mantissa = accumulator.mantissa, .exponent = int_cast<shift_t>(accumulator.exponent + radix)});
 
         return unpacked_field_t{
             .mantissa = exponent_aligned.mantissa,
@@ -88,27 +103,13 @@ struct segment_builder_t
     }
 };
 
-template <typename t_builder_t> struct builder_factory_t
-{
-    using builder_t = t_builder_t;
+// this only takes log2_min_width for an assert; it should move to an enclosing type
 
-    using scaled_int_t = builder_t::scaled_int_t;
-
-    constexpr auto operator()(int_t t_to_x_shift, scaled_int_t accumulator) const noexcept -> builder_t
-    {
-        return builder_t{.t_to_x_shift = t_to_x_shift, .accumulator = accumulator};
-    }
-};
-
-template <typename t_float_extractor_t, typename t_field_packer_t, typename t_builder_factory_t, int_t in_frac_bits,
-    int_t log2_min_width, segment_layout_t segment_layout>
+template <typename float_extractor_t, typename shift_solver_t, typename field_quantizer_t, typename field_packer_t,
+    typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits, int_t log2_min_width,
+    segment_layout_t segment_layout>
 struct segment_packer_t
 {
-    using float_extractor_t = t_float_extractor_t;
-    using field_packer_t = t_field_packer_t;
-    using builder_factory_t = t_builder_factory_t;
-    using segment_builder_t = builder_factory_t::builder_t;
-
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using scalar_t = float_extractor_t::scalar_t;
     using cubic_t = cubic_t<scalar_t>;
@@ -117,9 +118,11 @@ struct segment_packer_t
     // horner's loop generated by this packer will also be broken.
     static_assert(in_frac_bits + log2_min_width >= 0);
 
-    [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] float_extractor_t extract_float;
-    [[no_unique_address]] builder_factory_t make_builder;
+    [[no_unique_address]] shift_solver_t solve_shift;
+    [[no_unique_address]] field_quantizer_t quantize_field;
+    [[no_unique_address]] field_packer_t pack_field;
+    [[no_unique_address]] radix_aligner_t align_radix;
 
     constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> packed_segment_t
     {
@@ -131,35 +134,44 @@ struct segment_packer_t
         // handle degenerate cubics
         if (seed_it == cubic.end()) return packed_segment;
 
-        // seed
         auto const t_to_x_shift = in_frac_bits + log2_width;
-        auto const seed = extract_float(*seed_it);
-        auto builder = make_builder(t_to_x_shift, seed);
+        auto accumulator = extract_float(*seed_it);
 
-        // process intermediate suffix
         auto field_index = static_cast<int_t>(std::distance(cubic.begin(), seed_it));
         for (; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const scaled_int = extract_float(cubic[field_index + 1]);
-            packed_segment[field_index] = pack_field(builder.push(scaled_int), segment_layout.intermediate);
+            auto const next_term = extract_float(cubic[field_index + 1]);
+
+            // zero mantissa can't dominate scale; feed the solver the acc's exponent instead
+            auto const effective_next_exp = (next_term.mantissa == 0) ? accumulator.exponent : next_term.exponent;
+
+            // solve the relative scales
+            auto const shift = solve_shift(accumulator.exponent, effective_next_exp, t_to_x_shift);
+
+            // quantize the mantissas into fields
+            auto const quantized_field = quantize_field(accumulator.mantissa, next_term.mantissa, shift);
+
+            // update running state
+            accumulator.mantissa = quantized_field.next_mantissa;
+            accumulator.exponent = shift.next_exponent;
+
+            packed_segment[field_index] = pack_field(quantized_field.unpacked_field, segment_layout.intermediate);
         }
 
         // finish final field
-        packed_segment[fields_per_segment - 1] = pack_field(std::move(builder).finish(), segment_layout.final);
+        packed_segment[fields_per_segment - 1]
+            = pack_field(align_radix(accumulator, out_frac_bits), segment_layout.final);
 
         return packed_segment;
     }
 };
 
 /// creates final segment from its cubic and width
-template <typename t_segment_t, typename t_segment_packer_t> struct segment_factory_t
+template <typename t_segment_t, typename segment_packer_t> struct segment_factory_t
 {
     using segment_t = t_segment_t;
-    using segment_packer_t = t_segment_packer_t;
 
-    using scalar_t = segment_packer_t::scalar_t;
     using cubic_t = segment_packer_t::cubic_t;
-    using function_sample_t = function_sample_t<scalar_t>;
 
     [[no_unique_address]] segment_packer_t pack_segment;
 
