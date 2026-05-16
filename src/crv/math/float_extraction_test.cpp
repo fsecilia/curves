@@ -62,16 +62,40 @@ static_assert(float_extractor_t<float64_t>{}(1.0) == scaled_int_t<int64_t>{int64
 
 namespace exponent_renormalizer_tests {
 
+using mantissa_t = int32_t;
+using scaled_int_t = scaled_int_t<mantissa_t>;
+constexpr auto exponent_min = -20;
+constexpr auto exponent_max = 20;
+constexpr auto mantissa_min = min<mantissa_t>();
+constexpr auto mantissa_max = max<mantissa_t>();
+
 // arbitrary clamp bounds for testing
-constexpr auto sut = exponent_renormalizer_t<-20, 20>{};
+constexpr auto sut = exponent_renormalizer_t<exponent_min, exponent_max>{};
 
-// pulling the 1.0f result from above: mantissa = 0x00800000, exponent = -23
-constexpr auto src = scaled_int_t<int_t>{.mantissa = 0x00800000, .exponent = -23};
+// exponent within range results in no shift
+static_assert(sut(scaled_int_t{.mantissa = 100, .exponent = 0}) == scaled_int_t{.mantissa = 100, .exponent = 0});
 
-// clamping to -20 means shifting left by (-23 - (-20)) = -3, right-shifting the mantissa by 3
-constexpr auto clamped = sut(src);
-static_assert(clamped.exponent == -20);
-static_assert(clamped.mantissa == 0x00100000); // 0x00800000 >> 3 == 0x00100000
+// clamp positive mantissa to min exponent
+static_assert(sut(scaled_int_t{.mantissa = 0x00800000, .exponent = exponent_min - 3})
+    == scaled_int_t{.mantissa = 0x00100000, .exponent = exponent_min});
+
+// clamp positive mantissa to max exponent
+static_assert(sut(scaled_int_t{.mantissa = 1, .exponent = exponent_max + 5})
+    == scaled_int_t{.mantissa = 32, .exponent = exponent_max});
+
+// clamp negative mantissa to min exponent
+static_assert(sut(scaled_int_t{.mantissa = -0x00800000, .exponent = exponent_min - 3})
+    == scaled_int_t{.mantissa = -0x00100000, .exponent = exponent_min});
+
+// clamp negative mantissa to max exponent
+static_assert(sut(scaled_int_t{.mantissa = -1, .exponent = exponent_max + 5})
+    == scaled_int_t{.mantissa = -32, .exponent = exponent_max});
+
+// saturation_checks
+static_assert(
+    sut(scaled_int_t{.mantissa = 1000, .exponent = 55}) == scaled_int_t{.mantissa = mantissa_max, .exponent = 20});
+static_assert(
+    sut(scaled_int_t{.mantissa = -1000, .exponent = 55}) == scaled_int_t{.mantissa = mantissa_min, .exponent = 20});
 
 } // namespace exponent_renormalizer_tests
 
