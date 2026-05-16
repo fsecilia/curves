@@ -47,19 +47,19 @@ struct segment_builder_t
 
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT};
 
-    int_t t_to_dx_shift;
+    int_t t_to_x_shift;
     scaled_int_t accumulator;
 
     constexpr auto push(scaled_int_t const& next) noexcept -> unpacked_field_t
     {
-        assert(t_to_dx_shift >= 0);
+        assert(t_to_x_shift >= 0);
 
         // zero mantissa can't dominate scale; treat it as matching accumulator
         auto const next_exponent = (next.mantissa == 0) ? accumulator.exponent : next.exponent;
         auto const exp_gap = next_exponent - accumulator.exponent;
 
-        // t_to_dx_shift absorbs x bit-growth; exp_gap lifts the accumulator when the next coeff is larger
-        auto const accumulator_shift = t_to_dx_shift + std::max<int_t>(0, exp_gap);
+        // t_to_x_shift absorbs x bit-growth; exp_gap lifts the accumulator when the next coeff is larger
+        auto const accumulator_shift = t_to_x_shift + std::max<int_t>(0, exp_gap);
         auto const coeff_shift = std::max<int_t>(0, -exp_gap);
 
         // flush out-of-scale terms; shift >= 64 means the value is below the dominant term's ULP
@@ -94,9 +94,9 @@ template <typename t_builder_t> struct builder_factory_t
 
     using scaled_int_t = builder_t::scaled_int_t;
 
-    constexpr auto operator()(int_t t_to_dx_shift, scaled_int_t accumulator) const noexcept -> builder_t
+    constexpr auto operator()(int_t t_to_x_shift, scaled_int_t accumulator) const noexcept -> builder_t
     {
-        return builder_t{.t_to_dx_shift = t_to_dx_shift, .accumulator = accumulator};
+        return builder_t{.t_to_x_shift = t_to_x_shift, .accumulator = accumulator};
     }
 };
 
@@ -132,9 +132,9 @@ struct segment_packer_t
         if (seed_it == cubic.end()) return packed_segment;
 
         // seed
-        auto const t_to_dx_shift = in_frac_bits + log2_width;
+        auto const t_to_x_shift = in_frac_bits + log2_width;
         auto const seed = extract_float(*seed_it);
-        auto builder = make_builder(t_to_dx_shift, seed);
+        auto builder = make_builder(t_to_x_shift, seed);
 
         // process intermediate suffix
         auto field_index = static_cast<int_t>(std::distance(cubic.begin(), seed_it));
