@@ -45,10 +45,10 @@ template <typename t_packed_field_t> struct field_packer_t
 
 /// solves relative shifts between dynamic polynomial coefficients
 ///
-/// Our packed coefficients are stored with the relative shifts necessary to align radices between terms rather than
-/// absolute exponents. This type calculates both the relative shift between terms, but also a shift to first apply to
-/// the terms themselves to prevent overflow by construction.
-template <typename shift_t> struct shift_solver_t
+/// Our coefficients are packed with the relative shifts necessary to align radices between terms rather than absolute
+/// exponents. This type calculates both the relative shift between terms to apply during evaluation, but also
+/// calculates a shift to first apply to the terms themselves during construction to prevent overflow
+template <typename shift_t> struct relative_shift_solver_t
 {
     struct solved_shift_t
     {
@@ -57,7 +57,7 @@ template <typename shift_t> struct shift_solver_t
         int_t next_exponent;
     };
 
-    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
+    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, shift_t t_to_x_shift) const noexcept
         -> solved_shift_t
     {
         auto const relative_shift = next_exponent - accumulator_exponent;
@@ -68,60 +68,60 @@ template <typename shift_t> struct shift_solver_t
     }
 };
 
-template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct relative_aligner_t
+/// pre-shifts coefficients so the relative shifts between them cannot overflow
+template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct coeff_preshifter_t
 {
     using mantissa_t = unpacked_field_t::mantissa_t;
 
-    struct relative_field_t
+    struct preshifted_coeff_t
     {
-        unpacked_field_t unpacked_field;
-        mantissa_t next_mantissa;
+        unpacked_field_t shifted_unpacked_field;
+        mantissa_t adjusted_next_coeff_mantissa;
     };
 
     static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT} - is_signed_v<mantissa_t>;
 
-    constexpr auto operator()(mantissa_t accumulator, mantissa_t next, auto const& solved_shift) const noexcept
-        -> relative_field_t
+    constexpr auto operator()(mantissa_t accumulator_mantissa, mantissa_t next_coeff_mantissa,
+        auto const& solved_shift) const noexcept -> preshifted_coeff_t
     {
         using shift_t = unpacked_field_t::mantissa_t;
 
         // flush out-of-scale terms
-        auto const accumulator_mantissa = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : accumulator;
-        auto const accumulator_shift
-            = (solved_shift.accumulator_shift >= accumulator_width) ? 0 : solved_shift.accumulator_shift;
-        auto const next_mantissa
-            = (solved_shift.coeff_shift >= accumulator_width) ? 0 : shifter.shr(next, solved_shift.coeff_shift);
+        auto const unpacked_field = solved_shift.accumulator_shift >= accumulator_width
+            ? unpacked_field_t{}
+            : unpacked_field_t{
+                  .mantissa = accumulator_mantissa, .shift = int_cast<shift_t>(solved_shift.accumulator_shift)};
+        auto const adjusted_next_coeff_mantissa = (solved_shift.coeff_shift >= accumulator_width)
+            ? 0
+            : shifter.shr(next_coeff_mantissa, solved_shift.coeff_shift);
 
-        return relative_field_t{
-            .unpacked_field = {
-                .mantissa = accumulator_mantissa,
-                .shift = int_cast<shift_t>(accumulator_shift),
-            },
-            .next_mantissa = next_mantissa
-        };
+        return preshifted_coeff_t{
+            .shifted_unpacked_field = unpacked_field, .adjusted_next_coeff_mantissa = adjusted_next_coeff_mantissa};
     }
 };
 
+/// aligns radix of the final evaluation step to match the precision of the output type
 template <typename unpacked_field_t, typename shift_t, auto align_exponent> struct radix_aligner_t
 {
     template <typename scaled_int_t>
     constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
     {
-        auto const exponent_aligned = align_exponent(scaled_int_t{
+        auto const aligned_accumulator = align_exponent(scaled_int_t{
             .mantissa = accumulator.mantissa, .exponent = int_cast<shift_t>(accumulator.exponent + radix)});
 
         return unpacked_field_t{
-            .mantissa = exponent_aligned.mantissa,
-            .shift = int_cast<shift_t>(-exponent_aligned.exponent),
+            .mantissa = aligned_accumulator.mantissa,
+            .shift = int_cast<shift_t>(-aligned_accumulator.exponent),
         };
     }
 };
 
 // this only takes log2_min_width for an assert; it should move to an enclosing type
 
-template <typename packed_segment_t, typename float_extractor_t, typename shift_solver_t, typename relative_aligner_t,
-    typename field_packer_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits, int_t log2_min_width,
-    segment_layout_t segment_layout>
+/// packs segments tightly according to layout
+template <typename packed_segment_t, typename float_extractor_t, typename relative_shift_solver_t,
+    typename coeff_preshifter_t, typename field_packer_t, typename radix_aligner_t, int_t in_frac_bits,
+    int_t out_frac_bits, int_t log2_min_width, segment_layout_t segment_layout>
 struct segment_packer_t
 {
     using scaled_int_t = float_extractor_t::scaled_int_t;
@@ -133,8 +133,8 @@ struct segment_packer_t
     static_assert(in_frac_bits + log2_min_width >= 0);
 
     [[no_unique_address]] float_extractor_t extract_float;
-    [[no_unique_address]] shift_solver_t solve_shift;
-    [[no_unique_address]] relative_aligner_t align_relative;
+    [[no_unique_address]] relative_shift_solver_t solve_relative_shift;
+    [[no_unique_address]] coeff_preshifter_t preshift_coeffs;
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] radix_aligner_t align_radix;
 
@@ -159,17 +159,18 @@ struct segment_packer_t
             // zero mantissa can't dominate scale; feed the solver the acc's exponent instead
             auto const effective_next_exp = (next_term.mantissa == 0) ? accumulator.exponent : next_term.exponent;
 
-            // solve the relative scales
-            auto const shift = solve_shift(accumulator.exponent, effective_next_exp, t_to_x_shift);
+            // solve the relative shift
+            auto const relative_shift = solve_relative_shift(accumulator.exponent, effective_next_exp, t_to_x_shift);
 
-            // quantize the mantissas into fields
-            auto const relative_field = align_relative(accumulator.mantissa, next_term.mantissa, shift);
+            // preshift coefficient so it cannot overflow
+            auto const preshifted_coeff = preshift_coeffs(accumulator.mantissa, next_term.mantissa, relative_shift);
 
             // update running state
-            accumulator.mantissa = relative_field.next_mantissa;
-            accumulator.exponent = shift.next_exponent;
+            accumulator.mantissa = preshifted_coeff.adjusted_next_coeff_mantissa;
+            accumulator.exponent = relative_shift.next_exponent;
 
-            packed_segment[field_index] = pack_field(relative_field.unpacked_field, segment_layout.intermediate);
+            packed_segment[field_index]
+                = pack_field(preshifted_coeff.shifted_unpacked_field, segment_layout.intermediate);
         }
 
         // finish final field
