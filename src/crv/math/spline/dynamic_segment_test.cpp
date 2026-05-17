@@ -43,12 +43,13 @@ struct spline_dynamic_segment_test_t : Test
     using float_extractor_t = float_extractor_t<float64_t>;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
-    using relative_aligner_t = relative_aligner_t<unpacked_field_t>;
+    using coeff_preshifter_t = coeff_preshifter_t<unpacked_field_t>;
     using radix_aligner_t = radix_aligner_t<unpacked_field_t, shift_t, exponent_aligner_t{}>;
-    using shift_solver_t = shift_solver_t<shift_t>;
+    using relative_shift_solver_t = relative_shift_solver_t<shift_t>;
     using field_packer_t = field_packer_t<packed_field_t>;
-    using segment_packer_t = segment_packer_t<packed_segment_t, float_extractor_t, shift_solver_t, relative_aligner_t,
-        field_packer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
+    using segment_packer_t
+        = segment_packer_t<packed_segment_t, float_extractor_t, relative_shift_solver_t, coeff_preshifter_t,
+            field_packer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
     using cubic_t = cubic_t<scalar_t>;
 
     segment_packer_t segment_packer;
