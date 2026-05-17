@@ -10,16 +10,15 @@
 namespace crv::spline {
 namespace {
 
-using traits_t = traits_t<unpacked_field_t<int_t, int_t>>;
+using traits_t = traits_t<unpacked_field_t<int_t>>;
 
 using packed_field_t = traits_t::packed_field_t;
 using unpacked_field_t = traits_t::unpacked_field_t;
 using mantissa_t = traits_t::mantissa_t;
-using shift_t = traits_t::shift_t;
 using packed_segment_t = traits_t::packed_segment_t;
 using unpacked_segment_t = traits_t::unpacked_segment_t;
 
-using field_layout_t = field_layout_t<packed_field_t, shift_t>;
+using field_layout_t = field_layout_t<packed_field_t>;
 using field_packer_t = field_packer_t<packed_field_t>;
 using field_unpacker_t = field_unpacker_t<unpacked_field_t>;
 using segment_layout_t = segment_layout_t<field_layout_t>;
@@ -339,7 +338,7 @@ constexpr auto d_shift = 4;
 constexpr int_t y_expected
     = ((((((a * x >> a_shift) + b) * x >> b_shift) + c) * x) + (d << c_shift)) >> (c_shift + d_shift);
 
-constexpr auto pack(mantissa_t mantissa, shift_t shift) noexcept -> packed_field_t
+constexpr auto pack(mantissa_t mantissa, int_t shift) noexcept -> packed_field_t
 {
     auto const shift_mask = segment_layout.intermediate.shift_mask();
     return (static_cast<packed_field_t>(mantissa) << segment_layout.intermediate.shift_width)

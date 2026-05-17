@@ -9,14 +9,13 @@
 namespace crv::spline {
 namespace {
 
-using traits_t = traits_t<unpacked_field_t<int_t, int_t>>;
+using traits_t = traits_t<unpacked_field_t<int_t>>;
 
 using packed_field_t = traits_t::packed_field_t;
 using unpacked_field_t = traits_t::unpacked_field_t;
 using mantissa_t = traits_t::mantissa_t;
-using shift_t = traits_t::shift_t;
 
-using field_layout_t = field_layout_t<packed_field_t, shift_t>;
+using field_layout_t = field_layout_t<packed_field_t>;
 using field_packer_t = field_packer_t<packed_field_t>;
 
 // ====================================================================================================================
@@ -33,8 +32,8 @@ constexpr auto max_mantissa = mantissa_t{(1LL << 59) - 1};
 constexpr auto min_mantissa = mantissa_t{-(1LL << 59)};
 
 // 4-bit signed shift bounds
-constexpr auto max_shift = shift_t{7};
-constexpr auto min_shift = shift_t{-8};
+constexpr auto max_shift = int_t{7};
+constexpr auto min_shift = int_t{-8};
 
 // max mantissa, min shift
 static_assert(pack_field(unpacked_field_t{.mantissa = max_mantissa, .shift = min_shift}, layout)
