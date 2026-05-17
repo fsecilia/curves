@@ -39,6 +39,37 @@ static_assert(plan_shift(-5, -2, -1)
 } // namespace shift_planner_tests
 
 // ====================================================================================================================
+// mantissa_quantizer_t
+// ====================================================================================================================
+
+namespace mantissa_quantizer_tests {
+
+using mantissa_t = int32_t;
+constexpr auto quantize = mantissa_quantizer_t<mantissa_t>{};
+
+// passthrough with no shift
+static_assert(quantize(100, 0) == 100);
+
+// basic shifting
+static_assert(quantize(100, 2) == 25);
+static_assert(quantize(-100, 2) == -25);
+
+// rne boundary conditions
+static_assert(quantize(3, 1) == 2); // 1.5 rounds up to 2
+static_assert(quantize(5, 1) == 2); // 2.5 rounds down to 2
+static_assert(quantize(7, 1) == 4); // 3.5 rounds up to 4
+static_assert(quantize(-3, 1) == -2); // -1.5 rounds to -2
+static_assert(quantize(-5, 1) == -2); // -2.5 rounds to -2
+
+// container shift saturation; max_container_shift for int32_t is 31
+static_assert(quantize(max<mantissa_t>(), 30) == (max<mantissa_t>() >> 30) + 1); // no flush before max
+static_assert(quantize(max<mantissa_t>(), 31) == 0); // flush exactly at max
+static_assert(quantize(max<mantissa_t>(), 32) == 0); // flush exceeding max
+static_assert(quantize(max<mantissa_t>(), 100) == 0); // flush large values
+
+} // namespace mantissa_quantizer_tests
+
+// ====================================================================================================================
 // field_packer_t
 // ====================================================================================================================
 
