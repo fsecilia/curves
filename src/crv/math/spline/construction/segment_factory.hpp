@@ -33,6 +33,8 @@ struct shift_planner_t
         int_t packed_runtime_shift; ///< relative shift performed at runtime during evaluation
         int_t destructive_preshift; ///< shift applied to next coefficient before packing
         int_t next_accum_exponent; ///< state carried to next planning step
+
+        auto operator==(plan_t const&) const noexcept -> bool = default;
     };
 
     constexpr auto operator()(int_t accum_exp, int_t next_exp, int_t t_to_x_shift) const noexcept -> plan_t

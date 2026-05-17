@@ -9,6 +9,41 @@
 namespace crv::spline {
 namespace {
 
+// ====================================================================================================================
+// shift_planner_t
+// ====================================================================================================================
+
+namespace shift_planner_tests {
+
+constexpr auto plan_shift = shift_planner_t{};
+
+// exponents are equal; no relative shift required, so just pass through the base t_to_x_shift
+static_assert(plan_shift(10, 10, 5)
+    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 0, .next_accum_exponent = 10});
+
+// next exponent is larger; next term needs a larger runtime shift to align, no destructive preshift needed
+// base shift (5) + relative shift (4)
+static_assert(plan_shift(10, 14, 5)
+    == shift_planner_t::plan_t{.packed_runtime_shift = 9, .destructive_preshift = 0, .next_accum_exponent = 14});
+
+// accumulator exponent is larger; next term must be destructively preshifted to align with the accumulator
+// base shift (5) + relative shift (-4)
+static_assert(plan_shift(14, 10, 5)
+    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 4, .next_accum_exponent = 14});
+
+// negative domains
+// base shift (-1) + relative shift (3)
+static_assert(plan_shift(-5, -2, -1)
+    == shift_planner_t::plan_t{.packed_runtime_shift = 2, .destructive_preshift = 0, .next_accum_exponent = -2});
+
+} // namespace shift_planner_tests
+
+// ====================================================================================================================
+// field_packer_t
+// ====================================================================================================================
+
+namespace field_packer_tests {
+
 using traits_t = traits_t<unpacked_field_t<int_t>>;
 
 using packed_field_t = traits_t::packed_field_t;
@@ -17,12 +52,6 @@ using mantissa_t = traits_t::mantissa_t;
 
 using field_layout_t = field_layout_t<packed_field_t>;
 using field_packer_t = field_packer_t<packed_field_t>;
-
-// ====================================================================================================================
-// field_packer_t
-// ====================================================================================================================
-
-namespace field_packer_tests {
 
 constexpr auto layout = field_layout_t{.shift_width = 4, .is_signed = true};
 constexpr auto pack_field = field_packer_t{};
