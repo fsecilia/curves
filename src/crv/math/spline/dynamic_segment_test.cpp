@@ -47,11 +47,12 @@ struct spline_dynamic_segment_test_t : Test
     using radix_aligner_t = radix_aligner_t<unpacked_field_t, shift_t, exponent_aligner_t{}>;
     using relative_shift_solver_t = relative_shift_solver_t<shift_t>;
     using field_packer_t = field_packer_t<packed_field_t>;
-    using segment_packer_t
-        = segment_packer_t<packed_segment_t, float_extractor_t, relative_shift_solver_t, coeff_preshifter_t,
-            field_packer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width, segment_layout>;
+    using segment_quantizer_t = segment_quantizer_t<unpacked_segment_t, float_extractor_t, relative_shift_solver_t,
+        coeff_preshifter_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
+    using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using cubic_t = cubic_t<scalar_t>;
 
+    segment_quantizer_t segment_quantizer;
     segment_packer_t segment_packer;
     segment_unpacker_t segment_unpacker;
     segment_evaluator_t segment_evaluator;
@@ -63,7 +64,8 @@ struct spline_dynamic_segment_test_t : Test
         auto const oracle = cubic(t);
         EXPECT_NEAR(expected, oracle, 5e-13);
 
-        auto const packed_segment = segment_packer(cubic, log2_width);
+        auto const quantized_segment = segment_quantizer(cubic, log2_width);
+        auto const packed_segment = segment_packer(quantized_segment);
         auto const unpacked_segment = segment_unpacker(packed_segment);
 
         // check actual result
