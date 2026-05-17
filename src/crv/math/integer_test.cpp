@@ -11,6 +11,10 @@
 namespace crv {
 namespace {
 
+// ====================================================================================================================
+// functions
+// ====================================================================================================================
+
 // --------------------------------------------------------------------------------------------------------------------
 // log2
 // --------------------------------------------------------------------------------------------------------------------
@@ -54,6 +58,56 @@ TEST(log2, asserts_on_log2_0)
 }
 
 #endif
+
+// --------------------------------------------------------------------------------------------------------------------
+// add_wrap
+// --------------------------------------------------------------------------------------------------------------------
+
+//
+// int_t
+//
+
+// baseline
+static_assert(add_wrap<int_t>(0, 0) == 0);
+static_assert(add_wrap<int_t>(3, 5) == 8);
+static_assert(add_wrap<int_t>(3, -5) == -2);
+static_assert(add_wrap<int_t>(-3, 5) == 2);
+static_assert(add_wrap<int_t>(-3, -5) == -8);
+static_assert(add_wrap<int_t>(5, 3) == 8);
+
+// wrapping edges
+static_assert(add_wrap<int_t>(min<int_t>(), -2) == max<int_t>() - 1);
+static_assert(add_wrap<int_t>(min<int_t>(), -1) == max<int_t>());
+static_assert(add_wrap<int_t>(min<int_t>(), 0) == min<int_t>());
+static_assert(add_wrap<int_t>(min<int_t>(), 1) == min<int_t>() + 1);
+static_assert(add_wrap<int_t>(max<int_t>(), -1) == max<int_t>() - 1);
+static_assert(add_wrap<int_t>(max<int_t>(), 0) == max<int_t>());
+static_assert(add_wrap<int_t>(max<int_t>(), 1) == min<int_t>());
+static_assert(add_wrap<int_t>(max<int_t>(), 2) == min<int_t>() + 1);
+
+// wrap commutativity
+static_assert(add_wrap<int_t>(1, max<int_t>()) == min<int_t>());
+static_assert(add_wrap<int_t>(-1, min<int_t>()) == max<int_t>());
+
+// extremes
+static_assert(add_wrap<int_t>(max<int_t>(), max<int_t>()) == -2);
+static_assert(add_wrap<int_t>(min<int_t>(), min<int_t>()) == 0);
+static_assert(add_wrap<int_t>(min<int_t>(), max<int_t>()) == -1);
+static_assert(add_wrap<int_t>(max<int_t>(), min<int_t>()) == -1);
+
+//
+// int8_t
+//
+
+// standard
+static_assert(add_wrap<int8_t>(max<int8_t>(), 1) == min<int8_t>());
+static_assert(add_wrap<int8_t>(min<int8_t>(), -1) == max<int8_t>());
+
+// extremes
+static_assert(add_wrap<int8_t>(max<int8_t>(), max<int8_t>()) == -2);
+static_assert(add_wrap<int8_t>(min<int8_t>(), min<int8_t>()) == 0);
+static_assert(add_wrap<int8_t>(min<int8_t>(), max<int8_t>()) == -1);
+static_assert(add_wrap<int8_t>(max<int8_t>(), min<int8_t>()) == -1);
 
 // ====================================================================================================================
 // Conversions

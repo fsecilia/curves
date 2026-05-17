@@ -16,13 +16,24 @@
 namespace crv {
 
 // --------------------------------------------------------------------------------------------------------------------
-// log2
+// functions
 // --------------------------------------------------------------------------------------------------------------------
 
+/// coarse integer log2
 template <integral value_t> constexpr auto log2(value_t value) noexcept -> value_t
 {
     assert(value > 0 && "log2: domain error");
     return static_cast<value_t>(std::bit_width(value) - 1);
+}
+
+/// adds using wrapping unsigned wrapping semantics, regardless of type
+///
+/// Summing two signed integers that may overflow induces UB. Wrapping that same sum and doing it unsigned guarantees
+/// wrapping behavior and no UB.
+template <typename value_t> constexpr auto add_wrap(value_t lhs, value_t rhs) noexcept -> value_t
+{
+    using unsigned_t = make_unsigned_t<value_t>;
+    return static_cast<value_t>(static_cast<unsigned_t>(lhs) + static_cast<unsigned_t>(rhs));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
