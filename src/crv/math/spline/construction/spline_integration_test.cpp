@@ -158,9 +158,8 @@ template <std::floating_point scalar_t, typename bisector_t, typename interval_f
     }
 };
 
-template <typename t_interval_t, typename t_segment_t, typename segment_quantizer_t, typename segment_fitter_t,
-    typename t_segment_packer_t, typename t_field_packer_t, typename saturating_shifter_t,
-    segment_layout_t segment_layout>
+template <typename t_interval_t, typename t_segment_t, typename segment_quantizer_t, typename t_segment_packer_t,
+    typename t_field_packer_t, typename saturating_shifter_t, segment_layout_t segment_layout>
 struct tangent_extender_t
 {
     using interval_t = t_interval_t;
@@ -175,7 +174,6 @@ struct tangent_extender_t
     using cubic_t = segment_quantizer_t::cubic_t;
 
     [[no_unique_address]] segment_quantizer_t quantize_segment;
-    [[no_unique_address]] segment_fitter_t fit_segment;
     [[no_unique_address]] segment_packer_t pack_segment;
     [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] saturating_shifter_t saturating_shifter;
@@ -196,10 +194,9 @@ struct tangent_extender_t
         // pack proto and unpack to find shift
         auto const y = from_fixed<scalar_t>(y1_actual);
         auto const tangent_cubic = cubic_t{0, 0, dy_dx_extended_segment, y};
-        auto const quantized_segment = quantize_segment(tangent_cubic, log2_x_max);
-        auto const fitted_segment = fit_segment(quantized_segment);
-        auto packed_segment = pack_segment(fitted_segment);
-        auto const c3_shift = fitted_segment[3].shift;
+        auto const unpacked_segment = quantize_segment(tangent_cubic, log2_x_max);
+        auto packed_segment = pack_segment(unpacked_segment);
+        auto const c3_shift = unpacked_segment[3].shift;
 
         // solve target mantissa directly via renormalization
         auto const y1_as_signed = saturate_cast<mantissa_t>(y1_actual.value);
@@ -506,13 +503,12 @@ TEST(spline_generator, poc)
     using relative_shift_solver_t = relative_shift_solver_t;
     using field_packer_t = field_packer_t<packed_field_t>;
     using segment_quantizer_t = segment_quantizer_t<unpacked_field_t, float_extractor_t, relative_shift_solver_t,
-        x_t::frac_bits, log2_min_width>;
-    using segment_fitter_t = segment_fitter_t<unpacked_segment_t, coeff_preshifter_t, radix_aligner_t, y_t::frac_bits>;
+        coeff_preshifter_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
     using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
-    using segment_factory_t = segment_factory_t<segment_t, segment_quantizer_t, segment_fitter_t, segment_packer_t>;
+    using segment_factory_t = segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
     using saturating_shifter_t = saturating_shifter_t<>;
-    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_quantizer_t, segment_fitter_t,
-        segment_packer_t, field_packer_t, saturating_shifter_t, segment_layout>;
+    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_quantizer_t, segment_packer_t,
+        field_packer_t, saturating_shifter_t, segment_layout>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<scalar_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t
