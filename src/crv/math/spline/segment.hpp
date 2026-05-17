@@ -167,8 +167,9 @@ struct segment_evaluator_t
 
     using unpacked_segment_t = traits_t::unpacked_segment_t;
     using shift_t = traits_t::shift_t;
+    using mantissa_t = traits_t::mantissa_t;
 
-    using narrow_t = make_signed_t<typename y_t::value_t>;
+    using narrow_t = make_signed_t<mantissa_t>;
     using wide_t = widened_t<narrow_t>;
 
     static constexpr auto max_shift = static_cast<shift_t>(sizeof(wide_t) * CHAR_BIT) - 1;
@@ -182,7 +183,16 @@ struct segment_evaluator_t
     }
 
 private:
-    using mantissa_t = traits_t::mantissa_t;
+    // prevents UB from signed integer overflow
+    //
+    // The segments we generate do not overflow by construction, but a malformed segment might. None of the segment
+    // evaluation result is used to index into memory, so an overflow wrapping just means a bad mouse curve, not a CVE.
+    // This function is used to sum two signed, 2's complement values using unsigned arithmetic. The result is the same,
+    // but overflow just wraps; it does not induce UB.
+    template <typename value_t> static constexpr auto safe_add(value_t lhs, value_t rhs) noexcept -> value_t
+    {
+        return add_wrap(lhs, rhs);
+    }
 
     constexpr auto apply_coefficient(
         mantissa_t coeff, shift_t relative_shift, x_t const& x, mantissa_t accumulator) const noexcept -> mantissa_t
@@ -194,9 +204,7 @@ private:
         auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
 
         // sum aligned terms
-        //
-        // This can technically overflow, but it would require a malformed segment and it is not exploitable.
-        return aligned_product + coeff;
+        return safe_add(aligned_product, coeff);
     }
 
     // applies final coefficient wide with one shr and one round
@@ -211,9 +219,9 @@ private:
 
         // align to the final output radix
         auto const relative_shift_d_to_y = unpacked_segment[3].shift;
-        auto const wide_accumulator = wide_product + aligned_d;
+        auto const wide_accumulator = safe_add(wide_product, aligned_d);
         auto const total_left_shift = -(relative_shift_c_to_d + relative_shift_d_to_y);
-        return y_t::literal(saturate_cast<narrow_t>(shifter.shift(wide_accumulator, total_left_shift)));
+        return y_t::literal(saturate_cast<typename y_t::value_t>(shifter.shift(wide_accumulator, total_left_shift)));
     }
 };
 
