@@ -118,12 +118,14 @@ template <typename unpacked_field_t, typename shift_t, auto align_exponent> stru
 
 // this only takes log2_min_width for an assert; it should move to an enclosing type
 
-/// packs segments tightly according to layout
-template <typename packed_segment_t, typename float_extractor_t, typename relative_shift_solver_t,
-    typename coeff_preshifter_t, typename field_packer_t, typename radix_aligner_t, int_t in_frac_bits,
-    int_t out_frac_bits, int_t log2_min_width, segment_layout_t segment_layout>
-struct segment_packer_t
+/// quantizes a segment cubic to an unpacked segment with relative shifts
+template <typename t_unpacked_segment_t, typename float_extractor_t, typename relative_shift_solver_t,
+    typename coeff_preshifter_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits,
+    int_t log2_min_width>
+struct segment_quantizer_t
 {
+    using unpacked_segment_t = t_unpacked_segment_t;
+
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using scalar_t = float_extractor_t::scalar_t;
     using cubic_t = cubic_t<scalar_t>;
@@ -135,18 +137,17 @@ struct segment_packer_t
     [[no_unique_address]] float_extractor_t extract_float;
     [[no_unique_address]] relative_shift_solver_t solve_relative_shift;
     [[no_unique_address]] coeff_preshifter_t preshift_coeffs;
-    [[no_unique_address]] field_packer_t pack_field;
     [[no_unique_address]] radix_aligner_t align_radix;
 
-    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> packed_segment_t
+    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> unpacked_segment_t
     {
-        auto packed_segment = packed_segment_t{};
+        auto unpacked_segment = unpacked_segment_t{};
 
         // skip zero prefix
         auto const seed_it = std::ranges::find_if(cubic, [](auto const& c) { return c != 0.0; });
 
         // handle degenerate cubics
-        if (seed_it == cubic.end()) return packed_segment;
+        if (seed_it == cubic.end()) return unpacked_segment;
 
         auto const t_to_x_shift = in_frac_bits + log2_width;
         auto accumulator = extract_float(*seed_it);
@@ -169,30 +170,51 @@ struct segment_packer_t
             accumulator.mantissa = preshifted_coeff.adjusted_next_coeff_mantissa;
             accumulator.exponent = relative_shift.next_exponent;
 
-            packed_segment[field_index]
-                = pack_field(preshifted_coeff.shifted_unpacked_field, segment_layout.intermediate);
+            unpacked_segment[field_index] = preshifted_coeff.shifted_unpacked_field;
         }
 
         // finish final field
-        packed_segment[fields_per_segment - 1]
-            = pack_field(align_radix(accumulator, out_frac_bits), segment_layout.final);
+        unpacked_segment[fields_per_segment - 1] = align_radix(accumulator, out_frac_bits);
 
-        return packed_segment;
+        return unpacked_segment;
+    }
+};
+
+/// packs segments tightly according to layout
+template <typename t_packed_segment_t, typename unpacked_segment_t, typename field_packer_t,
+    segment_layout_t segment_layout>
+struct segment_packer_t
+{
+    using packed_segment_t = t_packed_segment_t;
+
+    [[no_unique_address]] field_packer_t pack_field;
+
+    constexpr auto operator()(unpacked_segment_t const& unpacked_segment) const noexcept -> packed_segment_t
+    {
+        return packed_segment_t{
+            pack_field(unpacked_segment[0], segment_layout.intermediate),
+            pack_field(unpacked_segment[1], segment_layout.intermediate),
+            pack_field(unpacked_segment[2], segment_layout.intermediate),
+            pack_field(unpacked_segment[3], segment_layout.final),
+        };
     }
 };
 
 /// creates final segment from its cubic and width
-template <typename t_segment_t, typename segment_packer_t> struct segment_factory_t
+template <typename t_segment_t, typename segment_quantizer_t, typename segment_packer_t> struct segment_factory_t
 {
     using segment_t = t_segment_t;
 
-    using cubic_t = segment_packer_t::cubic_t;
+    using cubic_t = segment_quantizer_t::cubic_t;
 
+    [[no_unique_address]] segment_quantizer_t quantize_segment;
     [[no_unique_address]] segment_packer_t pack_segment;
 
     constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
     {
-        return segment_t{pack_segment(cubic, log2_width)};
+        auto const quantized_segment = quantize_segment(cubic, log2_width);
+        auto const packed_segment = pack_segment(quantized_segment);
+        return segment_t{packed_segment};
     }
 };
 
