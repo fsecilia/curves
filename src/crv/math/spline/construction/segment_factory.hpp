@@ -173,8 +173,7 @@ template <typename t_packed_field_t> struct field_packer_t
 };
 
 /// packs segments tightly according to layout
-template <typename t_packed_segment_t, typename unpacked_segment_t, typename field_packer_t,
-    segment_layout_t segment_layout>
+template <typename t_packed_segment_t, typename unpacked_segment_t, typename field_packer_t, auto segment_layout>
 struct segment_packer_t
 {
     using packed_segment_t = t_packed_segment_t;
