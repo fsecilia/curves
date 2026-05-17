@@ -25,65 +25,37 @@ namespace crv::spline {
 // quantization
 // --------------------------------------------------------------------------------------------------------------------
 
-/// solves radix alignment shifts for both quantization and runtime evaluation
-///
-/// Calculates the destructive right-shift required immediately to align the next polynomial coefficient and the
-/// relative right-shift to pack into the segment for runtime evaluation to prevent left-shifts.
-struct relative_shift_solver_t
+/// simulates evaluation loop iteration to determine safe radix alignments
+struct shift_planner_t
 {
-    struct solved_shift_t
+    struct plan_t
     {
-        int_t packed_runtime_shift; ///< shift to execute during evaluation
-        int_t destructive_preshift; ///< shift to apply destructively to the next coefficient
-        int_t next_exponent; ///< exponent to carry through to next iteration when next mantissa is 0
+        int_t packed_runtime_shift; ///< relative shift performed at runtime during evaluation
+        int_t destructive_preshift; ///< shift applied to next coefficient before packing
+        int_t next_accum_exponent; ///< state carried to next planning step
     };
 
-    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
-        -> solved_shift_t
+    constexpr auto operator()(int_t accum_exp, int_t next_exp, int_t t_to_x_shift) const noexcept -> plan_t
     {
-        auto const relative_shift = next_exponent - accumulator_exponent;
+        auto const relative_shift = next_exp - accum_exp;
 
         return {
             .packed_runtime_shift = t_to_x_shift + std::max<int_t>(0, relative_shift),
             .destructive_preshift = std::max<int_t>(0, -relative_shift),
-            .next_exponent = std::max(accumulator_exponent, next_exponent),
+            .next_accum_exponent = std::max(accum_exp, next_exp),
         };
     }
 };
 
-/// destructively pre-shifts terms to guarantee evaluation bounds.
-///
-/// This type flushes the accumulator to zero if the runtime shift would be UB. It flushes the next coeff to zero if
-/// preshifting it would be UB. Then it preshifts the next coeff.
-///
-/// This is a lossy operation. Large dynamic ranges between adjacent polynomial coefficients will result in the smaller
-/// term being flushed to zero to guarantee evaluation bounds.
-template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct coeff_preshifter_t
+/// applies right-shifts to coefficients, flushing to zero when the shift exceeds container size
+template <signed_integral mantissa_t, auto shifter = shifter_t<>{}> struct mantissa_quantizer_t
 {
-    using mantissa_t = unpacked_field_t::mantissa_t;
+    static constexpr auto max_container_shift = int_t{sizeof(mantissa_t) * CHAR_BIT} - 1;
 
-    struct preshift_result_t
+    constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
     {
-        unpacked_field_t field;
-        mantissa_t carried_mantissa;
-    };
-
-    static constexpr auto accumulator_width = int_t{sizeof(mantissa_t) * CHAR_BIT} - is_signed_v<mantissa_t>;
-
-    constexpr auto operator()(mantissa_t accumulator_mantissa, mantissa_t unaligned_next_coeff_mantissa,
-        int_t packed_runtime_shift, int_t destructive_preshift) const noexcept -> preshift_result_t
-    {
-        // flush the packed field if the runtime evaluation shift would cause UB
-        auto accumulator = packed_runtime_shift >= accumulator_width
-            ? unpacked_field_t{}
-            : unpacked_field_t{.mantissa = accumulator_mantissa, .shift = packed_runtime_shift};
-
-        // destructively right-shift the next coefficient to align radices; flush to 0 if out of bounds
-        auto const aligned_next_coeff_mantissa = (destructive_preshift >= accumulator_width)
-            ? 0
-            : shifter.shr(unaligned_next_coeff_mantissa, destructive_preshift);
-
-        return preshift_result_t{.field = accumulator, .carried_mantissa = aligned_next_coeff_mantissa};
+        if (preshift >= max_container_shift) return 0;
+        return shifter.shr(mantissa, preshift);
     }
 };
 
@@ -105,12 +77,8 @@ template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponen
 };
 
 /// quantizes a floating-point cubic into an unpacked segment with relative shifts
-///
-/// This type walks the polynomial coefficients, skips leading zero terms, extracts the scaled int from each float,
-/// preshifts the next term destructively to prevent overflow, and solves the relative shift to the next term. The final
-/// coefficient is aligned to the output radix. Produces an unpacked_segment_t.
-template <typename t_unpacked_field_t, typename float_extractor_t, typename relative_shift_solver_t,
-    typename coeff_preshifter_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits,
+template <typename t_unpacked_field_t, typename float_extractor_t, typename shift_planner_t,
+    typename mantissa_quantizer_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits,
     int_t log2_min_width>
 struct segment_quantizer_t
 {
@@ -122,6 +90,8 @@ struct segment_quantizer_t
     using cubic_t = cubic_t<scalar_t>;
     using scaled_int_t = radix_aligner_t::scaled_int_t;
 
+    static constexpr auto max_container_shift = mantissa_quantizer_t::max_container_shift;
+
     // prevent left shifts during evaluation
     //
     // This is the base amount shifted right after every iteration of the evaluation loop. If this is negative, the loop
@@ -129,8 +99,8 @@ struct segment_quantizer_t
     static_assert(in_frac_bits + log2_min_width >= 0);
 
     [[no_unique_address]] float_extractor_t extract_float;
-    [[no_unique_address]] relative_shift_solver_t solve_relative_shift;
-    [[no_unique_address]] coeff_preshifter_t preshift_coeffs;
+    [[no_unique_address]] shift_planner_t plan_shift;
+    [[no_unique_address]] mantissa_quantizer_t quantize_mantissa;
     [[no_unique_address]] radix_aligner_t align_radix;
 
     constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> unpacked_segment_t
@@ -141,11 +111,6 @@ struct segment_quantizer_t
         auto unpacked = unpacked_segment_t{};
 
         // skip zero prefix
-        //
-        // A zero coefficient's exponent is 0 by convention (flush-to-zero in the float extractor), which can be
-        // arbitrarily far from the next non-zero coefficient's exponent. The relative shift solver would then produce
-        // shifts large enough to destroy the non-zero term. Seeding from the first non-zero coefficient avoids this;
-        // leading zero fields remain value-initialized and evaluate correctly (0 * x + next = next).
         auto const first_nonzero_coeff
             = std::ranges::find_if(cubic, [](auto const& coeff) noexcept { return coeff != 0.0; });
         if (first_nonzero_coeff == cubic.end()) return unpacked;
@@ -156,34 +121,23 @@ struct segment_quantizer_t
         auto accumulator_exponent = initial_accumulator.exponent;
 
         // proceed in pairs
-        auto field_index = static_cast<int_t>(std::distance(cubic.begin(), first_nonzero_coeff));
-        for (; field_index < fields_per_segment - 1; ++field_index)
+        auto const first_nonzero_field = static_cast<int_t>(std::distance(cubic.begin(), first_nonzero_coeff));
+        for (auto field_index = first_nonzero_field; field_index < fields_per_segment - 1; ++field_index)
         {
             auto const next_term = extract_float(cubic[field_index + 1]);
 
-            // preserve dynamic range
-            //
-            // A coefficient of 0 maps to an exponent of 0. When the next coefficient is zero, the relative shift
-            // produced would naturally destructively preshift the current coefficient into oblivion. Since the exponent
-            // on a zero value is meaningless, maintain the accumulator's exponent instead of resetting it.
-            // Forcing the exponent to match the accumulator guarantees a relative shift of 0, allowing the accumulator
-            // to pass through untouched without destructive alignment.
-            auto const effective_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
+            // preserve exponent across zero terms
+            auto const effective_next_exp = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
 
-            // calc how much to destructively shift next to keep it in range and the relative shift between the pair
-            auto const shift_solution
-                = solve_relative_shift(accumulator_exponent, effective_next_exponent, t_to_x_shift);
+            // plan and apply shifts
+            auto const plan = plan_shift(accumulator_exponent, effective_next_exp, t_to_x_shift);
+            if (plan.packed_runtime_shift >= max_container_shift) accumulator_mantissa = 0;
+            auto const quantized_next = quantize_mantissa(next_term.mantissa, plan.destructive_preshift);
+            unpacked[field_index] = {.mantissa = accumulator_mantissa, .shift = plan.packed_runtime_shift};
 
-            // apply destructive preshift
-            auto const preshifted_result = preshift_coeffs(accumulator_mantissa, next_term.mantissa,
-                shift_solution.packed_runtime_shift, shift_solution.destructive_preshift);
-
-            // save the calculated field
-            unpacked[field_index] = preshifted_result.field;
-
-            // update loop state
-            accumulator_mantissa = preshifted_result.next_accumulator_mantissa;
-            accumulator_exponent = shift_solution.next_exponent;
+            // step forward
+            accumulator_mantissa = quantized_next;
+            accumulator_exponent = plan.next_accum_exponent;
         }
 
         // align final coefficient to the output radix

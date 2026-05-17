@@ -30,6 +30,7 @@ struct spline_dynamic_segment_test_t : Test
     using y_t = prod_pipeline_config_t::y_t;
 
     using traits_t = traits_t<unpacked_field_t<int_t>>;
+    using mantissa_t = traits_t::mantissa_t;
     using unpacked_field_t = traits_t::unpacked_field_t;
     using packed_field_t = traits_t::packed_field_t;
     using packed_segment_t = traits_t::packed_segment_t;
@@ -42,12 +43,11 @@ struct spline_dynamic_segment_test_t : Test
     using float_extractor_t = float_extractor_t<float64_t>;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
-    using coeff_preshifter_t = coeff_preshifter_t<unpacked_field_t>;
     using radix_aligner_t = radix_aligner_t<unpacked_field_t, scaled_int_t, exponent_aligner_t{}>;
-    using relative_shift_solver_t = relative_shift_solver_t;
     using field_packer_t = field_packer_t<packed_field_t>;
-    using segment_quantizer_t = segment_quantizer_t<unpacked_field_t, float_extractor_t, relative_shift_solver_t,
-        coeff_preshifter_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
+    using mantissa_quantizer_t = mantissa_quantizer_t<mantissa_t>;
+    using segment_quantizer_t = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t,
+        mantissa_quantizer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
     using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using cubic_t = cubic_t<scalar_t>;
 
