@@ -25,6 +25,7 @@ namespace crv::spline {
 // packing
 // --------------------------------------------------------------------------------------------------------------------
 
+/// tightly packs individual fields into specific bit ranges of packed_field_t
 template <typename t_packed_field_t> struct field_packer_t
 {
     using packed_field_t = t_packed_field_t;
@@ -42,6 +43,11 @@ template <typename t_packed_field_t> struct field_packer_t
     }
 };
 
+/// solves relative shifts between dynamic polynomial coefficients
+///
+/// Our packed coefficients are stored with the relative shifts necessary to align radices between terms rather than
+/// absolute exponents. This type calculates both the relative shift between terms, but also a shift to first apply to
+/// the terms themselves to prevent overflow by construction.
 template <typename shift_t> struct shift_solver_t
 {
     struct solved_shift_t
