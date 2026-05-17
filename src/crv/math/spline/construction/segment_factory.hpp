@@ -37,7 +37,7 @@ template <typename t_packed_field_t> struct field_packer_t
         auto const packed_shift = unpacked_field.shift & layout.shift_mask();
 
         auto const packed_field = packed_field_t{packed_mantissa | packed_shift};
-        // assert(field_unpacker_t{}(packed_field, layout) == unpacked_field);
+        assert(field_unpacker_t<unpacked_field_t>{}(packed_field, layout) == unpacked_field);
 
         return packed_field;
     }
