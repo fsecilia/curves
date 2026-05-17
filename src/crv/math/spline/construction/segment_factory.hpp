@@ -48,16 +48,16 @@ template <typename t_packed_field_t> struct field_packer_t
 /// Coefficients are packed with the relative shifts necessary to align radices between terms rather than with absolute
 /// exponents. This type calculates both the relative shift between terms to apply during evaluation, but also
 /// calculates the shift to first apply to the terms themselves during construction to prevent overflow.
-template <typename shift_t> struct relative_shift_solver_t
+struct relative_shift_solver_t
 {
     struct solved_shift_t
     {
-        shift_t accumulator_shift;
-        shift_t coeff_shift;
+        int_t accumulator_shift;
+        int_t coeff_shift;
         int_t next_exponent;
     };
 
-    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, shift_t t_to_x_shift) const noexcept
+    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
         -> solved_shift_t
     {
         auto const relative_shift = next_exponent - accumulator_exponent;
@@ -72,7 +72,6 @@ template <typename shift_t> struct relative_shift_solver_t
 template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct coeff_preshifter_t
 {
     using mantissa_t = unpacked_field_t::mantissa_t;
-    using shift_t = unpacked_field_t::shift_t;
 
     struct fitted_field_t
     {
@@ -99,19 +98,18 @@ template <typename unpacked_field_t, auto shifter = shifter_t<>{}> struct coeff_
 };
 
 /// aligns radix of the final evaluation step to match the precision of the output type
-template <typename unpacked_field_t, typename shift_t, typename t_scaled_int_t, auto align_exponent>
-struct radix_aligner_t
+template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponent> struct radix_aligner_t
 {
     using scaled_int_t = t_scaled_int_t;
 
     constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
     {
-        auto const aligned_accumulator = align_exponent(scaled_int_t{
-            .mantissa = accumulator.mantissa, .exponent = int_cast<shift_t>(accumulator.exponent + radix)});
+        auto const aligned_accumulator
+            = align_exponent(scaled_int_t{.mantissa = accumulator.mantissa, .exponent = accumulator.exponent + radix});
 
         return unpacked_field_t{
             .mantissa = aligned_accumulator.mantissa,
-            .shift = int_cast<shift_t>(-aligned_accumulator.exponent),
+            .shift = -aligned_accumulator.exponent,
         };
     }
 };
@@ -128,10 +126,8 @@ struct segment_quantizer_t
 
     struct quantized_term_t
     {
-        using shift_t = unpacked_field_t::shift_t;
-
         unpacked_field_t accumulator;
-        shift_t coeff_shift;
+        int_t coeff_shift;
     };
 
     struct quantized_segment_t
