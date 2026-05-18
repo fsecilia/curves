@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/math/spline/construction/interval.hpp>
+#include <crv/math/spline/construction/subdivision.hpp>
 #include <crv/priority_queue.hpp>
 #include <vector>
 

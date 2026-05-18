@@ -31,10 +31,10 @@ target_sources(lib PRIVATE
     math/quadrature/subdivider.hpp
     math/spline/construction/approximant.hpp
     math/spline/construction/function_sampler.hpp
-    math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/residual.hpp
     math/spline/construction/segment_factory.hpp
+    math/spline/construction/subdivision.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
     math/stats.hpp
@@ -134,10 +134,10 @@ if (enable_testing)
         math/shifter_test.cpp
         math/spline/construction/approximant_test.cpp
         math/spline/construction/function_sampler_test.cpp
-        math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/residual_test.cpp
         math/spline/construction/segment_factory_test.cpp
+        math/spline/construction/subdivision_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
         math/spline/pipeline_config_test.cpp
