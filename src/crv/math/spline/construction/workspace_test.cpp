@@ -5,55 +5,34 @@
 
 #include "workspace.hpp"
 #include <crv/test/test.hpp>
+#include <functional>
 
-#if 0
 namespace crv::spline::generic {
 namespace {
 
 struct workspace_test_t : Test
 {
-    struct container_t
-    {
-        bool clear_called = false;
-        bool reserve_called = false;
+    using interval_t = int_t;
+    static constexpr auto max_segments = 256;
 
-        std::size_t reserved_capacity = 0;
-
-        constexpr auto clear() noexcept -> void { clear_called = true; }
-
-        constexpr auto reserve(std::size_t capacity) -> void
-        {
-            reserve_called = true;
-            reserved_capacity = capacity;
-        }
-    };
-
-    using sut_t = workspace_t<container_t, container_t>;
+    using sut_t = workspace_t<interval_t, std::less<>, max_segments>;
 };
 
 TEST_F(workspace_test_t, clear_forwards_to_both_members)
 {
     auto sut = sut_t{};
 
+    sut.completed_intervals.push_back({});
+    sut.refinement_pool.push({});
+
+    EXPECT_FALSE(sut.completed_intervals.empty());
+    EXPECT_FALSE(sut.refinement_pool.empty());
+
     sut.clear();
 
-    EXPECT_TRUE(sut.result.clear_called);
-    EXPECT_TRUE(sut.queue.clear_called);
-}
-
-TEST_F(workspace_test_t, reserve_forwards_to_both_members)
-{
-    auto sut = sut_t{};
-
-    sut.reserve(256);
-
-    EXPECT_TRUE(sut.result.reserve_called);
-    EXPECT_EQ(sut.result.reserved_capacity, 256);
-
-    EXPECT_TRUE(sut.queue.reserve_called);
-    EXPECT_EQ(sut.queue.reserved_capacity, 256);
+    EXPECT_TRUE(sut.completed_intervals.empty());
+    EXPECT_TRUE(sut.refinement_pool.empty());
 }
 
 } // namespace
 } // namespace crv::spline::generic
-#endif

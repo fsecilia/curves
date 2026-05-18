@@ -14,10 +14,10 @@
 namespace crv::spline {
 
 /// mutable state for adaptive mesh refinement
-template <typename interval_t, int_t max_segments> struct workspace_t
+template <typename interval_t, typename predicate_t, int_t max_segments> struct workspace_t
 {
     std::vector<interval_t> completed_intervals;
-    priority_queue_t<std::vector<interval_t>, interval_priority_less_t> refinement_pool;
+    priority_queue_t<std::vector<interval_t>, predicate_t> refinement_pool;
 
     constexpr auto clear() noexcept -> void
     {

@@ -24,6 +24,7 @@
 #include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
+#include <crv/math/spline/construction/workspace.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
@@ -38,27 +39,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-/// mutable state for adaptive mesh refinement
-template <typename interval_t, int_t max_segments> struct workspace_t
-{
-    std::vector<interval_t> completed_intervals;
-    priority_queue_t<std::vector<interval_t>, interval_priority_less_t> refinement_pool;
-
-    constexpr auto clear() noexcept -> void
-    {
-        completed_intervals.clear();
-        refinement_pool.clear();
-    }
-
-    constexpr auto empty() const noexcept -> bool { return completed_intervals.empty() && refinement_pool.empty(); }
-
-    constexpr workspace_t()
-    {
-        completed_intervals.reserve(max_segments);
-        refinement_pool.reserve(max_segments);
-    }
-};
 
 /// result of bisecting a subdomain
 template <typename t_subdomain_t> struct bisection_t
@@ -485,7 +465,7 @@ TEST(spline_generator, poc)
     using subdivider_t = subdivider_t<scalar_t, bisector_t, interval_factory_t>;
     using segment_locator_t = segment_locator_t<x_t, depth_max>;
     using spline_t = spline_t<segment_t, segment_locator_t>;
-    using workspace_t = workspace_t<interval_t, max_segment_count>;
+    using workspace_t = workspace_t<interval_t, interval_priority_less_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<scalar_t>;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
