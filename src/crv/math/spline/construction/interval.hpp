@@ -9,7 +9,6 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
-#include <crv/math/jet/jet.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/residual_estimator.hpp>
@@ -21,7 +20,7 @@ namespace crv::spline {
 /// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
 template <std::floating_point scalar_t> struct subdomain_t
 {
-    using function_sample_t = function_sample_t<scalar_t>;
+    using function_sample_t = function_sample_t<scalar_t, jet_t<scalar_t>>;
 
     function_sample_t left;
     function_sample_t midpoint;

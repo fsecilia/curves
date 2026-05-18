@@ -56,7 +56,7 @@ struct residual_estimator_t
             auto const metric_error = measure_error(target, approximation);
 
             // track extrema
-            max_residual.scale = max(max_residual.scale, abs(primal(target)));
+            max_residual.scale = max(max_residual.scale, abs(target));
             max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
         }
 
