@@ -114,7 +114,7 @@ struct segment_quantizer_t
 
         // skip zero prefix
         auto const first_nonzero_coeff
-            = std::ranges::find_if(cubic, [](auto const& coeff) noexcept { return coeff != 0.0; });
+            = std::ranges::find_if(cubic, [](auto const& coeff) noexcept { return coeff != scalar_t{0}; });
         if (first_nonzero_coeff == cubic.end()) return unpacked;
 
         // extract initial accumulator as a scaled_int
@@ -129,6 +129,8 @@ struct segment_quantizer_t
             auto const next_term = extract_float(cubic[field_index + 1]);
 
             // preserve exponent across zero terms
+            //
+            // This prevents a spurious large relative shift to and back from 0 that would obliterate the accumulator.
             auto const effective_next_exp = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
 
             // plan and apply shifts
