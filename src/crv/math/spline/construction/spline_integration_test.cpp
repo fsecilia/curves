@@ -39,44 +39,6 @@ namespace crv {
 namespace spline {
 namespace {
 
-/// result of bisecting a subdomain
-template <typename t_subdomain_t> struct bisection_t
-{
-    using subdomain_t = t_subdomain_t;
-
-    subdomain_t left;
-    subdomain_t right;
-};
-
-/// bisects subdomains
-template <typename t_bisection_t> struct bisector_t
-{
-    using bisection_t = t_bisection_t;
-    using subdomain_t = bisection_t::subdomain_t;
-
-    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
-        -> bisection_t
-    {
-        using scalar_t = decltype(parent.left.x);
-        auto const child_log2_width = parent.log2_width - 1;
-        return
-        {
-            .left = subdomain_t{
-                .left = parent.left,
-                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(parent.left.x, parent.midpoint.x), scalar_t{1}}),
-                .right = parent.midpoint,
-                .log2_width = child_log2_width,
-            },
-            .right = subdomain_t{
-                .left = parent.midpoint,
-                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(parent.midpoint.x, parent.right.x), scalar_t{1}}),
-                .right = parent.right,
-                .log2_width = child_log2_width,
-            },
-        };
-    }
-};
-
 /// decides if an interval should subdivide
 ///
 /// Compares the norm's metric_error directly against global_tolerance and a noise floor, both in the norm's units.
