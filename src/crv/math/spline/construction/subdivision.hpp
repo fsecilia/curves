@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief amr units of work
+/// \brief amr geometry, subdivision, and convergence
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once

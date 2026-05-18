@@ -18,10 +18,10 @@
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
-#include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/residual.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
+#include <crv/math/spline/construction/subdivision.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
 #include <crv/math/spline/construction/workspace.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
