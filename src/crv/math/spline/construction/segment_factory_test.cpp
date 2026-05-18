@@ -105,6 +105,147 @@ static_assert(
 
 } // namespace radix_aligner_tests
 
+namespace segment_quantizer_tests {
+
+using scalar_t = float_t;
+using mantissa_t = int_t;
+using unpacked_field_t = unpacked_field_t<mantissa_t>;
+using scaled_int_t = scaled_int_t<mantissa_t>;
+
+namespace isolation_tests {
+
+struct float_extractor_t
+{
+    using scalar_t = scalar_t;
+
+    // map 1.0 -> mantissa 10, exp 1; 2.0 -> mantissa 20, exp 2, etc.
+    constexpr auto operator()(scalar_t v) const noexcept -> scaled_int_t
+    {
+        return {.mantissa = static_cast<mantissa_t>(v * 10), .exponent = static_cast<int_t>(v)};
+    }
+};
+
+struct shift_planner_t
+{
+    constexpr auto operator()(int_t accum_exp, int_t next_exp, int_t t_to_x_shift) const noexcept
+        -> spline::shift_planner_t::plan_t
+    {
+        return {.packed_runtime_shift = t_to_x_shift + accum_exp + next_exp, // recognizable dummy math
+            .destructive_preshift = 0,
+            .next_accum_exponent = next_exp};
+    }
+};
+
+struct mantissa_quantizer_t
+{
+    static constexpr auto max_container_shift = 31;
+    constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
+    {
+        return static_cast<mantissa_t>(mantissa + preshift);
+    }
+};
+
+struct radix_aligner_t
+{
+    using scaled_int_t = scaled_int_t;
+    constexpr auto operator()(scaled_int_t const& accum, int_t radix) const noexcept -> unpacked_field_t
+    {
+        return {.mantissa = static_cast<mantissa_t>(accum.mantissa + radix), .shift = accum.exponent};
+    }
+};
+
+constexpr auto sut
+    = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t, radix_aligner_t,
+        10, // in_frac_bits
+        20, // out_frac_bits
+        0 // log2_min_width (t_to_x_shift = 10)
+        >{};
+
+// 1.0 -> accum(10, 1)
+// 2.0 -> next(20, 2) -> plan(shift: 10+1+2=13, next_exp: 2) -> unpacked[0] = {10, 13}, accum = 20
+// 3.0 -> next(30, 3) -> plan(shift: 10+2+3=15, next_exp: 3) -> unpacked[1] = {20, 15}, accum = 30
+// 4.0 -> next(40, 4) -> plan(shift: 10+3+4=17, next_exp: 4) -> unpacked[2] = {30, 17}, accum = 40
+// align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
+static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0)
+    == std::array<unpacked_field_t, 4>{unpacked_field_t{.mantissa = 10, .shift = 13},
+        unpacked_field_t{.mantissa = 20, .shift = 15}, unpacked_field_t{.mantissa = 30, .shift = 17},
+        unpacked_field_t{.mantissa = 60, .shift = 4}});
+
+} // namespace isolation_tests
+
+namespace end_to_end_test {
+
+using x_t = fixed_t<int64_t, 14>;
+using y_t = fixed_t<int64_t, 25>;
+using cubic_t = std::array<scalar_t, 4>;
+using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
+
+constexpr auto aligner = exponent_aligner_t<-30, 30>{};
+constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t,
+    mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>,
+    x_t::frac_bits, // in_frac_bits
+    y_t::frac_bits, // out_frac_bits
+    -8 // log2_min_width
+    >{};
+
+// y = 0.125x^3 + 0.25x^2 + 0.5x + 1.0
+//
+// Each coefficient here has the same mantissa, but in the packed format, the shifts cancel and the mantissas are
+// preserved.
+static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 27},
+    });
+
+// y = 1.0x^3 + 0.5x^2 + 0.25x + 0.125
+//
+// Each coefficient here starts with the same mantissa, but in the packed format, each must be shifted destructively to
+// prevent left shifts during evaluation.
+//
+// float extraction:
+//    1.0 is exactly 2^52 * 2^-52.
+//    initial accumulator: mantissa = 4503599627370496 (2^52), exponent = -52
+//    next term (0.5): exponent is -53
+// iteration 1 (c3 and c2):
+//    relative_shift = next_exponent - accumulator_exponent = -53 - (-52) = -1
+//    destructive_preshift = max(0, 1) = 1
+//    0.5 mantissa is shifted right by 1 -> 2251799813685248
+//    packed_runtime_shift = t_to_x_shift (14) + max(0, -1) = 14
+//    accumulator_exponent remains -52
+// iteration 2 & 3:
+//    Follows the same pattern, destructively shifting the next mantissa by 2 and 3 respectively, yielding the halved
+//    mantissas
+// final Radix Alignment:
+//    accumulator_exponent is still -52, out_frac_bits is 25
+//    target_exponent = -52 + 25 = -27
+//    -27 is within the exponent_aligner_t bounds [-30, 30], so left_shift is 0
+//    output shift = -(-27) = 27
+static_assert(sut({1.0, 0.5, 0.25, 0.125}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
+        unpacked_field_t{.mantissa = 2251799813685248, .shift = 14},
+        unpacked_field_t{.mantissa = 1125899906842624, .shift = 14},
+        unpacked_field_t{.mantissa = 562949953421312, .shift = 27},
+    });
+
+// destructive flushing
+//
+// c2 is so small relative to c3 that the required destructive preshift exceeds the 64-bit container size, causing it to
+// be flushed to zero.
+static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 27},
+    });
+} // namespace end_to_end_test
+
+} // namespace segment_quantizer_tests
+
 // ====================================================================================================================
 // packing
 // ====================================================================================================================
