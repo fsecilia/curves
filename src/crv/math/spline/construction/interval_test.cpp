@@ -89,7 +89,7 @@ namespace interval_factory_tests {
 struct spline_interval_factory_test_t : Test
 {
     using subdomain_t = subdomain_t<scalar_t>;
-    using function_sample_t = function_sample_t<scalar_t>;
+    using function_sample_t = function_sample_t<scalar_t, jet_t>;
 
     using cubic_t = cubic_t<scalar_t>;
     using x_t = fixed_t<int64_t, 0>;

@@ -11,7 +11,6 @@ namespace crv::spline {
 namespace {
 
 using scalar_t = float_t;
-using jet_t = jet_t<scalar_t>;
 
 constexpr auto max_node = 0.9;
 struct fake_node_generator_t
@@ -23,9 +22,9 @@ struct fake_node_generator_t
 
 struct uniform_norm_t
 {
-    constexpr auto operator()(jet_t target, jet_t approximation) const noexcept -> scalar_t
+    constexpr auto operator()(scalar_t target, scalar_t approximation) const noexcept -> scalar_t
     {
-        return primal(target) - primal(approximation);
+        return target - approximation;
     }
 };
 
@@ -40,7 +39,7 @@ constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_wei
 
 struct target_function_sample_t
 {
-    jet_t y;
+    scalar_t y;
 };
 
 constexpr auto left = 3.0;
@@ -56,9 +55,8 @@ constexpr auto identifies_maximum_error()
     static constexpr auto target_scale = 1.1;
     static constexpr auto approximant_scale = 0.9;
 
-    auto sample_target
-        = [](scalar_t node) constexpr { return target_function_sample_t{jet_t{node * target_scale, 0.0}}; };
-    auto approximant = [](scalar_t node) constexpr { return jet_t{node * approximant_scale, 0.0}; };
+    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{node * target_scale}; };
+    auto approximant = [](scalar_t node) constexpr { return scalar_t{node * approximant_scale}; };
     auto const expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
     auto const expected_weight = midpoint * weight;
 
@@ -71,8 +69,8 @@ static_assert(identifies_maximum_error());
 
 constexpr auto handles_negative_error()
 {
-    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{jet_t{-node, 0.0}}; };
-    auto approximant = [](scalar_t) constexpr { return jet_t{0.0, 0.0}; };
+    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{-node}; };
+    auto approximant = [](scalar_t) constexpr { return scalar_t{0.0}; };
 
     auto const actual = sut(sample_target, approximant, left, midpoint, right);
 

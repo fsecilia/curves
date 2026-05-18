@@ -16,12 +16,12 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
-// #include <crv/math/spline/construction/approximant.hpp>
-// #include <crv/math/spline/construction/error_norm.hpp>
-// #include <crv/math/spline/construction/function_sampler.hpp>
-// #include <crv/math/spline/construction/interval.hpp>
+#include <crv/math/spline/construction/approximant.hpp>
+#include <crv/math/spline/construction/error_norm.hpp>
+#include <crv/math/spline/construction/function_sampler.hpp>
+#include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
-// #include <crv/math/spline/construction/residual_estimator.hpp>
+#include <crv/math/spline/construction/residual_estimator.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/weight_function.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
@@ -38,221 +38,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <std::floating_point t_scalar_t, is_fixed t_x_t> struct approximant_t
-{
-    using scalar_t = t_scalar_t;
-    using x_t = t_x_t;
-
-    cubic_t<scalar_t> cubic;
-    x_t x0;
-    int_t log2_width;
-
-    /// \returns spline-global spatial coordinate y
-    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
-    {
-        auto const x_local = from_fixed<scalar_t>(to_fixed<x_t>(x) - x0);
-        auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
-        return cubic(t);
-    }
-};
-
-/// absolute primal error
-struct absolute_t
-{
-    template <typename scalar_t>
-    static constexpr auto operator()(scalar_t target, scalar_t approximation) noexcept -> scalar_t
-    {
-        using std::isfinite;
-
-        auto const result = abs(target - approximation);
-        assert(isfinite(result));
-
-        return result;
-    }
-};
-
-/// float x and y result of sampling a function at x
-template <std::floating_point t_scalar_t, typename t_y_t> struct function_sample_t
-{
-    using scalar_t = t_scalar_t;
-    using y_t = t_y_t;
-
-    scalar_t x;
-    y_t y;
-
-    auto operator==(function_sample_t const& src) const noexcept -> bool = default;
-};
-
-// samples target function, returning the sample location and resulting evaluated value
-template <typename target_function_t> struct function_sampler_t
-{
-    target_function_t target_function;
-
-    template <std::floating_point scalar_t>
-    constexpr auto operator()(scalar_t x) const noexcept -> function_sample_t<scalar_t, scalar_t>
-    {
-        auto const result = function_sample_t<scalar_t, scalar_t>{.x = x, .y = target_function(x)};
-
-        using std::isfinite;
-        assert(isfinite(x));
-        assert(isfinite(result.y));
-
-        return result;
-    }
-
-    template <std::floating_point scalar_t>
-    constexpr auto operator()(jet_t<scalar_t> x) const noexcept -> function_sample_t<scalar_t, jet_t<scalar_t>>
-    {
-        auto const result = function_sample_t<scalar_t, jet_t<scalar_t>>{.x = x.f, .y = target_function(x)};
-
-        using std::isfinite;
-        assert(isfinite(result.x));
-        assert(isfinite(result.y));
-
-        return result;
-    }
-};
-
-/// max scale of target and error between target and approximant over a subdomain
-template <std::floating_point scalar_t> struct residual_t
-{
-    scalar_t metric_error; // error based on norm error metric
-    scalar_t weighted_error; // metric_error weighted perceptually
-    scalar_t scale; // absolute magnitude of primal
-
-    constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
-};
-
-/// estimates the maximum residual error of an approximant over a specific domain interval
-///
-/// This type searches to find the worst-case error between a target function and its approximant. The search space is
-/// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
-/// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
-/// weight function.
-template <std::floating_point scalar_t, typename node_generator_t, typename error_norm_t, typename weight_function_t>
-struct residual_estimator_t
-{
-    using residual_t = residual_t<scalar_t>;
-
-    [[no_unique_address]] node_generator_t generate_nodes;
-    error_norm_t measure_error;
-    weight_function_t apply_weight;
-
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, scalar_t left,
-        scalar_t midpoint, scalar_t right) const noexcept -> residual_t
-    {
-        auto const interval_width = right - left;
-
-        // sample function at generated nodes, calc error, and track extrema
-        auto max_residual = residual_t{};
-        for (auto const standard_node : generate_nodes())
-        {
-            // convert from standard nodes in [0, 1] to domain nodes in [left, right].
-            auto const domain_node = left + standard_node * interval_width;
-
-            // measure error between target function and approximant
-            auto const approximation = approximant(domain_node);
-            auto const target = sample_target_function(domain_node).y;
-            auto const metric_error = measure_error(target, approximation);
-
-            // track extrema
-            max_residual.scale = max(max_residual.scale, abs(target));
-            max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
-        }
-
-        auto const weight = apply_weight(midpoint);
-        max_residual.weighted_error = max_residual.metric_error * weight;
-        return max_residual;
-    }
-};
-
-/// geometry of a refinement subdomain
-///
-/// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
-template <std::floating_point scalar_t> struct subdomain_t
-{
-    using function_sample_t = function_sample_t<scalar_t, jet_t<scalar_t>>;
-
-    function_sample_t left;
-    function_sample_t midpoint;
-    function_sample_t right;
-    int_t log2_width;
-
-    constexpr auto operator==(subdomain_t const&) const noexcept -> bool = default;
-};
-
-/// unit of work over a subdomain
-template <std::floating_point t_scalar_t> struct interval_t
-{
-    using scalar_t = t_scalar_t;
-
-    using subdomain_t = subdomain_t<scalar_t>;
-    using residual_t = residual_t<scalar_t>;
-    using cubic_t = cubic_t<scalar_t>;
-
-    subdomain_t subdomain;
-    cubic_t cubic;
-    residual_t residual;
-
-    constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
-};
-
-/// orders by residual.weighted_error then domain.left.x
-struct interval_priority_less_t
-{
-    template <typename interval_t>
-    constexpr auto operator()(interval_t const& lhs, interval_t const& rhs) const noexcept -> bool
-    {
-        using std::isfinite;
-        assert(isfinite(lhs.residual.weighted_error));
-        assert(isfinite(lhs.subdomain.left.x));
-        assert(isfinite(rhs.residual.weighted_error));
-        assert(isfinite(rhs.subdomain.left.x));
-
-        // tie applies lexicographical compare
-        return std::tie(lhs.residual.weighted_error, lhs.subdomain.left.x)
-            < std::tie(rhs.residual.weighted_error, rhs.subdomain.left.x);
-    }
-};
-
-/// constructs intervals from subdomains
-template <typename t_interval_t, typename approximant_t, typename hermite_converter_t, typename residual_estimator_t>
-struct interval_factory_t
-{
-    using interval_t = t_interval_t;
-
-    using scalar_t = interval_t::scalar_t;
-    using subdomain_t = subdomain_t<scalar_t>;
-
-    [[no_unique_address]] hermite_converter_t convert_hermite;
-    residual_estimator_t estimate_residual;
-
-    constexpr auto create(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept -> interval_t
-    {
-        using x_t = approximant_t::x_t;
-
-        auto const x0 = to_fixed<x_t>(subdomain.left.x);
-
-        // convert from spline-global dy/dx to segment-local dy/dt via chain rule
-        auto const dx_dt = std::ldexp(1.0, static_cast<int>(subdomain.log2_width));
-        auto const local_left_y = jet_t{subdomain.left.y.f, subdomain.left.y.df * dx_dt};
-        auto const local_right_y = jet_t{subdomain.right.y.f, subdomain.right.y.df * dx_dt};
-        auto const cubic = convert_hermite(local_left_y, local_right_y);
-
-        return {
-            .subdomain = subdomain,
-            .cubic = cubic,
-            .residual = estimate_residual(sample_target_function,
-                approximant_t{
-                    .cubic = cubic,
-                    .x0 = x0,
-                    .log2_width = subdomain.log2_width,
-                },
-                subdomain.left.x, subdomain.midpoint.x, subdomain.right.x),
-        };
-    }
-};
 
 /// mutable state for adaptive mesh refinement
 template <typename interval_t, int_t max_segments> struct workspace_t
@@ -670,7 +455,7 @@ TEST(spline_generator, poc)
     constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
-    using error_norm_t = absolute_t;
+    using error_norm_t = error_norms::absolute_t;
     auto const error_norm = error_norm_t{};
 
 #if 1
