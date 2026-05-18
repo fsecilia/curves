@@ -29,7 +29,6 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
-    math/spline/construction/approximant.hpp
     math/spline/construction/function_sampler.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/residual.hpp
@@ -132,7 +131,6 @@ if (enable_testing)
         math/saturate_cast_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/construction/approximant_test.cpp
         math/spline/construction/function_sampler_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/residual_test.cpp
