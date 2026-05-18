@@ -197,18 +197,36 @@ template <typename t_workspace_t> struct typestates_t
     struct refined_t
     {
         workspace_t& workspace;
+
+        explicit refined_t(workspace_t& w) : workspace(w) {}
+        refined_t(refined_t const&) = delete;
+        refined_t& operator=(refined_t const&) = delete;
+        refined_t(refined_t&&) = default;
+        refined_t& operator=(refined_t&&) = default;
     };
 
     struct seeded_t
     {
         workspace_t& workspace;
         using next_t = refined_t;
+
+        explicit seeded_t(workspace_t& w) : workspace(w) {}
+        seeded_t(seeded_t const&) = delete;
+        seeded_t& operator=(seeded_t const&) = delete;
+        seeded_t(seeded_t&&) = default;
+        seeded_t& operator=(seeded_t&&) = default;
     };
 
     struct unseeded_t
     {
         workspace_t& workspace;
         using next_t = seeded_t;
+
+        explicit unseeded_t(workspace_t& w) : workspace(w) {}
+        unseeded_t(unseeded_t const&) = delete;
+        unseeded_t& operator=(unseeded_t const&) = delete;
+        unseeded_t(unseeded_t&&) = default;
+        unseeded_t& operator=(unseeded_t&&) = default;
     };
 };
 
@@ -222,7 +240,7 @@ struct refinement_pool_seeder_t
 {
     interval_factory_t interval_factory;
 
-    constexpr auto operator()(typestate_t state, auto const& sample_target_function) const ->
+    constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
     {
         using subdomain_t = subdomain_t<scalar_t>;
@@ -254,7 +272,7 @@ struct refiner_t
     convergence_test_t requires_subdivision;
     subdivider_t subdivide;
 
-    auto operator()(typestate_t state, auto const& sample_target_function) -> typename typestate_t::next_t
+    auto operator()(typestate_t&& state, auto const& sample_target_function) -> typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
         auto& refinement_pool = workspace.refinement_pool;
@@ -306,7 +324,7 @@ struct assembler_t
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
-    template <typename spline_t> auto operator()(typestate_t state, spline_t& spline) const -> void
+    template <typename spline_t> auto operator()(typestate_t&& state, spline_t& spline) const -> void
     {
         auto& workspace = state.workspace;
         assert(workspace.refinement_pool.empty());
@@ -386,11 +404,10 @@ public:
 
         auto sample_target_function = function_sampler_t{std::move(target_function)};
 
-        auto const seeded_state
+        auto seeded_state
             = seed_refinement_pool_(typename typestates_t::unseeded_t{workspace_}, sample_target_function);
-        auto const refined_state = refine_(seeded_state, sample_target_function);
-        assemble_(refined_state, spline);
-
+        auto refined_state = refine_(std::move(seeded_state), sample_target_function);
+        assemble_(std::move(refined_state), spline);
         assert(workspace_.empty());
     }
 
