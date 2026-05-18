@@ -78,7 +78,8 @@ struct interval_factory_t
     [[no_unique_address]] hermite_converter_t convert_hermite;
     residual_estimator_t estimate_residual;
 
-    constexpr auto create(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept -> interval_t
+    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept
+        -> interval_t
     {
         using x_t = approximant_t::x_t;
 

@@ -188,7 +188,7 @@ struct spline_interval_factory_test_t : Test
     };
 };
 
-TEST_F(spline_interval_factory_test_t, create)
+TEST_F(spline_interval_factory_test_t, call)
 {
     // sut applies chain rule locally from dy/dx to dy/dt.
     auto const dx_dt = static_cast<scalar_t>(1 << log2_width);
@@ -203,7 +203,7 @@ TEST_F(spline_interval_factory_test_t, create)
             midpoint.x, right.x))
         .WillOnce(Return(residual));
 
-    auto const actual = sut.create(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
+    auto const actual = sut(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
 
     EXPECT_EQ(expected, actual);
 }

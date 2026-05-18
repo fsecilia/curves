@@ -87,15 +87,15 @@ template <std::floating_point scalar_t, typename bisector_t, typename interval_f
     using subdivision_t = subdivision_t<interval_t>;
 
     [[no_unique_address]] bisector_t bisect;
-    interval_factory_t interval_factory;
+    interval_factory_t create_interval;
 
     constexpr auto operator()(interval_t const& interval, auto const& sample_target_function) const noexcept
         -> subdivision_t
     {
         auto const child_domains = bisect(sample_target_function, interval.subdomain);
         return subdivision_t{
-            .left = interval_factory.create(sample_target_function, child_domains.left),
-            .right = interval_factory.create(sample_target_function, child_domains.right),
+            .left = create_interval(sample_target_function, child_domains.left),
+            .right = create_interval(sample_target_function, child_domains.right),
         };
     }
 };
@@ -199,7 +199,7 @@ template <std::floating_point scalar_t, typename typestate_t, typename interval_
     int_t domain_max>
 struct refinement_pool_seeder_t
 {
-    interval_factory_t interval_factory;
+    interval_factory_t create_interval;
 
     constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
@@ -212,7 +212,7 @@ struct refinement_pool_seeder_t
         auto left = sample_target_function(jet_t<scalar_t>{scalar_t{0}, scalar_t{1}});
         auto const right = sample_target_function(jet_t<scalar_t>{static_cast<scalar_t>(domain_max), scalar_t{1}});
 
-        workspace.refinement_pool.push(interval_factory.create(sample_target_function,
+        workspace.refinement_pool.push(create_interval(sample_target_function,
             subdomain_t{
                 .left = left,
                 .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(left.x, right.x), scalar_t{1}}),
@@ -471,21 +471,21 @@ TEST(spline_generator, poc)
         .apply_weight = weight_function,
     };
 
-    auto const interval_factory = interval_factory_t{
+    auto const create_interval = interval_factory_t{
         .convert_hermite = {},
         .estimate_residual = estimate_residual,
     };
 
     auto generate_spline = spline_generator_t
     {
-        refinement_pool_seeder_t{.interval_factory = interval_factory},
+        refinement_pool_seeder_t{.create_interval = create_interval},
         refiner_t
         {
             .requires_subdivision = convergence_test_t{.global_tolerance = global_tolerance},
             .subdivide = subdivider_t
             {
                 .bisect = bisector_t{},
-                .interval_factory = interval_factory,
+                .create_interval = create_interval,
             },
         },
         assembler_t{}
