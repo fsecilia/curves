@@ -34,6 +34,7 @@ target_sources(lib PRIVATE
     math/spline/construction/residual.hpp
     math/spline/construction/segment_factory.hpp
     math/spline/construction/subdivision.hpp
+    math/spline/construction/tangent_extension.hpp
     math/spline/construction/weight_function.hpp
     math/spline/construction/workspace.hpp
     math/stats.hpp
@@ -136,6 +137,7 @@ if (enable_testing)
         math/spline/construction/residual_test.cpp
         math/spline/construction/segment_factory_test.cpp
         math/spline/construction/subdivision_test.cpp
+        math/spline/construction/tangent_extension_test.cpp
         math/spline/construction/weight_function_test.cpp
         math/spline/construction/workspace_test.cpp
         math/spline/pipeline_config_test.cpp
