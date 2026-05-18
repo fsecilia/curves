@@ -11,7 +11,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
-#include <crv/math/spline/construction/residual_estimator.hpp>
+#include <crv/math/spline/construction/residual.hpp>
 
 namespace crv::spline {
 
