@@ -44,58 +44,70 @@ template <std::floating_point t_scalar_t, is_fixed t_x_t> struct approximant_t
     using scalar_t = t_scalar_t;
     using x_t = t_x_t;
 
-    using jet_t = jet_t<scalar_t>;
-
     cubic_t<scalar_t> cubic;
     x_t x0;
     int_t log2_width;
 
-    /// \returns jet in spline-global spatial coordinates, {y, dy/dx}, quantized to the x_t grid
-    constexpr auto operator()(scalar_t x) const noexcept -> jet_t
+    /// \returns spline-global spatial coordinate y
+    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
         auto const x_local = from_fixed<scalar_t>(to_fixed<x_t>(x) - x0);
         auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
-        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(-log2_width));
-        return cubic(jet_t{t, dt_dx});
+        return cubic(t);
     }
 };
 
 /// absolute primal error
 struct absolute_t
 {
-    template <typename jet_t>
-    static constexpr auto operator()(jet_t target, jet_t approximation) noexcept -> typename jet_t::value_t
+    template <typename scalar_t>
+    static constexpr auto operator()(scalar_t target, scalar_t approximation) noexcept -> scalar_t
     {
         using std::isfinite;
 
-        auto const result = abs(primal(target) - primal(approximation));
+        auto const result = abs(target - approximation);
         assert(isfinite(result));
 
         return result;
     }
 };
 
-/// float x and jet y result of sampling a function at x
-template <std::floating_point scalar_t> struct function_sample_t
+/// float x and y result of sampling a function at x
+template <std::floating_point t_scalar_t, typename t_y_t> struct function_sample_t
 {
+    using scalar_t = t_scalar_t;
+    using y_t = t_y_t;
+
     scalar_t x;
-    jet_t<scalar_t> y;
+    y_t y;
 
     auto operator==(function_sample_t const& src) const noexcept -> bool = default;
 };
 
-// samples target function, returning the sample location and resulting 1-jet
+// samples target function, returning the sample location and resulting evaluated value
 template <typename target_function_t> struct function_sampler_t
 {
     target_function_t target_function;
 
     template <std::floating_point scalar_t>
-    constexpr auto operator()(scalar_t x) const noexcept -> function_sample_t<scalar_t>
+    constexpr auto operator()(scalar_t x) const noexcept -> function_sample_t<scalar_t, scalar_t>
     {
-        auto const result = function_sample_t<scalar_t>{.x = x, .y = target_function(jet_t<scalar_t>{x, 1.0})};
+        auto const result = function_sample_t<scalar_t, scalar_t>{.x = x, .y = target_function(x)};
 
         using std::isfinite;
         assert(isfinite(x));
+        assert(isfinite(result.y));
+
+        return result;
+    }
+
+    template <std::floating_point scalar_t>
+    constexpr auto operator()(jet_t<scalar_t> x) const noexcept -> function_sample_t<scalar_t, jet_t<scalar_t>>
+    {
+        auto const result = function_sample_t<scalar_t, jet_t<scalar_t>>{.x = x.f, .y = target_function(x)};
+
+        using std::isfinite;
+        assert(isfinite(result.x));
         assert(isfinite(result.y));
 
         return result;
@@ -145,7 +157,7 @@ struct residual_estimator_t
             auto const metric_error = measure_error(target, approximation);
 
             // track extrema
-            max_residual.scale = max(max_residual.scale, abs(primal(target)));
+            max_residual.scale = max(max_residual.scale, abs(target));
             max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
         }
 
@@ -160,7 +172,7 @@ struct residual_estimator_t
 /// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
 template <std::floating_point scalar_t> struct subdomain_t
 {
-    using function_sample_t = function_sample_t<scalar_t>;
+    using function_sample_t = function_sample_t<scalar_t, jet_t<scalar_t>>;
 
     function_sample_t left;
     function_sample_t midpoint;
@@ -281,18 +293,19 @@ template <typename t_bisection_t> struct bisector_t
     constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
         -> bisection_t
     {
+        using scalar_t = decltype(parent.left.x);
         auto const child_log2_width = parent.log2_width - 1;
         return
         {
             .left = subdomain_t{
                 .left = parent.left,
-                .midpoint = sample_target_function(std::midpoint(parent.left.x, parent.midpoint.x)),
+                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(parent.left.x, parent.midpoint.x), scalar_t{1}}),
                 .right = parent.midpoint,
                 .log2_width = child_log2_width,
             },
             .right = subdomain_t{
                 .left = parent.midpoint,
-                .midpoint = sample_target_function(std::midpoint(parent.midpoint.x, parent.right.x)),
+                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(parent.midpoint.x, parent.right.x), scalar_t{1}}),
                 .right = parent.right,
                 .log2_width = child_log2_width,
             },
@@ -452,13 +465,13 @@ struct refinement_pool_seeder_t
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        auto left = sample_target_function(scalar_t{0});
-        auto const right = sample_target_function(static_cast<scalar_t>(domain_max));
+        auto left = sample_target_function(jet_t<scalar_t>{scalar_t{0}, scalar_t{1}});
+        auto const right = sample_target_function(jet_t<scalar_t>{static_cast<scalar_t>(domain_max), scalar_t{1}});
 
         workspace.refinement_pool.push(interval_factory.create(sample_target_function,
             subdomain_t{
                 .left = left,
-                .midpoint = sample_target_function(std::midpoint(left.x, right.x)),
+                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(left.x, right.x), scalar_t{1}}),
                 .right = right,
                 .log2_width = log2_domain_max,
             }));
