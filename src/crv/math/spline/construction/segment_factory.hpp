@@ -32,19 +32,20 @@ struct shift_planner_t
     {
         int_t packed_runtime_shift; ///< relative shift performed at runtime during evaluation
         int_t destructive_preshift; ///< shift applied to next coefficient before packing
-        int_t next_accum_exponent; ///< state carried to next planning step
+        int_t next_accumulator_exponent; ///< state carried to next planning step
 
         auto operator==(plan_t const&) const noexcept -> bool = default;
     };
 
-    constexpr auto operator()(int_t accum_exp, int_t next_exp, int_t t_to_x_shift) const noexcept -> plan_t
+    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
+        -> plan_t
     {
-        auto const relative_shift = next_exp - accum_exp;
+        auto const relative_shift = next_exponent - accumulator_exponent;
 
         return {
             .packed_runtime_shift = t_to_x_shift + std::max<int_t>(0, relative_shift),
             .destructive_preshift = std::max<int_t>(0, -relative_shift),
-            .next_accum_exponent = std::max(accum_exp, next_exp),
+            .next_accumulator_exponent = std::max(accumulator_exponent, next_exponent),
         };
     }
 };
@@ -131,17 +132,17 @@ struct segment_quantizer_t
             // preserve exponent across zero terms
             //
             // This prevents a spurious large relative shift to and back from 0 that would obliterate the accumulator.
-            auto const effective_next_exp = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
+            auto const effective_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
 
             // plan and apply shifts
-            auto const plan = plan_shift(accumulator_exponent, effective_next_exp, t_to_x_shift);
+            auto const plan = plan_shift(accumulator_exponent, effective_next_exponent, t_to_x_shift);
             if (plan.packed_runtime_shift >= max_container_shift) accumulator_mantissa = 0;
             auto const quantized_next = quantize_mantissa(next_term.mantissa, plan.destructive_preshift);
             unpacked[field_index] = {.mantissa = accumulator_mantissa, .shift = plan.packed_runtime_shift};
 
             // step forward
             accumulator_mantissa = quantized_next;
-            accumulator_exponent = plan.next_accum_exponent;
+            accumulator_exponent = plan.next_accumulator_exponent;
         }
 
         // align final coefficient to the output radix
