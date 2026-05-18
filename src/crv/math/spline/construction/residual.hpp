@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief residual estimator for adaptive mesh refinement
+/// \brief tools for measuring residual error
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -10,6 +10,7 @@
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <cassert>
+#include <cmath>
 
 namespace crv::spline {
 
@@ -63,6 +64,21 @@ struct residual_estimator_t
         auto const weight = apply_weight(midpoint);
         max_residual.weighted_error = max_residual.metric_error * weight;
         return max_residual;
+    }
+};
+
+/// L-infinity norm for scalars used to measure error in position
+struct absolute_error_norm_t
+{
+    template <typename scalar_t>
+    static constexpr auto operator()(scalar_t target, scalar_t approximation) noexcept -> scalar_t
+    {
+        using std::isfinite;
+
+        auto const result = abs(target - approximation);
+        assert(isfinite(result));
+
+        return result;
     }
 };
 

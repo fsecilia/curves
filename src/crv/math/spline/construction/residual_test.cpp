@@ -12,6 +12,8 @@ namespace {
 
 using scalar_t = float_t;
 
+namespace residual_estimator_tests {
+
 constexpr auto max_node = 0.9;
 struct fake_node_generator_t
 {
@@ -77,6 +79,26 @@ constexpr auto handles_negative_error()
     return actual.scale == expected_max_scale && actual.metric_error == expected_max_scale;
 }
 static_assert(handles_negative_error());
+
+} // namespace residual_estimator_tests
+
+// ====================================================================================================================
+// absolute_error_norm_t
+// ====================================================================================================================
+
+namespace absolute_error_norm_tests {
+
+constexpr auto sut = absolute_error_norm_t{};
+
+static_assert(abs(sut(5.0, 5.0) - 0.0) < 1e-9);
+static_assert(abs(sut(5.0, 3.0) - 2.0) < 1e-9);
+static_assert(abs(sut(3.0, 5.0) - 2.0) < 1e-9);
+
+static_assert(abs(sut(5.0, -3.0) - 8.0) < 1e-9);
+static_assert(abs(sut(-5.0, 3.0) - 8.0) < 1e-9);
+static_assert(abs(sut(-5.0, -3.0) - 2.0) < 1e-9);
+
+} // namespace absolute_error_norm_tests
 
 } // namespace
 } // namespace crv::spline
