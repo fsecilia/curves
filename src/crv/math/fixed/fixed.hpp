@@ -130,7 +130,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         if constexpr (std::same_as<fixed_t, other_t>) { return other; }
         else
         {
-            using other_value_t = typename other_t::value_t;
+            using other_value_t = other_t::value_t;
             static constexpr auto shift_bits = frac_bits - other_t::frac_bits;
             static constexpr auto saturate = overflow_policy == fixed::overflow_policy_t::saturate;
 
