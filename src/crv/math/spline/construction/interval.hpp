@@ -16,12 +16,17 @@
 
 namespace crv::spline {
 
+// --------------------------------------------------------------------------------------------------------------------
+// interval
+// --------------------------------------------------------------------------------------------------------------------
+
 /// geometry of a refinement subdomain
 ///
 /// This type brackets the subdomain [left, right]. It includes log2_width and samples for left, right, and midpoint.
 template <std::floating_point t_scalar_t> struct subdomain_t
 {
     using scalar_t = t_scalar_t;
+
     using function_sample_t = function_sample_t<jet_t<scalar_t>>;
 
     function_sample_t left;
@@ -104,6 +109,10 @@ struct interval_factory_t
         };
     }
 };
+
+// --------------------------------------------------------------------------------------------------------------------
+// bisection
+// --------------------------------------------------------------------------------------------------------------------
 
 /// result of bisecting a subdomain
 template <typename t_subdomain_t> struct bisection_t
