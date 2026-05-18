@@ -228,7 +228,7 @@ TYPED_TEST(shifter_shr_death_tests_t, shr_sym_dynamic_oversized_count)
 
 TYPED_TEST(shifter_shr_death_tests_t, shr_asym_dynamic_oversized_count)
 {
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shr<dst_t>(TestFixture::src, TestFixture::src_bits),
         "shr count must be less than bit width");
 }
@@ -333,7 +333,7 @@ TYPED_TEST_SUITE(shifter_shl_death_tests_t, test_types_t);
 
 TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_negative_count)
 {
-    using src_t = typename TestFixture::src_t;
+    using src_t = TestFixture::src_t;
 
     EXPECT_DEBUG_DEATH(TestFixture::sut.shl(src_t{100}, -1), "shl count must not be negative");
 }
@@ -378,7 +378,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_negative_overflow)
         return;
     }
 
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.template shl<dst_t>(TestFixture::largest_invalid_src_for_shl, TestFixture::count),
@@ -432,7 +432,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shift_asym_dynamic_negative_overflow)
         return;
     }
 
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.template shift<dst_t>(TestFixture::largest_invalid_src_for_shl, TestFixture::count),
@@ -447,7 +447,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shift_asym_static_negative_overflow)
         return;
     }
 
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         (TestFixture::sut.template shift<dst_t, TestFixture::count>(TestFixture::largest_invalid_src_for_shl)),
@@ -468,7 +468,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shl_sym_static_positive_overflow)
 
 TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_positive_overflow)
 {
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.template shl<dst_t>(TestFixture::smallest_invalid_src_for_shl, TestFixture::count),
@@ -477,7 +477,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_positive_overflow)
 
 TYPED_TEST(shifter_shl_death_tests_t, shl_asym_static_positive_overflow)
 {
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         (TestFixture::sut.template shl<dst_t, TestFixture::count>(TestFixture::smallest_invalid_src_for_shl)),
@@ -498,7 +498,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shift_sym_static_positive_overflow)
 
 TYPED_TEST(shifter_shl_death_tests_t, shift_asym_dynamic_positive_overflow)
 {
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.template shift<dst_t>(TestFixture::smallest_invalid_src_for_shl, TestFixture::count),
@@ -507,7 +507,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shift_asym_dynamic_positive_overflow)
 
 TYPED_TEST(shifter_shl_death_tests_t, shift_asym_static_positive_overflow)
 {
-    using dst_t = typename TestFixture::dst_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(
         (TestFixture::sut.template shift<dst_t, TestFixture::count>(TestFixture::smallest_invalid_src_for_shl)),
@@ -516,7 +516,7 @@ TYPED_TEST(shifter_shl_death_tests_t, shift_asym_static_positive_overflow)
 
 TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_oversized_count)
 {
-    using src_t = typename TestFixture::src_t;
+    using src_t = TestFixture::src_t;
 
     EXPECT_DEBUG_DEATH(
         TestFixture::sut.shl(src_t{100}, TestFixture::dst_bits), "shl count larger than target bit width");
@@ -524,8 +524,8 @@ TYPED_TEST(shifter_shl_death_tests_t, shl_sym_dynamic_oversized_count)
 
 TYPED_TEST(shifter_shl_death_tests_t, shl_asym_dynamic_oversized_count)
 {
-    using src_t = typename TestFixture::src_t;
-    using dst_t = typename TestFixture::dst_t;
+    using src_t = TestFixture::src_t;
+    using dst_t = TestFixture::dst_t;
 
     EXPECT_DEBUG_DEATH(TestFixture::sut.template shl<dst_t>(src_t{100}, TestFixture::dst_bits),
         "shl count larger than target bit width");

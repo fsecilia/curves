@@ -70,8 +70,8 @@ template <std::floating_point scalar_t> struct negative_quadratic_integrand_t
 
 template <typename integrand_t, typename rule_t> struct integral_t
 {
-    using scalar_t = typename rule_t::scalar_t;
-    using estimate_t = typename rule_t::estimate_t;
+    using scalar_t = rule_t::scalar_t;
+    using estimate_t = rule_t::estimate_t;
 
     integrand_t integrand;
     rule_t rule;
