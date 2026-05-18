@@ -89,7 +89,7 @@ namespace interval_factory_tests {
 struct spline_interval_factory_test_t : Test
 {
     using subdomain_t = subdomain_t<scalar_t>;
-    using function_sample_t = function_sample_t<scalar_t, jet_t>;
+    using function_sample_t = function_sample_t<jet_t>;
 
     using cubic_t = cubic_t<scalar_t>;
     using x_t = fixed_t<int64_t, 0>;
@@ -222,7 +222,7 @@ constexpr auto parent = subdomain_t{
     .left = {.x = 0.0, .y = 0.0}, .midpoint = {.x = 4.0, .y = 0.0}, .right = {.x = 8.0, .y = 0.0}, .log2_width = 4};
 
 constexpr auto function_sampler
-    = [](auto const& jet) constexpr { return function_sample_t<scalar_t, jet_t>{.x = jet.f, .y = jet.f + 100.0}; };
+    = [](auto const& jet) constexpr { return function_sample_t<jet_t>{.x = jet.f, .y = jet.f + 100.0}; };
 
 constexpr auto bisector = bisector_t<bisection_t<subdomain_t>>{};
 constexpr auto result = bisector(function_sampler, parent);
