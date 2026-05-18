@@ -452,7 +452,7 @@ TEST(spline_generator, poc)
     constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
-    using error_norm_t = error_norms::absolute_t;
+    using error_norm_t = absolute_error_norm_t;
     auto const error_norm = error_norm_t{};
 
 #if 1
