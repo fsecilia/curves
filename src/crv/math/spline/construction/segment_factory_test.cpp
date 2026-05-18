@@ -23,22 +23,22 @@ constexpr auto plan_shift = shift_planner_t{};
 
 // exponents are equal; no relative shift required, so just pass through the base t_to_x_shift
 static_assert(plan_shift(10, 10, 5)
-    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 0, .next_accum_exponent = 10});
+    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 0, .next_accumulator_exponent = 10});
 
 // next exponent is larger; next term needs a larger runtime shift to align, no destructive preshift needed
 // base shift (5) + relative shift (4)
 static_assert(plan_shift(10, 14, 5)
-    == shift_planner_t::plan_t{.packed_runtime_shift = 9, .destructive_preshift = 0, .next_accum_exponent = 14});
+    == shift_planner_t::plan_t{.packed_runtime_shift = 9, .destructive_preshift = 0, .next_accumulator_exponent = 14});
 
 // accumulator exponent is larger; next term must be destructively preshifted to align with the accumulator
 // base shift (5) + relative shift (-4)
 static_assert(plan_shift(14, 10, 5)
-    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 4, .next_accum_exponent = 14});
+    == shift_planner_t::plan_t{.packed_runtime_shift = 5, .destructive_preshift = 4, .next_accumulator_exponent = 14});
 
 // negative domains
 // base shift (-1) + relative shift (3)
 static_assert(plan_shift(-5, -2, -1)
-    == shift_planner_t::plan_t{.packed_runtime_shift = 2, .destructive_preshift = 0, .next_accum_exponent = -2});
+    == shift_planner_t::plan_t{.packed_runtime_shift = 2, .destructive_preshift = 0, .next_accumulator_exponent = -2});
 
 } // namespace shift_planner_tests
 
@@ -97,7 +97,7 @@ static_assert(align_radix({.mantissa = 100, .exponent = 5}, 2) == test_unpacked_
 static_assert(
     align_radix({.mantissa = 10, .exponent = 15}, 10) == test_unpacked_field_t{.mantissa = 320, .shift = -20});
 
-// negative Saturation; exponent falls below min
+// negative saturation; exponent falls below min
 // exponent = -15 + (-10) = -25, clamps to -20
 // surplus of 5 means mantissa is right-shifted by 5 (1000 >> 5 = 31 RNE); shift output is 20
 static_assert(
@@ -118,21 +118,23 @@ struct float_extractor_t
 {
     using scalar_t = scalar_t;
 
-    // map 1.0 -> mantissa 10, exp 1; 2.0 -> mantissa 20, exp 2, etc.
-    constexpr auto operator()(scalar_t v) const noexcept -> scaled_int_t
+    // mantissa is 10x, exponent is 1x
+    constexpr auto operator()(scalar_t scalar) const noexcept -> scaled_int_t
     {
-        return {.mantissa = static_cast<mantissa_t>(v * 10), .exponent = static_cast<int_t>(v)};
+        return {.mantissa = static_cast<mantissa_t>(scalar * 10), .exponent = static_cast<int_t>(scalar)};
     }
 };
 
 struct shift_planner_t
 {
-    constexpr auto operator()(int_t accum_exp, int_t next_exp, int_t t_to_x_shift) const noexcept
+    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
         -> spline::shift_planner_t::plan_t
     {
-        return {.packed_runtime_shift = t_to_x_shift + accum_exp + next_exp, // recognizable dummy math
+        return {
+            .packed_runtime_shift = t_to_x_shift + accumulator_exponent + next_exponent,
             .destructive_preshift = 0,
-            .next_accum_exponent = next_exp};
+            .next_accumulator_exponent = next_exponent,
+        };
     }
 };
 
