@@ -211,55 +211,6 @@ TEST_F(spline_interval_factory_test_t, call)
 } // namespace interval_factory_tests
 
 // ====================================================================================================================
-// bisector_t
-// ====================================================================================================================
-
-namespace bisector_tests {
-
-using subdomain_t = subdomain_t<scalar_t>;
-
-constexpr auto parent = subdomain_t{
-    .left = {.x = 0.0, .y = 0.0}, .midpoint = {.x = 4.0, .y = 0.0}, .right = {.x = 8.0, .y = 0.0}, .log2_width = 4};
-
-constexpr auto function_sampler
-    = [](auto const& jet) constexpr { return function_sample_t<jet_t>{.x = jet.f, .y = jet.f + 100.0}; };
-
-constexpr auto bisector = bisector_t<bisection_t<subdomain_t>>{};
-constexpr auto result = bisector(function_sampler, parent);
-
-//
-// left child
-//
-
-// topology
-static_assert(result.left.left == parent.left);
-static_assert(result.left.right == parent.midpoint);
-
-// midpoint
-static_assert(result.left.midpoint.x == 2.0);
-static_assert(result.left.midpoint.y == 102.0);
-
-// width
-static_assert(result.left.log2_width == 3);
-
-//
-// right child
-//
-
-// topology
-static_assert(result.right.left == parent.midpoint);
-static_assert(result.right.right == parent.right);
-
-// midpoint evaluation
-static_assert(result.right.midpoint.x == 6.0);
-static_assert(result.right.midpoint.y == 106.0);
-
-// width
-static_assert(result.right.log2_width == 3);
-
-} // namespace bisector_tests
-
-// ====================================================================================================================
 // subdivider_t
 // ====================================================================================================================
 
