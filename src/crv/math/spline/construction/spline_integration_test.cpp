@@ -92,18 +92,19 @@ struct refinement_pool_seeder_t
     constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
     {
+        using jet_t = jet_t<scalar_t>;
         using subdomain_t = subdomain_t<scalar_t>;
 
         auto& workspace = state.workspace;
         assert(workspace.empty());
 
-        auto left = sample_target_function(jet_t<scalar_t>{scalar_t{0}, scalar_t{1}});
-        auto const right = sample_target_function(jet_t<scalar_t>{static_cast<scalar_t>(domain_max), scalar_t{1}});
+        auto left = sample_target_function(jet_t{scalar_t{0}, scalar_t{1}});
+        auto const right = sample_target_function(jet_t{static_cast<scalar_t>(domain_max), scalar_t{1}});
 
         workspace.refinement_pool.push(create_interval(sample_target_function,
             subdomain_t{
                 .left = left,
-                .midpoint = sample_target_function(jet_t<scalar_t>{std::midpoint(left.x, right.x), scalar_t{1}}),
+                .midpoint = sample_target_function(jet_t{std::midpoint(left.x, right.x), scalar_t{1}}),
                 .right = right,
                 .log2_width = log2_domain_max,
             }));
