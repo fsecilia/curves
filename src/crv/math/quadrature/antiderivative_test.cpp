@@ -22,7 +22,7 @@ struct quadrature_antiderivative_test_t : Test
     struct mock_integral_t
     {
         MOCK_METHOD(scalar_t, integrate, (scalar_t left, scalar_t right), (const, noexcept));
-        MOCK_METHOD(scalar_t, evaluate_integrand, (scalar_t location), (const, noexcept));
+        MOCK_METHOD(scalar_t, evaluate_integrand, (scalar_t x), (const, noexcept));
         virtual ~mock_integral_t() = default;
     };
     StrictMock<mock_integral_t> mock_integral;
@@ -37,21 +37,29 @@ struct quadrature_antiderivative_test_t : Test
         {
             return mock->integrate(left, right);
         }
-        auto evaluate_integrand(scalar_t location) const noexcept -> scalar_t
-        {
-            return mock->evaluate_integrand(location);
-        }
+
+        auto evaluate_integrand(scalar_t x) const noexcept -> scalar_t { return mock->evaluate_integrand(x); }
     };
 
     using sut_t = antiderivative_t<integral_t>;
 
     static constexpr auto expected_residual = 0.3174;
     static constexpr auto expected_derivative = 1.7213;
+    static constexpr auto input_tangent = 2.1;
 
-    auto expect_location(scalar_t location, scalar_t expected_left, scalar_t) -> void
+    auto test_call(sut_t const& sut, scalar_t x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
     {
-        EXPECT_CALL(mock_integral, integrate(expected_left, location)).WillOnce(Return(expected_residual));
-        EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
+        EXPECT_CALL(mock_integral, integrate(expected_left, x)).WillOnce(Return(expected_residual));
+
+        EXPECT_EQ(expected_sum + expected_residual, sut(x));
+    }
+
+    auto test_call(sut_t const& sut, jet_t x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
+    {
+        EXPECT_CALL(mock_integral, integrate(expected_left, primal(x))).WillOnce(Return(expected_residual));
+        EXPECT_CALL(mock_integral, evaluate_integrand(primal(x))).WillOnce(Return(expected_derivative));
+
+        EXPECT_EQ((jet_t{expected_sum + expected_residual, expected_derivative * tangent(x)}), sut(x));
     }
 };
 
@@ -70,6 +78,11 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
             {3.0, 8.5},
         },
     };
+
+    auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
+    {
+        quadrature_antiderivative_test_t::test_call(sut, x, expected_left, expected_sum);
+    }
 };
 
 TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
@@ -77,64 +90,64 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
     EXPECT_EQ(3, sut.segment_count());
 }
 
-// test absolute left edge of the domain
-TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min)
+// test left edge of the domain with scalar
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min_scalar)
 {
-    auto const location = 0.0;
-    auto const expected_left_position = 0.0;
-    auto const expected_left_sum = 0.0;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(0.0, 0.0, 0.0);
 }
 
-// tests point inside first segment, 0.0 <= x < 1.0
-TEST_F(quadrature_antiderivative_test_small_cache_t, first_segment)
+// test left edge of the domain with jet
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_min_jet)
 {
-    auto const location = 0.5;
-    auto const expected_left_position = 0.0;
-    auto const expected_left_sum = 0.0;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(jet_t{0.0, input_tangent}, 0.0, 0.0);
 }
 
-// tests point exactly on first boundary
-TEST_F(quadrature_antiderivative_test_small_cache_t, first_boundary)
+// tests point inside first segment with scalar, 0.0 <= x < 1.0
+TEST_F(quadrature_antiderivative_test_small_cache_t, first_segment_scalar)
 {
-    auto const location = 1.0;
-    auto const expected_left_position = 1.0;
-    auto const expected_left_sum = 2.5;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(0.5, 0.0, 0.0);
 }
 
-// test point inside a middle interval, 1.0 < x < 2.0
-TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval)
+// tests point inside first segment with jet, 0.0 <= x < 1.0
+TEST_F(quadrature_antiderivative_test_small_cache_t, first_segment_jet)
 {
-    auto const location = 1.5;
-    auto const expected_left_position = 1.0;
-    auto const expected_left_sum = 2.5;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(jet_t{0.5, input_tangent}, 0.0, 0.0);
 }
 
-// test absolute right edge of the domain
-TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max)
+// tests point exactly on first boundary with scalar
+TEST_F(quadrature_antiderivative_test_small_cache_t, first_boundary_scalar)
 {
-    auto const location = 3.0;
-    auto const expected_left_position = 3.0;
-    auto const expected_left_sum = 8.5;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
+    test_call(1.0, 1.0, 2.5);
+}
 
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+// tests point exactly on first boundary with jet
+TEST_F(quadrature_antiderivative_test_small_cache_t, first_boundary_jet)
+{
+    test_call(jet_t{1.0, input_tangent}, 1.0, 2.5);
+}
+
+// test point inside a middle interval with scalar, 1.0 < x < 2.0
+TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval_scalar)
+{
+    test_call(1.5, 1.0, 2.5);
+}
+
+// test point inside a middle interval with scalar, 1.0 < x < 2.0
+TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval_jet)
+{
+    test_call(jet_t{1.5, input_tangent}, 1.0, 2.5);
+}
+
+// test right edge of the domain wsith scalar
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max_scalar)
+{
+    test_call(3.0, 3.0, 8.5);
+}
+
+// test right edge of the domain wsith jet
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max_jet)
+{
+    test_call(jet_t{3.0, input_tangent}, 3.0, 8.5);
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -143,22 +156,40 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max)
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-// test queries below the valid domain bounds
-TEST_F(quadrature_antiderivative_test_small_cache_t, query_below_domain_aborts)
+// query scalar below the valid domain bounds
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_scalar_below_domain_aborts)
 {
     EXPECT_DEBUG_DEATH(sut(-0.01), "domain error");
 }
 
-// test queries strictly above the valid domain bounds
-TEST_F(quadrature_antiderivative_test_small_cache_t, query_above_domain_aborts)
+// query jet below the valid domain bounds
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_jet_below_domain_aborts)
+{
+    EXPECT_DEBUG_DEATH(sut(jet_t{-0.01, input_tangent}), "domain error");
+}
+
+// query scalar strictly above the valid domain bounds
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_scalar_above_domain_aborts)
 {
     EXPECT_DEBUG_DEATH(sut(3.01), "domain error");
 }
 
-// test NaN injection
-TEST_F(quadrature_antiderivative_test_small_cache_t, query_nan_aborts)
+// query jet strictly above the valid domain bounds
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_jet_above_domain_aborts)
+{
+    EXPECT_DEBUG_DEATH(sut(jet_t{3.01, input_tangent}), "domain error");
+}
+
+// test scalar NaN injection
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_scalar_nan_aborts)
 {
     EXPECT_DEBUG_DEATH(sut(std::numeric_limits<scalar_t>::quiet_NaN()), "domain error");
+}
+
+// test jet NaN injection
+TEST_F(quadrature_antiderivative_test_small_cache_t, query_jet_nan_aborts)
+{
+    EXPECT_DEBUG_DEATH(sut(jet_t{std::numeric_limits<scalar_t>::quiet_NaN(), input_tangent}), "domain error");
 }
 
 #endif
@@ -176,6 +207,11 @@ struct quadrature_antiderivative_test_minimal_cache_t : quadrature_antiderivativ
             {1.5, 3.0},
         },
     };
+
+    auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
+    {
+        quadrature_antiderivative_test_t::test_call(sut, x, expected_left, expected_sum);
+    }
 };
 
 TEST_F(quadrature_antiderivative_test_minimal_cache_t, segment_count)
@@ -183,40 +219,40 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, segment_count)
     EXPECT_EQ(1, sut.segment_count());
 }
 
-// test absolute left edge of the domain
-TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min)
+// test left edge of the domain with scalar
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min_scalar)
 {
-    auto const location = 0.0;
-    auto const expected_left_position = 0.0;
-    auto const expected_left_sum = 0.0;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(0.0, 0.0, 0.0);
 }
 
-// test interior
-TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior)
+// test left edge of the domain with jet
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_min_jet)
 {
-    auto const location = 0.75;
-    auto const expected_left_position = 0.0;
-    auto const expected_left_sum = 0.0;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
-
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+    test_call(jet_t{0.0, input_tangent}, 0.0, 0.0);
 }
 
-// test absolute right edge of the domain
-TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max)
+// test interior with scalar
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior_scalar)
 {
-    auto const location = 1.5;
-    auto const expected_left_position = 1.5;
-    auto const expected_left_sum = 3.0;
-    EXPECT_CALL(mock_integral, integrate(expected_left_position, location)).WillOnce(Return(expected_residual));
-    EXPECT_CALL(mock_integral, evaluate_integrand(location)).WillOnce(Return(expected_derivative));
+    test_call(0.75, 0.0, 0.0);
+}
 
-    EXPECT_EQ((jet_t{expected_left_sum + expected_residual, expected_derivative}), sut(location));
+// test interior with jet
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior_jet)
+{
+    test_call(jet_t{0.75, input_tangent}, 0.0, 0.0);
+}
+
+// test right edge of the domain with scalar
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max_scalar)
+{
+    test_call(1.5, 1.5, 3.0);
+}
+
+// test right edge of the domain with jet
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max_jet)
+{
+    test_call(jet_t{1.5, input_tangent}, 1.5, 3.0);
 }
 
 // ====================================================================================================================
