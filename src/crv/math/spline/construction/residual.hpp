@@ -31,6 +31,8 @@ template <std::floating_point scalar_t> struct residual_t
 ///
 /// This type uses a metric to sample a function and its approximant at Chebyshev nodes of the second kind. The
 /// magnitude of the residual is scaled by perceptual significance using a weight function.
+///
+/// \pre error_metric_t only returns nonnegative results
 template <std::floating_point scalar_t, typename node_generator_t, typename error_metric_t, typename weight_function_t>
 struct residual_estimator_t
 {
@@ -57,9 +59,11 @@ struct residual_estimator_t
             auto const target = sample_target_function(domain_node).y;
             auto const metric_error = measure_error(target, approximation);
 
+            assert(metric_error >= scalar_t{0} && "metrics must assign nonnegative values");
+
             // track extrema
             max_residual.scale = max(max_residual.scale, abs(target));
-            max_residual.metric_error = max(max_residual.metric_error, abs(metric_error));
+            max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 
         auto const weight = apply_weight(midpoint);
