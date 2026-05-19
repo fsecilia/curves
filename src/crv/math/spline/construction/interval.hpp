@@ -12,7 +12,6 @@
 #include <crv/math/polynomial.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/residual.hpp>
-#include <numeric>
 
 namespace crv::spline {
 
@@ -26,8 +25,9 @@ namespace crv::spline {
 template <std::floating_point t_scalar_t> struct subdomain_t
 {
     using scalar_t = t_scalar_t;
+    using jet_t = jet_t<scalar_t>;
 
-    using function_sample_t = function_sample_t<jet_t<scalar_t>>;
+    using function_sample_t = function_sample_t<jet_t>;
 
     function_sample_t left;
     function_sample_t midpoint;
@@ -106,50 +106,6 @@ struct interval_factory_t
                     .log2_width = subdomain.log2_width,
                 },
                 subdomain.left.x, subdomain.midpoint.x, subdomain.right.x),
-        };
-    }
-};
-
-// --------------------------------------------------------------------------------------------------------------------
-// bisection
-// --------------------------------------------------------------------------------------------------------------------
-
-/// result of bisecting a subdomain
-template <typename t_subdomain_t> struct bisection_t
-{
-    using subdomain_t = t_subdomain_t;
-
-    subdomain_t left;
-    subdomain_t right;
-};
-
-/// bisects subdomains
-template <typename t_bisection_t> struct bisector_t
-{
-    using bisection_t = t_bisection_t;
-    using subdomain_t = bisection_t::subdomain_t;
-
-    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
-        -> bisection_t
-    {
-        using scalar_t = subdomain_t::scalar_t;
-
-        auto const child_log2_width = parent.log2_width - 1;
-        return {
-            .left = subdomain_t{
-                .left = parent.left,
-                .midpoint = sample_target_function(
-                    jet_t<scalar_t>{std::midpoint(parent.left.x, parent.midpoint.x), scalar_t{1}}),
-                .right = parent.midpoint,
-                .log2_width = child_log2_width,
-            },
-            .right = subdomain_t{
-                .left = parent.midpoint,
-                .midpoint = sample_target_function(
-                    jet_t<scalar_t>{std::midpoint(parent.midpoint.x, parent.right.x), scalar_t{1}}),
-                .right = parent.right,
-                .log2_width = child_log2_width,
-            },
         };
     }
 };

@@ -18,6 +18,7 @@
 #include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/approximant.hpp>
+#include <crv/math/spline/construction/bisection.hpp>
 #include <crv/math/spline/construction/error_metric.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/interval.hpp>
