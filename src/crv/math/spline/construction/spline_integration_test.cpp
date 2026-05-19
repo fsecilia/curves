@@ -407,7 +407,7 @@ TEST(spline_generator, poc)
     using subdomain_t = subdomain_t<scalar_t>;
     using interval_t = interval_t<scalar_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
-    using node_generator_t = node_generators::equioscillation_t<scalar_t>;
+    using node_generator_t = node_generator_t<scalar_t>;
     using residual_estimator_t = residual_estimator_t<scalar_t, node_generator_t, error_norm_t, weight_function_t>;
     using hermite_converter_t = hermite_converter_t<scalar_t>;
     using approximant_t = approximant_t<scalar_t, x_t>;
