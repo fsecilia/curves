@@ -17,6 +17,7 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
+#include <crv/math/spline/construction/error_metric.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/residual.hpp>
@@ -388,7 +389,7 @@ TEST(spline_generator, poc)
     constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
-    using error_norm_t = absolute_error_norm_t;
+    using error_norm_t = error_metric_t;
     auto const error_norm = error_norm_t{};
 
 #if 1

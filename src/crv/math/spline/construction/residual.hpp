@@ -70,21 +70,6 @@ struct residual_estimator_t
     }
 };
 
-/// L-infinity norm for scalars used to measure error in position
-struct absolute_error_norm_t
-{
-    template <typename scalar_t>
-    static constexpr auto operator()(scalar_t target, scalar_t approximation) noexcept -> scalar_t
-    {
-        using std::isfinite;
-
-        auto const result = abs(target - approximation);
-        assert(isfinite(result));
-
-        return result;
-    }
-};
-
 /// approximates a segment with a cubic polynomial
 template <std::floating_point t_scalar_t, is_fixed t_x_t> struct approximant_t
 {
