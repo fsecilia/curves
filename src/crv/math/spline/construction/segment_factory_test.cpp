@@ -220,7 +220,7 @@ static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
 // iteration 2 & 3:
 //    Follows the same pattern, destructively shifting the next mantissa by 2 and 3 respectively, yielding the halved
 //    mantissas
-// final Radix Alignment:
+// final radix alignment:
 //    accumulator_exponent is still -52, out_frac_bits is 25
 //    target_exponent = -52 + 25 = -27
 //    -27 is within the exponent_aligner_t bounds [-30, 30], so left_shift is 0
@@ -244,6 +244,7 @@ static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 27},
     });
+
 } // namespace end_to_end_test
 
 } // namespace segment_quantizer_tests
