@@ -231,8 +231,7 @@ private:
 
 // runs subdivision loop over queue and completed segments
 template <std::floating_point scalar_t, typename spline_t, typename typestates_t, typename refinement_pool_t,
-    typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t, int_t max_segment_count,
-    int_t domain_max>
+    typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t, int_t max_segment_count>
 class spline_generator_t
 {
 public:
@@ -350,7 +349,7 @@ TEST(spline_generator, poc)
         = refinement_pool_seeder_t<scalar_t, typestates_t::unseeded_t, interval_factory_t, log2_domain_max, domain_max>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, spline_t, typestates_t, refinement_pool_t,
-        refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count, domain_max>;
+        refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
