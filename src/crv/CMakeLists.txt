@@ -32,10 +32,10 @@ target_sources(lib PRIVATE
     math/spline/construction/approximant.hpp
     math/spline/construction/error_metric.hpp
     math/spline/construction/function_sampler.hpp
+    math/spline/construction/interval.hpp
     math/spline/construction/node_generator.hpp
     math/spline/construction/residual.hpp
     math/spline/construction/segment_factory.hpp
-    math/spline/construction/subdivision.hpp
     math/spline/construction/tangent_extension.hpp
     math/spline/construction/weight_functions/exponential_decay.hpp
     math/spline/construction/weight_functions/hyperbolic_decay.hpp
@@ -139,10 +139,10 @@ if (enable_testing)
         math/spline/construction/approximant_test.cpp
         math/spline/construction/error_metric_test.cpp
         math/spline/construction/function_sampler_test.cpp
+        math/spline/construction/interval_test.cpp
         math/spline/construction/node_generator_test.cpp
         math/spline/construction/residual_test.cpp
         math/spline/construction/segment_factory_test.cpp
-        math/spline/construction/subdivision_test.cpp
         math/spline/construction/tangent_extension_test.cpp
         math/spline/construction/weight_functions/exponential_decay_test.cpp
         math/spline/construction/weight_functions/hyperbolic_decay_test.cpp

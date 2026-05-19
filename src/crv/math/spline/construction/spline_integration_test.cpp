@@ -20,10 +20,10 @@
 #include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/error_metric.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
+#include <crv/math/spline/construction/interval.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/residual.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
-#include <crv/math/spline/construction/subdivision.hpp>
 #include <crv/math/spline/construction/tangent_extension.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>
 #include <crv/math/spline/construction/workspace.hpp>
