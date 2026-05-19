@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "weight_function.hpp"
+#include "exponential_decay.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::spline::weight_functions {
