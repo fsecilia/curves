@@ -82,6 +82,33 @@ template <typename t_workspace_t> struct typestates_t
     };
 };
 
+template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_t
+{
+    constexpr auto operator()(std::vector<x_t> points) const -> std::vector<x_t>
+    {
+        using unsigned_t = std::make_unsigned_t<typename x_t::value_t>;
+        constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
+        constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
+
+        if constexpr (align_shift > 0)
+        {
+            // Snap all points to the grid dictated by the minimum allowable segment width
+            for (auto& point : points)
+            {
+                auto val = static_cast<unsigned_t>(point.value);
+                val &= ~align_mask;
+                point = x_t::literal(static_cast<typename x_t::value_t>(val));
+            }
+        }
+
+        std::ranges::sort(points);
+        auto const [first_dup, last] = std::ranges::unique(points);
+        points.erase(first_dup, last);
+
+        return points;
+    }
+};
+
 template <std::floating_point scalar_t, typename x_t, int_t log2_domain_max, int_t log2_min_width,
     int_t max_segment_count>
 struct domain_partitioner_t
