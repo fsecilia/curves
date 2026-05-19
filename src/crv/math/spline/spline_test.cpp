@@ -227,7 +227,7 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
 // death tests
 // ====================================================================================================================
 
-#if defined CRV_ENABLE_DEATH_TESTS
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 struct spline_death_test_t : Test
 {
