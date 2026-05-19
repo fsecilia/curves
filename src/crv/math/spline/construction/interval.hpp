@@ -111,39 +111,6 @@ struct interval_factory_t
 };
 
 // --------------------------------------------------------------------------------------------------------------------
-// subdivision
-// --------------------------------------------------------------------------------------------------------------------
-
-/// result of subdividing an interval
-template <typename t_interval_t> struct subdivision_t
-{
-    using interval_t = t_interval_t;
-
-    interval_t left;
-    interval_t right;
-};
-
-/// subdivides an interval
-template <std::floating_point scalar_t, typename bisector_t, typename interval_factory_t> struct subdivider_t
-{
-    using interval_t = interval_factory_t::interval_t;
-    using subdivision_t = subdivision_t<interval_t>;
-
-    [[no_unique_address]] bisector_t bisect;
-    interval_factory_t create_interval;
-
-    constexpr auto operator()(interval_t const& interval, auto const& sample_target_function) const noexcept
-        -> subdivision_t
-    {
-        auto const child_domains = bisect(sample_target_function, interval.subdomain);
-        return subdivision_t{
-            .left = create_interval(sample_target_function, child_domains.left),
-            .right = create_interval(sample_target_function, child_domains.right),
-        };
-    }
-};
-
-// --------------------------------------------------------------------------------------------------------------------
 // convergence
 // --------------------------------------------------------------------------------------------------------------------
 

@@ -25,6 +25,7 @@
 #include <crv/math/spline/construction/node_generator.hpp>
 #include <crv/math/spline/construction/residual.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
+#include <crv/math/spline/construction/subdivision.hpp>
 #include <crv/math/spline/construction/tangent_extension.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>
 #include <crv/math/spline/construction/workspace.hpp>
@@ -418,7 +419,8 @@ TEST(spline_generator, poc)
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
     using convergence_test_t = convergence_test_t<scalar_t, log2_min_width>;
-    using subdivider_t = subdivider_t<scalar_t, bisector_t, interval_factory_t>;
+    using subdivision_t = subdivision_t<interval_t>;
+    using subdivider_t = subdivider_t<subdivision_t, bisector_t, interval_factory_t>;
     using segment_locator_t = segment_locator_t<x_t, depth_max>;
     using workspace_t = workspace_t<interval_t, interval_priority_less_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
