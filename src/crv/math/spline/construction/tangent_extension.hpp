@@ -53,10 +53,11 @@ struct tangent_extender_t
     {
         auto const log2_x_max
             = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
+        auto const log2_width = interval.subdomain.log2_width;
 
         // extract derivative
         auto const t = scalar_t{1};
-        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(log2_x_max - interval.subdomain.log2_width));
+        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(log2_x_max - log2_width));
         auto const dy_dx_extended_segment = interval.cubic(jet_t{t, dt_dx}).df;
         auto const extracted_slope = extract_float(dy_dx_extended_segment);
         auto const required_shift = x_t::frac_bits - extended_tangent_t::y_t::frac_bits - extracted_slope.exponent;
@@ -64,7 +65,7 @@ struct tangent_extender_t
             = unpacked_field_t{.mantissa = extracted_slope.mantissa, .shift = int_cast<int_t>(required_shift)};
 
         // extract y intercept
-        auto const segment_width = x_t{1} << interval.subdomain.log2_width;
+        auto const segment_width = x_t{1} << log2_width;
         auto const y0 = segment(segment_width);
 
         return extended_tangent_t{.slope = slope, .y0 = y0};
