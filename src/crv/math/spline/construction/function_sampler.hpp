@@ -40,7 +40,10 @@ template <std::floating_point t_scalar_t> struct function_sample_t<jet_t<t_scala
     auto operator==(function_sample_t const& src) const noexcept -> bool = default;
 };
 
-// samples target function, returning the sample location and resulting evaluated value
+// samples target function, returning the sample location and resulting value
+//
+// The call operator is overloaded for scalar and jet. The scalar overload returns a scalar sample. The jet overload
+// returns a jet sample.
 template <typename target_function_t> struct function_sampler_t
 {
     target_function_t target_function;
