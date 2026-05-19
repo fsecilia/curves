@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief policies to choose where to sample a curve
+/// \brief chooses where to sample a curve
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -11,17 +11,13 @@
 #include <cmath>
 #include <numbers>
 
-namespace crv::spline::node_generators {
-
-// --------------------------------------------------------------------------------------------------------------------
-// equisocillation
-// --------------------------------------------------------------------------------------------------------------------
+namespace crv::spline {
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind in (0, 1), excluding the endpoints
 ///
 /// The endpoints are excluded because these cubics start in hermite form, which means they go through the knots
 /// by construction at the endpoints, so these will always have error of effectively zero.
-template <typename scalar_t, int sample_count = 3> struct equioscillation_t
+template <typename scalar_t, int sample_count = 3> struct node_generator_t
 {
     using nodes_t = std::array<scalar_t, sample_count>;
     static nodes_t const nodes;
@@ -30,7 +26,7 @@ template <typename scalar_t, int sample_count = 3> struct equioscillation_t
 };
 
 template <typename scalar_t, int sample_count>
-equioscillation_t<scalar_t, sample_count>::nodes_t const equioscillation_t<scalar_t, sample_count>::nodes
+node_generator_t<scalar_t, sample_count>::nodes_t const node_generator_t<scalar_t, sample_count>::nodes
     = []() noexcept -> nodes_t {
     static_assert(sample_count > 1, "must have at least 2 nodes to form an interval");
 
@@ -47,4 +43,4 @@ equioscillation_t<scalar_t, sample_count>::nodes_t const equioscillation_t<scala
     return result;
 }();
 
-} // namespace crv::spline::node_generators
+} // namespace crv::spline

@@ -6,10 +6,10 @@
 #include "node_generator.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::spline::node_generators {
+namespace crv::spline {
 namespace {
 
-struct node_generators_equioscillation_test_t : Test
+struct spline_node_generator_test_t : Test
 {
     auto compare(auto const& expected, auto const& actual) const noexcept -> void
     {
@@ -20,7 +20,7 @@ struct node_generators_equioscillation_test_t : Test
     }
 };
 
-TEST_F(node_generators_equioscillation_test_t, count_3)
+TEST_F(spline_node_generator_test_t, count_3)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -30,10 +30,10 @@ TEST_F(node_generators_equioscillation_test_t, count_3)
     };
     // clang-format on
 
-    compare(expected, equioscillation_t<float_t, 3>{}());
+    compare(expected, node_generator_t<float_t, 3>{}());
 }
 
-TEST_F(node_generators_equioscillation_test_t, count_5)
+TEST_F(spline_node_generator_test_t, count_5)
 {
     // clang-format off
     static auto const expected = std::array{
@@ -45,8 +45,8 @@ TEST_F(node_generators_equioscillation_test_t, count_5)
     };
     // clang-format on
 
-    compare(expected, equioscillation_t<float_t, 5>{}());
+    compare(expected, node_generator_t<float_t, 5>{}());
 }
 
 } // namespace
-} // namespace crv::spline::node_generators
+} // namespace crv::spline
