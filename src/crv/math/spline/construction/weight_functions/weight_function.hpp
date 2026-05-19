@@ -11,12 +11,6 @@
 
 namespace crv::spline::weight_functions {
 
-/// neutral weighting, treats all domain coordinates equally
-template <typename scalar_t> struct uniform_t
-{
-    constexpr auto operator()(scalar_t) const noexcept -> scalar_t { return 1.0; }
-};
-
 /// weights error based on exponential decay using ae^-bt + c
 template <typename scalar_t> struct exponential_decay_t
 {

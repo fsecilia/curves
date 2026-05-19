@@ -11,38 +11,6 @@ namespace {
 
 using scalar_t = float_t;
 
-struct test_vector_t
-{
-    scalar_t node;
-    scalar_t expected;
-
-    friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
-    {
-        return out << "{.node = " << src.node << ", .expected = " << src.expected << "}";
-    }
-};
-
-// ====================================================================================================================
-// uniform_t
-// ====================================================================================================================
-
-namespace uniform {
-
-constexpr auto sut = uniform_t<scalar_t>{};
-
-static_assert(sut(0.0) == 1.0);
-static_assert(sut(0.5) == 1.0);
-static_assert(sut(1.0) == 1.0);
-static_assert(sut(10.0) == 1.0);
-
-} // namespace uniform
-
-// ====================================================================================================================
-// exponential_decay_t
-// ====================================================================================================================
-
-namespace exponential_decay {
-
 struct weight_functions_exponential_decay_test_t : Test
 {
     using sut_t = exponential_decay_t<scalar_t>;
@@ -57,8 +25,19 @@ TEST_F(weight_functions_exponential_decay_test_t, from_ratio_and_halflife)
 }
 
 // --------------------------------------------------------------------------------------------------------------------
-// vector_test
+// vector test
 // --------------------------------------------------------------------------------------------------------------------
+
+struct test_vector_t
+{
+    scalar_t node;
+    scalar_t expected;
+
+    friend auto operator<<(std::ostream& out, test_vector_t const& src) -> std::ostream&
+    {
+        return out << "{.node = " << src.node << ", .expected = " << src.expected << "}";
+    }
+};
 
 struct weight_functions_exponential_decay_vector_test_t : weight_functions_exponential_decay_test_t,
                                                           WithParamInterface<test_vector_t>
@@ -89,8 +68,6 @@ test_vector_t const vectors[] = {
 };
 INSTANTIATE_TEST_SUITE_P(vectors, weight_functions_exponential_decay_vector_test_t, ValuesIn(vectors));
 // clang-format on
-
-} // namespace exponential_decay
 
 } // namespace
 } // namespace crv::spline::weight_functions
