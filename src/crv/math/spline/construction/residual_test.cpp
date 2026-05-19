@@ -69,16 +69,18 @@ constexpr auto identifies_maximum_error()
 }
 static_assert(identifies_maximum_error());
 
-constexpr auto handles_negative_error()
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+// metrics, by definition, must assign a nonnegative value, so sut asserts
+TEST(spline_residual_estimator, metrics_must_be_positive)
 {
     auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{-node}; };
     auto approximant = [](scalar_t) constexpr { return scalar_t{0.0}; };
 
-    auto const actual = sut(sample_target, approximant, left, midpoint, right);
-
-    return actual.scale == expected_max_scale && actual.metric_error == expected_max_scale;
+    EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "nonnegative");
 }
-static_assert(handles_negative_error());
+
+#endif
 
 } // namespace residual_estimator_tests
 
