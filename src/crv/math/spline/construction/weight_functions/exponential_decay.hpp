@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief perceptual domain error weights
+/// \brief perceptual domain error weight based on exponential decay
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
