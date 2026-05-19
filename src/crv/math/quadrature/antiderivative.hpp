@@ -35,22 +35,18 @@ public:
         assert(intervals_.begin()->second == scalar_t{0} && "antiderivative_t: cumulative sum must start at 0");
     }
 
-    /// evaluates accumulation function F(x) and its derivative f(x).
+    /// evaluates accumulation function with a scalar, returning F(x)
+    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return integrate(x); }
+
+    /// evaluates accumulation function with a jet, returning F(x) and its derivative f(x).
     ///
     /// The primal of the integral is the sum of the nearest cached base integral and a local residual calculated using
     /// the quadrature rule and integrand. The tangent of the integral, by the First Fundamental Theorem of Calculus, is
     /// the original integrand itself, evaluated directly.
-    constexpr auto operator()(scalar_t location) const noexcept -> jet_t
+    constexpr auto operator()(jet_t x) const noexcept -> jet_t
     {
-        assert(intervals_.keys().front() <= location && location <= intervals_.keys().back()
-            && "antiderivative_t: domain error");
-
-        auto const right = intervals_.upper_bound(location);
-        auto const left = std::ranges::prev(right);
-        auto const residual = integral_.integrate(left->first, location);
-        auto const integral = left->second + residual;
-
-        return jet_t{integral, integral_.evaluate_integrand(location)};
+        auto const primal_x = primal(x);
+        return jet_t{integrate(primal_x), integral_.evaluate_integrand(primal_x) * tangent(x)};
     }
 
     /// number of accepted quadrature segments
@@ -59,6 +55,18 @@ public:
     constexpr auto segment_count() const noexcept -> int_t { return static_cast<int_t>(intervals_.size() - 1); }
 
 private:
+    constexpr auto integrate(scalar_t x) const noexcept -> scalar_t
+    {
+        assert(intervals_.keys().front() <= x && x <= intervals_.keys().back() && "antiderivative_t: domain error");
+
+        auto const right = intervals_.upper_bound(x);
+        auto const left = std::ranges::prev(right);
+        auto const residual = integral_.integrate(left->first, x);
+        auto const integral = left->second + residual;
+
+        return integral;
+    }
+
     integral_t integral_;
     map_t intervals_;
 };

@@ -110,13 +110,14 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
     EXPECT_LE(result.antiderivative.segment_count(), max_segments);
 
     auto const& antiderivative = result.antiderivative;
-    auto const inputs
+    auto const input_primals
         = std::array{0.0, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 100.0, domain_max / 3.0, domain_max / 2.0, domain_max};
+    auto const input_tangent = 2.1;
 
-    for (auto const x : inputs)
+    for (auto const x : input_primals)
     {
-        auto const expected = jet_t<scalar_t>{expected_antiderivative(x), integrand(x)};
-        auto const actual = antiderivative(x);
+        auto const expected = jet_t<scalar_t>{expected_antiderivative(x), integrand(x) * input_tangent};
+        auto const actual = antiderivative(jet_t<scalar_t>{x, input_tangent});
         EXPECT_CLOSE(expected.f, actual.f, 1e-12, 1e-14);
         EXPECT_CLOSE(expected.df, actual.df, 1e-12, 1e-14);
     }
@@ -171,7 +172,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     auto const& numeric_antiderivative = result.antiderivative;
     for (auto const x : std::array{0.0, 64.0, 120.0, 127.5, 128.0, 128.5, 136.0, 200.0, domain_max})
     {
-        EXPECT_CLOSE(analytic_antiderivative(x), numeric_antiderivative(x).f, 1e-9, 1e-12);
+        EXPECT_CLOSE(analytic_antiderivative(x), numeric_antiderivative(x), 1e-9, 1e-12);
     }
 }
 
@@ -206,8 +207,8 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 
     for (auto const x : std::array{0.0, 1.0, 3.0, 5.0, 100.0, domain_max})
     {
-        EXPECT_CLOSE(analytic_antiderivative(x), blind_result.antiderivative(x).f, 1e-9, 1e-12);
-        EXPECT_CLOSE(analytic_antiderivative(x), guided_result.antiderivative(x).f, 1e-9, 1e-12);
+        EXPECT_CLOSE(analytic_antiderivative(x), blind_result.antiderivative(x), 1e-9, 1e-12);
+        EXPECT_CLOSE(analytic_antiderivative(x), guided_result.antiderivative(x), 1e-9, 1e-12);
     }
 
     // guided path resolves each linear half exactly; blind path has to find the kink via refinement
@@ -266,7 +267,7 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
 
     for (auto const x : std::array{0.0, 1.0, 32.0, 64.0, 128.0, 200.0, domain_max})
     {
-        EXPECT_CLOSE(bare_antiderivative(x).f, split_antiderivative(x).f, 1e-10, 1e-12);
+        EXPECT_CLOSE(bare_antiderivative(x), split_antiderivative(x), 1e-10, 1e-12);
     }
 }
 
