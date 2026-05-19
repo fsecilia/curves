@@ -330,7 +330,6 @@ TEST(spline_generator, poc)
     using convergence_test_t = convergence_test_t<scalar_t, log2_min_width>;
     using subdivider_t = subdivider_t<scalar_t, bisector_t, interval_factory_t>;
     using segment_locator_t = segment_locator_t<x_t, depth_max>;
-    using spline_t = spline_t<segment_t, segment_locator_t>;
     using workspace_t = workspace_t<interval_t, interval_priority_less_t, max_segment_count>;
     using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<scalar_t>;
@@ -343,13 +342,13 @@ TEST(spline_generator, poc)
         mantissa_quantizer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
     using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
-    using saturating_shifter_t = saturating_shifter_t<>;
-    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, segment_quantizer_t, segment_packer_t,
-        field_packer_t, saturating_shifter_t, segment_layout>;
+    using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
+    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<scalar_t, typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
     using refinement_pool_seeder_t
         = refinement_pool_seeder_t<scalar_t, typestates_t::unseeded_t, interval_factory_t, log2_domain_max, domain_max>;
+    using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, spline_t, typestates_t, refinement_pool_t,
         refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count, domain_max>;
 

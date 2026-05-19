@@ -14,10 +14,11 @@
 namespace crv::spline {
 
 /// fixed-point cubic spline approximating a function over a specific domain
-template <typename t_segment_t, typename t_segment_locator_t> class spline_t
+template <typename t_segment_t, typename t_extended_tangent_t, typename t_segment_locator_t> class spline_t
 {
 public:
     using segment_t = t_segment_t;
+    using extended_tangent_t = t_extended_tangent_t;
     using segment_locator_t = t_segment_locator_t;
 
     using x_t = segment_t::x_t;
@@ -31,8 +32,8 @@ public:
 
     /// \pre 0 < locator.segment_count() <= max_segments
     constexpr spline_t(segment_locator_t const& locator, segments_t const& segments,
-        segment_t const& extended_tangent_segment, int_t prev_segment_index = 0) noexcept
-        : segment_locator_{locator}, segments_{segments}, extend_final_tangent_{extended_tangent_segment},
+        extended_tangent_t const& extended_tangent, int_t prev_segment_index = 0) noexcept
+        : segment_locator_{locator}, segments_{segments}, extend_final_tangent_{extended_tangent},
           prev_segment_index_{prev_segment_index}
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
@@ -105,7 +106,7 @@ private:
     // these are ordered for overall cache-friendliness in operator ()
     segment_locator_t segment_locator_{};
     alignas(64) segments_t segments_{}; // *must* be aligned or the prefetching scheme is useless
-    segment_t extend_final_tangent_{};
+    extended_tangent_t extend_final_tangent_{};
 
     mutable int_t prev_segment_index_ = 0;
 };
