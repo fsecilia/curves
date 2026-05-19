@@ -16,7 +16,7 @@ using y_t = int16_t; // wider than in
 constexpr auto segment_count = 3;
 constexpr auto x_max = x_t{5};
 
-// adds dx to a distinct base_val; returns negative for extended tangents
+// adds dx to a distinct base_val
 struct segment_t
 {
     using x_t = x_t;
@@ -25,6 +25,14 @@ struct segment_t
     y_t base_val;
 
     constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val + x); }
+};
+
+// subtracts dx from a distinct base_val
+struct extended_tangent_t
+{
+    y_t base_val;
+
+    constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val - x); }
 };
 
 // maps subdomains of width 2 to sequential indices
@@ -56,11 +64,11 @@ struct segment_locator_t
     constexpr auto is_valid() const noexcept -> bool { return true; }
 };
 
-using sut_t = spline_t<segment_t, segment_locator_t>;
+using sut_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
 
 constexpr auto segments = std::array<segment_t, sut_t::max_segment_count>{{{10}, {20}, {30}}};
-constexpr auto extended_tangent_segment = segment_t{-40};
-constexpr auto const sut = sut_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent_segment};
+constexpr auto extended_tangent = extended_tangent_t{-40};
+constexpr auto const sut = sut_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent};
 
 // x in [0, 1] -> base 10
 static_assert(sut(0) == 10);
@@ -74,12 +82,12 @@ static_assert(sut(3) == 21);
 static_assert(sut(4) == 30);
 
 // extended final tangent: x >= x_max (5)
-static_assert(sut(5) == -40); // -40 + (5 - 5)
-static_assert(sut(6) == -39); // -40 + (5 - 6)
+static_assert(sut(5) == -40); // -40 - (5 - 5)
+static_assert(sut(6) == -41); // -40 - (5 - 6)
 
 // maximum input value; x_max is 5, max_in is 127, x = 122.
-// extended base_val is -40, result should be -40 + 122 = 82.
-static_assert(sut(max<x_t>()) == 82);
+// extended base_val is -40, result should be -40 - 122 = -162.
+static_assert(sut(max<x_t>()) == -162);
 
 // ====================================================================================================================
 // prefetch
@@ -96,6 +104,11 @@ struct spline_prefetch_test_t : Test
 
         alignas(32) std::array<std::byte, 32> padding;
 
+        constexpr auto operator()(x_t) const noexcept -> y_t { return y_t{0}; }
+    };
+
+    struct extended_tangent_t
+    {
         constexpr auto operator()(x_t) const noexcept -> y_t { return y_t{0}; }
     };
 
@@ -117,7 +130,6 @@ struct spline_prefetch_test_t : Test
 
     struct mock_locator_t
     {
-
         using result_t = segment_locator_t::result_t;
 
         virtual ~mock_locator_t() = default;
@@ -143,8 +155,8 @@ struct spline_prefetch_test_t : Test
         auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
     };
 
-    using sut_t = spline_t<segment_t, locator_t>;
-    sut_t sut{locator_t{.mock = &mock_locator}, std::array<segment_t, sut_t::max_segment_count>{}, segment_t{}};
+    using sut_t = spline_t<segment_t, extended_tangent_t, locator_t>;
+    sut_t sut{locator_t{.mock = &mock_locator}, {}, {}};
 
     static constexpr auto expected_segment = segment_count - 1;
     static constexpr auto expected_fetch_distance = 2 * sizeof(segment_t);
@@ -220,17 +232,17 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
 struct spline_death_test_t : Test
 {
     static constexpr auto segments = std::array<segment_t, sut_t::max_segment_count>{};
-    static constexpr auto extended_tangent_segment = segment_t{};
+    static constexpr auto extended_tangent = extended_tangent_t{};
 };
 
 TEST_F(spline_death_test_t, establish_valid_case)
 {
-    static_cast<void>(sut_t{segment_locator_t{}, segments, extended_tangent_segment});
+    static_cast<void>(sut_t{segment_locator_t{}, segments, extended_tangent});
 }
 
 TEST_F(spline_death_test_t, call_operator_catches_negative_x)
 {
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, extended_tangent_segment}(x_t{-1})), "input out of bounds");
+    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, extended_tangent}(x_t{-1})), "input out of bounds");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -253,26 +265,26 @@ struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
         constexpr auto segment_count() const noexcept -> int_t { return spline::segment_count; }
     };
 
-    using sut_t = spline_t<segment_t, malicious_locator_t>;
+    using sut_t = spline_t<segment_t, extended_tangent_t, malicious_locator_t>;
 };
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments, extended_tangent_segment};
+    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments, extended_tangent};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments, extended_tangent_segment};
+    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments, extended_tangent};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 {
-    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments, extended_tangent_segment};
+    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments, extended_tangent};
 
     EXPECT_DEATH(sut(0), "origin out of range");
 }
@@ -280,7 +292,7 @@ TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
 {
     auto const x = x_t{x_max - 2};
-    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, extended_tangent_segment};
+    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, extended_tangent};
 
     EXPECT_DEATH(sut(x), "origin out of range");
 }
