@@ -92,25 +92,5 @@ INSTANTIATE_TEST_SUITE_P(vectors, weight_functions_exponential_decay_vector_test
 
 } // namespace exponential_decay
 
-// ====================================================================================================================
-// hyperbolic_decay_t
-// ====================================================================================================================
-
-namespace hyperbolic_decay {
-
-using sut_t = hyperbolic_decay_t<scalar_t>;
-
-static_assert(sut_t{0}(1.0) == 1.0 / 1.0);
-static_assert(sut_t{0}(2.0) == 1.0 / 2.0);
-static_assert(sut_t{0}(7.0) == 1.0 / 7.0);
-static_assert(sut_t{0}(11.0) == 1.0 / 11.0);
-
-static_assert(sut_t{3.1}(1.0) == 1.0 / (1.0 + 3.1));
-static_assert(sut_t{3.1}(2.0) == 1.0 / (2.0 + 3.1));
-static_assert(sut_t{3.1}(7.0) == 1.0 / (7.0 + 3.1));
-static_assert(sut_t{3.1}(11.0) == 1.0 / (11.0 + 3.1));
-
-} // namespace hyperbolic_decay
-
 } // namespace
 } // namespace crv::spline::weight_functions

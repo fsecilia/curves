@@ -42,12 +42,4 @@ template <typename scalar_t> struct exponential_decay_t
     }
 };
 
-/// weights error based on hyperbolic decay using 1/(t + a)
-template <typename scalar_t> struct hyperbolic_decay_t
-{
-    scalar_t halflife;
-
-    constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return 1.0 / (node + halflife); }
-};
-
 } // namespace crv::spline::weight_functions
