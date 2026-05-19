@@ -20,26 +20,24 @@ namespace crv::spline {
 /// max scale of target and error between target and approximant over a subdomain
 template <std::floating_point scalar_t> struct residual_t
 {
-    scalar_t metric_error; // error based on norm error metric
+    scalar_t metric_error; // error measured using a metric
     scalar_t weighted_error; // metric_error weighted perceptually
     scalar_t scale; // absolute magnitude of primal
 
     constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
 
-/// estimates the maximum residual error of an approximant over a specific domain interval
+/// estimates maximum residual error of an approximant over a domain interval using a discrete L-infinity norm
 ///
-/// This type searches to find the worst-case error between a target function and its approximant. The search space is
-/// defined by a node generator to find collocation points, the domain is evaluated in fixed-point, the residual is
-/// calculated using an error norm, and the magnitude of the residual is scaled by perceptual significance using a
-/// weight function.
-template <std::floating_point scalar_t, typename node_generator_t, typename error_norm_t, typename weight_function_t>
+/// This type uses a metric to sample a function and its approximant at Chebyshev nodes of the second kind. The
+/// magnitude of the residual is scaled by perceptual significance using a weight function.
+template <std::floating_point scalar_t, typename node_generator_t, typename error_metric_t, typename weight_function_t>
 struct residual_estimator_t
 {
     using residual_t = residual_t<scalar_t>;
 
     [[no_unique_address]] node_generator_t generate_nodes;
-    error_norm_t measure_error;
+    error_metric_t measure_error;
     weight_function_t apply_weight;
 
     constexpr auto operator()(auto const& sample_target_function, auto const& approximant, scalar_t left,
@@ -51,7 +49,7 @@ struct residual_estimator_t
         auto max_residual = residual_t{};
         for (auto const standard_node : generate_nodes())
         {
-            // convert from standard nodes in [0, 1] to domain nodes in [left, right].
+            // convert from standard nodes in (0, 1) to domain nodes in (left, right).
             auto const domain_node = left + standard_node * interval_width;
 
             // measure error between target function and approximant
