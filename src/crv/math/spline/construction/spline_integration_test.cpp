@@ -25,7 +25,7 @@
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/subdivision.hpp>
 #include <crv/math/spline/construction/tangent_extension.hpp>
-#include <crv/math/spline/construction/weight_function.hpp>
+#include <crv/math/spline/construction/weight_functions/weight_function.hpp>
 #include <crv/math/spline/construction/workspace.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
