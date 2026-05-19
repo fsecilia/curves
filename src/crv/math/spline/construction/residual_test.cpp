@@ -12,16 +12,14 @@ namespace {
 
 using scalar_t = float_t;
 
-constexpr auto max_node = 0.9;
-struct fake_node_generator_t
-{
-    // to properly test the implementation uses max() correctly, the final node must not be the max node
-    using nodes_t = std::array<scalar_t, 3>;
-    static constexpr auto nodes = nodes_t{0.1, max_node, 0.5};
-    constexpr auto operator()() const noexcept -> nodes_t const& { return nodes; }
-};
+constexpr auto left = 3.0;
+constexpr auto right = 10.0;
+constexpr auto midpoint = (left + right) * 0.5;
+constexpr auto interval_width = right - left;
 
-struct uniform_norm_t
+// This is technically not a metric because it is signed, but for the tests concerned, it is always positive when
+// needed, and negative only in the case testing against nonnegative metrics.
+struct uniform_metric_t
 {
     constexpr auto operator()(scalar_t target, scalar_t approximation) const noexcept -> scalar_t
     {
@@ -35,46 +33,79 @@ struct linear_weight_function_t
     constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return node * weight; }
 };
 
-using sut_t = residual_estimator_t<scalar_t, fake_node_generator_t, uniform_norm_t, linear_weight_function_t>;
-constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
-
 struct target_function_sample_t
 {
     scalar_t y;
 };
 
-constexpr auto left = 3.0;
-constexpr auto right = 10.0;
-constexpr auto midpoint = (left + right) * 0.5;
-constexpr auto interval_width = right - left;
+// --------------------------------------------------------------------------------------------------------------------
+// compile-time tests
+// --------------------------------------------------------------------------------------------------------------------
 
-constexpr auto domain_node = left + (max_node * interval_width);
-constexpr auto expected_max_scale = domain_node;
+namespace compile_time_tests {
 
-constexpr auto identifies_maximum_error()
+constexpr auto max_node = 0.9;
+struct fake_node_generator_t
 {
-    static constexpr auto target_scale = 1.1;
-    static constexpr auto approximant_scale = 0.9;
+    // to properly test the implementation uses max() correctly, the final node must not be the max node
+    using nodes_t = std::array<scalar_t, 3>;
+    static constexpr auto nodes = nodes_t{0.1, max_node, 0.5};
+    constexpr auto operator()() const noexcept -> nodes_t const& { return nodes; }
+};
+
+constexpr auto identifies_maximum_error() noexcept -> bool
+{
+    constexpr auto target_scale = 1.1;
+    constexpr auto approximant_scale = 0.9;
 
     auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{node * target_scale}; };
     auto approximant = [](scalar_t node) constexpr { return scalar_t{node * approximant_scale}; };
-    auto const expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
-    auto const expected_weight = midpoint * weight;
+    using sut_t = residual_estimator_t<scalar_t, fake_node_generator_t, uniform_metric_t, linear_weight_function_t>;
+    constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
 
-    auto const actual = sut(sample_target, approximant, left, midpoint, right);
+    constexpr auto domain_node = left + (max_node * interval_width);
+    constexpr auto expected_max_scale = domain_node;
+    constexpr auto expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
+    constexpr auto expected_weight = midpoint * weight;
+
+    constexpr auto actual = sut(sample_target, approximant, left, midpoint, right);
 
     return actual.scale == expected_max_scale * target_scale && actual.metric_error == expected_metric_error
         && actual.weighted_error == actual.metric_error * expected_weight;
 }
 static_assert(identifies_maximum_error());
 
+} // namespace compile_time_tests
+
+// --------------------------------------------------------------------------------------------------------------------
+// death tests
+// --------------------------------------------------------------------------------------------------------------------
+
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-// metrics, by definition, must assign a nonnegative value, so sut asserts
-TEST(spline_residual_estimator, metrics_must_be_positive)
+struct spline_residual_estimator_death_test_t : Test
 {
+    struct single_point_node_generator_t
+    {
+        using nodes_t = std::vector<scalar_t>;
+
+        scalar_t node = 0.5;
+
+        constexpr auto operator()() const noexcept -> nodes_t { return {node}; }
+    };
+
+    static constexpr auto approximant = [](scalar_t) constexpr { return scalar_t{0.0}; };
+
+    using sut_t
+        = residual_estimator_t<scalar_t, single_point_node_generator_t, uniform_metric_t, linear_weight_function_t>;
+};
+
+// metrics, by definition, must assign a nonnegative value, and sut asserts this
+TEST_F(spline_residual_estimator_death_test_t, metrics_must_be_positive)
+{
+    constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
+
     auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{-node}; };
-    auto approximant = [](scalar_t) constexpr { return scalar_t{0.0}; };
 
     EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "nonnegative");
 }
@@ -83,27 +114,14 @@ TEST(spline_residual_estimator, metrics_must_be_positive)
 //
 // Standard nodes must be in [0, 1], but for a cubic spline generated from a hermite basis, the spline always goes
 // through the knots, so measuring at segment endpoints is not effective.
-struct spline_residual_estimator_test_node_endpoints_t : Test
+struct spline_residual_estimator_test_node_endpoints_t : spline_residual_estimator_death_test_t
 {
-    struct single_point_node_generator_t
-    {
-        using nodes_t = std::vector<scalar_t>;
-
-        scalar_t node = 0.0;
-
-        constexpr auto operator()() const noexcept -> nodes_t { return {node}; }
-    };
-
     static constexpr auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{node}; };
-    static constexpr auto approximant = [](scalar_t) constexpr { return scalar_t{0.0}; };
-
-    using sut_t
-        = residual_estimator_t<scalar_t, single_point_node_generator_t, uniform_norm_t, linear_weight_function_t>;
 };
 
 TEST_F(spline_residual_estimator_test_node_endpoints_t, nodes_excludes_left_endpoint)
 {
-    constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
+    constexpr auto sut = sut_t{.generate_nodes = {.node = 0.0}, .measure_error = {}, .apply_weight = {}};
     EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "in \\(0, 1\\)");
 }
 
