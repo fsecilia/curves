@@ -83,24 +83,6 @@ static_assert(handles_negative_error());
 } // namespace residual_estimator_tests
 
 // ====================================================================================================================
-// absolute_error_norm_t
-// ====================================================================================================================
-
-namespace absolute_error_norm_tests {
-
-constexpr auto sut = absolute_error_norm_t{};
-
-static_assert(abs(sut(5.0, 5.0) - 0.0) < 1e-9);
-static_assert(abs(sut(5.0, 3.0) - 2.0) < 1e-9);
-static_assert(abs(sut(3.0, 5.0) - 2.0) < 1e-9);
-
-static_assert(abs(sut(5.0, -3.0) - 8.0) < 1e-9);
-static_assert(abs(sut(-5.0, 3.0) - 8.0) < 1e-9);
-static_assert(abs(sut(-5.0, -3.0) - 2.0) < 1e-9);
-
-} // namespace absolute_error_norm_tests
-
-// ====================================================================================================================
 // approximant_t
 // ====================================================================================================================
 
