@@ -17,6 +17,7 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
+#include <crv/math/spline/construction/approximant.hpp>
 #include <crv/math/spline/construction/error_metric.hpp>
 #include <crv/math/spline/construction/function_sampler.hpp>
 #include <crv/math/spline/construction/node_generator.hpp>

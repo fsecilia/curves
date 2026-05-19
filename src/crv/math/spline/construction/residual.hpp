@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief tools for measuring residual error
+/// \brief estimates error between target and approximation
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -9,11 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
-#include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/float_conversions.hpp>
-#include <crv/math/polynomial.hpp>
 #include <cassert>
-#include <cmath>
 
 namespace crv::spline {
 
@@ -73,25 +69,6 @@ struct residual_estimator_t
         auto const weight = apply_weight(midpoint);
         max_residual.weighted_error = max_residual.metric_error * weight;
         return max_residual;
-    }
-};
-
-/// approximates a segment with a cubic polynomial
-template <std::floating_point t_scalar_t, is_fixed t_x_t> struct approximant_t
-{
-    using scalar_t = t_scalar_t;
-    using x_t = t_x_t;
-
-    cubic_t<scalar_t> cubic;
-    x_t x0;
-    int_t log2_width;
-
-    /// \returns spline-global spatial coordinate y
-    constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
-    {
-        auto const x_local = from_fixed<scalar_t>(to_fixed<x_t>(x) - x0);
-        auto const t = std::ldexp(x_local, int_cast<int>(-log2_width));
-        return cubic(t);
     }
 };
 
