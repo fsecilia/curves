@@ -27,13 +27,14 @@ template <std::floating_point scalar_t> struct residual_t
     constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
 
-/// estimates maximum residual error of an approximant over a domain interval using a discrete L-infinity norm
+/// estimates worst-case residual error between a target function and its approximant
 ///
-/// This type uses a metric to sample a function and its approximant at Chebyshev nodes of the second kind. The
-/// magnitude of the residual is scaled by perceptual significance using a weight function.
+/// This type searches for the maximum deviation, a discrete L-infinity norm, over a specific interval. It sweeps the
+/// domain using the given node generator, measures the gap using an error metric, and scales the result by a perceptual
+/// weight.
 ///
-/// \pre node_generator_t generates nodes in (0, 1)
-/// \pre error_metric_t only returns nonnegative results
+/// \pre node_generator_t yields standard nodes in (0, 1)
+/// \pre error_metric_t assigns only nonnegative values
 template <std::floating_point scalar_t, typename node_generator_t, typename error_metric_t, typename weight_function_t>
 struct residual_estimator_t
 {
@@ -64,7 +65,7 @@ struct residual_estimator_t
 
             assert(metric_error >= scalar_t{0} && "metrics must assign nonnegative values");
 
-            // track extrema
+            // track maxes
             max_residual.scale = max(max_residual.scale, abs(target));
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
