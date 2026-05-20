@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief packing and construction of dynamic segment
+/// \brief dynamic segment construction
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
