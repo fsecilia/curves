@@ -117,7 +117,7 @@ struct interval_factory_t
 /// decides if an interval should subdivide
 ///
 /// Compares the norm's metric_error directly against global_tolerance and a noise floor, both in y.
-template <std::floating_point scalar_t, int_t log2_min_width> struct convergence_test_t
+template <std::floating_point scalar_t, int_t log2_min_width> struct subdivision_predicate_t
 {
     // total noise budget in ulps relative to interval scale
     //
