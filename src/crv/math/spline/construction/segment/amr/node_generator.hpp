@@ -17,7 +17,7 @@ namespace crv::spline {
 ///
 /// The endpoints are excluded because these cubics start in hermite form, which means they go through the knots
 /// by construction at the endpoints, so these will always have error of effectively zero.
-template <typename scalar_t, int sample_count = 3> struct node_generator_t
+template <typename scalar_t, int_t sample_count> struct node_generator_t
 {
     using nodes_t = std::array<scalar_t, sample_count>;
     static nodes_t const nodes;
@@ -25,7 +25,7 @@ template <typename scalar_t, int sample_count = 3> struct node_generator_t
     auto operator()() const noexcept -> nodes_t const& { return nodes; }
 };
 
-template <typename scalar_t, int sample_count>
+template <typename scalar_t, int_t sample_count>
 node_generator_t<scalar_t, sample_count>::nodes_t const node_generator_t<scalar_t, sample_count>::nodes
     = []() noexcept -> nodes_t {
     static_assert(sample_count > 1, "must have at least 2 nodes to form an interval");
