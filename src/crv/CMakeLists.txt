@@ -40,6 +40,7 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/amr/subdivision.hpp
     math/spline/construction/segment/quantization/mantissa_quantizer.hpp
     math/spline/construction/segment/quantization/radix_aligner.hpp
+    math/spline/construction/segment/quantization/segment_quantizer.hpp
     math/spline/construction/segment/quantization/shift_planner.hpp
     math/spline/construction/segment/segment_factory.hpp
     math/spline/construction/spline/tangent_extension.hpp
@@ -153,6 +154,7 @@ if (enable_testing)
         math/spline/construction/segment/amr/subdivision_test.cpp
         math/spline/construction/segment/quantization/mantissa_quantizer_test.cpp
         math/spline/construction/segment/quantization/radix_aligner_test.cpp
+        math/spline/construction/segment/quantization/segment_quantizer_test.cpp
         math/spline/construction/segment/quantization/shift_planner_test.cpp
         math/spline/construction/segment/segment_factory_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
