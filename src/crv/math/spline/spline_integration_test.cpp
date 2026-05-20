@@ -24,6 +24,7 @@
 #include <crv/math/spline/construction/segment/interval.hpp>
 #include <crv/math/spline/construction/segment/node_generator.hpp>
 #include <crv/math/spline/construction/segment/quantization/mantissa_quantizer.hpp>
+#include <crv/math/spline/construction/segment/quantization/radix_aligner.hpp>
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/residual.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>

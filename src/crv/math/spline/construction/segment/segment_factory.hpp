@@ -24,23 +24,6 @@ namespace crv::spline {
 // quantization
 // --------------------------------------------------------------------------------------------------------------------
 
-/// aligns radix of the final evaluation step to match the precision of the output type
-template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponent> struct radix_aligner_t
-{
-    using scaled_int_t = t_scaled_int_t;
-
-    constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
-    {
-        auto const aligned_accumulator
-            = align_exponent(scaled_int_t{.mantissa = accumulator.mantissa, .exponent = accumulator.exponent + radix});
-
-        return unpacked_field_t{
-            .mantissa = aligned_accumulator.mantissa,
-            .shift = -aligned_accumulator.exponent,
-        };
-    }
-};
-
 /// quantizes a floating-point cubic into an unpacked segment with relative shifts
 template <typename t_unpacked_field_t, typename float_extractor_t, typename shift_planner_t,
     typename mantissa_quantizer_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits,

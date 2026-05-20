@@ -36,6 +36,7 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/interval.hpp
     math/spline/construction/segment/node_generator.hpp
     math/spline/construction/segment/quantization/mantissa_quantizer.hpp
+    math/spline/construction/segment/quantization/radix_aligner.hpp
     math/spline/construction/segment/quantization/shift_planner.hpp
     math/spline/construction/segment/residual.hpp
     math/spline/construction/segment/segment_factory.hpp
@@ -148,6 +149,7 @@ if (enable_testing)
         math/spline/construction/segment/interval_test.cpp
         math/spline/construction/segment/node_generator_test.cpp
         math/spline/construction/segment/quantization/mantissa_quantizer_test.cpp
+        math/spline/construction/segment/quantization/radix_aligner_test.cpp
         math/spline/construction/segment/quantization/shift_planner_test.cpp
         math/spline/construction/segment/residual_test.cpp
         math/spline/construction/segment/segment_factory_test.cpp
