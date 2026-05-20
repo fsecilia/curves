@@ -17,25 +17,12 @@
 #include <crv/math/spline/construction/segment/function_sampler.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
-#include <climits>
 
 namespace crv::spline {
 
 // --------------------------------------------------------------------------------------------------------------------
 // quantization
 // --------------------------------------------------------------------------------------------------------------------
-
-/// applies right-shifts to coefficients, flushing to zero when the shift exceeds container size
-template <signed_integral mantissa_t, auto shifter = shifter_t<>{}> struct mantissa_quantizer_t
-{
-    static constexpr auto max_container_shift = int_t{sizeof(mantissa_t) * CHAR_BIT} - 1;
-
-    constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
-    {
-        if (preshift >= max_container_shift) return 0;
-        return shifter.shr(mantissa, preshift);
-    }
-};
 
 /// aligns radix of the final evaluation step to match the precision of the output type
 template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponent> struct radix_aligner_t
