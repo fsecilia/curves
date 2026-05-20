@@ -29,22 +29,22 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
-    math/spline/construction/approximant.hpp
-    math/spline/construction/bisection.hpp
-    math/spline/construction/error_metric.hpp
-    math/spline/construction/function_sampler.hpp
-    math/spline/construction/interval.hpp
-    math/spline/construction/node_generator.hpp
-    math/spline/construction/quantization/shift_planner.hpp
-    math/spline/construction/residual.hpp
-    math/spline/construction/segment_factory.hpp
-    math/spline/construction/subdivision.hpp
-    math/spline/construction/subdivision_predicate.hpp
-    math/spline/construction/tangent_extension.hpp
+    math/spline/construction/segment/approximant.hpp
+    math/spline/construction/segment/bisection.hpp
+    math/spline/construction/segment/error_metric.hpp
+    math/spline/construction/segment/function_sampler.hpp
+    math/spline/construction/segment/interval.hpp
+    math/spline/construction/segment/node_generator.hpp
+    math/spline/construction/segment/quantization/shift_planner.hpp
+    math/spline/construction/segment/residual.hpp
+    math/spline/construction/segment/segment_factory.hpp
+    math/spline/construction/segment/subdivision_predicate.hpp
+    math/spline/construction/segment/subdivision.hpp
+    math/spline/construction/spline/tangent_extension.hpp
+    math/spline/construction/spline/workspace.hpp
     math/spline/construction/weight_functions/exponential_decay.hpp
     math/spline/construction/weight_functions/hyperbolic_decay.hpp
     math/spline/construction/weight_functions/uniform.hpp
-    math/spline/construction/workspace.hpp
     math/stats.hpp
     priority_queue.hpp
 )
@@ -140,22 +140,22 @@ if (enable_testing)
         math/saturate_cast_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/construction/approximant_test.cpp
-        math/spline/construction/bisection_test.cpp
-        math/spline/construction/error_metric_test.cpp
-        math/spline/construction/function_sampler_test.cpp
-        math/spline/construction/interval_test.cpp
-        math/spline/construction/node_generator_test.cpp
-        math/spline/construction/quantization/shift_planner_test.cpp
-        math/spline/construction/residual_test.cpp
-        math/spline/construction/segment_factory_test.cpp
-        math/spline/construction/subdivision_test.cpp
-        math/spline/construction/subdivision_predicate_test.cpp
-        math/spline/construction/tangent_extension_test.cpp
+        math/spline/construction/segment/approximant_test.cpp
+        math/spline/construction/segment/bisection_test.cpp
+        math/spline/construction/segment/error_metric_test.cpp
+        math/spline/construction/segment/function_sampler_test.cpp
+        math/spline/construction/segment/interval_test.cpp
+        math/spline/construction/segment/node_generator_test.cpp
+        math/spline/construction/segment/quantization/shift_planner_test.cpp
+        math/spline/construction/segment/residual_test.cpp
+        math/spline/construction/segment/segment_factory_test.cpp
+        math/spline/construction/segment/subdivision_predicate_test.cpp
+        math/spline/construction/segment/subdivision_test.cpp
+        math/spline/construction/spline/tangent_extension_test.cpp
+        math/spline/construction/spline/workspace_test.cpp
         math/spline/construction/weight_functions/exponential_decay_test.cpp
         math/spline/construction/weight_functions/hyperbolic_decay_test.cpp
         math/spline/construction/weight_functions/uniform_test.cpp
-        math/spline/construction/workspace_test.cpp
         math/spline/pipeline_config_test.cpp
         math/spline/segment_locator_test.cpp
         math/spline/segment_test.cpp
@@ -175,8 +175,8 @@ if (enable_testing)
 
     if (BUILD_INTEGRATION_TESTS)
         add_executable(spline_integration_test
-            math/spline/construction/spline_integration_test.cpp
-            math/spline/dynamic_segment_test.cpp
+            math/spline/segment_integration_test.cpp
+            math/spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
     endif()

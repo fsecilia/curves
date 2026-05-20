@@ -5,8 +5,8 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/polynomial.hpp>
-#include <crv/math/spline/construction/quantization/shift_planner.hpp>
-#include <crv/math/spline/construction/segment_factory.hpp>
+#include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
+#include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/test/test.hpp>
