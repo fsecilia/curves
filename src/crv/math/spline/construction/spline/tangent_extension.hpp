@@ -36,20 +36,19 @@ struct extended_tangent_t
 };
 
 /// generates linear extension of final tangent of a segment
-template <typename t_interval_t, typename t_segment_t, typename t_extended_tangent_t, typename float_extractor_t>
-struct tangent_extender_t
+template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t> struct tangent_extender_t
 {
     using interval_t = t_interval_t;
-    using segment_t = t_segment_t;
     using extended_tangent_t = t_extended_tangent_t;
 
+    using segment_t = interval_t::segment_t;
     using x_t = segment_t::x_t;
     using unpacked_field_t = extended_tangent_t::unpacked_field_t;
     using scalar_t = float_extractor_t::scalar_t;
 
     [[no_unique_address]] float_extractor_t extract_float;
 
-    constexpr auto operator()(interval_t const& interval, segment_t const& segment) const noexcept -> extended_tangent_t
+    constexpr auto operator()(interval_t const& interval) const noexcept -> extended_tangent_t
     {
         auto const log2_x_max
             = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
@@ -66,7 +65,7 @@ struct tangent_extender_t
 
         // extract y intercept
         auto const segment_width = x_t{1} << log2_width;
-        auto const y0 = segment(segment_width);
+        auto const y0 = interval.segment(segment_width);
 
         return extended_tangent_t{.slope = slope, .y0 = y0};
     }

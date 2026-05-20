@@ -19,7 +19,29 @@ using jet_t = jet_t<scalar_t>;
 
 namespace interval_priority_less_tests {
 
-using sut_t = interval_t<scalar_t>;
+using scalar_t = float_t;
+
+struct subdomain_t
+{
+    using scalar_t = scalar_t;
+
+    struct function_sample_t
+    {
+        scalar_t x;
+    };
+    function_sample_t left;
+
+    struct residual_t
+    {
+        scalar_t weighted_error;
+    };
+    residual_t residual;
+};
+
+using segment_t = int_t;
+using cubic_t = int_t;
+
+using sut_t = interval_t<subdomain_t, cubic_t, segment_t>;
 
 constexpr auto construct_sut(scalar_t weighted_error, scalar_t left_x) noexcept -> sut_t
 {
@@ -86,13 +108,30 @@ struct spline_interval_factory_test_t : Test
     using cubic_t = cubic_t<scalar_t>;
     using x_t = fixed_t<int64_t, 0>;
 
+    struct segment_t
+    {
+        cubic_t cubic;
+        int_t log2_width;
+
+        constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
+    };
+
+    struct segment_factory_t
+    {
+        using segment_t = segment_t;
+
+        constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
+        {
+            return {cubic, log2_width};
+        }
+    };
+
     struct approximant_t
     {
         using x_t = spline_interval_factory_test_t::x_t;
 
-        cubic_t cubic;
+        segment_t segment;
         x_t x0;
-        int_t log2_width;
 
         constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;
     };
@@ -101,9 +140,9 @@ struct spline_interval_factory_test_t : Test
     {
         using approximant_t = approximant_t;
 
-        constexpr auto operator()(cubic_t const& cubic, x_t x0, int_t log2_width) const noexcept -> approximant_t
+        constexpr auto operator()(segment_t const& segment, x_t x0) const noexcept -> approximant_t
         {
-            return approximant_t{cubic, x0, log2_width};
+            return approximant_t{segment, x0};
         }
     };
 
@@ -156,15 +195,18 @@ struct spline_interval_factory_test_t : Test
     {
         using scalar_t = scalar_t;
 
-        subdomain_t subdomain;
         cubic_t cubic;
+        segment_t segment;
+        subdomain_t subdomain;
         residual_t residual;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t = interval_factory_t<interval_t, approximant_factory_t, hermite_converter_t, residual_estimator_t>;
+    using sut_t = interval_factory_t<interval_t, segment_factory_t, approximant_factory_t, hermite_converter_t,
+        residual_estimator_t>;
     sut_t sut{
+        .segment_factory = {},
         .approximant_factory = {},
         .convert_hermite = hermite_converter_t{&mock_hermite_converter},
         .estimate_residual = residual_estimator_t{&mock_residual_estimator},
@@ -176,19 +218,21 @@ struct spline_interval_factory_test_t : Test
     function_sample_t const right{.x = 8.0, .y = {9.0, 10.0}};
     int_t log2_width = 11;
     cubic_t const cubic{1.0, 2.0, 3.0, 4.0};
+    segment_t segment = segment_t{.cubic = cubic, .log2_width = log2_width};
     residual_t const residual{14};
 
     x_t x0 = to_fixed<x_t>(left.x);
 
     interval_t const expected
     {
+        .cubic = cubic,
+        .segment = segment,
         .subdomain = subdomain_t{
             .left = left,
             .midpoint = midpoint,
             .right = right,
             .log2_width = log2_width,
         },
-        .cubic = cubic,
         .residual = residual,
     };
 };
@@ -204,8 +248,7 @@ TEST_F(spline_interval_factory_test_t, call)
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(cubic));
 
     EXPECT_CALL(mock_residual_estimator,
-        call(sample_target_function, approximant_t{.cubic = cubic, .x0 = x0, .log2_width = log2_width}, left.x,
-            midpoint.x, right.x))
+        call(sample_target_function, approximant_t{.segment = segment, .x0 = x0}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
 
     auto const actual = sut(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
