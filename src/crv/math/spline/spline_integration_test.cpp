@@ -32,6 +32,7 @@
 #include <crv/math/spline/construction/segment/quantization/segment_quantizer.hpp>
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
+#include <crv/math/spline/construction/segment/segment_packer.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
 #include <crv/math/spline/construction/spline/workspace.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>

@@ -44,6 +44,7 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/quantization/shift_planner.hpp
     math/spline/construction/segment/field_packer.hpp
     math/spline/construction/segment/segment_factory.hpp
+    math/spline/construction/segment/segment_packer.hpp
     math/spline/construction/spline/tangent_extension.hpp
     math/spline/construction/spline/workspace.hpp
     math/spline/construction/weight_functions/exponential_decay.hpp
@@ -159,6 +160,7 @@ if (enable_testing)
         math/spline/construction/segment/quantization/shift_planner_test.cpp
         math/spline/construction/segment/field_packer_test.cpp
         math/spline/construction/segment/segment_factory_test.cpp
+        math/spline/construction/segment/segment_packer_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
         math/spline/construction/spline/workspace_test.cpp
         math/spline/construction/weight_functions/exponential_decay_test.cpp
