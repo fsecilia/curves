@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief packing and construction of dynamic segment
+/// \brief quantizes cubic polynomial to dynamic unpacked segment
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
