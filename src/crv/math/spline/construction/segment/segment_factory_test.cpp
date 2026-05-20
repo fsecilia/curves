@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "segment_factory.hpp"
-#include <crv/math/spline/construction/quantization/shift_planner.hpp>
+#include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {

@@ -14,7 +14,7 @@
 #include <crv/math/integer.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/math/shifter.hpp>
-#include <crv/math/spline/construction/function_sampler.hpp>
+#include <crv/math/spline/construction/segment/function_sampler.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
 #include <climits>
