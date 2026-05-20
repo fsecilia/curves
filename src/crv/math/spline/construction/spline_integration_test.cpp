@@ -202,12 +202,12 @@ template <typename typestate_t, typename interval_factory_t> struct refinement_p
     }
 };
 
-template <typename typestate_t, typename subdivider_t, typename convergence_test_t, int_t max_segment_count>
+template <typename typestate_t, typename subdivider_t, typename subdivision_predicate_t, int_t max_segment_count>
 struct refiner_t
 {
     using interval_t = subdivider_t::interval_t;
 
-    convergence_test_t requires_subdivision;
+    subdivision_predicate_t requires_subdivision;
     subdivider_t subdivide;
 
     auto operator()(typestate_t&& state, auto const& sample_target_function) -> typename typestate_t::next_t
@@ -418,7 +418,7 @@ TEST(spline_generator, poc)
     using interval_factory_t = interval_factory_t<interval_t, approximant_t, hermite_converter_t, residual_estimator_t>;
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
-    using convergence_test_t = convergence_test_t<scalar_t, log2_min_width>;
+    using subdivision_predicate_t = subdivision_predicate_t<scalar_t, log2_min_width>;
     using subdivision_t = subdivision_t<interval_t>;
     using subdivider_t = subdivider_t<subdivision_t, bisector_t, interval_factory_t>;
     using segment_locator_t = segment_locator_t<x_t, depth_max>;
@@ -437,7 +437,7 @@ TEST(spline_generator, poc)
     using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
     using tangent_extender_t = tangent_extender_t<interval_t, segment_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
-    using refiner_t = refiner_t<typestates_t::seeded_t, subdivider_t, convergence_test_t, max_segment_count>;
+    using refiner_t = refiner_t<typestates_t::seeded_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using domain_partitioner_t
         = domain_partitioner_t<scalar_t, x_t, log2_domain_max, log2_min_width, max_segment_count>;
     using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
@@ -462,7 +462,7 @@ TEST(spline_generator, poc)
         refinement_pool_seeder_t{.create_interval = create_interval},
         refiner_t
         {
-            .requires_subdivision = convergence_test_t{.global_tolerance = global_tolerance},
+            .requires_subdivision = subdivision_predicate_t{.global_tolerance = global_tolerance},
             .subdivide = subdivider_t
             {
                 .bisect = bisector_t{},

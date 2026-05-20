@@ -237,7 +237,7 @@ struct interval_t
 
 constexpr auto global_tolerance = 1e-4;
 constexpr auto log2_min_width = 2;
-constexpr auto sut = convergence_test_t<scalar_t, log2_min_width>{.global_tolerance = global_tolerance};
+constexpr auto sut = subdivision_predicate_t<scalar_t, log2_min_width>{.global_tolerance = global_tolerance};
 
 // nominal subdivision; interval is wide enough and error exceeds both global tolerance and noise floor
 static_assert(sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
