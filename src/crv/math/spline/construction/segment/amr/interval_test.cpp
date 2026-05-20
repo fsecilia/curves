@@ -97,6 +97,16 @@ struct spline_interval_factory_test_t : Test
         constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;
     };
 
+    struct approximant_factory_t
+    {
+        using approximant_t = approximant_t;
+
+        constexpr auto operator()(cubic_t const& cubic, x_t x0, int_t log2_width) const noexcept -> approximant_t
+        {
+            return approximant_t{cubic, x0, log2_width};
+        }
+    };
+
     struct mock_hermite_converter_t
     {
         virtual ~mock_hermite_converter_t() = default;
@@ -153,9 +163,12 @@ struct spline_interval_factory_test_t : Test
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t = interval_factory_t<interval_t, approximant_t, hermite_converter_t, residual_estimator_t>;
-    sut_t sut{.convert_hermite = hermite_converter_t{&mock_hermite_converter},
-        .estimate_residual = residual_estimator_t{&mock_residual_estimator}};
+    using sut_t = interval_factory_t<interval_t, approximant_factory_t, hermite_converter_t, residual_estimator_t>;
+    sut_t sut{
+        .approximant_factory = {},
+        .convert_hermite = hermite_converter_t{&mock_hermite_converter},
+        .estimate_residual = residual_estimator_t{&mock_residual_estimator},
+    };
 
     sample_target_function_t const sample_target_function{1};
     function_sample_t const left{.x = 2.0, .y = {3.0, 4.0}};
