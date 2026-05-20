@@ -26,6 +26,7 @@
 #include <crv/math/spline/construction/residual.hpp>
 #include <crv/math/spline/construction/segment_factory.hpp>
 #include <crv/math/spline/construction/subdivision.hpp>
+#include <crv/math/spline/construction/subdivision_predicate.hpp>
 #include <crv/math/spline/construction/tangent_extension.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>
 #include <crv/math/spline/construction/workspace.hpp>

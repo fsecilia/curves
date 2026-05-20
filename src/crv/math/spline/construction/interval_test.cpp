@@ -13,9 +13,9 @@ namespace {
 using scalar_t = float_t;
 using jet_t = jet_t<scalar_t>;
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // interval_priority_less_t
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace interval_priority_less_tests {
 
@@ -31,10 +31,6 @@ constexpr auto construct_sut(scalar_t weighted_error, scalar_t left_x) noexcept 
 
 constexpr auto sut = interval_priority_less_t{};
 
-//-----------------------------------------------------------------------------------------------------------------
-// lexicographic dominance
-//-----------------------------------------------------------------------------------------------------------------
-
 // weighted error dominates left.x
 static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
 static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
@@ -42,10 +38,6 @@ static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
 // left.x breaks ties
 static_assert(sut(construct_sut(5.0, 1.0), construct_sut(5.0, 2.0)));
 static_assert(!sut(construct_sut(5.0, 2.0), construct_sut(5.0, 1.0)));
-
-//-----------------------------------------------------------------------------------------------------------------
-// nonfinite death tests
-//-----------------------------------------------------------------------------------------------------------------
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -80,9 +72,9 @@ TEST(spline_interval_priority_less, death_by_rhs_left_x)
 
 } // namespace interval_priority_less_tests
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // interval_factory_t
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 namespace interval_factory_tests {
 
@@ -209,53 +201,6 @@ TEST_F(spline_interval_factory_test_t, call)
 }
 
 } // namespace interval_factory_tests
-
-// ====================================================================================================================
-// convergence_test_t
-// ====================================================================================================================
-
-namespace convergence_tests {
-
-using scalar_t = float64_t;
-
-struct subdomain_t
-{
-    int log2_width;
-};
-
-struct residual_t
-{
-    scalar_t scale;
-    scalar_t metric_error;
-};
-
-struct interval_t
-{
-    subdomain_t subdomain;
-    residual_t residual;
-};
-
-constexpr auto global_tolerance = 1e-4;
-constexpr auto log2_min_width = 2;
-constexpr auto sut = subdivision_predicate_t<scalar_t, log2_min_width>{.global_tolerance = global_tolerance};
-
-// nominal subdivision; interval is wide enough and error exceeds both global tolerance and noise floor
-static_assert(sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
-
-// width limit exhaustion; error is massive, but the interval cannot be subdivided any further
-static_assert(
-    !sut(interval_t{.subdomain = {.log2_width = log2_min_width}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
-
-// global tolerance satisfaction; interval is wide, but the error is within the acceptable global margin
-static_assert(!sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1.0, .metric_error = 1e-5}}));
-
-// submerged in noise floor
-// double epsilon is around 2.22e-16, unscaled noise floor is ~2.22e-16 * 64 ~= 1.42e-14
-// scaling that by 1e-6 gives 1.42e-8
-// error of 5e-9 exceeds this
-static_assert(!sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1e6, .metric_error = 5e-9}}));
-
-} // namespace convergence_tests
 
 } // namespace
 } // namespace crv::spline
