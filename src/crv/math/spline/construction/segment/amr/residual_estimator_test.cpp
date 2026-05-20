@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "residual.hpp"
+#include "residual_estimator.hpp"
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
 

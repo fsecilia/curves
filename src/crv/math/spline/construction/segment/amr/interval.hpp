@@ -10,8 +10,8 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/polynomial.hpp>
-#include <crv/math/spline/construction/segment/function_sampler.hpp>
-#include <crv/math/spline/construction/segment/residual.hpp>
+#include <crv/math/spline/construction/segment/amr/function_sampler.hpp>
+#include <crv/math/spline/construction/segment/amr/residual_estimator.hpp>
 
 namespace crv::spline {
 
