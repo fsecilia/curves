@@ -5,6 +5,7 @@
 
 #include "segment_factory.hpp"
 #include <crv/math/spline/construction/segment/quantization/mantissa_quantizer.hpp>
+#include <crv/math/spline/construction/segment/quantization/radix_aligner.hpp>
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/test/test.hpp>
 
@@ -14,38 +15,6 @@ namespace {
 // ====================================================================================================================
 // quantization
 // ====================================================================================================================
-
-// --------------------------------------------------------------------------------------------------------------------
-// radix_aligner_t
-// --------------------------------------------------------------------------------------------------------------------
-
-namespace radix_aligner_tests {
-
-using test_mantissa_t = int32_t;
-using test_scaled_int_t = scaled_int_t<test_mantissa_t>;
-using test_unpacked_field_t = unpacked_field_t<test_mantissa_t>;
-
-// instantiate the aligner with arbitrary safe bounds for our 32-bit test container
-constexpr auto aligner = exponent_aligner_t<-20, 20>{};
-constexpr auto align_radix = radix_aligner_t<test_unpacked_field_t, test_scaled_int_t, aligner>{};
-
-// passthrough; exponent is well within the aligner's bounds
-// exponent = 5 + 2 = 7, shift output becomes -7, mantissa is untouched
-static_assert(align_radix({.mantissa = 100, .exponent = 5}, 2) == test_unpacked_field_t{.mantissa = 100, .shift = -7});
-
-// positive saturation; exponent exceeds max
-// exponent = 15 + 10 = 25, clamps to 20
-// deficit of 5 means mantissa is left-shifted by 5 (10 << 5 = 320); shift output is -20
-static_assert(
-    align_radix({.mantissa = 10, .exponent = 15}, 10) == test_unpacked_field_t{.mantissa = 320, .shift = -20});
-
-// negative saturation; exponent falls below min
-// exponent = -15 + (-10) = -25, clamps to -20
-// surplus of 5 means mantissa is right-shifted by 5 (1000 >> 5 = 31 RNE); shift output is 20
-static_assert(
-    align_radix({.mantissa = 1000, .exponent = -15}, -10) == test_unpacked_field_t{.mantissa = 31, .shift = 20});
-
-} // namespace radix_aligner_tests
 
 namespace segment_quantizer_tests {
 
