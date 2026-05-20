@@ -10,6 +10,10 @@
 namespace crv::spline {
 namespace {
 
+// --------------------------------------------------------------------------------------------------------------------
+// approximant_t
+// --------------------------------------------------------------------------------------------------------------------
+
 struct spline_approximant_test_t : Test
 {
     using scalar_t = float_t;
@@ -60,6 +64,34 @@ TEST_F(spline_approximant_test_t, quantizes_floating_point_input_to_fixed_grid)
 
     EXPECT_DOUBLE_EQ(expected, actual);
 }
+
+// --------------------------------------------------------------------------------------------------------------------
+// approximant_factory_t
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace approximant_factory_tests {
+
+struct approximant_t
+{
+    using cubic_t = int_t;
+    using x_t = int_t;
+
+    cubic_t cubic;
+    x_t x0;
+    int_t log2_width;
+
+    constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;
+};
+using sut_t = approximant_factory_t<approximant_t>;
+constexpr auto sut = sut_t{};
+
+constexpr auto cubic = 3;
+constexpr auto x0 = 5;
+constexpr auto log2_width = 7;
+
+static_assert(approximant_t{.cubic = cubic, .x0 = x0, .log2_width = log2_width} == sut(cubic, x0, log2_width));
+
+} // namespace approximant_factory_tests
 
 } // namespace
 } // namespace crv::spline
