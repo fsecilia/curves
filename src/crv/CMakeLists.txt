@@ -29,19 +29,19 @@ target_sources(lib PRIVATE
     math/quadrature/segment.hpp
     math/quadrature/stack.hpp
     math/quadrature/subdivider.hpp
-    math/spline/construction/segment/approximant.hpp
-    math/spline/construction/segment/bisection.hpp
-    math/spline/construction/segment/error_metric.hpp
-    math/spline/construction/segment/function_sampler.hpp
-    math/spline/construction/segment/interval.hpp
-    math/spline/construction/segment/node_generator.hpp
+    math/spline/construction/segment/amr/approximant.hpp
+    math/spline/construction/segment/amr/bisection.hpp
+    math/spline/construction/segment/amr/error_metric.hpp
+    math/spline/construction/segment/amr/function_sampler.hpp
+    math/spline/construction/segment/amr/interval.hpp
+    math/spline/construction/segment/amr/node_generator.hpp
+    math/spline/construction/segment/amr/residual_estimator.hpp
+    math/spline/construction/segment/amr/subdivision_predicate.hpp
+    math/spline/construction/segment/amr/subdivision.hpp
     math/spline/construction/segment/quantization/mantissa_quantizer.hpp
     math/spline/construction/segment/quantization/radix_aligner.hpp
     math/spline/construction/segment/quantization/shift_planner.hpp
-    math/spline/construction/segment/residual.hpp
     math/spline/construction/segment/segment_factory.hpp
-    math/spline/construction/segment/subdivision_predicate.hpp
-    math/spline/construction/segment/subdivision.hpp
     math/spline/construction/spline/tangent_extension.hpp
     math/spline/construction/spline/workspace.hpp
     math/spline/construction/weight_functions/exponential_decay.hpp
@@ -142,19 +142,19 @@ if (enable_testing)
         math/saturate_cast_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/construction/segment/approximant_test.cpp
-        math/spline/construction/segment/bisection_test.cpp
-        math/spline/construction/segment/error_metric_test.cpp
-        math/spline/construction/segment/function_sampler_test.cpp
-        math/spline/construction/segment/interval_test.cpp
-        math/spline/construction/segment/node_generator_test.cpp
+        math/spline/construction/segment/amr/approximant_test.cpp
+        math/spline/construction/segment/amr/bisection_test.cpp
+        math/spline/construction/segment/amr/error_metric_test.cpp
+        math/spline/construction/segment/amr/function_sampler_test.cpp
+        math/spline/construction/segment/amr/interval_test.cpp
+        math/spline/construction/segment/amr/node_generator_test.cpp
+        math/spline/construction/segment/amr/residual_estimator_test.cpp
+        math/spline/construction/segment/amr/subdivision_predicate_test.cpp
+        math/spline/construction/segment/amr/subdivision_test.cpp
         math/spline/construction/segment/quantization/mantissa_quantizer_test.cpp
         math/spline/construction/segment/quantization/radix_aligner_test.cpp
         math/spline/construction/segment/quantization/shift_planner_test.cpp
-        math/spline/construction/segment/residual_test.cpp
         math/spline/construction/segment/segment_factory_test.cpp
-        math/spline/construction/segment/subdivision_predicate_test.cpp
-        math/spline/construction/segment/subdivision_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
         math/spline/construction/spline/workspace_test.cpp
         math/spline/construction/weight_functions/exponential_decay_test.cpp
