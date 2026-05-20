@@ -22,24 +22,6 @@ namespace crv::spline {
 // packing
 // --------------------------------------------------------------------------------------------------------------------
 
-/// tightly packs individual fields into specific bit ranges of packed_field_t
-template <typename t_packed_field_t> struct field_packer_t
-{
-    using packed_field_t = t_packed_field_t;
-
-    template <typename unpacked_field_t, typename field_layout_t>
-    constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept -> packed_field_t
-    {
-        auto const packed_mantissa = static_cast<packed_field_t>(unpacked_field.mantissa) << layout.shift_width;
-        auto const packed_shift = unpacked_field.shift & layout.shift_mask();
-
-        auto const packed_field = packed_field_t{packed_mantissa | packed_shift};
-        assert(field_unpacker_t<unpacked_field_t>{}(packed_field, layout) == unpacked_field);
-
-        return packed_field;
-    }
-};
-
 /// packs segments tightly according to layout
 template <typename t_packed_segment_t, typename unpacked_segment_t, typename field_packer_t, auto segment_layout>
 struct segment_packer_t

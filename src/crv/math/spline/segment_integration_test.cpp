@@ -5,6 +5,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/polynomial.hpp>
+#include <crv/math/spline/construction/segment/field_packer.hpp>
 #include <crv/math/spline/construction/segment/quantization/mantissa_quantizer.hpp>
 #include <crv/math/spline/construction/segment/quantization/radix_aligner.hpp>
 #include <crv/math/spline/construction/segment/quantization/segment_quantizer.hpp>
