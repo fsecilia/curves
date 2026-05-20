@@ -255,14 +255,10 @@ struct refiner_t
     }
 };
 
-template <typename typestate_t, typename t_segment_factory_t, typename t_tangent_extender_t, int_t domain_max>
-struct assembler_t
+template <typename typestate_t, typename interval_t, typename t_tangent_extender_t, int_t domain_max> struct assembler_t
 {
-    using segment_factory_t = t_segment_factory_t;
-    using segment_t = segment_factory_t::segment_t;
     using tangent_extender_t = t_tangent_extender_t;
 
-    [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
     template <typename spline_t> auto operator()(typestate_t&& state, spline_t& spline) const -> void
@@ -271,10 +267,11 @@ struct assembler_t
         assert(workspace.refinement_pool.empty());
 
         std::ranges::sort(workspace.completed_intervals, std::ranges::less{},
-            [](auto const& interval) noexcept { return interval.subdomain.left.x; });
+            [](interval_t const& interval) noexcept { return interval.subdomain.left.x; });
 
         using segment_locator_t = spline_t::segment_locator_t;
         using segments_t = spline_t::segments_t;
+        using segment_t = interval_t::segment_t;
         using x_t = segment_t::x_t;
 
         auto const segment_count = int_cast<int_t>(std::size(workspace.completed_intervals));
@@ -285,11 +282,11 @@ struct assembler_t
         using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
         sorted_keys_t sorted_keys;
 
-        segments[0] = make_segment(workspace.completed_intervals[0]);
+        segments[0] = workspace.completed_intervals[0].segment;
         for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
         {
             auto const& interval = workspace.completed_intervals[segment_index];
-            segments[segment_index] = make_segment(interval);
+            segments[segment_index] = interval.segment;
             sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
         }
 
@@ -307,19 +304,12 @@ struct assembler_t
 
         // extend final tangent
         auto const final_interval = workspace.completed_intervals[segment_count - 1];
-        auto const final_segment = segments[segment_count - 1];
-        auto const extended_tangent = extend_tangent(final_interval, final_segment);
+        auto const extended_tangent = extend_tangent(final_interval);
 
         workspace.completed_intervals.clear();
 
         auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
         spline = spline_t{segment_locator, segments, extended_tangent};
-    }
-
-private:
-    constexpr auto make_segment(auto const& interval) const noexcept -> segment_t
-    {
-        return segment_factory(interval.cubic, interval.subdomain.log2_width);
     }
 };
 
@@ -399,6 +389,8 @@ TEST(spline_generator, poc)
     constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
+    using cubic_t = cubic_t<scalar_t>;
+
     using error_norm_t = error_metric_t;
     auto const error_norm = error_norm_t{};
 
@@ -416,23 +408,13 @@ TEST(spline_generator, poc)
         = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
     using segment_t = segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
     using subdomain_t = subdomain_t<scalar_t>;
-    using interval_t = interval_t<scalar_t>;
+    using interval_t = interval_t<subdomain_t, cubic_t, segment_t>;
     using refinement_pool_t = priority_queue_t<std::vector<interval_t>, interval_priority_less_t>;
     using node_generator_t = node_generator_t<scalar_t>;
     using residual_estimator_t = residual_estimator_t<scalar_t, node_generator_t, error_norm_t, weight_function_t>;
     using hermite_converter_t = hermite_converter_t<scalar_t>;
-    using approximant_t = approximant_t<scalar_t, x_t>;
+    using approximant_t = approximant_t<scalar_t, segment_t>;
     using approximant_factory_t = approximant_factory_t<approximant_t>;
-    using interval_factory_t
-        = interval_factory_t<interval_t, approximant_factory_t, hermite_converter_t, residual_estimator_t>;
-    using bisection_t = bisection_t<subdomain_t>;
-    using bisector_t = bisector_t<bisection_t>;
-    using subdivision_predicate_t = subdivision_predicate_t<scalar_t, log2_min_width>;
-    using subdivision_t = subdivision_t<interval_t>;
-    using subdivider_t = subdivider_t<subdivision_t, bisector_t, interval_factory_t>;
-    using segment_locator_t = segment_locator_t<x_t, depth_max>;
-    using workspace_t = workspace_t<interval_t, interval_priority_less_t, max_segment_count>;
-    using typestates_t = typestates_t<workspace_t>;
     using float_extractor_t = float_extractor_t<scalar_t>;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
@@ -443,9 +425,19 @@ TEST(spline_generator, poc)
         mantissa_quantizer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
     using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
+    using interval_factory_t = interval_factory_t<interval_t, segment_factory_t, approximant_factory_t,
+        hermite_converter_t, residual_estimator_t>;
+    using bisection_t = bisection_t<subdomain_t>;
+    using bisector_t = bisector_t<bisection_t>;
+    using subdivision_predicate_t = subdivision_predicate_t<scalar_t, log2_min_width>;
+    using subdivision_t = subdivision_t<interval_t>;
+    using subdivider_t = subdivider_t<subdivision_t, bisector_t, interval_factory_t>;
+    using segment_locator_t = segment_locator_t<x_t, depth_max>;
+    using workspace_t = workspace_t<interval_t, interval_priority_less_t, max_segment_count>;
+    using typestates_t = typestates_t<workspace_t>;
     using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
-    using tangent_extender_t = tangent_extender_t<interval_t, segment_t, extended_tangent_t, float_extractor_t>;
-    using assembler_t = assembler_t<typestates_t::refined_t, segment_factory_t, tangent_extender_t, domain_max>;
+    using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
+    using assembler_t = assembler_t<typestates_t::refined_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::seeded_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using domain_partitioner_t
         = domain_partitioner_t<scalar_t, x_t, log2_domain_max, log2_min_width, max_segment_count>;
@@ -461,6 +453,7 @@ TEST(spline_generator, poc)
     };
 
     auto const create_interval = interval_factory_t{
+        .segment_factory = {},
         .approximant_factory = {},
         .convert_hermite = {},
         .estimate_residual = estimate_residual,

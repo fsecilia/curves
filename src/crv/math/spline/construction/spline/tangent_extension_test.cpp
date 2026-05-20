@@ -97,6 +97,8 @@ struct spline_tangent_extender_test_t : Test
 
     struct interval_t
     {
+        using segment_t = segment_t;
+
         struct subdomain_t
         {
             int_t log2_width = 5;
@@ -109,13 +111,14 @@ struct spline_tangent_extender_test_t : Test
         };
 
         constexpr auto cubic(jet_t jet) const noexcept -> cubic_result_t { return {.df = jet.df}; }
+
+        segment_t segment;
     };
 
-    using sut_t = tangent_extender_t<interval_t, segment_t, extended_tangent_t, float_extractor_t>;
+    using sut_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     sut_t sut{};
 
     interval_t interval{};
-    segment_t segment{};
 };
 
 TEST_F(spline_tangent_extender_test_t, result)
@@ -140,7 +143,7 @@ TEST_F(spline_tangent_extender_test_t, result)
 
     auto const expected = extended_tangent_t{.slope = {.mantissa = (1LL << 44), .shift = -6}, .y0 = y_t{37}};
 
-    auto const actual = sut(interval, segment);
+    auto const actual = sut(interval);
 
     EXPECT_EQ(expected, actual);
 }
