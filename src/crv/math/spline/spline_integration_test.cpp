@@ -422,7 +422,9 @@ TEST(spline_generator, poc)
     using residual_estimator_t = residual_estimator_t<scalar_t, node_generator_t, error_norm_t, weight_function_t>;
     using hermite_converter_t = hermite_converter_t<scalar_t>;
     using approximant_t = approximant_t<scalar_t, x_t>;
-    using interval_factory_t = interval_factory_t<interval_t, approximant_t, hermite_converter_t, residual_estimator_t>;
+    using approximant_factory_t = approximant_factory_t<approximant_t>;
+    using interval_factory_t
+        = interval_factory_t<interval_t, approximant_factory_t, hermite_converter_t, residual_estimator_t>;
     using bisection_t = bisection_t<subdomain_t>;
     using bisector_t = bisector_t<bisection_t>;
     using subdivision_predicate_t = subdivision_predicate_t<scalar_t, log2_min_width>;
@@ -459,6 +461,7 @@ TEST(spline_generator, poc)
     };
 
     auto const create_interval = interval_factory_t{
+        .approximant_factory = {},
         .convert_hermite = {},
         .estimate_residual = estimate_residual,
     };

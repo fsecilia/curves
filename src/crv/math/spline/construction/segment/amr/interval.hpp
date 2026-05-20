@@ -68,14 +68,18 @@ struct interval_priority_less_t
 };
 
 /// constructs intervals from subdomains
-template <typename t_interval_t, typename approximant_t, typename hermite_converter_t, typename residual_estimator_t>
+template <typename t_interval_t, typename approximant_factory_t, typename hermite_converter_t,
+    typename residual_estimator_t>
 struct interval_factory_t
 {
     using interval_t = t_interval_t;
 
     using scalar_t = interval_t::scalar_t;
+    using approximant_t = approximant_factory_t::approximant_t;
+
     using subdomain_t = subdomain_t<scalar_t>;
 
+    [[no_unique_address]] approximant_factory_t approximant_factory;
     [[no_unique_address]] hermite_converter_t convert_hermite;
     residual_estimator_t estimate_residual;
 
@@ -95,12 +99,7 @@ struct interval_factory_t
         return {
             .subdomain = subdomain,
             .cubic = cubic,
-            .residual = estimate_residual(sample_target_function,
-                approximant_t{
-                    .cubic = cubic,
-                    .x0 = x0,
-                    .log2_width = subdomain.log2_width,
-                },
+            .residual = estimate_residual(sample_target_function, approximant_factory(cubic, x0, subdomain.log2_width),
                 subdomain.left.x, subdomain.midpoint.x, subdomain.right.x),
         };
     }
