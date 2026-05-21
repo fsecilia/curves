@@ -99,7 +99,6 @@ struct domain_partitioner_t
         constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
 
         auto& workspace = state.workspace;
-        assert(workspace.empty());
         auto& subdomains = workspace.partitioned_subdomains;
 
         auto const domain_end = x_t{1 << log2_domain_max};
@@ -160,12 +159,15 @@ template <typename typestate_t, typename interval_factory_t> struct refinement_p
         typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
+        auto& partitioned_subdomains = workspace.partitioned_subdomains;
+        auto& refinement_pool = workspace.refinement_pool;
+        assert(refinement_pool.empty());
 
-        for (auto const& subdomain : workspace.partitioned_subdomains)
+        for (auto const& subdomain : partitioned_subdomains)
         {
-            workspace.refinement_pool.push(create_interval(sample_target_function, subdomain));
+            refinement_pool.push(create_interval(sample_target_function, subdomain));
         }
-        workspace.partitioned_subdomains.clear();
+        partitioned_subdomains.clear();
 
         return typename typestate_t::next_t{workspace};
     }
@@ -226,9 +228,10 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
     template <typename spline_t> auto operator()(typestate_t&& state, spline_t& spline) const -> void
     {
         auto& workspace = state.workspace;
-        assert(workspace.refinement_pool.empty());
+        auto& completed_intervals = workspace.completed_intervals;
+        assert(!completed_intervals.empty());
 
-        std::ranges::sort(workspace.completed_intervals, std::ranges::less{},
+        std::ranges::sort(completed_intervals, std::ranges::less{},
             [](interval_t const& interval) noexcept { return interval.subdomain.left.x; });
 
         using segment_locator_t = spline_t::segment_locator_t;
@@ -236,7 +239,7 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
         using segment_t = interval_t::segment_t;
         using x_t = segment_t::x_t;
 
-        auto const segment_count = int_cast<int_t>(std::size(workspace.completed_intervals));
+        auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
         assert(segment_locator_t::max_segment_count >= segment_count);
         static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segment_count);
 
@@ -244,10 +247,10 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
         using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
         sorted_keys_t sorted_keys;
 
-        segments[0] = workspace.completed_intervals[0].segment;
+        segments[0] = completed_intervals[0].segment;
         for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
         {
-            auto const& interval = workspace.completed_intervals[segment_index];
+            auto const& interval = completed_intervals[segment_index];
             segments[segment_index] = interval.segment;
             sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
         }
@@ -265,10 +268,10 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
         static_assert(std::same_as<typename segment_locator_t::x_t, x_t>);
 
         // extend final tangent
-        auto const final_interval = workspace.completed_intervals[segment_count - 1];
+        auto const final_interval = completed_intervals[segment_count - 1];
         auto const extended_tangent = extend_tangent(final_interval);
 
-        workspace.completed_intervals.clear();
+        completed_intervals.clear();
 
         auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
         spline = spline_t{segment_locator, segments, extended_tangent};
@@ -293,17 +296,17 @@ public:
     constexpr auto operator()(auto& spline, auto target_function, std::vector<x_t> critical_points = {}) -> void
     {
         assert(workspace_.empty());
-
         workspace_.clear();
 
         auto sample_target_function = function_sampler_t{std::move(target_function)};
 
         auto uninitialized_state = typename typestates_t::initial_t{workspace_};
-        auto partitioned_state
+        auto unseeded_state
             = partition_domain_(std::move(uninitialized_state), critical_points, sample_target_function);
-        auto seeded_state = seed_refinement_pool_(std::move(partitioned_state), sample_target_function);
-        auto refined_state = refine_(std::move(seeded_state), sample_target_function);
-        assemble_(std::move(refined_state), spline);
+        auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), sample_target_function);
+        auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
+        assemble_(std::move(unassembled_state), spline);
+
         assert(workspace_.empty());
     }
 
@@ -397,11 +400,11 @@ TEST(spline_generator, poc)
     using typestates_t = typestates_t<workspace_t>;
     using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
-    using assembler_t = assembler_t<typestates_t::refined_t, interval_t, tangent_extender_t, domain_max>;
-    using refiner_t = refiner_t<typestates_t::seeded_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
+    using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
+    using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using domain_partitioner_t = domain_partitioner_t<typestates_t::uninitialized_t, scalar_t, x_t, log2_domain_max,
         log2_min_width, max_segment_count>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::partitioned_t, interval_factory_t>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
         domain_partitioner_t, refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
