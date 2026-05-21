@@ -35,11 +35,12 @@ struct float_extractor_t
 
 struct shift_planner_t
 {
-    constexpr auto operator()(int_t accumulator_exponent, int_t next_exponent, int_t t_to_x_shift) const noexcept
-        -> spline::shift_planner_t::plan_t
+    constexpr auto operator()(mantissa_t accumulator_mantissa, int_t accumulator_exponent, int_t next_exponent,
+        int_t t_to_x_shift) const noexcept -> spline::shift_planner_t::plan_t
     {
         return {
-            .packed_runtime_shift = t_to_x_shift + accumulator_exponent + next_exponent,
+            .packed_runtime_shift
+            = t_to_x_shift + accumulator_exponent + next_exponent + static_cast<int_t>(accumulator_mantissa),
             .destructive_preshift = 0,
             .next_accumulator_exponent = next_exponent,
         };
@@ -67,17 +68,17 @@ constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t, sh
     radix_aligner_t, max_intermediate_shift, 10, 20, 0>{};
 
 // 1.0 -> accum(10, 1)
-// 2.0 -> next(20, 2) -> plan(shift: 10+1+2=13, next_exp: 2) -> unpacked[0] = {10, 13}, accum = 20
-// 3.0 -> next(30, 3) -> plan(shift: 10+2+3=15, next_exp: 3) -> unpacked[1] = {20, 15}, accum = 30
-// 4.0 -> next(40, 4) -> plan(shift: 10+3+4=17, next_exp: 4) -> unpacked[2] = {30, 17}, accum = 40
+// 2.0 -> next(20, 2) -> plan(shift: 10+1+2+10=23, next_exp: 2) -> unpacked[0] = {10, 23}, accum = 20
+// 3.0 -> next(30, 3) -> plan(shift: 10+2+3+20=35, next_exp: 3) -> unpacked[1] = {20, 35}, accum = 30
+// 4.0 -> next(40, 4) -> plan(shift: 10+3+4+30=47, next_exp: 4) -> unpacked[2] = {30, 47}, accum = 40
 // align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
 constexpr auto const expected = unpacked_segment_t{
-    unpacked_field_t{.mantissa = 10, .shift = 13},
-    unpacked_field_t{.mantissa = 20, .shift = 15},
-    unpacked_field_t{.mantissa = 30, .shift = 17},
+    unpacked_field_t{.mantissa = 10, .shift = 23},
+    unpacked_field_t{.mantissa = 20, .shift = 35},
+    unpacked_field_t{.mantissa = 30, .shift = 47},
     unpacked_field_t{.mantissa = 60, .shift = 4},
 };
-static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0)[0].mantissa == expected[0].mantissa);
+static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0) == expected);
 
 } // namespace isolation_tests
 
@@ -129,19 +130,19 @@ static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
 //    output shift = -(-27) = 27
 static_assert(sut({1.0, 0.5, 0.25, 0.125}, 0)
     == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
-        unpacked_field_t{.mantissa = 2251799813685248, .shift = 14},
-        unpacked_field_t{.mantissa = 1125899906842624, .shift = 14},
-        unpacked_field_t{.mantissa = 562949953421312, .shift = 27},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
     });
 
 // flush first term
 static_assert(sut({0.0, 0.5, 0.25, 0.125}, 0)
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
-        unpacked_field_t{.mantissa = 2251799813685248, .shift = 14},
-        unpacked_field_t{.mantissa = 1125899906842624, .shift = 28},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
     });
 
 // flush first two terms
@@ -149,8 +150,8 @@ static_assert(sut({0.0, 0.0, 0.25, 0.125}, 0)
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
-        unpacked_field_t{.mantissa = 2251799813685248, .shift = 29},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
     });
 
 // flush first three terms
@@ -168,7 +169,7 @@ static_assert(sut({0.0, 0.0, 0.0, 0.125}, 0)
 // be flushed to zero.
 static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
     == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 5},
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 8979466059761068, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 30},
