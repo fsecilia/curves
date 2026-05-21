@@ -12,24 +12,35 @@ namespace {
 
 struct workspace_test_t : Test
 {
-    using interval_t = int_t;
+    struct interval_t
+    {
+        struct subdomain_t
+        {
+            constexpr auto operator<=>(subdomain_t const&) const noexcept -> auto = default;
+        };
+
+        constexpr auto operator<=>(interval_t const&) const noexcept -> auto = default;
+    };
     static constexpr auto max_segments = 256;
 
     using sut_t = workspace_t<interval_t, std::less<>, max_segments>;
 };
 
-TEST_F(workspace_test_t, clear_forwards_to_both_members)
+TEST_F(workspace_test_t, clear_forwards_to_members)
 {
     auto sut = sut_t{};
 
+    sut.partitioned_subdomains.push_back({});
     sut.completed_intervals.push_back({});
     sut.refinement_pool.push({});
 
+    EXPECT_FALSE(sut.partitioned_subdomains.empty());
     EXPECT_FALSE(sut.completed_intervals.empty());
     EXPECT_FALSE(sut.refinement_pool.empty());
 
     sut.clear();
 
+    EXPECT_TRUE(sut.partitioned_subdomains.empty());
     EXPECT_TRUE(sut.completed_intervals.empty());
     EXPECT_TRUE(sut.refinement_pool.empty());
 }
