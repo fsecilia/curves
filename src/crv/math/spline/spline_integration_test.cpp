@@ -33,6 +33,7 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
+#include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>
@@ -52,46 +53,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <typename t_workspace_t> struct typestates_t
-{
-    using workspace_t = t_workspace_t;
-
-    struct refined_t
-    {
-        workspace_t& workspace;
-
-        explicit refined_t(workspace_t& w) : workspace(w) {}
-        refined_t(refined_t const&) = delete;
-        refined_t& operator=(refined_t const&) = delete;
-        refined_t(refined_t&&) = default;
-        refined_t& operator=(refined_t&&) = default;
-    };
-
-    struct seeded_t
-    {
-        workspace_t& workspace;
-        using next_t = refined_t;
-
-        explicit seeded_t(workspace_t& w) : workspace(w) {}
-        seeded_t(seeded_t const&) = delete;
-        seeded_t& operator=(seeded_t const&) = delete;
-        seeded_t(seeded_t&&) = default;
-        seeded_t& operator=(seeded_t&&) = default;
-    };
-
-    struct unseeded_t
-    {
-        workspace_t& workspace;
-        using next_t = seeded_t;
-
-        explicit unseeded_t(workspace_t& w) : workspace(w) {}
-        unseeded_t(unseeded_t const&) = delete;
-        unseeded_t& operator=(unseeded_t const&) = delete;
-        unseeded_t(unseeded_t&&) = default;
-        unseeded_t& operator=(unseeded_t&&) = default;
-    };
-};
 
 template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_t
 {
