@@ -440,8 +440,8 @@ TEST(spline_generator, poc)
     };
 
     auto const target_function = [](auto x) static noexcept -> decltype(x) {
-        using std::log1p;
-        return 181.625 * log1p(x);
+        using std::erf;
+        return 2.1 * erf(x);
     };
 
     auto const condition_critical_points = critical_point_conditioner_t<x_t, log2_min_width>{};
@@ -465,12 +465,10 @@ TEST(spline_generator, poc)
 
         auto const difference = actual_y - expected_y;
 
-        // that quantized 248 really tanks accuracy in the middle
-        // ASSERT_LT(abs(difference), 5e-5);
-        ASSERT_LT(abs(difference), 6e-4);
+        ASSERT_LT(abs(difference), 8.0e-7);
 
         std::cout << std::setprecision(4) << "x = " << static_cast<float_max_t>(x_real)
-                  << ", log1p(x) = " << static_cast<float_max_t>(expected_y)
+                  << ", f(x) = " << static_cast<float_max_t>(expected_y)
                   << ", y_actual = " << static_cast<float_max_t>(actual_y)
                   << ", Δy = " << static_cast<float_max_t>(difference) << std::endl;
     }

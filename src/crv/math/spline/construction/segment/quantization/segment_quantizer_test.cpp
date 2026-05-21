@@ -138,6 +138,33 @@ static_assert(sut({1.0, 0.5, 0.25, 0.125}, 0)
         unpacked_field_t{.mantissa = 562949953421312, .shift = 27},
     });
 
+// flush first term
+static_assert(sut({0.0, 0.5, 0.25, 0.125}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
+        unpacked_field_t{.mantissa = 2251799813685248, .shift = 14},
+        unpacked_field_t{.mantissa = 1125899906842624, .shift = 28},
+    });
+
+// flush first two terms
+static_assert(sut({0.0, 0.0, 0.25, 0.125}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
+        unpacked_field_t{.mantissa = 2251799813685248, .shift = 29},
+    });
+
+// flush first three terms
+static_assert(sut({0.0, 0.0, 0.0, 0.125}, 0)
+    == unpacked_segment_t{
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 14},
+        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
+    });
+
 // destructive flushing
 //
 // c2 is so small relative to c3 that the required destructive preshift exceeds the 64-bit container size, causing it to
@@ -146,8 +173,8 @@ static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 0, .shift = 27},
+        unpacked_field_t{.mantissa = 8979466059761068, .shift = 14},
+        unpacked_field_t{.mantissa = 0, .shift = 30},
     });
 
 } // namespace end_to_end_test

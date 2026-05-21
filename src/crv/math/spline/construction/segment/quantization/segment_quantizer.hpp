@@ -52,30 +52,44 @@ struct segment_quantizer_t
 
         auto unpacked = unpacked_segment_t{};
 
-        // skip zero prefix
-        auto const first_nonzero_coeff
-            = std::ranges::find_if(cubic, [](auto const& coeff) noexcept { return coeff != scalar_t{0}; });
-        if (first_nonzero_coeff == cubic.end()) return unpacked;
-
-        // extract initial accumulator as a scaled_int
-        auto const initial_accumulator = extract_float(*first_nonzero_coeff);
-        auto accumulator_mantissa = int_cast<mantissa_t>(initial_accumulator.mantissa);
-        auto accumulator_exponent = initial_accumulator.exponent;
+        // extract initial accumulator
+        auto next_term = extract_float(cubic[0]);
+        auto accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
+        auto accumulator_exponent = next_term.exponent;
 
         // proceed in pairs
-        auto const first_nonzero_field = static_cast<int_t>(std::distance(cubic.begin(), first_nonzero_coeff));
-        for (auto field_index = first_nonzero_field; field_index < fields_per_segment - 1; ++field_index)
+        for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
-            auto const next_term = extract_float(cubic[field_index + 1]);
+            next_term = extract_float(cubic[field_index + 1]);
 
             // preserve exponent across zero terms
             //
-            // This prevents a spurious large relative shift to and back from 0 that would obliterate the accumulator.
-            auto const effective_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
+            // A mantissa of 0 has no intrinsic magnitude. By mutually adapting their exponents, we guarantee a relative
+            // shift of 0 when either term is exactly 0. This prevents meaningless exponents from causing destructive
+            // preshifts or triggering false flushes.
+            auto const eval_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
+            auto const eval_accumulator_exponent
+                = (accumulator_mantissa == 0) ? eval_next_exponent : accumulator_exponent;
 
             // plan and apply shifts
-            auto const plan = plan_shift(accumulator_exponent, effective_next_exponent, t_to_x_shift);
-            if (plan.packed_runtime_shift >= max_container_shift) accumulator_mantissa = 0;
+            auto const plan = plan_shift(eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
+            if (plan.packed_runtime_shift > max_container_shift)
+            {
+                // flush earlier terms to zero and restart from here
+                //
+                // The current term's relative right shift is so large it shifts off all bits accumulated by previous
+                // terms. Allowing this zero output but maintaining the large shift would break the relative shift to
+                // remaining terms. Instead, equivalently zero all of the terms up to this point and restart from here.
+
+                // flush earlier terms to zero
+                std::fill_n(std::begin(unpacked), field_index, {});
+
+                // adopt next_term as the new accumulator baseline
+                accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
+                accumulator_exponent = eval_next_exponent;
+                continue;
+            }
+
             auto const quantized_next = quantize_mantissa(next_term.mantissa, plan.destructive_preshift);
             unpacked[field_index] = {.mantissa = accumulator_mantissa, .shift = plan.packed_runtime_shift};
 
