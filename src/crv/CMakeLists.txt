@@ -45,6 +45,7 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/field_packer.hpp
     math/spline/construction/segment/segment_factory.hpp
     math/spline/construction/segment/segment_packer.hpp
+    math/spline/construction/spline/amr/typestates.hpp
     math/spline/construction/spline/amr/workspace.hpp
     math/spline/construction/spline/tangent_extension.hpp
     math/spline/construction/weight_functions/exponential_decay.hpp
