@@ -346,7 +346,7 @@ TEST(spline_generator, poc)
     constexpr auto max_segment_count = 1 << (depth_max * 2);
     constexpr auto log2_domain_max = 8;
     constexpr auto domain_max = 1 << log2_domain_max;
-    constexpr auto log2_min_width = -16;
+    constexpr auto log2_min_width = -10;
     constexpr auto global_tolerance = 1e-10; // should max against integral
 
     constexpr auto segment_layout = prod_pipeline_config.segment_layout;
