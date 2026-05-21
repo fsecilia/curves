@@ -171,7 +171,8 @@ struct segment_evaluator_t
         auto accumulator = unpacked_segment[0].mantissa;
         accumulator = apply_coefficient(unpacked_segment[1].mantissa, unpacked_segment[0].shift, x, accumulator);
         accumulator = apply_coefficient(unpacked_segment[2].mantissa, unpacked_segment[1].shift, x, accumulator);
-        return apply_final_coefficient(unpacked_segment, x, accumulator);
+        accumulator = apply_coefficient(unpacked_segment[3].mantissa, unpacked_segment[2].shift, x, accumulator);
+        return align_to_y(accumulator, unpacked_segment[3].shift);
     }
 
 private:
@@ -192,28 +193,16 @@ private:
         // multiply wide
         auto const wide_product = widen(accumulator) * x.value;
 
-        // align product to coeff
+        // align product radix to next coeff
         auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
 
         // sum aligned terms
         return safe_add(aligned_product, coeff);
     }
 
-    // applies final coefficient wide with one shr and one round
-    constexpr auto apply_final_coefficient(
-        unpacked_segment_t const& unpacked_segment, x_t const& x, mantissa_t accumulator) const noexcept -> y_t
+    constexpr auto align_to_y(mantissa_t accumulator, int_t shift) const noexcept -> y_t
     {
-        auto const wide_product = widen(accumulator) * x.value;
-
-        // align coeff to product
-        auto const relative_shift_c_to_d = unpacked_segment[2].shift;
-        auto const aligned_d = widen(unpacked_segment[3].mantissa) << relative_shift_c_to_d;
-
-        // align to the final output radix
-        auto const relative_shift_d_to_y = unpacked_segment[3].shift;
-        auto const wide_accumulator = safe_add(wide_product, aligned_d);
-        auto const total_left_shift = -(relative_shift_c_to_d + relative_shift_d_to_y);
-        return y_t::literal(saturate_cast<typename y_t::value_t>(shifter.shift(wide_accumulator, total_left_shift)));
+        return y_t::literal(saturate_cast<typename y_t::value_t>(shifter.shift(widen(accumulator), -shift)));
     }
 };
 
