@@ -72,7 +72,8 @@ struct segment_quantizer_t
                 = (accumulator_mantissa == 0) ? eval_next_exponent : accumulator_exponent;
 
             // plan and apply shifts
-            auto const plan = plan_shift(eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
+            auto const plan
+                = plan_shift(accumulator_mantissa, eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
             if (plan.packed_runtime_shift > max_intermediate_shift)
             {
                 // flush earlier terms to zero and restart from here

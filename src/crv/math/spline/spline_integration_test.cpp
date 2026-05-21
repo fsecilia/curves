@@ -442,8 +442,8 @@ TEST(spline_generator, poc)
     };
 
     auto const target_function = [](auto x) static noexcept -> decltype(x) {
-        using std::erf;
-        return 2.1 * erf(x);
+        using std::log1p;
+        return 2.1 * log1p(x);
     };
 
     auto const condition_critical_points = critical_point_conditioner_t<x_t, log2_min_width>{};
@@ -458,8 +458,6 @@ TEST(spline_generator, poc)
     auto const dx = x_t{domain_max} / sample_count;
     for (auto sample = 0; sample < sample_count; ++sample, x_fixed += dx)
     {
-        using std::log1p;
-
         auto const x_real = from_fixed<scalar_t>(x_fixed);
 
         auto const expected_y = target_function(x_real);
