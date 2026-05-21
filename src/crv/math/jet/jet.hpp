@@ -372,7 +372,7 @@ template <typename t_value_t> struct jet_t
         return {exp_xf, exp_xf * x.df};
     }
 
-    // d(hypot(x, y)) = (x*dx + y*dy) / hypot(x, y)
+    // d(hypot(x, y)) = (x*dx + y*dy)/hypot(x, y)
     friend auto hypot(jet_t x, jet_t y) noexcept -> jet_t
     {
         using crv::hypot;
