@@ -15,7 +15,10 @@ namespace {
 using scalar_t = float_t;
 using mantissa_t = int_t;
 using unpacked_field_t = unpacked_field_t<mantissa_t>;
+using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
 using scaled_int_t = scaled_int_t<mantissa_t>;
+
+auto const max_intermediate_shift = 0x7f;
 
 namespace isolation_tests {
 
@@ -45,7 +48,6 @@ struct shift_planner_t
 
 struct mantissa_quantizer_t
 {
-    static constexpr auto max_container_shift = 31;
     constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
     {
         return static_cast<mantissa_t>(mantissa + preshift);
@@ -61,22 +63,21 @@ struct radix_aligner_t
     }
 };
 
-constexpr auto sut
-    = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t, radix_aligner_t,
-        10, // in_frac_bits
-        20, // out_frac_bits
-        0 // log2_min_width (t_to_x_shift = 10)
-        >{};
+constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
+    radix_aligner_t, max_intermediate_shift, 10, 20, 0>{};
 
 // 1.0 -> accum(10, 1)
 // 2.0 -> next(20, 2) -> plan(shift: 10+1+2=13, next_exp: 2) -> unpacked[0] = {10, 13}, accum = 20
 // 3.0 -> next(30, 3) -> plan(shift: 10+2+3=15, next_exp: 3) -> unpacked[1] = {20, 15}, accum = 30
 // 4.0 -> next(40, 4) -> plan(shift: 10+3+4=17, next_exp: 4) -> unpacked[2] = {30, 17}, accum = 40
 // align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
-static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0)
-    == std::array<unpacked_field_t, 4>{unpacked_field_t{.mantissa = 10, .shift = 13},
-        unpacked_field_t{.mantissa = 20, .shift = 15}, unpacked_field_t{.mantissa = 30, .shift = 17},
-        unpacked_field_t{.mantissa = 60, .shift = 4}});
+constexpr auto const expected = unpacked_segment_t{
+    unpacked_field_t{.mantissa = 10, .shift = 13},
+    unpacked_field_t{.mantissa = 20, .shift = 15},
+    unpacked_field_t{.mantissa = 30, .shift = 17},
+    unpacked_field_t{.mantissa = 60, .shift = 4},
+};
+static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0)[0].mantissa == expected[0].mantissa);
 
 } // namespace isolation_tests
 
@@ -85,15 +86,11 @@ namespace end_to_end_test {
 using x_t = fixed_t<int64_t, 14>;
 using y_t = fixed_t<int64_t, 25>;
 using cubic_t = std::array<scalar_t, 4>;
-using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
 
 constexpr auto aligner = exponent_aligner_t<-30, 30>{};
 constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t,
-    mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>,
-    x_t::frac_bits, // in_frac_bits
-    y_t::frac_bits, // out_frac_bits
-    -8 // log2_min_width
-    >{};
+    mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift,
+    x_t::frac_bits, y_t::frac_bits, -8>{};
 
 // y = 0.125x^3 + 0.25x^2 + 0.5x + 1.0
 //

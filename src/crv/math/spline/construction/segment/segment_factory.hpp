@@ -17,6 +17,14 @@ template <typename t_segment_t, typename segment_quantizer_t, typename segment_p
 
     using cubic_t = segment_quantizer_t::cubic_t;
 
+    // enforce identical layouts
+    //
+    // All three layout consumers, quantizer, packer, and segment's unpacker, must agree on the same segment_layout, or
+    // encoding and decoding desynchronize.
+    static_assert(segment_packer_t::segment_layout == segment_t::segment_unpacker_t::segment_layout);
+    static_assert(
+        segment_packer_t::segment_layout.intermediate.max_shift() == segment_quantizer_t::max_intermediate_shift);
+
     [[no_unique_address]] segment_quantizer_t quantize_segment;
     [[no_unique_address]] segment_packer_t pack_segment;
 

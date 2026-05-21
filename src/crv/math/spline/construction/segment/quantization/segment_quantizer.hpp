@@ -20,8 +20,8 @@ namespace crv::spline {
 
 /// quantizes a floating-point cubic into an unpacked segment with relative shifts
 template <typename t_unpacked_field_t, typename float_extractor_t, typename shift_planner_t,
-    typename mantissa_quantizer_t, typename radix_aligner_t, int_t in_frac_bits, int_t out_frac_bits,
-    int_t log2_min_width>
+    typename mantissa_quantizer_t, typename radix_aligner_t, int_t t_max_intermediate_shift, int_t in_frac_bits,
+    int_t out_frac_bits, int_t log2_min_width>
 struct segment_quantizer_t
 {
     using unpacked_field_t = t_unpacked_field_t;
@@ -32,7 +32,7 @@ struct segment_quantizer_t
     using cubic_t = cubic_t<scalar_t>;
     using scaled_int_t = radix_aligner_t::scaled_int_t;
 
-    static constexpr auto max_container_shift = mantissa_quantizer_t::max_container_shift;
+    static constexpr auto max_intermediate_shift = t_max_intermediate_shift;
 
     // prevent left shifts during evaluation
     //
@@ -73,7 +73,7 @@ struct segment_quantizer_t
 
             // plan and apply shifts
             auto const plan = plan_shift(eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
-            if (plan.packed_runtime_shift > max_container_shift)
+            if (plan.packed_runtime_shift > max_intermediate_shift)
             {
                 // flush earlier terms to zero and restart from here
                 //

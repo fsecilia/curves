@@ -22,8 +22,13 @@ static_assert(prod_pipeline_config_t::x_t::frac_bits == 42);
 // straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
 static_assert(prod_pipeline_config_t::y_t::frac_bits == 45);
 
-static_assert(prod_pipeline_config.segment_layout.intermediate.shift_mask() == 0x3f); // 6 bits, [0, 64)
-static_assert(prod_pipeline_config.segment_layout.final.shift_mask() == 0x7f); // 7 bits [-64, 64)
+// shift widths must be large enough to hold 64 bit shifts
+static_assert(prod_pipeline_config.segment_layout.intermediate.shift_width == 6);
+static_assert(prod_pipeline_config.segment_layout.final.shift_width == 7);
+
+// intermediate shifts are strictly right, but the final shift can be in either direction
+static_assert(!prod_pipeline_config.segment_layout.intermediate.is_signed);
+static_assert(prod_pipeline_config.segment_layout.final.is_signed);
 
 } // namespace
 } // namespace crv::spline
