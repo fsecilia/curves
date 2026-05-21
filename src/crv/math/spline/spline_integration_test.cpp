@@ -61,13 +61,14 @@ template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_
         using unsigned_t = std::make_unsigned_t<typename x_t::value_t>;
         constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
         constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
+        constexpr auto align_bias = (unsigned_t{1} << (align_shift - 1)) - 1;
 
         if constexpr (align_shift > 0)
         {
-            // Snap all points to the grid dictated by the minimum allowable segment width
+            // snap points to grid min segment width grid
             for (auto& point : points)
             {
-                auto val = static_cast<unsigned_t>(point.value);
+                auto val = static_cast<unsigned_t>(point.value) + align_bias;
                 val &= ~align_mask;
                 point = x_t::literal(static_cast<typename x_t::value_t>(val));
             }
