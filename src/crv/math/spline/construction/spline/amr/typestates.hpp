@@ -38,17 +38,31 @@ template <typename t_workspace_t> struct typestates_t
         seeded_t& operator=(seeded_t&&) = default;
     };
 
-    struct unseeded_t
+    struct partitioned_t
     {
         workspace_t& workspace;
         using next_t = seeded_t;
 
-        explicit unseeded_t(workspace_t& w) : workspace{w} {}
-        unseeded_t(unseeded_t const&) = delete;
-        unseeded_t& operator=(unseeded_t const&) = delete;
-        unseeded_t(unseeded_t&&) = default;
-        unseeded_t& operator=(unseeded_t&&) = default;
+        explicit partitioned_t(workspace_t& w) : workspace{w} {}
+        partitioned_t(partitioned_t const&) = delete;
+        partitioned_t& operator=(partitioned_t const&) = delete;
+        partitioned_t(partitioned_t&&) = default;
+        partitioned_t& operator=(partitioned_t&&) = default;
     };
+
+    struct uninitialized_t
+    {
+        workspace_t& workspace;
+        using next_t = partitioned_t;
+
+        explicit uninitialized_t(workspace_t& w) : workspace{w} {}
+        uninitialized_t(uninitialized_t const&) = delete;
+        uninitialized_t& operator=(uninitialized_t const&) = delete;
+        uninitialized_t(uninitialized_t&&) = default;
+        uninitialized_t& operator=(uninitialized_t&&) = default;
+    };
+
+    using initial_t = uninitialized_t;
 };
 
 } // namespace crv::spline

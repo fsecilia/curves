@@ -81,14 +81,14 @@ template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_
     }
 };
 
-template <std::floating_point scalar_t, typename x_t, int_t log2_domain_max, int_t log2_min_width,
+template <typename typestate_t, std::floating_point scalar_t, typename x_t, int_t log2_domain_max, int_t log2_min_width,
     int_t max_segment_count>
 struct domain_partitioner_t
 {
     using subdomain_t = subdomain_t<scalar_t>;
 
-    auto operator()(std::vector<x_t> const& critical_points, auto const& sample_target_function) const
-        -> std::vector<subdomain_t>
+    auto operator()(typestate_t state, std::vector<x_t> const& critical_points,
+        auto const& sample_target_function) const -> typestate_t::next_t
     {
         using jet_t = jet_t<scalar_t>;
         using signed_t = typename x_t::value_t;
@@ -98,8 +98,9 @@ struct domain_partitioner_t
         static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
         constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
 
-        auto subdomains = std::vector<subdomain_t>{};
-        subdomains.reserve(max_segment_count);
+        auto& workspace = state.workspace;
+        assert(workspace.empty());
+        auto& subdomains = workspace.partitioned_subdomains;
 
         auto const domain_end = x_t{1 << log2_domain_max};
         auto current_x = x_t{0};
@@ -143,7 +144,7 @@ struct domain_partitioner_t
         for (auto const& critical_point : critical_points) process_span(critical_point);
         process_span(domain_end);
 
-        return subdomains;
+        return typename typestate_t::next_t{workspace};
     }
 };
 
@@ -155,16 +156,16 @@ template <typename typestate_t, typename interval_factory_t> struct refinement_p
 {
     interval_factory_t create_interval;
 
-    constexpr auto operator()(typestate_t&& state, auto const& subdomains, auto const& sample_target_function) const ->
+    constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
         typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
-        assert(workspace.empty());
 
-        for (auto const& sub : subdomains)
+        for (auto const& subdomain : workspace.partitioned_subdomains)
         {
-            workspace.refinement_pool.push(create_interval(sample_target_function, sub));
+            workspace.refinement_pool.push(create_interval(sample_target_function, subdomain));
         }
+        workspace.partitioned_subdomains.clear();
 
         return typename typestate_t::next_t{workspace};
     }
@@ -294,15 +295,13 @@ public:
         assert(workspace_.empty());
 
         workspace_.clear();
-        workspace_.completed_intervals.reserve(max_segment_count);
-        workspace_.refinement_pool.reserve(max_segment_count);
 
         auto sample_target_function = function_sampler_t{std::move(target_function)};
 
-        auto initial_subdomains = partition_domain_(critical_points, sample_target_function);
-
-        auto seeded_state = seed_refinement_pool_(
-            typename typestates_t::unseeded_t{workspace_}, initial_subdomains, sample_target_function);
+        auto uninitialized_state = typename typestates_t::initial_t{workspace_};
+        auto partitioned_state
+            = partition_domain_(std::move(uninitialized_state), critical_points, sample_target_function);
+        auto seeded_state = seed_refinement_pool_(std::move(partitioned_state), sample_target_function);
         auto refined_state = refine_(std::move(seeded_state), sample_target_function);
         assemble_(std::move(refined_state), spline);
         assert(workspace_.empty());
@@ -400,9 +399,9 @@ TEST(spline_generator, poc)
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::refined_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::seeded_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
-    using domain_partitioner_t
-        = domain_partitioner_t<scalar_t, x_t, log2_domain_max, log2_min_width, max_segment_count>;
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
+    using domain_partitioner_t = domain_partitioner_t<typestates_t::uninitialized_t, scalar_t, x_t, log2_domain_max,
+        log2_min_width, max_segment_count>;
+    using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::partitioned_t, interval_factory_t>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
         domain_partitioner_t, refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
