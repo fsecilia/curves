@@ -444,10 +444,11 @@ TEST(spline_generator, poc)
         return 181.625 * log1p(x);
     };
 
-    auto const quantizer = quantizer_t<scalar_t, -log2_min_width>{};
+    auto const condition_critical_points = critical_point_conditioner_t<x_t, log2_min_width>{};
 
     auto spline = spline_t{};
-    generate_spline(spline, std::ref(target_function), {x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(quantizer(248.973))});
+    generate_spline(spline, std::ref(target_function),
+        condition_critical_points({x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(248.973)}));
 
 #if 1
     auto x_fixed = x_t{0};
