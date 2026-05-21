@@ -24,6 +24,7 @@ using std::clamp;
 using std::copysign;
 using std::cos;
 using std::cosh;
+using std::erf;
 using std::exp;
 using std::hypot;
 using std::isfinite;
@@ -345,6 +346,21 @@ template <typename t_value_t> struct jet_t
         using crv::sinh;
 
         return {cosh(x.f), sinh(x.f) * x.df};
+    }
+
+    // d(erf(x)) = (2/sqrt(pi))exp(-x^2)*dx
+    friend constexpr auto erf(jet_t x) noexcept -> jet_t
+    {
+        using crv::erf;
+        using crv::exp;
+        using crv::sqrt;
+
+        // calc cached scale using higher precision
+        static auto const scale = static_cast<value_t>(float_max_t{2.0} / sqrt(std::numbers::pi_v<float_max_t>));
+
+        auto const xx = x.f * x.f;
+
+        return {erf(x.f), scale * exp(-xx) * x.df};
     }
 
     // d(exp(x)) = exp(x)*dx
