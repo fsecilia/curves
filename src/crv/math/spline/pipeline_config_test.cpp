@@ -3,8 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include "pipeline_config.hpp"
 #include <crv/lib.hpp>
-#include <crv/math/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
@@ -22,8 +22,8 @@ static_assert(prod_pipeline_config_t::x_t::frac_bits == 42);
 // straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
 static_assert(prod_pipeline_config_t::y_t::frac_bits == 45);
 
-// shift widths must be large enough to hold 64 bit shifts
-static_assert(prod_pipeline_config.segment_layout.intermediate.shift_width == 6);
+// shift widths must be large enough to hold 7 bit shifts
+static_assert(prod_pipeline_config.segment_layout.intermediate.shift_width == 7);
 static_assert(prod_pipeline_config.segment_layout.final.shift_width == 7);
 
 // intermediate shifts are strictly right, but the final shift can be in either direction
