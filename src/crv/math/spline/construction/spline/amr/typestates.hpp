@@ -15,45 +15,45 @@ template <typename t_workspace_t> struct typestates_t
 {
     using workspace_t = t_workspace_t;
 
-    struct refined_t
+    struct unassembled_t
     {
         workspace_t& workspace;
 
-        explicit refined_t(workspace_t& w) : workspace{w} {}
-        refined_t(refined_t const&) = delete;
-        refined_t& operator=(refined_t const&) = delete;
-        refined_t(refined_t&&) = default;
-        refined_t& operator=(refined_t&&) = default;
+        explicit unassembled_t(workspace_t& w) : workspace{w} {}
+        unassembled_t(unassembled_t const&) = delete;
+        unassembled_t& operator=(unassembled_t const&) = delete;
+        unassembled_t(unassembled_t&&) = default;
+        unassembled_t& operator=(unassembled_t&&) = default;
     };
 
-    struct seeded_t
+    struct unrefined_t
     {
         workspace_t& workspace;
-        using next_t = refined_t;
+        using next_t = unassembled_t;
 
-        explicit seeded_t(workspace_t& w) : workspace{w} {}
-        seeded_t(seeded_t const&) = delete;
-        seeded_t& operator=(seeded_t const&) = delete;
-        seeded_t(seeded_t&&) = default;
-        seeded_t& operator=(seeded_t&&) = default;
+        explicit unrefined_t(workspace_t& w) : workspace{w} {}
+        unrefined_t(unrefined_t const&) = delete;
+        unrefined_t& operator=(unrefined_t const&) = delete;
+        unrefined_t(unrefined_t&&) = default;
+        unrefined_t& operator=(unrefined_t&&) = default;
     };
 
-    struct partitioned_t
+    struct unseeded_t
     {
         workspace_t& workspace;
-        using next_t = seeded_t;
+        using next_t = unrefined_t;
 
-        explicit partitioned_t(workspace_t& w) : workspace{w} {}
-        partitioned_t(partitioned_t const&) = delete;
-        partitioned_t& operator=(partitioned_t const&) = delete;
-        partitioned_t(partitioned_t&&) = default;
-        partitioned_t& operator=(partitioned_t&&) = default;
+        explicit unseeded_t(workspace_t& w) : workspace{w} {}
+        unseeded_t(unseeded_t const&) = delete;
+        unseeded_t& operator=(unseeded_t const&) = delete;
+        unseeded_t(unseeded_t&&) = default;
+        unseeded_t& operator=(unseeded_t&&) = default;
     };
 
     struct uninitialized_t
     {
         workspace_t& workspace;
-        using next_t = partitioned_t;
+        using next_t = unseeded_t;
 
         explicit uninitialized_t(workspace_t& w) : workspace{w} {}
         uninitialized_t(uninitialized_t const&) = delete;
