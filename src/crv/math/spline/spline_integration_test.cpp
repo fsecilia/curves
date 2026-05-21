@@ -350,6 +350,7 @@ TEST(spline_generator, poc)
     constexpr auto global_tolerance = 1e-10; // should max against integral
 
     constexpr auto segment_layout = prod_pipeline_config.segment_layout;
+    constexpr auto intermediate_layout_max_shift = segment_layout.intermediate.max_shift();
     constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
     constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
 
@@ -385,8 +386,9 @@ TEST(spline_generator, poc)
     using radix_aligner_t = radix_aligner_t<unpacked_field_t, scaled_int_t, exponent_aligner_t{}>;
     using field_packer_t = field_packer_t<packed_field_t>;
     using mantissa_quantizer_t = mantissa_quantizer_t<mantissa_t>;
-    using segment_quantizer_t = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t,
-        mantissa_quantizer_t, radix_aligner_t, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
+    using segment_quantizer_t
+        = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
+            radix_aligner_t, intermediate_layout_max_shift, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
     using segment_packer_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
     using interval_factory_t = interval_factory_t<interval_t, segment_factory_t, approximant_factory_t,

@@ -59,6 +59,8 @@ template <typename t_packed_field_t> struct field_layout_t
         if (!is_signed) return static_cast<int_t>(shift_mask());
         return static_cast<int_t>((packed_field_t{1} << shift_width) >> 1) - 1;
     }
+
+    constexpr auto operator==(field_layout_t const&) const noexcept -> bool = default;
 };
 
 template <typename field_layout_t> struct segment_layout_t
@@ -66,7 +68,7 @@ template <typename field_layout_t> struct segment_layout_t
     field_layout_t intermediate;
     field_layout_t final;
 
-    constexpr auto max_total_shift() const noexcept -> int_t { return intermediate.max_shift() + final.max_shift(); }
+    constexpr auto operator==(segment_layout_t const&) const noexcept -> bool = default;
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -124,7 +126,6 @@ struct segment_unpacker_t
     using unpacked_field_t = field_unpacker_t::unpacked_field_t;
 
     static constexpr auto segment_layout = t_segment_layout;
-    static constexpr auto max_total_shift = segment_layout.max_total_shift();
 
     [[no_unique_address]] field_unpacker_t unpack_field;
 
@@ -223,8 +224,10 @@ public:
 
     using y_t = segment_evaluator_t::y_t;
 
-    // enforce evaluator's accumulator is wide enough for layout's max shifts
-    static_assert(segment_unpacker_t::max_total_shift <= segment_evaluator_t::max_shift);
+    // enforce evaluator's accumulator is wide enough for shifts the layout can encode
+    static_assert(segment_unpacker_t::segment_layout.intermediate.max_shift() <= segment_evaluator_t::max_shift);
+    static_assert(segment_unpacker_t::segment_layout.final.max_shift() <= segment_evaluator_t::max_shift);
+    static_assert(-segment_unpacker_t::segment_layout.final.min_shift() <= segment_evaluator_t::max_shift);
 
     constexpr segment_t() noexcept : packed_segment_{} {}
 
