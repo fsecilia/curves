@@ -1000,6 +1000,35 @@ INSTANTIATE_TEST_SUITE_P(
     exp, jet_test_exp_t, ValuesIn(exp_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
 
 // --------------------------------------------------------------------------------------------------------------------
+// erf
+// --------------------------------------------------------------------------------------------------------------------
+
+struct jet_test_erf_t : jet_test_math_func_x_t
+{};
+
+TEST_P(jet_test_erf_t, result)
+{
+    auto const actual = erf(x);
+
+    EXPECT_NEAR(expected.f, actual.f, eps);
+    EXPECT_NEAR(expected.df, actual.df, eps);
+}
+
+// clang-format off
+// d(erf(x)) = (2/sqrt(pi))exp(-x^2)*dx
+const auto erf_scale = 2.0/sqrt(pi);
+const math_func_test_vector_x_t erf_vectors[] = {
+    {"-1", {-1.0, 1.3}, {erf(-1.0), erf_scale*1.3/e}},
+    {"0", {0.0, 1.3}, {0.0, erf_scale*1.3}},
+    {"0.5", {0.5, 1.3}, {erf(0.5), erf_scale*exp(-0.25)*1.3}},
+    {"1", {1.0, 1.3}, {erf(1.0), erf_scale*1.3/e}},
+    {"2", {2.0, 1.3}, {erf(2.0), erf_scale*exp(-4)*1.3}},
+};
+// clang-format on
+INSTANTIATE_TEST_SUITE_P(
+    erf, jet_test_erf_t, ValuesIn(erf_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
+
+// --------------------------------------------------------------------------------------------------------------------
 // hypot
 // --------------------------------------------------------------------------------------------------------------------
 
