@@ -80,10 +80,13 @@ struct subdomain_sampler_t
 {
     using scalar_t = t_scalar_t;
     using bisection_step_calculator_t = t_bisection_step_calculator_t;
+
     using x_t = typename bisection_step_calculator_t::x_t;
+    using signed_t = typename x_t::value_t;
+    using unsigned_t = std::make_unsigned_t<signed_t>;
 
     using jet_t = jet_t<scalar_t>;
-    using jet_function_sample_t = function_sample_t<jet_t>;
+    using function_sample_t = function_sample_t<jet_t>;
 
     struct result_t
     {
@@ -91,16 +94,13 @@ struct subdomain_sampler_t
         x_t next_x;
     };
 
-    using signed_t = typename x_t::value_t;
-    using unsigned_t = std::make_unsigned_t<signed_t>;
-
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
     [[no_unique_address]] bisection_step_calculator_t calculate_bisection_step;
 
-    auto operator()(x_t const current_x, x_t const target_x, jet_function_sample_t const& left_sample,
+    auto operator()(x_t const current_x, x_t const target_x, function_sample_t const& left_sample,
         auto const& sample_target_function) const -> result_t
     {
         auto const step = calculate_bisection_step(current_x, target_x);
@@ -129,13 +129,13 @@ template <typename t_subdomain_sampler_t, int_t max_segment_count> struct span_p
     using x_t = typename subdomain_sampler_t::x_t;
     using scalar_t = typename subdomain_sampler_t::scalar_t;
     using jet_t = typename subdomain_sampler_t::jet_t;
-    using jet_function_sample_t = typename subdomain_sampler_t::jet_function_sample_t;
+    using function_sample_t = typename subdomain_sampler_t::function_sample_t;
     using unsigned_t = typename subdomain_sampler_t::unsigned_t;
 
     [[no_unique_address]] subdomain_sampler_t sample_subdomain;
 
-    auto operator()(auto const& sample_target_function, jet_function_sample_t current_sample, x_t const start_x,
-        x_t const target_x, std::vector<subdomain_t<scalar_t>>& subdomains) const -> jet_function_sample_t
+    auto operator()(auto const& sample_target_function, function_sample_t current_sample, x_t const start_x,
+        x_t const target_x, std::vector<subdomain_t<scalar_t>>& subdomains) const -> function_sample_t
     {
         assert(start_x.value <= target_x.value && "critical points must be strictly monotonically increasing");
         assert((static_cast<unsigned_t>(target_x.value) & subdomain_sampler_t::align_mask) == 0
@@ -167,7 +167,7 @@ template <typename t_typestate_t, typename t_span_partitioner_t, int_t log2_doma
     using x_t = typename span_partitioner_t::x_t;
     using scalar_t = typename span_partitioner_t::scalar_t;
     using jet_t = typename span_partitioner_t::jet_t;
-    using jet_function_sample_t = typename span_partitioner_t::jet_function_sample_t;
+    using function_sample_t = typename span_partitioner_t::function_sample_t;
 
     [[no_unique_address]] span_partitioner_t partition_span;
 
