@@ -34,6 +34,7 @@
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
 #include <crv/math/spline/construction/spline/amr/domain_partitioning/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/domain_partitioning/dyadic_stride_calculator.hpp>
+#include <crv/math/spline/construction/spline/amr/domain_partitioning/seed_subdomain_generator.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
@@ -44,7 +45,6 @@
 #include <crv/math/spline/spline.hpp>
 #include <crv/priority_queue.hpp>
 #include <algorithm>
-#include <bit>
 #include <cmath>
 #include <iomanip>
 #include <stdfloat>
@@ -54,79 +54,33 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <std::floating_point t_scalar_t, typename t_stride_calculator_t, int_t log2_min_width>
-struct subdomain_sampler_t
+template <typename segment_generator_t, int_t max_segment_count, int_t log2_min_width> struct span_partitioner_t
 {
-    using scalar_t = t_scalar_t;
-    using stride_calculator_t = t_stride_calculator_t;
+    using x_t = segment_generator_t::x_t;
+    using scalar_t = segment_generator_t::scalar_t;
+    using jet_t = segment_generator_t::jet_t;
+    using subdomain_t = segment_generator_t::subdomain_t;
+    using function_sample_t = segment_generator_t::function_sample_t;
+    using unsigned_t = segment_generator_t::unsigned_t;
 
-    using x_t = typename stride_calculator_t::x_t;
-    using signed_t = typename x_t::value_t;
-    using unsigned_t = std::make_unsigned_t<signed_t>;
-
-    using jet_t = jet_t<scalar_t>;
-    using function_sample_t = function_sample_t<jet_t>;
-
-    struct result_t
-    {
-        subdomain_t<scalar_t> subdomain;
-        x_t next_x;
-    };
+    [[no_unique_address]] segment_generator_t sample_subdomain;
 
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
-    [[no_unique_address]] stride_calculator_t calculate_step;
-
-    auto operator()(x_t const current_x, x_t const target_x, function_sample_t const& left_sample,
-        auto const& sample_target_function) const -> result_t
+    auto operator()(auto const& sample_target_function, function_sample_t current_sample, x_t current_x,
+        x_t const& target_x, std::vector<subdomain_t>& subdomains) const -> function_sample_t
     {
-        auto const step = calculate_step(current_x, target_x);
-
-        auto const next_x = current_x + step;
-        auto const midpoint_x = current_x + (step >> 1);
-
-        auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(next_x), scalar_t{1}});
-        auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
-
-        return result_t{
-            .subdomain = subdomain_t<scalar_t>{
-                .left = left_sample,
-                .midpoint = midpoint_sample,
-                .right = right_sample,
-                .log2_width = std::countr_zero(static_cast<unsigned_t>(step.value)) - x_t::frac_bits,
-            },
-            .next_x = next_x
-        };
-    }
-};
-
-template <typename t_subdomain_sampler_t, int_t max_segment_count> struct span_partitioner_t
-{
-    using subdomain_sampler_t = t_subdomain_sampler_t;
-    using x_t = typename subdomain_sampler_t::x_t;
-    using scalar_t = typename subdomain_sampler_t::scalar_t;
-    using jet_t = typename subdomain_sampler_t::jet_t;
-    using function_sample_t = typename subdomain_sampler_t::function_sample_t;
-    using unsigned_t = typename subdomain_sampler_t::unsigned_t;
-
-    [[no_unique_address]] subdomain_sampler_t sample_subdomain;
-
-    auto operator()(auto const& sample_target_function, function_sample_t current_sample, x_t const start_x,
-        x_t const target_x, std::vector<subdomain_t<scalar_t>>& subdomains) const -> function_sample_t
-    {
-        assert(start_x.value <= target_x.value && "critical points must be strictly monotonically increasing");
-        assert((static_cast<unsigned_t>(target_x.value) & subdomain_sampler_t::align_mask) == 0
+        assert(current_x.value <= target_x.value && "critical points must be strictly monotonically increasing");
+        assert((static_cast<unsigned_t>(target_x.value) & align_mask) == 0
             && "critical point not aligned to min segment width");
-
-        auto current_x = start_x;
 
         while (current_x.value < target_x.value)
         {
             assert(subdomains.size() < max_segment_count && "critical point partitioning exceeded segment budget");
 
-            auto const result = sample_subdomain(current_x, target_x, current_sample, sample_target_function);
+            auto const result = sample_subdomain(sample_target_function, current_sample, current_x, target_x);
 
             subdomains.push_back(result.subdomain);
 
@@ -431,8 +385,8 @@ TEST(spline_generator, poc)
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
 
     using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
-    using subdomain_sampler_t = subdomain_sampler_t<scalar_t, dyadic_stride_calculator_t, log2_min_width>;
-    using span_partitioner_t = span_partitioner_t<subdomain_sampler_t, max_segment_count>;
+    using seed_subdomain_generator_t = seed_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
+    using span_partitioner_t = span_partitioner_t<seed_subdomain_generator_t, max_segment_count, log2_min_width>;
     using domain_partitioner_t
         = domain_partitioner_t<typestates_t::uninitialized_t, span_partitioner_t, log2_domain_max>;
 
