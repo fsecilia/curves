@@ -33,6 +33,7 @@
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
 #include <crv/math/spline/construction/spline/amr/domain_partitioning/critical_point_conditioner.hpp>
+#include <crv/math/spline/construction/spline/amr/domain_partitioning/dyadic_stride_calculator.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
@@ -53,35 +54,13 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <is_fixed t_x_t> struct bisection_step_calculator_t
-{
-    using x_t = t_x_t;
-    using signed_t = typename x_t::value_t;
-    using unsigned_t = std::make_unsigned_t<signed_t>;
-
-    static constexpr auto operator()(x_t const current, x_t const target) noexcept -> x_t
-    {
-        // crack fixed
-        auto const current_value = current.value;
-        auto const target_value = target.value;
-
-        // apply bitwise alignment to underlying
-        auto const max_align_step = (current_value == 0) ? target_value : (current_value & -current_value);
-        auto const max_fit_step
-            = static_cast<signed_t>(std::bit_floor(static_cast<unsigned_t>(target_value - current_value)));
-
-        // repack fixed
-        return x_t::literal(std::min(max_align_step, max_fit_step));
-    }
-};
-
-template <std::floating_point t_scalar_t, typename t_bisection_step_calculator_t, int_t log2_min_width>
+template <std::floating_point t_scalar_t, typename t_stride_calculator_t, int_t log2_min_width>
 struct subdomain_sampler_t
 {
     using scalar_t = t_scalar_t;
-    using bisection_step_calculator_t = t_bisection_step_calculator_t;
+    using stride_calculator_t = t_stride_calculator_t;
 
-    using x_t = typename bisection_step_calculator_t::x_t;
+    using x_t = typename stride_calculator_t::x_t;
     using signed_t = typename x_t::value_t;
     using unsigned_t = std::make_unsigned_t<signed_t>;
 
@@ -98,12 +77,12 @@ struct subdomain_sampler_t
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
-    [[no_unique_address]] bisection_step_calculator_t calculate_bisection_step;
+    [[no_unique_address]] stride_calculator_t calculate_step;
 
     auto operator()(x_t const current_x, x_t const target_x, function_sample_t const& left_sample,
         auto const& sample_target_function) const -> result_t
     {
-        auto const step = calculate_bisection_step(current_x, target_x);
+        auto const step = calculate_step(current_x, target_x);
 
         auto const next_x = current_x + step;
         auto const midpoint_x = current_x + (step >> 1);
@@ -451,8 +430,8 @@ TEST(spline_generator, poc)
     using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
 
-    using bisection_step_calculator_t = bisection_step_calculator_t<x_t>;
-    using subdomain_sampler_t = subdomain_sampler_t<scalar_t, bisection_step_calculator_t, log2_min_width>;
+    using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
+    using subdomain_sampler_t = subdomain_sampler_t<scalar_t, dyadic_stride_calculator_t, log2_min_width>;
     using span_partitioner_t = span_partitioner_t<subdomain_sampler_t, max_segment_count>;
     using domain_partitioner_t
         = domain_partitioner_t<typestates_t::uninitialized_t, span_partitioner_t, log2_domain_max>;
