@@ -21,8 +21,8 @@ namespace crv::spline {
 template <std::floating_point t_scalar_t> struct subdomain_t
 {
     using scalar_t = t_scalar_t;
-    using jet_t = jet_t<scalar_t>;
 
+    using jet_t = jet_t<scalar_t>;
     using function_sample_t = function_sample_t<jet_t>;
 
     function_sample_t left;
