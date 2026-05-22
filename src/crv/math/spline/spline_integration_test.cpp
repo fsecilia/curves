@@ -32,6 +32,7 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
+#include <crv/math/spline/construction/spline/amr/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
@@ -51,34 +52,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <is_fixed x_t, int_t log2_min_width> struct critical_point_conditioner_t
-{
-    constexpr auto operator()(std::vector<x_t> points) const -> std::vector<x_t>
-    {
-        using unsigned_t = std::make_unsigned_t<typename x_t::value_t>;
-        constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
-        constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
-        constexpr auto align_bias = (unsigned_t{1} << (align_shift - 1)) - 1;
-
-        if constexpr (align_shift > 0)
-        {
-            // snap points to min segment width grid
-            for (auto& point : points)
-            {
-                auto val = static_cast<unsigned_t>(point.value) + align_bias;
-                val &= ~align_mask;
-                point = x_t::literal(static_cast<typename x_t::value_t>(val));
-            }
-        }
-
-        std::ranges::sort(points);
-        auto const [first_dup, last] = std::ranges::unique(points);
-        points.erase(first_dup, last);
-
-        return points;
-    }
-};
 
 template <is_fixed t_x_t> struct bisection_step_calculator_t
 {
