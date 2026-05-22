@@ -15,7 +15,6 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/math/rounding_mode.hpp>
-#include <crv/math/saturate_cast.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/math/spline/construction/segment/amr/approximant.hpp>
 #include <crv/math/spline/construction/segment/amr/bisection.hpp>
@@ -46,7 +45,6 @@
 #include <bit>
 #include <cmath>
 #include <iomanip>
-#include <numeric>
 #include <stdfloat>
 #include <vector>
 
@@ -54,7 +52,7 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_t
+template <is_fixed x_t, int_t log2_min_width> struct critical_point_conditioner_t
 {
     constexpr auto operator()(std::vector<x_t> points) const -> std::vector<x_t>
     {
@@ -65,7 +63,7 @@ template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_
 
         if constexpr (align_shift > 0)
         {
-            // snap points to grid min segment width grid
+            // snap points to min segment width grid
             for (auto& point : points)
             {
                 auto val = static_cast<unsigned_t>(point.value) + align_bias;
@@ -82,67 +80,141 @@ template <typename x_t, int_t log2_min_width> struct critical_point_conditioner_
     }
 };
 
-template <typename typestate_t, std::floating_point scalar_t, typename x_t, int_t log2_domain_max, int_t log2_min_width,
-    int_t max_segment_count>
-struct domain_partitioner_t
+template <is_fixed t_x_t> struct bisection_step_calculator_t
 {
-    using subdomain_t = subdomain_t<scalar_t>;
+    using x_t = t_x_t;
+    using signed_t = typename x_t::value_t;
+    using unsigned_t = std::make_unsigned_t<signed_t>;
 
-    auto operator()(typestate_t state, std::vector<x_t> const& critical_points,
-        auto const& sample_target_function) const -> typestate_t::next_t
+    static constexpr auto operator()(x_t const current, x_t const target) noexcept -> x_t
     {
-        using jet_t = jet_t<scalar_t>;
-        using signed_t = typename x_t::value_t;
-        using unsigned_t = std::make_unsigned_t<signed_t>;
+        // crack fixed
+        auto const current_value = current.value;
+        auto const target_value = target.value;
 
-        constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
-        static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
-        constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
+        // perform bitwise alignment on underlying
+        auto const max_align_step = (current_value == 0) ? target_value : (current_value & -current_value);
+        auto const max_fit_step
+            = static_cast<signed_t>(std::bit_floor(static_cast<unsigned_t>(target_value - current_value)));
 
+        // repackage
+        return x_t::literal(std::min(max_align_step, max_fit_step));
+    }
+};
+
+template <std::floating_point t_scalar_t, typename t_bisection_step_calculator_t, int_t log2_min_width>
+struct subdomain_sampler_t
+{
+    using scalar_t = t_scalar_t;
+    using bisection_step_calculator_t = t_bisection_step_calculator_t;
+    using x_t = typename bisection_step_calculator_t::x_t;
+
+    using jet_t = jet_t<scalar_t>;
+    using jet_function_sample_t = function_sample_t<jet_t>;
+
+    struct result_t
+    {
+        subdomain_t<scalar_t> subdomain;
+        x_t next_x;
+    };
+
+    using signed_t = typename x_t::value_t;
+    using unsigned_t = std::make_unsigned_t<signed_t>;
+
+    static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
+    static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
+    static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
+
+    [[no_unique_address]] bisection_step_calculator_t calculate_bisection_step;
+
+    auto operator()(x_t const current_x, x_t const target_x, jet_function_sample_t const& left_sample,
+        auto const& sample_target_function) const -> result_t
+    {
+        auto const step = calculate_bisection_step(current_x, target_x);
+
+        auto const next_x = current_x + step;
+        auto const midpoint_x = current_x + (step >> 1);
+
+        auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(next_x), scalar_t{1}});
+        auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
+
+        return result_t{
+            .subdomain = subdomain_t<scalar_t>{
+                .left = left_sample,
+                .midpoint = midpoint_sample,
+                .right = right_sample,
+                .log2_width = std::countr_zero(static_cast<unsigned_t>(step.value)) - x_t::frac_bits,
+            },
+            .next_x = next_x
+        };
+    }
+};
+
+template <typename t_subdomain_sampler_t, int_t max_segment_count> struct span_partitioner_t
+{
+    using subdomain_sampler_t = t_subdomain_sampler_t;
+    using x_t = typename subdomain_sampler_t::x_t;
+    using scalar_t = typename subdomain_sampler_t::scalar_t;
+    using jet_t = typename subdomain_sampler_t::jet_t;
+    using jet_function_sample_t = typename subdomain_sampler_t::jet_function_sample_t;
+    using unsigned_t = typename subdomain_sampler_t::unsigned_t;
+
+    [[no_unique_address]] subdomain_sampler_t sample_subdomain;
+
+    auto operator()(auto const& sample_target_function, jet_function_sample_t current_sample, x_t const start_x,
+        x_t const target_x, std::vector<subdomain_t<scalar_t>>& subdomains) const -> jet_function_sample_t
+    {
+        assert(start_x.value <= target_x.value && "critical points must be strictly monotonically increasing");
+        assert((static_cast<unsigned_t>(target_x.value) & subdomain_sampler_t::align_mask) == 0
+            && "critical point not aligned to min segment width");
+
+        auto current_x = start_x;
+
+        while (current_x.value < target_x.value)
+        {
+            assert(subdomains.size() < max_segment_count && "critical point partitioning exceeded segment budget");
+
+            auto const result = sample_subdomain(current_x, target_x, current_sample, sample_target_function);
+
+            subdomains.push_back(result.subdomain);
+
+            current_x = result.next_x;
+            current_sample = result.subdomain.right;
+        }
+
+        return current_sample;
+    }
+};
+
+/// partitions mapped domain using pure bisection to subdivide at a set of critical points.
+template <typename t_typestate_t, typename t_span_partitioner_t, int_t log2_domain_max> struct domain_partitioner_t
+{
+    using typestate_t = t_typestate_t;
+    using span_partitioner_t = t_span_partitioner_t;
+    using x_t = typename span_partitioner_t::x_t;
+    using scalar_t = typename span_partitioner_t::scalar_t;
+    using jet_t = typename span_partitioner_t::jet_t;
+    using jet_function_sample_t = typename span_partitioner_t::jet_function_sample_t;
+
+    [[no_unique_address]] span_partitioner_t partition_span;
+
+    auto operator()(typestate_t state, auto const& sample_target_function,
+        std::vector<x_t> const& critical_points) const -> typename typestate_t::next_t
+    {
         auto& workspace = state.workspace;
         auto& subdomains = workspace.partitioned_subdomains;
 
+        auto cur_x = x_t{0};
+        auto cur_sample = sample_target_function(jet_t{from_fixed<scalar_t>(cur_x), scalar_t{1}});
+
+        for (auto const& critical_point : critical_points)
+        {
+            cur_sample = partition_span(sample_target_function, cur_sample, cur_x, critical_point, subdomains);
+            cur_x = critical_point;
+        }
+
         auto const domain_end = x_t{1 << log2_domain_max};
-        auto current_x = x_t{0};
-
-        auto process_span = [&](x_t const target_x) {
-            assert(current_x <= target_x && "critical points must be strictly monotonically increasing");
-            assert(current_x < domain_end && "critical points must be within bounds");
-            assert((static_cast<unsigned_t>(target_x.value) & align_mask) == 0
-                && "critical point not aligned to min segment width");
-
-            auto current_int = current_x.value;
-            auto const target_int = target_x.value;
-
-            while (current_int < target_int)
-            {
-                auto const max_align_step = (current_int == 0) ? target_int : (current_int & -current_int);
-                auto const max_fit_step
-                    = int_cast<signed_t>(std::bit_floor(static_cast<unsigned_t>(target_int - current_int)));
-                auto const step = std::min(max_align_step, max_fit_step);
-
-                auto const next_int = current_int + step;
-                auto const next_x = x_t::literal(next_int);
-
-                auto const left = sample_target_function(jet_t{from_fixed<scalar_t>(current_x), scalar_t{1}});
-                auto const right = sample_target_function(jet_t{from_fixed<scalar_t>(next_x), scalar_t{1}});
-                auto const midpoint = sample_target_function(jet_t{std::midpoint(left.x, right.x), scalar_t{1}});
-
-                assert(subdomains.size() < max_segment_count && "critical point partitioning exceeded segment budget");
-                subdomains.push_back(subdomain_t{
-                    .left = left,
-                    .midpoint = midpoint,
-                    .right = right,
-                    .log2_width = std::countr_zero(static_cast<unsigned_t>(step)) - x_t::frac_bits,
-                });
-
-                current_int = next_int;
-                current_x = next_x;
-            }
-        };
-
-        for (auto const& critical_point : critical_points) process_span(critical_point);
-        process_span(domain_end);
+        partition_span(sample_target_function, cur_sample, cur_x, domain_end, subdomains);
 
         return typename typestate_t::next_t{workspace};
     }
@@ -303,7 +375,7 @@ public:
 
         auto uninitialized_state = typename typestates_t::initial_t{workspace_};
         auto unseeded_state
-            = partition_domain_(std::move(uninitialized_state), critical_points, sample_target_function);
+            = partition_domain_(std::move(uninitialized_state), sample_target_function, critical_points);
         auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), sample_target_function);
         auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
         assemble_(std::move(unassembled_state), spline);
@@ -405,8 +477,13 @@ TEST(spline_generator, poc)
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
-    using domain_partitioner_t = domain_partitioner_t<typestates_t::uninitialized_t, scalar_t, x_t, log2_domain_max,
-        log2_min_width, max_segment_count>;
+
+    using bisection_step_calculator_t = bisection_step_calculator_t<x_t>;
+    using subdomain_sampler_t = subdomain_sampler_t<scalar_t, bisection_step_calculator_t, log2_min_width>;
+    using span_partitioner_t = span_partitioner_t<subdomain_sampler_t, max_segment_count>;
+    using domain_partitioner_t
+        = domain_partitioner_t<typestates_t::uninitialized_t, span_partitioner_t, log2_domain_max>;
+
     using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
