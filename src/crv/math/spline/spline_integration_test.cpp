@@ -65,12 +65,12 @@ template <is_fixed t_x_t> struct bisection_step_calculator_t
         auto const current_value = current.value;
         auto const target_value = target.value;
 
-        // perform bitwise alignment on underlying
+        // apply bitwise alignment to underlying
         auto const max_align_step = (current_value == 0) ? target_value : (current_value & -current_value);
         auto const max_fit_step
             = static_cast<signed_t>(std::bit_floor(static_cast<unsigned_t>(target_value - current_value)));
 
-        // repackage
+        // repack fixed
         return x_t::literal(std::min(max_align_step, max_fit_step));
     }
 };
