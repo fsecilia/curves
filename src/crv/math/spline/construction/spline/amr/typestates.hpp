@@ -50,19 +50,7 @@ template <typename t_workspace_t> struct typestates_t
         unseeded_t& operator=(unseeded_t&&) = default;
     };
 
-    struct uninitialized_t
-    {
-        workspace_t& workspace;
-        using next_t = unseeded_t;
-
-        explicit uninitialized_t(workspace_t& w) : workspace{w} {}
-        uninitialized_t(uninitialized_t const&) = delete;
-        uninitialized_t& operator=(uninitialized_t const&) = delete;
-        uninitialized_t(uninitialized_t&&) = default;
-        uninitialized_t& operator=(uninitialized_t&&) = default;
-    };
-
-    using initial_t = uninitialized_t;
+    using initial_t = unseeded_t;
 };
 
 } // namespace crv::spline
