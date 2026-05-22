@@ -32,7 +32,7 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
-#include <crv/math/spline/construction/spline/amr/critical_point_conditioner.hpp>
+#include <crv/math/spline/construction/spline/amr/domain_partitioning/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
