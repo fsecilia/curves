@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "seed_subdomain_generator.hpp"
+#include "base_subdomain_generator.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
@@ -20,7 +20,7 @@ struct vector_t
     int_t expected_log2_width;
 };
 
-struct spline_seed_subdomain_generator_test_t : TestWithParam<vector_t>
+struct spline_base_subdomain_generator_test_t : TestWithParam<vector_t>
 {
     using x_t = fixed_t<int_t, 8>;
     using jet_t = jet_t<scalar_t>;
@@ -56,7 +56,7 @@ struct spline_seed_subdomain_generator_test_t : TestWithParam<vector_t>
         }
     };
 
-    using sut_t = seed_subdomain_generator_t<subdomain_t, stride_calculator_t>;
+    using sut_t = base_subdomain_generator_t<subdomain_t, stride_calculator_t>;
     using result_t = sut_t::result_t;
 
     static auto to_sample(scalar_t x) noexcept -> function_sample_t
@@ -69,7 +69,7 @@ struct spline_seed_subdomain_generator_test_t : TestWithParam<vector_t>
     sut_t sut{};
 };
 
-TEST_P(spline_seed_subdomain_generator_test_t, calculates_subdomain_and_stride)
+TEST_P(spline_base_subdomain_generator_test_t, calculates_subdomain_and_stride)
 {
     auto const current_x_fixed = to_fixed<x_t>(vector.current_x);
     auto const target_x_fixed = to_fixed<x_t>(vector.target_x);
@@ -128,7 +128,7 @@ vector_t const vectors[] = {
         .expected_log2_width = 3,
     },
 };
-INSTANTIATE_TEST_SUITE_P(edge_cases, spline_seed_subdomain_generator_test_t, ValuesIn(vectors));
+INSTANTIATE_TEST_SUITE_P(edge_cases, spline_base_subdomain_generator_test_t, ValuesIn(vectors));
 
 } // namespace
 } // namespace crv::spline

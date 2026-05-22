@@ -32,9 +32,9 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
+#include <crv/math/spline/construction/spline/amr/domain_partitioning/base_subdomain_generator.hpp>
 #include <crv/math/spline/construction/spline/amr/domain_partitioning/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/domain_partitioning/dyadic_stride_calculator.hpp>
-#include <crv/math/spline/construction/spline/amr/domain_partitioning/seed_subdomain_generator.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
@@ -54,16 +54,16 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <typename segment_generator_t, int_t max_segment_count, int_t log2_min_width> struct span_partitioner_t
+template <typename base_subdomain_generator_t, int_t max_segment_count, int_t log2_min_width> struct span_partitioner_t
 {
-    using x_t = segment_generator_t::x_t;
-    using scalar_t = segment_generator_t::scalar_t;
-    using jet_t = segment_generator_t::jet_t;
-    using subdomain_t = segment_generator_t::subdomain_t;
-    using function_sample_t = segment_generator_t::function_sample_t;
-    using unsigned_t = segment_generator_t::unsigned_t;
+    using x_t = base_subdomain_generator_t::x_t;
+    using scalar_t = base_subdomain_generator_t::scalar_t;
+    using jet_t = base_subdomain_generator_t::jet_t;
+    using subdomain_t = base_subdomain_generator_t::subdomain_t;
+    using function_sample_t = base_subdomain_generator_t::function_sample_t;
+    using unsigned_t = base_subdomain_generator_t::unsigned_t;
 
-    [[no_unique_address]] segment_generator_t sample_subdomain;
+    [[no_unique_address]] base_subdomain_generator_t sample_subdomain;
 
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
@@ -387,8 +387,8 @@ TEST(spline_generator, poc)
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
 
     using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
-    using seed_subdomain_generator_t = seed_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
-    using span_partitioner_t = span_partitioner_t<seed_subdomain_generator_t, max_segment_count, log2_min_width>;
+    using base_subdomain_generator_t = base_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
+    using span_partitioner_t = span_partitioner_t<base_subdomain_generator_t, max_segment_count, log2_min_width>;
     using domain_partitioner_t
         = domain_partitioner_t<typestates_t::uninitialized_t, span_partitioner_t, log2_domain_max>;
 
