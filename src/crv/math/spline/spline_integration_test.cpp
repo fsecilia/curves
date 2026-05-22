@@ -54,7 +54,8 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <typename base_subdomain_generator_t, int_t max_segment_count, int_t log2_min_width> struct span_partitioner_t
+template <typename base_subdomain_generator_t, int_t max_segment_count, int_t log2_min_width>
+struct base_span_generator_t
 {
     using x_t = base_subdomain_generator_t::x_t;
     using scalar_t = base_subdomain_generator_t::scalar_t;
@@ -63,7 +64,7 @@ template <typename base_subdomain_generator_t, int_t max_segment_count, int_t lo
     using function_sample_t = base_subdomain_generator_t::function_sample_t;
     using unsigned_t = base_subdomain_generator_t::unsigned_t;
 
-    [[no_unique_address]] base_subdomain_generator_t sample_subdomain;
+    [[no_unique_address]] base_subdomain_generator_t generate_base_subdomain;
 
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
@@ -80,7 +81,7 @@ template <typename base_subdomain_generator_t, int_t max_segment_count, int_t lo
         {
             assert(subdomains.size() < max_segment_count && "critical point partitioning exceeded segment budget");
 
-            auto const result = sample_subdomain(sample_target_function, current_sample, current_x, target_x);
+            auto const result = generate_base_subdomain(sample_target_function, current_sample, current_x, target_x);
 
             subdomains.push_back(result.subdomain);
 
@@ -93,14 +94,14 @@ template <typename base_subdomain_generator_t, int_t max_segment_count, int_t lo
 };
 
 /// partitions mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename typestate_t, typename span_partitioner_t, int_t log2_domain_max> struct domain_partitioner_t
+template <typename typestate_t, typename base_span_generator_t, int_t log2_domain_max> struct domain_partitioner_t
 {
-    using x_t = span_partitioner_t::x_t;
-    using scalar_t = span_partitioner_t::scalar_t;
-    using jet_t = span_partitioner_t::jet_t;
-    using function_sample_t = span_partitioner_t::function_sample_t;
+    using x_t = base_span_generator_t::x_t;
+    using scalar_t = base_span_generator_t::scalar_t;
+    using jet_t = base_span_generator_t::jet_t;
+    using function_sample_t = base_span_generator_t::function_sample_t;
 
-    [[no_unique_address]] span_partitioner_t partition_span;
+    [[no_unique_address]] base_span_generator_t generate_base_span;
 
     auto operator()(typestate_t state, auto const& sample_target_function,
         std::vector<x_t> const& critical_points) const -> typename typestate_t::next_t
@@ -116,13 +117,13 @@ template <typename typestate_t, typename span_partitioner_t, int_t log2_domain_m
         for (auto const& critical_point : critical_points)
         {
             current_sample
-                = partition_span(sample_target_function, current_sample, current_x, critical_point, subdomains);
+                = generate_base_span(sample_target_function, current_sample, current_x, critical_point, subdomains);
             current_x = critical_point;
         }
 
         // finish with end of domain
         auto const domain_end_x = x_t{1 << log2_domain_max};
-        partition_span(sample_target_function, current_sample, current_x, domain_end_x, subdomains);
+        generate_base_span(sample_target_function, current_sample, current_x, domain_end_x, subdomains);
 
         return typename typestate_t::next_t{workspace};
     }
@@ -388,9 +389,9 @@ TEST(spline_generator, poc)
 
     using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
     using base_subdomain_generator_t = base_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
-    using span_partitioner_t = span_partitioner_t<base_subdomain_generator_t, max_segment_count, log2_min_width>;
+    using base_span_generator_t = base_span_generator_t<base_subdomain_generator_t, max_segment_count, log2_min_width>;
     using domain_partitioner_t
-        = domain_partitioner_t<typestates_t::uninitialized_t, span_partitioner_t, log2_domain_max>;
+        = domain_partitioner_t<typestates_t::uninitialized_t, base_span_generator_t, log2_domain_max>;
 
     using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
