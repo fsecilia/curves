@@ -93,14 +93,12 @@ template <typename segment_generator_t, int_t max_segment_count, int_t log2_min_
 };
 
 /// partitions mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename t_typestate_t, typename t_span_partitioner_t, int_t log2_domain_max> struct domain_partitioner_t
+template <typename typestate_t, typename span_partitioner_t, int_t log2_domain_max> struct domain_partitioner_t
 {
-    using typestate_t = t_typestate_t;
-    using span_partitioner_t = t_span_partitioner_t;
-    using x_t = typename span_partitioner_t::x_t;
-    using scalar_t = typename span_partitioner_t::scalar_t;
-    using jet_t = typename span_partitioner_t::jet_t;
-    using function_sample_t = typename span_partitioner_t::function_sample_t;
+    using x_t = span_partitioner_t::x_t;
+    using scalar_t = span_partitioner_t::scalar_t;
+    using jet_t = span_partitioner_t::jet_t;
+    using function_sample_t = span_partitioner_t::function_sample_t;
 
     [[no_unique_address]] span_partitioner_t partition_span;
 
@@ -110,17 +108,21 @@ template <typename t_typestate_t, typename t_span_partitioner_t, int_t log2_doma
         auto& workspace = state.workspace;
         auto& subdomains = workspace.partitioned_subdomains;
 
-        auto cur_x = x_t{0};
-        auto cur_sample = sample_target_function(jet_t{from_fixed<scalar_t>(cur_x), scalar_t{1}});
+        // start at 0
+        auto current_x = x_t{0};
+        auto current_sample = sample_target_function(jet_t{from_fixed<scalar_t>(current_x), scalar_t{1}});
 
+        // proceed through pairs of critical points
         for (auto const& critical_point : critical_points)
         {
-            cur_sample = partition_span(sample_target_function, cur_sample, cur_x, critical_point, subdomains);
-            cur_x = critical_point;
+            current_sample
+                = partition_span(sample_target_function, current_sample, current_x, critical_point, subdomains);
+            current_x = critical_point;
         }
 
-        auto const domain_end = x_t{1 << log2_domain_max};
-        partition_span(sample_target_function, cur_sample, cur_x, domain_end, subdomains);
+        // finish with end of domain
+        auto const domain_end_x = x_t{1 << log2_domain_max};
+        partition_span(sample_target_function, current_sample, current_x, domain_end_x, subdomains);
 
         return typename typestate_t::next_t{workspace};
     }
