@@ -14,11 +14,10 @@
 
 namespace crv::spline {
 
-/// generates base segments using a dynamic stride
+/// generates a subdomain from a stride
 ///
-/// The spline only bisects. The base segment and its critical points must be decomposed into spans of dyadic
-/// segments. This type generates the individual subdomains for segments that seed the refinement pool. It uses a
-/// dyadic stride calculator to determine where to place the next subdomain given the left x and the target x.
+/// This type generates subdomains for intervals that seed the refinement pool. It uses a stride calculator to determine
+/// where to place the next subdomain given the left x and the target x.
 template <typename t_subdomain_t, typename stride_calculator_t> struct base_subdomain_generator_t
 {
     using subdomain_t = t_subdomain_t;
