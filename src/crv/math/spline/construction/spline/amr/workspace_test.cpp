@@ -30,17 +30,14 @@ TEST_F(workspace_test_t, clear_forwards_to_members)
 {
     auto sut = sut_t{};
 
-    sut.partitioned_subdomains.push_back({});
     sut.completed_intervals.push_back({});
     sut.refinement_pool.push({});
 
-    EXPECT_FALSE(sut.partitioned_subdomains.empty());
     EXPECT_FALSE(sut.completed_intervals.empty());
     EXPECT_FALSE(sut.refinement_pool.empty());
 
     sut.clear();
 
-    EXPECT_TRUE(sut.partitioned_subdomains.empty());
     EXPECT_TRUE(sut.completed_intervals.empty());
     EXPECT_TRUE(sut.refinement_pool.empty());
 }

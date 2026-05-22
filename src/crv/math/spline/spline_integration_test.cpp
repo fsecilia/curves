@@ -54,7 +54,8 @@ namespace crv {
 namespace spline {
 namespace {
 
-template <typename base_subdomain_generator_t, int_t max_segment_count, int_t log2_min_width>
+template <typename base_subdomain_generator_t, typename interval_factory_t, int_t max_segment_count,
+    int_t log2_min_width>
 struct base_span_generator_t
 {
     using x_t = base_subdomain_generator_t::x_t;
@@ -65,13 +66,14 @@ struct base_span_generator_t
     using unsigned_t = base_subdomain_generator_t::unsigned_t;
 
     [[no_unique_address]] base_subdomain_generator_t generate_base_subdomain;
+    [[no_unique_address]] interval_factory_t create_interval;
 
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
     auto operator()(auto const& sample_target_function, function_sample_t current_sample, x_t current_x,
-        x_t const& target_x, std::vector<subdomain_t>& subdomains) const -> function_sample_t
+        x_t const& target_x, auto& refinement_pool) const -> function_sample_t
     {
         assert(current_x.value <= target_x.value && "critical points must be strictly monotonically increasing");
         assert((static_cast<unsigned_t>(target_x.value) & align_mask) == 0
@@ -79,11 +81,10 @@ struct base_span_generator_t
 
         while (current_x.value < target_x.value)
         {
-            assert(subdomains.size() < max_segment_count && "critical point partitioning exceeded segment budget");
+            assert(refinement_pool.size() < max_segment_count && "critical point partitioning exceeded segment budget");
 
             auto const result = generate_base_subdomain(sample_target_function, current_sample, current_x, target_x);
-
-            subdomains.push_back(result.subdomain);
+            refinement_pool.push(create_interval(sample_target_function, result.subdomain));
 
             current_x = result.next_x;
             current_sample = result.subdomain.right;
@@ -93,8 +94,10 @@ struct base_span_generator_t
     }
 };
 
-/// partitions mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename typestate_t, typename base_span_generator_t, int_t log2_domain_max> struct domain_partitioner_t
+/// seeds queue with initial set of segments
+///
+/// This type splits the mapped domain using pure bisection to subdivide at a set of critical points.
+template <typename typestate_t, typename base_span_generator_t, int_t log2_domain_max> struct refinement_pool_seeder_t
 {
     using x_t = base_span_generator_t::x_t;
     using scalar_t = base_span_generator_t::scalar_t;
@@ -107,49 +110,24 @@ template <typename typestate_t, typename base_span_generator_t, int_t log2_domai
         std::vector<x_t> const& critical_points) const -> typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
-        auto& subdomains = workspace.partitioned_subdomains;
+        auto& refinement_pool = workspace.refinement_pool;
 
         // start at 0
         auto current_x = x_t{0};
         auto current_sample = sample_target_function(jet_t{from_fixed<scalar_t>(current_x), scalar_t{1}});
+        assert(refinement_pool.empty());
 
         // proceed through pairs of critical points
         for (auto const& critical_point : critical_points)
         {
-            current_sample
-                = generate_base_span(sample_target_function, current_sample, current_x, critical_point, subdomains);
+            current_sample = generate_base_span(
+                sample_target_function, current_sample, current_x, critical_point, refinement_pool);
             current_x = critical_point;
         }
 
         // finish with end of domain
         auto const domain_end_x = x_t{1 << log2_domain_max};
-        generate_base_span(sample_target_function, current_sample, current_x, domain_end_x, subdomains);
-
-        return typename typestate_t::next_t{workspace};
-    }
-};
-
-// seeds queue with initial set of segments
-//
-// The initial set is either one large segment from edge to edge of the domain, or that large segment, split to fit
-// critical points aligned ot widths
-template <typename typestate_t, typename interval_factory_t> struct refinement_pool_seeder_t
-{
-    interval_factory_t create_interval;
-
-    constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
-        typename typestate_t::next_t
-    {
-        auto& workspace = state.workspace;
-        auto& partitioned_subdomains = workspace.partitioned_subdomains;
-        auto& refinement_pool = workspace.refinement_pool;
-        assert(refinement_pool.empty());
-
-        for (auto const& subdomain : partitioned_subdomains)
-        {
-            refinement_pool.push(create_interval(sample_target_function, subdomain));
-        }
-        partitioned_subdomains.clear();
+        generate_base_span(sample_target_function, current_sample, current_x, domain_end_x, refinement_pool);
 
         return typename typestate_t::next_t{workspace};
     }
@@ -261,18 +239,14 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
 };
 
 template <std::floating_point scalar_t, typename x_t, typename spline_t, typename typestates_t,
-    typename refinement_pool_t, typename domain_partitioner_t, typename refinement_pool_seeder_t, typename refiner_t,
-    typename assembler_t, int_t max_segment_count>
+    typename refinement_pool_t, typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t,
+    int_t max_segment_count>
 class spline_generator_t
 {
 public:
-    constexpr spline_generator_t() : partition_domain_{}, seed_refinement_pool_{}, refine_{}, assemble_{}, workspace_{}
-    {}
-
-    constexpr spline_generator_t(domain_partitioner_t partition_domain, refinement_pool_seeder_t seed_refinement_pool,
-        refiner_t refine, assembler_t assemble)
-        : partition_domain_{std::move(partition_domain)}, seed_refinement_pool_{std::move(seed_refinement_pool)},
-          refine_{std::move(refine)}, assemble_{std::move(assemble)}, workspace_{}
+    constexpr spline_generator_t(refinement_pool_seeder_t seed_refinement_pool, refiner_t refine, assembler_t assemble)
+        : seed_refinement_pool_{std::move(seed_refinement_pool)}, refine_{std::move(refine)},
+          assemble_{std::move(assemble)}, workspace_{}
     {}
 
     constexpr auto operator()(auto& spline, auto target_function, std::vector<x_t> critical_points = {}) -> void
@@ -282,10 +256,9 @@ public:
 
         auto sample_target_function = function_sampler_t{std::move(target_function)};
 
-        auto uninitialized_state = typename typestates_t::initial_t{workspace_};
-        auto unseeded_state
-            = partition_domain_(std::move(uninitialized_state), sample_target_function, critical_points);
-        auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), sample_target_function);
+        auto unseeded_state = typename typestates_t::initial_t{workspace_};
+        auto unrefined_state
+            = seed_refinement_pool_(std::move(unseeded_state), sample_target_function, critical_points);
         auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
         assemble_(std::move(unassembled_state), spline);
 
@@ -298,7 +271,6 @@ private:
 
     using workspace_t = typestates_t::workspace_t;
 
-    domain_partitioner_t partition_domain_;
     refinement_pool_seeder_t seed_refinement_pool_;
     refiner_t refine_;
     assembler_t assemble_;
@@ -386,17 +358,15 @@ TEST(spline_generator, poc)
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
-
     using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
     using base_subdomain_generator_t = base_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
-    using base_span_generator_t = base_span_generator_t<base_subdomain_generator_t, max_segment_count, log2_min_width>;
-    using domain_partitioner_t
-        = domain_partitioner_t<typestates_t::uninitialized_t, base_span_generator_t, log2_domain_max>;
-
-    using refinement_pool_seeder_t = refinement_pool_seeder_t<typestates_t::unseeded_t, interval_factory_t>;
+    using base_span_generator_t
+        = base_span_generator_t<base_subdomain_generator_t, interval_factory_t, max_segment_count, log2_min_width>;
+    using refinement_pool_seeder_t
+        = refinement_pool_seeder_t<typestates_t::unseeded_t, base_span_generator_t, log2_domain_max>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
-        domain_partitioner_t, refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
+        refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
@@ -413,8 +383,9 @@ TEST(spline_generator, poc)
 
     auto generate_spline = spline_generator_t
     {
-        domain_partitioner_t{},
-        refinement_pool_seeder_t{.create_interval = create_interval},
+        refinement_pool_seeder_t{
+            .generate_base_span{.generate_base_subdomain = {}, .create_interval = create_interval},
+        },
         refiner_t
         {
             .requires_subdivision = subdivision_predicate_t{.global_tolerance = global_tolerance},
