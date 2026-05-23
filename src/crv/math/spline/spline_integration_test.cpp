@@ -32,9 +32,9 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
-#include <crv/math/spline/construction/spline/amr/seed/base_subdomain_generator.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp>
+#include <crv/math/spline/construction/spline/amr/seed/subdomain_factory.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
