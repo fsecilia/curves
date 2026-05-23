@@ -47,6 +47,7 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/segment_packer.hpp
     math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp
     math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
+    math/spline/construction/spline/amr/seed/span_decomposer.hpp
     math/spline/construction/spline/amr/seed/subdomain_factory.hpp
     math/spline/construction/spline/amr/typestates.hpp
     math/spline/construction/spline/amr/workspace.hpp
@@ -167,6 +168,7 @@ if (enable_testing)
         math/spline/construction/segment/segment_packer_test.cpp
         math/spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
         math/spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
+        math/spline/construction/spline/amr/seed/span_decomposer_test.cpp
         math/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
         math/spline/construction/spline/amr/workspace_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
