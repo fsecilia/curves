@@ -6,7 +6,7 @@
 #include "dyadic_stride_calculator.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::spline::generic {
+namespace crv::spline::seed {
 namespace {
 
 using fixed_t = fixed_t<int_t, 8>;
@@ -39,4 +39,4 @@ static_assert(sut(fixed(3), fixed(8)).value == 1);
 static_assert(sut(fixed(15), fixed(16)).value == 1);
 
 } // namespace
-} // namespace crv::spline::generic
+} // namespace crv::spline::seed

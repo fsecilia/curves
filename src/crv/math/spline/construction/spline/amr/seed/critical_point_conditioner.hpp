@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace crv::spline {
+namespace crv::spline::seed {
 
 /// quantizes, sorts, and uniques set of critical points
 template <is_fixed x_t, int_t log2_min_width> struct critical_point_conditioner_t
@@ -56,4 +56,4 @@ private:
     }
 };
 
-} // namespace crv::spline
+} // namespace crv::spline::seed

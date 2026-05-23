@@ -6,7 +6,7 @@
 #include "critical_point_conditioner.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::spline::generic {
+namespace crv::spline::seed {
 namespace {
 
 using x_t = fixed_t<int_t, 8>;
@@ -86,4 +86,4 @@ static_assert(sut(points_t{d, -d, z, d * 2, -d * 2, -d / 2, d / 2}) == points_t{
 static_assert(sut(points_t{e, z, -e, d / 2 - e, -d / 2, d / 4, -d / 4}) == points_t{z});
 
 } // namespace
-} // namespace crv::spline::generic
+} // namespace crv::spline::seed
