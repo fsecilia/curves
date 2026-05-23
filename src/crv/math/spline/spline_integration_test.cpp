@@ -52,48 +52,61 @@
 
 namespace crv {
 namespace spline {
-namespace {
 
-/// decomposes a domain span into a sequence of dyadic intervals
-template <typename base_subdomain_generator_t, typename interval_factory_t, int_t max_segment_count,
-    int_t log2_min_width>
+namespace seed {
+
+/// decomposes a seed span into a sequence of dyadic intervals
+template <typename stride_calculator_t, typename subdomain_factory_t, typename interval_factory_t,
+    int_t max_segment_count, int_t log2_min_width>
 struct span_decomposer_t
 {
-    using x_t = base_subdomain_generator_t::x_t;
-    using scalar_t = base_subdomain_generator_t::scalar_t;
-    using jet_t = base_subdomain_generator_t::jet_t;
-    using subdomain_t = base_subdomain_generator_t::subdomain_t;
-    using function_sample_t = base_subdomain_generator_t::function_sample_t;
-    using unsigned_t = base_subdomain_generator_t::unsigned_t;
+    using x_t = subdomain_factory_t::x_t;
+    using scalar_t = subdomain_factory_t::scalar_t;
+    using jet_t = subdomain_factory_t::jet_t;
+    using subdomain_t = subdomain_factory_t::subdomain_t;
+    using function_sample_t = subdomain_factory_t::function_sample_t;
+    using unsigned_t = subdomain_factory_t::unsigned_t;
 
-    [[no_unique_address]] base_subdomain_generator_t generate_base_subdomain;
+    [[no_unique_address]] stride_calculator_t calculate_stride;
+    [[no_unique_address]] subdomain_factory_t create_subdomain;
     [[no_unique_address]] interval_factory_t create_interval;
 
     static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
-    auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t left, x_t const& right,
-        auto& refinement_pool) const -> function_sample_t
+    auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t const& span_left,
+        x_t const& span_right, auto& refinement_pool) const -> function_sample_t
     {
-        assert(left <= right && "critical points must be strictly monotonically increasing");
-        assert((static_cast<unsigned_t>(right.value) & align_mask) == 0
+        assert(span_left <= span_right && "critical points must be strictly monotonically increasing");
+        assert((static_cast<unsigned_t>(span_right.value) & align_mask) == 0
             && "critical point not aligned to min segment width");
 
-        while (left < right)
+        auto subdomain_left = span_left;
+        while (subdomain_left < span_right)
         {
             assert(refinement_pool.size() < max_segment_count && "critical point partitioning exceeded segment budget");
 
-            auto const result = generate_base_subdomain(sample_target_function, left_sample, left, right);
-            refinement_pool.push(create_interval(sample_target_function, result.subdomain));
+            auto const stride = calculate_stride(subdomain_left, span_right);
+            assert(std::has_single_bit(static_cast<unsigned_t>(stride.value)) && "stride must be dyadic");
+            assert(stride.value >= 2 && "stride midpoint must be representable");
 
-            left = result.next_x;
-            left_sample = result.subdomain.right;
+            auto const subdomain_right = subdomain_left + stride;
+            auto const subdomain
+                = create_subdomain(sample_target_function, left_sample, subdomain_left, subdomain_right);
+            refinement_pool.push(create_interval(sample_target_function, subdomain));
+
+            subdomain_left += stride;
+            left_sample = subdomain.right;
         }
 
         return left_sample;
     }
 };
+
+} // namespace seed
+
+namespace {
 
 /// seeds queue with initial set of segments
 ///
@@ -112,12 +125,12 @@ template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_ma
     {
         auto& workspace = state.workspace;
         auto& refinement_pool = workspace.refinement_pool;
+        assert(refinement_pool.empty());
 
         // start at 0
         auto left_critical_point = x_t{0};
         auto left_function_sample
             = sample_target_function(jet_t{from_fixed<scalar_t>(left_critical_point), scalar_t{1}});
-        assert(refinement_pool.empty());
 
         // proceed through pairs of critical points
         for (auto const& right_critical_point : critical_points)
@@ -360,10 +373,10 @@ TEST(spline_generator, poc)
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
-    using dyadic_stride_calculator_t = dyadic_stride_calculator_t<x_t>;
-    using base_subdomain_generator_t = base_subdomain_generator_t<subdomain_t, dyadic_stride_calculator_t>;
-    using span_decomposer_t
-        = span_decomposer_t<base_subdomain_generator_t, interval_factory_t, max_segment_count, log2_min_width>;
+    using dyadic_stride_calculator_t = seed::dyadic_stride_calculator_t<x_t>;
+    using subdomain_factory_t = seed::subdomain_factory_t<x_t, subdomain_t>;
+    using span_decomposer_t = seed::span_decomposer_t<dyadic_stride_calculator_t, subdomain_factory_t,
+        interval_factory_t, max_segment_count, log2_min_width>;
     using refinement_pool_seeder_t
         = refinement_pool_seeder_t<typestates_t::unseeded_t, span_decomposer_t, log2_domain_max>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
@@ -386,7 +399,7 @@ TEST(spline_generator, poc)
     auto generate_spline = spline_generator_t
     {
         refinement_pool_seeder_t{
-            .decompose_span{.generate_base_subdomain = {}, .create_interval = create_interval},
+            .decompose_span{.calculate_stride = {}, .create_subdomain = {}, .create_interval = create_interval},
         },
         refiner_t
         {
@@ -405,7 +418,7 @@ TEST(spline_generator, poc)
         return 2.1 * log1p(x);
     };
 
-    auto const condition_critical_points = critical_point_conditioner_t<x_t, log2_min_width>{};
+    auto const condition_critical_points = seed::critical_point_conditioner_t<x_t, log2_min_width>{};
 
     auto spline = spline_t{};
     generate_spline(spline, std::ref(target_function),

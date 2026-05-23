@@ -10,7 +10,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/math/limits.hpp>
 
-namespace crv::spline {
+namespace crv::spline::seed {
 
 /// calculates maximal dyadic stride from a current position toward a target position
 ///
@@ -25,12 +25,8 @@ namespace crv::spline {
 /// Alignment is calculated bitwise. Fit is the largest power of two less than or equal to the remaining distance. The
 /// result is the minimum of the both. This way, the domain is traversed by stepping up the bisection tree to the
 /// largest valid block, and then down as it converges on the target.
-template <is_fixed t_x_t> struct dyadic_stride_calculator_t
+template <is_fixed x_t> struct dyadic_stride_calculator_t
 {
-    using x_t = t_x_t;
-    using signed_t = x_t::value_t;
-    using unsigned_t = make_unsigned_t<signed_t>;
-
     static constexpr auto operator()(x_t const current, x_t const target) noexcept -> x_t
     {
         // crack fixed
@@ -38,6 +34,8 @@ template <is_fixed t_x_t> struct dyadic_stride_calculator_t
         auto const target_value = target.value;
 
         // apply bitwise alignment to underlying
+        using signed_t = x_t::value_t;
+        using unsigned_t = make_unsigned_t<signed_t>;
         auto const max_align_step = (current_value == 0) ? target_value : (current_value & -current_value);
         auto const max_fit_step
             = static_cast<signed_t>(std::bit_floor(static_cast<unsigned_t>(target_value - current_value)));
@@ -47,4 +45,4 @@ template <is_fixed t_x_t> struct dyadic_stride_calculator_t
     }
 };
 
-} // namespace crv::spline
+} // namespace crv::spline::seed

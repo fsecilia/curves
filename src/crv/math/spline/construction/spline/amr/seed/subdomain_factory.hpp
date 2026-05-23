@@ -12,58 +12,40 @@
 #include <crv/math/jet/jet.hpp>
 #include <bit>
 
-namespace crv::spline {
+namespace crv::spline::seed {
 
-/// generates a subdomain from a stride
+/// creates subdomains used to seed the refinement pool
 ///
-/// This type generates subdomains for intervals that seed the refinement pool. It uses a stride calculator to determine
-/// where to place the next subdomain given the left x and the target x.
-template <typename t_subdomain_t, typename stride_calculator_t> struct base_subdomain_generator_t
+/// This differs from a standard factory because of what information is available during seeding. The generated
+/// subdomains are sequential, so the left sample is the previous subdomain's right sample. Widths are determined by a
+/// dyadic stride rather than by pure bisection, so log2_width is not known and must be calculated.
+template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
 {
+    using x_t = t_x_t;
     using subdomain_t = t_subdomain_t;
 
     using scalar_t = subdomain_t::scalar_t;
     using jet_t = subdomain_t::jet_t;
     using function_sample_t = subdomain_t::function_sample_t;
-    using x_t = stride_calculator_t::x_t;
-
     using signed_t = x_t::value_t;
     using unsigned_t = make_unsigned_t<signed_t>;
 
-    struct result_t
+    static constexpr auto operator()(auto const& sample_target_function, function_sample_t const& left_sample,
+        x_t const& left, x_t const& right) noexcept -> subdomain_t
     {
-        subdomain_t subdomain;
-        x_t next_x;
+        auto const midpoint = (left + right) / 2;
+        auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
+        auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint), scalar_t{1}});
 
-        constexpr auto operator==(result_t const&) const noexcept -> bool = default;
-    };
+        auto const log2_width = std::countr_zero(static_cast<unsigned_t>((right - left).value)) - x_t::frac_bits;
 
-    [[no_unique_address]] stride_calculator_t calculate_stride;
-
-    constexpr auto operator()(auto const& sample_target_function, function_sample_t const& current_sample,
-        x_t const& current_x, x_t const& target_x) const -> result_t
-    {
-        auto const stride = calculate_stride(current_x, target_x);
-
-        assert(std::has_single_bit(static_cast<unsigned_t>(stride.value)) && "stride must be dyadic");
-        assert(stride.value >= 2 && "stride midpoint must be representable");
-
-        auto const next_x = current_x + stride;
-        auto const midpoint_x = current_x + (stride >> 1);
-
-        auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(next_x), scalar_t{1}});
-        auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
-
-        return result_t{
-            .subdomain = subdomain_t{
-                .left = current_sample,
-                .midpoint = midpoint_sample,
-                .right = right_sample,
-                .log2_width = std::countr_zero(static_cast<unsigned_t>(stride.value)) - x_t::frac_bits,
-            },
-            .next_x = next_x
+        return {
+            .left = left_sample,
+            .midpoint = midpoint_sample,
+            .right = right_sample,
+            .log2_width = log2_width,
         };
     }
 };
 
-} // namespace crv::spline
+} // namespace crv::spline::seed
