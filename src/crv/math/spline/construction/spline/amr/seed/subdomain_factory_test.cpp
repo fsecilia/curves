@@ -60,11 +60,11 @@ struct spline_seed_subdomain_factory_test_t : TestWithParam<vector_t>
 TEST_P(spline_seed_subdomain_factory_test_t, calculates_subdomain_and_stride)
 {
     auto const left_sample = to_sample(vector.left);
-    auto const left_fixed = to_fixed<x_t>(vector.left);
-    auto const right_fixed = to_fixed<x_t>(vector.expected_right);
+    auto const left = to_fixed<x_t>(vector.left);
+    auto const right = to_fixed<x_t>(vector.expected_right);
+    auto const stride = right - left;
 
-    auto const actual
-        = sut([](jet_t input) noexcept { return function_sample_t{input}; }, left_sample, left_fixed, right_fixed);
+    auto const actual = sut([](jet_t input) noexcept { return function_sample_t{input}; }, left_sample, left, stride);
 
     auto const expected = subdomain_t{
         .left = left_sample,
