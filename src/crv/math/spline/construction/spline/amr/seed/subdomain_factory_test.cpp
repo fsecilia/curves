@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "base_subdomain_generator.hpp"
+#include "subdomain_factory.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
