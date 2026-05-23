@@ -31,13 +31,15 @@ template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
     using unsigned_t = make_unsigned_t<signed_t>;
 
     static constexpr auto operator()(auto const& sample_target_function, function_sample_t const& left_sample,
-        x_t const& left, x_t const& right) noexcept -> subdomain_t
+        x_t const& left, x_t const& stride) noexcept -> subdomain_t
     {
+        auto const right = left + stride;
         auto const midpoint = (left + right) / 2;
+
         auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
         auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint), scalar_t{1}});
 
-        auto const log2_width = std::countr_zero(static_cast<unsigned_t>((right - left).value)) - x_t::frac_bits;
+        auto const log2_width = std::countr_zero(static_cast<unsigned_t>(stride.value)) - x_t::frac_bits;
 
         return {
             .left = left_sample,

@@ -75,28 +75,27 @@ struct span_decomposer_t
     static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
     static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
 
-    auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t const& span_left,
-        x_t const& span_right, auto& refinement_pool) const -> function_sample_t
+    constexpr auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t left,
+        x_t const& right, auto& refinement_pool) const -> function_sample_t
     {
-        assert(span_left <= span_right && "critical points must be strictly monotonically increasing");
-        assert((static_cast<unsigned_t>(span_right.value) & align_mask) == 0
+        assert(left <= right && "critical points must be strictly monotonically increasing");
+        assert((static_cast<unsigned_t>(right.value) & align_mask) == 0
             && "critical point not aligned to min segment width");
 
-        auto subdomain_left = span_left;
-        while (subdomain_left < span_right)
+        // proceed in strides until subdomains cover span
+        while (left < right)
         {
             assert(refinement_pool.size() < max_segment_count && "critical point partitioning exceeded segment budget");
 
-            auto const stride = calculate_stride(subdomain_left, span_right);
+            auto const stride = calculate_stride(left, right);
             assert(std::has_single_bit(static_cast<unsigned_t>(stride.value)) && "stride must be dyadic");
             assert(stride.value >= 2 && "stride midpoint must be representable");
 
-            auto const subdomain_right = subdomain_left + stride;
-            auto const subdomain
-                = create_subdomain(sample_target_function, left_sample, subdomain_left, subdomain_right);
-            refinement_pool.push(create_interval(sample_target_function, subdomain));
+            auto const subdomain = create_subdomain(sample_target_function, left_sample, left, stride);
+            auto const interval = create_interval(sample_target_function, subdomain);
+            refinement_pool.push(interval);
 
-            subdomain_left += stride;
+            left += stride;
             left_sample = subdomain.right;
         }
 
