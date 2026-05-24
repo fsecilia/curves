@@ -30,6 +30,7 @@
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
 #include <crv/math/spline/construction/segment/segment_quantizer.hpp>
 #include <crv/math/spline/construction/segment/shift_planner.hpp>
+#include <crv/math/spline/construction/spline/amr/assembler.hpp>
 #include <crv/math/spline/construction/spline/amr/refinement_pool_seeder.hpp>
 #include <crv/math/spline/construction/spline/amr/refiner.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp>
@@ -54,65 +55,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <typename typestate_t, typename interval_t, typename t_tangent_extender_t, int_t domain_end> struct assembler_t
-{
-    using tangent_extender_t = t_tangent_extender_t;
-
-    [[no_unique_address]] tangent_extender_t extend_tangent;
-
-    template <typename spline_t> auto operator()(typestate_t&& state, spline_t& spline) const -> void
-    {
-        auto& workspace = state.workspace;
-        auto& completed_intervals = workspace.completed_intervals;
-        assert(!completed_intervals.empty());
-
-        std::ranges::sort(completed_intervals, std::ranges::less{},
-            [](interval_t const& interval) noexcept { return interval.subdomain.left.x; });
-
-        using segment_locator_t = spline_t::segment_locator_t;
-        using segments_t = spline_t::segments_t;
-        using segment_t = interval_t::segment_t;
-        using x_t = segment_t::x_t;
-
-        auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
-        assert(segment_locator_t::max_segment_count >= segment_count);
-        static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segment_count);
-
-        segments_t segments;
-        using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
-        sorted_keys_t sorted_keys;
-
-        segments[0] = completed_intervals[0].segment;
-        for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
-        {
-            auto const& interval = completed_intervals[segment_index];
-            segments[segment_index] = interval.segment;
-            sorted_keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
-        }
-
-        // pad keys
-        auto const x_max = x_t{domain_end};
-        for (auto key_padding_index = segment_count; key_padding_index < segment_locator_t::total_key_count;
-            ++key_padding_index)
-        {
-            sorted_keys[key_padding_index] = x_max;
-        }
-
-        static_assert(std::same_as<typename segments_t::value_type, typename spline_t::segment_t>);
-        static_assert(std::same_as<segment_locator_t, typename spline_t::segment_locator_t>);
-        static_assert(std::same_as<typename segment_locator_t::x_t, x_t>);
-
-        // extend final tangent
-        auto const final_interval = completed_intervals[segment_count - 1];
-        auto const extended_tangent = extend_tangent(final_interval);
-
-        completed_intervals.clear();
-
-        auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline = spline_t{typename spline_t::payload_t{segment_locator, segments, extended_tangent}};
-    }
-};
 
 template <std::floating_point scalar_t, typename x_t, typename spline_t, typename typestates_t,
     typename refinement_pool_t, typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t,
@@ -232,7 +174,8 @@ TEST(spline_generator, poc)
     using typestates_t = typestates_t<workspace_t>;
     using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
-    using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_end>;
+    using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, interval_sorter_t, interval_unzipper_t,
+        key_padder_t, tangent_extender_t, domain_end>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using dyadic_stride_calculator_t = seed::dyadic_stride_calculator_t<x_t>;
     using subdomain_factory_t = seed::subdomain_factory_t<x_t, subdomain_t>;
