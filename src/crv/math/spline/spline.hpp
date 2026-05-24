@@ -28,49 +28,58 @@ public:
 
     using segments_t = std::array<segment_t, max_segment_count>;
 
-    constexpr spline_t() noexcept : segment_locator_{}, segments_{}, prev_segment_index_{} {}
-
-    /// \pre 0 < locator.segment_count() <= max_segment_count
-    constexpr spline_t(segment_locator_t const& locator, segments_t const& segments,
-        extended_tangent_t const& extended_tangent, int_t prev_segment_index = 0) noexcept
-        : segment_locator_{locator}, segments_{segments}, extend_final_tangent_{extended_tangent},
-          prev_segment_index_{prev_segment_index}
+    /// wire format
+    struct payload_t
     {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<spline_t>);
-    }
+        // these are ordered for overall cache-friendliness in operator ()
+        segment_locator_t segment_locator{};
+        alignas(64) segments_t segments{}; // *must* be aligned or the prefetching scheme is useless
+        extended_tangent_t extend_final_tangent{};
+    };
+
+    /// public payload
+    ///
+    /// This type is large, at least 10kiB. Making this data public saves an extra 10k copy on assign. It can't be a
+    /// pointer or it will cause cache misses in the kernel. The composed types protect their own invariants.
+    payload_t payload{};
+
+    constexpr spline_t() noexcept = default;
+    constexpr spline_t(payload_t payload) noexcept : payload{std::move(payload)} {}
 
     /// \pre 0 <= x
     constexpr auto operator()(x_t x) const noexcept -> y_t
     {
         assert(x_t{0} <= x && "spline_t: input out of bounds");
 
-        auto const x_max = segment_locator_.x_max();
+        auto const x_max = payload.segment_locator.x_max();
 
         // this will need to change to use an extension segment that isn't part of the array
-        if (x >= x_max) return extend_final_tangent_(x - x_max);
+        if (x >= x_max) return payload.extend_final_tangent(x - x_max);
 
-        auto const location = segment_locator_.locate(x);
-        assert(0 <= location.index && location.index < segment_locator_.segment_count()
+        auto const location = payload.segment_locator.locate(x);
+        assert(0 <= location.index && location.index < payload.segment_locator.segment_count()
             && "spline_t: located segment index out of bounds");
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
 
         if !consteval { prev_segment_index_ = location.index; }
 
-        auto const& segment = segments_[location.index];
+        auto const& segment = payload.segments[location.index];
         return segment(x - location.origin);
     }
 
     /// validates data the driver receives
     constexpr auto is_valid() const noexcept -> bool
     {
-        auto const segment_count = segment_locator_.segment_count();
+        // this type goes over the ioctl boundary, so it must be trivially copyable
+        static_assert(std::is_trivially_copyable_v<spline_t>);
+
+        auto const segment_count = payload.segment_locator.segment_count();
 
         // prev_segment_index_ must be in [0, locator.segment_count()); locator.is_valid() owns the count's range check
         if (prev_segment_index_ < 0 || segment_count <= prev_segment_index_) return false;
 
         // dispatch to segment locator
-        if (!segment_locator_.is_valid()) return false;
+        if (!payload.segment_locator.is_valid()) return false;
 
         return true;
     }
@@ -78,8 +87,8 @@ public:
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
         prefetch_segments(prefetcher);
-        segment_locator_.prefetch(prefetcher);
-        prefetcher.prefetch(&extend_final_tangent_);
+        payload.segment_locator.prefetch(prefetcher);
+        prefetcher.prefetch(&payload.extend_final_tangent);
     }
 
 private:
@@ -89,7 +98,7 @@ private:
     auto prefetch_segments(auto const& prefetcher) const noexcept -> void
     {
         // these casts are required to prevent ub when forming addresses outside of the array
-        auto const base_address = reinterpret_cast<std::uintptr_t>(segments_.data());
+        auto const base_address = reinterpret_cast<std::uintptr_t>(payload.segments.data());
         auto const offset = sizeof(segment_t);
 
         // prefetch most recent segment
@@ -102,11 +111,6 @@ private:
         prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ - 1) * offset));
         prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ + 1) * offset));
     }
-
-    // these are ordered for overall cache-friendliness in operator ()
-    segment_locator_t segment_locator_{};
-    alignas(64) segments_t segments_{}; // *must* be aligned or the prefetching scheme is useless
-    extended_tangent_t extend_final_tangent_{};
 
     mutable int_t prev_segment_index_ = 0;
 };

@@ -68,7 +68,7 @@ using sut_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
 
 constexpr auto segments = std::array<segment_t, sut_t::max_segment_count>{{{10}, {20}, {30}}};
 constexpr auto extended_tangent = extended_tangent_t{-40};
-constexpr auto const sut = sut_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent};
+constexpr auto const sut = sut_t{sut_t::payload_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent}};
 
 // x in [0, 1] -> base 10
 static_assert(sut(0) == 10);
@@ -156,7 +156,7 @@ struct spline_prefetch_test_t : Test
     };
 
     using sut_t = spline_t<segment_t, extended_tangent_t, locator_t>;
-    sut_t sut{locator_t{.mock = &mock_locator}, {}, {}};
+    sut_t sut{sut_t::payload_t{locator_t{.mock = &mock_locator}, {}, {}}};
 
     static constexpr auto expected_segment = segment_count - 1;
     static constexpr auto expected_fetch_distance = 2 * sizeof(segment_t);
@@ -237,12 +237,13 @@ struct spline_death_test_t : Test
 
 TEST_F(spline_death_test_t, establish_valid_case)
 {
-    static_cast<void>(sut_t{segment_locator_t{}, segments, extended_tangent});
+    static_cast<void>(sut_t{sut_t::payload_t{segment_locator_t{}, segments, extended_tangent}});
 }
 
 TEST_F(spline_death_test_t, call_operator_catches_negative_x)
 {
-    EXPECT_DEATH((sut_t{segment_locator_t{}, segments, extended_tangent}(x_t{-1})), "input out of bounds");
+    EXPECT_DEATH(
+        (sut_t{sut_t::payload_t{segment_locator_t{}, segments, extended_tangent}}(x_t{-1})), "input out of bounds");
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -270,21 +271,21 @@ struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = -1}, segments, extended_tangent};
+    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.index = -1}, segments, extended_tangent}};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_index)
 {
-    auto const sut = sut_t{malicious_locator_t{.index = 127}, segments, extended_tangent};
+    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.index = 127}, segments, extended_tangent}};
 
     EXPECT_DEATH(sut(0), "index out of bounds");
 }
 
 TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 {
-    auto const sut = sut_t{malicious_locator_t{.origin = -1}, segments, extended_tangent};
+    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.origin = -1}, segments, extended_tangent}};
 
     EXPECT_DEATH(sut(0), "origin out of range");
 }
@@ -292,7 +293,8 @@ TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
 TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
 {
     auto const x = x_t{x_max - 2};
-    auto const sut = sut_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, extended_tangent};
+    auto const sut
+        = sut_t{sut_t::payload_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, extended_tangent}};
 
     EXPECT_DEATH(sut(x), "origin out of range");
 }
