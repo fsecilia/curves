@@ -81,7 +81,7 @@ struct param_t
 {
     integrand_t integrand;
     integrand_t expected_antiderivative;
-    int_t max_segments;
+    int_t max_segment_count;
 
     friend auto operator<<(std::ostream& out, param_t const& src) -> std::ostream&
     {
@@ -94,7 +94,7 @@ struct quadrature_integration_test_t : TestWithParam<param_t>
 {
     integrand_t const& integrand = GetParam().integrand;
     integrand_t const& expected_antiderivative = GetParam().expected_antiderivative;
-    int_t const max_segments = GetParam().max_segments;
+    int_t const max_segment_count = GetParam().max_segment_count;
 
     static constexpr auto tolerance = scalar_t{1e-9};
 
@@ -107,7 +107,7 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 
     EXPECT_LT(result.achieved_error, tolerance);
     EXPECT_LT(result.max_error, tolerance);
-    EXPECT_LE(result.antiderivative.segment_count(), max_segments);
+    EXPECT_LE(result.antiderivative.segment_count(), max_segment_count);
 
     auto const& antiderivative = result.antiderivative;
     auto const input_primals

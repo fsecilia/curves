@@ -30,7 +30,7 @@ public:
 
     constexpr spline_t() noexcept : segment_locator_{}, segments_{}, prev_segment_index_{} {}
 
-    /// \pre 0 < locator.segment_count() <= max_segments
+    /// \pre 0 < locator.segment_count() <= max_segment_count
     constexpr spline_t(segment_locator_t const& locator, segments_t const& segments,
         extended_tangent_t const& extended_tangent, int_t prev_segment_index = 0) noexcept
         : segment_locator_{locator}, segments_{segments}, extend_final_tangent_{extended_tangent},
