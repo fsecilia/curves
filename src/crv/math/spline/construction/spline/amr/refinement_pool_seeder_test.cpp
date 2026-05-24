@@ -20,9 +20,9 @@ struct spline_refinement_pool_seeder_test_t : Test
 
     struct refinement_pool_t
     {
-        bool empty_;
+        bool empty_ = true;
 
-        auto empty() const noexcept -> bool { return empty_; }
+        constexpr auto empty() const noexcept -> bool { return empty_; }
     };
 
     struct workspace_t
