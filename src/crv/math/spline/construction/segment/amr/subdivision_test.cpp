@@ -60,7 +60,7 @@ constexpr auto parent_interval = interval_t{.subdomain = {.id = 5}, .factory_id 
 
 constexpr auto sut = subdivider_t<subdivision_t, bisector_t, interval_factory_t>{.bisect = {}, .create_interval = {}};
 
-constexpr auto actual = sut(parent_interval, mock_sampler);
+constexpr auto actual = sut(mock_sampler, parent_interval);
 
 // left interval
 static_assert(actual.left.subdomain.id == 18);
