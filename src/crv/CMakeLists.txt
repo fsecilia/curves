@@ -50,6 +50,7 @@ target_sources(lib PRIVATE
     math/spline/construction/spline/amr/seed/span_decomposer.hpp
     math/spline/construction/spline/amr/seed/subdomain_factory.hpp
     math/spline/construction/spline/amr/refinement_pool_seeder.hpp
+    math/spline/construction/spline/amr/refiner.hpp
     math/spline/construction/spline/amr/typestates.hpp
     math/spline/construction/spline/amr/workspace.hpp
     math/spline/construction/spline/tangent_extension.hpp
@@ -172,6 +173,7 @@ if (enable_testing)
         math/spline/construction/spline/amr/seed/span_decomposer_test.cpp
         math/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
         math/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
+        math/spline/construction/spline/amr/refiner_test.cpp
         math/spline/construction/spline/amr/workspace_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
         math/spline/construction/weight_functions/exponential_decay_test.cpp
