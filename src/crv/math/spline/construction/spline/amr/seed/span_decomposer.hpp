@@ -26,13 +26,13 @@ struct span_decomposer_t
     [[no_unique_address]] subdomain_factory_t create_subdomain;
     [[no_unique_address]] interval_factory_t create_interval;
 
-    static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
-    static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
-    static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
-
     constexpr auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t left,
         x_t const& right, auto& refinement_pool) const -> function_sample_t
     {
+        static constexpr auto align_shift = int_cast<int_t>(x_t::frac_bits + log2_min_width);
+        static constexpr auto align_mask = (unsigned_t{1} << align_shift) - 1;
+        static_assert(align_shift >= 0, "x_t precision cannot represent log2_min_width");
+
         assert(left < right && "critical points must be unique and strictly monotonically increasing");
         assert((static_cast<unsigned_t>(right.value) & align_mask) == 0
             && "critical point not aligned to min segment width");
