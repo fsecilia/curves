@@ -21,9 +21,9 @@ struct workspace_test_t : Test
 
         constexpr auto operator<=>(interval_t const&) const noexcept -> auto = default;
     };
-    static constexpr auto max_segments = 256;
+    static constexpr auto max_segment_count = 256;
 
-    using sut_t = workspace_t<interval_t, std::less<>, max_segments>;
+    using sut_t = workspace_t<interval_t, std::less<>, max_segment_count>;
 };
 
 TEST_F(workspace_test_t, clear_forwards_to_members)

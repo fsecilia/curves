@@ -13,7 +13,7 @@
 namespace crv::spline {
 
 /// mutable state for adaptive mesh refinement
-template <typename t_interval_t, typename t_predicate_t, int_t max_segments> struct workspace_t
+template <typename t_interval_t, typename t_predicate_t, int_t max_segment_count> struct workspace_t
 {
     using interval_t = t_interval_t;
     using predicate_t = t_predicate_t;
@@ -31,8 +31,8 @@ template <typename t_interval_t, typename t_predicate_t, int_t max_segments> str
 
     constexpr workspace_t()
     {
-        completed_intervals.reserve(max_segments);
-        refinement_pool.reserve(max_segments);
+        completed_intervals.reserve(max_segment_count);
+        refinement_pool.reserve(max_segment_count);
     }
 };
 
