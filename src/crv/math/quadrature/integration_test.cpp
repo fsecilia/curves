@@ -64,7 +64,7 @@ struct integrand_t
 
 using integral_t = integral_t<integrand_t, rule_t>;
 
-constexpr auto domain_max = scalar_t{256.0};
+constexpr auto domain_end = scalar_t{256.0};
 constexpr auto depth_limit = int_t{64};
 constexpr auto empty_critical_points = std::array<scalar_t, 0>{};
 
@@ -103,7 +103,7 @@ struct quadrature_integration_test_t : TestWithParam<param_t>
 
 TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 {
-    auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
+    auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
 
     EXPECT_LT(result.achieved_error, tolerance);
     EXPECT_LT(result.max_error, tolerance);
@@ -111,7 +111,7 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 
     auto const& antiderivative = result.antiderivative;
     auto const input_primals
-        = std::array{0.0, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 100.0, domain_max / 3.0, domain_max / 2.0, domain_max};
+        = std::array{0.0, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 100.0, domain_end / 3.0, domain_end / 2.0, domain_end};
     auto const input_tangent = 2.1;
 
     for (auto const x : input_primals)
@@ -161,7 +161,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
         = [](scalar_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
 
     auto integrator = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
-    auto const result = integrator(integral_t{bump, rule_t{}}, domain_max, empty_critical_points);
+    auto const result = integrator(integral_t{bump, rule_t{}}, domain_end, empty_critical_points);
 
     EXPECT_LT(result.achieved_error, tolerance);
 
@@ -170,7 +170,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     EXPECT_GT(result.antiderivative.segment_count(), 8);
 
     auto const& numeric_antiderivative = result.antiderivative;
-    for (auto const x : std::array{0.0, 64.0, 120.0, 127.5, 128.0, 128.5, 136.0, 200.0, domain_max})
+    for (auto const x : std::array{0.0, 64.0, 120.0, 127.5, 128.0, 128.5, 136.0, 200.0, domain_end})
     {
         EXPECT_CLOSE(analytic_antiderivative(x), numeric_antiderivative(x), 1e-9, 1e-12);
     }
@@ -199,13 +199,13 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
     auto blind = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
     auto guided = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
 
-    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_max, empty_critical_points);
-    auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_max, std::array{kink_location});
+    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_end, empty_critical_points);
+    auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_end, std::array{kink_location});
 
     EXPECT_LT(blind_result.achieved_error, tolerance);
     EXPECT_LT(guided_result.achieved_error, tolerance);
 
-    for (auto const x : std::array{0.0, 1.0, 3.0, 5.0, 100.0, domain_max})
+    for (auto const x : std::array{0.0, 1.0, 3.0, 5.0, 100.0, domain_end})
     {
         EXPECT_CLOSE(analytic_antiderivative(x), blind_result.antiderivative(x), 1e-9, 1e-12);
         EXPECT_CLOSE(analytic_antiderivative(x), guided_result.antiderivative(x), 1e-9, 1e-12);
@@ -235,7 +235,7 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
     for (auto const tol : tolerances)
     {
         auto integrator = adaptive_integrator_t<scalar_t>{tol, depth_limit};
-        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
+        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
 
         EXPECT_LT(result.achieved_error, tol);
         EXPECT_LE(result.achieved_error, prev_error);
@@ -259,13 +259,13 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
     auto bare = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
     auto split = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
 
-    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_max, empty_critical_points);
-    auto const split_result = split(integral_t{integrand, rule_t{}}, domain_max, std::array{32.0, 64.0, 128.0});
+    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
+    auto const split_result = split(integral_t{integrand, rule_t{}}, domain_end, std::array{32.0, 64.0, 128.0});
 
     auto const& bare_antiderivative = bare_result.antiderivative;
     auto const& split_antiderivative = split_result.antiderivative;
 
-    for (auto const x : std::array{0.0, 1.0, 32.0, 64.0, 128.0, 200.0, domain_max})
+    for (auto const x : std::array{0.0, 1.0, 32.0, 64.0, 128.0, 200.0, domain_end})
     {
         EXPECT_CLOSE(bare_antiderivative(x), split_antiderivative(x), 1e-10, 1e-12);
     }

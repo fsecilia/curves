@@ -139,13 +139,13 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, middle_interval_jet)
 }
 
 // test right edge of the domain wsith scalar
-TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max_scalar)
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_end_scalar)
 {
     test_call(3.0, 3.0, 8.5);
 }
 
 // test right edge of the domain wsith jet
-TEST_F(quadrature_antiderivative_test_small_cache_t, domain_max_jet)
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_end_jet)
 {
     test_call(jet_t{3.0, input_tangent}, 3.0, 8.5);
 }
@@ -244,13 +244,13 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, interior_jet)
 }
 
 // test right edge of the domain with scalar
-TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max_scalar)
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_end_scalar)
 {
     test_call(1.5, 1.5, 3.0);
 }
 
 // test right edge of the domain with jet
-TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_max_jet)
+TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_end_jet)
 {
     test_call(jet_t{1.5, input_tangent}, 1.5, 3.0);
 }

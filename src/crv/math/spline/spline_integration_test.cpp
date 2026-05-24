@@ -58,7 +58,7 @@ namespace {
 /// seeds queue with initial set of segments
 ///
 /// This type splits the mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_max> struct refinement_pool_seeder_t
+template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_end> struct refinement_pool_seeder_t
 {
     using x_t = span_decomposer_t::x_t;
     using scalar_t = span_decomposer_t::scalar_t;
@@ -88,7 +88,7 @@ template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_ma
         }
 
         // finish with end of domain
-        auto const domain_end = x_t{1 << log2_domain_max};
+        auto const domain_end = x_t{1 << log2_domain_end};
         decompose_span(sample_target_function, left_function_sample, left_critical_point, domain_end, refinement_pool);
 
         return typename typestate_t::next_t{workspace};
@@ -141,7 +141,7 @@ struct refiner_t
     }
 };
 
-template <typename typestate_t, typename interval_t, typename t_tangent_extender_t, int_t domain_max> struct assembler_t
+template <typename typestate_t, typename interval_t, typename t_tangent_extender_t, int_t domain_end> struct assembler_t
 {
     using tangent_extender_t = t_tangent_extender_t;
 
@@ -178,7 +178,7 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
         }
 
         // pad keys
-        auto const x_max = x_t{domain_max};
+        auto const x_max = x_t{domain_end};
         for (auto key_padding_index = segment_count; key_padding_index < segment_locator_t::total_key_count;
             ++key_padding_index)
         {
@@ -259,8 +259,8 @@ TEST(spline_generator, poc)
 
     constexpr auto depth_max = 4;
     constexpr auto max_segment_count = 1 << (depth_max * 2);
-    constexpr auto log2_domain_max = 8;
-    constexpr auto domain_max = 1 << log2_domain_max;
+    constexpr auto log2_domain_end = 8;
+    constexpr auto domain_end = 1 << log2_domain_end;
     constexpr auto log2_min_width = -10;
     constexpr auto global_tolerance = 1e-10; // should max against integral
 
@@ -318,14 +318,14 @@ TEST(spline_generator, poc)
     using typestates_t = typestates_t<workspace_t>;
     using extended_tangent_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
     using tangent_extender_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
-    using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_max>;
+    using assembler_t = assembler_t<typestates_t::unassembled_t, interval_t, tangent_extender_t, domain_end>;
     using refiner_t = refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using dyadic_stride_calculator_t = seed::dyadic_stride_calculator_t<x_t>;
     using subdomain_factory_t = seed::subdomain_factory_t<x_t, subdomain_t>;
     using span_decomposer_t = seed::span_decomposer_t<dyadic_stride_calculator_t, subdomain_factory_t,
         interval_factory_t, max_segment_count, log2_min_width>;
     using refinement_pool_seeder_t
-        = refinement_pool_seeder_t<typestates_t::unseeded_t, span_decomposer_t, log2_domain_max>;
+        = refinement_pool_seeder_t<typestates_t::unseeded_t, span_decomposer_t, log2_domain_end>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
     using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
         refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
@@ -374,7 +374,7 @@ TEST(spline_generator, poc)
 #if 1
     auto x_fixed = x_t{0};
     auto const sample_count = 255;
-    auto const dx = x_t{domain_max} / sample_count;
+    auto const dx = x_t{domain_end} / sample_count;
     for (auto sample = 0; sample < sample_count; ++sample, x_fixed += dx)
     {
         auto const x_real = from_fixed<scalar_t>(x_fixed);

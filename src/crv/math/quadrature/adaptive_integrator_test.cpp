@@ -92,7 +92,7 @@ struct quadrature_adaptive_integrator_test : Test
         virtual ~mock_stack_seeder_t() = default;
 
         MOCK_METHOD(void, seed,
-            (stack_t & stack, integral_t const& integral, scalar_t domain_max, scalar_t global_tolerance,
+            (stack_t & stack, integral_t const& integral, scalar_t domain_end, scalar_t global_tolerance,
                 critical_points_t const& critical_points),
             (const));
     };
@@ -102,16 +102,16 @@ struct quadrature_adaptive_integrator_test : Test
     {
         mock_stack_seeder_t* mock = nullptr;
 
-        auto seed(stack_t& stack, integral_t const& integral, scalar_t domain_max, scalar_t global_tolerance,
+        auto seed(stack_t& stack, integral_t const& integral, scalar_t domain_end, scalar_t global_tolerance,
             critical_points_t const& critical_points) const -> void
         {
-            mock->seed(stack, integral, domain_max, global_tolerance, critical_points);
+            mock->seed(stack, integral, domain_end, global_tolerance, critical_points);
         }
     };
 
     static constexpr auto tolerance = 1e-12;
     static constexpr auto depth_limit = 64;
-    static constexpr auto domain_max = 256;
+    static constexpr auto domain_end = 256;
     static constexpr auto integral = integral_t{integrand, rule_t{}};
     static constexpr auto achieved_error = 3.25e-10;
     static constexpr auto max_error = 6.98e-8;
@@ -127,7 +127,7 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
     auto const seq = InSequence{};
 
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
-    EXPECT_CALL(mock_stack_seeder, seed(_, integral, domain_max, tolerance, critical_points));
+    EXPECT_CALL(mock_stack_seeder, seed(_, integral, domain_end, tolerance, critical_points));
     EXPECT_CALL(mock_subdivider, run(_, integral, bisector, Ref(mock_antiderivative_builder), depth_limit));
 
     auto const expected_result
@@ -135,7 +135,7 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
     EXPECT_CALL(mock_antiderivative_builder, finalize(integral)).WillOnce(Return(expected_result));
 
     [[maybe_unused]] result_t actual_result
-        = sut(integral, antiderivative_builder_t{&mock_antiderivative_builder}, domain_max, critical_points);
+        = sut(integral, antiderivative_builder_t{&mock_antiderivative_builder}, domain_end, critical_points);
 
     EXPECT_EQ(expected_result, actual_result);
 }
