@@ -38,13 +38,11 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/amr/residual_estimator.hpp
     math/spline/construction/segment/amr/subdivision_predicate.hpp
     math/spline/construction/segment/amr/subdivision.hpp
-    math/spline/construction/segment/quantization/mantissa_quantizer.hpp
-    math/spline/construction/segment/quantization/radix_aligner.hpp
-    math/spline/construction/segment/quantization/segment_quantizer.hpp
-    math/spline/construction/segment/quantization/shift_planner.hpp
     math/spline/construction/segment/field_packer.hpp
     math/spline/construction/segment/segment_factory.hpp
     math/spline/construction/segment/segment_packer.hpp
+    math/spline/construction/segment/segment_quantizer.hpp
+    math/spline/construction/segment/shift_planner.hpp
     math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp
     math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
     math/spline/construction/spline/amr/seed/span_decomposer.hpp
@@ -161,18 +159,16 @@ if (enable_testing)
         math/spline/construction/segment/amr/residual_estimator_test.cpp
         math/spline/construction/segment/amr/subdivision_predicate_test.cpp
         math/spline/construction/segment/amr/subdivision_test.cpp
-        math/spline/construction/segment/quantization/mantissa_quantizer_test.cpp
-        math/spline/construction/segment/quantization/radix_aligner_test.cpp
-        math/spline/construction/segment/quantization/segment_quantizer_test.cpp
-        math/spline/construction/segment/quantization/shift_planner_test.cpp
         math/spline/construction/segment/field_packer_test.cpp
         math/spline/construction/segment/segment_factory_test.cpp
         math/spline/construction/segment/segment_packer_test.cpp
+        math/spline/construction/segment/segment_quantizer_test.cpp
+        math/spline/construction/segment/shift_planner_test.cpp
+        math/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
         math/spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
         math/spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
         math/spline/construction/spline/amr/seed/span_decomposer_test.cpp
         math/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
-        math/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
         math/spline/construction/spline/amr/refiner_test.cpp
         math/spline/construction/spline/amr/workspace_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp

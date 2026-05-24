@@ -4,13 +4,85 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "segment_quantizer.hpp"
-#include <crv/math/spline/construction/segment/quantization/mantissa_quantizer.hpp>
-#include <crv/math/spline/construction/segment/quantization/radix_aligner.hpp>
-#include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
+#include <crv/math/limits.hpp>
+#include <crv/math/spline/construction/segment/shift_planner.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
 namespace {
+
+//
+// mantissa_quantizer_t
+//
+
+namespace mantissa_quantizer_tests {
+
+using mantissa_t = int32_t;
+constexpr auto quantize = mantissa_quantizer_t<mantissa_t>{};
+
+// passthrough with no shift
+static_assert(quantize(100, 0) == 100);
+
+// basic shifting
+static_assert(quantize(100, 2) == 25);
+static_assert(quantize(-100, 2) == -25);
+
+// rne boundary conditions
+static_assert(quantize(3, 1) == 2); // 1.5 rounds up to 2
+static_assert(quantize(5, 1) == 2); // 2.5 rounds down to 2
+static_assert(quantize(7, 1) == 4); // 3.5 rounds up to 4
+static_assert(quantize(-3, 1) == -2); // -1.5 rounds to -2
+static_assert(quantize(-5, 1) == -2); // -2.5 rounds to -2
+
+// container shift saturation; max_container_shift for int32_t is 31
+static_assert(quantize(max<mantissa_t>(), 30) == (max<mantissa_t>() >> 30) + 1); // no flush before max
+static_assert(quantize(max<mantissa_t>(), 31) == 0); // flush exactly at max
+static_assert(quantize(max<mantissa_t>(), 32) == 0); // flush exceeding max
+static_assert(quantize(max<mantissa_t>(), 100) == 0); // flush large values
+
+} // namespace mantissa_quantizer_tests
+
+//
+// radix_aligner_t
+//
+
+namespace radix_aligner_tests {
+
+using mantissa_t = int32_t;
+using scaled_int_t = scaled_int_t<mantissa_t>;
+
+struct unpacked_field_t
+{
+    mantissa_t mantissa;
+    int_t shift;
+    constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
+};
+
+// instantiate the aligner with arbitrary safe bounds for our 32-bit test container
+constexpr auto aligner = exponent_aligner_t<-20, 20>{};
+constexpr auto align_radix = radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>{};
+
+// passthrough; exponent is well within the aligner's bounds
+// exponent = 5 + 2 = 7, shift output becomes -7, mantissa is untouched
+static_assert(align_radix({.mantissa = 100, .exponent = 5}, 2) == unpacked_field_t{.mantissa = 100, .shift = -7});
+
+// positive saturation; exponent exceeds max
+// exponent = 15 + 10 = 25, clamps to 20
+// deficit of 5 means mantissa is left-shifted by 5 (10 << 5 = 320); shift output is -20
+static_assert(align_radix({.mantissa = 10, .exponent = 15}, 10) == unpacked_field_t{.mantissa = 320, .shift = -20});
+
+// negative saturation; exponent falls below min
+// exponent = -15 + (-10) = -25, clamps to -20
+// surplus of 5 means mantissa is right-shifted by 5 (1000 >> 5 = 31 RNE); shift output is 20
+static_assert(align_radix({.mantissa = 1000, .exponent = -15}, -10) == unpacked_field_t{.mantissa = 31, .shift = 20});
+
+} // namespace radix_aligner_tests
+
+//
+// segment_quantizer_t
+//
+
+namespace segment_quantizer_tests {
 
 using scalar_t = float_t;
 using mantissa_t = int_t;
@@ -176,6 +248,7 @@ static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
     });
 
 } // namespace end_to_end_test
+} // namespace segment_quantizer_tests
 
 } // namespace
 } // namespace crv::spline

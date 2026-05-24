@@ -9,14 +9,41 @@
 #include <crv/lib.hpp>
 #include <crv/math/float_extraction.hpp>
 #include <crv/math/polynomial.hpp>
+#include <crv/math/shifter.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <algorithm>
+#include <climits>
 
 namespace crv::spline {
 
-// --------------------------------------------------------------------------------------------------------------------
-// quantization
-// --------------------------------------------------------------------------------------------------------------------
+/// applies right-shifts to coefficients, flushing to zero when the shift exceeds container size
+template <signed_integral mantissa_t, auto shifter = shifter_t<>{}> struct mantissa_quantizer_t
+{
+    static constexpr auto max_container_shift = int_t{sizeof(mantissa_t) * CHAR_BIT} - 1;
+
+    constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
+    {
+        if (preshift >= max_container_shift) return 0;
+        return shifter.shr(mantissa, preshift);
+    }
+};
+
+/// aligns radix of the final evaluation step to match the precision of the output type
+template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponent> struct radix_aligner_t
+{
+    using scaled_int_t = t_scaled_int_t;
+
+    constexpr auto operator()(scaled_int_t const& accumulator, int_t radix) const noexcept -> unpacked_field_t
+    {
+        auto const aligned_accumulator
+            = align_exponent(scaled_int_t{.mantissa = accumulator.mantissa, .exponent = accumulator.exponent + radix});
+
+        return unpacked_field_t{
+            .mantissa = aligned_accumulator.mantissa,
+            .shift = -aligned_accumulator.exponent,
+        };
+    }
+};
 
 /// quantizes a floating-point cubic into an unpacked segment with relative shifts
 template <typename t_unpacked_field_t, typename float_extractor_t, typename shift_planner_t,
