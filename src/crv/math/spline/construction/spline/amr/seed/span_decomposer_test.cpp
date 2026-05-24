@@ -169,19 +169,6 @@ struct spline_seed_span_decomposer_mocking_test_t : spline_seed_span_decomposer_
     }
 };
 
-TEST_F(spline_seed_span_decomposer_mocking_test_t, empty_span)
-{
-    auto const left = x_t{16};
-    auto const right = left;
-    function_sample_t left_sample = left;
-
-    auto const result = sut(sample_target_function, left_sample, left, right, refinement_pool);
-
-    EXPECT_EQ(result, right);
-
-    EXPECT_TRUE(refinement_pool.intervals.empty());
-}
-
 TEST_F(spline_seed_span_decomposer_mocking_test_t, single_stride)
 {
     auto const left = x_t{16};

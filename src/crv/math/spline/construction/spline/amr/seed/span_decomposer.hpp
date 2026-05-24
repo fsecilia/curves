@@ -33,7 +33,7 @@ struct span_decomposer_t
     constexpr auto operator()(auto const& sample_target_function, function_sample_t left_sample, x_t left,
         x_t const& right, auto& refinement_pool) const -> function_sample_t
     {
-        assert(left <= right && "critical points must be strictly monotonically increasing");
+        assert(left < right && "critical points must be unique and strictly monotonically increasing");
         assert((static_cast<unsigned_t>(right.value) & align_mask) == 0
             && "critical point not aligned to min segment width");
 
