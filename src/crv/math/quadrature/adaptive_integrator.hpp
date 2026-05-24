@@ -42,7 +42,7 @@ public:
 
     /// DI overload
     template <typename integral_t, typename antiderivative_builder_t>
-    constexpr auto operator()(integral_t integral, antiderivative_builder_t antiderivative_builder, scalar_t domain_max,
+    constexpr auto operator()(integral_t integral, antiderivative_builder_t antiderivative_builder, scalar_t domain_end,
         compatible_range<scalar_t> auto const& critical_points) -> typename antiderivative_builder_t::result_t
     {
         // TODO: Automatically clearing the stack here prevents issues if a previous run threw an exception. However,
@@ -51,7 +51,7 @@ public:
         // the caller.
         stack_.clear();
 
-        stack_seeder_.seed(stack_, integral, domain_max, tolerance_, critical_points);
+        stack_seeder_.seed(stack_, integral, domain_end, tolerance_, critical_points);
         subdivider_.run(stack_, integral, bisector_, antiderivative_builder, depth_limit_);
 
         return std::move(antiderivative_builder).finalize(std::move(integral));
@@ -59,12 +59,12 @@ public:
 
     /// prod overload
     template <typename integral_t>
-    constexpr auto operator()(integral_t integral, scalar_t domain_max,
+    constexpr auto operator()(integral_t integral, scalar_t domain_end,
         compatible_range<scalar_t> auto const& critical_points) -> integration_result_of_t<integral_t>
     {
         using antiderivative_t = antiderivative_t<integral_t>;
         using antiderivative_builder_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
-        return operator()(std::move(integral), antiderivative_builder_t{}, domain_max, critical_points);
+        return operator()(std::move(integral), antiderivative_builder_t{}, domain_end, critical_points);
     }
 
 private:

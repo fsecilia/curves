@@ -23,31 +23,31 @@ public:
 
     /// seeds stack with one segment per subdomain, splitting at critical points
     ///
-    /// critical_points should not include 0 and domain_max; these are implied. An empty range yields a single segment
+    /// critical_points should not include 0 and domain_end; these are implied. An empty range yields a single segment
     /// across the full domain.
     ///
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
-    /// \pre critical_points in (0, domain_max)
-    auto seed(auto& stack, is_integral<scalar_t> auto const& integral, scalar_t domain_max, scalar_t global_tolerance,
+    /// \pre critical_points in (0, domain_end)
+    auto seed(auto& stack, is_integral<scalar_t> auto const& integral, scalar_t domain_end, scalar_t global_tolerance,
         compatible_range<scalar_t> auto const& critical_points) -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
         // push in reverse order so leftmost segment pops first
-        auto right = domain_max;
+        auto right = domain_end;
         for (auto const critical_point : critical_points | std::views::reverse)
         {
             auto const left = static_cast<scalar_t>(critical_point);
-            assert((scalar_t{0} < left && left < domain_max)
-                && "stack_seeder_t: critical points must be in (0, domain_max)");
+            assert((scalar_t{0} < left && left < domain_end)
+                && "stack_seeder_t: critical points must be in (0, domain_end)");
             assert(left < right && "stack_seeder_t: critical points must be sorted increasing and unique");
 
             stack.push_back(segment_t<scalar_t>{
                 .left = left,
                 .right = right,
                 .coarse_integral = integral.integrate(left, right),
-                .tolerance = global_tolerance * ((right - left) / domain_max),
+                .tolerance = global_tolerance * ((right - left) / domain_end),
                 .depth = 0,
             });
 
@@ -58,7 +58,7 @@ public:
             .left = scalar_t{0},
             .right = right,
             .coarse_integral = integral.integrate(scalar_t{0}, right),
-            .tolerance = global_tolerance * (right / domain_max),
+            .tolerance = global_tolerance * (right / domain_end),
             .depth = 0,
         });
     }

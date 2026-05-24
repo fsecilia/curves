@@ -48,7 +48,7 @@ struct quadrature_stack_seeder_test_t : Test
     };
     integral_t integral;
 
-    static constexpr auto domain_max = 1024.0;
+    static constexpr auto domain_end = 1024.0;
     static constexpr auto global_tolerance = 1.0;
 
     using sut_t = stack_seeder_t<scalar_t>;
@@ -63,13 +63,13 @@ struct quadrature_stack_seeder_test_no_critical_points_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_no_critical_points_t()
     {
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<scalar_t>{});
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list<scalar_t>{});
     }
 };
 
 TEST_F(quadrature_stack_seeder_test_no_critical_points_t, segment)
 {
-    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max, global_tolerance));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end, global_tolerance));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -80,16 +80,16 @@ struct quadrature_stack_seeder_test_one_critical_point_t : quadrature_stack_seed
 {
     quadrature_stack_seeder_test_one_critical_point_t()
     {
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list<scalar_t>{domain_max / 3.0});
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list<scalar_t>{domain_end / 3.0});
     }
 };
 
 TEST_F(quadrature_stack_seeder_test_one_critical_point_t, segments)
 {
-    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max / 3.0, global_tolerance / 3.0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end / 3.0, global_tolerance / 3.0));
     stack.pop_back();
     EXPECT_EQ(stack.back(),
-        create_segment(domain_max / 3.0, domain_max, global_tolerance * (domain_max - domain_max / 3.0) / domain_max));
+        create_segment(domain_end / 3.0, domain_end, global_tolerance * (domain_end - domain_end / 3.0) / domain_end));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -100,27 +100,27 @@ struct quadrature_stack_seeder_test_many_critical_points_t : quadrature_stack_se
 {
     quadrature_stack_seeder_test_many_critical_points_t()
     {
-        sut.seed(stack, integral, domain_max, global_tolerance,
-            std::initializer_list{domain_max / 5.0, domain_max / 3.0, domain_max / 2.0});
+        sut.seed(stack, integral, domain_end, global_tolerance,
+            std::initializer_list{domain_end / 5.0, domain_end / 3.0, domain_end / 2.0});
     }
 };
 
 TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
 {
-    EXPECT_EQ(stack.back(), create_segment(0.0, domain_max / 5.0, global_tolerance / 5.0));
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end / 5.0, global_tolerance / 5.0));
     stack.pop_back();
 
     EXPECT_EQ(stack.back(),
         create_segment(
-            domain_max / 5.0, domain_max / 3.0, global_tolerance * (domain_max / 3.0 - domain_max / 5.0) / domain_max));
+            domain_end / 5.0, domain_end / 3.0, global_tolerance * (domain_end / 3.0 - domain_end / 5.0) / domain_end));
     stack.pop_back();
 
     EXPECT_EQ(stack.back(),
         create_segment(
-            domain_max / 3.0, domain_max / 2.0, global_tolerance * (domain_max / 2.0 - domain_max / 3.0) / domain_max));
+            domain_end / 3.0, domain_end / 2.0, global_tolerance * (domain_end / 2.0 - domain_end / 3.0) / domain_end));
     stack.pop_back();
 
-    EXPECT_EQ(stack.back(), create_segment(domain_max / 2.0, domain_max, global_tolerance / 2.0));
+    EXPECT_EQ(stack.back(), create_segment(domain_end / 2.0, domain_end, global_tolerance / 2.0));
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -137,39 +137,39 @@ TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_non_empty_stack)
     stack.push_back(create_segment(0.0, 1.0, 0.1));
 
     EXPECT_DEBUG_DEATH(
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list{0.0}), "empty before seeding");
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{0.0}), "empty before seeding");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_zero_critical_point)
 {
     EXPECT_DEBUG_DEATH(
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list{0.0}), "in \\(0, domain_max\\)");
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{0.0}), "in \\(0, domain_end\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_negative_critical_point)
 {
     EXPECT_DEBUG_DEATH(
-        sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list{-1.0}), "in \\(0, domain_max\\)");
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{-1.0}), "in \\(0, domain_end\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_max_critical_point)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_max, global_tolerance, std::initializer_list{domain_max}),
-        "in \\(0, domain_max\\)");
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{domain_end}),
+        "in \\(0, domain_end\\)");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_unsorted_critical_points)
 {
     // passing these in reverse order, descending, should trip the assert
-    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_max, global_tolerance,
-                           std::initializer_list{domain_max / 2.0, domain_max / 3.0}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance,
+                           std::initializer_list{domain_end / 2.0, domain_end / 3.0}),
         "increasing and unique");
 }
 
 TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_points)
 {
-    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_max, global_tolerance,
-                           std::initializer_list{domain_max / 3.0, domain_max / 3.0}),
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance,
+                           std::initializer_list{domain_end / 3.0, domain_end / 3.0}),
         "increasing and unique");
 }
 
