@@ -32,6 +32,7 @@
 #include <crv/math/spline/construction/segment/quantization/shift_planner.hpp>
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
+#include <crv/math/spline/construction/spline/amr/refinement_pool_seeder.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/span_decomposer.hpp>
@@ -54,46 +55,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-/// seeds queue with initial set of segments
-///
-/// This type splits the mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_end> struct refinement_pool_seeder_t
-{
-    using x_t = span_decomposer_t::x_t;
-    using scalar_t = span_decomposer_t::scalar_t;
-    using jet_t = span_decomposer_t::jet_t;
-    using function_sample_t = span_decomposer_t::function_sample_t;
-
-    [[no_unique_address]] span_decomposer_t decompose_span;
-
-    auto operator()(typestate_t state, auto const& sample_target_function,
-        std::vector<x_t> const& critical_points) const -> typename typestate_t::next_t
-    {
-        auto& workspace = state.workspace;
-        auto& refinement_pool = workspace.refinement_pool;
-        assert(refinement_pool.empty());
-
-        // start at 0
-        auto left_critical_point = x_t{0};
-        auto left_function_sample
-            = sample_target_function(jet_t{from_fixed<scalar_t>(left_critical_point), scalar_t{1}});
-
-        // proceed through pairs of critical points
-        for (auto const& right_critical_point : critical_points)
-        {
-            left_function_sample = decompose_span(sample_target_function, left_function_sample, left_critical_point,
-                right_critical_point, refinement_pool);
-            left_critical_point = right_critical_point;
-        }
-
-        // finish with end of domain
-        auto const domain_end = x_t{1 << log2_domain_end};
-        decompose_span(sample_target_function, left_function_sample, left_critical_point, domain_end, refinement_pool);
-
-        return typename typestate_t::next_t{workspace};
-    }
-};
 
 template <typename typestate_t, typename subdivider_t, typename subdivision_predicate_t, int_t max_segment_count>
 struct refiner_t
