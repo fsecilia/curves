@@ -33,6 +33,7 @@
 #include <crv/math/spline/construction/segment/segment_factory.hpp>
 #include <crv/math/spline/construction/segment/segment_packer.hpp>
 #include <crv/math/spline/construction/spline/amr/refinement_pool_seeder.hpp>
+#include <crv/math/spline/construction/spline/amr/refiner.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/span_decomposer.hpp>
@@ -55,52 +56,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <typename typestate_t, typename subdivider_t, typename subdivision_predicate_t, int_t max_segment_count>
-struct refiner_t
-{
-    using interval_t = subdivider_t::interval_t;
-
-    subdivision_predicate_t requires_subdivision;
-    subdivider_t subdivide;
-
-    auto operator()(typestate_t&& state, auto const& sample_target_function) -> typename typestate_t::next_t
-    {
-        auto& workspace = state.workspace;
-        auto& refinement_pool = workspace.refinement_pool;
-        auto& completed_intervals = workspace.completed_intervals;
-        assert(!refinement_pool.empty());
-        assert(completed_intervals.empty());
-
-        // subdivide until full
-        while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
-        {
-            // this uses a *reference*; pop must be very specifically placed
-            auto const& interval = refinement_pool.top();
-            if (requires_subdivision(interval))
-            {
-                auto const children = subdivide(sample_target_function, interval);
-                refinement_pool.pop();
-                refinement_pool.push(children.left);
-                refinement_pool.push(children.right);
-            }
-            else
-            {
-                completed_intervals.push_back(interval);
-                refinement_pool.pop();
-            }
-        }
-
-        // drain remaining
-        while (!refinement_pool.empty())
-        {
-            completed_intervals.push_back(refinement_pool.top());
-            refinement_pool.pop();
-        }
-
-        return typename typestate_t::next_t{workspace};
-    }
-};
 
 template <typename typestate_t, typename interval_t, typename t_tangent_extender_t, int_t domain_end> struct assembler_t
 {
