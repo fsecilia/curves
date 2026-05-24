@@ -21,6 +21,12 @@ template <typename t_interval_t, typename t_predicate_t, int_t max_segment_count
     std::vector<interval_t> completed_intervals;
     priority_queue_t<std::vector<interval_t>, predicate_t> refinement_pool;
 
+    constexpr workspace_t()
+    {
+        completed_intervals.reserve(max_segment_count);
+        refinement_pool.reserve(max_segment_count);
+    }
+
     constexpr auto clear() noexcept -> void
     {
         completed_intervals.clear();
@@ -28,12 +34,6 @@ template <typename t_interval_t, typename t_predicate_t, int_t max_segment_count
     }
 
     constexpr auto empty() const noexcept -> bool { return completed_intervals.empty() && refinement_pool.empty(); }
-
-    constexpr workspace_t()
-    {
-        completed_intervals.reserve(max_segment_count);
-        refinement_pool.reserve(max_segment_count);
-    }
 };
 
 } // namespace crv::spline
