@@ -79,7 +79,7 @@ struct refiner_t
             auto const& interval = refinement_pool.top();
             if (requires_subdivision(interval))
             {
-                auto const children = subdivide(interval, sample_target_function);
+                auto const children = subdivide(sample_target_function, interval);
                 refinement_pool.pop();
                 refinement_pool.push(children.left);
                 refinement_pool.push(children.right);
