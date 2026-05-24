@@ -112,7 +112,7 @@ template <typename typestate_t, typename interval_t, typename t_tangent_extender
         completed_intervals.clear();
 
         auto const segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline = spline_t{segment_locator, segments, extended_tangent};
+        spline = spline_t{typename spline_t::payload_t{segment_locator, segments, extended_tangent}};
     }
 };
 
