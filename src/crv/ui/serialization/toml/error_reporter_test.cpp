@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-namespace crv::config::tomlpp {
+namespace crv::serialization::tomlpp {
 namespace {
 
 struct config_error_reporter_test_t : Test
@@ -59,4 +59,4 @@ TEST_F(config_error_reporter_test_t, message)
 }
 
 } // namespace
-} // namespace crv::config::tomlpp
+} // namespace crv::serialization::tomlpp
