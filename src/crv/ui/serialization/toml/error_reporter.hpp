@@ -9,7 +9,7 @@
 #include <string_view>
 #include <toml++/toml.hpp>
 
-namespace crv::config::tomlpp {
+namespace crv::serialization::tomlpp {
 
 /// error reporting for a toml node
 class error_reporter_t
@@ -28,4 +28,4 @@ private:
     toml::source_region location_{};
 };
 
-} // namespace crv::config::tomlpp
+} // namespace crv::serialization::tomlpp
