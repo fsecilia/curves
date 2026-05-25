@@ -66,7 +66,6 @@ target_sources_kernel(lib
     bitwise_enum.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
-    lib.cpp
     lib.hpp
     math/abs.hpp
     math/cmp.hpp
