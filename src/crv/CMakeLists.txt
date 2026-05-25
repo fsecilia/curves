@@ -60,6 +60,7 @@ target_sources(lib PRIVATE
     math/spline/construction/weight_functions/uniform.hpp
     math/stats.hpp
     priority_queue.hpp
+    sequential_enum_name_map.hpp
 )
 target_sources_kernel(lib
     algorithm.hpp
@@ -188,6 +189,7 @@ if (enable_testing)
         prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
+        sequential_enum_name_map_test.cpp
         traits_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
