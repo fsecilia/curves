@@ -3,32 +3,32 @@
 #
 # contains the qt6-specific ui
 
-# Let qt know not to expect repeated libraries on build command lines.
+# let qt know not to expect repeated libraries on build command lines
 set(QT_FORCE_CMP0156_TO_VALUE NEW)
 
-# Find Qt.
+# find qt
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
-# Enable Qt's build automation.
+# enable qt's build automation
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-# Main executable.
-qt_add_executable(ui main.cpp)
-set_target_properties(ui PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
-target_include_directories(ui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ui PRIVATE dink Qt6::Widgets)
+# main executable.
+qt_add_executable(qt main.cpp)
+set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
+target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(qt PRIVATE dink Qt6::Widgets)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(ui PRIVATE
+    target_compile_options(qt PRIVATE
         -Wno-ctad-maybe-unsupported
         -Wno-unsafe-buffer-usage
         -Wno-unsafe-buffer-usage-in-libc-call
     )
 endif()
 
-install(TARGETS ui RUNTIME
+install(TARGETS qt RUNTIME
     DESTINATION bin
     COMPONENT ui
 )
