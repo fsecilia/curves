@@ -19,7 +19,7 @@ constexpr auto d = min_width;
 constexpr auto e = epsilon;
 
 using sut_t = critical_point_conditioner_t<x_t, log2_min_width>;
-using points_t = sut_t::points_t;
+using critical_points_t = sut_t::critical_points_t;
 
 constexpr auto sut = sut_t{};
 
@@ -44,46 +44,48 @@ static_assert(sut(-d * 3 / 2) == -d); // tie breaks to -d
 static_assert(sut(-d * 3 / 2 - e) == -d * 2);
 
 // values near limits quantize cleanly without ub
-static_assert(sut(points_t{max<x_t>()})[0] == sut(max<x_t>()));
-static_assert(sut(points_t{min<x_t>()})[0] == sut(min<x_t>()));
+static_assert(sut(critical_points_t{max<x_t>()})[0] == sut(max<x_t>()));
+static_assert(sut(critical_points_t{min<x_t>()})[0] == sut(min<x_t>()));
 
 //
 // arrays
 //
 
 // empty arrays remain empty
-static_assert(sut(points_t{}) == points_t{});
+static_assert(sut(critical_points_t{}) == critical_points_t{});
 
 // arrays are quantized
-static_assert(sut({d, 2 * d + e, 3 * d - e, 9 * d / 2 - e, 9 * d / 2}) == points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
+static_assert(
+    sut({d, 2 * d + e, 3 * d - e, 9 * d / 2 - e, 9 * d / 2}) == critical_points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
 
 // arrays are sorted ascending
-static_assert(sut(points_t{d * 5, d * 2, d, d * 7}) == points_t{d, d * 2, d * 5, d * 7});
+static_assert(sut(critical_points_t{d * 5, d * 2, d, d * 7}) == critical_points_t{d, d * 2, d * 5, d * 7});
 
 // duplicates are removed
-static_assert(
-    sut(points_t{d, 2 * d, 3 * d, 3 * d, 4 * d, 4 * d, 4 * d, 5 * d}) == points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
+static_assert(sut(critical_points_t{d, 2 * d, 3 * d, 3 * d, 4 * d, 4 * d, 4 * d, 5 * d})
+    == critical_points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
 
 // duplicates are removed after sorting
-static_assert(
-    sut(points_t{d, 3 * d, 2 * d, 4 * d, 3 * d, 4 * d, 5 * d, 4 * d}) == points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
+static_assert(sut(critical_points_t{d, 3 * d, 2 * d, 4 * d, 3 * d, 4 * d, 5 * d, 4 * d})
+    == critical_points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
 
 // duplicates are removed after quantizing
-static_assert(sut(points_t{d, 2 * d + e, 2 * d, 3 * d, 3 * d - e, 9 * d / 2 - e, 4 * d, 5 * d, 9 * d / 2})
-    == points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
+static_assert(sut(critical_points_t{d, 2 * d + e, 2 * d, 3 * d, 3 * d - e, 9 * d / 2 - e, 4 * d, 5 * d, 9 * d / 2})
+    == critical_points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
 
 // duplicates are removed after quantizing and sorting
-static_assert(sut(points_t{3 * d, 2 * d + e, d, 2 * d, 9 * d / 2 - e, 5 * d, 3 * d - e, 9 * d / 2, 4 * d})
-    == points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
+static_assert(sut(critical_points_t{3 * d, 2 * d + e, d, 2 * d, 9 * d / 2 - e, 5 * d, 3 * d - e, 9 * d / 2, 4 * d})
+    == critical_points_t{d, 2 * d, 3 * d, 4 * d, 5 * d});
 
 // negative arrays are sorted ascending
-static_assert(sut(points_t{-d * 5, -d * 2, -d, -d * 7}) == points_t{-d * 7, -d * 5, -d * 2, -d});
+static_assert(sut(critical_points_t{-d * 5, -d * 2, -d, -d * 7}) == critical_points_t{-d * 7, -d * 5, -d * 2, -d});
 
 // arrays crossing zero are quantized, sorted, and uniqued
-static_assert(sut(points_t{d, -d, z, d * 2, -d * 2, -d / 2, d / 2}) == points_t{-d * 2, -d, z, d, d * 2});
+static_assert(
+    sut(critical_points_t{d, -d, z, d * 2, -d * 2, -d / 2, d / 2}) == critical_points_t{-d * 2, -d, z, d, d * 2});
 
 // many distinct values all quantize into the same value
-static_assert(sut(points_t{e, z, -e, d / 2 - e, -d / 2, d / 4, -d / 4}) == points_t{z});
+static_assert(sut(critical_points_t{e, z, -e, d / 2 - e, -d / 2, d / 4, -d / 4}) == critical_points_t{z});
 
 } // namespace
 } // namespace crv::spline::seed
