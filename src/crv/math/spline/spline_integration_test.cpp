@@ -42,6 +42,7 @@
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
 #include <crv/math/spline/construction/weight_functions/hyperbolic_decay.hpp>
+#include <crv/math/spline/construction/weight_functions/uniform.hpp>
 #include <crv/math/spline/pipeline_config.hpp>
 #include <crv/math/spline/segment.hpp>
 #include <crv/math/spline/segment_locator.hpp>
@@ -56,7 +57,7 @@ namespace crv {
 namespace spline {
 namespace {
 
-TEST(spline_generator, poc)
+TEST(spline_generator_test, integration_test)
 {
 #if 0
     using scalar_t = std::float128_t;
@@ -187,7 +188,6 @@ TEST(spline_generator, poc)
     auto spline = spline_t{};
     generate_spline(spline, function_sampler_t{target_function}, {x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(248.973)});
 
-#if 1
     auto x_fixed = x_t{0};
     auto const sample_count = 255;
     auto const dx = x_t{domain_end} / sample_count;
@@ -208,7 +208,6 @@ TEST(spline_generator, poc)
                   << ", Δy = " << static_cast<float_max_t>(difference) << std::endl;
     }
     std::cout << std::endl;
-#endif
 }
 
 } // namespace
