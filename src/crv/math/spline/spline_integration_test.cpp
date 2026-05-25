@@ -37,6 +37,7 @@
 #include <crv/math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/span_decomposer.hpp>
 #include <crv/math/spline/construction/spline/amr/seed/subdomain_factory.hpp>
+#include <crv/math/spline/construction/spline/amr/spline_generator.hpp>
 #include <crv/math/spline/construction/spline/amr/typestates.hpp>
 #include <crv/math/spline/construction/spline/amr/workspace.hpp>
 #include <crv/math/spline/construction/spline/tangent_extension.hpp>
@@ -46,7 +47,6 @@
 #include <crv/math/spline/segment_locator.hpp>
 #include <crv/math/spline/spline.hpp>
 #include <crv/priority_queue.hpp>
-#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <stdfloat>
@@ -55,45 +55,6 @@
 namespace crv {
 namespace spline {
 namespace {
-
-template <std::floating_point scalar_t, typename x_t, typename spline_t, typename typestates_t,
-    typename refinement_pool_t, typename refinement_pool_seeder_t, typename refiner_t, typename assembler_t,
-    int_t max_segment_count>
-class spline_generator_t
-{
-public:
-    constexpr spline_generator_t(refinement_pool_seeder_t seed_refinement_pool, refiner_t refine, assembler_t assemble)
-        : seed_refinement_pool_{std::move(seed_refinement_pool)}, refine_{std::move(refine)},
-          assemble_{std::move(assemble)}, workspace_{}
-    {}
-
-    constexpr auto operator()(auto& spline, auto target_function, std::vector<x_t> critical_points = {}) -> void
-    {
-        assert(workspace_.empty());
-        workspace_.clear();
-
-        auto sample_target_function = function_sampler_t{std::move(target_function)};
-
-        auto unseeded_state = typename typestates_t::initial_t{workspace_};
-        auto unrefined_state
-            = seed_refinement_pool_(std::move(unseeded_state), sample_target_function, critical_points);
-        auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
-        assemble_(std::move(unassembled_state), spline);
-
-        assert(workspace_.empty());
-    }
-
-private:
-    using interval_t = refiner_t::interval_t;
-    using residual_t = interval_t::residual_t;
-
-    using workspace_t = typestates_t::workspace_t;
-
-    refinement_pool_seeder_t seed_refinement_pool_;
-    refiner_t refine_;
-    assembler_t assemble_;
-    workspace_t workspace_;
-};
 
 TEST(spline_generator, poc)
 {
@@ -184,8 +145,9 @@ TEST(spline_generator, poc)
     using refinement_pool_seeder_t
         = refinement_pool_seeder_t<typestates_t::unseeded_t, span_decomposer_t, log2_domain_end>;
     using spline_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
-    using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
-        refinement_pool_seeder_t, refiner_t, assembler_t, max_segment_count>;
+    using critical_point_conditioner_t = seed::critical_point_conditioner_t<x_t, log2_min_width>;
+    using spline_generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, critical_point_conditioner_t,
+        refinement_pool_t, refinement_pool_seeder_t, refiner_t, assembler_t>;
 
     auto const estimate_residual = residual_estimator_t{
         .generate_nodes = {},
@@ -222,11 +184,8 @@ TEST(spline_generator, poc)
         return 2.1 * log1p(x);
     };
 
-    auto const condition_critical_points = seed::critical_point_conditioner_t<x_t, log2_min_width>{};
-
     auto spline = spline_t{};
-    generate_spline(spline, std::ref(target_function),
-        condition_critical_points({x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(248.973)}));
+    generate_spline(spline, function_sampler_t{target_function}, {x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(248.973)});
 
 #if 1
     auto x_fixed = x_t{0};
