@@ -8,6 +8,7 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
+    concepts.hpp
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/elementwise_max.hpp
@@ -113,6 +114,7 @@ if (enable_testing)
     target_sources(unit_tests PRIVATE
         algorithm_test.cpp
         bitwise_enum_test.cpp
+        concepts_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
         math/cmp_test.cpp
