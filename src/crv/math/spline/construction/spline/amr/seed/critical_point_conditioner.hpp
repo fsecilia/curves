@@ -17,22 +17,22 @@ namespace crv::spline::seed {
 /// quantizes, sorts, and uniques set of critical points
 template <is_fixed x_t, int_t log2_min_width> struct critical_point_conditioner_t
 {
-    using points_t = std::vector<x_t>;
+    using critical_points_t = std::vector<x_t>;
 
-    /// quantizes point to min segment width grid
-    constexpr auto operator()(x_t const& point) const -> x_t { return quantize(point); }
+    /// quantizes critical point to min segment width grid
+    constexpr auto operator()(x_t const& critical_point) const -> x_t { return quantize(critical_point); }
 
-    /// quantizes eacn point to min segment width grid, then sorts and uniques result
-    constexpr auto operator()(points_t points) const -> points_t
+    /// quantizes each critical point to min segment width grid, then sorts and uniques result
+    constexpr auto operator()(critical_points_t critical_points) const -> critical_points_t
     {
-        for (auto& point : points) point = quantize(point);
+        for (auto& point : critical_points) point = quantize(point);
 
         // sort and unique
-        std::ranges::sort(points);
-        auto const [first_dup, last] = std::ranges::unique(points);
-        points.erase(first_dup, last);
+        std::ranges::sort(critical_points);
+        auto const [first_nonunique, last] = std::ranges::unique(critical_points);
+        critical_points.erase(first_nonunique, last);
 
-        return points;
+        return critical_points;
     }
 
 private:
