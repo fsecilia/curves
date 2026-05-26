@@ -22,7 +22,7 @@ public:
     reader_t(adapter_t adapter, error_reporter_t& reporter) : adapter_{std::move(adapter)}, reporter_{reporter} {}
 
     template <typename value_t, typename constraint_t>
-    auto operator()(reflection::param_t<value_t, constraint_t>& param) const -> void
+    auto operator()(reflection::param_t<value_t, constraint_t>& param) -> void
     {
         auto value = param.value();
         adapter_.read_value(param.name(), value);
@@ -30,7 +30,7 @@ public:
     }
 
     template <is_enum enum_t, typename constraint_t>
-    auto operator()(reflection::param_t<enum_t, constraint_t>& param) const -> void
+    auto operator()(reflection::param_t<enum_t, constraint_t>& param) -> void
     {
         auto value = std::string{};
         adapter_.read_value(param.name(), value);
@@ -42,7 +42,7 @@ public:
     }
 
     template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
+    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
     {
         if (auto section_adapter = adapter_.get_section(name))
         {
