@@ -19,14 +19,14 @@ enum class enum_t
 // zero
 constexpr auto sut_size_0 = sequential_enum_name_map<enum_t>();
 static_assert(std::array<std::string_view, 0>{} == sut_size_0);
-static_assert("unknown" == sut_size_0.to_string(enum_t::value_0));
+static_assert(std::nullopt == sut_size_0.to_string(enum_t::value_0));
 static_assert(std::nullopt == sut_size_0.from_string("value_0"));
 
 // one
 constexpr auto sut_size_1 = sequential_enum_name_map<enum_t>("value_0");
 static_assert(std::array<std::string_view, 1>{"value_0"} == sut_size_1);
 static_assert("value_0" == sut_size_1.to_string(enum_t::value_0));
-static_assert("unknown" == sut_size_1.to_string(enum_t::value_1));
+static_assert(std::nullopt == sut_size_1.to_string(enum_t::value_1));
 static_assert(enum_t::value_0 == sut_size_1.from_string("value_0"));
 static_assert(std::nullopt == sut_size_0.from_string("value_0"));
 

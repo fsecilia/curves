@@ -20,13 +20,13 @@ namespace crv::reflection {
 /// sequential_enum_name_map_t supports this directly.
 template <is_enum> struct enum_t;
 
-// \returns name mapped to value via reflection
-template <is_enum enum_t> constexpr auto to_string(enum_t value) noexcept -> std::string_view
+// \returns name mapped to value via reflection if valid, std::nullopt otherwise
+template <is_enum enum_t> constexpr auto to_string(enum_t value) noexcept -> std::optional<std::string_view>
 {
     return reflection::enum_t<enum_t>::map.to_string(value);
 }
 
-// \returns value mapped to name via reflection
+// \returns value mapped to name via reflection if found, std::nullopt otherwise
 template <is_enum enum_t> constexpr auto from_string(std::string_view name) noexcept -> std::optional<enum_t>
 {
     return reflection::enum_t<enum_t>::map.from_string(name);

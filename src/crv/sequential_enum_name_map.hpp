@@ -20,12 +20,12 @@ template <is_enum enum_t, std::size_t size> struct sequential_enum_name_map_t : 
     explicit constexpr sequential_enum_name_map_t(args_t... args) noexcept : std::array<std::string_view, size>{args...}
     {}
 
-    /// \returns name mapped to value, or unknown if not found
-    constexpr auto to_string(enum_t value) const noexcept -> std::string_view
+    /// \returns name mapped to value, or std::nullopt
+    constexpr auto to_string(enum_t value) const noexcept -> std::optional<std::string_view>
     {
         auto const index = static_cast<std::size_t>(value);
         if (index < size) return this->operator[](index);
-        return "unknown";
+        return std::nullopt;
     }
 
     /// \returns value mapped to name, or std::nullopt is not found

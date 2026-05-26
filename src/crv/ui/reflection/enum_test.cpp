@@ -27,6 +27,7 @@ static_assert(std::array<std::string_view, 3>{"value_0", "value_1", "value_2"} =
 static_assert("value_0" == to_string(mapped_enum_t::value_0));
 static_assert("value_1" == to_string(mapped_enum_t::value_1));
 static_assert("value_2" == to_string(mapped_enum_t::value_2));
+static_assert(std::nullopt == to_string(static_cast<mapped_enum_t>(-1)));
 static_assert(mapped_enum_t::value_0 == from_string<mapped_enum_t>("value_0"));
 static_assert(mapped_enum_t::value_1 == from_string<mapped_enum_t>("value_1"));
 static_assert(mapped_enum_t::value_2 == from_string<mapped_enum_t>("value_2"));
