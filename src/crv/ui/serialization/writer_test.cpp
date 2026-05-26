@@ -20,6 +20,13 @@ struct serialization_writer_test_t : Test
         value_1,
     };
 
+    struct mock_error_reporter_t
+    {
+        virtual ~mock_error_reporter_t() = default;
+        MOCK_METHOD(void, report_error, (std::string_view), (const));
+    };
+    StrictMock<mock_error_reporter_t> mock_error_reporter;
+
     struct mock_writer_adapter_t
     {
         virtual ~mock_writer_adapter_t() = default;
@@ -55,8 +62,8 @@ struct serialization_writer_test_t : Test
         }
     };
 
-    using sut_t = writer_t<writer_adapter_t>;
-    sut_t sut{writer_adapter_t{&mock_writer_adapter}};
+    using sut_t = writer_t<writer_adapter_t, mock_error_reporter_t>;
+    sut_t sut{writer_adapter_t{&mock_writer_adapter}, mock_error_reporter};
 };
 
 } // namespace
@@ -89,6 +96,15 @@ TEST_F(serialization_writer_test_t, translates_enum_to_string_before_writing)
     auto param = reflection::param_t<enum_t>{"enum", enum_t::value_1};
 
     EXPECT_CALL(mock_writer_adapter, write_string("enum", std::string_view{"value_1"}));
+
+    sut(param);
+}
+
+TEST_F(serialization_writer_test_t, reports_error_on_invalid_enum_string)
+{
+    auto param = reflection::param_t<enum_t>{"enum", static_cast<enum_t>(-1)};
+
+    EXPECT_CALL(mock_error_reporter, report_error(HasSubstr("unmapped value")));
 
     sut(param);
 }

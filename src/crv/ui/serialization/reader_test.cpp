@@ -119,7 +119,7 @@ TEST_F(serialization_reader_test_t, translates_enum_from_string)
     auto param = reflection::param_t<enum_t>{"enum", initial_value};
 
     EXPECT_CALL(mock_reader_adapter, read_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
-        dst = reflection::to_string(expected_value);
+        dst = *reflection::to_string(expected_value);
         return true;
     });
 
