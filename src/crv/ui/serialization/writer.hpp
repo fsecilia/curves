@@ -22,7 +22,7 @@ public:
     ///
     /// \throws if value type is enum but content is not a valid member
     template <typename value_t, typename constraint_t>
-    auto operator()(reflection::param_t<value_t, constraint_t> const& param) -> void
+    auto visit(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
         adapter_.write(param.name(), param.value());
     }

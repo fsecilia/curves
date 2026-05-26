@@ -38,11 +38,11 @@ struct reflection_param_test_t : Test
     {
         virtual ~mock_visitor_t() = default;
 
-        auto operator()(auto const& param) const noexcept -> void { call_const(param); }
-        auto operator()(auto& param) const noexcept -> void { call_mutable(param); }
+        auto visit(auto const& param) const noexcept -> void { visit_const(param); }
+        auto visit(auto& param) const noexcept -> void { visit_mutable(param); }
 
-        MOCK_METHOD(void, call_const, (sut_t const&), (const, noexcept));
-        MOCK_METHOD(void, call_mutable, (sut_t&), (const, noexcept));
+        MOCK_METHOD(void, visit_const, (sut_t const&), (const, noexcept));
+        MOCK_METHOD(void, visit_mutable, (sut_t&), (const, noexcept));
     };
     StrictMock<mock_visitor_t> mock_visitor;
 };
@@ -83,7 +83,7 @@ TEST_F(reflection_param_test_t, constrain_with_change)
 
 TEST_F(reflection_param_test_t, const_reflect_const_visitor_passes_const_self_returns_const_visitor)
 {
-    EXPECT_CALL(mock_visitor, call_const(Ref(sut)));
+    EXPECT_CALL(mock_visitor, visit_const(Ref(sut)));
 
     mock_visitor_t const& actual
         = static_cast<sut_t const&>(sut).reflect(static_cast<mock_visitor_t const&>(mock_visitor));
@@ -93,7 +93,7 @@ TEST_F(reflection_param_test_t, const_reflect_const_visitor_passes_const_self_re
 
 TEST_F(reflection_param_test_t, const_reflect_mutable_visitor_passes_const_self_returns_mutable_visitor)
 {
-    EXPECT_CALL(mock_visitor, call_const(Ref(sut)));
+    EXPECT_CALL(mock_visitor, visit_const(Ref(sut)));
 
     mock_visitor_t& actual = static_cast<sut_t const&>(sut).reflect(mock_visitor);
 
@@ -102,7 +102,7 @@ TEST_F(reflection_param_test_t, const_reflect_mutable_visitor_passes_const_self_
 
 TEST_F(reflection_param_test_t, mutable_reflect_const_visitor_passes_mutable_self_returns_const_visitor)
 {
-    EXPECT_CALL(mock_visitor, call_mutable(Ref(sut)));
+    EXPECT_CALL(mock_visitor, visit_mutable(Ref(sut)));
 
     mock_visitor_t const& actual = sut.reflect(static_cast<mock_visitor_t const&>(mock_visitor));
 
@@ -111,7 +111,7 @@ TEST_F(reflection_param_test_t, mutable_reflect_const_visitor_passes_mutable_sel
 
 TEST_F(reflection_param_test_t, mutable_reflect_mutable_visitor_passes_mutable_self_returns_mutable_visitor)
 {
-    EXPECT_CALL(mock_visitor, call_mutable(Ref(sut)));
+    EXPECT_CALL(mock_visitor, visit_mutable(Ref(sut)));
 
     mock_visitor_t& actual = sut.reflect(mock_visitor);
 

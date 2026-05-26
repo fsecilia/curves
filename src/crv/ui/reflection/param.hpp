@@ -42,7 +42,7 @@ public:
 
     constexpr auto reflect(this auto&& self, auto&& visitor) -> decltype(auto)
     {
-        std::forward<decltype(visitor)>(visitor)(std::forward<decltype(self)>(self));
+        visitor.visit(std::forward<decltype(self)>(self));
         return std::forward<decltype(visitor)>(visitor);
     }
 
