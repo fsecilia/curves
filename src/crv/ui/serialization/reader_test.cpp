@@ -4,29 +4,14 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "reader.hpp"
-#include <crv/sequential_enum_name_map.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv {
-namespace serialization {
+namespace crv::serialization {
 namespace {
 
 struct serialization_reader_test_t : Test
 {
-    enum class enum_t
-    {
-        value_0,
-        value_1,
-    };
-
-    struct mock_error_reporter_t
-    {
-        virtual ~mock_error_reporter_t() = default;
-        MOCK_METHOD(void, report_error, (std::string_view), (const));
-    };
-    StrictMock<mock_error_reporter_t> mock_error_reporter;
-
     struct mock_reader_adapter_t
     {
         virtual ~mock_reader_adapter_t() = default;
@@ -62,25 +47,9 @@ struct serialization_reader_test_t : Test
         }
     };
 
-    using sut_t = reader_t<reader_adapter_t, mock_error_reporter_t>;
-    sut_t sut{reader_adapter_t{&mock_reader_adapter}, mock_error_reporter};
+    using sut_t = reader_t<reader_adapter_t>;
+    sut_t sut{reader_adapter_t{&mock_reader_adapter}};
 };
-
-} // namespace
-} // namespace serialization
-
-namespace reflection {
-
-template <> struct enum_t<serialization::serialization_reader_test_t::enum_t>
-{
-    static constexpr auto map
-        = sequential_enum_name_map<serialization::serialization_reader_test_t::enum_t>("value_0", "value_1");
-};
-
-} // namespace reflection
-
-namespace serialization {
-namespace {
 
 TEST_F(serialization_reader_test_t, reads_standard_types_directly)
 {
@@ -111,42 +80,6 @@ TEST_F(serialization_reader_test_t, ignores_missing_keys)
     EXPECT_EQ(original_value, param.value());
 }
 
-TEST_F(serialization_reader_test_t, translates_enum_from_string)
-{
-    auto const initial_value = enum_t::value_1;
-    auto const expected_value = enum_t::value_0;
-
-    auto param = reflection::param_t<enum_t>{"enum", initial_value};
-
-    EXPECT_CALL(mock_reader_adapter, read_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
-        dst = *reflection::to_string(expected_value);
-        return true;
-    });
-
-    sut(param);
-
-    EXPECT_EQ(param.value(), expected_value);
-}
-
-TEST_F(serialization_reader_test_t, reports_error_on_invalid_enum_string)
-{
-    auto param = reflection::param_t<enum_t>{"enum", enum_t::value_1};
-
-    // toml contains garbage data for enum
-    EXPECT_CALL(mock_reader_adapter, read_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
-        dst = "garbage";
-        return true;
-    });
-
-    // reader sees failed from_string() and reports it
-    EXPECT_CALL(mock_error_reporter, report_error(HasSubstr("invalid value \"garbage\"")));
-
-    sut(param);
-
-    // underlying parameter remains unmodified
-    EXPECT_EQ(param.value(), enum_t::value_1);
-}
-
 TEST_F(serialization_reader_test_t, visits_nested_sections)
 {
     auto section = section_t{};
@@ -166,5 +99,4 @@ TEST_F(serialization_reader_test_t, visits_nested_sections)
 }
 
 } // namespace
-} // namespace serialization
-} // namespace crv
+} // namespace crv::serialization
