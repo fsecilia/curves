@@ -6,6 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/ui/reflection/enum.hpp>
+#include <crv/ui/serialization/exceptions.hpp>
 #include <string_view>
 #include <toml++/toml.hpp>
 
@@ -17,10 +19,19 @@ class writer_adapter_t
 public:
     explicit writer_adapter_t(toml::table& table) : table_{table} {}
 
-    /// writes value under key
+    /// writes generic value under key
     template <typename value_t> auto write(std::string_view key, value_t const& value) -> void
     {
         table_.insert_or_assign(key, value);
+    }
+
+    /// writes enum value under param's key; reports error if enum is invalid
+    ///
+    /// \throws if value is not a valid member of enum
+    template <is_enum enum_t> auto write(std::string_view key, enum_t const& value) -> void
+    {
+        if (auto const opt_enum = reflection::to_string(value)) write(key, *opt_enum);
+        else throw parse_x{std::format("invalid value ({}) for enum \"{}\"", static_cast<int_t>(value), key)};
     }
 
     /// creates new nested section
