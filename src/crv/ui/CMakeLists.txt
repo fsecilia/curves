@@ -6,7 +6,6 @@
 add_library(ui
     model/config.hpp
     serialization/exceptions.hpp
-    serialization/toml/error_reporter.hpp
     serialization/toml/reader_adapter.hpp
     serialization/toml/writer_adapter.hpp
     serialization/reader.hpp
@@ -20,7 +19,6 @@ target_link_libraries(ui PUBLIC lib tomlplusplus::tomlplusplus)
 add_executable(ui_test
     model/config_test.cpp
     serialization/exceptions.cpp
-    serialization/toml/error_reporter_test.cpp
     serialization/toml/reader_adapter_test.cpp
     serialization/toml/writer_adapter_test.cpp
     serialization/reader_test.cpp
