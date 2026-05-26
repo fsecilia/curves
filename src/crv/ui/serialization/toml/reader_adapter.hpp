@@ -24,6 +24,7 @@ public:
 
     /// reads dst under key if present; reports error if types do not match
     ///
+    /// \throws if key is present, but types do not match
     /// \returns true if key is present and matches type
     template <typename value_t> auto read(std::string_view key, value_t& dst) -> bool
     {
@@ -43,7 +44,9 @@ public:
 
     /// reads dst under key if present; reports error if types do not match
     ///
-    /// \returns true if key is present and matches type
+    /// \throws if key is present, but is not an enum
+    /// \throws if key is present, but not a member of enum
+    /// \returns true if key is present and matches enum type and value is valid enum member
     template <is_enum enum_t> auto read(std::string_view key, enum_t& dst) -> bool
     {
         auto* node = table_.get(key);
@@ -68,6 +71,7 @@ public:
 
     /// nests into section if present; reports error if type is not a section
     ///
+    /// \throws if section key is present, but does not contain a section
     /// \returns nested reader if section is present, nullopt otherwise
     [[nodiscard]] auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
     {

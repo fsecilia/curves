@@ -41,7 +41,7 @@ template <> struct enum_t<serialization::tomlpp::serialization_tomlpp_reader_ada
 namespace serialization::tomlpp {
 namespace {
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, reads_valid_value)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, reads_scalar_value)
 {
     auto const table = parse(R"( key = 2.5 )");
     auto sut = sut_t{table};
@@ -54,7 +54,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, reads_valid_value)
     EXPECT_DOUBLE_EQ(value, 2.5);
 }
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, ignores_missing_value_without_error)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, ignores_missing_scalar_value_without_error)
 {
     auto const table = parse(R"( key = 2.5 )");
     auto sut = sut_t{table};
@@ -68,7 +68,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, ignores_missing_value_without
     EXPECT_DOUBLE_EQ(original_value, value);
 }
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_on_type_mismatch)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, throws_on_scalar_type_mismatch)
 {
     auto const table = parse(R"( key = "value" )");
     auto sut = sut_t{table};
@@ -110,7 +110,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, ignores_missing_enum_without_
     EXPECT_EQ(value, expected_value);
 }
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_on_enum_type_mismatch)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, throws_on_enum_type_mismatch)
 {
     auto const table = parse(R"( enum = 5.0 )");
     auto sut = sut_t{table};
@@ -123,7 +123,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_on_enum_type_mi
     EXPECT_EQ(value, expected_value);
 }
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_on_invalid_enum_value)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, throws_on_invalid_enum_value)
 {
     auto const table = parse(R"( enum = "value_minus_1" )");
     auto sut = sut_t{table};
@@ -158,7 +158,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, opens_valid_section)
     EXPECT_DOUBLE_EQ(value, 5.0);
 }
 
-TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_when_section_is_scalar)
+TEST_F(serialization_tomlpp_reader_adapter_test_t, throws_when_section_is_scalar)
 {
     auto const table = parse(R"( key = 5.0 )"); // value instead of section
     auto sut = sut_t{table};
