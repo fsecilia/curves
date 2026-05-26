@@ -84,15 +84,15 @@ namespace {
 
 TEST_F(serialization_reader_test_t, reads_standard_types_directly)
 {
-    auto param = reflection::param_t<float_t>{"float", 1.0};
+    auto param = reflection::param_t<bool>{"bool", true};
 
-    EXPECT_CALL(mock_reader_adapter, read_value_float("float", _)).WillOnce([](std::string_view, float_t& dst) {
-        dst = 4.5;
+    EXPECT_CALL(mock_reader_adapter, read_value_bool("bool", _)).WillOnce([](std::string_view, bool& dst) {
+        dst = false;
     });
 
     sut(param);
 
-    EXPECT_DOUBLE_EQ(param.value(), 4.5);
+    EXPECT_FALSE(param.value());
 }
 
 TEST_F(serialization_reader_test_t, translates_enum_from_string)
