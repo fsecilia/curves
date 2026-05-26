@@ -12,7 +12,7 @@ namespace {
 
 using value_t = int_t;
 
-constexpr auto none = none_t<value_t>{};
+constexpr auto none = none_t{};
 static_assert(min<value_t>() == none(min<value_t>()));
 static_assert(0 == none(0));
 static_assert(max<value_t>() == none(max<value_t>()));
