@@ -27,7 +27,7 @@ public:
         {
             error_reporter_.location(node->source());
             if (auto val = node->value<value_t>()) dst = std::move(*val);
-            else error_reporter_.report_error(std::format("type mismatch for key '{}'", key));
+            else error_reporter_.report_error(std::format("type mismatch for key \"{}\"", key));
         }
     }
 
@@ -37,7 +37,7 @@ public:
         {
             error_reporter_.location(node->source());
             if (auto* sub_table = node->as_table()) return reader_adapter_t{*sub_table, error_reporter_};
-            else error_reporter_.report_error(std::format("expected table/section for key '{}'", key));
+            else error_reporter_.report_error(std::format("expected table/section for key \"{}\"", key));
         }
         return std::nullopt;
     }
