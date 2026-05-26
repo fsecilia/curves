@@ -19,18 +19,21 @@ template <typename adapter_t> class writer_t
 public:
     explicit writer_t(adapter_t adapter) : adapter_{std::move(adapter)} {}
 
+    /// writes generic value under param's key
     template <typename value_t, typename constraint_t>
     auto operator()(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
         adapter_.write(param.name(), param.value());
     }
 
+    /// writes enum value under param's key
     template <is_enum value_t, typename constraint_t>
     auto operator()(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
         adapter_.write(param.name(), reflection::to_string(param.value()));
     }
 
+    /// recurses visitor into nested section
     template <typename section_visitor_t>
     auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
     {

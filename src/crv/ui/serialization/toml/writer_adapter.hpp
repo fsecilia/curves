@@ -17,11 +17,13 @@ class writer_adapter_t
 public:
     explicit writer_adapter_t(toml::table& table) : table_{table} {}
 
+    /// writes value under key
     template <typename value_t> auto write(std::string_view key, value_t const& value) -> void
     {
         table_.insert_or_assign(key, value);
     }
 
+    /// creates new nested section
     auto create_section(std::string_view key) -> writer_adapter_t
     {
         auto [iterator, inserted] = table_.insert_or_assign(key, toml::table{});
