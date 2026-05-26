@@ -6,6 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/concepts.hpp>
+#include <crv/ui/reflection/enum.hpp>
+#include <crv/ui/serialization/exceptions.hpp>
 #include <format>
 #include <optional>
 #include <string_view>
@@ -14,12 +17,10 @@
 namespace crv::serialization::tomlpp {
 
 /// adapts toml reader to serialization::reader_t
-template <typename error_reporter_t> class reader_adapter_t
+class reader_adapter_t
 {
 public:
-    explicit reader_adapter_t(toml::table const& table, error_reporter_t& error_reporter)
-        : table_{table}, error_reporter_{error_reporter}
-    {}
+    explicit reader_adapter_t(toml::table const& table) noexcept : table_{table} {}
 
     /// reads dst under key if present; reports error if types do not match
     ///
@@ -29,16 +30,40 @@ public:
         auto* node = table_.get(key);
         if (!node) return false;
 
-        error_reporter_.location(node->source());
-        auto val = node->value<value_t>();
-        if (!val)
+        auto value = node->value<value_t>();
+        if (!value)
         {
-            error_reporter_.report_error(std::format("type mismatch for key \"{}\"", key));
+            report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
             return false;
         }
 
-        dst = std::move(*val);
+        dst = std::move(*value);
         return true;
+    }
+
+    /// reads dst under key if present; reports error if types do not match
+    ///
+    /// \returns true if key is present and matches type
+    template <is_enum enum_t> auto read(std::string_view key, enum_t& dst) -> bool
+    {
+        auto* node = table_.get(key);
+        if (!node) return false;
+
+        auto value = node->value<std::string_view>();
+        if (!value)
+        {
+            report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
+            return false;
+        }
+
+        if (auto opt_enum = reflection::from_string<enum_t>(*value))
+        {
+            dst = *opt_enum;
+            return true;
+        }
+
+        report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *value, key));
+        return false;
     }
 
     /// nests into section if present; reports error if type is not a section
@@ -48,16 +73,27 @@ public:
     {
         if (auto* node = table_.get(key))
         {
-            error_reporter_.location(node->source());
-            if (auto* sub_table = node->as_table()) return reader_adapter_t{*sub_table, error_reporter_};
-            else error_reporter_.report_error(std::format("expected table/section for key \"{}\"", key));
+            if (auto* sub_table = node->as_table()) return reader_adapter_t{*sub_table};
+            else report_error(node->source(), std::format("expected table/section for key \"{}\"", key));
         }
         return std::nullopt;
     }
 
 private:
     toml::table const& table_;
-    error_reporter_t& error_reporter_;
+
+    [[noreturn]] auto report_error(toml::source_region location_, std::string_view message) const -> void
+    {
+        if (location_.path)
+        {
+            throw parse_x{
+                std::format("{}:{}:{}: {}", *location_.path, location_.begin.line, location_.begin.column, message)};
+        }
+        else
+        {
+            throw parse_x{std::format("{}:{}: {}", location_.begin.line, location_.begin.column, message)};
+        }
+    }
 };
 
 } // namespace crv::serialization::tomlpp
