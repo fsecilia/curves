@@ -26,7 +26,7 @@ public:
     auto operator()(reflection::param_t<value_t, constraint_t>& param) -> void
     {
         auto value = param.value();
-        adapter_.read(param.name(), value);
+        if (!adapter_.read(param.name(), value)) return;
         param.value(std::move(value));
     }
 
@@ -35,9 +35,7 @@ public:
     auto operator()(reflection::param_t<enum_t, constraint_t>& param) -> void
     {
         auto value = std::string{};
-        adapter_.read(param.name(), value);
-
-        if (value.empty()) return;
+        if (!adapter_.read(param.name(), value)) return;
 
         if (auto opt_enum = reflection::from_string<enum_t>(value)) param.value(*opt_enum);
         else reporter_.report_error(std::format("invalid value \"{}\" for enum \"{}\"", value, param.name()));

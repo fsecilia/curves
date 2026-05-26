@@ -22,17 +22,28 @@ public:
     {}
 
     /// reads dst under key if present; reports error if types do not match
-    template <typename value_t> auto read(std::string_view key, value_t& dst) -> void
+    ///
+    /// \returns true if key is present and matches type
+    template <typename value_t> auto read(std::string_view key, value_t& dst) -> bool
     {
-        if (auto* node = table_.get(key))
+        auto* node = table_.get(key);
+        if (!node) return false;
+
+        error_reporter_.location(node->source());
+        auto val = node->value<value_t>();
+        if (!val)
         {
-            error_reporter_.location(node->source());
-            if (auto val = node->value<value_t>()) dst = std::move(*val);
-            else error_reporter_.report_error(std::format("type mismatch for key \"{}\"", key));
+            error_reporter_.report_error(std::format("type mismatch for key \"{}\"", key));
+            return false;
         }
+
+        dst = std::move(*val);
+        return true;
     }
 
-    /// reads nested section if present; reports error if type is not a section
+    /// nests into section if present; reports error if type is not a section
+    ///
+    /// \returns nested reader if section is present, nullopt otherwise
     [[nodiscard]] auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
     {
         if (auto* node = table_.get(key))
