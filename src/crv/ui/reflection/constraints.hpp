@@ -20,8 +20,17 @@ struct none_t
     }
 };
 
-/// constrains value between min and max
-template <typename value_t> struct range_t
+/// constrains value between compile-time values min and max
+template <typename value_t, value_t t_min, value_t t_max> struct static_t
+{
+    static constexpr value_t min = t_min;
+    static constexpr value_t max = t_max;
+
+    constexpr auto operator()(value_t const& val) const noexcept -> value_t { return std::clamp(val, min, max); }
+};
+
+/// constrains value between runtime values min and max
+template <typename value_t> struct dynamic_t
 {
     value_t min;
     value_t max;
