@@ -81,16 +81,41 @@ TEST_F(reflection_param_test_t, constrain_with_change)
     EXPECT_EQ(new_value, sut.value());
 }
 
-TEST_F(reflection_param_test_t, const_reflect_passes_const_self)
+TEST_F(reflection_param_test_t, const_reflect_const_visitor_passes_const_self_returns_const_visitor)
 {
     EXPECT_CALL(mock_visitor, call_const(Ref(sut)));
-    static_cast<sut_t const&>(sut).reflect(mock_visitor);
+
+    mock_visitor_t const& actual
+        = static_cast<sut_t const&>(sut).reflect(static_cast<mock_visitor_t const&>(mock_visitor));
+
+    EXPECT_EQ(&mock_visitor, &actual);
 }
 
-TEST_F(reflection_param_test_t, mutable_reflect_passes_mutable_self)
+TEST_F(reflection_param_test_t, const_reflect_mutable_visitor_passes_const_self_returns_mutable_visitor)
+{
+    EXPECT_CALL(mock_visitor, call_const(Ref(sut)));
+
+    mock_visitor_t& actual = static_cast<sut_t const&>(sut).reflect(mock_visitor);
+
+    EXPECT_EQ(&mock_visitor, &actual);
+}
+
+TEST_F(reflection_param_test_t, mutable_reflect_const_visitor_passes_mutable_self_returns_const_visitor)
 {
     EXPECT_CALL(mock_visitor, call_mutable(Ref(sut)));
-    sut.reflect(mock_visitor);
+
+    mock_visitor_t const& actual = sut.reflect(static_cast<mock_visitor_t const&>(mock_visitor));
+
+    EXPECT_EQ(&mock_visitor, &actual);
+}
+
+TEST_F(reflection_param_test_t, mutable_reflect_mutable_visitor_passes_mutable_self_returns_mutable_visitor)
+{
+    EXPECT_CALL(mock_visitor, call_mutable(Ref(sut)));
+
+    mock_visitor_t& actual = sut.reflect(mock_visitor);
+
+    EXPECT_EQ(&mock_visitor, &actual);
 }
 
 } // namespace

@@ -40,9 +40,10 @@ public:
         return true;
     }
 
-    constexpr auto reflect(this auto&& self, auto&& visitor) -> void
+    constexpr auto reflect(this auto&& self, auto&& visitor) -> decltype(auto)
     {
         std::forward<decltype(visitor)>(visitor)(std::forward<decltype(self)>(self));
+        return std::forward<decltype(visitor)>(visitor);
     }
 
 private:
