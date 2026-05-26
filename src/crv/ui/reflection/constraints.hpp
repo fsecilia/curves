@@ -12,9 +12,12 @@
 namespace crv::reflection::constraints {
 
 /// no constraint applied
-template <typename value_t> struct none_t
+struct none_t
 {
-    constexpr auto operator()(value_t const& value) const noexcept -> value_t { return value; }
+    template <typename value_t> constexpr auto operator()(value_t const& value) const noexcept -> value_t
+    {
+        return value;
+    }
 };
 
 /// constrains value between min and max
