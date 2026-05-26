@@ -25,7 +25,7 @@ public:
     auto operator()(reflection::param_t<value_t, constraint_t>& param) -> void
     {
         auto value = param.value();
-        adapter_.read_value(param.name(), value);
+        adapter_.read(param.name(), value);
         param.value(std::move(value));
     }
 
@@ -33,7 +33,7 @@ public:
     auto operator()(reflection::param_t<enum_t, constraint_t>& param) -> void
     {
         auto value = std::string{};
-        adapter_.read_value(param.name(), value);
+        adapter_.read(param.name(), value);
 
         if (value.empty()) return;
 

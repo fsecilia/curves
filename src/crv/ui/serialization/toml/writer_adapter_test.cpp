@@ -19,9 +19,9 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, writes_scalar_values)
     auto table = toml::table{};
     auto sut = sut_t{table};
 
-    sut.write_value("float", 2.5);
-    sut.write_value("bool", true);
-    sut.write_value("string", "value");
+    sut.write("float", 2.5);
+    sut.write("bool", true);
+    sut.write("string", "value");
 
     // values exist, are correct types, and have correct values
     EXPECT_EQ(table["float"].value<float_t>(), 2.5);
@@ -35,7 +35,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
     auto sut = sut_t{table};
 
     auto section = sut.create_section("section");
-    section.write_value("float", 5.0);
+    section.write("float", 5.0);
 
     // section must be a table
     ASSERT_TRUE(table["section"].is_table());
@@ -52,7 +52,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_value)
     table.insert("float", 1.0);
     auto sut = sut_t{table};
 
-    sut.write_value("float", 3.0);
+    sut.write("float", 3.0);
 
     EXPECT_EQ(table["float"].value<float_t>(), 3.0);
 }
@@ -67,7 +67,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_section)
     auto sut = sut_t{table};
 
     auto section = sut.create_section("section");
-    section.write_value("float", 2.0);
+    section.write("float", 2.0);
 
     auto& sync_table = *table["section"].as_table();
     EXPECT_EQ(sync_table["float"].value<float_t>(), 2.0);

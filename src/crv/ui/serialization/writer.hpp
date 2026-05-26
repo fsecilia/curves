@@ -22,13 +22,13 @@ public:
     template <typename value_t, typename constraint_t>
     auto operator()(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
-        adapter_.write_value(param.name(), param.value());
+        adapter_.write(param.name(), param.value());
     }
 
     template <is_enum value_t, typename constraint_t>
     auto operator()(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
-        adapter_.write_value(param.name(), reflection::to_string(param.value()));
+        adapter_.write(param.name(), reflection::to_string(param.value()));
     }
 
     template <typename section_visitor_t>
