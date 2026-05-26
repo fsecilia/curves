@@ -34,7 +34,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, reads_valid_value)
     EXPECT_CALL(mock_error_reporter, location(_));
 
     auto value = 1.0;
-    sut.read_value("key", value);
+    sut.read("key", value);
 
     EXPECT_DOUBLE_EQ(value, 2.5);
 }
@@ -46,7 +46,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, ignores_missing_value_without
 
     auto const original_value = 1.0;
     auto value = original_value;
-    sut.read_value("other_key", value);
+    sut.read("other_key", value);
 
     EXPECT_DOUBLE_EQ(original_value, value);
 }
@@ -61,7 +61,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, reports_error_on_type_mismatc
 
     auto const original_value = 1.0;
     auto value = original_value;
-    sut.read_value("key", value);
+    sut.read("key", value);
 
     // value is unchanged
     EXPECT_DOUBLE_EQ(original_value, value);
@@ -83,7 +83,7 @@ TEST_F(serialization_tomlpp_reader_adapter_test_t, opens_valid_section)
     // read from nested section
     EXPECT_CALL(mock_error_reporter, location(_));
     auto value = 0.0;
-    section->read_value("key", value);
+    section->read("key", value);
     EXPECT_DOUBLE_EQ(value, 5.0);
 }
 

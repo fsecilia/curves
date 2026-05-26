@@ -30,9 +30,9 @@ struct serialization_reader_test_t : Test
     struct mock_reader_adapter_t
     {
         virtual ~mock_reader_adapter_t() = default;
-        MOCK_METHOD(void, read_value_bool, (std::string_view, bool&), (const));
-        MOCK_METHOD(void, read_value_float, (std::string_view, float_t&), (const));
-        MOCK_METHOD(void, read_value_string, (std::string_view, std::string&), (const));
+        MOCK_METHOD(void, read_bool, (std::string_view, bool&), (const));
+        MOCK_METHOD(void, read_float, (std::string_view, float_t&), (const));
+        MOCK_METHOD(void, read_string, (std::string_view, std::string&), (const));
         MOCK_METHOD(bool, get_section, (std::string_view), (const));
     };
     StrictMock<mock_reader_adapter_t> mock_reader_adapter;
@@ -41,9 +41,9 @@ struct serialization_reader_test_t : Test
     {
         mock_reader_adapter_t* mock = nullptr;
 
-        auto read_value(std::string_view key, bool& dst) const -> void { mock->read_value_bool(key, dst); }
-        auto read_value(std::string_view key, float_t& dst) const -> void { mock->read_value_float(key, dst); }
-        auto read_value(std::string_view key, std::string& dst) const -> void { mock->read_value_string(key, dst); }
+        auto read(std::string_view key, bool& dst) const -> void { mock->read_bool(key, dst); }
+        auto read(std::string_view key, float_t& dst) const -> void { mock->read_float(key, dst); }
+        auto read(std::string_view key, std::string& dst) const -> void { mock->read_string(key, dst); }
 
         auto get_section(std::string_view key) const -> std::optional<reader_adapter_t>
         {
@@ -86,9 +86,7 @@ TEST_F(serialization_reader_test_t, reads_standard_types_directly)
 {
     auto param = reflection::param_t<bool>{"bool", true};
 
-    EXPECT_CALL(mock_reader_adapter, read_value_bool("bool", _)).WillOnce([](std::string_view, bool& dst) {
-        dst = false;
-    });
+    EXPECT_CALL(mock_reader_adapter, read_bool("bool", _)).WillOnce([](std::string_view, bool& dst) { dst = false; });
 
     sut(param);
 
@@ -102,7 +100,7 @@ TEST_F(serialization_reader_test_t, translates_enum_from_string)
 
     auto param = reflection::param_t<enum_t>{"enum", initial_value};
 
-    EXPECT_CALL(mock_reader_adapter, read_value_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
+    EXPECT_CALL(mock_reader_adapter, read_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
         dst = reflection::to_string(expected_value);
     });
 
@@ -116,7 +114,7 @@ TEST_F(serialization_reader_test_t, reports_error_on_invalid_enum_string)
     auto param = reflection::param_t<enum_t>{"enum", enum_t::value_1};
 
     // toml contains garbage data for enum
-    EXPECT_CALL(mock_reader_adapter, read_value_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
+    EXPECT_CALL(mock_reader_adapter, read_string("enum", _)).WillOnce([](std::string_view, std::string& dst) {
         dst = "garbage";
     });
 
@@ -137,7 +135,7 @@ TEST_F(serialization_reader_test_t, visits_nested_sections)
     EXPECT_CALL(mock_reader_adapter, get_section("section")).WillOnce(Return(true));
 
     // expect nested parameter
-    EXPECT_CALL(mock_reader_adapter, read_value_float("float", _)).WillOnce([](std::string_view, float_t& dst) {
+    EXPECT_CALL(mock_reader_adapter, read_float("float", _)).WillOnce([](std::string_view, float_t& dst) {
         dst = 7.0;
     });
 

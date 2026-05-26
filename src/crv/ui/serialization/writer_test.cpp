@@ -23,9 +23,9 @@ struct serialization_writer_test_t : Test
     struct mock_writer_adapter_t
     {
         virtual ~mock_writer_adapter_t() = default;
-        MOCK_METHOD(void, write_value_bool, (std::string_view, bool const&), (const));
-        MOCK_METHOD(void, write_value_float, (std::string_view, float_t const&), (const));
-        MOCK_METHOD(void, write_value_string, (std::string_view, std::string_view), (const));
+        MOCK_METHOD(void, write_bool, (std::string_view, bool const&), (const));
+        MOCK_METHOD(void, write_float, (std::string_view, float_t const&), (const));
+        MOCK_METHOD(void, write_string, (std::string_view, std::string_view), (const));
         MOCK_METHOD(void, create_section, (std::string_view));
     };
     StrictMock<mock_writer_adapter_t> mock_writer_adapter;
@@ -34,12 +34,9 @@ struct serialization_writer_test_t : Test
     {
         mock_writer_adapter_t* mock = nullptr;
 
-        auto write_value(std::string_view key, bool const& src) const -> void { mock->write_value_bool(key, src); }
-        auto write_value(std::string_view key, float_t const& src) const -> void { mock->write_value_float(key, src); }
-        auto write_value(std::string_view key, std::string_view src) const -> void
-        {
-            mock->write_value_string(key, src);
-        }
+        auto write(std::string_view key, bool const& src) const -> void { mock->write_bool(key, src); }
+        auto write(std::string_view key, float_t const& src) const -> void { mock->write_float(key, src); }
+        auto write(std::string_view key, std::string_view src) const -> void { mock->write_string(key, src); }
 
         auto create_section(std::string_view key) -> writer_adapter_t
         {
@@ -82,7 +79,7 @@ TEST_F(serialization_writer_test_t, writes_standard_types_directly)
 {
     auto param = reflection::param_t<bool>{"bool", true};
 
-    EXPECT_CALL(mock_writer_adapter, write_value_bool("bool", true));
+    EXPECT_CALL(mock_writer_adapter, write_bool("bool", true));
 
     sut(param);
 }
@@ -91,7 +88,7 @@ TEST_F(serialization_writer_test_t, translates_enum_to_string_before_writing)
 {
     auto param = reflection::param_t<enum_t>{"enum", enum_t::value_1};
 
-    EXPECT_CALL(mock_writer_adapter, write_value_string("enum", std::string_view{"value_1"}));
+    EXPECT_CALL(mock_writer_adapter, write_string("enum", std::string_view{"value_1"}));
 
     sut(param);
 }
@@ -104,7 +101,7 @@ TEST_F(serialization_writer_test_t, visits_nested_sections)
     EXPECT_CALL(mock_writer_adapter, create_section("section"));
 
     // write to section
-    EXPECT_CALL(mock_writer_adapter, write_value_float("float", 2.0));
+    EXPECT_CALL(mock_writer_adapter, write_float("float", 2.0));
 
     section.reflect(sut);
 }

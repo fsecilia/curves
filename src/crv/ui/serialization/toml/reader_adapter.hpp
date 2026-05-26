@@ -21,7 +21,7 @@ public:
         : table_{table}, error_reporter_{error_reporter}
     {}
 
-    template <typename value_t> auto read_value(std::string_view key, value_t& dst) -> void
+    template <typename value_t> auto read(std::string_view key, value_t& dst) -> void
     {
         if (auto* node = table_.get(key))
         {
