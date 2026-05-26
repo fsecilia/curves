@@ -21,6 +21,7 @@ template <typename adapter_t, typename error_reporter_t> class reader_t
 public:
     reader_t(adapter_t adapter, error_reporter_t& reporter) : adapter_{std::move(adapter)}, reporter_{reporter} {}
 
+    /// reads generic value under param's key; does nothing if not present, reports error if types do not match
     template <typename value_t, typename constraint_t>
     auto operator()(reflection::param_t<value_t, constraint_t>& param) -> void
     {
@@ -29,6 +30,7 @@ public:
         param.value(std::move(value));
     }
 
+    /// reads enum value under param's key; does nothing if not present, reports error if types do not match
     template <is_enum enum_t, typename constraint_t>
     auto operator()(reflection::param_t<enum_t, constraint_t>& param) -> void
     {
@@ -41,6 +43,7 @@ public:
         else reporter_.report_error(std::format("invalid value \"{}\" for enum \"{}\"", value, param.name()));
     }
 
+    /// recurses visitor into nested section if found; does nothing if not present, reports error if not a section
     template <typename section_visitor_t>
     auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
     {

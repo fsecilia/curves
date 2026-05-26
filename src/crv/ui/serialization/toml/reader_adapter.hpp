@@ -21,6 +21,7 @@ public:
         : table_{table}, error_reporter_{error_reporter}
     {}
 
+    /// reads dst under key if present; reports error if types do not match
     template <typename value_t> auto read(std::string_view key, value_t& dst) -> void
     {
         if (auto* node = table_.get(key))
@@ -31,6 +32,7 @@ public:
         }
     }
 
+    /// reads nested section if present; reports error if type is not a section
     auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
     {
         if (auto* node = table_.get(key))
