@@ -6,13 +6,37 @@
 #include "writer_adapter.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::serialization::tomlpp {
+namespace crv {
+namespace serialization::tomlpp {
 namespace {
 
 struct serialization_tomlpp_writer_adapter_test_t : Test
 {
+    enum class enum_t
+    {
+        value_0,
+        value_1,
+    };
+
     using sut_t = writer_adapter_t;
 };
+
+} // namespace
+} // namespace serialization::tomlpp
+
+namespace reflection {
+
+template <> struct enum_t<serialization::tomlpp::serialization_tomlpp_writer_adapter_test_t::enum_t>
+{
+    static constexpr auto map
+        = sequential_enum_name_map<serialization::tomlpp::serialization_tomlpp_writer_adapter_test_t::enum_t>(
+            "value_0", "value_1");
+};
+
+} // namespace reflection
+
+namespace serialization::tomlpp {
+namespace {
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, writes_scalar_values)
 {
@@ -29,6 +53,36 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, writes_scalar_values)
     EXPECT_EQ(table["string"].value<std::string_view>(), "value");
 }
 
+TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_scalar_value)
+{
+    // pre-populate with old value
+    auto table = toml::table{};
+    table.insert("float", 1.0);
+    auto sut = sut_t{table};
+
+    sut.write("float", 3.0);
+
+    EXPECT_EQ(table["float"].value<float_t>(), 3.0);
+}
+
+TEST_F(serialization_tomlpp_writer_adapter_test_t, translates_enum_to_string_before_writing)
+{
+    auto table = toml::table{};
+    auto sut = sut_t{table};
+
+    sut.write("enum", enum_t::value_1);
+
+    EXPECT_EQ(table["enum"].value<std::string_view>(), "value_1");
+}
+
+TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_on_invalid_enum_string)
+{
+    auto table = toml::table{};
+    auto sut = sut_t{table};
+
+    EXPECT_THROW(sut.write("enum", static_cast<enum_t>(-1)), parse_x);
+}
+
 TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section)
 {
     auto table = toml::table{};
@@ -43,18 +97,6 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
     // value is written inside the section
     auto& sync_table = *table["section"].as_table();
     EXPECT_EQ(sync_table["float"].value<float_t>(), 5.0);
-}
-
-TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_value)
-{
-    // pre-populate with old value
-    auto table = toml::table{};
-    table.insert("float", 1.0);
-    auto sut = sut_t{table};
-
-    sut.write("float", 3.0);
-
-    EXPECT_EQ(table["float"].value<float_t>(), 3.0);
 }
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_section)
@@ -75,4 +117,5 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_section)
 }
 
 } // namespace
-} // namespace crv::serialization::tomlpp
+} // namespace serialization::tomlpp
+} // namespace crv

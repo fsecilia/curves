@@ -4,7 +4,6 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "writer.hpp"
-#include <crv/sequential_enum_name_map.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
@@ -14,19 +13,6 @@ namespace {
 
 struct serialization_writer_test_t : Test
 {
-    enum class enum_t
-    {
-        value_0,
-        value_1,
-    };
-
-    struct mock_error_reporter_t
-    {
-        virtual ~mock_error_reporter_t() = default;
-        MOCK_METHOD(void, report_error, (std::string_view), (const));
-    };
-    StrictMock<mock_error_reporter_t> mock_error_reporter;
-
     struct mock_writer_adapter_t
     {
         virtual ~mock_writer_adapter_t() = default;
@@ -62,49 +48,15 @@ struct serialization_writer_test_t : Test
         }
     };
 
-    using sut_t = writer_t<writer_adapter_t, mock_error_reporter_t>;
-    sut_t sut{writer_adapter_t{&mock_writer_adapter}, mock_error_reporter};
+    using sut_t = writer_t<writer_adapter_t>;
+    sut_t sut{writer_adapter_t{&mock_writer_adapter}};
 };
-
-} // namespace
-} // namespace serialization
-
-namespace reflection {
-
-template <> struct enum_t<serialization::serialization_writer_test_t::enum_t>
-{
-    static constexpr auto map
-        = sequential_enum_name_map<serialization::serialization_writer_test_t::enum_t>("value_0", "value_1");
-};
-
-} // namespace reflection
-
-namespace serialization {
-namespace {
 
 TEST_F(serialization_writer_test_t, writes_standard_types_directly)
 {
     auto param = reflection::param_t<bool>{"bool", true};
 
     EXPECT_CALL(mock_writer_adapter, write_bool("bool", true));
-
-    sut(param);
-}
-
-TEST_F(serialization_writer_test_t, translates_enum_to_string_before_writing)
-{
-    auto param = reflection::param_t<enum_t>{"enum", enum_t::value_1};
-
-    EXPECT_CALL(mock_writer_adapter, write_string("enum", std::string_view{"value_1"}));
-
-    sut(param);
-}
-
-TEST_F(serialization_writer_test_t, reports_error_on_invalid_enum_string)
-{
-    auto param = reflection::param_t<enum_t>{"enum", static_cast<enum_t>(-1)};
-
-    EXPECT_CALL(mock_error_reporter, report_error(HasSubstr("unmapped value")));
 
     sut(param);
 }
