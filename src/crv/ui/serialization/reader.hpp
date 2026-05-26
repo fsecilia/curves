@@ -21,7 +21,7 @@ public:
 
     /// reads value under param's key; does nothing if not present, reports error if types do not match
     template <typename value_t, typename constraint_t>
-    auto operator()(reflection::param_t<value_t, constraint_t>& param) -> void
+    auto visit(reflection::param_t<value_t, constraint_t>& param) -> void
     {
         auto value = param.value();
         if (!adapter_.read(param.name(), value)) return;

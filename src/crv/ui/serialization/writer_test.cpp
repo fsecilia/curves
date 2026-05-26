@@ -58,7 +58,7 @@ TEST_F(serialization_writer_test_t, writes_standard_types_directly)
 
     EXPECT_CALL(mock_writer_adapter, write_bool("bool", true));
 
-    sut(param);
+    sut.visit(param);
 }
 
 TEST_F(serialization_writer_test_t, visits_nested_sections)

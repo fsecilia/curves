@@ -30,10 +30,10 @@ struct device_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.name);
-        visitor(self.id);
-        visitor(self.dpi);
-        visitor(self.rotation);
+        visitor.visit(self.name);
+        visitor.visit(self.id);
+        visitor.visit(self.dpi);
+        visitor.visit(self.rotation);
         return std::forward<visitor_t>(visitor);
     }
 };
@@ -46,8 +46,8 @@ struct offset_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.type);
-        visitor(self.width);
+        visitor.visit(self.begin);
+        visitor.visit(self.width);
         return std::forward<visitor_t>(visitor);
     }
 };
@@ -60,8 +60,8 @@ struct limit_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.type);
-        visitor(self.width);
+        visitor.visit(self.limit);
+        visitor.visit(self.width);
         return std::forward<visitor_t>(visitor);
     }
 };
@@ -77,8 +77,8 @@ struct common_curve_config_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.input_scale);
-        visitor(self.output_scale);
+        visitor.visit(self.input_scale);
+        visitor.visit(self.output_scale);
 
         visitor.visit_section("offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
         visitor.visit_section("limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });

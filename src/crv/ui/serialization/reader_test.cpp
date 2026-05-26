@@ -60,7 +60,7 @@ TEST_F(serialization_reader_test_t, reads_standard_types_directly)
         return true;
     });
 
-    sut(param);
+    sut.visit(param);
 
     EXPECT_FALSE(param.value());
 }
@@ -75,7 +75,7 @@ TEST_F(serialization_reader_test_t, ignores_missing_keys)
         return false;
     });
 
-    sut(param);
+    sut.visit(param);
 
     EXPECT_EQ(original_value, param.value());
 }
