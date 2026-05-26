@@ -24,7 +24,7 @@ public:
     }
 
     /// creates new nested section
-    auto create_section(std::string_view key) -> writer_adapter_t
+    [[nodiscard]] auto create_section(std::string_view key) -> writer_adapter_t
     {
         auto [iterator, inserted] = table_.insert_or_assign(key, toml::table{});
         return writer_adapter_t{*iterator->second.as_table()};

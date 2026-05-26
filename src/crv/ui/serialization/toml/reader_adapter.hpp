@@ -33,7 +33,7 @@ public:
     }
 
     /// reads nested section if present; reports error if type is not a section
-    auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
+    [[nodiscard]] auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
     {
         if (auto* node = table_.get(key))
         {
