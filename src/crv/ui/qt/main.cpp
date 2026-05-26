@@ -11,7 +11,7 @@
 #include <iostream>
 #include <utility>
 
-namespace curves {
+namespace crv {
 
 struct message_box_params_t
 {
@@ -64,9 +64,9 @@ auto main(int argc, char* argv[]) -> int
     return run_application(argc, argv);
 }
 
-} // namespace curves
+} // namespace crv
 
 auto main(int argc, char* argv[]) -> int
 {
-    return curves::main(argc, argv);
+    return crv::main(argc, argv);
 }
