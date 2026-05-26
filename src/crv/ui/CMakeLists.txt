@@ -8,6 +8,7 @@ add_library(ui
     serialization/toml/error_reporter.hpp
     serialization/toml/reader_adapter.hpp
     serialization/toml/writer_adapter.hpp
+    serialization/reader.hpp
     reflection/constraints.hpp
     reflection/enum.hpp
     reflection/param.hpp
@@ -19,6 +20,7 @@ add_executable(ui_test
     serialization/toml/error_reporter_test.cpp
     serialization/toml/reader_adapter_test.cpp
     serialization/toml/writer_adapter_test.cpp
+    serialization/reader_test.cpp
     reflection/constraints_test.cpp
     reflection/enum_test.cpp
     reflection/param_test.cpp
