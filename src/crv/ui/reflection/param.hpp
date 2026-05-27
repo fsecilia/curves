@@ -20,25 +20,24 @@ template <typename value_t, typename constraint_t = constraints::none_t> class p
 public:
     constexpr param_t(std::string_view name, value_t value)
         requires std::is_default_constructible_v<constraint_t>
-        : name_{name}, value_{std::move(value)}
+        : param_t{name, std::move(value), constraint_t{}}
     {}
 
     constexpr param_t(std::string_view name, value_t value, constraint_t constraint)
-        : name_{name}, value_{std::move(value)}, constraint_{std::move(constraint)}
+        : name_{name}, value_{constraint(value)}, constraint_{std::move(constraint)}
     {}
 
     constexpr auto name() const noexcept -> std::string_view { return name_; }
     constexpr auto value() const noexcept -> value_t { return value_; }
-    constexpr auto value(value_t value) noexcept -> void { value_ = std::move(value); }
+
+    constexpr auto value(value_t value) noexcept -> bool
+    {
+        auto constrained_value = constraint_(std::move(value));
+        value_ = std::move(constrained_value);
+        return constrained_value != value;
+    }
 
     constexpr auto constraint() const noexcept -> constraint_t const& { return constraint_; }
-    constexpr auto constrain() noexcept -> bool
-    {
-        auto clamped = constraint_(value_);
-        if (clamped == value_) return false;
-        value_ = std::move(clamped);
-        return true;
-    }
 
     constexpr auto reflect(this auto&& self, auto&& visitor) -> decltype(auto)
     {
