@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
 #include <crv/ui/reflection/enum.hpp>
+#include <crv/ui/serialization/toml/concepts.hpp>
 #include <crv/ui/serialization/toml/error_reporting.hpp>
 #include <format>
 #include <optional>
@@ -26,7 +27,7 @@ public:
     ///
     /// \throws if key is present, but types do not match
     /// \returns true if key is present and matches type
-    template <typename value_t> auto read(std::string_view key, value_t& dst) -> bool
+    template <is_toml_primitive value_t> auto read(std::string_view key, value_t& dst) -> bool
     {
         auto* node = table_.get(key);
         if (!node) return false;

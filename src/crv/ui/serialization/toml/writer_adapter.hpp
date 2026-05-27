@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/ui/reflection/enum.hpp>
 #include <crv/ui/serialization/exceptions.hpp>
+#include <crv/ui/serialization/toml/concepts.hpp>
 #include <string_view>
 #include <toml++/toml.hpp>
 
@@ -20,7 +21,7 @@ public:
     explicit writer_adapter_t(toml::table& table) : table_{table} {}
 
     /// writes generic value under key
-    template <typename value_t> auto write(std::string_view key, value_t const& value) -> void
+    template <is_toml_primitive value_t> auto write(std::string_view key, value_t const& value) -> void
     {
         table_.insert_or_assign(key, value);
     }
