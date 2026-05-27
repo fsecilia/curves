@@ -7,6 +7,7 @@
 #include <crv/test/test.hpp>
 
 #include <crv/ui/serialization/exceptions.hpp>
+#include <crv/ui/serialization/toml/archive.hpp>
 #include <crv/ui/serialization/toml/error_reporting.hpp>
 #include <crv/ui/serialization/toml/reader_adapter.hpp>
 #include <crv/ui/serialization/toml/writer_adapter.hpp>
@@ -15,65 +16,6 @@
 #include <toml++/toml.hpp>
 
 namespace crv::serialization {
-
-namespace tomlpp {
-
-struct archive_t
-{
-    static constexpr auto file_extension = std::string_view{".toml"};
-
-    using document_t = toml::table;
-
-    auto create_read_document(std::filesystem::path const& path) const -> document_t
-    {
-        try
-        {
-            return toml::parse(path.c_str());
-        }
-        catch (toml::parse_error const& exception)
-        {
-            report_error(exception.what(), exception.source());
-        }
-    }
-
-    auto create_read_document(std::istream& in) const -> document_t
-    {
-        try
-        {
-            return toml::parse(in);
-        }
-        catch (toml::parse_error const& exception)
-        {
-            report_error(exception.what());
-        }
-    }
-
-    auto create_write_document() const -> document_t { return {}; }
-
-    auto create_reader_adapter(document_t const& document) const -> reader_adapter_t
-    {
-        return reader_adapter_t{document};
-    }
-
-    auto create_writer_adapter(document_t& document) const -> writer_adapter_t { return writer_adapter_t{document}; }
-
-    auto write(document_t const& document, std::ostream& out) const -> void
-    {
-        out << document;
-        if (!out) throw io_x{"failed to write TOML document to output stream"};
-    }
-
-    auto write(document_t const& document, std::filesystem::path const& path) const -> void
-    {
-        auto out = std::ofstream{path};
-        if (!out.is_open()) throw io_x{"failed to open file for writing: " + path.string()};
-
-        out << document;
-        if (!out) throw io_x{"failed to write TOML document to file: " + path.string()};
-    }
-};
-
-} // namespace tomlpp
 
 template <typename archive_t, typename writer_factory_t> class serializer_t
 {
