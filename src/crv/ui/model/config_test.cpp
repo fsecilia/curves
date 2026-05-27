@@ -19,6 +19,8 @@ namespace tomlpp {
 
 struct archive_t
 {
+    static constexpr auto file_extension = std::string_view{".toml"};
+
     using document_t = toml::table;
 
     auto create_read_document(std::filesystem::path const& path) const -> document_t
