@@ -22,6 +22,15 @@ struct none_t
     constexpr auto operator==(none_t const&) const noexcept -> bool = default;
 };
 
+template <typename value_t, value_t t_min> struct static_lower_bound_t
+{
+    static constexpr value_t min = t_min;
+
+    constexpr auto operator()(value_t const& val) const noexcept -> value_t { return std::max(val, min); }
+
+    constexpr auto operator==(static_lower_bound_t const&) const noexcept -> bool = default;
+};
+
 /// constrains value between compile-time values min and max
 template <typename value_t, value_t t_min, value_t t_max> struct static_t
 {
