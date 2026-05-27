@@ -23,7 +23,7 @@ public:
     template <typename value_t, typename constraint_t>
     auto visit(reflection::param_t<value_t, constraint_t>& param) -> void
     {
-        auto value = param.value();
+        value_t value;
         if (!adapter_.read(param.name(), value)) return;
         param.value(std::move(value));
     }
