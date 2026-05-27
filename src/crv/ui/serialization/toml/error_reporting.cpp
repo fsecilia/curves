@@ -8,7 +8,7 @@
 
 namespace crv::serialization::tomlpp {
 
-[[noreturn]] auto report_error(std::string_view message, toml::source_region location) -> void
+[[noreturn]] auto report_error(std::string const& message, toml::source_region location) -> void
 {
     if (location.path)
     {
