@@ -18,6 +18,8 @@ struct none_t
     {
         return value;
     }
+
+    constexpr auto operator==(none_t const&) const noexcept -> bool = default;
 };
 
 /// constrains value between compile-time values min and max
@@ -27,6 +29,8 @@ template <typename value_t, value_t t_min, value_t t_max> struct static_t
     static constexpr value_t max = t_max;
 
     constexpr auto operator()(value_t const& val) const noexcept -> value_t { return std::clamp(val, min, max); }
+
+    constexpr auto operator==(static_t const&) const noexcept -> bool = default;
 };
 
 /// constrains value between runtime values min and max
@@ -36,6 +40,8 @@ template <typename value_t> struct dynamic_t
     value_t max;
 
     constexpr auto operator()(value_t const& val) const noexcept -> value_t { return std::clamp(val, min, max); }
+
+    constexpr auto operator==(dynamic_t const&) const noexcept -> bool = default;
 };
 
 } // namespace crv::reflection::constraints

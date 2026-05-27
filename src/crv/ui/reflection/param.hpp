@@ -45,6 +45,8 @@ public:
         return std::forward<decltype(visitor)>(visitor);
     }
 
+    constexpr auto operator==(param_t const&) const noexcept -> bool = default;
+
 private:
     std::string_view name_;
     value_t value_;
