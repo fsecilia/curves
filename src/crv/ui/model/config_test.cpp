@@ -7,6 +7,7 @@
 #include <crv/test/test.hpp>
 
 #include <crv/ui/serialization/exceptions.hpp>
+#include <filesystem>
 #include <string_view>
 #include <toml++/toml.hpp>
 
@@ -110,9 +111,9 @@ private:
             return false;
         }
 
-        if (auto parsed = reflection::from_string<enum_t>(*name))
+        if (auto value = reflection::from_string<enum_t>(*name))
         {
-            dst = *parsed;
+            dst = *value;
             return true;
         }
 
@@ -133,6 +134,7 @@ private:
 
 struct archive_t
 {
+    static auto parse(std::filesystem::path const& path) -> toml::table { return toml::parse(path.c_str()); }
     static auto parse(std::istream& in) -> toml::table { return toml::parse(in); }
     static auto create_reader(toml::table const& table) -> reader_t { return reader_t{table}; }
     static auto create_writer() -> writer_t { return {}; }
