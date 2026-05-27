@@ -13,7 +13,7 @@
 #include <crv/ui/reflection/param.hpp>
 #include <string>
 
-namespace crv {
+namespace crv::model {
 
 using namespace reflection;
 using namespace constraints;
@@ -25,7 +25,7 @@ struct device_t
     param_t<std::string> name{"Name", "<device-name>"};
     param_t<std::string> id{"Id", "<device-id>"};
     param_t<int_t> dpi{"DPI", 0};
-    param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"rotation (°)", 0.0};
+    param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"Rotation (°)", 0.0};
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
@@ -36,6 +36,8 @@ struct device_t
         visitor.visit(self.rotation);
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(device_t const&) const noexcept -> bool = default;
 };
 
 struct offset_t
@@ -50,6 +52,8 @@ struct offset_t
         visitor.visit(self.width);
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(offset_t const&) const noexcept -> bool = default;
 };
 
 struct limit_t
@@ -64,6 +68,8 @@ struct limit_t
         visitor.visit(self.width);
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(limit_t const&) const noexcept -> bool = default;
 };
 
 struct common_curve_config_t
@@ -80,11 +86,13 @@ struct common_curve_config_t
         visitor.visit(self.input_scale);
         visitor.visit(self.output_scale);
 
-        visitor.visit_section("offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
-        visitor.visit_section("limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });
+        visitor.visit_section("Offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
+        visitor.visit_section("Limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });
 
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(common_curve_config_t const&) const noexcept -> bool = default;
 };
 
 template <typename specific_curve_config_t> struct curve_config_t
@@ -99,42 +107,50 @@ template <typename specific_curve_config_t> struct curve_config_t
         self.specific.reflect(visitor);
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(curve_config_t const&) const noexcept -> bool = default;
 };
 
 struct profile_t
 {
-    float_param_t anisotropy{"y/x scaling", 1.0};
-    param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"filter halflife (ms)", 2.0};
-    param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"notch_width (c/ms)", 0.0};
+    float_param_t anisotropy{"Y/X scaling", 1.0};
+    param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"Filter Halflife (ms)", 2.0};
+    param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"Notch Width (c/ms)", 0.0};
 
     // curve configs
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.anisotropy);
-        visitor(self.filter_halflife);
-        visitor(self.notch_width);
+        visitor.visit(self.anisotropy);
+        visitor.visit(self.filter_halflife);
+        visitor.visit(self.notch_width);
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(profile_t const&) const noexcept -> bool = default;
 };
 
 struct root_t
 {
-    param_t<int_t> version{"version", 1};
+    param_t<int_t> version{"Version", 1};
 
+    device_t device;
     profile_t profile;
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor(self.version);
+        visitor.visit(self.version);
 
+        visitor.visit_section("Default Device", [&](auto&& section_visitor) { self.device.reflect(section_visitor); });
         visitor.visit_section(
-            "default profile", [&](auto&& section_visitor) { self.profile.reflect(section_visitor); });
+            "Default Profile", [&](auto&& section_visitor) { self.profile.reflect(section_visitor); });
 
         return std::forward<visitor_t>(visitor);
     }
+
+    constexpr auto operator==(root_t const&) const noexcept -> bool = default;
 };
 
-} // namespace crv
+} // namespace crv::model
