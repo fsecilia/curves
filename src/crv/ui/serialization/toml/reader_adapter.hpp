@@ -32,11 +32,7 @@ public:
         if (!node) return false;
 
         auto value = node->value<value_t>();
-        if (!value)
-        {
-            report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
-            return false;
-        }
+        if (!value) report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
 
         dst = std::move(*value);
         return true;
@@ -52,21 +48,14 @@ public:
         auto* node = table_.get(key);
         if (!node) return false;
 
-        auto value = node->value<std::string_view>();
-        if (!value)
-        {
-            report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
-            return false;
-        }
+        auto const name = node->value<std::string_view>();
+        if (!name) report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
 
-        if (auto opt_enum = reflection::from_string<enum_t>(*value))
-        {
-            dst = *opt_enum;
-            return true;
-        }
+        auto const value = reflection::from_string<enum_t>(*name);
+        if (!value) report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *name, key));
 
-        report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *value, key));
-        return false;
+        dst = *value;
+        return true;
     }
 
     /// nests into section if present; reports error if type is not a section
