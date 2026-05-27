@@ -15,38 +15,10 @@ namespace crv::serialization {
 
 namespace tomlpp {
 
-class writer_t
+class writer_adapter_t
 {
 public:
-    explicit writer_t(toml::table& table) noexcept : table_{table} {}
-
-    template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t> const& param) const -> void
-    {
-        write(param.name(), param.value());
-    }
-
-    template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
-    {
-        toml::table* target_table = nullptr;
-
-        if (auto* node = table_.get(name))
-        {
-            target_table = node->as_table();
-            if (!target_table) throw parse_x{std::format("expected table for key \"{}\"", name)};
-        }
-        else
-        {
-            auto [iterator, inserted] = table_.insert(name, toml::table{});
-            target_table = iterator->second.as_table();
-        }
-
-        std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{*target_table});
-    }
-
-private:
-    toml::table& table_;
+    explicit writer_adapter_t(toml::table& table) noexcept : table_{table} {}
 
     template <typename value_t> auto write(std::string_view key, value_t const& value) const -> void
     {
@@ -64,35 +36,30 @@ private:
 
         table_.insert_or_assign(key, *name);
     }
-};
 
-class reader_t
-{
-public:
-    explicit reader_t(toml::table const& table) noexcept : table_{table} {}
-
-    template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t>& param) const -> void
+    [[nodiscard]] auto create_section(std::string_view key) -> writer_adapter_t
     {
-        value_t value;
-        if (read(param.name(), value)) param.value(std::move(value));
-    }
-
-    template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
-    {
-        if (auto* node = table_.get(name))
+        if (auto* node = table_.get(key))
         {
-            if (auto* sub_table = node->as_table())
-            {
-                std::invoke(std::forward<section_visitor_t>(section_visitor), reader_t{*sub_table});
-            }
-            else report_error(node->source(), std::format("expected table for key \"{}\"", name));
+            auto target_table = node->as_table();
+            if (!target_table) throw parse_x{std::format("expected table for key \"{}\"", key)};
+            return writer_adapter_t{*target_table};
+        }
+        else
+        {
+            auto [iterator, inserted] = table_.insert(key, toml::table{});
+            return writer_adapter_t{*iterator->second.as_table()};
         }
     }
 
 private:
-    toml::table const& table_;
+    toml::table& table_;
+};
+
+class reader_adapter_t
+{
+public:
+    explicit reader_adapter_t(toml::table const& table) noexcept : table_{table} {}
 
     template <typename value_t> auto read(std::string_view key, value_t& dst) const -> bool
     {
@@ -121,6 +88,19 @@ private:
         return true;
     }
 
+    [[nodiscard]] auto get_section(std::string_view key) -> std::optional<reader_adapter_t>
+    {
+        if (auto* node = table_.get(key))
+        {
+            if (auto* sub_table = node->as_table()) return reader_adapter_t{*sub_table};
+            else report_error(node->source(), std::format("expected table for key \"{}\"", key));
+        }
+        return std::nullopt;
+    }
+
+private:
+    toml::table const& table_;
+
     [[noreturn]] auto report_error(toml::source_region location, std::string_view message) const -> void
     {
         if (location.path)
@@ -143,46 +123,113 @@ struct archive_t
     auto create_read_document(std::istream& in) const -> document_t { return toml::parse(in); }
     auto create_write_document() const -> document_t { return {}; }
 
-    auto create_reader(document_t const& doc) const -> reader_t { return reader_t{doc}; }
-    auto create_writer(document_t& doc) const -> writer_t { return writer_t{doc}; }
+    auto create_reader_adapter(document_t const& doc) const -> reader_adapter_t { return reader_adapter_t{doc}; }
+    auto create_writer_adapter(document_t& doc) const -> writer_adapter_t { return writer_adapter_t{doc}; }
 
     auto write(document_t const& doc, std::ostream& out) const -> void { out << doc; }
 };
 
 } // namespace tomlpp
 
-template <typename archive_t> class serializer_t
+template <typename adapter_t> class writer_t
 {
 public:
-    explicit serializer_t(archive_t archive = {}) noexcept : archive_{std::move(archive)} {}
+    explicit writer_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
+
+    template <typename value_t, typename constraint_t>
+    auto visit(reflection::param_t<value_t, constraint_t> const& param) const -> void
+    {
+        adapter_.write(param.name(), param.value());
+    }
+
+    template <typename section_visitor_t>
+    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
+    {
+        auto section_adapter = adapter_.create_section(name);
+        std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{std::move(section_adapter)});
+    }
+
+private:
+    adapter_t adapter_;
+};
+
+template <typename t_writer_t> struct writer_factory_t
+{
+    using writer_t = t_writer_t;
+
+    auto create_writer(auto adapter) const -> writer_t { return writer_t{std::move(adapter)}; }
+};
+
+template <typename adapter_t> class reader_t
+{
+public:
+    explicit reader_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
+
+    template <typename value_t, typename constraint_t>
+    auto visit(reflection::param_t<value_t, constraint_t>& param) const -> void
+    {
+        value_t value;
+        if (adapter_.read(param.name(), value)) param.value(std::move(value));
+    }
+
+    template <typename section_visitor_t>
+    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
+    {
+        auto section_adapter = adapter_.get_section(name);
+        if (section_adapter)
+        {
+            std::invoke(std::forward<section_visitor_t>(section_visitor), reader_t{*std::move(section_adapter)});
+        }
+    }
+
+private:
+    adapter_t adapter_;
+};
+
+template <typename t_reader_t> struct reader_factory_t
+{
+    using reader_t = t_reader_t;
+
+    auto create_reader(auto adapter) const -> reader_t { return reader_t{std::move(adapter)}; }
+};
+
+template <typename archive_t, typename writer_factory_t> class serializer_t
+{
+public:
+    explicit serializer_t(archive_t archive = {}, writer_factory_t writer_factory = {}) noexcept
+        : archive_{std::move(archive)}, writer_factory_{std::move(writer_factory)}
+    {}
 
     template <typename reflected_t>
     auto operator()(reflected_t const& obj, std::filesystem::path const& path) const -> void
     {
-        deserialize(obj, std::ofstream{path});
+        serialize(obj, std::ofstream{path});
     }
 
     template <typename reflected_t> auto operator()(reflected_t const& obj, std::ostream& out) const -> void
     {
-        deserialize(obj, out);
+        serialize(obj, out);
     }
 
 private:
-    template <typename reflected_t> auto deserialize(reflected_t const& obj, std::ostream& out) const -> void
+    template <typename reflected_t> auto serialize(reflected_t const& obj, std::ostream& out) const -> void
     {
         auto document = archive_.create_write_document();
-        auto writer = archive_.create_writer(document);
+        auto writer = writer_factory_.create_writer(archive_.create_writer_adapter(document));
         obj.reflect(writer);
         archive_.write(document, out);
     }
 
     archive_t archive_;
+    writer_factory_t writer_factory_;
 };
 
-template <typename archive_t> class deserializer_t
+template <typename archive_t, typename reader_factory_t> class deserializer_t
 {
 public:
-    explicit deserializer_t(archive_t archive = {}) noexcept : archive_{std::move(archive)} {}
+    explicit deserializer_t(archive_t archive = {}, reader_factory_t reader_factory = {}) noexcept
+        : archive_{std::move(archive)}, reader_factory_{std::move(reader_factory)}
+    {}
 
     template <typename reflected_t> auto operator()(std::filesystem::path const& path, reflected_t& obj) const -> void
     {
@@ -198,11 +245,12 @@ private:
     template <typename source_t, typename reflected_t> auto deserialize(source_t&& in, reflected_t& obj) const -> void
     {
         auto document = archive_.create_read_document(std::forward<source_t>(in));
-        auto reader = archive_.create_reader(document);
+        auto reader = reader_factory_.create_reader(archive_.create_reader_adapter(document));
         obj.reflect(reader);
     }
 
     archive_t archive_;
+    reader_factory_t reader_factory_;
 };
 
 namespace {
