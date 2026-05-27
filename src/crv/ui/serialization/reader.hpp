@@ -43,4 +43,11 @@ private:
     adapter_t adapter_;
 };
 
+template <typename t_reader_t> struct reader_factory_t
+{
+    using reader_t = t_reader_t;
+
+    auto create_reader(auto adapter) const -> reader_t { return reader_t{std::move(adapter)}; }
+};
+
 } // namespace crv::serialization
