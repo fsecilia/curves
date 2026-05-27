@@ -23,7 +23,7 @@ using float_param_t = param_t<float_t, static_t<float_t, 1e-3, 1e3>>;
 struct device_t
 {
     param_t<std::string> name{"Name", "Default"};
-    param_t<int_t> dpi{"DPI", 0};
+    param_t<int_t, static_lower_bound_t<int_t, 0>> dpi{"DPI", 0};
     param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"Rotation (°)", 0.0};
 
     template <typename self_t, typename visitor_t>
@@ -131,7 +131,7 @@ struct profile_t
 
 struct root_t
 {
-    param_t<int_t> version{"Version", 1};
+    param_t<int_t, static_lower_bound_t<int_t, 0>> version{"Version", 1};
 
     device_t device;
     profile_t profile;
