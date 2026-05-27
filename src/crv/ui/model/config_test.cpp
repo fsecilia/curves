@@ -12,41 +12,9 @@
 #include <crv/ui/serialization/toml/reader_adapter.hpp>
 #include <crv/ui/serialization/toml/writer_adapter.hpp>
 #include <filesystem>
-#include <string_view>
 #include <toml++/toml.hpp>
 
 namespace crv::serialization {
-
-template <typename archive_t, typename writer_factory_t> class serializer_t
-{
-public:
-    explicit serializer_t(archive_t archive = {}, writer_factory_t writer_factory = {}) noexcept
-        : archive_{std::move(archive)}, writer_factory_{std::move(writer_factory)}
-    {}
-
-    template <typename reflected_t>
-    auto operator()(reflected_t const& obj, std::filesystem::path const& path) const -> void
-    {
-        serialize(obj, path);
-    }
-
-    template <typename reflected_t> auto operator()(reflected_t const& obj, std::ostream& out) const -> void
-    {
-        serialize(obj, out);
-    }
-
-private:
-    template <typename reflected_t, typename out_t> auto serialize(reflected_t const& obj, out_t&& out) const -> void
-    {
-        auto document = archive_.create_write_document();
-        auto writer = writer_factory_.create_writer(archive_.create_writer_adapter(document));
-        obj.reflect(writer);
-        archive_.write(document, std::forward<out_t>(out));
-    }
-
-    archive_t archive_;
-    writer_factory_t writer_factory_;
-};
 
 template <typename archive_t, typename reader_factory_t> class deserializer_t
 {
@@ -68,7 +36,7 @@ public:
 private:
     template <typename in_t, typename reflected_t> auto deserialize(in_t&& in, reflected_t& obj) const -> void
     {
-        auto document = archive_.create_read_document(std::forward<in_t>(in));
+        auto document = archive_.read_document(std::forward<in_t>(in));
         auto reader = reader_factory_.create_reader(archive_.create_reader_adapter(document));
         obj.reflect(reader);
     }
