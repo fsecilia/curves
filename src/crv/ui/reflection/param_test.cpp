@@ -28,11 +28,10 @@ struct reflection_param_test_t : Test
     };
 
     std::string_view const name{"name"};
-    value_t const value = 3;
-    value_t new_value = 5;
+    value_t const requested_value = 7;
+    value_t const constrained_value = 5;
 
     using sut_t = param_t<value_t, constraint_t>;
-    sut_t sut{name, value, constraint_t{&mock_constraint}};
 
     struct mock_visitor_t
     {
@@ -47,73 +46,102 @@ struct reflection_param_test_t : Test
     StrictMock<mock_visitor_t> mock_visitor;
 };
 
-TEST_F(reflection_param_test_t, name)
+TEST_F(reflection_param_test_t, ctor_applies_constraint_value_unconstrained)
+{
+    EXPECT_CALL(mock_constraint, call(requested_value)).WillOnce(Return(requested_value));
+    auto const sut = sut_t{name, requested_value, constraint_t{&mock_constraint}};
+
+    EXPECT_EQ(requested_value, sut.value());
+}
+
+TEST_F(reflection_param_test_t, ctor_applies_constraint_value_constrained)
+{
+    EXPECT_CALL(mock_constraint, call(requested_value)).WillOnce(Return(constrained_value));
+    auto const sut = sut_t{name, requested_value, constraint_t{&mock_constraint}};
+
+    EXPECT_EQ(constrained_value, sut.value());
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+struct reflection_param_test_constructed_t : reflection_param_test_t
+{
+    value_t const value = 3;
+
+    auto create_constraint() -> constraint_t
+    {
+        EXPECT_CALL(mock_constraint, call(value)).WillOnce(Return(value));
+        return constraint_t{&mock_constraint};
+    }
+
+    sut_t sut{name, value, create_constraint()};
+};
+
+TEST_F(reflection_param_test_constructed_t, name)
 {
     EXPECT_EQ(name, sut.name());
 }
 
-TEST_F(reflection_param_test_t, value)
+TEST_F(reflection_param_test_constructed_t, value)
 {
     EXPECT_EQ(value, sut.value());
 }
 
-TEST_F(reflection_param_test_t, set_value)
-{
-    sut.value(new_value);
-    EXPECT_EQ(new_value, sut.value());
-}
-
-TEST_F(reflection_param_test_t, constraint)
+TEST_F(reflection_param_test_constructed_t, constraint)
 {
     EXPECT_EQ(&mock_constraint, sut.constraint().mock);
 }
 
-TEST_F(reflection_param_test_t, constrain_no_change)
+TEST_F(reflection_param_test_constructed_t, value_returns_false_when_unconstrained)
 {
-    EXPECT_CALL(mock_constraint, call(value)).WillOnce(Return(value));
-    EXPECT_FALSE(sut.constrain());
+    EXPECT_CALL(mock_constraint, call(requested_value)).WillOnce(Return(requested_value));
+
+    EXPECT_FALSE(sut.value(requested_value));
+
+    EXPECT_EQ(requested_value, sut.value());
 }
 
-TEST_F(reflection_param_test_t, constrain_with_change)
+TEST_F(reflection_param_test_constructed_t, value_returns_true_when_constrained)
 {
-    EXPECT_CALL(mock_constraint, call(value)).WillOnce(Return(new_value));
-    EXPECT_TRUE(sut.constrain());
-    EXPECT_EQ(new_value, sut.value());
+    EXPECT_CALL(mock_constraint, call(requested_value)).WillOnce(Return(constrained_value));
+
+    EXPECT_TRUE(sut.value(requested_value));
+
+    EXPECT_EQ(constrained_value, sut.value());
 }
 
-TEST_F(reflection_param_test_t, const_reflect_const_visitor_passes_const_self_returns_const_visitor)
+TEST_F(reflection_param_test_constructed_t, const_reflect_const_visitor_passes_const_self_returns_const_visitor)
 {
     EXPECT_CALL(mock_visitor, visit_const(Ref(sut)));
 
-    mock_visitor_t const& actual
-        = static_cast<sut_t const&>(sut).reflect(static_cast<mock_visitor_t const&>(mock_visitor));
+    auto const& actual = static_cast<sut_t const&>(sut).reflect(static_cast<mock_visitor_t const&>(mock_visitor));
 
     EXPECT_EQ(&mock_visitor, &actual);
 }
 
-TEST_F(reflection_param_test_t, const_reflect_mutable_visitor_passes_const_self_returns_mutable_visitor)
+TEST_F(reflection_param_test_constructed_t, const_reflect_mutable_visitor_passes_const_self_returns_mutable_visitor)
 {
     EXPECT_CALL(mock_visitor, visit_const(Ref(sut)));
 
-    mock_visitor_t& actual = static_cast<sut_t const&>(sut).reflect(mock_visitor);
+    auto& actual = static_cast<sut_t const&>(sut).reflect(mock_visitor);
 
     EXPECT_EQ(&mock_visitor, &actual);
 }
 
-TEST_F(reflection_param_test_t, mutable_reflect_const_visitor_passes_mutable_self_returns_const_visitor)
+TEST_F(reflection_param_test_constructed_t, mutable_reflect_const_visitor_passes_mutable_self_returns_const_visitor)
 {
     EXPECT_CALL(mock_visitor, visit_mutable(Ref(sut)));
 
-    mock_visitor_t const& actual = sut.reflect(static_cast<mock_visitor_t const&>(mock_visitor));
+    auto const& actual = sut.reflect(static_cast<mock_visitor_t const&>(mock_visitor));
 
     EXPECT_EQ(&mock_visitor, &actual);
 }
 
-TEST_F(reflection_param_test_t, mutable_reflect_mutable_visitor_passes_mutable_self_returns_mutable_visitor)
+TEST_F(reflection_param_test_constructed_t, mutable_reflect_mutable_visitor_passes_mutable_self_returns_mutable_visitor)
 {
     EXPECT_CALL(mock_visitor, visit_mutable(Ref(sut)));
 
-    mock_visitor_t& actual = sut.reflect(mock_visitor);
+    auto& actual = sut.reflect(mock_visitor);
 
     EXPECT_EQ(&mock_visitor, &actual);
 }
