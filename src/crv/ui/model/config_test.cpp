@@ -75,68 +75,6 @@ struct archive_t
 
 } // namespace tomlpp
 
-template <typename adapter_t> class writer_t
-{
-public:
-    explicit writer_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
-
-    template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t> const& param) const -> void
-    {
-        adapter_.write(param.name(), param.value());
-    }
-
-    template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
-    {
-        auto section_adapter = adapter_.create_section(name);
-        std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{std::move(section_adapter)});
-    }
-
-private:
-    adapter_t adapter_;
-};
-
-template <typename t_writer_t> struct writer_factory_t
-{
-    using writer_t = t_writer_t;
-
-    auto create_writer(auto adapter) const -> writer_t { return writer_t{std::move(adapter)}; }
-};
-
-template <typename adapter_t> class reader_t
-{
-public:
-    explicit reader_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
-
-    template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t>& param) const -> void
-    {
-        value_t value;
-        if (adapter_.read(param.name(), value)) param.value(std::move(value));
-    }
-
-    template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
-    {
-        auto section_adapter = adapter_.get_section(name);
-        if (section_adapter)
-        {
-            std::invoke(std::forward<section_visitor_t>(section_visitor), reader_t{*std::move(section_adapter)});
-        }
-    }
-
-private:
-    adapter_t adapter_;
-};
-
-template <typename t_reader_t> struct reader_factory_t
-{
-    using reader_t = t_reader_t;
-
-    auto create_reader(auto adapter) const -> reader_t { return reader_t{std::move(adapter)}; }
-};
-
 template <typename archive_t, typename writer_factory_t> class serializer_t
 {
 public:
