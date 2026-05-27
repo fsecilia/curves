@@ -72,7 +72,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, translates_enum_to_string_bef
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_on_invalid_enum_string)
 {
-    EXPECT_THROW(sut.write("enum", static_cast<enum_t>(-1)), parse_x);
+    EXPECT_THROW(sut.write("enum", static_cast<enum_t>(-1)), format_x);
 }
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section)
@@ -114,7 +114,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_when_section_ke
     table.insert("section", "string");
 
     // creating section over scalar throws
-    EXPECT_THROW(static_cast<void>(sut.find_or_create_section("section")), parse_x);
+    EXPECT_THROW(static_cast<void>(sut.find_or_create_section("section")), format_x);
 }
 
 } // namespace
