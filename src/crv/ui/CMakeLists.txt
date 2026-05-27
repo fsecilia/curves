@@ -13,6 +13,7 @@ add_library(ui
     serialization/toml/error_reporting.hpp
     serialization/toml/error_reporting.cpp
     serialization/toml/reader_adapter.hpp
+    serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/reader.hpp
     serialization/serializer.hpp
