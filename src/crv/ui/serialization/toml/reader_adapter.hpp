@@ -8,7 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
 #include <crv/ui/reflection/enum.hpp>
-#include <crv/ui/serialization/exceptions.hpp>
+#include <crv/ui/serialization/toml/error_reporting.hpp>
 #include <format>
 #include <optional>
 #include <string_view>
@@ -32,7 +32,7 @@ public:
         if (!node) return false;
 
         auto value = node->value<value_t>();
-        if (!value) report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
+        if (!value) report_error(std::format("type mismatch for key \"{}\"", key), node->source());
 
         dst = std::move(*value);
         return true;
@@ -49,10 +49,10 @@ public:
         if (!node) return false;
 
         auto const name = node->value<std::string_view>();
-        if (!name) report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
+        if (!name) report_error(std::format("type mismatch for enum key \"{}\"", key), node->source());
 
         auto const value = reflection::from_string<enum_t>(*name);
-        if (!value) report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *name, key));
+        if (!value) report_error(std::format("invalid value \"{}\" for enum \"{}\"", *name, key), node->source());
 
         dst = *value;
         return true;
@@ -67,26 +67,13 @@ public:
         if (auto* node = table_.get(key))
         {
             if (auto* sub_table = node->as_table()) return reader_adapter_t{*sub_table};
-            else report_error(node->source(), std::format("expected table/section for key \"{}\"", key));
+            else report_error(std::format("expected table/section for key \"{}\"", key), node->source());
         }
         return std::nullopt;
     }
 
 private:
     toml::table const& table_;
-
-    [[noreturn]] auto report_error(toml::source_region location_, std::string_view message) const -> void
-    {
-        if (location_.path)
-        {
-            throw parse_x{
-                std::format("{}:{}:{}: {}", *location_.path, location_.begin.line, location_.begin.column, message)};
-        }
-        else
-        {
-            throw parse_x{std::format("{}:{}: {}", location_.begin.line, location_.begin.column, message)};
-        }
-    }
 };
 
 } // namespace crv::serialization::tomlpp
