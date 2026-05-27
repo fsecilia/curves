@@ -22,8 +22,7 @@ using float_param_t = param_t<float_t, static_t<float_t, 1e-3, 1e3>>;
 
 struct device_t
 {
-    param_t<std::string> name{"Name", "<device-name>"};
-    param_t<std::string> id{"Id", "<device-id>"};
+    param_t<std::string> name{"Name", "Default"};
     param_t<int_t> dpi{"DPI", 0};
     param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"Rotation (°)", 0.0};
 
@@ -31,7 +30,6 @@ struct device_t
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
         visitor.visit(self.name);
-        visitor.visit(self.id);
         visitor.visit(self.dpi);
         visitor.visit(self.rotation);
         return std::forward<visitor_t>(visitor);

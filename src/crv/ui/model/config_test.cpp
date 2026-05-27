@@ -25,7 +25,6 @@ TEST(model_test, round_trip)
     // perturb all of expected
     expected_root.version.value(3);
     expected_root.device.name.value("name");
-    expected_root.device.id.value("id");
     expected_root.device.dpi.value(26000);
     expected_root.device.rotation.value(-1.1);
     expected_root.profile.anisotropy.value(5.1);
