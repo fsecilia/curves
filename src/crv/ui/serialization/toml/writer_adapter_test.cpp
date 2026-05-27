@@ -19,6 +19,9 @@ struct serialization_tomlpp_writer_adapter_test_t : Test
     };
 
     using sut_t = writer_adapter_t;
+
+    toml::table table{};
+    sut_t sut{table};
 };
 
 } // namespace
@@ -40,9 +43,6 @@ namespace {
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, writes_scalar_values)
 {
-    auto table = toml::table{};
-    auto sut = sut_t{table};
-
     sut.write("float", 2.5);
     sut.write("bool", true);
     sut.write("string", "value");
@@ -56,9 +56,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, writes_scalar_values)
 TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_scalar_value)
 {
     // pre-populate with old value
-    auto table = toml::table{};
     table.insert("float", 1.0);
-    auto sut = sut_t{table};
 
     sut.write("float", 3.0);
 
@@ -67,9 +65,6 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_scalar_va
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, translates_enum_to_string_before_writing)
 {
-    auto table = toml::table{};
-    auto sut = sut_t{table};
-
     sut.write("enum", enum_t::value_1);
 
     EXPECT_EQ(table["enum"].value<std::string_view>(), "value_1");
@@ -77,17 +72,11 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, translates_enum_to_string_bef
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_on_invalid_enum_string)
 {
-    auto table = toml::table{};
-    auto sut = sut_t{table};
-
     EXPECT_THROW(sut.write("enum", static_cast<enum_t>(-1)), parse_x);
 }
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section)
 {
-    auto table = toml::table{};
-    auto sut = sut_t{table};
-
     auto section = sut.find_or_create_section("section");
     section.write("float", 5.0);
 
@@ -102,11 +91,9 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
 TEST_F(serialization_tomlpp_writer_adapter_test_t, appends_to_existing_section)
 {
     // pre-populate section with old data
-    auto table = toml::table{};
     auto old_section = toml::table{};
     old_section.insert("pre_existing_key", true);
     table.insert("section", std::move(old_section));
-    auto sut = sut_t{table};
 
     auto section = sut.find_or_create_section("section");
     section.write("new_float", 2.0);
@@ -124,9 +111,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, appends_to_existing_section)
 TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_when_section_key_is_scalar)
 {
     // pre-populate with a scalar value instead of a table
-    auto table = toml::table{};
     table.insert("section", "string");
-    auto sut = sut_t{table};
 
     // creating a section over a scalar throws
     EXPECT_THROW(static_cast<void>(sut.find_or_create_section("section")), parse_x);
