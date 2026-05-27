@@ -41,4 +41,11 @@ private:
     adapter_t adapter_;
 };
 
+template <typename t_writer_t> struct writer_factory_t
+{
+    using writer_t = t_writer_t;
+
+    auto create_writer(auto adapter) const -> writer_t { return writer_t{std::move(adapter)}; }
+};
+
 } // namespace crv::serialization
