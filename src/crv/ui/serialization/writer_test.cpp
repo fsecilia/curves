@@ -19,7 +19,7 @@ struct serialization_writer_test_t : Test
         MOCK_METHOD(void, write_bool, (std::string_view, bool const&), (const));
         MOCK_METHOD(void, write_float, (std::string_view, float_t const&), (const));
         MOCK_METHOD(void, write_string, (std::string_view, std::string_view), (const));
-        MOCK_METHOD(void, create_section, (std::string_view));
+        MOCK_METHOD(void, find_or_create_section, (std::string_view));
     };
     StrictMock<mock_writer_adapter_t> mock_writer_adapter;
 
@@ -31,9 +31,9 @@ struct serialization_writer_test_t : Test
         auto write(std::string_view key, float_t const& src) const -> void { mock->write_float(key, src); }
         auto write(std::string_view key, std::string_view src) const -> void { mock->write_string(key, src); }
 
-        auto create_section(std::string_view key) -> writer_adapter_t
+        auto find_or_create_section(std::string_view key) -> writer_adapter_t
         {
-            mock->create_section(key);
+            mock->find_or_create_section(key);
             return writer_adapter_t{mock};
         }
     };
@@ -66,7 +66,7 @@ TEST_F(serialization_writer_test_t, visits_nested_sections)
     auto section = section_t{};
 
     // create section
-    EXPECT_CALL(mock_writer_adapter, create_section("section"));
+    EXPECT_CALL(mock_writer_adapter, find_or_create_section("section"));
 
     // write to section
     EXPECT_CALL(mock_writer_adapter, write_float("float", 2.0));

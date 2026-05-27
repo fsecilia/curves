@@ -88,7 +88,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
     auto table = toml::table{};
     auto sut = sut_t{table};
 
-    auto section = sut.create_section("section");
+    auto section = sut.find_or_create_section("section");
     section.write("float", 5.0);
 
     // section must be a table
@@ -99,21 +99,37 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
     EXPECT_EQ(sync_table["float"].value<float_t>(), 5.0);
 }
 
-TEST_F(serialization_tomlpp_writer_adapter_test_t, overwrites_existing_section)
+TEST_F(serialization_tomlpp_writer_adapter_test_t, appends_to_existing_section)
 {
     // pre-populate section with old data
     auto table = toml::table{};
-    toml::table old_section;
-    old_section.insert("garbage", true);
+    auto old_section = toml::table{};
+    old_section.insert("pre_existing_key", true);
     table.insert("section", std::move(old_section));
     auto sut = sut_t{table};
 
-    auto section = sut.create_section("section");
-    section.write("float", 2.0);
+    auto section = sut.find_or_create_section("section");
+    section.write("new_float", 2.0);
 
     auto& sync_table = *table["section"].as_table();
-    EXPECT_EQ(sync_table["float"].value<float_t>(), 2.0);
-    EXPECT_FALSE(sync_table.contains("garbage")); // old data must be gone
+
+    // new value is written successfully
+    EXPECT_EQ(sync_table["new_float"].value<float_t>(), 2.0);
+
+    // old data is still intact
+    EXPECT_TRUE(sync_table.contains("pre_existing_key"));
+    EXPECT_EQ(sync_table["pre_existing_key"].value<bool>(), true);
+}
+
+TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_when_section_key_is_scalar)
+{
+    // pre-populate with a scalar value instead of a table
+    auto table = toml::table{};
+    table.insert("section", "string");
+    auto sut = sut_t{table};
+
+    // creating a section over a scalar throws
+    EXPECT_THROW(static_cast<void>(sut.find_or_create_section("section")), parse_x);
 }
 
 } // namespace
