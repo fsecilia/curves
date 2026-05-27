@@ -83,7 +83,7 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, creates_and_populates_section
     // section must be a table
     ASSERT_TRUE(table["section"].is_table());
 
-    // value is written inside the section
+    // value is written inside section
     auto& sync_table = *table["section"].as_table();
     EXPECT_EQ(sync_table["float"].value<float_t>(), 5.0);
 }
@@ -110,10 +110,10 @@ TEST_F(serialization_tomlpp_writer_adapter_test_t, appends_to_existing_section)
 
 TEST_F(serialization_tomlpp_writer_adapter_test_t, reports_error_when_section_key_is_scalar)
 {
-    // pre-populate with a scalar value instead of a table
+    // pre-populate with scalar value instead of a table
     table.insert("section", "string");
 
-    // creating a section over a scalar throws
+    // creating section over scalar throws
     EXPECT_THROW(static_cast<void>(sut.find_or_create_section("section")), parse_x);
 }
 
