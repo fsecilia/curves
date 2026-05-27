@@ -45,7 +45,7 @@ private:
 
     template <is_enum enum_t> auto write(std::string_view key, enum_t const& value) -> void
     {
-        if (auto str = reflection::to_string(value)) table_.insert_or_assign(key, *str);
+        if (auto name = reflection::to_string(value)) table_.insert_or_assign(key, *name);
         else
         {
             throw parse_x{std::format(
@@ -103,20 +103,20 @@ private:
         auto* node = table_.get(key);
         if (!node) return false;
 
-        auto str = node->value<std::string_view>();
-        if (!str)
+        auto name = node->value<std::string_view>();
+        if (!name)
         {
             report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
             return false;
         }
 
-        if (auto parsed = reflection::from_string<enum_t>(*str))
+        if (auto parsed = reflection::from_string<enum_t>(*name))
         {
             dst = *parsed;
             return true;
         }
 
-        report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *str, key));
+        report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *name, key));
         return false;
     }
 
