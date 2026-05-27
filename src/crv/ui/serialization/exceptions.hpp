@@ -23,6 +23,12 @@ struct format_x : serialization_x
     virtual ~format_x() override;
 };
 
+struct io_x : serialization_x
+{
+    using serialization_x::serialization_x;
+    virtual ~io_x() override;
+};
+
 struct parse_x : serialization_x
 {
     using serialization_x::serialization_x;

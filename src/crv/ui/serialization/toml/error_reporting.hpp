@@ -14,7 +14,7 @@
 namespace crv::serialization::tomlpp {
 
 /// throws parse_x with formatted location and message
-[[noreturn]] auto report_error(std::string_view message, toml::source_region location) -> void;
+[[noreturn]] auto report_error(std::string const& message, toml::source_region location) -> void;
 
 /// throws parse_x with basic message
 [[noreturn]] auto report_error(std::string message) -> void;
