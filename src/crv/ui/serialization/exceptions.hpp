@@ -11,9 +11,21 @@
 
 namespace crv::serialization {
 
-struct parse_x : std::runtime_error
+struct serialization_x : std::runtime_error
 {
     using std::runtime_error::runtime_error;
+    virtual ~serialization_x() override;
+};
+
+struct format_x : serialization_x
+{
+    using serialization_x::serialization_x;
+    virtual ~format_x() override;
+};
+
+struct parse_x : serialization_x
+{
+    using serialization_x::serialization_x;
     virtual ~parse_x() override;
 };
 
