@@ -34,11 +34,23 @@ public:
         else throw parse_x{std::format("invalid value ({}) for enum \"{}\"", static_cast<int_t>(value), key)};
     }
 
-    /// creates new nested section
-    [[nodiscard]] auto create_section(std::string_view key) -> writer_adapter_t
+    /// appends to existing section, or creates a new one
+    [[nodiscard]] auto find_or_create_section(std::string_view key) -> writer_adapter_t
     {
-        auto [iterator, inserted] = table_.insert_or_assign(key, toml::table{});
-        return writer_adapter_t{*iterator->second.as_table()};
+        // try and find existing table
+        if (auto* node = table_.get(key))
+        {
+            // existing nested table was found; wrap it in a nested adapter
+            auto target_table = node->as_table();
+            if (!target_table) throw parse_x{std::format("expected table for key \"{}\"", key)};
+            return writer_adapter_t{*target_table};
+        }
+        else
+        {
+            // create new nested table and wrap it in a nested adapter
+            auto [iterator, inserted] = table_.insert(key, toml::table{});
+            return writer_adapter_t{*iterator->second.as_table()};
+        }
     }
 
 private:

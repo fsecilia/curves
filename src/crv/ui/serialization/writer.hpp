@@ -31,7 +31,7 @@ public:
     template <typename section_visitor_t>
     auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
     {
-        auto section_adapter = adapter_.create_section(name);
+        auto section_adapter = adapter_.find_or_create_section(name);
 
         // recurse with new writer wrapping nested adapter
         std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{std::move(section_adapter)});
