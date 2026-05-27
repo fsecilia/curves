@@ -60,7 +60,7 @@ auto archive_t::write_document(document_t const& document, std::filesystem::path
     auto out = std::ofstream{path};
     if (!out.is_open()) throw io_x{"failed to open file for writing: " + path.string()};
 
-    out << document;
+    out << document << std::endl;
     if (!out) throw io_x{"failed to write TOML document to file: " + path.string()};
 }
 
