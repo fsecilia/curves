@@ -27,14 +27,16 @@ public:
 
     /// writes enum value under param's key; reports error if enum is invalid
     ///
-    /// \throws if value is not a valid member of enum
+    /// \throws format_x if value is not a valid member of enum
     template <is_enum enum_t> auto write(std::string_view key, enum_t const& value) -> void
     {
         if (auto const opt_enum = reflection::to_string(value)) write(key, *opt_enum);
-        else throw parse_x{std::format("invalid value ({}) for enum \"{}\"", static_cast<int_t>(value), key)};
+        else throw format_x{std::format("invalid value ({}) for enum \"{}\"", static_cast<int_t>(value), key)};
     }
 
     /// appends to existing section, or creates a new one
+    ///
+    /// \throws format_x if key exists but does not contain table
     [[nodiscard]] auto find_or_create_section(std::string_view key) -> writer_adapter_t
     {
         // try and find existing table
@@ -42,7 +44,7 @@ public:
         {
             // existing nested table was found; wrap it in a nested adapter
             auto target_table = node->as_table();
-            if (!target_table) throw parse_x{std::format("expected table for key \"{}\"", key)};
+            if (!target_table) throw format_x{std::format("expected table for key \"{}\"", key)};
             return writer_adapter_t{*target_table};
         }
         else
