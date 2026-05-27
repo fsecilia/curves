@@ -7,6 +7,8 @@
 
 namespace crv::serialization {
 
+serialization_x::~serialization_x() = default;
+format_x::~format_x() = default;
 parse_x::~parse_x() = default;
 
 } // namespace crv::serialization
