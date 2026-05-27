@@ -18,40 +18,51 @@ namespace tomlpp {
 class writer_t
 {
 public:
-    writer_t() = default;
+    explicit writer_t(toml::table& table) noexcept : table_{table} {}
 
     template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t> const& param) -> void
+    auto visit(reflection::param_t<value_t, constraint_t> const& param) const -> void
     {
         write(param.name(), param.value());
     }
 
     template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
+    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
     {
-        auto section = writer_t{};
-        std::invoke(std::forward<section_visitor_t>(section_visitor), section);
-        table_.insert_or_assign(name, std::move(section.table_));
+        toml::table* target_table = nullptr;
+
+        if (auto* node = table_.get(name))
+        {
+            target_table = node->as_table();
+            if (!target_table) throw parse_x{std::format("expected table for key \"{}\"", name)};
+        }
+        else
+        {
+            auto [iterator, inserted] = table_.insert(name, toml::table{});
+            target_table = iterator->second.as_table();
+        }
+
+        std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{*target_table});
     }
 
-    auto write(std::ostream& out) const -> void { out << table_; }
-
 private:
-    toml::table table_;
+    toml::table& table_;
 
-    template <typename value_t> auto write(std::string_view key, value_t const& value) -> void
+    template <typename value_t> auto write(std::string_view key, value_t const& value) const -> void
     {
         table_.insert_or_assign(key, value);
     }
 
-    template <is_enum enum_t> auto write(std::string_view key, enum_t const& value) -> void
+    template <is_enum enum_t> auto write(std::string_view key, enum_t const& value) const -> void
     {
-        if (auto name = reflection::to_string(value)) table_.insert_or_assign(key, *name);
-        else
+        auto name = reflection::to_string(value);
+        if (!name)
         {
             throw parse_x{std::format(
                 "invalid value ({}) for enum \"{}\"", static_cast<std::underlying_type_t<enum_t>>(value), key)};
         }
+
+        table_.insert_or_assign(key, *name);
     }
 };
 
@@ -61,14 +72,14 @@ public:
     explicit reader_t(toml::table const& table) noexcept : table_{table} {}
 
     template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t>& param) -> void
+    auto visit(reflection::param_t<value_t, constraint_t>& param) const -> void
     {
         value_t value;
         if (read(param.name(), value)) param.value(std::move(value));
     }
 
     template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
+    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) const -> void
     {
         if (auto* node = table_.get(name))
         {
@@ -83,17 +94,13 @@ public:
 private:
     toml::table const& table_;
 
-    template <typename value_t> auto read(std::string_view key, value_t& dst) -> bool
+    template <typename value_t> auto read(std::string_view key, value_t& dst) const -> bool
     {
         auto* node = table_.get(key);
         if (!node) return false;
 
         auto value = node->value<value_t>();
-        if (!value)
-        {
-            report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
-            return false;
-        }
+        if (!value) report_error(node->source(), std::format("type mismatch for key \"{}\"", key));
 
         dst = std::move(*value);
         return true;
@@ -105,20 +112,13 @@ private:
         if (!node) return false;
 
         auto name = node->value<std::string_view>();
-        if (!name)
-        {
-            report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
-            return false;
-        }
+        if (!name) report_error(node->source(), std::format("type mismatch for enum key \"{}\"", key));
 
-        if (auto value = reflection::from_string<enum_t>(*name))
-        {
-            dst = *value;
-            return true;
-        }
+        auto value = reflection::from_string<enum_t>(*name);
+        if (!value) report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *name, key));
 
-        report_error(node->source(), std::format("invalid value \"{}\" for enum \"{}\"", *name, key));
-        return false;
+        dst = *value;
+        return true;
     }
 
     [[noreturn]] auto report_error(toml::source_region location, std::string_view message) const -> void
@@ -134,10 +134,19 @@ private:
 
 struct archive_t
 {
-    auto parse(std::filesystem::path const& path) -> toml::table { return toml::parse(path.c_str()); }
-    auto parse(std::istream& in) -> toml::table { return toml::parse(in); }
-    auto create_reader(toml::table const& table) -> reader_t { return reader_t{table}; }
-    auto create_writer() -> writer_t { return {}; }
+    using document_t = toml::table;
+
+    auto create_read_document(std::filesystem::path const& path) const -> document_t
+    {
+        return toml::parse(path.c_str());
+    }
+    auto create_read_document(std::istream& in) const -> document_t { return toml::parse(in); }
+    auto create_write_document() const -> document_t { return {}; }
+
+    auto create_reader(document_t const& doc) const -> reader_t { return reader_t{doc}; }
+    auto create_writer(document_t& doc) const -> writer_t { return writer_t{doc}; }
+
+    auto write(document_t const& doc, std::ostream& out) const -> void { out << doc; }
 };
 
 } // namespace tomlpp
@@ -147,14 +156,26 @@ template <typename archive_t> class serializer_t
 public:
     explicit serializer_t(archive_t archive = {}) noexcept : archive_{std::move(archive)} {}
 
+    template <typename reflected_t>
+    auto operator()(reflected_t const& obj, std::filesystem::path const& path) const -> void
+    {
+        deserialize(obj, std::ofstream{path});
+    }
+
     template <typename reflected_t> auto operator()(reflected_t const& obj, std::ostream& out) const -> void
     {
-        auto writer = archive_.create_writer();
-        obj.reflect(writer);
-        writer.write(out);
+        deserialize(obj, out);
     }
 
 private:
+    template <typename reflected_t> auto deserialize(reflected_t const& obj, std::ostream& out) const -> void
+    {
+        auto document = archive_.create_write_document();
+        auto writer = archive_.create_writer(document);
+        obj.reflect(writer);
+        archive_.write(document, out);
+    }
+
     archive_t archive_;
 };
 
@@ -165,7 +186,7 @@ public:
 
     template <typename reflected_t> auto operator()(std::filesystem::path const& path, reflected_t& obj) const -> void
     {
-        deserialize(path.c_str(), obj);
+        deserialize(path, obj);
     }
 
     template <typename reflected_t> auto operator()(std::istream& in, reflected_t& obj) const -> void
@@ -174,10 +195,11 @@ public:
     }
 
 private:
-    template <typename reflected_t> auto deserialize(auto&& in, reflected_t& obj) const -> void
+    template <typename source_t, typename reflected_t> auto deserialize(source_t&& in, reflected_t& obj) const -> void
     {
-        auto store = archive_.parse(std::forward<decltype(in)>(in));
-        obj.reflect(archive_.create_reader(store));
+        auto document = archive_.create_read_document(std::forward<source_t>(in));
+        auto reader = archive_.create_reader(document);
+        obj.reflect(reader);
     }
 
     archive_t archive_;
