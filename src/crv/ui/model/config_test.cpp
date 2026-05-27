@@ -134,10 +134,10 @@ private:
 
 struct archive_t
 {
-    static auto parse(std::filesystem::path const& path) -> toml::table { return toml::parse(path.c_str()); }
-    static auto parse(std::istream& in) -> toml::table { return toml::parse(in); }
-    static auto create_reader(toml::table const& table) -> reader_t { return reader_t{table}; }
-    static auto create_writer() -> writer_t { return {}; }
+    auto parse(std::filesystem::path const& path) -> toml::table { return toml::parse(path.c_str()); }
+    auto parse(std::istream& in) -> toml::table { return toml::parse(in); }
+    auto create_reader(toml::table const& table) -> reader_t { return reader_t{table}; }
+    auto create_writer() -> writer_t { return {}; }
 };
 
 } // namespace tomlpp
@@ -145,22 +145,42 @@ struct archive_t
 template <typename archive_t> class serializer_t
 {
 public:
+    explicit serializer_t(archive_t archive = {}) noexcept : archive_{std::move(archive)} {}
+
     template <typename reflected_t> auto operator()(reflected_t const& obj, std::ostream& out) const -> void
     {
-        auto writer = archive_t::writer();
+        auto writer = archive_.create_writer();
         obj.reflect(writer);
         writer.write(out);
     }
+
+private:
+    archive_t archive_;
 };
 
 template <typename archive_t> class deserializer_t
 {
 public:
+    explicit deserializer_t(archive_t archive = {}) noexcept : archive_{std::move(archive)} {}
+
+    template <typename reflected_t> auto operator()(std::filesystem::path const& path, reflected_t& obj) const -> void
+    {
+        deserialize(path.c_str(), obj);
+    }
+
     template <typename reflected_t> auto operator()(std::istream& in, reflected_t& obj) const -> void
     {
-        auto store = archive_t::parse(in);
-        obj.reflect(archive_t::reader(store));
+        deserialize(in, obj);
     }
+
+private:
+    template <typename reflected_t> auto deserialize(auto&& in, reflected_t& obj) const -> void
+    {
+        auto store = archive_.parse(std::forward<decltype(in)>(in));
+        obj.reflect(archive_.create_reader(store));
+    }
+
+    archive_t archive_;
 };
 
 namespace {
