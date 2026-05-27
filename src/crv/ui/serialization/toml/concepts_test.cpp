@@ -17,10 +17,16 @@ static_assert(is_toml_primitive<char const*>);
 static_assert(is_toml_primitive<std::string>);
 static_assert(is_toml_primitive<std::string_view>);
 
+// enums are excluded because they are handled directly in the adapters
 enum class enum_t
 {
 };
-static_assert(is_toml_primitive<enum_t>);
+static_assert(!is_toml_primitive<enum_t>);
+
+struct not_toml_primitive_t
+{};
+static_assert(!is_toml_primitive<not_toml_primitive_t>);
+static_assert(!is_toml_primitive<void*>);
 
 } // namespace
 } // namespace serialization::tomlpp
