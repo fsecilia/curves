@@ -61,8 +61,6 @@ TEST(model_test, round_trip)
     auto serializer = serializer_t{};
     serializer(expected_root, out);
 
-    std::cout << out.str() << std::endl;
-
     auto in = std::istringstream{out.str()};
     auto deserializer = deserializer_t{};
     deserializer(in, actual_root);
