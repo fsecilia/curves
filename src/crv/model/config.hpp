@@ -20,7 +20,10 @@ namespace crv::model {
 using namespace reflection;
 using namespace constraints;
 
-using float_param_t = param_t<float_t, static_t<float_t, 1e-3, 1e3>>;
+/// soft limit for both x and y
+constexpr auto soft_limit = 1e3;
+
+using float_param_t = param_t<float_t, static_t<float_t, 1.0 / soft_limit, soft_limit>>;
 
 struct device_t
 {
@@ -42,7 +45,7 @@ struct device_t
 
 struct offset_t
 {
-    param_t<float_t> begin{"Begin (c/ms)", 0.0};
+    param_t<float_t, static_lower_bound_t<float_t, 0.0>> begin{"Begin (c/ms)", 0.0};
     float_param_t width{"Width (c/ms)", 1.0};
 
     template <typename self_t, typename visitor_t>
@@ -58,7 +61,7 @@ struct offset_t
 
 struct limit_t
 {
-    param_t<float_t> limit{"Limit", 1000.0};
+    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> limit{"Limit", soft_limit};
     float_param_t width{"Width (c/ms)", 1.0};
 
     template <typename self_t, typename visitor_t>
