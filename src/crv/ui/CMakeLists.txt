@@ -3,10 +3,11 @@
 #
 # ui library
 
-# add_library(ui
-# )
-# target_link_libraries(ui PUBLIC lib)
-#
+add_library(ui
+    command/command.hpp
+)
+target_link_libraries(ui PUBLIC lib)
+
 # add_executable(ui_test
 # )
 # target_link_libraries(ui_test PRIVATE ui lib testing)
