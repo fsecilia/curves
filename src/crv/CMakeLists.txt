@@ -60,6 +60,7 @@ target_sources(lib PRIVATE
     math/spline/construction/weight_functions/uniform.hpp
     math/stats.hpp
     model/config.hpp
+    model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     priority_queue.hpp
     reflection/constraints.hpp
@@ -206,6 +207,7 @@ if (enable_testing)
         math/spline/spline_test.cpp
         math/stats_test.cpp
         model/config_test.cpp
+        model/curves/log_normal_test.cpp
         model/curves/synchronous_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
