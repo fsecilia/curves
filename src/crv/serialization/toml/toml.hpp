@@ -7,13 +7,13 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/serialization/deserializer.hpp>
-#include <crv/ui/serialization/reader.hpp>
-#include <crv/ui/serialization/serializer.hpp>
-#include <crv/ui/serialization/toml/archive.hpp>
-#include <crv/ui/serialization/toml/reader_adapter.hpp>
-#include <crv/ui/serialization/toml/writer_adapter.hpp>
-#include <crv/ui/serialization/writer.hpp>
+#include <crv/serialization/deserializer.hpp>
+#include <crv/serialization/reader.hpp>
+#include <crv/serialization/serializer.hpp>
+#include <crv/serialization/toml/archive.hpp>
+#include <crv/serialization/toml/reader_adapter.hpp>
+#include <crv/serialization/toml/writer_adapter.hpp>
+#include <crv/serialization/writer.hpp>
 
 namespace crv::serialization::tomlpp {
 

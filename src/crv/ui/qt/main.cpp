@@ -4,9 +4,9 @@
 /// \brief config app qt entry point
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/ui/model/config.hpp>
-#include <crv/ui/serialization/exceptions.hpp>
-#include <crv/ui/serialization/toml/toml.hpp>
+#include <crv/model/config.hpp>
+#include <crv/serialization/exceptions.hpp>
+#include <crv/serialization/toml/toml.hpp>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QMessageBox>

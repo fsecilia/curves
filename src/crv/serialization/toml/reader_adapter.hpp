@@ -7,9 +7,9 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
-#include <crv/ui/reflection/enum.hpp>
-#include <crv/ui/serialization/toml/concepts.hpp>
-#include <crv/ui/serialization/toml/error_reporting.hpp>
+#include <crv/reflection/enum.hpp>
+#include <crv/serialization/toml/concepts.hpp>
+#include <crv/serialization/toml/error_reporting.hpp>
 #include <format>
 #include <optional>
 #include <string_view>

@@ -6,9 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/reflection/enum.hpp>
-#include <crv/ui/serialization/exceptions.hpp>
-#include <crv/ui/serialization/toml/concepts.hpp>
+#include <crv/reflection/enum.hpp>
+#include <crv/serialization/exceptions.hpp>
+#include <crv/serialization/toml/concepts.hpp>
 #include <string_view>
 #include <toml++/toml.hpp>
 

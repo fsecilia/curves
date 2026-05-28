@@ -4,8 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "reader_adapter.hpp"
+#include <crv/serialization/exceptions.hpp>
 #include <crv/test/test.hpp>
-#include <crv/ui/serialization/exceptions.hpp>
 #include <gmock/gmock.h>
 
 namespace crv {

@@ -6,8 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/serialization/toml/reader_adapter.hpp>
-#include <crv/ui/serialization/toml/writer_adapter.hpp>
+#include <crv/serialization/toml/reader_adapter.hpp>
+#include <crv/serialization/toml/writer_adapter.hpp>
 #include <filesystem>
 #include <istream>
 #include <ostream>

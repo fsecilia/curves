@@ -20,7 +20,7 @@ set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
 target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(qt PRIVATE
     lib
-    ui
+    # ui
 
     Qt6::Gui
     Qt6::Qml

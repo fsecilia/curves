@@ -6,7 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/reflection/constraints.hpp>
+#include <crv/reflection/constraints.hpp>
 #include <string_view>
 #include <utility>
 
