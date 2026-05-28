@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "error_reporting.hpp"
-#include <crv/ui/serialization/exceptions.hpp>
+#include <crv/serialization/exceptions.hpp>
 
 namespace crv::serialization::tomlpp {
 

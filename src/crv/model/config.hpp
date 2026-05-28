@@ -7,10 +7,10 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
+#include <crv/reflection/constraints.hpp>
+#include <crv/reflection/enum.hpp>
+#include <crv/reflection/param.hpp>
 #include <crv/sequential_enum_name_map.hpp>
-#include <crv/ui/reflection/constraints.hpp>
-#include <crv/ui/reflection/enum.hpp>
-#include <crv/ui/reflection/param.hpp>
 #include <string>
 
 namespace crv::model {

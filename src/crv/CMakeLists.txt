@@ -44,13 +44,13 @@ target_sources(lib PRIVATE
     math/spline/construction/segment/segment_packer.hpp
     math/spline/construction/segment/segment_quantizer.hpp
     math/spline/construction/segment/shift_planner.hpp
+    math/spline/construction/spline/amr/assembler.hpp
+    math/spline/construction/spline/amr/refinement_pool_seeder.hpp
+    math/spline/construction/spline/amr/refiner.hpp
     math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp
     math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
     math/spline/construction/spline/amr/seed/span_decomposer.hpp
     math/spline/construction/spline/amr/seed/subdomain_factory.hpp
-    math/spline/construction/spline/amr/assembler.hpp
-    math/spline/construction/spline/amr/refinement_pool_seeder.hpp
-    math/spline/construction/spline/amr/refiner.hpp
     math/spline/construction/spline/amr/spline_generator.hpp
     math/spline/construction/spline/amr/typestates.hpp
     math/spline/construction/spline/amr/workspace.hpp
@@ -59,8 +59,26 @@ target_sources(lib PRIVATE
     math/spline/construction/weight_functions/hyperbolic_decay.hpp
     math/spline/construction/weight_functions/uniform.hpp
     math/stats.hpp
+    model/config.hpp
     priority_queue.hpp
+    reflection/constraints.hpp
+    reflection/enum.hpp
+    reflection/param.hpp
     sequential_enum_name_map.hpp
+    serialization/deserializer.hpp
+    serialization/exceptions.cpp
+    serialization/exceptions.hpp
+    serialization/reader.hpp
+    serialization/serializer.hpp
+    serialization/toml/archive.cpp
+    serialization/toml/archive.hpp
+    serialization/toml/concepts.hpp
+    serialization/toml/error_reporting.cpp
+    serialization/toml/error_reporting.hpp
+    serialization/toml/reader_adapter.hpp
+    serialization/toml/toml.hpp
+    serialization/toml/writer_adapter.hpp
+    serialization/writer.hpp
 )
 target_sources_kernel(lib
     algorithm.hpp
@@ -105,7 +123,7 @@ set_target_properties(lib
         VERSION ${PROJECT_VERSION}
         SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 )
-target_link_libraries(lib project_options)
+target_link_libraries(lib project_options tomlplusplus::tomlplusplus)
 
 if (enable_testing)
     add_subdirectory(test)
@@ -168,13 +186,13 @@ if (enable_testing)
         math/spline/construction/segment/segment_packer_test.cpp
         math/spline/construction/segment/segment_quantizer_test.cpp
         math/spline/construction/segment/shift_planner_test.cpp
+        math/spline/construction/spline/amr/assembler_test.cpp
         math/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
+        math/spline/construction/spline/amr/refiner_test.cpp
         math/spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
         math/spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
         math/spline/construction/spline/amr/seed/span_decomposer_test.cpp
         math/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
-        math/spline/construction/spline/amr/assembler_test.cpp
-        math/spline/construction/spline/amr/refiner_test.cpp
         math/spline/construction/spline/amr/spline_generator_test.cpp
         math/spline/construction/spline/amr/workspace_test.cpp
         math/spline/construction/spline/tangent_extension_test.cpp
@@ -186,10 +204,23 @@ if (enable_testing)
         math/spline/segment_test.cpp
         math/spline/spline_test.cpp
         math/stats_test.cpp
+        model/config_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
+        reflection/constraints_test.cpp
+        reflection/enum_test.cpp
+        reflection/param_test.cpp
         sequential_enum_name_map_test.cpp
+        serialization/deserializer_test.cpp
+        serialization/reader_test.cpp
+        serialization/serializer_test.cpp
+        serialization/toml/archive_test.cpp
+        serialization/toml/concepts_test.cpp
+        serialization/toml/error_reporting_test.cpp
+        serialization/toml/reader_adapter_test.cpp
+        serialization/toml/writer_adapter_test.cpp
+        serialization/writer_test.cpp
         traits_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC

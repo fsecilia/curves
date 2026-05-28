@@ -6,7 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/reflection/param.hpp>
+#include <crv/reflection/param.hpp>
 #include <functional>
 #include <string_view>
 #include <utility>

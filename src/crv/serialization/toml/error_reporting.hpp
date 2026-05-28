@@ -8,7 +8,6 @@
 
 #include <crv/lib.hpp>
 #include <string>
-#include <string_view>
 #include <toml++/toml.hpp>
 
 namespace crv::serialization::tomlpp {
