@@ -5,12 +5,14 @@
 
 add_library(ui
     command/command.hpp
+    command/mutate_param.hpp
 )
 target_link_libraries(ui PUBLIC lib)
 
-# add_executable(ui_test
-# )
-# target_link_libraries(ui_test PRIVATE ui lib testing)
-# gtest_discover_tests(ui_test)
+add_executable(ui_test
+    command/mutate_param_test.cpp
+)
+target_link_libraries(ui_test PRIVATE ui lib testing)
+gtest_discover_tests(ui_test)
 
 add_subdirectory(qt)
