@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
+#include <crv/model/curves/log_normal.hpp>
 #include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
@@ -118,6 +119,7 @@ struct profile_t
 
     // curve configs
     curve_config_t<curves::synchronous_t::config_t> synchronous;
+    curve_config_t<curves::log_normal_t::config_t> log_normal;
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
@@ -128,6 +130,7 @@ struct profile_t
 
         visitor.visit_section(
             "Synchronous", [&](auto&& section_visitor) { self.synchronous.reflect(section_visitor); });
+        visitor.visit_section("Log-Normal", [&](auto&& section_visitor) { self.log_normal.reflect(section_visitor); });
 
         return std::forward<visitor_t>(visitor);
     }
