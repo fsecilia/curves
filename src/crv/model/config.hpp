@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
+#include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/reflection/param.hpp>
@@ -116,6 +117,7 @@ struct profile_t
     param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"Notch Width (c/ms)", 0.0};
 
     // curve configs
+    curve_config_t<curves::synchronous_t::config_t> synchronous;
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
@@ -123,6 +125,10 @@ struct profile_t
         visitor.visit(self.anisotropy);
         visitor.visit(self.filter_halflife);
         visitor.visit(self.notch_width);
+
+        visitor.visit_section(
+            "Synchronous", [&](auto&& section_visitor) { self.synchronous.reflect(section_visitor); });
+
         return std::forward<visitor_t>(visitor);
     }
 
