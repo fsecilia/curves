@@ -59,6 +59,22 @@ struct offset_t
     constexpr auto operator==(offset_t const&) const noexcept -> bool = default;
 };
 
+struct floor_t
+{
+    param_t<bool> enabled{"Enabled", false};
+    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> anchor{"Anchor", 1.0};
+
+    template <typename self_t, typename visitor_t>
+    constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
+    {
+        visitor.visit(self.enabled);
+        visitor.visit(self.anchor);
+        return std::forward<visitor_t>(visitor);
+    }
+
+    constexpr auto operator==(floor_t const&) const noexcept -> bool = default;
+};
+
 struct limit_t
 {
     param_t<float_t, static_lower_bound_t<float_t, soft_limit>> limit{"Limit", soft_limit};
@@ -95,6 +111,7 @@ struct common_curve_config_t
 {
     scale_t scale;
     offset_t offset;
+    floor_t floor;
     limit_t limit;
 
     template <typename self_t, typename visitor_t>
@@ -102,6 +119,7 @@ struct common_curve_config_t
     {
         visitor.visit_section("Scale", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
         visitor.visit_section("Offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
+        visitor.visit_section("Floor", [&](auto&& section_visitor) { self.floor.reflect(section_visitor); });
         visitor.visit_section("Limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });
 
         return std::forward<visitor_t>(visitor);
