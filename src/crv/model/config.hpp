@@ -128,7 +128,7 @@ template <typename specific_curve_config_t> struct curve_config_t
 
 struct profile_t
 {
-    float_param_t anisotropy{"Y/X scaling", 1.0};
+    float_param_t x_y_scaling{"Y/X Scaling", 1.0};
     param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"Filter Halflife (ms)", 2.0};
     param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"Notch Width (c/ms)", 0.0};
 
@@ -139,7 +139,7 @@ struct profile_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor.visit(self.anisotropy);
+        visitor.visit(self.x_y_scaling);
         visitor.visit(self.filter_halflife);
         visitor.visit(self.notch_width);
 

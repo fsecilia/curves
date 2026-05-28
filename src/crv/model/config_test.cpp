@@ -27,7 +27,7 @@ TEST(model_test, round_trip)
     expected_root.device.name.value("name");
     expected_root.device.dpi.value(26000);
     expected_root.device.rotation.value(-1.1);
-    expected_root.profile.anisotropy.value(5.1);
+    expected_root.profile.x_y_scaling.value(5.1);
     expected_root.profile.filter_halflife.value(200);
     expected_root.profile.notch_width.value(0.5);
 
