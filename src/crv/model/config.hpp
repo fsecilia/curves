@@ -117,7 +117,7 @@ struct common_curve_config_t
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor.visit_section("Scale", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
+        visitor.visit_section("Scale", [&](auto&& section_visitor) { self.scale.reflect(section_visitor); });
         visitor.visit_section("Offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
         visitor.visit_section("Floor", [&](auto&& section_visitor) { self.floor.reflect(section_visitor); });
         visitor.visit_section("Limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });
