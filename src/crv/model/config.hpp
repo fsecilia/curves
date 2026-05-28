@@ -75,20 +75,32 @@ struct limit_t
     constexpr auto operator==(limit_t const&) const noexcept -> bool = default;
 };
 
+struct scale_t
+{
+    float_param_t input{"Input", 1.0};
+    float_param_t output{"Output", 1.0};
+
+    template <typename self_t, typename visitor_t>
+    constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
+    {
+        visitor.visit(self.input);
+        visitor.visit(self.output);
+        return std::forward<visitor_t>(visitor);
+    }
+
+    constexpr auto operator==(scale_t const&) const noexcept -> bool = default;
+};
+
 struct common_curve_config_t
 {
-    float_param_t input_scale{"Input Scale", 1.0};
-    float_param_t output_scale{"Output Scale", 1.0};
-
+    scale_t scale;
     offset_t offset;
     limit_t limit;
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor.visit(self.input_scale);
-        visitor.visit(self.output_scale);
-
+        visitor.visit_section("Scale", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
         visitor.visit_section("Offset", [&](auto&& section_visitor) { self.offset.reflect(section_visitor); });
         visitor.visit_section("Limit", [&](auto&& section_visitor) { self.limit.reflect(section_visitor); });
 
