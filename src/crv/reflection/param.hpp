@@ -15,9 +15,11 @@ namespace crv::reflection {
 /// named reflection wrapper
 ///
 /// This type wraps a value to imbue it with named reflection and an optional constraint.
-template <typename value_t, typename constraint_t = constraints::none_t> class param_t
+template <typename t_value_t, typename constraint_t = constraints::none_t> class param_t
 {
 public:
+    using value_t = t_value_t;
+
     constexpr param_t(std::string_view name, value_t value)
         requires std::is_default_constructible_v<constraint_t>
         : param_t{name, std::move(value), constraint_t{}}
