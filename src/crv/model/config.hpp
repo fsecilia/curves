@@ -77,13 +77,13 @@ struct floor_t
 
 struct limit_t
 {
-    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> limit{"Limit", soft_limit};
+    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> max{"Max", soft_limit};
     float_param_t width{"Width (c/ms)", 1.0};
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor.visit(self.limit);
+        visitor.visit(self.max);
         visitor.visit(self.width);
         return std::forward<visitor_t>(visitor);
     }
