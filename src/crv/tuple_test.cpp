@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "tuple.hpp"
+#include <crv/math/int_traits.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv {
@@ -52,6 +53,27 @@ static_assert(tuple_index_v<c_t, std::tuple<a_t, b_t, c_t>> == 2);
 static_assert(tuple_index_v<void, std::tuple<a_t, b_t, c_t>> == 3);
 
 } // namespace tuple_index_tests
+
+//
+// iteration
+//
+
+namespace iteration_tests {
+
+struct counter_t
+{
+    int_t count = 0;
+
+    constexpr auto operator()(arithmetic auto&& element) noexcept -> void { count += static_cast<int_t>(element); }
+    constexpr auto operator()(a_t const&) noexcept -> void { ++count; }
+};
+
+static_assert(tuple_for_each(std::tuple<>{}, counter_t{}).count == 0);
+static_assert(tuple_for_each(std::tuple<int_t>{3}, counter_t{}).count == 3);
+static_assert(tuple_for_each(std::tuple<int_t const, float_t>{3, 5.0}, counter_t{}).count == 8);
+static_assert(tuple_for_each(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, counter_t{}).count == 9);
+
+} // namespace iteration_tests
 
 } // namespace
 } // namespace crv
