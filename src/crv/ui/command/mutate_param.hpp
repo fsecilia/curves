@@ -12,7 +12,7 @@
 
 namespace crv::command {
 
-/// ommand pattern command to mutate a parameter and notify on change
+/// command pattern command to mutate a parameter and notify on change
 template <typename param_t> class mutate_param_t : public command_i
 {
 public:
