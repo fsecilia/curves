@@ -9,6 +9,7 @@
 
 namespace crv {
 
+/// command pattern command for undo stack
 struct command_i
 {
     virtual ~command_i() = default;
