@@ -9,6 +9,7 @@
 #include <concepts>
 #include <cstddef>
 #include <tuple>
+#include <utility>
 
 namespace crv {
 
@@ -60,5 +61,19 @@ template <typename type_t, typename... elements_t> struct tuple_index_f<type_t, 
 /// contains index of first occurance of element_t in tuple_t
 template <typename element_t, typename tuple_t>
 inline constexpr auto tuple_index_v = detail::tuple_index_f<element_t, tuple_t>::value;
+
+//
+// iteration
+//
+
+/// applies op to each element in tuple: op(element)
+template <typename tuple_t, typename op_t> constexpr auto tuple_for_each(tuple_t&& tuple, op_t&& op) -> op_t
+{
+    [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        (op(std::get<indices>(std::forward<tuple_t>(tuple))), ...);
+    }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
+
+    return op;
+}
 
 } // namespace crv
