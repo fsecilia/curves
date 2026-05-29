@@ -7,7 +7,7 @@
 #include <crv/math/int_traits.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv {
+namespace crv::tuple {
 namespace {
 
 struct a_t
@@ -25,12 +25,11 @@ struct c_t
 
 namespace tuple_transform_tests {
 
-template <typename element_t> struct transform_t;
+template <typename element_t> struct op_t;
 
-static_assert(std::same_as<tuple<>, transform_tuple_t<tuple<>, transform_t>>);
-static_assert(std::same_as<tuple<transform_t<a_t>>, transform_tuple_t<tuple<a_t>, transform_t>>);
-static_assert(std::same_as<tuple<transform_t<a_t>, transform_t<b_t>, transform_t<c_t>>,
-    transform_tuple_t<tuple<a_t, b_t, c_t>, transform_t>>);
+static_assert(std::same_as<std::tuple<>, transform_t<std::tuple<>, op_t>>);
+static_assert(std::same_as<std::tuple<op_t<a_t>>, transform_t<std::tuple<a_t>, op_t>>);
+static_assert(std::same_as<std::tuple<op_t<a_t>, op_t<b_t>, op_t<c_t>>, transform_t<std::tuple<a_t, b_t, c_t>, op_t>>);
 
 } // namespace tuple_transform_tests
 
@@ -38,21 +37,21 @@ static_assert(std::same_as<tuple<transform_t<a_t>, transform_t<b_t>, transform_t
 // tuple_index_t
 //
 
-namespace tuple_index_tests {
+namespace index_tests {
 
-static_assert(tuple_index_v<a_t, std::tuple<a_t>> == 0);
-static_assert(tuple_index_v<void, std::tuple<a_t>> == 1);
+static_assert(index_v<a_t, std::tuple<a_t>> == 0);
+static_assert(index_v<void, std::tuple<a_t>> == 1);
 
-static_assert(tuple_index_v<a_t, std::tuple<a_t, b_t>> == 0);
-static_assert(tuple_index_v<b_t, std::tuple<a_t, b_t>> == 1);
-static_assert(tuple_index_v<void, std::tuple<a_t, b_t>> == 2);
+static_assert(index_v<a_t, std::tuple<a_t, b_t>> == 0);
+static_assert(index_v<b_t, std::tuple<a_t, b_t>> == 1);
+static_assert(index_v<void, std::tuple<a_t, b_t>> == 2);
 
-static_assert(tuple_index_v<a_t, std::tuple<a_t, b_t, c_t>> == 0);
-static_assert(tuple_index_v<b_t, std::tuple<a_t, b_t, c_t>> == 1);
-static_assert(tuple_index_v<c_t, std::tuple<a_t, b_t, c_t>> == 2);
-static_assert(tuple_index_v<void, std::tuple<a_t, b_t, c_t>> == 3);
+static_assert(index_v<a_t, std::tuple<a_t, b_t, c_t>> == 0);
+static_assert(index_v<b_t, std::tuple<a_t, b_t, c_t>> == 1);
+static_assert(index_v<c_t, std::tuple<a_t, b_t, c_t>> == 2);
+static_assert(index_v<void, std::tuple<a_t, b_t, c_t>> == 3);
 
-} // namespace tuple_index_tests
+} // namespace index_tests
 
 //
 // iteration
@@ -78,17 +77,17 @@ struct counter_t
     }
 };
 
-static_assert(tuple_for_each(std::tuple<>{}, counter_t{}).count == 0);
-static_assert(tuple_for_each(std::tuple<int_t>{3}, counter_t{}).count == 3);
-static_assert(tuple_for_each(std::tuple<int_t const, float_t>{3, 5.0}, counter_t{}).count == 8);
-static_assert(tuple_for_each(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, counter_t{}).count == 9);
+static_assert(for_each(std::tuple<>{}, counter_t{}).count == 0);
+static_assert(for_each(std::tuple<int_t>{3}, counter_t{}).count == 3);
+static_assert(for_each(std::tuple<int_t const, float_t>{3, 5.0}, counter_t{}).count == 8);
+static_assert(for_each(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, counter_t{}).count == 9);
 
-static_assert(tuple_enumerate(std::tuple<>{}, counter_t{}).count == 0);
-static_assert(tuple_enumerate(std::tuple<int_t>{3}, counter_t{}).count == 3);
-static_assert(tuple_enumerate(std::tuple<int_t const, float_t>{3, 5.0}, counter_t{}).count == 9);
-static_assert(tuple_enumerate(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, counter_t{}).count == 12);
+static_assert(enumerate(std::tuple<>{}, counter_t{}).count == 0);
+static_assert(enumerate(std::tuple<int_t>{3}, counter_t{}).count == 3);
+static_assert(enumerate(std::tuple<int_t const, float_t>{3, 5.0}, counter_t{}).count == 9);
+static_assert(enumerate(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, counter_t{}).count == 12);
 
 } // namespace iteration_tests
 
 } // namespace
-} // namespace crv
+} // namespace crv::tuple
