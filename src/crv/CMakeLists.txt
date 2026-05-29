@@ -60,6 +60,7 @@ target_sources(lib PRIVATE
     math/spline/construction/weight_functions/uniform.hpp
     math/stats.hpp
     model/config.hpp
+    model/curves/curves.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     priority_queue.hpp
