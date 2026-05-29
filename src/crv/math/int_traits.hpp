@@ -32,7 +32,7 @@ struct is_integral : std::bool_constant<std::is_integral_v<value_t> || is_128_bi
 template <typename value_t> inline constexpr auto is_integral_v = is_integral<value_t>::value;
 
 template <typename value_t>
-concept integral = is_integral_v<value_t>;
+concept integral = is_integral_v<std::remove_cvref_t<value_t>>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // arithmetic
@@ -45,7 +45,7 @@ struct is_arithmetic : std::bool_constant<is_integral_v<value_t> || std::is_floa
 template <typename value_t> inline constexpr auto is_arithmetic_v = is_arithmetic<value_t>::value;
 
 template <typename value_t>
-concept arithmetic = is_arithmetic_v<value_t>;
+concept arithmetic = is_arithmetic_v<std::remove_cvref_t<value_t>>;
 
 // --------------------------------------------------------------------------------------------------------------------
 // signed
@@ -61,7 +61,7 @@ template <typename value_t> struct is_signed : std::bool_constant<is_signed_v<va
 {};
 
 template <typename value_t>
-concept signed_integral = integral<value_t> && is_signed_v<value_t>;
+concept signed_integral = integral<value_t> && is_signed_v<std::remove_cvref_t<value_t>>;
 
 template <typename value_t>
 concept unsigned_integral = integral<value_t> && !signed_integral<value_t>;
