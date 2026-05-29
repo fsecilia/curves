@@ -5,11 +5,13 @@
 
 add_library(ui
     command/command.hpp
+    command/stack_adapter.hpp
     command/mutate_param.hpp
 )
 target_link_libraries(ui PUBLIC lib)
 
 add_executable(ui_test
+    command/stack_adapter_test.cpp
     command/mutate_param_test.cpp
 )
 target_link_libraries(ui_test PRIVATE ui lib testing)
