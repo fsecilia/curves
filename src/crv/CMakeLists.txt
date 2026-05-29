@@ -83,6 +83,7 @@ target_sources(lib PRIVATE
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
     tuple.hpp
+    variant.hpp
 )
 target_sources_kernel(lib
     algorithm.hpp
@@ -229,6 +230,7 @@ if (enable_testing)
         serialization/writer_test.cpp
         traits_test.cpp
         tuple_test.cpp
+        variant_test.cpp
     )
     target_link_libraries(unit_tests PUBLIC
         lib
