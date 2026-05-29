@@ -14,11 +14,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-# main executable.
-qt_add_executable(qt main.cpp)
-set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
-target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(qt PRIVATE
+# qt ui lib
+add_library(qt_ui
+    command/command_adapter.hpp
+)
+target_link_libraries(qt_ui PUBLIC
     lib
     ui
 
@@ -31,12 +31,25 @@ target_link_libraries(qt PRIVATE
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(qt PRIVATE
+    target_compile_options(qt_ui PRIVATE
         -Wno-ctad-maybe-unsupported
         -Wno-unsafe-buffer-usage
         -Wno-unsafe-buffer-usage-in-libc-call
     )
 endif()
+
+# qt ui unit tests
+add_executable(qt_ui_test
+    command/command_adapter_test.cpp
+)
+target_link_libraries(qt_ui_test PRIVATE qt_ui testing)
+gtest_discover_tests(qt_ui_test)
+
+# main executable.
+qt_add_executable(qt main.cpp)
+set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
+target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(qt PRIVATE qt_ui)
 
 install(TARGETS qt RUNTIME
     DESTINATION bin
