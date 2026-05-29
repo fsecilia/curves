@@ -34,4 +34,21 @@ struct same_types_t<std::tuple<elements_t...>, std::variant<elements_t...>> : st
 template <typename tuple_t, typename variant_t>
 concept has_same_types = detail::same_types_t<tuple_t, variant_t>::value;
 
+//
+// from_variant_t
+//
+
+namespace detail {
+
+template <typename variant_t> struct from_variant_f;
+template <typename... elements_t> struct from_variant_f<std::variant<elements_t...>>
+{
+    using type = std::tuple<elements_t...>;
+};
+
+} // namespace detail
+
+/// converts variant alternatives into tuple
+template <typename variant_t> using from_variant_t = detail::from_variant_f<variant_t>::type;
+
 } // namespace crv::variant
