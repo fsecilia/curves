@@ -12,7 +12,7 @@ namespace crv {
 /// command pattern command for undo stack
 struct command_i
 {
-    virtual ~command_i() = default;
+    virtual ~command_i();
 
     virtual auto apply() -> void = 0;
     virtual auto undo() -> void = 0;

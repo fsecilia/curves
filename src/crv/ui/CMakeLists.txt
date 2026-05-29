@@ -5,6 +5,7 @@
 
 add_library(ui
     command/command.hpp
+    command/command.cpp
     command/stack_adapter.hpp
     command/mutate_param.hpp
 )
