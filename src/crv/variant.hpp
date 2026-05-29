@@ -89,4 +89,34 @@ template <typename... elements_t> struct to_variant_f<std::tuple<elements_t...>>
 /// converts tuple elements into variant
 template <typename tuple_t> using to_variant_t = detail::to_variant_f<tuple_t>::type;
 
+/// creates variant with alternatives matching tuple and moves corresponding held type
+template <typename variant_t, typename tuple_t>
+    requires has_same_types<tuple_t, variant_t>
+constexpr auto to_variant(tuple_t&& src, std::size_t active_index) -> variant_t
+{
+    assert(active_index < std::variant_size_v<variant_t>);
+
+    std::optional<variant_t> dst;
+
+    auto assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        return ((indices == active_index ? (dst.emplace(std::move(std::get<indices>(std::forward<tuple_t>(src)))), true)
+                                         : false)
+            || ...);
+    };
+
+    [[maybe_unused]] auto const assigned
+        = assign_by_index(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
+    assert(assigned);
+
+    return *dst;
+}
+
+/// moves current variant alternative from corresponding tuple element
+template <typename variant_t, typename tuple_t>
+    requires has_same_types<tuple_t, variant_t>
+constexpr auto to_variant(variant_t& dst, tuple_t&& src) -> void
+{
+    dst = to_variant<variant_t>(std::forward<tuple_t>(src), dst.index());
+}
+
 } // namespace crv::variant

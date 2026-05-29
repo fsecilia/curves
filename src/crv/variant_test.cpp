@@ -74,5 +74,79 @@ constexpr auto from_variant_leaves_char() -> char
 }
 static_assert(from_variant_leaves_char() == '?');
 
+//
+// to_variant (index): result holds alternative at active_index
+//
+
+constexpr auto to_variant_idx_index(std::size_t which) -> std::size_t
+{
+    return to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, which).index();
+}
+static_assert(to_variant_idx_index(0) == 0);
+static_assert(to_variant_idx_index(1) == 1);
+static_assert(to_variant_idx_index(2) == 2);
+
+constexpr auto to_variant_idx0_value() -> int_t
+{
+    return std::get<0>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 0));
+}
+static_assert(to_variant_idx0_value() == 7);
+
+constexpr auto to_variant_idx1_value() -> float_t
+{
+    return std::get<1>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 1));
+}
+static_assert(to_variant_idx1_value() == 3.5);
+
+constexpr auto to_variant_idx2_value() -> char
+{
+    return std::get<2>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 2));
+}
+static_assert(to_variant_idx2_value() == 'k');
+
+//
+// to_variant (variant&): keeps active index, pulls value from corresponding tuple element
+//
+
+constexpr auto to_variant_ref_index() -> std::size_t
+{
+    auto dst = variant_t{3.5};
+    to_variant(dst, tuple_t{7, 9.25, 'k'});
+    return dst.index();
+}
+static_assert(to_variant_ref_index() == 1);
+
+constexpr auto to_variant_ref_value() -> float_t
+{
+    auto dst = variant_t{3.5};
+    to_variant(dst, tuple_t{7, 9.25, 'k'});
+    return std::get<1>(dst);
+}
+static_assert(to_variant_ref_value() == 9.25);
+
+//
+// round trip: persistence cycle (variant -> tuple + index -> variant)
+//
+
+constexpr auto roundtrip_index() -> std::size_t
+{
+    auto original = variant_t{3.5};
+    auto const original_index = original.index();
+    auto tuple = tuple_t{};
+    from_variant(tuple, std::move(original));
+    return to_variant<variant_t>(std::move(tuple), original_index).index();
+}
+static_assert(roundtrip_index() == 1);
+
+constexpr auto roundtrip_value() -> float_t
+{
+    auto original = variant_t{3.5};
+    auto const original_index = original.index();
+    auto tuple = tuple_t{};
+    from_variant(tuple, std::move(original));
+    return std::get<1>(to_variant<variant_t>(std::move(tuple), original_index));
+}
+static_assert(roundtrip_value() == 3.5);
+
 } // namespace
 } // namespace crv::variant
