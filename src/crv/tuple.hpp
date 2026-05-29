@@ -6,6 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <concepts>
+#include <cstddef>
 #include <tuple>
 
 namespace crv {
@@ -31,5 +33,32 @@ struct transform_tuple_f<std::tuple<types_t...>, wrapper_t>
 /// transform_tuple_t<tuple<a, b, c>, transform_t> -> tuple<transform_t<a>, transform_t<b>, transform_t<c>>
 template <typename tuple_t, template <typename> class transform_t>
 using transform_tuple_t = typename detail::transform_tuple_f<tuple_t, transform_t>::type;
+
+//
+// tuple_index_t
+//
+
+namespace detail {
+
+// finds index of type_t in elements_t
+template <typename type_t, typename... elements_t> constexpr auto pack_index() noexcept -> std::size_t
+{
+    auto index = std::size_t{0};
+    auto const found = ((++index && std::same_as<type_t, elements_t>) || ...);
+    return index - found;
+}
+
+// crack tuple to get pack and call pack_index
+template <typename type_t, typename tuple_t> struct tuple_index_f;
+template <typename type_t, typename... elements_t> struct tuple_index_f<type_t, std::tuple<elements_t...>>
+{
+    static constexpr auto value = pack_index<type_t, elements_t...>();
+};
+
+} // namespace detail
+
+/// contains index of first occurance of element_t in tuple_t
+template <typename element_t, typename tuple_t>
+inline constexpr auto tuple_index_v = detail::tuple_index_f<element_t, tuple_t>::value;
 
 } // namespace crv
