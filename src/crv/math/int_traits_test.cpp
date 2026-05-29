@@ -26,18 +26,20 @@ static_assert(!is_integral_v<uint128_t&>);
 static_assert(integral<int8_t>);
 static_assert(integral<int16_t const>);
 static_assert(integral<int32_t volatile>);
-static_assert(integral<int64_t>);
+static_assert(integral<int64_t&>);
 static_assert(integral<int128_t>);
+static_assert(integral<int128_t const volatile&>);
 
 static_assert(integral<uint8_t>);
 static_assert(integral<uint16_t const>);
 static_assert(integral<uint32_t volatile>);
-static_assert(integral<uint64_t>);
+static_assert(integral<uint64_t&>);
 static_assert(integral<uint128_t>);
+static_assert(integral<uint128_t const volatile&>);
 
 static_assert(!integral<float32_t>);
-static_assert(!integral<float64_t>);
-static_assert(!integral<float_max_t>);
+static_assert(!integral<float64_t const>);
+static_assert(!integral<float_max_t&>);
 
 struct nonintegral_t
 {};
@@ -63,18 +65,20 @@ static_assert(!is_arithmetic_v<uint128_t&>);
 static_assert(arithmetic<int8_t>);
 static_assert(arithmetic<int16_t const>);
 static_assert(arithmetic<int32_t volatile>);
-static_assert(arithmetic<int64_t>);
+static_assert(arithmetic<int64_t&>);
 static_assert(arithmetic<int128_t>);
+static_assert(arithmetic<int128_t const volatile&>);
 
 static_assert(arithmetic<uint8_t>);
 static_assert(arithmetic<uint16_t const>);
 static_assert(arithmetic<uint32_t volatile>);
-static_assert(arithmetic<uint64_t>);
+static_assert(arithmetic<uint64_t&>);
 static_assert(arithmetic<uint128_t>);
+static_assert(arithmetic<uint128_t const volatile&>);
 
 static_assert(arithmetic<float32_t>);
-static_assert(arithmetic<float64_t>);
-static_assert(arithmetic<float_max_t>);
+static_assert(arithmetic<float64_t const>);
+static_assert(arithmetic<float_max_t&>);
 
 struct nonarithmetic_t
 {};
@@ -92,23 +96,21 @@ namespace is_signed_tests {
 struct nonsigned_t
 {};
 
-// standard signed integer signedness
+// signed integer signedness
 static_assert(is_signed_v<int8_t>);
 static_assert(is_signed_v<int16_t const>);
 static_assert(is_signed_v<int32_t volatile>);
 static_assert(is_signed_v<int64_t>);
 static_assert(is_signed_v<int128_t>);
+static_assert(!is_signed_v<int128_t&>);
 
-// standard unsigned integer signedness
+// unsigned integer signedness
 static_assert(!is_signed_v<uint8_t>);
 static_assert(!is_signed_v<uint16_t const>);
 static_assert(!is_signed_v<uint32_t volatile>);
 static_assert(!is_signed_v<uint64_t>);
 static_assert(!is_signed_v<uint128_t>);
-
-// 128-bit integer signedness
-static_assert(is_signed_v<int128_t>);
-static_assert(!is_signed_v<uint128_t>);
+static_assert(!is_signed_v<uint128_t&>);
 
 // arbitrary types are not signed
 static_assert(!is_signed_v<nonsigned_t>);
@@ -117,20 +119,22 @@ static_assert(!is_signed_v<nonsigned_t>);
 static_assert(signed_integral<int8_t>);
 static_assert(signed_integral<int16_t const>);
 static_assert(signed_integral<int32_t volatile>);
-static_assert(signed_integral<int64_t>);
+static_assert(signed_integral<int64_t&>);
 static_assert(signed_integral<int128_t>);
+static_assert(signed_integral<int128_t const volatile&>);
 
 // unsigned integers are not signed integrals
 static_assert(!signed_integral<uint8_t>);
 static_assert(!signed_integral<uint16_t const>);
 static_assert(!signed_integral<uint32_t volatile>);
-static_assert(!signed_integral<uint64_t>);
+static_assert(!signed_integral<uint64_t&>);
 static_assert(!signed_integral<uint128_t>);
+static_assert(!signed_integral<uint128_t const volatile&>);
 
 // floating point types are not signed integrals
 static_assert(!signed_integral<float32_t>);
-static_assert(!signed_integral<float64_t>);
-static_assert(!signed_integral<float_max_t>);
+static_assert(!signed_integral<float64_t const>);
+static_assert(!signed_integral<float_max_t&>);
 
 // arbitrary types are not signed integrals
 static_assert(!signed_integral<nonsigned_t>);
@@ -139,20 +143,22 @@ static_assert(!signed_integral<nonsigned_t>);
 static_assert(!unsigned_integral<int8_t>);
 static_assert(!unsigned_integral<int16_t const>);
 static_assert(!unsigned_integral<int32_t volatile>);
-static_assert(!unsigned_integral<int64_t>);
+static_assert(!unsigned_integral<int64_t&>);
 static_assert(!unsigned_integral<int128_t>);
+static_assert(!unsigned_integral<int128_t const volatile&>);
 
 // unsigned integers are unsigned integrals
 static_assert(unsigned_integral<uint8_t>);
 static_assert(unsigned_integral<uint16_t const>);
 static_assert(unsigned_integral<uint32_t volatile>);
-static_assert(unsigned_integral<uint64_t>);
+static_assert(unsigned_integral<uint64_t&>);
 static_assert(unsigned_integral<uint128_t>);
+static_assert(unsigned_integral<uint128_t const volatile&>);
 
 // floating point types are not unsigned integrals
 static_assert(!unsigned_integral<float32_t>);
-static_assert(!unsigned_integral<float64_t>);
-static_assert(!unsigned_integral<float_max_t>);
+static_assert(!unsigned_integral<float64_t const>);
+static_assert(!unsigned_integral<float_max_t&>);
 
 // arbitrary types are not unsigned integrals
 static_assert(!unsigned_integral<nonsigned_t>);
