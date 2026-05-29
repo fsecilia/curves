@@ -76,4 +76,14 @@ template <typename tuple_t, typename op_t> constexpr auto tuple_for_each(tuple_t
     return op;
 }
 
+// applies op to each pair of index and element: op(std::size_t{index}, element)
+template <typename tuple_t, typename op_t> constexpr auto tuple_enumerate(tuple_t&& tuple, op_t&& op) -> op_t
+{
+    [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        (op(std::integral_constant<std::size_t, indices>{}, std::get<indices>(std::forward<tuple_t>(tuple))), ...);
+    }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
+
+    return op;
+}
+
 } // namespace crv
