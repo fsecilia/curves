@@ -41,9 +41,10 @@ struct serialization_reader_test_t : Test
     {
         reflection::param_t<float_t> param{"float", 2.0};
 
-        auto reflect(this auto&& self, auto&& visitor) -> void
+        auto reflect(this auto&& self, auto&& inspector) -> void
         {
-            visitor.visit_section("section", [&](auto&& section_visitor) { self.param.reflect(section_visitor); });
+            inspector.inspect_section(
+                "section", [&](auto&& section_inspector) { self.param.reflect(section_inspector); });
         }
     };
 
@@ -60,7 +61,7 @@ TEST_F(serialization_reader_test_t, reads_standard_types_directly)
         return true;
     });
 
-    sut.visit(param);
+    sut.inspect(param);
 
     EXPECT_FALSE(param.value());
 }
@@ -75,12 +76,12 @@ TEST_F(serialization_reader_test_t, ignores_missing_keys)
         return false;
     });
 
-    sut.visit(param);
+    sut.inspect(param);
 
     EXPECT_EQ(original_value, param.value());
 }
 
-TEST_F(serialization_reader_test_t, visits_nested_sections)
+TEST_F(serialization_reader_test_t, inspects_nested_sections)
 {
     auto section = section_t{};
 

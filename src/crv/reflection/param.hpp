@@ -41,10 +41,10 @@ public:
 
     constexpr auto constraint() const noexcept -> constraint_t const& { return constraint_; }
 
-    constexpr auto reflect(this auto&& self, auto&& visitor) -> decltype(auto)
+    constexpr auto reflect(this auto&& self, auto&& inspector) -> decltype(auto)
     {
-        visitor.visit(std::forward<decltype(self)>(self));
-        return std::forward<decltype(visitor)>(visitor);
+        inspector.inspect(std::forward<decltype(self)>(self));
+        return std::forward<decltype(inspector)>(inspector);
     }
 
     constexpr auto operator==(param_t const&) const noexcept -> bool = default;

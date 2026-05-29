@@ -42,9 +42,10 @@ struct serialization_writer_test_t : Test
     {
         reflection::param_t<float_t> param{"float", 2.0};
 
-        auto reflect(this auto&& self, auto&& visitor) -> void
+        auto reflect(this auto&& self, auto&& inspector) -> void
         {
-            visitor.visit_section("section", [&](auto&& section_visitor) { self.param.reflect(section_visitor); });
+            inspector.inspect_section(
+                "section", [&](auto&& section_inspector) { self.param.reflect(section_inspector); });
         }
     };
 
@@ -58,10 +59,10 @@ TEST_F(serialization_writer_test_t, writes_standard_types_directly)
 
     EXPECT_CALL(mock_writer_adapter, write_bool("bool", true));
 
-    sut.visit(param);
+    sut.inspect(param);
 }
 
-TEST_F(serialization_writer_test_t, visits_nested_sections)
+TEST_F(serialization_writer_test_t, inspects_nested_sections)
 {
     auto section = section_t{};
 

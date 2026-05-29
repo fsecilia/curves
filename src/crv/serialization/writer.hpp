@@ -22,19 +22,19 @@ public:
     ///
     /// \throws if value type is enum but content is not a valid member
     template <typename value_t, typename constraint_t>
-    auto visit(reflection::param_t<value_t, constraint_t> const& param) -> void
+    auto inspect(reflection::param_t<value_t, constraint_t> const& param) -> void
     {
         adapter_.write(param.name(), param.value());
     }
 
-    /// recurses visitor into nested section
-    template <typename section_visitor_t>
-    auto visit_section(std::string_view name, section_visitor_t&& section_visitor) -> void
+    /// recurses inspector into nested section
+    template <typename section_inspector_t>
+    auto inspect_section(std::string_view name, section_inspector_t&& section_inspector) -> void
     {
         auto section_adapter = adapter_.find_or_create_section(name);
 
         // recurse with new writer wrapping nested adapter
-        std::invoke(std::forward<section_visitor_t>(section_visitor), writer_t{std::move(section_adapter)});
+        std::invoke(std::forward<section_inspector_t>(section_inspector), writer_t{std::move(section_adapter)});
     }
 
 private:
