@@ -7,13 +7,15 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
+#include <crv/model/curves/curves.hpp>
 #include <crv/model/curves/log_normal.hpp>
 #include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/reflection/param.hpp>
-#include <crv/sequential_enum_name_map.hpp>
+#include <crv/tuple.hpp>
 #include <string>
+#include <tuple>
 
 namespace crv::model {
 
@@ -62,7 +64,7 @@ struct offset_t
 struct floor_t
 {
     param_t<bool> enabled{"Enabled", false};
-    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> anchor{"Anchor", 1.0};
+    param_t<float_t, static_t<float_t, 0.0, soft_limit>> anchor{"Min", 0.0};
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
@@ -77,7 +79,7 @@ struct floor_t
 
 struct limit_t
 {
-    param_t<float_t, static_lower_bound_t<float_t, soft_limit>> max{"Max", soft_limit};
+    param_t<float_t, static_t<float_t, 0.0, soft_limit>> max{"Max", soft_limit};
     float_param_t width{"Width (c/ms)", 1.0};
 
     template <typename self_t, typename visitor_t>
@@ -128,8 +130,9 @@ struct common_curve_config_t
     constexpr auto operator==(common_curve_config_t const&) const noexcept -> bool = default;
 };
 
-template <typename specific_curve_config_t> struct curve_config_t
+template <typename t_specific_curve_config_t> struct curve_config_t
 {
+    using specific_curve_config_t = t_specific_curve_config_t;
     common_curve_config_t common;
     specific_curve_config_t specific;
 
@@ -144,26 +147,31 @@ template <typename specific_curve_config_t> struct curve_config_t
     constexpr auto operator==(curve_config_t const&) const noexcept -> bool = default;
 };
 
+template <typename curve_t> using extract_curve_config_t = curve_config_t<typename curve_t::config_t>;
+using curve_configs_t = tuple::transform_t<curves::curves_t, extract_curve_config_t>;
+
 struct profile_t
 {
-    float_param_t x_y_scaling{"Y/X Scaling", 1.0};
+    param_t<curves::curve_id_t> active_curve{"Active Curve", curves::curve_id_t::synchronous};
+
+    float_param_t anisotropy{"Anisotropy", 1.0};
     param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"Filter Halflife (ms)", 2.0};
     param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"Notch Width (c/ms)", 0.0};
 
-    // curve configs
-    curve_config_t<curves::synchronous_t::config_t> synchronous;
-    curve_config_t<curves::log_normal_t::config_t> log_normal;
+    curve_configs_t curve_configs;
 
     template <typename self_t, typename visitor_t>
     constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
     {
-        visitor.visit(self.x_y_scaling);
+        visitor.visit(self.anisotropy);
         visitor.visit(self.filter_halflife);
         visitor.visit(self.notch_width);
 
-        visitor.visit_section(
-            "Synchronous", [&](auto&& section_visitor) { self.synchronous.reflect(section_visitor); });
-        visitor.visit_section("Log-Normal", [&](auto&& section_visitor) { self.log_normal.reflect(section_visitor); });
+        tuple::enumerate(self.curve_configs, [&](int_t id, auto&& curve_config) {
+            auto const curve_id = static_cast<curves::curve_id_t>(id);
+            visitor.visit_section(*reflection::to_string(curve_id),
+                [&](auto&& section_visitor) { curve_config.reflect(section_visitor); });
+        });
 
         return std::forward<visitor_t>(visitor);
     }
