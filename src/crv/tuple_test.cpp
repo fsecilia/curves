@@ -20,21 +20,7 @@ struct c_t
 {};
 
 //
-// transform_tuple_t
-//
-
-namespace tuple_transform_tests {
-
-template <typename element_t> struct op_t;
-
-static_assert(std::same_as<std::tuple<>, transform_t<std::tuple<>, op_t>>);
-static_assert(std::same_as<std::tuple<op_t<a_t>>, transform_t<std::tuple<a_t>, op_t>>);
-static_assert(std::same_as<std::tuple<op_t<a_t>, op_t<b_t>, op_t<c_t>>, transform_t<std::tuple<a_t, b_t, c_t>, op_t>>);
-
-} // namespace tuple_transform_tests
-
-//
-// tuple_index_t
+// index_t
 //
 
 namespace index_tests {
@@ -52,6 +38,20 @@ static_assert(index_v<c_t, std::tuple<a_t, b_t, c_t>> == 2);
 static_assert(index_v<void, std::tuple<a_t, b_t, c_t>> == 3);
 
 } // namespace index_tests
+
+//
+// transform_t
+//
+
+namespace transform_tests {
+
+template <typename element_t> struct op_t;
+
+static_assert(std::same_as<std::tuple<>, transform_t<std::tuple<>, op_t>>);
+static_assert(std::same_as<std::tuple<op_t<a_t>>, transform_t<std::tuple<a_t>, op_t>>);
+static_assert(std::same_as<std::tuple<op_t<a_t>, op_t<b_t>, op_t<c_t>>, transform_t<std::tuple<a_t, b_t, c_t>, op_t>>);
+
+} // namespace transform_tests
 
 //
 // iteration

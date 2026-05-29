@@ -14,29 +14,7 @@
 namespace crv::tuple {
 
 //
-// transform_tuple_t
-//
-
-namespace detail {
-
-template <typename tuple_t, template <typename> class wrapper_t> struct transform_f;
-
-template <typename... types_t, template <typename> class wrapper_t>
-struct transform_f<std::tuple<types_t...>, wrapper_t>
-{
-    using type = std::tuple<wrapper_t<types_t>...>;
-};
-
-} // namespace detail
-
-/// creates new tuple with transform applied to each element of the original tuple
-///
-/// transform_tuple_t<tuple<a, b, c>, op_t> -> tuple<op_t<a>, op_t<b>, op_t<c>>
-template <typename tuple_t, template <typename> class op_t>
-using transform_t = typename detail::transform_f<tuple_t, op_t>::type;
-
-//
-// tuple_index_t
+// index_t
 //
 
 namespace detail {
@@ -61,6 +39,28 @@ template <typename type_t, typename... elements_t> struct index_f<type_t, std::t
 /// contains index of first occurance of element_t in tuple_t
 template <typename element_t, typename tuple_t>
 inline constexpr auto index_v = detail::index_f<element_t, tuple_t>::value;
+
+//
+// transform_t
+//
+
+namespace detail {
+
+template <typename tuple_t, template <typename> class wrapper_t> struct transform_f;
+
+template <typename... types_t, template <typename> class wrapper_t>
+struct transform_f<std::tuple<types_t...>, wrapper_t>
+{
+    using type = std::tuple<wrapper_t<types_t>...>;
+};
+
+} // namespace detail
+
+/// creates new tuple with transform applied to each element of the original tuple
+///
+/// transform_tuple_t<tuple<a, b, c>, op_t> -> tuple<op_t<a>, op_t<b>, op_t<c>>
+template <typename tuple_t, template <typename> class op_t>
+using transform_t = typename detail::transform_f<tuple_t, op_t>::type;
 
 //
 // iteration
