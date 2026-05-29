@@ -15,6 +15,14 @@ namespace {
 
 namespace is_integral_tests {
 
+static_assert(is_integral_v<int128_t>);
+static_assert(is_integral_v<int128_t const>);
+static_assert(!is_integral_v<int128_t&>);
+
+static_assert(is_integral_v<uint128_t>);
+static_assert(is_integral_v<uint128_t const>);
+static_assert(!is_integral_v<uint128_t&>);
+
 static_assert(integral<int8_t>);
 static_assert(integral<int16_t const>);
 static_assert(integral<int32_t volatile>);
@@ -43,6 +51,14 @@ static_assert(!integral<nonintegral_t>);
 // --------------------------------------------------------------------------------------------------------------------
 
 namespace is_arithmetic_tests {
+
+static_assert(is_arithmetic_v<int128_t>);
+static_assert(is_arithmetic_v<int128_t const>);
+static_assert(!is_arithmetic_v<int128_t&>);
+
+static_assert(is_arithmetic_v<uint128_t>);
+static_assert(is_arithmetic_v<uint128_t const>);
+static_assert(!is_arithmetic_v<uint128_t&>);
 
 static_assert(arithmetic<int8_t>);
 static_assert(arithmetic<int16_t const>);
