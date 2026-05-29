@@ -23,10 +23,11 @@ static_assert(!has_same_types<std::tuple<int_t>, std::variant<int_t, float_t>>);
 static_assert(!has_same_types<std::tuple<int_t, float_t>, std::tuple<int_t, float_t>>);
 
 //
-// from_variant_t
+// from_variant_t / to_variant_t
 //
 
 static_assert(std::is_same_v<from_variant_t<variant_t>, tuple_t>);
+static_assert(std::is_same_v<to_variant_t<tuple_t>, variant_t>);
 
 } // namespace
 } // namespace crv::variant
