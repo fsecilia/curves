@@ -51,6 +51,27 @@ template <typename... elements_t> struct from_variant_f<std::variant<elements_t.
 /// converts variant alternatives into tuple
 template <typename variant_t> using from_variant_t = detail::from_variant_f<variant_t>::type;
 
+/// moves held variant alternative into corresponding tuple element
+template <typename tuple_t, typename variant_t>
+    requires has_same_types<tuple_t, variant_t>
+constexpr auto from_variant(tuple_t& dst, variant_t&& src) -> void
+{
+    auto assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        return ([&] {
+            if (auto* alternative = std::get_if<indices>(&src))
+            {
+                std::get<indices>(dst) = std::move(*alternative);
+                return true;
+            }
+            return false;
+        }() || ...);
+    };
+
+    [[maybe_unused]] auto const assigned
+        = assign_by_index(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
+    assert(assigned);
+}
+
 //
 // to_variant_t
 //
