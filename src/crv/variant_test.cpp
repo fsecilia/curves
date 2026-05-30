@@ -174,6 +174,41 @@ constexpr auto from_variant_lvalue_variant() -> char
 static_assert(from_variant_lvalue_variant() == 'k');
 
 //
+// duplicate types
+//
+
+using duplicate_tuple_t = std::tuple<int_t, int_t>;
+using duplicate_variant_t = std::variant<int_t, int_t>;
+
+constexpr auto duplicate_types_to_variant() -> std::size_t
+{
+    auto src = duplicate_tuple_t{10, 20};
+    auto dst = to_variant<duplicate_variant_t>(std::move(src), 1);
+    return dst.index();
+}
+static_assert(duplicate_types_to_variant() == 1);
+
+constexpr auto duplicate_types_to_variant_value() -> int_t
+{
+    auto src = duplicate_tuple_t{10, 20};
+    auto dst = to_variant<duplicate_variant_t>(std::move(src), 1);
+    return std::get<1>(dst);
+}
+static_assert(duplicate_types_to_variant_value() == 20);
+
+constexpr auto duplicate_types_from_variant() -> int_t
+{
+    auto dst = duplicate_tuple_t{-1, -1};
+
+    // explicitly construct alternative at the second index
+    auto src = duplicate_variant_t{std::in_place_index<1>, 37};
+
+    from_variant(dst, std::move(src));
+    return std::get<1>(dst);
+}
+static_assert(duplicate_types_from_variant() == 37);
+
+//
 // valueless_by_exception handling
 //
 

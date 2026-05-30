@@ -100,8 +100,10 @@ constexpr auto to_variant(tuple_t&& src, std::size_t active_index) -> variant_t
 
     std::optional<variant_t> dst;
 
-    auto assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
-        return ((indices == active_index ? (dst.emplace(std::move(std::get<indices>(std::forward<tuple_t>(src)))), true)
+    auto const assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        return ((indices == active_index ? (dst.emplace(std::in_place_index<indices>,
+                                                std::move(std::get<indices>(std::forward<tuple_t>(src)))),
+                                               true)
                                          : false)
             || ...);
     };
