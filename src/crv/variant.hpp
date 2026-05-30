@@ -32,7 +32,7 @@ struct same_types_t<std::tuple<elements_t...>, std::variant<elements_t...>> : st
 } // namespace detail
 
 template <typename tuple_t, typename variant_t>
-concept has_same_types = detail::same_types_t<tuple_t, variant_t>::value;
+concept has_same_types = detail::same_types_t<std::remove_cvref_t<tuple_t>, std::remove_cvref_t<variant_t>>::value;
 
 //
 // from_variant_t

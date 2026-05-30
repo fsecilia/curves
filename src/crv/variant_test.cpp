@@ -17,6 +17,9 @@ using variant_t = std::variant<int_t, float_t, char>;
 //
 
 static_assert(has_same_types<std::tuple<int_t, float_t>, std::variant<int_t, float_t>>);
+static_assert(has_same_types<std::tuple<int_t, float_t>, std::variant<int_t, float_t>&>);
+static_assert(has_same_types<std::tuple<int_t, float_t>&, std::variant<int_t, float_t>>);
+static_assert(has_same_types<std::tuple<int_t, float_t>&, std::variant<int_t, float_t>&>);
 static_assert(!has_same_types<std::tuple<int_t, float_t>, std::variant<float_t, int>>);
 static_assert(!has_same_types<std::tuple<int_t, float_t>, std::variant<int_t, char>>);
 static_assert(!has_same_types<std::tuple<int_t>, std::variant<int_t, float_t>>);
@@ -147,6 +150,28 @@ constexpr auto roundtrip_value() -> float_t
     return std::get<1>(to_variant<variant_t>(std::move(tuple), original_index));
 }
 static_assert(roundtrip_value() == 3.5);
+
+//
+// lvalue vs rvalue deduction
+//
+
+constexpr auto to_variant_lvalue_tuple() -> float_t
+{
+    auto src_tuple = tuple_t{7, 3.5, 'k'};
+    auto dst_variant = variant_t{0.0f};
+    to_variant(dst_variant, src_tuple);
+    return std::get<1>(dst_variant);
+}
+static_assert(to_variant_lvalue_tuple() == 3.5);
+
+constexpr auto from_variant_lvalue_variant() -> char
+{
+    auto dst_tuple = tuple_t{-1, -1.0, '?'};
+    auto src_variant = variant_t{'k'};
+    from_variant(dst_tuple, src_variant);
+    return std::get<2>(dst_tuple);
+}
+static_assert(from_variant_lvalue_variant() == 'k');
 
 } // namespace
 } // namespace crv::variant
