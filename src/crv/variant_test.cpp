@@ -81,31 +81,31 @@ static_assert(from_variant_leaves_char() == '?');
 // to_variant (index): result holds alternative at active_index
 //
 
-constexpr auto to_variant_idx_index(std::size_t which) -> std::size_t
+constexpr auto to_variant_index(std::size_t which) -> std::size_t
 {
     return to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, which).index();
 }
-static_assert(to_variant_idx_index(0) == 0);
-static_assert(to_variant_idx_index(1) == 1);
-static_assert(to_variant_idx_index(2) == 2);
+static_assert(to_variant_index(0) == 0);
+static_assert(to_variant_index(1) == 1);
+static_assert(to_variant_index(2) == 2);
 
-constexpr auto to_variant_idx0_value() -> int_t
+constexpr auto to_variant_index_0() -> int_t
 {
     return std::get<0>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 0));
 }
-static_assert(to_variant_idx0_value() == 7);
+static_assert(to_variant_index_0() == 7);
 
-constexpr auto to_variant_idx1_value() -> float_t
+constexpr auto to_variant_index_1() -> float_t
 {
     return std::get<1>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 1));
 }
-static_assert(to_variant_idx1_value() == 3.5);
+static_assert(to_variant_index_1() == 3.5);
 
-constexpr auto to_variant_idx2_value() -> char
+constexpr auto to_variant_index_2() -> char
 {
     return std::get<2>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 2));
 }
-static_assert(to_variant_idx2_value() == 'k');
+static_assert(to_variant_index_2() == 'k');
 
 //
 // to_variant (variant&): keeps active index, pulls value from corresponding tuple element
@@ -128,7 +128,7 @@ constexpr auto to_variant_ref_value() -> float_t
 static_assert(to_variant_ref_value() == 9.25);
 
 //
-// round trip: persistence cycle (variant -> tuple + index -> variant)
+// round trip
 //
 
 constexpr auto roundtrip_index() -> std::size_t
