@@ -152,6 +152,42 @@ constexpr auto roundtrip_value() -> float_t
 static_assert(roundtrip_value() == 3.5);
 
 //
+// move-only types
+//
+
+struct move_only_t
+{
+    int_t value{};
+
+    constexpr explicit move_only_t(int_t v) : value{v} {}
+
+    constexpr move_only_t(move_only_t const&) = delete;
+    constexpr auto operator=(move_only_t const&) -> move_only_t& = delete;
+
+    constexpr move_only_t(move_only_t&&) = default;
+    constexpr auto operator=(move_only_t&&) -> move_only_t& = default;
+};
+
+using move_only_tuple_t = std::tuple<move_only_t, float_t>;
+using move_only_variant_t = std::variant<move_only_t, float_t>;
+
+constexpr auto move_only_from_variant() -> int_t
+{
+    auto dst = move_only_tuple_t{move_only_t{-1}, -1.0f};
+    from_variant(dst, move_only_variant_t{move_only_t{37}});
+    return std::get<0>(dst).value;
+}
+static_assert(move_only_from_variant() == 37);
+
+constexpr auto move_only_to_variant() -> int_t
+{
+    auto src = move_only_tuple_t{move_only_t{37}, -1.0f};
+    auto dst = to_variant<move_only_variant_t>(std::move(src), 0);
+    return std::get<0>(dst).value;
+}
+static_assert(move_only_to_variant() == 37);
+
+//
 // lvalue vs rvalue deduction
 //
 

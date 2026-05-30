@@ -112,7 +112,7 @@ constexpr auto to_variant(tuple_t&& src, std::size_t active_index) -> variant_t
         = assign_by_index(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
     assert(assigned);
 
-    return *dst;
+    return std::move(dst.value());
 }
 
 /// moves current variant alternative from corresponding tuple element
