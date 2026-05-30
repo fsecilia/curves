@@ -8,6 +8,7 @@
 
 add_library(lib)
 target_sources(lib PRIVATE
+    bit.hpp
     concepts.hpp
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
@@ -136,6 +137,7 @@ if (enable_testing)
     add_executable(unit_tests)
     target_sources(unit_tests PRIVATE
         algorithm_test.cpp
+        bit_test.cpp
         bitwise_enum_test.cpp
         concepts_test.cpp
         math/abs_test.cpp
