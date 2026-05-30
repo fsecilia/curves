@@ -56,7 +56,9 @@ template <typename tuple_t, typename variant_t>
     requires has_same_types<tuple_t, variant_t>
 constexpr auto from_variant(tuple_t& dst, variant_t&& src) -> void
 {
-    auto assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+    assert(!src.valueless_by_exception());
+
+    auto const assign_by_index = [&]<std::size_t... indices>(std::index_sequence<indices...>) {
         return ([&] {
             if (auto* alternative = std::get_if<indices>(&src))
             {

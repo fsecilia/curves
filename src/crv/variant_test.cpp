@@ -173,5 +173,41 @@ constexpr auto from_variant_lvalue_variant() -> char
 }
 static_assert(from_variant_lvalue_variant() == 'k');
 
+//
+// valueless_by_exception handling
+//
+
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+TEST(from_variant_death_test, valueless_by_exception_asserts)
+{
+    struct throw_on_copy_t
+    {
+        throw_on_copy_t() = default;
+        throw_on_copy_t(throw_on_copy_t const&) { throw std::runtime_error("copy failed"); }
+        auto operator=(throw_on_copy_t const&) -> throw_on_copy_t& { throw std::runtime_error("copy failed"); }
+        throw_on_copy_t(throw_on_copy_t&&) = default;
+        auto operator=(throw_on_copy_t&&) -> throw_on_copy_t& = default;
+    };
+
+    using throwing_tuple_t = std::tuple<int_t, throw_on_copy_t>;
+    using throwing_variant_t = std::variant<int_t, throw_on_copy_t>;
+
+    // force variant into valueless-by-exception state
+    auto bad_variant = throwing_variant_t{5};
+    try
+    {
+        auto thrower = throw_on_copy_t{};
+        bad_variant.emplace<1>(thrower); // throws, putting bad_variant into valueless state
+    }
+    catch (...)
+    {}
+
+    auto dst = throwing_tuple_t{};
+    EXPECT_DEBUG_DEATH(from_variant(dst, std::move(bad_variant)), "valueless_by_exception");
+}
+
+#endif
+
 } // namespace
 } // namespace crv::variant
