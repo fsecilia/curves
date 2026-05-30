@@ -12,6 +12,16 @@ namespace {
 using tuple_t = std::tuple<int_t, float_t, char>;
 using variant_t = std::variant<int_t, float_t, char>;
 
+constexpr auto known_tuple() -> tuple_t
+{
+    return tuple_t{7, 3.5, 'k'};
+}
+
+template <std::size_t index> constexpr auto known_value() -> std::decay_t<std::tuple_element_t<index, tuple_t>>
+{
+    return std::get<index>(known_tuple());
+}
+
 //
 // has_same_types
 //
@@ -36,120 +46,74 @@ static_assert(std::is_same_v<to_variant_t<tuple_t>, variant_t>);
 // from_variant: held alternative lands in matching tuple element
 //
 
-constexpr auto from_variant_int() -> int_t
+template <std::size_t index> constexpr auto from_variant_lands() -> bool
 {
     auto dst = tuple_t{-1, -1.0, '?'};
-    from_variant(dst, variant_t{7});
-    return std::get<0>(dst);
+    from_variant(dst, variant_t{std::in_place_index<index>, known_value<index>()});
+    return std::get<index>(dst) == known_value<index>();
 }
-static_assert(from_variant_int() == 7);
 
-constexpr auto from_variant_double() -> float_t
+static_assert(from_variant_lands<0>());
+static_assert(from_variant_lands<1>());
+static_assert(from_variant_lands<2>());
+
+//
+// from_variant: inactive tuple elements are left untouched
+//
+
+constexpr auto from_variant_leaves_others_untouched() -> bool
 {
     auto dst = tuple_t{-1, -1.0, '?'};
     from_variant(dst, variant_t{3.5});
-    return std::get<1>(dst);
+    return std::get<0>(dst) == -1 && std::get<2>(dst) == '?';
 }
-static_assert(from_variant_double() == 3.5);
-
-constexpr auto from_variant_char() -> char
-{
-    auto dst = tuple_t{-1, -1.0, '?'};
-    from_variant(dst, variant_t{'k'});
-    return std::get<2>(dst);
-}
-static_assert(from_variant_char() == 'k');
-
-// inactive tuple elements are left untouched
-constexpr auto from_variant_leaves_int() -> int_t
-{
-    auto dst = tuple_t{-1, -1.0, '?'};
-    from_variant(dst, variant_t{3.5});
-    return std::get<0>(dst);
-}
-static_assert(from_variant_leaves_int() == -1);
-
-constexpr auto from_variant_leaves_char() -> char
-{
-    auto dst = tuple_t{-1, -1.0, '?'};
-    from_variant(dst, variant_t{3.5});
-    return std::get<2>(dst);
-}
-static_assert(from_variant_leaves_char() == '?');
+static_assert(from_variant_leaves_others_untouched());
 
 //
-// to_variant (index): result holds alternative at active_index
+// to_variant (index): result holds the alternative at active_index
 //
 
-constexpr auto to_variant_index(std::size_t which) -> std::size_t
+template <std::size_t index> constexpr auto to_variant_holds() -> bool
 {
-    return to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, which).index();
+    auto const dst = to_variant<variant_t>(known_tuple(), index);
+    return dst.index() == index && std::get<index>(dst) == known_value<index>();
 }
-static_assert(to_variant_index(0) == 0);
-static_assert(to_variant_index(1) == 1);
-static_assert(to_variant_index(2) == 2);
 
-constexpr auto to_variant_index_0() -> int_t
-{
-    return std::get<0>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 0));
-}
-static_assert(to_variant_index_0() == 7);
-
-constexpr auto to_variant_index_1() -> float_t
-{
-    return std::get<1>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 1));
-}
-static_assert(to_variant_index_1() == 3.5);
-
-constexpr auto to_variant_index_2() -> char
-{
-    return std::get<2>(to_variant<variant_t>(tuple_t{7, 3.5, 'k'}, 2));
-}
-static_assert(to_variant_index_2() == 'k');
+static_assert(to_variant_holds<0>());
+static_assert(to_variant_holds<1>());
+static_assert(to_variant_holds<2>());
 
 //
-// to_variant (variant&): keeps active index, pulls value from corresponding tuple element
+// to_variant (variant&): keeps active index, pulls value from corresponding element
 //
 
-constexpr auto to_variant_ref_index() -> std::size_t
+constexpr auto to_variant_ref_pulls_from_tuple() -> bool
 {
     auto dst = variant_t{3.5};
     to_variant(dst, tuple_t{7, 9.25, 'k'});
-    return dst.index();
+    return dst.index() == 1 && std::get<1>(dst) == 9.25;
 }
-static_assert(to_variant_ref_index() == 1);
-
-constexpr auto to_variant_ref_value() -> float_t
-{
-    auto dst = variant_t{3.5};
-    to_variant(dst, tuple_t{7, 9.25, 'k'});
-    return std::get<1>(dst);
-}
-static_assert(to_variant_ref_value() == 9.25);
+static_assert(to_variant_ref_pulls_from_tuple());
 
 //
 // round trip
 //
 
-constexpr auto roundtrip_index() -> std::size_t
+template <std::size_t index> constexpr auto roundtrip_preserves() -> bool
 {
-    auto original = variant_t{3.5};
+    auto original = variant_t{std::in_place_index<index>, known_value<index>()};
     auto const original_index = original.index();
-    auto tuple = tuple_t{};
-    from_variant(tuple, std::move(original));
-    return to_variant<variant_t>(std::move(tuple), original_index).index();
-}
-static_assert(roundtrip_index() == 1);
 
-constexpr auto roundtrip_value() -> float_t
-{
-    auto original = variant_t{3.5};
-    auto const original_index = original.index();
     auto tuple = tuple_t{};
     from_variant(tuple, std::move(original));
-    return std::get<1>(to_variant<variant_t>(std::move(tuple), original_index));
+
+    auto const restored = to_variant<variant_t>(std::move(tuple), original_index);
+    return restored.index() == index && std::get<index>(restored) == known_value<index>();
 }
-static_assert(roundtrip_value() == 3.5);
+
+static_assert(roundtrip_preserves<0>());
+static_assert(roundtrip_preserves<1>());
+static_assert(roundtrip_preserves<2>());
 
 //
 // move-only types
@@ -173,7 +137,7 @@ using move_only_variant_t = std::variant<move_only_t, float_t>;
 
 constexpr auto move_only_from_variant() -> int_t
 {
-    auto dst = move_only_tuple_t{move_only_t{-1}, -1.0f};
+    auto dst = move_only_tuple_t{move_only_t{-1}, -1.0};
     from_variant(dst, move_only_variant_t{move_only_t{37}});
     return std::get<0>(dst).value;
 }
@@ -181,7 +145,7 @@ static_assert(move_only_from_variant() == 37);
 
 constexpr auto move_only_to_variant() -> int_t
 {
-    auto src = move_only_tuple_t{move_only_t{37}, -1.0f};
+    auto src = move_only_tuple_t{move_only_t{37}, -1.0};
     auto dst = to_variant<move_only_variant_t>(std::move(src), 0);
     return std::get<0>(dst).value;
 }
@@ -194,7 +158,7 @@ static_assert(move_only_to_variant() == 37);
 constexpr auto to_variant_lvalue_tuple() -> float_t
 {
     auto src_tuple = tuple_t{7, 3.5, 'k'};
-    auto dst_variant = variant_t{0.0f};
+    auto dst_variant = variant_t{0.0};
     to_variant(dst_variant, src_tuple);
     return std::get<1>(dst_variant);
 }
@@ -216,21 +180,13 @@ static_assert(from_variant_lvalue_variant() == 'k');
 using duplicate_tuple_t = std::tuple<int_t, int_t>;
 using duplicate_variant_t = std::variant<int_t, int_t>;
 
-constexpr auto duplicate_types_to_variant() -> std::size_t
+constexpr auto duplicate_types_to_variant() -> bool
 {
     auto src = duplicate_tuple_t{10, 20};
     auto dst = to_variant<duplicate_variant_t>(std::move(src), 1);
-    return dst.index();
+    return dst.index() == 1 && std::get<1>(dst) == 20;
 }
-static_assert(duplicate_types_to_variant() == 1);
-
-constexpr auto duplicate_types_to_variant_value() -> int_t
-{
-    auto src = duplicate_tuple_t{10, 20};
-    auto dst = to_variant<duplicate_variant_t>(std::move(src), 1);
-    return std::get<1>(dst);
-}
-static_assert(duplicate_types_to_variant_value() == 20);
+static_assert(duplicate_types_to_variant());
 
 constexpr auto duplicate_types_from_variant() -> int_t
 {
