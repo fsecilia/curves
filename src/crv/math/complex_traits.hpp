@@ -7,8 +7,32 @@
 
 #include <crv/lib.hpp>
 #include <complex>
+#include <type_traits>
 
 namespace crv {
+
+//
+// is_complex
+//
+
+namespace detail {
+
+template <typename value_t> struct is_complex_f : std::bool_constant<false>
+{};
+
+template <typename value_t> struct is_complex_f<std::complex<value_t>> : std::bool_constant<true>
+{};
+
+template <typename value_t> inline constexpr auto is_complex_v = is_complex_f<value_t>::value;
+
+} // namespace detail
+
+template <typename value_t>
+concept is_complex = detail::is_complex_v<value_t>;
+
+//
+// real_type_t
+//
 
 namespace detail {
 
