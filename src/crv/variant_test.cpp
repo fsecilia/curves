@@ -211,8 +211,11 @@ TEST(from_variant_death_test, valueless_by_exception_asserts)
     struct throw_on_copy_t
     {
         throw_on_copy_t() = default;
-        throw_on_copy_t(throw_on_copy_t const&) { throw std::runtime_error("copy failed"); }
-        auto operator=(throw_on_copy_t const&) -> throw_on_copy_t& { throw std::runtime_error("copy failed"); }
+        [[noreturn]] throw_on_copy_t(throw_on_copy_t const&) { throw std::runtime_error("copy failed"); }
+        [[noreturn]] auto operator=(throw_on_copy_t const&) -> throw_on_copy_t&
+        {
+            throw std::runtime_error("copy failed");
+        }
         throw_on_copy_t(throw_on_copy_t&&) = default;
         auto operator=(throw_on_copy_t&&) -> throw_on_copy_t& = default;
     };

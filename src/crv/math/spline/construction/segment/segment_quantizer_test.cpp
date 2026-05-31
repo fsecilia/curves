@@ -107,8 +107,6 @@ struct float_extractor_t
 
 struct shift_planner_t
 {
-    static constexpr auto max_accumulator_bit_count = static_cast<int_t>(sizeof(mantissa_t) * CHAR_BIT) - 1;
-
     using plan_t = spline::shift_planner_t<mantissa_t>::plan_t;
 
     constexpr auto operator()(int_t accumulator_bit_count, int_t accumulator_exponent, int_t next_exponent,
