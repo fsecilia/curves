@@ -62,6 +62,7 @@ target_sources(lib PRIVATE
     math/stats.hpp
     model/config.hpp
     model/curves/curves.hpp
+    model/curves/derivatives.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     priority_queue.hpp
