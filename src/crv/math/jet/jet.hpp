@@ -104,10 +104,11 @@ template <typename t_value_t> struct jet_t
     // Element Comparison
     // ----------------------------------------------------------------------------------------------------------------
 
-    friend constexpr auto operator<=>(jet_t const& lhs, value_t const& rhs) noexcept
-        -> std::common_comparison_category_t<decltype(lhs.f <=> rhs), std::weak_ordering>
+    friend constexpr auto operator<=>(jet_t const& lhs, value_t const& rhs) noexcept -> auto
+        requires std::three_way_comparable<value_t>
     {
-        return lhs.f <=> rhs;
+        if (auto cmp = lhs.f <=> rhs; cmp != 0) return cmp;
+        return lhs.df <=> 0.0;
     }
 
     friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
@@ -120,10 +121,11 @@ template <typename t_value_t> struct jet_t
     // ----------------------------------------------------------------------------------------------------------------
 
     // jet_t ignores the tangent for ordering, so impose a weak ordering at best
-    constexpr auto operator<=>(jet_t const& other) const noexcept
-        -> std::common_comparison_category_t<decltype(f <=> other.f), std::weak_ordering>
+    constexpr auto operator<=>(jet_t const& other) const noexcept -> auto
+        requires std::three_way_comparable<value_t>
     {
-        return f <=> other.f;
+        if (auto cmp = f <=> other.f; cmp != 0) return cmp;
+        return df <=> other.df;
     }
 
     constexpr auto operator==(jet_t const&) const noexcept -> bool = default;

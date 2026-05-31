@@ -141,12 +141,12 @@ TEST_F(jet_test_comparison_t, element_ordering)
     static_assert(jet_t{3.0, 999.0} != 4.0);
     static_assert(jet_t{3.0, 999.0} < 4.0);
 
-    static_assert(jet_t{5.0, 999.0} != 4.0);
-    static_assert(jet_t{5.0, 999.0} > 4.0);
+    static_assert(jet_t{4.0, 0.0} == 4.0);
+    static_assert(jet_t{4.0, 0.0} <= 4.0);
+    static_assert(jet_t{4.0, 0.0} >= 4.0);
 
-    static_assert(jet_t{4.0, 999.0} != 4.0);
-    static_assert(jet_t{4.0, 999.0} <= 4.0);
-    static_assert(jet_t{4.0, 999.0} >= 4.0);
+    static_assert(jet_t{4.0, 1.0} != 4.0);
+    static_assert(jet_t{4.0, 1.0} > 4.0);
 }
 
 TEST_F(jet_test_comparison_t, jet_equality)
