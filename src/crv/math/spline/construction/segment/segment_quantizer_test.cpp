@@ -107,12 +107,15 @@ struct float_extractor_t
 
 struct shift_planner_t
 {
-    constexpr auto operator()(mantissa_t accumulator_mantissa, int_t accumulator_exponent, int_t next_exponent,
-        int_t t_to_x_shift) const noexcept -> spline::shift_planner_t::plan_t
+    static constexpr auto max_accumulator_bit_count = static_cast<int_t>(sizeof(mantissa_t) * CHAR_BIT) - 1;
+
+    using plan_t = spline::shift_planner_t<mantissa_t>::plan_t;
+
+    constexpr auto operator()(int_t accumulator_bit_count, int_t accumulator_exponent, int_t next_exponent,
+        int_t t_to_x_shift) const noexcept -> plan_t
     {
         return {
-            .packed_runtime_shift
-            = t_to_x_shift + accumulator_exponent + next_exponent + static_cast<int_t>(accumulator_mantissa),
+            .packed_runtime_shift = t_to_x_shift + accumulator_exponent + next_exponent + accumulator_bit_count,
             .destructive_preshift = 0,
             .next_accumulator_exponent = next_exponent,
         };
@@ -139,15 +142,20 @@ struct radix_aligner_t
 constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
     radix_aligner_t, max_intermediate_shift, 10, 20, 0>{};
 
-// 1.0 -> accum(10, 1)
-// 2.0 -> next(20, 2) -> plan(shift: 10+1+2+10=23, next_exp: 2) -> unpacked[0] = {10, 23}, accum = 20
-// 3.0 -> next(30, 3) -> plan(shift: 10+2+3+20=35, next_exp: 3) -> unpacked[1] = {20, 35}, accum = 30
-// 4.0 -> next(40, 4) -> plan(shift: 10+3+4+30=47, next_exp: 4) -> unpacked[2] = {30, 47}, accum = 40
+// The fake planner echoes accumulator_bit_count into the shift, so each iteration's shift holds what bit count the
+// quantizer is tracking for the runtime accumulator. Initial accumulator is c3's mantissa (bit_count 4 for 10). Later
+// iterations track max(aligned_product_bits, next_coeff_bits) [+1 if both non-zero]; here aligned_product_bits is 0
+// every iteration because the fake's shift always exceeds runtime_acc_bits + t_to_x_shift.
+//
+// 1.0 -> accum(10, 1), bit_count = 4
+// 2.0 -> next(20, 2) -> plan(shift: 10+1+2+4=17, next_exp: 2) -> unpacked[0] = {10, 17}, accum = 20, bit_count = 5
+// 3.0 -> next(30, 3) -> plan(shift: 10+2+3+5=20, next_exp: 3) -> unpacked[1] = {20, 20}, accum = 30, bit_count = 5
+// 4.0 -> next(40, 4) -> plan(shift: 10+3+4+5=22, next_exp: 4) -> unpacked[2] = {30, 22}, accum = 40
 // align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
 constexpr auto const expected = unpacked_segment_t{
-    unpacked_field_t{.mantissa = 10, .shift = 23},
-    unpacked_field_t{.mantissa = 20, .shift = 35},
-    unpacked_field_t{.mantissa = 30, .shift = 47},
+    unpacked_field_t{.mantissa = 10, .shift = 17},
+    unpacked_field_t{.mantissa = 20, .shift = 20},
+    unpacked_field_t{.mantissa = 30, .shift = 22},
     unpacked_field_t{.mantissa = 60, .shift = 4},
 };
 static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0) == expected);
@@ -161,7 +169,7 @@ using y_t = fixed_t<int64_t, 25>;
 using cubic_t = std::array<scalar_t, 4>;
 
 constexpr auto aligner = exponent_aligner_t<-30, 30>{};
-constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t,
+constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t<mantissa_t>,
     mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift,
     x_t::frac_bits, y_t::frac_bits, -8>{};
 
@@ -239,11 +247,15 @@ static_assert(sut({0.0, 0.0, 0.0, 0.125}, 0)
 //
 // c2 is so small relative to c3 that the required destructive preshift exceeds the 64-bit container size, causing it to
 // be flushed to zero.
+//
+// unpacked[2].shift is 15 (not the ideal 14) because by the time c1 is summed in, the runtime accumulator carries the
+// full max_safe_bits from aligned_product[0] plus c1's 53 bits, so its bit count reaches 63 -- one bit wider than the
+// 62-bit-clean aligned_product. Compensating costs one bit of c0 precision via destructive_preshift = 1.
 static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 5},
         unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 8979466059761068, .shift = 14},
+        unpacked_field_t{.mantissa = 8979466059761068, .shift = 15},
         unpacked_field_t{.mantissa = 0, .shift = 30},
     });
 

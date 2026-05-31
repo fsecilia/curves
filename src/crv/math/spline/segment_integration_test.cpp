@@ -51,6 +51,7 @@ struct spline_dynamic_segment_test_t : Test
     using radix_aligner_t = radix_aligner_t<unpacked_field_t, scaled_int_t, exponent_aligner_t{}>;
     using field_packer_t = field_packer_t<packed_field_t>;
     using mantissa_quantizer_t = mantissa_quantizer_t<mantissa_t>;
+    using shift_planner_t = shift_planner_t<mantissa_t>;
     using segment_quantizer_t
         = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
             radix_aligner_t, intermediate_layout_max_shift, x_t::frac_bits, y_t::frac_bits, log2_min_width>;

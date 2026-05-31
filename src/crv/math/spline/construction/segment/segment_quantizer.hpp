@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/bit.hpp>
 #include <crv/math/float_extraction.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/math/shifter.hpp>
@@ -84,6 +85,13 @@ struct segment_quantizer_t
         auto accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
         auto accumulator_exponent = next_term.exponent;
 
+        // upper bound on the runtime accumulator's bit count entering the next multiplication
+        //
+        // At runtime, the accumulator entering step i is the partial sum from step i-1: aligned_product + coeff from
+        // unpacked[i].mantissa. That sum can exceed the bit count of either operand alone, so the planner cannot infer
+        // it from any single mantissa; it must be tracked here as state.
+        auto runtime_accumulator_bit_count = int_cast<int_t>(bit_width(accumulator_mantissa));
+
         // proceed in pairs
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
@@ -99,8 +107,8 @@ struct segment_quantizer_t
                 = (accumulator_mantissa == 0) ? eval_next_exponent : accumulator_exponent;
 
             // plan and apply shifts
-            auto const plan
-                = plan_shift(accumulator_mantissa, eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
+            auto const plan = plan_shift(
+                runtime_accumulator_bit_count, eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
             if (plan.packed_runtime_shift > max_intermediate_shift)
             {
                 // flush earlier terms to zero and restart from here
@@ -112,9 +120,10 @@ struct segment_quantizer_t
                 // flush earlier terms to zero
                 std::fill_n(std::begin(unpacked), field_index, {});
 
-                // adopt next_term as the new accumulator baseline
+                // adopt next_term as the new accumulator baseline, restarting
                 accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
                 accumulator_exponent = eval_next_exponent;
+                runtime_accumulator_bit_count = bit_width(accumulator_mantissa);
                 continue;
             }
 
@@ -122,6 +131,11 @@ struct segment_quantizer_t
             unpacked[field_index] = {.mantissa = accumulator_mantissa, .shift = plan.packed_runtime_shift};
 
             // step forward
+            auto const aligned_product_bit_count
+                = max<int_t>(0, runtime_accumulator_bit_count + t_to_x_shift - plan.packed_runtime_shift);
+            auto const quantized_next_bit_count = int_cast<int_t>(bit_width(quantized_next));
+            auto const carry = (aligned_product_bit_count > 0 && quantized_next_bit_count > 0) ? 1 : 0;
+            runtime_accumulator_bit_count = max(aligned_product_bit_count, quantized_next_bit_count) + carry;
             accumulator_mantissa = quantized_next;
             accumulator_exponent = plan.next_accumulator_exponent;
         }
