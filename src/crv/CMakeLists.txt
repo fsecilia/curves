@@ -66,6 +66,7 @@ target_sources(lib PRIVATE
     model/curves/derivatives.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
+    model/curves/traits.hpp
     priority_queue.hpp
     reflection/constraints.hpp
     reflection/enum.hpp
@@ -217,6 +218,7 @@ if (enable_testing)
         model/config_test.cpp
         model/curves/log_normal_test.cpp
         model/curves/synchronous_test.cpp
+        model/curves/traits_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
