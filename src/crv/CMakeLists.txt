@@ -24,49 +24,8 @@ target_sources(lib PRIVATE
     math/io.hpp
     math/jet/jet.hpp
     math/polynomial.hpp
-    math/quadrature/adaptive_integrator.hpp
-    math/quadrature/antiderivative.hpp
-    math/quadrature/bisector.hpp
-    math/quadrature/integral.hpp
-    math/quadrature/rules.hpp
-    math/quadrature/segment.hpp
-    math/quadrature/stack.hpp
-    math/quadrature/subdivider.hpp
-    math/spline/construction/segment/amr/approximant.hpp
-    math/spline/construction/segment/amr/bisection.hpp
-    math/spline/construction/segment/amr/error_metric.hpp
-    math/spline/construction/segment/amr/function_sampler.hpp
-    math/spline/construction/segment/amr/interval.hpp
-    math/spline/construction/segment/amr/node_generator.hpp
-    math/spline/construction/segment/amr/residual_estimator.hpp
-    math/spline/construction/segment/amr/subdivision_predicate.hpp
-    math/spline/construction/segment/amr/subdivision.hpp
-    math/spline/construction/segment/field_packer.hpp
-    math/spline/construction/segment/segment_factory.hpp
-    math/spline/construction/segment/segment_packer.hpp
-    math/spline/construction/segment/segment_quantizer.hpp
-    math/spline/construction/segment/shift_planner.hpp
-    math/spline/construction/spline/amr/assembler.hpp
-    math/spline/construction/spline/amr/refinement_pool_seeder.hpp
-    math/spline/construction/spline/amr/refiner.hpp
-    math/spline/construction/spline/amr/seed/critical_point_conditioner.hpp
-    math/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
-    math/spline/construction/spline/amr/seed/span_decomposer.hpp
-    math/spline/construction/spline/amr/seed/subdomain_factory.hpp
-    math/spline/construction/spline/amr/spline_generator.hpp
-    math/spline/construction/spline/amr/typestates.hpp
-    math/spline/construction/spline/amr/workspace.hpp
-    math/spline/construction/spline/tangent_extension.hpp
-    math/spline/construction/weight_functions/exponential_decay.hpp
-    math/spline/construction/weight_functions/hyperbolic_decay.hpp
-    math/spline/construction/weight_functions/uniform.hpp
     math/stats.hpp
     model/config.hpp
-    model/curves/curves.hpp
-    model/curves/derivatives.hpp
-    model/curves/log_normal.hpp
-    model/curves/synchronous.hpp
-    model/curves/traits.hpp
     priority_queue.hpp
     reflection/constraints.hpp
     reflection/enum.hpp
@@ -86,6 +45,47 @@ target_sources(lib PRIVATE
     serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
+    signal_chain/curves/curves.hpp
+    signal_chain/curves/derivatives.hpp
+    signal_chain/curves/log_normal.hpp
+    signal_chain/curves/synchronous.hpp
+    signal_chain/curves/traits.hpp
+    signal_chain/quadrature/adaptive_integrator.hpp
+    signal_chain/quadrature/antiderivative.hpp
+    signal_chain/quadrature/bisector.hpp
+    signal_chain/quadrature/integral.hpp
+    signal_chain/quadrature/rules.hpp
+    signal_chain/quadrature/segment.hpp
+    signal_chain/quadrature/stack.hpp
+    signal_chain/quadrature/subdivider.hpp
+    signal_chain/spline/construction/segment/amr/approximant.hpp
+    signal_chain/spline/construction/segment/amr/bisection.hpp
+    signal_chain/spline/construction/segment/amr/error_metric.hpp
+    signal_chain/spline/construction/segment/amr/function_sampler.hpp
+    signal_chain/spline/construction/segment/amr/interval.hpp
+    signal_chain/spline/construction/segment/amr/node_generator.hpp
+    signal_chain/spline/construction/segment/amr/residual_estimator.hpp
+    signal_chain/spline/construction/segment/amr/subdivision_predicate.hpp
+    signal_chain/spline/construction/segment/amr/subdivision.hpp
+    signal_chain/spline/construction/segment/field_packer.hpp
+    signal_chain/spline/construction/segment/segment_factory.hpp
+    signal_chain/spline/construction/segment/segment_packer.hpp
+    signal_chain/spline/construction/segment/segment_quantizer.hpp
+    signal_chain/spline/construction/segment/shift_planner.hpp
+    signal_chain/spline/construction/spline/amr/assembler.hpp
+    signal_chain/spline/construction/spline/amr/refinement_pool_seeder.hpp
+    signal_chain/spline/construction/spline/amr/refiner.hpp
+    signal_chain/spline/construction/spline/amr/seed/critical_point_conditioner.hpp
+    signal_chain/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
+    signal_chain/spline/construction/spline/amr/seed/span_decomposer.hpp
+    signal_chain/spline/construction/spline/amr/seed/subdomain_factory.hpp
+    signal_chain/spline/construction/spline/amr/spline_generator.hpp
+    signal_chain/spline/construction/spline/amr/typestates.hpp
+    signal_chain/spline/construction/spline/amr/workspace.hpp
+    signal_chain/spline/construction/spline/tangent_extension.hpp
+    signal_chain/spline/construction/weight_functions/exponential_decay.hpp
+    signal_chain/spline/construction/weight_functions/hyperbolic_decay.hpp
+    signal_chain/spline/construction/weight_functions/uniform.hpp
     tuple.hpp
     variant.hpp
 )
@@ -117,12 +117,12 @@ target_sources_kernel(lib
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    math/spline/pipeline_config.hpp
-    math/spline/segment_locator.hpp
-    math/spline/segment.hpp
-    math/spline/spline.hpp
     prefetcher.hpp
     ranges.hpp
+    signal_chain/spline/pipeline_config.hpp
+    signal_chain/spline/segment_locator.hpp
+    signal_chain/spline/segment.hpp
+    signal_chain/spline/spline.hpp
     traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -171,55 +171,12 @@ if (enable_testing)
         math/limits_test.cpp
         math/linear_test.cpp
         math/polynomial_test.cpp
-        math/quadrature/adaptive_integrator_test.cpp
-        math/quadrature/antiderivative_test.cpp
-        math/quadrature/bisector_test.cpp
-        math/quadrature/integral_test.cpp
-        math/quadrature/integration_test.cpp
-        math/quadrature/rules_test.cpp
-        math/quadrature/stack_test.cpp
-        math/quadrature/subdivider_test.cpp
         math/rounding_mode_test.cpp
         math/saturate_cast_test.cpp
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
-        math/spline/construction/segment/amr/approximant_test.cpp
-        math/spline/construction/segment/amr/bisection_test.cpp
-        math/spline/construction/segment/amr/error_metric_test.cpp
-        math/spline/construction/segment/amr/function_sampler_test.cpp
-        math/spline/construction/segment/amr/interval_test.cpp
-        math/spline/construction/segment/amr/node_generator_test.cpp
-        math/spline/construction/segment/amr/residual_estimator_test.cpp
-        math/spline/construction/segment/amr/subdivision_predicate_test.cpp
-        math/spline/construction/segment/amr/subdivision_test.cpp
-        math/spline/construction/segment/field_packer_test.cpp
-        math/spline/construction/segment/segment_factory_test.cpp
-        math/spline/construction/segment/segment_packer_test.cpp
-        math/spline/construction/segment/segment_quantizer_test.cpp
-        math/spline/construction/segment/shift_planner_test.cpp
-        math/spline/construction/spline/amr/assembler_test.cpp
-        math/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
-        math/spline/construction/spline/amr/refiner_test.cpp
-        math/spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
-        math/spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
-        math/spline/construction/spline/amr/seed/span_decomposer_test.cpp
-        math/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
-        math/spline/construction/spline/amr/spline_generator_test.cpp
-        math/spline/construction/spline/amr/workspace_test.cpp
-        math/spline/construction/spline/tangent_extension_test.cpp
-        math/spline/construction/weight_functions/exponential_decay_test.cpp
-        math/spline/construction/weight_functions/hyperbolic_decay_test.cpp
-        math/spline/construction/weight_functions/uniform_test.cpp
-        math/spline/pipeline_config_test.cpp
-        math/spline/segment_locator_test.cpp
-        math/spline/segment_test.cpp
-        math/spline/spline_test.cpp
         math/stats_test.cpp
         model/config_test.cpp
-        model/curves/log_normal_test.cpp
-        model/curves/synchronous_test.cpp
-        model/curves/test.hpp
-        model/curves/traits_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         ranges_test.cpp
@@ -236,6 +193,49 @@ if (enable_testing)
         serialization/toml/reader_adapter_test.cpp
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
+        signal_chain/curves/log_normal_test.cpp
+        signal_chain/curves/synchronous_test.cpp
+        signal_chain/curves/test.hpp
+        signal_chain/curves/traits_test.cpp
+        signal_chain/quadrature/adaptive_integrator_test.cpp
+        signal_chain/quadrature/antiderivative_test.cpp
+        signal_chain/quadrature/bisector_test.cpp
+        signal_chain/quadrature/integral_test.cpp
+        signal_chain/quadrature/integration_test.cpp
+        signal_chain/quadrature/rules_test.cpp
+        signal_chain/quadrature/stack_test.cpp
+        signal_chain/quadrature/subdivider_test.cpp
+        signal_chain/spline/construction/segment/amr/approximant_test.cpp
+        signal_chain/spline/construction/segment/amr/bisection_test.cpp
+        signal_chain/spline/construction/segment/amr/error_metric_test.cpp
+        signal_chain/spline/construction/segment/amr/function_sampler_test.cpp
+        signal_chain/spline/construction/segment/amr/interval_test.cpp
+        signal_chain/spline/construction/segment/amr/node_generator_test.cpp
+        signal_chain/spline/construction/segment/amr/residual_estimator_test.cpp
+        signal_chain/spline/construction/segment/amr/subdivision_predicate_test.cpp
+        signal_chain/spline/construction/segment/amr/subdivision_test.cpp
+        signal_chain/spline/construction/segment/field_packer_test.cpp
+        signal_chain/spline/construction/segment/segment_factory_test.cpp
+        signal_chain/spline/construction/segment/segment_packer_test.cpp
+        signal_chain/spline/construction/segment/segment_quantizer_test.cpp
+        signal_chain/spline/construction/segment/shift_planner_test.cpp
+        signal_chain/spline/construction/spline/amr/assembler_test.cpp
+        signal_chain/spline/construction/spline/amr/refinement_pool_seeder_test.cpp
+        signal_chain/spline/construction/spline/amr/refiner_test.cpp
+        signal_chain/spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
+        signal_chain/spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
+        signal_chain/spline/construction/spline/amr/seed/span_decomposer_test.cpp
+        signal_chain/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
+        signal_chain/spline/construction/spline/amr/spline_generator_test.cpp
+        signal_chain/spline/construction/spline/amr/workspace_test.cpp
+        signal_chain/spline/construction/spline/tangent_extension_test.cpp
+        signal_chain/spline/construction/weight_functions/exponential_decay_test.cpp
+        signal_chain/spline/construction/weight_functions/hyperbolic_decay_test.cpp
+        signal_chain/spline/construction/weight_functions/uniform_test.cpp
+        signal_chain/spline/pipeline_config_test.cpp
+        signal_chain/spline/segment_locator_test.cpp
+        signal_chain/spline/segment_test.cpp
+        signal_chain/spline/spline_test.cpp
         traits_test.cpp
         tuple_test.cpp
         variant_test.cpp
@@ -249,8 +249,8 @@ if (enable_testing)
 
     if (BUILD_INTEGRATION_TESTS)
         add_executable(spline_integration_test
-            math/spline/segment_integration_test.cpp
-            math/spline/spline_integration_test.cpp
+            signal_chain/spline/segment_integration_test.cpp
+            signal_chain/spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
     endif()
