@@ -218,6 +218,7 @@ if (enable_testing)
         model/config_test.cpp
         model/curves/log_normal_test.cpp
         model/curves/synchronous_test.cpp
+        model/curves/test.hpp
         model/curves/traits_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
