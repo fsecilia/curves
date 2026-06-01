@@ -7,12 +7,12 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
-#include <crv/model/curves/curves.hpp>
-#include <crv/model/curves/log_normal.hpp>
-#include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/reflection/param.hpp>
+#include <crv/signal_chain/curves/curves.hpp>
+#include <crv/signal_chain/curves/log_normal.hpp>
+#include <crv/signal_chain/curves/synchronous.hpp>
 #include <crv/tuple.hpp>
 #include <string>
 #include <tuple>
