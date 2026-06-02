@@ -20,6 +20,7 @@ target_sources(lib PRIVATE
     math/fixed/io.hpp
     math/fixed/quantizer.hpp
     math/float_limits.hpp
+    math/inverse.hpp
     math/io.cpp
     math/io.hpp
     math/jet/jet.hpp
@@ -165,6 +166,7 @@ if (enable_testing)
         math/float_limits_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
+        math/inverse_test.cpp
         math/io_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
