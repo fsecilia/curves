@@ -15,7 +15,6 @@
 #include <crv/signal_chain/curves/synchronous.hpp>
 #include <crv/tuple.hpp>
 #include <string>
-#include <tuple>
 
 namespace crv::model {
 
