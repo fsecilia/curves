@@ -255,6 +255,12 @@ if (enable_testing)
             signal_chain/spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
+
+        # this will fold into integration tests once we run it less frequently
+        add_executable(signal_chain_integration_test
+            signal_chain/signal_chain_integration_test.cpp
+        )
+        target_link_libraries(signal_chain_integration_test PRIVATE lib testing)
     endif()
 endif()
 
