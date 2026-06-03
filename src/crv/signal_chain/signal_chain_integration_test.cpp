@@ -19,18 +19,76 @@ namespace crv::signal_chain {
 
 using model::curves::derivatives_t;
 
-struct cinf_transition_t
+struct c4_transition_t
 {
-    template <typename scalar_t> auto evaluate(scalar_t t) const noexcept -> scalar_t
+    template <typename value_t> constexpr auto evaluate(value_t t) const noexcept -> value_t
     {
-        if (t <= scalar_t{0.0}) return scalar_t{0.0};
-        if (t >= scalar_t{1.0}) return scalar_t{1.0};
+        if (t <= value_t{0.0}) return value_t{0.0};
+        if (t >= value_t{1.0}) return value_t{1.0};
 
-        using std::exp;
-        auto const q_t = exp(scalar_t{-1.0} / t);
-        auto const q_1mt = exp(scalar_t{-1.0} / (scalar_t{1.0} - t));
+        auto const t2 = t * t;
+        auto const t4 = t2 * t2;
 
-        return q_t / (q_t + q_1mt);
+        // W(t) = 70t^9 - 315t^8 + 540t^7 - 420t^6 + 126t^5
+        return t4 * t
+            * (value_t{126.0}
+                + t * (value_t{-420.0} + t * (value_t{540.0} + t * (value_t{-315.0} + t * value_t{70.0}))));
+    }
+
+    template <int order, typename value_t>
+    constexpr auto derivatives(value_t t) const noexcept -> derivatives_t<order, value_t>
+    {
+        auto d = derivatives_t<order, value_t>{};
+
+        if (t <= value_t{0.0})
+        {
+            // f, d1, d2, d3 are natively 0.0 due to default construction
+            return d;
+        }
+
+        if (t >= value_t{1.0})
+        {
+            d.f = value_t{1.0};
+            // d1, d2, d3 remain 0.0
+            return d;
+        }
+
+        d.f = evaluate(t);
+
+        if constexpr (order >= 1)
+        {
+            // W'(t) = 630t^4(1 - t)^4
+            // Factored specifically for numerical stability near the edges
+            auto const t_inv = value_t{1.0} - t;
+            auto const t2 = t * t;
+            auto const t_inv2 = t_inv * t_inv;
+
+            d.d1 = value_t{630.0} * (t2 * t2) * (t_inv2 * t_inv2);
+        }
+
+        if constexpr (order >= 2)
+        {
+            // W''(t) = 5040t^7 - 17640t^6 + 22680t^5 - 12600t^4 + 2520t^3
+            auto const t2 = t * t;
+
+            d.d2 = t2 * t
+                * (value_t{2520.0}
+                    + t * (value_t{-12600.0} + t * (value_t{22680.0} + t * (value_t{-17640.0} + t * value_t{5040.0}))));
+        }
+
+        if constexpr (order >= 3)
+        {
+            // W'''(t) = 35280t^6 - 105840t^5 + 113400t^4 - 50400t^3 + 7560t^2
+            auto const t2 = t * t;
+
+            d.d3 = t2
+                * (value_t{7560.0}
+                    + t
+                        * (value_t{-50400.0}
+                            + t * (value_t{113400.0} + t * (value_t{-105840.0} + t * value_t{35280.0}))));
+        }
+
+        return d;
     }
 };
 
@@ -118,7 +176,10 @@ template <typename real_t, typename prev_t> struct output_offset_t
     constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
     {
         auto d = prev.template derivatives<order>(x);
-        d.f += offset; // only shifts the 0th order value!
+
+        // shift only 0th order value
+        d.f += offset;
+
         return d;
     }
 };
@@ -225,9 +286,9 @@ public:
     using rule_t = t_rule_t;
 
     constexpr knee_model_t(subchain_t const& subchain, subchain_derivative_t const& subchain_derivative,
-        transition_t const& transition, real_t w_l, real_t tolerance, int_t depth_limit, rule_t rule = {}) noexcept
+        transition_t const& transition, real_t w_l, rule_t rule = {}) noexcept
         : subchain_{subchain}, subchain_derivative_{subchain_derivative}, transition_{transition}, w_l_{w_l},
-          tolerance_{tolerance}, depth_limit_{depth_limit}, rule_{std::move(rule)}
+          rule_{std::move(rule)}
     {}
 
     [[nodiscard]] constexpr auto cap(real_t x2) const -> real_t { return subchain_(x2) + w_l_ * deficit(x2); }
@@ -241,21 +302,17 @@ public:
 private:
     [[nodiscard]] constexpr auto deficit(real_t x2) const -> real_t
     {
-        static constexpr auto no_critical_points = std::array<real_t, 0>{};
         auto const integrand = [this, x2](real_t s) noexcept {
             return subchain_derivative_(x2 + w_l_ * s) * (real_t{1} - transition_.evaluate(s));
         };
-        auto integrator = quadrature::adaptive_integrator_t<real_t>{tolerance_, depth_limit_};
-        auto const result = integrator(quadrature::integral_t{integrand, rule_}, real_t{1}, no_critical_points);
-        return result.antiderivative(real_t{1});
+
+        return rule_.integrate(real_t{0.0}, real_t{1.0}, integrand);
     }
 
     subchain_t const& subchain_;
     subchain_derivative_t const& subchain_derivative_;
     transition_t const& transition_;
     real_t w_l_;
-    real_t tolerance_;
-    int_t depth_limit_;
     [[no_unique_address]] rule_t rule_;
 };
 
@@ -290,6 +347,11 @@ template <typename real_t, typename prev_t, typename transition_fn_t, typename a
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
+        // s in (0,1):  floor + width*antiderivative(s)
+        // s >= 1:      prev(x) + floor - deficit
+        //   where deficit = prev(start+width) - width*antiderivative(1)
+        //   so at s==1 both branches equal floor + width*antiderivative(1).  C1 by construction.
+
         auto const s = (x - start) * reciprocal_width;
         if (s <= value_t{0}) return static_cast<value_t>(floor_value);
         if (s >= value_t{1}) return prev(x) + static_cast<value_t>(floor_value - deficit);
@@ -325,34 +387,36 @@ template <typename real_t, typename prev_t, typename transition_fn_t, typename a
             // Inside region: The Product Rule
             auto prev_d = prev.template derivatives<order>(x);
 
-            auto const T_val = transition_fn.evaluate(static_cast<real_t>(s));
-            if constexpr (order >= 1) { d.d1 = prev_d.d1 * T_val; }
+            // The transition function is always evaluated one order lower than the curve.
+            constexpr int t_order = (order > 0) ? order - 1 : 0;
+            auto T = transition_fn.template derivatives<t_order>(static_cast<real_t>(s));
+
+            if constexpr (order >= 1) { d.d1 = prev_d.d1 * T.f; }
             if constexpr (order >= 2)
             {
-                auto const T_d1 = transition_fn.derivative(static_cast<real_t>(s));
-                d.d2 = (prev_d.d2 * T_val) + (prev_d.d1 * T_d1 * reciprocal_width);
+                d.d2 = (prev_d.d2 * T.f) + (prev_d.d1 * T.d1 * reciprocal_width);
 
                 if constexpr (order >= 3)
                 {
-                    auto const T_d2 = transition_fn.second_derivative(static_cast<real_t>(s));
                     auto const rw2 = reciprocal_width * reciprocal_width;
-
-                    d.d3 = (prev_d.d3 * T_val) + (scalar_t{2} * prev_d.d2 * T_d1 * reciprocal_width)
-                        + (prev_d.d1 * T_d2 * rw2);
+                    d.d3 = (prev_d.d3 * T.f) + (scalar_t{2} * prev_d.d2 * T.d1 * reciprocal_width)
+                        + (prev_d.d1 * T.d2 * rw2);
                 }
             }
         }
+
         return d;
     }
 };
 
-template <typename real_t, typename prev_t, typename antiderivative_t> struct limiter_t
+template <typename real_t, typename prev_t, typename transition_fn_t, typename antiderivative_t> struct limiter_t
 {
     real_t knee_start;
     real_t width;
     real_t reciprocal_width;
     real_t cap;
     prev_t prev;
+    transition_fn_t transition_fn;
     antiderivative_t antiderivative;
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
@@ -361,6 +425,58 @@ template <typename real_t, typename prev_t, typename antiderivative_t> struct li
         if (s <= value_t{0}) return prev(x);
         if (s >= value_t{1}) return static_cast<value_t>(cap);
         return static_cast<value_t>(prev(knee_start) + width * antiderivative(static_cast<real_t>(s)));
+    }
+
+    template <int order, typename scalar_t>
+    constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        auto d = derivatives_t<order, scalar_t>{};
+        d.f = this->operator()(x);
+        if constexpr (order == 0) return d;
+
+        auto const s = (x - knee_start) * reciprocal_width;
+
+        if (s <= scalar_t{0})
+        {
+            // Base curve region: pure curve
+            auto prev_d = prev.template derivatives<order>(x);
+            if constexpr (order >= 1) d.d1 = prev_d.d1;
+            if constexpr (order >= 2) d.d2 = prev_d.d2;
+            if constexpr (order >= 3) d.d3 = prev_d.d3;
+        }
+        else if (s >= scalar_t{1})
+        {
+            // Cap region: f is locked, all derivatives are 0
+            if constexpr (order >= 1) d.d1 = scalar_t{0};
+            if constexpr (order >= 2) d.d2 = scalar_t{0};
+            if constexpr (order >= 3) d.d3 = scalar_t{0};
+        }
+        else
+        {
+            // Inside region: The Product Rule for (1 - W(t)) * g'(x)
+            auto prev_d = prev.template derivatives<order>(x);
+
+            constexpr int t_order = (order > 0) ? order - 1 : 0;
+            auto T = transition_fn.template derivatives<t_order>(static_cast<real_t>(s));
+
+            auto const v = scalar_t{1} - T.f;
+
+            if constexpr (order >= 1) { d.d1 = prev_d.d1 * v; }
+            if constexpr (order >= 2)
+            {
+                // Note the negative signs because we are differentiating (1 - W(t))
+                d.d2 = (prev_d.d2 * v) - (prev_d.d1 * T.d1 * reciprocal_width);
+
+                if constexpr (order >= 3)
+                {
+                    auto const rw2 = reciprocal_width * reciprocal_width;
+                    d.d3 = (prev_d.d3 * v) - (scalar_t{2} * prev_d.d2 * T.d1 * reciprocal_width)
+                        - (prev_d.d1 * T.d2 * rw2);
+                }
+            }
+        }
+
+        return d;
     }
 };
 
@@ -422,10 +538,10 @@ template <std::floating_point real_t, typename prev_t, typename transition_fn_t,
     using model_t = knee_model_t<real_t, prev_t, decltype(prev_derivative), transition_fn_t, rule_t>;
     using antiderivative_t = std::remove_cvref_t<decltype(detail::build_blend_antiderivative<real_t>(
         prev_derivative, real_t{0}, width, weight, tolerance, depth_limit, rule))>;
-    using result_node_t = limiter_t<real_t, prev_t, antiderivative_t>;
+    using result_node_t = limiter_t<real_t, prev_t, transition_fn_t, antiderivative_t>;
     using return_t = std::optional<result_node_t>;
 
-    auto const model = model_t{prev, prev_derivative, transition_fn, width, tolerance, depth_limit, rule};
+    auto const model = model_t{prev, prev_derivative, transition_fn, width, rule};
     auto const solver = placement_solver_t<real_t>{domain_lo, domain_hi};
     auto const placement = solver(model, limit_gain);
 
@@ -444,6 +560,7 @@ template <std::floating_point real_t, typename prev_t, typename transition_fn_t,
         .reciprocal_width = real_t{1} / width,
         .cap = cap,
         .prev = std::move(prev),
+        .transition_fn = std::move(transition_fn),
         .antiderivative = std::move(antiderivative)}};
 }
 
@@ -471,7 +588,7 @@ TEST(signal_chain_test, integration)
     using real_t = float_t;
     // using scalar_t = real_t;
 
-    auto const smooth_blend = cinf_transition_t{};
+    auto const smooth_blend = c4_transition_t{};
     auto const rule = quadrature::rules::gauss_kronrod_t<real_t>{};
     auto const base_curve = mock_quadratic_t{};
 
