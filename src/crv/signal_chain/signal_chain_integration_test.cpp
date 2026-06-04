@@ -733,7 +733,6 @@ TEST(signal_chain_test, integration)
     auto const domain_lo = real_t{0.0};
     auto const domain_hi = real_t{256.0};
 
-    using compose_derivatives_t = compose_derivatives_t;
     constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
     auto const output_chain_result
         = domain_warp_factory_t<real_t, compose_derivatives_t, min_spline_transition_width>{}(
