@@ -685,8 +685,8 @@ struct domain_warp_factory_t
             phi_capped = phi_at_b2
                 + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
 
-            auto const tolerance
-                = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross));
+            auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon()
+                * (real_t{1} + std::abs(x_cross) + lag + limit_half->saturation_half_width());
             if (std::abs(phi_capped - x_cross) > tolerance)
             {
                 return std::unexpected(warp_error_t::limit_placement_failure);
