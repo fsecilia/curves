@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cmath>
 #include <concepts>
+#include <expected>
 #include <iostream>
 #include <limits>
 #include <numbers>
@@ -35,6 +36,29 @@ namespace crv::signal_chain {
 using model::curves::derivatives_t;
 
 // --------------------------------------------------------------------------------------------------------------------h
+
+enum class warp_error_t
+{
+    invalid_limit_width, // limit_width <= 0
+    invalid_offset_width, // offset_width <= 0 when offset_center is provided
+    transition_overlap, // onset saturates after the limit band begins
+    onset_continuity_failure, // catastrophic cancellation in symmetric-area placement
+    limit_placement_failure // limit inversion geometry drifted beyond tolerance
+};
+
+// Optional, but highly useful for your unit tests and UI logging.
+constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
+{
+    switch (error)
+    {
+        case warp_error_t::invalid_limit_width: return "Limit width must be strictly positive.";
+        case warp_error_t::invalid_offset_width: return "Offset width must be strictly positive.";
+        case warp_error_t::transition_overlap: return "Offset and limit transitions overlap.";
+        case warp_error_t::onset_continuity_failure: return "Precision loss: onset plateau is discontinuous.";
+        case warp_error_t::limit_placement_failure: return "Precision loss: limit cap deviates from the curve.";
+    }
+    return "Unknown warp error.";
+}
 
 // =============================================================================
 // chain-rule composition of derivative jets
@@ -603,18 +627,21 @@ template <std::floating_point real_t, typename g_t>
 template <std::floating_point real_t, typename prev_t, typename compose_t = compose_derivatives_t>
 [[nodiscard]] auto make_domain_warp(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
     real_t offset_width, real_t domain_lo, real_t domain_hi, compose_t compose = {})
+    -> std::expected<domain_warp_t<real_t, prev_t, compose_t>, warp_error_t>
 {
     using warp_t = domain_warp_t<real_t, prev_t, compose_t>;
     using half_t = erf_half_t<real_t>;
     using config_t = typename warp_t::config_t;
 
-    assert(limit_width > real_t{0} && "make_domain_warp: limit_width must be positive");
+    if (limit_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_limit_width);
 
     // --- offset placement (optional) ---
     auto offset_half = std::optional<half_t>{};
     auto lag = real_t{0};
-    if (offset_center.has_value() && offset_width > real_t{0})
+    if (offset_center.has_value())
     {
+        if (offset_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_offset_width);
+
         auto const c_L = *offset_center;
         auto const k_L = erf_sharpness_from_width(offset_width); // rising: k_L > 0
         offset_half.emplace(c_L, k_L);
@@ -628,9 +655,12 @@ template <std::floating_point real_t, typename prev_t, typename compose_t = comp
         auto const onset_end
             = offset_half->integral(offset_half->band_hi()) - offset_half->integral(offset_half->band_lo());
         auto const lagged_line_at_band_hi = offset_half->band_hi() - lag;
-        assert(std::abs(onset_end - lagged_line_at_band_hi)
-                <= real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(onset_end))
-            && "make_domain_warp: onset/plateau join discontinuous (symmetric-area assumption broken)");
+
+        auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(onset_end));
+        if (std::abs(onset_end - lagged_line_at_band_hi) > tolerance)
+        {
+            return std::unexpected(warp_error_t::onset_continuity_failure);
+        }
     }
 
     // --- limit inversion: leftmost x where g reaches the limit ---
@@ -652,17 +682,22 @@ template <std::floating_point real_t, typename prev_t, typename compose_t = comp
         phi_at_b2 = limit_half->band_lo() - lag;
 
         // non-overlap: the onset must finish saturating before the limit band starts.
-        assert((!offset_half.has_value() || offset_half->band_hi() <= limit_half->band_lo())
-            && "make_domain_warp: offset and limit transitions overlap; the UI must keep them disjoint");
+        if (offset_half.has_value() && offset_half->band_hi() > limit_half->band_lo())
+        {
+            return std::unexpected(warp_error_t::transition_overlap);
+        }
 
         // phi_capped == x_cross by construction (the crossing is exactly the frozen input that
         // makes g(phi_capped) == limit). Computed independently and asserted to match, as a loud
         // check that the symmetric-area placement held.
         phi_capped
             = phi_at_b2 + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
-        assert(std::abs(phi_capped - x_cross)
-                <= real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross))
-            && "make_domain_warp: limit placement diverged from the crossing (symmetric-area broken)");
+
+        auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross));
+        if (std::abs(phi_capped - x_cross) > tolerance)
+        {
+            return std::unexpected(warp_error_t::limit_placement_failure);
+        }
     }
 
     auto config = config_t{.offset = std::move(offset_half),
@@ -704,13 +739,16 @@ TEST(signal_chain_test, integration)
     auto const domain_lo = real_t{0.0};
     auto const domain_hi = real_t{256.0};
 
-    auto output_chain = make_domain_warp(make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit,
-        limit_width, std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
+    auto const output_chain_result
+        = make_domain_warp(make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
+            std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
+    assert(output_chain_result.has_value());
+    auto const& output_chain = *output_chain_result;
 
     auto const dx = static_cast<real_t>(0.1);
     for (auto x = jet_t<real_t>{0.0, 1.0}; x.f < static_cast<real_t>(5.0) + dx * 3; x += dx)
     {
-        auto y = output_chain(x);
+        auto const y = output_chain(x);
         std::cout << x.f << ", (" << y.f << ", " << y.df << ")\n";
     }
     std::cout.flush();
