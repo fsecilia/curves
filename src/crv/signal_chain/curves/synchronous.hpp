@@ -77,79 +77,65 @@ struct synchronous_t
               k_{scalar_t{0.5} / static_cast<scalar_t>(config.smooth.value())}, r_{scalar_t{1} / k_}
         {}
 
-        /// scalar form
-        constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return evaluate<0>(x); }
-
-        /// 1-jet form; honors input tangent
-        constexpr auto operator()(jet_t x) const noexcept -> jet_t { return evaluate<1>(x); }
-
-        /// array of critical points
-        ///
-        /// This curve has one critical point, at the cusp.
-        auto critical_points() const -> std::vector<scalar_t> { return {p_}; }
-
-    private:
-        // calculates base function and up to order-n derivatives
-        //
-        // This implementation differs from the original slightly in form but not content. It supports jets, but
-        // calculates derivatives manually to reuse terms from base evaluation.
-        //
-        // The calculation is kept in log space with s = log x, where the inner argument, u = G*(s - log p), is linear
-        // in s, so du/ds = G is constant and differentiating in s never produces a 1/x. 1/x only appears in the final
-        // chain-rule conversion to x-space.
-        //
-        // There are 3 branches:
-        //     origin: x < x_origin_limit_threshold_, f = 1/m, all derivatives 0
-        //     cusp: |u| < threshold_u_, f = (x/p)^g
-        //     elsewhere: f = exp(sign*M*w^r), w = tanh(|u|^k)
-        //
-        // The origin branch, x < x_origin_limit_threshold_, isolates the one place the origin asymptote can bite.
-        // This region sidesteps it by using the limit defintion, returning the saturated value with zero slope.
-        //
-        // There is a cusp in the first derivative at x = p -> u = 0. In this vicinity, |u| < threshold_u_, the local
-        // form is exactly (x/p)^g. This form is used over the smallest window required.
-        //
-        // Elsewhere, it is the original f(x).
-        //
-        // This function supports complex numbers to test derivatives via infintesimal complex steps rather than finite
-        // differences. Each branch interior is holomorphic, as are both sides of the cusp independently. Branch
-        // selection uses the real part, so tests must stay within a single branch interior, away from the cusp, the
-        // origin, and their analytical special cases.
-        //
-        // The base function is f(x) = m^(sgn(log(x/p))*(tanh((g/log(m))*|log(x/p)|)^(0.5/r))^(r/0.5))
-        //
-        //     Origin Branch (x < x_origin_limit_threshold_):
-        //
-        //         f(x)  = 1/m
-        //         f'(x) = 0
-        //
-        //     Cusp Branch (|u| <= threshold_u_):
-        //
-        //         f(x)  = (x/p)^g
-        //         f'(x) = f(x)*g/x
-        //
-        //     Main Branch (Elsewhere):
-        //
-        //         u = G*(log(x) - log(p))
-        //         w = tanh(|u|^k)
-        //         P = w^(r-1)
-        //         E = sgn(u)*M*w^r
-        //
-        //         E' = sgn(u)*M*r*P*w'
-        //         f_s1 = f(x)*E'
-        //
-        //         f(x)  = exp(E)
-        //         f'(x) = f_s1/x
-        //
-        template <int_t order, typename value_t> constexpr auto evaluate(value_t input) const noexcept -> auto
+        template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
         {
+            // This implementation differs from the original slightly in form but not content. It supports jets, but
+            // calculates derivatives manually to reuse terms from base evaluation.
+            //
+            // The calculation is kept in log space with s = log x, where the inner argument, u = G*(s - log p), is
+            // linear in s, so du/ds = G is constant and differentiating in s never produces a 1/x. 1/x only appears in
+            // the final chain rule conversion to x-space.
+            //
+            // There are 3 branches:
+            //     origin: x < x_origin_limit_threshold_, f = 1/m, all derivatives 0
+            //     cusp: |u| < threshold_u_, f = (x/p)^g
+            //     elsewhere: f = exp(sign*M*w^r), w = tanh(|u|^k)
+            //
+            // Some valid parameterizations have a vertical asymptote at 0. The origin branch,
+            // x < x_origin_limit_threshold_, isolates the one place an origin asymptote can bite. This region sidesteps
+            // it by using the limit defintion, returning the saturated value with zero slope.
+            //
+            // There is a cusp in the first derivative at x = p -> u = 0. In this vicinity, |u| < threshold_u_, the
+            // local form is exactly (x/p)^g. This form is used over the smallest window required.
+            //
+            // Elsewhere, it is the original f(x).
+            //
+            // This function supports complex jets to test derivatives via infintesimal complex steps rather than finite
+            // differences. Each branch interior is holomorphic, as are both sides of the cusp independently. Branch
+            // selection uses the real part, so tests must stay within a single branch interior, away from the cusp, the
+            // origin, and their analytical special cases.
+            //
+            // The base function is f(x) = m^(sgn(log(x/p))*(tanh((g/log(m))*|log(x/p)|)^(0.5/r))^(r/0.5))
+            //
+            //     Origin Branch (x < x_origin_limit_threshold_):
+            //
+            //         f(x)  = 1/m
+            //         f'(x) = 0
+            //
+            //     Cusp Branch (|u| <= threshold_u_):
+            //
+            //         f(x)  = (x/p)^g
+            //         f'(x) = f(x)*g/x
+            //
+            //     Main Branch (Elsewhere):
+            //
+            //         u = G*(log(x) - log(p))
+            //         w = tanh(|u|^k)
+            //         P = w^(r-1)
+            //         E = sgn(u)*M*w^r
+            //
+            //         E' = sgn(u)*M*r*P*w'
+            //         f_s1 = f(x)*E'
+            //
+            //         f(x)  = exp(E)
+            //         f'(x) = f_s1/x
+            //
+
             using std::exp;
             using std::log;
             using std::pow;
             using std::real;
             using std::tanh;
-
-            static_assert(0 <= order && order <= 1);
 
             auto const x = primal(input);
 
@@ -178,7 +164,7 @@ struct synchronous_t
                 //     f_s1 = g f
                 //
                 f = exp(g_ * s_minus_logp); // (x/p)^g
-                if constexpr (order >= 1) f_s1 = g_ * f;
+                if constexpr (is_jet<value_t>) f_s1 = g_ * f;
             }
             else
             {
@@ -202,15 +188,21 @@ struct synchronous_t
             }
 
             // convert log-space -> x-space:
-            if constexpr (order == 0) return value_t{f};
-            else
+            if constexpr (is_jet<value_t>)
             {
                 // f' = f_s1/x
                 auto const d1 = f_s1 / x;
-                return jet_t{f, d1 * tangent(input)};
+                return {f, d1 * tangent(input)};
             }
+            else return f;
         }
 
+        /// array of critical points
+        ///
+        /// This curve has one critical point, at the cusp.
+        auto critical_points() const -> std::vector<scalar_t> { return {p_}; }
+
+    private:
         scalar_t m_; // motivity
         scalar_t p_; // sync_speed
         scalar_t g_; // gamma
