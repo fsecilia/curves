@@ -629,14 +629,14 @@ struct domain_warp_factory_t
         using half_t = erf_half_t<real_t>;
         using config_t = typename warp_t::config_t;
 
-        if (limit_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_limit_width);
+        if (limit_width <= min_spline_transition_width) return std::unexpected(warp_error_t::invalid_limit_width);
 
         // --- offset placement (optional) ---
         auto offset_half = std::optional<half_t>{};
         auto lag = real_t{0};
         if (offset_center.has_value())
         {
-            if (offset_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_offset_width);
+            if (offset_width <= min_spline_transition_width) return std::unexpected(warp_error_t::invalid_offset_width);
 
             auto const c_L = *offset_center;
             auto const k_L = erf_sharpness_from_width(offset_width);
