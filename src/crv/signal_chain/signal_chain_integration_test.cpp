@@ -1,15 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief domain-warp signal-chain stage and its supporting pieces
-///
-/// The chain shapes a mouse-acceleration transfer function. Reading outermost-to-innermost on the input side: the
-/// domain warp warps x, forwarding prev(phi(x)); prev is the output-shaped curve (output scale then offset applied over
-/// the input-shaped base curve). The warp pauses x at the origin, gently unpauses across an optional offset transition,
-/// runs at unit rate, then gently pauses again across a mandatory-but-placeable limit transition, freezing at a
-/// ceiling. Each transition is a single erf half; phi is monotone and C-infinity, so derivatives compose by the plain
-/// chain rule with no per-region special cases.
-///
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
