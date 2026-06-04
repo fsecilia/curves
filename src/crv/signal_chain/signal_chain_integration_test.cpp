@@ -35,6 +35,8 @@ namespace crv::signal_chain {
 
 using model::curves::derivatives_t;
 
+template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{0.01};
+
 // --------------------------------------------------------------------------------------------------------------------h
 
 enum class warp_error_t
@@ -42,7 +44,6 @@ enum class warp_error_t
     invalid_limit_width, // limit_width <= 0
     invalid_offset_width, // offset_width <= 0 when offset_center is provided
     transition_overlap, // onset saturates after the limit band begins
-    onset_continuity_failure, // catastrophic cancellation in symmetric-area placement
     limit_placement_failure // limit inversion geometry drifted beyond tolerance
 };
 
@@ -51,10 +52,9 @@ constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
 {
     switch (error)
     {
-        case warp_error_t::invalid_limit_width: return "Limit width must be strictly positive.";
-        case warp_error_t::invalid_offset_width: return "Offset width must be strictly positive.";
+        case warp_error_t::invalid_limit_width: return "Limit width too small.";
+        case warp_error_t::invalid_offset_width: return "Offset width too small.";
         case warp_error_t::transition_overlap: return "Offset and limit transitions overlap.";
-        case warp_error_t::onset_continuity_failure: return "Precision loss: onset plateau is discontinuous.";
         case warp_error_t::limit_placement_failure: return "Precision loss: limit cap deviates from the curve.";
     }
     return "Unknown warp error.";
@@ -426,8 +426,7 @@ template <typename real_t, typename prev_t> constexpr auto make_output_offset(re
 /// compose absorbs the phi'=0 and phi'=1 degeneracies by formula.
 ///
 /// Construct via make_domain_warp, which runs the one-time limit inversion and places the halves.
-template <std::floating_point t_real_t, typename t_prev_t, typename t_compose_t = compose_derivatives_t>
-class domain_warp_t
+template <std::floating_point t_real_t, typename t_prev_t, typename t_compose_t> class domain_warp_t
 {
 public:
     using real_t = t_real_t;
@@ -624,90 +623,89 @@ template <std::floating_point real_t, typename g_t>
 /// never reached on [domain_lo, domain_hi], the limit half is omitted (v1: caps at the curve's own
 /// maximum; gentle roll-on of the limit is deferred). With neither transition present the warp is
 /// the identity.
-template <std::floating_point real_t, typename prev_t, typename compose_t = compose_derivatives_t>
-[[nodiscard]] auto make_domain_warp(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
-    real_t offset_width, real_t domain_lo, real_t domain_hi, compose_t compose = {})
-    -> std::expected<domain_warp_t<real_t, prev_t, compose_t>, warp_error_t>
+template <std::floating_point real_t, typename compose_t, real_t min_spline_transition_width>
+struct domain_warp_factory_t
 {
-    using warp_t = domain_warp_t<real_t, prev_t, compose_t>;
-    using half_t = erf_half_t<real_t>;
-    using config_t = typename warp_t::config_t;
-
-    if (limit_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_limit_width);
-
-    // --- offset placement (optional) ---
-    auto offset_half = std::optional<half_t>{};
-    auto lag = real_t{0};
-    if (offset_center.has_value())
+    template <typename prev_t>
+    [[nodiscard]] auto operator()(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
+        real_t offset_width, real_t domain_lo, real_t domain_hi, compose_t compose = {})
+        -> std::expected<domain_warp_t<real_t, prev_t, compose_t>, warp_error_t>
     {
-        if (offset_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_offset_width);
+        using warp_t = domain_warp_t<real_t, prev_t, compose_t>;
+        using half_t = erf_half_t<real_t>;
+        using config_t = typename warp_t::config_t;
 
-        auto const c_L = *offset_center;
-        auto const k_L = erf_sharpness_from_width(offset_width); // rising: k_L > 0
-        offset_half.emplace(c_L, k_L);
-        // symmetric rising sigmoid: area over its band == half_width exactly, so the lag (the
-        // domain shift accumulated by pausing then unpausing) equals the offset center.
-        lag = c_L;
+        if (limit_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_limit_width);
 
-        // onset->plateau continuity: phi at the end of the onset equals the lagged-line value at
-        // the same x. onset_end = integral over the band == half_width; lagged line at band_hi is
-        // band_hi - lag = (c_L + h_L) - c_L = h_L. Equal by the symmetric-area identity.
-        auto const onset_end
-            = offset_half->integral(offset_half->band_hi()) - offset_half->integral(offset_half->band_lo());
-        auto const lagged_line_at_band_hi = offset_half->band_hi() - lag;
-
-        auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(onset_end));
-        if (std::abs(onset_end - lagged_line_at_band_hi) > tolerance)
+        // --- offset placement (optional) ---
+        auto offset_half = std::optional<half_t>{};
+        auto lag = real_t{0};
+        if (offset_center.has_value())
         {
-            return std::unexpected(warp_error_t::onset_continuity_failure);
+            if (offset_width <= real_t{0}) return std::unexpected(warp_error_t::invalid_offset_width);
+
+            auto const c_L = *offset_center;
+            auto const k_L = erf_sharpness_from_width(offset_width);
+            offset_half.emplace(c_L, k_L);
+
+            // exact numerical accumulation of the onset
+            auto const phi_at_onset_end
+                = offset_half->integral(offset_half->band_hi()) - offset_half->integral(offset_half->band_lo());
+
+            // symmetric rising sigmoid: area over its band == half_width exactly, so the lag (the
+            // domain shift accumulated by pausing then unpausing) equals the offset center.
+            // this exactly equals the integral at the boundary.
+            // band_hi - lag = phi_at_onset_end  =>  lag = band_hi - phi_at_onset_end
+            lag = offset_half->band_hi() - phi_at_onset_end;
         }
+
+        // --- limit inversion: leftmost x where g reaches the limit ---
+        auto const g = [&prev](real_t x) noexcept { return prev(x); };
+        auto const [x_cross, reached] = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
+
+        auto limit_half = std::optional<half_t>{};
+        auto phi_at_b2 = real_t{0};
+        auto phi_capped = real_t{0};
+
+        if (reached)
+        {
+            // falling half: k_R < 0. c_R = x_cross + lag (symmetric falling area == half_width, so the
+            // center lands exactly at the lagged crossing; phi_capped then == x_cross by construction).
+            auto const k_R = -erf_sharpness_from_width(limit_width);
+            auto const c_R = x_cross + lag;
+            limit_half.emplace(c_R, k_R);
+
+            phi_at_b2 = limit_half->band_lo() - lag;
+
+            // non-overlap: the onset must finish saturating before the limit band starts.
+            if (offset_half.has_value() && offset_half->band_hi() > limit_half->band_lo())
+            {
+                return std::unexpected(warp_error_t::transition_overlap);
+            }
+
+            // phi_capped == x_cross by construction (the crossing is exactly the frozen input that
+            // makes g(phi_capped) == limit). Computed independently and asserted to match, as a loud
+            // check that the symmetric-area placement held.
+            phi_capped = phi_at_b2
+                + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
+
+            auto const tolerance
+                = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross));
+            if (std::abs(phi_capped - x_cross) > tolerance)
+            {
+                return std::unexpected(warp_error_t::limit_placement_failure);
+            }
+        }
+
+        auto config = config_t{.offset = std::move(offset_half),
+            .limit = std::move(limit_half),
+            .lag = lag,
+            .phi_at_b2 = phi_at_b2,
+            .phi_capped = phi_capped};
+
+        return warp_t{std::move(config), std::move(prev), std::move(compose)};
     }
-
-    // --- limit inversion: leftmost x where g reaches the limit ---
-    auto const g = [&prev](real_t x) noexcept { return prev(x); };
-    auto const [x_cross, reached] = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
-
-    auto limit_half = std::optional<half_t>{};
-    auto phi_at_b2 = real_t{0};
-    auto phi_capped = real_t{0};
-
-    if (reached)
-    {
-        // falling half: k_R < 0. c_R = x_cross + lag (symmetric falling area == half_width, so the
-        // center lands exactly at the lagged crossing; phi_capped then == x_cross by construction).
-        auto const k_R = -erf_sharpness_from_width(limit_width);
-        auto const c_R = x_cross + lag;
-        limit_half.emplace(c_R, k_R);
-
-        phi_at_b2 = limit_half->band_lo() - lag;
-
-        // non-overlap: the onset must finish saturating before the limit band starts.
-        if (offset_half.has_value() && offset_half->band_hi() > limit_half->band_lo())
-        {
-            return std::unexpected(warp_error_t::transition_overlap);
-        }
-
-        // phi_capped == x_cross by construction (the crossing is exactly the frozen input that
-        // makes g(phi_capped) == limit). Computed independently and asserted to match, as a loud
-        // check that the symmetric-area placement held.
-        phi_capped
-            = phi_at_b2 + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
-
-        auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross));
-        if (std::abs(phi_capped - x_cross) > tolerance)
-        {
-            return std::unexpected(warp_error_t::limit_placement_failure);
-        }
-    }
-
-    auto config = config_t{.offset = std::move(offset_half),
-        .limit = std::move(limit_half),
-        .lag = lag,
-        .phi_at_b2 = phi_at_b2,
-        .phi_capped = phi_capped};
-
-    return warp_t{std::move(config), std::move(prev), std::move(compose)};
-}
+};
 
 struct quadratic_t
 {
@@ -739,8 +737,11 @@ TEST(signal_chain_test, integration)
     auto const domain_lo = real_t{0.0};
     auto const domain_hi = real_t{256.0};
 
+    using compose_derivatives_t = compose_derivatives_t;
+    constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
     auto const output_chain_result
-        = make_domain_warp(make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
+        = domain_warp_factory_t<real_t, compose_derivatives_t, min_spline_transition_width>{}(
+            make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
             std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
     assert(output_chain_result.has_value());
     auto const& output_chain = *output_chain_result;
