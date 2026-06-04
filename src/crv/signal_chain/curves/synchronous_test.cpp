@@ -14,6 +14,8 @@ namespace {
 
 using real_t = float_t;
 
+constexpr auto df = real_t{1.3};
+
 using evaluator_t = synchronous_t::evaluator_t<real_t>;
 using complex_evaluator_t = synchronous_t::evaluator_t<std::complex<real_t>>;
 
@@ -45,6 +47,10 @@ struct param_t
 };
 
 // sweep table for multiple tests
+//
+// These values sweep the parameter space and a range of x on both sides of the cusp. The nonholomorphic neighborhood of
+// the cusp is skipped. The sweeps are based on the config constraints: m in [1,1e3], g in [1e-3,1e3], smooth in
+// [1/16,1], p in [1e-3,1e3].
 param_t const sweep_params[] = {
     // motivity sweep
     {"m1_5", 1.5, 2.0, 0.5, 5.0},
@@ -79,10 +85,10 @@ param_t const sweep_params[] = {
 //
 
 // At the cusp the curve is exactly the power law (x/p)^g, so at x = p:
+//
 //    f(p)    = 1
 //    f'(p)   = g/p
-//    f''(p)  = g(g-1)/p^2
-//    f'''(p) = g(g-1)(g-2)/p^3
+//
 struct model_curves_synchronous_cusp_test_t : TestWithParam<param_t>
 {
     real_t motivity = GetParam().motivity;
@@ -100,22 +106,21 @@ struct model_curves_synchronous_cusp_test_t : TestWithParam<param_t>
 
 TEST_P(model_curves_synchronous_cusp_test_t, value_is_one)
 {
-    EXPECT_NEAR(1.0, eval.derivatives<0>(p).f, tolerance);
+    EXPECT_NEAR(1.0, eval(p), tolerance);
 }
 
 TEST_P(model_curves_synchronous_cusp_test_t, first_derivative)
 {
-    EXPECT_LT(rel_error(eval.derivatives<1>(p).d1, g / p), tolerance);
+    auto const y = eval(jet_t{p, df});
+    EXPECT_NEAR(1.0, y.f, tolerance);
+    EXPECT_LT(rel_error(y.df, df * (g / p)), tolerance);
 }
 
-TEST_P(model_curves_synchronous_cusp_test_t, second_derivative)
+TEST_P(model_curves_synchronous_cusp_test_t, zero_tangent_propagates_zero_velocity)
 {
-    EXPECT_LT(rel_error(eval.derivatives<2>(p).d2, g * (g - 1.0) / (p * p)), tolerance);
-}
-
-TEST_P(model_curves_synchronous_cusp_test_t, third_derivative)
-{
-    EXPECT_LT(rel_error(eval.derivatives<3>(p).d3, g * (g - 1.0) * (g - 2.0) / (p * p * p)), tolerance);
+    auto const y = eval(jet_t{p, 0.0});
+    EXPECT_NEAR(1.0, y.f, tolerance);
+    EXPECT_EQ(0.0, y.df);
 }
 
 param_t const cusp_params[] = {
@@ -131,47 +136,45 @@ INSTANTIATE_TEST_SUITE_P(
 // origin
 //
 
-// Below threshold_x_origin the curve has saturated to its floor: f = 1/m, and every derivative is zero.
+// below x_origin_limit_threshold the curve has saturated to its floor: f = 1/m, not NaN, and every derivative is zero
 struct model_curves_synchronous_origin_test_t : Test
 {
     evaluator_t const eval{make_config(2.0, 3.0, 0.5, 5.0)};
 
-    static constexpr auto x = 1e-15;
+    real_t const x = eval.calc_x_origin_limit_threshold();
     static constexpr auto tolerance = 1e-15;
 };
 
-TEST_F(model_curves_synchronous_origin_test_t, literal_zero_input)
+TEST_F(model_curves_synchronous_origin_test_t, literal_zero_scalar_input)
 {
-    // returns saturated limit 1/m, not NaN
-    auto const d = eval.derivatives<3>(0.0);
-    EXPECT_NEAR(1.0 / 2.0, d.f, tolerance);
-    EXPECT_NEAR(0.0, d.d1, tolerance);
-    EXPECT_NEAR(0.0, d.d2, tolerance);
-    EXPECT_NEAR(0.0, d.d3, tolerance);
+    auto const y = eval(0.0);
+    EXPECT_NEAR(1.0 / 2.0, y, tolerance);
 }
 
-TEST_F(model_curves_synchronous_origin_test_t, value_is_floor)
+TEST_F(model_curves_synchronous_origin_test_t, literal_zero_jet_input)
 {
-    EXPECT_NEAR(1.0 / 2.0, eval.derivatives<0>(x).f, tolerance);
+    auto const y = eval(jet_t{0.0, df});
+    EXPECT_NEAR(1.0 / 2.0, y.f, tolerance);
+    EXPECT_EQ(0.0, y.df);
 }
 
-TEST_F(model_curves_synchronous_origin_test_t, all_derivatives_zero)
+TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_scalar_value_is_floor)
 {
-    auto const d = eval.derivatives<3>(x);
-    EXPECT_NEAR(1.0 / 2.0, d.f, tolerance); // f
-    EXPECT_NEAR(0.0, d.d1, tolerance); // f'
-    EXPECT_NEAR(0.0, d.d2, tolerance); // f''
-    EXPECT_NEAR(0.0, d.d3, tolerance); // f'''
+    EXPECT_NEAR(1.0 / 2.0, eval(x), tolerance);
+}
+
+TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_floor)
+{
+    auto const y = eval(jet_t{x, df});
+    EXPECT_NEAR(1.0 / 2.0, y.f, tolerance);
+    EXPECT_EQ(0.0, y.df);
 }
 
 //
 // complex-step derivative
 //
 
-// This test sweeps the parameter space and a range of x on both sides of the cusp. The nonholomorphic neighborhood of
-// the cusp is skipped. The sweeps are based on the config constraints: m in [1,1e3], g in [1e-3,1e3], smooth in
-// [1/16,1], p in [1e-3,1e3]. Each derivative order is differentiated by complex-step and compared to the next order
-// down.
+// each derivative order is differentiated by complex-step and compared to the next order down
 struct model_curves_synchronous_consistency_test_t : TestWithParam<param_t>
 {
     real_t motivity = GetParam().motivity;
@@ -211,99 +214,13 @@ TEST_P(model_curves_synchronous_consistency_test_t, first_derivative_matches_com
     {
         auto const x = p * multiplier;
         if (!on_smooth_branch(x)) continue;
-        auto const expected = complex_step_derivative([&](auto z) { return ceval.derivatives<0>(z).f; }, x);
-        EXPECT_LT(rel_error(eval.derivatives<1>(x).d1, expected), tolerance);
-    }
-}
-
-TEST_P(model_curves_synchronous_consistency_test_t, second_derivative_matches_complex_step_of_first)
-{
-    for (auto const multiplier : multipliers)
-    {
-        auto const x = p * multiplier;
-        if (!on_smooth_branch(x)) continue;
-        auto const expected = complex_step_derivative([&](auto z) { return ceval.derivatives<1>(z).d1; }, x);
-        EXPECT_LT(rel_error(eval.derivatives<2>(x).d2, expected), tolerance);
-    }
-}
-
-TEST_P(model_curves_synchronous_consistency_test_t, third_derivative_matches_complex_step_of_second)
-{
-    for (auto const multiplier : multipliers)
-    {
-        auto const x = p * multiplier;
-        if (!on_smooth_branch(x)) continue;
-        auto const expected = complex_step_derivative([&](auto z) { return ceval.derivatives<2>(z).d2; }, x);
-        EXPECT_LT(rel_error(eval.derivatives<3>(x).d3, expected), tolerance);
+        auto const expected = df * complex_step_derivative([&](auto z) { return ceval(z); }, x);
+        EXPECT_LT(rel_error(eval(jet_t{x, df}).df, expected), tolerance);
     }
 }
 
 INSTANTIATE_TEST_SUITE_P(
     consistency, model_curves_synchronous_consistency_test_t, ValuesIn(sweep_params), test_name_generator_t<param_t>{});
-
-//
-// derivatives<n>()
-//
-
-struct model_curves_synchronous_derivatives_test_t : TestWithParam<param_t>
-{
-    real_t motivity = GetParam().motivity;
-    real_t gamma = GetParam().gamma;
-    real_t smooth = GetParam().smooth;
-    real_t sync_speed = GetParam().sync_speed;
-
-    real_t const p = sync_speed;
-
-    evaluator_t const eval{make_config(motivity, gamma, smooth, sync_speed)};
-
-    static constexpr real_t multipliers[] = {0.2, 0.7, 0.95, 1.05, 1.5, 30.0};
-    static constexpr auto tolerance = 1e-15; // exact: same arithmetic, just truncated -- expect bit-identical
-};
-
-TEST_P(model_curves_synchronous_derivatives_test_t, truncation_does_not_perturb_lower_orders)
-{
-    for (auto const multiplier : multipliers)
-    {
-        auto const x = p * multiplier;
-
-        auto const d0 = eval.derivatives<0>(x);
-        auto const d1 = eval.derivatives<1>(x);
-        auto const d2 = eval.derivatives<2>(x);
-        auto const d3 = eval.derivatives<3>(x);
-
-        // f identical at every requested order
-        EXPECT_LT(rel_error(d0.f, d3.f), tolerance);
-        EXPECT_LT(rel_error(d1.f, d3.f), tolerance);
-        EXPECT_LT(rel_error(d2.f, d3.f), tolerance);
-
-        // f' identical whether or not higher orders were also requested
-        EXPECT_LT(rel_error(d1.d1, d3.d1), tolerance);
-        EXPECT_LT(rel_error(d2.d1, d3.d1), tolerance);
-
-        // f'' identical whether or not f''' was also requested
-        EXPECT_LT(rel_error(d2.d2, d3.d2), tolerance);
-    }
-}
-
-TEST_P(model_curves_synchronous_derivatives_test_t, operators_match_the_derivatives_surface)
-{
-    for (auto const multiplier : multipliers)
-    {
-        auto const x = p * multiplier;
-        auto const d = eval.derivatives<3>(x);
-
-        // scalar operator() is the value, i.e. derivatives<0>().f
-        EXPECT_LT(rel_error(eval(x), d.f), tolerance);
-
-        // jet operator() bridges derivatives<1>().d1 into jet_t.df
-        auto const j = eval(typename evaluator_t::jet_t{x, 1.0});
-        EXPECT_LT(rel_error(j.f, d.f), tolerance);
-        EXPECT_LT(rel_error(j.df, d.d1), tolerance);
-    }
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    orders, model_curves_synchronous_derivatives_test_t, ValuesIn(sweep_params), test_name_generator_t<param_t>{});
 
 //
 // cusp-branch seam
@@ -336,7 +253,7 @@ TEST_P(model_curves_synchronous_seam_test_t, no_kink_across_the_cusp)
     auto const h = 1e-6;
 
     // sample f', the order-1 tangent, across the seam; f' is where a value-level power-law seam first becomes visible
-    auto const sample_d1 = [&](real_t k) { return eval.derivatives<1>(p * std::exp(k * h)).d1; };
+    auto const sample_d1 = [&](real_t k) { return eval(jet_t{p * std::exp(k * h), 1.0}).df; };
 
     // discrete third difference of f' over consecutive steps
     //
@@ -366,19 +283,16 @@ TEST_P(model_curves_synchronous_seam_test_t, smooth_branch_matches_power_law_at_
 
     auto const m = static_cast<real_t>(motivity);
     auto const g = static_cast<real_t>(gamma);
-    auto const k = 0.5 / static_cast<real_t>(smooth);
-    auto const L = log(m);
-    auto const G = g / L;
-    auto const r = 1.0 / k;
-    auto const eps = std::numeric_limits<real_t>::epsilon();
+    auto const M = log(m);
+    auto const G = g / M;
 
-    auto const threshold_u = pow(3.0 * eps / (L * r), 1.0 / (1.0 + 2.0 * k));
+    auto const threshold_u = eval.calc_u_cusp_threshold();
 
     // step just outside the window on the smooth branch, then compare to the power law.
     auto const u = 1.01 * threshold_u;
     auto const x = p * exp(u / G); // u = G*(log x - log p) > 0
 
-    auto const f_eval = eval.derivatives<0>(x).f; // smooth branch
+    auto const f_eval = eval(x); // smooth branch
     auto const f_power = pow(x / p, g);
 
     // divergence is still ~eps-scale just outside the eps-window
@@ -404,7 +318,7 @@ TEST_F(model_curves_synchronous_critical_points_test_t, single_point_at_sync_spe
 {
     auto const points = eval.critical_points();
     ASSERT_EQ(1u, points.size());
-    EXPECT_NEAR(sync_speed, points.front(), 1e-15);
+    EXPECT_EQ(sync_speed, points.front());
 }
 
 } // namespace
