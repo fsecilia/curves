@@ -360,9 +360,7 @@ template <typename t_value_t> struct jet_t
         // calc cached scale using higher precision
         static auto const scale = static_cast<value_t>(float_max_t{2.0} / sqrt(std::numbers::pi_v<float_max_t>));
 
-        auto const xx = x.f * x.f;
-
-        return {erf(x.f), scale * exp(-xx) * x.df};
+        return {erf(x.f), scale * exp(-x.f * x.f) * x.df};
     }
 
     // d(exp(x)) = exp(x)*dx
