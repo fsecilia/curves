@@ -79,12 +79,11 @@ struct log_normal_t
             if (real(x) < x_origin_saturation_threshold) return value_t{};
 
             // linear in s with dz/ds = c constant.
-            auto const z = (log(x) - mu_) * c_; // z = (s - mu) c
-            auto const f = scalar_t{0.5} + scalar_t{0.5} * complex_step_erf(z); // f = 1/2 + 1/2 erf(z)
+            auto const z = (log(x) - mu_) * c_;
+            auto const f = scalar_t{0.5} + scalar_t{0.5} * complex_step_erf(z);
 
             if constexpr (is_jet<value_t>)
             {
-                // f_s1 = (c/sqrt(pi)) e^{-z^2}.
                 auto const f_s1 = c_ * inv_sqrt_pi_ * exp(-(z * z));
                 auto const inv_x = scalar_t{1} / x;
                 auto const d1 = f_s1 * inv_x;
