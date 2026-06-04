@@ -1,16 +1,31 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
+/// \brief domain-warp signal-chain stage and its supporting pieces
+///
+/// The chain shapes a mouse-acceleration transfer function. Reading outermost-to-innermost on the input side: the
+/// domain warp warps x, forwarding prev(phi(x)); prev is the output-shaped curve (output scale then offset applied over
+/// the input-shaped base curve). The warp pauses x at the origin, gently unpauses across an optional offset transition,
+/// runs at unit rate, then gently pauses again across a mandatory-but-placeable limit transition, freezing at a
+/// ceiling. Each transition is a single erf half; phi is monotone and C-infinity, so derivatives compose by the plain
+/// chain rule with no per-region special cases.
+///
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/math/complex_traits.hpp>
+#include <crv/math/jet/jet.hpp>
 #include <crv/signal_chain/curves/derivatives.hpp>
+#include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <iostream>
+#include <limits>
+#include <numbers>
 #include <numeric>
 #include <optional>
 #include <utility>
@@ -19,84 +34,253 @@ namespace crv::signal_chain {
 
 using model::curves::derivatives_t;
 
-struct c4_transition_t
+// --------------------------------------------------------------------------------------------------------------------h
+
+// =============================================================================
+// chain-rule composition of derivative jets
+// =============================================================================
+
+/// composes two truncated derivative jets under the chain rule
+///
+/// Given outer = derivatives of g evaluated at y, and inner = derivatives of phi evaluated at x,
+/// where y = phi(x) = inner.f, returns the derivatives of (g . phi) at x.
+///
+/// This is the chain rule; for orders >= 2 it is Faa di Bruno's formula specialized to a single
+/// inner function. inner.f is the inner *value* (already consumed to evaluate outer at y); only
+/// inner.d1, d2, d3 (phi', phi'', phi''') take part in the arithmetic. The flat-region degeneracies
+/// of a domain warp fall out for free: inner = {y,0,0,0} (paused, phi'=0) yields {g,0,0,0}, and
+/// inner = {y,1,0,0} (running, phi'=1) yields {g,g',g'',g'''} -- pure passthrough. So consuming
+/// nodes never branch the chain rule per region.
+///
+/// Injected into nodes as a template parameter so the chain-rule shape is an explicit, substitutable
+/// dependency. Stateless; declare members [[no_unique_address]] so it costs no storage.
+struct compose_derivatives_t
 {
-    template <typename value_t> constexpr auto evaluate(value_t t) const noexcept -> value_t
+    template <int order, typename scalar_t>
+    constexpr auto operator()(derivatives_t<order, scalar_t> const& outer,
+        derivatives_t<order, scalar_t> const& inner) const noexcept -> derivatives_t<order, scalar_t>
     {
-        if (t <= value_t{0.0}) return value_t{0.0};
-        if (t >= value_t{1.0}) return value_t{1.0};
+        static_assert(order >= 0 && order <= 3, "compose_derivatives_t supports orders 0..3");
 
-        auto const t2 = t * t;
-        auto const t4 = t2 * t2;
+        auto out = derivatives_t<order, scalar_t>{};
 
-        // W(t) = 70t^9 - 315t^8 + 540t^7 - 420t^6 + 126t^5
-        return t4 * t
-            * (value_t{126.0}
-                + t * (value_t{-420.0} + t * (value_t{540.0} + t * (value_t{-315.0} + t * value_t{70.0}))));
-    }
-
-    template <int order, typename value_t>
-    constexpr auto derivatives(value_t t) const noexcept -> derivatives_t<order, value_t>
-    {
-        auto d = derivatives_t<order, value_t>{};
-
-        if (t <= value_t{0.0})
-        {
-            // f, d1, d2, d3 are natively 0.0 due to default construction
-            return d;
-        }
-
-        if (t >= value_t{1.0})
-        {
-            d.f = value_t{1.0};
-            // d1, d2, d3 remain 0.0
-            return d;
-        }
-
-        d.f = evaluate(t);
+        out.f = outer.f; // g(phi(x))
 
         if constexpr (order >= 1)
         {
-            // W'(t) = 630t^4(1 - t)^4
-            // Factored specifically for numerical stability near the edges
-            auto const t_inv = value_t{1.0} - t;
-            auto const t2 = t * t;
-            auto const t_inv2 = t_inv * t_inv;
-
-            d.d1 = value_t{630.0} * (t2 * t2) * (t_inv2 * t_inv2);
+            // g' phi'
+            out.d1 = outer.d1 * inner.d1;
         }
-
         if constexpr (order >= 2)
         {
-            // W''(t) = 5040t^7 - 17640t^6 + 22680t^5 - 12600t^4 + 2520t^3
-            auto const t2 = t * t;
-
-            d.d2 = t2 * t
-                * (value_t{2520.0}
-                    + t * (value_t{-12600.0} + t * (value_t{22680.0} + t * (value_t{-17640.0} + t * value_t{5040.0}))));
+            // g'' phi'^2 + g' phi''
+            out.d2 = outer.d2 * inner.d1 * inner.d1 + outer.d1 * inner.d2;
         }
-
         if constexpr (order >= 3)
         {
-            // W'''(t) = 35280t^6 - 105840t^5 + 113400t^4 - 50400t^3 + 7560t^2
-            auto const t2 = t * t;
-
-            d.d3 = t2
-                * (value_t{7560.0}
-                    + t
-                        * (value_t{-50400.0}
-                            + t * (value_t{113400.0} + t * (value_t{-105840.0} + t * value_t{35280.0}))));
+            // g''' phi'^3 + 3 g'' phi' phi'' + g' phi'''
+            out.d3 = outer.d3 * inner.d1 * inner.d1 * inner.d1 + scalar_t{3} * outer.d2 * inner.d1 * inner.d2
+                + outer.d1 * inner.d3;
         }
 
-        return d;
+        return out;
     }
 };
 
-//
-// stages
-//
+// =============================================================================
+// erf saturation threshold and width->sharpness mapping
+// =============================================================================
 
-/// scales input before forwarding
+// erf saturation threshold for real_t: |z| beyond which erfc(z) < epsilon, so erf rounds to +-1.
+// Tight bound from the dominant term: erfc(z) ~ e^{-z^2}/(z sqrt pi), and e^{-z^2} < eps gives
+// z > sqrt(-ln eps). The 1/(z sqrt pi) prefactor only shrinks erfc further, so this is exact to the
+// e^{-z^2} term and a hair conservative overall -- the safe direction: never treat the tail as flat
+// too soon, which would corrupt the float128 error reference.
+//
+// Tracks the type (double ~6, float ~4, float128 ~8.8); a fixed constant would over-saturate the
+// wide types. NOT constexpr today only because libstdc++/libc++ lack constexpr sqrt/log -- promote
+// when they land. Computed once per type at static-init. Moves to the common math header with erf_.
+template <std::floating_point real_t>
+inline real_t const erf_saturation_z = [] {
+    using std::log;
+    using std::sqrt;
+    return sqrt(-log(std::numeric_limits<real_t>::epsilon()));
+}();
+
+// width-to-sharpness mapping for the erf transition.
+//
+//   k = (30 sqrt pi)^(1/3) / w  ~= 3.762 / w
+//
+// The user gives a transition WIDTH w; erf needs a SHARPNESS k. We do NOT map against erf's
+// machine-flat saturation band (~12/k wide) -- erf packs its curvature into a far narrower central
+// region, which would make the corner too sharp for the Hermite grid to resolve without extra
+// knots. Instead we match erf's corner to SMOOTHERSTEP's at the same width (the polynomial
+// transition we already know splines cleanly), equating the fourth-derivative peak -- the quantity
+// that drives cubic-Hermite reproduction error:
+//
+//   smootherstep:  phi'''' _max = W'''(0)/w^3 = 60 / w^3       (W = 10t^3 - 15t^4 + 6t^5)
+//   erf:           phi'''' _max = 2 k^3 / sqrt pi              (peak at band center)
+//
+//   2 k^3 / sqrt pi = 60 / w^3  =>  k = (30 sqrt pi)^(1/3) / w  ~= 3.762 / w
+//
+// With this k the erf warp inherits smootherstep's splineability: any grid + min-width floor that
+// handles smootherstep handles this. (Matching peak curvature phi'' instead gives ~3.32/w; we use
+// the phi'''' match -- it targets spline error directly and is marginally more conservative.)
+template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness_from_width(real_t w) noexcept -> real_t
+{
+    // (30 sqrt pi)^(1/3) as a literal, so this stays constexpr without a runtime cbrt/sqrt.
+    // 30 * 1.7724538509055160273 = 53.173615527165..., cube root = 3.76237506018...
+    constexpr real_t cube_root_30_sqrt_pi = static_cast<real_t>(3.7623750601800463L);
+    return cube_root_30_sqrt_pi / w;
+}
+
+// =============================================================================
+// one half of the warp velocity profile
+// =============================================================================
+
+/// one half of the domain-warp velocity profile: a single erf sigmoid and its integral
+///
+/// In its own x-frame this evaluates phi'(x) = 1/2 (1 + erf(k (x - c))) plus derivatives and the
+/// antiderivative. k carries the reflection: k > 0 rises (0 -> 1), k < 0 falls (1 -> 0), since
+/// erf(-z) = -erf(z). The warp instantiates this twice -- a rising half for the onset, a falling
+/// half (k < 0) for the limit -- and stitches the regions between them.
+///
+/// erf has no compact support, so there is no normalized [0,1] frame; the natural variable is
+/// z = k (x - c), unbounded, saturating to machine-flat by |z| ~ erf_saturation_z. The half owns
+/// its saturation band [center - half_width, center + half_width] in x-units, so the warp reads
+/// region boundaries off the halves directly rather than duplicating them.
+template <std::floating_point t_real_t> class erf_half_t
+{
+public:
+    using real_t = t_real_t;
+
+    /// \param center  x where the sigmoid is half-risen (z = 0)
+    /// \param k       sharpness; sign encodes direction (k > 0 rising, k < 0 falling). k != 0.
+    erf_half_t(real_t center, real_t k) noexcept
+        : center_{center}, k_{k}, half_width_{erf_saturation_z<real_t> / std::abs(k)}
+    {}
+
+    [[nodiscard]] constexpr auto center() const noexcept -> real_t { return center_; }
+    [[nodiscard]] constexpr auto k() const noexcept -> real_t { return k_; }
+
+    /// half-width in x-units beyond which this sigmoid is machine-flat (cached at construction)
+    [[nodiscard]] constexpr auto saturation_half_width() const noexcept -> real_t { return half_width_; }
+
+    /// saturation band in x: [band_lo, band_hi]. Outside it the half is flat to precision.
+    [[nodiscard]] constexpr auto band_lo() const noexcept -> real_t { return center_ - half_width_; }
+    [[nodiscard]] constexpr auto band_hi() const noexcept -> real_t { return center_ + half_width_; }
+
+    /// value and derivatives of phi' = 1/2 (1 + erf(k (x - c))), in the x-frame
+    ///
+    /// scalar_t may be real or complex (complex-step); the saturation branch tests real(z) so an
+    /// infinitesimal imaginary part never flips the region, exactly as the base curves do.
+    template <int order, typename scalar_t>
+    constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        using std::exp;
+        using std::real;
+
+        static_assert(order >= 0 && order <= 3, "erf_half_t supports orders 0..3");
+
+        auto const sat = erf_saturation_z<real_t>;
+        auto const z = static_cast<scalar_t>(k_) * (x - static_cast<scalar_t>(center_));
+
+        auto d = derivatives_t<order, scalar_t>{};
+
+        // saturated tails: phi' is exactly 0 (z <= -sat) or 1 (z >= +sat); higher derivatives 0.
+        // Branch on real(z) to stay holomorphic under complex-step.
+        if (real(z) <= -sat)
+        {
+            return d; // f and all derivatives 0 by default construction
+        }
+        if (real(z) >= sat)
+        {
+            d.f = scalar_t{1};
+            return d; // higher orders remain 0
+        }
+
+        // active region. phi' = 1/2 (1 + erf(z)).
+        d.f = scalar_t{0.5} * (scalar_t{1} + erf_(z));
+        if constexpr (order == 0) return d;
+        else
+        {
+            // x-frame derivatives. With g(z) = 1/2 (1 + erf(z)):
+            //   g'(z)   =  (1/sqrt pi) e^{-z^2}
+            //   g''(z)  = -(2/sqrt pi) z e^{-z^2}
+            //   g'''(z) =  (2/sqrt pi) (2 z^2 - 1) e^{-z^2}
+            // and z = k (x - c) contributes powers of k: phi'_x = k g', phi''_x = k^2 g'', etc.
+            auto const k = static_cast<scalar_t>(k_);
+            auto const e = exp(-(z * z));
+            auto const inv_sqrt_pi = static_cast<scalar_t>(inv_sqrt_pi_);
+
+            auto const g1 = inv_sqrt_pi * e; // g'(z)
+            if constexpr (order >= 1) d.d1 = k * g1;
+
+            auto const g2 = scalar_t{-2} * inv_sqrt_pi * z * e; // g''(z)
+            if constexpr (order >= 2) d.d2 = (k * k) * g2;
+
+            auto const g3 = scalar_t{2} * inv_sqrt_pi * (scalar_t{2} * z * z - scalar_t{1}) * e; // g'''(z)
+            if constexpr (order >= 3) d.d3 = (k * k * k) * g3;
+
+            return d;
+        }
+    }
+
+    /// antiderivative of phi' over x
+    ///
+    /// Z-frame: integral of g(z) dz = 1/2 z (1 + erf(z)) + e^{-z^2}/(2 sqrt pi). Change of variable
+    /// back to x divides by k. The additive constant is the standard form (symmetric center near
+    /// the origin); the warp uses only *differences* of this (definite integrals over a band), so
+    /// the constant always cancels.
+    template <typename scalar_t> constexpr auto integral(scalar_t x) const noexcept -> scalar_t
+    {
+        using std::exp;
+
+        auto const z = static_cast<scalar_t>(k_) * (x - static_cast<scalar_t>(center_));
+        auto const k = static_cast<scalar_t>(k_);
+        auto const inv_sqrt_pi = static_cast<scalar_t>(inv_sqrt_pi_);
+
+        auto const G = scalar_t{0.5} * z * (scalar_t{1} + erf_(z)) + scalar_t{0.5} * inv_sqrt_pi * exp(-(z * z));
+        return G / k;
+    }
+
+private:
+    // partial complex-step erf, matching the base-curve convention: real scalar_t delegates to the
+    // standard erf; complex scalar_t returns the true erf in the real part and the exact analytic
+    // first-order tangent b (2/sqrt pi) e^{-a^2} in the imaginary part. Correct only for the
+    // infinitesimal-imaginary inputs complex-step produces. (Hoists to the common math header with
+    // erf_saturation_z in the eventual refactor.)
+    template <typename scalar_t> static auto erf_(scalar_t z) -> scalar_t
+    {
+        using std::exp;
+        if constexpr (std::floating_point<scalar_t>)
+        {
+            using std::erf;
+            return erf(z);
+        }
+        else
+        {
+            using value_t = real_type_t<scalar_t>;
+            auto const a = z.real();
+            auto const b = z.imag();
+            using std::erf;
+            return scalar_t{erf(a), b * static_cast<value_t>(two_over_sqrt_pi_) * exp(-a * a)};
+        }
+    }
+
+    static constexpr real_t inv_sqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
+    static constexpr real_t two_over_sqrt_pi_ = real_t{2} * std::numbers::inv_sqrtpi_v<real_t>;
+
+    real_t center_;
+    real_t k_; // sign encodes direction
+    real_t half_width_; // cached erf_saturation_z / |k|
+};
+
+// =============================================================================
+// affine input/output stages
+// =============================================================================
+
+/// scales input before forwarding: prev(scale * x)
 template <typename real_t, typename prev_t> struct input_scale_t
 {
     real_t scale;
@@ -104,23 +288,22 @@ template <typename real_t, typename prev_t> struct input_scale_t
 
     template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
-        return prev(x * scale);
+        return prev(x * static_cast<scalar_t>(scale));
     }
 
     template <int order, typename scalar_t>
     constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
     {
-        auto d = prev.template derivatives<order>(x * scale);
-
-        if constexpr (order >= 1) d.d1 *= scale;
-        if constexpr (order >= 2) d.d2 *= (scale * scale);
-        if constexpr (order >= 3) d.d3 *= (scale * scale * scale);
-
+        auto d = prev.template derivatives<order>(x * static_cast<scalar_t>(scale));
+        auto const s = static_cast<scalar_t>(scale);
+        if constexpr (order >= 1) d.d1 *= s;
+        if constexpr (order >= 2) d.d2 *= (s * s);
+        if constexpr (order >= 3) d.d3 *= (s * s * s);
         return d;
     }
 };
 
-/// offsets input before forwarding
+/// offsets input before forwarding: prev(x - offset). A pure shift, so derivatives are unchanged.
 template <typename real_t, typename prev_t> struct input_offset_t
 {
     real_t offset;
@@ -128,17 +311,17 @@ template <typename real_t, typename prev_t> struct input_offset_t
 
     template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
-        return prev(x - offset);
+        return prev(x - static_cast<scalar_t>(offset));
     }
 
     template <int order, typename scalar_t>
     constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
     {
-        return prev.template derivatives<order>(x - offset); // shift, no scale change
+        return prev.template derivatives<order>(x - static_cast<scalar_t>(offset));
     }
 };
 
-/// scales output
+/// scales output: prev(x) * scale. Linear, so every order scales.
 template <typename real_t, typename prev_t> struct output_scale_t
 {
     real_t scale;
@@ -146,22 +329,23 @@ template <typename real_t, typename prev_t> struct output_scale_t
 
     template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
-        return prev(x) * scale;
+        return prev(x) * static_cast<scalar_t>(scale);
     }
 
     template <int order, typename scalar_t>
     constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
     {
         auto d = prev.template derivatives<order>(x);
-        d.f *= scale;
-        if constexpr (order >= 1) d.d1 *= scale;
-        if constexpr (order >= 2) d.d2 *= scale;
-        if constexpr (order >= 3) d.d3 *= scale;
+        auto const s = static_cast<scalar_t>(scale);
+        d.f *= s;
+        if constexpr (order >= 1) d.d1 *= s;
+        if constexpr (order >= 2) d.d2 *= s;
+        if constexpr (order >= 3) d.d3 *= s;
         return d;
     }
 };
 
-/// offsets output
+/// offsets output: prev(x) + offset. A pure value shift, so only the 0th order changes.
 template <typename real_t, typename prev_t> struct output_offset_t
 {
     real_t offset;
@@ -169,320 +353,17 @@ template <typename real_t, typename prev_t> struct output_offset_t
 
     template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
-        return prev(x) + offset;
+        return prev(x) + static_cast<scalar_t>(offset);
     }
 
     template <int order, typename scalar_t>
     constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
     {
         auto d = prev.template derivatives<order>(x);
-
-        // shift only 0th order value
-        d.f += offset;
-
+        d.f += static_cast<scalar_t>(offset); // shifts only the value
         return d;
     }
 };
-
-// =============================================================================
-// 2. SOLVER CORE
-// =============================================================================
-
-template <std::floating_point real_t, typename monotone_fn_t>
-[[nodiscard]] constexpr auto bisect_lower_bound(real_t lo, real_t hi, real_t target, monotone_fn_t const& f) noexcept
-    -> real_t
-{
-    while (true)
-    {
-        auto const mid = std::midpoint(lo, hi);
-        if (mid == lo || mid == hi) break;
-
-        if (f(mid) < target) lo = mid;
-        else hi = mid;
-    }
-    return hi;
-}
-
-enum class placement_status_t
-{
-    found,
-    above_range,
-    below_range
-};
-
-template <std::floating_point t_real_t> struct placement_t
-{
-    using real_t = t_real_t;
-    real_t x3;
-    real_t x2;
-    real_t y2;
-    constexpr auto operator==(placement_t const&) const noexcept -> bool = default;
-};
-
-template <std::floating_point t_real_t> struct placement_result_t
-{
-    using real_t = t_real_t;
-    using placement_type = placement_t<real_t>;
-    placement_status_t status;
-    std::optional<placement_type> placement;
-
-    [[nodiscard]] constexpr auto engaged() const noexcept -> bool { return status == placement_status_t::found; }
-    constexpr auto operator==(placement_result_t const&) const noexcept -> bool = default;
-
-    static constexpr auto found(placement_type p) noexcept -> placement_result_t
-    {
-        return {.status = placement_status_t::found, .placement = p};
-    }
-    static constexpr auto above_range() noexcept -> placement_result_t
-    {
-        return {.status = placement_status_t::above_range, .placement = std::nullopt};
-    }
-    static constexpr auto below_range() noexcept -> placement_result_t
-    {
-        return {.status = placement_status_t::below_range, .placement = std::nullopt};
-    }
-};
-
-template <std::floating_point t_real_t> class placement_solver_t
-{
-public:
-    using real_t = t_real_t;
-    using result_t = placement_result_t<real_t>;
-
-    constexpr placement_solver_t(real_t domain_lo, real_t domain_hi) noexcept
-        : domain_lo_{domain_lo}, domain_hi_{domain_hi}
-    {}
-
-    template <typename model_t>
-    [[nodiscard]] constexpr auto operator()(model_t const& model, real_t target_gain) const -> result_t
-    {
-        auto const x2_lo = domain_lo_;
-        auto const x2_hi = model.max_x2(domain_hi_);
-        assert(x2_lo <= x2_hi && "placement_solver_t: knee wider than domain");
-
-        if (target_gain <= model.cap(x2_lo)) return result_t::below_range();
-        if (model.cap(x2_hi) < target_gain) return result_t::above_range();
-
-        auto const cap = [&model](real_t x2) { return model.cap(x2); };
-        auto const x2 = bisect_lower_bound(x2_lo, x2_hi, target_gain, cap);
-
-        return result_t::found(model.placement(x2));
-    }
-
-private:
-    real_t domain_lo_;
-    real_t domain_hi_;
-};
-
-template <std::floating_point t_real_t, typename t_subchain_t, typename t_subchain_derivative_t,
-    typename t_transition_t, typename t_rule_t = quadrature::rules::gauss_kronrod_t<t_real_t>>
-class knee_model_t
-{
-public:
-    using real_t = t_real_t;
-    using subchain_t = t_subchain_t;
-    using subchain_derivative_t = t_subchain_derivative_t;
-    using transition_t = t_transition_t;
-    using rule_t = t_rule_t;
-
-    constexpr knee_model_t(subchain_t const& subchain, subchain_derivative_t const& subchain_derivative,
-        transition_t const& transition, real_t w_l, rule_t rule = {}) noexcept
-        : subchain_{subchain}, subchain_derivative_{subchain_derivative}, transition_{transition}, w_l_{w_l},
-          rule_{std::move(rule)}
-    {}
-
-    [[nodiscard]] constexpr auto cap(real_t x2) const -> real_t { return subchain_(x2) + w_l_ * deficit(x2); }
-    [[nodiscard]] constexpr auto placement(real_t x2) const -> placement_t<real_t>
-    {
-        return {.x3 = x2 + w_l_, .x2 = x2, .y2 = subchain_(x2)};
-    }
-    [[nodiscard]] constexpr auto max_x2(real_t domain_hi) const noexcept -> real_t { return domain_hi - w_l_; }
-    [[nodiscard]] constexpr auto width() const noexcept -> real_t { return w_l_; }
-
-private:
-    [[nodiscard]] constexpr auto deficit(real_t x2) const -> real_t
-    {
-        auto const integrand = [this, x2](real_t s) noexcept {
-            return subchain_derivative_(x2 + w_l_ * s) * (real_t{1} - transition_.evaluate(s));
-        };
-
-        return rule_.integrate(real_t{0.0}, real_t{1.0}, integrand);
-    }
-
-    subchain_t const& subchain_;
-    subchain_derivative_t const& subchain_derivative_;
-    transition_t const& transition_;
-    real_t w_l_;
-    [[no_unique_address]] rule_t rule_;
-};
-
-namespace detail {
-template <std::floating_point real_t, typename inner_derivative_t, typename weight_t, typename rule_t>
-[[nodiscard]] constexpr auto build_blend_antiderivative(inner_derivative_t inner_derivative, real_t x_start, real_t w,
-    weight_t weight, real_t tolerance, int_t depth_limit, rule_t rule)
-{
-    static constexpr auto no_critical_points = std::array<real_t, 0>{};
-    auto const integrand = [inner_derivative = std::move(inner_derivative), weight = std::move(weight), x_start, w](
-                               real_t s) noexcept { return inner_derivative(x_start + w * s) * weight(s); };
-    auto integrator = quadrature::adaptive_integrator_t<real_t>{tolerance, depth_limit};
-    auto result = integrator(quadrature::integral_t{integrand, std::move(rule)}, real_t{1}, no_critical_points);
-    return std::move(result.antiderivative);
-}
-} // namespace detail
-
-// =============================================================================
-// 3. TRANSITION MATH NODES
-// =============================================================================
-
-template <typename real_t, typename prev_t, typename transition_fn_t, typename antiderivative_t> struct offset_taper_t
-{
-    real_t start;
-    real_t width;
-    real_t reciprocal_width;
-    real_t floor_value;
-    real_t deficit;
-    prev_t prev;
-    transition_fn_t transition_fn;
-    antiderivative_t antiderivative;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        // s in (0,1):  floor + width*antiderivative(s)
-        // s >= 1:      prev(x) + floor - deficit
-        //   where deficit = prev(start+width) - width*antiderivative(1)
-        //   so at s==1 both branches equal floor + width*antiderivative(1).  C1 by construction.
-
-        auto const s = (x - start) * reciprocal_width;
-        if (s <= value_t{0}) return static_cast<value_t>(floor_value);
-        if (s >= value_t{1}) return prev(x) + static_cast<value_t>(floor_value - deficit);
-        return static_cast<value_t>(floor_value + width * antiderivative(static_cast<real_t>(s)));
-    }
-
-    template <int order, typename scalar_t>
-    constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
-    {
-        auto d = derivatives_t<order, scalar_t>{};
-        d.f = this->operator()(x);
-        if constexpr (order == 0) return d;
-
-        auto const s = (x - start) * reciprocal_width;
-
-        if (s <= scalar_t{0})
-        {
-            // Floor region: all derivatives are 0
-            if constexpr (order >= 1) d.d1 = scalar_t{0};
-            if constexpr (order >= 2) d.d2 = scalar_t{0};
-            if constexpr (order >= 3) d.d3 = scalar_t{0};
-        }
-        else if (s >= scalar_t{1})
-        {
-            // Above region: pure curve, un-weighted
-            auto prev_d = prev.template derivatives<order>(x);
-            if constexpr (order >= 1) d.d1 = prev_d.d1;
-            if constexpr (order >= 2) d.d2 = prev_d.d2;
-            if constexpr (order >= 3) d.d3 = prev_d.d3;
-        }
-        else
-        {
-            // Inside region: The Product Rule
-            auto prev_d = prev.template derivatives<order>(x);
-
-            // The transition function is always evaluated one order lower than the curve.
-            constexpr int t_order = (order > 0) ? order - 1 : 0;
-            auto T = transition_fn.template derivatives<t_order>(static_cast<real_t>(s));
-
-            if constexpr (order >= 1) { d.d1 = prev_d.d1 * T.f; }
-            if constexpr (order >= 2)
-            {
-                d.d2 = (prev_d.d2 * T.f) + (prev_d.d1 * T.d1 * reciprocal_width);
-
-                if constexpr (order >= 3)
-                {
-                    auto const rw2 = reciprocal_width * reciprocal_width;
-                    d.d3 = (prev_d.d3 * T.f) + (scalar_t{2} * prev_d.d2 * T.d1 * reciprocal_width)
-                        + (prev_d.d1 * T.d2 * rw2);
-                }
-            }
-        }
-
-        return d;
-    }
-};
-
-template <typename real_t, typename prev_t, typename transition_fn_t, typename antiderivative_t> struct limiter_t
-{
-    real_t knee_start;
-    real_t width;
-    real_t reciprocal_width;
-    real_t cap;
-    prev_t prev;
-    transition_fn_t transition_fn;
-    antiderivative_t antiderivative;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        auto const s = (x - knee_start) * reciprocal_width;
-        if (s <= value_t{0}) return prev(x);
-        if (s >= value_t{1}) return static_cast<value_t>(cap);
-        return static_cast<value_t>(prev(knee_start) + width * antiderivative(static_cast<real_t>(s)));
-    }
-
-    template <int order, typename scalar_t>
-    constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
-    {
-        auto d = derivatives_t<order, scalar_t>{};
-        d.f = this->operator()(x);
-        if constexpr (order == 0) return d;
-
-        auto const s = (x - knee_start) * reciprocal_width;
-
-        if (s <= scalar_t{0})
-        {
-            // Base curve region: pure curve
-            auto prev_d = prev.template derivatives<order>(x);
-            if constexpr (order >= 1) d.d1 = prev_d.d1;
-            if constexpr (order >= 2) d.d2 = prev_d.d2;
-            if constexpr (order >= 3) d.d3 = prev_d.d3;
-        }
-        else if (s >= scalar_t{1})
-        {
-            // Cap region: f is locked, all derivatives are 0
-            if constexpr (order >= 1) d.d1 = scalar_t{0};
-            if constexpr (order >= 2) d.d2 = scalar_t{0};
-            if constexpr (order >= 3) d.d3 = scalar_t{0};
-        }
-        else
-        {
-            // Inside region: The Product Rule for (1 - W(t)) * g'(x)
-            auto prev_d = prev.template derivatives<order>(x);
-
-            constexpr int t_order = (order > 0) ? order - 1 : 0;
-            auto T = transition_fn.template derivatives<t_order>(static_cast<real_t>(s));
-
-            auto const v = scalar_t{1} - T.f;
-
-            if constexpr (order >= 1) { d.d1 = prev_d.d1 * v; }
-            if constexpr (order >= 2)
-            {
-                // Note the negative signs because we are differentiating (1 - W(t))
-                d.d2 = (prev_d.d2 * v) - (prev_d.d1 * T.d1 * reciprocal_width);
-
-                if constexpr (order >= 3)
-                {
-                    auto const rw2 = reciprocal_width * reciprocal_width;
-                    d.d3 = (prev_d.d3 * v) - (scalar_t{2} * prev_d.d2 * T.d1 * reciprocal_width)
-                        - (prev_d.d1 * T.d2 * rw2);
-                }
-            }
-        }
-
-        return d;
-    }
-};
-
-// =============================================================================
-// 4. AST FACTORIES
-// =============================================================================
 
 template <typename real_t, typename prev_t> constexpr auto make_input_scale(real_t scale, prev_t prev)
 {
@@ -501,74 +382,299 @@ template <typename real_t, typename prev_t> constexpr auto make_output_offset(re
     return output_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
 }
 
-template <std::floating_point real_t, typename prev_t, typename transition_fn_t,
-    typename rule_t = quadrature::rules::gauss_kronrod_t<real_t>>
-[[nodiscard]] constexpr auto make_offset_taper(prev_t prev, real_t start, real_t width, real_t floor_value,
-    transition_fn_t const& transition_fn, real_t tolerance, int_t depth_limit, rule_t rule = {})
-{
-    auto const prev_derivative = [prev](real_t x) noexcept { return prev.template derivatives<1>(x).d1; };
-    auto const weight = [transition_fn](real_t s) noexcept { return transition_fn.evaluate(s); };
-
-    auto antiderivative = detail::build_blend_antiderivative<real_t>(
-        prev_derivative, start, width, weight, tolerance, depth_limit, rule);
-    auto const local_integral = antiderivative(real_t{1});
-    auto const deficit = prev(start + width) - (width * local_integral);
-
-    using antiderivative_t = std::remove_cvref_t<decltype(antiderivative)>;
-    using result_node_t = offset_taper_t<real_t, prev_t, transition_fn_t, antiderivative_t>;
-
-    return result_node_t{.start = start,
-        .width = width,
-        .reciprocal_width = real_t{1} / width,
-        .floor_value = floor_value,
-        .deficit = deficit,
-        .prev = std::move(prev),
-        .transition_fn = std::move(transition_fn),
-        .antiderivative = std::move(antiderivative)};
-}
-
-template <std::floating_point real_t, typename prev_t, typename transition_fn_t,
-    typename rule_t = quadrature::rules::gauss_kronrod_t<real_t>>
-[[nodiscard]] constexpr auto make_limiter(prev_t prev, real_t limit_gain, real_t width, real_t domain_lo,
-    real_t domain_hi, transition_fn_t transition_fn, real_t tolerance, int_t depth_limit, rule_t rule = {})
-{
-    auto const prev_derivative = [prev](real_t x) noexcept { return prev.template derivatives<1>(x).d1; };
-    auto const weight = [transition_fn](real_t s) noexcept { return real_t{1} - transition_fn.evaluate(s); };
-
-    using model_t = knee_model_t<real_t, prev_t, decltype(prev_derivative), transition_fn_t, rule_t>;
-    using antiderivative_t = std::remove_cvref_t<decltype(detail::build_blend_antiderivative<real_t>(
-        prev_derivative, real_t{0}, width, weight, tolerance, depth_limit, rule))>;
-    using result_node_t = limiter_t<real_t, prev_t, transition_fn_t, antiderivative_t>;
-    using return_t = std::optional<result_node_t>;
-
-    auto const model = model_t{prev, prev_derivative, transition_fn, width, rule};
-    auto const solver = placement_solver_t<real_t>{domain_lo, domain_hi};
-    auto const placement = solver(model, limit_gain);
-
-    if (!placement.engaged()) return return_t{std::nullopt};
-
-    auto const knee_start = placement.placement->x2;
-    auto antiderivative = detail::build_blend_antiderivative<real_t>(
-        prev_derivative, knee_start, width, weight, tolerance, depth_limit, rule);
-    auto const cap = prev(knee_start) + width * antiderivative(real_t{1});
-
-    assert(std::abs(cap - limit_gain) <= tolerance * (real_t{1} + std::abs(limit_gain))
-        && "make_limiter: rebuilt cap diverged from solved target");
-
-    return return_t{result_node_t{.knee_start = knee_start,
-        .width = width,
-        .reciprocal_width = real_t{1} / width,
-        .cap = cap,
-        .prev = std::move(prev),
-        .transition_fn = std::move(transition_fn),
-        .antiderivative = std::move(antiderivative)}};
-}
-
 // =============================================================================
-// TEST MOCKS & RUNNER
+// domain warp stage
 // =============================================================================
 
-struct mock_quadratic_t
+/// domain warp stage
+///
+/// Warps the input x before forwarding to prev: forwards prev(phi(x)). phi is the integral of a
+/// velocity profile that is 0 (paused), rises across the optional offset transition, holds at 1
+/// (plateau), falls across the optional-but-placeable limit transition, then 0 (capped). Each
+/// transition is a single erf half. The two halves are independently optional:
+///   offset + limit -> paused / onset / plateau / limit / capped
+///   limit only     -> running-from-origin / limit / capped
+///   offset only    -> paused / onset / plateau-to-end          (limit never reached)
+///   neither        -> identity (phi = x); derivatives short-circuit to prev directly
+///
+/// phi is monotone and C-infinity (erf halves are smooth, their saturated joins machine-flat to
+/// both sides), so derivatives compose by the plain chain rule with no per-region special cases --
+/// compose absorbs the phi'=0 and phi'=1 degeneracies by formula.
+///
+/// Construct via make_domain_warp, which runs the one-time limit inversion and places the halves.
+template <std::floating_point t_real_t, typename t_prev_t, typename t_compose_t = compose_derivatives_t>
+class domain_warp_t
+{
+public:
+    using real_t = t_real_t;
+    using prev_t = t_prev_t;
+    using compose_t = t_compose_t;
+    using half_t = erf_half_t<real_t>;
+
+    /// Region boundaries are NOT stored here -- they live on the halves (band_lo/band_hi). Only the
+    /// stitch constants live here, and each is meaningful exactly when its half is present:
+    ///   lag        = offset->center() (or 0 when offset absent)  -- domain lag from the pause
+    ///   phi_at_b2  = limit->band_lo() - lag                      -- phi entering the limit band
+    ///   phi_capped = the inversion crossing x_cross              -- frozen ceiling input
+    struct config_t
+    {
+        std::optional<half_t> offset; // rising; absent => running from origin at slope 1
+        std::optional<half_t> limit; // falling (k < 0); absent => limit never engaged
+        real_t lag = real_t{0};
+        real_t phi_at_b2 = real_t{0};
+        real_t phi_capped = real_t{0};
+    };
+
+    domain_warp_t(config_t config, prev_t prev, compose_t compose = {}) noexcept
+        : config_{std::move(config)}, prev_{std::move(prev)}, compose_{std::move(compose)}
+    {}
+
+    constexpr auto operator()(real_t x) const noexcept -> real_t { return derivatives<0>(x).f; }
+
+    constexpr auto operator()(jet_t<real_t> x) const noexcept -> crv::jet_t<real_t>
+    {
+        auto const d = derivatives<1>(primal(x));
+        return crv::jet_t<real_t>{d.f, d.d1 * tangent(x)};
+    }
+
+    template <int order, typename scalar_t>
+    constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        // whole-warp identity: no transitions placed, phi = x. Skip the (provably passthrough)
+        // compose entirely and return prev's jet directly.
+        if (!config_.offset.has_value() && !config_.limit.has_value()) { return prev_.template derivatives<order>(x); }
+
+        auto const inner = warp_derivatives<order>(x); // {phi, phi', phi'', phi'''}
+        auto const outer = prev_.template derivatives<order>(inner.f); // prev's jet at y = phi(x)
+        return compose_.template operator()<order>(outer, inner);
+    }
+
+private:
+    enum class region_t
+    {
+        paused, // phi = 0
+        onset, // phi rises via the offset half
+        plateau, // phi = x - lag (or phi = x when offset absent, lag = 0)
+        limit, // phi rises more slowly via the falling limit half
+        capped // phi frozen at phi_capped
+    };
+
+    // single region decision, computed once on real(x). The regions are linearly ordered in x; a
+    // half that is absent simply removes its regions from the cascade. Value and all derivatives
+    // are then produced from the one chosen region, so they can never diverge.
+    template <typename scalar_t> constexpr auto classify(scalar_t x) const noexcept -> region_t
+    {
+        using std::real;
+        auto const rx = real(x);
+        auto const& c = config_;
+
+        if (c.offset.has_value())
+        {
+            if (rx <= c.offset->band_lo()) return region_t::paused;
+            if (rx < c.offset->band_hi()) return region_t::onset;
+        }
+        // past the offset (or no offset): either plateau/running, then the limit band, then capped.
+        if (c.limit.has_value())
+        {
+            if (rx < c.limit->band_lo()) return region_t::plateau; // running-from-origin if no offset
+            if (rx < c.limit->band_hi()) return region_t::limit;
+            return region_t::capped;
+        }
+        // limit absent: everything past the offset is the (unbounded) plateau / running region.
+        return region_t::plateau;
+    }
+
+    template <int order, typename scalar_t>
+    constexpr auto warp_derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        auto d = derivatives_t<order, scalar_t>{};
+
+        switch (classify(x))
+        {
+            case region_t::paused:
+                // phi = 0, all derivatives 0
+                return d;
+
+            case region_t::plateau:
+            {
+                // phi = x - lag, slope 1 (lag = 0 when offset absent => phi = x)
+                d.f = x - static_cast<scalar_t>(config_.lag);
+                if constexpr (order >= 1) d.d1 = scalar_t{1};
+                return d;
+            }
+
+            case region_t::capped:
+                // phi frozen at the crossing, all derivatives 0
+                d.f = static_cast<scalar_t>(config_.phi_capped);
+                return d;
+
+            case region_t::onset: return onset_jet<order>(x);
+
+            case region_t::limit: return limit_jet<order>(x);
+        }
+
+        return d; // unreachable; satisfies the compiler
+    }
+
+    // onset: phi rises from 0 via the offset half. phi value is the definite integral from the
+    // band start (anchoring constant cancels in the difference); phi' and higher come from the half
+    // shifted down one order (the half returns derivatives of phi', we need derivatives of phi).
+    template <int order, typename scalar_t>
+    constexpr auto onset_jet(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        auto const& half = *config_.offset;
+        auto d = half.template derivatives<order>(x); // d.f = g_L(x) = phi'
+        shift_down_one_order<order>(d);
+        d.f = half.template integral<scalar_t>(x) - half.template integral(static_cast<scalar_t>(half.band_lo()));
+        return d;
+    }
+
+    // limit: phi continues from phi_at_b2 plus the definite integral of the falling half from its
+    // band start; phi' and higher come from the half shifted down one order.
+    template <int order, typename scalar_t>
+    constexpr auto limit_jet(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+    {
+        auto const& half = *config_.limit;
+        auto d = half.template derivatives<order>(x); // d.f = g_R(x) = phi'
+        shift_down_one_order<order>(d);
+        d.f = static_cast<scalar_t>(config_.phi_at_b2)
+            + (half.template integral<scalar_t>(x) - half.template integral(static_cast<scalar_t>(half.band_lo())));
+        return d;
+    }
+
+    // The half's derivatives<n> returns {g, g', g'', g'''} where g = phi'. We need
+    // {phi, phi', phi'', phi'''}: phi' = g, phi'' = g', phi''' = g''. Slide each member down one
+    // slot; the caller overwrites d.f with the actual phi (the integral). g''' is dropped -- phi
+    // needs only up to phi''' = g'', which order-3 of the half supplies.
+    template <int order, typename scalar_t>
+    constexpr auto shift_down_one_order(derivatives_t<order, scalar_t>& d) const noexcept -> void
+    {
+        if constexpr (order >= 3) d.d3 = d.d2; // phi''' = g''
+        if constexpr (order >= 2) d.d2 = d.d1; // phi''  = g'
+        if constexpr (order >= 1) d.d1 = d.f; // phi'   = g
+        // d.f overwritten by caller with phi (the integral)
+    }
+
+    config_t config_;
+    prev_t prev_;
+    [[no_unique_address]] compose_t compose_;
+};
+
+// =============================================================================
+// domain warp factory
+// =============================================================================
+
+namespace detail {
+
+// leftmost x in [lo, hi] where g(x) >= target, by bisection to fp collapse, clamped to hi.
+//
+// Assumes g monotone increasing on [lo, hi] -- maintained by construction throughout the chain
+// (all base curves are monotone), so it is not re-checked here. The returned bool reports whether
+// the target was actually reached: when g(hi) < target the crossing does not exist and we return
+// {hi, false} so the caller can choose not to place the limit half. (v1 simply omits it; this is
+// exactly the point that soft roll-on of the limit will later replace.)
+template <std::floating_point real_t, typename g_t>
+[[nodiscard]] auto bisect_crossing(real_t lo, real_t hi, real_t target, g_t const& g) noexcept
+    -> std::pair<real_t, bool>
+{
+    if (g(hi) < target) return {hi, false}; // never reached -- ROLL-ON HOOK
+    if (g(lo) >= target) return {lo, true}; // reached at or before the domain start
+
+    while (true)
+    {
+        auto const mid = std::midpoint(lo, hi);
+        if (mid == lo || mid == hi) break;
+        if (g(mid) < target) lo = mid;
+        else hi = mid;
+    }
+    return {hi, true};
+}
+
+} // namespace detail
+
+/// builds a domain warp, running the one-time limit inversion against prev.
+///
+/// prev is the fully output-shaped curve g = scale*base + offset (input transforms already inside
+/// base); the limit value is measured on g, so the inversion searches g directly. offset_width <= 0
+/// (or no offset_center) disables the offset transition (running from the origin). If the limit is
+/// never reached on [domain_lo, domain_hi], the limit half is omitted (v1: caps at the curve's own
+/// maximum; gentle roll-on of the limit is deferred). With neither transition present the warp is
+/// the identity.
+template <std::floating_point real_t, typename prev_t, typename compose_t = compose_derivatives_t>
+[[nodiscard]] auto make_domain_warp(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
+    real_t offset_width, real_t domain_lo, real_t domain_hi, compose_t compose = {})
+{
+    using warp_t = domain_warp_t<real_t, prev_t, compose_t>;
+    using half_t = erf_half_t<real_t>;
+    using config_t = typename warp_t::config_t;
+
+    assert(limit_width > real_t{0} && "make_domain_warp: limit_width must be positive");
+
+    // --- offset placement (optional) ---
+    auto offset_half = std::optional<half_t>{};
+    auto lag = real_t{0};
+    if (offset_center.has_value() && offset_width > real_t{0})
+    {
+        auto const c_L = *offset_center;
+        auto const k_L = erf_sharpness_from_width(offset_width); // rising: k_L > 0
+        offset_half.emplace(c_L, k_L);
+        // symmetric rising sigmoid: area over its band == half_width exactly, so the lag (the
+        // domain shift accumulated by pausing then unpausing) equals the offset center.
+        lag = c_L;
+
+        // onset->plateau continuity: phi at the end of the onset equals the lagged-line value at
+        // the same x. onset_end = integral over the band == half_width; lagged line at band_hi is
+        // band_hi - lag = (c_L + h_L) - c_L = h_L. Equal by the symmetric-area identity.
+        auto const onset_end
+            = offset_half->integral(offset_half->band_hi()) - offset_half->integral(offset_half->band_lo());
+        auto const lagged_line_at_band_hi = offset_half->band_hi() - lag;
+        assert(std::abs(onset_end - lagged_line_at_band_hi)
+                <= real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(onset_end))
+            && "make_domain_warp: onset/plateau join discontinuous (symmetric-area assumption broken)");
+    }
+
+    // --- limit inversion: leftmost x where g reaches the limit ---
+    auto const g = [&prev](real_t x) noexcept { return prev(x); };
+    auto const [x_cross, reached] = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
+
+    auto limit_half = std::optional<half_t>{};
+    auto phi_at_b2 = real_t{0};
+    auto phi_capped = real_t{0};
+
+    if (reached)
+    {
+        // falling half: k_R < 0. c_R = x_cross + lag (symmetric falling area == half_width, so the
+        // center lands exactly at the lagged crossing; phi_capped then == x_cross by construction).
+        auto const k_R = -erf_sharpness_from_width(limit_width);
+        auto const c_R = x_cross + lag;
+        limit_half.emplace(c_R, k_R);
+
+        phi_at_b2 = limit_half->band_lo() - lag;
+
+        // non-overlap: the onset must finish saturating before the limit band starts.
+        assert((!offset_half.has_value() || offset_half->band_hi() <= limit_half->band_lo())
+            && "make_domain_warp: offset and limit transitions overlap; the UI must keep them disjoint");
+
+        // phi_capped == x_cross by construction (the crossing is exactly the frozen input that
+        // makes g(phi_capped) == limit). Computed independently and asserted to match, as a loud
+        // check that the symmetric-area placement held.
+        phi_capped
+            = phi_at_b2 + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
+        assert(std::abs(phi_capped - x_cross)
+                <= real_t{16} * std::numeric_limits<real_t>::epsilon() * (real_t{1} + std::abs(x_cross))
+            && "make_domain_warp: limit placement diverged from the crossing (symmetric-area broken)");
+    }
+
+    auto config = config_t{.offset = std::move(offset_half),
+        .limit = std::move(limit_half),
+        .lag = lag,
+        .phi_at_b2 = phi_at_b2,
+        .phi_capped = phi_capped};
+
+    return warp_t{std::move(config), std::move(prev), std::move(compose)};
+}
+
+struct quadratic_t
 {
     template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return x * x; }
     template <int order, typename scalar_t>
@@ -585,34 +691,28 @@ struct mock_quadratic_t
 
 TEST(signal_chain_test, integration)
 {
-    using real_t = float_t;
+    using real_t = float64_t;
     // using scalar_t = real_t;
 
-    auto const smooth_blend = c4_transition_t{};
-    auto const rule = quadrature::rules::gauss_kronrod_t<real_t>{};
-    auto const base_curve = mock_quadratic_t{};
+    auto const base_curve = quadratic_t{};
+    auto const y0 = real_t{0.25};
+    auto const output_scale = real_t{1.5};
+    auto const limit = real_t{17.0};
+    auto const limit_width = real_t{0.5};
+    auto const offset_center = real_t{0.5};
+    auto const offset_width = real_t{0.25};
+    auto const domain_lo = real_t{0.0};
+    auto const domain_hi = real_t{256.0};
 
-    // Note: Single seamless chain construction. The compiler tracks ALL d for you.
-    auto inner_chain = make_input_offset(0.5, make_input_scale(1.25, base_curve));
+    auto output_chain = make_domain_warp(make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit,
+        limit_width, std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
 
-    auto taper = make_offset_taper<real_t>(std::move(inner_chain),
-        /*start=*/0.5,
-        /*width=*/0.5,
-        /*floor=*/0.25, smooth_blend, 1e-6, 10, rule);
-
-    auto unlimited_chain = make_output_offset(0.25, make_output_scale(0.65, std::move(taper)));
-
-    auto output_chain_opt = make_limiter<real_t>(std::move(unlimited_chain),
-        /*limit_gain=*/17.0,
-        /*limiter_width=*/1.0,
-        /*domain_lo=*/0.0,
-        /*domain_hi=*/100.0, smooth_blend, 1e-6, 10, rule);
-
-    ASSERT_TRUE(output_chain_opt.has_value());
-    auto const& output_chain = *output_chain_opt;
-
-    auto const dx = 0.1;
-    for (auto x = real_t{0.0}; x < 5.0 + dx * 3; x += dx) { std::cout << x << ", " << output_chain(x) << "\n"; }
+    auto const dx = static_cast<real_t>(0.1);
+    for (auto x = jet_t<real_t>{0.0, 1.0}; x.f < static_cast<real_t>(5.0) + dx * 3; x += dx)
+    {
+        auto y = output_chain(x);
+        std::cout << x.f << ", (" << y.f << ", " << y.df << ")\n";
+    }
     std::cout.flush();
 }
 
