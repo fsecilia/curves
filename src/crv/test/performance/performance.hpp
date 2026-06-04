@@ -15,4 +15,10 @@ template <typename value_t> inline void do_not_optimize(value_t const& value) no
     asm volatile("" : : "r,m"(value) : "memory");
 }
 
+/// prevents compiler from moving memory operations across this boundary
+inline void clobber_memory() noexcept
+{
+    asm volatile("" : : : "memory");
+}
+
 } // namespace crv
