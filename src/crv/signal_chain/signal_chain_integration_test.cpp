@@ -19,7 +19,6 @@
 #include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
-#include <array>
 #include <cassert>
 #include <cmath>
 #include <concepts>
@@ -589,19 +588,14 @@ private:
 
 namespace detail {
 
-// leftmost x in [lo, hi] where g(x) >= target, by bisection to fp collapse, clamped to hi.
-//
-// Assumes g monotone increasing on [lo, hi] -- maintained by construction throughout the chain
-// (all base curves are monotone), so it is not re-checked here. The returned bool reports whether
-// the target was actually reached: when g(hi) < target the crossing does not exist and we return
-// {hi, false} so the caller can choose not to place the limit half. (v1 simply omits it; this is
-// exactly the point that soft roll-on of the limit will later replace.)
+// leftmost x in [lo, hi] where g(x) >= target, by bisection to fp collapse.
+// Returns std::nullopt if the target is never reached on the interval.
 template <std::floating_point real_t, typename g_t>
-[[nodiscard]] auto bisect_crossing(real_t lo, real_t hi, real_t target, g_t const& g) noexcept
-    -> std::pair<real_t, bool>
+[[nodiscard]] constexpr auto bisect_crossing(real_t lo, real_t hi, real_t target, g_t const& g) noexcept
+    -> std::optional<real_t>
 {
-    if (g(hi) < target) return {hi, false}; // never reached -- ROLL-ON HOOK
-    if (g(lo) >= target) return {lo, true}; // reached at or before the domain start
+    if (g(hi) < target) return std::nullopt; // The limit is beyond the curve's reach
+    if (g(lo) >= target) return lo; // Reached at or before the domain start
 
     while (true)
     {
@@ -610,7 +604,7 @@ template <std::floating_point real_t, typename g_t>
         if (g(mid) < target) lo = mid;
         else hi = mid;
     }
-    return {hi, true};
+    return hi;
 }
 
 } // namespace detail
@@ -661,14 +655,16 @@ struct domain_warp_factory_t
 
         // --- limit inversion: leftmost x where g reaches the limit ---
         auto const g = [&prev](real_t x) noexcept { return prev(x); };
-        auto const [x_cross, reached] = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
+        auto const crossing = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
 
         auto limit_half = std::optional<half_t>{};
         auto phi_at_b2 = real_t{0};
         auto phi_capped = real_t{0};
 
-        if (reached)
+        if (crossing.has_value())
         {
+            auto const x_cross = *crossing;
+
             // falling half: k_R < 0. c_R = x_cross + lag (symmetric falling area == half_width, so the
             // center lands exactly at the lagged crossing; phi_capped then == x_cross by construction).
             auto const k_R = -erf_sharpness_from_width(limit_width);
