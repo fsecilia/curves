@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/scalar_traits.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/param.hpp>
 #include <crv/signal_chain/curves/derivatives.hpp>
@@ -20,10 +21,18 @@ namespace crv::model::curves {
 
 /// log-normal curve
 ///
-/// This curve is the CDF of a log-normal: f(x) = 1/2 + 1/2 erf((log x - mu)/(sigma*sqrt2)), with mu and sigma derived
-/// from the center and width of the transition from 0. f rises monotonically from a saturated floor of 0 toward 1.
+/// This curve is the CDF of a log-normal:
+///
+///     f(x) = 1/2 + 1/2 erf((log x - mu)/(sigma*sqrt2))
+///
+/// Mu and sigma are derived from the center and width of the transition from 0. f rises monotonically from a saturated
+/// floor of 0 and approaches 1.0 asymptotically.
 struct log_normal_t
 {
+    //
+    // config
+    //
+
     struct config_t
     {
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> center{"Center", 5.0};
@@ -41,7 +50,10 @@ struct log_normal_t
         constexpr auto operator==(config_t const&) const noexcept -> bool = default;
     };
 
-    /// evaluator
+    //
+    // evaluator
+    //
+
     template <typename t_scalar_t> class evaluator_t
     {
     public:
@@ -50,8 +62,7 @@ struct log_normal_t
         using real_t = real_type_t<scalar_t>;
         using jet_t = crv::jet_t<scalar_t>;
 
-        // x-space tolerance knob.
-        static constexpr double threshold_x_origin = 1e-12; // below this x, treat as saturated origin
+        static constexpr double x_origin_saturation_threshold = 1e-12;
 
         constexpr explicit evaluator_t(config_t const& config) noexcept
             : mu_{log(static_cast<scalar_t>(config.center.value())) + static_cast<scalar_t>(config.width.value())},
@@ -59,65 +70,46 @@ struct log_normal_t
         {}
 
         // scalar form
-        constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return derivatives<0>(x).f; }
+        constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return evaluate<0>(x); }
 
         /// 1-jet form; honors input tangent
-        constexpr auto operator()(jet_t x) const noexcept -> jet_t
-        {
-            auto const d = derivatives<1>(primal(x));
-            return jet_t{d.f, d.d1 * tangent(x)};
-        }
+        constexpr auto operator()(jet_t x) const noexcept -> jet_t { return evaluate<1>(x); }
 
         /// array of critical points
         ///
         /// The log-normal CDF is strictly monotone in x, so f' > 0 for all finite x > 0, so there are no critical
         /// points.
-        auto critical_points() const -> std::vector<scalar_t> { return {}; }
+        auto critical_points() const noexcept -> std::vector<scalar_t> { return {}; }
 
+    private:
         /// calculates base function and up to order-n derivatives
-        template <int order> constexpr auto derivatives(scalar_t x) const noexcept -> derivatives_t<order, scalar_t>
+        /// \returns scalar_t for order 0, jet_t for order 1
+        template <int_t order, typename value_t> constexpr auto evaluate(value_t input) const noexcept -> auto
         {
             using std::real;
 
-            static_assert(order >= 0 && order <= 3, "lognormal exposes value and derivative orders 1..3");
+            static_assert(0 <= order && order <= 1);
+
+            auto const x = primal(input);
 
             // origin branch
-            if (real(x) < threshold_x_origin)
-            {
-                // use limit definition: f = 0, every derivative 0
-                return derivatives_t<order, scalar_t>{};
-            }
+            if (real(x) < x_origin_saturation_threshold) return value_t{};
 
             // linear in s with dz/ds = c constant.
             auto const z = (log(x) - mu_) * c_; // z = (s - mu) c
             auto const f = scalar_t{0.5} + scalar_t{0.5} * complex_step_erf(z); // f = 1/2 + 1/2 erf(z)
 
-            if constexpr (order == 0) return {f};
+            if constexpr (order == 0) return value_t{f};
             else
             {
                 // f_s1 = (c/sqrt(pi)) e^{-z^2}.
                 auto const f_s1 = c_ * inv_sqrt_pi_ * exp(-(z * z));
                 auto const inv_x = scalar_t{1} / x;
                 auto const d1 = f_s1 * inv_x;
-                if constexpr (order == 1) return {f, d1};
-                else
-                {
-                    auto const f_s2 = f_s1 * (scalar_t{-2} * c_ * z); // d/ds of f_s1
-                    auto const inv_x2 = inv_x * inv_x;
-                    auto const d2 = (f_s2 - f_s1) * inv_x2;
-                    if constexpr (order == 2) return {f, d1, d2};
-                    else
-                    {
-                        auto const f_s3 = f_s1 * (c_ * c_) * (scalar_t{4} * z * z - scalar_t{2}); // d/ds of f_s2
-                        auto const inv_x3 = inv_x2 * inv_x;
-                        auto const d3 = (f_s3 - scalar_t{3} * f_s2 + scalar_t{2} * f_s1) * inv_x3;
-                        return {f, d1, d2, d3};
-                    }
-                }
+                return jet_t{f, d1 * tangent(input)};
             }
         }
 
-    private:
         // partial implementation of complex erf, just enough to run complex-step tests
         //
         // real scalar_t delegates to the standard-library erf. complex scalar_t is only implemented enough to support
@@ -129,7 +121,7 @@ struct log_normal_t
         // This is precisely what Im(f(x+ih))/h reads back. It is not erf off the real axis. For any finite b, the
         // imaginary part is wrong. It is correct solely for the infinitesimal b inputs complex-step produces, which is
         // the only way the complex evaluator is ever called.
-        static auto complex_step_erf(scalar_t z) -> scalar_t
+        static auto complex_step_erf(scalar_t z) noexcept -> scalar_t
         {
             if constexpr (std::floating_point<scalar_t>) return erf(z);
             else
