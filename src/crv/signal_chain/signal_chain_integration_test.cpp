@@ -152,8 +152,8 @@ inline real_t const erf_saturation_z = [] {
 template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness_from_width(real_t w) noexcept -> real_t
 {
     // (30 sqrt pi)^(1/3) as a literal, so this stays constexpr without a runtime cbrt/sqrt.
-    // 30 * 1.7724538509055160273 = 53.173615527165..., cube root = 3.76237506018...
-    constexpr real_t cube_root_30_sqrt_pi = static_cast<real_t>(3.7623750601800463L);
+    // 30 * 1.7724538509055160273 = 53.173615527165..., cube root = 3.7603828531416483...
+    constexpr real_t cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483L);
     return cube_root_30_sqrt_pi / w;
 }
 
