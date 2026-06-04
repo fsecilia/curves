@@ -69,26 +69,9 @@ struct log_normal_t
               c_{scalar_t{1} / (sqrt(static_cast<scalar_t>(config.width.value())) * sqrt2_)}
         {}
 
-        // scalar form
-        constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return evaluate<0>(x); }
-
-        /// 1-jet form; honors input tangent
-        constexpr auto operator()(jet_t x) const noexcept -> jet_t { return evaluate<1>(x); }
-
-        /// array of critical points
-        ///
-        /// The log-normal CDF is strictly monotone in x, so f' > 0 for all finite x > 0, so there are no critical
-        /// points.
-        auto critical_points() const noexcept -> std::vector<scalar_t> { return {}; }
-
-    private:
-        /// calculates base function and up to order-n derivatives
-        /// \returns scalar_t for order 0, jet_t for order 1
-        template <int_t order, typename value_t> constexpr auto evaluate(value_t input) const noexcept -> auto
+        template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
         {
             using std::real;
-
-            static_assert(0 <= order && order <= 1);
 
             auto const x = primal(input);
 
@@ -99,17 +82,24 @@ struct log_normal_t
             auto const z = (log(x) - mu_) * c_; // z = (s - mu) c
             auto const f = scalar_t{0.5} + scalar_t{0.5} * complex_step_erf(z); // f = 1/2 + 1/2 erf(z)
 
-            if constexpr (order == 0) return value_t{f};
-            else
+            if constexpr (is_jet<value_t>)
             {
                 // f_s1 = (c/sqrt(pi)) e^{-z^2}.
                 auto const f_s1 = c_ * inv_sqrt_pi_ * exp(-(z * z));
                 auto const inv_x = scalar_t{1} / x;
                 auto const d1 = f_s1 * inv_x;
-                return jet_t{f, d1 * tangent(input)};
+                return {f, d1 * tangent(input)};
             }
+            else return f;
         }
 
+        /// array of critical points
+        ///
+        /// The log-normal CDF is strictly monotone in x, so f' > 0 for all finite x > 0, so there are no critical
+        /// points.
+        auto critical_points() const noexcept -> std::vector<scalar_t> { return {}; }
+
+    private:
         // partial implementation of complex erf, just enough to run complex-step tests
         //
         // real scalar_t delegates to the standard-library erf. complex scalar_t is only implemented enough to support
