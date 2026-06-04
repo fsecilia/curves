@@ -6,7 +6,6 @@
 #include <crv/lib.hpp>
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/math/scalar_traits.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
@@ -23,7 +22,7 @@
 
 namespace crv::signal_chain {
 
-template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{0.01};
+template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 // --------------------------------------------------------------------------------------------------------------------h
 
@@ -47,9 +46,9 @@ constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
     return "Unknown warp error.";
 }
 
-//
+// =============================================================================
 // erf saturation threshold and width->sharpness mapping
-//
+// =============================================================================
 
 template <std::floating_point real_t>
 inline real_t const erf_saturation_z = [] {
@@ -64,9 +63,9 @@ template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness
     return cube_root_30_sqrt_pi / w;
 }
 
-//
+// =============================================================================
 // one half of the warp velocity profile
-//
+// =============================================================================
 
 template <std::floating_point t_real_t> class erf_half_t
 {
@@ -106,26 +105,27 @@ public:
         auto const k = static_cast<value_t>(k_);
         auto const inv_sqrt_pi = static_cast<value_t>(inv_sqrt_pi_);
 
-        auto const G = value_t{0.5} * z * (value_t{1} + erf_(z)) + value_t{0.5} * inv_sqrt_pi * exp(-(z * z));
+        auto const G = value_t{0.5} * (z * (value_t{1} + erf_(z)) + inv_sqrt_pi * exp(-(z * z)));
         return G / k;
     }
 
 private:
+    // This is *not* complex erf. It is erf with a complex approxiation within epsilon of the real line.
     template <typename value_t> static auto erf_(value_t z) -> value_t
     {
         using std::exp;
-        if constexpr (std::floating_point<value_t>)
-        {
-            using std::erf;
-            return erf(z);
-        }
-        else
+        if constexpr (is_complex<value_t>)
         {
             using real_type = real_type_t<value_t>;
             auto const a = z.real();
             auto const b = z.imag();
             using std::erf;
             return value_t{erf(a), b * static_cast<real_type>(two_over_sqrt_pi_) * exp(-a * a)};
+        }
+        else
+        {
+            using std::erf;
+            return erf(z);
         }
     }
 
@@ -137,9 +137,9 @@ private:
     real_t half_width_;
 };
 
-//
+// =============================================================================
 // affine input/output stages
-//
+// =============================================================================
 
 template <typename real_t, typename prev_t> struct input_scale_t
 {
@@ -148,34 +148,7 @@ template <typename real_t, typename prev_t> struct input_scale_t
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x * static_cast<value_t>(scale));
-    }
-
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        auto const s = static_cast<value_t>(scale);
-        if constexpr (order == 0) { return prev.template evaluate<0>(x * s); }
-        else
-        {
-            auto inner = prev.template evaluate<1>(x * s);
-            return crv::jet_t<value_t>{inner.f, inner.df * s};
-        }
-    }
-};
-
-template <typename real_t, typename prev_t> struct input_offset_t
-{
-    real_t offset;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x - static_cast<value_t>(offset));
-    }
-
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        return prev.template evaluate<order>(x - static_cast<value_t>(offset));
+        return prev(x * scale);
     }
 };
 
@@ -186,18 +159,7 @@ template <typename real_t, typename prev_t> struct output_scale_t
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x) * static_cast<value_t>(scale);
-    }
-
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        auto const s = static_cast<value_t>(scale);
-        if constexpr (order == 0) { return prev.template evaluate<0>(x) * s; }
-        else
-        {
-            auto inner = prev.template evaluate<1>(x);
-            return crv::jet_t<value_t>{inner.f * s, inner.df * s};
-        }
+        return prev(x) * scale;
     }
 };
 
@@ -208,28 +170,13 @@ template <typename real_t, typename prev_t> struct output_offset_t
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x) + static_cast<value_t>(offset);
-    }
-
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        auto const o = static_cast<value_t>(offset);
-        if constexpr (order == 0) { return prev.template evaluate<0>(x) + o; }
-        else
-        {
-            auto inner = prev.template evaluate<1>(x);
-            return crv::jet_t<value_t>{inner.f + o, inner.df};
-        }
+        return prev(x) + offset;
     }
 };
 
 template <typename real_t, typename prev_t> constexpr auto make_input_scale(real_t scale, prev_t prev)
 {
     return input_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
-}
-template <typename real_t, typename prev_t> constexpr auto make_input_offset(real_t offset, prev_t prev)
-{
-    return input_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
 }
 template <typename real_t, typename prev_t> constexpr auto make_output_scale(real_t scale, prev_t prev)
 {
@@ -240,9 +187,9 @@ template <typename real_t, typename prev_t> constexpr auto make_output_offset(re
     return output_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
 }
 
-//
+// =============================================================================
 // domain warp stage
-//
+// =============================================================================
 
 template <std::floating_point t_real_t, typename t_prev_t> class domain_warp_t
 {
@@ -262,25 +209,11 @@ public:
 
     domain_warp_t(config_t config, prev_t prev) noexcept : config_{std::move(config)}, prev_{std::move(prev)} {}
 
-    constexpr auto operator()(real_t x) const noexcept -> real_t { return evaluate<0>(x); }
-
-    constexpr auto operator()(crv::jet_t<real_t> x) const noexcept -> crv::jet_t<real_t>
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        auto const inner = evaluate<1>(primal(x));
-        return crv::jet_t<real_t>{inner.f, inner.df * tangent(x)};
-    }
+        if (!config_.offset.has_value() && !config_.limit.has_value()) return prev_(x);
 
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        if (!config_.offset.has_value() && !config_.limit.has_value()) { return prev_.template evaluate<order>(x); }
-
-        if constexpr (order == 0) { return prev_.template evaluate<0>(warp_evaluate<0>(x)); }
-        else
-        {
-            auto const inner = warp_evaluate<1>(x); // jet_t<value_t>
-            auto const outer = prev_.template evaluate<1>(inner.f); // jet_t<value_t>
-            return crv::jet_t<value_t>{outer.f, outer.df * inner.df};
-        }
+        return prev_(warp_evaluate(x));
     }
 
 private:
@@ -296,80 +229,67 @@ private:
     template <typename value_t> constexpr auto classify(value_t x) const noexcept -> region_t
     {
         using std::real;
-        auto const rx = real(x);
-        auto const& c = config_;
 
-        if (c.offset.has_value())
+        auto const rx = real(x);
+
+        if (config_.offset.has_value())
         {
-            if (rx <= c.offset->band_lo()) return region_t::paused;
-            if (rx < c.offset->band_hi()) return region_t::onset;
+            if (rx <= config_.offset->band_lo()) return region_t::paused;
+            if (rx < config_.offset->band_hi()) return region_t::onset;
         }
-        if (c.limit.has_value())
+
+        if (config_.limit.has_value())
         {
-            if (rx < c.limit->band_lo()) return region_t::plateau;
-            if (rx < c.limit->band_hi()) return region_t::limit;
+            if (rx < config_.limit->band_lo()) return region_t::plateau;
+            if (rx < config_.limit->band_hi()) return region_t::limit;
             return region_t::capped;
         }
+
         return region_t::plateau;
     }
 
-    template <int order, typename value_t> constexpr auto warp_evaluate(value_t x) const noexcept
+    template <typename value_t> constexpr auto warp_evaluate(value_t x) const noexcept -> value_t
     {
-        switch (classify(x))
+        switch (classify(primal(x)))
         {
-            case region_t::paused:
-                if constexpr (order == 0) return value_t{0};
-                else return crv::jet_t<value_t>{value_t{0}, value_t{0}};
-
-            case region_t::plateau:
-            {
-                auto const phi = x - static_cast<value_t>(config_.lag);
-                if constexpr (order == 0) return phi;
-                else return crv::jet_t<value_t>{phi, value_t{1}};
-            }
-
-            case region_t::capped:
-            {
-                auto const phi = static_cast<value_t>(config_.phi_capped);
-                if constexpr (order == 0) return phi;
-                else return crv::jet_t<value_t>{phi, value_t{0}};
-            }
-
-            case region_t::onset: return onset_evaluate<order>(x);
-            case region_t::limit: return limit_evaluate<order>(x);
+            case region_t::paused: return value_t{};
+            case region_t::plateau: return x - config_.lag;
+            case region_t::capped: return value_t{config_.phi_capped};
+            case region_t::onset: return onset_evaluate(x);
+            case region_t::limit: return limit_evaluate(x);
         }
-
-        if constexpr (order == 0) return value_t{0};
-        else return crv::jet_t<value_t>{value_t{0}, value_t{0}};
+        return value_t{};
     }
 
-    template <int order, typename value_t> constexpr auto onset_evaluate(value_t x) const noexcept
+    template <typename value_t> constexpr auto onset_evaluate(value_t x) const noexcept -> value_t
     {
         auto const& half = *config_.offset;
-        auto const phi
-            = half.template integral<value_t>(x) - half.template integral(static_cast<value_t>(half.band_lo()));
 
-        if constexpr (order == 0) return phi;
-        else return crv::jet_t<value_t>{phi, half.evaluate(x)};
+        auto const p = primal(x);
+        auto const phi = half.integral(p) - half.integral(half.band_lo());
+
+        if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
+        else return phi;
     }
 
-    template <int order, typename value_t> constexpr auto limit_evaluate(value_t x) const noexcept
+    template <typename value_t> constexpr auto limit_evaluate(value_t x) const noexcept -> value_t
     {
         auto const& half = *config_.limit;
-        auto const phi = static_cast<value_t>(config_.phi_at_b2)
-            + (half.template integral<value_t>(x) - half.template integral(static_cast<value_t>(half.band_lo())));
 
-        if constexpr (order == 0) return phi;
-        else return crv::jet_t<value_t>{phi, half.evaluate(x)};
+        auto const p = primal(x);
+        auto const phi = config_.phi_at_b2 + (half.integral(p) - half.integral(half.band_lo()));
+
+        if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
+        else return phi;
     }
 
     config_t config_;
     prev_t prev_;
 };
 
-//
+// =============================================================================
 // domain warp factory
-//
+// =============================================================================
 
 namespace detail {
 
@@ -456,12 +376,13 @@ template <std::floating_point real_t, real_t min_spline_transition_width> struct
             }
         }
 
-        auto config = config_t{.offset = std::move(offset_half),
+        auto config = config_t{
+            .offset = std::move(offset_half),
             .limit = std::move(limit_half),
             .lag = lag,
             .phi_at_b2 = phi_at_b2,
-            .phi_capped = phi_capped};
-
+            .phi_capped = phi_capped,
+        };
         return warp_t{std::move(config), std::move(prev)};
     }
 };
@@ -469,12 +390,6 @@ template <std::floating_point real_t, real_t min_spline_transition_width> struct
 struct quadratic_t
 {
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t { return x * x; }
-
-    template <int order, typename value_t> constexpr auto evaluate(value_t x) const noexcept
-    {
-        if constexpr (order == 0) return x * x;
-        else return crv::jet_t<value_t>{x * x, value_t{2} * x};
-    }
 };
 
 TEST(signal_chain_test, integration)
@@ -499,10 +414,10 @@ TEST(signal_chain_test, integration)
     auto const& output_chain = *output_chain_result;
 
     auto const dx = static_cast<real_t>(0.1);
-    for (auto x = crv::jet_t<real_t>{0.0, 1.0}; x.f < static_cast<real_t>(5.0) + dx * 3; x += dx)
+    for (auto x = 0.0; x < static_cast<real_t>(5.0) + dx * 3; x += dx)
     {
-        auto const y = output_chain(x);
-        std::cout << x.f << ", (" << y.f << ", " << y.df << ")\n";
+        auto const y = output_chain(jet_t{x, 1.0});
+        std::cout << x << ", (" << primal(y) << ", " << tangent(y) << ")\n";
     }
     std::cout.flush();
 }
