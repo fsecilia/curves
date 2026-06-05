@@ -81,6 +81,7 @@ TEST(spline_generator_test, integration_test)
     constexpr auto domain_end = 1 << log2_domain_end;
     constexpr auto log2_min_width = -10;
     constexpr auto global_tolerance = 1e-10; // should max against integral
+    constexpr auto y_limit = 1000.0;
 
     constexpr auto segment_layout = prod_pipeline_config.segment_layout;
     constexpr auto intermediate_layout_max_shift = segment_layout.intermediate.max_shift();
@@ -178,7 +179,17 @@ TEST(spline_generator_test, integration_test)
                 .create_interval = create_interval,
             },
         },
-        assembler_t{}
+        assembler_t
+        {
+            .sort_intervals = {},
+            .unzip_intervals = {},
+            .pad_keys={},
+            .extend_tangent = tangent_extender_t
+            {
+                .y_limit = y_limit,
+                .extract_float = {},
+            },
+        },
     };
 
     auto const target_function = [](auto x) static noexcept -> decltype(x) {
