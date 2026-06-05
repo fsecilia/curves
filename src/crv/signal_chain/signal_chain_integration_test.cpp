@@ -96,15 +96,16 @@ public:
         return value_t{0.5} * (value_t{1} + complex_step_erf(z));
     }
 
-    template <typename value_t> constexpr auto integral(value_t x) const noexcept -> value_t
+    constexpr auto integral(real_t x) const noexcept -> real_t
     {
+        using std::erf;
         using std::exp;
 
-        auto const z = static_cast<value_t>(k_) * (x - static_cast<value_t>(center_));
-        auto const k = static_cast<value_t>(k_);
-        auto const inv_sqrt_pi = static_cast<value_t>(inv_sqrt_pi_);
+        auto const z = static_cast<real_t>(k_) * (x - static_cast<real_t>(center_));
+        auto const k = static_cast<real_t>(k_);
+        auto const inv_sqrt_pi = static_cast<real_t>(inv_sqrt_pi_);
 
-        auto const G = value_t{0.5} * (z * (value_t{1} + complex_step_erf(z)) + inv_sqrt_pi * exp(-(z * z)));
+        auto const G = real_t{0.5} * (z * (real_t{1} + erf(z)) + inv_sqrt_pi * exp(-(z * z)));
         return G / k;
     }
 
