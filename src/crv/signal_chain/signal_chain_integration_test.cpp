@@ -5,6 +5,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/complex_traits.hpp>
+#include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
@@ -304,29 +305,11 @@ private:
 // domain warp factory
 //
 
-namespace detail {
-
-template <std::floating_point real_t, typename g_t>
-[[nodiscard]] constexpr auto bisect_crossing(real_t lo, real_t hi, real_t target, g_t const& g) noexcept
-    -> std::optional<real_t>
+template <std::floating_point real_t, typename invert_t, real_t min_spline_transition_width>
+struct domain_warp_factory_t
 {
-    if (g(hi) < target) return std::nullopt;
-    if (g(lo) >= target) return lo;
+    [[no_unique_address]] invert_t invert;
 
-    while (true)
-    {
-        auto const mid = std::midpoint(lo, hi);
-        if (mid == lo || mid == hi) break;
-        if (g(mid) < target) lo = mid;
-        else hi = mid;
-    }
-    return hi;
-}
-
-} // namespace detail
-
-template <std::floating_point real_t, real_t min_spline_transition_width> struct domain_warp_factory_t
-{
     template <typename prev_t>
     [[nodiscard]] auto operator()(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
         real_t offset_width, real_t domain_lo, real_t domain_hi)
@@ -357,7 +340,7 @@ template <std::floating_point real_t, real_t min_spline_transition_width> struct
 
         // limit inversion: leftmost x where g reaches the limit
         auto const g = [&prev](real_t x) noexcept { return prev(x); };
-        auto const crossing = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
+        auto const crossing = invert(domain_lo, domain_hi, limit, g);
 
         auto limit_half = std::optional<half_t>{};
         auto phi_at_b2 = real_t{0};
@@ -420,7 +403,7 @@ TEST(signal_chain_test, integration)
     auto const domain_hi = real_t{256.0};
 
     constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
-    auto const output_chain_result = domain_warp_factory_t<real_t, min_spline_transition_width>{}(
+    auto const output_chain_result = domain_warp_factory_t<real_t, bisect_lower_bound_t, min_spline_transition_width>{}(
         make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
         std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
     assert(output_chain_result.has_value());
