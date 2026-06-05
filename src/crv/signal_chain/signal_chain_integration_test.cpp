@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/math/complex.hpp>
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
@@ -93,7 +94,7 @@ public:
         if (real(z) <= -sat) return value_t{0};
         if (real(z) >= sat) return value_t{1};
 
-        return value_t{0.5} * (value_t{1} + erf_(z));
+        return value_t{0.5} * (value_t{1} + complex_step_erf(z));
     }
 
     template <typename value_t> constexpr auto integral(value_t x) const noexcept -> value_t
@@ -104,30 +105,11 @@ public:
         auto const k = static_cast<value_t>(k_);
         auto const inv_sqrt_pi = static_cast<value_t>(inv_sqrt_pi_);
 
-        auto const G = value_t{0.5} * (z * (value_t{1} + erf_(z)) + inv_sqrt_pi * exp(-(z * z)));
+        auto const G = value_t{0.5} * (z * (value_t{1} + complex_step_erf(z)) + inv_sqrt_pi * exp(-(z * z)));
         return G / k;
     }
 
 private:
-    // This is *not* complex erf. It is erf with a complex approxiation within epsilon of the real line.
-    template <typename value_t> static auto erf_(value_t z) -> value_t
-    {
-        using std::exp;
-        if constexpr (is_complex<value_t>)
-        {
-            using real_type = real_type_t<value_t>;
-            auto const a = z.real();
-            auto const b = z.imag();
-            using std::erf;
-            return value_t{erf(a), b * static_cast<real_type>(two_over_sqrt_pi_) * exp(-a * a)};
-        }
-        else
-        {
-            using std::erf;
-            return erf(z);
-        }
-    }
-
     static constexpr real_t inv_sqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
     static constexpr real_t two_over_sqrt_pi_ = real_t{2} * std::numbers::inv_sqrtpi_v<real_t>;
 
