@@ -6,6 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <cassert>
 #include <concepts>
 #include <numeric>
 
@@ -21,7 +22,7 @@ struct bisect_lower_bound_t
     [[nodiscard]] constexpr auto operator()(real_t low, real_t high, real_t target, monotone_t const& f) const noexcept
         -> real_t
     {
-        // assert(low <= high);
+        assert(low <= high);
 
         // handle low oor
         //
