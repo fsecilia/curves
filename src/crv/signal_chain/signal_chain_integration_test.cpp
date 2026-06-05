@@ -18,7 +18,6 @@
 #include <iostream>
 #include <limits>
 #include <numbers>
-#include <numeric>
 #include <optional>
 #include <utility>
 
@@ -80,8 +79,8 @@ public:
     [[nodiscard]] constexpr auto k() const noexcept -> real_t { return k_; }
 
     [[nodiscard]] constexpr auto saturation_half_width() const noexcept -> real_t { return half_width_; }
-    [[nodiscard]] constexpr auto band_lo() const noexcept -> real_t { return center_ - half_width_; }
-    [[nodiscard]] constexpr auto band_hi() const noexcept -> real_t { return center_ + half_width_; }
+    [[nodiscard]] constexpr auto band_low() const noexcept -> real_t { return center_ - half_width_; }
+    [[nodiscard]] constexpr auto band_high() const noexcept -> real_t { return center_ + half_width_; }
 
     /// value of phi' = 1/2 (1 + erf(k (x - c))), in the x-frame
     template <typename value_t> constexpr auto evaluate(value_t x) const noexcept -> value_t
@@ -230,14 +229,14 @@ private:
 
         if (config_.offset.has_value())
         {
-            if (rx <= config_.offset->band_lo()) return region_t::paused;
-            if (rx < config_.offset->band_hi()) return region_t::onset;
+            if (rx <= config_.offset->band_low()) return region_t::paused;
+            if (rx < config_.offset->band_high()) return region_t::onset;
         }
 
         if (config_.limit.has_value())
         {
-            if (rx < config_.limit->band_lo()) return region_t::plateau;
-            if (rx < config_.limit->band_hi()) return region_t::limit;
+            if (rx < config_.limit->band_low()) return region_t::plateau;
+            if (rx < config_.limit->band_high()) return region_t::limit;
             return region_t::capped;
         }
 
@@ -262,7 +261,7 @@ private:
         auto const& half = *config_.offset;
 
         auto const p = primal(x);
-        auto const phi = half.integral(p) - half.integral(half.band_lo());
+        auto const phi = half.integral(p) - half.integral(half.band_low());
 
         if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
         else return phi;
@@ -273,7 +272,7 @@ private:
         auto const& half = *config_.limit;
 
         auto const p = primal(x);
-        auto const phi = config_.phi_at_b2 + (half.integral(p) - half.integral(half.band_lo()));
+        auto const phi = config_.phi_at_b2 + (half.integral(p) - half.integral(half.band_low()));
 
         if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
         else return phi;
@@ -294,7 +293,7 @@ struct domain_warp_factory_t
 
     template <typename prev_t>
     [[nodiscard]] auto operator()(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
-        real_t offset_width, real_t domain_lo, real_t domain_hi)
+        real_t offset_width, real_t domain_low, real_t domain_high)
         -> std::expected<domain_warp_t<real_t, prev_t>, warp_error_t>
     {
         using warp_t = domain_warp_t<real_t, prev_t>;
@@ -315,40 +314,42 @@ struct domain_warp_factory_t
             offset_half.emplace(c_L, k_L);
 
             auto const phi_at_onset_end
-                = offset_half->integral(offset_half->band_hi()) - offset_half->integral(offset_half->band_lo());
+                = offset_half->integral(offset_half->band_high()) - offset_half->integral(offset_half->band_low());
 
-            lag = offset_half->band_hi() - phi_at_onset_end;
+            lag = offset_half->band_high() - phi_at_onset_end;
         }
 
-        // limit inversion: leftmost x where g reaches the limit
-        auto const g = [&prev](real_t x) noexcept { return prev(x); };
-        auto const crossing = invert(domain_lo, domain_hi, limit, g);
+        // find leftmost x where prev reaches limit
+        auto const k_R_min = erf_sharpness_from_width(limit_width);
+        auto const max_half_width = erf_saturation_z<real_t> / k_R_min;
+        auto const search_high = domain_high + max_half_width - lag;
+        auto const x_opt_crossing = invert(domain_low, search_high, limit, prev);
 
         auto limit_half = std::optional<half_t>{};
         auto phi_at_b2 = real_t{0};
         auto phi_capped = real_t{0};
 
-        if (crossing.has_value())
+        if (x_opt_crossing.has_value())
         {
-            auto const x_cross = *crossing;
+            auto const x_crossing = *x_opt_crossing;
 
             auto const k_R = -erf_sharpness_from_width(limit_width);
-            auto const c_R = x_cross + lag;
+            auto const c_R = x_crossing + lag;
             limit_half.emplace(c_R, k_R);
 
-            phi_at_b2 = limit_half->band_lo() - lag;
+            phi_at_b2 = limit_half->band_low() - lag;
 
-            if (offset_half.has_value() && offset_half->band_hi() > limit_half->band_lo())
+            if (offset_half.has_value() && offset_half->band_high() > limit_half->band_low())
             {
                 return std::unexpected(warp_error_t::transition_overlap);
             }
 
             phi_capped = phi_at_b2
-                + (limit_half->integral(limit_half->band_hi()) - limit_half->integral(limit_half->band_lo()));
+                + (limit_half->integral(limit_half->band_high()) - limit_half->integral(limit_half->band_low()));
 
             auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon()
-                * (real_t{1} + std::abs(x_cross) + lag + limit_half->saturation_half_width());
-            if (std::abs(phi_capped - x_cross) > tolerance)
+                * (real_t{1} + std::abs(x_crossing) + lag + limit_half->saturation_half_width());
+            if (std::abs(phi_capped - x_crossing) > tolerance)
             {
                 return std::unexpected(warp_error_t::limit_placement_failure);
             }
@@ -381,13 +382,13 @@ TEST(signal_chain_test, integration)
     auto const limit_width = real_t{0.5};
     auto const offset_center = real_t{0.5};
     auto const offset_width = real_t{0.25};
-    auto const domain_lo = real_t{0.0};
-    auto const domain_hi = real_t{256.0};
+    auto const domain_low = real_t{0.0};
+    auto const domain_high = real_t{256.0};
 
     constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
     auto const output_chain_result = domain_warp_factory_t<real_t, bisect_lower_bound_t, min_spline_transition_width>{}(
         make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
-        std::make_optional(offset_center), offset_width, domain_lo, domain_hi);
+        std::make_optional(offset_center), offset_width, domain_low, domain_high);
     assert(output_chain_result.has_value());
     auto const& output_chain = *output_chain_result;
 
