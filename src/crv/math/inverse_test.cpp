@@ -28,31 +28,33 @@ using monotone_t = std::function<real_t(real_t)>;
 
 struct param_t
 {
-    real_t expected;
+    std::optional<real_t> expected;
     real_t low;
     real_t high;
     real_t target;
-    monotone_t monotone;
+    monotone_t f;
 
     friend auto operator<<(std::ostream& out, param_t const& src) -> std::ostream&
     {
-        return out << "{expected = " << src.expected << ", low = " << src.low << ", high = " << src.high
-                   << ", target = " << src.target << "}";
+        out << "{expected = ";
+        if (src.expected) out << *src.expected;
+        else out << "nullopt";
+        return out << ", low = " << src.low << ", high = " << src.high << ", target = " << src.target << "}";
     }
 };
 
 struct bisect_lower_bound_test_t : TestWithParam<param_t>
 {
-    real_t expected = GetParam().expected;
+    std::optional<real_t> expected = GetParam().expected;
     real_t low = GetParam().low;
     real_t high = GetParam().high;
     real_t target = GetParam().target;
-    monotone_t monotone = GetParam().monotone;
+    monotone_t f = GetParam().f;
 };
 
 TEST_P(bisect_lower_bound_test_t, expected)
 {
-    EXPECT_EQ(expected, sut(low, high, target, monotone));
+    EXPECT_EQ(expected, sut(low, high, target, f));
 }
 
 auto const identity = [](real_t x) noexcept { return x; };
@@ -73,7 +75,7 @@ param_t const boundary_conditions_params[] = {
     {next(0.0), 0.0, 4.0, next(0.0), identity}, // inside left boundary
     {4.0, 0.0, 4.0, 4.0, identity}, // right boundary
     {prev(4.0), 0.0, 4.0, prev(4.0), identity}, // inside right boundary
-    {4.0, 0.0, 4.0, next(4.0), identity}, // out of bounds, right
+    {std::nullopt, 0.0, 4.0, next(4.0), identity}, // out of bounds, right
 };
 INSTANTIATE_TEST_SUITE_P(boundary_conditions, bisect_lower_bound_test_t, ValuesIn(boundary_conditions_params));
 
@@ -111,6 +113,7 @@ param_t const plateau_params[] = {
     {prev(5.0), 0.0, 5.0, prev(prev(3.0)), plateau}, // last value before max
     {5.0, 0.0, 5.0, prev(3.0), plateau}, // 5-2 = 2.9999., midpoint rounds up; sut returns high half of interval
     {5.0, 0.0, 5.0, 3.0, plateau}, // max of domain
+    {std::nullopt, 0.0, 5.0, next(3.0), plateau}, // out of bounds, right
 };
 INSTANTIATE_TEST_SUITE_P(plateau, bisect_lower_bound_test_t, ValuesIn(plateau_params));
 
@@ -131,6 +134,8 @@ static_assert(2.0 == sut(0.4, 3.7, 4.0, x_squared));
 static_assert(2.9 == sut(2.0, 3.0, 8.41, x_squared));
 static_assert(3.0 == sut(2.1, 4.0, 9.0, x_squared));
 static_assert(3.1 == sut(2.2, 5.0, 9.61, x_squared));
+
+static_assert(!sut(2.2, 5.0, 30.0, x_squared).has_value());
 
 } // namespace constexpr_tests
 
