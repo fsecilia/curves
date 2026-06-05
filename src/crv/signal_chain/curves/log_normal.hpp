@@ -6,6 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/complex.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
 #include <crv/reflection/constraints.hpp>
@@ -13,7 +14,6 @@
 #include <crv/signal_chain/curves/derivatives.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
 #include <complex>
-#include <concepts>
 #include <numbers>
 #include <vector>
 
@@ -99,31 +99,8 @@ struct log_normal_t
         auto critical_points() const noexcept -> std::vector<scalar_t> { return {}; }
 
     private:
-        // partial implementation of complex erf, just enough to run complex-step tests
-        //
-        // real scalar_t delegates to the standard-library erf. complex scalar_t is only implemented enough to support
-        // complex-step via approximation. The input is z = a + i*b with |b| infinitesimal, so this returns the true
-        // erf(a) in the real part and the exact analytic first-order tangent in the imaginary part:
-        //
-        //     b*erf'(a) = b*(2/sqrt(pi))*e^{-a^2}
-        //
-        // This is precisely what Im(f(x+ih))/h reads back. It is not erf off the real axis. For any finite b, the
-        // imaginary part is wrong. It is correct solely for the infinitesimal b inputs complex-step produces, which is
-        // the only way the complex evaluator is ever called.
-        static auto complex_step_erf(scalar_t z) noexcept -> scalar_t
-        {
-            if constexpr (std::floating_point<scalar_t>) return erf(z);
-            else
-            {
-                auto const a = z.real();
-                auto const b = z.imag();
-                return scalar_t{erf(a), b * two_over_sqrt_pi * exp(-a * a)};
-            }
-        }
-
         static constexpr real_t sqrt2_ = std::numbers::sqrt2_v<real_t>;
         static constexpr real_t inv_sqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
-        static constexpr real_t two_over_sqrt_pi = 2.0 * std::numbers::inv_sqrtpi_v<real_t>;
 
         scalar_t mu_; // log(center) + width
         scalar_t c_; // dz/ds = 1/(sigma*sqrt2), sigma = sqrt(width)
