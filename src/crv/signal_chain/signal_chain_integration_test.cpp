@@ -45,19 +45,46 @@ constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
     return "Unknown warp error.";
 }
 
-//
-// erf saturation threshold and width->sharpness mapping
-//
-
+/// erf saturation threshold for real_t
+///
+/// |z|, beyond which erfc(z) < epsilon, so erf rounds to +/-1. Tight bound from the dominant term as z grows:
+///
+///     erfc(z) ~= e^{-z^2}/(z*sqrt(pi)) ∝ e^{-z^2}
+///     e^{-z^2} < epsilon -> z > sqrt(-ln(epsilon))
+///
+/// The 1/(z*sqrt(pi)) factor only shrinks erfc further, so this is exact to the e^{-z^2} term and conservative overall
+/// in the safe direction: never treat the tail as flat too soon
+///
+/// Tracks the type (float ~= 4, double ~= 6, float128 ~= 8.8); a fixed constant would over-saturate the wide types.
 template <std::floating_point real_t>
-inline real_t const erf_saturation_z = [] {
+inline real_t const erf_precision_limit_z = [] {
     using std::log;
     using std::sqrt;
     return sqrt(-log(std::numeric_limits<real_t>::epsilon()));
 }();
 
+/// width-to-sharpness mapping for erf transition
+///
+///   k = (30*sqrt(pi))^(1/3)/w ~= 3.762/w
+///
+/// The user gives a transition width w; erf needs a sharpness k. We do not map against erf's machine-flat saturation
+/// band (~12/k wide for double). erf packs its curvature into a narrower central region, which would make the corner
+/// too sharp for the segment grid to resolve without extra knots. Instead we match erf's corner to smootherstep's at
+/// the same width (the polynomial transition we already know splines cleanly), equating the fourth-derivative peak,
+/// which is the quantity that drives cubic-Hermite reproduction error:
+///
+///   smootherstep:  phi'''' _max = W'''(0)/w^3 = 60 / w^3       (W = 10t^3 - 15t^4 + 6t^5)
+///   erf:           phi'''' _max = 2 k^3 / sqrt pi              (peak at band center)
+///
+///   2 k^3 / sqrt pi = 60 / w^3  =>  k = (30 sqrt pi)^(1/3) / w  ~= 3.762 / w
+///
+/// With this k the erf warp inherits smootherstep's splineability: any grid + min-width floor that handles smootherstep
+/// handles this. (Matching peak curvature phi'' instead gives ~3.32/w; we use the phi'''' match. It targets spline
+/// error directly and is marginally more conservative.)
 template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness_from_width(real_t w) noexcept -> real_t
 {
+    // (30 sqrt pi)^(1/3) as a literal, so this stays constexpr without a runtime cbrt/sqrt.
+    // 30 * 1.7724538509055160273 = 53.173615527165..., cube root = 3.7603828531416483...
     constexpr real_t cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483L);
     return cube_root_30_sqrt_pi / w;
 }
@@ -72,7 +99,7 @@ public:
     using real_t = t_real_t;
 
     erf_half_t(real_t center, real_t k) noexcept
-        : center_{center}, k_{k}, half_width_{erf_saturation_z<real_t> / std::abs(k)}
+        : center_{center}, k_{k}, half_width_{erf_precision_limit_z<real_t> / std::abs(k)}
     {}
 
     [[nodiscard]] constexpr auto center() const noexcept -> real_t { return center_; }
@@ -87,7 +114,7 @@ public:
     {
         using std::real;
 
-        auto const sat = erf_saturation_z<real_t>;
+        auto const sat = erf_precision_limit_z<real_t>;
         auto const z = static_cast<value_t>(k_) * (x - static_cast<value_t>(center_));
 
         if (real(z) <= -sat) return value_t{0};
@@ -322,7 +349,7 @@ struct domain_warp_factory_t
 
         // find leftmost x where prev reaches limit
         auto const k_R_min = erf_sharpness_from_width(limit_width);
-        auto const max_half_width = erf_saturation_z<real_t> / k_R_min;
+        auto const max_half_width = erf_precision_limit_z<real_t> / k_R_min;
         auto const search_high = domain_high + max_half_width - lag;
         auto const x_opt_crossing = invert(domain_low, search_high, limit, prev);
 
@@ -376,7 +403,6 @@ TEST(signal_chain_test, integration)
 {
     using real_t = float64_t;
 
-    auto const base_curve = quadratic_t{};
     auto const y0 = real_t{0.25};
     auto const output_scale = real_t{1.5};
     auto const limit = real_t{17.0};
@@ -385,6 +411,8 @@ TEST(signal_chain_test, integration)
     auto const offset_width = real_t{0.25};
     auto const domain_low = real_t{0.0};
     auto const domain_high = real_t{256.0};
+
+    auto const base_curve = quadratic_t{};
 
     constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
     auto const output_chain_result = domain_warp_factory_t<real_t, bisect_lower_bound_t, min_spline_transition_width>{}(
