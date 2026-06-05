@@ -83,10 +83,10 @@ target_sources(lib PRIVATE
     signal_chain/spline/construction/spline/amr/spline_generator.hpp
     signal_chain/spline/construction/spline/amr/typestates.hpp
     signal_chain/spline/construction/spline/amr/workspace.hpp
-    signal_chain/spline/construction/spline/tangent_extension.hpp
     signal_chain/spline/construction/weight_functions/exponential_decay.hpp
     signal_chain/spline/construction/weight_functions/hyperbolic_decay.hpp
     signal_chain/spline/construction/weight_functions/uniform.hpp
+    signal_chain/spline/tangent_extension.hpp
     tuple.hpp
     variant.hpp
 )
@@ -230,10 +230,10 @@ if (enable_testing)
         signal_chain/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
         signal_chain/spline/construction/spline/amr/spline_generator_test.cpp
         signal_chain/spline/construction/spline/amr/workspace_test.cpp
-        signal_chain/spline/construction/spline/tangent_extension_test.cpp
         signal_chain/spline/construction/weight_functions/exponential_decay_test.cpp
         signal_chain/spline/construction/weight_functions/hyperbolic_decay_test.cpp
         signal_chain/spline/construction/weight_functions/uniform_test.cpp
+        signal_chain/spline/tangent_extension_test.cpp
         signal_chain/spline/pipeline_config_test.cpp
         signal_chain/spline/segment_locator_test.cpp
         signal_chain/spline/segment_test.cpp

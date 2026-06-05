@@ -41,13 +41,13 @@
 #include <crv/signal_chain/spline/construction/spline/amr/spline_generator.hpp>
 #include <crv/signal_chain/spline/construction/spline/amr/typestates.hpp>
 #include <crv/signal_chain/spline/construction/spline/amr/workspace.hpp>
-#include <crv/signal_chain/spline/construction/spline/tangent_extension.hpp>
 #include <crv/signal_chain/spline/construction/weight_functions/hyperbolic_decay.hpp>
 #include <crv/signal_chain/spline/construction/weight_functions/uniform.hpp>
 #include <crv/signal_chain/spline/pipeline_config.hpp>
 #include <crv/signal_chain/spline/segment.hpp>
 #include <crv/signal_chain/spline/segment_locator.hpp>
 #include <crv/signal_chain/spline/spline.hpp>
+#include <crv/signal_chain/spline/tangent_extension.hpp>
 #include <cmath>
 #include <iomanip>
 #include <stdfloat>
