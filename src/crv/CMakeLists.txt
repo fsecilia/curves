@@ -83,10 +83,10 @@ target_sources(lib PRIVATE
     signal_chain/spline/construction/spline/amr/spline_generator.hpp
     signal_chain/spline/construction/spline/amr/typestates.hpp
     signal_chain/spline/construction/spline/amr/workspace.hpp
+    signal_chain/spline/construction/spline/tangent_extender.hpp
     signal_chain/spline/construction/weight_functions/exponential_decay.hpp
     signal_chain/spline/construction/weight_functions/hyperbolic_decay.hpp
     signal_chain/spline/construction/weight_functions/uniform.hpp
-    signal_chain/spline/tangent_extension.hpp
     tuple.hpp
     variant.hpp
 )
@@ -124,6 +124,7 @@ target_sources_kernel(lib
     signal_chain/spline/segment_locator.hpp
     signal_chain/spline/segment.hpp
     signal_chain/spline/spline.hpp
+    signal_chain/spline/tangent_extension.hpp
     traits.hpp
 )
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
@@ -230,6 +231,7 @@ if (enable_testing)
         signal_chain/spline/construction/spline/amr/seed/subdomain_factory_test.cpp
         signal_chain/spline/construction/spline/amr/spline_generator_test.cpp
         signal_chain/spline/construction/spline/amr/workspace_test.cpp
+        signal_chain/spline/construction/spline/tangent_extender_test.cpp
         signal_chain/spline/construction/weight_functions/exponential_decay_test.cpp
         signal_chain/spline/construction/weight_functions/hyperbolic_decay_test.cpp
         signal_chain/spline/construction/weight_functions/uniform_test.cpp
