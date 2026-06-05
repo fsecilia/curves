@@ -24,8 +24,6 @@ namespace crv::signal_chain {
 
 template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
-// --------------------------------------------------------------------------------------------------------------------h
-
 enum class warp_error_t
 {
     invalid_limit_width, // limit_width <= 0
@@ -46,9 +44,9 @@ constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
     return "Unknown warp error.";
 }
 
-// =============================================================================
+//
 // erf saturation threshold and width->sharpness mapping
-// =============================================================================
+//
 
 template <std::floating_point real_t>
 inline real_t const erf_saturation_z = [] {
@@ -63,9 +61,9 @@ template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness
     return cube_root_30_sqrt_pi / w;
 }
 
-// =============================================================================
+//
 // one half of the warp velocity profile
-// =============================================================================
+//
 
 template <std::floating_point t_real_t> class erf_half_t
 {
@@ -137,9 +135,9 @@ private:
     real_t half_width_;
 };
 
-// =============================================================================
+//
 // affine input/output stages
-// =============================================================================
+//
 
 template <typename real_t, typename prev_t> struct input_scale_t
 {
@@ -202,9 +200,9 @@ template <typename real_t, typename prev_t> constexpr auto make_output_offset(re
     return output_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
 }
 
-// =============================================================================
+//
 // domain warp stage
-// =============================================================================
+//
 
 template <std::floating_point t_real_t, typename t_prev_t> class domain_warp_t
 {
@@ -302,9 +300,9 @@ private:
     prev_t prev_;
 };
 
-// =============================================================================
+//
 // domain warp factory
-// =============================================================================
+//
 
 namespace detail {
 
@@ -340,7 +338,7 @@ template <std::floating_point real_t, real_t min_spline_transition_width> struct
 
         if (limit_width <= min_spline_transition_width) return std::unexpected(warp_error_t::invalid_limit_width);
 
-        // --- offset placement (optional) ---
+        // offset placement (optional)
         auto offset_half = std::optional<half_t>{};
         auto lag = real_t{0};
         if (offset_center.has_value())
@@ -357,7 +355,7 @@ template <std::floating_point real_t, real_t min_spline_transition_width> struct
             lag = offset_half->band_hi() - phi_at_onset_end;
         }
 
-        // --- limit inversion: leftmost x where g reaches the limit ---
+        // limit inversion: leftmost x where g reaches the limit
         auto const g = [&prev](real_t x) noexcept { return prev(x); };
         auto const crossing = detail::bisect_crossing(domain_lo, domain_hi, limit, g);
 
