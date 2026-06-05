@@ -13,6 +13,7 @@ target_sources(lib PRIVATE
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/complex_traits.hpp
+    math/complex.hpp
     math/elementwise_max.hpp
     math/error_metrics.hpp
     math/fixed/fixed_limits.hpp
@@ -150,6 +151,7 @@ if (enable_testing)
         math/cmp_test.cpp
         math/compensated_accumulator_test.cpp
         math/complex_traits_test.cpp
+        math/complex_test.cpp
         math/division/concepts_test.cpp
         math/division/hardware_divider_test.cpp
         math/division/io_test.cpp
