@@ -152,6 +152,17 @@ template <typename real_t, typename prev_t> struct input_scale_t
     }
 };
 
+template <typename real_t, typename prev_t> struct input_offset_t
+{
+    real_t offset;
+    prev_t prev;
+
+    template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
+    {
+        return prev(x - offset);
+    }
+};
+
 template <typename real_t, typename prev_t> struct output_scale_t
 {
     real_t scale;
@@ -177,6 +188,10 @@ template <typename real_t, typename prev_t> struct output_offset_t
 template <typename real_t, typename prev_t> constexpr auto make_input_scale(real_t scale, prev_t prev)
 {
     return input_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
+}
+template <typename real_t, typename prev_t> constexpr auto make_input_offset(real_t offset, prev_t prev)
+{
+    return input_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
 }
 template <typename real_t, typename prev_t> constexpr auto make_output_scale(real_t scale, prev_t prev)
 {
