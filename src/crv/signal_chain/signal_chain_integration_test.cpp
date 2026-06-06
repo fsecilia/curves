@@ -54,6 +54,7 @@ public:
     {}
 
     [[nodiscard]] constexpr auto center() const noexcept -> real_t { return center_; }
+    [[nodiscard]] constexpr auto half_width() const noexcept -> real_t { return half_width_; }
     [[nodiscard]] constexpr auto band_low() const noexcept -> real_t { return center_ - half_width_; }
     [[nodiscard]] constexpr auto band_high() const noexcept -> real_t { return center_ + half_width_; }
 
@@ -77,6 +78,15 @@ public:
 
         auto const g = real_t{0.5} * (z * (real_t{1} + erf(z)) + inv_sqrt_pi * exp(-(z * z)));
         return g / k_;
+    }
+
+    template <typename value_t> [[nodiscard]] constexpr auto warp(value_t x, real_t offset) const noexcept -> value_t
+    {
+        auto const p = primal(x);
+        auto const phi = (integral(p) - integral(band_low())) + offset;
+
+        if constexpr (is_jet<value_t>) return value_t{phi, evaluate(p) * tangent(x)};
+        else return phi;
     }
 
     [[nodiscard]] constexpr auto peak_d4() const noexcept -> real_t
@@ -109,14 +119,14 @@ template <std::floating_point real_t> struct erf_transition_factory_t
         return {center, k, calc_half_width(k)};
     }
 
-    [[nodiscard]] constexpr auto calc_k(real_t width) const noexcept -> real_t
+private:
+    constexpr auto calc_k(real_t width) const noexcept -> real_t
     {
         // (30 sqrt pi)^(1/3) matched from your original PoC to inherit smootherstep splineability
         constexpr auto cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483);
         return cube_root_30_sqrt_pi / width;
     }
 
-private:
     constexpr auto calc_half_width(real_t k) const noexcept -> real_t
     {
         return erf_precision_limit_v<real_t> / std::abs(k);
@@ -144,24 +154,18 @@ template <typename prev_t, typename transition_t> class onset_warp_t
 public:
     using real_t = typename transition_t::real_t;
 
-    constexpr onset_warp_t(transition_t profile, prev_t prev) : profile_{std::move(profile)}, prev_{std::move(prev)}
+    constexpr onset_warp_t(transition_t transition, prev_t prev)
+        : transition_{std::move(transition)}, prev_{std::move(prev)}
     {
-        lag_ = profile_.integral(profile_.band_high()) - profile_.integral(profile_.band_low());
+        lag_ = transition_.integral(transition_.band_high()) - transition_.integral(transition_.band_low());
     }
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
         auto const rx = primal(x);
 
-        if (rx <= profile_.band_low()) return value_t{};
-        if (rx < profile_.band_high())
-        {
-            auto const p = primal(x);
-            auto const phi = profile_.integral(p) - profile_.integral(profile_.band_low());
-
-            if constexpr (is_jet<value_t>) return prev_(value_t{phi, profile_.evaluate(p) * tangent(x)});
-            else return prev_(phi);
-        }
+        if (rx <= transition_.band_low()) return value_t{};
+        if (rx < transition_.band_high()) return prev_(transition_.warp(x, real_t{0}));
 
         return prev_(x - lag_);
     }
@@ -169,7 +173,7 @@ public:
     [[nodiscard]] constexpr auto lag() const noexcept -> real_t { return lag_; }
 
 private:
-    transition_t profile_;
+    transition_t transition_;
     real_t lag_;
     prev_t prev_;
 };
@@ -179,31 +183,26 @@ template <typename prev_t, typename transition_t> class limit_warp_t
 public:
     using real_t = typename transition_t::real_t;
 
-    constexpr limit_warp_t(transition_t profile, prev_t prev) : profile_{std::move(profile)}, prev_{std::move(prev)}
+    constexpr limit_warp_t(transition_t transition, prev_t prev)
+        : transition_{std::move(transition)}, prev_{std::move(prev)}
     {
-        cap_start_ = profile_.band_low();
-        cap_end_ = cap_start_ + (profile_.integral(profile_.band_high()) - profile_.integral(profile_.band_low()));
+        cap_start_ = transition_.band_low();
+        cap_end_ = cap_start_
+            + (transition_.integral(transition_.band_high()) - transition_.integral(transition_.band_low()));
     }
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
         auto const rx = primal(x);
 
-        if (rx <= profile_.band_low()) return prev_(x);
-        if (rx < profile_.band_high())
-        {
-            auto const p = primal(x);
-            auto const phi = cap_start_ + (profile_.integral(p) - profile_.integral(profile_.band_low()));
-
-            if constexpr (is_jet<value_t>) return prev_(value_t{phi, profile_.evaluate(p) * tangent(x)});
-            else return prev_(phi);
-        }
+        if (rx <= transition_.band_low()) return prev_(x);
+        if (rx < transition_.band_high()) return prev_(transition_.warp(x, cap_start_));
 
         return prev_(value_t{cap_end_});
     }
 
 private:
-    transition_t profile_;
+    transition_t transition_;
     real_t cap_start_;
     real_t cap_end_;
     prev_t prev_;
@@ -333,8 +332,7 @@ public:
 
         auto onset_chain = onset_warp_t{onset_profile, std::move(prev)};
 
-        auto const limit_transition_width
-            = (erf_precision_limit_v<real_t> / std::abs(transition_factory_.calc_k(config.limit_width)));
+        auto const limit_transition_width = limit_test.half_width();
         auto const search_high = config.domain_high + limit_transition_width - onset_chain.lag();
         auto const opt_c_R = invert_(config.domain_low, search_high, config.limit_target, onset_chain);
 
