@@ -113,6 +113,7 @@ target_sources_kernel(lib
     math/fixed/fma.hpp
     math/int_traits.hpp
     math/integer.hpp
+    math/inverse.hpp
     math/limits.hpp
     math/linear.hpp
     math/rounding_mode.hpp
