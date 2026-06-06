@@ -11,7 +11,7 @@
 #include <complex>
 #include <concepts>
 
-namespace crv::model::curves {
+namespace crv {
 
 /// complex-step first derivative of any holomorphic scalar->scalar evaluator at a real point
 ///
@@ -45,4 +45,4 @@ template <std::floating_point real_t> constexpr auto rel_error(real_t actual, re
     return abs(actual - expected) / max(abs(expected), 1.0);
 }
 
-} // namespace crv::model::curves
+} // namespace crv
