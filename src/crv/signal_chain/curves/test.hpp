@@ -18,7 +18,7 @@ namespace crv {
 /// step is 1e-200: small enough that the O(h^2) truncation term vanishes in double, and immune to cancellation because
 /// the derivative is recovered from the imaginary part, never a difference of nearly-equal reals.
 template <typename evaluator_t, std::floating_point real_t>
-constexpr auto complex_step_derivative(evaluator_t const& eval, real_t x) -> double
+constexpr auto complex_step_derivative(evaluator_t const& eval, real_t x) -> real_t
 {
     /// start with the taylor expansion of f(x + ih):
     /// f(x + ih) = f(x) + (ih)f'(x) + ((ih)^2/2!)f''(x) + ((ih)^3/3!)f'''(x) + ...
@@ -40,7 +40,7 @@ constexpr auto complex_step_derivative(evaluator_t const& eval, real_t x) -> dou
 }
 
 /// relative error with an absolute floor of 1, so the tolerance is sane whether the reference is large or near zero.
-template <std::floating_point real_t> constexpr auto rel_error(real_t actual, real_t expected) -> double
+template <std::floating_point real_t> constexpr auto rel_error(real_t actual, real_t expected) -> real_t
 {
     return abs(actual - expected) / max(abs(expected), 1.0);
 }
