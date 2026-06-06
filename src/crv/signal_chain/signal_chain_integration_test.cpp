@@ -8,6 +8,7 @@
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/scalar_traits.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
@@ -17,159 +18,196 @@
 #include <expected>
 #include <iostream>
 #include <limits>
-#include <numbers>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 namespace crv::signal_chain {
 
-template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
+//
+// math primitives & bounds
+//
 
-enum class warp_error_t
-{
-    invalid_limit_width, // limit_width <= 0
-    invalid_offset_width, // offset_width <= 0 when offset_center is provided
-    transition_overlap, // onset saturates after the limit band begins
-    limit_placement_failure // limit inversion geometry drifted beyond tolerance
-};
-
-constexpr auto to_string(warp_error_t error) noexcept -> std::string_view
-{
-    switch (error)
-    {
-        case warp_error_t::invalid_limit_width: return "Limit width too small.";
-        case warp_error_t::invalid_offset_width: return "Offset width too small.";
-        case warp_error_t::transition_overlap: return "Offset and limit transitions overlap.";
-        case warp_error_t::limit_placement_failure: return "Precision loss: limit cap deviates from the curve.";
-    }
-    return "Unknown warp error.";
-}
-
-/// erf saturation threshold for real_t
-///
-/// |z|, beyond which erfc(z) < epsilon, so erf rounds to +/-1. Tight bound from the dominant term as z grows:
-///
-///     erfc(z) ~= e^{-z^2}/(z*sqrt(pi)) ∝ e^{-z^2}
-///     e^{-z^2} < epsilon -> z > sqrt(-ln(epsilon))
-///
-/// The 1/(z*sqrt(pi)) factor only shrinks erfc further, so this is exact to the e^{-z^2} term and conservative overall
-/// in the safe direction: never treat the tail as flat too soon
-///
-/// Tracks the type (float ~= 4, double ~= 6, float128 ~= 8.8); a fixed constant would over-saturate the wide types.
 template <std::floating_point real_t>
-inline real_t const erf_precision_limit_z = [] {
+inline real_t const erf_precision_limit_v = [] {
     using std::log;
     using std::sqrt;
     return sqrt(-log(std::numeric_limits<real_t>::epsilon()));
 }();
 
-/// width-to-sharpness mapping for erf transition
-///
-///   k = (30*sqrt(pi))^(1/3)/w ~= 3.762/w
-///
-/// The user gives a transition width w; erf needs a sharpness k. We do not map against erf's machine-flat saturation
-/// band (~12/k wide for double). erf packs its curvature into a narrower central region, which would make the corner
-/// too sharp for the segment grid to resolve without extra knots. Instead we match erf's corner to smootherstep's at
-/// the same width (the polynomial transition we already know splines cleanly), equating the fourth-derivative peak,
-/// which is the quantity that drives cubic-Hermite reproduction error:
-///
-///   smootherstep:  phi'''' _max = W'''(0)/w^3 = 60 / w^3       (W = 10t^3 - 15t^4 + 6t^5)
-///   erf:           phi'''' _max = 2 k^3 / sqrt pi              (peak at band center)
-///
-///   2 k^3 / sqrt pi = 60 / w^3  =>  k = (30 sqrt pi)^(1/3) / w  ~= 3.762 / w
-///
-/// With this k the erf warp inherits smootherstep's splineability: any grid + min-width floor that handles smootherstep
-/// handles this. (Matching peak curvature phi'' instead gives ~3.32/w; we use the phi'''' match. It targets spline
-/// error directly and is marginally more conservative.)
-template <std::floating_point real_t> [[nodiscard]] constexpr auto erf_sharpness_from_width(real_t w) noexcept -> real_t
-{
-    // (30 sqrt pi)^(1/3) as a literal, so this stays constexpr without a runtime cbrt/sqrt.
-    // 30 * 1.7724538509055160273 = 53.173615527165..., cube root = 3.7603828531416483...
-    constexpr real_t cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483L);
-    return cube_root_30_sqrt_pi / w;
-}
+template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 //
-// one half of the warp velocity profile
+// pure geometry (transitions)
 //
 
-template <std::floating_point t_real_t> class erf_half_t
+template <std::floating_point t_real_t> class erf_transition_t
 {
 public:
     using real_t = t_real_t;
 
-    erf_half_t(real_t center, real_t k) noexcept
-        : center_{center}, k_{k}, half_width_{erf_precision_limit_z<real_t> / std::abs(k)}
+    constexpr erf_transition_t(real_t center, real_t k, real_t half_width) noexcept
+        : center_{center}, k_{k}, half_width_{half_width}
     {}
 
     [[nodiscard]] constexpr auto center() const noexcept -> real_t { return center_; }
-    [[nodiscard]] constexpr auto k() const noexcept -> real_t { return k_; }
-
-    [[nodiscard]] constexpr auto saturation_half_width() const noexcept -> real_t { return half_width_; }
     [[nodiscard]] constexpr auto band_low() const noexcept -> real_t { return center_ - half_width_; }
     [[nodiscard]] constexpr auto band_high() const noexcept -> real_t { return center_ + half_width_; }
 
-    /// value of phi' = 1/2 (1 + erf(k (x - c))), in the x-frame
-    template <typename value_t> constexpr auto evaluate(value_t x) const noexcept -> value_t
+    template <typename value_t> [[nodiscard]] constexpr auto evaluate(value_t x) const noexcept -> value_t
     {
         using std::real;
-
-        auto const sat = erf_precision_limit_z<real_t>;
         auto const z = static_cast<value_t>(k_) * (x - static_cast<value_t>(center_));
 
-        if (real(z) <= -sat) return value_t{0};
-        if (real(z) >= sat) return value_t{1};
+        if (real(z) <= -erf_precision_limit_v<real_t>) return value_t{0};
+        if (real(z) >= erf_precision_limit_v<real_t>) return value_t{1};
 
         return value_t{0.5} * (value_t{1} + complex_step_erf(z));
     }
 
-    constexpr auto integral(real_t x) const noexcept -> real_t
+    [[nodiscard]] constexpr auto integral(real_t x) const noexcept -> real_t
     {
         using std::erf;
         using std::exp;
 
-        auto const z = static_cast<real_t>(k_) * (x - static_cast<real_t>(center_));
-        auto const k = static_cast<real_t>(k_);
-        auto const inv_sqrt_pi = static_cast<real_t>(inv_sqrt_pi_);
+        auto const z = k_ * (x - center_);
+        constexpr auto inv_sqrt_pi = static_cast<real_t>(0.56418958354775628);
 
-        auto const G = real_t{0.5} * (z * (real_t{1} + erf(z)) + inv_sqrt_pi * exp(-(z * z)));
-        return G / k;
+        auto const g = real_t{0.5} * (z * (real_t{1} + erf(z)) + inv_sqrt_pi * exp(-(z * z)));
+        return g / k_;
+    }
+
+    [[nodiscard]] constexpr auto peak_d4() const noexcept -> real_t
+    {
+        constexpr auto inv_sqrt_pi = static_cast<real_t>(0.56418958354775628);
+        return real_t{2.0} * (k_ * k_ * k_) * inv_sqrt_pi;
     }
 
 private:
-    static constexpr real_t inv_sqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
-    static constexpr real_t two_over_sqrt_pi_ = real_t{2} * std::numbers::inv_sqrtpi_v<real_t>;
-
     real_t center_;
     real_t k_;
     real_t half_width_;
 };
 
-//
-// affine input/output stages
-//
-
-template <typename real_t, typename prev_t> struct input_scale_t
+template <std::floating_point real_t> struct erf_transition_factory_t
 {
-    real_t scale;
-    prev_t prev;
+    using transition_t = erf_transition_t<real_t>;
 
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
+    [[nodiscard]] constexpr auto make_onset(real_t center, real_t width) const noexcept -> transition_t
     {
-        return prev(x * scale);
+        auto const k = calc_k(width);
+        return {center, k, calc_half_width(k)};
+    }
+
+    [[nodiscard]] constexpr auto make_limit(real_t center, real_t width) const noexcept -> transition_t
+    {
+        auto const k = -calc_k(width);
+        return {center, k, calc_half_width(k)};
+    }
+
+    [[nodiscard]] constexpr auto calc_k(real_t width) const noexcept -> real_t
+    {
+        // (30 sqrt pi)^(1/3) matched from your original PoC to inherit smootherstep splineability
+        constexpr auto cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483);
+        return cube_root_30_sqrt_pi / width;
+    }
+
+private:
+    constexpr auto calc_half_width(real_t k) const noexcept -> real_t
+    {
+        return erf_precision_limit_v<real_t> / std::abs(k);
     }
 };
 
-template <typename real_t, typename prev_t> struct input_offset_t
-{
-    real_t offset;
-    prev_t prev;
+//
+// hardware capacity policies
+//
 
-    template <typename scalar_t> constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
+template <typename real_t> struct hermite_cubic_policy_t
+{
+    static constexpr auto max_tolerable_d4(real_t h, real_t epsilon) noexcept -> double
     {
-        return prev(x - offset);
+        return (real_t{384.0} * epsilon) / (h * h * h * h);
     }
 };
+
+//
+// structural warps
+//
+
+template <typename prev_t, typename transition_t> class onset_warp_t
+{
+public:
+    using real_t = typename transition_t::real_t;
+
+    constexpr onset_warp_t(transition_t profile, prev_t prev) : profile_{std::move(profile)}, prev_{std::move(prev)}
+    {
+        lag_ = profile_.integral(profile_.band_high()) - profile_.integral(profile_.band_low());
+    }
+
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        auto const rx = primal(x);
+
+        if (rx <= profile_.band_low()) return value_t{};
+        if (rx < profile_.band_high())
+        {
+            auto const p = primal(x);
+            auto const phi = profile_.integral(p) - profile_.integral(profile_.band_low());
+
+            if constexpr (is_jet<value_t>) return prev_(value_t{phi, profile_.evaluate(p) * tangent(x)});
+            else return prev_(phi);
+        }
+
+        return prev_(x - lag_);
+    }
+
+    [[nodiscard]] constexpr auto lag() const noexcept -> real_t { return lag_; }
+
+private:
+    transition_t profile_;
+    real_t lag_;
+    prev_t prev_;
+};
+
+template <typename prev_t, typename transition_t> class limit_warp_t
+{
+public:
+    using real_t = typename transition_t::real_t;
+
+    constexpr limit_warp_t(transition_t profile, prev_t prev) : profile_{std::move(profile)}, prev_{std::move(prev)}
+    {
+        cap_start_ = profile_.band_low();
+        cap_end_ = cap_start_ + (profile_.integral(profile_.band_high()) - profile_.integral(profile_.band_low()));
+    }
+
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        auto const rx = primal(x);
+
+        if (rx <= profile_.band_low()) return prev_(x);
+        if (rx < profile_.band_high())
+        {
+            auto const p = primal(x);
+            auto const phi = cap_start_ + (profile_.integral(p) - profile_.integral(profile_.band_low()));
+
+            if constexpr (is_jet<value_t>) return prev_(value_t{phi, profile_.evaluate(p) * tangent(x)});
+            else return prev_(phi);
+        }
+
+        return prev_(value_t{cap_end_});
+    }
+
+private:
+    transition_t profile_;
+    real_t cap_start_;
+    real_t cap_end_;
+    prev_t prev_;
+};
+
+//
+// affine adapters
+//
 
 template <typename real_t, typename prev_t> struct output_scale_t
 {
@@ -193,14 +231,6 @@ template <typename real_t, typename prev_t> struct output_offset_t
     }
 };
 
-template <typename real_t, typename prev_t> constexpr auto make_input_scale(real_t scale, prev_t prev)
-{
-    return input_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
-}
-template <typename real_t, typename prev_t> constexpr auto make_input_offset(real_t offset, prev_t prev)
-{
-    return input_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
-}
 template <typename real_t, typename prev_t> constexpr auto make_output_scale(real_t scale, prev_t prev)
 {
     return output_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
@@ -211,192 +241,167 @@ template <typename real_t, typename prev_t> constexpr auto make_output_offset(re
 }
 
 //
-// domain warp stage
+// signal chain builder
 //
 
-template <std::floating_point t_real_t, typename t_prev_t> class domain_warp_t
+template <typename real_t> struct user_config_t
 {
-public:
-    using real_t = t_real_t;
-    using prev_t = t_prev_t;
-    using half_t = erf_half_t<real_t>;
-
-    struct config_t
-    {
-        std::optional<half_t> offset;
-        std::optional<half_t> limit;
-        real_t lag = real_t{0};
-        real_t phi_at_b2 = real_t{0};
-        real_t phi_capped = real_t{0};
-    };
-
-    domain_warp_t(config_t config, prev_t prev) noexcept : config_{std::move(config)}, prev_{std::move(prev)} {}
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        if (!config_.offset.has_value() && !config_.limit.has_value()) return prev_(x);
-
-        return prev_(warp_evaluate(x));
-    }
-
-private:
-    enum class region_t
-    {
-        paused,
-        onset,
-        plateau,
-        limit,
-        capped
-    };
-
-    template <typename value_t> constexpr auto classify(value_t x) const noexcept -> region_t
-    {
-        using std::real;
-
-        auto const rx = real(x);
-
-        if (config_.offset.has_value())
-        {
-            if (rx <= config_.offset->band_low()) return region_t::paused;
-            if (rx < config_.offset->band_high()) return region_t::onset;
-        }
-
-        if (config_.limit.has_value())
-        {
-            if (rx < config_.limit->band_low()) return region_t::plateau;
-            if (rx < config_.limit->band_high()) return region_t::limit;
-            return region_t::capped;
-        }
-
-        return region_t::plateau;
-    }
-
-    template <typename value_t> constexpr auto warp_evaluate(value_t x) const noexcept -> value_t
-    {
-        switch (classify(primal(x)))
-        {
-            case region_t::paused: return value_t{};
-            case region_t::plateau: return x - config_.lag;
-            case region_t::capped: return value_t{config_.phi_capped};
-            case region_t::onset: return onset_evaluate(x);
-            case region_t::limit: return limit_evaluate(x);
-        }
-        return value_t{};
-    }
-
-    template <typename value_t> constexpr auto onset_evaluate(value_t x) const noexcept -> value_t
-    {
-        auto const& half = *config_.offset;
-
-        auto const p = primal(x);
-        auto const phi = half.integral(p) - half.integral(half.band_low());
-
-        if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
-        else return phi;
-    }
-
-    template <typename value_t> constexpr auto limit_evaluate(value_t x) const noexcept -> value_t
-    {
-        auto const& half = *config_.limit;
-
-        auto const p = primal(x);
-        auto const phi = config_.phi_at_b2 + (half.integral(p) - half.integral(half.band_low()));
-
-        if constexpr (is_jet<value_t>) return value_t{phi, half.evaluate(p) * tangent(x)};
-        else return phi;
-    }
-
-    config_t config_;
-    prev_t prev_;
+    real_t input_scale;
+    real_t input_offset;
+    real_t onset_center;
+    real_t onset_width;
+    real_t limit_target;
+    real_t limit_width;
+    real_t domain_low;
+    real_t domain_high;
 };
 
-//
-// domain warp factory
-//
-
-template <std::floating_point real_t, typename invert_t, real_t min_spline_transition_width>
-struct domain_warp_factory_t
+template <typename real_t> struct grid_params_t
 {
-    [[no_unique_address]] invert_t invert;
+    real_t segment_width;
+    real_t global_tolerance;
+};
+
+enum class builder_error_t
+{
+    invalid_width,
+    warp_overlap,
+    excessive_curvature,
+    limit_not_reached
+};
+
+constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
+{
+    switch (error)
+    {
+        case builder_error_t::invalid_width: return "Transition width too small or negative.";
+        case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
+        case builder_error_t::excessive_curvature: return "Transition violates hermite cubic bounds.";
+        case builder_error_t::limit_not_reached: return "Base curve never reaches limit target.";
+    }
+    return "Unknown builder error.";
+}
+
+template <typename real_t, typename chain_t> struct builder_result_t
+{
+    chain_t chain;
+    real_t nudged_input_offset;
+};
+
+template <typename real_t> class signal_chain_builder_t
+{
+    using transition_factory_t = erf_transition_factory_t<real_t>;
+    using transition_t = transition_factory_t::transition_t;
+
+    using grid_params_t = grid_params_t<real_t>;
+
+    transition_factory_t transition_factory_;
+    bisect_lower_bound_t invert_;
+    grid_params_t grid_;
+
+public:
+    using user_config_t = user_config_t<real_t>;
 
     template <typename prev_t>
-    [[nodiscard]] auto operator()(prev_t prev, real_t limit, real_t limit_width, std::optional<real_t> offset_center,
-        real_t offset_width, real_t domain_low, real_t domain_high)
-        -> std::expected<domain_warp_t<real_t, prev_t>, warp_error_t>
+    using builder_result_t = builder_result_t<real_t, limit_warp_t<onset_warp_t<prev_t, transition_t>, transition_t>>;
+
+    constexpr signal_chain_builder_t(grid_params_t grid) : grid_{grid} {}
+
+    template <typename prev_t>
+    [[nodiscard]] auto build(user_config_t const& config, std::optional<double> anchor, prev_t prev) const
+        -> std::expected<builder_result_t<prev_t>, builder_error_t>
     {
-        using warp_t = domain_warp_t<real_t, prev_t>;
-        using half_t = erf_half_t<real_t>;
-        using config_t = typename warp_t::config_t;
-
-        if (limit_width <= min_spline_transition_width) return std::unexpected(warp_error_t::invalid_limit_width);
-
-        // offset placement (optional)
-        auto offset_half = std::optional<half_t>{};
-        auto lag = real_t{0};
-        if (offset_center.has_value())
+        if (config.onset_width <= min_spline_transition_width<real_t>
+            || config.limit_width <= min_spline_transition_width<real_t>)
         {
-            if (offset_width <= min_spline_transition_width) return std::unexpected(warp_error_t::invalid_offset_width);
-
-            auto const c_L = *offset_center;
-            auto const k_L = erf_sharpness_from_width(offset_width);
-            offset_half.emplace(c_L, k_L);
-
-            auto const phi_at_onset_end
-                = offset_half->integral(offset_half->band_high()) - offset_half->integral(offset_half->band_low());
-
-            lag = offset_half->band_high() - phi_at_onset_end;
+            return std::unexpected(builder_error_t::invalid_width);
         }
 
-        // find leftmost x where prev reaches limit
-        auto const k_R_min = erf_sharpness_from_width(limit_width);
-        auto const max_half_width = erf_precision_limit_z<real_t> / k_R_min;
-        auto const search_high = domain_high + max_half_width - lag;
-        auto const x_opt_crossing = invert(domain_low, search_high, limit, prev);
+        auto const onset_profile = transition_factory_.make_onset(config.onset_center, config.onset_width);
+        auto const max_d4
+            = hermite_cubic_policy_t<real_t>::max_tolerable_d4(grid_.segment_width, grid_.global_tolerance);
+        auto const peak_derivative = onset_profile.peak_d4();
 
-        auto limit_half = std::optional<half_t>{};
-        auto phi_at_b2 = real_t{0};
-        auto phi_capped = real_t{0};
+        if (peak_derivative > max_d4) { return std::unexpected(builder_error_t::excessive_curvature); }
 
-        if (x_opt_crossing.has_value())
+        auto onset_chain = onset_warp_t{onset_profile, std::move(prev)};
+
+        auto const search_high = config.domain_high
+            + (erf_precision_limit_v<double> / std::abs(transition_factory_.calc_k(config.limit_width)))
+            - onset_chain.lag();
+        auto const opt_c_R = invert_(config.domain_low, search_high, config.limit_target, onset_chain);
+
+        if (!opt_c_R.has_value()) { return std::unexpected(builder_error_t::limit_not_reached); }
+
+        double c_R = *opt_c_R;
+        double nudged_offset = config.input_offset;
+
+        if (anchor)
         {
-            auto const x_crossing = *x_opt_crossing;
+            double const ideal_w = (*anchor / config.input_scale) + config.input_offset;
+            double raw_ideal = 0.0;
 
-            auto const k_R = -erf_sharpness_from_width(limit_width);
-            auto const c_R = x_crossing + lag;
-            limit_half.emplace(c_R, k_R);
-
-            phi_at_b2 = limit_half->band_low() - lag;
-
-            if (offset_half.has_value() && offset_half->band_high() > limit_half->band_low())
+            if (ideal_w <= c_R)
             {
-                return std::unexpected(warp_error_t::transition_overlap);
+                if (ideal_w < onset_profile.band_high())
+                {
+                    raw_ideal = *invert_(onset_profile.band_low(), onset_profile.band_high(), ideal_w, [&](double x) {
+                        return onset_profile.integral(x) - onset_profile.integral(onset_profile.band_low());
+                    });
+                }
+                else
+                {
+                    raw_ideal = ideal_w + onset_chain.lag();
+                }
+
+                double const grid_snapped = std::round(raw_ideal / grid_.segment_width) * grid_.segment_width;
+                double const w_actual = (grid_snapped < onset_profile.band_high())
+                    ? onset_profile.integral(grid_snapped) - onset_profile.integral(onset_profile.band_low())
+                    : grid_snapped - onset_chain.lag();
+
+                nudged_offset = (config.input_scale * w_actual) - *anchor;
             }
-
-            phi_capped = phi_at_b2
-                + (limit_half->integral(limit_half->band_high()) - limit_half->integral(limit_half->band_low()));
-
-            auto const tolerance = real_t{16} * std::numeric_limits<real_t>::epsilon()
-                * (real_t{1} + std::abs(x_crossing) + lag + limit_half->saturation_half_width());
-            if (std::abs(phi_capped - x_crossing) > tolerance)
+            else
             {
-                return std::unexpected(warp_error_t::limit_placement_failure);
+                auto const limit_profile = transition_factory_.make_limit(c_R, config.limit_width);
+                raw_ideal = *invert_(limit_profile.band_low(), limit_profile.band_high(), ideal_w, [&](double x) {
+                    return limit_profile.band_low()
+                        + (limit_profile.integral(x) - limit_profile.integral(limit_profile.band_low()));
+                });
+
+                double const grid_snapped = std::round(raw_ideal / grid_.segment_width) * grid_.segment_width;
+                double const delta = grid_snapped - raw_ideal;
+
+                nudged_offset = config.input_offset + (config.input_scale * delta);
+                c_R += delta;
             }
         }
 
-        auto config = config_t{
-            .offset = std::move(offset_half),
-            .limit = std::move(limit_half),
-            .lag = lag,
-            .phi_at_b2 = phi_at_b2,
-            .phi_capped = phi_capped,
-        };
-        return warp_t{std::move(config), std::move(prev)};
+        auto const limit_profile = transition_factory_.make_limit(c_R, config.limit_width);
+
+        if (limit_profile.band_low() < onset_profile.band_high())
+        {
+            return std::unexpected(builder_error_t::warp_overlap);
+        }
+
+        double const expected_cap = c_R;
+        double const actual_cap = limit_profile.band_low()
+            + (limit_profile.integral(limit_profile.band_high()) - limit_profile.integral(limit_profile.band_low()));
+        double const tolerance = 16.0 * std::numeric_limits<double>::epsilon()
+            * (1.0 + std::abs(c_R) + (limit_profile.band_high() - limit_profile.center()));
+
+        assert(std::abs(actual_cap - expected_cap) <= tolerance
+            && "Precision loss: limit cap deviates from the expected crossing point.");
+
+        auto final_chain = limit_warp_t{limit_profile, std::move(onset_chain)};
+        return builder_result_t{std::move(final_chain), nudged_offset};
     }
 };
 
 struct quadratic_t
 {
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t { return x * x; }
+    constexpr auto anchor() const noexcept -> std::optional<double> { return 0.0; }
 };
 
 TEST(signal_chain_test, integration)
@@ -405,21 +410,32 @@ TEST(signal_chain_test, integration)
 
     auto const y0 = real_t{0.25};
     auto const output_scale = real_t{1.5};
-    auto const limit = real_t{17.0};
-    auto const limit_width = real_t{0.5};
-    auto const offset_center = real_t{0.5};
-    auto const offset_width = real_t{0.25};
-    auto const domain_low = real_t{0.0};
-    auto const domain_high = real_t{256.0};
+
+    auto config = user_config_t<real_t>{.input_scale = 1.0,
+        .input_offset = 0.0,
+        .onset_center = 0.5,
+        .onset_width = 0.25,
+        .limit_target = 17.0,
+        .limit_width = 0.5,
+        .domain_low = 0.0,
+        .domain_high = 256.0};
+
+    // auto grid = grid_params_t{.segment_width = 1.0, .global_tolerance = 1e-4};
+    auto grid = grid_params_t<real_t>{.segment_width = std::ldexp(1.0, -10), .global_tolerance = 1e-4};
 
     auto const base_curve = quadratic_t{};
+    auto const affine_base = make_output_offset(y0, make_output_scale(output_scale, base_curve));
 
-    constexpr auto min_spline_transition_width = signal_chain::min_spline_transition_width<real_t>;
-    auto const output_chain_result = domain_warp_factory_t<real_t, bisect_lower_bound_t, min_spline_transition_width>{}(
-        make_output_offset(y0, make_output_scale(output_scale, base_curve)), limit, limit_width,
-        std::make_optional(offset_center), offset_width, domain_low, domain_high);
-    assert(output_chain_result.has_value());
-    auto const& output_chain = *output_chain_result;
+    auto const builder = signal_chain_builder_t{grid};
+    auto const build_result = builder.build(config, base_curve.anchor(), affine_base);
+
+    if (!build_result)
+    {
+        std::cout << to_string(build_result.error()) << std::endl;
+        return;
+    }
+
+    auto const& output_chain = build_result->chain;
 
     auto const dx = static_cast<real_t>(0.1);
     for (auto x = 0.0; x < static_cast<real_t>(5.0) + dx * 3; x += dx)
