@@ -333,15 +333,13 @@ public:
 
         auto onset_chain = onset_warp_t{onset_profile, std::move(prev)};
 
-        auto const search_high = config.domain_high
-            + (erf_precision_limit_v<double> / std::abs(transition_factory_.calc_k(config.limit_width)))
-            - onset_chain.lag();
+        auto const limit_transition_width
+            = (erf_precision_limit_v<real_t> / std::abs(transition_factory_.calc_k(config.limit_width)));
+        auto const search_high = config.domain_high + limit_transition_width - onset_chain.lag();
         auto const opt_c_R = invert_(config.domain_low, search_high, config.limit_target, onset_chain);
 
-        if (!opt_c_R.has_value()) { return std::unexpected(builder_error_t::limit_not_reached); }
-
-        double c_R = *opt_c_R;
-        double nudged_offset = config.input_offset;
+        auto c_R = opt_c_R.has_value() ? *opt_c_R : (search_high + limit_transition_width); // move past the domain end
+        auto nudged_offset = config.input_offset;
 
         if (anchor)
         {
