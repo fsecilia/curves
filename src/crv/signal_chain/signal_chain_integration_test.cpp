@@ -157,7 +157,7 @@ public:
     constexpr onset_warp_t(transition_t transition, prev_t prev)
         : transition_{std::move(transition)}, prev_{std::move(prev)}
     {
-        lag_ = transition_.integral(transition_.band_high()) - transition_.integral(transition_.band_low());
+        lag_ = transition_.half_width();
     }
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
@@ -169,8 +169,6 @@ public:
 
         return prev_(x - lag_);
     }
-
-    [[nodiscard]] constexpr auto lag() const noexcept -> real_t { return lag_; }
 
 private:
     transition_t transition_;
@@ -187,8 +185,7 @@ public:
         : transition_{std::move(transition)}, prev_{std::move(prev)}
     {
         cap_start_ = transition_.band_low();
-        cap_end_ = cap_start_
-            + (transition_.integral(transition_.band_high()) - transition_.integral(transition_.band_low()));
+        cap_end_ = cap_start_ + transition_.half_width();
     }
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
@@ -331,8 +328,9 @@ public:
 
         auto onset_chain = onset_warp_t{onset_transition, std::move(prev)};
 
+        auto const onset_transition_width = onset_transition.half_width();
         auto const limit_transition_width = limit_transition.half_width();
-        auto const search_high = config.domain_high + limit_transition_width - onset_chain.lag();
+        auto search_high = config.domain_high + limit_transition_width - onset_transition_width;
         auto const opt_c_R = invert_(config.domain_low, search_high, config.limit_target, onset_chain);
 
         auto c_R = opt_c_R.has_value() ? *opt_c_R : (search_high + limit_transition_width); // move past the domain end
@@ -355,13 +353,13 @@ public:
                 }
                 else
                 {
-                    raw_ideal = ideal_w + onset_chain.lag();
+                    raw_ideal = ideal_w + onset_transition_width;
                 }
 
                 real_t const grid_snapped = std::ceil(raw_ideal / grid_.segment_width) * grid_.segment_width;
                 real_t const w_actual = (grid_snapped < onset_transition.band_high())
                     ? onset_transition.integral(grid_snapped) - onset_transition.integral(onset_transition.band_low())
-                    : grid_snapped - onset_chain.lag();
+                    : grid_snapped - onset_transition_width;
 
                 nudged_offset = (config.input_scale * w_actual) - *anchor;
             }
