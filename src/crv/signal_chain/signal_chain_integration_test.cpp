@@ -291,7 +291,7 @@ template <typename real_t, typename chain_t> struct builder_result_t
     real_t nudged_input_offset;
 };
 
-template <typename real_t> class signal_chain_builder_t
+template <typename real_t, real_t min_spline_transition_width> class signal_chain_builder_t
 {
     using transition_factory_t = erf_transition_factory_t<real_t>;
     using transition_t = transition_factory_t::transition_t;
@@ -314,8 +314,7 @@ public:
     [[nodiscard]] auto build(user_config_t const& config, std::optional<real_t> anchor, prev_t prev) const
         -> std::expected<builder_result_t<prev_t>, builder_error_t>
     {
-        if (config.onset_width <= min_spline_transition_width<real_t>
-            || config.limit_width <= min_spline_transition_width<real_t>)
+        if (config.onset_width <= min_spline_transition_width || config.limit_width <= min_spline_transition_width)
         {
             return std::unexpected(builder_error_t::invalid_width);
         }
@@ -453,7 +452,7 @@ TEST(signal_chain_test, integration)
     auto const base_curve = quadratic_t<real_t>{};
     auto const affine_base = make_output_offset(y0, make_output_scale(output_scale, base_curve));
 
-    auto const builder = signal_chain_builder_t{grid};
+    auto const builder = signal_chain_builder_t<real_t, min_spline_transition_width<real_t>>{grid};
     auto const build_result = builder.build(config, base_curve.anchor(), affine_base);
 
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
