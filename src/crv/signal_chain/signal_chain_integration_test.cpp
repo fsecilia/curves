@@ -322,11 +322,14 @@ public:
         }
 
         auto const onset_profile = transition_factory_.make_onset(config.onset_center, config.onset_width);
+        auto const limit_test = transition_factory_.make_limit(0.0, config.limit_width);
         auto const max_d4
             = hermite_cubic_policy_t<real_t>::max_tolerable_d4(grid_.segment_width, grid_.global_tolerance);
-        auto const peak_derivative = onset_profile.peak_d4();
 
-        if (peak_derivative > max_d4) { return std::unexpected(builder_error_t::excessive_curvature); }
+        if (onset_profile.peak_d4() > max_d4 || limit_test.peak_d4() > max_d4)
+        {
+            return std::unexpected(builder_error_t::excessive_curvature);
+        }
 
         auto onset_chain = onset_warp_t{onset_profile, std::move(prev)};
 
