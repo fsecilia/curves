@@ -11,7 +11,6 @@
 #include <crv/math/scalar_traits.hpp>
 #include <crv/signal_chain/curves/test.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
-#include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
 #include <cassert>
 #include <cmath>
