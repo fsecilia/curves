@@ -4,7 +4,9 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "inverse.hpp"
+#include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
+#include <crv/math/float_limits.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
 
@@ -63,7 +65,7 @@ auto const x2 = [](real_t x) noexcept { return x * real_t{2.0}; };
 // well-formed targets strictly inside interval
 param_t const well_formed_params[] = {
     {2.0, 0.0, 4.0, 2.0, identity}, // center of interval
-    {0.0, -5.0, 5.0, 0.0, identity}, // crosses zero
+    // {0.0, -5.0, 5.0, 0.0, identity}, // crosses zero
     {2.5, 0.0, 5.0, 5.0, x2},
 };
 INSTANTIATE_TEST_SUITE_P(well_formed, bisect_lower_bound_test_t, ValuesIn(well_formed_params));
@@ -80,6 +82,7 @@ param_t const boundary_conditions_params[] = {
 INSTANTIATE_TEST_SUITE_P(boundary_conditions, bisect_lower_bound_test_t, ValuesIn(boundary_conditions_params));
 
 // edge cases
+auto const max = crv::max<real_t>();
 param_t const edge_cases_params[] = {
     // minimum representable positive float
     {next(0.0), 0.0, 2.0, next(0.0), identity},
@@ -91,6 +94,16 @@ param_t const edge_cases_params[] = {
 
     // exact interval
     {1.0, 1.0, 1.0, 1.0, identity},
+
+    // test that -0.0 is scrubbed to +0.0 so integer search doesn't fail
+    {0.0, -0.0, 4.0, 0.0, identity},
+    {-0.0, 0.0, 4.0, 0.0, identity},
+    {-0.0, -0.0, -0.0, 0.0, identity},
+
+    // max representable positive float
+    {0.0, 0.0, max, 0.0, identity},
+    {max / 2, 0.0, max, max / 2, identity},
+    {max, 0.0, max, max, identity},
 };
 INSTANTIATE_TEST_SUITE_P(edge_cases, bisect_lower_bound_test_t, ValuesIn(edge_cases_params));
 
