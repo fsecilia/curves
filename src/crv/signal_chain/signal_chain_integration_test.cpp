@@ -129,7 +129,7 @@ private:
 
 template <typename real_t> struct hermite_cubic_policy_t
 {
-    static constexpr auto max_tolerable_d4(real_t h, real_t epsilon) noexcept -> double
+    static constexpr auto max_tolerable_d4(real_t h, real_t epsilon) noexcept -> real_t
     {
         return (real_t{384.0} * epsilon) / (h * h * h * h);
     }
@@ -312,7 +312,7 @@ public:
     constexpr signal_chain_builder_t(grid_params_t grid) : grid_{grid} {}
 
     template <typename prev_t>
-    [[nodiscard]] auto build(user_config_t const& config, std::optional<double> anchor, prev_t prev) const
+    [[nodiscard]] auto build(user_config_t const& config, std::optional<real_t> anchor, prev_t prev) const
         -> std::expected<builder_result_t<prev_t>, builder_error_t>
     {
         if (config.onset_width <= min_spline_transition_width<real_t>
@@ -343,14 +343,14 @@ public:
 
         if (anchor)
         {
-            double const ideal_w = (*anchor / config.input_scale) + config.input_offset;
-            double raw_ideal = 0.0;
+            auto const ideal_w = (*anchor / config.input_scale) + config.input_offset;
+            auto raw_ideal = 0.0;
 
             if (ideal_w <= c_R)
             {
                 if (ideal_w < onset_profile.band_high())
                 {
-                    raw_ideal = *invert_(onset_profile.band_low(), onset_profile.band_high(), ideal_w, [&](double x) {
+                    raw_ideal = *invert_(onset_profile.band_low(), onset_profile.band_high(), ideal_w, [&](real_t x) {
                         return onset_profile.integral(x) - onset_profile.integral(onset_profile.band_low());
                     });
                 }
@@ -359,8 +359,8 @@ public:
                     raw_ideal = ideal_w + onset_chain.lag();
                 }
 
-                double const grid_snapped = std::round(raw_ideal / grid_.segment_width) * grid_.segment_width;
-                double const w_actual = (grid_snapped < onset_profile.band_high())
+                real_t const grid_snapped = std::ceil(raw_ideal / grid_.segment_width) * grid_.segment_width;
+                real_t const w_actual = (grid_snapped < onset_profile.band_high())
                     ? onset_profile.integral(grid_snapped) - onset_profile.integral(onset_profile.band_low())
                     : grid_snapped - onset_chain.lag();
 
@@ -374,8 +374,8 @@ public:
                         + (limit_profile.integral(x) - limit_profile.integral(limit_profile.band_low()));
                 });
 
-                double const grid_snapped = std::round(raw_ideal / grid_.segment_width) * grid_.segment_width;
-                double const delta = grid_snapped - raw_ideal;
+                auto const grid_snapped = std::ceil(raw_ideal / grid_.segment_width) * grid_.segment_width;
+                auto const delta = grid_snapped - raw_ideal;
 
                 nudged_offset = config.input_offset + (config.input_scale * delta);
                 c_R += delta;
@@ -389,10 +389,10 @@ public:
             return std::unexpected(builder_error_t::warp_overlap);
         }
 
-        double const expected_cap = c_R;
-        double const actual_cap = limit_profile.band_low()
+        auto const expected_cap = c_R;
+        auto const actual_cap = limit_profile.band_low()
             + (limit_profile.integral(limit_profile.band_high()) - limit_profile.integral(limit_profile.band_low()));
-        double const tolerance = 16.0 * std::numeric_limits<double>::epsilon()
+        auto const tolerance = 16.0 * std::numeric_limits<double>::epsilon()
             * (1.0 + std::abs(c_R) + (limit_profile.band_high() - limit_profile.center()));
 
         assert(std::abs(actual_cap - expected_cap) <= tolerance
@@ -403,10 +403,10 @@ public:
     }
 };
 
-struct quadratic_t
+template <typename real_t> struct quadratic_t
 {
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t { return x * x; }
-    constexpr auto anchor() const noexcept -> std::optional<double> { return 0.0; }
+    constexpr auto anchor() const noexcept -> std::optional<real_t> { return 0.0; }
 };
 
 template <typename real_t> struct sample_t
@@ -433,24 +433,26 @@ template <typename real_t> struct sample_t
 
 TEST(signal_chain_test, integration)
 {
-    using real_t = float64_t;
+    using real_t = float_t;
 
     auto const y0 = real_t{0.25};
     auto const output_scale = real_t{1.5};
 
-    auto config = user_config_t<real_t>{.input_scale = 1.0,
+    auto config = user_config_t<real_t>{
+        .input_scale = 1.0,
         .input_offset = 0.0,
         .onset_center = 0.5,
         .onset_width = 0.25,
         .limit_target = 17.0,
         .limit_width = 0.5,
         .domain_low = 0.0,
-        .domain_high = 256.0};
+        .domain_high = 256.0,
+    };
 
     // auto grid = grid_params_t{.segment_width = 1.0, .global_tolerance = 1e-4};
     auto grid = grid_params_t<real_t>{.segment_width = std::ldexp(1.0, -10), .global_tolerance = 1e-4};
 
-    auto const base_curve = quadratic_t{};
+    auto const base_curve = quadratic_t<real_t>{};
     auto const affine_base = make_output_offset(y0, make_output_scale(output_scale, base_curve));
 
     auto const builder = signal_chain_builder_t{grid};
