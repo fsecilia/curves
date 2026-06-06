@@ -74,7 +74,6 @@ public:
         using std::exp;
 
         auto const z = k_ * (x - center_);
-        constexpr auto inv_sqrt_pi = static_cast<real_t>(0.56418958354775628);
 
         auto const g = real_t{0.5} * (z * (real_t{1} + erf(z)) + inv_sqrt_pi * exp(-(z * z)));
         return g / k_;
@@ -82,11 +81,13 @@ public:
 
     [[nodiscard]] constexpr auto peak_d4() const noexcept -> real_t
     {
-        constexpr auto inv_sqrt_pi = static_cast<real_t>(0.56418958354775628);
-        return real_t{2.0} * (k_ * k_ * k_) * inv_sqrt_pi;
+        auto const abs_k = std::abs(k_);
+        return real_t{2.0} * (abs_k * abs_k * abs_k) * inv_sqrt_pi;
     }
 
 private:
+    static constexpr auto inv_sqrt_pi = std::numbers::inv_sqrtpi_v<real_t>;
+
     real_t center_;
     real_t k_;
     real_t half_width_;
