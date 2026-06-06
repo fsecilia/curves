@@ -106,25 +106,38 @@ template <std::floating_point real_t> struct erf_transition_factory_t
 
     [[nodiscard]] constexpr auto make_onset(real_t center, real_t width) const noexcept -> transition_t
     {
-        auto const k = calc_k(width);
+        auto const k = sharpness_from_width(width);
         return {center, k, calc_half_width(k)};
     }
 
     [[nodiscard]] constexpr auto make_limit(real_t center, real_t width) const noexcept -> transition_t
     {
-        auto const k = -calc_k(width);
+        auto const k = -sharpness_from_width(width);
         return {center, k, calc_half_width(k)};
     }
 
 private:
-    constexpr auto calc_k(real_t width) const noexcept -> real_t
+    static constexpr auto sharpness_from_width(real_t width) noexcept -> real_t
     {
-        // (30 sqrt pi)^(1/3) matched from your original PoC to inherit smootherstep splineability
+        // The user gives a transition width w; erf needs a sharpness k. We do not map against erf's machine-flat
+        // saturation band (~12/k wide for double). erf packs its curvature into a narrower central region, which would
+        // make the corner too sharp for the segment grid to resolve without extra knots. Instead we match erf's corner
+        // to smootherstep's at the same width (the polynomial transition we already know splines cleanly), equating the
+        // fourth-derivative peak, which is the quantity that drives cubic-Hermite reproduction error:
+        //
+        //   smootherstep:  phi'''' _max = W'''(0)/w^3 = 60 / w^3       (W = 10t^3 - 15t^4 + 6t^5)
+        //   erf:           phi'''' _max = 2 k^3 / sqrt pi              (peak at band center)
+        //
+        //   2 k^3 / sqrt pi = 60 / w^3  =>  k = (30 sqrt pi)^(1/3) / w  ~= 3.762 / w
+        //
+        // With this k the erf warp inherits smootherstep's splineability: any grid + min-width floor that handles
+        // smootherstep handles this. (Matching peak curvature phi'' instead gives ~3.32/w; we use the phi'''' match. It
+        // targets spline error directly and is marginally more conservative.)
         constexpr auto cube_root_30_sqrt_pi = static_cast<real_t>(3.7603828531416483);
         return cube_root_30_sqrt_pi / width;
     }
 
-    constexpr auto calc_half_width(real_t k) const noexcept -> real_t
+    static constexpr auto calc_half_width(real_t k) noexcept -> real_t
     {
         return erf_precision_limit_v<real_t> / std::abs(k);
     }
