@@ -319,19 +319,19 @@ public:
             return std::unexpected(builder_error_t::invalid_width);
         }
 
-        auto const onset_profile = transition_factory_.make_onset(config.onset_center, config.onset_width);
-        auto const limit_test = transition_factory_.make_limit(0.0, config.limit_width);
+        auto const onset_transition = transition_factory_.make_onset(config.onset_center, config.onset_width);
+        auto const limit_transition = transition_factory_.make_limit(0.0, config.limit_width);
         auto const max_d4
             = hermite_cubic_policy_t<real_t>::max_tolerable_d4(grid_.segment_width, grid_.global_tolerance);
 
-        if (onset_profile.peak_d4() > max_d4 || limit_test.peak_d4() > max_d4)
+        if (onset_transition.peak_d4() > max_d4 || limit_transition.peak_d4() > max_d4)
         {
             return std::unexpected(builder_error_t::excessive_curvature);
         }
 
-        auto onset_chain = onset_warp_t{onset_profile, std::move(prev)};
+        auto onset_chain = onset_warp_t{onset_transition, std::move(prev)};
 
-        auto const limit_transition_width = limit_test.half_width();
+        auto const limit_transition_width = limit_transition.half_width();
         auto const search_high = config.domain_high + limit_transition_width - onset_chain.lag();
         auto const opt_c_R = invert_(config.domain_low, search_high, config.limit_target, onset_chain);
 
@@ -345,11 +345,13 @@ public:
 
             if (ideal_w <= c_R)
             {
-                if (ideal_w < onset_profile.band_high())
+                if (ideal_w < onset_transition.band_high())
                 {
-                    raw_ideal = *invert_(onset_profile.band_low(), onset_profile.band_high(), ideal_w, [&](real_t x) {
-                        return onset_profile.integral(x) - onset_profile.integral(onset_profile.band_low());
-                    });
+                    raw_ideal
+                        = *invert_(onset_transition.band_low(), onset_transition.band_high(), ideal_w, [&](real_t x) {
+                              return onset_transition.integral(x)
+                                  - onset_transition.integral(onset_transition.band_low());
+                          });
                 }
                 else
                 {
@@ -357,8 +359,8 @@ public:
                 }
 
                 real_t const grid_snapped = std::ceil(raw_ideal / grid_.segment_width) * grid_.segment_width;
-                real_t const w_actual = (grid_snapped < onset_profile.band_high())
-                    ? onset_profile.integral(grid_snapped) - onset_profile.integral(onset_profile.band_low())
+                real_t const w_actual = (grid_snapped < onset_transition.band_high())
+                    ? onset_transition.integral(grid_snapped) - onset_transition.integral(onset_transition.band_low())
                     : grid_snapped - onset_chain.lag();
 
                 nudged_offset = (config.input_scale * w_actual) - *anchor;
@@ -381,7 +383,7 @@ public:
 
         auto const limit_profile = transition_factory_.make_limit(c_R, config.limit_width);
 
-        if (limit_profile.band_low() < onset_profile.band_high())
+        if (limit_profile.band_low() < onset_transition.band_high())
         {
             return std::unexpected(builder_error_t::warp_overlap);
         }
