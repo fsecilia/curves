@@ -366,7 +366,7 @@ public:
             else
             {
                 auto const limit_profile = transition_factory_.make_limit(c_R, config.limit_width);
-                raw_ideal = *invert_(limit_profile.band_low(), limit_profile.band_high(), ideal_w, [&](double x) {
+                raw_ideal = *invert_(limit_profile.band_low(), limit_profile.band_high(), ideal_w, [&](real_t x) {
                     return limit_profile.band_low()
                         + (limit_profile.integral(x) - limit_profile.integral(limit_profile.band_low()));
                 });
@@ -389,7 +389,7 @@ public:
         auto const expected_cap = c_R;
         auto const actual_cap = limit_profile.band_low()
             + (limit_profile.integral(limit_profile.band_high()) - limit_profile.integral(limit_profile.band_low()));
-        auto const tolerance = 16.0 * std::numeric_limits<double>::epsilon()
+        auto const tolerance = 16.0 * std::numeric_limits<real_t>::epsilon()
             * (1.0 + std::abs(c_R) + (limit_profile.band_high() - limit_profile.center()));
 
         assert(std::abs(actual_cap - expected_cap) <= tolerance
