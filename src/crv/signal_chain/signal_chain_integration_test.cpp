@@ -9,6 +9,7 @@
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/signal_chain/curves/test.hpp>
 #include <crv/signal_chain/curves/traits.hpp>
 #include <crv/signal_chain/quadrature/adaptive_integrator.hpp>
 #include <crv/test/test.hpp>
@@ -16,6 +17,9 @@
 #include <cmath>
 #include <concepts>
 #include <expected>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -404,6 +408,28 @@ struct quadratic_t
     constexpr auto anchor() const noexcept -> std::optional<double> { return 0.0; }
 };
 
+template <typename real_t> struct sample_t
+{
+    real_t x;
+    jet_t<real_t> y;
+
+    constexpr auto near(sample_t const& src, real_t tolerance) const noexcept -> bool
+    {
+        return abs(rel_error(x, src.x)) < tolerance && abs(rel_error(primal(y), primal(src.y))) < tolerance
+            && abs(rel_error(tangent(y), tangent(src.y))) < tolerance;
+    }
+
+    friend auto operator<<(std::ostream& out, sample_t const& src) -> std::ostream&
+    {
+        return out << src.x << " " << primal(src.y) << " " << tangent(src.y);
+    }
+
+    friend auto operator>>(std::istream& in, sample_t& src) -> std::istream&
+    {
+        return in >> src.x >> src.y.f >> src.y.df;
+    }
+};
+
 TEST(signal_chain_test, integration)
 {
     using real_t = float64_t;
@@ -429,21 +455,58 @@ TEST(signal_chain_test, integration)
     auto const builder = signal_chain_builder_t{grid};
     auto const build_result = builder.build(config, base_curve.anchor(), affine_base);
 
-    if (!build_result)
-    {
-        std::cout << to_string(build_result.error()) << std::endl;
-        return;
-    }
+    ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
 
     auto const& output_chain = build_result->chain;
 
-    auto const dx = static_cast<real_t>(0.1);
+    auto const dx = static_cast<real_t>(0.001);
+    auto const x_max = static_cast<real_t>(5.0) + dx * 3;
+
+    auto const truth_path = std::filesystem::path{"signal_chain_integration_test_truth.txt"};
+    auto const gen_truth = !std::filesystem::exists(truth_path);
+
+    using sample_t = sample_t<real_t>;
+    if (gen_truth)
+    {
+        auto truth_out = std::ofstream(truth_path);
+        truth_out << std::setprecision(30);
+
+        for (auto x = 0.0; x < x_max; x += dx)
+        {
+            auto const y = output_chain(jet_t{x, 1.0});
+            auto const expected = sample_t{x, y};
+            truth_out << expected << "\n";
+        }
+
+        return;
+    }
+
+    std::vector<sample_t> truth_table;
+    auto truth_in = std::ifstream(truth_path);
+    ASSERT_TRUE(truth_in.good() && !truth_in.bad());
+
+    while (truth_in)
+    {
+        sample_t expected;
+        truth_in >> expected;
+        truth_table.push_back(expected);
+    }
+
+    // presume there are more than 1000 samples, but exactly how many varies.
+    ASSERT_LT(1000, truth_table.size());
+
+    constexpr auto tolerance = real_t{1e-10};
+
+    auto truth_entry = std::begin(truth_table);
     for (auto x = 0.0; x < static_cast<real_t>(5.0) + dx * 3; x += dx)
     {
         auto const y = output_chain(jet_t{x, 1.0});
-        std::cout << x << ", (" << primal(y) << ", " << tangent(y) << ")\n";
+
+        auto const actual = sample_t{x, y};
+
+        auto const expected = *truth_entry++;
+        EXPECT_TRUE(expected.near(actual, tolerance));
     }
-    std::cout.flush();
 }
 
 } // namespace crv::signal_chain
