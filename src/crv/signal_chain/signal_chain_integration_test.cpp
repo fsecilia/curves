@@ -147,16 +147,14 @@ private:
 // structural warps
 //
 
-template <typename prev_t, typename transition_t> class onset_warp_t
+template <typename transition_t, typename prev_t> class onset_warp_t
 {
 public:
-    using real_t = typename transition_t::real_t;
+    using real_t = transition_t::real_t;
 
-    constexpr onset_warp_t(transition_t transition, prev_t prev)
-        : transition_{std::move(transition)}, prev_{std::move(prev)}
-    {
-        lag_ = transition_.half_width();
-    }
+    constexpr onset_warp_t(real_t lag, transition_t transition, prev_t prev)
+        : lag_{lag}, transition_{std::move(transition)}, prev_{std::move(prev)}
+    {}
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
@@ -171,22 +169,19 @@ public:
     auto lag() const noexcept -> real_t { return lag_; }
 
 private:
-    transition_t transition_;
     real_t lag_;
+    transition_t transition_;
     prev_t prev_;
 };
 
-template <typename prev_t, typename transition_t> class limit_warp_t
+template <typename transition_t, typename prev_t> class limit_warp_t
 {
 public:
-    using real_t = typename transition_t::real_t;
+    using real_t = transition_t::real_t;
 
-    constexpr limit_warp_t(transition_t transition, prev_t prev)
-        : transition_{std::move(transition)}, prev_{std::move(prev)}
-    {
-        cap_start_ = transition_.band_low();
-        cap_end_ = cap_start_ + transition_.half_width();
-    }
+    constexpr limit_warp_t(real_t cap_start, real_t cap_end, transition_t transition, prev_t prev)
+        : cap_start_{cap_start}, cap_end_{cap_end}, transition_{std::move(transition)}, prev_{std::move(prev)}
+    {}
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
@@ -199,9 +194,9 @@ public:
     }
 
 private:
-    transition_t transition_;
     real_t cap_start_;
     real_t cap_end_;
+    transition_t transition_;
     prev_t prev_;
 };
 
@@ -381,9 +376,9 @@ template <typename real_t, real_t min_spline_transition_width> class signal_chai
     template <typename curve_t>
     using chain_t = input_scale_t<real_t,
         input_offset_t<real_t,
-            limit_warp_t<onset_warp_t<output_offset_t<real_t, output_scale_t<real_t, normalize_t<real_t, curve_t>>>,
-                             transition_t>,
-                transition_t>>>;
+            limit_warp_t<transition_t,
+                onset_warp_t<transition_t,
+                    output_offset_t<real_t, output_scale_t<real_t, normalize_t<real_t, curve_t>>>>>>>;
 
     using grid_params_t = grid_params_t<real_t>;
 
@@ -403,8 +398,8 @@ template <typename real_t, real_t min_spline_transition_width> class signal_chai
         return invert_(warp.domain_low, search_high, warp.limit_target, onset_chain);
     }
 
-    [[nodiscard]] auto solve_input_offset(input_calibration_t<real_t> const& in, transition_t const&, real_t,
-        domain_warp_config_t<real_t> const&) const -> real_t
+    [[nodiscard]] auto solve_input_offset(input_calibration_t<real_t> const& in, transition_t const&,
+        real_t /*limit_center*/, domain_warp_config_t<real_t> const& /*warp*/) const -> real_t
     {
         // STUB(nudge): anchor->grid alignment is deferred to the dedicated pass. The offset passes through
         // unaligned. The chain is correct, it is simply not knot-aligned. A green test here does NOT mean
@@ -451,7 +446,7 @@ public:
 
         // domain warps over the output stack
         // TODO(roll-on): onset/limit order and limit placement are provisional, pinned in the dedicated pass
-        auto onset_chain = onset_warp_t{onset, std::move(out_stack)};
+        auto onset_chain = onset_warp_t{onset.half_width(), onset, std::move(out_stack)};
 
         auto const opt_center = place_limit(onset_chain, warp);
         if (!opt_center) return std::unexpected(builder_error_t::limit_not_reached);
@@ -461,7 +456,8 @@ public:
         if (limit.band_low() < onset.band_high()) return std::unexpected(builder_error_t::warp_overlap);
 
         // input affine over the warps; offset solved so the anchor lands on a grid node
-        auto warped = limit_warp_t{limit, std::move(onset_chain)};
+        auto warped
+            = limit_warp_t{limit.band_low(), limit.band_low() + limit.half_width(), limit, std::move(onset_chain)};
         auto const offset = solve_input_offset(in, onset, limit_center, warp);
         return make_input_affine(in.scale, offset, std::move(warped));
     }
