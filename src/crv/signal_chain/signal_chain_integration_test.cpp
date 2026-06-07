@@ -341,8 +341,7 @@ public:
             .offset = out.y0.value_or(out.scale * f0),
             .prev = output_scale_t{.scale = out.scale, .prev = normalize_t{f0, std::move(curve)}},
         };
-        auto onset_chain = onset_warp_t<real_t, decltype(out_stack), transition_t>{
-            warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
+        auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
         // Map the visible domain into curve space with the affine the chain will use. domain_low/high are final-input
         // (the spline domain); onset_center/width and the limit live in curve space. The input affine bridges them, so
@@ -388,8 +387,7 @@ public:
             blend = std::max(real_t{0}, real_t{1} - dy / h);
         }
 
-        auto limit_chain = limit_warp_t<real_t, decltype(onset_chain), transition_t>{
-            limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
+        auto limit_chain = limit_warp_t{limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
 
         //
         // final assembly
@@ -399,7 +397,7 @@ public:
             .scale = in.scale,
             .prev = input_offset_t{.offset = nudged_offset, .prev = std::move(limit_chain)},
         };
-        return builder_result_t<real_t, decltype(final_chain)>{std::move(final_chain), nudged_offset};
+        return result_t<curve_t>{std::move(final_chain), nudged_offset};
     }
 };
 
