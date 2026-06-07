@@ -18,4 +18,3 @@ out/
 
 # local files
 CMakeUserPresets.json
-signal_chain_integration_test_truth.txt
