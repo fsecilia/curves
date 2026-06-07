@@ -28,14 +28,14 @@ namespace crv::signal_chain {
 // math primitives & bounds
 //
 
+template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
+
 template <std::floating_point real_t>
 inline real_t const erf_precision_limit_v = [] {
     using std::log;
     using std::sqrt;
     return sqrt(-log(std::numeric_limits<real_t>::epsilon()));
 }();
-
-template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 //
 // pure geometry (transitions)
@@ -140,6 +140,42 @@ private:
     static constexpr auto calc_half_width(real_t k) noexcept -> real_t
     {
         return erf_precision_limit_v<real_t> / std::abs(k);
+    }
+};
+
+template <typename real_t> struct smootherstep_transition_t
+{
+    real_t center;
+    real_t reciprocal_width;
+
+    template <typename value_t> auto operator()(value_t value) const noexcept -> value_t
+    {
+        using scalar_t = scalar_type_t<value_t>;
+
+        auto const t = primal(value - center) * reciprocal_width;
+        auto const t2 = t * t;
+        auto const t4 = t2 * t2;
+
+        auto const f = t4 * ((t - scalar_t{3}) * t + scalar_t{2.5});
+
+        if constexpr (is_jet<value_t>)
+        {
+            auto const t3 = t2 * t;
+            auto const df = t3 * ((scalar_t{6} * t - scalar_t{15}) * t + scalar_t{10});
+            return {f, df * reciprocal_width * tangent(value)};
+        }
+        else return f;
+    }
+};
+
+template <typename real_t> struct smootherstep_transition_factory_t
+{
+    using product_t = smootherstep_transition_t<real_t>;
+    auto operator()(real_t center, real_t width) const noexcept -> product_t
+    {
+        assert(width > real_t{0});
+
+        return product_t{.center = center, .reciprocal_width = real_t{1.0} / width};
     }
 };
 
