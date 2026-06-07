@@ -194,7 +194,7 @@ struct synchronous_t
                 auto const d1 = f_s1 / x;
                 return {f, d1 * tangent(input)};
             }
-            else return f;
+            else return value_t{f};
         }
 
         /// array of critical points
