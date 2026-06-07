@@ -377,8 +377,14 @@ public:
         }
 
         auto const x_raw = (x_warp_in_target - in.offset) / in.scale;
-        auto const x_q = std::round(x_raw / grid_.segment_width) * grid_.segment_width;
-        auto const nudged_offset = x_warp_in_target - x_q * in.scale;
+        real_t nudged_offset;
+
+        if (x_raw > warp.domain_high) { nudged_offset = in.offset; }
+        else
+        {
+            auto const x_q = std::ceil(x_raw / grid_.segment_width) * grid_.segment_width;
+            nudged_offset = x_warp_in_target - x_q * in.scale;
+        }
 
         // Final Assembly
         auto final_chain = make_input_affine(in.scale, nudged_offset, std::move(limit_chain));
