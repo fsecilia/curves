@@ -61,6 +61,24 @@ TEST_F(jet_test_concepts_t, is_not_jet)
 }
 
 // ====================================================================================================================
+// Type Traits
+// ====================================================================================================================
+
+struct jet_test_type_traits_t : jet_test_t
+{
+    struct nonjet_t;
+};
+
+TEST_F(jet_test_type_traits_t, scalar_type)
+{
+    static_assert(std::same_as<scalar_type_t<int_t>, int_t>);
+    static_assert(std::same_as<scalar_type_t<float_t>, float_t>);
+
+    static_assert(std::same_as<scalar_type_t<jet_t<float32_t>>, float32_t>);
+    static_assert(std::same_as<scalar_type_t<jet_t<float64_t>>, float64_t>);
+}
+
+// ====================================================================================================================
 // Construction
 // ====================================================================================================================
 

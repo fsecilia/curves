@@ -53,6 +53,26 @@ template <typename value_t>
 concept is_not_jet = !is_jet<value_t>;
 
 // --------------------------------------------------------------------------------------------------------------------
+// Type Traits
+// --------------------------------------------------------------------------------------------------------------------
+
+namespace detail {
+
+template <typename value_t> struct scalar_type_f
+{
+    using type = value_t;
+};
+
+template <is_jet jet_t> struct scalar_type_f<jet_t>
+{
+    using type = jet_t::value_t;
+};
+
+} // namespace detail
+
+template <typename value_t> using scalar_type_t = detail::scalar_type_f<value_t>::type;
+
+// --------------------------------------------------------------------------------------------------------------------
 // Jet
 // --------------------------------------------------------------------------------------------------------------------
 
