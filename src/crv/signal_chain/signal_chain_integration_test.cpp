@@ -19,6 +19,7 @@
 #include <iostream>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace crv::signal_chain {
@@ -316,78 +317,122 @@ public:
         input_calibration_t<real_t> const& in, output_calibration_t<real_t> const& out) const
         -> expected_result_t<curve_t>
     {
-        // Validation
+        //
+        // validation
+        //
+
         if (warp.onset_width <= min_spline_transition_width || warp.limit_width <= min_spline_transition_width)
+        {
             return std::unexpected(builder_error_t::invalid_width);
-
+        }
         if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high)
+        {
             return std::unexpected(builder_error_t::invalid_domain);
-
+        }
         if (in.scale <= real_t{0} || out.scale <= real_t{0}) return std::unexpected(builder_error_t::invalid_scale);
-
         if (out.y0 && *out.y0 < real_t{0}) return std::unexpected(builder_error_t::invalid_floor);
 
-        // Base Curve & Output Transforms
+        // cache values from curve before move.
         auto const f0 = curve(real_t{0});
-        auto const anchor_y = curve.anchor().value_or(real_t{0});
-        auto out_stack
-            = make_output_affine(out.scale, out.y0.value_or(out.scale * f0), make_normalize(f0, std::move(curve)));
-        auto onset_chain = onset_warp_t<real_t, decltype(out_stack), transition_t>{
-            warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
+        auto const anchor_y = curve.anchor().value_or(real_t{0}); // cusp position in curve space, 0 if none
 
-        // Graceful Roll-On Limit Placement
-        auto const y_max = onset_chain(warp.domain_high);
-        auto const opt_x_cap = invert_(warp.domain_low, warp.domain_high, warp.limit_target, onset_chain);
+        //
+        // cusp quantization
+        //
 
-        real_t const x_cap = opt_x_cap.value_or(warp.domain_high);
-        real_t const limit_start = x_cap - warp.limit_width / real_t{2};
-
-        if (limit_start < warp.onset_center + warp.onset_width / real_t{2})
-        {
-            return std::unexpected(builder_error_t::warp_overlap);
-        }
-
-        real_t blend = real_t{1};
-        if (warp.limit_target > y_max)
-        {
-            auto const d = warp.limit_target - y_max;
-            auto const h = warp.limit_width / real_t{2};
-            blend = std::max(real_t{0}, real_t{1} - d / h);
-        }
-
-        auto limit_chain = limit_warp_t<real_t, decltype(onset_chain), transition_t>{
-            limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
-
-        // Cusp Quantization & Knot Sinking
+        // The nudge depends only on the anchor, the warp geometry, and the grid, never on the limit. Hoisting it above
+        // the limit placement breaks the old circularity and lets the limit below be placed with the final nudged
+        // affine position, so in.scale / in.offset participate.
         auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
 
-        real_t x_warp_in_target;
-        if (anchor_y <= real_t{0}) { x_warp_in_target = start_onset; }
+        real_t x_warp_in_target; // onset-input (curve space) where the anchor lands
+        if (anchor_y <= real_t{0}) x_warp_in_target = start_onset;
         else if (anchor_y >= warp.onset_width / real_t{2})
         {
             x_warp_in_target = anchor_y + start_onset + warp.onset_width / real_t{2};
         }
         else
         {
-            // Analytically target the active transition integral
             auto const target_t = anchor_y / warp.onset_width;
             auto const found_t = invert_(real_t{0}, real_t{1}, target_t, transition_);
             x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
         }
 
+        // x_raw is the anchor's current final-input position, baseline = original offset; domain_high is also
+        // final-input, so this comparison was already in the right frame and stays as-is.
         auto const x_raw = (x_warp_in_target - in.offset) / in.scale;
         real_t nudged_offset;
-
-        if (x_raw > warp.domain_high) { nudged_offset = in.offset; }
+        if (x_raw > warp.domain_high)
+        {
+            nudged_offset = in.offset; // cusp is off the right edge -> leave calibration alone
+        }
         else
         {
-            auto const x_q = std::ceil(x_raw / grid_.segment_width) * grid_.segment_width;
-            nudged_offset = x_warp_in_target - x_q * in.scale;
+            auto const x_q = std::ceil(x_raw / grid_.segment_width) * grid_.segment_width; // forward, never negative
+            nudged_offset = x_warp_in_target - x_q * in.scale; // land the cusp on x_q
         }
 
-        // Final Assembly
-        auto final_chain = make_input_affine(in.scale, nudged_offset, std::move(limit_chain));
+        //
+        // transforms
+        //
 
+        auto out_stack
+            = make_output_affine(out.scale, out.y0.value_or(out.scale * f0), make_normalize(f0, std::move(curve)));
+        auto onset_chain = onset_warp_t<real_t, decltype(out_stack), transition_t>{
+            warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
+
+        // Map the visible domain into curve space with the affine the chain will use. domain_low/high are final-input
+        // (the spline domain); onset_center/width and the limit live in curve space. The input affine bridges them, so
+        // the bounds must pass through it before they reach onset_chain. This way, domain_high does not appear in two
+        // different frames.
+        auto const onset_in_low = warp.domain_low * in.scale + nudged_offset;
+        auto const onset_in_high = warp.domain_high * in.scale + nudged_offset;
+
+        //
+        // limit placement
+        //
+
+        // one uniform rule: Position rides the curve via the inverse; with the line above the curve there is no
+        // intersection and we default to the domain edge, so position stays continuous through y_max there.
+        // Flat-topped / mid-plateau curves jump at their flat runs; that is inherent to a lower-bound
+        // inverse and is left to a temporal (EMA) chase post-MVP.
+        auto const y_max = onset_chain(onset_in_high);
+        auto const opt_x_cap = invert_(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
+        auto const x_cap = opt_x_cap.value_or(onset_in_high);
+        auto const limit_start = x_cap - warp.limit_width / real_t{2};
+
+        if (limit_start < warp.onset_center + warp.onset_width / real_t{2})
+        {
+            return std::unexpected(builder_error_t::warp_overlap);
+        }
+
+        //
+        // engagement
+        //
+
+        // strength: slope-independent linear roll-on in y. d(blend)/d(limit_target) = -1/window_y is constant, same for
+        // steep or tall. Essential even when rising: without it the edge-default clamp would pull the curve's top down
+        // while the line merely hovers above.
+        //
+        // Roll-on window is the box's height. In the isotropic curve space one x-unit equals one y-unit, so
+        // limit_width/2 is a legitimate y-distance; no separate parameter, no axis conversion. Slope-free and
+        // height-free here: d(blend)/d(limit_target) = -2/limit_width, constant.
+        real_t blend = real_t{1};
+        if (warp.limit_target > y_max)
+        {
+            auto const dy = warp.limit_target - y_max; // gap above the curve's top, data-y
+            auto const h = warp.limit_width / real_t{2}; // box height in the isotropic curve space
+            blend = std::max(real_t{0}, real_t{1} - dy / h);
+        }
+
+        auto limit_chain = limit_warp_t<real_t, decltype(onset_chain), transition_t>{
+            limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
+
+        //
+        // final assembly
+        //
+
+        auto final_chain = make_input_affine(in.scale, nudged_offset, std::move(limit_chain));
         return builder_result_t<real_t, decltype(final_chain)>{std::move(final_chain), nudged_offset};
     }
 };
