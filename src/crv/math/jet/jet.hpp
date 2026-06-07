@@ -127,13 +127,13 @@ template <typename t_value_t> struct jet_t
     friend constexpr auto operator<=>(jet_t const& lhs, value_t const& rhs) noexcept -> auto
         requires std::three_way_comparable<value_t>
     {
-        if (auto cmp = lhs.f <=> rhs; cmp != 0) return cmp;
-        return lhs.df <=> 0.0;
+        if (auto cmp = lhs.f <=> rhs; cmp != decltype(cmp)::equivalent) return auto{cmp};
+        return lhs.df <=> value_t{0.0};
     }
 
     friend constexpr auto operator==(jet_t const& lhs, value_t const& rhs) noexcept -> bool
     {
-        return lhs.f == rhs && lhs.df == 0;
+        return lhs.f == rhs && lhs.df == value_t{0};
     }
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ template <typename t_value_t> struct jet_t
     constexpr auto operator<=>(jet_t const& other) const noexcept -> auto
         requires std::three_way_comparable<value_t>
     {
-        if (auto cmp = f <=> other.f; cmp != 0) return cmp;
+        if (auto cmp = f <=> other.f; cmp != decltype(cmp)::equivalent) return auto{cmp};
         return df <=> other.df;
     }
 
@@ -409,7 +409,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::log;
 
-        assert(x.f > 0 && "jet_t::log: domain error");
+        assert(x.f > value_t{0} && "jet_t::log: domain error");
 
         return {log(x.f), x.df / x.f};
     }
@@ -420,7 +420,7 @@ template <typename t_value_t> struct jet_t
     {
         using crv::log1p;
 
-        assert(x.f > -1 && "jet_t::log1p: domain error");
+        assert(x.f > value_t{-1} && "jet_t::log1p: domain error");
 
         return {log1p(x.f), x.df / (x.f + 1)};
     }
