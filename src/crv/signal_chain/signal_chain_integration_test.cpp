@@ -255,12 +255,78 @@ template <typename real_t, typename chain_t> struct builder_result_t
     real_t nudged_input_offset;
 };
 
-template <typename real_t, real_t min_spline_transition_width, typename transition_t = smootherstep_integral_t<real_t>>
+template <typename real_t, real_t min_width>
+constexpr auto validate_params(domain_warp_config_t<real_t> const& warp, input_calibration_t<real_t> const& in,
+    output_calibration_t<real_t> const& out) noexcept -> std::optional<builder_error_t>
+{
+    if (warp.onset_width <= min_width || warp.limit_width <= min_width) return builder_error_t::invalid_width;
+    if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high) return builder_error_t::invalid_domain;
+    if (in.scale <= real_t{0} || out.scale <= real_t{0}) return builder_error_t::invalid_scale;
+    if (out.y0 && *out.y0 < real_t{0}) return builder_error_t::invalid_floor;
+    return std::nullopt;
+}
+
+template <typename real_t, typename transition_t, typename invert_t = bisect_lower_bound_t> struct cusp_quantizer_t
+{
+    invert_t invert;
+
+    [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_y, domain_warp_config_t<real_t> const& warp,
+        input_calibration_t<real_t> const& in, grid_params_t<real_t> const& grid, transition_t const& transition) const
+        -> real_t
+    {
+        auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
+        auto const anchor_val = anchor_y.value_or(real_t{0});
+
+        real_t x_warp_in_target; // onset-input (curve space) where the anchor lands
+        if (anchor_val <= real_t{0}) x_warp_in_target = start_onset;
+        else if (anchor_val >= warp.onset_width / real_t{2})
+        {
+            x_warp_in_target = anchor_val + start_onset + warp.onset_width / real_t{2};
+        }
+        else
+        {
+            auto const target_t = anchor_val / warp.onset_width;
+            auto const found_t = invert(real_t{0}, real_t{1}, target_t, transition);
+            x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
+        }
+
+        auto const x_raw = (x_warp_in_target - in.offset) / in.scale;
+        if (x_raw > warp.domain_high) return in.offset;
+
+        auto const x_q = std::ceil(x_raw / grid.segment_width) * grid.segment_width; // forward, never negative
+        return x_warp_in_target - x_q * in.scale; // land the cusp on x_q
+    }
+};
+
+template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limit_locator_t
+{
+    invert_t invert;
+
+    template <typename chain_t>
+    [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, real_t onset_in_low,
+        real_t onset_in_high, chain_t const& onset_chain) const -> std::expected<real_t, builder_error_t>
+    {
+        auto const opt_x_cap = invert(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
+        auto const x_cap = opt_x_cap.value_or(onset_in_high);
+        auto const limit_start = x_cap - warp.limit_width / real_t{2};
+
+        if (limit_start < warp.onset_center + warp.onset_width / real_t{2})
+        {
+            return std::unexpected(builder_error_t::warp_overlap);
+        }
+
+        return limit_start;
+    }
+};
+
+template <typename real_t, real_t min_spline_transition_width, typename transition_t = smootherstep_integral_t<real_t>,
+    typename quantizer_t = cusp_quantizer_t<real_t, transition_t>, typename locator_t = limit_locator_t<real_t>>
 class signal_chain_builder_t
 {
-    bisect_lower_bound_t invert_;
     grid_params_t<real_t> grid_;
     transition_t transition_;
+    quantizer_t quantize_;
+    locator_t locate_limit_;
 
     template <typename curve_t> using out_stack_t = output_affine_t<real_t, normalize_t<real_t, curve_t>>;
     template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
@@ -269,8 +335,10 @@ class signal_chain_builder_t
     template <typename curve_t> using result_t = builder_result_t<real_t, final_chain_t<curve_t>>;
 
 public:
-    constexpr signal_chain_builder_t(grid_params_t<real_t> grid, transition_t transition = {})
-        : grid_{grid}, transition_{std::move(transition)}
+    constexpr signal_chain_builder_t(grid_params_t<real_t> grid, transition_t transition = {},
+        quantizer_t quantize = {}, locator_t locate_limit = {})
+        : grid_{grid}, transition_{std::move(transition)}, quantize_{std::move(quantize)},
+          locate_limit_{std::move(locate_limit)}
     {}
 
     template <typename curve_t>
@@ -282,56 +350,20 @@ public:
         // validation
         //
 
-        if (warp.onset_width <= min_spline_transition_width || warp.limit_width <= min_spline_transition_width)
+        if (auto const err = validate_params<real_t, min_spline_transition_width>(warp, in, out))
         {
-            return std::unexpected(builder_error_t::invalid_width);
+            return std::unexpected(*err);
         }
-        if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high)
-        {
-            return std::unexpected(builder_error_t::invalid_domain);
-        }
-        if (in.scale <= real_t{0} || out.scale <= real_t{0}) return std::unexpected(builder_error_t::invalid_scale);
-        if (out.y0 && *out.y0 < real_t{0}) return std::unexpected(builder_error_t::invalid_floor);
 
         // cache values from curve before move.
         auto const f0 = curve(real_t{0});
-        auto const anchor_y = curve.anchor().value_or(real_t{0}); // cusp position in curve space, 0 if none
+        auto const anchor_y = curve.anchor();
 
         //
         // cusp quantization
         //
 
-        // The nudge depends only on the anchor, the warp geometry, and the grid, never on the limit. Hoisting it above
-        // the limit placement breaks the old circularity and lets the limit below be placed with the final nudged
-        // affine position, so in.scale / in.offset participate.
-        auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
-
-        real_t x_warp_in_target; // onset-input (curve space) where the anchor lands
-        if (anchor_y <= real_t{0}) x_warp_in_target = start_onset;
-        else if (anchor_y >= warp.onset_width / real_t{2})
-        {
-            x_warp_in_target = anchor_y + start_onset + warp.onset_width / real_t{2};
-        }
-        else
-        {
-            auto const target_t = anchor_y / warp.onset_width;
-            auto const found_t = invert_(real_t{0}, real_t{1}, target_t, transition_);
-            x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
-        }
-
-        // x_raw is the anchor's current final-input position, baseline = original offset; domain_high is also
-        // final-input, so this comparison was already in the right frame and stays as-is.
-        auto const x_raw = (x_warp_in_target - in.offset) / in.scale;
-        real_t nudged_offset;
-        if (x_raw > warp.domain_high)
-        {
-            nudged_offset = in.offset; // cusp is off the right edge -> leave calibration alone
-        }
-        else
-        {
-            auto const x_q = std::ceil(x_raw / grid_.segment_width) * grid_.segment_width; // forward, never negative
-            nudged_offset = x_warp_in_target - x_q * in.scale; // land the cusp on x_q
-        }
+        real_t const nudged_offset = quantize_(anchor_y, warp, in, grid_, transition_);
 
         //
         // transforms
@@ -358,15 +390,10 @@ public:
         // intersection and we default to the domain edge, so position stays continuous through y_max there.
         // Flat-topped / mid-plateau curves jump at their flat runs; that is inherent to a lower-bound
         // inverse and is left to a temporal (EMA) chase post-MVP.
-        auto const y_max = onset_chain(onset_in_high);
-        auto const opt_x_cap = invert_(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
-        auto const x_cap = opt_x_cap.value_or(onset_in_high);
-        auto const limit_start = x_cap - warp.limit_width / real_t{2};
+        auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
+        if (!limit_start_res.has_value()) return std::unexpected(limit_start_res.error());
 
-        if (limit_start < warp.onset_center + warp.onset_width / real_t{2})
-        {
-            return std::unexpected(builder_error_t::warp_overlap);
-        }
+        auto const limit_start = *limit_start_res;
 
         //
         // engagement
@@ -380,6 +407,7 @@ public:
         // limit_width/2 is a legitimate y-distance; no separate parameter, no axis conversion. Slope-free and
         // height-free here: d(blend)/d(limit_target) = -2/limit_width, constant.
         real_t blend = real_t{1};
+        auto const y_max = onset_chain(onset_in_high);
         if (warp.limit_target > y_max)
         {
             auto const dy = warp.limit_target - y_max; // gap above the curve's top, data-y
