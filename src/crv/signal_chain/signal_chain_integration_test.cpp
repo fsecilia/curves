@@ -411,7 +411,7 @@ template <typename real_t> struct sample_t
 
     friend auto operator<<(std::ostream& out, sample_t const& src) -> std::ostream&
     {
-        return out << src.x << " " << primal(src.y) << " " << tangent(src.y);
+        return out << src.x << "\t" << primal(src.y) << "\t" << tangent(src.y);
     }
 
     friend auto operator>>(std::istream& in, sample_t& src) -> std::istream&
@@ -440,11 +440,12 @@ TEST(signal_chain_test, assembles_and_evaluates)
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
     auto const& result = *build_result;
 
+    auto& out = std::cout;
     auto const dx = static_cast<real_t>(0.1);
     for (auto x = real_t{0}; x < real_t{5}; x += dx)
     {
         auto const y = result.chain(jet_t{x, real_t{1}});
-        std::cout << sample_t{x, y} << std::endl;
+        out << sample_t{x, y} << std::endl;
         ASSERT_TRUE(std::isfinite(primal(y)) && std::isfinite(tangent(y))) << "non-finite at x = " << x;
     }
 }
