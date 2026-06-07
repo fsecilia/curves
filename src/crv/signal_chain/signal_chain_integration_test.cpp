@@ -360,7 +360,6 @@ public:
 
         // Cusp Quantization & Knot Sinking
         auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
-        auto const anchor_y = curve.anchor().value_or(real_t{0});
 
         real_t x_warp_in_target;
         if (anchor_y <= real_t{0}) { x_warp_in_target = start_onset; }
