@@ -1,0 +1,179 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#include "stack.hpp"
+#include <crv/quadrature/segment.hpp>
+#include <crv/ranges.hpp>
+#include <crv/test/test.hpp>
+#include <initializer_list>
+
+namespace crv::quadrature {
+namespace {
+
+using scalar_t = float_t;
+using segment_t = segment_t<scalar_t>;
+using refinement_t = refinement_t<scalar_t>;
+using stack_t = std::vector<segment_t>;
+
+// ====================================================================================================================
+// stack_seeder_t
+// ====================================================================================================================
+
+// These tests rely on segment_t::operator ==(), which tests doubles directly. Currently, they get lucky and the values
+// match, but changing any arithmetic in stack_seeder_t, even just the order of operations, will likely break these. If
+// they become fragile, the solution is to switch to using a gmock matcher and testing field by field using DoubleNear.
+
+struct quadrature_stack_seeder_test_t : Test
+{
+    stack_t stack{};
+
+    static auto create_segment(scalar_t left, scalar_t right, scalar_t tolerance) noexcept -> segment_t
+    {
+        return segment_t{
+            .left = left,
+            .right = right,
+            .coarse_integral = left + right,
+            .tolerance = tolerance,
+            .depth = 0,
+        };
+    }
+
+    struct integral_t
+    {
+        using estimate_t = scalar_t;
+        auto estimate(scalar_t, scalar_t) const noexcept -> estimate_t;
+        auto integrate(scalar_t left, scalar_t right) const noexcept -> scalar_t { return left + right; }
+    };
+    integral_t integral;
+
+    static constexpr auto domain_end = 1024.0;
+    static constexpr auto global_tolerance = 1.0;
+
+    using sut_t = stack_seeder_t<scalar_t>;
+    sut_t sut{};
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// no critical points
+// --------------------------------------------------------------------------------------------------------------------
+
+struct quadrature_stack_seeder_test_no_critical_points_t : quadrature_stack_seeder_test_t
+{
+    quadrature_stack_seeder_test_no_critical_points_t()
+    {
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list<scalar_t>{});
+    }
+};
+
+TEST_F(quadrature_stack_seeder_test_no_critical_points_t, segment)
+{
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end, global_tolerance));
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// one critical point
+// --------------------------------------------------------------------------------------------------------------------
+
+struct quadrature_stack_seeder_test_one_critical_point_t : quadrature_stack_seeder_test_t
+{
+    quadrature_stack_seeder_test_one_critical_point_t()
+    {
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list<scalar_t>{domain_end / 3.0});
+    }
+};
+
+TEST_F(quadrature_stack_seeder_test_one_critical_point_t, segments)
+{
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end / 3.0, global_tolerance / 3.0));
+    stack.pop_back();
+    EXPECT_EQ(stack.back(),
+        create_segment(domain_end / 3.0, domain_end, global_tolerance * (domain_end - domain_end / 3.0) / domain_end));
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// many critical points
+// --------------------------------------------------------------------------------------------------------------------
+
+struct quadrature_stack_seeder_test_many_critical_points_t : quadrature_stack_seeder_test_t
+{
+    quadrature_stack_seeder_test_many_critical_points_t()
+    {
+        sut.seed(stack, integral, domain_end, global_tolerance,
+            std::initializer_list{domain_end / 5.0, domain_end / 3.0, domain_end / 2.0});
+    }
+};
+
+TEST_F(quadrature_stack_seeder_test_many_critical_points_t, segments)
+{
+    EXPECT_EQ(stack.back(), create_segment(0.0, domain_end / 5.0, global_tolerance / 5.0));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(),
+        create_segment(
+            domain_end / 5.0, domain_end / 3.0, global_tolerance * (domain_end / 3.0 - domain_end / 5.0) / domain_end));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(),
+        create_segment(
+            domain_end / 3.0, domain_end / 2.0, global_tolerance * (domain_end / 2.0 - domain_end / 3.0) / domain_end));
+    stack.pop_back();
+
+    EXPECT_EQ(stack.back(), create_segment(domain_end / 2.0, domain_end, global_tolerance / 2.0));
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// death tests
+// --------------------------------------------------------------------------------------------------------------------
+
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+struct quadrature_stack_seeder_death_tests_t : quadrature_stack_seeder_test_t
+{};
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_non_empty_stack)
+{
+    stack.push_back(create_segment(0.0, 1.0, 0.1));
+
+    EXPECT_DEBUG_DEATH(
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{0.0}), "empty before seeding");
+}
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_zero_critical_point)
+{
+    EXPECT_DEBUG_DEATH(
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{0.0}), "in \\(0, domain_end\\)");
+}
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_negative_critical_point)
+{
+    EXPECT_DEBUG_DEATH(
+        sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{-1.0}), "in \\(0, domain_end\\)");
+}
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_max_critical_point)
+{
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance, std::initializer_list{domain_end}),
+        "in \\(0, domain_end\\)");
+}
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_unsorted_critical_points)
+{
+    // passing these in reverse order, descending, should trip the assert
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance,
+                           std::initializer_list{domain_end / 2.0, domain_end / 3.0}),
+        "increasing and unique");
+}
+
+TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_points)
+{
+    EXPECT_DEBUG_DEATH(sut.seed(stack, integral, domain_end, global_tolerance,
+                           std::initializer_list{domain_end / 3.0, domain_end / 3.0}),
+        "increasing and unique");
+}
+
+#endif
+
+} // namespace
+} // namespace crv::quadrature

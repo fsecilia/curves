@@ -4,13 +4,13 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/curves/test.hpp>
+#include <crv/curves/traits.hpp>
 #include <crv/math/complex.hpp>
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
-#include <crv/signal_chain/curves/test.hpp>
-#include <crv/signal_chain/curves/traits.hpp>
 #include <crv/test/test.hpp>
 #include <cassert>
 #include <cmath>
