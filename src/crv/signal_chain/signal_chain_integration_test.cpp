@@ -11,6 +11,7 @@
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/signal_chain/transitions/smootherstep_integral.hpp>
 #include <crv/test/test.hpp>
 #include <cassert>
 #include <cmath>
@@ -28,39 +29,6 @@ namespace crv::signal_chain {
 //
 
 template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
-
-//
-// pure geometry (transitions)
-//
-
-template <typename real_t> struct smootherstep_integral_t
-{
-    // The integral of smootherstep, normalized to range over (t, y, y') in [(0, 0, 0), (1, 0.5, 1)]
-    template <typename value_t> constexpr auto operator()(value_t t) const noexcept -> value_t
-    {
-        using scalar_t = scalar_type_t<value_t>;
-        auto const rt = primal(t);
-
-        if (rt <= scalar_t{0}) return value_t{0};
-        if (rt >= scalar_t{1}) return value_t{0.5};
-
-        // strictly compute using the primal scalar to avoid implicit jet evaluation
-        auto const rt2 = rt * rt;
-        auto const rt4 = rt2 * rt2;
-
-        // f = t^6 - 3t^5 + 2.5t^4
-        auto const f = rt4 * (rt2 - scalar_t{3} * rt + scalar_t{2.5});
-
-        if constexpr (is_jet<value_t>)
-        {
-            // df = 6t^5 - 15t^4 + 10t^3
-            auto const rt3 = rt2 * rt;
-            auto const df = rt3 * ((scalar_t{6} * rt - scalar_t{15}) * rt + scalar_t{10});
-            return value_t{f, df * tangent(t)};
-        }
-        else return f;
-    }
-};
 
 //
 // structural warps
@@ -319,7 +287,8 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
     }
 };
 
-template <typename real_t, real_t min_spline_transition_width, typename transition_t = smootherstep_integral_t<real_t>,
+template <typename real_t, real_t min_spline_transition_width,
+    typename transition_t = transitions::smootherstep_integral_t,
     typename quantizer_t = cusp_quantizer_t<real_t, transition_t>, typename locator_t = limit_locator_t<real_t>>
 class signal_chain_builder_t
 {
