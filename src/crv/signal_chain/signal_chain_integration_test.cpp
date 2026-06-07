@@ -19,7 +19,6 @@
 #include <iostream>
 #include <optional>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 
 namespace crv::signal_chain {
@@ -156,20 +155,8 @@ template <typename real_t, typename prev_t> struct input_offset_t
     }
 };
 
-template <typename real_t, typename prev_t> constexpr auto make_input_scale(real_t scale, prev_t prev)
-{
-    return input_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
-}
-
-template <typename real_t, typename prev_t> constexpr auto make_input_offset(real_t offset, prev_t prev)
-{
-    return input_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
-}
-
-template <typename real_t, typename prev_t> constexpr auto make_input_affine(real_t scale, real_t offset, prev_t prev)
-{
-    return make_input_scale(scale, make_input_offset(offset, std::move(prev)));
-}
+template <typename real_t, typename prev_t>
+using input_affine_t = input_scale_t<real_t, input_offset_t<real_t, prev_t>>;
 
 template <typename real_t, typename prev_t> struct output_scale_t
 {
@@ -193,20 +180,8 @@ template <typename real_t, typename prev_t> struct output_offset_t
     }
 };
 
-template <typename real_t, typename prev_t> constexpr auto make_output_scale(real_t scale, prev_t prev)
-{
-    return output_scale_t<real_t, std::remove_cvref_t<prev_t>>{scale, std::move(prev)};
-}
-
-template <typename real_t, typename prev_t> constexpr auto make_output_offset(real_t offset, prev_t prev)
-{
-    return output_offset_t<real_t, std::remove_cvref_t<prev_t>>{offset, std::move(prev)};
-}
-
-template <typename real_t, typename prev_t> constexpr auto make_output_affine(real_t scale, real_t offset, prev_t prev)
-{
-    return make_output_offset(offset, make_output_scale(scale, std::move(prev)));
-}
+template <typename real_t, typename prev_t>
+using output_affine_t = output_offset_t<real_t, output_scale_t<real_t, prev_t>>;
 
 template <typename real_t, typename prev_t> struct normalize_t
 {
@@ -218,11 +193,6 @@ template <typename real_t, typename prev_t> struct normalize_t
         return prev(x) - origin;
     }
 };
-
-template <typename real_t, typename prev_t> constexpr auto make_normalize(real_t origin, prev_t prev)
-{
-    return normalize_t<real_t, std::remove_cvref_t<prev_t>>{origin, std::move(prev)};
-}
 
 //
 // signal chain builder
@@ -292,20 +262,11 @@ class signal_chain_builder_t
     grid_params_t<real_t> grid_;
     transition_t transition_;
 
-    // Chaining type inferences through strictly unevaluated decltype contexts
-    template <typename curve_t>
-    using out_stack_t
-        = decltype(make_output_affine(real_t{}, real_t{}, make_normalize(real_t{}, std::declval<curve_t>())));
-
+    template <typename curve_t> using out_stack_t = output_affine_t<real_t, normalize_t<real_t, curve_t>>;
     template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
-
     template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, onset_chain_t<curve_t>, transition_t>;
-
-    template <typename curve_t>
-    using final_chain_t = decltype(make_input_affine(real_t{}, real_t{}, std::declval<limit_chain_t<curve_t>>()));
-
-    template <typename curve_t>
-    using expected_result_t = std::expected<builder_result_t<real_t, final_chain_t<curve_t>>, builder_error_t>;
+    template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
+    template <typename curve_t> using result_t = builder_result_t<real_t, final_chain_t<curve_t>>;
 
 public:
     constexpr signal_chain_builder_t(grid_params_t<real_t> grid, transition_t transition = {})
@@ -315,7 +276,7 @@ public:
     template <typename curve_t>
     [[nodiscard]] auto build(curve_t curve, domain_warp_config_t<real_t> const& warp,
         input_calibration_t<real_t> const& in, output_calibration_t<real_t> const& out) const
-        -> expected_result_t<curve_t>
+        -> std::expected<result_t<curve_t>, builder_error_t>
     {
         //
         // validation
@@ -376,8 +337,10 @@ public:
         // transforms
         //
 
-        auto out_stack
-            = make_output_affine(out.scale, out.y0.value_or(out.scale * f0), make_normalize(f0, std::move(curve)));
+        auto out_stack = output_offset_t{
+            .offset = out.y0.value_or(out.scale * f0),
+            .prev = output_scale_t{.scale = out.scale, .prev = normalize_t{f0, std::move(curve)}},
+        };
         auto onset_chain = onset_warp_t<real_t, decltype(out_stack), transition_t>{
             warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
@@ -432,7 +395,10 @@ public:
         // final assembly
         //
 
-        auto final_chain = make_input_affine(in.scale, nudged_offset, std::move(limit_chain));
+        auto final_chain = input_scale_t{
+            .scale = in.scale,
+            .prev = input_offset_t{.offset = nudged_offset, .prev = std::move(limit_chain)},
+        };
         return builder_result_t<real_t, decltype(final_chain)>{std::move(final_chain), nudged_offset};
     }
 };
