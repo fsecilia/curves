@@ -87,6 +87,52 @@ template <typename real_t, typename prev_t> struct output_affine_t
 };
 
 //
+// onset geometry (shape shared by onset_warp_t::forward and cusp_quantizer_t's inverse)
+//
+
+template <typename real_t, typename transition_t> class onset_geometry_t
+{
+public:
+    constexpr onset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
+        : start_{center - width * real_t{0.5}}, width_{width},
+          inv_width_{width > real_t{0} ? real_t{1} / width : real_t{0}}, rise_{transition(real_t{1})},
+          transition_{std::move(transition)}
+    {
+        assert(width >= real_t{0});
+    }
+
+    // onset-input x -> warped (curve-input) coordinate; identity when disabled (width == 0)
+    template <typename value_t> [[nodiscard]] constexpr auto forward(value_t input) const noexcept -> value_t
+    {
+        if (width_ == real_t{0}) return input;
+
+        auto const x = primal(input);
+        if (x <= start_) return value_t{0};
+        if (x >= start_ + width_) return input - start_ - width_ * (real_t{1} - rise_);
+        return width_ * transition_((input - start_) * inv_width_);
+    }
+
+    // warped (curve-input) coordinate -> onset-input x; exact inverse of forward
+    template <typename invert_t>
+    [[nodiscard]] constexpr auto inverse(real_t warped, invert_t const& invert) const -> real_t
+    {
+        if (width_ == real_t{0}) return warped;
+        if (warped <= real_t{0}) return start_;
+        if (warped >= width_ * rise_) return warped + start_ + width_ * (real_t{1} - rise_);
+
+        auto const found_t = invert(real_t{0}, real_t{1}, warped / width_, transition_);
+        return start_ + found_t.value_or(real_t{0}) * width_;
+    }
+
+private:
+    real_t start_;
+    real_t width_;
+    real_t inv_width_;
+    real_t rise_;
+    transition_t transition_;
+};
+
+//
 // structural warps
 //
 
@@ -94,42 +140,25 @@ template <typename real_t, typename prev_t, typename transition_t> class onset_w
 {
 public:
     constexpr onset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition) noexcept
-        : start_{center - width * real_t{0.5}}, width_{width},
-          inv_width_{width > real_t{0} ? real_t{1} / width : real_t{0}}, prev_{std::move(prev)},
-          transition_{std::move(transition)}
-    {
-        assert(width >= real_t{0});
-    }
+        : geometry_{center, width, std::move(transition)}, prev_{std::move(prev)}
+    {}
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
     {
-        if (width_ == real_t{0}) return prev_(input); // disabled onset: pass through (identity)
-
-        using scalar_t = scalar_type_t<value_t>;
-        auto const x = primal(input);
-
-        if (x <= start_) return prev_(value_t{0});
-        if (x >= start_ + width_) return prev_(input - start_ - width_ * scalar_t{0.5});
-
-        auto const t = (input - start_) * inv_width_;
-        auto const w_int = transition_(t);
-        return prev_(width_ * w_int);
+        return prev_(geometry_.forward(input));
     }
 
 private:
-    real_t start_;
-    real_t width_;
-    real_t inv_width_;
+    onset_geometry_t<real_t, transition_t> geometry_;
     prev_t prev_;
-    transition_t transition_;
 };
 
 template <typename real_t, typename prev_t, typename transition_t> class limit_warp_t
 {
 public:
     constexpr limit_warp_t(real_t start, real_t width, real_t blend, prev_t prev, transition_t transition) noexcept
-        : start_{start}, width_{width}, inv_width_{real_t{1} / width}, blend_{blend}, prev_{std::move(prev)},
-          transition_{std::move(transition)}
+        : start_{start}, width_{width}, inv_width_{real_t{1} / width}, rise_{transition(real_t{1})}, blend_{blend},
+          prev_{std::move(prev)}, transition_{std::move(transition)}
     {
         assert(width > real_t{0});
     }
@@ -142,12 +171,12 @@ public:
         if (x <= start_ || blend_ <= scalar_t{0}) return prev_(input);
 
         value_t warped_x;
-        if (x >= start_ + width_) warped_x = value_t{start_ + width_ * scalar_t{0.5}};
+        if (x >= start_ + width_) warped_x = value_t{start_ + width_ * rise_};
         else
         {
             auto const t = (input - start_) * inv_width_;
             auto const w_int = transition_(scalar_t{1} - t);
-            warped_x = start_ + width_ * (scalar_t{0.5} - w_int);
+            warped_x = start_ + width_ * (rise_ - w_int);
         }
 
         auto const final_x = input + (warped_x - input) * scalar_t{blend_};
@@ -158,6 +187,7 @@ private:
     real_t start_;
     real_t width_;
     real_t inv_width_;
+    real_t rise_;
     real_t blend_;
     prev_t prev_;
     transition_t transition_;
@@ -234,6 +264,19 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
     return "Unknown builder error.";
 }
 
+// raw-input locus of an error, for highlighting in the trace widget; lo == hi denotes a point
+template <typename real_t> struct domain_span_t
+{
+    real_t lo;
+    real_t hi;
+};
+
+template <typename real_t> struct build_error_t
+{
+    builder_error_t code;
+    std::optional<domain_span_t<real_t>> where; // present only when a raw-input locus is meaningful
+};
+
 template <typename chain_t> struct builder_result_t
 {
     chain_t chain;
@@ -284,23 +327,10 @@ struct cusp_quantizer_t
     [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_opt, domain_warp_config_t<real_t> const& warp,
         affine_t<real_t> const& base_input_map, transition_t const& transition) const -> real_t
     {
-        // When the onset is disabled (onset_width == 0, onset_center == 0 by validation), start_onset == 0 and the
-        // branches below reduce to x_warp_in_target == anchor (identity); the cusp is still snapped to the grid.
-        auto const start_onset = warp.onset_center - warp.onset_width * real_t{0.5};
-        auto const anchor = anchor_opt.value_or(real_t{0});
+        onset_geometry_t<real_t, transition_t> const geometry{warp.onset_center, warp.onset_width, transition};
 
-        real_t x_warp_in_target; // onset-input (curve space) where the anchor lands
-        if (anchor <= real_t{0}) x_warp_in_target = start_onset;
-        else if (anchor >= warp.onset_width * real_t{0.5})
-        {
-            x_warp_in_target = anchor + start_onset + warp.onset_width * real_t{0.5};
-        }
-        else
-        {
-            auto const target_t = anchor / warp.onset_width;
-            auto const found_t = invert(real_t{0}, real_t{1}, target_t, transition);
-            x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
-        }
+        auto const anchor = anchor_opt.value_or(real_t{0});
+        auto const x_warp_in_target = geometry.inverse(anchor, invert); // onset-input (curve space) where anchor lands
 
         auto const x_raw = base_input_map.inverse(x_warp_in_target);
         if (x_raw > warp.domain_high) return real_t{0}; // no extra shift when off-screen
@@ -349,13 +379,12 @@ template <typename real_t> struct linear_engagement_t
     // distance; the display-space gap is converted by out_scale so the roll-on is independent of the output scale.
     // Slope-free: d(blend)/d(limit_target) is constant.
     [[nodiscard]] constexpr auto operator()(
-        real_t limit_target, real_t y_max, real_t limit_width, real_t out_scale) const noexcept -> real_t
+        real_t limit_target, real_t y_max, real_t limit_width, real_t out_scale, real_t rise) const noexcept -> real_t
     {
         if (limit_target <= y_max) return real_t{1};
 
         auto const gap_v = (limit_target - y_max) / out_scale; // display-y gap -> curve-output (v) space
-        auto const window_v
-            = limit_width * real_t{0.5}; // == limit_width * transition_rise; literal pending transition_rise extraction
+        auto const window_v = limit_width * rise; // transition's rise == window height (v space)
         return std::max(real_t{0}, real_t{1} - gap_v / window_v);
     }
 };
@@ -392,13 +421,23 @@ public:
 
     template <typename curve_t>
     [[nodiscard]] auto build(curve_t curve, domain_warp_config_t<real_t> const& warp, input_config_t<real_t> const& in,
-        output_config_t<real_t> const& out) const -> std::expected<result_t<curve_t>, builder_error_t>
+        output_config_t<real_t> const& out) const -> std::expected<result_t<curve_t>, build_error_t<real_t>>
     {
         //
         // validation
         //
 
-        if (auto const err = validate_(warp, in, out)) return std::unexpected(*err);
+        if (auto const err = validate_(warp, in, out))
+        {
+            // domain bounds are raw-input; the rest are config / curve-space with no clean raw locus.
+            std::optional<domain_span_t<real_t>> where;
+            if (*err == builder_error_t::invalid_domain)
+            {
+                where = domain_span_t<real_t>{
+                    std::min(warp.domain_low, warp.domain_high), std::max(warp.domain_low, warp.domain_high)};
+            }
+            return std::unexpected(build_error_t<real_t>{*err, where});
+        }
 
         //
         // cusp quantization
@@ -412,7 +451,11 @@ public:
         //
 
         auto const y_origin = curve(real_t{0});
-        if (!std::isfinite(y_origin)) return std::unexpected(builder_error_t::invalid_curve_value);
+        if (!std::isfinite(y_origin))
+        {
+            return std::unexpected(build_error_t<real_t>{
+                builder_error_t::invalid_curve_value, domain_span_t<real_t>{warp.domain_low, warp.domain_low}});
+        }
 
         auto const out_map = out.to_affine(y_origin);
 
@@ -427,7 +470,11 @@ public:
         auto const final_input_map = base_input_map * nudge_map;
 
         auto const onset_in_low = final_input_map.forward(warp.domain_low);
-        if (onset_in_low < real_t{0}) return std::unexpected(builder_error_t::negative_domain);
+        if (onset_in_low < real_t{0})
+        {
+            return std::unexpected(build_error_t<real_t>{
+                builder_error_t::negative_domain, domain_span_t<real_t>{warp.domain_low, warp.domain_low}});
+        }
 
         auto const onset_in_high = final_input_map.forward(warp.domain_high);
 
@@ -440,7 +487,13 @@ public:
         // Flat-topped / mid-plateau curves jump at their flat runs; that is inherent to a lower-bound
         // inverse and is left to a temporal (EMA) chase post-MVP.
         auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
-        if (!limit_start_res.has_value()) return std::unexpected(limit_start_res.error());
+        if (!limit_start_res.has_value())
+        {
+            // overlap locus: the onset-transition end, carried back to raw input.
+            auto const onset_end_raw = final_input_map.inverse(warp.onset_center + warp.onset_width * real_t{0.5});
+            return std::unexpected(
+                build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{onset_end_raw, onset_end_raw}});
+        }
 
         auto const limit_start = *limit_start_res;
 
@@ -449,9 +502,14 @@ public:
         //
 
         auto const y_max = onset_chain(onset_in_high);
-        if (!std::isfinite(y_max)) return std::unexpected(builder_error_t::invalid_curve_value);
+        if (!std::isfinite(y_max))
+        {
+            return std::unexpected(build_error_t<real_t>{
+                builder_error_t::invalid_curve_value, domain_span_t<real_t>{warp.domain_high, warp.domain_high}});
+        }
 
-        real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale);
+        real_t const rise = transition_(real_t{1});
+        real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
 
         auto limit_chain = limit_warp_t{limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
 
@@ -513,7 +571,7 @@ TEST(signal_chain_test, assembles_and_evaluates)
         input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
         output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
 
-    ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
+    ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error().code);
     auto const& result = *build_result;
 
     auto& out = std::cout;
