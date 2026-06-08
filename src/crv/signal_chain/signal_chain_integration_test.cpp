@@ -31,32 +31,51 @@ namespace crv::signal_chain {
 template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 //
+// math spaces
+//
+
+template <typename real_t> struct affine_t
+{
+    real_t scale{1};
+    real_t offset{0};
+
+    template <typename value_t> [[nodiscard]] constexpr auto forward(value_t x) const noexcept -> value_t
+    {
+        return x * scale + offset;
+    }
+
+    [[nodiscard]] constexpr auto inverse(real_t y) const noexcept -> real_t { return (y - offset) / scale; }
+
+    // Compose transforms: outer(inner(x)).
+    [[nodiscard]] constexpr auto operator*(affine_t const& inner) const noexcept -> affine_t
+    {
+        return affine_t{.scale = scale * inner.scale, .offset = scale * inner.offset + offset};
+    }
+};
+
+//
 // stages
 //
 
 template <typename real_t, typename prev_t> struct input_affine_t
 {
-    real_t scale;
-    real_t offset;
+    affine_t<real_t> map;
     prev_t prev;
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x * scale + offset);
+        return prev(map.forward(x));
     }
-
-    constexpr auto inverse(real_t y_target) const noexcept -> real_t { return (y_target - offset) / scale; }
 };
 
 template <typename real_t, typename prev_t> struct output_affine_t
 {
-    real_t scale;
-    real_t offset;
+    affine_t<real_t> map;
     prev_t prev;
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x) * scale + offset;
+        return map.forward(prev(x));
     }
 };
 
@@ -131,17 +150,28 @@ private:
 // signal chain builder
 //
 
-template <typename real_t> struct input_calibration_t
+template <typename real_t> struct input_config_t
 {
     real_t scale;
     real_t offset;
+
+    [[nodiscard]] constexpr auto to_affine() const noexcept -> affine_t<real_t>
+    {
+        return affine_t<real_t>{.scale = scale, .offset = -(offset * scale)};
+    }
 };
 
-template <typename real_t> struct output_calibration_t
+template <typename real_t> struct output_config_t
 {
     real_t scale;
     real_t offset;
     std::optional<real_t> floor;
+
+    [[nodiscard]] constexpr auto to_affine(real_t y_origin) const noexcept -> affine_t<real_t>
+    {
+        auto const target_floor = floor.value_or(y_origin + offset);
+        return affine_t<real_t>{.scale = scale, .offset = target_floor - (y_origin * scale)};
+    }
 };
 
 template <typename real_t> struct domain_warp_config_t
@@ -166,6 +196,8 @@ enum class builder_error_t
     invalid_domain,
     invalid_scale,
     invalid_floor,
+    invalid_input_offset,
+    negative_domain,
     warp_overlap
 };
 
@@ -178,25 +210,27 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
             return "Domain low must be non-negative and strictly less than domain high.";
         case builder_error_t::invalid_scale: return "Scales must be strictly positive.";
         case builder_error_t::invalid_floor: return "Floor cannot be negative.";
+        case builder_error_t::invalid_input_offset: return "Input offset must be <= 0 (leftward shifts only).";
+        case builder_error_t::negative_domain: return "Domain mapped to negative curve space, breaking monotonicity.";
         case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
     }
     return "Unknown builder error.";
 }
 
-template <typename real_t, typename chain_t> struct builder_result_t
+template <typename chain_t> struct builder_result_t
 {
     chain_t chain;
-    real_t nudged_input_offset;
 };
 
 template <typename real_t, real_t min_width>
-constexpr auto validate_params(domain_warp_config_t<real_t> const& warp, input_calibration_t<real_t> const& in,
-    output_calibration_t<real_t> const& out) noexcept -> std::optional<builder_error_t>
+constexpr auto validate_params(domain_warp_config_t<real_t> const& warp, input_config_t<real_t> const& in,
+    output_config_t<real_t> const& out) noexcept -> std::optional<builder_error_t>
 {
     if (warp.onset_width <= min_width || warp.limit_width <= min_width) return builder_error_t::invalid_width;
     if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high) return builder_error_t::invalid_domain;
     if (in.scale <= real_t{0} || out.scale <= real_t{0}) return builder_error_t::invalid_scale;
     if (out.floor && *out.floor < real_t{0}) return builder_error_t::invalid_floor;
+    if (in.offset > real_t{0}) return builder_error_t::invalid_input_offset;
     return std::nullopt;
 }
 
@@ -205,7 +239,7 @@ template <typename real_t, typename transition_t, typename invert_t = bisect_low
     invert_t invert;
 
     [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_y, domain_warp_config_t<real_t> const& warp,
-        input_calibration_t<real_t> const& in, grid_params_t<real_t> const& grid, transition_t const& transition) const
+        affine_t<real_t> const& base_input_map, grid_params_t<real_t> const& grid, transition_t const& transition) const
         -> real_t
     {
         auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
@@ -224,11 +258,11 @@ template <typename real_t, typename transition_t, typename invert_t = bisect_low
             x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
         }
 
-        auto const x_raw = (x_warp_in_target - in.offset) / in.scale;
-        if (x_raw > warp.domain_high) return in.offset;
+        auto const x_raw = base_input_map.inverse(x_warp_in_target);
+        if (x_raw > warp.domain_high) return real_t{0}; // No extra shift if off-screen
 
-        auto const x_q = std::ceil(x_raw / grid.segment_width) * grid.segment_width; // forward, never negative
-        return x_warp_in_target - x_q * in.scale; // land the cusp on x_q
+        auto const x_q = std::ceil(x_raw / grid.segment_width) * grid.segment_width;
+        return x_q - x_raw; // The shift in raw space required to land on x_q
     }
 };
 
@@ -267,7 +301,7 @@ class signal_chain_builder_t
     template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
     template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, onset_chain_t<curve_t>, transition_t>;
     template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
-    template <typename curve_t> using result_t = builder_result_t<real_t, final_chain_t<curve_t>>;
+    template <typename curve_t> using result_t = builder_result_t<final_chain_t<curve_t>>;
 
 public:
     constexpr signal_chain_builder_t(grid_params_t<real_t> grid, transition_t transition = {},
@@ -277,9 +311,8 @@ public:
     {}
 
     template <typename curve_t>
-    [[nodiscard]] auto build(curve_t curve, domain_warp_config_t<real_t> const& warp,
-        input_calibration_t<real_t> const& in, output_calibration_t<real_t> const& out) const
-        -> std::expected<result_t<curve_t>, builder_error_t>
+    [[nodiscard]] auto build(curve_t curve, domain_warp_config_t<real_t> const& warp, input_config_t<real_t> const& in,
+        output_config_t<real_t> const& out) const -> std::expected<result_t<curve_t>, builder_error_t>
     {
         //
         // validation
@@ -294,28 +327,30 @@ public:
         // cusp quantization
         //
 
-        real_t const nudged_offset = quantize_(curve.anchor(), warp, in, grid_, transition_);
+        auto const base_input_map = in.to_affine();
+        real_t const raw_shift = quantize_(curve.anchor(), warp, base_input_map, grid_, transition_);
 
         //
         // transforms
         //
 
         auto const y_origin = curve(real_t{0});
-        auto const target_floor = out.floor.value_or(y_origin + out.offset);
+        auto const out_map = out.to_affine(y_origin);
 
-        auto out_stack = output_affine_t{
-            .scale = out.scale,
-            .offset = target_floor - (y_origin * out.scale),
+        auto out_stack = output_affine_t<real_t, curve_t>{
+            .map = out_map,
             .prev = std::move(curve),
         };
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
-        // Map the visible domain into curve space with the affine the chain will use. domain_low/high are final-input
-        // (the spline domain); onset_center/width and the limit live in curve space. The input affine bridges them, so
-        // the bounds must pass through it before they reach onset_chain. This way, domain_high does not appear in two
-        // different frames.
-        auto const onset_in_low = warp.domain_low * in.scale + nudged_offset;
-        auto const onset_in_high = warp.domain_high * in.scale + nudged_offset;
+        // Map the visible domain into curve space with the affine the chain will use.
+        auto const nudge_map = affine_t<real_t>{.scale = real_t{1}, .offset = -raw_shift};
+        auto const final_input_map = base_input_map * nudge_map;
+
+        auto const onset_in_low = final_input_map.forward(warp.domain_low);
+        if (onset_in_low < real_t{0}) return std::unexpected(builder_error_t::negative_domain);
+
+        auto const onset_in_high = final_input_map.forward(warp.domain_high);
 
         //
         // limit placement
@@ -356,13 +391,12 @@ public:
         // final assembly
         //
 
-        auto final_chain = input_affine_t{
-            .scale = in.scale,
-            .offset = -(nudged_offset * in.scale),
+        auto final_chain = input_affine_t<real_t, limit_chain_t<curve_t>>{
+            .map = final_input_map,
             .prev = std::move(limit_chain),
         };
 
-        return result_t<curve_t>{std::move(final_chain), nudged_offset};
+        return result_t<curve_t>{std::move(final_chain)};
     }
 };
 
@@ -408,8 +442,8 @@ TEST(signal_chain_test, assembles_and_evaluates)
             .limit_width = 0.5,
             .domain_low = 0.0,
             .domain_high = 256.0},
-        input_calibration_t<real_t>{.scale = 1.0, .offset = 0.1},
-        output_calibration_t<real_t>{.scale = 1.5, .offset = 0.2, .floor = 0.25});
+        input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
+        output_config_t<real_t>{.scale = 1.5, .offset = 0.2, .floor = 0.25});
 
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
     auto const& result = *build_result;
