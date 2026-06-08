@@ -38,13 +38,13 @@ struct log_normal_t
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> center{"center", 5.0};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> width{"width", 0.5};
 
-        template <typename self_t, typename visitor_t>
-        constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
+        template <typename self_t, typename inspector_t>
+        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
         {
-            self.center.reflect(visitor);
-            self.width.reflect(visitor);
+            self.center.reflect(inspector);
+            self.width.reflect(inspector);
 
-            return std::forward<visitor_t>(visitor);
+            return std::forward<inspector_t>(inspector);
         }
 
         constexpr auto operator==(config_t const&) const noexcept -> bool = default;

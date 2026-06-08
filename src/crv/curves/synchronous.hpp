@@ -48,15 +48,15 @@ struct synchronous_t
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> sync_speed{
             "sync_speed", 5.0};
 
-        template <typename self_t, typename visitor_t>
-        constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
+        template <typename self_t, typename inspector_t>
+        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
         {
-            self.motivity.reflect(visitor);
-            self.gamma.reflect(visitor);
-            self.smooth.reflect(visitor);
-            self.sync_speed.reflect(visitor);
+            self.motivity.reflect(inspector);
+            self.gamma.reflect(inspector);
+            self.smooth.reflect(inspector);
+            self.sync_speed.reflect(inspector);
 
-            return std::forward<visitor_t>(visitor);
+            return std::forward<inspector_t>(inspector);
         }
 
         constexpr auto operator==(config_t const&) const noexcept -> bool = default;
