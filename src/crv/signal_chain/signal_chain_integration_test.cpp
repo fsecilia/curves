@@ -31,54 +31,32 @@ namespace crv::signal_chain {
 template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 //
-// input
+// stages
 //
 
-template <typename real_t, typename prev_t> struct input_scale_t
+template <typename real_t, typename prev_t> struct input_affine_t
 {
     real_t scale;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x * scale);
-    }
-};
-
-template <typename real_t, typename prev_t> struct input_offset_t
-{
     real_t offset;
     prev_t prev;
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x + offset);
+        return prev(x * scale + offset);
     }
+
+    constexpr auto inverse(real_t y_target) const noexcept -> real_t { return (y_target - offset) / scale; }
 };
 
-//
-// output
-//
-
-template <typename real_t, typename prev_t> struct output_scale_t
+template <typename real_t, typename prev_t> struct output_affine_t
 {
     real_t scale;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x) * scale;
-    }
-};
-
-template <typename real_t, typename prev_t> struct output_offset_t
-{
     real_t offset;
     prev_t prev;
 
     template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(x) + offset;
+        return prev(x) * scale + offset;
     }
 };
 
@@ -285,12 +263,10 @@ class signal_chain_builder_t
     quantizer_t quantize_;
     locator_t locate_limit_;
 
-    template <typename curve_t>
-    using out_stack_t = output_offset_t<real_t, output_scale_t<real_t, output_offset_t<real_t, curve_t>>>;
+    template <typename curve_t> using out_stack_t = output_affine_t<real_t, curve_t>;
     template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
     template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, onset_chain_t<curve_t>, transition_t>;
-    template <typename curve_t>
-    using final_chain_t = input_scale_t<real_t, input_offset_t<real_t, limit_chain_t<curve_t>>>;
+    template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
     template <typename curve_t> using result_t = builder_result_t<real_t, final_chain_t<curve_t>>;
 
 public:
@@ -314,29 +290,23 @@ public:
             return std::unexpected(*err);
         }
 
-        // cache values from curve before move.
-        auto const f0 = curve(real_t{0});
-        auto const anchor_y = curve.anchor();
-
         //
         // cusp quantization
         //
 
-        real_t const nudged_offset = quantize_(anchor_y, warp, in, grid_, transition_);
+        real_t const nudged_offset = quantize_(curve.anchor(), warp, in, grid_, transition_);
 
         //
         // transforms
         //
 
-        auto out_stack = output_offset_t{
-            .offset = out.floor.value_or(f0 + out.offset),
-            .prev = output_scale_t{
-                .scale = out.scale,
-                .prev = output_offset_t{
-                    .offset = -f0,
-                    .prev = std::move(curve),
-                },
-            },
+        auto const y_origin = curve(real_t{0});
+        auto const target_floor = out.floor.value_or(y_origin + out.offset);
+
+        auto out_stack = output_affine_t{
+            .scale = out.scale,
+            .offset = target_floor - (y_origin * out.scale),
+            .prev = std::move(curve),
         };
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
@@ -386,13 +356,12 @@ public:
         // final assembly
         //
 
-        auto final_chain = input_scale_t{
+        auto final_chain = input_affine_t{
             .scale = in.scale,
-            .prev = input_offset_t{
-                .offset = nudged_offset,
-                .prev = std::move(limit_chain),
-            },
+            .offset = -(nudged_offset * in.scale),
+            .prev = std::move(limit_chain),
         };
+
         return result_t<curve_t>{std::move(final_chain), nudged_offset};
     }
 };
