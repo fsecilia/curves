@@ -9,6 +9,9 @@ set(QT_FORCE_CMP0156_TO_VALUE NEW)
 # find qt
 find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick Widgets)
 
+# expect reource prefix to be /qt/qml instead of /
+qt_policy(SET QTP0001 NEW)
+
 # enable qt's build automation
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -50,6 +53,23 @@ qt_add_executable(qt main.cpp)
 set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
 target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(qt PRIVATE qt_ui)
+
+# register QML module and attach it to target
+qt_add_qml_module(qt
+    URI "Curves"
+    VERSION 1.0
+    QML_FILES Main.qml
+)
+
+# disable strict aliasing in module where qt depends on it
+#
+# This is quite fragile, but the alternative is adding a dedicated set of project options and adding that to every other
+# project, something easily missed. Of the evils, this is lesser. If a new version of qt moves this file, this will
+# break andd need to be revisited. It will fail loudly, though the cause may not be obvious.
+set_source_files_properties(
+    "${CMAKE_CURRENT_BINARY_DIR}/.rcc/qmlcache/qt_qmlcache_loader.cpp"
+    PROPERTIES COMPILE_OPTIONS "-fno-strict-aliasing;-Wno-strict-aliasing"
+)
 
 install(TARGETS qt RUNTIME
     DESTINATION bin
