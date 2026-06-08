@@ -31,7 +31,8 @@ struct hierarchical_inspector_test_t : Test
     };
 
     using sut_t = hierarchical_inspector_t<callback_t>;
-    sut_t sut{callback_t{map}};
+    using factory_t = hierarchical_inspector_factory_t;
+    sut_t sut = factory_t{}(callback_t{map});
 };
 
 //
