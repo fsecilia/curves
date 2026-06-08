@@ -116,7 +116,17 @@ static auto main(int argc, char* argv[]) -> int
 
     auto gui_app = QGuiApplication{argc, argv};
 
-    return EXIT_SUCCESS;
+    QQmlApplicationEngine engine;
+
+    // exit if theQML engine fails to load root object
+    QObject::connect(
+        &engine, &QQmlApplicationEngine::objectCreationFailed, &gui_app, []() { QCoreApplication::exit(EXIT_FAILURE); },
+        Qt::QueuedConnection);
+
+    // load QML file from module defined in CMake
+    engine.loadFromModule("Curves", "Main");
+
+    return gui_app.exec();
 }
 
 } // namespace crv
