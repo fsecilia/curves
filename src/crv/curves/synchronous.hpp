@@ -42,11 +42,11 @@ struct synchronous_t
     /// model config
     struct config_t
     {
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0, 1e3>> motivity{"Motivity", 1.5};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> gamma{"Gamma", 1.0};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0 / 16, 1.0>> smooth{"Smooth", 0.5};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0, 1e3>> motivity{"motivity", 1.5};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> gamma{"gamma", 1.0};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0 / 16, 1.0>> smooth{"smooth", 0.5};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> sync_speed{
-            "Sync Speed", 5.0};
+            "sync_speed", 5.0};
 
         template <typename self_t, typename visitor_t>
         constexpr auto reflect(this self_t&& self, visitor_t&& visitor) -> decltype(auto)
