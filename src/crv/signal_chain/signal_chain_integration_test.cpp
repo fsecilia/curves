@@ -554,7 +554,50 @@ template <typename real_t> struct sample_t
     }
 };
 
-TEST(signal_chain_test, assembles_and_evaluates)
+//
+// tests: properties and component contracts (no golden vectors -- they churn; these pin behavior)
+//
+
+namespace {
+
+using test_real_t = float_t;
+inline constexpr auto test_quantum = static_cast<test_real_t>(0x1p-10);
+using test_builder_t = signal_chain_builder_t<test_real_t, min_transition_width<test_real_t>, test_quantum>;
+
+template <typename real_t>
+[[nodiscard]] constexpr auto approx(real_t a, real_t b, real_t atol, real_t rtol) noexcept -> bool
+{
+    return std::abs(a - b) <= atol + rtol * std::abs(b);
+}
+
+// integral of u^2 from 0: rises to 1/3 (rise != 1/2), strictly increasing on (0, 1]
+template <typename real_t> struct cubic_ramp_t
+{
+    template <typename value_t> constexpr auto operator()(value_t t) const noexcept -> value_t
+    {
+        return t * t * t * (real_t{1} / real_t{3});
+    }
+};
+
+[[nodiscard]] auto std_warp() -> domain_warp_config_t<test_real_t>
+{
+    return {.onset_center = 2,
+        .onset_width = 1,
+        .limit_target = 9,
+        .limit_width = test_real_t{0.5},
+        .domain_low = 0,
+        .domain_high = 10};
+}
+[[nodiscard]] auto std_in() -> input_config_t<test_real_t>
+{
+    return {.scale = 1, .offset = 0};
+}
+[[nodiscard]] auto std_out() -> output_config_t<test_real_t>
+{
+    return {.scale = 1, .offset = 0, .floor = test_real_t{0}};
+}
+
+TEST(signal_chain_test, smoke_test)
 {
     using real_t = float_t;
 
@@ -584,4 +627,261 @@ TEST(signal_chain_test, assembles_and_evaluates)
     }
 }
 
+TEST(affine_test, inverse_and_compose)
+{
+    using real_t = test_real_t;
+    affine_t<real_t> const a{.scale = 3, .offset = 2};
+    ASSERT_TRUE(approx(a.inverse(a.forward(real_t{4})), real_t{4}, real_t{1e-5}, real_t{1e-5}));
+
+    affine_t<real_t> const b{.scale = real_t{0.5}, .offset = real_t{-1}};
+    auto const ab = a * b;
+    auto const x = real_t{7};
+    ASSERT_TRUE(approx(ab.forward(x), a.forward(b.forward(x)), real_t{1e-4}, real_t{1e-5}));
+}
+
+TEST(onset_geometry_test, forward_inverse_roundtrip)
+{
+    using real_t = test_real_t;
+    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{2}, real_t{1}, {}};
+    bisect_lower_bound_t invert{};
+
+    // live region starts at center - width/2 == 1.5; sweep transition + past-transition
+    for (auto x = real_t{1.5}; x <= real_t{4}; x += real_t{0.05})
+    {
+        auto const back = geom.inverse(geom.forward(x), invert);
+        ASSERT_TRUE(approx(back, x, real_t{1e-2}, real_t{1e-2})) << "x=" << x << " back=" << back;
+    }
+}
+
+TEST(onset_geometry_test, roundtrip_holds_for_other_rise)
+{
+    // guards that the geometry uses rise / (1 - rise), not a hardcoded 0.5: with rise == 1/3 a wrong factor
+    // misplaces the past-transition shift by ~width/3, which the smootherstep (rise == 1/2) roundtrip cannot see.
+    using real_t = test_real_t;
+    onset_geometry_t<real_t, cubic_ramp_t<real_t>> const geom{real_t{2}, real_t{1}, {}};
+    bisect_lower_bound_t invert{};
+
+    for (auto x = real_t{1.5}; x <= real_t{4}; x += real_t{0.05})
+    {
+        auto const back = geom.inverse(geom.forward(x), invert);
+        ASSERT_TRUE(approx(back, x, real_t{1e-2}, real_t{1e-2})) << "x=" << x << " back=" << back;
+    }
+}
+
+TEST(onset_geometry_test, disabled_is_identity)
+{
+    using real_t = test_real_t;
+    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{0}, real_t{0}, {}};
+    bisect_lower_bound_t invert{};
+
+    for (auto x = real_t{0}; x <= real_t{5}; x += real_t{0.5})
+    {
+        ASSERT_TRUE(geom.forward(x) == x) << "forward x=" << x;
+        ASSERT_TRUE(geom.inverse(x, invert) == x) << "inverse x=" << x;
+    }
+}
+
+TEST(engagement_test, window_tracks_output_scale)
+{
+    // the roll-on window is limit_width * rise measured in curve-output (v) space; the display gap is divided by
+    // out_scale, so blend hits 0 at a display gap of out_scale * limit_width * rise. The mid-window points at
+    // scale != 1 are what a version that forgot out_scale would get wrong.
+    using real_t = test_real_t;
+    linear_engagement_t<real_t> const engage;
+    real_t const y_max = 10, width = 1, rise = real_t{0.5};
+
+    ASSERT_TRUE(engage(real_t{5}, y_max, width, real_t{1}, rise) == real_t{1});
+    ASSERT_TRUE(engage(y_max, y_max, width, real_t{1}, rise) == real_t{1});
+
+    for (auto const scale : {real_t{0.5}, real_t{1}, real_t{2}})
+    {
+        auto const window = scale * width * rise; // display-space roll-on window
+        ASSERT_TRUE(approx(engage(y_max + window, y_max, width, scale, rise), real_t{0}, real_t{1e-4}, real_t{1e-4}))
+            << "scale=" << scale;
+        ASSERT_TRUE(approx(
+            engage(y_max + window * real_t{0.5}, y_max, width, scale, rise), real_t{0.5}, real_t{1e-4}, real_t{1e-4}))
+            << "scale=" << scale;
+        ASSERT_TRUE(engage(y_max + window * real_t{2}, y_max, width, scale, rise) == real_t{0}) << "scale=" << scale;
+    }
+}
+
+TEST(validator_test, accepts_and_rejects)
+{
+    using real_t = test_real_t;
+    default_validator_t<real_t, min_transition_width<real_t>> const validate;
+
+    auto const good_warp = std_warp();
+    auto const good_in = std_in();
+    auto const good_out = output_config_t<real_t>{.scale = 1, .offset = 0, .floor = std::nullopt};
+
+    ASSERT_TRUE(!validate(good_warp, good_in, good_out));
+
+    {
+        auto in = good_in;
+        in.scale = 0;
+        ASSERT_TRUE(validate(good_warp, in, good_out) == builder_error_t::invalid_scale);
+    }
+    {
+        auto in = good_in;
+        in.offset = real_t{0.1};
+        ASSERT_TRUE(validate(good_warp, in, good_out) == builder_error_t::invalid_input_offset);
+    }
+    {
+        auto out = good_out;
+        out.floor = real_t{-1};
+        ASSERT_TRUE(validate(good_warp, good_in, out) == builder_error_t::invalid_floor);
+    }
+    {
+        auto out = good_out;
+        out.floor = real_t{1};
+        out.offset = real_t{0.5};
+        ASSERT_TRUE(validate(good_warp, good_in, out) == builder_error_t::floor_offset_conflict);
+    }
+    {
+        auto warp = good_warp;
+        warp.domain_low = warp.domain_high;
+        ASSERT_TRUE(validate(warp, good_in, good_out) == builder_error_t::invalid_domain);
+    }
+    {
+        auto warp = good_warp;
+        warp.limit_width = min_transition_width<real_t> / real_t{2};
+        ASSERT_TRUE(validate(warp, good_in, good_out) == builder_error_t::invalid_width);
+    }
+    {
+        auto warp = good_warp;
+        warp.onset_width = min_transition_width<real_t> / real_t{2};
+        ASSERT_TRUE(validate(warp, good_in, good_out) == builder_error_t::invalid_width);
+    }
+}
+
+TEST(validator_test, onset_disable)
+{
+    using real_t = test_real_t;
+    default_validator_t<real_t, min_transition_width<real_t>> const validate;
+    auto const in = std_in();
+    auto const out = output_config_t<real_t>{.scale = 1, .offset = 0, .floor = std::nullopt};
+
+    auto warp = std_warp();
+    warp.onset_center = 0;
+    warp.onset_width = 0;
+    ASSERT_TRUE(!validate(warp, in, out)); // width 0 + center 0 -> disabled, accepted
+
+    warp.onset_center = 1; // width 0 but positioned -> rejected
+    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_onset_disable);
+}
+
+TEST(chain_test, monotonic_across_domain)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+    auto const res = builder.build(quadratic_t<real_t>{}, std_warp(), std_in(), std_out());
+    ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+    auto const& chain = res->chain;
+
+    auto prev = chain(real_t{0});
+    for (auto x = real_t{0}; x <= real_t{10}; x += real_t{0.05})
+    {
+        auto const cur = chain(x);
+        ASSERT_TRUE(cur >= prev - real_t{1e-4}) << "x=" << x << " cur=" << cur << " prev=" << prev;
+        prev = cur;
+    }
+}
+
+TEST(chain_test, floor_anchors_flat_onset)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+
+    // floor set: the flat onset sits exactly on the floor
+    {
+        auto out = std_out();
+        out.floor = real_t{0.25};
+        auto const res = builder.build(quadratic_t<real_t>{}, std_warp(), std_in(), out);
+        ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+        ASSERT_TRUE(
+            approx(res->chain(real_t{1}), real_t{0.25}, real_t{1e-5}, real_t{1e-4})); // x=1 is below onset start
+    }
+    // floor unset: flat onset sits at y_origin + offset (y_origin == curve(0) == 0)
+    {
+        auto out = std_out();
+        out.floor = std::nullopt;
+        out.offset = real_t{0.5};
+        auto const res = builder.build(quadratic_t<real_t>{}, std_warp(), std_in(), out);
+        ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+        ASSERT_TRUE(approx(res->chain(real_t{1}), real_t{0.5}, real_t{1e-5}, real_t{1e-4}));
+    }
+}
+
+TEST(chain_test, caps_at_limit_when_curve_overshoots)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+    auto const res = builder.build(quadratic_t<real_t>{}, std_warp(), std_in(), std_out());
+    ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+    auto const& chain = res->chain;
+
+    // the curve far exceeds limit_target (9) over the domain -> fully engaged -> flat top at the limit
+    ASSERT_TRUE(approx(chain(real_t{6}), real_t{9}, real_t{1e-3}, real_t{1e-4})) << chain(real_t{6});
+    ASSERT_TRUE(approx(chain(real_t{8}), real_t{9}, real_t{1e-3}, real_t{1e-4})) << chain(real_t{8});
+}
+
+TEST(chain_test, limiter_releases_when_target_above_curve)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+
+    // onset_chain max over the domain is (10 - 2)^2 == 64; put the limit line above it by more than the window
+    auto warp = std_warp();
+    warp.limit_target = real_t{64.5}; // gap 0.5 > window (1 * 0.5 * 0.5 == 0.25) -> blend 0
+    auto const res = builder.build(quadratic_t<real_t>{}, warp, std_in(), std_out());
+    ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+    auto const& chain = res->chain;
+
+    // disengaged: the chain still follows the curve near the domain top (no flattening). onset shift is
+    // start + width * (1 - rise) == 2, so chain(9.9) == (9.9 - 2)^2.
+    auto const expected = (real_t{9.9} - real_t{2}) * (real_t{9.9} - real_t{2});
+    ASSERT_TRUE(approx(chain(real_t{9.9}), expected, real_t{1e-2}, real_t{1e-3})) << chain(real_t{9.9});
+}
+
+TEST(chain_test, analytic_tangent_matches_finite_difference)
+{
+    // the quadratic base is smooth, so the assembled chain is smooth everywhere; the jet tangent must match a
+    // central difference. This validates the AD and catches a slope discontinuity at any seam.
+    using real_t = test_real_t;
+    test_builder_t const builder;
+    auto const res = builder.build(quadratic_t<real_t>{}, std_warp(), std_in(), std_out());
+    ASSERT_TRUE(res.has_value()) << to_string(res.error().code);
+    auto const& chain = res->chain;
+
+    auto const h = real_t{0.01};
+    for (auto x = real_t{0.5}; x <= real_t{9}; x += real_t{0.05})
+    {
+        auto const analytic = tangent(chain(jet_t{x, real_t{1}}));
+        auto const cd = (chain(x + h) - chain(x - h)) / (real_t{2} * h);
+        ASSERT_TRUE(approx(analytic, cd, real_t{5e-2}, real_t{2e-2})) << "x=" << x << " d=" << analytic << " cd=" << cd;
+    }
+}
+
+TEST(cusp_quantizer_test, snaps_anchor_to_grid)
+{
+    using real_t = test_real_t;
+    cusp_quantizer_t<real_t, test_quantum, transitions::smootherstep_integral_t> const quantize;
+    bisect_lower_bound_t invert{};
+
+    auto warp = std_warp();
+    warp.onset_center = real_t{2.1}; // start == 1.6 is off-grid, forcing a nonzero shift
+    auto const base = std_in().to_affine();
+    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{warp.onset_center, warp.onset_width, {}};
+
+    real_t const anchor = 0; // quadratic anchor
+    real_t const x_raw = base.inverse(geom.inverse(anchor, invert));
+    real_t const shift = quantize(anchor, warp, base, {});
+    real_t const x_q = x_raw + shift;
+
+    ASSERT_TRUE(shift >= real_t{0} && shift < test_quantum) << "shift=" << shift;
+    auto const ratio = x_q / test_quantum; // exact integer: x_q is ceil(x_raw / q) * q and q is a power of two
+    ASSERT_TRUE(approx(ratio, std::round(ratio), real_t{1e-3}, real_t{0})) << "x_q=" << x_q << " ratio=" << ratio;
+}
+
+} // namespace
 } // namespace crv::signal_chain
