@@ -31,6 +31,58 @@ namespace crv::signal_chain {
 template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
 
 //
+// input
+//
+
+template <typename real_t, typename prev_t> struct input_scale_t
+{
+    real_t scale;
+    prev_t prev;
+
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return prev(x * scale);
+    }
+};
+
+template <typename real_t, typename prev_t> struct input_offset_t
+{
+    real_t offset;
+    prev_t prev;
+
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return prev(x + offset);
+    }
+};
+
+//
+// output
+//
+
+template <typename real_t, typename prev_t> struct output_scale_t
+{
+    real_t scale;
+    prev_t prev;
+
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return prev(x) * scale;
+    }
+};
+
+template <typename real_t, typename prev_t> struct output_offset_t
+{
+    real_t offset;
+    prev_t prev;
+
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return prev(x) + offset;
+    }
+};
+
+//
 // structural warps
 //
 
@@ -98,71 +150,6 @@ private:
 };
 
 //
-// affine adapters
-//
-
-template <typename real_t, typename prev_t> struct input_scale_t
-{
-    real_t scale;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x * scale);
-    }
-};
-
-template <typename real_t, typename prev_t> struct input_offset_t
-{
-    real_t offset;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x + offset);
-    }
-};
-
-template <typename real_t, typename prev_t>
-using input_affine_t = input_scale_t<real_t, input_offset_t<real_t, prev_t>>;
-
-template <typename real_t, typename prev_t> struct output_scale_t
-{
-    real_t scale;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x) * scale;
-    }
-};
-
-template <typename real_t, typename prev_t> struct output_offset_t
-{
-    real_t offset;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x) + offset;
-    }
-};
-
-template <typename real_t, typename prev_t>
-using output_affine_t = output_offset_t<real_t, output_scale_t<real_t, prev_t>>;
-
-template <typename real_t, typename prev_t> struct normalize_t
-{
-    real_t origin;
-    prev_t prev;
-
-    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(x) - origin;
-    }
-};
-
-//
 // signal chain builder
 //
 
@@ -175,7 +162,8 @@ template <typename real_t> struct input_calibration_t
 template <typename real_t> struct output_calibration_t
 {
     real_t scale;
-    std::optional<real_t> y0;
+    real_t offset;
+    std::optional<real_t> floor;
 };
 
 template <typename real_t> struct domain_warp_config_t
@@ -230,7 +218,7 @@ constexpr auto validate_params(domain_warp_config_t<real_t> const& warp, input_c
     if (warp.onset_width <= min_width || warp.limit_width <= min_width) return builder_error_t::invalid_width;
     if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high) return builder_error_t::invalid_domain;
     if (in.scale <= real_t{0} || out.scale <= real_t{0}) return builder_error_t::invalid_scale;
-    if (out.y0 && *out.y0 < real_t{0}) return builder_error_t::invalid_floor;
+    if (out.floor && *out.floor < real_t{0}) return builder_error_t::invalid_floor;
     return std::nullopt;
 }
 
@@ -297,10 +285,12 @@ class signal_chain_builder_t
     quantizer_t quantize_;
     locator_t locate_limit_;
 
-    template <typename curve_t> using out_stack_t = output_affine_t<real_t, normalize_t<real_t, curve_t>>;
+    template <typename curve_t>
+    using out_stack_t = output_offset_t<real_t, output_scale_t<real_t, output_offset_t<real_t, curve_t>>>;
     template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
     template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, onset_chain_t<curve_t>, transition_t>;
-    template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
+    template <typename curve_t>
+    using final_chain_t = input_scale_t<real_t, input_offset_t<real_t, limit_chain_t<curve_t>>>;
     template <typename curve_t> using result_t = builder_result_t<real_t, final_chain_t<curve_t>>;
 
 public:
@@ -339,8 +329,14 @@ public:
         //
 
         auto out_stack = output_offset_t{
-            .offset = out.y0.value_or(out.scale * f0),
-            .prev = output_scale_t{.scale = out.scale, .prev = normalize_t{f0, std::move(curve)}},
+            .offset = out.floor.value_or(f0 + out.offset),
+            .prev = output_scale_t{
+                .scale = out.scale,
+                .prev = output_offset_t{
+                    .offset = -f0,
+                    .prev = std::move(curve),
+                },
+            },
         };
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
@@ -392,7 +388,10 @@ public:
 
         auto final_chain = input_scale_t{
             .scale = in.scale,
-            .prev = input_offset_t{.offset = nudged_offset, .prev = std::move(limit_chain)},
+            .prev = input_offset_t{
+                .offset = nudged_offset,
+                .prev = std::move(limit_chain),
+            },
         };
         return result_t<curve_t>{std::move(final_chain), nudged_offset};
     }
@@ -440,8 +439,8 @@ TEST(signal_chain_test, assembles_and_evaluates)
             .limit_width = 0.5,
             .domain_low = 0.0,
             .domain_high = 256.0},
-        input_calibration_t<real_t>{.scale = 1.0, .offset = 0.0},
-        output_calibration_t<real_t>{.scale = 1.5, .y0 = 0.25});
+        input_calibration_t<real_t>{.scale = 1.0, .offset = 0.1},
+        output_calibration_t<real_t>{.scale = 1.5, .offset = 0.2, .floor = 0.25});
 
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error());
     auto const& result = *build_result;
