@@ -28,25 +28,27 @@ namespace crv::signal_chain {
 // math primitives & bounds
 //
 
-template <std::floating_point real_t> inline constexpr real_t min_spline_transition_width = real_t{1e-2};
+template <std::floating_point real_t> inline constexpr auto min_spline_transition_width = real_t{1e-2};
 
 //
-// math spaces
+// transforms
 //
 
-template <typename real_t> struct affine_t
+template <std::floating_point real_t> struct affine_t
 {
     real_t scale{1};
     real_t offset{0};
 
+    // applies transform forward
     template <typename value_t> [[nodiscard]] constexpr auto forward(value_t x) const noexcept -> value_t
     {
         return x * scale + offset;
     }
 
+    // inverts transform to find x that produces y
     [[nodiscard]] constexpr auto inverse(real_t y) const noexcept -> real_t { return (y - offset) / scale; }
 
-    // Compose transforms: outer(inner(x)).
+    // composes transforms: outer(inner(x))
     [[nodiscard]] constexpr auto operator*(affine_t const& inner) const noexcept -> affine_t
     {
         return affine_t{.scale = scale * inner.scale, .offset = scale * inner.offset + offset};
@@ -86,19 +88,22 @@ template <typename real_t, typename prev_t> struct output_affine_t
 template <typename real_t, typename prev_t, typename transition_t> class onset_warp_t
 {
 public:
-    constexpr onset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition)
-        : start_{center - width / real_t{2}}, width_{width}, prev_{std::move(prev)}, transition_{std::move(transition)}
-    {}
+    constexpr onset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition) noexcept
+        : start_{center - width * real_t{0.5}}, width_{width}, inv_width_{real_t{1} / width}, prev_{std::move(prev)},
+          transition_{std::move(transition)}
+    {
+        assert(width > real_t{0});
+    }
 
-    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
     {
         using scalar_t = scalar_type_t<value_t>;
-        auto const rx = primal(x);
+        auto const x = primal(input);
 
-        if (rx <= start_) return prev_(value_t{0});
-        if (rx >= start_ + width_) return prev_(x - start_ - width_ / scalar_t{2});
+        if (x <= start_) return prev_(value_t{0});
+        if (x >= start_ + width_) return prev_(input - start_ - width_ * scalar_t{0.5});
 
-        auto const t = (x - start_) / width_;
+        auto const t = (input - start_) * inv_width_;
         auto const w_int = transition_(t);
         return prev_(width_ * w_int);
     }
@@ -106,6 +111,7 @@ public:
 private:
     real_t start_;
     real_t width_;
+    real_t inv_width_;
     prev_t prev_;
     transition_t transition_;
 };
@@ -113,34 +119,37 @@ private:
 template <typename real_t, typename prev_t, typename transition_t> class limit_warp_t
 {
 public:
-    constexpr limit_warp_t(real_t start, real_t width, real_t blend, prev_t prev, transition_t transition)
-        : start_{start}, width_{width}, blend_{blend}, prev_{std::move(prev)}, transition_{std::move(transition)}
-    {}
+    constexpr limit_warp_t(real_t start, real_t width, real_t blend, prev_t prev, transition_t transition) noexcept
+        : start_{start}, width_{width}, inv_width_{real_t{1} / width}, blend_{blend}, prev_{std::move(prev)},
+          transition_{std::move(transition)}
+    {
+        assert(width > real_t{0});
+    }
 
-    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
     {
         using scalar_t = scalar_type_t<value_t>;
-        auto const rx = primal(x);
+        auto const x = primal(input);
 
-        if (rx <= start_ || blend_ <= scalar_t{0}) return prev_(x);
+        if (x <= start_ || blend_ <= scalar_t{0}) return prev_(input);
 
         value_t warped_x;
-        if (rx >= start_ + width_) { warped_x = value_t{start_ + width_ / scalar_t{2}}; }
+        if (x >= start_ + width_) warped_x = value_t{start_ + width_ * scalar_t{0.5}};
         else
         {
-            auto const t = (x - start_) / width_;
-            auto const u = scalar_t{1} - t;
-            auto const w_int = transition_(u);
-            warped_x = start_ + width_ / scalar_t{2} - width_ * w_int;
+            auto const t = (input - start_) * inv_width_;
+            auto const w_int = transition_(scalar_t{1} - t);
+            warped_x = start_ + width_ * (scalar_t{0.5} - w_int);
         }
 
-        auto const final_x = x + (warped_x - x) * scalar_t{blend_};
+        auto const final_x = input + (warped_x - input) * scalar_t{blend_};
         return prev_(final_x);
     }
 
 private:
     real_t start_;
     real_t width_;
+    real_t inv_width_;
     real_t blend_;
     prev_t prev_;
     transition_t transition_;
@@ -210,7 +219,7 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
             return "Domain low must be non-negative and strictly less than domain high.";
         case builder_error_t::invalid_scale: return "Scales must be strictly positive.";
         case builder_error_t::invalid_floor: return "Floor cannot be negative.";
-        case builder_error_t::invalid_input_offset: return "Input offset must be <= 0 (leftward shifts only).";
+        case builder_error_t::invalid_input_offset: return "Input offset must shift left.";
         case builder_error_t::negative_domain: return "Domain mapped to negative curve space, breaking monotonicity.";
         case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
     }
@@ -238,31 +247,31 @@ template <typename real_t, typename transition_t, typename invert_t = bisect_low
 {
     invert_t invert;
 
-    [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_y, domain_warp_config_t<real_t> const& warp,
+    [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_opt, domain_warp_config_t<real_t> const& warp,
         affine_t<real_t> const& base_input_map, grid_params_t<real_t> const& grid, transition_t const& transition) const
         -> real_t
     {
-        auto const start_onset = warp.onset_center - warp.onset_width / real_t{2};
-        auto const anchor_val = anchor_y.value_or(real_t{0});
+        auto const start_onset = warp.onset_center - warp.onset_width * real_t{0.5};
+        auto const anchor = anchor_opt.value_or(real_t{0});
 
         real_t x_warp_in_target; // onset-input (curve space) where the anchor lands
-        if (anchor_val <= real_t{0}) x_warp_in_target = start_onset;
-        else if (anchor_val >= warp.onset_width / real_t{2})
+        if (anchor <= real_t{0}) x_warp_in_target = start_onset;
+        else if (anchor >= warp.onset_width * real_t{0.5})
         {
-            x_warp_in_target = anchor_val + start_onset + warp.onset_width / real_t{2};
+            x_warp_in_target = anchor + start_onset + warp.onset_width * real_t{0.5};
         }
         else
         {
-            auto const target_t = anchor_val / warp.onset_width;
+            auto const target_t = anchor / warp.onset_width;
             auto const found_t = invert(real_t{0}, real_t{1}, target_t, transition);
             x_warp_in_target = start_onset + found_t.value_or(real_t{0}) * warp.onset_width;
         }
 
         auto const x_raw = base_input_map.inverse(x_warp_in_target);
-        if (x_raw > warp.domain_high) return real_t{0}; // No extra shift if off-screen
+        if (x_raw > warp.domain_high) return real_t{0}; // no extra shift when off-screen
 
         auto const x_q = std::ceil(x_raw / grid.segment_width) * grid.segment_width;
-        return x_q - x_raw; // The shift in raw space required to land on x_q
+        return x_q - x_raw; // shift in raw space required to land on x_q
     }
 };
 
@@ -276,9 +285,9 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
     {
         auto const opt_x_cap = invert(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
         auto const x_cap = opt_x_cap.value_or(onset_in_high);
-        auto const limit_start = x_cap - warp.limit_width / real_t{2};
+        auto const limit_start = x_cap - warp.limit_width * real_t{0.5};
 
-        if (limit_start < warp.onset_center + warp.onset_width / real_t{2})
+        if (limit_start < warp.onset_center + warp.onset_width * real_t{0.5})
         {
             return std::unexpected(builder_error_t::warp_overlap);
         }
@@ -343,7 +352,7 @@ public:
         };
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
-        // Map the visible domain into curve space with the affine the chain will use.
+        // map visible domain into curve space with affine chain will use
         auto const nudge_map = affine_t<real_t>{.scale = real_t{1}, .offset = -raw_shift};
         auto const final_input_map = base_input_map * nudge_map;
 
@@ -374,14 +383,14 @@ public:
         // while the line merely hovers above.
         //
         // Roll-on window is the box's height. In the isotropic curve space one x-unit equals one y-unit, so
-        // limit_width/2 is a legitimate y-distance; no separate parameter, no axis conversion. Slope-free and
+        // limit_width * 0.5 is a legitimate y-distance; no separate parameter, no axis conversion. Slope-free and
         // height-free here: d(blend)/d(limit_target) = -2/limit_width, constant.
         real_t blend = real_t{1};
         auto const y_max = onset_chain(onset_in_high);
         if (warp.limit_target > y_max)
         {
             auto const dy = warp.limit_target - y_max; // gap above the curve's top, data-y
-            auto const h = warp.limit_width / real_t{2}; // box height in the isotropic curve space
+            auto const h = warp.limit_width * real_t{0.5}; // box height in the isotropic curve space
             blend = std::max(real_t{0}, real_t{1} - dy / h);
         }
 
