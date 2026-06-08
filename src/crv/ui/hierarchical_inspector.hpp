@@ -18,7 +18,7 @@ template <typename callback_t> class hierarchical_inspector_t
 public:
     explicit hierarchical_inspector_t(callback_t callback) : callback_{std::move(callback)} {}
 
-    auto inspect(this auto&& self, auto&& param) -> void
+    constexpr auto inspect(this auto&& self, auto&& param) -> void
     {
         auto const full_path = self.current_path_.empty() ? std::string(param.name())
                                                           : self.current_path_ + "/" + std::string(param.name());
@@ -27,7 +27,7 @@ public:
     }
 
     template <typename section_inspector_t>
-    auto inspect_section(std::string_view name, section_inspector_t&& section_inspector) -> void
+    constexpr auto inspect_section(std::string_view name, section_inspector_t&& section_inspector) -> void
     {
         auto old_path = current_path_;
 
@@ -41,6 +41,15 @@ public:
 private:
     callback_t callback_;
     std::string current_path_;
+};
+
+struct hierarchical_inspector_factory_t
+{
+    template <typename callback_t>
+    constexpr auto operator()(callback_t callback) const noexcept -> hierarchical_inspector_t<callback_t>
+    {
+        return hierarchical_inspector_t{std::move(callback)};
+    }
 };
 
 } // namespace crv
