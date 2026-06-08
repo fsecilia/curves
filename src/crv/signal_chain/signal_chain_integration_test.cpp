@@ -241,8 +241,7 @@ enum class builder_error_t
     negative_domain,
     warp_overlap,
     invalid_onset_disable,
-    floor_offset_conflict,
-    invalid_curve_value
+    floor_offset_conflict
 };
 
 constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
@@ -259,7 +258,6 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
         case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
         case builder_error_t::invalid_onset_disable: return "Disabled onset (zero width) requires onset_center == 0.";
         case builder_error_t::floor_offset_conflict: return "Floor and a nonzero output offset are mutually exclusive.";
-        case builder_error_t::invalid_curve_value: return "Curve produced a non-finite value.";
     }
     return "Unknown builder error.";
 }
@@ -451,11 +449,7 @@ public:
         //
 
         auto const y_origin = curve(real_t{0});
-        if (!std::isfinite(y_origin))
-        {
-            return std::unexpected(build_error_t<real_t>{
-                builder_error_t::invalid_curve_value, domain_span_t<real_t>{warp.domain_low, warp.domain_low}});
-        }
+        assert(std::isfinite(y_origin)); // logic error: a built-in curve over a validated domain stays finite
 
         auto const out_map = out.to_affine(y_origin);
 
@@ -472,8 +466,9 @@ public:
         auto const onset_in_low = final_input_map.forward(warp.domain_low);
         if (onset_in_low < real_t{0})
         {
-            return std::unexpected(build_error_t<real_t>{
-                builder_error_t::negative_domain, domain_span_t<real_t>{warp.domain_low, warp.domain_low}});
+            // breaking slice: [domain_low, where curve space crosses 0], carried back to raw input
+            return std::unexpected(build_error_t<real_t>{builder_error_t::negative_domain,
+                domain_span_t<real_t>{warp.domain_low, final_input_map.inverse(real_t{0})}});
         }
 
         auto const onset_in_high = final_input_map.forward(warp.domain_high);
@@ -502,11 +497,7 @@ public:
         //
 
         auto const y_max = onset_chain(onset_in_high);
-        if (!std::isfinite(y_max))
-        {
-            return std::unexpected(build_error_t<real_t>{
-                builder_error_t::invalid_curve_value, domain_span_t<real_t>{warp.domain_high, warp.domain_high}});
-        }
+        assert(std::isfinite(y_max)); // logic error: a built-in curve over a validated domain stays finite
 
         real_t const rise = transition_(real_t{1});
         real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
@@ -554,6 +545,36 @@ template <typename real_t> struct sample_t
     }
 };
 
+TEST(signal_chain_test, assembles_and_evaluates)
+{
+    using real_t = float_t;
+
+    auto const builder = signal_chain_builder_t<real_t, min_transition_width<real_t>,
+        static_cast<real_t>(0x1p-10)>{}; // anchor grid = 2^-10
+
+    auto const build_result = builder.build(quadratic_t<real_t>{},
+        domain_warp_config_t<real_t>{.onset_center = 0.5,
+            .onset_width = 0.25,
+            .limit_target = 17.0,
+            .limit_width = 0.5,
+            .domain_low = 0.0,
+            .domain_high = 256.0},
+        input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
+        output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
+
+    ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error().code);
+    auto const& result = *build_result;
+
+    auto& out = std::cout;
+    auto const dx = static_cast<real_t>(0.1);
+    for (auto x = real_t{0}; x < real_t{5}; x += dx)
+    {
+        auto const y = result.chain(jet_t{x, real_t{1}});
+        out << sample_t{x, y} << std::endl;
+        ASSERT_TRUE(std::isfinite(primal(y)) && std::isfinite(tangent(y))) << "non-finite at x = " << x;
+    }
+}
+
 //
 // tests: properties and component contracts (no golden vectors -- they churn; these pin behavior)
 //
@@ -597,35 +618,7 @@ template <typename real_t> struct cubic_ramp_t
     return {.scale = 1, .offset = 0, .floor = test_real_t{0}};
 }
 
-TEST(signal_chain_test, smoke_test)
-{
-    using real_t = float_t;
-
-    auto const builder = signal_chain_builder_t<real_t, min_transition_width<real_t>,
-        static_cast<real_t>(0x1p-10)>{}; // anchor grid = 2^-10
-
-    auto const build_result = builder.build(quadratic_t<real_t>{},
-        domain_warp_config_t<real_t>{.onset_center = 0.5,
-            .onset_width = 0.25,
-            .limit_target = 17.0,
-            .limit_width = 0.5,
-            .domain_low = 0.0,
-            .domain_high = 256.0},
-        input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
-        output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
-
-    ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error().code);
-    auto const& result = *build_result;
-
-    auto& out = std::cout;
-    auto const dx = static_cast<real_t>(0.1);
-    for (auto x = real_t{0}; x < real_t{5}; x += dx)
-    {
-        auto const y = result.chain(jet_t{x, real_t{1}});
-        out << sample_t{x, y} << std::endl;
-        ASSERT_TRUE(std::isfinite(primal(y)) && std::isfinite(tangent(y))) << "non-finite at x = " << x;
-    }
-}
+} // namespace
 
 TEST(affine_test, inverse_and_compose)
 {
@@ -883,5 +876,40 @@ TEST(cusp_quantizer_test, snaps_anchor_to_grid)
     ASSERT_TRUE(approx(ratio, std::round(ratio), real_t{1e-3}, real_t{0})) << "x_q=" << x_q << " ratio=" << ratio;
 }
 
-} // namespace
+TEST(chain_test, reports_warp_overlap_with_location)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+
+    // limit_target just above the floor: the curve reaches it within limit_width/2 of the onset end, so the
+    // limiter transition lands on top of the onset transition.
+    auto warp = std_warp();
+    warp.limit_target = real_t{0.4};
+    auto const res = builder.build(quadratic_t<real_t>{}, warp, std_in(), std_out());
+
+    ASSERT_TRUE(!res.has_value());
+    ASSERT_TRUE(res.error().code == builder_error_t::warp_overlap);
+    ASSERT_TRUE(res.error().where.has_value());
+    // onset-transition end (onset_center + onset_width/2 == 2.5), in raw input
+    ASSERT_TRUE(approx(res.error().where->lo, real_t{2.5}, real_t{1e-3}, real_t{1e-3})) << res.error().where->lo;
+}
+
+TEST(chain_test, reports_negative_domain_with_location)
+{
+    using real_t = test_real_t;
+    test_builder_t const builder;
+
+    // off-grid onset start forces a nonzero cusp nudge; with domain_low == 0 and no input offset the nudge
+    // carries the low end below the curve origin.
+    auto warp = std_warp();
+    warp.onset_center = real_t{2.1};
+    auto const res = builder.build(quadratic_t<real_t>{}, warp, std_in(), std_out());
+
+    ASSERT_TRUE(!res.has_value());
+    ASSERT_TRUE(res.error().code == builder_error_t::negative_domain);
+    ASSERT_TRUE(res.error().where.has_value());
+    // breaking slice starts at domain_low (0), in raw input
+    ASSERT_TRUE(approx(res.error().where->lo, real_t{0}, real_t{1e-4}, real_t{0})) << res.error().where->lo;
+}
+
 } // namespace crv::signal_chain
