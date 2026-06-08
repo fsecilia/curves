@@ -28,9 +28,9 @@ using float_param_t = param_t<float_t, static_t<float_t, 1.0 / soft_limit, soft_
 
 struct device_t
 {
-    param_t<std::string> name{"Name", "Default"};
-    param_t<int_t, static_lower_bound_t<int_t, 0>> dpi{"DPI", 0};
-    param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"Rotation (°)", 0.0};
+    param_t<std::string> name{"name", "default"};
+    param_t<int_t, static_lower_bound_t<int_t, 0>> dpi{"dpi", 0};
+    param_t<float_t, static_t<float_t, -360.0 + 1e-3, 360.0 - 1e-3>> rotation{"rotation", 0.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -46,8 +46,8 @@ struct device_t
 
 struct offset_t
 {
-    param_t<float_t, static_lower_bound_t<float_t, 0.0>> begin{"Begin (c/ms)", 0.0};
-    float_param_t width{"Width (c/ms)", 1.0};
+    param_t<float_t, static_lower_bound_t<float_t, 0.0>> begin{"begin", 0.0};
+    float_param_t width{"width", 1.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -62,8 +62,8 @@ struct offset_t
 
 struct floor_t
 {
-    param_t<bool> enabled{"Enabled", false};
-    param_t<float_t, static_t<float_t, 0.0, soft_limit>> anchor{"Min", 0.0};
+    param_t<bool> enabled{"enabled", false};
+    param_t<float_t, static_t<float_t, 0.0, soft_limit>> anchor{"minimum", 0.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -78,8 +78,8 @@ struct floor_t
 
 struct limit_t
 {
-    param_t<float_t, static_t<float_t, 0.0, soft_limit>> max{"Max", soft_limit};
-    float_param_t width{"Width (c/ms)", 1.0};
+    param_t<float_t, static_t<float_t, 0.0, soft_limit>> max{"maximum", soft_limit};
+    float_param_t width{"width", 1.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -94,8 +94,8 @@ struct limit_t
 
 struct scale_t
 {
-    float_param_t input{"Input", 1.0};
-    float_param_t output{"Output", 1.0};
+    float_param_t input{"input", 1.0};
+    float_param_t output{"output", 1.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -118,10 +118,10 @@ struct common_curve_config_t
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
-        inspector.inspect_section("Scale", [&](auto&& section_inspector) { self.scale.reflect(section_inspector); });
-        inspector.inspect_section("Offset", [&](auto&& section_inspector) { self.offset.reflect(section_inspector); });
-        inspector.inspect_section("Floor", [&](auto&& section_inspector) { self.floor.reflect(section_inspector); });
-        inspector.inspect_section("Limit", [&](auto&& section_inspector) { self.limit.reflect(section_inspector); });
+        inspector.inspect_section("scale", [&](auto&& section_inspector) { self.scale.reflect(section_inspector); });
+        inspector.inspect_section("offset", [&](auto&& section_inspector) { self.offset.reflect(section_inspector); });
+        inspector.inspect_section("floor", [&](auto&& section_inspector) { self.floor.reflect(section_inspector); });
+        inspector.inspect_section("limit", [&](auto&& section_inspector) { self.limit.reflect(section_inspector); });
 
         return std::forward<inspector_t>(inspector);
     }
@@ -151,11 +151,11 @@ using curve_configs_t = tuple::transform_t<curves::curves_t, extract_curve_confi
 
 struct profile_t
 {
-    param_t<curves::curve_id_t> active_curve{"Active Curve", curves::curve_id_t::synchronous};
+    param_t<curves::curve_id_t> active_curve{"curve", curves::curve_id_t::synchronous};
 
-    float_param_t anisotropy{"Anisotropy", 1.0};
-    param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"Filter Halflife (ms)", 2.0};
-    param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"Notch Width (c/ms)", 0.0};
+    float_param_t anisotropy{"anisotropy", 1.0};
+    param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"filter_halflife", 2.0};
+    param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"notch_width", 0.0};
 
     curve_configs_t curve_configs;
 
@@ -180,7 +180,7 @@ struct profile_t
 
 struct root_t
 {
-    param_t<int_t, static_lower_bound_t<int_t, 0>> version{"Version", 1};
+    param_t<int_t, static_lower_bound_t<int_t, 0>> version{"version", 1};
 
     device_t device;
     profile_t profile;
@@ -191,9 +191,9 @@ struct root_t
         inspector.inspect(self.version);
 
         inspector.inspect_section(
-            "Default Device", [&](auto&& section_inspector) { self.device.reflect(section_inspector); });
+            "default_device", [&](auto&& section_inspector) { self.device.reflect(section_inspector); });
         inspector.inspect_section(
-            "Default Profile", [&](auto&& section_inspector) { self.profile.reflect(section_inspector); });
+            "default_profile", [&](auto&& section_inspector) { self.profile.reflect(section_inspector); });
 
         return std::forward<inspector_t>(inspector);
     }

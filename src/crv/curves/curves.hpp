@@ -44,7 +44,7 @@ namespace reflection {
 
 template <> struct enum_t<model::curves::curve_id_t>
 {
-    static constexpr auto map = sequential_enum_name_map<model::curves::curve_id_t>("Synchronous", "Log-Normal");
+    static constexpr auto map = sequential_enum_name_map<model::curves::curve_id_t>("synchronous", "log_normal");
 };
 
 } // namespace reflection
