@@ -4,7 +4,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQml.Models
+import Qt.labs.qmlmodels
 
 ApplicationWindow {
     width: 800
