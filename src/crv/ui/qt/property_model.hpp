@@ -9,7 +9,6 @@
 #include <crv/math/float_limits.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/reflection/enum.hpp>
-#include <crv/ui/command/command.hpp>
 #include <crv/ui/command/mutate_param.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/hierarchical_inspector.hpp>
@@ -63,8 +62,7 @@ public:
     using undo_stack_t = command::stack_t<command::qt::stack_adapter_t<QUndoStack>>;
 
     explicit curve_property_model_t(undo_stack_t& undo_stack,
-        hierarchical_inspector_factory_t hierarchical_inspector_factory, command::factory_t command_factory,
-        QObject* parent = nullptr);
+        hierarchical_inspector_factory_t hierarchical_inspector_factory, QObject* parent = nullptr);
 
     auto rowCount(QModelIndex const& parent = QModelIndex()) const -> int override;
     auto data(QModelIndex const& index, int role = Qt::DisplayRole) const -> QVariant override;
@@ -155,7 +153,6 @@ public:
 private:
     undo_stack_t* undo_stack_;
     hierarchical_inspector_factory_t hierarchical_inspector_factory_;
-    command::factory_t command_factory_;
     std::vector<ui_node_t> nodes_;
 };
 

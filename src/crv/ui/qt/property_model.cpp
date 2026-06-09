@@ -8,12 +8,10 @@
 
 namespace crv {
 
-curve_property_model_t::curve_property_model_t(undo_stack_t& undo_stack,
-    hierarchical_inspector_factory_t hierarchical_inspector_factory, command::factory_t command_factory,
-    QObject* parent)
+curve_property_model_t::curve_property_model_t(
+    undo_stack_t& undo_stack, hierarchical_inspector_factory_t hierarchical_inspector_factory, QObject* parent)
     : QAbstractListModel{parent}, undo_stack_{&undo_stack},
-      hierarchical_inspector_factory_{std::move(hierarchical_inspector_factory)},
-      command_factory_{std::move(command_factory)}
+      hierarchical_inspector_factory_{std::move(hierarchical_inspector_factory)}
 {}
 
 auto curve_property_model_t::rowCount(QModelIndex const& parent) const -> int
