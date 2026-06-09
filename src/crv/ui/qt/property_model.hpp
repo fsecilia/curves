@@ -83,26 +83,41 @@ public:
         auto const active_curve_path_prefix = std::string{config.active_profile.value()} + "/";
         auto active_curve_path = active_curve_path_prefix + *reflection::to_string(config.profile.active_curve.value());
         auto inspector = hierarchical_inspector_factory_(
-            [&](std::string_view path, auto& param) {
-                using param_t = std::remove_cvref_t<decltype(param)>;
+            [&](std::string_view path, auto& modified_param) {
+                using param_t = std::remove_cvref_t<decltype(modified_param)>;
                 using value_t = param_t::value_t;
 
                 auto const row = static_cast<int_t>(size(nodes_));
 
                 auto min = QVariant{};
-                if constexpr (requires { param.constraint().min; }) min = QVariant::fromValue(param.constraint().min);
+                if constexpr (requires { modified_param.constraint().min; })
+                    min = QVariant::fromValue(modified_param.constraint().min);
 
                 auto max = QVariant{};
-                if constexpr (requires { param.constraint().max; }) max = QVariant::fromValue(param.constraint().max);
+                if constexpr (requires { modified_param.constraint().max; })
+                    max = QVariant::fromValue(modified_param.constraint().max);
+
+                static constexpr auto to_variant = [](auto const& val) -> QVariant {
+                    using raw_t = std::remove_cvref_t<decltype(val)>;
+                    if constexpr (std::same_as<raw_t, bool>) { return QVariant::fromValue(val); }
+                    else if constexpr (std::signed_integral<raw_t>)
+                    {
+                        return QVariant::fromValue(static_cast<qint64>(val));
+                    }
+                    else
+                    {
+                        return QVariant::fromValue(val);
+                    }
+                };
 
                 auto push_command = [&, row](QVariant const& src) {
                     auto const& next = src.template value<value_t>();
-                    if (next == param.value()) return;
+                    if (next == modified_param.value()) return;
 
                     undo_stack_->emplace<command::mutate_param_t<param_t>>(
-                        param, next, [=, this](param_t& param, value_t const& cur) {
-                            if (cur == param.value()) return;
-                            update_node_value(row, src);
+                        modified_param, next, [=, this](param_t& command_param, value_t const& cur) {
+                            if (cur == command_param.value()) return;
+                            update_node_value(row, to_variant(command_param.value()));
                         });
                 };
 
@@ -117,23 +132,10 @@ public:
                 {
                     if (property_type_id.has_value())
                     {
-                        static constexpr auto to_variant = [](auto const& val) -> QVariant {
-                            using raw_t = std::remove_cvref_t<decltype(val)>;
-                            if constexpr (std::same_as<raw_t, bool>) { return QVariant::fromValue(val); }
-                            else if constexpr (std::signed_integral<raw_t>)
-                            {
-                                return QVariant::fromValue(static_cast<qint64>(val));
-                            }
-                            else
-                            {
-                                return QVariant::fromValue(val);
-                            }
-                        };
-
                         auto ui_node = ui_node_t{
                             .path = QString::fromLocal8Bit(std::data(path), std::size(path)),
                             .type = *property_type_id,
-                            .value = to_variant(param.value()),
+                            .value = to_variant(modified_param.value()),
                             .min = min,
                             .max = max,
                             .push_command = std::move(push_command),
