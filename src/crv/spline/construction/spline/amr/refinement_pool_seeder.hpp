@@ -9,8 +9,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <algorithm>
-#include <functional>
+#include <vector>
 
 namespace crv::spline {
 

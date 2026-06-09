@@ -9,7 +9,6 @@
 #include <crv/spline/construction/segment/amr/function_sampler.hpp>
 #include <concepts>
 #include <utility>
-#include <vector>
 
 namespace crv::spline {
 

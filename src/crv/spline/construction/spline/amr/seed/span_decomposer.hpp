@@ -7,7 +7,6 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/integer.hpp>
-#include <bit>
 
 namespace crv::spline::seed {
 
