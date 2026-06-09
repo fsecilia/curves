@@ -221,7 +221,7 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    text: Number(model.value).toLocaleString(Qt.locale(), 'i', 0)
+                    text: Number(model.value).toLocaleString(Qt.locale(), 'f', 0)
                     validator: IntValidator {
                         bottom: model.minVal !== undefined ? model.minVal : -999999
                         top: model.maxVal !== undefined ? model.maxVal : 999999
@@ -248,7 +248,7 @@ ApplicationWindow {
                                 model.maxVal !== undefined ? model.maxVal : 999999)
                             isEditingLocally = false
                             model.value = clamped
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'i', 0))
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
                         }
                     }
 
@@ -259,7 +259,7 @@ ApplicationWindow {
                             // user dragged graph or hit global undo
                             isEditingLocally = false
                             inputField.focus = false
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'i', 0))
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
                         }
                     }
 
