@@ -182,7 +182,10 @@ struct root_t
 {
     param_t<int_t, static_lower_bound_t<int_t, 0>> version{"version", 1};
 
+    param_t<std::string> active_device{"active_device", "default_device"};
     device_t device;
+
+    param_t<std::string> active_profile{"active_profile", "default_profile"};
     profile_t profile;
 
     template <typename self_t, typename inspector_t>
@@ -190,10 +193,13 @@ struct root_t
     {
         inspector.inspect(self.version);
 
+        inspector.inspect(self.active_device);
         inspector.inspect_section(
-            "default_device", [&](auto&& section_inspector) { self.device.reflect(section_inspector); });
+            self.active_device.value(), [&](auto&& section_inspector) { self.device.reflect(section_inspector); });
+
+        inspector.inspect(self.active_profile);
         inspector.inspect_section(
-            "default_profile", [&](auto&& section_inspector) { self.profile.reflect(section_inspector); });
+            self.active_profile.value(), [&](auto&& section_inspector) { self.profile.reflect(section_inspector); });
 
         return std::forward<inspector_t>(inspector);
     }
