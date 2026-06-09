@@ -140,12 +140,8 @@ ApplicationWindow {
                             let clamped = Math.min(Math.max(parsed,
                                 model.minVal !== undefined ? model.minVal : -999999.0),
                                 model.maxVal !== undefined ? model.maxVal : 999999.0)
-
-                            // invoke curve_property_model_t::setData
-                            model.value = clamped
-
-                            // commit is complete; clear the local editing state and restore binding
                             isEditingLocally = false
+                            model.value = clamped
                             text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
                         }
                     }
@@ -250,12 +246,8 @@ ApplicationWindow {
                             let clamped = Math.min(Math.max(parsed,
                                 model.minVal !== undefined ? model.minVal : -999999),
                                 model.maxVal !== undefined ? model.maxVal : 999999)
-
-                            // invoke curve_property_model_t::setData
-                            model.value = clamped
-
-                            // commit is complete; clear the local editing state and restore binding
                             isEditingLocally = false
+                            model.value = clamped
                             text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'i', 0))
                         }
                     }
