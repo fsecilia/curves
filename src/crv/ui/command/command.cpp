@@ -5,8 +5,8 @@
 
 #include "command.hpp"
 
-namespace crv {
+namespace crv::command {
 
 command_i::~command_i() = default;
 
-} // namespace crv
+} // namespace crv::command
