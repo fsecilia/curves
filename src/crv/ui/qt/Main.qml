@@ -161,10 +161,10 @@ ApplicationWindow {
                     Keys.onPressed: (event) => {
                         if (event.matches(StandardKey.Undo)) {
                             if (isEditingLocally && inputField.canUndo) {
-                                // We are actively typing a typo. Let the native Qt text engine handle it.
+                                // let local text engine handle undo
                                 event.accepted = false
                             } else {
-                                // The input is committed. Swallow the event and trigger the C++ stack.
+                                // input is committed; swallow and use real undo
                                 undoStack.undo()
                                 event.accepted = true
                             }
@@ -269,10 +269,10 @@ ApplicationWindow {
                     Keys.onPressed: (event) => {
                         if (event.matches(StandardKey.Undo)) {
                             if (isEditingLocally && inputField.canUndo) {
-                                // We are actively typing a typo. Let the native Qt text engine handle it.
+                                // let local text engine handle undo
                                 event.accepted = false
                             } else {
-                                // The input is committed. Swallow the event and trigger the C++ stack.
+                                // input is committed; swallow and use real undo
                                 undoStack.undo()
                                 event.accepted = true
                             }
