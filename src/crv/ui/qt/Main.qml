@@ -148,6 +148,16 @@ ApplicationWindow {
                         }
                     }
 
+                    property var externalModelValue: model.value
+
+                    onExternalModelValueChanged: {
+                        if (isEditingLocally) {
+                            // user dragged graph or hit global undo
+                            isEditingLocally = false
+                            inputField.focus = false
+                        }
+                    }
+
                     Keys.onPressed: (event) => {
                         if (event.matches(StandardKey.Undo)) {
                             if (isEditingLocally && inputField.canUndo) {
@@ -243,6 +253,16 @@ ApplicationWindow {
 
                             // The commit is complete, clear the local editing state
                             isEditingLocally = false
+                        }
+                    }
+
+                    property var externalModelValue: model.value
+
+                    onExternalModelValueChanged: {
+                        if (isEditingLocally) {
+                            // user dragged graph or hit global undo
+                            isEditingLocally = false
+                            inputField.focus = false
                         }
                     }
 
