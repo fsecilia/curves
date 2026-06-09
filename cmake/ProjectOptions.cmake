@@ -82,6 +82,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-exit-time-destructors
         -Wno-float-equal
         -Wno-global-constructors
+        -Wno-missing-prototypes
         -Wno-padded
         -Wno-sign-conversion
         -Wno-shadow
