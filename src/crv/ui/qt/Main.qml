@@ -74,6 +74,7 @@ ApplicationWindow {
     Component {
         id: floatDelegate
         Control {
+            id: floatControl
             width: ListView.view.width
             leftPadding: 24
             rightPadding: 24
@@ -193,7 +194,7 @@ ApplicationWindow {
                             }
 
                             let direction = wheel.angleDelta.y > 0 ? 1 : -1
-                            model.value = parent.parent.parent.stepLogarithmic(model.value, direction)
+                            model.value = floatControl.stepLogarithmic(model.value, direction)
                             wheel.accepted = true
                         }
                     }
