@@ -13,7 +13,7 @@
 namespace crv::command {
 
 /// command pattern command to mutate a parameter and notify on change
-template <typename param_t> class mutate_param_t : public command_i
+template <typename param_t> class mutate_param_t
 {
 public:
     using value_t = param_t::value_t;
@@ -23,8 +23,8 @@ public:
         : param_{&param}, prev_{param.value()}, next_{std::move(next)}, notify_{std::move(notify)}
     {}
 
-    constexpr auto apply() -> void override { change(next_); }
-    constexpr auto undo() -> void override { change(prev_); }
+    constexpr auto apply() -> void { change(next_); }
+    constexpr auto undo() -> void { change(prev_); }
 
 private:
     param_t* param_;
