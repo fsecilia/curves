@@ -13,6 +13,7 @@ add_library(ui
 target_link_libraries(ui PUBLIC lib)
 
 add_executable(ui_test
+    command/command_test.cpp
     command/stack_adapter_test.cpp
     command/mutate_param_test.cpp
     hierarchical_inspector_test.cpp

@@ -6,8 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <utility>
 
-namespace crv {
+namespace crv::command {
 
 /// command pattern command for undo stack
 struct command_i
@@ -18,4 +19,13 @@ struct command_i
     virtual auto undo() -> void = 0;
 };
 
-} // namespace crv
+class factory_t
+{
+public:
+    template <typename command_t, typename... args_t> constexpr auto create(args_t&&... args) const -> command_t
+    {
+        return command_t{std::forward<args_t>(args)...};
+    }
+};
+
+} // namespace crv::command
