@@ -13,7 +13,7 @@
 namespace crv::command::qt {
 
 /// adapts native command in a qt command
-template <typename command_t> class command_adapter_t : QUndoCommand
+template <typename command_t> class command_adapter_t : public QUndoCommand
 {
 public:
     explicit command_adapter_t(command_t command, QUndoCommand* parent = nullptr)
