@@ -113,19 +113,52 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    text: Number(model.value).toLocaleString(Qt.locale(), 'f', 4)
+                    text: Number(model.value).toLocaleString(Qt.locale(), 'f', 3)
 
                     validator: DoubleValidator {
                         bottom: model.minVal !== undefined ? model.minVal : -999999.0
                         top: model.maxVal !== undefined ? model.maxVal : 999999.0
                     }
 
+                    property bool isEditingLocally: false
+
+                    onTextEdited: {
+                        isEditingLocally = true
+                    }
+
                     onEditingFinished: {
                         let parsed = Number.fromLocaleString(Qt.locale(), text)
                         if (!isNaN(parsed)) {
-                            let clamped = Math.min(Math.max(parsed, model.minVal !== undefined ? model.minVal : -999999.0),
-                                                            model.maxVal !== undefined ? model.maxVal : 999999.0)
+                            let clamped = Math.min(Math.max(parsed,
+                                model.minVal !== undefined ? model.minVal : -999999.0),
+                                model.maxVal !== undefined ? model.maxVal : 999999.0)
+
+                            // This natively invokes curve_property_model_t::setData
                             model.value = clamped
+
+                            // The commit is complete, clear the local editing state
+                            isEditingLocally = false
+                        }
+                    }
+
+                    Keys.onPressed: (event) => {
+                        if (event.matches(StandardKey.Undo)) {
+                            if (isEditingLocally && inputField.canUndo) {
+                                // We are actively typing a typo. Let the native Qt text engine handle it.
+                                event.accepted = false
+                            } else {
+                                // The input is committed. Swallow the event and trigger the C++ stack.
+                                undoStack.undo()
+                                event.accepted = true
+                            }
+                        }
+                        else if (event.matches(StandardKey.Redo)) {
+                            if (isEditingLocally && inputField.canRedo) {
+                                event.accepted = false
+                            } else {
+                                undoStack.redo()
+                                event.accepted = true
+                            }
                         }
                     }
 
@@ -172,12 +205,45 @@ ApplicationWindow {
                         top: model.maxVal !== undefined ? model.maxVal : 999999
                     }
 
+                    property bool isEditingLocally: false
+
+                    onTextEdited: {
+                        isEditingLocally = true
+                    }
+
                     onEditingFinished: {
                         let parsed = Number.fromLocaleString(Qt.locale(), text)
                         if (!isNaN(parsed)) {
-                            let clamped = Math.min(Math.max(parsed, model.minVal !== undefined ? model.minVal : -999999),
-                                                            model.maxVal !== undefined ? model.maxVal : 999999)
+                            let clamped = Math.min(Math.max(parsed,
+                                model.minVal !== undefined ? model.minVal : -999999),
+                                model.maxVal !== undefined ? model.maxVal : 999999)
+
+                            // This natively invokes curve_property_model_t::setData
                             model.value = clamped
+
+                            // The commit is complete, clear the local editing state
+                            isEditingLocally = false
+                        }
+                    }
+
+                    Keys.onPressed: (event) => {
+                        if (event.matches(StandardKey.Undo)) {
+                            if (isEditingLocally && inputField.canUndo) {
+                                // We are actively typing a typo. Let the native Qt text engine handle it.
+                                event.accepted = false
+                            } else {
+                                // The input is committed. Swallow the event and trigger the C++ stack.
+                                undoStack.undo()
+                                event.accepted = true
+                            }
+                        }
+                        else if (event.matches(StandardKey.Redo)) {
+                            if (isEditingLocally && inputField.canRedo) {
+                                event.accepted = false
+                            } else {
+                                undoStack.redo()
+                                event.accepted = true
+                            }
                         }
                     }
 
