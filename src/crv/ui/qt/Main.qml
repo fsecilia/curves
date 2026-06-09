@@ -190,7 +190,7 @@ ApplicationWindow {
                             }
 
                             let direction = wheel.angleDelta.y > 0 ? 1 : -1
-                            model.value = floatControl.stepLogarithmic(model.value, direction)
+                            model.value = floatControl.stepLogarithmic(Number(model.value), direction)
                             wheel.accepted = true
                         }
                     }
