@@ -140,11 +140,12 @@ ApplicationWindow {
                                 model.minVal !== undefined ? model.minVal : -999999.0),
                                 model.maxVal !== undefined ? model.maxVal : 999999.0)
 
-                            // This natively invokes curve_property_model_t::setData
+                            // invoke curve_property_model_t::setData
                             model.value = clamped
 
-                            // The commit is complete, clear the local editing state
+                            // commit is complete; clear the local editing state and restore binding
                             isEditingLocally = false
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
                         }
                     }
 
@@ -155,6 +156,7 @@ ApplicationWindow {
                             // user dragged graph or hit global undo
                             isEditingLocally = false
                             inputField.focus = false
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
                         }
                     }
 
@@ -248,11 +250,12 @@ ApplicationWindow {
                                 model.minVal !== undefined ? model.minVal : -999999),
                                 model.maxVal !== undefined ? model.maxVal : 999999)
 
-                            // This natively invokes curve_property_model_t::setData
+                            // invoke curve_property_model_t::setData
                             model.value = clamped
 
-                            // The commit is complete, clear the local editing state
+                            // commit is complete; clear the local editing state and restore binding
                             isEditingLocally = false
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'i', 0))
                         }
                     }
 
@@ -263,6 +266,7 @@ ApplicationWindow {
                             // user dragged graph or hit global undo
                             isEditingLocally = false
                             inputField.focus = false
+                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'i', 0))
                         }
                     }
 
@@ -331,9 +335,12 @@ ApplicationWindow {
                 }
 
                 CheckBox {
+                    id: boolBox
                     checked: model.value
+
                     onClicked: {
                         model.value = checked
+                        checked = Qt.binding(() => model.value)
                     }
                 }
 
