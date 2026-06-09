@@ -11,14 +11,15 @@
 #include <crv/reflection/enum.hpp>
 #include <crv/ui/command/command.hpp>
 #include <crv/ui/command/mutate_param.hpp>
+#include <crv/ui/command/stack.hpp>
 #include <crv/ui/hierarchical_inspector.hpp>
 #include <crv/ui/qt/command/command_adapter.hpp>
+#include <crv/ui/qt/command/stack_adapter.hpp>
 #include <QAbstractListModel>
 #include <QString>
 #include <QUndoStack>
 #include <QVariant>
 #include <functional>
-#include <memory>
 #include <optional>
 #include <vector>
 
@@ -59,7 +60,9 @@ public:
         MaxRole
     };
 
-    explicit curve_property_model_t(QUndoStack& undo_stack,
+    using undo_stack_t = command::stack_t<command::qt::stack_adapter_t<QUndoStack>>;
+
+    explicit curve_property_model_t(undo_stack_t& undo_stack,
         hierarchical_inspector_factory_t hierarchical_inspector_factory, command::factory_t command_factory,
         QObject* parent = nullptr);
 
@@ -94,19 +97,15 @@ public:
                 auto max = QVariant{};
                 if constexpr (requires { param.constraint().max; }) max = QVariant::fromValue(param.constraint().max);
 
-                auto push_command = [&](QVariant const& src) {
+                auto push_command = [&, row](QVariant const& src) {
                     auto const& next = src.template value<value_t>();
                     if (next == param.value()) return;
 
-                    using command_t = command::mutate_param_t<param_t>;
-                    auto command = std::make_unique<command::qt::command_adapter_t<command_t>>(
-                        command_factory_.template create<command_t>(
-                            param, next, [&](param_t& param, value_t const& cur) {
-                                if (cur == param.value()) return;
-                                update_node_value(row, src);
-                            }));
-                    undo_stack_->push(command.get());
-                    command.release();
+                    undo_stack_->emplace<command::mutate_param_t<param_t>>(
+                        param, next, [=, this](param_t& param, value_t const& cur) {
+                            if (cur == param.value()) return;
+                            update_node_value(row, src);
+                        });
                 };
 
                 std::optional<property_type_id_t> property_type_id;
@@ -154,7 +153,7 @@ public:
     }
 
 private:
-    QUndoStack* undo_stack_;
+    undo_stack_t* undo_stack_;
     hierarchical_inspector_factory_t hierarchical_inspector_factory_;
     command::factory_t command_factory_;
     std::vector<ui_node_t> nodes_;

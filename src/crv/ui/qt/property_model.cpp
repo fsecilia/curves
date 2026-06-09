@@ -8,7 +8,7 @@
 
 namespace crv {
 
-curve_property_model_t::curve_property_model_t(QUndoStack& undo_stack,
+curve_property_model_t::curve_property_model_t(undo_stack_t& undo_stack,
     hierarchical_inspector_factory_t hierarchical_inspector_factory, command::factory_t command_factory,
     QObject* parent)
     : QAbstractListModel{parent}, undo_stack_{&undo_stack},
