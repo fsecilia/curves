@@ -20,6 +20,8 @@ set(CMAKE_AUTORCC ON)
 # qt ui lib
 add_library(qt_ui
     command/command_adapter.hpp
+    property_model.cpp
+    property_model.hpp
 )
 target_link_libraries(qt_ui PUBLIC
     lib
@@ -44,6 +46,7 @@ endif()
 # qt ui unit tests
 add_executable(qt_ui_test
     command/command_adapter_test.cpp
+    property_model_test.cpp
 )
 target_link_libraries(qt_ui_test PRIVATE qt_ui testing)
 gtest_discover_tests(qt_ui_test)
