@@ -15,6 +15,7 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <climits>
+#include <compare>
 #include <concepts>
 #include <type_traits>
 

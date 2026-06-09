@@ -20,9 +20,6 @@
 #include <memory>
 #include <utility>
 
-#include <crv/ui/hierarchical_inspector.hpp>
-#include <iostream>
-
 namespace crv {
 
 class config_store_t
