@@ -135,15 +135,19 @@ ApplicationWindow {
                     }
 
                     onEditingFinished: {
-                        let parsed = Number.fromLocaleString(Qt.locale(), text)
-                        if (!isNaN(parsed)) {
-                            let clamped = Math.min(Math.max(parsed,
-                                model.minVal !== undefined ? model.minVal : -999999.0),
-                                model.maxVal !== undefined ? model.maxVal : 999999.0)
-                            isEditingLocally = false
-                            model.value = clamped
+                        let parsed
+                        try { parsed = Number.fromLocaleString(Qt.locale(), text) }
+                        catch (e) {
                             text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
+                            return
                         }
+
+                        let clamped = Math.min(Math.max(parsed,
+                            model.minVal !== undefined ? model.minVal : -999999.0),
+                            model.maxVal !== undefined ? model.maxVal : 999999.0)
+                        isEditingLocally = false
+                        model.value = clamped
+                        text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
                     }
 
                     property var externalModelValue: model.value
@@ -241,15 +245,19 @@ ApplicationWindow {
                     }
 
                     onEditingFinished: {
-                        let parsed = Number.fromLocaleString(Qt.locale(), text)
-                        if (!isNaN(parsed)) {
-                            let clamped = Math.min(Math.max(parsed,
-                                model.minVal !== undefined ? model.minVal : -999999),
-                                model.maxVal !== undefined ? model.maxVal : 999999)
-                            isEditingLocally = false
-                            model.value = clamped
+                        let parsed
+                        try { parsed = Number.fromLocaleString(Qt.locale(), text) }
+                        catch (e) {
                             text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
+                            return
                         }
+
+                        let clamped = Math.min(Math.max(parsed,
+                            model.minVal !== undefined ? model.minVal : -999999),
+                            model.maxVal !== undefined ? model.maxVal : 999999)
+                        isEditingLocally = false
+                        model.value = clamped
+                        text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
                     }
 
                     property var externalModelValue: model.value
