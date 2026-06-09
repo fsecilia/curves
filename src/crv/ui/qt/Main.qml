@@ -12,6 +12,17 @@ ApplicationWindow {
     visible: true
     title: "Curves Configuration"
 
+    // map standard keys to the QUndoStack exposed from c++
+    Shortcut {
+        sequence: [StandardKey.Undo]
+        onActivated: undoStack.undo()
+    }
+
+    Shortcut {
+        sequence: [StandardKey.Redo]
+        onActivated: undoStack.redo()
+    }
+
     SystemPalette {
         id: sysPalette
         colorGroup: SystemPalette.Active
