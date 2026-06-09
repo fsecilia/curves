@@ -50,13 +50,13 @@ class curve_property_model_t : public QAbstractListModel
     Q_OBJECT
 
 public:
-    enum roles
+    enum class roles_t : int
     {
-        PathRole = Qt::UserRole + 1,
-        TypeRole,
-        ValueRole,
-        MinRole,
-        MaxRole
+        path = Qt::UserRole + 1,
+        type,
+        value,
+        min,
+        max
     };
 
     using undo_stack_t = command::stack_t<command::qt::stack_adapter_t<QUndoStack>>;
@@ -69,10 +69,10 @@ public:
     auto setData(QModelIndex const& index, QVariant const& value, int role = Qt::EditRole) -> bool override;
     auto roleNames() const -> QHash<int, QByteArray> override;
 
-    /// called by the command's notify lambda when a value successfully changes
+    /// called by command's notify lambda when value actually changes
     auto update_node_value(int_t row, QVariant const& new_value) -> void;
 
-    /// rebuilds UI list from a reflected configuration
+    /// rebuilds UI list from reflected configuration
     ///
     /// \pre config must outlive property model
     template <typename config_t> auto load_config(config_t& config) -> void
@@ -91,32 +91,27 @@ public:
 
                 auto min = QVariant{};
                 if constexpr (requires { modified_param.constraint().min; })
+                {
                     min = QVariant::fromValue(modified_param.constraint().min);
+                }
 
                 auto max = QVariant{};
                 if constexpr (requires { modified_param.constraint().max; })
+                {
                     max = QVariant::fromValue(modified_param.constraint().max);
-
-                static constexpr auto to_variant = [](auto const& val) -> QVariant {
-                    using raw_t = std::remove_cvref_t<decltype(val)>;
-                    if constexpr (std::same_as<raw_t, bool>) { return QVariant::fromValue(val); }
-                    else if constexpr (std::signed_integral<raw_t>)
-                    {
-                        return QVariant::fromValue(static_cast<qint64>(val));
-                    }
-                    else
-                    {
-                        return QVariant::fromValue(val);
-                    }
-                };
+                }
 
                 auto push_command = [&, row](QVariant const& src) {
                     auto const& next = src.template value<value_t>();
+
+                    // guard against infinite loops triggered by UI bindings re-evaluating
                     if (next == modified_param.value()) return;
 
                     undo_stack_->emplace<command::mutate_param_t<param_t>>(
                         modified_param, next, [=, this](param_t& command_param, value_t const& cur) {
+                            // guard against infinite loops triggered by UI bindings re-evaluating
                             if (cur == command_param.value()) return;
+
                             update_node_value(row, to_variant(command_param.value()));
                         });
                 };
@@ -153,6 +148,14 @@ public:
     }
 
 private:
+    static constexpr auto to_variant(auto const& val) -> QVariant
+    {
+        using raw_t = std::remove_cvref_t<decltype(val)>;
+        if constexpr (std::same_as<raw_t, bool>) return QVariant::fromValue(val);
+        else if constexpr (std::signed_integral<raw_t>) return QVariant::fromValue(static_cast<qint64>(val));
+        else return QVariant::fromValue(val);
+    }
+
     undo_stack_t* undo_stack_;
     hierarchical_inspector_factory_t hierarchical_inspector_factory_;
     std::vector<ui_node_t> nodes_;

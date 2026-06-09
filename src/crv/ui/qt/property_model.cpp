@@ -26,20 +26,26 @@ auto curve_property_model_t::data(QModelIndex const& index, int role) const -> Q
 
     auto const& node = nodes_[index.row()];
 
-    switch (role)
+    switch (static_cast<roles_t>(role))
     {
-        case PathRole: return node.path;
-        case TypeRole: return static_cast<int>(node.type);
-        case ValueRole: return node.value;
-        case MinRole: return node.min;
-        case MaxRole: return node.max;
-        default: return {};
+        case roles_t::path: return node.path;
+        case roles_t::type: return static_cast<int>(node.type);
+        case roles_t::value: return node.value;
+        case roles_t::min: return node.min;
+        case roles_t::max: return node.max;
     }
+
+    assert(false && "unexpected role");
+    return {};
 }
 
 auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& value, int role) -> bool
 {
-    if (!index.isValid() || role != ValueRole || index.row() >= static_cast<int>(nodes_.size())) return false;
+    if (!index.isValid() || static_cast<int>(nodes_.size()) <= index.row()
+        || role != static_cast<int_t>(roles_t::value))
+    {
+        return false;
+    }
 
     auto const& node = nodes_[index.row()];
 
@@ -47,9 +53,6 @@ auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& v
     if (node.value == value) return false;
 
     // fire the type-erased command
-    //
-    // Do not update nodes_[index.row()].value here. The command pushes to the QUndoStack, executes, modifies the core
-    // domain, and fires the notify lambda, which calls update_node_value().
     node.push_command(value);
 
     return true;
@@ -58,23 +61,23 @@ auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& v
 auto curve_property_model_t::roleNames() const -> QHash<int, QByteArray>
 {
     auto roles = QHash<int, QByteArray>{};
-    roles[PathRole] = "path";
-    roles[TypeRole] = "typeId";
-    roles[ValueRole] = "value";
-    roles[MinRole] = "minVal";
-    roles[MaxRole] = "maxVal";
+    roles[static_cast<int>(roles_t::path)] = "path";
+    roles[static_cast<int>(roles_t::type)] = "typeId";
+    roles[static_cast<int>(roles_t::value)] = "value";
+    roles[static_cast<int>(roles_t::min)] = "minVal";
+    roles[static_cast<int>(roles_t::max)] = "maxVal";
     return roles;
 }
 
 auto curve_property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void
 {
-    if (row < 0 || row >= static_cast<int_t>(nodes_.size())) { return; }
+    if (row < 0 || static_cast<int_t>(nodes_.size()) <= row) return;
 
     nodes_[row].value = new_value;
 
-    // notify QML that this specific row's ValueRole has changed
+    // notify QML that this specific row's value has changed
     auto const model_index = index(int_cast<int>(row), 0);
-    emit dataChanged(model_index, model_index, {ValueRole});
+    emit dataChanged(model_index, model_index, {static_cast<int>(roles_t::value)});
 }
 
 } // namespace crv
