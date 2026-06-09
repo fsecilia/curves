@@ -151,12 +151,11 @@ using curve_configs_t = tuple::transform_t<curves::curves_t, extract_curve_confi
 
 struct profile_t
 {
-    param_t<curves::curve_id_t> active_curve{"curve", curves::curve_id_t::synchronous};
-
     float_param_t anisotropy{"anisotropy", 1.0};
     param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"filter_halflife", 2.0};
     param_t<float_t, static_t<float_t, 0.0, 1.0>> notch_width{"notch_width", 0.0};
 
+    param_t<curves::curve_id_t> active_curve{"active_curve", curves::curve_id_t::synchronous};
     curve_configs_t curve_configs;
 
     template <typename self_t, typename inspector_t>
@@ -166,6 +165,7 @@ struct profile_t
         inspector.inspect(self.filter_halflife);
         inspector.inspect(self.notch_width);
 
+        inspector.inspect(self.active_curve);
         tuple::enumerate(self.curve_configs, [&](int_t id, auto&& curve_config) {
             auto const curve_id = static_cast<curves::curve_id_t>(id);
             inspector.inspect_section(*reflection::to_string(curve_id),
