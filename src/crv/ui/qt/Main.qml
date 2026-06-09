@@ -167,6 +167,12 @@ ApplicationWindow {
                         acceptedButtons: Qt.NoButton
 
                         onWheel: (wheel) => {
+                            // if user hasn't clicked into this specific box, let ListView scroll
+                            if (!inputField.activeFocus) {
+                                wheel.accepted = false
+                                return
+                            }
+
                             let direction = wheel.angleDelta.y > 0 ? 1 : -1
                             model.value = parent.parent.parent.stepLogarithmic(model.value, direction)
                             wheel.accepted = true
@@ -249,12 +255,16 @@ ApplicationWindow {
 
                     MouseArea {
                         anchors.fill: parent
-
                         acceptedButtons: Qt.NoButton
 
                         onWheel: (wheel) => {
-                            let direction = wheel.angleDelta.y > 0 ? 1 : -1
+                            // if user hasn't clicked into this specific box, let ListView scroll
+                            if (!inputField.activeFocus) {
+                                wheel.accepted = false
+                                return
+                            }
 
+                            let direction = wheel.angleDelta.y > 0 ? 1 : -1
                             let step = 1
                             let nextVal = model.value + (step * direction)
 
