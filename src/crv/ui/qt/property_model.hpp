@@ -8,14 +8,18 @@
 #include <crv/lib.hpp>
 #include <crv/math/float_limits.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/reflection/enum.hpp>
 #include <crv/ui/command/command.hpp>
 #include <crv/ui/command/mutate_param.hpp>
 #include <crv/ui/hierarchical_inspector.hpp>
+#include <crv/ui/qt/command/command_adapter.hpp>
 #include <QAbstractListModel>
 #include <QString>
 #include <QUndoStack>
 #include <QVariant>
 #include <functional>
+#include <memory>
+#include <optional>
 #include <vector>
 
 namespace crv {
@@ -34,8 +38,8 @@ struct ui_node_t
     QString path;
     property_type_id_t type;
     QVariant value;
-    QVariant min_val;
-    QVariant max_val;
+    QVariant min;
+    QVariant max;
 
     // executes the command logic, passing the new value from QML
     std::function<auto(QVariant const&)->void> push_command;
@@ -75,39 +79,76 @@ public:
         beginResetModel();
         nodes_.clear();
 
-        auto const inspector = hierarchical_inspector_factory_([&](std::string_view path, auto& param) {
-            using param_t = std::remove_cv_t<decltype(param)>;
-            using value_t = param_t::value_t;
+        auto const active_curve_path_prefix = std::string{config.active_profile.value()} + "/";
+        auto active_curve_path = active_curve_path_prefix + *reflection::to_string(config.profile.active_curve.value());
+        auto inspector = hierarchical_inspector_factory_(
+            [&](std::string_view path, auto& param) {
+                using param_t = std::remove_cvref_t<decltype(param)>;
+                using value_t = param_t::value_t;
 
-            auto const row = static_cast<int_t>(size(nodes_));
+                auto const row = static_cast<int_t>(size(nodes_));
 
-            auto min = QVariant{};
-            if constexpr (requires { param.constraint().min; }) min = QVariant::fromValue(param.constraint().min);
+                auto min = QVariant{};
+                if constexpr (requires { param.constraint().min; }) min = QVariant::fromValue(param.constraint().min);
 
-            auto max = QVariant{};
-            if constexpr (requires { param.constraint().max; }) max = QVariant::fromValue(param.constraint().max);
+                auto max = QVariant{};
+                if constexpr (requires { param.constraint().max; }) max = QVariant::fromValue(param.constraint().max);
 
-            auto push_command = [&](QVariant const& src) {
-                auto const& next = src.template value<value_t>();
-                if (next == param.value()) return;
+                auto push_command = [&](QVariant const& src) {
+                    auto const& next = src.template value<value_t>();
+                    if (next == param.value()) return;
 
-                undo_stack_->push(command_factory_.template create<command::mutate_param_t<param_t>>(
-                    param, next, [&](param_t& param, value_t const& cur) {
-                        if (cur == param.value()) return;
-                        update_node_value(row, src);
-                    }));
-            };
+                    using command_t = command::mutate_param_t<param_t>;
+                    auto command = std::make_unique<command::qt::command_adapter_t<command_t>>(
+                        command_factory_.template create<command_t>(
+                            param, next, [&](param_t& param, value_t const& cur) {
+                                if (cur == param.value()) return;
+                                update_node_value(row, src);
+                            }));
+                    undo_stack_->push(command.get());
+                    command.release();
+                };
 
-            property_type_id_t property_type_id;
-            if constexpr (std::floating_point<value_t>) property_type_id = property_type_id_t::float_t;
-            else if constexpr (std::signed_integral<value_t>) property_type_id = property_type_id_t::int_t;
-            else if constexpr (std::same_as<value_t, bool>) property_type_id = property_type_id_t::bool_t;
-            else static_assert(false);
+                std::optional<property_type_id_t> property_type_id;
+                static_assert(std::floating_point<value_t> || std::signed_integral<value_t>
+                    || std::same_as<value_t, bool> || is_enum<value_t> || std::same_as<value_t, std::string>);
+                if constexpr (std::floating_point<value_t>) property_type_id = property_type_id_t::float_t;
+                else if constexpr (std::signed_integral<value_t>) property_type_id = property_type_id_t::int_t;
+                else if constexpr (std::same_as<value_t, bool>) property_type_id = property_type_id_t::bool_t;
 
-            nodes_.emplace_back(QString::fromLocal8Bit(std::data(path), std::size(path)), property_type_id,
-                param.value(), min, max, std::move(push_command));
-        });
-        inspector.inspect(config);
+                if constexpr (!std::same_as<value_t, std::string> && !is_enum<value_t>)
+                {
+                    if (property_type_id.has_value())
+                    {
+                        static constexpr auto to_variant = [](auto const& val) -> QVariant {
+                            using raw_t = std::remove_cvref_t<decltype(val)>;
+                            if constexpr (std::same_as<raw_t, bool>) { return QVariant::fromValue(val); }
+                            else if constexpr (std::signed_integral<raw_t>)
+                            {
+                                return QVariant::fromValue(static_cast<qint64>(val));
+                            }
+                            else
+                            {
+                                return QVariant::fromValue(val);
+                            }
+                        };
+
+                        auto ui_node = ui_node_t{
+                            .path = QString::fromLocal8Bit(std::data(path), std::size(path)),
+                            .type = *property_type_id,
+                            .value = to_variant(param.value()),
+                            .min = min,
+                            .max = max,
+                            .push_command = std::move(push_command),
+                        };
+                        nodes_.emplace_back(std::move(ui_node));
+                    }
+                }
+            },
+            [&](std::string_view nested_path) {
+                return !nested_path.starts_with(active_curve_path_prefix) || nested_path.starts_with(active_curve_path);
+            });
+        config.reflect(inspector);
 
         endResetModel();
     }

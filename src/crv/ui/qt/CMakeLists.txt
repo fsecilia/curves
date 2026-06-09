@@ -74,6 +74,13 @@ set_source_files_properties(
     PROPERTIES COMPILE_OPTIONS "-fno-strict-aliasing;-Wno-strict-aliasing"
 )
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set_source_files_properties(
+        "${CMAKE_CURRENT_BINARY_DIR}/.rcc/qmlcache/qt_Main_qml.cpp"
+        PROPERTIES COMPILE_OPTIONS "-Wno-extra-semi-stmt"
+    )
+endif()
+
 install(TARGETS qt RUNTIME
     DESTINATION bin
     COMPONENT ui
