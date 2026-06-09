@@ -38,7 +38,7 @@ struct command_stack_adapter_test_t : Test
     };
 
     using sut_t = stack_adapter_t<impl_t>;
-    sut_t sut{std::make_unique<impl_t>(impl_t{&mock_impl})};
+    sut_t sut{impl_t{&mock_impl}};
 };
 
 TEST_F(command_stack_adapter_test_t, push)

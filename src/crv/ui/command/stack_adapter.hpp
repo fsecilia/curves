@@ -6,8 +6,6 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/ui/command/command.hpp>
-#include <memory>
 #include <utility>
 
 namespace crv::command {
@@ -18,15 +16,15 @@ namespace crv::command {
 template <typename impl_t> class stack_adapter_t
 {
 public:
-    constexpr stack_adapter_t(std::unique_ptr<impl_t> impl) noexcept : impl_{std::move(impl)} {}
+    constexpr stack_adapter_t(impl_t impl) noexcept : impl_{std::move(impl)} {}
 
-    template <typename command_t> auto push(command_t command) -> void { impl_->push(std::move(command)); }
+    template <typename command_t> auto push(command_t command) -> void { impl_.push(std::move(command)); }
 
-    constexpr auto undo() -> void { impl_->undo(); }
-    constexpr auto redo() -> void { impl_->redo(); }
+    constexpr auto undo() -> void { impl_.undo(); }
+    constexpr auto redo() -> void { impl_.redo(); }
 
 private:
-    std::unique_ptr<impl_t> impl_;
+    impl_t impl_;
 };
 
 } // namespace crv::command
