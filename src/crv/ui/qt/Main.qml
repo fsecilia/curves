@@ -122,6 +122,13 @@ ApplicationWindow {
 
                     property bool isEditingLocally: false
 
+                    // clear state if user clicks away or list recycles delegate
+                    onActiveFocusChanged: {
+                        if (!activeFocus) {
+                            isEditingLocally = false
+                        }
+                    }
+
                     onTextEdited: {
                         isEditingLocally = true
                     }
@@ -212,6 +219,13 @@ ApplicationWindow {
                     }
 
                     property bool isEditingLocally: false
+
+                    // clear state if user clicks away or list recycles delegate
+                    onActiveFocusChanged: {
+                        if (!activeFocus) {
+                            isEditingLocally = false
+                        }
+                    }
 
                     onTextEdited: {
                         isEditingLocally = true
