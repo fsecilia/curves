@@ -120,10 +120,11 @@ static auto main(int argc, char* argv[]) -> int
     QQmlApplicationEngine engine;
 
     auto undo_stack = QUndoStack{};
-    auto curve_property_model = curve_property_model_t{undo_stack, {}, {}};
+    auto command_stack = command::stack_t{command::qt::stack_adapter_t{undo_stack}};
+    auto curve_property_model = curve_property_model_t{command_stack, {}, {}};
     curve_property_model.load_config(model_root);
-    engine.rootContext()->setContextProperty("curvePropertyModel", &curve_property_model);
     engine.rootContext()->setContextProperty("undoStack", &undo_stack);
+    engine.rootContext()->setContextProperty("curvePropertyModel", &curve_property_model);
 
     // exit if QML engine fails to load root object
     QObject::connect(
