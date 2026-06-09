@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "property_model.hpp"
+#include <crv/math/integer.hpp>
 
 namespace crv {
 
@@ -32,8 +33,8 @@ auto curve_property_model_t::data(QModelIndex const& index, int role) const -> Q
         case PathRole: return node.path;
         case TypeRole: return static_cast<int>(node.type);
         case ValueRole: return node.value;
-        case MinRole: return node.min_val;
-        case MaxRole: return node.max_val;
+        case MinRole: return node.min;
+        case MaxRole: return node.max;
         default: return {};
     }
 }
@@ -74,7 +75,7 @@ auto curve_property_model_t::update_node_value(int_t row, QVariant const& new_va
     nodes_[row].value = new_value;
 
     // notify QML that this specific row's ValueRole has changed
-    auto const model_index = index(row, 0);
+    auto const model_index = index(int_cast<int>(row), 0);
     emit dataChanged(model_index, model_index, {ValueRole});
 }
 

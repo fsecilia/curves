@@ -7,6 +7,7 @@
 #include <crv/model/config.hpp>
 #include <crv/serialization/exceptions.hpp>
 #include <crv/serialization/toml/toml.hpp>
+#include <crv/ui/qt/property_model.hpp>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QMessageBox>
@@ -18,6 +19,9 @@
 #include <format>
 #include <memory>
 #include <utility>
+
+#include <crv/ui/hierarchical_inspector.hpp>
+#include <iostream>
 
 namespace crv {
 
@@ -111,14 +115,20 @@ static auto main(int argc, char* argv[]) -> int
 
     auto const config_path = find_config_path();
     auto const store = std::make_unique<config_store_t>(config_path);
-    auto root = model::root_t{};
-    if (!load_model(argc, argv, *store, root)) return EXIT_FAILURE;
+    auto model_root = model::root_t{};
+    if (!load_model(argc, argv, *store, model_root)) return EXIT_FAILURE;
 
     auto gui_app = QGuiApplication{argc, argv};
 
     QQmlApplicationEngine engine;
 
-    // exit if theQML engine fails to load root object
+    auto undo_stack = QUndoStack{};
+    auto curve_property_model = curve_property_model_t{undo_stack, {}, {}};
+    curve_property_model.load_config(model_root);
+    engine.rootContext()->setContextProperty("curvePropertyModel", &curve_property_model);
+    engine.rootContext()->setContextProperty("undoStack", &undo_stack);
+
+    // exit if QML engine fails to load root object
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &gui_app, []() { QCoreApplication::exit(EXIT_FAILURE); },
         Qt::QueuedConnection);
