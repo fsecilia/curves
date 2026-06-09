@@ -29,17 +29,29 @@ struct hierarchical_inspector_test_t : Test
             map.emplace(std::string{path}, stream.str());
         }
     };
+};
 
-    using sut_t = hierarchical_inspector_t<callback_t>;
+// --------------------------------------------------------------------------------------------------------------------
+// unfiltered tests
+// --------------------------------------------------------------------------------------------------------------------
+
+struct hierarchical_inspector_test_unfiltered_t : hierarchical_inspector_test_t
+{
+    struct always_true_predicate_t
+    {
+        constexpr auto operator()(std::string_view) const noexcept -> bool { return true; }
+    };
+
+    using sut_t = hierarchical_inspector_t<callback_t, always_true_predicate_t>;
     using factory_t = hierarchical_inspector_factory_t;
-    sut_t sut = factory_t{}(callback_t{map});
+    sut_t sut = factory_t{}(callback_t{map}, always_true_predicate_t{});
 };
 
 //
 // flat
 //
 
-struct hierarchical_inspector_test_flat_topology_t : hierarchical_inspector_test_t
+struct hierarchical_inspector_test_flat_topology_t : hierarchical_inspector_test_unfiltered_t
 {
     struct topology_t
     {
@@ -70,7 +82,7 @@ TEST_F(hierarchical_inspector_test_flat_topology_t, handles_flat_structure)
 // single nested
 //
 
-struct hierarchical_inspector_test_nested_topology_t : hierarchical_inspector_test_t
+struct hierarchical_inspector_test_nested_topology_t : hierarchical_inspector_test_unfiltered_t
 {
     struct topology_t
     {
@@ -109,7 +121,7 @@ TEST_F(hierarchical_inspector_test_nested_topology_t, handles_single_nested_stru
 // deep
 //
 
-struct hierarchical_inspector_test_deep_topology_t : hierarchical_inspector_test_t
+struct hierarchical_inspector_test_deep_topology_t : hierarchical_inspector_test_unfiltered_t
 {
     struct topology_t
     {
@@ -173,7 +185,7 @@ TEST_F(hierarchical_inspector_test_deep_topology_t, handles_deeply_nested_struct
 // mixed_sibling
 //
 
-struct hierarchical_inspector_test_mixed_topology_t : hierarchical_inspector_test_t
+struct hierarchical_inspector_test_mixed_topology_t : hierarchical_inspector_test_unfiltered_t
 {
     struct topology_t
     {
@@ -221,7 +233,7 @@ TEST_F(hierarchical_inspector_test_mixed_topology_t, restores_path_after_nested_
 // empty
 //
 
-struct hierarchical_inspector_test_empty_topology_t : hierarchical_inspector_test_t
+struct hierarchical_inspector_test_empty_topology_t : hierarchical_inspector_test_unfiltered_t
 {
     struct topology_t
     {
@@ -259,6 +271,71 @@ TEST_F(hierarchical_inspector_test_empty_topology_t, ignores_empty_sections_with
     EXPECT_EQ(map.size(), 2);
     EXPECT_EQ(map["preceding_param"], "preceding_value");
     EXPECT_EQ(map["succeeding_param"], "succeeding_value");
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+// filtered test
+// --------------------------------------------------------------------------------------------------------------------
+
+struct hierarchical_inspector_test_filtered_topology_t : hierarchical_inspector_test_t
+{
+    struct topology_t
+    {
+        param_t<std::string> root_param{"root_param", "root_value"};
+
+        struct active_section_t
+        {
+            param_t<std::string> param{"active_param", "active_value"};
+
+            template <typename self_t, typename inspector_t>
+            constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+            {
+                inspector.inspect(self.param);
+                return std::forward<inspector_t>(inspector);
+            }
+        };
+        active_section_t active_section;
+
+        struct inactive_section_t
+        {
+            param_t<std::string> param{"inactive_param", "inactive_value"};
+
+            template <typename self_t, typename inspector_t>
+            constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+            {
+                inspector.inspect(self.param);
+                return std::forward<inspector_t>(inspector);
+            }
+        };
+        inactive_section_t inactive_section;
+
+        template <typename self_t, typename inspector_t>
+        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+        {
+            inspector.inspect(self.root_param);
+            inspector.inspect_section(
+                "active", [&](auto&& section_inspector) { self.active_section.reflect(section_inspector); });
+            inspector.inspect_section(
+                "inactive", [&](auto&& section_inspector) { self.inactive_section.reflect(section_inspector); });
+            return std::forward<inspector_t>(inspector);
+        }
+    };
+    topology_t model{};
+
+    static constexpr auto filtering_predicate = [](std::string_view path) { return path != "inactive"; };
+
+    using sut_t = hierarchical_inspector_t<callback_t, decltype(filtering_predicate)>;
+    sut_t sut{callback_t{map}, filtering_predicate};
+};
+
+TEST_F(hierarchical_inspector_test_filtered_topology_t, prunes_tree_when_predicate_returns_false)
+{
+    model.reflect(sut);
+
+    EXPECT_EQ(map.size(), 2);
+    EXPECT_EQ(map["root_param"], "root_value");
+    EXPECT_EQ(map["active/active_param"], "active_value");
+    EXPECT_TRUE(map.find("inactive/inactive_param") == map.end());
 }
 
 } // namespace
