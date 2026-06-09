@@ -10,21 +10,21 @@
 
 namespace crv::command {
 
-/// adapts command stack to an implementation
+/// encapsulates command stack against a toolkit-specific adapterementation
 ///
-/// This adapter allows us to code against qt without depending on qt.
-template <typename impl_t> class stack_adapter_t
+/// This adapter allows us to code against a toolkit without depending on the toolkit from generic code.
+template <typename adapter_t> class stack_t
 {
 public:
-    constexpr stack_adapter_t(impl_t impl) noexcept : impl_{std::move(impl)} {}
+    constexpr stack_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
 
-    template <typename command_t> auto push(command_t command) -> void { impl_.push(std::move(command)); }
+    template <typename command_t> auto push(command_t command) -> void { adapter_.push(std::move(command)); }
 
-    constexpr auto undo() -> void { impl_.undo(); }
-    constexpr auto redo() -> void { impl_.redo(); }
+    constexpr auto undo() -> void { adapter_.undo(); }
+    constexpr auto redo() -> void { adapter_.redo(); }
 
 private:
-    impl_t impl_;
+    adapter_t adapter_;
 };
 
 } // namespace crv::command
