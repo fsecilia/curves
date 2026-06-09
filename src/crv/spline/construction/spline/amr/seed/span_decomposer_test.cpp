@@ -59,7 +59,6 @@ struct spline_seed_span_decomposer_test_t : Test
     static constexpr auto max_segment_count = 4;
     static constexpr auto log2_min_width = -1;
     static constexpr auto min_segment_width = x_t{1} >> -log2_min_width;
-    static constexpr auto epsilon = x_t::literal(1);
 
     sample_target_function_t sample_target_function{.id = 1};
     refinement_pool_t refinement_pool{};
@@ -409,6 +408,8 @@ struct spline_seed_span_decomposer_death_test_t : spline_seed_span_decomposer_te
     {
         auto operator()(sample_target_function_t const&, subdomain_t const&) const noexcept -> interval_t { return {}; }
     };
+
+    static constexpr auto epsilon = x_t::literal(1);
 
     using sut_t = span_decomposer_t<stride_calculator_t, subdomain_factory_t, interval_factory_t, max_segment_count,
         log2_min_width>;
