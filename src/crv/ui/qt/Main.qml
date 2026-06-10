@@ -17,7 +17,6 @@ ApplicationWindow {
         sequence: [StandardKey.Undo]
         onActivated: undoStack.undo()
     }
-
     Shortcut {
         sequence: [StandardKey.Redo]
         onActivated: undoStack.redo()
@@ -114,87 +113,44 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    text: Number(model.value).toLocaleString(Qt.locale(), 'f', 3)
+                    readonly property real lo: model.minVal !== undefined ? model.minVal : -999999.0
+                    readonly property real hi: model.maxVal !== undefined ? model.maxVal :  999999.0
+                    readonly property string display: Number(model.value).toLocaleString(Qt.locale(), 'f', 3)
 
-                    validator: DoubleValidator {
-                        bottom: model.minVal !== undefined ? model.minVal : -999999.0
-                        top: model.maxVal !== undefined ? model.maxVal : 999999.0
-                    }
+                    text: display
+                    validator: DoubleValidator { bottom: inputField.lo; top: inputField.hi }
 
-                    property bool isEditingLocally: false
-
-                    // clear state if user clicks away or list recycles delegate
-                    onActiveFocusChanged: {
-                        if (!activeFocus) {
-                            isEditingLocally = false
-                        }
-                    }
-
-                    onTextEdited: {
-                        isEditingLocally = true
-                    }
-
-                    onEditingFinished: {
+                    function commit() {
                         let parsed
                         try { parsed = Number.fromLocaleString(Qt.locale(), text) }
-                        catch (e) {
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
-                            return
-                        }
-
-                        let clamped = Math.min(Math.max(parsed,
-                            model.minVal !== undefined ? model.minVal : -999999.0),
-                            model.maxVal !== undefined ? model.maxVal : 999999.0)
-                        isEditingLocally = false
-                        model.value = clamped
-                        text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
+                        catch (e) { text = display; return }
+                        model.value = Math.min(Math.max(parsed, lo), hi)
+                        text = display
                     }
 
-                    property var externalModelValue: model.value
-
-                    onExternalModelValueChanged: {
-                        if (isEditingLocally) {
-                            // user dragged graph or hit global undo
-                            isEditingLocally = false
-                            inputField.focus = false
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 3))
-                        }
-                    }
+                    onDisplayChanged: text = display
+                    onActiveFocusChanged: if (!activeFocus && !acceptableInput) text = display
+                    onEditingFinished: commit()
 
                     Keys.onPressed: (event) => {
-                        if (event.matches(StandardKey.Undo)) {
-                            if (isEditingLocally && inputField.canUndo) {
-                                // let local text engine handle undo
-                                event.accepted = false
-                            } else {
-                                // input is committed; swallow and use real undo
-                                undoStack.undo()
-                                event.accepted = true
-                            }
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            commit()
+                            event.accepted = true
                         }
-                        else if (event.matches(StandardKey.Redo)) {
-                            if (isEditingLocally && inputField.canRedo) {
-                                event.accepted = false
-                            } else {
-                                undoStack.redo()
-                                event.accepted = true
-                            }
-                        }
+                        else if (event.matches(StandardKey.Undo)) { undoStack.undo(); event.accepted = true }
+                        else if (event.matches(StandardKey.Redo)) { undoStack.redo(); event.accepted = true }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
-
                         onWheel: (wheel) => {
-                            // if user hasn't clicked into this specific box, let ListView scroll
-                            if (!inputField.activeFocus) {
-                                wheel.accepted = false
-                                return
-                            }
-
+                            if (!inputField.activeFocus) { wheel.accepted = false; return }
                             let direction = wheel.angleDelta.y > 0 ? 1 : -1
-                            model.value = floatControl.stepLogarithmic(Number(model.value), direction)
+                            let base
+                            try { base = Number.fromLocaleString(Qt.locale(), inputField.text) }
+                            catch (e) { base = Number(model.value) }
+                            model.value = floatControl.stepLogarithmic(base, direction)
                             wheel.accepted = true
                         }
                     }
@@ -225,92 +181,49 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    text: Number(model.value).toLocaleString(Qt.locale(), 'f', 0)
-                    validator: IntValidator {
-                        bottom: model.minVal !== undefined ? model.minVal : -999999
-                        top: model.maxVal !== undefined ? model.maxVal : 999999
-                    }
+                    readonly property real lo: model.minVal !== undefined ? model.minVal : -999999
+                    readonly property real hi: model.maxVal !== undefined ? model.maxVal :  999999
+                    readonly property string display: Number(model.value).toLocaleString(Qt.locale(), 'f', 0)
 
-                    property bool isEditingLocally: false
+                    text: display
+                    validator: DoubleValidator { bottom: inputField.lo; top: inputField.hi }
 
-                    // clear state if user clicks away or list recycles delegate
-                    onActiveFocusChanged: {
-                        if (!activeFocus) {
-                            isEditingLocally = false
-                        }
-                    }
-
-                    onTextEdited: {
-                        isEditingLocally = true
-                    }
-
-                    onEditingFinished: {
+                    function commit() {
                         let parsed
                         try { parsed = Number.fromLocaleString(Qt.locale(), text) }
-                        catch (e) {
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
-                            return
-                        }
-
-                        let clamped = Math.min(Math.max(parsed,
-                            model.minVal !== undefined ? model.minVal : -999999),
-                            model.maxVal !== undefined ? model.maxVal : 999999)
-                        isEditingLocally = false
-                        model.value = clamped
-                        text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
+                        catch (e) { text = display; return }
+                        model.value = Math.min(Math.max(parsed, lo), hi)
+                        text = display
                     }
 
-                    property var externalModelValue: model.value
-
-                    onExternalModelValueChanged: {
-                        if (isEditingLocally) {
-                            // user dragged graph or hit global undo
-                            isEditingLocally = false
-                            inputField.focus = false
-                            text = Qt.binding(() => Number(model.value).toLocaleString(Qt.locale(), 'f', 0))
-                        }
-                    }
+                    onDisplayChanged: text = display
+                    onActiveFocusChanged: if (!activeFocus && !acceptableInput) text = display
+                    onEditingFinished: commit()
 
                     Keys.onPressed: (event) => {
-                        if (event.matches(StandardKey.Undo)) {
-                            if (isEditingLocally && inputField.canUndo) {
-                                // let local text engine handle undo
-                                event.accepted = false
-                            } else {
-                                // input is committed; swallow and use real undo
-                                undoStack.undo()
-                                event.accepted = true
-                            }
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                            commit()
+                            event.accepted = true
                         }
-                        else if (event.matches(StandardKey.Redo)) {
-                            if (isEditingLocally && inputField.canRedo) {
-                                event.accepted = false
-                            } else {
-                                undoStack.redo()
-                                event.accepted = true
-                            }
-                        }
+                        else if (event.matches(StandardKey.Undo)) { undoStack.undo(); event.accepted = true }
+                        else if (event.matches(StandardKey.Redo)) { undoStack.redo(); event.accepted = true }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         acceptedButtons: Qt.NoButton
-
                         onWheel: (wheel) => {
-                            // if user hasn't clicked into this specific box, let ListView scroll
-                            if (!inputField.activeFocus) {
-                                wheel.accepted = false
-                                return
-                            }
-
+                            if (!inputField.activeFocus) { wheel.accepted = false; return }
                             let direction = wheel.angleDelta.y > 0 ? 1 : -1
-                            let step = 1
-                            let nextVal = model.value + (step * direction)
+                            let base
+                            try { base = Number.fromLocaleString(Qt.locale(), inputField.text) }
+                            catch (e) { base = Number(model.value) }
 
+                            let step = 1
+                            let nextVal = base + (step * direction)
                             let clamped = Math.min(Math.max(nextVal,
                                 model.minVal !== undefined ? model.minVal : -999999),
                                 model.maxVal !== undefined ? model.maxVal : 999999)
-
                             model.value = clamped
                             wheel.accepted = true
                         }
@@ -337,15 +250,13 @@ ApplicationWindow {
 
                 CheckBox {
                     id: boolBox
-                    checked: model.value
-
-                    onClicked: {
-                        model.value = checked
-                        checked = Qt.binding(() => model.value)
-                    }
+                    readonly property bool modelChecked: model.value
+                    checked: modelChecked
+                    onModelCheckedChanged: checked = modelChecked
+                    onClicked: model.value = checked
                 }
 
-                Item { Layout.fillWidth: true } // spacer to keep the checkbox aligned left next to the label
+                Item { Layout.fillWidth: true }
             }
         }
     }
