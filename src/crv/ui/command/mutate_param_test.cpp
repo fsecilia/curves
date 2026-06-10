@@ -46,6 +46,11 @@ struct command_mutate_param_test_t : Test
               }};
 };
 
+TEST_F(command_mutate_param_test_t, id)
+{
+    EXPECT_EQ(id_t::mutate_param, sut.id());
+}
+
 TEST_F(command_mutate_param_test_t, apply)
 {
     EXPECT_CALL(mock_notification_target, on_changed(Ref(param_), initial_param_value));

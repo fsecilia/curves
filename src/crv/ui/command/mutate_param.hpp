@@ -6,6 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/ui/command/id.hpp>
 #include <functional>
 #include <utility>
 
@@ -22,6 +23,7 @@ public:
         : param_{&param}, prev_{param.value()}, next_{std::move(next)}, notify_{std::move(notify)}
     {}
 
+    constexpr auto id() const noexcept -> id_t { return id_t::mutate_param; }
     constexpr auto apply() -> void { change(next_); }
     constexpr auto undo() -> void { change(prev_); }
 

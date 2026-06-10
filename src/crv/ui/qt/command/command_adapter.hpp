@@ -6,6 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/integer.hpp>
 #include <QUndoCommand>
 #include <utility>
 
@@ -19,8 +20,10 @@ public:
         : QUndoCommand{parent}, command_{std::move(command)}
     {}
 
-    void redo() override { command_.apply(); }
-    void undo() override { command_.undo(); }
+    auto id() const -> int override { return int_cast<int>(static_cast<int_t>(command_.id())); }
+
+    auto redo() -> void override { command_.apply(); }
+    auto undo() -> void override { command_.undo(); }
 
 private:
     command_t command_;

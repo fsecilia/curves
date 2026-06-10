@@ -4,6 +4,7 @@
 # ui library
 
 add_library(ui
+    command/id.hpp
     command/mutate_param.hpp
     command/stack.hpp
     hierarchical_inspector.hpp

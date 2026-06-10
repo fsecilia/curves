@@ -16,6 +16,7 @@ struct command_adapter_test_t : Test
     {
         virtual ~mock_command_t() = default;
 
+        MOCK_METHOD(id_t, id, (), (noexcept));
         MOCK_METHOD(void, apply, (), (noexcept));
         MOCK_METHOD(void, undo, (), (noexcept));
     };
@@ -25,6 +26,7 @@ struct command_adapter_test_t : Test
     {
         mock_command_t* mock = nullptr;
 
+        auto id() const noexcept -> id_t { return mock->id(); }
         auto apply() noexcept -> void { mock->apply(); }
         auto undo() noexcept -> void { mock->undo(); }
     };
@@ -32,6 +34,17 @@ struct command_adapter_test_t : Test
     using sut_t = command_adapter_t<command_t>;
     sut_t sut{command_t{.mock = &mock_command}};
 };
+
+TEST_F(command_adapter_test_t, id)
+{
+    auto const expected = static_cast<id_t>(3);
+
+    EXPECT_CALL(mock_command, id()).WillOnce(Return(expected));
+
+    auto const actual = sut.id();
+
+    EXPECT_EQ(expected, actual);
+}
 
 TEST_F(command_adapter_test_t, redo)
 {
