@@ -113,18 +113,18 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    readonly property real lo: model.minVal !== undefined ? model.minVal : -999999.0
-                    readonly property real hi: model.maxVal !== undefined ? model.maxVal :  999999.0
+                    readonly property real low: model.minVal !== undefined ? model.minVal : -999999.0
+                    readonly property real high: model.maxVal !== undefined ? model.maxVal :  999999.0
                     readonly property string display: Number(model.value).toLocaleString(Qt.locale(), 'f', 3)
 
                     text: display
-                    validator: DoubleValidator { bottom: inputField.lo; top: inputField.hi }
+                    validator: DoubleValidator { bottom: inputField.low; top: inputField.high }
 
                     function commit() {
                         let parsed
                         try { parsed = Number.fromLocaleString(Qt.locale(), text) }
                         catch (e) { text = display; return }
-                        model.value = Math.min(Math.max(parsed, lo), hi)
+                        model.value = Math.min(Math.max(parsed, low), high)
                         text = display
                     }
 
@@ -181,18 +181,18 @@ ApplicationWindow {
                     horizontalAlignment: TextInput.AlignRight
                     color: sysPalette.text
 
-                    readonly property real lo: model.minVal !== undefined ? model.minVal : -999999
-                    readonly property real hi: model.maxVal !== undefined ? model.maxVal :  999999
+                    readonly property real low: model.minVal !== undefined ? model.minVal : -999999
+                    readonly property real high: model.maxVal !== undefined ? model.maxVal :  999999
                     readonly property string display: Number(model.value).toLocaleString(Qt.locale(), 'f', 0)
 
                     text: display
-                    validator: DoubleValidator { bottom: inputField.lo; top: inputField.hi }
+                    validator: DoubleValidator { bottom: inputField.low; top: inputField.high }
 
                     function commit() {
                         let parsed
                         try { parsed = Number.fromLocaleString(Qt.locale(), text) }
                         catch (e) { text = display; return }
-                        model.value = Math.min(Math.max(parsed, lo), hi)
+                        model.value = Math.min(Math.max(parsed, low), high)
                         text = display
                     }
 
