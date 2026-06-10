@@ -218,9 +218,7 @@ ApplicationWindow {
                             let base
                             try { base = Number.fromLocaleString(Qt.locale(), inputField.text) }
                             catch (e) { base = Number(model.value) }
-
-                            let step = 1
-                            let nextVal = base + (step * direction)
+                            let nextVal = Math.round(base) + direction
                             let clamped = Math.min(Math.max(nextVal,
                                 model.minVal !== undefined ? model.minVal : -999999),
                                 model.maxVal !== undefined ? model.maxVal : 999999)
