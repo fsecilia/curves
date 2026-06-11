@@ -147,13 +147,9 @@ public:
         endResetModel();
     }
 
-    template <typename config_t> auto load_global_config(config_t& config) -> void
+    template <typename config_t> auto load_config(config_t& config) -> void
     {
-        auto const active_curve_path_prefix = std::string{config.active_profile.value()} + "/";
-        auto active_curve_path = active_curve_path_prefix + *reflection::to_string(config.profile.active_curve.value());
-        load_config(config, [&](std::string_view nested_path) {
-            return !nested_path.starts_with(active_curve_path_prefix) || nested_path.starts_with(active_curve_path);
-        });
+        return load_config(config, [](auto const&) static noexcept { return true; });
     }
 
 private:

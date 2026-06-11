@@ -33,7 +33,7 @@ ApplicationWindow {
         id: propertyList
         anchors.fill: parent
         clip: true
-        model: curvePropertyModel
+        model: curveModel
         spacing: 12
         boundsBehavior: Flickable.StopAtBounds
 

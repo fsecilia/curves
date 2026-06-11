@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "app.hpp"
+#include <crv/model/config.hpp>
 #include <crv/serialization/exceptions.hpp>
 #include <crv/serialization/toml/toml.hpp>
 #include <QApplication>
@@ -106,6 +107,33 @@ app_t::app_t(QObject* parent) : QObject{parent}
 
 app_t::~app_t() = default;
 
+auto app_t::set_active_curve(int index) -> void
+{
+    if (index < 0 || index >= curve_names_.size()) return;
+
+    auto const new_curve_id = static_cast<model::curves::curve_id_t>(index);
+
+    // bail if curve is already active
+    if (model_root_.profile.active_curve.value() == new_curve_id) return;
+
+    // update backing model
+    auto& active_curve = model_root_.profile.active_curve;
+    using active_curve_t = std::remove_cvref_t<decltype(active_curve)>;
+    undo_stack_->emplace<command::mutate_param_t<active_curve_t>>(false, active_curve, new_curve_id,
+        [=, this](active_curve_t& command_param, active_curve_t::value_t const& cur) {
+            if (cur == command_param.value()) return;
+            load_active_curve_model();
+        });
+}
+
+auto app_t::load_active_curve_model() -> void
+{
+    auto const target = static_cast<std::size_t>(model_root_.profile.active_curve.value());
+    tuple::enumerate(model_root_.profile.curve_configs, [&](auto index, auto& curve_config) {
+        if (index.value == target) specific_curve_model_->load_config(curve_config.specific);
+    });
+}
+
 auto app_t::initialize(int argc, char* argv[]) -> bool
 {
     QGuiApplication::setApplicationName("curves");
@@ -115,20 +143,38 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
     store_ = std::make_unique<config_store_t>(config_path);
     if (!load_model(argc, argv, *store_, model_root_)) return false;
 
+    for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
+    {
+        curve_names_.append(QString::fromStdString(
+            std::string(*reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id)))));
+    }
+
     gui_app_ = std::make_unique<QGuiApplication>(argc, argv);
     engine_ = std::make_unique<QQmlApplicationEngine>();
 
     undo_stack_ = std::make_unique<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>>(
         command::qt::stack_adapter_t{qt_undo_stack_});
 
-    property_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    property_model_->load_global_config(model_root_);
+    device_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    device_model_->load_config(model_root_.device);
+
+    profile_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    profile_model_->load_config(model_root_.profile, [](std::string_view nested_path) {
+        // stop inspector from diving into curve_configs tuple
+        return nested_path != "curve_configs";
+    });
+
+    specific_curve_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    load_active_curve_model();
 
     // ordered
     auto& context = *engine_->rootContext();
     context.setContextProperty("qtVersion", QT_VERSION);
     context.setContextProperty("undoStack", &qt_undo_stack_);
-    context.setContextProperty("curvePropertyModel", property_model_.get());
+    context.setContextProperty("deviceModel", device_model_.get());
+    context.setContextProperty("profileModel", profile_model_.get());
+    context.setContextProperty("curveModel", specific_curve_model_.get());
+    context.setContextProperty("availableCurves", curve_names_);
 
     QObject::connect(
         engine_.get(), &QQmlApplicationEngine::objectCreationFailed, gui_app_.get(),
