@@ -42,7 +42,7 @@ struct ui_node_t
     QVariant max;
 
     // executes the command logic, passing the new value from QML
-    std::function<auto(QVariant const&)->void> push_command;
+    std::function<auto(QVariant const&, bool)->void> push_command;
 };
 
 class curve_property_model_t : public QAbstractListModel
@@ -104,14 +104,14 @@ public:
                     max = QVariant::fromValue(modified_param.constraint().max);
                 }
 
-                auto push_command = [&, row](QVariant const& src) {
+                auto push_command = [&, row](QVariant const& src, bool mergeable) {
                     auto const& next = src.template value<value_t>();
 
                     // guard against infinite loops triggered by UI bindings re-evaluating
                     if (next == modified_param.value()) return;
 
                     undo_stack_->emplace<command::mutate_param_t<param_t>>(
-                        modified_param, next, [=, this](param_t& command_param, value_t const& cur) {
+                        mergeable, modified_param, next, [=, this](param_t& command_param, value_t const& cur) {
                             // guard against infinite loops triggered by UI bindings re-evaluating
                             if (cur == command_param.value()) return;
 

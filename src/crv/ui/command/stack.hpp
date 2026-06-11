@@ -18,9 +18,9 @@ template <typename adapter_t> class stack_t
 public:
     constexpr stack_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
 
-    template <typename command_t, typename... args_t> auto emplace(args_t&&... args) -> void
+    template <typename command_t, typename... args_t> auto emplace(bool mergeable, args_t&&... args) -> void
     {
-        adapter_.template emplace<command_t>(std::forward<args_t>(args)...);
+        adapter_.template emplace<command_t>(mergeable, std::forward<args_t>(args)...);
     }
 
     constexpr auto undo() -> void { adapter_.undo(); }

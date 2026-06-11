@@ -19,7 +19,7 @@ struct command_stack_test_t : Test
     {
         virtual ~mock_adapter_t() = default;
 
-        MOCK_METHOD(void, emplace, (int_t id, std::string const& name));
+        MOCK_METHOD(void, emplace, (bool mergeable, int_t id, std::string const& name));
         MOCK_METHOD(void, undo, ());
         MOCK_METHOD(void, redo, ());
     };
@@ -44,10 +44,16 @@ struct command_stack_test_t : Test
     sut_t sut{adapter_t{&mock_adapter}};
 };
 
-TEST_F(command_stack_test_t, push)
+TEST_F(command_stack_test_t, push_mergable)
 {
-    EXPECT_CALL(mock_adapter, emplace(id, name));
-    sut.template emplace<command_t>(id, name);
+    EXPECT_CALL(mock_adapter, emplace(true, id, name));
+    sut.template emplace<command_t>(true, id, name);
+}
+
+TEST_F(command_stack_test_t, push_not_mergable)
+{
+    EXPECT_CALL(mock_adapter, emplace(false, id, name));
+    sut.template emplace<command_t>(false, id, name);
 }
 
 TEST_F(command_stack_test_t, undo)

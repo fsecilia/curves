@@ -61,7 +61,7 @@ struct command_stack_adapter_test_t : Test
         EXPECT_CALL(mock_impl, push(_)).WillOnce(Invoke([&](QUndoCommand* bare_command) {
             command_adapter.reset(dynamic_cast<command_adapter_t<command_t>*>(bare_command));
         }));
-        sut.template emplace<command_t>(&mock_command, id, param_string, param_int);
+        sut.template emplace<command_t>(true, &mock_command, id, param_string, param_int);
         return command_adapter;
     }
 };

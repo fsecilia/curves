@@ -23,6 +23,9 @@ struct command_adapter_test_t : Test
         MOCK_METHOD(bool, try_merge, (command_t const& command));
     };
 
+    static constexpr auto instance_mergeable = true;
+    static constexpr auto instance_not_mergeable = false;
+
     idle_clock_t::time_point const idle_time_point{idle_clock_t::duration{1234}};
 };
 
@@ -30,6 +33,7 @@ struct command_adapter_test_t : Test
 // not mergable
 //
 
+// the runtime merging flag is inert if the type is not mergeable.
 struct command_adapter_test_not_mergeable_t : command_adapter_test_t
 {
     struct command_t;
@@ -47,7 +51,7 @@ struct command_adapter_test_not_mergeable_t : command_adapter_test_t
     StrictMock<mock_command_t> mock_command;
 
     using sut_t = command_adapter_t<command_t>;
-    sut_t sut{command_t{.mock = &mock_command}, idle_time_point};
+    sut_t sut{command_t{.mock = &mock_command}, instance_mergeable, idle_time_point};
 };
 
 TEST_F(command_adapter_test_not_mergeable_t, id)
@@ -85,7 +89,7 @@ TEST_F(command_adapter_test_not_mergeable_t, merge_with_self)
 
 TEST_F(command_adapter_test_not_mergeable_t, merge_with_other)
 {
-    auto const other_sut = sut_t{command_t{.mock = nullptr}, idle_time_point};
+    auto const other_sut = sut_t{command_t{.mock = nullptr}, instance_mergeable, idle_time_point};
     EXPECT_FALSE(sut.mergeWith(&sut));
 }
 
@@ -111,7 +115,7 @@ struct command_adapter_test_mergeable_t : command_adapter_test_t
     };
 
     StrictMock<mock_command_t> mock_command;
-    sut_t sut{command_t{.mock = &mock_command}, idle_time_point};
+    sut_t sut{command_t{.mock = &mock_command}, instance_mergeable, idle_time_point};
 
     StrictMock<mock_command_t> other_mock_command;
 
@@ -166,7 +170,8 @@ TEST_F(command_adapter_test_mergeable_t, merge_with_other_type)
         auto try_merge(other_command_t const& other_command) -> bool { return mock->try_merge(other_command); }
     };
     auto other_mock_command = StrictMock<other_mock_command_t>{};
-    auto other_command_adapter = other_command_adapter_t{other_command_t{.mock = &other_mock_command}, idle_time_point};
+    auto other_command_adapter
+        = other_command_adapter_t{other_command_t{.mock = &other_mock_command}, instance_mergeable, idle_time_point};
 
     EXPECT_FALSE(sut.mergeWith(&other_command_adapter));
 }
@@ -185,16 +190,26 @@ TEST_F(command_adapter_test_mergeable_t, merge_with_self_success)
     EXPECT_TRUE(sut.mergeWith(&sut));
 }
 
+TEST_F(command_adapter_test_mergeable_t, merge_with_other_failure_instance_unmergable)
+{
+    auto const other_sut
+        = sut_t{command_t{.mock = &other_mock_command}, instance_not_mergeable, idle_time_point + idle_duration_t{1}};
+    EXPECT_CALL(mock_command, idle_duration()).WillOnce(Return(idle_duration_t{0}));
+    EXPECT_FALSE(sut.mergeWith(&other_sut));
+}
+
 TEST_F(command_adapter_test_mergeable_t, merge_with_other_failure_idle_duration)
 {
-    auto const other_sut = sut_t{command_t{.mock = &other_mock_command}, idle_time_point + idle_duration_t{1}};
+    auto const other_sut
+        = sut_t{command_t{.mock = &other_mock_command}, instance_mergeable, idle_time_point + idle_duration_t{1}};
     EXPECT_CALL(mock_command, idle_duration()).WillOnce(Return(idle_duration_t{0}));
     EXPECT_FALSE(sut.mergeWith(&other_sut));
 }
 
 TEST_F(command_adapter_test_mergeable_t, merge_with_other_failure_try_merge)
 {
-    auto const other_sut = sut_t{command_t{.mock = &other_mock_command}, idle_time_point + idle_duration_t{1}};
+    auto const other_sut
+        = sut_t{command_t{.mock = &other_mock_command}, instance_mergeable, idle_time_point + idle_duration_t{1}};
     EXPECT_CALL(mock_command, idle_duration()).WillOnce(Return(idle_duration_t{2}));
     expect_try_merge(false, other_mock_command);
     EXPECT_FALSE(sut.mergeWith(&other_sut));
@@ -202,7 +217,7 @@ TEST_F(command_adapter_test_mergeable_t, merge_with_other_failure_try_merge)
 
 TEST_F(command_adapter_test_mergeable_t, merge_with_other_success)
 {
-    auto const other_sut = sut_t{command_t{.mock = &other_mock_command}, idle_time_point};
+    auto const other_sut = sut_t{command_t{.mock = &other_mock_command}, instance_mergeable, idle_time_point};
     EXPECT_CALL(mock_command, idle_duration()).WillOnce(Return(idle_duration_t{0}));
     expect_try_merge(true, other_mock_command);
     EXPECT_TRUE(sut.mergeWith(&other_sut));
@@ -217,14 +232,14 @@ TEST_F(command_adapter_test_mergeable_t, merge_updates_idle_time_point)
 
     // first merge updates timer from 0 to 8
     auto const intermediate_time = idle_time_point + idle_duration_t{8};
-    auto const intermediate_sut = sut_t{command_t{.mock = &other_mock_command}, intermediate_time};
+    auto const intermediate_sut = sut_t{command_t{.mock = &other_mock_command}, instance_mergeable, intermediate_time};
     EXPECT_TRUE(sut.mergeWith(&intermediate_sut));
 
     // second merge relies on timer starting at 8
     // duration is 4, which is less than expiration of 10
     // if previous merge didn't update timer, duration would be 12 - 0 = 12, which exceeds expiration
     auto const final_time = intermediate_time + idle_duration_t{4};
-    auto const final_sut = sut_t{command_t{.mock = &other_mock_command}, final_time};
+    auto const final_sut = sut_t{command_t{.mock = &other_mock_command}, instance_mergeable, final_time};
     EXPECT_TRUE(sut.mergeWith(&final_sut));
 }
 
