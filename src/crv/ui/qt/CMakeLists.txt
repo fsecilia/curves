@@ -44,6 +44,22 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     )
 endif()
 
+# register qml module and attach it to target
+qt_add_qml_module(qml
+    URI "Curves"
+    VERSION 1.0
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Curves"
+    QML_FILES
+        Main.qml
+)
+target_compile_options(qml PRIVATE
+    -fno-strict-aliasing
+    -Wno-strict-aliasing
+)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
+endif()
+
 # qt ui unit tests
 add_executable(qt_ui_test
     command/command_adapter_test.cpp
@@ -57,31 +73,7 @@ gtest_discover_tests(qt_ui_test)
 qt_add_executable(qt main.cpp)
 set_target_properties(qt PROPERTIES OUTPUT_NAME ${project_name_dashes}-config)
 target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(qt PRIVATE qt_ui)
-
-# register QML module and attach it to target
-qt_add_qml_module(qt
-    URI "Curves"
-    VERSION 1.0
-    QML_FILES Main.qml
-)
-
-# disable strict aliasing in module where qt depends on it
-#
-# This is quite fragile, but the alternative is adding a dedicated set of project options and adding that to every other
-# project, something easily missed. Of the evils, this is lesser. If a new version of qt moves this file, this will
-# break andd need to be revisited. It will fail loudly, though the cause may not be obvious.
-set_source_files_properties(
-    "${CMAKE_CURRENT_BINARY_DIR}/.rcc/qmlcache/qt_qmlcache_loader.cpp"
-    PROPERTIES COMPILE_OPTIONS "-fno-strict-aliasing;-Wno-strict-aliasing"
-)
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set_source_files_properties(
-        "${CMAKE_CURRENT_BINARY_DIR}/.rcc/qmlcache/qt_Main_qml.cpp"
-        PROPERTIES COMPILE_OPTIONS "-Wno-extra-semi-stmt"
-    )
-endif()
+target_link_libraries(qt PRIVATE qt_ui qml)
 
 install(TARGETS qt RUNTIME
     DESTINATION bin
