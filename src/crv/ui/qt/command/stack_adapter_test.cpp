@@ -5,7 +5,7 @@
 
 #include "stack_adapter.hpp"
 #include <crv/test/test.hpp>
-#include <crv/ui/command/id.hpp>
+#include <crv/ui/command/command.hpp>
 #include <gmock/gmock.h>
 
 namespace crv::command::qt {
