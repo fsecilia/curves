@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/integer.hpp>
+#include <crv/ui/command/command.hpp>
 #include <QUndoCommand>
 #include <chrono>
 #include <utility>
