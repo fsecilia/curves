@@ -69,6 +69,9 @@ public:
     auto setData(QModelIndex const& index, QVariant const& value, int role = Qt::EditRole) -> bool override;
     auto roleNames() const -> QHash<int, QByteArray> override;
 
+    // called back from qml to handle changes from mouse wheel
+    Q_INVOKABLE auto on_wheel(int row, QVariant const& value) -> void;
+
     /// called by command's notify lambda when value actually changes
     auto update_node_value(int_t row, QVariant const& new_value) -> void;
 

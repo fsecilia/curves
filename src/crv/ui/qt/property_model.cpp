@@ -69,6 +69,12 @@ auto curve_property_model_t::roleNames() const -> QHash<int, QByteArray>
     return roles;
 }
 
+auto curve_property_model_t::on_wheel(int row, QVariant const& value) -> void
+{
+    if (row < 0 || static_cast<int>(nodes_.size()) <= row) return;
+    nodes_[row].push_command(value);
+}
+
 auto curve_property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void
 {
     if (row < 0 || static_cast<int_t>(nodes_.size()) <= row) return;

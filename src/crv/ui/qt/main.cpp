@@ -123,8 +123,11 @@ static auto main(int argc, char* argv[]) -> int
     auto command_stack = command::stack_t{command::qt::stack_adapter_t{undo_stack}};
     auto curve_property_model = curve_property_model_t{command_stack, {}};
     curve_property_model.load_config(model_root);
-    engine.rootContext()->setContextProperty("undoStack", &undo_stack);
-    engine.rootContext()->setContextProperty("curvePropertyModel", &curve_property_model);
+
+    auto& context = *engine.rootContext();
+    context.setContextProperty("qtVersion", QT_VERSION);
+    context.setContextProperty("undoStack", &undo_stack);
+    context.setContextProperty("curvePropertyModel", &curve_property_model);
 
     // exit if QML engine fails to load root object
     QObject::connect(
