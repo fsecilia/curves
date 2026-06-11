@@ -14,15 +14,6 @@
 
 namespace crv::command::qt {
 
-using idle_clock_t = std::chrono::steady_clock;
-using idle_duration_t = idle_clock_t::duration;
-
-template <typename command_t>
-concept is_mergeable_command = requires(command_t command, command_t const& other) {
-    { command.idle_duration() } -> std::convertible_to<idle_duration_t>;
-    { command.try_merge(other) } -> std::convertible_to<bool>;
-};
-
 /// adapts native command in a qt command
 template <typename command_t> class command_adapter_t : public QUndoCommand
 {
