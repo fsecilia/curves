@@ -45,7 +45,7 @@ struct ui_node_t
     std::function<auto(QVariant const&, bool)->void> push_command;
 };
 
-class curve_property_model_t : public QAbstractListModel
+class property_model_t : public QAbstractListModel
 {
     Q_OBJECT
 
@@ -61,8 +61,8 @@ public:
 
     using undo_stack_t = command::stack_t<command::qt::stack_adapter_t<QUndoStack>>;
 
-    explicit curve_property_model_t(undo_stack_t& undo_stack,
-        hierarchical_inspector_factory_t hierarchical_inspector_factory, QObject* parent = nullptr);
+    explicit property_model_t(undo_stack_t& undo_stack, hierarchical_inspector_factory_t hierarchical_inspector_factory,
+        QObject* parent = nullptr);
 
     auto rowCount(QModelIndex const& parent = QModelIndex()) const -> int override;
     auto data(QModelIndex const& index, int role = Qt::DisplayRole) const -> QVariant override;

@@ -43,7 +43,7 @@ private:
     std::unique_ptr<QQmlApplicationEngine> engine_;
     QUndoStack qt_undo_stack_;
     std::unique_ptr<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>> undo_stack_;
-    std::unique_ptr<curve_property_model_t> property_model_;
+    std::unique_ptr<property_model_t> property_model_;
 };
 
 } // namespace crv
