@@ -53,7 +53,7 @@ auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& v
     if (node.value == value) return false;
 
     // fire the type-erased command
-    node.push_command(value);
+    node.push_command(value, false);
 
     return true;
 }
@@ -72,7 +72,7 @@ auto curve_property_model_t::roleNames() const -> QHash<int, QByteArray>
 auto curve_property_model_t::on_wheel(int row, QVariant const& value) -> void
 {
     if (row < 0 || static_cast<int>(nodes_.size()) <= row) return;
-    nodes_[row].push_command(value);
+    nodes_[row].push_command(value, true);
 }
 
 auto curve_property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void

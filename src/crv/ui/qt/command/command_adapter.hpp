@@ -21,9 +21,9 @@ public:
     using idle_clock_t = idle_clock_t;
     using idle_time_point_t = idle_clock_t::time_point;
 
-    explicit command_adapter_t(
-        command_t command, idle_time_point_t idle_time_point = idle_clock_t::now(), QUndoCommand* parent = nullptr)
-        : QUndoCommand{parent}, command_{std::move(command)}, idle_time_point_{idle_time_point}
+    explicit command_adapter_t(command_t command, bool mergeable,
+        idle_time_point_t idle_time_point = idle_clock_t::now(), QUndoCommand* parent = nullptr)
+        : QUndoCommand{parent}, command_{std::move(command)}, mergeable_{mergeable}, idle_time_point_{idle_time_point}
     {}
 
     auto id() const -> int override { return int_cast<int>(static_cast<int_t>(command_.id())); }
@@ -40,6 +40,9 @@ public:
             // bounce if commands are different types
             auto const same_command_type = typed_other != nullptr;
             if (!same_command_type) return false;
+
+            // bounce if command instance is marked not mergable
+            if (!mergeable_) return false;
 
             // bounce if idle time exceeded
             auto const idle_duration = typed_other->idle_time_point_ - idle_time_point_;
@@ -59,6 +62,7 @@ public:
 
 private:
     command_t command_;
+    bool mergeable_;
     idle_time_point_t idle_time_point_;
 };
 
