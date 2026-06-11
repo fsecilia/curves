@@ -8,19 +8,19 @@
 
 namespace crv {
 
-curve_property_model_t::curve_property_model_t(
+property_model_t::property_model_t(
     undo_stack_t& undo_stack, hierarchical_inspector_factory_t hierarchical_inspector_factory, QObject* parent)
     : QAbstractListModel{parent}, undo_stack_{&undo_stack},
       hierarchical_inspector_factory_{std::move(hierarchical_inspector_factory)}
 {}
 
-auto curve_property_model_t::rowCount(QModelIndex const& parent) const -> int
+auto property_model_t::rowCount(QModelIndex const& parent) const -> int
 {
     if (parent.isValid()) return 0;
     return static_cast<int>(nodes_.size());
 }
 
-auto curve_property_model_t::data(QModelIndex const& index, int role) const -> QVariant
+auto property_model_t::data(QModelIndex const& index, int role) const -> QVariant
 {
     if (!index.isValid() || index.row() >= static_cast<int>(nodes_.size())) { return {}; }
 
@@ -39,7 +39,7 @@ auto curve_property_model_t::data(QModelIndex const& index, int role) const -> Q
     return {};
 }
 
-auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& value, int role) -> bool
+auto property_model_t::setData(QModelIndex const& index, QVariant const& value, int role) -> bool
 {
     if (!index.isValid() || static_cast<int>(nodes_.size()) <= index.row()
         || role != static_cast<int_t>(roles_t::value))
@@ -58,7 +58,7 @@ auto curve_property_model_t::setData(QModelIndex const& index, QVariant const& v
     return true;
 }
 
-auto curve_property_model_t::roleNames() const -> QHash<int, QByteArray>
+auto property_model_t::roleNames() const -> QHash<int, QByteArray>
 {
     auto roles = QHash<int, QByteArray>{};
     roles[static_cast<int>(roles_t::path)] = "path";
@@ -69,13 +69,13 @@ auto curve_property_model_t::roleNames() const -> QHash<int, QByteArray>
     return roles;
 }
 
-auto curve_property_model_t::on_wheel(int row, QVariant const& value) -> void
+auto property_model_t::on_wheel(int row, QVariant const& value) -> void
 {
     if (row < 0 || static_cast<int>(nodes_.size()) <= row) return;
     nodes_[row].push_command(value, true);
 }
 
-auto curve_property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void
+auto property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void
 {
     if (row < 0 || static_cast<int_t>(nodes_.size()) <= row) return;
 

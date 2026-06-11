@@ -15,14 +15,16 @@
 #include <cstdlib>
 
 namespace crv {
+namespace {
 
-static auto main(int argc, char* argv[]) -> int
+auto main(int argc, char* argv[]) -> int
 {
     auto app = app_t{};
     if (!app.initialize(argc, argv)) return EXIT_FAILURE;
     return app.run();
 }
 
+} // namespace
 } // namespace crv
 
 auto main(int argc, char* argv[]) -> int
