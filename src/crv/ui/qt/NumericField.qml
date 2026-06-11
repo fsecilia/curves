@@ -51,7 +51,7 @@ TextField {
             let base
             try { base = Number.fromLocaleString(Qt.locale(), inputField.text) }
             catch (e) { base = Number(model.value) }
-            curvePropertyModel.on_wheel(index, inputField.stepFunction(base, direction))
+            sectionModel.on_wheel(index, inputField.stepFunction(base, direction))
             wheel.accepted = true
         }
     }

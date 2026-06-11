@@ -52,11 +52,14 @@ qt_add_qml_module(qml
     VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Curves"
     QML_FILES
-        Main.qml
+        CurveConfig.qml
+        CurveSelector.qml
+        GraphView.qml
         FloatField.qml
         FloatField_v6_9.qml
         IntField.qml
         IntField_v6_9.qml
+        Main.qml
         NumericField.qml
 )
 target_compile_options(qml PRIVATE
