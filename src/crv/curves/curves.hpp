@@ -36,7 +36,7 @@ enum class curve_id_t
 ///
 /// *** Order here must match curve_id_t! ***
 using curves_t = std::tuple<synchronous_t, log_normal_t>;
-constexpr auto curves_count = std::tuple_size_v<curves_t>;
+constexpr auto curves_count = static_cast<int_t>(std::tuple_size_v<curves_t>);
 
 } // namespace model::curves
 

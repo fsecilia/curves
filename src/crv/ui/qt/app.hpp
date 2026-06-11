@@ -31,19 +31,34 @@ public:
     explicit app_t(QObject* parent = nullptr);
     ~app_t() override;
 
+    auto device_model() -> property_model_t& { return *device_model_; }
+    auto profile_model() -> property_model_t& { return *profile_model_; }
+    auto specific_curve_model() -> property_model_t& { return *specific_curve_model_; }
+
+    auto curve_names() const -> QStringList { return curve_names_; }
+
+    /// called by QML when curve changes
+    Q_INVOKABLE auto set_active_curve(int index) -> void;
+
     auto initialize(int argc, char* argv[]) -> bool;
     auto run() -> int;
 
 private:
+    auto load_active_curve_model() -> void;
+
     std::unique_ptr<config_store_t> store_;
     model::root_t model_root_;
+    QStringList curve_names_;
 
     // ordered
     std::unique_ptr<QGuiApplication> gui_app_;
     std::unique_ptr<QQmlApplicationEngine> engine_;
     QUndoStack qt_undo_stack_;
     std::unique_ptr<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>> undo_stack_;
-    std::unique_ptr<property_model_t> property_model_;
+
+    std::unique_ptr<property_model_t> device_model_;
+    std::unique_ptr<property_model_t> profile_model_;
+    std::unique_ptr<property_model_t> specific_curve_model_;
 };
 
 } // namespace crv
