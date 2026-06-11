@@ -130,7 +130,7 @@ auto app_t::load_active_curve_model() -> void
 {
     auto const target = static_cast<std::size_t>(model_root_.profile.active_curve.value());
     tuple::enumerate(model_root_.profile.curve_configs, [&](auto index, auto& curve_config) {
-        if (index.value == target) specific_curve_model_->load_config(curve_config.specific);
+        if (index.value == target) specific_curve_model_->load_config(curve_config);
     });
 }
 
@@ -161,7 +161,7 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
     profile_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
     profile_model_->load_config(model_root_.profile, [](std::string_view nested_path) {
         // stop inspector from diving into curve_configs tuple
-        return nested_path != "curve_configs";
+        return !nested_path.starts_with("curves");
     });
 
     specific_curve_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
@@ -175,6 +175,7 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
     context.setContextProperty("profileModel", profile_model_.get());
     context.setContextProperty("curveModel", specific_curve_model_.get());
     context.setContextProperty("availableCurves", curve_names_);
+    context.setContextProperty("app", this);
 
     QObject::connect(
         engine_.get(), &QQmlApplicationEngine::objectCreationFailed, gui_app_.get(),

@@ -166,10 +166,12 @@ struct profile_t
         inspector.inspect(self.notch_width);
 
         inspector.inspect(self.active_curve);
-        tuple::enumerate(self.curve_configs, [&](int_t id, auto&& curve_config) {
-            auto const curve_id = static_cast<curves::curve_id_t>(id);
-            inspector.inspect_section(*reflection::to_string(curve_id),
-                [&](auto&& section_inspector) { curve_config.reflect(section_inspector); });
+        inspector.inspect_section("curves", [&]([[maybe_unused]] auto&& curves_inspector) {
+            tuple::enumerate(self.curve_configs, [&](int_t id, auto&& curve_config) {
+                auto const curve_id = static_cast<curves::curve_id_t>(id);
+                inspector.inspect_section(*reflection::to_string(curve_id),
+                    [&](auto&& section_inspector) { curve_config.reflect(section_inspector); });
+            });
         });
 
         return std::forward<inspector_t>(inspector);
