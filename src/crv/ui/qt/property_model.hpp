@@ -78,13 +78,12 @@ public:
     /// rebuilds UI list from reflected configuration
     ///
     /// \pre config must outlive property model
-    template <typename config_t> auto load_config(config_t& config) -> void
+    template <typename config_t, typename predicate_t>
+    auto load_config(config_t& config, predicate_t path_predicate) -> void
     {
         beginResetModel();
         nodes_.clear();
 
-        auto const active_curve_path_prefix = std::string{config.active_profile.value()} + "/";
-        auto active_curve_path = active_curve_path_prefix + *reflection::to_string(config.profile.active_curve.value());
         auto inspector = hierarchical_inspector_factory_(
             [&](std::string_view path, auto& modified_param) {
                 using param_t = std::remove_cvref_t<decltype(modified_param)>;
@@ -142,12 +141,19 @@ public:
                     }
                 }
             },
-            [&](std::string_view nested_path) {
-                return !nested_path.starts_with(active_curve_path_prefix) || nested_path.starts_with(active_curve_path);
-            });
+            std::move(path_predicate));
         config.reflect(inspector);
 
         endResetModel();
+    }
+
+    template <typename config_t> auto load_global_config(config_t& config) -> void
+    {
+        auto const active_curve_path_prefix = std::string{config.active_profile.value()} + "/";
+        auto active_curve_path = active_curve_path_prefix + *reflection::to_string(config.profile.active_curve.value());
+        load_config(config, [&](std::string_view nested_path) {
+            return !nested_path.starts_with(active_curve_path_prefix) || nested_path.starts_with(active_curve_path);
+        });
     }
 
 private:

@@ -122,7 +122,7 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
         command::qt::stack_adapter_t{qt_undo_stack_});
 
     property_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    property_model_->load_config(model_root_);
+    property_model_->load_global_config(model_root_);
 
     // ordered
     auto& context = *engine_->rootContext();
