@@ -19,6 +19,8 @@ set(CMAKE_AUTORCC ON)
 
 # qt ui lib
 add_library(qt_ui
+    app.cpp
+    app.hpp
     command/command_adapter.hpp
     command/stack_adapter.hpp
     property_model.cpp
@@ -67,6 +69,7 @@ endif()
 
 # qt ui unit tests
 add_executable(qt_ui_test
+    app_test.cpp
     command/command_adapter_test.cpp
     command/stack_adapter_test.cpp
     property_model_test.cpp
