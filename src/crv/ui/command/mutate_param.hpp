@@ -27,6 +27,20 @@ public:
     constexpr auto apply() -> void { change(next_); }
     constexpr auto undo() -> void { change(prev_); }
 
+    static constexpr auto idle_duration_ms = std::chrono::milliseconds{500};
+    constexpr auto idle_duration() const noexcept -> idle_duration_t
+    {
+        return std::chrono::duration_cast<idle_duration_t>(idle_duration_ms);
+    }
+
+    constexpr auto try_merge(mutate_param_t const& other) noexcept -> bool
+    {
+        auto const affect_same_address = param_ == other.param_;
+        if (!affect_same_address) return false;
+        next_ = other.next_;
+        return true;
+    }
+
 private:
     param_t* param_;
     value_t prev_;
