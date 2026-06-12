@@ -11,15 +11,14 @@ ApplicationWindow {
     visible: true
     title: "Curves Configuration"
 
-    Shortcut {
-        sequence: [StandardKey.Undo]
-        context: Qt.ApplicationShortcut
-        onActivated: undoStack.undo()
+    Action {
+        shortcut: StandardKey.Undo
+        onTriggered: undoStack.undo()
     }
-    Shortcut {
-        sequence: [StandardKey.Redo]
-        context: Qt.ApplicationShortcut
-        onActivated: undoStack.redo()
+
+    Action {
+        shortcut: StandardKey.Redo
+        onTriggered: undoStack.redo()
     }
 
     SystemPalette {

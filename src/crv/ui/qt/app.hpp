@@ -31,17 +31,15 @@ public:
     explicit app_t(QObject* parent = nullptr);
     ~app_t() override;
 
-    auto device_model() -> property_model_t& { return *device_model_; }
-    auto profile_model() -> property_model_t& { return *profile_model_; }
-    auto specific_curve_model() -> property_model_t& { return *specific_curve_model_; }
-
-    auto curve_names() const -> QStringList { return curve_names_; }
-
-    /// called by QML when curve changes
+    Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
+    auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.active_curve.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
 
     auto initialize(int argc, char* argv[]) -> bool;
     auto run() -> int;
+
+signals:
+    void activeCurveChanged();
 
 private:
     auto load_active_curve_model() -> void;
@@ -58,6 +56,10 @@ private:
 
     std::unique_ptr<property_model_t> device_model_;
     std::unique_ptr<property_model_t> profile_model_;
+    std::unique_ptr<property_model_t> scale_model_;
+    std::unique_ptr<property_model_t> offset_model_;
+    std::unique_ptr<property_model_t> floor_model_;
+    std::unique_ptr<property_model_t> limit_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 };
 

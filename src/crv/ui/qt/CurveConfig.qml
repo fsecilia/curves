@@ -6,13 +6,17 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Qt.labs.qmlmodels
 
-ScrollView {
+Flickable {
     id: scrollView
     clip: true
-    contentWidth: availableWidth
-    // Flickable.boundsBehavior: Flickable.StopAtBounds
+    contentWidth: width
+    contentHeight: mainLayout.height
+    boundsBehavior: Flickable.StopAtBounds
+
+    ScrollBar.vertical: ScrollBar {}
 
     ColumnLayout {
+        id: mainLayout
         width: parent.width
         spacing: 16
 
@@ -23,7 +27,7 @@ ScrollView {
 
             ColumnLayout {
                 width: parent.width
-                property var activeModel: deviceModel
+                property var sectionModel: deviceModel
                 Repeater {
                     model: deviceModel
                     delegate: propertyChooser
@@ -38,7 +42,7 @@ ScrollView {
 
             ColumnLayout {
                 width: parent.width
-                property var activeModel: profileModel
+                property var sectionModel: profileModel
                 Repeater {
                     model: profileModel
                     delegate: propertyChooser
@@ -53,9 +57,61 @@ ScrollView {
 
             ColumnLayout {
                 width: parent.width
-                property var activeModel: curveModel
+                property var sectionModel: specificCurveModel
                 Repeater {
-                    model: curveModel
+                    model: specificCurveModel
+                    delegate: propertyChooser
+                }
+            }
+        }
+
+        GroupBox {
+            title: "Scale"
+            Layout.fillWidth: true; Layout.margins: 8
+            ColumnLayout {
+                width: parent.width
+                property var sectionModel: scaleModel
+                Repeater {
+                    model: scaleModel
+                    delegate: propertyChooser
+                }
+            }
+        }
+
+        GroupBox {
+            title: "Offset"
+            Layout.fillWidth: true; Layout.margins: 8
+            ColumnLayout {
+                width: parent.width
+                property var sectionModel: offsetModel
+                Repeater {
+                    model: offsetModel
+                    delegate: propertyChooser
+                }
+            }
+        }
+
+        GroupBox {
+            title: "Floor"
+            Layout.fillWidth: true; Layout.margins: 8
+            ColumnLayout {
+                width: parent.width
+                property var sectionModel: floorModel
+                Repeater {
+                    model: floorModel
+                    delegate: propertyChooser
+                }
+            }
+        }
+
+        GroupBox {
+            title: "Limit"
+            Layout.fillWidth: true; Layout.margins: 8
+            ColumnLayout {
+                width: parent.width
+                property var sectionModel: limitModel
+                Repeater {
+                    model: limitModel
                     delegate: propertyChooser
                 }
             }
@@ -88,6 +144,8 @@ ScrollView {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 50
                     source: qtVersion >= 0x060900 ? "FloatField_v6_9.qml" : "FloatField.qml"
+
+                    onLoaded: item.sectionModel = floatControl.parent.sectionModel
                 }
             }
         }
@@ -96,6 +154,7 @@ ScrollView {
     Component {
         id: intDelegate
         Control {
+            id: intControl
             width: scrollView.width
             leftPadding: 24
             rightPadding: 24
@@ -110,6 +169,8 @@ ScrollView {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 50
                     source: qtVersion >= 0x060900 ? "IntField_v6_9.qml" : "IntField.qml"
+
+                    onLoaded: item.sectionModel = intControl.parent.sectionModel
                 }
             }
         }
