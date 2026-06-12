@@ -126,14 +126,6 @@ auto app_t::set_active_curve(int index) -> void
         });
 }
 
-auto app_t::load_active_curve_model() -> void
-{
-    auto const target = static_cast<std::size_t>(model_root_.profile.active_curve.value());
-    tuple::enumerate(model_root_.profile.curve_configs, [&](auto index, auto& curve_config) {
-        if (index.value == target) specific_curve_model_->load_config(curve_config);
-    });
-}
-
 auto app_t::initialize(int argc, char* argv[]) -> bool
 {
     QGuiApplication::setApplicationName("curves");
@@ -164,17 +156,25 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
         return !nested_path.starts_with("curves");
     });
 
+    scale_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    offset_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    floor_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    limit_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
     specific_curve_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
     load_active_curve_model();
 
     // ordered
     auto& context = *engine_->rootContext();
     context.setContextProperty("qtVersion", QT_VERSION);
+    context.setContextProperty("availableCurves", curve_names_);
     context.setContextProperty("undoStack", &qt_undo_stack_);
     context.setContextProperty("deviceModel", device_model_.get());
     context.setContextProperty("profileModel", profile_model_.get());
-    context.setContextProperty("curveModel", specific_curve_model_.get());
-    context.setContextProperty("availableCurves", curve_names_);
+    context.setContextProperty("scaleModel", scale_model_.get());
+    context.setContextProperty("offsetModel", offset_model_.get());
+    context.setContextProperty("floorModel", floor_model_.get());
+    context.setContextProperty("limitModel", limit_model_.get());
+    context.setContextProperty("specificCurveModel", specific_curve_model_.get());
     context.setContextProperty("app", this);
 
     QObject::connect(
@@ -189,6 +189,22 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
 auto app_t::run() -> int
 {
     return gui_app_->exec();
+}
+
+auto app_t::load_active_curve_model() -> void
+{
+    auto const target = static_cast<std::size_t>(model_root_.profile.active_curve.value());
+    tuple::enumerate(model_root_.profile.curve_configs, [&](auto index, auto& curve_config) {
+        if (index.value != target) return;
+
+        scale_model_->load_config(curve_config.common.scale);
+        offset_model_->load_config(curve_config.common.offset);
+        floor_model_->load_config(curve_config.common.floor);
+        limit_model_->load_config(curve_config.common.limit);
+        specific_curve_model_->load_config(curve_config.specific);
+    });
+
+    emit activeCurveChanged();
 }
 
 } // namespace crv

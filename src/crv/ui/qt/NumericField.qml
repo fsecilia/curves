@@ -15,6 +15,7 @@ TextField {
     // set by the concrete field
     property int decimals: 0
     property var stepFunction // (value, direction) -> next clamped value
+    property var sectionModel
 
     SystemPalette { id: sysPalette; colorGroup: SystemPalette.Active }
 

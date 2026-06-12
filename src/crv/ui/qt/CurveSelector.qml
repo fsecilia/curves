@@ -13,15 +13,14 @@ Rectangle {
         model: availableCurves
         clip: true
 
+        currentIndex: app.activeCurveIndex
+
         delegate: ItemDelegate {
             width: ListView.view.width
             text: modelData
             highlighted: ListView.isCurrentItem
 
-            onClicked: {
-                tabList.currentIndex = index
-                app.set_active_curve(index)
-            }
+            onClicked: app.set_active_curve(index)
         }
     }
 }
