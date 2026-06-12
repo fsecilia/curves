@@ -72,6 +72,10 @@ public:
     // called back from qml to handle changes from mouse wheel
     Q_INVOKABLE auto on_wheel(int row, QVariant const& value) -> void;
 
+    // static ui lookups
+    Q_INVOKABLE auto get_value(QString const& path) const -> QVariant;
+    Q_INVOKABLE auto set_value(QString const& path, QVariant const& value, bool mergeable) -> void;
+
     /// called by command's notify lambda when value actually changes
     auto update_node_value(int_t row, QVariant const& new_value) -> void;
 
@@ -151,6 +155,10 @@ public:
     {
         return load_config(config, [](auto const&) static noexcept { return true; });
     }
+
+signals:
+    // emitted when value changes via undo stack so static ui can update
+    void valueChanged(QString path, QVariant value);
 
 private:
     static constexpr auto to_variant(auto const& val) -> QVariant

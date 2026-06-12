@@ -5,6 +5,7 @@
 
 #include "property_model.hpp"
 #include <crv/math/integer.hpp>
+#include <algorithm>
 
 namespace crv {
 
@@ -75,15 +76,36 @@ auto property_model_t::on_wheel(int row, QVariant const& value) -> void
     nodes_[row].push_command(value, true);
 }
 
+auto property_model_t::get_value(QString const& path) const -> QVariant
+{
+    auto const it = std::ranges::find_if(nodes_, [&](auto const& node) { return node.path == path; });
+    if (it != nodes_.end()) return it->value;
+    return {};
+}
+
+auto property_model_t::set_value(QString const& path, QVariant const& value, bool mergeable) -> void
+{
+    auto const it = std::ranges::find_if(nodes_, [&](auto const& node) { return node.path == path; });
+
+    if (it == nodes_.end()) return;
+
+    // guard against infinite binding loops
+    if (it->value == value) return;
+    it->push_command(value, mergeable);
+}
+
 auto property_model_t::update_node_value(int_t row, QVariant const& new_value) -> void
 {
     if (row < 0 || static_cast<int_t>(nodes_.size()) <= row) return;
 
     nodes_[row].value = new_value;
 
-    // notify QML that this specific row's value has changed
+    // notify QML that this specific row's data has changed
     auto const model_index = index(int_cast<int>(row), 0);
     emit dataChanged(model_index, model_index, {static_cast<int>(roles_t::value)});
+
+    // notify static ui layouts
+    emit valueChanged(nodes_[row].path, new_value);
 }
 
 } // namespace crv
