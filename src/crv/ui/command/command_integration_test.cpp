@@ -1,0 +1,763 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#include <crv/test/test.hpp>
+
+#include <crv/lib.hpp>
+#include <chrono>
+#include <vector>
+
+#include <string>
+#include <thread>
+
+namespace crv::command {
+namespace {
+
+/// command pattern command interface
+struct command_i
+{
+    using clock_t = std::chrono::steady_clock;
+    using duration_t = clock_t::duration;
+    using time_point_t = clock_t::time_point;
+
+    virtual ~command_i() = default;
+
+    /// applies command
+    virtual auto redo() -> void = 0;
+
+    /// reverts command
+    virtual auto undo() -> void = 0;
+
+    /// \returns maximum duration to consider merging commands; 0 for nonmergeable.
+    virtual auto merge_timeout() const noexcept -> duration_t = 0;
+
+    /// folds src into *this so one undo()/redo() spans both
+    ///
+    /// This method is invoked after src.redo() has applied. Clients must take care to only move out of src if the merge
+    /// is guaranteed to succeed without throwing.
+    ///
+    /// \returns true if command was correct type, referred to the same target, and was successfully merged
+    virtual auto try_merge(command_i&& src) noexcept -> bool = 0;
+};
+
+/// provides default implementations for commands that can never be merged
+class nonmergeable_command_t : public command_i
+{
+public:
+    constexpr auto merge_timeout() const noexcept -> duration_t override { return duration_t{0}; }
+    constexpr auto try_merge(command_i&&) noexcept -> bool override { return false; }
+};
+
+/// command pattern command stack
+class stack_t
+{
+public:
+    using clock_t = command_i::clock_t;
+    using duration_t = clock_t::duration;
+    using time_point_t = clock_t::time_point;
+
+    stack_t() = default;
+
+    stack_t(stack_t&&) noexcept = default;
+    auto operator=(stack_t&&) noexcept -> stack_t& = default;
+
+    /// executes command, appends it to end of stack, merges if possible, then cuts redo chain
+    ///
+    /// strong guarantee: This type reserves, executes, then commits.
+    ///
+    /// \pre command != nullptr
+    /// \pre timestamp is nondecreasing and causal
+    /// \throws std::bad_alloc if reservation fails
+    /// \throws ... exceptions from executing command propagate
+    auto push(std::unique_ptr<command_i>&& command, time_point_t timestamp = clock_t::now()) -> void
+    {
+        assert(command != nullptr);
+        assert(empty() || timestamp >= entries_[cursor_ - 1].timestamp);
+
+        // blocks are ordered to preserve strong guarantee
+
+        // reserve; it may throw std::bad_alloc
+        if (cursor_ + 1 > entries_.capacity())
+        {
+            auto const capacity = entries_.capacity() == 0 ? initial_capacity : entries_.capacity() * 2;
+            entries_.reserve(capacity);
+        }
+
+        // execute command before committing; it may throw
+        command->redo();
+
+        // commit
+        entries_.resize(cursor_);
+        if (!try_merge(std::move(*command), timestamp)) entries_.push_back(entry_t{std::move(command), timestamp});
+        cursor_ = entries_.size();
+        can_merge_ = true;
+    }
+
+    /// directly constructs and pushes command
+    ///
+    /// strong guarantee: This method is implemented in terms of push().
+    ///
+    /// \pre timestamp is nondecreasing across calls and not in future
+    /// \throws std::bad_alloc if reservation fails
+    /// \throws ... exceptions from executing command propagate
+    /// \sa push
+    template <typename command_t, typename... args_t> auto emplace(time_point_t timestamp, args_t&&... args) -> void
+    {
+        push(std::make_unique<command_t>(std::forward<args_t>(args)...), timestamp);
+    }
+
+    /// directly constructs and pushes command using current clock time
+    ///
+    /// strong guarantee: This method is implemented in terms of push().
+    ///
+    /// \throws std::bad_alloc if reservation fails
+    /// \throws ... exceptions from executing command propagate
+    /// \sa push
+    template <typename command_t, typename... args_t> auto emplace_now(args_t&&... args) -> void
+    {
+        emplace<command_t>(clock_t::now(), std::forward<args_t>(args)...);
+    }
+
+    /// undos command at cursor
+    ///
+    /// strong guarantee: If undoing command throws, stack is unchanged.
+    ///
+    /// \pre can_undo()
+    /// \throws ... exceptions from undoing command propagate
+    auto undo() -> void
+    {
+        assert(can_undo());
+
+        // undo first; it may throw
+        entries_[cursor_ - 1].command->undo();
+
+        // commit
+        --cursor_;
+        can_merge_ = false;
+    }
+
+    /// redos command at cursor
+    ///
+    /// strong guarantee: If redoing command throws, stack is unchanged.
+    ///
+    /// \pre can_redo()
+    /// \throws ... exceptions from redoing command propagate
+    auto redo() -> void
+    {
+        assert(can_redo());
+
+        // redo first; it may throw
+        entries_[cursor_].command->redo();
+
+        // commit
+        ++cursor_;
+        can_merge_ = false;
+    }
+
+    [[nodiscard]] auto can_undo() const noexcept -> bool { return cursor_ != 0; }
+    [[nodiscard]] auto can_redo() const noexcept -> bool { return cursor_ != entries_.size(); }
+
+    auto empty() const noexcept -> bool { return cursor_ == 0; }
+    auto clear() noexcept -> void
+    {
+        entries_.clear();
+        cursor_ = 0;
+        can_merge_ = false;
+    }
+
+private:
+    // command is only moved from if merge is successful
+    auto try_merge(command_i&& command, time_point_t timestamp) noexcept -> bool
+    {
+        // bail if undo, redo, or clear has already been run since last push
+        if (!can_merge_) return false;
+
+        // bail if stack is empty
+        if (empty()) return false;
+        auto& entry = entries_[cursor_ - 1];
+
+        // bail if timeout expired
+        assert(timestamp >= entry.timestamp);
+        auto const elapsed = timestamp - entry.timestamp;
+        auto const timeout = std::min(entry.command->merge_timeout(), command.merge_timeout());
+        if (elapsed < duration_t::zero() || timeout <= elapsed) return false;
+
+        // delegate fold to command
+        if (!entry.command->try_merge(std::move(command))) return false;
+
+        // commit
+        entry.timestamp = timestamp;
+        return true;
+    }
+
+    struct entry_t
+    {
+        std::unique_ptr<command_i> command;
+        time_point_t timestamp;
+    };
+    using entries_t = std::vector<entry_t>;
+    using entries_size_t = entries_t::size_type;
+
+    static constexpr auto initial_capacity = entries_size_t{16};
+
+    entries_t entries_;
+    entries_size_t cursor_ = 0;
+    bool can_merge_ = false;
+};
+
+//
+// integration tests
+//
+
+using namespace std::chrono_literals;
+
+struct command_stack_integration_test_t : Test
+{
+    // simple ui model for commands to mutate
+    struct ui_model_t
+    {
+        int_t param0 = 0;
+        int_t param1 = 0;
+        std::string text_state = "initial";
+
+        auto operator==(ui_model_t const& other) const -> bool = default;
+
+        friend auto operator<<(std::ostream& out, ui_model_t const& src) -> std::ostream&
+        {
+            return out << "{param0 = " << src.param0 << ", param1 = " << src.param1 << "}";
+        }
+    };
+
+    class single_param_command_t : public command_i
+    {
+    public:
+        single_param_command_t(int_t& target, int_t delta, duration_t merge_timeout = 500ms)
+            : target_{target}, delta_{delta}, merge_timeout_{merge_timeout}
+        {}
+
+        auto redo() noexcept -> void override { target_ += delta_; }
+        auto undo() noexcept -> void override { target_ -= delta_; }
+
+        auto merge_timeout() const noexcept -> duration_t override { return merge_timeout_; }
+
+        auto try_merge(command_i&& src) noexcept -> bool override
+        {
+            auto const* incoming = dynamic_cast<single_param_command_t const*>(&src);
+            if (!incoming || &incoming->target_ != &target_) return false;
+
+            delta_ += incoming->delta_;
+            return true;
+        }
+
+    private:
+        int_t& target_;
+        int_t delta_;
+        duration_t merge_timeout_;
+    };
+
+    ui_model_t model;
+    stack_t stack;
+    stack_t::time_point_t t0 = stack_t::clock_t::now();
+
+    auto undo() -> void
+    {
+        ASSERT_TRUE(stack.can_undo());
+        stack.undo();
+    }
+
+    auto redo() -> void
+    {
+        ASSERT_TRUE(stack.can_redo());
+        stack.redo();
+    }
+};
+
+//
+// single member
+//
+
+// modifies a single parameter directly by reference
+struct command_stack_integration_test_single_param_t : command_stack_integration_test_t
+{};
+
+TEST_F(command_stack_integration_test_single_param_t, pair_within_timeout_merges)
+{
+    // timeout not exceeded, commands are merged into single +15 operation
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+    stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 10);
+
+    EXPECT_EQ(model.param0, 15);
+
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+
+    redo();
+    EXPECT_EQ(model.param0, 15);
+    EXPECT_FALSE(stack.can_redo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, pair_outside_timeout_does_not_merge)
+{
+    // timeout exceeded, commands should be two separate operations
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+    stack.emplace<single_param_command_t>(t0 + 600ms, model.param0, 10);
+
+    EXPECT_EQ(model.param0, 15);
+
+    undo();
+    EXPECT_EQ(model.param0, 5);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+
+    EXPECT_FALSE(stack.can_undo());
+
+    redo();
+    EXPECT_EQ(model.param0, 5);
+    redo();
+    EXPECT_EQ(model.param0, 15);
+
+    EXPECT_FALSE(stack.can_redo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, pair_undo_redo)
+{
+    // timeout exceeded, commands should be two separate operations
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+    stack.emplace<single_param_command_t>(t0 + 600ms, model.param0, 10);
+
+    EXPECT_EQ(model.param0, 15);
+
+    undo();
+    EXPECT_EQ(model.param0, 5);
+
+    redo();
+    EXPECT_EQ(model.param0, 15);
+    EXPECT_FALSE(stack.can_redo());
+
+    undo();
+    EXPECT_EQ(model.param0, 5);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+
+    EXPECT_FALSE(stack.can_undo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, history_invalidated_on_new_action)
+{
+    // apply and undo to put entry on redo stack
+    stack.emplace<single_param_command_t>(t0, model.param0, 10);
+    undo();
+    EXPECT_TRUE(stack.can_redo());
+
+    // new command clears redo stack
+    stack.emplace<single_param_command_t>(t0 + 1s, model.param0, 20);
+    EXPECT_FALSE(stack.can_redo());
+    EXPECT_EQ(model.param0, 20);
+}
+
+TEST_F(command_stack_integration_test_single_param_t, sliding_window_merges_across_total_span)
+{
+    // each gap stays under 500ms window, but total span exceeds it
+    // sliding window keeps whole run collapsed into single entry
+
+    stack.emplace<single_param_command_t>(t0, model.param0, 1);
+    stack.emplace<single_param_command_t>(t0 + 400ms, model.param0, 2);
+    stack.emplace<single_param_command_t>(t0 + 800ms, model.param0, 4);
+
+    EXPECT_EQ(model.param0, 7);
+
+    // 1 merged entry: a single undo reverts entire run
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, drag_run_terminated_by_commit)
+{
+    // drag: 3 increments inside window collapse into 1 entry
+    stack.emplace<single_param_command_t>(t0, model.param0, 2);
+    stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 3);
+    stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 5);
+    EXPECT_EQ(model.param0, 10);
+
+    // release: 0 timeout makes this instance nonmergeable even though it is same type, same target, and inside window
+    stack.emplace<single_param_command_t>(t0 + 250ms, model.param0, 1, 0ms);
+    EXPECT_EQ(model.param0, 11);
+
+    // commit is its own entry
+    undo();
+    EXPECT_EQ(model.param0, 10);
+
+    // drag run is a single entry
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, undo_then_action_does_not_merge_into_survivor)
+{
+    // seed 2 entries on different targets so undo leaves one mergeable entry on top
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+    stack.emplace<single_param_command_t>(t0 + 100ms, model.param1, 9);
+
+    // undo pops param1 back off; param0 entry is now stack top
+    undo();
+    EXPECT_EQ(model.param1, 0);
+
+    // new action on param0 is same-type, same-target, and inside window, but barrier forces separate entry
+    stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 3);
+    EXPECT_EQ(model.param0, 8);
+    EXPECT_FALSE(stack.can_redo());
+
+    // survivor is intact; undoing new action lands on 5, not 0
+    undo();
+    EXPECT_EQ(model.param0, 5);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+TEST_F(command_stack_integration_test_single_param_t, undo_redo_then_action_does_not_merge)
+{
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+    undo();
+    redo();
+    EXPECT_EQ(model.param0, 5);
+
+    // redo restores original timestamp, so without barrier, this action would merge
+    stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 7);
+    EXPECT_EQ(model.param0, 12);
+
+    // separate entries; undoing new action lands on 5, not 0
+    undo();
+    EXPECT_EQ(model.param0, 5);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+//
+// mulitple members
+//
+
+// modifies multiple members referencing their owner
+struct command_stack_integration_test_multiple_params_t : command_stack_integration_test_t
+{
+    class multi_param_command_t : public command_i
+    {
+    public:
+        multi_param_command_t(ui_model_t& model, int_t delta_a, int_t delta_b)
+            : model_{model}, delta_a_{delta_a}, delta_b_{delta_b}
+        {}
+
+        auto redo() noexcept -> void override
+        {
+            model_.param0 += delta_a_;
+            model_.param1 += delta_b_;
+        }
+
+        auto undo() noexcept -> void override
+        {
+            model_.param0 -= delta_a_;
+            model_.param1 -= delta_b_;
+        }
+
+        auto merge_timeout() const noexcept -> duration_t override { return 500ms; }
+
+        auto try_merge(command_i&& src) noexcept -> bool override
+        {
+            auto const* incoming = dynamic_cast<multi_param_command_t const*>(&src);
+            if (!incoming || &incoming->model_ != &model_) return false;
+
+            delta_a_ += incoming->delta_a_;
+            delta_b_ += incoming->delta_b_;
+            return true;
+        }
+
+    private:
+        ui_model_t& model_;
+        int_t delta_a_;
+        int_t delta_b_;
+    };
+};
+
+TEST_F(command_stack_integration_test_multiple_params_t, pair_within_timeout_merges)
+{
+    stack.emplace<multi_param_command_t>(t0, model, 1, 2);
+    stack.emplace<multi_param_command_t>(t0 + 100ms, model, 3, 4);
+
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_EQ(model.param1, 0);
+    EXPECT_FALSE(stack.can_undo());
+
+    redo();
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+    EXPECT_FALSE(stack.can_redo());
+}
+
+TEST_F(command_stack_integration_test_multiple_params_t, pair_outside_timeout_does_not_merge)
+{
+    stack.emplace<multi_param_command_t>(t0, model, 1, 2);
+    stack.emplace<multi_param_command_t>(t0 + 600ms, model, 3, 4);
+
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+
+    undo();
+    EXPECT_EQ(model.param0, 1);
+    EXPECT_EQ(model.param1, 2);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_EQ(model.param1, 0);
+
+    EXPECT_FALSE(stack.can_undo());
+
+    redo();
+    EXPECT_EQ(model.param0, 1);
+    EXPECT_EQ(model.param1, 2);
+    redo();
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+
+    EXPECT_FALSE(stack.can_redo());
+}
+
+TEST_F(command_stack_integration_test_multiple_params_t, pair_undo_redo)
+{
+    stack.emplace<multi_param_command_t>(t0, model, 1, 2);
+    stack.emplace<multi_param_command_t>(t0 + 600ms, model, 3, 4);
+
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+
+    undo();
+    EXPECT_EQ(model.param0, 1);
+    EXPECT_EQ(model.param1, 2);
+
+    redo();
+    EXPECT_EQ(model.param0, 4);
+    EXPECT_EQ(model.param1, 6);
+    EXPECT_FALSE(stack.can_redo());
+
+    undo();
+    EXPECT_EQ(model.param0, 1);
+    EXPECT_EQ(model.param1, 2);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_EQ(model.param1, 0);
+
+    EXPECT_FALSE(stack.can_undo());
+}
+
+//
+// whole object snapshot
+//
+
+// snapshots whole object and replaces it entirely
+struct command_stack_integration_test_snapshot_t : command_stack_integration_test_t
+{
+    // modifies a whole model all at once, snapshotting current state when created, applies whole saved state
+    class snapshot_command_t : public nonmergeable_command_t
+    {
+    public:
+        snapshot_command_t(ui_model_t& model, ui_model_t const& state_redo)
+            : model_{model}, state_undo_{model}, state_redo_{state_redo}
+        {}
+
+        auto redo() -> void override
+        {
+            // make local copy and invoke move ctor to guarantee exception safety
+            auto next = state_redo_;
+            model_ = std::move(next);
+        }
+
+        auto undo() -> void override
+        {
+            // make local copy and invoke move ctor to guarantee exception safety
+            auto prev = state_undo_;
+            model_ = std::move(prev);
+        }
+
+    private:
+        ui_model_t& model_;
+        ui_model_t state_undo_;
+        ui_model_t state_redo_;
+    };
+};
+
+TEST_F(command_stack_integration_test_snapshot_t, full_snapshot)
+{
+    model.text_state = "working...";
+    model.param0 = 37;
+
+    // create target memento state
+    auto target_state = model;
+    target_state.text_state = "applied";
+    target_state.param1 = 99;
+
+    // push snapshot
+    stack.emplace<snapshot_command_t>(t0, model, target_state);
+    EXPECT_EQ(model.text_state, "applied");
+    EXPECT_EQ(model.param0, 37);
+    EXPECT_EQ(model.param1, 99);
+
+    // revert back to working state
+    undo();
+    EXPECT_EQ(model.text_state, "working...");
+    EXPECT_EQ(model.param0, 37);
+    EXPECT_EQ(model.param1, 0);
+
+    // redo applied state
+    redo();
+    EXPECT_EQ(model.text_state, "applied");
+    EXPECT_EQ(model.param0, 37);
+    EXPECT_EQ(model.param1, 99);
+}
+
+TEST_F(command_stack_integration_test_snapshot_t, mixed_command_types_round_trip)
+{
+    // a delta, then a nonmergeable snapshot, then another delta
+    // snapshot vetoes a merge on both sides via its 0 timeout, so this is 3 distinct entries
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+
+    auto target = model;
+    target.param1 = 37;
+    target.text_state = "snap";
+    stack.emplace<snapshot_command_t>(t0 + 100ms, model, target);
+
+    stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 3);
+
+    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "snap"}));
+
+    // undo whole chain back to default state
+    undo();
+    undo();
+    undo();
+    EXPECT_EQ(model, ui_model_t{});
+    EXPECT_FALSE(stack.can_undo());
+
+    // redo whole chain forward again
+    redo();
+    redo();
+    redo();
+    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "snap"}));
+    EXPECT_FALSE(stack.can_redo());
+}
+
+TEST_F(command_stack_integration_test_snapshot_t, delta_then_snapshot_does_not_merge)
+{
+    // delta on top, snapshot incoming, inside window
+    // snapshot's 0 timeout vetoes via min
+    stack.emplace<single_param_command_t>(t0, model.param0, 5);
+
+    auto target = model;
+    target.param1 = 9;
+    stack.emplace<snapshot_command_t>(t0 + 100ms, model, target);
+
+    EXPECT_EQ(model.param0, 5);
+    EXPECT_EQ(model.param1, 9);
+
+    // 2 entries: undoing snapshot leaves param0 untouched at 5
+    undo();
+    EXPECT_EQ(model.param0, 5);
+    EXPECT_EQ(model.param1, 0);
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+TEST_F(command_stack_integration_test_snapshot_t, snapshot_then_delta_does_not_merge)
+{
+    // snapshot on top, delta incoming, inside window
+    // snapshot sits on stack and its 0 timeout vetos incoming delta via min(0, 500ms)
+    auto target = model;
+    target.param1 = 9;
+    stack.emplace<snapshot_command_t>(t0, model, target);
+
+    stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 5);
+
+    EXPECT_EQ(model.param0, 5);
+    EXPECT_EQ(model.param1, 9);
+
+    // 2 entries: undoing delta leaves snapshot's param1 in place
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_EQ(model.param1, 9);
+    undo();
+    EXPECT_EQ(model.param1, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+//
+// live timeout
+//
+
+// uses (minimal) live thread sleeps to test expiring timeouts
+struct command_stack_integration_test_live_timeout_t : command_stack_integration_test_t
+{
+    class timeout_command_t : public command_i
+    {
+    public:
+        timeout_command_t(int_t& target) : target_{target} {}
+        auto redo() noexcept -> void override { target_ += 1; }
+        auto undo() noexcept -> void override { target_ -= 1; }
+
+        auto merge_timeout() const noexcept -> duration_t override { return 5ms; }
+
+        // increments by 10 when merging
+        auto try_merge(command_i&& src) noexcept -> bool override
+        {
+            if (!dynamic_cast<timeout_command_t const*>(&src)) return false;
+            target_ += 10;
+            return true;
+        }
+
+    private:
+        int_t& target_;
+    };
+};
+
+// pushes commands using default timeout param clock_t::now()
+TEST_F(command_stack_integration_test_live_timeout_t, default_push)
+{
+    auto cmd1 = std::make_unique<timeout_command_t>(model.param0);
+    stack.push(std::move(cmd1));
+
+    // force timeout expiration
+    std::this_thread::sleep_for(10ms);
+
+    auto cmd2 = std::make_unique<timeout_command_t>(model.param0);
+    stack.push(std::move(cmd2));
+
+    EXPECT_EQ(model.param0, 2);
+
+    // sleep forces a timeout, so try_merge must fail - result is two stack entries
+    undo();
+    EXPECT_EQ(model.param0, 1);
+    EXPECT_TRUE(stack.can_undo());
+}
+
+// uses emplace_now to use clock_t::now()
+TEST_F(command_stack_integration_test_live_timeout_t, emplace_now)
+{
+    stack.emplace_now<single_param_command_t>(model.param0, 3);
+    stack.emplace_now<single_param_command_t>(model.param0, 5);
+
+    EXPECT_EQ(model.param0, 8);
+
+    // since timeout does not expire, try_merge must succeed
+    undo();
+    EXPECT_EQ(model.param0, 0);
+    EXPECT_FALSE(stack.can_undo());
+}
+
+} // namespace
+} // namespace crv::command
