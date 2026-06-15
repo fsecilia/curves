@@ -25,6 +25,9 @@ public:
     constexpr timeline_t(timeline_t&&) noexcept = default;
     constexpr auto operator=(timeline_t&&) noexcept -> timeline_t& = default;
 
+    /// \returns total capacity for all events, future and past
+    constexpr auto capacity() const noexcept -> events_t::size_type { return events_.capacity(); }
+
     /// reserves capacity for next call to commit
     constexpr auto reserve() -> void
     {
