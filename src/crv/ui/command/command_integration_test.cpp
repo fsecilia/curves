@@ -6,9 +6,11 @@
 #include <crv/test/test.hpp>
 
 #include <crv/lib.hpp>
+#include <crv/math/integer.hpp>
 #include <crv/ui/command/command.hpp>
+#include <crv/ui/command/timeline.hpp>
 #include <chrono>
-#include <vector>
+#include <utility>
 
 #include <string>
 #include <thread>
@@ -16,18 +18,32 @@
 namespace crv::command {
 namespace {
 
+namespace detail {
+
+struct timeline_event_t
+{
+    std::unique_ptr<command_i> command;
+    command_i::time_point_t timestamp;
+};
+
+} // namespace detail
+
 /// command pattern command stack
-class stack_t
+template <typename t_timeline_t = timeline_t<detail::timeline_event_t>> class stack_t
 {
 public:
+    using timeline_t = t_timeline_t;
+
+    using event_t = timeline_t::event_t;
+
     using clock_t = command_i::clock_t;
     using duration_t = clock_t::duration;
     using time_point_t = clock_t::time_point;
 
-    stack_t() = default;
+    explicit constexpr stack_t(timeline_t timeline = {}) noexcept : timeline_{std::move(timeline)} {}
 
-    stack_t(stack_t&&) noexcept = default;
-    auto operator=(stack_t&&) noexcept -> stack_t& = default;
+    constexpr stack_t(stack_t&&) noexcept = default;
+    constexpr auto operator=(stack_t&&) noexcept -> stack_t& = default;
 
     /// executes command, appends it to end of stack, merges if possible, then cuts redo chain
     ///
@@ -37,27 +53,21 @@ public:
     /// \pre timestamp is nondecreasing and causal
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
-    auto push(std::unique_ptr<command_i>&& command, time_point_t timestamp = clock_t::now()) -> void
+    constexpr auto push(std::unique_ptr<command_i>&& command, time_point_t timestamp = clock_t::now()) -> void
     {
         assert(command != nullptr);
-        assert(empty() || timestamp >= entries_[cursor_ - 1].timestamp);
+        assert(!timeline_.can_step_backward() || timestamp >= timeline_.present().timestamp);
 
         // blocks are ordered to preserve strong guarantee
 
         // reserve; it may throw std::bad_alloc
-        if (cursor_ + 1 > entries_.capacity())
-        {
-            auto const capacity = entries_.capacity() == 0 ? initial_capacity : entries_.capacity() * 2;
-            entries_.reserve(capacity);
-        }
+        timeline_.reserve();
 
         // execute command before committing; it may throw
         command->redo();
 
         // commit
-        entries_.resize(cursor_);
-        if (!try_merge(std::move(*command), timestamp)) entries_.push_back(entry_t{std::move(command), timestamp});
-        cursor_ = entries_.size();
+        if (!try_merge(std::move(*command), timestamp)) timeline_.commit(event_t{std::move(command), timestamp});
         can_merge_ = true;
     }
 
@@ -69,7 +79,8 @@ public:
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
     /// \sa push
-    template <typename command_t, typename... args_t> auto emplace(time_point_t timestamp, args_t&&... args) -> void
+    template <typename command_t, typename... args_t>
+    constexpr auto emplace(time_point_t timestamp, args_t&&... args) -> void
     {
         push(std::make_unique<command_t>(std::forward<args_t>(args)...), timestamp);
     }
@@ -81,95 +92,82 @@ public:
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
     /// \sa push
-    template <typename command_t, typename... args_t> auto emplace_now(args_t&&... args) -> void
+    template <typename command_t, typename... args_t> constexpr auto emplace_now(args_t&&... args) -> void
     {
         emplace<command_t>(clock_t::now(), std::forward<args_t>(args)...);
     }
 
-    /// undos command at cursor
+    /// undos present command
     ///
     /// strong guarantee: If undoing command throws, stack is unchanged.
     ///
     /// \pre can_undo()
     /// \throws ... exceptions from undoing command propagate
-    auto undo() -> void
+    constexpr auto undo() -> void
     {
         assert(can_undo());
 
         // undo first; it may throw
-        entries_[cursor_ - 1].command->undo();
+        timeline_.present().command->undo();
 
         // commit
-        --cursor_;
+        timeline_.step_backward();
         can_merge_ = false;
     }
 
-    /// redos command at cursor
+    /// redos immediate future command
     ///
     /// strong guarantee: If redoing command throws, stack is unchanged.
     ///
     /// \pre can_redo()
     /// \throws ... exceptions from redoing command propagate
-    auto redo() -> void
+    constexpr auto redo() -> void
     {
         assert(can_redo());
 
         // redo first; it may throw
-        entries_[cursor_].command->redo();
+        timeline_.future().command->redo();
 
         // commit
-        ++cursor_;
+        timeline_.step_forward();
         can_merge_ = false;
     }
 
-    [[nodiscard]] auto can_undo() const noexcept -> bool { return cursor_ != 0; }
-    [[nodiscard]] auto can_redo() const noexcept -> bool { return cursor_ != entries_.size(); }
+    [[nodiscard]] constexpr auto can_undo() const noexcept -> bool { return timeline_.can_step_backward(); }
+    [[nodiscard]] constexpr auto can_redo() const noexcept -> bool { return timeline_.can_step_forward(); }
 
-    auto empty() const noexcept -> bool { return cursor_ == 0; }
-    auto clear() noexcept -> void
+    constexpr auto clear() noexcept -> void
     {
-        entries_.clear();
-        cursor_ = 0;
+        timeline_.clear();
         can_merge_ = false;
     }
 
 private:
     // command is only moved from if merge is successful
-    auto try_merge(command_i&& command, time_point_t timestamp) noexcept -> bool
+    [[nodiscard]] constexpr auto try_merge(command_i&& command, time_point_t timestamp) noexcept -> bool
     {
         // bail if undo, redo, or clear has already been run since last push
         if (!can_merge_) return false;
 
-        // bail if stack is empty
-        if (empty()) return false;
-        auto& entry = entries_[cursor_ - 1];
+        // bail if timeline is empty
+        if (!timeline_.can_step_backward()) return false;
+        auto& event = timeline_.present();
 
         // bail if timeout expired
-        assert(timestamp >= entry.timestamp);
-        auto const elapsed = timestamp - entry.timestamp;
-        auto const timeout = std::min(entry.command->merge_timeout(), command.merge_timeout());
+        assert(timestamp >= event.timestamp);
+        auto const elapsed = timestamp - event.timestamp;
+        auto const timeout = std::min(event.command->merge_timeout(), command.merge_timeout());
         if (elapsed < duration_t::zero() || timeout <= elapsed) return false;
 
         // delegate fold to command
-        if (!entry.command->try_merge(std::move(command))) return false;
+        if (!event.command->try_merge(std::move(command))) return false;
 
         // commit
-        entry.timestamp = timestamp;
+        event.timestamp = timestamp;
         return true;
     }
 
-    struct entry_t
-    {
-        std::unique_ptr<command_i> command;
-        time_point_t timestamp;
-    };
-    using entries_t = std::vector<entry_t>;
-    using entries_size_t = entries_t::size_type;
-
-    static constexpr auto initial_capacity = entries_size_t{16};
-
-    entries_t entries_;
-    entries_size_t cursor_ = 0;
+    timeline_t timeline_;
     bool can_merge_ = false;
 };
 
@@ -224,6 +222,7 @@ struct command_stack_integration_test_t : Test
     };
 
     ui_model_t model;
+    using stack_t = stack_t<>;
     stack_t stack;
     stack_t::time_point_t t0 = stack_t::clock_t::now();
 
@@ -311,9 +310,9 @@ TEST_F(command_stack_integration_test_single_param_t, pair_undo_redo)
     EXPECT_FALSE(stack.can_undo());
 }
 
-TEST_F(command_stack_integration_test_single_param_t, history_invalidated_on_new_action)
+TEST_F(command_stack_integration_test_single_param_t, timeline_invalidated_on_new_action)
 {
-    // apply and undo to put entry on redo stack
+    // apply and undo to put event on redo stack
     stack.emplace<single_param_command_t>(t0, model.param0, 10);
     undo();
     EXPECT_TRUE(stack.can_redo());
@@ -327,7 +326,7 @@ TEST_F(command_stack_integration_test_single_param_t, history_invalidated_on_new
 TEST_F(command_stack_integration_test_single_param_t, sliding_window_merges_across_total_span)
 {
     // each gap stays under 500ms window, but total span exceeds it
-    // sliding window keeps whole run collapsed into single entry
+    // sliding window keeps whole run collapsed into single event
 
     stack.emplace<single_param_command_t>(t0, model.param0, 1);
     stack.emplace<single_param_command_t>(t0 + 400ms, model.param0, 2);
@@ -335,7 +334,7 @@ TEST_F(command_stack_integration_test_single_param_t, sliding_window_merges_acro
 
     EXPECT_EQ(model.param0, 7);
 
-    // 1 merged entry: a single undo reverts entire run
+    // 1 merged event: a single undo reverts entire run
     undo();
     EXPECT_EQ(model.param0, 0);
     EXPECT_FALSE(stack.can_undo());
@@ -343,7 +342,7 @@ TEST_F(command_stack_integration_test_single_param_t, sliding_window_merges_acro
 
 TEST_F(command_stack_integration_test_single_param_t, drag_run_terminated_by_commit)
 {
-    // drag: 3 increments inside window collapse into 1 entry
+    // drag: 3 increments inside window collapse into 1 event
     stack.emplace<single_param_command_t>(t0, model.param0, 2);
     stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 3);
     stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 5);
@@ -353,11 +352,11 @@ TEST_F(command_stack_integration_test_single_param_t, drag_run_terminated_by_com
     stack.emplace<single_param_command_t>(t0 + 250ms, model.param0, 1, 0ms);
     EXPECT_EQ(model.param0, 11);
 
-    // commit is its own entry
+    // commit is its own event
     undo();
     EXPECT_EQ(model.param0, 10);
 
-    // drag run is a single entry
+    // drag run is a single event
     undo();
     EXPECT_EQ(model.param0, 0);
     EXPECT_FALSE(stack.can_undo());
@@ -365,15 +364,15 @@ TEST_F(command_stack_integration_test_single_param_t, drag_run_terminated_by_com
 
 TEST_F(command_stack_integration_test_single_param_t, undo_then_action_does_not_merge_into_survivor)
 {
-    // seed 2 entries on different targets so undo leaves one mergeable entry on top
+    // seed 2 events on different targets so undo leaves one mergeable event on top
     stack.emplace<single_param_command_t>(t0, model.param0, 5);
     stack.emplace<single_param_command_t>(t0 + 100ms, model.param1, 9);
 
-    // undo pops param1 back off; param0 entry is now stack top
+    // undo pops param1 back off; param0 event is now stack top
     undo();
     EXPECT_EQ(model.param1, 0);
 
-    // new action on param0 is same-type, same-target, and inside window, but barrier forces separate entry
+    // new action on param0 is same-type, same-target, and inside window, but barrier forces separate event
     stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 3);
     EXPECT_EQ(model.param0, 8);
     EXPECT_FALSE(stack.can_redo());
@@ -397,7 +396,7 @@ TEST_F(command_stack_integration_test_single_param_t, undo_redo_then_action_does
     stack.emplace<single_param_command_t>(t0 + 100ms, model.param0, 7);
     EXPECT_EQ(model.param0, 12);
 
-    // separate entries; undoing new action lands on 5, not 0
+    // separate events; undoing new action lands on 5, not 0
     undo();
     EXPECT_EQ(model.param0, 5);
     undo();
@@ -591,7 +590,7 @@ TEST_F(command_stack_integration_test_snapshot_t, full_snapshot)
 TEST_F(command_stack_integration_test_snapshot_t, mixed_command_types_round_trip)
 {
     // a delta, then a nonmergeable snapshot, then another delta
-    // snapshot vetoes a merge on both sides via its 0 timeout, so this is 3 distinct entries
+    // snapshot vetoes a merge on both sides via its 0 timeout, so this is 3 distinct events
     stack.emplace<single_param_command_t>(t0, model.param0, 5);
 
     auto target = model;
@@ -631,7 +630,7 @@ TEST_F(command_stack_integration_test_snapshot_t, delta_then_snapshot_does_not_m
     EXPECT_EQ(model.param0, 5);
     EXPECT_EQ(model.param1, 9);
 
-    // 2 entries: undoing snapshot leaves param0 untouched at 5
+    // 2 events: undoing snapshot leaves param0 untouched at 5
     undo();
     EXPECT_EQ(model.param0, 5);
     EXPECT_EQ(model.param1, 0);
@@ -653,7 +652,7 @@ TEST_F(command_stack_integration_test_snapshot_t, snapshot_then_delta_does_not_m
     EXPECT_EQ(model.param0, 5);
     EXPECT_EQ(model.param1, 9);
 
-    // 2 entries: undoing delta leaves snapshot's param1 in place
+    // 2 events: undoing delta leaves snapshot's param1 in place
     undo();
     EXPECT_EQ(model.param0, 0);
     EXPECT_EQ(model.param1, 9);
@@ -705,7 +704,7 @@ TEST_F(command_stack_integration_test_live_timeout_t, default_push)
 
     EXPECT_EQ(model.param0, 2);
 
-    // sleep forces a timeout, so try_merge must fail - result is two stack entries
+    // sleep forces a timeout, so try_merge must fail - result is two events
     undo();
     EXPECT_EQ(model.param0, 1);
     EXPECT_TRUE(stack.can_undo());
