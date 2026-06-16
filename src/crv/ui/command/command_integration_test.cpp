@@ -9,7 +9,6 @@
 #include <crv/math/integer.hpp>
 #include <crv/ui/command/command.hpp>
 #include <crv/ui/command/timeline.hpp>
-#include <chrono>
 #include <utility>
 
 #include <string>
@@ -20,23 +19,25 @@ namespace {
 
 namespace detail {
 
-struct timeline_event_t
+template <typename command_t> struct timeline_event_t
 {
-    std::unique_ptr<command_i> command;
-    command_i::time_point_t timestamp;
+    std::unique_ptr<command_t> command;
+    command_t::time_point_t timestamp;
 };
 
 } // namespace detail
 
 /// command pattern command stack
-template <typename t_timeline_t = timeline_t<detail::timeline_event_t>> class stack_t
+template <typename t_command_t = command_i, typename t_timeline_t = timeline_t<detail::timeline_event_t<t_command_t>>>
+class stack_t
 {
 public:
+    using command_t = t_command_t;
     using timeline_t = t_timeline_t;
 
     using event_t = timeline_t::event_t;
 
-    using clock_t = command_i::clock_t;
+    using clock_t = command_t::clock_t;
     using duration_t = clock_t::duration;
     using time_point_t = clock_t::time_point;
 
@@ -56,7 +57,7 @@ public:
     /// \pre timestamp is nondecreasing across calls and causal
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
-    constexpr auto push(std::unique_ptr<command_i>&& command, time_point_t timestamp = clock_t::now()) -> void
+    constexpr auto push(std::unique_ptr<command_t>&& command, time_point_t timestamp = clock_t::now()) -> void
     {
         assert(command != nullptr);
         assert(!timeline_.can_step_backward() || timestamp >= timeline_.present().timestamp);
@@ -147,7 +148,7 @@ public:
 
 private:
     // command is only moved from if merge is successful
-    [[nodiscard]] constexpr auto try_merge(command_i&& command, time_point_t timestamp) noexcept -> bool
+    [[nodiscard]] constexpr auto try_merge(command_t&& command, time_point_t timestamp) noexcept -> bool
     {
         // bail if undo, redo, or clear has already been run since last push
         if (!can_merge_) return false;
