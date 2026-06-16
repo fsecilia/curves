@@ -564,47 +564,46 @@ struct command_stack_integration_test_snapshot_t : command_stack_integration_tes
 
 TEST_F(command_stack_integration_test_snapshot_t, full_snapshot)
 {
-    model.text_state = "working...";
+    model.text_state = "undo_state";
     model.param0 = 37;
 
     // create target memento state
     auto target_state = model;
-    target_state.text_state = "applied";
+    target_state.text_state = "redo_state";
     target_state.param1 = 99;
 
     // push snapshot
     stack.emplace<snapshot_command_t>(t0, model, target_state);
-    EXPECT_EQ(model.text_state, "applied");
+    EXPECT_EQ(model.text_state, "redo_state");
     EXPECT_EQ(model.param0, 37);
     EXPECT_EQ(model.param1, 99);
 
     // revert back to working state
     undo();
-    EXPECT_EQ(model.text_state, "working...");
+    EXPECT_EQ(model.text_state, "undo_state");
     EXPECT_EQ(model.param0, 37);
     EXPECT_EQ(model.param1, 0);
 
     // redo applied state
     redo();
-    EXPECT_EQ(model.text_state, "applied");
+    EXPECT_EQ(model.text_state, "redo_state");
     EXPECT_EQ(model.param0, 37);
     EXPECT_EQ(model.param1, 99);
 }
 
 TEST_F(command_stack_integration_test_snapshot_t, mixed_command_types_round_trip)
 {
-    // a delta, then a nonmergeable snapshot, then another delta
-    // snapshot vetoes a merge on both sides via its 0 timeout, so this is 3 distinct events
+    // a delta, then a nonmergeable snapshot, then another delta, is always 3 distinct events
     stack.emplace<single_param_command_t>(t0, model.param0, 5);
 
     auto target = model;
     target.param1 = 37;
-    target.text_state = "snap";
+    target.text_state = "text_state";
     stack.emplace<snapshot_command_t>(t0 + 100ms, model, target);
 
     stack.emplace<single_param_command_t>(t0 + 200ms, model.param0, 3);
 
-    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "snap"}));
+    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "text_state"}));
 
     // undo whole chain back to default state
     undo();
@@ -617,7 +616,7 @@ TEST_F(command_stack_integration_test_snapshot_t, mixed_command_types_round_trip
     redo();
     redo();
     redo();
-    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "snap"}));
+    EXPECT_EQ(model, (ui_model_t{.param0 = 8, .param1 = 37, .text_state = "text_state"}));
     EXPECT_FALSE(stack.can_redo());
 }
 
