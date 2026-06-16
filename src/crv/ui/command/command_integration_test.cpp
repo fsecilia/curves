@@ -147,27 +147,34 @@ public:
     }
 
 private:
+    // returns true if elapsed time is greater than either command's merge timeout
+    constexpr auto timeout_expired(command_t const& present_command, time_point_t present_timestamp,
+        command_t const& next_command, time_point_t next_timestamp) const noexcept -> bool
+    {
+        assert(next_timestamp >= present_timestamp);
+        auto const elapsed = next_timestamp - present_timestamp;
+        auto const timeout = std::min(present_command.merge_timeout(), next_command.merge_timeout());
+        return elapsed < duration_t::zero() || timeout <= elapsed;
+    }
+
     // command is only moved from if merge is successful
-    [[nodiscard]] constexpr auto try_merge(command_t&& command, time_point_t timestamp) noexcept -> bool
+    constexpr auto try_merge(command_t&& command, time_point_t timestamp) noexcept -> bool
     {
         // bail if undo, redo, or clear has already been run since last push
         if (!can_merge_) return false;
 
         // bail if timeline is empty
         if (!timeline_.can_step_backward()) return false;
-        auto& event = timeline_.present();
+        auto& present = timeline_.present();
 
         // bail if timeout expired
-        assert(timestamp >= event.timestamp);
-        auto const elapsed = timestamp - event.timestamp;
-        auto const timeout = std::min(event.command->merge_timeout(), command.merge_timeout());
-        if (elapsed < duration_t::zero() || timeout <= elapsed) return false;
+        if (timeout_expired(*present.command, present.timestamp, command, timestamp)) return false;
 
         // delegate fold to command
-        if (!event.command->try_merge(std::move(command))) return false;
+        if (!present.command->try_merge(std::move(command))) return false;
 
         // commit
-        event.timestamp = timestamp;
+        present.timestamp = timestamp;
         return true;
     }
 
