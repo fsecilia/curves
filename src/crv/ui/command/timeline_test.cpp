@@ -43,7 +43,22 @@ static_assert(!std::is_copy_constructible_v<timeline_t<move_only_t, 2>>);
 // runtime tests
 //
 
-TEST(command_timeline_test, navigatin_lifecycle)
+struct command_timeline_test_t : Test
+{
+    constexpr auto step_forward(auto& timeline) -> void
+    {
+        ASSERT_TRUE(timeline.can_step_forward());
+        timeline.step_forward();
+    }
+
+    constexpr auto step_backward(auto& timeline) -> void
+    {
+        ASSERT_TRUE(timeline.can_step_backward());
+        timeline.step_backward();
+    }
+};
+
+TEST_F(command_timeline_test_t, navigation_lifecycle)
 {
     auto timeline = timeline_t<int_t, 2>{};
 
@@ -70,29 +85,25 @@ TEST(command_timeline_test, navigatin_lifecycle)
     EXPECT_EQ(second_ref, 20);
 
     // step backward
-    EXPECT_TRUE(timeline.can_step_backward());
-    timeline.step_backward();
+    step_backward(timeline);
     EXPECT_EQ(timeline.present(), 10);
     EXPECT_EQ(timeline.future(), 20);
     EXPECT_TRUE(timeline.can_step_forward());
 
     // step backward to origin
-    ASSERT_TRUE(timeline.can_step_backward());
-    timeline.step_backward();
+    step_backward(timeline);
     EXPECT_FALSE(timeline.can_step_backward());
     EXPECT_EQ(timeline.future(), 10);
 
     // step forward to end
-    ASSERT_TRUE(timeline.can_step_forward());
-    timeline.step_forward();
-    ASSERT_TRUE(timeline.can_step_forward());
-    timeline.step_forward();
+    step_forward(timeline);
+    step_forward(timeline);
     EXPECT_EQ(&second_ref, &timeline.present());
     EXPECT_EQ(second_ref, 20);
     EXPECT_FALSE(timeline.can_step_forward());
 }
 
-TEST(command_timeline_test, truncate_future)
+TEST_F(command_timeline_test_t, truncate_future)
 {
     auto timeline = timeline_t<int_t, 4>{};
 
@@ -104,8 +115,8 @@ TEST(command_timeline_test, truncate_future)
     }
 
     // rewind back to 10
-    timeline.step_backward();
-    timeline.step_backward();
+    step_backward(timeline);
+    step_backward(timeline);
     EXPECT_EQ(timeline.present(), 10);
 
     // commit new present, truncating
@@ -115,12 +126,12 @@ TEST(command_timeline_test, truncate_future)
     EXPECT_FALSE(timeline.can_step_forward());
 
     // only 10 and 99 exist
-    timeline.step_backward();
+    step_backward(timeline);
     EXPECT_EQ(timeline.present(), 10);
     EXPECT_EQ(timeline.future(), 99);
 }
 
-TEST(command_timeline_test, capacity_growth_and_clearing)
+TEST_F(command_timeline_test_t, capacity_growth_and_clearing)
 {
     auto timeline = timeline_t<int_t, 8>{};
 
@@ -144,7 +155,7 @@ TEST(command_timeline_test, capacity_growth_and_clearing)
     EXPECT_TRUE(timeline.can_commit());
 }
 
-TEST(command_timeline_test, exhaustive_growth_rate)
+TEST_F(command_timeline_test_t, exhaustive_growth_rate)
 {
     auto timeline = timeline_t<int_t, 1>{};
 
@@ -160,7 +171,7 @@ TEST(command_timeline_test, exhaustive_growth_rate)
     EXPECT_EQ(timeline.capacity(), 4);
 }
 
-TEST(command_timeline_test, move_only_event_integrity)
+TEST_F(command_timeline_test_t, move_only_event_integrity)
 {
     auto timeline = timeline_t<move_only_t, 1>{};
 
@@ -173,12 +184,12 @@ TEST(command_timeline_test, move_only_event_integrity)
     timeline.commit(move_only_t{30});
 
     // truncate and move-insert
-    timeline.step_backward();
-    timeline.step_backward();
+    step_backward(timeline);
+    step_backward(timeline);
     timeline.reserve();
     timeline.commit(move_only_t{99});
 
-    timeline.step_backward();
+    step_backward(timeline);
     EXPECT_EQ(timeline.present().value, 10);
     EXPECT_EQ(timeline.future().value, 99);
 }
@@ -189,7 +200,7 @@ TEST(command_timeline_test, move_only_event_integrity)
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-struct command_timeline_death_test_t : Test
+struct command_timeline_death_test_t : command_timeline_test_t
 {
     timeline_t<int_t, 1> timeline;
 };
@@ -220,7 +231,7 @@ TEST_F(command_timeline_death_test_t, present_at_begin_asserts)
 {
     timeline.reserve();
     timeline.commit(10);
-    timeline.step_backward();
+    step_backward(timeline);
     EXPECT_DEBUG_DEATH(static_cast<void>(timeline.present()), "can_step_backward");
 }
 
