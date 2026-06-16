@@ -418,20 +418,20 @@ struct command_stack_integration_test_multiple_params_t : command_stack_integrat
     class multi_param_command_t : public command_i
     {
     public:
-        multi_param_command_t(ui_model_t& model, int_t delta_a, int_t delta_b)
-            : model_{model}, delta_a_{delta_a}, delta_b_{delta_b}
+        multi_param_command_t(ui_model_t& model, int_t delta_0, int_t delta_1)
+            : model_{model}, delta_0_{delta_0}, delta_1_{delta_1}
         {}
 
         auto redo() noexcept -> void override
         {
-            model_.param0 += delta_a_;
-            model_.param1 += delta_b_;
+            model_.param0 += delta_0_;
+            model_.param1 += delta_1_;
         }
 
         auto undo() noexcept -> void override
         {
-            model_.param0 -= delta_a_;
-            model_.param1 -= delta_b_;
+            model_.param0 -= delta_0_;
+            model_.param1 -= delta_1_;
         }
 
         auto merge_timeout() const noexcept -> duration_t override { return 500ms; }
@@ -441,15 +441,15 @@ struct command_stack_integration_test_multiple_params_t : command_stack_integrat
             auto const* incoming = dynamic_cast<multi_param_command_t const*>(&src);
             if (!incoming || &incoming->model_ != &model_) return false;
 
-            delta_a_ += incoming->delta_a_;
-            delta_b_ += incoming->delta_b_;
+            delta_0_ += incoming->delta_0_;
+            delta_1_ += incoming->delta_1_;
             return true;
         }
 
     private:
         ui_model_t& model_;
-        int_t delta_a_;
-        int_t delta_b_;
+        int_t delta_0_;
+        int_t delta_1_;
     };
 };
 
@@ -697,14 +697,14 @@ struct command_stack_integration_test_live_timeout_t : command_stack_integration
 // pushes commands using default timeout param clock_t::now()
 TEST_F(command_stack_integration_test_live_timeout_t, default_push)
 {
-    auto cmd1 = std::make_unique<timeout_command_t>(model.param0);
-    stack.push(std::move(cmd1));
+    auto command1 = std::make_unique<timeout_command_t>(model.param0);
+    stack.push(std::move(command1));
 
     // force timeout expiration
     std::this_thread::sleep_for(10ms);
 
-    auto cmd2 = std::make_unique<timeout_command_t>(model.param0);
-    stack.push(std::move(cmd2));
+    auto command2 = std::make_unique<timeout_command_t>(model.param0);
+    stack.push(std::move(command2));
 
     EXPECT_EQ(model.param0, 2);
 
