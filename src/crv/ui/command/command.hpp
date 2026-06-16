@@ -26,7 +26,7 @@ struct command_i
     /// reverts command
     virtual auto undo() -> void = 0;
 
-    /// \returns maximum duration to consider merging commands; 0 for nonmergeable.
+    /// \returns maximum duration to consider merging commands; 0 for nonmergeable
     virtual auto merge_timeout() const noexcept -> duration_t = 0;
 
     /// folds src into *this so one undo()/redo() spans both

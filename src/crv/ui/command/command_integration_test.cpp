@@ -47,10 +47,13 @@ public:
 
     /// executes command, appends it to end of stack, merges if possible, then cuts redo chain
     ///
-    /// strong guarantee: This type reserves, executes, then commits.
+    /// strong guarantee: This type reserves, executes, then commits. Reservation may throw std::bad_alloc. Command
+    /// execution may throw, which propagates. This may record an observable change in capacity, but capacity is an
+    /// implementation detail and not part of the type's logical state. The change in capacity does not compound. Commit
+    /// can not throw.
     ///
     /// \pre command != nullptr
-    /// \pre timestamp is nondecreasing and causal
+    /// \pre timestamp is nondecreasing across calls and causal
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
     constexpr auto push(std::unique_ptr<command_i>&& command, time_point_t timestamp = clock_t::now()) -> void
@@ -75,7 +78,7 @@ public:
     ///
     /// strong guarantee: This method is implemented in terms of push().
     ///
-    /// \pre timestamp is nondecreasing across calls and not in future
+    /// \pre timestamp is nondecreasing across calls and causal
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
     /// \sa push
