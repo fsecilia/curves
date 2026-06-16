@@ -46,6 +46,22 @@ public:
     auto try_merge(command_i&&) noexcept -> bool override;
 };
 
+/// provides strongly-typed version of try_merge() to derived types, saving the dynamic_cast prologue per
+template <typename derived_t> class mergeable_command_t : public command_i
+{
+public:
+    auto try_merge(command_i&& src) noexcept -> bool final
+    {
+        auto* typed_src = dynamic_cast<derived_t*>(&src);
+        if (!typed_src) return false;
+        return try_merge(std::move(*typed_src));
+    }
+
+protected:
+    /// strongly-typed overload for derived types to implement
+    virtual auto try_merge(derived_t&& src) noexcept -> bool = 0;
+};
+
 enum class id_t : int_t
 {
     mutate_param,
