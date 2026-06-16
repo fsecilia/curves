@@ -70,8 +70,18 @@ public:
         // execute command before committing; it may throw
         command->redo();
 
+        // try merging
+        auto merged = false;
+        if (can_merge_ && timeline_.can_step_backward())
+        {
+            auto& present = timeline_.present();
+            auto const try_merge = !timeout_expired(*present.command, present.timestamp, *command, timestamp);
+            merged = try_merge && present.command->try_merge(std::move(*command));
+            if (merged) present.timestamp = timestamp;
+        }
+
         // commit
-        if (!try_merge(std::move(*command), timestamp)) timeline_.commit(event_t{std::move(command), timestamp});
+        if (!merged) timeline_.commit(event_t{std::move(command), timestamp});
         can_merge_ = true;
     }
 
@@ -155,27 +165,6 @@ private:
         auto const elapsed = next_timestamp - present_timestamp;
         auto const timeout = std::min(present_command.merge_timeout(), next_command.merge_timeout());
         return elapsed < duration_t::zero() || timeout <= elapsed;
-    }
-
-    // command is only moved from if merge is successful
-    constexpr auto try_merge(command_t&& command, time_point_t timestamp) noexcept -> bool
-    {
-        // bail if undo, redo, or clear has already been run since last push
-        if (!can_merge_) return false;
-
-        // bail if timeline is empty
-        if (!timeline_.can_step_backward()) return false;
-        auto& present = timeline_.present();
-
-        // bail if timeout expired
-        if (timeout_expired(*present.command, present.timestamp, command, timestamp)) return false;
-
-        // delegate fold to command
-        if (!present.command->try_merge(std::move(command))) return false;
-
-        // commit
-        present.timestamp = timestamp;
-        return true;
     }
 
     timeline_t timeline_;
