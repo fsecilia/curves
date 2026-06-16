@@ -29,7 +29,7 @@ template <typename command_t> struct timeline_event_t
 
 /// command pattern command stack
 template <typename t_command_t = command_i, typename t_timeline_t = timeline_t<detail::timeline_event_t<t_command_t>>>
-class stack_t
+class new_stack_t
 {
 public:
     using command_t = t_command_t;
@@ -41,10 +41,10 @@ public:
     using duration_t = clock_t::duration;
     using time_point_t = clock_t::time_point;
 
-    explicit constexpr stack_t(timeline_t timeline = {}) noexcept : timeline_{std::move(timeline)} {}
+    explicit constexpr new_stack_t(timeline_t timeline = {}) noexcept : timeline_{std::move(timeline)} {}
 
-    constexpr stack_t(stack_t&&) noexcept = default;
-    constexpr auto operator=(stack_t&&) noexcept -> stack_t& = default;
+    constexpr new_stack_t(new_stack_t&&) noexcept = default;
+    constexpr auto operator=(new_stack_t&&) noexcept -> new_stack_t& = default;
 
     /// executes command, appends it to end of stack, merges if possible, then cuts redo chain
     ///
@@ -222,7 +222,7 @@ struct command_stack_integration_test_t : Test
     };
 
     ui_model_t model;
-    using stack_t = stack_t<>;
+    using stack_t = new_stack_t<>;
     stack_t stack;
     stack_t::time_point_t t0 = stack_t::clock_t::now();
 
