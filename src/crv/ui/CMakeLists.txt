@@ -8,6 +8,7 @@ add_library(ui
     command/command.hpp
     command/mutate_param.hpp
     command/stack.hpp
+    command/stack.cpp
     command/timeline.hpp
     hierarchical_inspector.hpp
 )

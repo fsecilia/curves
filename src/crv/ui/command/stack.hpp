@@ -187,46 +187,65 @@ private:
     bool can_merge_ = false;
 };
 
+struct stack_observer_i
+{
+    virtual auto on_push() -> void = 0;
+    virtual auto on_undo() -> void = 0;
+    virtual auto on_redo() -> void = 0;
+    virtual auto on_clear() -> void = 0;
+
+protected:
+    virtual ~stack_observer_i();
+};
+
 /// decorates a stack to make it observable
 /// \sa stack_t
-template <typename stack_t, typename observer_t> class observable_stack_t
+template <typename stack_t> class observable_stack_t
 {
 public:
     using command_t = stack_t::command_t;
     using clock_t = stack_t::clock_t;
     using time_point_t = stack_t::time_point_t;
 
-    observable_stack_t(stack_t stack, observer_t& observer) noexcept : stack_{std::move(stack)}, observer_{&observer} {}
+    explicit constexpr observable_stack_t(stack_t stack = stack_t{}) noexcept : stack_{std::move(stack)} {}
+
+    constexpr auto observer(this auto&& self) noexcept -> auto { return self.observer_; }
+    constexpr auto observer(stack_observer_i* observer) noexcept -> void { observer_ = observer; }
 
     constexpr auto push(std::unique_ptr<command_t>&& command, time_point_t timestamp = clock_t::now()) -> void
     {
+        assert(observer_);
         stack_.push(std::move(command), timestamp);
-        observer_->on_push(*this);
+        observer_->on_push();
     }
 
     template <typename command_t, typename... args_t>
     constexpr auto emplace(time_point_t timestamp, args_t&&... args) -> void
     {
+        assert(observer_);
         stack_.template emplace<command_t>(timestamp, std::forward<args_t>(args)...);
-        observer_->on_push(*this);
+        observer_->on_push();
     }
 
     template <typename command_t, typename... args_t> constexpr auto emplace_now(args_t&&... args) -> void
     {
+        assert(observer_);
         stack_.template emplace_now<command_t>(std::forward<args_t>(args)...);
-        observer_->on_push(*this);
+        observer_->on_push();
     }
 
     constexpr auto undo() -> void
     {
+        assert(observer_);
         stack_.undo();
-        observer_->on_undo(*this);
+        observer_->on_undo();
     }
 
     constexpr auto redo() -> void
     {
+        assert(observer_);
         stack_.redo();
-        observer_->on_redo(*this);
+        observer_->on_redo();
     }
 
     [[nodiscard]] constexpr auto can_undo() const noexcept -> bool { return stack_.can_undo(); }
@@ -234,13 +253,14 @@ public:
 
     constexpr auto clear() noexcept -> void
     {
+        assert(observer_);
         stack_.clear();
-        observer_->on_clear(*this);
+        observer_->on_clear();
     }
 
 private:
     stack_t stack_;
-    observer_t* observer_;
+    stack_observer_i* observer_;
 };
 
 } // namespace crv::command
