@@ -5,10 +5,16 @@
 
 #include "stack.hpp"
 #include <crv/test/test.hpp>
+#include <chrono>
 #include <gmock/gmock.h>
+#include <stdexcept>
 
 namespace crv::command {
 namespace {
+
+//
+// old stack
+//
 
 struct command_stack_test_t : Test
 {
@@ -66,6 +72,272 @@ TEST_F(command_stack_test_t, redo)
 {
     EXPECT_CALL(mock_adapter, redo());
     sut.redo();
+}
+
+//
+// new stack
+//
+
+struct command_new_stack_test_t : Test
+{
+    struct clock_t;
+    using duration_t = std::chrono::nanoseconds;
+    using time_point_t = std::chrono::time_point<clock_t, duration_t>;
+
+    struct clock_t
+    {
+        using duration = duration_t;
+        using time_point = time_point_t;
+
+        static inline time_point current_time{};
+        static auto now() noexcept -> time_point { return current_time; }
+    };
+
+    static constexpr auto merge_timeout = duration_t{10};
+    struct command_i
+    {
+        using clock_t = clock_t;
+        using duration_t = duration_t;
+        using time_point_t = time_point_t;
+
+        virtual ~command_i() = default;
+
+        virtual auto redo() -> void = 0;
+        virtual auto undo() -> void = 0;
+        virtual auto merge_timeout() const noexcept -> duration_t = 0;
+        virtual auto try_merge(command_i&& src) noexcept -> bool = 0;
+    };
+
+    struct mock_command_t : command_i
+    {
+        MOCK_METHOD(void, redo, (), (override));
+        MOCK_METHOD(void, undo, (), (override));
+        MOCK_METHOD(duration_t, merge_timeout, (), (const, noexcept, override));
+        MOCK_METHOD(bool, try_merge, (command_i&&), (noexcept, override));
+    };
+
+    using timeline_event_t = detail::timeline_event_t<command_i>;
+    using timeline_base_t = timeline_t<timeline_event_t>;
+    struct timeline_t : timeline_base_t
+    {
+        bool* throw_from_reserve = nullptr;
+        constexpr auto reserve() -> void
+        {
+            if (*throw_from_reserve) throw std::bad_alloc{};
+            else return timeline_base_t::reserve();
+        }
+    };
+
+    using sut_t = new_stack_t<command_i, timeline_t>;
+
+    bool throw_from_reserve = false;
+    sut_t sut{timeline_t{.throw_from_reserve = &throw_from_reserve}};
+
+    auto create_command() -> std::unique_ptr<StrictMock<mock_command_t>>
+    {
+        return std::make_unique<StrictMock<mock_command_t>>();
+    }
+
+    auto undo() -> void
+    {
+        ASSERT_TRUE(sut.can_undo());
+        sut.undo();
+    }
+
+    auto redo() -> void
+    {
+        ASSERT_TRUE(sut.can_redo());
+        sut.redo();
+    }
+};
+
+TEST_F(command_new_stack_test_t, push_executes_and_commits_command)
+{
+    auto command = create_command();
+    EXPECT_CALL(*command, redo());
+
+    sut.push(std::move(command));
+
+    EXPECT_TRUE(sut.can_undo());
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_reserve_failure)
+{
+    auto command = create_command();
+
+    // force throw from reserve
+    throw_from_reserve = true;
+    EXPECT_THROW(sut.push(std::move(command)), std::bad_alloc);
+
+    // timeline remains in original state
+    EXPECT_FALSE(sut.can_undo());
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_redo_failure)
+{
+    auto command = create_command();
+
+    // force throw from redo
+    EXPECT_CALL(*command, redo()).WillOnce(Throw(std::runtime_error{"execution failed"}));
+
+    EXPECT_THROW(sut.push(std::move(command)), std::runtime_error);
+
+    // timeline remains in original state
+    EXPECT_FALSE(sut.can_undo());
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_new_stack_test_t, push_merges_commands_within_timeout)
+{
+    auto const base_time = time_point_t{duration_t{1000}};
+    auto const merge_time = base_time + merge_timeout - duration_t{1};
+
+    auto command_0 = create_command();
+    auto& mock_0 = *command_0;
+    auto command_1 = create_command();
+    auto& mock_1 = *command_1;
+
+    EXPECT_CALL(mock_0, redo());
+    EXPECT_CALL(mock_0, merge_timeout()).WillRepeatedly(Return(merge_timeout));
+    EXPECT_CALL(mock_0, try_merge(_)).WillOnce(Return(true));
+
+    EXPECT_CALL(mock_1, redo());
+    EXPECT_CALL(mock_1, merge_timeout()).WillRepeatedly(Return(merge_timeout));
+
+    sut.push(std::move(command_0), base_time);
+    sut.push(std::move(command_1), merge_time);
+
+    // after merge, one undo clears both changes
+    EXPECT_CALL(mock_0, undo());
+    undo();
+
+    EXPECT_FALSE(sut.can_undo());
+}
+
+TEST_F(command_new_stack_test_t, push_rejects_merge_when_timeout_expires)
+{
+    auto const base_time = time_point_t{duration_t{1000}};
+    auto const expired_time = base_time + merge_timeout;
+
+    auto command_0 = create_command();
+    auto& mock_0 = *command_0;
+    auto command_1 = create_command();
+    auto& mock_1 = *command_1;
+
+    EXPECT_CALL(mock_0, redo());
+    EXPECT_CALL(mock_0, merge_timeout()).WillRepeatedly(Return(merge_timeout));
+    // try_merge is not called here because timeout expired
+
+    EXPECT_CALL(mock_1, redo());
+    EXPECT_CALL(mock_1, merge_timeout()).WillRepeatedly(Return(merge_timeout));
+
+    sut.push(std::move(command_0), base_time);
+    sut.push(std::move(command_1), expired_time);
+
+    // two undos available because they did not merge
+    EXPECT_CALL(mock_1, undo());
+    undo();
+    EXPECT_TRUE(sut.can_undo());
+
+    EXPECT_CALL(mock_0, undo());
+    undo();
+    EXPECT_FALSE(sut.can_undo());
+}
+
+// pushes 2 commands that merge, then pushes a 3rd that will only merge if timestamps are updated after merges
+TEST_F(command_new_stack_test_t, push_updates_timestamp_on_successful_merge)
+{
+    auto const t0 = time_point_t{duration_t{0}};
+    auto const t1 = time_point_t{duration_t{10}};
+    auto const t2 = time_point_t{duration_t{25}};
+    auto const timeout = duration_t{20};
+
+    auto command_0 = create_command();
+    auto& mock_0 = *command_0;
+    auto command_1 = create_command();
+    auto& mock_1 = *command_1;
+    auto command_2 = create_command();
+    auto& mock_2 = *command_2;
+
+    EXPECT_CALL(mock_0, redo());
+    EXPECT_CALL(mock_0, merge_timeout()).WillRepeatedly(Return(timeout));
+
+    EXPECT_CALL(mock_1, redo());
+    EXPECT_CALL(mock_1, merge_timeout()).WillRepeatedly(Return(timeout));
+
+    EXPECT_CALL(mock_2, redo());
+    EXPECT_CALL(mock_2, merge_timeout()).WillRepeatedly(Return(timeout));
+
+    // push commands 0 and 1; if timestamp updates, present's new time is 10
+    EXPECT_CALL(mock_0, try_merge(_)).WillOnce(Return(true));
+    sut.push(std::move(command_0), t0);
+    sut.push(std::move(command_1), t1);
+
+    // push command 2 at t = 25; this is expired if present is still at t = 0, but if t = 10, elapsed is 15, which is
+    // within the window of 20, so the merge proceeds
+    EXPECT_CALL(mock_0, try_merge(_)).WillOnce(Return(true));
+    sut.push(std::move(command_2), t2);
+
+    // all three collapse into single event
+    EXPECT_CALL(mock_0, undo());
+    undo();
+    EXPECT_FALSE(sut.can_undo());
+}
+
+TEST_F(command_new_stack_test_t, push_cuts_redo_chain)
+{
+    auto command_0 = create_command();
+    auto& mock_0 = *command_0;
+    auto command_1 = create_command();
+    auto& mock_1 = *command_1;
+
+    EXPECT_CALL(mock_0, redo());
+    sut.push(std::move(command_0));
+
+    EXPECT_CALL(mock_0, undo());
+    undo();
+    EXPECT_TRUE(sut.can_redo());
+
+    // pushing command 1 while in past truncates future
+    EXPECT_CALL(mock_1, redo());
+    sut.push(std::move(command_1));
+
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_new_stack_test_t, undo_and_redo_reapply_command_state)
+{
+    auto command = create_command();
+    auto& mock = *command;
+
+    EXPECT_CALL(mock, redo()).Times(2);
+    EXPECT_CALL(mock, undo()).Times(1);
+
+    sut.push(std::move(command));
+
+    undo();
+    EXPECT_FALSE(sut.can_undo());
+    EXPECT_TRUE(sut.can_redo());
+
+    redo();
+    EXPECT_TRUE(sut.can_undo());
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_new_stack_test_t, clear_wipes_timeline_and_mergeability)
+{
+    auto command = create_command();
+    auto& mock = *command;
+
+    EXPECT_CALL(mock, redo());
+    sut.push(std::move(command));
+
+    sut.clear();
+
+    EXPECT_FALSE(sut.can_undo());
+    EXPECT_FALSE(sut.can_redo());
 }
 
 } // namespace
