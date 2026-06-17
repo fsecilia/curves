@@ -36,7 +36,7 @@ public:
         events_.reserve(capacity);
     }
 
-    /// \returns true when commit() can be safely applied.
+    /// \returns true when commit() can be safely applied
     [[nodiscard]] constexpr auto can_commit() const noexcept -> bool
     {
         return future_ < events_.size() || events_.size() < events_.capacity();

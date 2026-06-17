@@ -7,43 +7,21 @@
 
 #include <crv/lib.hpp>
 #include <crv/ui/command/stack.hpp>
-#include <crv/ui/qt/command/command_adapter.hpp>
-#include <utility>
+#include <QObject>
 
 namespace crv::command::qt {
 
-/// implements command stack over QUndoStack
-template <typename impl_t> class stack_adapter_t
-{
-public:
-    explicit stack_adapter_t(impl_t& impl) : impl_{&impl} {}
-
-    template <typename command_t, typename... args_t> auto emplace(bool mergeable, args_t&&... args) -> void
-    {
-        auto command
-            = std::make_unique<command_adapter_t<command_t>>(command_t{std::forward<args_t>(args)...}, mergeable);
-        impl_->push(command.get());
-        command.release();
-    }
-
-    constexpr auto undo() -> void { impl_->undo(); }
-    constexpr auto redo() -> void { impl_->redo(); }
-
-private:
-    impl_t* impl_;
-};
-
-/// adapts new_stack_t to QObject so it can be referenced from qml
-class new_stack_adapter_t : public QObject, public stack_observer_i
+/// adapts stack_t to QObject so it can be referenced from qml
+class stack_adapter_t : public QObject, public stack_observer_i
 {
     Q_OBJECT
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY canUndoChanged)
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY canRedoChanged)
 
 public:
-    using stack_t = observable_stack_t<new_stack_t<>>;
+    using stack_t = observable_stack_t<stack_t<>>;
 
-    explicit new_stack_adapter_t(stack_t& stack) noexcept;
+    explicit stack_adapter_t(stack_t& stack) noexcept;
 
     auto canUndo() const noexcept -> bool;
     auto canRedo() const noexcept -> bool;

@@ -52,7 +52,7 @@ private:
 
     std::unique_ptr<QQmlApplicationEngine> engine_;
 
-    using stack_adapter_t = command::qt::new_stack_adapter_t;
+    using stack_adapter_t = command::qt::stack_adapter_t;
     stack_adapter_t::stack_t command_stack_;
     stack_adapter_t command_stack_adapter_{command_stack_};
 

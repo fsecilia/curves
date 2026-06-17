@@ -61,7 +61,7 @@ struct command_stack_integration_test_t : Test
     };
 
     ui_model_t model;
-    using stack_t = new_stack_t<>;
+    using stack_t = stack_t<>;
     stack_t stack;
     stack_t::time_point_t t0 = stack_t::clock_t::now();
 
