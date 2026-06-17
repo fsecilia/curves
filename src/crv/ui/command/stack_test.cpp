@@ -418,21 +418,19 @@ struct command_observable_stack_test_t : Test
         constexpr auto clear() noexcept -> void { mock->clear(); }
     };
 
-    struct mock_observer_t;
-    using sut_t = observable_stack_t<stack_t, mock_observer_t>;
-
-    struct mock_observer_t
+    struct mock_observer_t : stack_observer_i
     {
-        virtual ~mock_observer_t() = default;
-
-        MOCK_METHOD(void, on_push, (sut_t&));
-        MOCK_METHOD(void, on_undo, (sut_t&));
-        MOCK_METHOD(void, on_redo, (sut_t&));
-        MOCK_METHOD(void, on_clear, (sut_t&));
+        MOCK_METHOD(void, on_push, ());
+        MOCK_METHOD(void, on_undo, ());
+        MOCK_METHOD(void, on_redo, ());
+        MOCK_METHOD(void, on_clear, ());
     };
     StrictMock<mock_observer_t> mock_observer;
 
-    sut_t sut{stack_t{&mock_stack}, mock_observer};
+    using sut_t = observable_stack_t<stack_t>;
+    sut_t sut{stack_t{&mock_stack}};
+
+    command_observable_stack_test_t() noexcept { sut.observer(&mock_observer); }
 };
 
 TEST_F(command_observable_stack_test_t, push)
@@ -443,7 +441,7 @@ TEST_F(command_observable_stack_test_t, push)
     EXPECT_CALL(mock_stack, push(_, timestamp))
         .WillOnce(WithArg<0>(
             [&](std::unique_ptr<command_t>&& command) noexcept -> void { EXPECT_EQ(&command_ref, command.get()); }));
-    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_push());
 
     sut.push(std::move(command), timestamp);
 }
@@ -451,7 +449,7 @@ TEST_F(command_observable_stack_test_t, push)
 TEST_F(command_observable_stack_test_t, emplace)
 {
     EXPECT_CALL(mock_stack, emplace(timestamp, Ref(arg_0), Ref(arg_1)));
-    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_push());
 
     sut.template emplace<command_t>(timestamp, arg_0, arg_1);
 }
@@ -459,7 +457,7 @@ TEST_F(command_observable_stack_test_t, emplace)
 TEST_F(command_observable_stack_test_t, emplace_now)
 {
     EXPECT_CALL(mock_stack, emplace_now(Ref(arg_0), Ref(arg_1)));
-    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_push());
 
     sut.template emplace_now<command_t>(arg_0, arg_1);
 }
@@ -467,7 +465,7 @@ TEST_F(command_observable_stack_test_t, emplace_now)
 TEST_F(command_observable_stack_test_t, undo)
 {
     EXPECT_CALL(mock_stack, undo());
-    EXPECT_CALL(mock_observer, on_undo(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_undo());
 
     sut.undo();
 }
@@ -475,7 +473,7 @@ TEST_F(command_observable_stack_test_t, undo)
 TEST_F(command_observable_stack_test_t, redo)
 {
     EXPECT_CALL(mock_stack, redo());
-    EXPECT_CALL(mock_observer, on_redo(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_redo());
 
     sut.redo();
 }
@@ -507,7 +505,7 @@ TEST_F(command_observable_stack_test_t, can_redo_true)
 TEST_F(command_observable_stack_test_t, clear)
 {
     EXPECT_CALL(mock_stack, clear());
-    EXPECT_CALL(mock_observer, on_clear(Ref(sut)));
+    EXPECT_CALL(mock_observer, on_clear());
 
     sut.clear();
 }
