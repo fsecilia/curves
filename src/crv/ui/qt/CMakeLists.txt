@@ -23,6 +23,7 @@ add_library(qt_ui
     app.hpp
     command/command_adapter.hpp
     command/stack_adapter.hpp
+    command/stack_adapter.cpp
     property_model.cpp
     property_model.hpp
 )
