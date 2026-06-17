@@ -50,10 +50,11 @@ private:
     model::root_t model_root_;
     QStringList curve_names_;
 
-    // ordered
     std::unique_ptr<QQmlApplicationEngine> engine_;
-    QUndoStack qt_undo_stack_;
-    std::unique_ptr<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>> undo_stack_;
+
+    using stack_adapter_t = command::qt::new_stack_adapter_t;
+    stack_adapter_t::stack_t command_stack_;
+    stack_adapter_t command_stack_adapter_{command_stack_};
 
     std::unique_ptr<property_model_t> device_model_;
     std::unique_ptr<property_model_t> profile_model_;

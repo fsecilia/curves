@@ -109,10 +109,10 @@ public:
     /// \throws std::bad_alloc if reservation fails
     /// \throws ... exceptions from executing command propagate
     /// \sa push
-    template <typename command_t, typename... args_t>
+    template <typename typed_command_t, typename... args_t>
     constexpr auto emplace(time_point_t timestamp, args_t&&... args) -> void
     {
-        push(std::make_unique<command_t>(std::forward<args_t>(args)...), timestamp);
+        push(std::unique_ptr<command_t>{new typed_command_t{std::forward<args_t>(args)...}}, timestamp);
     }
 
     /// directly constructs and pushes command using current clock time

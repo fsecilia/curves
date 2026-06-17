@@ -118,7 +118,7 @@ auto app_t::set_active_curve(int index) -> void
     // update backing model
     auto& active_curve = model_root_.profile.active_curve;
     using active_curve_t = std::remove_cvref_t<decltype(active_curve)>;
-    undo_stack_->emplace<command::mutate_param_t<active_curve_t>>(false, active_curve, new_curve_id,
+    command_stack_.template emplace_now<command::mutate_param_t<active_curve_t>>(false, active_curve, new_curve_id,
         [=, this](active_curve_t& command_param, active_curve_t::value_t const& cur) {
             if (cur == command_param.value()) return;
             load_active_curve_model();
@@ -139,30 +139,29 @@ auto app_t::initialize() -> bool
 
     engine_ = std::make_unique<QQmlApplicationEngine>();
 
-    undo_stack_ = std::make_unique<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>>(
-        command::qt::stack_adapter_t{qt_undo_stack_});
+    command_stack_.observer(&command_stack_adapter_);
 
-    device_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    device_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     device_model_->load_config(model_root_.device);
 
-    profile_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    profile_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     profile_model_->load_config(model_root_.profile, [](std::string_view nested_path) {
         // stop inspector from diving into curve_configs tuple
         return !nested_path.starts_with("curves");
     });
 
-    scale_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    offset_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    floor_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    limit_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
-    specific_curve_model_ = std::make_unique<property_model_t>(*undo_stack_, hierarchical_inspector_factory_t{});
+    scale_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
+    offset_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
+    floor_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
+    limit_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
+    specific_curve_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     load_active_curve_model();
 
     // ordered
     auto& context = *engine_->rootContext();
     context.setContextProperty("qtVersion", QT_VERSION);
     context.setContextProperty("availableCurves", curve_names_);
-    context.setContextProperty("undoStack", &qt_undo_stack_);
+    context.setContextProperty("undoStack", &command_stack_adapter_);
     context.setContextProperty("deviceModel", device_model_.get());
     context.setContextProperty("profileModel", profile_model_.get());
     context.setContextProperty("scaleModel", scale_model_.get());

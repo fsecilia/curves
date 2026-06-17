@@ -42,21 +42,24 @@ struct command_mutate_param_test_t : Test
     StrictMock<mock_notification_target_t> mock_notification_target;
 
     using sut_t = mutate_param_t<param_t>;
-    sut_t sut{param_, mutated_param_value, [&](param_t& changed_param, value_t prev_value) {
-                  mock_notification_target.on_changed(changed_param, prev_value);
-              }};
+
+    auto make_sut(bool mergeable, param_t& param, value_t next) -> sut_t
+    {
+        return sut_t{mergeable, param, std::move(next), [&](param_t& changed_param, value_t prev_value) {
+                         mock_notification_target.on_changed(changed_param, prev_value);
+                     }};
+    }
+
+    auto make_sut() -> sut_t { return make_sut(true, param_, mutated_param_value); }
 };
 
-TEST_F(command_mutate_param_test_t, id)
+TEST_F(command_mutate_param_test_t, redo)
 {
-    EXPECT_EQ(id_t::mutate_param, sut.id());
-}
+    auto sut = make_sut();
 
-TEST_F(command_mutate_param_test_t, apply)
-{
     EXPECT_CALL(mock_notification_target, on_changed(Ref(param_), initial_param_value));
 
-    sut.apply();
+    sut.redo();
 
     // apply updates value to next
     EXPECT_EQ(mutated_param_value, param_.value());
@@ -64,6 +67,8 @@ TEST_F(command_mutate_param_test_t, apply)
 
 TEST_F(command_mutate_param_test_t, undo)
 {
+    auto sut = make_sut();
+
     EXPECT_CALL(mock_notification_target, on_changed(Ref(param_), mutated_param_value));
     param_.value(mutated_param_value);
 
@@ -73,54 +78,61 @@ TEST_F(command_mutate_param_test_t, undo)
     EXPECT_EQ(initial_param_value, param_.value());
 }
 
-TEST_F(command_mutate_param_test_t, idle_duration)
+TEST_F(command_mutate_param_test_t, mergeable_merge_timeout)
 {
-    EXPECT_EQ(sut_t::idle_duration_ms, std::chrono::duration_cast<std::chrono::milliseconds>(sut.idle_duration()));
+    auto sut = make_sut();
+    EXPECT_EQ(sut_t::merge_timeout_ms, std::chrono::duration_cast<std::chrono::milliseconds>(sut.merge_timeout()));
+}
+
+TEST_F(command_mutate_param_test_t, not_mergeable_merge_timeout)
+{
+    auto const sut = make_sut(false, param_, mutated_param_value);
+    EXPECT_EQ(sut_t::duration_t::zero(), sut.merge_timeout());
 }
 
 TEST_F(command_mutate_param_test_t, try_merge_self_succeeds_but_does_nothing)
 {
-    EXPECT_TRUE(sut.try_merge(sut));
+    auto sut = make_sut();
+    EXPECT_TRUE(sut.try_merge(std::move(sut)));
 
-    // apply still applies original next
+    // redo still applies original next
     EXPECT_CALL(mock_notification_target, on_changed(Ref(param_), initial_param_value));
-    sut.apply();
+    sut.redo();
     EXPECT_EQ(mutated_param_value, param_.value());
 }
 
 TEST_F(command_mutate_param_test_t, try_merge_other_different_param_fails)
 {
+    auto sut = make_sut();
+
     auto other_param = param_t{};
-    auto const other_sut = sut_t{other_param, merged_param_value, [&](param_t& changed_param, value_t prev_value) {
-                                     mock_notification_target.on_changed(changed_param, prev_value);
-                                 }};
+    auto other_sut = make_sut(true, other_param, merged_param_value);
 
     // other params are bounced
-    EXPECT_FALSE(sut.try_merge(other_sut));
+    EXPECT_FALSE(sut.try_merge(std::move(other_sut)));
 }
 
 TEST_F(command_mutate_param_test_t, try_merge_other_same_param_succeeds)
 {
-    auto const other_sut = sut_t{param_, merged_param_value, [&](param_t& changed_param, value_t prev_value) {
-                                     mock_notification_target.on_changed(changed_param, prev_value);
-                                 }};
+    auto sut = make_sut();
+    auto other_sut = make_sut(true, param_, merged_param_value);
 
-    EXPECT_TRUE(sut.try_merge(other_sut));
+    EXPECT_TRUE(sut.try_merge(std::move(other_sut)));
 
     // merged param value is applied instead of mutated
     EXPECT_CALL(mock_notification_target, on_changed(Ref(param_), initial_param_value));
-    sut.apply();
+    sut.redo();
     EXPECT_EQ(merged_param_value, param_.value());
 }
 
 TEST_F(command_mutate_param_test_t, try_merge_preserves_undo_state)
 {
-    auto const other_sut = sut_t{param_, merged_param_value, [&](param_t& changed_param, value_t prev_value) {
-                                     mock_notification_target.on_changed(changed_param, prev_value);
-                                 }};
+    auto sut = make_sut();
+    auto other_sut = make_sut(true, param_, merged_param_value);
+
     param_.value(mutated_param_value);
 
-    EXPECT_TRUE(sut.try_merge(other_sut));
+    EXPECT_TRUE(sut.try_merge(std::move(other_sut)));
 
     // initial_param_value is still restored even after successful merge
     EXPECT_CALL(mock_notification_target, on_changed(testing::Ref(param_), mutated_param_value));
