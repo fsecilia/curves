@@ -8,6 +8,7 @@
 #include <crv/serialization/exceptions.hpp>
 #include <crv/serialization/toml/toml.hpp>
 #include <QStandardPaths>
+#include <cstdio>
 #include <filesystem>
 #include <format>
 #include <utility>
@@ -50,6 +51,11 @@ private:
 static auto report_error(QString message) -> void
 {
     QMessageBox{QMessageBox::Critical, "Curves Configuration Error", std::move(message)}.exec();
+}
+
+static auto report_error(std::exception const& exception) -> void
+{
+    report_error(QString::fromStdString(std::format("An unhandled exception occurred.\n\n{}", exception.what())));
 }
 
 static auto report_error(serialization::parse_x const& exception) -> void
@@ -173,6 +179,25 @@ auto app_t::initialize() -> bool
     engine_->loadFromModule("Curves", "Main");
 
     return true;
+}
+
+auto app_t::notify(QObject* receiver, QEvent* event) -> bool
+{
+    try
+    {
+        return QGuiApplication::notify(receiver, event);
+    }
+    catch (std::bad_alloc const&)
+    {
+        // Error reporting needs a dedicated, preallocated, hidden message box for oom eventually. For now, just print
+        // to stderr with as little buffering as possible and abort.
+        std::fputs("Out of memory. Aborting!\n", stderr);
+    }
+    catch (std::exception const& exception)
+    {
+        report_error(exception);
+    }
+    std::abort();
 }
 
 auto app_t::load_active_curve_model() -> void
