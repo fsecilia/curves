@@ -13,7 +13,7 @@
 
 namespace crv::command {
 
-/// encapsulates command stack against a toolkit-specific adapterementation
+/// encapsulates command stack against a toolkit-specific implementation
 ///
 /// This adapter allows us to code against a toolkit without depending on the toolkit from generic code.
 template <typename adapter_t> class stack_t
