@@ -69,7 +69,7 @@ struct command_stack_test_t : Test
     using sut_t = stack_t<command_i, timeline_t>;
 
     bool throw_from_reserve = false;
-    sut_t sut{timeline_t{.throw_from_reserve = &throw_from_reserve}};
+    sut_t sut{timeline_t{{}, &throw_from_reserve}};
 
     auto create_command() -> std::unique_ptr<StrictMock<mock_command_t>>
     {
