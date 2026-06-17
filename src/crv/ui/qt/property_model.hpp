@@ -59,7 +59,7 @@ public:
         max
     };
 
-    using undo_stack_t = command::stack_t<command::qt::stack_adapter_t<QUndoStack>>;
+    using undo_stack_t = command::observable_stack_t<command::new_stack_t<>>;
 
     explicit property_model_t(undo_stack_t& undo_stack, hierarchical_inspector_factory_t hierarchical_inspector_factory,
         QObject* parent = nullptr);
@@ -113,7 +113,7 @@ public:
                     // guard against infinite loops triggered by UI bindings re-evaluating
                     if (next == modified_param.value()) return;
 
-                    undo_stack_->emplace<command::mutate_param_t<param_t>>(
+                    undo_stack_->emplace_now<command::mutate_param_t<param_t>>(
                         mergeable, modified_param, next, [=, this](param_t& command_param, value_t const& cur) {
                             // guard against infinite loops triggered by UI bindings re-evaluating
                             if (cur == command_param.value()) return;

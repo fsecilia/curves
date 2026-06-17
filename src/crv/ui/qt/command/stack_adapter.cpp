@@ -22,11 +22,13 @@ auto new_stack_adapter_t::canRedo() const noexcept -> bool
 
 void new_stack_adapter_t::undo()
 {
+    if (!canUndo()) return;
     stack_->undo();
 }
 
 void new_stack_adapter_t::redo()
 {
+    if (!canRedo()) return;
     stack_->redo();
 }
 
