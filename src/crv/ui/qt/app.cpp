@@ -7,7 +7,6 @@
 #include <crv/model/config.hpp>
 #include <crv/serialization/exceptions.hpp>
 #include <crv/serialization/toml/toml.hpp>
-#include <QApplication>
 #include <QStandardPaths>
 #include <filesystem>
 #include <format>
@@ -48,28 +47,19 @@ private:
     serialization::tomlpp::serializer_t serializer_;
 };
 
-static auto report_error(int argc, char* argv[], QString message) -> void
+static auto report_error(QString message) -> void
 {
-    QApplication::setApplicationName("curves");
-    QApplication::setOrganizationName("");
-
-    auto widgets_app = QApplication{argc, argv};
-
     QMessageBox{QMessageBox::Critical, "Curves Configuration Error", std::move(message)}.exec();
 }
 
-static auto report_error(int argc, char* argv[], serialization::parse_x const& exception) -> void
+static auto report_error(serialization::parse_x const& exception) -> void
 {
-    auto const message = std::format("Could not parse config file.\n\n{}", exception.what());
-
-    report_error(argc, argv, QString::fromStdString(message));
+    report_error(QString::fromStdString(std::format("Could not parse config file.\n\n{}", exception.what())));
 }
 
-static auto report_error(int argc, char* argv[], serialization::io_x const& exception) -> void
+static auto report_error(serialization::io_x const& exception) -> void
 {
-    auto const message = std::format("Could not write config file.\n\n{}", exception.what());
-
-    report_error(argc, argv, QString::fromStdString(message));
+    report_error(QString::fromStdString(std::format("Could not write config file.\n\n{}", exception.what())));
 }
 
 static auto find_config_path() -> std::filesystem::path
@@ -78,7 +68,7 @@ static auto find_config_path() -> std::filesystem::path
     return std::format("{}/config{}", config_root.toStdString(), serialization::tomlpp::archive_t::file_extension);
 }
 
-static auto load_model(int argc, char* argv[], config_store_t& store, model::root_t& root) noexcept -> bool
+static auto load_model(config_store_t& store, model::root_t& root) noexcept -> bool
 {
     try
     {
@@ -88,11 +78,11 @@ static auto load_model(int argc, char* argv[], config_store_t& store, model::roo
     }
     catch (serialization::parse_x const& exception)
     {
-        report_error(argc, argv, exception);
+        report_error(exception);
     }
     catch (serialization::io_x const& exception)
     {
-        report_error(argc, argv, exception);
+        report_error(exception);
     }
 
     return false;
@@ -102,8 +92,11 @@ static auto load_model(int argc, char* argv[], config_store_t& store, model::roo
 // app_t
 //
 
-app_t::app_t(QObject* parent) : QObject{parent}
-{}
+app_t::app_t(int& argc, char** argv) : QApplication{argc, argv}
+{
+    setApplicationName("curves");
+    setOrganizationName("");
+}
 
 app_t::~app_t() = default;
 
@@ -126,14 +119,11 @@ auto app_t::set_active_curve(int index) -> void
         });
 }
 
-auto app_t::initialize(int argc, char* argv[]) -> bool
+auto app_t::initialize() -> bool
 {
-    QGuiApplication::setApplicationName("curves");
-    QGuiApplication::setOrganizationName("");
-
     auto const config_path = find_config_path();
     store_ = std::make_unique<config_store_t>(config_path);
-    if (!load_model(argc, argv, *store_, model_root_)) return false;
+    if (!load_model(*store_, model_root_)) return false;
 
     for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
     {
@@ -141,7 +131,6 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
             std::string(*reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id)))));
     }
 
-    gui_app_ = std::make_unique<QGuiApplication>(argc, argv);
     engine_ = std::make_unique<QQmlApplicationEngine>();
 
     undo_stack_ = std::make_unique<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>>(
@@ -178,17 +167,12 @@ auto app_t::initialize(int argc, char* argv[]) -> bool
     context.setContextProperty("app", this);
 
     QObject::connect(
-        engine_.get(), &QQmlApplicationEngine::objectCreationFailed, gui_app_.get(),
+        engine_.get(), &QQmlApplicationEngine::objectCreationFailed, this,
         []() { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
 
     engine_->loadFromModule("Curves", "Main");
 
     return true;
-}
-
-auto app_t::run() -> int
-{
-    return gui_app_->exec();
 }
 
 auto app_t::load_active_curve_model() -> void
