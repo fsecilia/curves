@@ -10,6 +10,7 @@
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
 #include <crv/ui/qt/property_model.hpp>
+#include <QApplication>
 #include <QGuiApplication>
 #include <QMessageBox>
 #include <QObject>
@@ -23,20 +24,19 @@ namespace crv {
 class config_store_t;
 
 // main application
-class app_t : public QObject
+class app_t : public QApplication
 {
     Q_OBJECT
 
 public:
-    explicit app_t(QObject* parent = nullptr);
+    explicit app_t(int& argc, char** argv);
     ~app_t() override;
 
     Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.active_curve.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
 
-    auto initialize(int argc, char* argv[]) -> bool;
-    auto run() -> int;
+    auto initialize() -> bool;
 
 signals:
     void activeCurveChanged();
@@ -49,7 +49,6 @@ private:
     QStringList curve_names_;
 
     // ordered
-    std::unique_ptr<QGuiApplication> gui_app_;
     std::unique_ptr<QQmlApplicationEngine> engine_;
     QUndoStack qt_undo_stack_;
     std::unique_ptr<command::stack_t<command::qt::stack_adapter_t<QUndoStack>>> undo_stack_;
