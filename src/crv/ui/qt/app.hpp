@@ -38,6 +38,8 @@ public:
 
     auto initialize() -> bool;
 
+    auto notify(QObject* receiver, QEvent* event) -> bool override;
+
 signals:
     void activeCurveChanged();
 
