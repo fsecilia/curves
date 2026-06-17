@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#pragma once
+
+#include <crv/lib.hpp>
+#include <QApplication>
+#include <memory>
+#include <string>
+
+namespace crv {
+
+class test_app_t
+{
+public:
+    test_app_t();
+
+private:
+    int argc = 1;
+    std::string name = "gtest_runner";
+    std::array<char*, 2> argv{name.data(), nullptr};
+    std::unique_ptr<QApplication> app;
+};
+
+} // namespace crv
