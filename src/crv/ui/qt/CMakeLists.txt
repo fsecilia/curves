@@ -9,6 +9,13 @@ set(QT_FORCE_CMP0156_TO_VALUE NEW)
 # find qt
 find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick Test Widgets)
 
+# bail if linking against static libs
+get_target_property(qt_qml_type Qt6::Qml TYPE)
+if(NOT qt_qml_type STREQUAL "SHARED_LIBRARY")
+    # if this pops, it's because you are trying to link MIT-licensed software against LGPL-licensed Qt
+    message(FATAL_ERROR "A dynamically linked Qt installation is required. Found a static build instead.")
+endif()
+
 # expect reource prefix to be /qt/qml instead of /
 qt_policy(SET QTP0001 NEW)
 
