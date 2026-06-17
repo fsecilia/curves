@@ -7,7 +7,7 @@
 set(QT_FORCE_CMP0156_TO_VALUE NEW)
 
 # find qt
-find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick Test Widgets)
 
 # expect reource prefix to be /qt/qml instead of /
 qt_policy(SET QTP0001 NEW)
@@ -76,8 +76,10 @@ add_executable(qt_ui_test
     command/command_adapter_test.cpp
     command/stack_adapter_test.cpp
     property_model_test.cpp
+    test_app.hpp
+    test_app.cpp
 )
-target_link_libraries(qt_ui_test PRIVATE qt_ui testing)
+target_link_libraries(qt_ui_test PRIVATE qt_ui testing Qt6::Test)
 gtest_discover_tests(qt_ui_test)
 
 # main executable.
