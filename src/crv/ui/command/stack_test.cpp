@@ -340,5 +340,177 @@ TEST_F(command_new_stack_test_t, clear_wipes_timeline_and_mergeability)
     EXPECT_FALSE(sut.can_redo());
 }
 
+//
+// observable_stack_t
+//
+
+struct command_observable_stack_test_t : Test
+{
+    struct arg_0_t
+    {};
+    arg_0_t const arg_0{};
+
+    struct arg_1_t
+    {};
+    arg_1_t const arg_1{};
+
+    using time_point_t = int_t;
+    static constexpr time_point_t timestamp = 17;
+    struct clock_t
+    {
+        static auto now() noexcept -> time_point_t { return timestamp; }
+    };
+
+    struct command_t
+    {
+        using clock_t = clock_t;
+        using time_point_t = time_point_t;
+
+        int_t id = 0;
+
+        constexpr auto operator==(command_t const&) const noexcept -> bool = default;
+    };
+
+    struct mock_stack_t
+    {
+        virtual ~mock_stack_t() = default;
+
+        MOCK_METHOD(void, push, (std::unique_ptr<command_t>&&, time_point_t));
+        MOCK_METHOD(void, emplace, (time_point_t timestamp, arg_0_t const& arg_0, arg_1_t const& arg1));
+        MOCK_METHOD(void, emplace_now, (arg_0_t const& arg_0, arg_1_t const& arg1));
+        MOCK_METHOD(void, undo, ());
+        MOCK_METHOD(void, redo, ());
+        MOCK_METHOD(bool, can_undo, (), (const, noexcept));
+        MOCK_METHOD(bool, can_redo, (), (const, noexcept));
+        MOCK_METHOD(void, clear, ());
+    };
+    StrictMock<mock_stack_t> mock_stack;
+
+    struct stack_t
+    {
+        using command_t = command_t;
+        using clock_t = clock_t;
+        using time_point_t = time_point_t;
+
+        mock_stack_t* mock = nullptr;
+
+        constexpr auto push(std::unique_ptr<command_t>&& command, time_point_t timestamp = clock_t::now()) -> void
+        {
+            mock->push(std::move(command), timestamp);
+        }
+
+        template <typename command_t, typename... args_t>
+        constexpr auto emplace(time_point_t timestamp, args_t&&... args) -> void
+        {
+            mock->emplace(timestamp, std::forward<args_t>(args)...);
+        }
+
+        template <typename command_t, typename... args_t> constexpr auto emplace_now(args_t&&... args) -> void
+        {
+            mock->emplace_now(std::forward<args_t>(args)...);
+        }
+
+        constexpr auto undo() -> void { mock->undo(); }
+        constexpr auto redo() -> void { mock->redo(); }
+        [[nodiscard]] constexpr auto can_undo() const noexcept -> bool { return mock->can_undo(); }
+        [[nodiscard]] constexpr auto can_redo() const noexcept -> bool { return mock->can_redo(); }
+
+        constexpr auto clear() noexcept -> void { mock->clear(); }
+    };
+
+    struct mock_observer_t;
+    using sut_t = observable_stack_t<stack_t, mock_observer_t>;
+
+    struct mock_observer_t
+    {
+        virtual ~mock_observer_t() = default;
+
+        MOCK_METHOD(void, on_push, (sut_t&));
+        MOCK_METHOD(void, on_undo, (sut_t&));
+        MOCK_METHOD(void, on_redo, (sut_t&));
+        MOCK_METHOD(void, on_clear, (sut_t&));
+    };
+    StrictMock<mock_observer_t> mock_observer;
+
+    sut_t sut{stack_t{&mock_stack}, mock_observer};
+};
+
+TEST_F(command_observable_stack_test_t, push)
+{
+    std::unique_ptr<command_t> command = std::make_unique<command_t>();
+    command_t& command_ref = *command;
+
+    EXPECT_CALL(mock_stack, push(_, timestamp))
+        .WillOnce(WithArg<0>(
+            [&](std::unique_ptr<command_t>&& command) noexcept -> void { EXPECT_EQ(&command_ref, command.get()); }));
+    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+
+    sut.push(std::move(command), timestamp);
+}
+
+TEST_F(command_observable_stack_test_t, emplace)
+{
+    EXPECT_CALL(mock_stack, emplace(timestamp, Ref(arg_0), Ref(arg_1)));
+    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+
+    sut.template emplace<command_t>(timestamp, arg_0, arg_1);
+}
+
+TEST_F(command_observable_stack_test_t, emplace_now)
+{
+    EXPECT_CALL(mock_stack, emplace_now(Ref(arg_0), Ref(arg_1)));
+    EXPECT_CALL(mock_observer, on_push(Ref(sut)));
+
+    sut.template emplace_now<command_t>(arg_0, arg_1);
+}
+
+TEST_F(command_observable_stack_test_t, undo)
+{
+    EXPECT_CALL(mock_stack, undo());
+    EXPECT_CALL(mock_observer, on_undo(Ref(sut)));
+
+    sut.undo();
+}
+
+TEST_F(command_observable_stack_test_t, redo)
+{
+    EXPECT_CALL(mock_stack, redo());
+    EXPECT_CALL(mock_observer, on_redo(Ref(sut)));
+
+    sut.redo();
+}
+
+TEST_F(command_observable_stack_test_t, can_undo_false)
+{
+    EXPECT_CALL(mock_stack, can_undo()).WillOnce(Return(false));
+    EXPECT_FALSE(sut.can_undo());
+}
+
+TEST_F(command_observable_stack_test_t, can_undo_true)
+{
+    EXPECT_CALL(mock_stack, can_undo()).WillOnce(Return(true));
+    EXPECT_TRUE(sut.can_undo());
+}
+
+TEST_F(command_observable_stack_test_t, can_redo_false)
+{
+    EXPECT_CALL(mock_stack, can_redo()).WillOnce(Return(false));
+    EXPECT_FALSE(sut.can_redo());
+}
+
+TEST_F(command_observable_stack_test_t, can_redo_true)
+{
+    EXPECT_CALL(mock_stack, can_redo()).WillOnce(Return(true));
+    EXPECT_TRUE(sut.can_redo());
+}
+
+TEST_F(command_observable_stack_test_t, clear)
+{
+    EXPECT_CALL(mock_stack, clear());
+    EXPECT_CALL(mock_observer, on_clear(Ref(sut)));
+
+    sut.clear();
+}
+
 } // namespace
 } // namespace crv::command
