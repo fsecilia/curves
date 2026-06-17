@@ -12,7 +12,6 @@
 #include <crv/ui/command/mutate_param.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/hierarchical_inspector.hpp>
-#include <crv/ui/qt/command/command_adapter.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
 #include <QAbstractListModel>
 #include <QString>
@@ -59,7 +58,7 @@ public:
         max
     };
 
-    using undo_stack_t = command::observable_stack_t<command::new_stack_t<>>;
+    using undo_stack_t = command::observable_stack_t<command::stack_t<>>;
 
     explicit property_model_t(undo_stack_t& undo_stack, hierarchical_inspector_factory_t hierarchical_inspector_factory,
         QObject* parent = nullptr);

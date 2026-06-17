@@ -13,72 +13,10 @@ namespace crv::command {
 namespace {
 
 //
-// old stack
+// stack
 //
 
 struct command_stack_test_t : Test
-{
-    struct command_t
-    {};
-
-    struct mock_adapter_t
-    {
-        virtual ~mock_adapter_t() = default;
-
-        MOCK_METHOD(void, emplace, (bool mergeable, int_t id, std::string const& name));
-        MOCK_METHOD(void, undo, ());
-        MOCK_METHOD(void, redo, ());
-    };
-    StrictMock<mock_adapter_t> mock_adapter;
-
-    struct adapter_t
-    {
-        mock_adapter_t* mock = nullptr;
-
-        template <typename command_t, typename... args_t> auto emplace(args_t&&... args) -> void
-        {
-            mock->emplace(std::forward<args_t>(args)...);
-        }
-        auto undo() -> void { mock->undo(); }
-        auto redo() -> void { mock->redo(); }
-    };
-
-    int_t const id = 3;
-    std::string name = "name";
-
-    using sut_t = stack_t<adapter_t>;
-    sut_t sut{adapter_t{&mock_adapter}};
-};
-
-TEST_F(command_stack_test_t, push_mergable)
-{
-    EXPECT_CALL(mock_adapter, emplace(true, id, name));
-    sut.template emplace<command_t>(true, id, name);
-}
-
-TEST_F(command_stack_test_t, push_not_mergable)
-{
-    EXPECT_CALL(mock_adapter, emplace(false, id, name));
-    sut.template emplace<command_t>(false, id, name);
-}
-
-TEST_F(command_stack_test_t, undo)
-{
-    EXPECT_CALL(mock_adapter, undo());
-    sut.undo();
-}
-
-TEST_F(command_stack_test_t, redo)
-{
-    EXPECT_CALL(mock_adapter, redo());
-    sut.redo();
-}
-
-//
-// new stack
-//
-
-struct command_new_stack_test_t : Test
 {
     struct clock_t;
     using duration_t = std::chrono::nanoseconds;
@@ -128,7 +66,7 @@ struct command_new_stack_test_t : Test
         }
     };
 
-    using sut_t = new_stack_t<command_i, timeline_t>;
+    using sut_t = stack_t<command_i, timeline_t>;
 
     bool throw_from_reserve = false;
     sut_t sut{timeline_t{.throw_from_reserve = &throw_from_reserve}};
@@ -151,7 +89,7 @@ struct command_new_stack_test_t : Test
     }
 };
 
-TEST_F(command_new_stack_test_t, push_executes_and_commits_command)
+TEST_F(command_stack_test_t, push_executes_and_commits_command)
 {
     auto command = create_command();
     EXPECT_CALL(*command, redo());
@@ -162,7 +100,7 @@ TEST_F(command_new_stack_test_t, push_executes_and_commits_command)
     EXPECT_FALSE(sut.can_redo());
 }
 
-TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_reserve_failure)
+TEST_F(command_stack_test_t, push_provides_strong_guarantee_on_reserve_failure)
 {
     auto command = create_command();
 
@@ -175,7 +113,7 @@ TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_reserve_failu
     EXPECT_FALSE(sut.can_redo());
 }
 
-TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_redo_failure)
+TEST_F(command_stack_test_t, push_provides_strong_guarantee_on_redo_failure)
 {
     auto command = create_command();
 
@@ -189,7 +127,7 @@ TEST_F(command_new_stack_test_t, push_provides_strong_guarantee_on_redo_failure)
     EXPECT_FALSE(sut.can_redo());
 }
 
-TEST_F(command_new_stack_test_t, push_merges_commands_within_timeout)
+TEST_F(command_stack_test_t, push_merges_commands_within_timeout)
 {
     auto const base_time = time_point_t{duration_t{1000}};
     auto const merge_time = base_time + merge_timeout - duration_t{1};
@@ -216,7 +154,7 @@ TEST_F(command_new_stack_test_t, push_merges_commands_within_timeout)
     EXPECT_FALSE(sut.can_undo());
 }
 
-TEST_F(command_new_stack_test_t, push_rejects_merge_when_timeout_expires)
+TEST_F(command_stack_test_t, push_rejects_merge_when_timeout_expires)
 {
     auto const base_time = time_point_t{duration_t{1000}};
     auto const expired_time = base_time + merge_timeout;
@@ -247,7 +185,7 @@ TEST_F(command_new_stack_test_t, push_rejects_merge_when_timeout_expires)
 }
 
 // pushes 2 commands that merge, then pushes a 3rd that will only merge if timestamps are updated after merges
-TEST_F(command_new_stack_test_t, push_updates_timestamp_on_successful_merge)
+TEST_F(command_stack_test_t, push_updates_timestamp_on_successful_merge)
 {
     auto const t0 = time_point_t{duration_t{0}};
     auto const t1 = time_point_t{duration_t{10}};
@@ -286,7 +224,7 @@ TEST_F(command_new_stack_test_t, push_updates_timestamp_on_successful_merge)
     EXPECT_FALSE(sut.can_undo());
 }
 
-TEST_F(command_new_stack_test_t, push_cuts_redo_chain)
+TEST_F(command_stack_test_t, push_cuts_redo_chain)
 {
     auto command_0 = create_command();
     auto& mock_0 = *command_0;
@@ -307,7 +245,7 @@ TEST_F(command_new_stack_test_t, push_cuts_redo_chain)
     EXPECT_FALSE(sut.can_redo());
 }
 
-TEST_F(command_new_stack_test_t, undo_and_redo_reapply_command_state)
+TEST_F(command_stack_test_t, undo_and_redo_reapply_command_state)
 {
     auto command = create_command();
     auto& mock = *command;
@@ -326,7 +264,7 @@ TEST_F(command_new_stack_test_t, undo_and_redo_reapply_command_state)
     EXPECT_FALSE(sut.can_redo());
 }
 
-TEST_F(command_new_stack_test_t, clear_wipes_timeline_and_mergeability)
+TEST_F(command_stack_test_t, clear_wipes_timeline_and_mergeability)
 {
     auto command = create_command();
     auto& mock = *command;

@@ -13,26 +13,6 @@
 
 namespace crv::command {
 
-/// encapsulates command stack against a toolkit-specific implementation
-///
-/// This adapter allows us to code against a toolkit without depending on the toolkit from generic code.
-template <typename adapter_t> class stack_t
-{
-public:
-    constexpr stack_t(adapter_t adapter) noexcept : adapter_{std::move(adapter)} {}
-
-    template <typename command_t, typename... args_t> auto emplace(bool mergeable, args_t&&... args) -> void
-    {
-        adapter_.template emplace<command_t>(mergeable, std::forward<args_t>(args)...);
-    }
-
-    constexpr auto undo() -> void { adapter_.undo(); }
-    constexpr auto redo() -> void { adapter_.redo(); }
-
-private:
-    adapter_t adapter_;
-};
-
 namespace detail {
 
 template <typename command_t> struct timeline_event_t
@@ -45,7 +25,7 @@ template <typename command_t> struct timeline_event_t
 
 /// command pattern command stack
 template <typename t_command_t = command_i, typename t_timeline_t = timeline_t<detail::timeline_event_t<t_command_t>>>
-class new_stack_t
+class stack_t
 {
 public:
     using command_t = t_command_t;
@@ -57,10 +37,10 @@ public:
     using duration_t = clock_t::duration;
     using time_point_t = clock_t::time_point;
 
-    explicit constexpr new_stack_t(timeline_t timeline = {}) noexcept : timeline_{std::move(timeline)} {}
+    explicit constexpr stack_t(timeline_t timeline = {}) noexcept : timeline_{std::move(timeline)} {}
 
-    constexpr new_stack_t(new_stack_t&&) noexcept = default;
-    constexpr auto operator=(new_stack_t&&) noexcept -> new_stack_t& = default;
+    constexpr stack_t(stack_t&&) noexcept = default;
+    constexpr auto operator=(stack_t&&) noexcept -> stack_t& = default;
 
     /// executes command, appends it to end of stack, merges if possible, then cuts redo chain
     ///
