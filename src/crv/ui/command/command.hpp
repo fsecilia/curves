@@ -35,7 +35,7 @@ struct command_i
     /// is guaranteed to succeed without throwing.
     ///
     /// \returns true if command was correct type, referred to the same target, and was successfully merged
-    virtual auto try_merge(command_i&& src) noexcept -> bool = 0;
+    virtual auto try_merge(command_i&& src) -> bool = 0;
 };
 
 /// provides default implementations for commands that can never be merged
@@ -50,7 +50,7 @@ public:
 template <typename derived_t> class mergeable_command_t : public command_i
 {
 public:
-    auto try_merge(command_i&& src) noexcept -> bool final
+    auto try_merge(command_i&& src) -> bool final
     {
         auto* typed_src = dynamic_cast<derived_t*>(&src);
         if (!typed_src) return false;
@@ -59,7 +59,7 @@ public:
 
 protected:
     /// strongly-typed overload for derived types to implement
-    virtual auto try_merge(derived_t&& src) noexcept -> bool = 0;
+    virtual auto try_merge(derived_t&& src) -> bool = 0;
 };
 
 enum class id_t : int_t
