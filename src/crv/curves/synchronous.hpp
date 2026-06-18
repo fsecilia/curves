@@ -200,7 +200,14 @@ struct synchronous_t
         /// array of critical points
         ///
         /// This curve has one critical point, at the cusp.
-        auto critical_points() const -> std::vector<scalar_t> { return {p_}; }
+        constexpr auto critical_points() const -> std::vector<scalar_t> { return {p_}; }
+
+        constexpr auto anchor() const noexcept -> scalar_t { return p_; }
+        constexpr auto anchor(scalar_t value) noexcept -> scalar_t
+        {
+            assert(value >= 0.0);
+            p_ = value;
+        }
 
     private:
         scalar_t m_; // motivity

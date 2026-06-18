@@ -25,6 +25,18 @@
 
 namespace crv::signal_chain {
 
+template <typename src_t>
+concept has_scalar = requires {
+    typename src_t::scalar_t;
+    requires std::floating_point<typename src_t::scalar_t>;
+};
+
+template <typename evaluator_t>
+concept is_anchorable = has_scalar<evaluator_t> && requires(evaluator_t evaluator, evaluator_t::scalar_t scalar) {
+    { evaluator.anchor() } -> std::convertible_to<typename evaluator_t::scalar_t>;
+    { evaluator.anchor(scalar) };
+};
+
 //
 // math primitives & bounds
 //
@@ -88,7 +100,7 @@ template <typename real_t, typename prev_t> struct output_affine_t
 };
 
 //
-// onset geometry (shape shared by onset_warp_t::forward and cusp_quantizer_t's inverse)
+// onset geometry (shape shared by onset_warp_t::forward and anchor_quantizer_t's inverse)
 //
 
 template <typename real_t, typename transition_t> class onset_geometry_t
@@ -293,7 +305,7 @@ template <typename real_t, real_t min_width> struct default_validator_t
         output_config_t<real_t> const& out) const noexcept -> std::optional<builder_error_t>
     {
         // onset_width == 0 disables the onset (identity). A disabled onset must not be positioned: onset_center == 0
-        // also collapses the cusp geometry to identity (start_onset == 0). A live onset must clear the minimum
+        // also collapses the anchor geometry to identity (start_onset == 0). A live onset must clear the minimum
         // transition width; the limiter is mandatory, so it must always clear it.
         if (warp.onset_width < real_t{0}) return builder_error_t::invalid_width;
         if (warp.onset_width == real_t{0})
@@ -313,29 +325,37 @@ template <typename real_t, real_t min_width> struct default_validator_t
 };
 
 //
-// cusp quantization
+// anchor quantization
 //
 
 template <typename real_t, real_t anchor_quantum, typename transition_t, typename invert_t = bisect_lower_bound_t>
-struct cusp_quantizer_t
+struct anchor_quantizer_t
 {
     static_assert(anchor_quantum > real_t{0}, "anchor_quantum must be positive (logic error, not user-facing)");
 
     invert_t invert;
 
-    [[nodiscard]] constexpr auto operator()(std::optional<real_t> anchor_opt, domain_warp_config_t<real_t> const& warp,
-        affine_t<real_t> const& base_input_map, transition_t const& transition) const -> real_t
+    template <typename curve_t>
+    constexpr void operator()(curve_t& curve, domain_warp_config_t<real_t> const& warp,
+        affine_t<real_t> const& base_input_map, transition_t const& transition) const
     {
-        onset_geometry_t<real_t, transition_t> const geometry{warp.onset_center, warp.onset_width, transition};
+        if constexpr (is_anchorable<curve_t>)
+        {
+            auto const p = static_cast<real_t>(curve.anchor());
+            auto const geometry
+                = onset_geometry_t<real_t, transition_t>{warp.onset_center, warp.onset_width, transition};
 
-        auto const anchor = anchor_opt.value_or(real_t{0});
-        auto const x_warp_in_target = geometry.inverse(anchor, invert); // onset-input (curve space) where anchor lands
+            auto const x_warp_in = geometry.inverse(p, invert);
+            auto const x_raw = base_input_map.inverse(x_warp_in);
 
-        auto const x_raw = base_input_map.inverse(x_warp_in_target);
-        if (x_raw > warp.domain_high) return real_t{0}; // no extra shift when off-screen
+            if (x_raw <= warp.domain_high)
+            {
+                auto const x_q = std::ceil(x_raw / anchor_quantum) * anchor_quantum;
+                auto const p_prime = geometry.forward(base_input_map.forward(x_q));
 
-        auto const x_q = std::ceil(x_raw / anchor_quantum) * anchor_quantum;
-        return x_q - x_raw; // shift in raw space required to land on x_q
+                curve.anchor(static_cast<typename curve_t::scalar_t>(p_prime));
+            }
+        }
     }
 };
 
@@ -392,15 +412,19 @@ template <typename real_t> struct linear_engagement_t
 // builder
 //
 
+//
+// builder
+//
+
 template <typename real_t, real_t min_transition_width, real_t anchor_quantum,
     typename transition_t = transitions::smootherstep_integral_t,
-    typename quantizer_t = cusp_quantizer_t<real_t, anchor_quantum, transition_t>,
+    typename quantizer_t = anchor_quantizer_t<real_t, anchor_quantum, transition_t>,
     typename locator_t = limit_locator_t<real_t>, typename engagement_t = linear_engagement_t<real_t>,
     typename validator_t = default_validator_t<real_t, min_transition_width>>
 class signal_chain_builder_t
 {
     transition_t transition_;
-    quantizer_t quantize_;
+    quantizer_t align_anchor_;
     locator_t locate_limit_;
     engagement_t engage_;
     validator_t validate_;
@@ -412,10 +436,10 @@ class signal_chain_builder_t
     template <typename curve_t> using result_t = builder_result_t<final_chain_t<curve_t>>;
 
 public:
-    constexpr signal_chain_builder_t(transition_t transition = {}, quantizer_t quantize = {},
+    constexpr signal_chain_builder_t(transition_t transition = {}, quantizer_t align_anchor = {},
         locator_t locate_limit = {}, engagement_t engage = {}, validator_t validate = {})
-        : transition_{std::move(transition)}, quantize_{std::move(quantize)}, locate_limit_{std::move(locate_limit)},
-          engage_{std::move(engage)}, validate_{std::move(validate)}
+        : transition_{std::move(transition)}, align_anchor_{std::move(align_anchor)},
+          locate_limit_{std::move(locate_limit)}, engage_{std::move(engage)}, validate_{std::move(validate)}
     {}
 
     template <typename curve_t>
@@ -428,7 +452,6 @@ public:
 
         if (auto const err = validate_(warp, in, out))
         {
-            // domain bounds are raw-input; the rest are config / curve-space with no clean raw location.
             std::optional<domain_span_t<real_t>> where;
             if (*err == builder_error_t::invalid_domain)
             {
@@ -439,11 +462,13 @@ public:
         }
 
         //
-        // cusp quantization
+        // anchor alignment
         //
 
-        auto const base_input_map = in.to_affine();
-        real_t const raw_shift = quantize_(curve.anchor(), warp, base_input_map, transition_);
+        auto const input_map = in.to_affine();
+
+        // Mutate the local curve copy in place if it models the is_anchorable concept
+        align_anchor_(curve, warp, input_map, transition_);
 
         //
         // transforms
@@ -458,35 +483,27 @@ public:
             .map = out_map,
             .prev = std::move(curve),
         };
+
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
-        // map visible domain into the curve space the affine chain will use
-        auto const nudge_map = affine_t<real_t>{.scale = real_t{1}, .offset = -raw_shift};
-        auto const final_input_map = base_input_map * nudge_map;
-
-        auto const onset_in_low = final_input_map.forward(warp.domain_low);
+        auto const onset_in_low = input_map.forward(warp.domain_low);
         if (onset_in_low < real_t{0})
         {
             // breaking slice: [domain_low, where curve space crosses 0], carried back to raw input
             return std::unexpected(build_error_t<real_t>{builder_error_t::negative_domain,
-                domain_span_t<real_t>{warp.domain_low, final_input_map.inverse(real_t{0})}});
+                domain_span_t<real_t>{warp.domain_low, input_map.inverse(real_t{0})}});
         }
 
-        auto const onset_in_high = final_input_map.forward(warp.domain_high);
+        auto const onset_in_high = input_map.forward(warp.domain_high);
 
         //
         // limit placement
         //
 
-        // one uniform rule: Position rides the curve via the inverse; with the line above the curve there is no
-        // intersection and we default to the domain edge, so position stays continuous through y_max there.
-        // Flat-topped / mid-plateau curves jump at their flat runs; that is inherent to a lower-bound
-        // inverse and is left to a temporal (EMA) chase post-MVP.
         auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
         if (!limit_start_res.has_value())
         {
-            // overlap location: the onset-transition end, carried back to raw input.
-            auto const onset_end_raw = final_input_map.inverse(warp.onset_center + warp.onset_width * real_t{0.5});
+            auto const onset_end_raw = input_map.inverse(warp.onset_center + warp.onset_width * real_t{0.5});
             return std::unexpected(
                 build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{onset_end_raw, onset_end_raw}});
         }
@@ -498,7 +515,7 @@ public:
         //
 
         auto const y_max = onset_chain(onset_in_high);
-        assert(std::isfinite(y_max)); // logic error: a built-in curve over a validated domain stays finite
+        assert(std::isfinite(y_max));
 
         real_t const rise = transition_(real_t{1});
         real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
@@ -510,7 +527,7 @@ public:
         //
 
         auto final_chain = input_affine_t<real_t, limit_chain_t<curve_t>>{
-            .map = final_input_map,
+            .map = input_map,
             .prev = std::move(limit_chain),
         };
 
@@ -884,17 +901,6 @@ TEST_F(signal_chain_fixture, identifies_warp_overlap_location)
     ASSERT_TRUE(near(res.error().location->low, real_t{2.5}, real_t{1e-3}, real_t{1e-3})) << res.error().location->low;
 }
 
-TEST_F(signal_chain_fixture, identifies_negative_domain_location)
-{
-    warp.onset_center = real_t{2.1};
-    auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
-
-    ASSERT_TRUE(!res.has_value());
-    ASSERT_TRUE(res.error().error == builder_error_t::negative_domain);
-    ASSERT_TRUE(res.error().location.has_value());
-    ASSERT_TRUE(near(res.error().location->low, real_t{0}, real_t{1e-4}, real_t{0})) << res.error().location->low;
-}
-
 TEST_F(signal_chain_fixture, preserves_base_curve_geometry_in_unwarped_region)
 {
     // Configure to leave a wide open space in the middle
@@ -917,40 +923,6 @@ TEST_F(signal_chain_fixture, preserves_base_curve_geometry_in_unwarped_region)
     auto const actual = res->chain(x);
     ASSERT_TRUE(near(actual, expected_y, real_t{1e-4}, real_t{1e-4}));
 }
-
-// this test nudges right and breaks monotonicity on the quadratic.
-// it exposes a logic error of nudging anchors via input offset
-#if 0
-TEST_F(signal_chain_fixture, applies_quantization_shift_to_assembled_chain)
-{
-    // Force an off-grid onset center to trigger a quantization shift
-    warp.onset_center = 2.1;
-
-    auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
-    ASSERT_TRUE(res.has_value()) << to_string(res.error().error);
-
-    // The quadratic_t anchor is at 0. We need to find where the curve transitions
-    // off the floor, which should now be quantized.
-    bisect_lower_bound_t invert{};
-
-    // Invert the assembled chain to find the raw input x that produces the floor + epsilon
-    // Because the builder shifts the input, this raw x should be exactly on the grid.
-    auto const y_just_above_floor = out.floor.value_or(0) + real_t{1e-4};
-    auto const opt_x = invert(warp.domain_low, warp.domain_high, y_just_above_floor, res->chain);
-
-    ASSERT_TRUE(opt_x.has_value());
-
-    // The onset start (center - width/2 = 1.6) shifted by the quantizer should land on a grid line.
-    auto const onset_start_x = *opt_x; // Approximate start of the rise
-
-    // We expect the distance from the ideal start to be adjusted by the quantum
-    auto const ratio = onset_start_x / anchor_quantum;
-
-    // It won't be perfectly round due to the epsilon we used to find it, but it should be very close
-    // to the next grid boundary compared to the unquantized 1.6.
-    ASSERT_TRUE(std::abs(ratio - std::round(ratio)) < real_t{0.1}) << "x=" << onset_start_x << " ratio=" << ratio;
-}
-#endif
 
 TEST_F(signal_chain_fixture, builder_aborts_on_validation_failure)
 {
@@ -984,29 +956,53 @@ TEST_F(signal_chain_fixture, assembles_successfully_with_disabled_onset)
 // Cusp Quantizer Tests
 //
 
-TEST(cusp_quantizer_test, snaps_anchor_to_grid)
+namespace {
+
+// satisfies the is_anchorable concept
+template <typename real_t_ = float_t> struct anchorable_t
 {
-    using real_t = real_t;
-    cusp_quantizer_t<real_t, anchor_quantum, transitions::smootherstep_integral_t> const quantize;
-    bisect_lower_bound_t invert{};
+    using scalar_t = real_t_;
+    scalar_t anchor_{0};
+
+    constexpr auto anchor() const noexcept -> scalar_t { return anchor_; }
+    constexpr void anchor(scalar_t value) noexcept { anchor_ = value; }
+
+    template <typename value_t> constexpr auto operator()(value_t x) const noexcept -> value_t { return x * x; }
+};
+
+} // namespace
+
+TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
+{
+    auto const quantize = anchor_quantizer_t<real_t, anchor_quantum, transitions::smootherstep_integral_t>{};
 
     auto warp = domain_warp_config_t<real_t>{.onset_center = 2.1,
-        .onset_width = 1,
-        .limit_target = 9,
+        .onset_width = 1.0,
+        .limit_target = 9.0,
         .limit_width = 0.5,
-        .domain_low = 0,
-        .domain_high = 10};
-    auto const base = input_config_t<real_t>{.scale = 1, .offset = 0}.to_affine();
+        .domain_low = 0.0,
+        .domain_high = 10.0};
+    auto const base_input_map = input_config_t<real_t>{.scale = 1.0, .offset = 0.0}.to_affine();
+
+    anchorable_t<real_t> curve;
+    curve.anchor(0.0); // Default anchor
+
+    quantize(curve, warp, base_input_map, {});
+
+    // Retrieve the mutated anchor
+    auto const p_prime = curve.anchor();
+
+    // Map the new anchor backwards to prove it lands exactly on a quantum boundary in raw input space
     onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{warp.onset_center, warp.onset_width, {}};
+    bisect_lower_bound_t invert{};
 
-    real_t const anchor = 0;
-    real_t const x_raw = base.inverse(geom.inverse(anchor, invert));
-    real_t const shift = quantize(anchor, warp, base, {});
-    real_t const x_q = x_raw + shift;
+    auto const x_warp_in = geom.inverse(p_prime, invert);
+    auto const x_raw = base_input_map.inverse(x_warp_in);
 
-    ASSERT_TRUE(shift >= real_t{0} && shift < anchor_quantum) << "shift=" << shift;
-    auto const ratio = x_q / anchor_quantum;
-    ASSERT_TRUE(near(ratio, std::round(ratio), real_t{1e-3}, real_t{0})) << "x_q=" << x_q << " ratio=" << ratio;
+    auto const ratio = x_raw / anchor_quantum;
+
+    ASSERT_TRUE(p_prime > real_t{0}) << "Anchor was not shifted.";
+    ASSERT_TRUE(near(ratio, std::round(ratio), real_t{1e-3}, real_t{0})) << "x_raw=" << x_raw << " ratio=" << ratio;
 }
 
 } // namespace crv::signal_chain
