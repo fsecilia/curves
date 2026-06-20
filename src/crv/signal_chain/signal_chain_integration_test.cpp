@@ -79,11 +79,14 @@ template <typename real_t, typename transition_t> class onset_geometry_t
 {
 public:
     constexpr onset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
-        : start_{center - width * transition(real_t{1})}, width_{width},
-          inv_width_{width > real_t{0} ? real_t{1} / width : real_t{0}}, rise_{transition(real_t{1})},
-          transition_{std::move(transition)}
+        : width_{width}, transition_{std::move(transition)}
     {
-        assert(width >= real_t{0});
+        assert(width_ >= real_t{0});
+        inv_width_ = width_ > real_t{0} ? real_t{1} / width_ : real_t{0};
+
+        auto const transition_height = transition_(real_t{1});
+        rise_ = transition_height;
+        start_ = center - width_ * transition_height;
     }
 
     // onset-input x -> warped (curve-input) coordinate; identity when disabled (width == 0)
