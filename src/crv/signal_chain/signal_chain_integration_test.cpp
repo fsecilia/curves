@@ -100,14 +100,14 @@ template <typename real_t, typename prev_t> struct output_affine_t
 };
 
 //
-// onset geometry (shape shared by onset_warp_t::forward and anchor_quantizer_t's inverse)
+// onset geometry (shared by onset_warp_t::forward and anchor_quantizer_t's inverse)
 //
 
 template <typename real_t, typename transition_t> class onset_geometry_t
 {
 public:
     constexpr onset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
-        : start_{center - width * real_t{0.5}}, width_{width},
+        : start_{center - width * transition(real_t{1})}, width_{width},
           inv_width_{width > real_t{0} ? real_t{1} / width : real_t{0}}, rise_{transition(real_t{1})},
           transition_{std::move(transition)}
     {
@@ -238,8 +238,10 @@ template <typename real_t> struct domain_warp_config_t
 {
     real_t onset_center;
     real_t onset_width;
+    real_t onset_height;
     real_t limit_target;
     real_t limit_width;
+    real_t limit_height;
     real_t domain_low;
     real_t domain_high;
 };
@@ -376,9 +378,9 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
     {
         auto const opt_x_cap = invert(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
         auto const x_cap = opt_x_cap.value_or(onset_in_high);
-        auto const limit_start = x_cap - warp.limit_width * real_t{0.5};
+        auto const limit_start = x_cap - warp.limit_width * warp.limit_height;
 
-        if (limit_start < warp.onset_center + warp.onset_width * real_t{0.5})
+        if (limit_start < warp.onset_center + warp.onset_width * warp.onset_height)
         {
             return std::unexpected(builder_error_t::warp_overlap);
         }
@@ -407,10 +409,6 @@ template <typename real_t> struct linear_engagement_t
         return std::max(real_t{0}, real_t{1} - gap_v / window_v);
     }
 };
-
-//
-// builder
-//
 
 //
 // builder
@@ -503,7 +501,7 @@ public:
         auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
         if (!limit_start_res.has_value())
         {
-            auto const onset_end_raw = input_map.inverse(warp.onset_center + warp.onset_width * real_t{0.5});
+            auto const onset_end_raw = input_map.inverse(warp.onset_center + warp.onset_width * warp.onset_height);
             return std::unexpected(
                 build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{onset_end_raw, onset_end_raw}});
         }
@@ -567,17 +565,23 @@ TEST(signal_chain_test, assembles_and_evaluates)
 {
     using real_t = float_t;
 
-    auto const builder = signal_chain_builder_t<real_t, min_transition_width<real_t>, anchor_quantum>{};
+    using transition_t = transitions::smootherstep_integral_t;
+    auto transition = transition_t{};
+    auto const transition_height = transition(1.0);
 
-    auto const build_result = builder.build(quadratic_t<real_t>{},
-        domain_warp_config_t<real_t>{.onset_center = 0.5,
-            .onset_width = 0.25,
-            .limit_target = 17.0,
-            .limit_width = 0.5,
-            .domain_low = 0.0,
-            .domain_high = 256.0},
-        input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
-        output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
+    auto domain_warp_config = domain_warp_config_t<real_t>{.onset_center = 0.5,
+        .onset_width = 0.25,
+        .onset_height = transition_height,
+        .limit_target = 17.0,
+        .limit_width = 0.5,
+        .limit_height = transition_height,
+        .domain_low = 0.0,
+        .domain_high = 256.0};
+
+    auto const builder = signal_chain_builder_t<real_t, min_transition_width<real_t>, anchor_quantum, transition_t>{};
+    auto const build_result
+        = builder.build(quadratic_t<real_t>{}, domain_warp_config, input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
+            output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
 
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error().error);
     auto const& result = *build_result;
@@ -664,7 +668,8 @@ TEST(onset_geometry_test, roundtrip_maintains_cubic_ramp_geometry)
     onset_geometry_t<real_t, quadratic_integral_t<real_t>> const geom{real_t{2}, real_t{1}, {}};
     bisect_lower_bound_t invert{};
 
-    for (auto x = real_t{1.5}; x <= real_t{4}; x += real_t{0.05})
+    auto const start_x = real_t{2} - real_t{1} * (real_t{1} / real_t{3}); // 5/3
+    for (auto x = start_x; x <= real_t{4}; x += real_t{0.05})
     {
         auto const back = geom.inverse(geom.forward(x), invert);
         ASSERT_TRUE(near(back, x, real_t{1e-2}, real_t{1e-2})) << "x=" << x << " back=" << back;
@@ -718,21 +723,18 @@ struct validator_fixture : Test
     using real_t = real_t;
     default_validator_t<real_t, min_transition_width<real_t>> validate;
 
-    domain_warp_config_t<real_t> warp;
-    input_config_t<real_t> in;
-    output_config_t<real_t> out;
-
-    void SetUp() override
-    {
-        warp = {.onset_center = 2,
-            .onset_width = 1,
-            .limit_target = 9,
-            .limit_width = 0.5,
-            .domain_low = 0,
-            .domain_high = 10};
-        in = {.scale = 1, .offset = 0};
-        out = {.scale = 1, .offset = 0, .floor = real_t{0}};
-    }
+    domain_warp_config_t<real_t> warp = {
+        .onset_center = 2,
+        .onset_width = 1,
+        .onset_height = 0.5,
+        .limit_target = 9,
+        .limit_width = 0.5,
+        .limit_height = 0.5,
+        .domain_low = 0,
+        .domain_high = 10,
+    };
+    input_config_t<real_t> in = {.scale = 1, .offset = 0};
+    output_config_t<real_t> out = {.scale = 1, .offset = 0, .floor = real_t{0}};
 };
 
 TEST_F(validator_fixture, accepts_valid_configuration)
@@ -806,21 +808,18 @@ struct signal_chain_fixture : ::testing::Test
     using real_t = real_t;
     builder_t builder;
 
-    domain_warp_config_t<real_t> warp;
-    input_config_t<real_t> in;
-    output_config_t<real_t> out;
-
-    void SetUp() override
-    {
-        warp = {.onset_center = 2,
-            .onset_width = 1,
-            .limit_target = 9,
-            .limit_width = 0.5,
-            .domain_low = 0,
-            .domain_high = 10};
-        in = {.scale = 1, .offset = 0};
-        out = {.scale = 1, .offset = 0, .floor = real_t{0}};
-    }
+    domain_warp_config_t<real_t> warp = {
+        .onset_center = 2,
+        .onset_width = 1,
+        .onset_height = 0.5,
+        .limit_target = 9,
+        .limit_width = 0.5,
+        .limit_height = 0.5,
+        .domain_low = 0,
+        .domain_high = 10,
+    };
+    input_config_t<real_t> in = {.scale = 1, .offset = 0};
+    output_config_t<real_t> out = {.scale = 1, .offset = 0, .floor = real_t{0}};
 };
 
 TEST_F(signal_chain_fixture, evaluates_monotonically_across_domain)
@@ -976,12 +975,16 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
 {
     auto const quantize = anchor_quantizer_t<real_t, anchor_quantum, transitions::smootherstep_integral_t>{};
 
-    auto warp = domain_warp_config_t<real_t>{.onset_center = 2.1,
+    auto warp = domain_warp_config_t<real_t>{
+        .onset_center = 2.1,
         .onset_width = 1.0,
+        .onset_height = 0.5,
         .limit_target = 9.0,
         .limit_width = 0.5,
+        .limit_height = 0.5,
         .domain_low = 0.0,
-        .domain_high = 10.0};
+        .domain_high = 10.0,
+    };
     auto const base_input_map = input_config_t<real_t>{.scale = 1.0, .offset = 0.0}.to_affine();
 
     anchorable_t<real_t> curve;

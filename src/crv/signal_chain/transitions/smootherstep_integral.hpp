@@ -21,7 +21,7 @@ struct smootherstep_integral_t
 
         auto const t = primal(input);
         if (t <= scalar_t{0}) return value_t{0};
-        if (t >= scalar_t{1}) return input - scalar_t{0.5};
+        if (t >= scalar_t{1}) return input - scalar_t{0.5}; // input - 1 + f(1)
 
         // strictly compute using the primal scalar to avoid implicit jet evaluation
         auto const t2 = t * t;
