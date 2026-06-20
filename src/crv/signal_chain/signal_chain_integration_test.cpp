@@ -74,36 +74,7 @@ template <std::floating_point real_t> struct affine_t
     }
 };
 
-//
-// stages
-//
-
-template <typename real_t, typename prev_t> struct input_affine_t
-{
-    affine_t<real_t> map;
-    prev_t prev;
-
-    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return prev(map(x));
-    }
-};
-
-template <typename real_t, typename prev_t> struct output_affine_t
-{
-    affine_t<real_t> map;
-    prev_t prev;
-
-    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
-    {
-        return map(prev(x));
-    }
-};
-
-//
-// onset geometry (shared by onset_warp_t::forward and anchor_quantizer_t's inverse)
-//
-
+// geometry shared by onset_warp_t::forward and anchor_quantizer_t::inverse
 template <typename real_t, typename transition_t> class onset_geometry_t
 {
 public:
@@ -147,8 +118,30 @@ private:
 };
 
 //
-// structural warps
+// stages
 //
+
+template <typename real_t, typename prev_t> struct input_affine_t
+{
+    affine_t<real_t> map;
+    prev_t prev;
+
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return prev(map(x));
+    }
+};
+
+template <typename real_t, typename prev_t> struct output_affine_t
+{
+    affine_t<real_t> map;
+    prev_t prev;
+
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
+    {
+        return map(prev(x));
+    }
+};
 
 template <typename real_t, typename prev_t, typename transition_t> class onset_warp_t
 {
@@ -208,7 +201,7 @@ private:
 };
 
 //
-// signal chain builder
+// builder
 //
 
 template <typename real_t> struct input_config_t
