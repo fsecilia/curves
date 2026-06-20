@@ -54,22 +54,23 @@ template <std::floating_point real_t> struct affine_t
     real_t offset{0};
 
     // applies transform forward
-    template <typename value_t> [[nodiscard]] constexpr auto forward(value_t x) const noexcept -> value_t
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
         return x * scale + offset;
-    }
-
-    // inverts transform to find x that produces y
-    [[nodiscard]] constexpr auto inverse(real_t y) const noexcept -> real_t
-    {
-        assert(scale != real_t{0});
-        return (y - offset) / scale;
     }
 
     // composes transforms: outer(inner(x))
     [[nodiscard]] constexpr auto operator*(affine_t const& inner) const noexcept -> affine_t
     {
         return affine_t{.scale = scale * inner.scale, .offset = scale * inner.offset + offset};
+    }
+
+    // returns the inverse transform
+    [[nodiscard]] constexpr auto invert() const noexcept -> affine_t
+    {
+        assert(scale != real_t{0});
+        auto const inv_scale = real_t{1} / scale;
+        return affine_t{.scale = inv_scale, .offset = -offset * inv_scale};
     }
 };
 
@@ -84,7 +85,7 @@ template <typename real_t, typename prev_t> struct input_affine_t
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return prev(map.forward(x));
+        return prev(map(x));
     }
 };
 
@@ -95,7 +96,7 @@ template <typename real_t, typename prev_t> struct output_affine_t
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return map.forward(prev(x));
+        return map(prev(x));
     }
 };
 
@@ -339,7 +340,8 @@ struct anchor_quantizer_t
 
     template <typename curve_t>
     constexpr void operator()(curve_t& curve, domain_warp_config_t<real_t> const& warp,
-        affine_t<real_t> const& base_input_map, transition_t const& transition) const
+        affine_t<real_t> const& base_input_map, affine_t<real_t> const& base_input_map_inverse,
+        transition_t const& transition) const
     {
         if constexpr (is_anchorable<curve_t>)
         {
@@ -348,12 +350,12 @@ struct anchor_quantizer_t
                 = onset_geometry_t<real_t, transition_t>{warp.onset_center, warp.onset_width, transition};
 
             auto const x_warp_in = geometry.inverse(p, invert);
-            auto const x_raw = base_input_map.inverse(x_warp_in);
+            auto const x_raw = base_input_map_inverse(x_warp_in);
 
             if (x_raw <= warp.domain_high)
             {
                 auto const x_q = std::ceil(x_raw / anchor_quantum) * anchor_quantum;
-                auto const p_prime = geometry.forward(base_input_map.forward(x_q));
+                auto const p_prime = geometry.forward(base_input_map(x_q));
 
                 curve.anchor(static_cast<typename curve_t::scalar_t>(p_prime));
             }
@@ -464,9 +466,10 @@ public:
         //
 
         auto const input_map = in.to_affine();
+        auto const input_map_inverse = input_map.invert();
 
         // Mutate the local curve copy in place if it models the is_anchorable concept
-        align_anchor_(curve, warp, input_map, transition_);
+        align_anchor_(curve, warp, input_map, input_map_inverse, transition_);
 
         //
         // transforms
@@ -484,15 +487,15 @@ public:
 
         auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
 
-        auto const onset_in_low = input_map.forward(warp.domain_low);
+        auto const onset_in_low = input_map(warp.domain_low);
         if (onset_in_low < real_t{0})
         {
             // breaking slice: [domain_low, where curve space crosses 0], carried back to raw input
             return std::unexpected(build_error_t<real_t>{builder_error_t::negative_domain,
-                domain_span_t<real_t>{warp.domain_low, input_map.inverse(real_t{0})}});
+                domain_span_t<real_t>{warp.domain_low, input_map_inverse(real_t{0})}});
         }
 
-        auto const onset_in_high = input_map.forward(warp.domain_high);
+        auto const onset_in_high = input_map(warp.domain_high);
 
         //
         // limit placement
@@ -501,7 +504,7 @@ public:
         auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
         if (!limit_start_res.has_value())
         {
-            auto const onset_end_raw = input_map.inverse(warp.onset_center + warp.onset_width * warp.onset_height);
+            auto const onset_end_raw = input_map_inverse(warp.onset_center + warp.onset_width * warp.onset_height);
             return std::unexpected(
                 build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{onset_end_raw, onset_end_raw}});
         }
@@ -621,7 +624,7 @@ TEST(affine_test, inverse_recovers_original_value)
 {
     using real_t = real_t;
     affine_t<real_t> const a{.scale = 3, .offset = 2};
-    ASSERT_TRUE(near(a.inverse(a.forward(real_t{4})), real_t{4}, real_t{1e-5}, real_t{1e-5}));
+    ASSERT_TRUE(near(a.invert()(a(real_t{4})), real_t{4}, real_t{1e-5}, real_t{1e-5}));
 }
 
 TEST(affine_test, composition_applies_inner_then_outer)
@@ -632,7 +635,7 @@ TEST(affine_test, composition_applies_inner_then_outer)
 
     auto const ab = a * b;
     auto const x = real_t{7};
-    ASSERT_TRUE(near(ab.forward(x), a.forward(b.forward(x)), real_t{1e-4}, real_t{1e-5}));
+    ASSERT_TRUE(near(ab(x), a(b(x)), real_t{1e-4}, real_t{1e-5}));
 }
 
 //
@@ -986,11 +989,12 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
         .domain_high = 10.0,
     };
     auto const base_input_map = input_config_t<real_t>{.scale = 1.0, .offset = 0.0}.to_affine();
+    auto const base_input_map_inverse = base_input_map.invert();
 
     anchorable_t<real_t> curve;
     curve.anchor(0.0); // Default anchor
 
-    quantize(curve, warp, base_input_map, {});
+    quantize(curve, warp, base_input_map, base_input_map_inverse, {});
 
     // Retrieve the mutated anchor
     auto const p_prime = curve.anchor();
@@ -1000,7 +1004,7 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
     bisect_lower_bound_t invert{};
 
     auto const x_warp_in = geom.inverse(p_prime, invert);
-    auto const x_raw = base_input_map.inverse(x_warp_in);
+    auto const x_raw = base_input_map_inverse(x_warp_in);
 
     auto const ratio = x_raw / anchor_quantum;
 
