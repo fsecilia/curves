@@ -74,12 +74,12 @@ template <std::floating_point real_t> struct affine_t
     }
 };
 
-// geometry shared by offset_warp_t::forward and anchor_quantizer_t::inverse
-//
-// This type shapes the offset via function composition. It controls the rate at which the composed function advances,
-// starting paused, then smoothly returning to full running speed via the given transition.
-//
-// It has an identity state when width == 0.
+/// geometry of an offset transition
+///
+/// This type shapes the offset via function composition. It controls the rate at which the composed function advances,
+/// starting paused, then smoothly returning to full running speed via the given transition.
+///
+/// It has an identity state when width == 0.
 template <typename t_real_t, typename transition_t> class offset_geometry_t
 {
 public:
@@ -117,6 +117,44 @@ public:
 
         auto const found_t = invert(real_t{0}, real_t{1}, warped / width_, transition_);
         return start_ + found_t.value_or(real_t{0}) * width_;
+    }
+
+private:
+    real_t start_;
+    real_t width_;
+    real_t inv_width_;
+    real_t rise_;
+    transition_t transition_;
+};
+
+/// geometry of a limit transition
+///
+/// This type shapes the limit via function composition. It controls the rate at which the composed function advances,
+/// starting at full running speed, then smoothly pausing via the given transition.
+template <typename t_real_t, typename transition_t> class limit_geometry_t
+{
+public:
+    using real_t = t_real_t;
+
+    constexpr limit_geometry_t(real_t start, real_t width, transition_t transition) noexcept
+        : start_{start}, width_{width}, transition_{std::move(transition)}
+    {
+        assert(width > real_t{0});
+        inv_width_ = real_t{1} / width;
+        rise_ = transition_(real_t{1});
+    }
+
+    template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
+    {
+        using scalar_t = scalar_type_t<value_t>;
+        auto const x = primal(input);
+
+        if (x <= start_) return input;
+        if (x >= start_ + width_) return value_t{start_ + width_ * rise_};
+
+        auto const t = (input - start_) * inv_width_;
+        auto const w_int = transition_(scalar_t{1} - t);
+        return start_ + width_ * (rise_ - w_int);
     }
 
 private:
@@ -172,44 +210,31 @@ private:
     prev_t prev_;
 };
 
-template <typename real_t, typename prev_t, typename transition_t> class limit_warp_t
+template <typename geometry_t, typename prev_t> class limit_warp_t
 {
 public:
-    constexpr limit_warp_t(real_t start, real_t width, real_t blend, prev_t prev, transition_t transition) noexcept
-        : start_{start}, width_{width}, inv_width_{real_t{1} / width}, rise_{transition(real_t{1})}, blend_{blend},
-          prev_{std::move(prev)}, transition_{std::move(transition)}
-    {
-        assert(width > real_t{0});
-    }
+    using real_t = geometry_t::real_t;
+
+    constexpr limit_warp_t(geometry_t geometry, real_t blend, prev_t prev) noexcept
+        : geometry_{std::move(geometry)}, blend_{blend}, prev_{std::move(prev)}
+    {}
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
     {
         using scalar_t = scalar_type_t<value_t>;
-        auto const x = primal(input);
 
-        if (x <= start_ || blend_ <= scalar_t{0}) return prev_(input);
+        if (blend_ <= scalar_t{0}) return prev_(input);
 
-        value_t warped_x;
-        if (x >= start_ + width_) warped_x = value_t{start_ + width_ * rise_};
-        else
-        {
-            auto const t = (input - start_) * inv_width_;
-            auto const w_int = transition_(scalar_t{1} - t);
-            warped_x = start_ + width_ * (rise_ - w_int);
-        }
-
+        auto const warped_x = geometry_(input);
         auto const final_x = input + (warped_x - input) * scalar_t{blend_};
+
         return prev_(final_x);
     }
 
 private:
-    real_t start_;
-    real_t width_;
-    real_t inv_width_;
-    real_t rise_;
+    geometry_t geometry_;
     real_t blend_;
     prev_t prev_;
-    transition_t transition_;
 };
 
 //
@@ -436,10 +461,11 @@ class signal_chain_builder_t
     validator_t validate_;
 
     using offset_geometry_t = offset_geometry_t<real_t, transition_t>;
+    using limit_geometry_t = limit_geometry_t<real_t, transition_t>;
 
     template <typename curve_t> using out_stack_t = output_affine_t<real_t, curve_t>;
     template <typename curve_t> using offset_chain_t = offset_warp_t<offset_geometry_t, out_stack_t<curve_t>>;
-    template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, offset_chain_t<curve_t>, transition_t>;
+    template <typename curve_t> using limit_chain_t = limit_warp_t<limit_geometry_t, offset_chain_t<curve_t>>;
     template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
     template <typename curve_t> using result_t = builder_result_t<final_chain_t<curve_t>>;
 
@@ -530,7 +556,8 @@ public:
         real_t const rise = transition_(real_t{1});
         real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
 
-        auto limit_chain = limit_warp_t{limit_start, warp.limit_width, blend, std::move(offset_chain), transition_};
+        auto limit_chain = limit_warp_t{
+            limit_geometry_t{limit_start, warp.limit_width, transition_}, blend, std::move(offset_chain)};
 
         //
         // final assembly
