@@ -74,11 +74,11 @@ template <std::floating_point real_t> struct affine_t
     }
 };
 
-// geometry shared by onset_warp_t::forward and anchor_quantizer_t::inverse
-template <typename real_t, typename transition_t> class onset_geometry_t
+// geometry shared by offset_warp_t::forward and anchor_quantizer_t::inverse
+template <typename real_t, typename transition_t> class offset_geometry_t
 {
 public:
-    constexpr onset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
+    constexpr offset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
         : width_{width}, transition_{std::move(transition)}
     {
         assert(width_ >= real_t{0});
@@ -89,7 +89,7 @@ public:
         start_ = center - width_ * transition_height;
     }
 
-    // onset-input x -> warped (curve-input) coordinate; identity when disabled (width == 0)
+    // offset-input x -> warped (curve-input) coordinate; identity when disabled (width == 0)
     template <typename value_t> [[nodiscard]] constexpr auto forward(value_t input) const noexcept -> value_t
     {
         if (width_ == real_t{0}) return input;
@@ -100,7 +100,7 @@ public:
         return width_ * transition_((input - start_) * inv_width_);
     }
 
-    // warped (curve-input) coordinate -> onset-input x; exact inverse of forward
+    // warped (curve-input) coordinate -> offset-input x; exact inverse of forward
     template <typename invert_t>
     [[nodiscard]] constexpr auto inverse(real_t warped, invert_t const& invert) const -> real_t
     {
@@ -146,10 +146,10 @@ template <typename real_t, typename prev_t> struct output_affine_t
     }
 };
 
-template <typename real_t, typename prev_t, typename transition_t> class onset_warp_t
+template <typename real_t, typename prev_t, typename transition_t> class offset_warp_t
 {
 public:
-    constexpr onset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition) noexcept
+    constexpr offset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition) noexcept
         : geometry_{center, width, std::move(transition)}, prev_{std::move(prev)}
     {}
 
@@ -159,7 +159,7 @@ public:
     }
 
 private:
-    onset_geometry_t<real_t, transition_t> geometry_;
+    offset_geometry_t<real_t, transition_t> geometry_;
     prev_t prev_;
 };
 
@@ -233,9 +233,9 @@ template <typename real_t> struct output_config_t
 
 template <typename real_t> struct domain_warp_config_t
 {
-    real_t onset_center;
-    real_t onset_width;
-    real_t onset_height;
+    real_t offset_center;
+    real_t offset_width;
+    real_t offset_height;
     real_t limit_target;
     real_t limit_width;
     real_t limit_height;
@@ -252,7 +252,7 @@ enum class builder_error_t
     invalid_input_shift,
     negative_domain,
     warp_overlap,
-    invalid_onset_disable,
+    invalid_offset_disable,
     floor_shift_conflict
 };
 
@@ -268,7 +268,8 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
         case builder_error_t::invalid_input_shift: return "Input must shift left.";
         case builder_error_t::negative_domain: return "Domain mapped to negative curve space, breaking monotonicity.";
         case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
-        case builder_error_t::invalid_onset_disable: return "Disabled onset (zero width) requires onset_center == 0.";
+        case builder_error_t::invalid_offset_disable:
+            return "Disabled offset (zero width) requires offset_center == 0.";
         case builder_error_t::floor_shift_conflict: return "Floor and a nonzero output shift are mutually exclusive.";
     }
     return "Unknown builder error.";
@@ -303,15 +304,15 @@ template <typename real_t, real_t min_width> struct default_validator_t
     [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, input_config_t<real_t> const& in,
         output_config_t<real_t> const& out) const noexcept -> std::optional<builder_error_t>
     {
-        // onset_width == 0 disables the onset (identity). A disabled onset must not be positioned: onset_center == 0
-        // also collapses the anchor geometry to identity (start_onset == 0). A live onset must clear the minimum
+        // offset_width == 0 disables the offset (identity). A disabled offset must not be positioned: offset_center ==
+        // 0 also collapses the anchor geometry to identity (start_offset == 0). A live offset must clear the minimum
         // transition width; the limiter is mandatory, so it must always clear it.
-        if (warp.onset_width < real_t{0}) return builder_error_t::invalid_width;
-        if (warp.onset_width == real_t{0})
+        if (warp.offset_width < real_t{0}) return builder_error_t::invalid_width;
+        if (warp.offset_width == real_t{0})
         {
-            if (warp.onset_center != real_t{0}) return builder_error_t::invalid_onset_disable;
+            if (warp.offset_center != real_t{0}) return builder_error_t::invalid_offset_disable;
         }
-        else if (warp.onset_width <= min_width) { return builder_error_t::invalid_width; }
+        else if (warp.offset_width <= min_width) { return builder_error_t::invalid_width; }
         if (warp.limit_width <= min_width) return builder_error_t::invalid_width;
 
         if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high) return builder_error_t::invalid_domain;
@@ -343,7 +344,7 @@ struct anchor_quantizer_t
         {
             auto const p = static_cast<real_t>(curve.anchor());
             auto const geometry
-                = onset_geometry_t<real_t, transition_t>{warp.onset_center, warp.onset_width, transition};
+                = offset_geometry_t<real_t, transition_t>{warp.offset_center, warp.offset_width, transition};
 
             auto const x_warp_in = geometry.inverse(p, invert);
             auto const x_raw = base_input_map_inverse(x_warp_in);
@@ -367,18 +368,18 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
 {
     invert_t invert;
 
-    /// \pre onset_chain is monotonic non-decreasing on [onset_in_low, onset_in_high] (guaranteed by the
+    /// \pre offset_chain is monotonic non-decreasing on [offset_in_low, offset_in_high] (guaranteed by the
     /// monotonic-non-decreasing base-curve contract and out.scale > 0). The lower-bound inverse relies on it;
     /// asserting it via root finding would be prohibitively expensive, so it is a precondition, not a check.
     template <typename chain_t>
-    [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, real_t onset_in_low,
-        real_t onset_in_high, chain_t const& onset_chain) const -> std::expected<real_t, builder_error_t>
+    [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, real_t offset_in_low,
+        real_t offset_in_high, chain_t const& offset_chain) const -> std::expected<real_t, builder_error_t>
     {
-        auto const opt_x_cap = invert(onset_in_low, onset_in_high, warp.limit_target, onset_chain);
-        auto const x_cap = opt_x_cap.value_or(onset_in_high);
+        auto const opt_x_cap = invert(offset_in_low, offset_in_high, warp.limit_target, offset_chain);
+        auto const x_cap = opt_x_cap.value_or(offset_in_high);
         auto const limit_start = x_cap - warp.limit_width * warp.limit_height;
 
-        if (limit_start < warp.onset_center + warp.onset_width * warp.onset_height)
+        if (limit_start < warp.offset_center + warp.offset_width * warp.offset_height)
         {
             return std::unexpected(builder_error_t::warp_overlap);
         }
@@ -426,8 +427,8 @@ class signal_chain_builder_t
     validator_t validate_;
 
     template <typename curve_t> using out_stack_t = output_affine_t<real_t, curve_t>;
-    template <typename curve_t> using onset_chain_t = onset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
-    template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, onset_chain_t<curve_t>, transition_t>;
+    template <typename curve_t> using offset_chain_t = offset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
+    template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, offset_chain_t<curve_t>, transition_t>;
     template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
     template <typename curve_t> using result_t = builder_result_t<final_chain_t<curve_t>>;
 
@@ -481,28 +482,28 @@ public:
             .prev = std::move(curve),
         };
 
-        auto onset_chain = onset_warp_t{warp.onset_center, warp.onset_width, std::move(out_stack), transition_};
+        auto offset_chain = offset_warp_t{warp.offset_center, warp.offset_width, std::move(out_stack), transition_};
 
-        auto const onset_in_low = input_map(warp.domain_low);
-        if (onset_in_low < real_t{0})
+        auto const offset_in_low = input_map(warp.domain_low);
+        if (offset_in_low < real_t{0})
         {
             // breaking slice: [domain_low, where curve space crosses 0], carried back to raw input
             return std::unexpected(build_error_t<real_t>{builder_error_t::negative_domain,
                 domain_span_t<real_t>{warp.domain_low, input_map_inverse(real_t{0})}});
         }
 
-        auto const onset_in_high = input_map(warp.domain_high);
+        auto const offset_in_high = input_map(warp.domain_high);
 
         //
         // limit placement
         //
 
-        auto const limit_start_res = locate_limit_(warp, onset_in_low, onset_in_high, onset_chain);
+        auto const limit_start_res = locate_limit_(warp, offset_in_low, offset_in_high, offset_chain);
         if (!limit_start_res.has_value())
         {
-            auto const onset_end_raw = input_map_inverse(warp.onset_center + warp.onset_width * warp.onset_height);
+            auto const offset_end_raw = input_map_inverse(warp.offset_center + warp.offset_width * warp.offset_height);
             return std::unexpected(
-                build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{onset_end_raw, onset_end_raw}});
+                build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{offset_end_raw, offset_end_raw}});
         }
 
         auto const limit_start = *limit_start_res;
@@ -511,13 +512,13 @@ public:
         // engagement
         //
 
-        auto const y_max = onset_chain(onset_in_high);
+        auto const y_max = offset_chain(offset_in_high);
         assert(std::isfinite(y_max));
 
         real_t const rise = transition_(real_t{1});
         real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
 
-        auto limit_chain = limit_warp_t{limit_start, warp.limit_width, blend, std::move(onset_chain), transition_};
+        auto limit_chain = limit_warp_t{limit_start, warp.limit_width, blend, std::move(offset_chain), transition_};
 
         //
         // final assembly
@@ -568,9 +569,9 @@ TEST(signal_chain_test, assembles_and_evaluates)
     auto transition = transition_t{};
     auto const transition_height = transition(1.0);
 
-    auto domain_warp_config = domain_warp_config_t<real_t>{.onset_center = 0.5,
-        .onset_width = 0.25,
-        .onset_height = transition_height,
+    auto domain_warp_config = domain_warp_config_t<real_t>{.offset_center = 0.5,
+        .offset_width = 0.25,
+        .offset_height = transition_height,
         .limit_target = 17.0,
         .limit_width = 0.5,
         .limit_height = transition_height,
@@ -635,13 +636,13 @@ TEST(affine_test, composition_applies_inner_then_outer)
 }
 
 //
-// Onset Geometry Tests
+// offset Geometry Tests
 //
 
-TEST(onset_geometry_test, roundtrip_maintains_smootherstep_geometry)
+TEST(offset_geometry_test, roundtrip_maintains_smootherstep_geometry)
 {
     using real_t = real_t;
-    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{2}, real_t{1}, {}};
+    offset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{2}, real_t{1}, {}};
     bisect_lower_bound_t invert{};
 
     for (auto x = real_t{1.5}; x <= real_t{4}; x += real_t{0.05})
@@ -660,11 +661,11 @@ template <typename real_t> struct quadratic_integral_t
     }
 };
 
-TEST(onset_geometry_test, roundtrip_maintains_cubic_ramp_geometry)
+TEST(offset_geometry_test, roundtrip_maintains_cubic_ramp_geometry)
 {
     using real_t = real_t;
 
-    onset_geometry_t<real_t, quadratic_integral_t<real_t>> const geom{real_t{2}, real_t{1}, {}};
+    offset_geometry_t<real_t, quadratic_integral_t<real_t>> const geom{real_t{2}, real_t{1}, {}};
     bisect_lower_bound_t invert{};
 
     auto const start_x = real_t{2} - real_t{1} * (real_t{1} / real_t{3}); // 5/3
@@ -675,10 +676,10 @@ TEST(onset_geometry_test, roundtrip_maintains_cubic_ramp_geometry)
     }
 }
 
-TEST(onset_geometry_test, disabled_geometry_acts_as_identity)
+TEST(offset_geometry_test, disabled_geometry_acts_as_identity)
 {
     using real_t = real_t;
-    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{0}, real_t{0}, {}};
+    offset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{real_t{0}, real_t{0}, {}};
     bisect_lower_bound_t invert{};
 
     auto const test_val = real_t{5};
@@ -723,9 +724,9 @@ struct validator_fixture : Test
     default_validator_t<real_t, min_transition_width<real_t>> validate;
 
     domain_warp_config_t<real_t> warp = {
-        .onset_center = 2,
-        .onset_width = 1,
-        .onset_height = 0.5,
+        .offset_center = 2,
+        .offset_width = 1,
+        .offset_height = 0.5,
         .limit_target = 9,
         .limit_width = 0.5,
         .limit_height = 0.5,
@@ -778,24 +779,24 @@ TEST_F(validator_fixture, rejects_limit_width_below_minimum)
     ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_width);
 }
 
-TEST_F(validator_fixture, rejects_onset_width_below_minimum)
+TEST_F(validator_fixture, rejects_offset_width_below_minimum)
 {
-    warp.onset_width = min_transition_width<real_t> / real_t{2};
+    warp.offset_width = min_transition_width<real_t> / real_t{2};
     ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_width);
 }
 
-TEST_F(validator_fixture, accepts_disabled_onset_at_origin)
+TEST_F(validator_fixture, accepts_disabled_offset_at_origin)
 {
-    warp.onset_center = 0;
-    warp.onset_width = 0;
+    warp.offset_center = 0;
+    warp.offset_width = 0;
     ASSERT_TRUE(!validate(warp, in, out));
 }
 
-TEST_F(validator_fixture, rejects_disabled_onset_away_from_origin)
+TEST_F(validator_fixture, rejects_disabled_offset_away_from_origin)
 {
-    warp.onset_center = 1;
-    warp.onset_width = 0;
-    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_onset_disable);
+    warp.offset_center = 1;
+    warp.offset_width = 0;
+    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_offset_disable);
 }
 
 //
@@ -808,9 +809,9 @@ struct signal_chain_fixture : ::testing::Test
     builder_t builder;
 
     domain_warp_config_t<real_t> warp = {
-        .onset_center = 2,
-        .onset_width = 1,
-        .onset_height = 0.5,
+        .offset_center = 2,
+        .offset_width = 1,
+        .offset_height = 0.5,
         .limit_target = 9,
         .limit_width = 0.5,
         .limit_height = 0.5,
@@ -836,7 +837,7 @@ TEST_F(signal_chain_fixture, evaluates_monotonically_across_domain)
     }
 }
 
-TEST_F(signal_chain_fixture, sets_flat_onset_exactly_to_floor)
+TEST_F(signal_chain_fixture, sets_flat_offset_exactly_to_floor)
 {
     out.floor = real_t{0.25};
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
@@ -844,7 +845,7 @@ TEST_F(signal_chain_fixture, sets_flat_onset_exactly_to_floor)
     ASSERT_TRUE(near(res->chain(real_t{1}), real_t{0.25}, real_t{1e-5}, real_t{1e-4}));
 }
 
-TEST_F(signal_chain_fixture, sets_flat_onset_to_shift_when_floor_unset)
+TEST_F(signal_chain_fixture, sets_flat_offset_to_shift_when_floor_unset)
 {
     out.floor = std::nullopt;
     out.shift = real_t{0.5};
@@ -902,20 +903,20 @@ TEST_F(signal_chain_fixture, identifies_warp_overlap_location)
 TEST_F(signal_chain_fixture, preserves_base_curve_geometry_in_unwarped_region)
 {
     // Configure to leave a wide open space in the middle
-    warp.onset_center = 2;
-    warp.onset_width = 1; // Onset ends at 2.5
+    warp.offset_center = 2;
+    warp.offset_width = 1; // offset ends at 2.5
     warp.limit_target = 100; // Far above the curve
 
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
     ASSERT_TRUE(res.has_value()) << to_string(res.error().error);
 
-    // Pick an x safely past the onset and below the limit
+    // Pick an x safely past the offset and below the limit
     auto const x = 5.0;
 
-    // Past the onset, the geometry permanently shifts the domain.
-    // For a transition with a rise of 0.5, this shift simplifies to exactly onset_center.
-    auto const onset_shift = warp.onset_center;
-    auto const x_affine = (x - onset_shift) * in.scale + in.shift;
+    // Past the offset, the geometry permanently shifts the domain.
+    // For a transition with a rise of 0.5, this shift simplifies to exactly offset_center.
+    auto const offset_shift = warp.offset_center;
+    auto const x_affine = (x - offset_shift) * in.scale + in.shift;
     auto const expected_y = out.scale * x_affine * x_affine;
 
     auto const actual = res->chain(x);
@@ -934,10 +935,10 @@ TEST_F(signal_chain_fixture, builder_aborts_on_validation_failure)
     ASSERT_FALSE(res.error().location.has_value());
 }
 
-TEST_F(signal_chain_fixture, assembles_successfully_with_disabled_onset)
+TEST_F(signal_chain_fixture, assembles_successfully_with_disabled_offset)
 {
-    warp.onset_center = 0;
-    warp.onset_width = 0;
+    warp.offset_center = 0;
+    warp.offset_width = 0;
 
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
     ASSERT_TRUE(res.has_value()) << to_string(res.error().error);
@@ -975,9 +976,9 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
     auto const quantize = anchor_quantizer_t<real_t, anchor_quantum, transitions::smootherstep_integral_t>{};
 
     auto warp = domain_warp_config_t<real_t>{
-        .onset_center = 2.1,
-        .onset_width = 1.0,
-        .onset_height = 0.5,
+        .offset_center = 2.1,
+        .offset_width = 1.0,
+        .offset_height = 0.5,
         .limit_target = 9.0,
         .limit_width = 0.5,
         .limit_height = 0.5,
@@ -996,7 +997,8 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
     auto const p_prime = curve.anchor();
 
     // Map the new anchor backwards to prove it lands exactly on a quantum boundary in raw input space
-    onset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{warp.onset_center, warp.onset_width, {}};
+    offset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{
+        warp.offset_center, warp.offset_width, {}};
     bisect_lower_bound_t invert{};
 
     auto const x_warp_in = geom.inverse(p_prime, invert);
