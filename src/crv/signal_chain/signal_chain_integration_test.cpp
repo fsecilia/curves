@@ -80,9 +80,11 @@ template <std::floating_point real_t> struct affine_t
 // starting paused, then smoothly returning to full running speed via the given transition.
 //
 // It has an identity state when width == 0.
-template <typename real_t, typename transition_t> class offset_geometry_t
+template <typename t_real_t, typename transition_t> class offset_geometry_t
 {
 public:
+    using real_t = t_real_t;
+
     constexpr offset_geometry_t(real_t center, real_t width, transition_t transition) noexcept
         : width_{width}, transition_{std::move(transition)}
     {
@@ -151,11 +153,13 @@ template <typename real_t, typename prev_t> struct output_affine_t
     }
 };
 
-template <typename real_t, typename prev_t, typename transition_t> class offset_warp_t
+template <typename geometry_t, typename prev_t> class offset_warp_t
 {
 public:
-    constexpr offset_warp_t(real_t center, real_t width, prev_t prev, transition_t transition) noexcept
-        : geometry_{center, width, std::move(transition)}, prev_{std::move(prev)}
+    using real_t = geometry_t::real_t;
+
+    constexpr offset_warp_t(geometry_t geometry, prev_t prev) noexcept
+        : geometry_{std::move(geometry)}, prev_{std::move(prev)}
     {}
 
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
@@ -164,7 +168,7 @@ public:
     }
 
 private:
-    offset_geometry_t<real_t, transition_t> geometry_;
+    geometry_t geometry_;
     prev_t prev_;
 };
 
@@ -431,8 +435,10 @@ class signal_chain_builder_t
     engagement_t engage_;
     validator_t validate_;
 
+    using offset_geometry_t = offset_geometry_t<real_t, transition_t>;
+
     template <typename curve_t> using out_stack_t = output_affine_t<real_t, curve_t>;
-    template <typename curve_t> using offset_chain_t = offset_warp_t<real_t, out_stack_t<curve_t>, transition_t>;
+    template <typename curve_t> using offset_chain_t = offset_warp_t<offset_geometry_t, out_stack_t<curve_t>>;
     template <typename curve_t> using limit_chain_t = limit_warp_t<real_t, offset_chain_t<curve_t>, transition_t>;
     template <typename curve_t> using final_chain_t = input_affine_t<real_t, limit_chain_t<curve_t>>;
     template <typename curve_t> using result_t = builder_result_t<final_chain_t<curve_t>>;
@@ -487,7 +493,8 @@ public:
             .prev = std::move(curve),
         };
 
-        auto offset_chain = offset_warp_t{warp.offset_center, warp.offset_width, std::move(out_stack), transition_};
+        auto offset_chain = offset_warp_t{
+            offset_geometry_t{warp.offset_center, warp.offset_width, transition_}, std::move(out_stack)};
 
         auto const offset_in_low = input_map(warp.domain_low);
         if (offset_in_low < real_t{0})
