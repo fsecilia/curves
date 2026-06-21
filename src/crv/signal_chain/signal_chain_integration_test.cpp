@@ -75,6 +75,11 @@ template <std::floating_point real_t> struct affine_t
 };
 
 // geometry shared by offset_warp_t::forward and anchor_quantizer_t::inverse
+//
+// This type shapes the offset via function composition. It controls the rate at which the composed function advances,
+// starting paused, then smoothly returning to full running speed via the given transition.
+//
+// It has an identity state when width == 0.
 template <typename real_t, typename transition_t> class offset_geometry_t
 {
 public:
@@ -89,7 +94,7 @@ public:
         start_ = center - width_ * transition_height;
     }
 
-    // offset-input x -> warped (curve-input) coordinate; identity when disabled (width == 0)
+    // shapes input, pausing at 0, then smoothly returns to full running speed via given transition.
     template <typename value_t> [[nodiscard]] constexpr auto forward(value_t input) const noexcept -> value_t
     {
         if (width_ == real_t{0}) return input;
@@ -100,7 +105,7 @@ public:
         return width_ * transition_((input - start_) * inv_width_);
     }
 
-    // warped (curve-input) coordinate -> offset-input x; exact inverse of forward
+    // inverts forward()
     template <typename invert_t>
     [[nodiscard]] constexpr auto inverse(real_t warped, invert_t const& invert) const -> real_t
     {
