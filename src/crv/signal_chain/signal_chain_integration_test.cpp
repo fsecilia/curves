@@ -51,18 +51,18 @@ constexpr auto anchor_quantum = static_cast<float_t>(0x1p-10);
 template <std::floating_point real_t> struct affine_t
 {
     real_t scale{1};
-    real_t offset{0};
+    real_t shift{0};
 
     // applies transform forward
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t x) const noexcept -> value_t
     {
-        return x * scale + offset;
+        return x * scale + shift;
     }
 
     // composes transforms: outer(inner(x))
     [[nodiscard]] constexpr auto operator*(affine_t const& inner) const noexcept -> affine_t
     {
-        return affine_t{.scale = scale * inner.scale, .offset = scale * inner.offset + offset};
+        return affine_t{.scale = scale * inner.scale, .shift = scale * inner.shift + shift};
     }
 
     // returns the inverse transform
@@ -70,7 +70,7 @@ template <std::floating_point real_t> struct affine_t
     {
         assert(scale != real_t{0});
         auto const inv_scale = real_t{1} / scale;
-        return affine_t{.scale = inv_scale, .offset = -offset * inv_scale};
+        return affine_t{.scale = inv_scale, .shift = -shift * inv_scale};
     }
 };
 
@@ -210,24 +210,24 @@ private:
 template <typename real_t> struct input_config_t
 {
     real_t scale;
-    real_t offset;
+    real_t shift;
 
     [[nodiscard]] constexpr auto to_affine() const noexcept -> affine_t<real_t>
     {
-        return affine_t<real_t>{.scale = scale, .offset = -(offset * scale)};
+        return affine_t<real_t>{.scale = scale, .shift = -(shift * scale)};
     }
 };
 
 template <typename real_t> struct output_config_t
 {
     real_t scale;
-    real_t offset;
+    real_t shift;
     std::optional<real_t> floor;
 
     [[nodiscard]] constexpr auto to_affine(real_t y_origin) const noexcept -> affine_t<real_t>
     {
-        auto const target_floor = floor.value_or(y_origin + offset);
-        return affine_t<real_t>{.scale = scale, .offset = target_floor - y_origin * scale};
+        auto const target_floor = floor.value_or(y_origin + shift);
+        return affine_t<real_t>{.scale = scale, .shift = target_floor - y_origin * scale};
     }
 };
 
@@ -249,11 +249,11 @@ enum class builder_error_t
     invalid_domain,
     invalid_scale,
     invalid_floor,
-    invalid_input_offset,
+    invalid_input_shift,
     negative_domain,
     warp_overlap,
     invalid_onset_disable,
-    floor_offset_conflict
+    floor_shift_conflict
 };
 
 constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
@@ -265,11 +265,11 @@ constexpr auto to_string(builder_error_t error) noexcept -> std::string_view
             return "Domain low must be non-negative and strictly less than domain high.";
         case builder_error_t::invalid_scale: return "Scales must be strictly positive.";
         case builder_error_t::invalid_floor: return "Floor cannot be negative.";
-        case builder_error_t::invalid_input_offset: return "Input offset must shift left.";
+        case builder_error_t::invalid_input_shift: return "Input must shift left.";
         case builder_error_t::negative_domain: return "Domain mapped to negative curve space, breaking monotonicity.";
         case builder_error_t::warp_overlap: return "Offset and limit transitions overlap.";
         case builder_error_t::invalid_onset_disable: return "Disabled onset (zero width) requires onset_center == 0.";
-        case builder_error_t::floor_offset_conflict: return "Floor and a nonzero output offset are mutually exclusive.";
+        case builder_error_t::floor_shift_conflict: return "Floor and a nonzero output shift are mutually exclusive.";
     }
     return "Unknown builder error.";
 }
@@ -317,8 +317,8 @@ template <typename real_t, real_t min_width> struct default_validator_t
         if (warp.domain_low < real_t{0} || warp.domain_low >= warp.domain_high) return builder_error_t::invalid_domain;
         if (in.scale <= real_t{0} || out.scale <= real_t{0}) return builder_error_t::invalid_scale;
         if (out.floor && *out.floor < real_t{0}) return builder_error_t::invalid_floor;
-        if (out.floor && out.offset != real_t{0}) return builder_error_t::floor_offset_conflict;
-        if (in.offset > real_t{0}) return builder_error_t::invalid_input_offset;
+        if (out.floor && out.shift != real_t{0}) return builder_error_t::floor_shift_conflict;
+        if (in.shift > real_t{0}) return builder_error_t::invalid_input_shift;
         return std::nullopt;
     }
 };
@@ -579,8 +579,8 @@ TEST(signal_chain_test, assembles_and_evaluates)
 
     auto const builder = signal_chain_builder_t<real_t, min_transition_width<real_t>, anchor_quantum, transition_t>{};
     auto const build_result
-        = builder.build(quadratic_t<real_t>{}, domain_warp_config, input_config_t<real_t>{.scale = 1.0, .offset = -0.1},
-            output_config_t<real_t>{.scale = 1.5, .offset = 0.0, .floor = 0.25}); // floor set -> offset must be 0
+        = builder.build(quadratic_t<real_t>{}, domain_warp_config, input_config_t<real_t>{.scale = 1.0, .shift = -0.1},
+            output_config_t<real_t>{.scale = 1.5, .shift = 0.0, .floor = 0.25}); // floor set -> shift must be 0
 
     ASSERT_TRUE(build_result.has_value()) << to_string(build_result.error().error);
     auto const& result = *build_result;
@@ -619,15 +619,15 @@ template <typename real_t>
 TEST(affine_test, inverse_recovers_original_value)
 {
     using real_t = real_t;
-    affine_t<real_t> const a{.scale = 3, .offset = 2};
+    affine_t<real_t> const a{.scale = 3, .shift = 2};
     ASSERT_TRUE(near(a.invert()(a(real_t{4})), real_t{4}, real_t{1e-5}, real_t{1e-5}));
 }
 
 TEST(affine_test, composition_applies_inner_then_outer)
 {
     using real_t = real_t;
-    affine_t<real_t> const a{.scale = 3, .offset = 2};
-    affine_t<real_t> const b{.scale = real_t{0.5}, .offset = real_t{-1}};
+    affine_t<real_t> const a{.scale = 3, .shift = 2};
+    affine_t<real_t> const b{.scale = real_t{0.5}, .shift = real_t{-1}};
 
     auto const ab = a * b;
     auto const x = real_t{7};
@@ -732,8 +732,8 @@ struct validator_fixture : Test
         .domain_low = 0,
         .domain_high = 10,
     };
-    input_config_t<real_t> in = {.scale = 1, .offset = 0};
-    output_config_t<real_t> out = {.scale = 1, .offset = 0, .floor = real_t{0}};
+    input_config_t<real_t> in = {.scale = 1, .shift = 0};
+    output_config_t<real_t> out = {.scale = 1, .shift = 0, .floor = real_t{0}};
 };
 
 TEST_F(validator_fixture, accepts_valid_configuration)
@@ -747,10 +747,10 @@ TEST_F(validator_fixture, rejects_zero_input_scale)
     ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_scale);
 }
 
-TEST_F(validator_fixture, rejects_positive_input_offset)
+TEST_F(validator_fixture, rejects_positive_input_shift)
 {
-    in.offset = real_t{0.1};
-    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_input_offset);
+    in.shift = real_t{0.1};
+    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_input_shift);
 }
 
 TEST_F(validator_fixture, rejects_negative_floor)
@@ -759,11 +759,11 @@ TEST_F(validator_fixture, rejects_negative_floor)
     ASSERT_TRUE(validate(warp, in, out) == builder_error_t::invalid_floor);
 }
 
-TEST_F(validator_fixture, rejects_floor_with_offset_conflict)
+TEST_F(validator_fixture, rejects_floor_with_shift_conflict)
 {
     out.floor = real_t{1};
-    out.offset = real_t{0.5};
-    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::floor_offset_conflict);
+    out.shift = real_t{0.5};
+    ASSERT_TRUE(validate(warp, in, out) == builder_error_t::floor_shift_conflict);
 }
 
 TEST_F(validator_fixture, rejects_flat_or_inverted_domain)
@@ -817,8 +817,8 @@ struct signal_chain_fixture : ::testing::Test
         .domain_low = 0,
         .domain_high = 10,
     };
-    input_config_t<real_t> in = {.scale = 1, .offset = 0};
-    output_config_t<real_t> out = {.scale = 1, .offset = 0, .floor = real_t{0}};
+    input_config_t<real_t> in = {.scale = 1, .shift = 0};
+    output_config_t<real_t> out = {.scale = 1, .shift = 0, .floor = real_t{0}};
 };
 
 TEST_F(signal_chain_fixture, evaluates_monotonically_across_domain)
@@ -844,10 +844,10 @@ TEST_F(signal_chain_fixture, sets_flat_onset_exactly_to_floor)
     ASSERT_TRUE(near(res->chain(real_t{1}), real_t{0.25}, real_t{1e-5}, real_t{1e-4}));
 }
 
-TEST_F(signal_chain_fixture, sets_flat_onset_to_offset_when_floor_unset)
+TEST_F(signal_chain_fixture, sets_flat_onset_to_shift_when_floor_unset)
 {
     out.floor = std::nullopt;
-    out.offset = real_t{0.5};
+    out.shift = real_t{0.5};
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
     ASSERT_TRUE(res.has_value()) << to_string(res.error().error);
     ASSERT_TRUE(near(res->chain(real_t{1}), real_t{0.5}, real_t{1e-5}, real_t{1e-4}));
@@ -915,7 +915,7 @@ TEST_F(signal_chain_fixture, preserves_base_curve_geometry_in_unwarped_region)
     // Past the onset, the geometry permanently shifts the domain.
     // For a transition with a rise of 0.5, this shift simplifies to exactly onset_center.
     auto const onset_shift = warp.onset_center;
-    auto const x_affine = (x - onset_shift) * in.scale + in.offset;
+    auto const x_affine = (x - onset_shift) * in.scale + in.shift;
     auto const expected_y = out.scale * x_affine * x_affine;
 
     auto const actual = res->chain(x);
@@ -984,7 +984,7 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
         .domain_low = 0.0,
         .domain_high = 10.0,
     };
-    auto const base_input_map = input_config_t<real_t>{.scale = 1.0, .offset = 0.0}.to_affine();
+    auto const base_input_map = input_config_t<real_t>{.scale = 1.0, .shift = 0.0}.to_affine();
     auto const base_input_map_inverse = base_input_map.invert();
 
     anchorable_t<real_t> curve;
