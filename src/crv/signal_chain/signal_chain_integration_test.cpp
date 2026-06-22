@@ -38,13 +38,6 @@ concept is_anchorable = has_scalar<evaluator_t> && requires(evaluator_t evaluato
 };
 
 //
-// math primitives & bounds
-//
-
-template <std::floating_point real_t> inline constexpr auto min_transition_width = static_cast<real_t>(1e-2);
-constexpr auto anchor_quantum = static_cast<float_t>(0x1p-10);
-
-//
 // transforms
 //
 
@@ -65,7 +58,7 @@ template <std::floating_point real_t> struct affine_t
         return affine_t{.scale = scale * inner.scale, .shift = scale * inner.shift + shift};
     }
 
-    // returns the inverse transform
+    // returns inverse transform
     [[nodiscard]] constexpr auto invert() const noexcept -> affine_t
     {
         assert(scale != real_t{0});
@@ -111,8 +104,8 @@ public:
         if (warped <= real_t{0}) return start_;
         if (warped >= width_ * rise_) return warped + start_ + width_ * (real_t{1} - rise_);
 
-        auto const found_t = invert(real_t{0}, real_t{1}, warped / width_, transition_);
-        return start_ + found_t.value_or(real_t{0}) * width_;
+        auto const t = invert(real_t{0}, real_t{1}, warped / width_, transition_);
+        return start_ + t.value_or(real_t{0}) * width_;
     }
 
 private:
@@ -333,12 +326,11 @@ template <typename real_t, real_t min_width> struct default_validator_t
     [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, input_config_t<real_t> const& in,
         output_config_t<real_t> const& out) const noexcept -> std::optional<builder_error_t>
     {
-        // offset_width == 0 disables the offset (identity). A disabled offset must not be positioned: offset_start == 0
-        // also collapses the anchor geometry to identity. A live offset must clear the minimum transition width. The
-        // limiter is mandatory, so it must always clear it.
+        // offset_width == 0 disables offset as identity
         if (warp.offset_width < real_t{0}) return builder_error_t::invalid_width;
         if (warp.offset_width == real_t{0})
         {
+            // disabled offset must not be positioned
             if (warp.offset_start != real_t{0}) return builder_error_t::invalid_offset_disable;
         }
         else if (warp.offset_width <= min_width) { return builder_error_t::invalid_width; }
@@ -432,10 +424,10 @@ template <typename real_t> struct linear_engagement_t
     {
         if (y_limit <= y_max) return real_t{1};
 
-        auto const gap = y_limit - y_max;
-        if (y_height <= gap) return real_t{0};
+        auto const yd = y_limit - y_max;
+        if (y_height <= yd) return real_t{0};
 
-        return real_t{1} - gap / y_height;
+        return real_t{1} - yd / y_height;
     }
 };
 
@@ -498,7 +490,7 @@ public:
         auto const input_map = in.to_affine();
         auto const input_map_inverse = input_map.invert();
 
-        // Mutate the local curve copy in place if it models the is_anchorable concept
+        // mutate the local curve copy in place if it models the is_anchorable concept
         align_anchor_(curve, warp, input_map, input_map_inverse, transition_);
 
         //
@@ -557,6 +549,13 @@ public:
         return result_t<curve_t>{std::move(final_chain)};
     }
 };
+
+//
+// tests
+//
+
+template <std::floating_point real_t> inline constexpr auto min_transition_width = static_cast<real_t>(1e-2);
+constexpr auto anchor_quantum = static_cast<float_t>(0x1p-10);
 
 template <typename real_t> struct quadratic_t
 {
@@ -641,7 +640,7 @@ template <typename real_t>
 } // namespace
 
 //
-// Affine Tests
+// affine tests
 //
 
 TEST(affine_test, inverse_recovers_original_value)
@@ -663,7 +662,7 @@ TEST(affine_test, composition_applies_inner_then_outer)
 }
 
 //
-// offset Geometry Tests
+// offset geometry tests
 //
 
 TEST(offset_geometry_test, roundtrip_maintains_smootherstep_geometry)
@@ -715,7 +714,7 @@ TEST(offset_geometry_test, disabled_geometry_acts_as_identity)
 }
 
 //
-// Engagement Window Tests
+// engagement window tests
 //
 
 struct engagement_vector_t
@@ -766,7 +765,7 @@ engagement_vector_t const engagement_vectors[] = {
 INSTANTIATE_TEST_SUITE_P(engagement_boundaries, engagement_test_t, ValuesIn(engagement_vectors));
 
 //
-// Validator Tests
+// validator tests
 //
 
 struct validator_fixture : Test
@@ -851,7 +850,7 @@ TEST_F(validator_fixture, rejects_disabled_offset_away_from_origin)
 }
 
 //
-// Signal Chain Assembly & Evaluation Tests
+// signal chain integration test
 //
 
 struct signal_chain_fixture_t : Test
@@ -979,13 +978,13 @@ TEST_F(signal_chain_fixture_t, preserves_base_curve_geometry_in_unwarped_region)
 
 TEST_F(signal_chain_fixture_t, builder_aborts_on_validation_failure)
 {
-    in.scale = 0; // Break the config (invalid scale)
+    in.scale = 0; // break config with invalid scale
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
 
     ASSERT_TRUE(!res.has_value());
     ASSERT_TRUE(res.error().error == builder_error_t::invalid_scale);
 
-    // Ensure no location is provided for a non-domain error
+    // ensure no location is provided for a non-domain error
     ASSERT_FALSE(res.error().location.has_value());
 }
 
@@ -997,7 +996,7 @@ TEST_F(signal_chain_fixture_t, assembles_successfully_with_disabled_offset)
     auto const res = builder.build(quadratic_t<real_t>{}, warp, in, out);
     ASSERT_TRUE(res.has_value()) << to_string(res.error().error);
 
-    // The curve should start rising immediately from x=0 without a flat plateau
+    // curve starts rising immediately from x=0 without a flat plateau
     auto const y_at_zero = res->chain(real_t{0});
     auto const y_at_small_step = res->chain(real_t{0.1});
 
@@ -1006,7 +1005,7 @@ TEST_F(signal_chain_fixture_t, assembles_successfully_with_disabled_offset)
 }
 
 //
-// Cusp Quantizer Tests
+// cusp quantizer tests
 //
 
 namespace {
@@ -1043,14 +1042,14 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
     auto const base_input_map_inverse = base_input_map.invert();
 
     anchorable_t<real_t> curve;
-    curve.anchor(0.0); // Default anchor
+    curve.anchor(0.0); // default anchor
 
     quantize(curve, warp, base_input_map, base_input_map_inverse, {});
 
-    // Retrieve the mutated anchor
+    // retrieve mutated anchor
     auto const p_prime = curve.anchor();
 
-    // Map the new anchor backwards to prove it lands exactly on a quantum boundary in raw input space
+    // map new anchor backwards; it lands exactly on a quantum boundary in raw input space
     offset_geometry_t<real_t, transitions::smootherstep_integral_t> const geom{
         warp.offset_start, warp.offset_width, {}};
     bisect_lower_bound_t invert{};
