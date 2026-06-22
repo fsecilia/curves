@@ -415,24 +415,27 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
     }
 };
 
-//
-// engagement
-//
-
+// rolls on limiter as curve's top approaches limit from below
 template <typename real_t> struct linear_engagement_t
 {
-    // Rolls the limiter on as the curve's top approaches the limit line from below: blend == 1 when the top touches
-    // the line, falling linearly to 0 over a window equal to the transition's rise. The window is a curve-output (v)
-    // distance; the display-space gap is converted by out_scale so the roll-on is independent of the output scale.
-    // Slope-free: d(blend)/d(limit_target) is constant.
-    [[nodiscard]] constexpr auto operator()(
-        real_t limit_target, real_t y_max, real_t limit_width, real_t out_scale, real_t rise) const noexcept -> real_t
+    /// determines partial engagement of limiter as function of distance from y_max to y_limit over y_engagement_height
+    ///
+    /// This function returns the linear blend fraction between limited and unlimited curves allowing the limiter to
+    /// roll on partially instead of instantly jumping from no engagement to full engagement. Engagement starts at
+    /// y_limit - yd_window and increases linearly to y_limit.
+    ///
+    /// \param y_max maximum signal
+    /// \param y_limit configured limit
+    /// \param y_height height of engagment window below limit
+    /// \returns 0 when function is unengaged with limiter, 1 when fully engaged, linear fraction when partially engaged
+    [[nodiscard]] constexpr auto operator()(real_t y_max, real_t y_limit, real_t y_height) const noexcept -> real_t
     {
-        if (limit_target <= y_max) return real_t{1};
+        if (y_limit <= y_max) return real_t{1};
 
-        auto const gap_v = (limit_target - y_max) / out_scale; // display-y gap -> curve-output (v) space
-        auto const window_v = limit_width * rise; // transition's rise == window height (v space)
-        return std::max(real_t{0}, real_t{1} - gap_v / window_v);
+        auto const gap = y_limit - y_max;
+        if (y_height <= gap) return real_t{0};
+
+        return real_t{1} - gap / y_height;
     }
 };
 
@@ -523,13 +526,13 @@ public:
                 domain_span_t<real_t>{warp.domain_low, input_map_inverse(real_t{0})}});
         }
 
-        auto const input_offset_high = input_map(warp.domain_high);
+        auto const input_domain_high = input_map(warp.domain_high);
 
         //
         // limit placement
         //
 
-        auto const limit_start_res = locate_limit_(warp, offset_in_low, input_offset_high, offset_chain);
+        auto const limit_start_res = locate_limit_(warp, offset_in_low, input_domain_high, offset_chain);
         if (!limit_start_res.has_value())
         {
             auto const offset_end_raw = input_map_inverse(warp.offset_start + warp.offset_width);
@@ -538,17 +541,7 @@ public:
         }
 
         auto const limit_start = *limit_start_res;
-
-        //
-        // engagement
-        //
-
-        auto const y_max = offset_chain(input_offset_high);
-        assert(std::isfinite(y_max));
-
-        real_t const rise = transition_(real_t{1});
-        real_t const blend = engage_(warp.limit_target, y_max, warp.limit_width, out.scale, rise);
-
+        auto const blend = engage_(offset_chain(input_domain_high), warp.limit_target, warp.limit_width * out.scale);
         auto limit_chain = limit_warp_t{
             limit_geometry_t{limit_start, warp.limit_width, transition_}, blend, std::move(offset_chain)};
 
@@ -725,28 +718,52 @@ TEST(offset_geometry_test, disabled_geometry_acts_as_identity)
 // Engagement Window Tests
 //
 
-//
-// Engagement Window Tests (Parameterized)
-//
-
-class engagement_test : public ::testing::TestWithParam<real_t>
-{};
-
-TEST_P(engagement_test, window_tracks_output_scale)
+struct engagement_vector_t
 {
-    using real_t = real_t;
-    linear_engagement_t<real_t> const engage;
+    real_t expected;
+    real_t y_max;
 
-    real_t const scale = GetParam();
-    real_t const y_max = 10, width = 1, rise = real_t{0.5};
-    auto const window = scale * width * rise;
+    friend auto operator<<(std::ostream& out, engagement_vector_t const& src) -> std::ostream&
+    {
+        return out << "{expected = " << src.expected << ", y_max = " << src.y_max << "}";
+    }
+};
 
-    ASSERT_TRUE(near(engage(y_max + window, y_max, width, scale, rise), real_t{0}, real_t{1e-4}, real_t{1e-4}));
-    ASSERT_TRUE(
-        near(engage(y_max + window * real_t{0.5}, y_max, width, scale, rise), real_t{0.5}, real_t{1e-4}, real_t{1e-4}));
+struct engagement_test_t : public TestWithParam<engagement_vector_t>
+{
+    static constexpr auto y_limit = 10.0;
+    static constexpr auto y_height = 1.0;
+
+    real_t expected = GetParam().expected;
+    real_t y_max = GetParam().y_max;
+
+    using sut_t = linear_engagement_t<real_t>;
+    sut_t const sut{};
+};
+
+TEST_P(engagement_test_t, blend_fraction)
+{
+    auto const actual = sut(y_max, y_limit, y_height);
+    ASSERT_TRUE(near(expected, actual, 1e-4, 1e-4));
 }
 
-INSTANTIATE_TEST_SUITE_P(scale_sweeps, engagement_test, ::testing::Values(real_t{0.5}, real_t{1.0}, real_t{2.0}));
+engagement_vector_t const engagement_vectors[] = {
+    // below window, no engagement, clamped to 0% engagement
+    {.expected = 0.0, .y_max = 8.5},
+
+    // at bottom edge of window, 0% engagment
+    {.expected = 0.0, .y_max = 9.0},
+
+    // halfway through window, 50% engagement
+    {.expected = 0.5, .y_max = 9.5},
+
+    // at top edge of window, 100% engagement
+    {.expected = 1.0, .y_max = 10.0},
+
+    // above window, clamped to 100% engagement
+    {.expected = 1.0, .y_max = 10.5},
+};
+INSTANTIATE_TEST_SUITE_P(engagement_boundaries, engagement_test_t, ValuesIn(engagement_vectors));
 
 //
 // Validator Tests
