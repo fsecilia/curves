@@ -4,7 +4,6 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "smootherstep_integral.hpp"
-#include <crv/lib.hpp>
 #include <crv/curves/test.hpp>
 
 namespace crv::signal_chain::transitions {
