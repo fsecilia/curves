@@ -61,6 +61,7 @@ target_sources(lib PRIVATE
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
     signal_chain/stages/input_affine.hpp
+    signal_chain/stages/output_affine.hpp
     signal_chain/transitions/smootherstep_integral.hpp
     spline/construction/segment/amr/approximant.hpp
     spline/construction/segment/amr/bisection.hpp
@@ -214,6 +215,7 @@ if (enable_testing)
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
         signal_chain/stages/input_affine_test.cpp
+        signal_chain/stages/output_affine_test.cpp
         signal_chain/transitions/smootherstep_integral_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
         spline/construction/segment/amr/bisection_test.cpp
