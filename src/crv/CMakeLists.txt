@@ -65,6 +65,7 @@ target_sources(lib PRIVATE
     shaping/transforms/input_affine.hpp
     shaping/transforms/offset.hpp
     shaping/transforms/output_affine.hpp
+    shaping/transitions/quadratic.hpp
     shaping/transitions/smootherstep_integral.hpp
     spline/construction/segment/amr/approximant.hpp
     spline/construction/segment/amr/bisection.hpp
@@ -222,6 +223,7 @@ if (enable_testing)
         shaping/transforms/input_affine_test.cpp
         shaping/transforms/offset_test.cpp
         shaping/transforms/output_affine_test.cpp
+        shaping/transitions/quadratic_test.cpp
         shaping/transitions/smootherstep_integral_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
         spline/construction/segment/amr/bisection_test.cpp
