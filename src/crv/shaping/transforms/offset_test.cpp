@@ -33,6 +33,8 @@ struct identity_test_t : test_t
     static_assert(10.0 == sut(10.0));
 
     static_assert(sut(jet_t{10.0, 3.0}) == jet_t{10.0, 3.0});
+
+    static_assert(10.0 == sut_t{}(10.0)); // default ctor is identity, width == 0
 };
 
 // tests pure transition with no horizontal section
