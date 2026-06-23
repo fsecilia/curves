@@ -60,12 +60,12 @@ target_sources(lib PRIVATE
     serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
-    signal_chain/stages/input.hpp
-    signal_chain/stages/output.hpp
-    signal_chain/transforms/input_affine.hpp
-    signal_chain/transforms/offset.hpp
-    signal_chain/transforms/output_affine.hpp
-    signal_chain/transitions/smootherstep_integral.hpp
+    shaping/stages/input.hpp
+    shaping/stages/output.hpp
+    shaping/transforms/input_affine.hpp
+    shaping/transforms/offset.hpp
+    shaping/transforms/output_affine.hpp
+    shaping/transitions/smootherstep_integral.hpp
     spline/construction/segment/amr/approximant.hpp
     spline/construction/segment/amr/bisection.hpp
     spline/construction/segment/amr/error_metric.hpp
@@ -217,12 +217,12 @@ if (enable_testing)
         serialization/toml/reader_adapter_test.cpp
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
-        signal_chain/stages/input_test.cpp
-        signal_chain/stages/output_test.cpp
-        signal_chain/transforms/input_affine_test.cpp
-        signal_chain/transforms/offset_test.cpp
-        signal_chain/transforms/output_affine_test.cpp
-        signal_chain/transitions/smootherstep_integral_test.cpp
+        shaping/stages/input_test.cpp
+        shaping/stages/output_test.cpp
+        shaping/transforms/input_affine_test.cpp
+        shaping/transforms/offset_test.cpp
+        shaping/transforms/output_affine_test.cpp
+        shaping/transitions/smootherstep_integral_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
         spline/construction/segment/amr/bisection_test.cpp
         spline/construction/segment/amr/error_metric_test.cpp
