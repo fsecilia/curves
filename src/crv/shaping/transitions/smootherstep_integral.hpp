@@ -14,7 +14,7 @@ namespace crv::shaping::transitions {
 /// transition based on integral of smootherstep
 struct smootherstep_integral_t
 {
-    /// \returns normalized integral of smootherstep ranging over (t, y, y') in [(0, 0, 0), (1, 0.5, 1)]
+    /// \returns integral of smootherstep ranging over (t, y, y') in [(0, 0, 0), (1, 0.5, 1)], gives c3 continuity
     template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
     {
         using scalar_t = scalar_type_t<value_t>;
