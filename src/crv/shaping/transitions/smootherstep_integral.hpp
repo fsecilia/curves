@@ -9,7 +9,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
 
-namespace crv::signal_chain::transitions {
+namespace crv::shaping::transitions {
 
 // transition based on integral of smootherstep
 struct smootherstep_integral_t
@@ -40,4 +40,4 @@ struct smootherstep_integral_t
     }
 };
 
-} // namespace crv::signal_chain::transitions
+} // namespace crv::shaping::transitions

@@ -7,7 +7,7 @@
 
 #include <crv/lib.hpp>
 
-namespace crv::signal_chain::stages {
+namespace crv::shaping::stages {
 
 /// transforms input then applies prev stage
 template <typename transform_t, typename prev_stage_t> struct input_t
@@ -22,4 +22,4 @@ template <typename transform_t, typename prev_stage_t> struct input_t
     }
 };
 
-} // namespace crv::signal_chain::stages
+} // namespace crv::shaping::stages

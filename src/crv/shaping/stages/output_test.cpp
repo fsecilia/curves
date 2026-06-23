@@ -7,10 +7,10 @@
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv::signal_chain::stages {
+namespace crv::shaping::stages {
 namespace {
 
-struct signal_chain_stages_output_test_t : Test
+struct shaping_stages_output_test_t : Test
 {
     using value_t = int_t;
 
@@ -27,7 +27,7 @@ struct signal_chain_stages_output_test_t : Test
     sut_t sut{.transform = strict_mock_callable_t{}, .prev_stage = strict_mock_callable_t{}};
 };
 
-TEST_F(signal_chain_stages_output_test_t, call)
+TEST_F(shaping_stages_output_test_t, call)
 {
     auto const input = value_t{3};
     auto const prev_stage_output = value_t{5};
@@ -42,4 +42,4 @@ TEST_F(signal_chain_stages_output_test_t, call)
 };
 
 } // namespace
-} // namespace crv::signal_chain::stages
+} // namespace crv::shaping::stages

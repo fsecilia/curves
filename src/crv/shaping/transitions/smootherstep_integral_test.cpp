@@ -6,7 +6,7 @@
 #include "smootherstep_integral.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::signal_chain::transitions {
+namespace crv::shaping::transitions {
 namespace {
 
 constexpr smootherstep_integral_t sut{};
@@ -55,4 +55,4 @@ template struct test_t<float32_t>;
 template struct test_t<float64_t>;
 
 } // namespace
-} // namespace crv::signal_chain::transitions
+} // namespace crv::shaping::transitions

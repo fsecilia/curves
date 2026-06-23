@@ -7,7 +7,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::signal_chain::transforms {
+namespace crv::shaping::transforms {
 namespace {
 
 using real_t = float_t;
@@ -70,4 +70,4 @@ TEST(input_affine_death_tests, invariant_scale_less_than_0)
 #endif
 
 } // namespace
-} // namespace crv::signal_chain::transforms
+} // namespace crv::shaping::transforms
