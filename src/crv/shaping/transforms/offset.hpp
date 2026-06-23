@@ -11,7 +11,7 @@
 #include <concepts>
 #include <utility>
 
-namespace crv::signal_chain::transforms {
+namespace crv::shaping::transforms {
 
 /// transforms input so output starts off horizontal then smoothly transitions to original function with lag
 ///
@@ -63,4 +63,4 @@ private:
     [[no_unique_address]] transition_t transition_;
 };
 
-} // namespace crv::signal_chain::transforms
+} // namespace crv::shaping::transforms

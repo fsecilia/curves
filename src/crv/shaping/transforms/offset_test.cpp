@@ -8,7 +8,7 @@
 #include <crv/shaping/transitions/smootherstep_integral.hpp>
 #include <crv/test/test.hpp>
 
-namespace crv::signal_chain::transforms {
+namespace crv::shaping::transforms {
 namespace {
 
 struct test_t
@@ -106,20 +106,20 @@ struct transition_with_horizontal_test_t : test_t
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-struct signal_chain_transforms_offset_death_tests_t : test_t, Test
+struct shaping_transforms_offset_death_tests_t : test_t, Test
 {};
 
-TEST_F(signal_chain_transforms_offset_death_tests_t, invariant_start_must_be_0_when_width_is_0)
+TEST_F(shaping_transforms_offset_death_tests_t, invariant_start_must_be_0_when_width_is_0)
 {
     EXPECT_DEATH((sut_t(1.0, 0.0, transition)), "invariant violated");
 }
 
-TEST_F(signal_chain_transforms_offset_death_tests_t, negative_start)
+TEST_F(shaping_transforms_offset_death_tests_t, negative_start)
 {
     EXPECT_DEATH((sut_t(-1.0, 1.0, transition)), "invariant violated");
 }
 
-TEST_F(signal_chain_transforms_offset_death_tests_t, negative_width)
+TEST_F(shaping_transforms_offset_death_tests_t, negative_width)
 {
     EXPECT_DEATH((sut_t(0.0, -1.0, transition)), "invariant violated");
 }
@@ -127,4 +127,4 @@ TEST_F(signal_chain_transforms_offset_death_tests_t, negative_width)
 #endif
 
 } // namespace
-} // namespace crv::signal_chain::transforms
+} // namespace crv::shaping::transforms

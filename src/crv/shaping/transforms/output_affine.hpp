@@ -9,7 +9,7 @@
 #include <cassert>
 #include <concepts>
 
-namespace crv::signal_chain::transforms {
+namespace crv::shaping::transforms {
 
 /// affine transform on output
 ///
@@ -33,4 +33,4 @@ private:
     real_t shift_;
 };
 
-} // namespace crv::signal_chain::transforms
+} // namespace crv::shaping::transforms
