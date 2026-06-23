@@ -5,7 +5,6 @@
 
 #include "offset.hpp"
 #include <crv/math/jet/jet.hpp>
-#include <crv/shaping/transitions/smootherstep_integral.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::shaping::transforms {
