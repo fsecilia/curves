@@ -63,6 +63,7 @@ target_sources(lib PRIVATE
     signal_chain/stages/input.hpp
     signal_chain/stages/output.hpp
     signal_chain/transforms/input_affine.hpp
+    signal_chain/transforms/offset.hpp
     signal_chain/transforms/output_affine.hpp
     signal_chain/transitions/smootherstep_integral.hpp
     spline/construction/segment/amr/approximant.hpp
@@ -219,6 +220,7 @@ if (enable_testing)
         signal_chain/stages/input_test.cpp
         signal_chain/stages/output_test.cpp
         signal_chain/transforms/input_affine_test.cpp
+        signal_chain/transforms/offset_test.cpp
         signal_chain/transforms/output_affine_test.cpp
         signal_chain/transitions/smootherstep_integral_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
