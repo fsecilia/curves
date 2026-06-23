@@ -63,6 +63,7 @@ target_sources(lib PRIVATE
     shaping/stages/input.hpp
     shaping/stages/output.hpp
     shaping/transforms/input_affine.hpp
+    shaping/transforms/limit.hpp
     shaping/transforms/offset.hpp
     shaping/transforms/output_affine.hpp
     shaping/transitions/quadratic.hpp
@@ -221,6 +222,7 @@ if (enable_testing)
         shaping/stages/input_test.cpp
         shaping/stages/output_test.cpp
         shaping/transforms/input_affine_test.cpp
+        shaping/transforms/limit_test.cpp
         shaping/transforms/offset_test.cpp
         shaping/transforms/output_affine_test.cpp
         shaping/transitions/quadratic_test.cpp
