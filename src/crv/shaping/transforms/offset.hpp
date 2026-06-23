@@ -30,7 +30,8 @@ template <std::floating_point t_real_t, typename transition_t> class offset_t
 public:
     using real_t = t_real_t;
 
-    explicit constexpr offset_t(transition_t transition = {}) noexcept : offset_t{0.0, 0.0, std::move(transition)} {}
+    constexpr offset_t() = default;
+    explicit constexpr offset_t(transition_t transition) noexcept : offset_t{0.0, 0.0, std::move(transition)} {}
 
     constexpr offset_t(real_t start, real_t width, transition_t transition) noexcept
         : start_{start}, width_{width}, transition_{std::move(transition)}
@@ -54,13 +55,13 @@ public:
     }
 
 private:
-    real_t start_;
-    real_t width_;
-    real_t rwidth_;
-    real_t lag_;
+    real_t start_{};
+    real_t width_{};
+    real_t rwidth_{};
+    real_t lag_{};
 
     // transition is scaled uniformly by width to keep its aspect ratio
-    [[no_unique_address]] transition_t transition_;
+    [[no_unique_address]] transition_t transition_{};
 };
 
 } // namespace crv::shaping::transforms
