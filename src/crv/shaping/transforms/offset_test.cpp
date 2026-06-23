@@ -5,6 +5,7 @@
 
 #include "offset.hpp"
 #include <crv/math/jet/jet.hpp>
+#include <crv/shaping/transitions/quadratic.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::shaping::transforms {
@@ -15,25 +16,7 @@ struct test_t
     using real_t = float_t;
     using jet_t = jet_t<real_t>;
 
-    // quadratic transition: (x, y, y') in [(0,0,0), (1, 0.5, 1)], gives c1 continuity
-    struct transition_t
-    {
-        template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
-        {
-            using scalar_t = scalar_type_t<value_t>;
-            auto const t = primal(input);
-            if (t <= scalar_t{0}) return value_t{0};
-            if (t >= scalar_t{1}) return input - scalar_t{0.5};
-
-            auto const y = t * t / scalar_t{2};
-            if constexpr (is_jet<value_t>)
-            {
-                auto const dt = tangent(input);
-                return value_t{y, t * dt};
-            }
-            else return y;
-        }
-    };
+    using transition_t = transitions::quadratic_t;
     static constexpr auto transition = transition_t{};
 
     using sut_t = offset_t<real_t, transition_t>;
