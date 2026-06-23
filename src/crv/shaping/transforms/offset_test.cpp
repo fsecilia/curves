@@ -68,8 +68,8 @@ struct transition_with_horizontal_test_t : test_t
     static constexpr auto sut = sut_t{start, width, transition};
 
     // horizontal section, x <= start
-    static_assert(0.0 == sut(jet_t{0.0, 3.0})); // tangent discarded
-    static_assert(0.0 == sut(jet_t{1.5, 1.0}));
+    static_assert(jet_t{0.0, 0.0} == sut(jet_t{0.0, 3.0}));
+    static_assert(jet_t{0.0, 0.0} == sut(jet_t{1.5, 1.0}));
 
     // transition section
     static_assert(jet_t{0.0625, 0.25} == sut(jet_t{2.0, 1.0}));
