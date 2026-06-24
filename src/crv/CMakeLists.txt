@@ -61,6 +61,7 @@ target_sources(lib PRIVATE
     serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
+    shaping/construction/limit_engager.hpp
     shaping/construction/limit_locator.hpp
     shaping/stages/input.hpp
     shaping/stages/output.hpp
@@ -222,6 +223,7 @@ if (enable_testing)
         serialization/toml/reader_adapter_test.cpp
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
+        shaping/construction/limit_engager_test.cpp
         shaping/construction/limit_locator_test.cpp
         shaping/stages/input_test.cpp
         shaping/stages/output_test.cpp
