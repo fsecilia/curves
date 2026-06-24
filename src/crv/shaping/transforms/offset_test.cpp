@@ -20,12 +20,14 @@ struct test_t
     static constexpr auto transition = transition_t{};
 
     using sut_t = offset_t<real_t, transition_t>;
+
+    static constexpr auto min_width = 1.0;
 };
 
 // tests identity state
 struct identity_test_t : test_t
 {
-    static constexpr auto sut = sut_t{transition};
+    static constexpr auto sut = sut_t{0.0, 0.0, min_width, transition};
 
     static_assert(-10.0 == sut(-10.0));
     static_assert(0.0 == sut(0.0));
@@ -33,8 +35,6 @@ struct identity_test_t : test_t
     static_assert(10.0 == sut(10.0));
 
     static_assert(sut(jet_t{10.0, 3.0}) == jet_t{10.0, 3.0});
-
-    static_assert(10.0 == sut_t{}(10.0)); // default ctor is identity, width == 0
 };
 
 // tests pure transition with no horizontal section
@@ -42,7 +42,7 @@ struct transition_only_test_t : test_t
 {
     static constexpr auto start = 0.0;
     static constexpr auto width = 2.0;
-    static constexpr auto sut = sut_t{start, width, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, transition};
 
     // horizontal section, x <= start
     static_assert(jet_t{0.0, 0.0} == sut(jet_t{-1.0, 3.0}));
@@ -67,7 +67,7 @@ struct transition_with_horizontal_test_t : test_t
 {
     static constexpr auto start = 1.5;
     static constexpr auto width = 2.0;
-    static constexpr auto sut = sut_t{start, width, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, transition};
 
     // horizontal section, x <= start
     static_assert(jet_t{0.0, 0.0} == sut(jet_t{0.0, 3.0}));
@@ -93,19 +93,34 @@ struct transition_with_horizontal_test_t : test_t
 struct shaping_transforms_offset_death_tests_t : test_t, Test
 {};
 
-TEST_F(shaping_transforms_offset_death_tests_t, invariant_start_must_be_0_when_width_is_0)
+TEST_F(shaping_transforms_offset_death_tests_t, zero_width_nonzero_start)
 {
-    EXPECT_DEATH((sut_t(1.0, 0.0, transition)), "invariant violated");
+    EXPECT_DEATH((sut_t{1.0, 0.0, min_width, transition}), "invariant violated");
 }
 
 TEST_F(shaping_transforms_offset_death_tests_t, negative_start)
 {
-    EXPECT_DEATH((sut_t(-1.0, 1.0, transition)), "invariant violated");
+    EXPECT_DEATH((sut_t{-1.0, min_width, min_width, transition}), "invariant violated");
 }
 
-TEST_F(shaping_transforms_offset_death_tests_t, negative_width)
+TEST_F(shaping_transforms_offset_death_tests_t, below_min_width)
 {
-    EXPECT_DEATH((sut_t(0.0, -1.0, transition)), "invariant violated");
+    // this constructs safely
+    [[maybe_unused]] auto working_sut = sut_t{0.0, min_width, min_width, transition};
+
+    // decrementing width by one float does not construct
+    auto const just_before_min_width = std::nextafter(min_width, 0.0);
+    EXPECT_DEATH((sut_t{0.0, just_before_min_width, min_width, transition}), "invariant violated");
+}
+
+TEST_F(shaping_transforms_offset_death_tests_t, negative_min_width)
+{
+    EXPECT_DEATH((sut_t{0.0, min_width, -min_width, transition}), "invariant violated");
+}
+
+TEST_F(shaping_transforms_offset_death_tests_t, zero_min_width)
+{
+    EXPECT_DEATH((sut_t{1.0, 1.0, 0.0, transition}), "invariant violated");
 }
 
 #endif
