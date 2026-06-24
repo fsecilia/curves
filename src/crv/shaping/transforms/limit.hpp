@@ -40,7 +40,7 @@ public:
         rwidth_ = real_t{1} / width_;
 
         transition_max_ = transition_(real_t{1});
-        limit_max_ = start_ + width_ * transition_max_;
+        input_max_ = start_ + width_ * transition_max_;
     }
 
     // applies start, transition, or limit, piecewise, then applies blend
@@ -51,17 +51,17 @@ public:
         auto const x = primal(input);
         if (x <= start_) return input;
 
-        value_t limited;
-        if (x >= start_ + width_) limited = value_t{limit_max_};
+        value_t input_limited;
+        if (x >= start_ + width_) input_limited = value_t{input_max_};
         else
         {
             auto const t = (input - start_) * rwidth_;
-            limited = start_ + width_ * (transition_max_ - transition_(value_t{1} - t));
+            input_limited = start_ + width_ * (transition_max_ - transition_(value_t{1} - t));
         }
 
-        if (blend_ >= real_t{1}) return limited;
+        if (blend_ >= real_t{1}) return input_limited;
 
-        return (real_t{1} - blend_) * input + blend_ * limited;
+        return (real_t{1} - blend_) * input + blend_ * input_limited;
     }
 
 private:
@@ -70,8 +70,9 @@ private:
     real_t blend_{};
     real_t rwidth_{};
     real_t transition_max_{};
-    real_t limit_max_{};
+    real_t input_max_{};
 
+    // transition is scaled uniformly by width to keep its aspect ratio
     [[no_unique_address]] transition_t transition_{};
 };
 
