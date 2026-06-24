@@ -30,11 +30,13 @@ template <std::floating_point t_real_t, typename transition_t> class limit_t
 public:
     using real_t = t_real_t;
 
-    constexpr limit_t(real_t start, real_t width, real_t blend, transition_t transition) noexcept
+    constexpr limit_t(real_t start, real_t width, real_t min_width, real_t blend, transition_t transition) noexcept
         : start_{start}, width_{width}, blend_{blend}, transition_{std::move(transition)}
     {
+        static_cast<void>(min_width);
         assert(blend_ >= real_t{0} && blend_ <= real_t{1} && "limit_t: blend must be in [0, 1]");
-        assert(width_ > real_t{0} && "limit_t: width must be greater than 0");
+        assert(min_width > real_t{0} && "limit_t: min_width must be greater than 0");
+        assert(width_ >= min_width && "limit_t: width must be greater than min_width");
         rwidth_ = real_t{1} / width_;
 
         transition_max_ = transition_(real_t{1});

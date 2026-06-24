@@ -20,12 +20,14 @@ struct test_t
     static constexpr auto transition = transition_t{};
 
     using sut_t = limit_t<real_t, transition_t>;
+
+    static constexpr auto min_width = 1.0;
 };
 
 // tests identity state, no engagement
 struct identity_test_t : test_t
 {
-    static constexpr auto sut = sut_t{0.0, 2.0, 0.0, transition};
+    static constexpr auto sut = sut_t{0.0, 2.0, min_width, 0.0, transition};
 
     static_assert(-10.0 == sut(-10.0));
     static_assert(0.0 == sut(0.0));
@@ -41,7 +43,7 @@ struct transition_only_test_t : test_t
     static constexpr auto start = 0.0;
     static constexpr auto width = 2.0;
     static constexpr auto blend = 1.0;
-    static constexpr auto sut = sut_t{start, width, blend, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, blend, transition};
 
     // original section, x <= start
     static_assert(jet_t{-1.0, 3.0} == sut(jet_t{-1.0, 3.0}));
@@ -68,7 +70,7 @@ struct transition_with_start_test_t : test_t
     static constexpr auto start = 1.5;
     static constexpr auto width = 2.0;
     static constexpr auto blend = 1.0;
-    static constexpr auto sut = sut_t{start, width, blend, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, blend, transition};
 
     // original section, x <= start
     static_assert(jet_t{0.0, 3.0} == sut(jet_t{0.0, 3.0}));
@@ -95,7 +97,7 @@ struct transition_only_with_blend_test_t : test_t
     static constexpr auto start = 0.0;
     static constexpr auto width = 2.0;
     static constexpr auto blend = 0.5;
-    static constexpr auto sut = sut_t{start, width, blend, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, blend, transition};
 
     // original section, x <= start
     static_assert(jet_t{0.0, 1.0} == sut(jet_t{0.0, 1.0}));
@@ -120,7 +122,7 @@ struct transition_with_start_and_blend_test_t : test_t
     static constexpr auto start = 1.5;
     static constexpr auto width = 2.0;
     static constexpr auto blend = 0.5;
-    static constexpr auto sut = sut_t{start, width, blend, transition};
+    static constexpr auto sut = sut_t{start, width, min_width, blend, transition};
 
     // original section, x <= start — blend
     static_assert(jet_t{0.0, 3.0} == sut(jet_t{0.0, 3.0}));
@@ -141,24 +143,34 @@ struct transition_with_start_and_blend_test_t : test_t
 struct shaping_transforms_limit_death_tests_t : test_t, Test
 {};
 
-TEST_F(shaping_transforms_limit_death_tests_t, negative_width)
+TEST_F(shaping_transforms_limit_death_tests_t, negative_min_width)
 {
-    EXPECT_DEATH((sut_t(0.0, -1.0, 1.0, transition)), "width.*0");
+    EXPECT_DEATH((sut_t{0.0, min_width, -min_width, 0.5, transition}), "min_width.*greater.*0");
 }
 
-TEST_F(shaping_transforms_limit_death_tests_t, zero_width)
+TEST_F(shaping_transforms_limit_death_tests_t, zero_min_width)
 {
-    EXPECT_DEATH((sut_t(0.0, 0.0, 1.0, transition)), "width.*0");
+    EXPECT_DEATH((sut_t{0.0, 0.0, -min_width, 0.5, transition}), "min_width.*greater.*0");
+}
+
+TEST_F(shaping_transforms_limit_death_tests_t, below_min_width)
+{
+    // this constructs safely
+    [[maybe_unused]] auto working_sut = sut_t{0.0, min_width, min_width, 0.5, transition};
+
+    // decrementing width by one float does not construct
+    auto const just_before_min_width = std::nextafter(min_width, 0.0);
+    EXPECT_DEATH((sut_t{0.0, just_before_min_width, min_width, 0.5, transition}), "width.*greater.*min_width");
 }
 
 TEST_F(shaping_transforms_limit_death_tests_t, negative_blend)
 {
-    EXPECT_DEATH((sut_t(0.0, 1.0, -0.1, transition)), "blend.*in.*0, 1");
+    EXPECT_DEATH((sut_t{0.0, 1.0, min_width, -0.1, transition}), "blend.*in.*0, 1");
 }
 
 TEST_F(shaping_transforms_limit_death_tests_t, excess_blend)
 {
-    EXPECT_DEATH((sut_t(0.0, 1.0, 1.1, transition)), "blend.*in.*0, 1");
+    EXPECT_DEATH((sut_t{0.0, 1.0, min_width, 1.1, transition}), "blend.*in.*0, 1");
 }
 
 #endif
