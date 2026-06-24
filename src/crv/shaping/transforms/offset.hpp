@@ -53,7 +53,9 @@ public:
         auto const x = primal(input);
         if (x <= start_) return value_t{0};
         if (x >= start_ + width_) return input - lag_;
-        return width_ * transition_((input - start_) * rwidth_);
+
+        auto const t = (input - start_) * rwidth_;
+        return width_ * transition_(t);
     }
 
 private:
