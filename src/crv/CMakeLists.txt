@@ -10,6 +10,7 @@ add_library(lib)
 target_sources(lib PRIVATE
     bit.hpp
     concepts.hpp
+    curves/concepts.hpp
     curves/curves.hpp
     curves/derivatives.hpp
     curves/log_normal.hpp
@@ -155,6 +156,7 @@ if (enable_testing)
         bit_test.cpp
         bitwise_enum_test.cpp
         concepts_test.cpp
+        curves/concepts_test.cpp
         curves/log_normal_test.cpp
         curves/synchronous_test.cpp
         curves/test.hpp
