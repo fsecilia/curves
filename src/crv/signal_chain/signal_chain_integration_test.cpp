@@ -11,7 +11,6 @@
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
-#include <crv/signal_chain/transitions/smootherstep_integral.hpp>
 #include <crv/test/test.hpp>
 #include <algorithm>
 #include <cassert>
@@ -24,6 +23,7 @@
 #include <utility>
 
 namespace crv::signal_chain {
+namespace {
 
 template <typename src_t>
 concept has_scalar = requires {
@@ -36,6 +36,41 @@ concept is_anchorable = has_scalar<evaluator_t> && requires(evaluator_t evaluato
     { evaluator.anchor() } -> std::convertible_to<typename evaluator_t::scalar_t>;
     { evaluator.anchor(scalar) };
 };
+
+namespace transitions {
+
+// transition based on integral of smootherstep
+struct smootherstep_integral_t
+{
+    // returns normalized integral of smootherstep ranging over (t, y, y') in [(0, 0, 0), (1, 0.5, 1)]
+    template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
+    {
+        using scalar_t = scalar_type_t<value_t>;
+
+        auto const t = primal(input);
+        if (t <= scalar_t{0}) return value_t{0};
+        if (t >= scalar_t{1}) return input - scalar_t{0.5}; // input - 1 + f(1)
+
+        // strictly compute using the primal scalar to avoid implicit jet evaluation
+        auto const t2 = t * t;
+        auto const t4 = t2 * t2;
+
+        // f = t^6 - 3t^5 + 2.5t^4
+        auto const y = t4 * (t2 - scalar_t{3} * t + scalar_t{2.5});
+
+        if constexpr (is_jet<value_t>)
+        {
+            // df = 6t^5 - 15t^4 + 10t^3
+            auto const t3 = t2 * t;
+            auto const dt = tangent(input);
+            auto const dy_dt = t3 * ((scalar_t{6} * t - scalar_t{15}) * t + scalar_t{10});
+            return value_t{y, dy_dt * dt};
+        }
+        else return y;
+    }
+};
+
+} // namespace transitions
 
 //
 // transforms
@@ -389,19 +424,14 @@ template <typename real_t, typename invert_t = bisect_lower_bound_t> struct limi
 {
     invert_t invert;
 
-    /// \pre offset_chain is monotonic non-decreasing on [input_offset_low, input_offset_high]
+    /// \pre offset_chain is monotonic non-decreasing on [input_min, input_max]
     template <typename chain_t>
-    [[nodiscard]] constexpr auto operator()(domain_warp_config_t<real_t> const& warp, real_t offset_in_low,
-        real_t input_offset_high, chain_t const& offset_chain) const -> std::expected<real_t, builder_error_t>
+    [[nodiscard]] constexpr auto operator()(real_t limit, real_t transition_width, real_t transition_height,
+        real_t input_min, real_t input_max, chain_t const& offset_chain) const -> real_t
     {
-        auto const opt_x_cap = invert(offset_in_low, input_offset_high, warp.limit_target, offset_chain);
-        auto const x_cap = opt_x_cap.value_or(input_offset_high);
-        auto const limit_start = x_cap - warp.limit_width * warp.limit_height;
-
-        if (limit_start < warp.offset_start + warp.offset_width)
-        {
-            return std::unexpected(builder_error_t::warp_overlap);
-        }
+        auto const opt_x_cap = invert(input_min, input_max, limit, offset_chain);
+        auto const x_cap = opt_x_cap.value_or(input_max);
+        auto const limit_start = x_cap - transition_width * transition_height;
 
         return limit_start;
     }
@@ -510,30 +540,31 @@ public:
         auto offset_chain
             = offset_warp_t{offset_geometry_t{warp.offset_start, warp.offset_width, transition_}, std::move(out_stack)};
 
-        auto const offset_in_low = input_map(warp.domain_low);
-        if (offset_in_low < real_t{0})
+        auto const input_low = input_map(warp.domain_low);
+        if (input_low < real_t{0})
         {
             // breaking slice: [domain_low, where curve space crosses 0], carried back to raw input
             return std::unexpected(build_error_t<real_t>{builder_error_t::negative_domain,
                 domain_span_t<real_t>{warp.domain_low, input_map_inverse(real_t{0})}});
         }
 
-        auto const input_domain_high = input_map(warp.domain_high);
+        auto const input_high = input_map(warp.domain_high);
 
         //
         // limit placement
         //
 
-        auto const limit_start_res = locate_limit_(warp, offset_in_low, input_domain_high, offset_chain);
-        if (!limit_start_res.has_value())
+        auto const limit_start = locate_limit_(
+            warp.limit_target, warp.limit_width, warp.limit_height, input_low, input_high, offset_chain);
+
+        if (limit_start < warp.offset_start + warp.offset_width)
         {
             auto const offset_end_raw = input_map_inverse(warp.offset_start + warp.offset_width);
-            return std::unexpected(
-                build_error_t<real_t>{limit_start_res.error(), domain_span_t<real_t>{offset_end_raw, offset_end_raw}});
+            return std::unexpected(build_error_t<real_t>{
+                builder_error_t::warp_overlap, domain_span_t<real_t>{offset_end_raw, offset_end_raw}});
         }
 
-        auto const limit_start = *limit_start_res;
-        auto const blend = engage_(offset_chain(input_domain_high), warp.limit_target, warp.limit_width * out.scale);
+        auto const blend = engage_(offset_chain(input_high), warp.limit_target, warp.limit_width * out.scale);
         auto limit_chain = limit_warp_t{
             limit_geometry_t{limit_start, warp.limit_width, transition_}, blend, std::move(offset_chain)};
 
@@ -1063,4 +1094,5 @@ TEST(anchor_aligner_test, snaps_curve_anchor_to_input_grid)
     ASSERT_TRUE(near(ratio, std::round(ratio), real_t{1e-3}, real_t{0})) << "x_raw=" << x_raw << " ratio=" << ratio;
 }
 
+} // namespace
 } // namespace crv::signal_chain
