@@ -24,7 +24,7 @@ namespace crv::shaping::transforms {
 ///
 /// The transform is identity when width == 0. When width == 0, start must also be 0.
 ///
-/// \invariant (start == 0 && width == 0) || (start >= 0 && width > 0)
+/// \invariant (start == 0 && width == 0) || (start >= 0 && min_width > 0 && width >= min_width)
 template <std::floating_point t_real_t, typename transition_t> class offset_t
 {
 public:
@@ -33,10 +33,12 @@ public:
     constexpr offset_t() = default;
     explicit constexpr offset_t(transition_t transition) noexcept : offset_t{0.0, 0.0, std::move(transition)} {}
 
-    constexpr offset_t(real_t start, real_t width, transition_t transition) noexcept
+    constexpr offset_t(real_t start, real_t width, real_t min_width, transition_t transition) noexcept
         : start_{start}, width_{width}, transition_{std::move(transition)}
     {
-        assert(((start_ == real_t{0} && width_ == real_t{0}) || (start_ >= real_t{0} && width_ > real_t{0}))
+        static_cast<void>(min_width);
+        assert(((start_ == real_t{0} && width_ == real_t{0})
+                   || (start_ >= real_t{0} && min_width > real_t{0} && width_ >= min_width))
             && "offset_t: invariant violated");
         rwidth_ = width_ > real_t{0} ? real_t{1} / width_ : real_t{0};
 
