@@ -23,16 +23,16 @@ struct test_vector_t
 };
 
 // common fixture
-struct quantizer_test_t : TestWithParam<test_vector_t>
+struct fixed_quantizer_test_t : TestWithParam<test_vector_t>
 {
     scalar_t const input = GetParam().input;
     scalar_t const expected = GetParam().expected;
 };
 
 // generic fixture
-template <int frac_bits> struct quantizers_fixed_point_test_frac_bits_t : quantizer_test_t
+template <int frac_bits> struct fixed_quantizer_test_frac_bits_t : fixed_quantizer_test_t
 {
-    using sut_t = quantizer_t<scalar_t, frac_bits>;
+    using sut_t = fixed_quantizer_t<scalar_t, frac_bits>;
     sut_t sut{};
 
     auto test() -> void { EXPECT_DOUBLE_EQ(expected, sut(input)); }
@@ -42,7 +42,7 @@ template <int frac_bits> struct quantizers_fixed_point_test_frac_bits_t : quanti
 // 2 frac bits
 // --------------------------------------------------------------------------------------------------------------------
 
-struct quantizers_fixed_point_test_frac_bits_2_t : quantizers_fixed_point_test_frac_bits_t<2>
+struct quantizers_fixed_point_test_frac_bits_2_t : fixed_quantizer_test_frac_bits_t<2>
 {};
 
 TEST_P(quantizers_fixed_point_test_frac_bits_2_t, test)
@@ -80,7 +80,7 @@ INSTANTIATE_TEST_SUITE_P(test_vectors, quantizers_fixed_point_test_frac_bits_2_t
 // 8 frac bits
 // --------------------------------------------------------------------------------------------------------------------
 
-struct quantizers_fixed_point_test_frac_bits_8_t : quantizers_fixed_point_test_frac_bits_t<8>
+struct quantizers_fixed_point_test_frac_bits_8_t : fixed_quantizer_test_frac_bits_t<8>
 {};
 
 TEST_P(quantizers_fixed_point_test_frac_bits_8_t, test)
