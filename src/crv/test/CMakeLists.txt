@@ -6,6 +6,7 @@
 option(BUILD_INTEGRATION_TESTS "build longer-running integration tests" OFF)
 
 add_library(testing
+    mock_callable.hpp
     test.cpp
     test.hpp
     typed_equal.hpp
