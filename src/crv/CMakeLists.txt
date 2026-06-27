@@ -295,6 +295,11 @@ if (enable_testing)
             spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
+
+        add_executable(shaping_integration_test
+            shaping/shaping_integration_test.cpp
+        )
+        target_link_libraries(shaping_integration_test PRIVATE lib testing)
     endif()
 endif()
 
