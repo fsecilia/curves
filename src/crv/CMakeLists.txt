@@ -67,6 +67,7 @@ target_sources(lib PRIVATE
     shaping/construction/limit_locator.hpp
     shaping/stages/input.hpp
     shaping/stages/output.hpp
+    shaping/transforms/composite.hpp
     shaping/transforms/input_affine.hpp
     shaping/transforms/limit.hpp
     shaping/transforms/offset.hpp
@@ -231,6 +232,7 @@ if (enable_testing)
         shaping/construction/limit_locator_test.cpp
         shaping/stages/input_test.cpp
         shaping/stages/output_test.cpp
+        shaping/transforms/composite_test.cpp
         shaping/transforms/input_affine_test.cpp
         shaping/transforms/limit_test.cpp
         shaping/transforms/offset_test.cpp
