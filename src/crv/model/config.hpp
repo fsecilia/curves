@@ -16,7 +16,8 @@
 #include <crv/tuple.hpp>
 #include <string>
 
-namespace crv::model {
+namespace crv {
+namespace model {
 
 using namespace reflection;
 using namespace constraints;
@@ -60,16 +61,22 @@ struct offset_t
     constexpr auto operator==(offset_t const&) const noexcept -> bool = default;
 };
 
+enum class floor_mode_t
+{
+    absolute,
+    relative,
+};
+
 struct floor_t
 {
-    param_t<bool> enabled{"enabled", false};
-    param_t<float_t, static_t<float_t, 0.0, soft_limit>> anchor{"minimum", 0.0};
+    param_t<floor_mode_t> mode{"mode", floor_mode_t::relative};
+    param_t<float_t, static_t<float_t, -soft_limit, soft_limit>> value{"value", 0.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
-        inspector.inspect(self.enabled);
-        inspector.inspect(self.anchor);
+        inspector.inspect(self.mode);
+        inspector.inspect(self.value);
         return std::forward<inspector_t>(inspector);
     }
 
@@ -209,4 +216,15 @@ struct root_t
     constexpr auto operator==(root_t const&) const noexcept -> bool = default;
 };
 
-} // namespace crv::model
+} // namespace model
+
+namespace reflection {
+
+template <> struct enum_t<model::floor_mode_t>
+{
+    static constexpr auto map = sequential_enum_name_map<model::floor_mode_t>("absolute", "relative");
+};
+
+} // namespace reflection
+
+} // namespace crv

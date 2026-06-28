@@ -36,8 +36,8 @@ TEST(model_test, round_trip)
     synchronous.common.scale.output.value(5.0);
     synchronous.common.offset.begin.value(1.0);
     synchronous.common.offset.width.value(1.5);
-    synchronous.common.floor.enabled.value(true);
-    synchronous.common.floor.anchor.value(1.2);
+    synchronous.common.floor.mode.value(floor_mode_t::absolute);
+    synchronous.common.floor.value.value(1.2);
     synchronous.common.limit.max.value(128.0);
     synchronous.common.limit.width.value(7.0);
     synchronous.specific.motivity.value(100.0);
@@ -50,8 +50,8 @@ TEST(model_test, round_trip)
     log_normal.common.scale.output.value(9.0);
     log_normal.common.offset.begin.value(2.0);
     log_normal.common.offset.width.value(2.5);
-    log_normal.common.floor.enabled.value(true);
-    log_normal.common.floor.anchor.value(3.2);
+    log_normal.common.floor.mode.value(floor_mode_t::absolute);
+    log_normal.common.floor.value.value(3.2);
     log_normal.common.limit.max.value(256.0);
     log_normal.common.limit.width.value(11.0);
     log_normal.specific.center.value(10.0);
