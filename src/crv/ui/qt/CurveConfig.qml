@@ -13,84 +13,93 @@ Flickable {
     contentHeight: mainLayout.height
     boundsBehavior: Flickable.StopAtBounds
 
-    ScrollBar.vertical: ScrollBar {}
+    ScrollBar.vertical: ScrollBar {
+        id: scrollBar
+        policy: scrollView.contentHeight > scrollView.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+    }
 
-    ColumnLayout {
-        id: mainLayout
-        width: parent.width
-        spacing: 16
+    Control {
+        leftPadding: 2
+        width: parent ? Math.max(0, parent.width - leftPadding) : 0
+        Layout.fillWidth: true
 
-        GroupBox {
-            title: "Active Curve"
-            Layout.fillWidth: true
-            Layout.margins: 8
+        ColumnLayout {
+            id: mainLayout
+            width: parent.width
+            spacing: 8
 
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: specificCurveModel
-                Repeater {
-                    model: specificCurveModel
-                    delegate: PropertyDelegateChooser{}
+            GroupBox {
+                title: "Active Curve"
+                Layout.fillWidth: true
+                Layout.margins: 8
+
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: specificCurveModel
+                    Repeater {
+                        model: specificCurveModel
+                        delegate: PropertyDelegateChooser{}
+                    }
                 }
             }
-        }
 
-        GroupBox {
-            title: "Scale"
-            Layout.fillWidth: true
-            Layout.margins: 8
+            GroupBox {
+                title: "Scale"
+                Layout.fillWidth: true
+                Layout.margins: 8
 
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: scaleModel
-                Repeater {
-                    model: scaleModel
-                    delegate: PropertyDelegateChooser{}
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: scaleModel
+                    Repeater {
+                        model: scaleModel
+                        delegate: PropertyDelegateChooser{}
+                    }
                 }
             }
-        }
 
-        GroupBox {
-            title: "Offset"
-            Layout.fillWidth: true
-            Layout.margins: 8
+            GroupBox {
+                title: "Offset"
+                Layout.fillWidth: true
+                Layout.margins: 8
 
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: offsetModel
-                Repeater {
-                    model: offsetModel
-                    delegate: PropertyDelegateChooser{}
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: offsetModel
+                    Repeater {
+                        model: offsetModel
+                        delegate: PropertyDelegateChooser{}
+                    }
                 }
             }
-        }
 
-        GroupBox {
-            title: "Floor"
-            Layout.fillWidth: true
-            Layout.margins: 8
+            GroupBox {
+                title: "Floor"
+                Layout.fillWidth: true
+                Layout.margins: 8
 
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: floorModel
-                Repeater {
-                    model: floorModel
-                    delegate: PropertyDelegateChooser{}
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: floorModel
+                    Repeater {
+                        model: floorModel
+                        delegate: PropertyDelegateChooser{}
+                    }
                 }
             }
-        }
 
-        GroupBox {
-            title: "Limit"
-            Layout.fillWidth: true
-            Layout.margins: 8
+            GroupBox {
+                title: "Limit"
+                Layout.fillWidth: true
+                Layout.margins: 8
 
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: limitModel
-                Repeater {
-                    model: limitModel
-                    delegate: PropertyDelegateChooser{}
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: limitModel
+                    Repeater {
+                        model: limitModel
+                        delegate: PropertyDelegateChooser{}
+                    }
                 }
             }
         }
