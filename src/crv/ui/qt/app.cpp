@@ -177,6 +177,9 @@ auto app_t::initialize() -> bool
 
     engine_->loadFromModule("Curves", "Main");
 
+    floor_model_->error_message("value", "floor error summary", "floor error message\nmore error message");
+    device_model_->error_message("dpi", "dpi error summary", "dpi error message\nmore error message");
+
     return true;
 }
 
