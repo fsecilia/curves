@@ -21,36 +21,6 @@ Flickable {
         spacing: 16
 
         GroupBox {
-            title: "Device"
-            Layout.fillWidth: true
-            Layout.margins: 8
-
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: deviceModel
-                Repeater {
-                    model: deviceModel
-                    delegate: PropertyDelegateChooser{}
-                }
-            }
-        }
-
-        GroupBox {
-            title: "Profile"
-            Layout.fillWidth: true
-            Layout.margins: 8
-
-            ColumnLayout {
-                width: parent.width
-                property var sectionModel: profileModel
-                Repeater {
-                    model: profileModel
-                    delegate: PropertyDelegateChooser{}
-                }
-            }
-        }
-
-        GroupBox {
             title: "Active Curve"
             Layout.fillWidth: true
             Layout.margins: 8
