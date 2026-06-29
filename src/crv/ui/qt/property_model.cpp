@@ -35,7 +35,6 @@ auto property_model_t::data(QModelIndex const& index, int role) const -> QVarian
         case roles_t::min: return node.min;
         case roles_t::max: return node.max;
         case roles_t::error_message: return node.error_message;
-        case roles_t::error_summary: return node.error_summary;
     }
 
     assert(false && "unexpected role");
@@ -70,7 +69,6 @@ auto property_model_t::roleNames() const -> QHash<int, QByteArray>
     roles[static_cast<int>(roles_t::min)] = "min";
     roles[static_cast<int>(roles_t::max)] = "max";
     roles[static_cast<int>(roles_t::error_message)] = "errorMessage";
-    roles[static_cast<int>(roles_t::error_summary)] = "errorSummary";
     return roles;
 }
 
@@ -113,18 +111,16 @@ auto property_model_t::update_node_value(int_t row, QVariant const& new_value) -
     emit valueChanged(nodes_[row].path, new_value);
 }
 
-auto property_model_t::error_message(QString const& path, QString const& summary, QString const& message) -> void
+auto property_model_t::error_message(QString const& path, QString const& message) -> void
 {
     auto const it = std::ranges::find_if(nodes_, [&](auto const& node) { return node.path == path; });
     assert(it != nodes_.end());
     if (it == nodes_.end()) return;
 
     it->error_message = message;
-    it->error_summary = summary;
 
     auto const model_index = index(int_cast<int>(std::ranges::distance(nodes_.begin(), it)), 0);
-    emit dataChanged(
-        model_index, model_index, {static_cast<int>(roles_t::error_message), static_cast<int>(roles_t::error_summary)});
+    emit dataChanged(model_index, model_index, {static_cast<int>(roles_t::error_message)});
 }
 
 } // namespace crv
