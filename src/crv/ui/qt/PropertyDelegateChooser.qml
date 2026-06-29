@@ -9,9 +9,11 @@ import Qt.labs.qmlmodels
 DelegateChooser {
     role: "typeId"
 
+    // float control
     DelegateChoice {
         roleValue: 0
         delegate: Control {
+            id: floatControl
             width: parent ? parent.width : 0
             leftPadding: 24
             rightPadding: 24
@@ -41,16 +43,21 @@ DelegateChooser {
                         item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
 
                         item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
+                        item.onWheelRequested.connect((val) =>
+                        {
+                            floatControl.parent.sectionModel.on_wheel(index, val)
+                        })
                     }
                 }
             }
         }
     }
 
+    // int control
     DelegateChoice {
         roleValue: 1
         delegate: Control {
+            id: intControl
             width: parent ? parent.width : 0
             leftPadding: 24
             rightPadding: 24
@@ -80,16 +87,21 @@ DelegateChooser {
                         item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
 
                         item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
+                        item.onWheelRequested.connect((val) =>
+                        {
+                            intControl.parent.sectionModel.on_wheel(index, val)
+                        })
                     }
                 }
             }
         }
     }
 
+    // bool control
     DelegateChoice {
         roleValue: 2
         delegate: Control {
+            id: boolControl
             width: parent ? parent.width : 0
             leftPadding: 24
             rightPadding: 24
