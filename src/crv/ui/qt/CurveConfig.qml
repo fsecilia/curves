@@ -159,9 +159,7 @@ Flickable {
                         item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
 
                         item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => {
-                            floatControl.parent.sectionModel.on_wheel(index, val)
-                        })
+                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
                     }
                 }
 
@@ -216,9 +214,7 @@ Flickable {
                         item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
 
                         item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => {
-                            intControl.parent.sectionModel.on_wheel(index, val)
-                        })
+                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
                     }
                 }
 
