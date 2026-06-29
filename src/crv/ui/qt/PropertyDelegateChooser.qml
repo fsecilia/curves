@@ -44,21 +44,6 @@ DelegateChooser {
                         item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
                     }
                 }
-
-                // spacer in main label column
-                Item { Layout.preferredWidth: 100 }
-
-                // error label
-                Label {
-                    Layout.fillWidth: true
-                    color: "red"
-                    font.pointSize: Qt.application.font.pointSize * 0.8
-
-                    text: model.errorSummary !== undefined ? model.errorSummary : ""
-                    visible: model.errorSummary
-
-                    bottomPadding: 8
-                }
             }
         }
     }
@@ -97,21 +82,6 @@ DelegateChooser {
                         item.onCommitRequested.connect((val) => { model.value = val })
                         item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
                     }
-                }
-
-                // spacer in main label column
-                Item { Layout.preferredWidth: 100 }
-
-                // error label
-                Label {
-                    Layout.fillWidth: true
-                    color: "red"
-                    font.pointSize: Qt.application.font.pointSize * 0.8
-
-                    text: model.errorSummary !== undefined ? model.errorSummary : ""
-                    visible: model.errorSummary
-
-                    bottomPadding: 8
                 }
             }
         }
