@@ -68,6 +68,7 @@ qt_add_qml_module(qml
         IntField_v6_9.qml
         Main.qml
         NumericField.qml
+        PropertyDelegateChooser.qml
 )
 target_compile_options(qml PRIVATE
     -fno-strict-aliasing
