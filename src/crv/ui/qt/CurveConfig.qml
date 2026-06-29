@@ -30,7 +30,7 @@ Flickable {
                 property var sectionModel: deviceModel
                 Repeater {
                     model: deviceModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
@@ -45,7 +45,7 @@ Flickable {
                 property var sectionModel: profileModel
                 Repeater {
                     model: profileModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
@@ -60,206 +60,68 @@ Flickable {
                 property var sectionModel: specificCurveModel
                 Repeater {
                     model: specificCurveModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
 
         GroupBox {
             title: "Scale"
-            Layout.fillWidth: true; Layout.margins: 8
+            Layout.fillWidth: true
+            Layout.margins: 8
+
             ColumnLayout {
                 width: parent.width
                 property var sectionModel: scaleModel
                 Repeater {
                     model: scaleModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
 
         GroupBox {
             title: "Offset"
-            Layout.fillWidth: true; Layout.margins: 8
+            Layout.fillWidth: true
+            Layout.margins: 8
+
             ColumnLayout {
                 width: parent.width
                 property var sectionModel: offsetModel
                 Repeater {
                     model: offsetModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
 
         GroupBox {
             title: "Floor"
-            Layout.fillWidth: true; Layout.margins: 8
+            Layout.fillWidth: true
+            Layout.margins: 8
+
             ColumnLayout {
                 width: parent.width
                 property var sectionModel: floorModel
                 Repeater {
                     model: floorModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
             }
         }
 
         GroupBox {
             title: "Limit"
-            Layout.fillWidth: true; Layout.margins: 8
+            Layout.fillWidth: true
+            Layout.margins: 8
+
             ColumnLayout {
                 width: parent.width
                 property var sectionModel: limitModel
                 Repeater {
                     model: limitModel
-                    delegate: propertyChooser
+                    delegate: PropertyDelegateChooser{}
                 }
-            }
-        }
-    }
-
-    DelegateChooser {
-        id: propertyChooser
-        role: "typeId"
-        DelegateChoice { roleValue: 0; delegate: floatDelegate }
-        DelegateChoice { roleValue: 1; delegate: intDelegate }
-        DelegateChoice { roleValue: 2; delegate: boolDelegate }
-    }
-
-    Component {
-        id: floatDelegate
-        Control {
-            id: floatControl
-            width: scrollView.width
-            leftPadding: 24
-            rightPadding: 24
-            contentItem: GridLayout {
-                columns: 2
-                columnSpacing: 16
-                rowSpacing: 2
-
-                // static label
-                Label {
-                    text: model.path
-                    Layout.preferredWidth: 100
-                    Layout.alignment: Qt.AlignRight
-                }
-
-                // numeric text box
-                Loader {
-                    id: loader
-                    Layout.fillWidth: true
-                    source: qtVersion >= 0x060900 ? "FloatField_v6_9.qml" : "FloatField.qml"
-
-                    onLoaded: {
-                        item.value = Qt.binding(() => model.value)
-                        item.min = Qt.binding(() => model.min !== undefined ? model.min : -999999.0)
-                        item.max = Qt.binding(() => model.max !== undefined ? model.max : 999999.0)
-
-                        item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
-
-                        item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
-                    }
-                }
-
-                // spacer in main label column
-                Item { Layout.preferredWidth: 100 }
-
-                // error label
-                Label {
-                    Layout.fillWidth: true
-                    color: "red"
-                    font.pointSize: Qt.application.font.pointSize * 0.8
-
-                    text: model.errorSummary !== undefined ? model.errorSummary : ""
-                    visible: model.errorSummary
-
-                    bottomPadding: 8
-                }
-            }
-        }
-    }
-
-    Component {
-        id: intDelegate
-        Control {
-            id: intControl
-            width: scrollView.width
-            leftPadding: 24
-            rightPadding: 24
-            contentItem: GridLayout {
-                columns: 2
-                columnSpacing: 16
-                rowSpacing: 2
-
-                // static label
-                Label {
-                    text: model.path
-                    Layout.preferredWidth: 100
-                    Layout.alignment: Qt.AlignRight
-                }
-
-                // numeric text box
-                Loader {
-                    id: loader
-                    Layout.fillWidth: true
-                    source: qtVersion >= 0x060900 ? "IntField_v6_9.qml" : "IntField.qml"
-
-                    onLoaded: {
-                        item.value = Qt.binding(() => model.value)
-                        item.min = Qt.binding(() => model.min !== undefined ? model.min : -999999)
-                        item.max = Qt.binding(() => model.max !== undefined ? model.max : 999999)
-
-                        item.errorMessage = Qt.binding(() => model.errorMessage !== undefined ? model.errorMessage : "")
-
-                        item.onCommitRequested.connect((val) => { model.value = val })
-                        item.onWheelRequested.connect((val) => { sectionModel.on_wheel(index, val) })
-                    }
-                }
-
-                // spacer in main label column
-                Item { Layout.preferredWidth: 100 }
-
-                // error label
-                Label {
-                    Layout.fillWidth: true
-                    color: "red"
-                    font.pointSize: Qt.application.font.pointSize * 0.8
-
-                    text: model.errorSummary !== undefined ? model.errorSummary : ""
-                    visible: model.errorSummary
-
-                    bottomPadding: 8
-                }
-            }
-        }
-    }
-
-    Component {
-        id: boolDelegate
-        Control {
-            width: scrollView.width
-            leftPadding: 24
-            rightPadding: 24
-
-            contentItem: RowLayout {
-                spacing: 16
-                Label {
-                    text: model.path
-                    Layout.preferredWidth: 100
-                    color: sysPalette.windowText
-                }
-
-                CheckBox {
-                    id: boolBox
-                    readonly property bool modelChecked: model.value
-                    checked: modelChecked
-                    onModelCheckedChanged: checked = modelChecked
-                    onClicked: model.value = checked
-                }
-
-                Item { Layout.fillWidth: true }
             }
         }
     }
