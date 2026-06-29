@@ -27,23 +27,5 @@ Rectangle {
                 color: sysPalette.text
             }
         }
-
-        // bottom bar
-        RowLayout {
-            Layout.fillWidth: true
-
-            Label {
-                id: errorLabel
-                Layout.fillWidth: true
-                color: "red"
-                text: ""
-                wrapMode: Text.WordWrap
-            }
-
-            Button {
-                text: "Apply"
-                onClicked: console.log("apply to device requested")
-            }
-        }
     }
 }

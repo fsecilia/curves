@@ -26,23 +26,33 @@ ApplicationWindow {
         colorGroup: SystemPalette.Active
     }
 
-    SplitView {
+    ColumnLayout {
         anchors.fill: parent
-        orientation: Qt.Horizontal
 
-        CurveSelector {
-            SplitView.preferredWidth: 200
-            SplitView.minimumWidth: 150
+        SplitView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            orientation: Qt.Horizontal
+
+            CurveSelector {
+                SplitView.preferredWidth: 200
+                SplitView.minimumWidth: 150
+            }
+
+            CurveConfig {
+                SplitView.preferredWidth: 350
+                SplitView.minimumWidth: 300
+            }
+
+            GraphView {
+                SplitView.fillWidth: true
+                SplitView.minimumWidth: 300
+            }
         }
 
-        CurveConfig {
-            SplitView.preferredWidth: 350
-            SplitView.minimumWidth: 300
-        }
-
-        GraphView {
-            SplitView.fillWidth: true
-            SplitView.minimumWidth: 300
+        RootConfigRow {
+            Layout.fillWidth: true
+            Layout.margins: 16
         }
     }
 }
