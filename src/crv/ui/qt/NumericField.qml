@@ -10,32 +10,46 @@ import QtQuick.Controls
 TextField {
     id: inputField
     horizontalAlignment: TextInput.AlignRight
-    color: sysPalette.text
 
     // set by the concrete field
+    property real value: 0.0
+    property real min: -99999.999
+    property real max:  99999.999
     property int decimals: 0
     property var stepFunction // (value, direction) -> next clamped value
-    property var sectionModel
+
+    property string errorMessage: ""
+    readonly property bool hasErrorMessage: errorMessage !== ""
+
+    color: hasErrorMessage ? "red" : sysPalette.text
+    ToolTip.visible: hasErrorMessage && hovered
+    ToolTip.text: errorMessage
+
+    signal commitRequested(real newValue)
+    signal wheelRequested(real newValue)
 
     SystemPalette { id: sysPalette; colorGroup: SystemPalette.Active }
 
-    readonly property real low: model.minVal !== undefined ? model.minVal : -999999.0
-    readonly property real high: model.maxVal !== undefined ? model.maxVal :  999999.0
-    readonly property string display: Number(model.value).toLocaleString(Qt.locale(), 'f', decimals)
-
+    readonly property string display: Number(value).toLocaleString(Qt.locale(), 'f', decimals)
     text: display
 
-    function commit() {
-        let parsed
-        try { parsed = Number.fromLocaleString(Qt.locale(), text) }
-        catch (e) { text = display; return }
-        model.value = Math.min(Math.max(parsed, low), high)
-        text = display
-    }
-
+    onValueChanged: if (!activeFocus) text = display
     onDisplayChanged: text = display
     onActiveFocusChanged: if (!activeFocus && !acceptableInput) text = display
     onEditingFinished: commit()
+
+    Component.onCompleted: text = display
+
+    function commit() {
+        if (!acceptableInput) return
+
+        let parsed
+        try { parsed = Number.fromLocaleString(Qt.locale(), text) }
+        catch (e) { text = display; return }
+
+        let clamped = Math.min(Math.max(parsed, min), max)
+        commitRequested(clamped)
+    }
 
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { commit(); event.accepted = true }
@@ -52,7 +66,7 @@ TextField {
             let base
             try { base = Number.fromLocaleString(Qt.locale(), inputField.text) }
             catch (e) { base = Number(model.value) }
-            sectionModel.on_wheel(index, inputField.stepFunction(base, direction))
+            wheelRequested(inputField.stepFunction(base, direction))
             wheel.accepted = true
         }
     }

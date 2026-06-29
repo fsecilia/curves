@@ -7,7 +7,7 @@ import QtQuick
 
 NumericField {
     decimals: 3
-    validator: DoubleValidator { bottom: low; top: high }
+    validator: DoubleValidator { bottom: min; top: max }
     stepFunction: function (value, direction) {
         let absVal = Math.abs(value)
         let step = 0.01
@@ -18,7 +18,7 @@ NumericField {
                 step = Math.pow(10, magnitude - 2)
         }
         let next = value + (step * direction)
-        let clamped = Math.min(Math.max(next, low), high)
+        let clamped = Math.min(Math.max(next, min), max)
         return Number(clamped.toFixed(3))
     }
 }

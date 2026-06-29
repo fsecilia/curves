@@ -7,6 +7,6 @@ import QtQuick
 
 NumericField {
     decimals: 0
-    validator: IntValidator { bottom: low; top: high }
-    stepFunction: function (value, direction) { return Math.min(Math.max(Math.round(value) + direction, low), high) }
+    validator: IntValidator { bottom: min; top: max }
+    stepFunction: function (value, direction) { return Math.min(Math.max(Math.round(value) + direction, min), max) }
 }

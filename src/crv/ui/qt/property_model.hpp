@@ -39,6 +39,8 @@ struct ui_node_t
     QVariant value;
     QVariant min;
     QVariant max;
+    QString error_message;
+    QString error_summary;
 
     // executes the command logic, passing the new value from QML
     std::function<auto(QVariant const&, bool)->void> push_command;
@@ -55,7 +57,9 @@ public:
         type,
         value,
         min,
-        max
+        max,
+        error_message,
+        error_summary,
     };
 
     using undo_stack_t = command::observable_stack_t<command::stack_t<>>;
@@ -77,6 +81,9 @@ public:
 
     /// called by command's notify lambda when value actually changes
     auto update_node_value(int_t row, QVariant const& new_value) -> void;
+
+    /// sets or clears error message on a particular field
+    auto error_message(QString const& path, QString const& summary, QString const& mesage) -> void;
 
     /// rebuilds UI list from reflected configuration
     ///
@@ -138,6 +145,8 @@ public:
                             .value = to_variant(modified_param.value()),
                             .min = min,
                             .max = max,
+                            .error_message = QString{},
+                            .error_summary = QString{},
                             .push_command = std::move(push_command),
                         };
                         nodes_.emplace_back(std::move(ui_node));
