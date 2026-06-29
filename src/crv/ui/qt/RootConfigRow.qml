@@ -11,8 +11,9 @@ RowLayout {
     GroupBox {
         title: "Device"
         Layout.fillWidth: true
-        ColumnLayout {
-            width: parent.width
+        RowLayout {
+            spacing: 24
+
             property var sectionModel: deviceModel
             Repeater {
                 model: deviceModel
@@ -24,8 +25,9 @@ RowLayout {
     GroupBox {
         title: "Profile"
         Layout.fillWidth: true
-        ColumnLayout {
-            width: parent.width
+        RowLayout {
+            spacing: 24
+
             property var sectionModel: profileModel
             Repeater {
                 model: profileModel
@@ -37,7 +39,7 @@ RowLayout {
     Button {
         text: "Apply"
         Layout.alignment: Qt.AlignBottom
-        Layout.bottomMargin: 8
+        Layout.bottomMargin: 9
         onClicked: console.log("apply to device requested")
     }
 }
