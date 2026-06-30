@@ -9,26 +9,39 @@ import Qt.labs.qmlmodels
 DelegateChooser {
     role: "typeId"
 
+    enum Mode {
+        Vertical,
+        Horizontal
+    }
+
     // float control
     DelegateChoice {
         roleValue: 0
         delegate: RowLayout {
             id: floatControl
+
+            readonly property int layoutMode: parent.layoutMode !== undefined
+                ? parent.layoutMode
+                : PropertyDelegateChooser.Mode.Vertical
+            readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+
             Layout.fillWidth: true
             spacing: 8
 
             // static label
             Label {
                 text: model.path
-                Layout.minimumWidth: 50
-                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: floatControl.isHorizontal ? implicitWidth : 100
+                Layout.fillWidth: false
             }
 
             // numeric text box
             Loader {
-                Layout.fillWidth: true
                 source: qtVersion >= 0x060900 ? "FloatField_v6_9.qml" : "FloatField.qml"
+
+                Layout.fillWidth: true
+                Layout.minimumWidth: 50
 
                 onLoaded: {
                     item.value = Qt.binding(() => model.value)
@@ -52,21 +65,29 @@ DelegateChooser {
         roleValue: 1
         delegate: RowLayout {
             id: intControl
+
+            readonly property int layoutMode: parent.layoutMode !== undefined
+                ? parent.layoutMode
+                : PropertyDelegateChooser.Mode.Vertical
+            readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 16
 
             // static label
             Label {
                 text: model.path
-                Layout.preferredWidth: 50
-                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: intControl.isHorizontal ? implicitWidth : 100
+                Layout.fillWidth: false
             }
 
             // numeric text box
             Loader {
-                Layout.fillWidth: true
                 source: qtVersion >= 0x060900 ? "IntField_v6_9.qml" : "IntField.qml"
+
+                Layout.fillWidth: true
+                Layout.minimumWidth: 50
 
                 onLoaded: {
                     item.value = Qt.binding(() => model.value)
@@ -90,13 +111,11 @@ DelegateChooser {
         roleValue: 2
         delegate: RowLayout {
             id: boolControl
-            Layout.fillWidth: true
+            Layout.preferredWidth: 100
             spacing: 8
 
             Label {
                 text: model.path
-                Layout.preferredWidth: 50
-                Layout.fillWidth: true
                 Layout.alignment: Qt.AlignRight
             }
 
