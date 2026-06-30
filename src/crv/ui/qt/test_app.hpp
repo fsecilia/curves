@@ -12,12 +12,18 @@
 
 namespace crv {
 
+/// meyers singleton app used during testing
 class test_app_t
 {
 public:
-    test_app_t();
+    test_app_t(test_app_t const&) = delete;
+    auto operator=(test_app_t const&) -> test_app_t& = delete;
+
+    static auto instance() -> test_app_t const&;
 
 private:
+    test_app_t() = default;
+
     int argc = 1;
     std::string name = "gtest_runner";
     std::array<char*, 2> argv{name.data(), nullptr};

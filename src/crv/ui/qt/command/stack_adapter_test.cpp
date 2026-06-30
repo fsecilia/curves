@@ -15,7 +15,7 @@ namespace {
 
 struct command_stack_adapter_test_t : Test
 {
-    test_app_t test_app;
+    test_app_t const& test_app = test_app_t::instance();
 
     int_t command_execute_count = 0;
     struct command_t : public command_i

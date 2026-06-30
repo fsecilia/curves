@@ -7,6 +7,10 @@
 
 namespace crv {
 
-test_app_t::test_app_t() = default;
+auto test_app_t::instance() -> test_app_t const&
+{
+    static auto const instance = test_app_t{};
+    return instance;
+}
 
 } // namespace crv
