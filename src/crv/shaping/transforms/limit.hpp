@@ -20,7 +20,7 @@ namespace crv::shaping::transforms {
 /// jumping from 0% to 100%.
 ///
 /// This type shapes the limit via function composition. It controls the rate at which the composed function advances,
-/// starting at full rate, then smoothly pausing via the given transition.
+/// starting at full rate, then smoothly pauses via the given transition.
 ///
 /// The transform is identity when blend == 0.
 ///
@@ -43,7 +43,8 @@ public:
         input_max_ = start_ + width_ * transition_max_;
     }
 
-    // applies start, transition, or limit, piecewise, then applies blend
+    /// applies start, transition, or limit, piecewise, then applies blend
+    /// \returns limited value at input; saturated past width, decelerated via transition otherwise
     template <typename value_t> [[nodiscard]] constexpr auto operator()(value_t input) const noexcept -> value_t
     {
         if (blend_ <= real_t{0}) return input;
@@ -51,20 +52,19 @@ public:
         auto const x = primal(input);
         if (x <= start_) return input;
 
-        value_t input_limited;
-        if (x >= start_ + width_) input_limited = value_t{input_max_};
-        else
-        {
-            auto const t = (input - start_) * rwidth_;
-            input_limited = start_ + width_ * (transition_max_ - transition_(value_t{1} - t));
-        }
-
-        if (blend_ >= real_t{1}) return input_limited;
-
-        return (real_t{1} - blend_) * input + blend_ * input_limited;
+        if (blend_ >= real_t{1}) return apply_limit(input, x);
+        return (real_t{1} - blend_) * input + blend_ * apply_limit(input, x);
     }
 
 private:
+    template <typename value_t>
+    [[nodiscard]] constexpr auto apply_limit(value_t input, real_t x) const noexcept -> value_t
+    {
+        if (x >= start_ + width_) return value_t{input_max_};
+        auto const t = (input - start_) * rwidth_;
+        return start_ + width_ * (transition_max_ - transition_(value_t{1} - t));
+    }
+
     real_t start_{};
     real_t width_{};
     real_t blend_{};
