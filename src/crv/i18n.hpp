@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <format>
 #include <string>
 
 namespace crv::i18n {
@@ -61,7 +62,15 @@ private:
 
 auto translate(char const* context, char const* source) -> std::string;
 
-#define CRV_TR_C(context, source) ::crv::i18n::translate(context, source)
-#define CRV_TR(source) CRV_TR_C("", source)
+auto translate(char const* context, char const* source, auto&&... args) -> std::string
+{
+    auto const pattern = translate(context, source);
+
+    // make_format_args takes args by lvalue ref, so this must not use std::forward
+    return std::vformat(pattern, std::make_format_args(args...));
+}
+
+#define CRV_TR_C(context, source, ...) ::crv::i18n::translate(context, source __VA_OPT__(, ) __VA_ARGS__)
+#define CRV_TR(source, ...) CRV_TR_C("", source __VA_OPT__(, ) __VA_ARGS__)
 
 } // namespace crv::i18n

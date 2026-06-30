@@ -159,5 +159,32 @@ TEST_F(i18n_global_provider_mock_test_t, crv_tr_c_forwards_correctly)
     EXPECT_EQ(expected, actual);
 }
 
+TEST_F(i18n_global_provider_mock_test_t, crv_tr_formats_arguments)
+{
+    EXPECT_CALL(mock_provider, translate("", source)).WillOnce(Return("{} unordered {}"));
+
+    auto const actual = CRV_TR(source, 2, "args");
+
+    EXPECT_EQ("2 unordered args", actual);
+}
+
+TEST_F(i18n_global_provider_mock_test_t, crv_tr_c_formats_indexed_arguments)
+{
+    EXPECT_CALL(mock_provider, translate(context, source)).WillOnce(Return("{1} ordered before {0}"));
+
+    auto const actual = CRV_TR_C(context, source, "second", 1);
+
+    EXPECT_EQ("1 ordered before second", actual);
+}
+
+TEST_F(i18n_global_provider_mock_test_t, formats_correctly_with_escaped_braces)
+{
+    EXPECT_CALL(mock_provider, translate(context, source)).WillOnce(Return("value {{{0}}}"));
+
+    auto const actual = CRV_TR_C(context, source, 37);
+
+    EXPECT_EQ("value {37}", actual);
+}
+
 } // namespace
 } // namespace crv::i18n
