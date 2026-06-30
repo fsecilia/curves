@@ -28,21 +28,6 @@ Flickable {
             width: parent.width
 
             GroupBox {
-                title: "Active Curve"
-                Layout.fillWidth: true
-                Layout.margins: 8
-
-                ColumnLayout {
-                    width: parent.width
-                    property var sectionModel: specificCurveModel
-                    Repeater {
-                        model: specificCurveModel
-                        delegate: PropertyDelegateChooser{}
-                    }
-                }
-            }
-
-            GroupBox {
                 title: "Scale"
                 Layout.fillWidth: true
                 Layout.margins: 8
@@ -97,6 +82,21 @@ Flickable {
                     property var sectionModel: limitModel
                     Repeater {
                         model: limitModel
+                        delegate: PropertyDelegateChooser{}
+                    }
+                }
+            }
+
+            GroupBox {
+                title: "Active Curve"
+                Layout.fillWidth: true
+                Layout.margins: 8
+
+                ColumnLayout {
+                    width: parent.width
+                    property var sectionModel: specificCurveModel
+                    Repeater {
+                        model: specificCurveModel
                         delegate: PropertyDelegateChooser{}
                     }
                 }
