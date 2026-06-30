@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "app.hpp"
+#include <crv/i18n.hpp>
 #include <crv/model/config.hpp>
 #include <crv/serialization/exceptions.hpp>
 #include <crv/serialization/toml/toml.hpp>
@@ -50,22 +51,23 @@ private:
 
 static auto report_error(QString message) -> void
 {
-    QMessageBox{QMessageBox::Critical, "Curves Configuration Error", std::move(message)}.exec();
+    QMessageBox{QMessageBox::Critical, QString::fromStdString(CRV_TR("Curves Configuration Error")), std::move(message)}
+        .exec();
 }
 
 static auto report_error(std::exception const& exception) -> void
 {
-    report_error(QString::fromStdString(std::format("An unhandled exception occurred.\n\n{}", exception.what())));
+    report_error(QString::fromStdString(CRV_TR("An unhandled exception occurred.\n\n{}", exception.what())));
 }
 
 static auto report_error(serialization::parse_x const& exception) -> void
 {
-    report_error(QString::fromStdString(std::format("Could not parse config file.\n\n{}", exception.what())));
+    report_error(QString::fromStdString(CRV_TR("Could not parse config file.\n\n{}", exception.what())));
 }
 
 static auto report_error(serialization::io_x const& exception) -> void
 {
-    report_error(QString::fromStdString(std::format("Could not write config file.\n\n{}", exception.what())));
+    report_error(QString::fromStdString(CRV_TR("Could not write config file.\n\n{}", exception.what())));
 }
 
 static auto find_config_path() -> std::filesystem::path
@@ -100,7 +102,7 @@ static auto load_model(config_store_t& store, model::root_t& root) noexcept -> b
 
 app_t::app_t(int& argc, char** argv) : QApplication{argc, argv}
 {
-    setApplicationName("curves");
+    setApplicationName(QString::fromStdString(CRV_TR("curves")));
     setOrganizationName("");
 }
 
@@ -177,8 +179,8 @@ auto app_t::initialize() -> bool
 
     engine_->loadFromModule("Curves", "Main");
 
-    floor_model_->error_message("value", "floor error message\nmore error message");
-    device_model_->error_message("dpi", "dpi error message\nmore error message");
+    floor_model_->error_message("value", QString::fromStdString(CRV_TR("floor error message\nmore error message")));
+    device_model_->error_message("dpi", QString::fromStdString(CRV_TR("dpi error message\nmore error message")));
 
     return true;
 }
@@ -193,7 +195,7 @@ auto app_t::notify(QObject* receiver, QEvent* event) -> bool
     {
         // Error reporting needs a dedicated, preallocated, hidden message box for oom eventually. For now, just print
         // to stderr with as little buffering as possible and abort.
-        std::fputs("Out of memory. Aborting!\n", stderr);
+        std::fputs(CRV_TR("Out of memory. Aborting!\n").data(), stderr);
     }
     catch (std::exception const& exception)
     {
