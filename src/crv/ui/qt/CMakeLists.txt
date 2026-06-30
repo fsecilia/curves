@@ -7,7 +7,7 @@
 set(QT_FORCE_CMP0156_TO_VALUE NEW)
 
 # find qt
-find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick Test Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Gui Linguist Qml Quick Test Widgets)
 
 # bail if linking against static libs
 get_target_property(qt_qml_type Qt6::Qml TYPE)
@@ -108,3 +108,5 @@ install(TARGETS qt RUNTIME
     DESTINATION bin
     COMPONENT ui
 )
+
+add_subdirectory(test)
