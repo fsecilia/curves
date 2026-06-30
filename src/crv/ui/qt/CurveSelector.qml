@@ -13,6 +13,11 @@ Rectangle {
         model: availableCurves
         clip: true
 
+        ScrollBar.vertical: ScrollBar {
+            id: scrollBar
+            policy: ListView.contentHeight > ListView.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+        }
+
         currentIndex: app.activeCurveIndex
 
         delegate: ItemDelegate {
