@@ -21,7 +21,7 @@ private:
     int argc = 1;
     std::string name = "gtest_runner";
     std::array<char*, 2> argv{name.data(), nullptr};
-    std::unique_ptr<QApplication> app;
+    std::unique_ptr<QApplication> app{std::make_unique<QApplication>(argc, argv.data())};
 };
 
 } // namespace crv

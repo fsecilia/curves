@@ -7,7 +7,6 @@
 
 namespace crv {
 
-test_app_t::test_app_t() : app{std::make_unique<QApplication>(argc, argv.data())}
-{}
+test_app_t::test_app_t() = default;
 
 } // namespace crv
