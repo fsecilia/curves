@@ -12,9 +12,11 @@ RowLayout {
         title: "Device"
         Layout.fillWidth: true
         RowLayout {
+            anchors.fill: parent
             spacing: 24
 
             property var sectionModel: deviceModel
+            property int layoutMode: PropertyDelegateChooser.Mode.Horizontal
             Repeater {
                 model: deviceModel
                 delegate: PropertyDelegateChooser {}
@@ -26,9 +28,11 @@ RowLayout {
         title: "Profile"
         Layout.fillWidth: true
         RowLayout {
+            anchors.fill: parent
             spacing: 24
 
             property var sectionModel: profileModel
+            property int layoutMode: PropertyDelegateChooser.Mode.Horizontal
             Repeater {
                 model: profileModel
                 delegate: PropertyDelegateChooser {}

@@ -26,7 +26,6 @@ Flickable {
         ColumnLayout {
             id: mainLayout
             width: parent.width
-            spacing: 8
 
             GroupBox {
                 title: "Active Curve"
