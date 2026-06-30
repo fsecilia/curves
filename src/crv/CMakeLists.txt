@@ -16,6 +16,8 @@ target_sources(lib PRIVATE
     curves/log_normal.hpp
     curves/synchronous.hpp
     curves/traits.hpp
+    i18n.cpp
+    i18n.hpp
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
     math/complex_traits.hpp
@@ -168,6 +170,7 @@ if (enable_testing)
         curves/synchronous_test.cpp
         curves/test.hpp
         curves/traits_test.cpp
+        i18n_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
         math/cmp_test.cpp
