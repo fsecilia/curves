@@ -9,6 +9,7 @@
 #include <crv/model/config.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
+#include <crv/ui/qt/i18n.hpp>
 #include <crv/ui/qt/property_model.hpp>
 #include <QApplication>
 #include <QGuiApplication>
@@ -16,6 +17,7 @@
 #include <QObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QTranslator>
 #include <QUndoStack>
 #include <memory>
 
@@ -51,6 +53,9 @@ private:
     QStringList curve_names_;
 
     std::unique_ptr<QQmlApplicationEngine> engine_;
+
+    i18n::qt::provider_t const provider;
+    i18n::scoped_provider_t const scoped_provider{provider};
 
     using stack_adapter_t = command::qt::stack_adapter_t;
     stack_adapter_t::stack_t command_stack_;
