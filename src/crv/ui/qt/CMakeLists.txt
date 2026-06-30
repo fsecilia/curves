@@ -30,6 +30,8 @@ add_library(qt_ui
     app.hpp
     command/stack_adapter.hpp
     command/stack_adapter.cpp
+    i18n.cpp
+    i18n.hpp
     property_model.cpp
     property_model.hpp
 )
@@ -83,6 +85,7 @@ endif()
 add_executable(qt_ui_test
     app_test.cpp
     command/stack_adapter_test.cpp
+    i18n_test.cpp
     property_model_test.cpp
     test_app.hpp
     test_app.cpp
