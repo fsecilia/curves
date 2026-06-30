@@ -39,24 +39,28 @@ ApplicationWindow {
     ColumnLayout {
         anchors.fill: parent
 
-        SplitView {
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            orientation: Qt.Horizontal
 
             CurveSelector {
-                SplitView.preferredWidth: 15*em
-                SplitView.minimumWidth: 15*em
+                Layout.preferredWidth: 15*em
+                Layout.maximumWidth: 15*em
+                Layout.minimumWidth: 15*em
+                Layout.fillHeight: true
             }
 
             CurveConfig {
-                SplitView.preferredWidth: 25*em
-                SplitView.minimumWidth: 25*em
+                Layout.preferredWidth: 25*em
+                Layout.maximumWidth: 25*em
+                Layout.minimumWidth: 25*em
+                Layout.fillHeight: true
             }
 
             GraphView {
-                SplitView.fillWidth: true
-                SplitView.minimumWidth: 30*em
+                Layout.fillWidth: true
+                Layout.minimumWidth: 30*em
+                Layout.fillHeight: true
             }
         }
 
