@@ -32,7 +32,7 @@ DelegateChooser {
             Label {
                 text: model.path
                 Layout.alignment: Qt.AlignRight
-                Layout.preferredWidth: floatControl.isHorizontal ? implicitWidth : 100
+                Layout.preferredWidth: floatControl.isHorizontal ? implicitWidth : 10*em
                 Layout.fillWidth: false
             }
 
@@ -41,7 +41,7 @@ DelegateChooser {
                 source: qtVersion >= 0x060900 ? "FloatField_v6_9.qml" : "FloatField.qml"
 
                 Layout.fillWidth: true
-                Layout.minimumWidth: 50
+                Layout.minimumWidth: 5*em
 
                 onLoaded: {
                     item.value = Qt.binding(() => model.value)
@@ -78,7 +78,7 @@ DelegateChooser {
             Label {
                 text: model.path
                 Layout.alignment: Qt.AlignRight
-                Layout.preferredWidth: intControl.isHorizontal ? implicitWidth : 100
+                Layout.preferredWidth: intControl.isHorizontal ? implicitWidth : 10*em
                 Layout.fillWidth: false
             }
 
@@ -87,7 +87,7 @@ DelegateChooser {
                 source: qtVersion >= 0x060900 ? "IntField_v6_9.qml" : "IntField.qml"
 
                 Layout.fillWidth: true
-                Layout.minimumWidth: 50
+                Layout.minimumWidth: 5*em
 
                 onLoaded: {
                     item.value = Qt.binding(() => model.value)
@@ -111,7 +111,7 @@ DelegateChooser {
         roleValue: 2
         delegate: RowLayout {
             id: boolControl
-            Layout.preferredWidth: 100
+            Layout.preferredWidth: 10*em
             spacing: 8
 
             Label {
