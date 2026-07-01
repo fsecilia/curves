@@ -130,4 +130,43 @@ DelegateChooser {
             Item { Layout.fillWidth: true }
         }
     }
+
+    // enum control
+    DelegateChoice {
+        roleValue: 3
+        delegate: RowLayout {
+            id: enumControl
+
+            readonly property var nodeChoices: model.choices !== undefined ? model.choices : []
+            readonly property int nodeValue: model.value !== undefined ? model.value : 0
+
+            readonly property int layoutMode: parent.layoutMode !== undefined
+                ? parent.layoutMode
+                : PropertyDelegateChooser.Mode.Vertical
+            readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+
+            Layout.fillWidth: true
+            spacing: 8
+
+            // static label
+            Label {
+                text: model.path
+                Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: enumControl.isHorizontal ? implicitWidth : 10*em
+                Layout.fillWidth: false
+            }
+
+            // enum dropdown
+            ComboBox {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 5*em
+
+                model: enumControl.nodeChoices
+                currentIndex: enumControl.nodeValue
+                onActivated: (index) => { enumControl.commitValue(index) }
+            }
+
+            function commitValue(idx) { model.value = idx; }
+        }
+    }
 }
