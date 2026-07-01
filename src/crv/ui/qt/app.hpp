@@ -67,7 +67,7 @@ private:
     std::unique_ptr<property_model_t> profile_model_;
     std::unique_ptr<property_model_t> scale_model_;
     std::unique_ptr<property_model_t> offset_model_;
-    std::unique_ptr<property_model_t> floor_model_;
+    std::unique_ptr<property_model_t> baseline_model_;
     std::unique_ptr<property_model_t> limit_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 };

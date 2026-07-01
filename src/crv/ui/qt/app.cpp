@@ -158,7 +158,7 @@ auto app_t::initialize() -> bool
 
     scale_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     offset_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    floor_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
+    baseline_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     limit_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     specific_curve_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     load_active_curve_model();
@@ -172,7 +172,7 @@ auto app_t::initialize() -> bool
     context.setContextProperty("profileModel", profile_model_.get());
     context.setContextProperty("scaleModel", scale_model_.get());
     context.setContextProperty("offsetModel", offset_model_.get());
-    context.setContextProperty("floorModel", floor_model_.get());
+    context.setContextProperty("baselineModel", baseline_model_.get());
     context.setContextProperty("limitModel", limit_model_.get());
     context.setContextProperty("specificCurveModel", specific_curve_model_.get());
     context.setContextProperty("app", this);
@@ -183,7 +183,8 @@ auto app_t::initialize() -> bool
 
     engine_->loadFromModule("Curves", "Main");
 
-    floor_model_->error_message("value", QString::fromStdString(CRV_TR("floor error message\nmore error message")));
+    baseline_model_->error_message(
+        "height", QString::fromStdString(CRV_TR("baseline error message\nmore error message")));
     device_model_->error_message("dpi", QString::fromStdString(CRV_TR("dpi error message\nmore error message")));
 
     return true;
@@ -216,7 +217,7 @@ auto app_t::load_active_curve_model() -> void
 
         scale_model_->load_config(curve_config.common.scale);
         offset_model_->load_config(curve_config.common.offset);
-        floor_model_->load_config(curve_config.common.floor);
+        baseline_model_->load_config(curve_config.common.baseline);
         limit_model_->load_config(curve_config.common.limit);
         specific_curve_model_->load_config(curve_config.specific);
     });
