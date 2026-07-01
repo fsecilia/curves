@@ -115,10 +115,10 @@ auto app_t::set_active_curve(int index) -> void
     auto const new_curve_id = static_cast<model::curves::curve_id_t>(index);
 
     // bail if curve is already active
-    if (model_root_.profile.active_curve.value() == new_curve_id) return;
+    if (model_root_.profile.curves.active.value() == new_curve_id) return;
 
     // update backing model
-    auto& active_curve = model_root_.profile.active_curve;
+    auto& active_curve = model_root_.profile.curves.active;
     using active_curve_t = std::remove_cvref_t<decltype(active_curve)>;
     command_stack_.template emplace_now<command::mutate_param_t<active_curve_t>>(false, active_curve, new_curve_id,
         [=, this](active_curve_t& command_param, active_curve_t::value_t const& cur) {
@@ -152,8 +152,8 @@ auto app_t::initialize() -> bool
 
     profile_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
     profile_model_->load_config(model_root_.profile, [](std::string_view nested_path) {
-        // stop inspector from diving into curve_configs tuple
-        return !nested_path.starts_with("curves");
+        // stop inspector from diving into curves section
+        return nested_path != "curves";
     });
 
     scale_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
@@ -211,8 +211,8 @@ auto app_t::notify(QObject* receiver, QEvent* event) -> bool
 
 auto app_t::load_active_curve_model() -> void
 {
-    auto const target = static_cast<std::size_t>(model_root_.profile.active_curve.value());
-    tuple::enumerate(model_root_.profile.curve_configs, [&](auto index, auto& curve_config) {
+    auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
+    tuple::enumerate(model_root_.profile.curves.configs, [&](auto index, auto& curve_config) {
         if (index.value != target) return;
 
         scale_model_->load_config(curve_config.common.scale);
