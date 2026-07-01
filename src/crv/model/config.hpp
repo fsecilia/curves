@@ -61,37 +61,37 @@ struct offset_t
     constexpr auto operator==(offset_t const&) const noexcept -> bool = default;
 };
 
-enum class floor_mode_t
+enum class baseline_mode_t
 {
-    absolute,
-    relative,
+    offset,
+    fixed
 };
 
-struct floor_t
+struct baseline_t
 {
-    param_t<floor_mode_t> mode{"mode", floor_mode_t::relative};
-    param_t<float_t, static_t<float_t, -soft_limit, soft_limit>> value{"value", 0.0};
+    param_t<baseline_mode_t> mode{"mode", baseline_mode_t::offset};
+    param_t<float_t, static_t<float_t, -soft_limit, soft_limit>> height{"height", 0.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
         inspector.inspect(self.mode);
-        inspector.inspect(self.value);
+        inspector.inspect(self.height);
         return std::forward<inspector_t>(inspector);
     }
 
-    constexpr auto operator==(floor_t const&) const noexcept -> bool = default;
+    constexpr auto operator==(baseline_t const&) const noexcept -> bool = default;
 };
 
 struct limit_t
 {
-    param_t<float_t, static_t<float_t, 0.0, soft_limit>> max{"maximum", soft_limit};
+    param_t<float_t, static_t<float_t, 0.0, soft_limit>> cap{"cap", soft_limit};
     float_param_t width{"width", 1.0};
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
-        inspector.inspect(self.max);
+        inspector.inspect(self.cap);
         inspector.inspect(self.width);
         return std::forward<inspector_t>(inspector);
     }
@@ -119,7 +119,7 @@ struct common_curve_config_t
 {
     scale_t scale;
     offset_t offset;
-    floor_t floor;
+    baseline_t baseline;
     limit_t limit;
 
     template <typename self_t, typename inspector_t>
@@ -127,7 +127,8 @@ struct common_curve_config_t
     {
         inspector.inspect_section("scale", [&](auto&& section_inspector) { self.scale.reflect(section_inspector); });
         inspector.inspect_section("offset", [&](auto&& section_inspector) { self.offset.reflect(section_inspector); });
-        inspector.inspect_section("floor", [&](auto&& section_inspector) { self.floor.reflect(section_inspector); });
+        inspector.inspect_section(
+            "baseline", [&](auto&& section_inspector) { self.baseline.reflect(section_inspector); });
         inspector.inspect_section("limit", [&](auto&& section_inspector) { self.limit.reflect(section_inspector); });
 
         return std::forward<inspector_t>(inspector);
@@ -218,9 +219,9 @@ struct root_t
 
 namespace reflection {
 
-template <> struct enum_t<model::floor_mode_t>
+template <> struct enum_t<model::baseline_mode_t>
 {
-    static constexpr auto map = sequential_enum_name_map<model::floor_mode_t>("absolute", "relative");
+    static constexpr auto map = sequential_enum_name_map<model::baseline_mode_t>("offset", "fixed");
 };
 
 } // namespace reflection

@@ -58,15 +58,15 @@ Flickable {
             }
 
             GroupBox {
-                title: qsTr("Floor")
+                title: qsTr("Baseline")
                 Layout.fillWidth: true
                 Layout.margins: 8
 
                 ColumnLayout {
                     width: parent.width
-                    property var sectionModel: floorModel
+                    property var sectionModel: baselineModel
                     Repeater {
-                        model: floorModel
+                        model: baselineModel
                         delegate: PropertyDelegateChooser{}
                     }
                 }

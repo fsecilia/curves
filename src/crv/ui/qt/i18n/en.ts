@@ -15,7 +15,7 @@
     </message>
     <message>
         <location filename="../CurveConfig.qml" line="61"/>
-        <source>Floor</source>
+        <source>Baseline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -87,24 +87,19 @@
 <context>
     <name>crv::app_t</name>
     <message>
-        <location filename="../app.cpp" line="105"/>
-        <source>curves</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../app.cpp" line="182"/>
-        <source>floor error message
+        <location filename="../app.cpp" line="187"/>
+        <source>baseline error message
 more error message</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../app.cpp" line="183"/>
+        <location filename="../app.cpp" line="188"/>
         <source>dpi error message
 more error message</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../app.cpp" line="198"/>
+        <location filename="../app.cpp" line="203"/>
         <source>Out of memory. Aborting!
 </source>
         <translation type="unfinished"></translation>
