@@ -154,16 +154,38 @@ template <typename t_specific_curve_config_t> struct curve_config_t
     constexpr auto operator==(curve_config_t const&) const noexcept -> bool = default;
 };
 
-template <typename curve_t> using extract_curve_config_t = curve_config_t<typename curve_t::config_t>;
-using curve_configs_t = tuple::transform_t<curves::curves_t, extract_curve_config_t>;
+struct curves_t
+{
+    param_t<curves::curve_id_t> active{"active", curves::curve_id_t::synchronous};
+
+    template <typename curve_t> using extract_config_t = curve_config_t<typename curve_t::config_t>;
+    using configs_t = tuple::transform_t<curves::curves_t, extract_config_t>;
+    configs_t configs;
+
+    template <typename self_t, typename inspector_t>
+    constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+    {
+        inspector.inspect(self.active);
+        inspector.inspect_section("configs", [&](auto&&) {
+            tuple::enumerate(self.configs, [&](int_t id, auto&& curve_config) {
+                auto const curve_id = static_cast<curves::curve_id_t>(id);
+                inspector.inspect_section(*reflection::to_string(curve_id),
+                    [&](auto&& section_inspector) { curve_config.reflect(section_inspector); });
+            });
+        });
+
+        return std::forward<inspector_t>(inspector);
+    }
+
+    constexpr auto operator==(curves_t const&) const noexcept -> bool = default;
+};
 
 struct profile_t
 {
     float_param_t anisotropy{"anisotropy", 1.0};
     param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"filter_halflife", 2.0};
 
-    param_t<curves::curve_id_t> active_curve{"active_curve", curves::curve_id_t::synchronous};
-    curve_configs_t curve_configs;
+    curves_t curves;
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
@@ -171,14 +193,7 @@ struct profile_t
         inspector.inspect(self.anisotropy);
         inspector.inspect(self.filter_halflife);
 
-        inspector.inspect(self.active_curve);
-        inspector.inspect_section("curves", [&]([[maybe_unused]] auto&& curves_inspector) {
-            tuple::enumerate(self.curve_configs, [&](int_t id, auto&& curve_config) {
-                auto const curve_id = static_cast<curves::curve_id_t>(id);
-                inspector.inspect_section(*reflection::to_string(curve_id),
-                    [&](auto&& section_inspector) { curve_config.reflect(section_inspector); });
-            });
-        });
+        inspector.inspect_section("curves", [&](auto&& section_inspector) { self.curves.reflect(section_inspector); });
 
         return std::forward<inspector_t>(inspector);
     }

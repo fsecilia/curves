@@ -30,7 +30,7 @@ TEST(model_test, round_trip)
     expected_root.profile.anisotropy.value(5.1);
     expected_root.profile.filter_halflife.value(200);
 
-    auto& synchronous = std::get<curve_config_t<curves::synchronous_t::config_t>>(expected_root.profile.curve_configs);
+    auto& synchronous = std::get<curve_config_t<curves::synchronous_t::config_t>>(expected_root.profile.curves.configs);
     synchronous.common.scale.input.value(2.0);
     synchronous.common.scale.output.value(5.0);
     synchronous.common.offset.begin.value(1.0);
@@ -44,7 +44,7 @@ TEST(model_test, round_trip)
     synchronous.specific.smooth.value(0.25);
     synchronous.specific.sync_speed.value(2.75);
 
-    auto& log_normal = std::get<curve_config_t<curves::log_normal_t::config_t>>(expected_root.profile.curve_configs);
+    auto& log_normal = std::get<curve_config_t<curves::log_normal_t::config_t>>(expected_root.profile.curves.configs);
     log_normal.common.scale.input.value(6.0);
     log_normal.common.scale.output.value(9.0);
     log_normal.common.offset.begin.value(2.0);

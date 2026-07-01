@@ -35,7 +35,7 @@ public:
     ~app_t() override;
 
     Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
-    auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.active_curve.value()); }
+    auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
 
     auto initialize() -> bool;
