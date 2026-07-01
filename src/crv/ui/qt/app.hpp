@@ -48,14 +48,16 @@ signals:
 private:
     auto load_active_curve_model() -> void;
 
+    static constexpr char const app_name[] = {"curves"};
+
     std::unique_ptr<config_store_t> store_;
     model::root_t model_root_;
     QStringList curve_names_;
 
-    std::unique_ptr<QQmlApplicationEngine> engine_;
+    QTranslator translator_;
+    i18n::qt::provider_t const provider_;
 
-    i18n::qt::provider_t const provider;
-    i18n::scoped_provider_t const scoped_provider{provider};
+    std::unique_ptr<QQmlApplicationEngine> engine_;
 
     using stack_adapter_t = command::qt::stack_adapter_t;
     stack_adapter_t::stack_t command_stack_;

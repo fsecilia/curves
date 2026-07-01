@@ -102,7 +102,7 @@ static auto load_model(config_store_t& store, model::root_t& root) noexcept -> b
 
 app_t::app_t(int& argc, char** argv) : QApplication{argc, argv}
 {
-    setApplicationName(QString::fromStdString(CRV_TR("curves")));
+    setApplicationName(QString::fromStdString(CRV_TR(app_name)));
     setOrganizationName("");
 }
 
@@ -129,6 +129,10 @@ auto app_t::set_active_curve(int index) -> void
 
 auto app_t::initialize() -> bool
 {
+    if (!translator_.load(QLocale(), "", "", ":/i18n")) return false;
+    QCoreApplication::installTranslator(&translator_);
+    i18n::provider(provider_);
+
     auto const config_path = find_config_path();
     store_ = std::make_unique<config_store_t>(config_path);
     if (!load_model(*store_, model_root_)) return false;
@@ -136,7 +140,7 @@ auto app_t::initialize() -> bool
     for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
     {
         curve_names_.append(QString::fromStdString(
-            std::string(*reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id)))));
+            CRV_TR(reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id))->data())));
     }
 
     engine_ = std::make_unique<QQmlApplicationEngine>();

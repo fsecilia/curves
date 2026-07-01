@@ -6,7 +6,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 ApplicationWindow {
-    title: "Curves Configuration"
+    title: qsTr("Curves Configuration")
     visible: true
 
     FontMetrics {
