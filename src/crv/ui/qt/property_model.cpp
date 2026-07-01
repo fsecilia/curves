@@ -35,6 +35,7 @@ auto property_model_t::data(QModelIndex const& index, int role) const -> QVarian
         case roles_t::min: return node.min;
         case roles_t::max: return node.max;
         case roles_t::error_message: return node.error_message;
+        case roles_t::choices: return node.choices;
     }
 
     assert(false && "unexpected role");
@@ -69,6 +70,7 @@ auto property_model_t::roleNames() const -> QHash<int, QByteArray>
     roles[static_cast<int>(roles_t::min)] = "min";
     roles[static_cast<int>(roles_t::max)] = "max";
     roles[static_cast<int>(roles_t::error_message)] = "errorMessage";
+    roles[static_cast<int>(roles_t::choices)] = "choices";
     return roles;
 }
 

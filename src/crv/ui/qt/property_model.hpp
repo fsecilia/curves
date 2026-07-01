@@ -28,7 +28,8 @@ enum class property_type_id_t
 {
     float_t,
     int_t,
-    bool_t
+    bool_t,
+    enum_t
 };
 
 /// type-erased representation of a reflected parameter
@@ -40,6 +41,7 @@ struct ui_node_t
     QVariant min;
     QVariant max;
     QString error_message;
+    QStringList choices;
 
     // executes the command logic, passing the new value from QML
     std::function<auto(QVariant const&, bool)->void> push_command;
@@ -58,6 +60,7 @@ public:
         min,
         max,
         error_message,
+        choices,
     };
 
     using undo_stack_t = command::observable_stack_t<command::stack_t<>>;
@@ -132,11 +135,21 @@ public:
                 if constexpr (std::floating_point<value_t>) property_type_id = property_type_id_t::float_t;
                 else if constexpr (std::signed_integral<value_t>) property_type_id = property_type_id_t::int_t;
                 else if constexpr (std::same_as<value_t, bool>) property_type_id = property_type_id_t::bool_t;
+                else if constexpr (is_enum<value_t>) property_type_id = property_type_id_t::enum_t;
 
-                if constexpr (!std::same_as<value_t, std::string> && !is_enum<value_t>)
+                if constexpr (!std::same_as<value_t, std::string>)
                 {
                     if (property_type_id.has_value())
                     {
+                        QStringList choices;
+                        if constexpr (is_enum<value_t>)
+                        {
+                            for (auto const name : reflection::enum_t<value_t>::map)
+                            {
+                                choices.push_back(QString::fromUtf8(name.data(), name.size()));
+                            }
+                        }
+
                         auto ui_node = ui_node_t{
                             .path = QString::fromLocal8Bit(std::data(path), std::size(path)),
                             .type = *property_type_id,
@@ -144,6 +157,7 @@ public:
                             .min = min,
                             .max = max,
                             .error_message = QString{},
+                            .choices = std::move(choices),
                             .push_command = std::move(push_command),
                         };
                         nodes_.emplace_back(std::move(ui_node));
@@ -171,6 +185,7 @@ private:
         using raw_t = std::remove_cvref_t<decltype(val)>;
         if constexpr (std::same_as<raw_t, bool>) return QVariant::fromValue(val);
         else if constexpr (std::signed_integral<raw_t>) return QVariant::fromValue(static_cast<qint64>(val));
+        else if constexpr (is_enum<raw_t>) return QVariant::fromValue(static_cast<int>(val));
         else return QVariant::fromValue(val);
     }
 
