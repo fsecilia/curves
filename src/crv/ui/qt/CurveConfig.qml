@@ -28,7 +28,7 @@ Flickable {
             width: parent.width
 
             GroupBox {
-                title: "Scale"
+                title: qsTr("Scale")
                 Layout.fillWidth: true
                 Layout.margins: 8
 
@@ -43,7 +43,7 @@ Flickable {
             }
 
             GroupBox {
-                title: "Offset"
+                title: qsTr("Offset")
                 Layout.fillWidth: true
                 Layout.margins: 8
 
@@ -58,7 +58,7 @@ Flickable {
             }
 
             GroupBox {
-                title: "Floor"
+                title: qsTr("Floor")
                 Layout.fillWidth: true
                 Layout.margins: 8
 
@@ -73,7 +73,7 @@ Flickable {
             }
 
             GroupBox {
-                title: "Limit"
+                title: qsTr("Limit")
                 Layout.fillWidth: true
                 Layout.margins: 8
 
@@ -88,7 +88,7 @@ Flickable {
             }
 
             GroupBox {
-                title: "Active Curve"
+                title: qsTr("Active Curve")
                 Layout.fillWidth: true
                 Layout.margins: 8
 

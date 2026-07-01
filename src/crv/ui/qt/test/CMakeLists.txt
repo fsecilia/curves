@@ -7,6 +7,7 @@ add_executable(qt_ui_integration_test
     i18n_integration_test.cpp
 )
 target_link_libraries(qt_ui_integration_test PRIVATE qt_ui qt_ui_testing testing Qt6::Core Qt6::Test)
+set_target_properties(qt_ui_integration_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 gtest_discover_tests(qt_ui_integration_test)
 
 #

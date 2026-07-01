@@ -9,7 +9,7 @@ RowLayout {
     spacing: 16
 
     GroupBox {
-        title: "Device"
+        title: qsTr("Device")
         Layout.fillWidth: true
         RowLayout {
             anchors.fill: parent
@@ -25,7 +25,7 @@ RowLayout {
     }
 
     GroupBox {
-        title: "Profile"
+        title: qsTr("Profile")
         Layout.fillWidth: true
         RowLayout {
             anchors.fill: parent
@@ -41,7 +41,7 @@ RowLayout {
     }
 
     Button {
-        text: "Apply"
+        text: qsTr("Apply")
         Layout.alignment: Qt.AlignBottom
         Layout.bottomMargin: 9
         onClicked: console.log("apply to device requested")
