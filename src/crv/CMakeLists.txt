@@ -37,6 +37,7 @@ target_sources(lib PRIVATE
     math/polynomial.hpp
     math/stats.hpp
     model/config.hpp
+    overloaded.hpp
     priority_queue.hpp
     quadrature/adaptive_integrator.hpp
     quadrature/antiderivative.hpp
@@ -208,6 +209,7 @@ if (enable_testing)
         math/shifter_test.cpp
         math/stats_test.cpp
         model/config_test.cpp
+        overloaded_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
