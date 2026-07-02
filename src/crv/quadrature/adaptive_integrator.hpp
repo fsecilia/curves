@@ -43,7 +43,7 @@ public:
     /// DI overload
     template <typename integral_t, typename antiderivative_builder_t>
     constexpr auto operator()(integral_t integral, antiderivative_builder_t antiderivative_builder, scalar_t domain_end,
-        compatible_range<scalar_t> auto const& critical_points) -> typename antiderivative_builder_t::result_t
+        compatible_range<scalar_t> auto const& critical_points) const -> typename antiderivative_builder_t::result_t
     {
         // TODO: Automatically clearing the stack here prevents issues if a previous run threw an exception. However,
         // this becomes a slippery slope when we support incremental evaluation or resuming an interrupted integration.
@@ -60,7 +60,7 @@ public:
     /// prod overload
     template <typename integral_t>
     constexpr auto operator()(integral_t integral, scalar_t domain_end,
-        compatible_range<scalar_t> auto const& critical_points) -> integration_result_of_t<integral_t>
+        compatible_range<scalar_t> auto const& critical_points) const -> integration_result_of_t<integral_t>
     {
         using antiderivative_t = antiderivative_t<integral_t>;
         using antiderivative_builder_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
@@ -74,7 +74,7 @@ private:
     [[no_unique_address]] subdivider_t subdivider_;
     [[no_unique_address]] stack_seeder_t stack_seeder_;
     [[no_unique_address]] bisector_t bisector_;
-    stack_t stack_;
+    mutable stack_t stack_;
     scalar_t tolerance_;
     int_t depth_limit_;
 };
