@@ -35,10 +35,10 @@ TEST(model_test, round_trip)
     synchronous.common.scale.output.value(5.0);
     synchronous.common.offset.begin.value(1.0);
     synchronous.common.offset.width.value(1.5);
-    synchronous.common.baseline.mode.value(baseline_mode_t::fixed);
-    synchronous.common.baseline.height.value(1.2);
-    synchronous.common.limit.cap.value(128.0);
-    synchronous.common.limit.width.value(7.0);
+    synchronous.common.anchor.mode.value(anchor_mode_t::fixed);
+    synchronous.common.anchor.height.value(1.2);
+    synchronous.common.ceiling.height.value(128.0);
+    synchronous.common.ceiling.width.value(7.0);
     synchronous.specific.motivity.value(100.0);
     synchronous.specific.gamma.value(2.5);
     synchronous.specific.smooth.value(0.25);
@@ -49,12 +49,14 @@ TEST(model_test, round_trip)
     log_normal.common.scale.output.value(9.0);
     log_normal.common.offset.begin.value(2.0);
     log_normal.common.offset.width.value(2.5);
-    log_normal.common.baseline.mode.value(baseline_mode_t::fixed);
-    log_normal.common.baseline.height.value(3.2);
-    log_normal.common.limit.cap.value(256.0);
-    log_normal.common.limit.width.value(11.0);
-    log_normal.specific.center.value(10.0);
-    log_normal.specific.width.value(5.0);
+    log_normal.common.anchor.mode.value(anchor_mode_t::fixed);
+    log_normal.common.anchor.height.value(3.2);
+    log_normal.common.ceiling.height.value(256.0);
+    log_normal.common.ceiling.width.value(11.0);
+    log_normal.specific.baseline.value(5.0);
+    log_normal.specific.limit.value(10.0);
+    log_normal.specific.acceleration_peak.value(7.0);
+    log_normal.specific.maximum_acceleration.value(11.0);
 
     // graphs no longer same
     EXPECT_NE(expected_root, actual_root);
