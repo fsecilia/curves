@@ -34,6 +34,7 @@ target_sources(lib PRIVATE
     math/io.cpp
     math/io.hpp
     math/jet/jet.hpp
+    math/lambert.hpp
     math/polynomial.hpp
     math/stats.hpp
     model/config.hpp
@@ -200,6 +201,7 @@ if (enable_testing)
         math/io_test.cpp
         math/jet/test/jet.cpp
         math/jet/test/nested_jet.cpp
+        math/lambert_test.cpp
         math/limits_test.cpp
         math/linear_test.cpp
         math/polynomial_test.cpp
