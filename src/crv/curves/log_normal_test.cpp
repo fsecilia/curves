@@ -6,231 +6,285 @@
 #include "log_normal.hpp"
 #include <crv/curves/test.hpp>
 #include <crv/test/test.hpp>
+#include <cmath>
 #include <complex>
+#include <numbers>
 
 namespace crv::model::curves {
 namespace {
 
 using real_t = float_t;
-
+using params_t = log_normal_t::params_t<real_t>;
 using evaluator_t = log_normal_t::evaluator_t<real_t>;
 using complex_evaluator_t = log_normal_t::evaluator_t<std::complex<real_t>>;
 
-real_t const df = 1.3;
+auto const df = real_t{1.3};
 
-constexpr auto make_config(real_t center, real_t width) noexcept -> log_normal_t::config_t
-{
-    auto config = log_normal_t::config_t{};
-    config.center.value(center);
-    config.width.value(width);
-    return config;
-}
+//
+// math
+//
 
 // common param type for multiple tests
-struct param_t
+struct math_params_t
 {
     std::string_view name;
-    real_t center;
-    real_t width;
+    real_t baseline;
+    real_t limit;
+    real_t mu;
+    real_t sigma;
 
-    friend auto operator<<(std::ostream& out, param_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, math_params_t const& src) -> std::ostream&
     {
-        return out << "{center = " << src.center << ", width = " << src.width << "}";
+        return out << "{baseline = " << src.baseline << ", limit = " << src.limit << ", mu = " << src.mu
+                   << ", sigma = " << src.sigma << "}";
     }
 };
 
 // sweep table for multiple tests
-param_t const sweep_params[] = {
-    // center sweep, low to high, nominal width
-    {"c0_5", 0.5, 0.5},
-    {"c5", 5.0, 0.5},
-    {"c50", 50.0, 0.5},
-    {"c500", 500.0, 0.5},
+//
+// mu and sigma are swept independently over the box mu in [-7, 7], sigma in [0.1, 10], plus both corners.
+math_params_t const math_sweep_params[] = {
+    {"standard", 0.0, 1.0, 1.0, 0.5},
+    {"shifted", 2.0, 4.0, 0.0, 1.0},
+    {"narrow", 0.5, 1.5, 2.0, 0.1},
+    {"wide", 0.0, 1.0, 5.0, 2.0},
 
-    // width sweep, narrow to wide
-    {"w0_01", 5.0, 0.01},
-    {"w0_1", 5.0, 0.1},
-    {"w0_5", 5.0, 0.5},
-    {"w2", 5.0, 2.0},
-    {"w10", 5.0, 10.0},
-    {"w100", 5.0, 100.0},
+    // location and shape extremes, swept independently
+    {"mu_lo", 0.0, 1.0, -7.0, 1.0},
+    {"mu_hi", 0.0, 1.0, 7.0, 1.0},
+    {"sigma_lo", 0.0, 1.0, 0.0, 0.1},
+    {"sigma_hi", 0.0, 1.0, 0.0, 10.0},
 
-    // combined extremes
-    {"hi_all", 500.0, 100.0},
-    {"lo_all", 0.5, 0.01},
+    // corners
+    {"lo_all", 0.0, 1.0, -7.0, 0.1},
+    {"hi_all", 0.0, 1.0, 7.0, 10.0},
+
+    // offset dominates delta; catches relative/absolute mixups in the affine map
+    {"offset", 10.0, 11.0, 2.0, 0.5},
+};
+
+struct model_curves_log_normal_math_test_t : TestWithParam<math_params_t>
+{
+    real_t baseline = GetParam().baseline;
+    real_t limit = GetParam().limit;
+    real_t mu = GetParam().mu;
+    real_t sigma = GetParam().sigma;
+    real_t delta = limit - baseline;
+
+    static constexpr auto inv_sqrt_pi = std::numbers::inv_sqrtpi_v<real_t>;
+    static constexpr auto sqrt2 = std::numbers::sqrt2_v<real_t>;
+
+    static constexpr auto tolerance = real_t{1e-12};
+
+    // multipliers of the median x0 = exp(mu), giving x well to either side; all stay clear of the origin threshold
+    static constexpr real_t multipliers[] = {0.02, 0.1, 0.3, 0.6, 0.9, 1.1, 2.0, 5.0, 50.0, 1e6};
+
+    // x = exp(mu) is the median of the underlying log-normal
+    auto x_median() const noexcept -> real_t { return std::exp(mu); }
+
+    // f'(x0) = delta*inv_sqrt_pi/(x0*sigma*sqrt2): the curve's own slope scale. f' carries units of 1/x, so no absolute
+    // tolerance fits every row; saturation checks on f' must be relative to this.
+    auto median_slope() const noexcept -> real_t { return delta * inv_sqrt_pi / (x_median() * sigma * sqrt2); }
+
+    // log(x_far) = mu + 8*sigma => z = 8/sqrt2 = 5.66. both residuals are scale-free and row-independent:
+    //
+    //     value: (f(x_far) - limit)/delta = erfc(5.66)/2           < 1e-15
+    //     slope: f'(x_far)/f'(x0)         = exp(-32)*exp(-8*sigma) < 1.3e-14 for all sigma > 0
+    //
+    auto x_far() const noexcept -> real_t { return std::exp(mu + 8 * sigma); }
+
+    // largest x strictly below the saturation branch's exclusive threshold
+    auto x_below_threshold() const noexcept -> real_t
+    {
+        return std::nextafter(static_cast<real_t>(evaluator_t::x_origin_saturation_threshold), real_t{0});
+    }
+
+    params_t const core_params{baseline, limit, mu, sigma};
+    evaluator_t const sut{core_params};
+    complex_evaluator_t const complex_sut{core_params};
 };
 
 //
-// median point
+// median
+//
+// At x0 = exp(mu), z = 0, so:
+//
+//     f(x0)  = baseline + delta/2
+//     f'(x0) = delta/(x0*sigma*sqrt(2*pi)) = delta*inv_sqrt_pi/(x0*sigma*sqrt2)
 //
 
-// At x0 = exp(mu), the argument z = 0, so with c = 1/(sqrt(width)*sqrt2) and inv_sqrt_pi = 1/sqrt(pi):
-//
-//     f(x0)    = 1/2
-//     f'(x0)   = c*inv_sqrt_pi/x0
-//
-struct model_curves_log_normal_median_test_t : TestWithParam<param_t>
+TEST_P(model_curves_log_normal_math_test_t, value_is_half_scale_at_median)
 {
-    real_t center = GetParam().center;
-    real_t width = GetParam().width;
-
-    static constexpr real_t inv_sqrt_pi = std::numbers::inv_sqrtpi_v<real_t>;
-    static constexpr auto tolerance = 1e-12;
-
-    real_t const x0 = std::exp(std::log(center) + width);
-    real_t const c = 1.0 / (std::sqrt(width) * std::sqrt(2.0));
-
-    evaluator_t const sut{make_config(center, width)};
-};
-
-TEST_P(model_curves_log_normal_median_test_t, value_is_half)
-{
-    EXPECT_NEAR(0.5, sut(x0), tolerance);
+    EXPECT_NEAR(baseline + 0.5 * delta, sut(x_median()), tolerance);
 }
 
-TEST_P(model_curves_log_normal_median_test_t, first_derivative_closed_form)
+TEST_P(model_curves_log_normal_math_test_t, first_derivative_matches_closed_form_at_median)
 {
-    auto const y = sut(jet_t{x0, df});
-    EXPECT_NEAR(0.5, y.f, tolerance);
-    EXPECT_LT(rel_error(y.df, df * c * inv_sqrt_pi / x0), tolerance);
+    auto const y = sut(jet_t{x_median(), df});
+
+    EXPECT_NEAR(baseline + 0.5 * delta, y.f, tolerance);
+    EXPECT_LT(rel_error(y.df, df * delta * inv_sqrt_pi / (x_median() * sigma * sqrt2)), tolerance);
 }
 
-TEST_P(model_curves_log_normal_median_test_t, zero_tangent_propagates_zero_velocity)
+TEST_P(model_curves_log_normal_math_test_t, zero_tangent_propagates_zero_velocity)
 {
-    auto const y = sut(jet_t{x0, 0.0});
-    EXPECT_NEAR(0.5, y.f, tolerance);
+    auto const y = sut(jet_t{x_median(), 0.0});
+
+    EXPECT_NEAR(baseline + 0.5 * delta, y.f, tolerance);
     EXPECT_EQ(0.0, y.df);
 }
 
-param_t const median_params[] = {
-    {"c5_w0_25", 5.0, 0.25},
-    {"c2_75_w0_5", 2.75, 0.5},
-    {"c50_w0_1", 50.0, 0.1},
-    {"c0_5_w2", 0.5, 2.0},
-};
-INSTANTIATE_TEST_SUITE_P(
-    median, model_curves_log_normal_median_test_t, ValuesIn(median_params), test_name_generator_t<param_t>{});
-
 //
-// origin
+// origin threshold
 //
 
-// at the threshold and below the scalar and jet should always be saturated to literal zero in all fields
-struct model_curves_log_normal_origin_test_t : Test
+TEST_P(model_curves_log_normal_math_test_t, scalar_saturates_below_origin_threshold)
 {
-    evaluator_t const sut{make_config(5.0, 0.5)};
-};
-
-TEST_F(model_curves_log_normal_origin_test_t, literal_zero_scalar_input)
-{
-    auto const y = sut(0.0);
-    EXPECT_EQ(0.0, y);
+    EXPECT_EQ(baseline, sut(0.0));
+    EXPECT_EQ(baseline, sut(x_below_threshold()));
 }
 
-TEST_F(model_curves_log_normal_origin_test_t, literal_zero_jet_input)
+TEST_P(model_curves_log_normal_math_test_t, jet_saturates_below_origin_threshold)
 {
-    auto const y = sut(jet_t{0.0, 0.0});
-    EXPECT_EQ(0.0, y.f);
-    EXPECT_EQ(0.0, y.df);
-}
+    auto const at_zero = sut(jet_t{0.0, df});
+    EXPECT_EQ(baseline, at_zero.f);
+    EXPECT_EQ(0.0, at_zero.df);
 
-TEST_F(model_curves_log_normal_origin_test_t, at_threshold_scalar_literal_zero)
-{
-    EXPECT_EQ(0.0, sut(evaluator_t::x_origin_saturation_threshold));
-}
-
-TEST_F(model_curves_log_normal_origin_test_t, at_threshold_jet_literal_zero)
-{
-    auto const result = sut(jet_t{evaluator_t::x_origin_saturation_threshold, df});
-    EXPECT_EQ(0.0, result.f);
-    EXPECT_EQ(0.0, result.df);
+    auto const below = sut(jet_t{x_below_threshold(), df});
+    EXPECT_EQ(baseline, below.f);
+    EXPECT_EQ(0.0, below.df);
 }
 
 //
 // asymptote
 //
 
-struct model_curves_log_normal_asymptote_test_t : Test
+TEST_P(model_curves_log_normal_math_test_t, scalar_saturates_at_asymptote)
 {
-    static constexpr auto tolerance = 1e-12;
-    static constexpr auto x_large = 1e6;
-
-    evaluator_t const sut{make_config(5.0, 0.5)};
-};
-
-TEST_F(model_curves_log_normal_asymptote_test_t, scalar_saturates_at_high_input)
-{
-    EXPECT_NEAR(1.0, sut(x_large), tolerance);
+    EXPECT_NEAR(limit, sut(x_far()), tolerance);
 }
 
-TEST_F(model_curves_log_normal_asymptote_test_t, jet_saturates_at_high_input)
+TEST_P(model_curves_log_normal_math_test_t, jet_saturates_at_asymptote)
 {
-    auto const y = sut(jet_t{x_large, df});
+    auto const y = sut(jet_t{x_far(), df});
 
-    EXPECT_NEAR(1.0, y.f, tolerance);
-    EXPECT_NEAR(0.0, y.df, tolerance);
+    EXPECT_NEAR(limit, y.f, tolerance * delta);
+
+    // relative to the curve's own slope scale: y.df/(df*f'(x0)) = exp(-32 - 8*sigma) <= 1.3e-14 for every row
+    EXPECT_NEAR(0.0, y.df, tolerance * df * median_slope());
 }
 
 //
-// complex-step derivative
+// cross-path consistency
+//
+// Sweeps x across the median for every param row.
 //
 
-// This test sweeps the parameter space and a range of x across the median. The sweeps are based on the config
-// constraints: center, width both in [1e-3, 1e3]. Each derivative order is differentiated by complex-step and compared
-// to the next order down.
-struct model_curves_log_normal_consistency_test_t : TestWithParam<param_t>
+// jet branch applies same affine map as scalar branch
+TEST_P(model_curves_log_normal_math_test_t, scalar_matches_jet_primal)
 {
-    real_t center = GetParam().center;
-    real_t width = GetParam().width;
-
-    // multipliers of the median x0 = exp(mu), giving x well to either side. all stay clear of threshold_x_origin.
-    static constexpr real_t multipliers[] = {0.02, 0.1, 0.3, 0.6, 0.9, 1.1, 2.0, 5.0, 50.0, 1e6};
-
-    static constexpr auto tolerance = 1e-12;
-
-    real_t x0() const noexcept { return std::exp(std::log(center) + width); }
-
-    evaluator_t const sut{make_config(center, width)};
-    complex_evaluator_t const complex_sut{make_config(center, width)};
-};
-
-TEST_P(model_curves_log_normal_consistency_test_t, scalar_matches_jet_primal)
-{
-    for (auto const multipliers : multipliers)
+    for (auto const multiplier : multipliers)
     {
-        auto const x = x0() * multipliers;
+        auto const x = x_median() * multiplier;
         EXPECT_LT(rel_error(sut(x), sut(jet_t{x, df}).f), tolerance);
     }
 }
 
-TEST_P(model_curves_log_normal_consistency_test_t, first_derivative_matches_complex_step_of_value)
+// check chain-rule plumbing via complex step
+TEST_P(model_curves_log_normal_math_test_t, first_derivative_matches_complex_step_of_value)
 {
-    for (auto const multipliers : multipliers)
+    for (auto const multiplier : multipliers)
     {
-        auto const x = x0() * multipliers;
+        auto const x = x_median() * multiplier;
         auto const expected = df * complex_step_derivative([&](auto z) { return complex_sut(z); }, x);
+
         EXPECT_LT(rel_error(sut(jet_t{x, df}).df, expected), tolerance);
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    consistency, model_curves_log_normal_consistency_test_t, ValuesIn(sweep_params), test_name_generator_t<param_t>{});
+INSTANTIATE_TEST_SUITE_P(core_math, model_curves_log_normal_math_test_t, ValuesIn(math_sweep_params),
+    test_name_generator_t<math_params_t>{});
 
 //
-// critical points
+// adapter
 //
 
-// The log-normal CDF is strictly monotone: f' > 0 for every finite x, so there are no critical points. The api is
-// honored and an empty vector is returned.
-struct model_curves_log_normal_critical_points_test_t : Test
+struct config_sweep_t
 {
-    evaluator_t const sut{make_config(5.0, 0.5)};
+    std::string_view name;
+    real_t baseline;
+    real_t limit;
+    real_t acceleration_peak;
+    real_t maximum_acceleration;
+
+    friend auto operator<<(std::ostream& out, config_sweep_t const& src) -> std::ostream&
+    {
+        return out << "{baseline = " << src.baseline << ", limit = " << src.limit
+                   << ", acceleration_peak = " << src.acceleration_peak
+                   << ", maximum_acceleration = " << src.maximum_acceleration << "}";
+    }
 };
 
-TEST_F(model_curves_log_normal_critical_points_test_t, none)
+config_sweep_t const adapter_sweep_params[] = {
+    {"standard", 0.0, 1.0, 5.0, 0.2},
+    {"shifted_up", 2.0, 4.0, 5.0, 0.2},
+    {"sharp", 0.5, 1.5, 2.0, 1.0},
+    {"gradual", 0.0, 1.0, 10.0, 0.05},
+};
+
+struct model_curves_log_normal_adapter_test_t : TestWithParam<config_sweep_t>
 {
-    EXPECT_TRUE(sut.critical_points().empty());
+    real_t baseline = GetParam().baseline;
+    real_t limit = GetParam().limit;
+    real_t expected_peak = GetParam().acceleration_peak;
+    real_t expected_max_accel = GetParam().maximum_acceleration;
+
+    log_normal_t::config_t config{
+        .baseline{"baseline", baseline},
+        .limit{"limit", limit},
+        .acceleration_peak{"peak", expected_peak},
+        .maximum_acceleration{"max_accel", expected_max_accel},
+    };
+
+    // sigma comes out of a transcendental solve, so slope precision is solver-bound
+    static constexpr auto slope_tolerance = 1e-5;
+
+    // saturation is independent of (mu, sigma), so the endpoints hold to full precision regardless of the solver
+    static constexpr auto value_tolerance = 1e-12;
+
+    evaluator_t const sut{to_params(config)};
+};
+
+TEST_P(model_curves_log_normal_adapter_test_t, adapter_yields_correct_inflection_slope)
+{
+    auto const y = sut(jet_t{expected_peak, df});
+
+    EXPECT_LT(rel_error(y.df, df * expected_max_accel), slope_tolerance);
 }
+
+TEST_P(model_curves_log_normal_adapter_test_t, slope_peaks_at_configured_peak)
+{
+    auto const at_peak = sut(jet_t{expected_peak, df}).df;
+    auto const below = sut(jet_t{0.9 * expected_peak, df}).df;
+    auto const above = sut(jet_t{1.1 * expected_peak, df}).df;
+
+    EXPECT_LT(below, at_peak);
+    EXPECT_LT(above, at_peak);
+}
+
+TEST_P(model_curves_log_normal_adapter_test_t, baseline_passes_through_to_origin)
+{
+    EXPECT_EQ(baseline, sut(0.0));
+}
+
+TEST_P(model_curves_log_normal_adapter_test_t, limit_passes_through_to_asymptote)
+{
+    // z = (log(1e6) - sigma^2)/(sigma*sqrt2) >= 14 for every row: saturated far below value_tolerance
+    EXPECT_NEAR(limit, sut(expected_peak * 1e6), value_tolerance);
+}
+
+INSTANTIATE_TEST_SUITE_P(adapter, model_curves_log_normal_adapter_test_t, ValuesIn(adapter_sweep_params),
+    test_name_generator_t<config_sweep_t>{});
 
 } // namespace
 } // namespace crv::model::curves

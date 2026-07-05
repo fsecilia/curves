@@ -10,12 +10,12 @@
 #include <crv/curves/traits.hpp>
 #include <crv/math/complex.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/math/lambert.hpp>
 #include <crv/math/scalar_traits.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/param.hpp>
 #include <complex>
 #include <numbers>
-#include <vector>
 
 namespace crv::model::curves {
 
@@ -25,29 +25,26 @@ namespace crv::model::curves {
 ///
 ///     f(x) = 1/2 + 1/2 erf((log x - mu)/(sigma*sqrt2))
 ///
-/// Mu and sigma are derived from the center and width of the transition from 0. f rises monotonically from a saturated
-/// floor of 0 and approaches 1.0 asymptotically.
+/// f rises monotonically from a saturated floor of 0 and approaches a limit of 1.0 asymptotically. The evaluator
+/// applies an affine transform to offset the baseline and scale the limit. The final curve output is:
+///
+///     delta = limit - baseline
+///     z = (log(x) - mu)/(sigma*sqrt2)
+///     f(x)  = baseline + delta*(1/2 + 1/2*erf(z)),
+///     f'(x) = delta*exp(-z^2)/(x*sigma*sqrt(2*pi))
+///
 struct log_normal_t
 {
     //
-    // config
+    // implementation params
     //
 
-    struct config_t
+    template <std::floating_point real_t> struct params_t
     {
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> center{"center", 5.0};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> width{"width", 0.5};
-
-        template <typename self_t, typename inspector_t>
-        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
-        {
-            self.center.reflect(inspector);
-            self.width.reflect(inspector);
-
-            return std::forward<inspector_t>(inspector);
-        }
-
-        constexpr auto operator==(config_t const&) const noexcept -> bool = default;
+        real_t baseline;
+        real_t limit;
+        real_t mu;
+        real_t sigma;
     };
 
     //
@@ -62,49 +59,109 @@ struct log_normal_t
         using real_t = real_type_t<scalar_t>;
         using jet_t = crv::jet_t<scalar_t>;
 
-        static constexpr double x_origin_saturation_threshold = 1e-12;
+        static constexpr auto x_origin_saturation_threshold = real_t{1e-12};
 
-        constexpr explicit evaluator_t(config_t const& config) noexcept
-            : mu_{log(static_cast<scalar_t>(config.center.value())) + static_cast<scalar_t>(config.width.value())},
-              c_{scalar_t{1} / (sqrt(static_cast<scalar_t>(config.width.value())) * sqrt2_)}
+        constexpr explicit evaluator_t(params_t<real_t> const& params) noexcept
+            : baseline_{params.baseline}, scale_{params.limit - params.baseline}, mu_{params.mu},
+              dz_ds{scalar_t{1} / (params.sigma * sqrt2_)}
         {}
 
         template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
         {
+            using std::exp;
             using std::real;
 
             auto const x = primal(input);
 
             // origin branch
-            if (real(x) < x_origin_saturation_threshold) return value_t{};
+            if (real(x) < x_origin_saturation_threshold) return value_t{baseline_};
 
-            // linear in s with dz/ds = c constant.
-            auto const z = (log(x) - mu_) * c_;
+            // linear in dz_dx
+            auto const z = (log(x) - mu_) * dz_ds;
             auto const f = scalar_t{0.5} + scalar_t{0.5} * complex_step_erf(z);
+
+            // affine transform
+            auto const scaled_f = scale_ * f + baseline_;
 
             if constexpr (is_jet<value_t>)
             {
-                auto const f_s1 = c_ * inv_sqrt_pi_ * exp(-(z * z));
+                auto const f_s1 = scale_ * dz_ds * rsqrt_pi_ * exp(-(z * z));
                 auto const inv_x = scalar_t{1} / x;
                 auto const d1 = f_s1 * inv_x;
-                return {f, d1 * tangent(input)};
+                return {scaled_f, d1 * tangent(input)};
             }
-            else return value_t{f};
+            else return value_t{scaled_f};
         }
 
-        /// array of critical points
-        ///
-        /// The log-normal CDF is strictly monotone in x, so f' > 0 for all finite x > 0, so there are no critical
-        /// points.
-        auto critical_points() const noexcept -> std::vector<scalar_t> { return {}; }
-
     private:
-        static constexpr real_t sqrt2_ = std::numbers::sqrt2_v<real_t>;
-        static constexpr real_t inv_sqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
+        static constexpr auto sqrt2_ = std::numbers::sqrt2_v<real_t>;
+        static constexpr auto rsqrt_pi_ = std::numbers::inv_sqrtpi_v<real_t>;
 
+        scalar_t baseline_;
+        scalar_t scale_;
         scalar_t mu_; // log(center) + width
-        scalar_t c_; // dz/ds = 1/(sigma*sqrt2), sigma = sqrt(width)
+        scalar_t dz_ds; // dz/ds = 1/(sigma*sqrt2), sigma = sqrt(width)
+    };
+
+    //
+    // frontend config
+    //
+
+    struct config_t
+    {
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> baseline{
+            "baseline", 2.0 / 3.0};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> limit{"limit", 1.5};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> acceleration_peak{
+            "acceleration_peak", 5.0};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> maximum_acceleration{
+            "maximum_acceleration", 0.2};
+
+        template <typename self_t, typename inspector_t>
+        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+        {
+            self.baseline.reflect(inspector);
+            self.limit.reflect(inspector);
+            self.acceleration_peak.reflect(inspector);
+            self.maximum_acceleration.reflect(inspector);
+
+            return std::forward<inspector_t>(inspector);
+        }
+
+        constexpr auto operator==(config_t const&) const noexcept -> bool = default;
     };
 };
 
+/// converts from frontend config to implementation params
+///
+/// This function solves (mu, sigma) from (acceleration_peak, maximum_acceleration):
+///
+///     argmax f' = exp(mu - sigma^2) => mu = log(acceleration_peak) + sigma^2
+///     f'(acceleration_peak) = delta*exp(-sigma^2/2)/(acceleration_peak*sigma*sqrt(2*pi)) = maximum_acceleration
+///
+/// With u = log(x), f' maximizes -(u - mu)^2/(2*sigma^2) - u, giving u* = mu - sigma^2.
+constexpr auto to_params(log_normal_t::config_t const& config) -> log_normal_t::params_t<float_t>
+{
+    using std::numbers::pi_v;
+    using real_t = float_t;
+
+    auto const acceleration_peak = config.acceleration_peak.value();
+    auto const maximum_acceleration = config.maximum_acceleration.value();
+    auto const baseline = config.baseline.value();
+    auto const limit = config.limit.value();
+
+    real_t const scale = limit - baseline;
+    real_t const normalized_slope
+        = (maximum_acceleration * acceleration_peak * std::sqrt(real_t{2} * pi_v<real_t>)) / scale;
+    real_t const lambert_input = real_t{1} / (normalized_slope * normalized_slope);
+
+    real_t const normal_variance = lambert_w0(lambert_input);
+
+    return {
+        .baseline = baseline,
+        .limit = limit,
+        .mu = std::log(acceleration_peak) + normal_variance,
+        .sigma = std::sqrt(normal_variance),
+    };
+}
 } // namespace crv::model::curves
