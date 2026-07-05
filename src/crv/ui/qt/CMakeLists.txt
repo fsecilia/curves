@@ -10,8 +10,8 @@ set(qt_files main.cpp)
 set(qt_ui_files
     app.cpp
     app.hpp
-    command/stack_adapter.hpp
     command/stack_adapter.cpp
+    command/stack_adapter.hpp
     i18n.cpp
     i18n.hpp
     property_model.cpp
@@ -31,6 +31,13 @@ set(qml_files
     NumericField.qml
     PropertyDelegateChooser.qml
     RootConfigRow.qml
+)
+
+set(qml_cpp_files
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/graph/grid_renderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/graph/grid_renderer.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/graph.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets/graph.hpp"
 )
 
 # let qt know not to expect repeated libraries on build command lines
@@ -56,6 +63,7 @@ set(CMAKE_AUTORCC ON)
 
 # qt ui lib
 add_library(qt_ui ${qt_ui_files})
+target_include_directories(qt_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
 target_link_libraries(qt_ui PUBLIC
     lib
     ui
@@ -76,17 +84,20 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     )
 endif()
 
-# register qml module and attach it to target
+# register qml modules and attach them to target
 qt_add_qml_module(qml
     URI "Curves"
     VERSION 1.0
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Curves"
     QML_FILES ${qml_files}
+    SOURCES ${qml_cpp_files}
 )
+target_include_directories(qml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
 target_compile_options(qml PRIVATE
     -fno-strict-aliasing
     -Wno-strict-aliasing
 )
+target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
 endif()
@@ -105,8 +116,10 @@ add_executable(qt_ui_test
     command/stack_adapter_test.cpp
     i18n_test.cpp
     property_model_test.cpp
+    widgets/graph/grid_renderer_test.cpp
+    widgets/graph_test.cpp
 )
-target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
+target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing qml Qt6::Test)
 gtest_discover_tests(qt_ui_test)
 
 # main executable.
@@ -115,7 +128,7 @@ set_target_properties(qt
     PROPERTIES OUTPUT_NAME ${project_name_dashes}-config
     QT_EXCLUDE_FROM_TRANSLATION ON
 )
-target_include_directories(qt PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(qt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
 target_link_libraries(qt PRIVATE qt_ui qml)
 
 install(TARGETS qt RUNTIME
@@ -131,6 +144,7 @@ qt6_add_translations(qt
         ${qt_files}
         ${qt_ui_files}
         ${qml_files}
+        ${qml_cpp_files}
     LUPDATE_OPTIONS "-tr-function-alias" "tr+=CRV_TR,translate+=CRV_TR_C"
     RESOURCE_PREFIX "/i18n"
 )
