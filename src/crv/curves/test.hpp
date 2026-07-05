@@ -28,7 +28,7 @@ constexpr auto complex_step_derivative(evaluator_t const& eval, real_t x) -> rea
     /// f(x + ih) = [f(x) - (h^2/2!)f''(x) + ...] + i[hf'(x) - (h^3/3!)f'''(x) + ...]
     /// Extract imaginary part:
     /// im(f(x + ih)) = hf'(x) - (h^3/3!)f'''(x) + ...
-    /// Divide by sides by h:
+    /// Divide both sides by h:
     /// im(f(x + ih))/h = f'(x) - (h^2/3!)f'''(x) + ...
     /// Now this looks a lot like finite differences. Choose infintesimal h, h = 1e-200, and the h^n terms vanish:
     /// f'(x) ~= im(f(x + ih))/h
