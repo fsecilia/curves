@@ -10,6 +10,14 @@
 #include <vector>
 
 namespace crv::model::curves {
+
+template <std::floating_point real_t>
+auto operator<<(std::ostream& out, synchronous_t::params_t<real_t> const& src) -> std::ostream&
+{
+    return out << "{motivity = " << src.motivity << ", gamma = " << src.gamma << ", smooth = " << src.smooth
+               << ", sync_speed = " << src.sync_speed << "}";
+}
+
 namespace {
 
 using real_t = float_t;
@@ -20,19 +28,25 @@ using complex_evaluator_t = synchronous_t::evaluator_t<std::complex<real_t>>;
 constexpr auto df = real_t{1.3};
 
 // common param type for multiple tests
-struct param_t
+struct vector_t
 {
     std::string_view name;
-    real_t motivity;
-    real_t gamma;
-    real_t smooth;
-    real_t sync_speed;
+    params_t params;
 
-    friend auto operator<<(std::ostream& out, param_t const& src) -> std::ostream&
+    friend auto operator<<(std::ostream& out, vector_t const& src) -> std::ostream&
     {
-        return out << "{motivity = " << src.motivity << ", gamma = " << src.gamma << ", smooth = " << src.smooth
-                   << ", sync_speed = " << src.sync_speed << "}";
+        return out << "{.params = " << src.params << "}";
     }
+};
+
+struct model_curves_synchronous_vector_test_t : TestWithParam<vector_t>
+{
+    params_t const& params = GetParam().params;
+
+    evaluator_t const eval{params};
+
+    real_t const p = params.sync_speed;
+    real_t const g = params.gamma;
 };
 
 // sweep table for multiple tests
@@ -40,33 +54,33 @@ struct param_t
 // These values sweep the parameter space and a range of x on both sides of the cusp. The nonholomorphic neighborhood of
 // the cusp is skipped. The sweeps are based on the config constraints: m in [1,1e3], g in [1e-3,1e3], smooth in
 // [1/16,1], p in [1e-3,1e3].
-param_t const sweep_params[] = {
+vector_t const sweep_vectors[] = {
     // motivity sweep
-    {"m1_5", 1.5, 2.0, 0.5, 5.0},
-    {"m10", 10.0, 2.0, 0.5, 5.0},
-    {"m100", 100.0, 2.0, 0.5, 5.0},
-    {"m1000", 1000.0, 2.0, 0.5, 5.0},
+    {"m1_5", {1.5, 2.0, 0.5, 5.0}},
+    {"m10", {10.0, 2.0, 0.5, 5.0}},
+    {"m100", {100.0, 2.0, 0.5, 5.0}},
+    {"m1000", {1000.0, 2.0, 0.5, 5.0}},
 
     // gamma sweep
-    {"g0_5", 10.0, 0.5, 0.5, 5.0},
-    {"g1", 10.0, 1.0, 0.5, 5.0},
-    {"g3", 10.0, 3.0, 0.5, 5.0},
-    {"g10", 10.0, 10.0, 0.5, 5.0},
+    {"g0_5", {10.0, 0.5, 0.5, 5.0}},
+    {"g1", {10.0, 1.0, 0.5, 5.0}},
+    {"g3", {10.0, 3.0, 0.5, 5.0}},
+    {"g10", {10.0, 10.0, 0.5, 5.0}},
 
     // smooth sweep
-    {"k1", 10.0, 2.0, 1.0, 5.0},
-    {"k0_5", 10.0, 2.0, 0.5, 5.0},
-    {"k0_25", 10.0, 2.0, 0.25, 5.0},
-    {"k0_125", 10.0, 2.0, 0.125, 5.0},
-    {"k0_0625", 10.0, 2.0, 0.0625, 5.0}, // k = 8, the floor
+    {"k1", {10.0, 2.0, 1.0, 5.0}},
+    {"k0_5", {10.0, 2.0, 0.5, 5.0}},
+    {"k0_25", {10.0, 2.0, 0.25, 5.0}},
+    {"k0_125", {10.0, 2.0, 0.125, 5.0}},
+    {"k0_0625", {10.0, 2.0, 0.0625, 5.0}}, // k = 8, the floor
 
     // sync speed sweep
-    {"p0_5", 10.0, 2.0, 0.5, 0.5},
-    {"p50", 10.0, 2.0, 0.5, 50.0},
+    {"p0_5", {10.0, 2.0, 0.5, 0.5}},
+    {"p50", {10.0, 2.0, 0.5, 50.0}},
 
     // combined extremes
-    {"hi_all", 1000.0, 10.0, 0.0625, 50.0},
-    {"lo_all", 1.5, 0.5, 1.0, 0.5},
+    {"hi_all", {1000.0, 10.0, 0.0625, 50.0}},
+    {"lo_all", {1.5, 0.5, 1.0, 0.5}},
 };
 
 //
@@ -78,18 +92,8 @@ param_t const sweep_params[] = {
 //    f(p)    = 1
 //    f'(p)   = g/p
 //
-struct model_curves_synchronous_cusp_test_t : TestWithParam<param_t>
+struct model_curves_synchronous_cusp_test_t : model_curves_synchronous_vector_test_t
 {
-    real_t motivity = GetParam().motivity;
-    real_t gamma = GetParam().gamma;
-    real_t smooth = GetParam().smooth;
-    real_t sync_speed = GetParam().sync_speed;
-
-    evaluator_t const eval{params_t{motivity, gamma, smooth, sync_speed}};
-
-    real_t const p = sync_speed;
-    real_t const g = gamma;
-
     static constexpr auto tolerance = 1e-12;
 };
 
@@ -112,14 +116,14 @@ TEST_P(model_curves_synchronous_cusp_test_t, zero_tangent_propagates_zero_veloci
     EXPECT_EQ(0.0, y.df);
 }
 
-param_t const cusp_params[] = {
-    {"g3_p5", 2.0, 3.0, 0.5, 5.0},
-    {"g2_5_p2_75", 100.0, 2.5, 0.5, 2.75},
-    {"g10_p50", 1.5, 10.0, 0.5, 50.0},
-    {"g2_p0_5", 1000.0, 2.0, 0.5, 0.5},
+vector_t const cusp_params[] = {
+    {"g3_p5", {2.0, 3.0, 0.5, 5.0}},
+    {"g2_5_p2_75", {100.0, 2.5, 0.5, 2.75}},
+    {"g10_p50", {1.5, 10.0, 0.5, 50.0}},
+    {"g2_p0_5", {1000.0, 2.0, 0.5, 0.5}},
 };
 INSTANTIATE_TEST_SUITE_P(
-    cusp, model_curves_synchronous_cusp_test_t, ValuesIn(cusp_params), test_name_generator_t<param_t>{});
+    cusp, model_curves_synchronous_cusp_test_t, ValuesIn(cusp_params), test_name_generator_t<vector_t>{});
 
 //
 // origin
@@ -164,17 +168,8 @@ TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_
 //
 
 // each derivative order is differentiated by complex-step and compared to the next order down
-struct model_curves_synchronous_consistency_test_t : TestWithParam<param_t>
+struct model_curves_synchronous_consistency_test_t : model_curves_synchronous_vector_test_t
 {
-    real_t motivity = GetParam().motivity;
-    real_t gamma = GetParam().gamma;
-    real_t smooth = GetParam().smooth;
-    real_t sync_speed = GetParam().sync_speed;
-
-    real_t const p = sync_speed;
-
-    params_t const params{motivity, gamma, smooth, sync_speed};
-    evaluator_t const eval{params};
     complex_evaluator_t const ceval{params};
 
     // multipliers of p giving x on both sides of the cusp
@@ -209,8 +204,8 @@ TEST_P(model_curves_synchronous_consistency_test_t, first_derivative_matches_com
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    consistency, model_curves_synchronous_consistency_test_t, ValuesIn(sweep_params), test_name_generator_t<param_t>{});
+INSTANTIATE_TEST_SUITE_P(consistency, model_curves_synchronous_consistency_test_t, ValuesIn(sweep_vectors),
+    test_name_generator_t<vector_t>{});
 
 //
 // cusp-branch seam
@@ -221,17 +216,8 @@ INSTANTIATE_TEST_SUITE_P(
 // real tanh curvature, producing a seam where the branches meet. The discontinuity shows up under zoom and stalls the
 // inverse bisection. These tests guard that. At a correct threshold the two branches agree to ~eps at the seam, so
 // there is no kink.
-struct model_curves_synchronous_seam_test_t : TestWithParam<param_t>
-{
-    real_t motivity = GetParam().motivity;
-    real_t gamma = GetParam().gamma;
-    real_t smooth = GetParam().smooth;
-    real_t sync_speed = GetParam().sync_speed;
-
-    real_t const p = sync_speed;
-
-    evaluator_t const eval{params_t{motivity, gamma, smooth, sync_speed}};
-};
+struct model_curves_synchronous_seam_test_t : model_curves_synchronous_vector_test_t
+{};
 
 // black-box
 //
@@ -271,8 +257,8 @@ TEST_P(model_curves_synchronous_seam_test_t, smooth_branch_matches_power_law_at_
     using std::log;
     using std::pow;
 
-    auto const m = static_cast<real_t>(motivity);
-    auto const g = static_cast<real_t>(gamma);
+    auto const m = static_cast<real_t>(params.motivity);
+    auto const g = static_cast<real_t>(params.gamma);
     auto const M = log(m);
     auto const G = g / M;
 
@@ -290,7 +276,7 @@ TEST_P(model_curves_synchronous_seam_test_t, smooth_branch_matches_power_law_at_
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    seam, model_curves_synchronous_seam_test_t, ValuesIn(sweep_params), test_name_generator_t<param_t>{});
+    seam, model_curves_synchronous_seam_test_t, ValuesIn(sweep_vectors), test_name_generator_t<vector_t>{});
 
 //
 // critical points
