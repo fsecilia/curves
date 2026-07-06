@@ -93,6 +93,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-shadow-field
         -Wno-shadow-field-in-constructor
         -Wno-switch-default
+        -Wno-switch-enum
         -Wno-unneeded-member-function
         -Wno-unsafe-buffer-usage
         -Wno-unused-function

@@ -144,13 +144,7 @@ auto GraphWidget::updateCurves() -> void
 
     if (!window()) return;
 
-    auto const samples = sample_count();
-    // auto const min_x = domain_.left();
-    auto const step = domain_.width() / samples;
-
-    // auto const y_margin = domain_.height() * 0.1;
-    // auto const y_lo = domain_.top() - y_margin;
-    // auto const y_hi = domain_.bottom() + y_margin;
+    auto const step = domain_.width() / static_cast<float_t>(sample_count());
 
     std::visit(
         [&](auto const& curve) {
@@ -159,7 +153,7 @@ auto GraphWidget::updateCurves() -> void
 
             for (int_t sample = first; sample < last; ++sample)
             {
-                auto const x = step * (sample + 0.5);
+                auto const x = step * (static_cast<float_t>(sample) + 0.5);
                 auto const y = curve(jet_t{x, 1.0});
 
                 function_points_ << QPointF(x, primal(y));

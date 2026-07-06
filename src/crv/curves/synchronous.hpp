@@ -248,7 +248,7 @@ struct synchronous_t
         // checks for the 3rd derivative because it is needed to accurately render thick lines of the 2nd derivative. We
         // only take the first derivative here because we are limited by the 1-jet. When n-jets are ready, we will be
         // taking up to the 3rd derivative to render the first two.
-        static constexpr auto calc_x_origin_limit_threshold() noexcept -> real_t
+        static auto calc_x_origin_limit_threshold() noexcept -> real_t
         {
             auto const min = std::numeric_limits<real_t>::min();
             return std::cbrt(min);
@@ -256,7 +256,7 @@ struct synchronous_t
 
     private:
         real_t u_cusp_threshold_ = calc_u_cusp_threshold();
-        static constexpr real_t x_origin_limit_threshold_ = calc_x_origin_limit_threshold();
+        inline static real_t x_origin_limit_threshold_ = calc_x_origin_limit_threshold();
     };
 
     //
