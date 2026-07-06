@@ -12,6 +12,8 @@ set(qt_ui_files
     app.hpp
     command/stack_adapter.cpp
     command/stack_adapter.hpp
+    evaluator.cpp
+    evaluator.hpp
     i18n.cpp
     i18n.hpp
     lib.hpp

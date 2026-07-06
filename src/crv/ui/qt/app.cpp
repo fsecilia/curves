@@ -183,11 +183,6 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
 
     result->engine_->loadFromModule("Curves", "Main");
 
-    result->anchor_model_->error_message(
-        "height", QString::fromStdString(CRV_TR("baseline error message\nmore error message")));
-    result->device_model_->error_message(
-        "dpi", QString::fromStdString(CRV_TR("dpi error message\nmore error message")));
-
     return result;
 }
 
@@ -207,6 +202,8 @@ auto app_t::set_active_curve(int index) -> void
         [=, this](active_curve_t& command_param, active_curve_t::value_t const& cur) {
             if (cur == command_param.value()) return;
             load_active_curve_model();
+            emit activeCurveChanged();
+            emit evaluatorChanged();
         });
 }
 
@@ -243,10 +240,8 @@ auto app_t::load_active_curve_model() -> void
 
         using curve_t = std::tuple_element_t<index, model::curves::curves_t>;
         using evaluator_t = curve_t::template evaluator_t<float_t>;
-        evaluator_variant_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
+        evaluator_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
     });
-
-    emit activeCurveChanged();
 }
 
 } // namespace crv

@@ -11,6 +11,7 @@
 #include <crv/model/config.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
+#include <crv/ui/qt/evaluator.hpp>
 #include <crv/ui/qt/i18n.hpp>
 #include <crv/ui/qt/property_model.hpp>
 #include <QApplication>
@@ -42,10 +43,14 @@ public:
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
 
+    Q_PROPERTY(QVariant evaluator READ evaluator NOTIFY evaluatorChanged)
+    auto evaluator() const -> QVariant { return qt::pack_evaluator(*evaluator_); }
+
     auto notify(QObject* receiver, QEvent* event) -> bool override;
 
 signals:
     void activeCurveChanged();
+    void evaluatorChanged();
 
 private:
     auto load_active_curve_model() -> void;
@@ -73,8 +78,8 @@ private:
     std::unique_ptr<property_model_t> ceiling_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 
-    using evaluator_variant_t = model::curves::evaluator_variant_t<float_t>;
-    std::optional<evaluator_variant_t> evaluator_variant_;
+    using evaluator_variant_t = qt::evaluator_variant_t;
+    std::optional<evaluator_variant_t> evaluator_;
 };
 
 } // namespace crv

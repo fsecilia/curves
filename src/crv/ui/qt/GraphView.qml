@@ -52,6 +52,7 @@ Rectangle {
                     anchors.margins: 1
 
                     dpi: dpiInput.value
+                    evaluator: app.evaluator
 
                     DragHandler {
                         target: null

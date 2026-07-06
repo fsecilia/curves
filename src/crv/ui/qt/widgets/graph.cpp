@@ -54,9 +54,9 @@ void GraphWidget::setDpi(int dpi)
     }
 }
 
-void GraphWidget::setEvaluator(evaluator_variant_t evaluator)
+void GraphWidget::setEvaluator(QVariant const& evaluator)
 {
-    evaluator_ = std::move(evaluator);
+    evaluator_ = qt::unpack_evaluator(evaluator);
     on_curve_changed();
 }
 

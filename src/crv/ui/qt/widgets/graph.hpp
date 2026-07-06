@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/curves/evaluator.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/ui/qt/evaluator.hpp>
 #include <crv/ui/qt/widgets/graph/grid_renderer.hpp>
 #include <QPainter>
 #include <QQuickItem>
@@ -25,9 +26,11 @@ class GraphWidget : public QQuickPaintedItem
     Q_PROPERTY(QRectF domain READ domain WRITE setDomain NOTIFY domainChanged)
     Q_PROPERTY(int dpi READ dpi WRITE setDpi NOTIFY dpiChanged)
 
+    Q_PROPERTY(QVariant evaluator READ evaluator WRITE setEvaluator NOTIFY evaluatorChanged)
+
 public:
     using jet_t = jet_t<float_t>;
-    using evaluator_variant_t = model::curves::evaluator_variant_t<float_t>;
+    using evaluator_variant_t = qt::evaluator_variant_t;
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
@@ -41,11 +44,13 @@ public:
     int dpi() const { return dpi_; }
     void setDpi(int dpi);
 
-    Q_INVOKABLE void setEvaluator(evaluator_variant_t evaluator);
+    auto evaluator() const -> QVariant { return qt::pack_evaluator(*evaluator_); }
+    void setEvaluator(QVariant const& evaluator);
 
 signals:
     void domainChanged();
     void dpiChanged();
+    void evaluatorChanged();
 
 private:
     auto sample_count() const -> int_t;
