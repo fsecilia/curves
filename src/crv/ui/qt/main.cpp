@@ -19,9 +19,9 @@ namespace {
 
 auto main(int argc, char* argv[]) -> int
 {
-    auto app = app_t{argc, argv};
-    if (!app.initialize()) return EXIT_FAILURE;
-    return app.exec();
+    auto app = app_t::construct(argc, argv);
+    if (!app) return EXIT_FAILURE;
+    return app->exec();
 }
 
 } // namespace

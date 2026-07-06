@@ -30,15 +30,15 @@ class app_t : public QApplication
 {
     Q_OBJECT
 
+    app_t(int& argc, char** argv);
+
 public:
-    explicit app_t(int& argc, char** argv);
+    static auto construct(int& argc, char** argv) -> std::unique_ptr<app_t>;
     ~app_t() override;
 
     Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
-
-    auto initialize() -> bool;
 
     auto notify(QObject* receiver, QEvent* event) -> bool override;
 

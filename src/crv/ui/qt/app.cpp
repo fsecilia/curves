@@ -10,6 +10,7 @@
 #include <crv/serialization/toml/toml.hpp>
 #include <QStandardPaths>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <utility>
@@ -101,12 +102,94 @@ static auto load_model(config_store_t& store, model::root_t& root) noexcept -> b
 //
 
 app_t::app_t(int& argc, char** argv) : QApplication{argc, argv}
+{}
+
+app_t::~app_t() = default;
+
+auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
 {
     setApplicationName(QString::fromStdString(CRV_TR(app_name)));
     setOrganizationName("");
-}
 
-app_t::~app_t() = default;
+    auto result = std::unique_ptr<app_t>{new app_t{argc, argv}};
+
+    if (!result->translator_.load(QLocale(), "", "", ":/i18n"))
+    {
+        result.reset();
+        return result;
+    }
+
+    QCoreApplication::installTranslator(&result->translator_);
+    i18n::provider(result->provider_);
+
+    auto const config_path = find_config_path();
+    result->store_ = std::make_unique<config_store_t>(config_path);
+    if (!load_model(*result->store_, result->model_root_))
+    {
+        result.reset();
+        return result;
+    }
+
+    for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
+    {
+        result->curve_names_.append(QString::fromStdString(
+            CRV_TR(reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id))->data())));
+    }
+
+    result->engine_ = std::make_unique<QQmlApplicationEngine>();
+
+    result->command_stack_.observer(&result->command_stack_adapter_);
+
+    result->device_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->device_model_->load_config(result->model_root_.device);
+
+    result->profile_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->profile_model_->load_config(result->model_root_.profile, [](std::string_view nested_path) {
+        // stop inspector from diving into curves section
+        return nested_path != "curves";
+    });
+
+    result->scale_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->offset_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->anchor_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->ceiling_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->specific_curve_model_
+        = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
+    result->load_active_curve_model();
+
+    // ordered
+    auto& context = *result->engine_->rootContext();
+    context.setContextProperty("qtVersion", QT_VERSION);
+    context.setContextProperty("availableCurves", result->curve_names_);
+    context.setContextProperty("undoStack", &result->command_stack_adapter_);
+    context.setContextProperty("deviceModel", result->device_model_.get());
+    context.setContextProperty("profileModel", result->profile_model_.get());
+    context.setContextProperty("scaleModel", result->scale_model_.get());
+    context.setContextProperty("offsetModel", result->offset_model_.get());
+    context.setContextProperty("anchorModel", result->anchor_model_.get());
+    context.setContextProperty("ceilingModel", result->ceiling_model_.get());
+    context.setContextProperty("specificCurveModel", result->specific_curve_model_.get());
+    context.setContextProperty("app", result.get());
+
+    QObject::connect(
+        result->engine_.get(), &QQmlApplicationEngine::objectCreationFailed, result.get(),
+        []() { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
+
+    result->engine_->loadFromModule("Curves", "Main");
+
+    result->anchor_model_->error_message(
+        "height", QString::fromStdString(CRV_TR("baseline error message\nmore error message")));
+    result->device_model_->error_message(
+        "dpi", QString::fromStdString(CRV_TR("dpi error message\nmore error message")));
+
+    return result;
+}
 
 auto app_t::set_active_curve(int index) -> void
 {
@@ -125,69 +208,6 @@ auto app_t::set_active_curve(int index) -> void
             if (cur == command_param.value()) return;
             load_active_curve_model();
         });
-}
-
-auto app_t::initialize() -> bool
-{
-    if (!translator_.load(QLocale(), "", "", ":/i18n")) return false;
-    QCoreApplication::installTranslator(&translator_);
-    i18n::provider(provider_);
-
-    auto const config_path = find_config_path();
-    store_ = std::make_unique<config_store_t>(config_path);
-    if (!load_model(*store_, model_root_)) return false;
-
-    for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
-    {
-        curve_names_.append(QString::fromStdString(
-            CRV_TR(reflection::to_string(static_cast<model::curves::curve_id_t>(curve_id))->data())));
-    }
-
-    engine_ = std::make_unique<QQmlApplicationEngine>();
-
-    command_stack_.observer(&command_stack_adapter_);
-
-    device_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    device_model_->load_config(model_root_.device);
-
-    profile_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    profile_model_->load_config(model_root_.profile, [](std::string_view nested_path) {
-        // stop inspector from diving into curves section
-        return nested_path != "curves";
-    });
-
-    scale_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    offset_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    anchor_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    ceiling_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    specific_curve_model_ = std::make_unique<property_model_t>(command_stack_, hierarchical_inspector_factory_t{});
-    load_active_curve_model();
-
-    // ordered
-    auto& context = *engine_->rootContext();
-    context.setContextProperty("qtVersion", QT_VERSION);
-    context.setContextProperty("availableCurves", curve_names_);
-    context.setContextProperty("undoStack", &command_stack_adapter_);
-    context.setContextProperty("deviceModel", device_model_.get());
-    context.setContextProperty("profileModel", profile_model_.get());
-    context.setContextProperty("scaleModel", scale_model_.get());
-    context.setContextProperty("offsetModel", offset_model_.get());
-    context.setContextProperty("anchorModel", anchor_model_.get());
-    context.setContextProperty("ceilingModel", ceiling_model_.get());
-    context.setContextProperty("specificCurveModel", specific_curve_model_.get());
-    context.setContextProperty("app", this);
-
-    QObject::connect(
-        engine_.get(), &QQmlApplicationEngine::objectCreationFailed, this,
-        []() { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
-
-    engine_->loadFromModule("Curves", "Main");
-
-    anchor_model_->error_message(
-        "height", QString::fromStdString(CRV_TR("baseline error message\nmore error message")));
-    device_model_->error_message("dpi", QString::fromStdString(CRV_TR("dpi error message\nmore error message")));
-
-    return true;
 }
 
 auto app_t::notify(QObject* receiver, QEvent* event) -> bool
