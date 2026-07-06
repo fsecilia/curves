@@ -38,7 +38,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -Wdouble-promotion
         -Werror
         -Wextra
-        -Wswitch-enum
+        -Wswitch
     )
     target_compile_options(project_options INTERFACE
         -fsized-deallocation
