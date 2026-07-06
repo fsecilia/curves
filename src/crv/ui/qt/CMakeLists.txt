@@ -94,10 +94,6 @@ qt_add_qml_module(qml
     SOURCES ${qml_cpp_files}
 )
 target_include_directories(qml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
-target_compile_options(qml PRIVATE
-    -fno-strict-aliasing
-    -Wno-strict-aliasing
-)
 target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
