@@ -13,6 +13,7 @@ target_sources(lib PRIVATE
     curves/concepts.hpp
     curves/curves.hpp
     curves/derivatives.hpp
+    curves/evaluator.hpp
     curves/log_normal.hpp
     curves/synchronous.hpp
     curves/traits.hpp
@@ -168,6 +169,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         curves/concepts_test.cpp
+        curves/evaluator_test.cpp
         curves/log_normal_test.cpp
         curves/synchronous_test.cpp
         curves/test.hpp

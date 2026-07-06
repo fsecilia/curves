@@ -13,7 +13,7 @@
 namespace crv {
 
 GraphWidget::GraphWidget(QQuickItem* parent)
-    : QQuickPaintedItem(parent), curve_{model::curves::log_normal_t::evaluator_t<float_t>{
+    : QQuickPaintedItem(parent), evaluator_{model::curves::log_normal_t::evaluator_t<float_t>{
                                      crv::model::curves::to_params(model::curves::log_normal_t::config_t{})}}
 {
     setAntialiasing(true);
@@ -49,9 +49,9 @@ void GraphWidget::setDpi(int dpi)
     }
 }
 
-void GraphWidget::setCurve(curve_variant_t curve)
+void GraphWidget::setEvaluator(evaluator_variant_t evaluator)
 {
-    curve_ = std::move(curve);
+    evaluator_ = std::move(evaluator);
 }
 
 void GraphWidget::paint(QPainter* painter)
@@ -132,7 +132,7 @@ void GraphWidget::updateCurves()
                 y0 = y1;
             }
         },
-        curve_);
+        *evaluator_);
 }
 
 void GraphWidget::sampleInterval(float_t x0, float_t x1, jet_t y0, jet_t y1) const
@@ -157,7 +157,7 @@ void GraphWidget::sampleInterval(float_t x0, float_t x1, jet_t y0, jet_t y1) con
 
                 sampleInterval(mid_x, x1, mid_y, y1);
             },
-            curve_);
+            *evaluator_);
     }
 }
 

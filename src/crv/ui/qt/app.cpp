@@ -240,6 +240,10 @@ auto app_t::load_active_curve_model() -> void
         anchor_model_->load_config(curve_config.common.anchor);
         ceiling_model_->load_config(curve_config.common.ceiling);
         specific_curve_model_->load_config(curve_config.specific);
+
+        using curve_t = std::tuple_element_t<index, model::curves::curves_t>;
+        using evaluator_t = curve_t::template evaluator_t<float_t>;
+        evaluator_variant_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
     });
 
     emit activeCurveChanged();

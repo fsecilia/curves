@@ -6,13 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
-
-#include <crv/curves/log_normal.hpp>
-#include <crv/curves/synchronous.hpp>
+#include <crv/curves/evaluator.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/ui/qt/widgets/graph/grid_renderer.hpp>
-#include <variant>
-
 #include <QPainter>
 #include <QQuickItem>
 #include <QQuickPaintedItem>
@@ -20,9 +16,6 @@
 #include <QtQmlIntegration>
 
 namespace crv {
-
-using curve_variant_t = std::variant<model::curves::log_normal_t::evaluator_t<float_t>,
-    model::curves::synchronous_t::evaluator_t<float_t>>;
 
 class GraphWidget : public QQuickPaintedItem
 {
@@ -34,6 +27,7 @@ class GraphWidget : public QQuickPaintedItem
 
 public:
     using jet_t = jet_t<float_t>;
+    using evaluator_variant_t = model::curves::evaluator_variant_t<float_t>;
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
@@ -45,7 +39,7 @@ public:
     int dpi() const { return dpi_; }
     void setDpi(int dpi);
 
-    Q_INVOKABLE void setCurve(curve_variant_t curve);
+    Q_INVOKABLE void setEvaluator(evaluator_variant_t evaluator);
 
 signals:
     void domainChanged();
@@ -57,7 +51,7 @@ private:
     auto sampleInterval(float_t x0, float_t x1, jet_t y0, jet_t y1) const -> void;
     auto on_curve_changed() -> void;
 
-    curve_variant_t curve_;
+    std::optional<evaluator_variant_t> evaluator_;
     grid_renderer_t grid_renderer_;
     QRectF domain_{0.0, 0.0, 15.0, 15.0};
     int dpi_ = 0;

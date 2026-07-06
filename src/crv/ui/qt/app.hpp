@@ -6,6 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/curves/curves.hpp>
+#include <crv/curves/evaluator.hpp>
 #include <crv/model/config.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
@@ -70,6 +72,9 @@ private:
     std::unique_ptr<property_model_t> anchor_model_;
     std::unique_ptr<property_model_t> ceiling_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
+
+    using evaluator_variant_t = model::curves::evaluator_variant_t<float_t>;
+    std::optional<evaluator_variant_t> evaluator_variant_;
 };
 
 } // namespace crv
