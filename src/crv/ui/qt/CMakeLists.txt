@@ -75,6 +75,7 @@ target_link_libraries(qt_ui PUBLIC
     # link against widgets for message box until we have a way to report errors
     Qt6::Widgets
 )
+set_target_properties(qt_ui PROPERTIES DISABLE_STRICT_ALIASING ON)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qt_ui PRIVATE
@@ -101,6 +102,7 @@ target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
 endif()
+set_target_properties(qml PROPERTIES DISABLE_STRICT_ALIASING ON)
 
 # common test library
 add_library(qt_ui_testing

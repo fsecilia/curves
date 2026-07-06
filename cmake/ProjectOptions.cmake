@@ -42,8 +42,8 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
     target_compile_options(project_options INTERFACE
         -fsized-deallocation
-        -fstrict-aliasing
-        -Wstrict-aliasing=2
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
     )
     target_link_options(project_options INTERFACE
         "LINKER:-z,relro"
