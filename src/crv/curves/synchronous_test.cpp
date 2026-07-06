@@ -13,22 +13,11 @@ namespace crv::model::curves {
 namespace {
 
 using real_t = float_t;
-
-constexpr auto df = real_t{1.3};
-
+using params_t = synchronous_t::params_t<real_t>;
 using evaluator_t = synchronous_t::evaluator_t<real_t>;
 using complex_evaluator_t = synchronous_t::evaluator_t<std::complex<real_t>>;
 
-constexpr auto make_config(real_t motivity, real_t gamma, real_t smooth, real_t sync_speed) noexcept
-    -> synchronous_t::config_t
-{
-    auto config = synchronous_t::config_t{};
-    config.motivity.value(motivity);
-    config.gamma.value(gamma);
-    config.smooth.value(smooth);
-    config.sync_speed.value(sync_speed);
-    return config;
-}
+constexpr auto df = real_t{1.3};
 
 // common param type for multiple tests
 struct param_t
@@ -96,7 +85,7 @@ struct model_curves_synchronous_cusp_test_t : TestWithParam<param_t>
     real_t smooth = GetParam().smooth;
     real_t sync_speed = GetParam().sync_speed;
 
-    evaluator_t const eval{make_config(motivity, gamma, smooth, sync_speed)};
+    evaluator_t const eval{params_t{motivity, gamma, smooth, sync_speed}};
 
     real_t const p = sync_speed;
     real_t const g = gamma;
@@ -139,7 +128,7 @@ INSTANTIATE_TEST_SUITE_P(
 // below x_origin_limit_threshold the curve has saturated to its floor: f = 1/m, not NaN, and every derivative is zero
 struct model_curves_synchronous_origin_test_t : Test
 {
-    evaluator_t const eval{make_config(2.0, 3.0, 0.5, 5.0)};
+    evaluator_t const eval{params_t{2.0, 3.0, 0.5, 5.0}};
 
     real_t const x = eval.calc_x_origin_limit_threshold();
     static constexpr auto tolerance = 1e-15;
@@ -184,8 +173,9 @@ struct model_curves_synchronous_consistency_test_t : TestWithParam<param_t>
 
     real_t const p = sync_speed;
 
-    evaluator_t const eval{make_config(motivity, gamma, smooth, sync_speed)};
-    complex_evaluator_t const ceval{make_config(motivity, gamma, smooth, sync_speed)};
+    params_t const params{motivity, gamma, smooth, sync_speed};
+    evaluator_t const eval{params};
+    complex_evaluator_t const ceval{params};
 
     // multipliers of p giving x on both sides of the cusp
     //
@@ -240,7 +230,7 @@ struct model_curves_synchronous_seam_test_t : TestWithParam<param_t>
 
     real_t const p = sync_speed;
 
-    evaluator_t const eval{make_config(motivity, gamma, smooth, sync_speed)};
+    evaluator_t const eval{params_t{motivity, gamma, smooth, sync_speed}};
 };
 
 // black-box
@@ -311,7 +301,7 @@ INSTANTIATE_TEST_SUITE_P(
 struct model_curves_synchronous_critical_points_test_t : Test
 {
     static constexpr auto sync_speed = 5.0;
-    evaluator_t const eval{make_config(2.0, 3.0, 0.5, sync_speed)};
+    evaluator_t const eval{params_t{2.0, 3.0, 0.5, sync_speed}};
 };
 
 TEST_F(model_curves_synchronous_critical_points_test_t, single_point_at_sync_speed)
@@ -319,6 +309,25 @@ TEST_F(model_curves_synchronous_critical_points_test_t, single_point_at_sync_spe
     auto const points = eval.critical_points();
     ASSERT_EQ(1u, points.size());
     EXPECT_EQ(sync_speed, points.front());
+}
+
+//
+// adapter
+//
+
+TEST(model_curves_synchronous_test, to_params_is_passthrough)
+{
+    auto const expected = params_t{.motivity = 2.0, .gamma = 3.0, .smooth = 0.33, .sync_speed = 5.0};
+
+    auto input = synchronous_t::config_t{};
+    input.motivity.value(expected.motivity);
+    input.gamma.value(expected.gamma);
+    input.smooth.value(expected.smooth);
+    input.sync_speed.value(expected.sync_speed);
+
+    auto const actual = to_params(input);
+
+    EXPECT_EQ(expected, actual);
 }
 
 } // namespace

@@ -39,28 +39,23 @@ namespace crv::model::curves {
 /// A Desmos graph is provided here: https://www.desmos.com/calculator/viiczscidh
 struct synchronous_t
 {
-    /// model config
-    struct config_t
+    //
+    // implementation params
+    //
+
+    template <std::floating_point real_t> struct params_t
     {
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0, 1e3>> motivity{"motivity", 1.5};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> gamma{"gamma", 1.0};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0 / 16, 1.0>> smooth{"smooth", 0.5};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> sync_speed{
-            "sync_speed", 5.0};
+        float_t motivity;
+        float_t gamma;
+        float_t smooth;
+        float_t sync_speed;
 
-        template <typename self_t, typename inspector_t>
-        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
-        {
-            self.motivity.reflect(inspector);
-            self.gamma.reflect(inspector);
-            self.smooth.reflect(inspector);
-            self.sync_speed.reflect(inspector);
-
-            return std::forward<inspector_t>(inspector);
-        }
-
-        constexpr auto operator==(config_t const&) const noexcept -> bool = default;
+        constexpr auto operator==(params_t const&) const noexcept -> bool = default;
     };
+
+    //
+    // evaluator
+    //
 
     /// evaluator
     template <is_curve_scalar t_scalar_t> class evaluator_t
@@ -71,10 +66,10 @@ struct synchronous_t
         using real_t = real_type_t<scalar_t>;
         using jet_t = crv::jet_t<scalar_t>;
 
-        constexpr explicit evaluator_t(config_t const& config) noexcept
-            : m_{static_cast<scalar_t>(config.motivity.value())}, p_{static_cast<scalar_t>(config.sync_speed.value())},
-              g_{static_cast<scalar_t>(config.gamma.value())}, P_{log(p_)}, M_{std::log(m_)}, G_{g_ / M_},
-              k_{scalar_t{0.5} / static_cast<scalar_t>(config.smooth.value())}, r_{scalar_t{1} / k_}
+        constexpr explicit evaluator_t(params_t<real_t> const& params) noexcept
+            : m_{static_cast<scalar_t>(params.motivity)}, p_{static_cast<scalar_t>(params.sync_speed)},
+              g_{static_cast<scalar_t>(params.gamma)}, P_{log(p_)}, M_{std::log(m_)}, G_{g_ / M_},
+              k_{scalar_t{0.5} / static_cast<scalar_t>(params.smooth)}, r_{scalar_t{1} / k_}
         {}
 
         template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
@@ -259,6 +254,45 @@ struct synchronous_t
             return std::max(x_sat, x_safe);
         }
     };
+
+    //
+    // frontend config
+    //
+
+    struct config_t
+    {
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0, 1e3>> motivity{"motivity", 1.5};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> gamma{"gamma", 1.0};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0 / 16, 1.0>> smooth{"smooth", 0.5};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> sync_speed{
+            "sync_speed", 5.0};
+
+        template <typename self_t, typename inspector_t>
+        constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
+        {
+            self.motivity.reflect(inspector);
+            self.gamma.reflect(inspector);
+            self.smooth.reflect(inspector);
+            self.sync_speed.reflect(inspector);
+
+            return std::forward<inspector_t>(inspector);
+        }
+
+        constexpr auto operator==(config_t const&) const noexcept -> bool = default;
+    };
 };
+
+/// converts from frontend config to implementation params
+///
+/// Synchronous only has one parameterization, so this is a passthrough.
+constexpr auto to_params(synchronous_t::config_t const& config) -> synchronous_t::params_t<float_t>
+{
+    return {
+        .motivity = config.motivity.value(),
+        .gamma = config.gamma.value(),
+        .smooth = config.smooth.value(),
+        .sync_speed = config.sync_speed.value(),
+    };
+}
 
 } // namespace crv::model::curves
