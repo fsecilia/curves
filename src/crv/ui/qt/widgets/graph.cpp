@@ -13,8 +13,13 @@
 namespace crv {
 
 GraphWidget::GraphWidget(QQuickItem* parent)
-    : QQuickPaintedItem(parent), evaluator_{model::curves::log_normal_t::evaluator_t<float_t>{
-                                     crv::model::curves::to_params(model::curves::log_normal_t::config_t{})}}
+    : QQuickPaintedItem(parent),
+      evaluator_{model::curves::synchronous_t::evaluator_t<float_t>{model::curves::synchronous_t::params_t<float_t>{
+          .motivity = 21.420138304,
+          .gamma = 1.25,
+          .smooth = 0.5,
+          .sync_speed = 0.75,
+      }}}
 {
     setAntialiasing(true);
     setSmooth(true);
