@@ -164,4 +164,5 @@ constexpr auto to_params(log_normal_t::config_t const& config) -> log_normal_t::
         .sigma = std::sqrt(normal_variance),
     };
 }
+
 } // namespace crv::model::curves
