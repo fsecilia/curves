@@ -6,7 +6,9 @@
 #include "graph.hpp"
 #include <crv/overloaded.hpp>
 #include <crv/variant.hpp>
+#include <QQuickWindow>
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <utility>
 
@@ -23,7 +25,6 @@ GraphWidget::GraphWidget(QQuickItem* parent)
 {
     setAntialiasing(true);
     setSmooth(true);
-    on_curve_changed();
 }
 
 void GraphWidget::setDomain(QRectF const& domain)
@@ -57,9 +58,32 @@ void GraphWidget::setDpi(int dpi)
 void GraphWidget::setEvaluator(evaluator_variant_t evaluator)
 {
     evaluator_ = std::move(evaluator);
+    on_curve_changed();
 }
 
-void GraphWidget::paint(QPainter* painter)
+auto GraphWidget::geometryChange(QRectF const& new_geom, QRectF const& old_geom) -> void
+{
+    QQuickPaintedItem::geometryChange(new_geom, old_geom);
+    if (new_geom.size() != old_geom.size()) on_curve_changed();
+}
+
+auto GraphWidget::itemChange(ItemChange change, ItemChangeData const& data) -> void
+{
+    QQuickPaintedItem::itemChange(change, data);
+
+    switch (change)
+    {
+        case ItemDevicePixelRatioHasChanged: on_curve_changed(); break;
+
+        case ItemSceneChange:
+            if (data.window) on_curve_changed();
+            break;
+
+        default: break;
+    }
+}
+
+auto GraphWidget::paint(QPainter* painter) -> void
 {
     painter->setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
 
@@ -89,7 +113,14 @@ void GraphWidget::paint(QPainter* painter)
     painter->restore();
 }
 
-void GraphWidget::drawCurves(QPainter* painter)
+auto GraphWidget::sample_count() const -> int_t
+{
+    auto const* win = window();
+    assert(win);
+    return static_cast<int_t>(std::lround(width() * win->effectiveDevicePixelRatio()));
+}
+
+auto GraphWidget::drawCurves(QPainter* painter) -> void
 {
     auto const pen_thickness = 3.1;
 
@@ -106,64 +137,40 @@ void GraphWidget::drawCurves(QPainter* painter)
     painter->drawPolyline(derivative_points_);
 }
 
-void GraphWidget::updateCurves()
+auto GraphWidget::updateCurves() -> void
 {
     function_points_.clear();
     derivative_points_.clear();
 
-    float_t min_x = domain_.left();
-    float_t max_x = domain_.right();
-    float_t step = domain_.width() / 100.0;
+    if (!window()) return;
+
+    auto const samples = sample_count();
+    // auto const min_x = domain_.left();
+    auto const step = domain_.width() / samples;
+
+    // auto const y_margin = domain_.height() * 0.1;
+    // auto const y_lo = domain_.top() - y_margin;
+    // auto const y_hi = domain_.bottom() + y_margin;
 
     std::visit(
         [&](auto const& curve) {
-            auto x0 = min_x;
-            auto y0 = curve(jet_t{x0, 1.0});
+            auto const first = std::max<int_t>(static_cast<int_t>(std::floor(domain_.left() / step - 0.5)), 0);
+            auto const last = static_cast<int_t>(std::ceil(domain_.right() / step - 0.5));
 
-            function_points_ << QPointF(x0, primal(y0));
-            derivative_points_ << QPointF(x0, tangent(y0));
-
-            while (x0 < max_x)
+            for (int_t sample = first; sample < last; ++sample)
             {
-                float_t x1 = std::min(x0 + step, max_x);
-                jet_t y1 = curve(jet_t{x1, 1.0});
+                auto const x = step * (sample + 0.5);
+                auto const y = curve(jet_t{x, 1.0});
 
-                sampleInterval(x0, x1, y0, y1);
+                function_points_ << QPointF(x, primal(y));
 
-                function_points_ << QPointF(x1, primal(y1));
-                derivative_points_ << QPointF(x1, tangent(y1));
-
-                x0 = x1;
-                y0 = y1;
+                auto const derivative = tangent(y);
+                using std::isfinite;
+                // if (isfinite(tangent(y))) derivative_points_ << QPointF(x, std::clamp(tangent(y), y_lo, y_hi));
+                if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
             }
         },
         *evaluator_);
-}
-
-void GraphWidget::sampleInterval(float_t x0, float_t x1, jet_t y0, jet_t y1) const
-{
-    using std::abs;
-
-    auto const tangent_tolerance = 0.5;
-    auto const min_step = domain_.width() / 10000.0;
-
-    if (abs(tangent(y1) - tangent(y0)) > tangent_tolerance && (x1 - x0) > min_step)
-    {
-        auto mid_x = (x0 + x1) / 2.0;
-
-        std::visit(
-            [&](auto const& curve) {
-                jet_t mid_y = curve(jet_t{mid_x, 1.0});
-
-                sampleInterval(x0, mid_x, y0, mid_y);
-
-                function_points_ << QPointF(mid_x, primal(mid_y));
-                derivative_points_ << QPointF(mid_x, tangent(mid_y));
-
-                sampleInterval(mid_x, x1, mid_y, y1);
-            },
-            *evaluator_);
-    }
 }
 
 auto GraphWidget::on_curve_changed() -> void

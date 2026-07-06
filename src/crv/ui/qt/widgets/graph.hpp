@@ -31,6 +31,8 @@ public:
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
+    auto geometryChange(QRectF const& new_geom, QRectF const& old_geom) -> void override;
+    auto itemChange(ItemChange change, ItemChangeData const& data) -> void override;
     auto paint(QPainter* painter) -> void override;
 
     QRectF domain() const { return domain_; }
@@ -46,9 +48,9 @@ signals:
     void dpiChanged();
 
 private:
+    auto sample_count() const -> int_t;
     auto drawCurves(QPainter* painter) -> void;
     auto updateCurves() -> void;
-    auto sampleInterval(float_t x0, float_t x1, jet_t y0, jet_t y1) const -> void;
     auto on_curve_changed() -> void;
 
     std::optional<evaluator_variant_t> evaluator_;
