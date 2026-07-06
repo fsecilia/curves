@@ -210,9 +210,6 @@ struct synchronous_t
         scalar_t k_; // 0.5/smooth
         scalar_t r_; // smooth/0.5
 
-        real_t u_cusp_threshold_ = calc_u_cusp_threshold();
-        real_t x_origin_limit_threshold_ = calc_x_origin_limit_threshold();
-
     public:
         // find threshold near u=0 that is affected by the cusp in the first derivative there
         //
@@ -239,23 +236,21 @@ struct synchronous_t
             return pow(3.0 * epsilon / (real(M_) * real(r_)), real_t{1} / (1 + 2 * real(k_)));
         }
 
-        // find threshold near x=0 where tanh saturates to min
-        constexpr auto calc_x_origin_limit_threshold() const noexcept -> real_t
+        // find threshold near x=0 where 3rd derivative overflows to inf
+        //
+        // This checks for 1/x^3 so the 3rd derivative doesn't overflow converting from log space back to linear. It
+        // checks for the 3rd derivative because it is needed to accurately render thick lines of the 2nd derivative. We
+        // only take the first derivative here because we are limited by the 1-jet. When n-jets are ready, we will be
+        // taking up to the 3rd derivative to render the first two.
+        static constexpr auto calc_x_origin_limit_threshold() noexcept -> real_t
         {
-            using std::pow;
-            using std::real;
-
-            // saturation floor: tanh(z) becomes 1.0 in double precision at z >= ~19.1
-            auto const u_sat = pow(real_t{19.1}, real(r_));
-            auto const x_sat = real(p_) * exp(-u_sat / real(G_));
-
-            // safety floor: prevents inv_x^3 from overflowing to inf
-            // This is important when we start taking the 3rd derivative again.
-            auto const x_safe = pow(min<real_t>(), real_t{1.0 / 3.0});
-
-            // The final threshold is the higher of the two
-            return std::max(x_sat, x_safe);
+            auto const min = std::numeric_limits<real_t>::min();
+            return std::cbrt(min);
         }
+
+    private:
+        real_t u_cusp_threshold_ = calc_u_cusp_threshold();
+        static constexpr real_t x_origin_limit_threshold_ = calc_x_origin_limit_threshold();
     };
 
     //

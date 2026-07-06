@@ -134,7 +134,7 @@ struct model_curves_synchronous_origin_test_t : Test
 {
     evaluator_t const eval{params_t{2.0, 3.0, 0.5, 5.0}};
 
-    real_t const x = eval.calc_x_origin_limit_threshold();
+    real_t const x = evaluator_t::calc_x_origin_limit_threshold();
     static constexpr auto tolerance = 1e-15;
 };
 
