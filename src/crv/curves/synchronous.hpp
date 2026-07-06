@@ -169,10 +169,16 @@ struct synchronous_t
                 auto const u_abs = real(u) < real_t{0.0} ? -u : u; // scalar abs based on sign of real
                 auto const a = pow(u_abs, k_ - scalar_t{1}); // |u|^(k-1)
                 auto const uk = a * u_abs; // |u|^k
+
+                // sech^2(x) = 4/(e^x + e^-x)^2 = 4e^-2x/(1+e^-2x)^2
+                // uk > 0; negative uk overflows e^-2uk
+                assert(real(uk) > real_t{0});
+                auto const e_m2uk = exp(scalar_t{-2} * uk);
+                auto const sech_denom = scalar_t{1} + e_m2uk;
+                auto const sech_denom2 = sech_denom * sech_denom;
+                auto const sech2 = scalar_t{4} * e_m2uk / sech_denom2;
+
                 auto const w = tanh(uk);
-                auto const cosh_uk = cosh(uk);
-                auto const cosh2 = cosh_uk * cosh_uk;
-                auto const sech2 = scalar_t{1} / cosh2; // sech^2 = 1/cosh^2
                 auto const P = pow(w, r_ - scalar_t{1}); // w^(r-1)
                 auto const w_r = P * w; // w^r
 
