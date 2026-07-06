@@ -28,7 +28,7 @@ namespace crv {
 class config_store_t;
 
 // main application
-class app_t : public QApplication
+class qt_ui_api app_t : public QApplication
 {
     Q_OBJECT
 

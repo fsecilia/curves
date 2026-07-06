@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include <crv/lib.hpp>
 #include <crv/i18n.hpp>
+#include <crv/ui/qt/lib.hpp>
 
 namespace crv::i18n::qt {
 
-class provider_t final : public provider_i
+class qt_ui_api provider_t final : public provider_i
 {
 public:
     auto translate(char const* context, char const* source) const -> std::string override;

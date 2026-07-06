@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <crv/lib.hpp>
 #include <crv/math/float_limits.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/reflection/enum.hpp>
@@ -13,6 +12,7 @@
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/hierarchical_inspector.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
+#include <crv/ui/qt/lib.hpp>
 #include <QAbstractListModel>
 #include <QString>
 #include <QUndoStack>

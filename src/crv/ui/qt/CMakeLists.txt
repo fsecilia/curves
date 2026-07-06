@@ -14,6 +14,7 @@ set(qt_ui_files
     command/stack_adapter.hpp
     i18n.cpp
     i18n.hpp
+    lib.hpp
     property_model.cpp
     property_model.hpp
 )
@@ -62,8 +63,18 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 # qt ui lib
-add_library(qt_ui ${qt_ui_files})
-target_include_directories(qt_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
+set(qt_ui_export_header ${CMAKE_CURRENT_BINARY_DIR}/crv/ui/qt/export.hpp)
+add_library(qt_ui SHARED ${qt_ui_files})
+generate_export_header(qt_ui
+    EXPORT_MACRO_NAME qt_ui_api
+    EXPORT_FILE_NAME ${qt_ui_export_header}
+)
+target_sources(qt_ui PRIVATE ${qt_ui_export_header})
+target_include_directories(qt_ui PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/widgets"
+    "${CMAKE_CURRENT_BINARY_DIR}"
+)
 target_link_libraries(qt_ui PUBLIC
     lib
     ui

@@ -5,14 +5,14 @@
 
 #pragma once
 
-#include <crv/lib.hpp>
 #include <crv/ui/command/stack.hpp>
+#include <crv/ui/qt/lib.hpp>
 #include <QObject>
 
 namespace crv::command::qt {
 
 /// adapts stack_t to QObject so it can be referenced from qml
-class stack_adapter_t : public QObject, public stack_observer_i
+class qt_ui_api stack_adapter_t : public QObject, public stack_observer_i
 {
     Q_OBJECT
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY canUndoChanged)
