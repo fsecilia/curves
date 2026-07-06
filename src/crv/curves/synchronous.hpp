@@ -126,6 +126,7 @@ struct synchronous_t
             //         f'(x) = f_s1/x
             //
 
+            using std::cosh;
             using std::exp;
             using std::log;
             using std::pow;
@@ -169,7 +170,9 @@ struct synchronous_t
                 auto const a = pow(u_abs, k_ - scalar_t{1}); // |u|^(k-1)
                 auto const uk = a * u_abs; // |u|^k
                 auto const w = tanh(uk);
-                auto const sech2 = scalar_t{1} - w * w; // sech^2 = 1 - tanh^2
+                auto const cosh_uk = cosh(uk);
+                auto const cosh2 = cosh_uk * cosh_uk;
+                auto const sech2 = scalar_t{1} / cosh2; // sech^2 = 1/cosh^2
                 auto const P = pow(w, r_ - scalar_t{1}); // w^(r-1)
                 auto const w_r = P * w; // w^r
 
