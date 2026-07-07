@@ -67,8 +67,6 @@ private:
     QTranslator translator_;
     i18n::qt::provider_t const provider_;
 
-    std::unique_ptr<QQmlApplicationEngine> engine_;
-
     using stack_adapter_t = command::qt::stack_adapter_t;
     stack_adapter_t::stack_t command_stack_;
     stack_adapter_t command_stack_adapter_{command_stack_};
@@ -83,6 +81,9 @@ private:
 
     using evaluator_variant_t = qt::evaluator_variant_t;
     std::optional<evaluator_variant_t> evaluator_;
+
+    // this must shut down first so it must be declared last
+    std::unique_ptr<QQmlApplicationEngine> engine_;
 };
 
 } // namespace crv
