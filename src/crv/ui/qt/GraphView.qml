@@ -91,6 +91,14 @@ Rectangle {
                         }
                     }
                 }
+
+                Connections {
+                    target: app
+
+                    function evaluatorChanged(evaluator) {
+                        graph.evaluator = evaluator
+                    }
+                }
             }
         // }
     }

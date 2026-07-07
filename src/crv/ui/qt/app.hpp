@@ -50,10 +50,11 @@ public:
 
 signals:
     void activeCurveChanged();
-    void evaluatorChanged();
+    void evaluatorChanged(QVariant const& evaluator);
 
 private:
     auto load_active_curve_model() -> void;
+    auto on_model_changed(QString path, QVariant const& value) -> void;
 
     static constexpr char const app_name[] = {"curves"};
 

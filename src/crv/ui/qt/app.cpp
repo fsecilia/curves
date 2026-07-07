@@ -163,6 +163,17 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
         = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
     result->load_active_curve_model();
 
+    QObject::connect(
+        result->scale_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
+        result->offset_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
+        result->anchor_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
+        result->ceiling_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
+        result->specific_curve_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+
     // ordered
     auto& context = *result->engine_->rootContext();
     context.setContextProperty("qtVersion", QT_VERSION);
@@ -203,7 +214,7 @@ auto app_t::set_active_curve(int index) -> void
             if (cur == command_param.value()) return;
             load_active_curve_model();
             emit activeCurveChanged();
-            emit evaluatorChanged();
+            emit evaluatorChanged(evaluator());
         });
 }
 
@@ -242,6 +253,19 @@ auto app_t::load_active_curve_model() -> void
         using evaluator_t = curve_t::template evaluator_t<float_t>;
         evaluator_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
     });
+}
+
+auto app_t::on_model_changed(QString, QVariant const&) -> void
+{
+    auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
+    tuple::enumerate(model_root_.profile.curves.configs, [&](auto index, auto& curve_config) {
+        if (index.value != target) return;
+        using curve_t = std::tuple_element_t<index, model::curves::curves_t>;
+        using evaluator_t = curve_t::template evaluator_t<float_t>;
+        evaluator_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
+    });
+
+    emit evaluatorChanged(evaluator());
 }
 
 } // namespace crv

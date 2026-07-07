@@ -177,7 +177,7 @@ public:
 
 signals:
     // emitted when value changes via undo stack so static ui can update
-    void valueChanged(QString path, QVariant value);
+    void valueChanged(QString path, QVariant const& value);
 
 private:
     static constexpr auto to_variant(auto const& val) -> QVariant
