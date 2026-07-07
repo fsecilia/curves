@@ -22,7 +22,7 @@ struct shaping_composite_curve_test_t : Test
 
     using callable_t = callable_t<real_t, real_t>;
 
-    using sut_t = composite_curve_t<callable_t, callable_t, callable_t>;
+    using sut_t = shaped_curve_t<callable_t, callable_t, callable_t>;
     sut_t sut{.in = {&mock_in}, .curve = {&mock_curve}, .out = {&mock_out}};
 };
 
