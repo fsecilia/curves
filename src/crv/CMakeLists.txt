@@ -35,10 +35,10 @@ target_sources(lib PRIVATE
     model/curves/concepts.hpp
     model/curves/curves.hpp
     model/curves/derivatives.hpp
-    model/curves/evaluator.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
+    model/shaped_curve.hpp
     model/shaping/composite_curve.hpp
     model/shaping/config.hpp
     model/shaping/construction/limit_engager.hpp
@@ -208,11 +208,11 @@ if (enable_testing)
         math/stats_test.cpp
         model/config_test.cpp
         model/curves/concepts_test.cpp
-        model/curves/evaluator_test.cpp
         model/curves/log_normal_test.cpp
         model/curves/synchronous_test.cpp
         model/curves/test.hpp
         model/curves/traits_test.cpp
+        model/shaped_curve_test.cpp
         model/shaping/composite_curve_test.cpp
         model/shaping/config_test.cpp
         model/shaping/construction/limit_engager_test.cpp

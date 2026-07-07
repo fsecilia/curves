@@ -7,7 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/model/curves/evaluator.hpp>
+#include <crv/model/shaped_curve.hpp>
 #include <crv/ui/qt/evaluator.hpp>
 #include <crv/ui/qt/widgets/graph/grid_renderer.hpp>
 #include <QPainter>

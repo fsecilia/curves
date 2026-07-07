@@ -8,7 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/model/config.hpp>
 #include <crv/model/curves/curves.hpp>
-#include <crv/model/curves/evaluator.hpp>
+#include <crv/model/shaped_curve.hpp>
 #include <crv/ui/command/stack.hpp>
 #include <crv/ui/qt/command/stack_adapter.hpp>
 #include <crv/ui/qt/evaluator.hpp>

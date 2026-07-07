@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <crv/model/curves/evaluator.hpp>
+#include <crv/model/shaped_curve.hpp>
 #include <crv/ui/qt/lib.hpp>
 #include <QVariant>
 
