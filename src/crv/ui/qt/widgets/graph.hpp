@@ -65,8 +65,8 @@ private:
     QRectF domain_{0.0, 0.0, 15.0, 15.0};
     int dpi_ = 0;
 
-    static constexpr auto min_domain_width = float_t{1.0};
-    static constexpr auto min_domain_height = float_t{0.5};
+    static constexpr auto min_domain_width = float_t{1e-2};
+    static constexpr auto min_domain_height = float_t{1e-2};
 
     mutable QPolygonF function_points_;
     mutable QPolygonF derivative_points_;
