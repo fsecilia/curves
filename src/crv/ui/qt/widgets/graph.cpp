@@ -60,6 +60,25 @@ void GraphWidget::setEvaluator(QVariant const& evaluator)
     on_curve_changed();
 }
 
+auto GraphWidget::zoom(QPointF const& angle_delta, QPointF const& mouse_pos) -> void
+{
+    if (width() <= 0.0 || height() <= 0.0) return;
+
+    auto const ratio_x = mouse_pos.x() / width();
+    auto const ratio_y = 1.0 - (mouse_pos.y() / height());
+
+    auto const cursor_domain_x = domain_.x() + ratio_x * domain_.width();
+    auto const cursor_domain_y = domain_.y() + ratio_y * domain_.height();
+
+    auto const zoom_factor = angle_delta.y() > 0 ? 0.9 : 1.1;
+
+    auto const new_width = std::max(domain_.width() * zoom_factor, min_domain_width);
+    auto const new_height = std::max(domain_.height() * zoom_factor, min_domain_height);
+
+    setDomain(
+        QRectF(cursor_domain_x - ratio_x * new_width, cursor_domain_y - ratio_y * new_height, new_width, new_height));
+}
+
 auto GraphWidget::geometryChange(QRectF const& new_geom, QRectF const& old_geom) -> void
 {
     QQuickPaintedItem::geometryChange(new_geom, old_geom);

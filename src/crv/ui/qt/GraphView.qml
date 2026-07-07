@@ -40,20 +40,9 @@ Rectangle {
             target: null
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             enabled: graph.dpi > 0
+
             onWheel: (event) => {
-                let zoomFactor = event.angleDelta.y > 0 ? 0.9 : 1.1;
-                let newWidth = graph.domain.width * zoomFactor
-                let newHeight = graph.domain.height * zoomFactor
-
-                let cx = graph.domain.x + graph.domain.width / 2.0
-                let cy = graph.domain.y + graph.domain.height / 2.0
-
-                graph.domain = Qt.rect(
-                    cx - newWidth / 2.0,
-                    cy - newHeight / 2.0,
-                    newWidth,
-                    newHeight
-                )
+                graph.zoom(event.angleDelta, point.position)
             }
         }
     }
