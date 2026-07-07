@@ -36,8 +36,8 @@ public:
 
     constexpr auto try_merge(mutate_param_t&& other) noexcept -> bool override
     {
-        auto const affect_same_address = param_ == other.param_;
-        if (!affect_same_address) return false;
+        auto const affects_same_address = param_ == other.param_;
+        if (!affects_same_address) return false;
         next_ = std::move(other).next_;
         return true;
     }
