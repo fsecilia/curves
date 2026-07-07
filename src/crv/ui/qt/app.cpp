@@ -164,6 +164,10 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
     result->load_active_curve_model();
 
     QObject::connect(
+        result->device_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
+        result->profile_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
+    QObject::connect(
         result->scale_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
     QObject::connect(
         result->offset_model_.get(), &property_model_t::valueChanged, result.get(), &app_t::on_model_changed);
