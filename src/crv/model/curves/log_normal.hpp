@@ -40,6 +40,8 @@ struct log_normal_t
 
     template <std::floating_point real_t> struct params_t
     {
+        using curve_t = log_normal_t;
+
         real_t baseline;
         real_t limit;
         real_t mu;
@@ -53,6 +55,7 @@ struct log_normal_t
     template <typename t_scalar_t> class evaluator_t
     {
     public:
+        using curve_t = log_normal_t;
         using scalar_t = t_scalar_t;
 
         using real_t = real_type_t<scalar_t>;
@@ -108,6 +111,8 @@ struct log_normal_t
 
     struct config_t
     {
+        using curve_t = log_normal_t;
+
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> baseline{
             "baseline", 2.0 / 3.0};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> limit{"limit", 1.5};

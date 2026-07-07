@@ -18,7 +18,7 @@ Rectangle {
         anchors.margins: 1
 
         dpi: deviceModel.get_value("dpi")
-        evaluator: app.evaluator
+        curve: app.curve
 
         DragHandler {
             target: null

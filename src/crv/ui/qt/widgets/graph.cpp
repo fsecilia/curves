@@ -13,14 +13,7 @@
 
 namespace crv {
 
-GraphWidget::GraphWidget(QQuickItem* parent)
-    : QQuickPaintedItem(parent),
-      evaluator_{model::curves::synchronous_t::evaluator_t<float_t>{model::curves::synchronous_t::params_t<float_t>{
-          .motivity = 21.420138304,
-          .gamma = 1.25,
-          .smooth = 0.5,
-          .sync_speed = 0.75,
-      }}}
+GraphWidget::GraphWidget(QQuickItem* parent) : QQuickPaintedItem(parent)
 {
     setAntialiasing(true);
     setSmooth(true);
@@ -54,9 +47,9 @@ void GraphWidget::setDpi(int dpi)
     }
 }
 
-void GraphWidget::setEvaluator(QVariant const& evaluator)
+void GraphWidget::setCurve(QVariant const& curve)
 {
-    evaluator_ = qt::unpack_evaluator(evaluator);
+    curve_variant_ = qt::unpack_curve(curve);
     on_curve_changed();
 }
 
@@ -170,7 +163,7 @@ auto GraphWidget::updateCurves() -> void
     function_points_.clear();
     derivative_points_.clear();
 
-    if (!window()) return;
+    if (!window() || !curve_variant_) return;
 
     auto const step = domain_.width() / static_cast<float_t>(sample_count());
 
@@ -192,7 +185,7 @@ auto GraphWidget::updateCurves() -> void
                 if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
             }
         },
-        *evaluator_);
+        *curve_variant_);
 }
 
 auto GraphWidget::on_curve_changed() -> void

@@ -223,7 +223,7 @@ auto app_t::set_active_curve(int index) -> void
             if (cur == command_param.value()) return;
             load_active_curve_model();
             emit activeCurveChanged();
-            emit evaluatorChanged(evaluator());
+            emit curveChanged(curve());
         });
 }
 
@@ -258,9 +258,7 @@ auto app_t::load_active_curve_model() -> void
         ceiling_model_->load_config(curve_config.common.ceiling);
         specific_curve_model_->load_config(curve_config.specific);
 
-        using curve_t = std::tuple_element_t<index, model::curves::curves_t>;
-        using evaluator_t = curve_t::template evaluator_t<float_t>;
-        evaluator_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
+        curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific);
     });
 }
 
@@ -269,12 +267,10 @@ auto app_t::on_model_changed(QString, QVariant const&) -> void
     auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
     tuple::enumerate(model_root_.profile.curves.configs, [&](auto index, auto& curve_config) {
         if (index.value != target) return;
-        using curve_t = std::tuple_element_t<index, model::curves::curves_t>;
-        using evaluator_t = curve_t::template evaluator_t<float_t>;
-        evaluator_ = evaluator_variant_t{evaluator_t{to_params(curve_config.specific)}};
+        curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific);
     });
 
-    emit evaluatorChanged(evaluator());
+    emit curveChanged(curve());
 }
 
 } // namespace crv

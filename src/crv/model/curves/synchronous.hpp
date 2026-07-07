@@ -44,6 +44,8 @@ struct synchronous_t
 
     template <std::floating_point real_t> struct params_t
     {
+        using curve_t = synchronous_t;
+
         float_t motivity;
         float_t gamma;
         float_t smooth;
@@ -60,6 +62,7 @@ struct synchronous_t
     template <is_curve_scalar t_scalar_t> class evaluator_t
     {
     public:
+        using curve_t = synchronous_t;
         using scalar_t = t_scalar_t;
 
         using real_t = real_type_t<scalar_t>;
@@ -264,6 +267,8 @@ struct synchronous_t
 
     struct config_t
     {
+        using curve_t = synchronous_t;
+
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0, 1e3>> motivity{"motivity", 1.5};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1e-3, 1e3>> gamma{"gamma", 1.0};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 1.0 / 16, 1.0>> smooth{"smooth", 0.5};

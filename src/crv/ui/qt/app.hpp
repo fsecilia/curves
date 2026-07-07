@@ -45,14 +45,14 @@ public:
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
     Q_INVOKABLE auto set_active_curve(int index) -> void;
 
-    Q_PROPERTY(QVariant evaluator READ evaluator NOTIFY evaluatorChanged)
-    auto evaluator() const -> QVariant { return qt::pack_evaluator(*evaluator_); }
+    Q_PROPERTY(QVariant curve READ curve NOTIFY curveChanged)
+    auto curve() const -> QVariant { return qt::pack_curve(*curve_); }
 
     auto notify(QObject* receiver, QEvent* event) -> bool override;
 
 signals:
     void activeCurveChanged();
-    void evaluatorChanged(QVariant const& evaluator);
+    void curveChanged(QVariant const& curve);
 
 private:
     auto load_active_curve_model() -> void;
@@ -79,8 +79,8 @@ private:
     std::unique_ptr<property_model_t> ceiling_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 
-    using evaluator_variant_t = qt::evaluator_variant_t;
-    std::optional<evaluator_variant_t> evaluator_;
+    using composed_curve_variant_t = qt::composed_curve_variant_t;
+    std::optional<composed_curve_variant_t> curve_;
 
     // this must shut down first so it must be declared last
     std::unique_ptr<QQmlApplicationEngine> engine_;

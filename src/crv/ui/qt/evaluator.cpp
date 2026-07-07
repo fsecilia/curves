@@ -6,19 +6,19 @@
 #include "evaluator.hpp"
 #include <cassert>
 
-Q_DECLARE_METATYPE(crv::qt::evaluator_variant_t)
+Q_DECLARE_METATYPE(crv::qt::composed_curve_variant_t)
 
 namespace crv::qt {
 
-auto pack_evaluator(evaluator_variant_t const& evaluator) -> QVariant
+auto pack_curve(composed_curve_variant_t const& composed_curve) -> QVariant
 {
-    return QVariant::fromValue(evaluator);
+    return QVariant::fromValue(composed_curve);
 }
 
-auto unpack_evaluator(QVariant const& variant) -> evaluator_variant_t
+auto unpack_curve(QVariant const& variant) -> composed_curve_variant_t
 {
-    assert(variant.metaType().id() == qMetaTypeId<evaluator_variant_t>());
-    return *reinterpret_cast<evaluator_variant_t const*>(variant.data());
+    assert(variant.metaType().id() == qMetaTypeId<composed_curve_variant_t>());
+    return *reinterpret_cast<composed_curve_variant_t const*>(variant.data());
 }
 
 } // namespace crv::qt

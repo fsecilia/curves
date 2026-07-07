@@ -35,7 +35,7 @@ struct shaped_curve_builder_t
 
     template <typename curve_t> constexpr auto operator()(curve_t curve) const noexcept -> result_t<curve_t>
     {
-        return std::move(curve);
+        return {.in = identity_transform_t{}, .curve = std::move(curve), .out = identity_transform_t{}};
     }
 };
 

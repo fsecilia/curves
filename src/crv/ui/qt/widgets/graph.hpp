@@ -26,11 +26,11 @@ class GraphWidget : public QQuickPaintedItem
     Q_PROPERTY(QRectF domain READ domain WRITE setDomain NOTIFY domainChanged)
     Q_PROPERTY(int dpi READ dpi WRITE setDpi NOTIFY dpiChanged)
 
-    Q_PROPERTY(QVariant evaluator READ evaluator WRITE setEvaluator NOTIFY evaluatorChanged)
+    Q_PROPERTY(QVariant curve READ curve WRITE setCurve NOTIFY curveChanged)
 
 public:
     using jet_t = jet_t<float_t>;
-    using evaluator_variant_t = qt::evaluator_variant_t;
+    using curve_variant_t = qt::composed_curve_variant_t;
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
@@ -44,8 +44,8 @@ public:
     int dpi() const { return dpi_; }
     void setDpi(int dpi);
 
-    auto evaluator() const -> QVariant { return qt::pack_evaluator(*evaluator_); }
-    void setEvaluator(QVariant const& evaluator);
+    auto curve() const -> QVariant { return qt::pack_curve(*curve_variant_); }
+    void setCurve(QVariant const& curve);
 
     Q_INVOKABLE auto pan(QPointF const& delta) -> void;
     Q_INVOKABLE auto zoom(QPointF const& angle_delta, QPointF const& mouse_pos) -> void;
@@ -53,7 +53,7 @@ public:
 signals:
     void domainChanged();
     void dpiChanged();
-    void evaluatorChanged();
+    void curveChanged();
 
 private:
     auto sample_count() const -> int_t;
@@ -61,7 +61,7 @@ private:
     auto updateCurves() -> void;
     auto on_curve_changed() -> void;
 
-    std::optional<evaluator_variant_t> evaluator_;
+    std::optional<curve_variant_t> curve_variant_;
     grid_renderer_t grid_renderer_;
     QRectF domain_{0.0, 0.0, 15.0, 15.0};
     int dpi_ = 0;
