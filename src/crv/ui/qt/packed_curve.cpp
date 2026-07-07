@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "evaluator.hpp"
+#include "packed_curve.hpp"
 #include <cassert>
 
 Q_DECLARE_METATYPE(crv::qt::composed_curve_variant_t)

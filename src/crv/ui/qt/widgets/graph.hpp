@@ -7,8 +7,8 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/model/shaped_curve.hpp>
-#include <crv/ui/qt/evaluator.hpp>
+#include <crv/model/composed_curve.hpp>
+#include <crv/ui/qt/packed_curve.hpp>
 #include <crv/ui/qt/widgets/graph/grid_renderer.hpp>
 #include <QPainter>
 #include <QQuickItem>

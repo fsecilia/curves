@@ -31,13 +31,13 @@ target_sources(lib PRIVATE
     math/lambert.hpp
     math/polynomial.hpp
     math/stats.hpp
+    model/composed_curve.hpp
     model/config.hpp
     model/curves/concepts.hpp
     model/curves/curves.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
-    model/shaped_curve.hpp
     model/shaping/construction/limit_engager.hpp
     model/shaping/construction/limit_factory.hpp
     model/shaping/construction/limit_locator.hpp
@@ -205,13 +205,13 @@ if (enable_testing)
         math/scalar_traits_test.cpp
         math/shifter_test.cpp
         math/stats_test.cpp
+        model/composed_curve_test.cpp
         model/config_test.cpp
         model/curves/concepts_test.cpp
         model/curves/log_normal_test.cpp
         model/curves/synchronous_test.cpp
         model/curves/test.hpp
         model/curves/traits_test.cpp
-        model/shaped_curve_test.cpp
         model/shaping/construction/limit_engager_test.cpp
         model/shaping/construction/limit_factory_test.cpp
         model/shaping/construction/limit_locator_test.cpp
