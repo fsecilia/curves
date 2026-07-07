@@ -38,7 +38,7 @@ Rectangle {
 
         WheelHandler {
             target: null
-            property: "rotation"
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
             enabled: graph.dpi > 0
             onWheel: (event) => {
                 let zoomFactor = event.angleDelta.y > 0 ? 0.9 : 1.1;
