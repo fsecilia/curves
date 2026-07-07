@@ -197,6 +197,11 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
     return result;
 }
 
+auto app_t::apply() -> void
+{
+    store_->save(model_root_);
+}
+
 auto app_t::set_active_curve(int index) -> void
 {
     if (index < 0 || index >= curve_names_.size()) return;

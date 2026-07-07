@@ -44,6 +44,6 @@ RowLayout {
         text: qsTr("Apply")
         Layout.alignment: Qt.AlignBottom
         Layout.bottomMargin: 9
-        onClicked: console.log("apply to device requested")
+        onClicked: app.apply()
     }
 }
