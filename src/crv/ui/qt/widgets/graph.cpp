@@ -60,6 +60,16 @@ void GraphWidget::setEvaluator(QVariant const& evaluator)
     on_curve_changed();
 }
 
+auto GraphWidget::pan(QPointF const& delta) -> void
+{
+    if (width() <= 0.0 || height() <= 0.0) return;
+
+    auto const domain_dx = -(delta.x() / width()) * domain_.width();
+    auto const domain_dy = (delta.y() / height()) * domain_.height();
+
+    setDomain(QRectF(domain_.x() + domain_dx, domain_.y() + domain_dy, domain_.width(), domain_.height()));
+}
+
 auto GraphWidget::zoom(QPointF const& angle_delta, QPointF const& mouse_pos) -> void
 {
     if (width() <= 0.0 || height() <= 0.0) return;

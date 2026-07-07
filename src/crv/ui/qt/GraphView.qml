@@ -24,15 +24,7 @@ Rectangle {
             target: null
             enabled: graph.dpi > 0
             onTranslationChanged: (delta) => {
-                let domainDx = -(delta.x / graph.width) * graph.domain.width
-                let domainDy = (delta.y / graph.height) * graph.domain.height
-
-                graph.domain = Qt.rect(
-                    graph.domain.x + domainDx,
-                    graph.domain.y + domainDy,
-                    graph.domain.width,
-                    graph.domain.height
-                )
+                graph.pan(delta)
             }
         }
 

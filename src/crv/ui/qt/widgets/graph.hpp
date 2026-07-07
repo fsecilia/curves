@@ -47,6 +47,7 @@ public:
     auto evaluator() const -> QVariant { return qt::pack_evaluator(*evaluator_); }
     void setEvaluator(QVariant const& evaluator);
 
+    Q_INVOKABLE auto pan(QPointF const& delta) -> void;
     Q_INVOKABLE auto zoom(QPointF const& angle_delta, QPointF const& mouse_pos) -> void;
 
 signals:
