@@ -34,7 +34,6 @@ target_sources(lib PRIVATE
     model/config.hpp
     model/curves/concepts.hpp
     model/curves/curves.hpp
-    model/curves/derivatives.hpp
     model/curves/log_normal.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
