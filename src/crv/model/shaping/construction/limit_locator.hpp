@@ -6,8 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/curves/concepts.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/model/curves/concepts.hpp>
 #include <cassert>
 #include <concepts>
 #include <optional>

@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "synchronous.hpp"
-#include <crv/curves/test.hpp>
+#include <crv/model/curves/test.hpp>
 #include <crv/test/test.hpp>
 #include <complex>
 #include <vector>

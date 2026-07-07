@@ -7,9 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
-#include <crv/curves/curves.hpp>
-#include <crv/curves/log_normal.hpp>
-#include <crv/curves/synchronous.hpp>
+#include <crv/model/curves/curves.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/reflection/param.hpp>

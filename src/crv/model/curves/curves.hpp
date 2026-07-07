@@ -11,8 +11,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/curves/log_normal.hpp>
-#include <crv/curves/synchronous.hpp>
+#include <crv/model/curves/log_normal.hpp>
+#include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/sequential_enum_name_map.hpp>
 #include <tuple>

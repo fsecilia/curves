@@ -6,7 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/curves/curves.hpp>
+#include <crv/model/curves/curves.hpp>
 #include <crv/tuple.hpp>
 #include <crv/variant.hpp>
 #include <utility>

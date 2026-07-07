@@ -6,11 +6,10 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/curves/derivatives.hpp>
-#include <crv/curves/traits.hpp>
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/model/curves/traits.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/param.hpp>
 #include <complex>

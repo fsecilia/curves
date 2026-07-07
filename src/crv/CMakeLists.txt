@@ -10,13 +10,6 @@ add_library(lib)
 target_sources(lib PRIVATE
     bit.hpp
     concepts.hpp
-    curves/concepts.hpp
-    curves/curves.hpp
-    curves/derivatives.hpp
-    curves/evaluator.hpp
-    curves/log_normal.hpp
-    curves/synchronous.hpp
-    curves/traits.hpp
     i18n.cpp
     i18n.hpp
     math/arg_min_max.hpp
@@ -39,6 +32,27 @@ target_sources(lib PRIVATE
     math/polynomial.hpp
     math/stats.hpp
     model/config.hpp
+    model/curves/concepts.hpp
+    model/curves/curves.hpp
+    model/curves/derivatives.hpp
+    model/curves/evaluator.hpp
+    model/curves/log_normal.hpp
+    model/curves/synchronous.hpp
+    model/curves/traits.hpp
+    model/shaping/composite_curve.hpp
+    model/shaping/config.hpp
+    model/shaping/construction/limit_engager.hpp
+    model/shaping/construction/limit_factory.hpp
+    model/shaping/construction/limit_locator.hpp
+    model/shaping/stages/input.hpp
+    model/shaping/stages/output.hpp
+    model/shaping/transforms/composite.hpp
+    model/shaping/transforms/input_affine.hpp
+    model/shaping/transforms/limit.hpp
+    model/shaping/transforms/offset.hpp
+    model/shaping/transforms/output_affine.hpp
+    model/shaping/transitions/quadratic.hpp
+    model/shaping/transitions/smootherstep_integral.hpp
     overloaded.hpp
     priority_queue.hpp
     quadrature/adaptive_integrator.hpp
@@ -67,20 +81,6 @@ target_sources(lib PRIVATE
     serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
-    shaping/composite_curve.hpp
-    shaping/config.hpp
-    shaping/construction/limit_engager.hpp
-    shaping/construction/limit_factory.hpp
-    shaping/construction/limit_locator.hpp
-    shaping/stages/input.hpp
-    shaping/stages/output.hpp
-    shaping/transforms/composite.hpp
-    shaping/transforms/input_affine.hpp
-    shaping/transforms/limit.hpp
-    shaping/transforms/offset.hpp
-    shaping/transforms/output_affine.hpp
-    shaping/transitions/quadratic.hpp
-    shaping/transitions/smootherstep_integral.hpp
     spline/construction/segment/amr/approximant.hpp
     spline/construction/segment/amr/bisection.hpp
     spline/construction/segment/amr/error_metric.hpp
@@ -168,12 +168,6 @@ if (enable_testing)
         bit_test.cpp
         bitwise_enum_test.cpp
         concepts_test.cpp
-        curves/concepts_test.cpp
-        curves/evaluator_test.cpp
-        curves/log_normal_test.cpp
-        curves/synchronous_test.cpp
-        curves/test.hpp
-        curves/traits_test.cpp
         i18n_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
@@ -213,6 +207,26 @@ if (enable_testing)
         math/shifter_test.cpp
         math/stats_test.cpp
         model/config_test.cpp
+        model/curves/concepts_test.cpp
+        model/curves/evaluator_test.cpp
+        model/curves/log_normal_test.cpp
+        model/curves/synchronous_test.cpp
+        model/curves/test.hpp
+        model/curves/traits_test.cpp
+        model/shaping/composite_curve_test.cpp
+        model/shaping/config_test.cpp
+        model/shaping/construction/limit_engager_test.cpp
+        model/shaping/construction/limit_factory_test.cpp
+        model/shaping/construction/limit_locator_test.cpp
+        model/shaping/stages/input_test.cpp
+        model/shaping/stages/output_test.cpp
+        model/shaping/transforms/composite_test.cpp
+        model/shaping/transforms/input_affine_test.cpp
+        model/shaping/transforms/limit_test.cpp
+        model/shaping/transforms/offset_test.cpp
+        model/shaping/transforms/output_affine_test.cpp
+        model/shaping/transitions/quadratic_test.cpp
+        model/shaping/transitions/smootherstep_integral_test.cpp
         overloaded_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
@@ -238,20 +252,6 @@ if (enable_testing)
         serialization/toml/reader_adapter_test.cpp
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
-        shaping/composite_curve_test.cpp
-        shaping/config_test.cpp
-        shaping/construction/limit_engager_test.cpp
-        shaping/construction/limit_factory_test.cpp
-        shaping/construction/limit_locator_test.cpp
-        shaping/stages/input_test.cpp
-        shaping/stages/output_test.cpp
-        shaping/transforms/composite_test.cpp
-        shaping/transforms/input_affine_test.cpp
-        shaping/transforms/limit_test.cpp
-        shaping/transforms/offset_test.cpp
-        shaping/transforms/output_affine_test.cpp
-        shaping/transitions/quadratic_test.cpp
-        shaping/transitions/smootherstep_integral_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
         spline/construction/segment/amr/bisection_test.cpp
         spline/construction/segment/amr/error_metric_test.cpp
