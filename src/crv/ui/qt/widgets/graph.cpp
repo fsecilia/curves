@@ -123,17 +123,17 @@ auto GraphWidget::drawCurves(QPainter* painter) -> void
 {
     auto const pen_thickness = 3.1;
 
-    auto function_pen = QPen{Qt::cyan, 0.0};
-    function_pen.setWidthF(pen_thickness);
-    function_pen.setCosmetic(true);
-    painter->setPen(function_pen);
-    painter->drawPolyline(function_points_);
-
     auto derivative_pen = QPen{Qt::magenta, 0.0};
     derivative_pen.setWidthF(pen_thickness);
     derivative_pen.setCosmetic(true);
     painter->setPen(derivative_pen);
     painter->drawPolyline(derivative_points_);
+
+    auto function_pen = QPen{Qt::cyan, 0.0};
+    function_pen.setWidthF(pen_thickness);
+    function_pen.setCosmetic(true);
+    painter->setPen(function_pen);
+    painter->drawPolyline(function_points_);
 }
 
 auto GraphWidget::updateCurves() -> void
