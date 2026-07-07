@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "config.hpp"
+#include "params.hpp"
 #include <crv/test/test.hpp>
 
 namespace crv::shaping {

@@ -39,10 +39,10 @@ target_sources(lib PRIVATE
     model/curves/traits.hpp
     model/shaped_curve.hpp
     model/shaping/composite_curve.hpp
-    model/shaping/config.hpp
     model/shaping/construction/limit_engager.hpp
     model/shaping/construction/limit_factory.hpp
     model/shaping/construction/limit_locator.hpp
+    model/shaping/params.hpp
     model/shaping/stages/input.hpp
     model/shaping/stages/output.hpp
     model/shaping/transforms/composite.hpp
@@ -213,10 +213,10 @@ if (enable_testing)
         model/curves/traits_test.cpp
         model/shaped_curve_test.cpp
         model/shaping/composite_curve_test.cpp
-        model/shaping/config_test.cpp
         model/shaping/construction/limit_engager_test.cpp
         model/shaping/construction/limit_factory_test.cpp
         model/shaping/construction/limit_locator_test.cpp
+        model/shaping/params_test.cpp
         model/shaping/stages/input_test.cpp
         model/shaping/stages/output_test.cpp
         model/shaping/transforms/composite_test.cpp
