@@ -242,8 +242,8 @@ struct model_curves_log_normal_adapter_test_t : TestWithParam<adapter_vector_t>
     log_normal_t::config_t config{
         .baseline{"baseline", baseline},
         .limit{"limit", limit},
-        .acceleration_peak{"peak", expected_peak},
-        .maximum_acceleration{"max_accel", expected_max_accel},
+        .accel_peak{"peak", expected_peak},
+        .max_accel{"max_accel", expected_max_accel},
     };
 
     // sigma comes out of a transcendental solve, so slope precision is solver-bound

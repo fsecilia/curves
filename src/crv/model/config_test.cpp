@@ -55,8 +55,8 @@ TEST(model_test, round_trip)
     log_normal.common.ceiling.width.value(11.0);
     log_normal.specific.baseline.value(5.0);
     log_normal.specific.limit.value(10.0);
-    log_normal.specific.acceleration_peak.value(7.0);
-    log_normal.specific.maximum_acceleration.value(11.0);
+    log_normal.specific.accel_peak.value(7.0);
+    log_normal.specific.max_accel.value(11.0);
 
     // graphs no longer same
     EXPECT_NE(expected_root, actual_root);

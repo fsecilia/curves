@@ -112,18 +112,17 @@ struct log_normal_t
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> baseline{
             "baseline", 2.0 / 3.0};
         reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> limit{"limit", 1.5};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> acceleration_peak{
-            "acceleration_peak", 5.0};
-        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> maximum_acceleration{
-            "maximum_acceleration", 0.2};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> accel_peak{
+            "accel_peak", 5.0};
+        reflection::param_t<float_t, reflection::constraints::static_t<float_t, 0.0, 1e3>> max_accel{"max_accel", 0.2};
 
         template <typename self_t, typename inspector_t>
         constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
         {
             self.baseline.reflect(inspector);
             self.limit.reflect(inspector);
-            self.acceleration_peak.reflect(inspector);
-            self.maximum_acceleration.reflect(inspector);
+            self.accel_peak.reflect(inspector);
+            self.max_accel.reflect(inspector);
 
             return std::forward<inspector_t>(inspector);
         }
@@ -145,8 +144,8 @@ constexpr auto to_params(log_normal_t::config_t const& config) -> log_normal_t::
     using std::numbers::pi_v;
     using real_t = float_t;
 
-    auto const acceleration_peak = config.acceleration_peak.value();
-    auto const maximum_acceleration = config.maximum_acceleration.value();
+    auto const acceleration_peak = config.accel_peak.value();
+    auto const maximum_acceleration = config.max_accel.value();
     auto const baseline = config.baseline.value();
     auto const limit = config.limit.value();
 
