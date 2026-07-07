@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "composite_curve.hpp"
+#include "shaped_curve.hpp"
 #include <crv/test/mock_callable.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
