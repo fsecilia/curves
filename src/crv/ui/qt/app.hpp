@@ -79,7 +79,7 @@ private:
     std::unique_ptr<property_model_t> ceiling_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 
-    using composed_curve_variant_t = qt::composed_curve_variant_t;
+    using composed_curve_variant_t = qt::curve_variant_t;
     std::optional<composed_curve_variant_t> curve_;
 
     // this must shut down first so it must be declared last

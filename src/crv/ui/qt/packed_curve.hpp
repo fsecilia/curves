@@ -11,11 +11,11 @@
 
 namespace crv::qt {
 
-using composed_curve_variant_t = model::curves::composed_curve_variant_t<float_t>;
+using curve_variant_t = model::curves::composed_curve_variant_t<float_t>;
 
-qt_ui_api auto pack_curve(composed_curve_variant_t const& composed_curve) -> QVariant;
+qt_ui_api auto pack_curve(curve_variant_t const& curve) -> QVariant;
 
 /// \pre variant contains valid value
-qt_ui_api auto unpack_curve(QVariant const& variant) -> composed_curve_variant_t;
+qt_ui_api auto unpack_curve(QVariant const& variant) -> curve_variant_t;
 
 } // namespace crv::qt

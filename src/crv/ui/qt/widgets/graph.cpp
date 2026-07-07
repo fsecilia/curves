@@ -49,7 +49,7 @@ void GraphWidget::setDpi(int dpi)
 
 void GraphWidget::setCurve(QVariant const& curve)
 {
-    curve_variant_ = qt::unpack_curve(curve);
+    curve_ = qt::unpack_curve(curve);
     on_curve_changed();
 }
 
@@ -163,7 +163,7 @@ auto GraphWidget::updateCurves() -> void
     function_points_.clear();
     derivative_points_.clear();
 
-    if (!window() || !curve_variant_) return;
+    if (!window() || !curve_) return;
 
     auto const step = domain_.width() / static_cast<float_t>(sample_count());
 
@@ -185,7 +185,7 @@ auto GraphWidget::updateCurves() -> void
                 if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
             }
         },
-        *curve_variant_);
+        *curve_);
 }
 
 auto GraphWidget::on_curve_changed() -> void

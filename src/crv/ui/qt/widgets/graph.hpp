@@ -30,7 +30,7 @@ class GraphWidget : public QQuickPaintedItem
 
 public:
     using jet_t = jet_t<float_t>;
-    using curve_variant_t = qt::composed_curve_variant_t;
+    using curve_variant_t = qt::curve_variant_t;
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
@@ -44,7 +44,7 @@ public:
     int dpi() const { return dpi_; }
     void setDpi(int dpi);
 
-    auto curve() const -> QVariant { return qt::pack_curve(*curve_variant_); }
+    auto curve() const -> QVariant { return qt::pack_curve(*curve_); }
     void setCurve(QVariant const& curve);
 
     Q_INVOKABLE auto pan(QPointF const& delta) -> void;
@@ -61,7 +61,7 @@ private:
     auto updateCurves() -> void;
     auto on_curve_changed() -> void;
 
-    std::optional<curve_variant_t> curve_variant_;
+    std::optional<curve_variant_t> curve_;
     grid_renderer_t grid_renderer_;
     QRectF domain_{0.0, 0.0, 15.0, 15.0};
     int dpi_ = 0;
