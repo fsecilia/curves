@@ -60,4 +60,28 @@ private:
     workspace_t workspace_;
 };
 
+template <typename policy_t> struct spline_generator_factory_t
+{
+    using scalar_t = policy_t::scalar_t;
+    using product_t = policy_t::spline_generator_t;
+
+    [[nodiscard]] auto operator()(scalar_t global_tolerance) const -> product_t
+    {
+        return typename policy_t::spline_generator_t{typename policy_t::refinement_pool_seeder_t{},
+            typename policy_t::refiner_t{.requires_subdivision
+                = typename policy_t::subdivision_predicate_t{.global_tolerance = global_tolerance},
+                .subdivide = {}},
+            typename policy_t::assembler_t{
+                .sort_intervals = {},
+                .unzip_intervals = {},
+                .pad_keys = {},
+                .extend_tangent =
+                    typename policy_t::tangent_extender_t{
+                        .y_limit = policy_t::y_limit,
+                        .extract_float = {},
+                    },
+            }};
+    }
+};
+
 } // namespace crv::spline

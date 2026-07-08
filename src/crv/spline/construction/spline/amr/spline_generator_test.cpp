@@ -10,6 +10,10 @@
 namespace crv::spline {
 namespace {
 
+//
+// spline_generator_t
+//
+
 struct spline_generator_test_t : Test
 {
     static constexpr auto target_function = [](float x) { return x; };
@@ -220,6 +224,78 @@ TEST_F(spline_generator_test_t, asserts_when_initial_workspace_dirty)
 }
 
 #endif
+
+//
+// spline_generator_factory_t
+//
+
+struct spline_generator_factory_test_t : Test
+{
+    struct subdivision_predicate_t
+    {
+        float_t global_tolerance;
+    };
+
+    struct tangent_extender_t
+    {
+        float_t y_limit;
+        int_t extract_float;
+    };
+
+    struct refiner_t
+    {
+        subdivision_predicate_t requires_subdivision;
+        int_t subdivide;
+    };
+
+    struct assembler_t
+    {
+        int_t sort_intervals;
+        int_t unzip_intervals;
+        int_t pad_keys;
+        tangent_extender_t extend_tangent;
+    };
+
+    struct spline_generator_t
+    {
+        int_t seeder;
+        refiner_t refiner;
+        assembler_t assembler;
+    };
+
+    struct policy_t
+    {
+        using scalar_t = float_t;
+        using error_norm_t = int_t;
+        using weight_funtion_t = int_t;
+        using residual_estimator_t = int_t;
+        using interval_factory_t = int_t;
+        using refinement_pool_seeder_t = int_t;
+
+        using subdivision_predicate_t = subdivision_predicate_t;
+        using subdivider_t = int_t;
+        using bisector_t = int_t;
+        using refiner_t = refiner_t;
+
+        using tangent_extender_t = tangent_extender_t;
+        using assembler_t = assembler_t;
+
+        using spline_generator_t = spline_generator_t;
+
+        static constexpr auto y_limit = 1000.0;
+    };
+};
+
+TEST_F(spline_generator_factory_test_t, wires_runtime_and_policy_constants)
+{
+    auto const factory = spline_generator_factory_t<policy_t>{};
+    auto const tolerance = 1.5;
+
+    auto const generator = factory(tolerance);
+
+    EXPECT_EQ(generator.refiner.requires_subdivision.global_tolerance, tolerance);
+    EXPECT_EQ(generator.assembler.extend_tangent.y_limit, policy_t::y_limit);
+}
 
 } // namespace
 } // namespace crv::spline
