@@ -5,7 +5,6 @@
 
 #include "subdivision.hpp"
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
 
 namespace crv::spline {
 namespace {
