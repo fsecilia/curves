@@ -16,9 +16,8 @@ namespace {
 
 struct spline_generator_test_t : Test
 {
-    static constexpr auto target_function = [](float x) { return x; };
-    using target_function_t = decltype(target_function);
-    function_sampler_t<target_function_t> const sample_target_function{target_function};
+    static constexpr auto target_function = [](float_t x) { return x; };
+    using target_function_t = std::remove_cvref_t<decltype(target_function)>;
 
     using scalar_t = float_t;
 
@@ -88,8 +87,8 @@ struct spline_generator_test_t : Test
     struct mock_refinement_seeder_t
     {
         virtual ~mock_refinement_seeder_t() = default;
-        MOCK_METHOD(unrefined_state_t, call,
-            (initial_state_t, function_sampler_t<target_function_t const> const&, std::vector<x_t>));
+        MOCK_METHOD(
+            unrefined_state_t, call, (initial_state_t, function_sampler_t<target_function_t> const&, std::vector<x_t>));
     };
     StrictMock<mock_refinement_seeder_t> mock_seeder;
 
@@ -99,8 +98,8 @@ struct spline_generator_test_t : Test
 
         mock_refinement_seeder_t* mock;
 
-        auto operator()(initial_state_t state, function_sampler_t<target_function_t const> const& sampler,
-            critical_points_t const& critical_points) -> unrefined_state_t
+        auto operator()(initial_state_t state, auto const& sampler, critical_points_t const& critical_points)
+            -> unrefined_state_t
         {
             return mock->call(state, sampler, critical_points);
         }
@@ -109,17 +108,14 @@ struct spline_generator_test_t : Test
     struct mock_refiner_t
     {
         virtual ~mock_refiner_t() = default;
-        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, function_sampler_t<target_function_t const> const&));
+        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, function_sampler_t<target_function_t> const&));
     };
     StrictMock<mock_refiner_t> mock_refiner;
 
     struct refiner_t
     {
         mock_refiner_t* mock;
-        auto operator()(unrefined_state_t state, function_sampler_t<target_function_t const> const& sampler)
-        {
-            return mock->call(state, sampler);
-        }
+        auto operator()(unrefined_state_t state, auto const& sampler) { return mock->call(state, sampler); }
     };
 
     struct mock_assembler_t
@@ -171,7 +167,7 @@ TEST_F(spline_generator_test_t, forwards_states_and_sampler)
 
     EXPECT_CALL(mock_assembler, call(unassembled_state, _));
 
-    generator(spline, sample_target_function, {});
+    generator(spline, target_function, {});
 }
 
 TEST_F(spline_generator_test_t, forwards_critical_points)
@@ -186,7 +182,7 @@ TEST_F(spline_generator_test_t, forwards_critical_points)
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(unassembled_state));
     EXPECT_CALL(mock_assembler, call(_, _));
 
-    generator(spline, sample_target_function, initial_critical_points);
+    generator(spline, target_function, initial_critical_points);
 }
 
 TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state)
@@ -201,7 +197,7 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state)
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(unassembled_state));
     EXPECT_CALL(mock_assembler, call(_, _));
 
-    generator(spline, sample_target_function, {});
+    generator(spline, target_function, {});
 }
 
 TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
@@ -212,7 +208,7 @@ TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
 
     EXPECT_CALL(mock_assembler, call(_, Ref(spline)));
 
-    generator(spline, sample_target_function, {});
+    generator(spline, target_function, {});
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
@@ -220,7 +216,7 @@ TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
 TEST_F(spline_generator_test_t, asserts_when_initial_workspace_dirty)
 {
     workspace_empty = false;
-    EXPECT_DEATH(generator(spline, sample_target_function, {}), "workspace_.empty");
+    EXPECT_DEATH(generator(spline, target_function, {}), "workspace_.empty");
 }
 
 #endif

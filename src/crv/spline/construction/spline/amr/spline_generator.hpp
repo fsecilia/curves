@@ -35,8 +35,8 @@ public:
     {}
 
     template <typename target_function_t>
-    constexpr auto operator()(auto& spline, function_sampler_t<target_function_t> sample_target_function,
-        critical_points_t critical_points) -> void
+    constexpr auto operator()(auto& spline, target_function_t&& target_function, critical_points_t critical_points)
+        -> void
     {
         assert(workspace_.empty());
         workspace_.clear();
@@ -44,6 +44,8 @@ public:
         critical_points = critical_point_conditioner_(std::move(critical_points));
 
         auto unseeded_state = typename typestates_t::initial_t{workspace_};
+        auto sample_target_function = function_sampler_t<std::remove_cvref_t<target_function_t>>{
+            std::forward<target_function_t>(target_function)};
         auto unrefined_state
             = seed_refinement_pool_(std::move(unseeded_state), sample_target_function, std::move(critical_points));
         auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
