@@ -13,7 +13,7 @@ namespace crv::spline::weight_functions {
 /// weights error based on hyperbolic decay using 1/(t + a)
 template <typename scalar_t> struct hyperbolic_decay_t
 {
-    scalar_t halflife;
+    scalar_t halflife = 0.5;
 
     constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return scalar_t{1.0} / (node + halflife); }
 };
