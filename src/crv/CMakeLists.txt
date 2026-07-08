@@ -108,6 +108,8 @@ target_sources(lib PRIVATE
     spline/construction/weight_functions/exponential_decay.hpp
     spline/construction/weight_functions/hyperbolic_decay.hpp
     spline/construction/weight_functions/uniform.hpp
+    spline/spline_factory_policy.hpp
+    spline/spline_factory.hpp
     tuple.hpp
     variant.hpp
 )
@@ -281,6 +283,7 @@ if (enable_testing)
         spline/pipeline_config_test.cpp
         spline/segment_locator_test.cpp
         spline/segment_test.cpp
+        spline/spline_factory_test.cpp
         spline/spline_test.cpp
         spline/tangent_extension_test.cpp
         traits_test.cpp
