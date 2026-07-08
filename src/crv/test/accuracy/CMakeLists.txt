@@ -4,6 +4,13 @@
 # fixed-point accuracy tests
 
 if (BUILD_INTEGRATION_TESTS)
+    add_executable(accuracy_curves
+        accuracy_test_runner.hpp
+        curves.cpp
+    )
+    target_link_libraries(accuracy_curves PRIVATE lib float128)
+    set_target_properties(accuracy_curves PROPERTIES CXX_EXTENSIONS TRUE)
+
     add_executable(accuracy_exp2
         accuracy_test_runner.hpp
         exp2.cpp
