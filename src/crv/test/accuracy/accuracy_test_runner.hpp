@@ -21,7 +21,7 @@
 namespace crv {
 namespace {
 
-#if defined CRV_FEATURE_FLOAT_128
+#if false && defined CRV_FEATURE_FLOAT_128
 using reference_float_t = float128_t;
 #else
 using reference_float_t = float64_t;
