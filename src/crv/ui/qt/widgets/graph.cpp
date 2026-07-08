@@ -167,25 +167,21 @@ auto GraphWidget::updateCurves() -> void
 
     auto const step = domain_.width() / static_cast<float_t>(sample_count());
 
-    std::visit(
-        [&](auto const& curve) {
-            auto const first = std::max<int_t>(static_cast<int_t>(std::floor(domain_.left() / step - 0.5)), 0);
-            auto const last = static_cast<int_t>(std::ceil(domain_.right() / step - 0.5));
+    auto const first = std::max<int_t>(static_cast<int_t>(std::floor(domain_.left() / step - 0.5)), 0);
+    auto const last = static_cast<int_t>(std::ceil(domain_.right() / step - 0.5));
 
-            for (int_t sample = first; sample < last; ++sample)
-            {
-                auto const x = step * (static_cast<float_t>(sample) + 0.5);
-                auto const y = curve(jet_t{x, 1.0});
+    for (int_t sample = first; sample < last; ++sample)
+    {
+        auto const x = step * (static_cast<float_t>(sample) + 0.5);
+        auto const y = (*curve_)(jet_t{x, 1.0});
 
-                function_points_ << QPointF(x, primal(y));
+        function_points_ << QPointF(x, primal(y));
 
-                auto const derivative = tangent(y);
-                using std::isfinite;
-                // if (isfinite(tangent(y))) derivative_points_ << QPointF(x, std::clamp(tangent(y), y_lo, y_hi));
-                if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
-            }
-        },
-        *curve_);
+        auto const derivative = tangent(y);
+        using std::isfinite;
+        // if (isfinite(tangent(y))) derivative_points_ << QPointF(x, std::clamp(tangent(y), y_lo, y_hi));
+        if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
+    }
 }
 
 auto GraphWidget::on_curve_changed() -> void

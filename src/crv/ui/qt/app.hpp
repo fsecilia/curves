@@ -79,8 +79,8 @@ private:
     std::unique_ptr<property_model_t> ceiling_model_;
     std::unique_ptr<property_model_t> specific_curve_model_;
 
-    using composed_curve_variant_t = qt::curve_variant_t;
-    std::optional<composed_curve_variant_t> curve_;
+    using composed_curve_t = qt::composed_curve_t;
+    std::optional<composed_curve_t> curve_;
 
     // this must shut down first so it must be declared last
     std::unique_ptr<QQmlApplicationEngine> engine_;

@@ -30,7 +30,7 @@ class GraphWidget : public QQuickPaintedItem
 
 public:
     using jet_t = jet_t<float_t>;
-    using curve_variant_t = qt::curve_variant_t;
+    using composed_curve_t = qt::composed_curve_t;
 
     explicit GraphWidget(QQuickItem* parent = nullptr);
 
@@ -61,7 +61,7 @@ private:
     auto updateCurves() -> void;
     auto on_curve_changed() -> void;
 
-    std::optional<curve_variant_t> curve_;
+    std::optional<composed_curve_t> curve_;
     grid_renderer_t grid_renderer_;
     QRectF domain_{0.0, 0.0, 15.0, 15.0};
     int dpi_ = 0;

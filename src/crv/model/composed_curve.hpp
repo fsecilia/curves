@@ -24,12 +24,23 @@ template <typename scalar_t>
 using composed_curve_variant_t = variant::to_variant_t<
     tuple::transform_t<curves::curves_t, composed_curve_type_transform_t<scalar_t>::template result_t>>;
 
+template <typename variant_t> struct composed_curve_t
+{
+    variant_t variant;
+
+    template <typename scalar_t> constexpr auto operator()(scalar_t input) const noexcept -> scalar_t
+    {
+        return std::visit([&](auto const& curve) { return curve(input); }, variant);
+    }
+};
+
 template <typename scalar_t, typename config_t>
-constexpr auto create_composed_curve(config_t config) noexcept -> composed_curve_variant_t<scalar_t>
+constexpr auto create_composed_curve(config_t config) noexcept -> composed_curve_t<composed_curve_variant_t<scalar_t>>
 {
     using curve_t = config_t::curve_t;
     using evaluator_t = curve_t::template evaluator_t<scalar_t>;
-    return shaping::shaped_curve_builder_t{}(evaluator_t{to_params<scalar_t>(config)});
+    return composed_curve_t<composed_curve_variant_t<scalar_t>>{
+        shaping::shaped_curve_builder_t{}(evaluator_t{to_params<scalar_t>(config)})};
 }
 
 } // namespace crv::model::curves
