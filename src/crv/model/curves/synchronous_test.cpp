@@ -311,7 +311,7 @@ TEST(model_curves_synchronous_test, to_params_is_passthrough)
     input.smooth.value(expected.smooth);
     input.sync_speed.value(expected.sync_speed);
 
-    auto const actual = to_params(input);
+    auto const actual = to_params<real_t>(input);
 
     EXPECT_EQ(expected, actual);
 }

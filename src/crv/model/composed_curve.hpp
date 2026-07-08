@@ -10,7 +10,6 @@
 #include <crv/model/shaping/shaped_curve.hpp>
 #include <crv/tuple.hpp>
 #include <crv/variant.hpp>
-#include <utility>
 
 namespace crv::model::curves {
 
@@ -30,7 +29,7 @@ constexpr auto create_composed_curve(config_t config) noexcept -> composed_curve
 {
     using curve_t = config_t::curve_t;
     using evaluator_t = curve_t::template evaluator_t<scalar_t>;
-    return shaping::shaped_curve_builder_t{}(evaluator_t{to_params(config)});
+    return shaping::shaped_curve_builder_t{}(evaluator_t{to_params<scalar_t>(config)});
 }
 
 } // namespace crv::model::curves

@@ -143,10 +143,10 @@ struct log_normal_t
 ///     f'(acceleration_peak) = delta*exp(-sigma^2/2)/(acceleration_peak*sigma*sqrt(2*pi)) = maximum_acceleration
 ///
 /// With u = log(x), f' maximizes -(u - mu)^2/(2*sigma^2) - u, giving u* = mu - sigma^2.
-constexpr auto to_params(log_normal_t::config_t const& config) -> log_normal_t::params_t<float_t>
+template <std::floating_point real_t>
+constexpr auto to_params(log_normal_t::config_t const& config) -> log_normal_t::params_t<real_t>
 {
     using std::numbers::pi_v;
-    using real_t = float_t;
 
     auto const acceleration_peak = config.accel_peak.value();
     auto const maximum_acceleration = config.max_accel.value();

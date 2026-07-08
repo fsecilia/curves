@@ -252,7 +252,7 @@ struct model_curves_log_normal_adapter_test_t : TestWithParam<adapter_vector_t>
     // saturation is independent of (mu, sigma), so the endpoints hold to full precision regardless of the solver
     static constexpr auto value_tolerance = 1e-12;
 
-    evaluator_t const sut{to_params(config)};
+    evaluator_t const sut{to_params<real_t>(config)};
 };
 
 TEST_P(model_curves_log_normal_adapter_test_t, adapter_yields_correct_inflection_slope)

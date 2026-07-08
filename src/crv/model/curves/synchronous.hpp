@@ -293,7 +293,8 @@ struct synchronous_t
 /// converts from frontend config to implementation params
 ///
 /// Synchronous only has one parameterization, so this is a passthrough.
-constexpr auto to_params(synchronous_t::config_t const& config) -> synchronous_t::params_t<float_t>
+template <std::floating_point real_t>
+constexpr auto to_params(synchronous_t::config_t const& config) -> synchronous_t::params_t<real_t>
 {
     return {
         .motivity = config.motivity.value(),
