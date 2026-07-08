@@ -249,9 +249,7 @@ auto app_t::notify(QObject* receiver, QEvent* event) -> bool
 auto app_t::load_active_curve_model() -> void
 {
     auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
-    tuple::enumerate(model_root_.profile.curves.configs, [&](auto index, auto& curve_config) {
-        if (index.value != target) return;
-
+    tuple::visit_at(model_root_.profile.curves.configs, target, [&](auto& curve_config) {
         scale_model_->load_config(curve_config.common.scale);
         offset_model_->load_config(curve_config.common.offset);
         anchor_model_->load_config(curve_config.common.anchor);
@@ -265,10 +263,8 @@ auto app_t::load_active_curve_model() -> void
 auto app_t::on_model_changed(QString, QVariant const&) -> void
 {
     auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
-    tuple::enumerate(model_root_.profile.curves.configs, [&](auto index, auto& curve_config) {
-        if (index.value != target) return;
-        curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific);
-    });
+    tuple::visit_at(model_root_.profile.curves.configs, target,
+        [&](auto& curve_config) { curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific); });
 
     emit curveChanged(curve());
 }
