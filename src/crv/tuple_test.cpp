@@ -89,5 +89,52 @@ static_assert(enumerate(std::tuple<int_t, float_t const&, a_t>{3, 5.0, a_t{}}, c
 
 } // namespace iteration_tests
 
+namespace visit_at_tests {
+
+// tests selecting by index
+constexpr auto test_value_selection(std::size_t index) -> int_t
+{
+    auto const tuple = std::tuple<int_t, float_t, a_t>{37, 5.0f, a_t{}};
+    auto result = int_t{0};
+
+    visit_at(tuple, index, [&]<typename type_t>(type_t const& element) {
+        if constexpr (std::same_as<type_t, int_t>) result = element;
+        else if constexpr (std::same_as<type_t, float_t>) result = static_cast<int_t>(element) * 10;
+        else if constexpr (std::same_as<type_t, a_t>) result = 99;
+    });
+
+    return result;
+}
+static_assert(test_value_selection(0) == 37);
+static_assert(test_value_selection(1) == 50);
+static_assert(test_value_selection(2) == 99);
+
+// tests that rvalue-refness is forwarded
+constexpr auto test_perfect_forwarding() -> bool
+{
+    auto tuple = std::tuple<int_t>{37};
+    auto is_rvalue_reference = false;
+
+    visit_at(
+        std::move(tuple), 0, [&](auto&& element) { is_rvalue_reference = std::same_as<decltype(element), int_t&&>; });
+
+    return is_rvalue_reference;
+}
+static_assert(test_perfect_forwarding());
+
+// tests that lvalue-refness is forwarded
+constexpr auto test_lvalue_forwarding() -> bool
+{
+    auto tuple = std::tuple<int_t>{37};
+    auto is_lvalue_reference = false;
+
+    visit_at(tuple, 0, [&](auto&& element) { is_lvalue_reference = std::same_as<decltype(element), int_t&>; });
+
+    return is_lvalue_reference;
+}
+static_assert(test_lvalue_forwarding());
+
+} // namespace visit_at_tests
+
 } // namespace
 } // namespace crv::tuple

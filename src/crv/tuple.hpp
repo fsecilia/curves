@@ -6,6 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <tuple>
@@ -76,7 +77,7 @@ template <typename tuple_t, typename op_t> constexpr auto for_each(tuple_t&& tup
     return op;
 }
 
-// applies op to each pair of index and element: op(std::size_t{index}, element)
+/// applies op to each pair of index and element: op(std::size_t{index}, element)
 template <typename tuple_t, typename op_t> constexpr auto enumerate(tuple_t&& tuple, op_t&& op) -> op_t
 {
     [&]<std::size_t... indices>(std::index_sequence<indices...>) {
@@ -84,6 +85,22 @@ template <typename tuple_t, typename op_t> constexpr auto enumerate(tuple_t&& tu
     }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
 
     return op;
+}
+
+/// invokes visitor with tuple element at specified runtime index
+template <typename tuple_t, typename visitor_t>
+constexpr auto visit_at(tuple_t&& tuple, std::size_t target_index, visitor_t&& visitor) -> void
+{
+    // use logical OR fold expression to short-circut
+    [&]<std::size_t... indices>(std::index_sequence<indices...>) {
+        [[maybe_unused]] auto const found
+            = ((indices == target_index
+                       ? (std::forward<visitor_t>(visitor)(std::get<indices>(std::forward<tuple_t>(tuple))), true)
+                       : false)
+                || ...);
+
+        assert(found && "visit_at: runtime index is out of bounds");
+    }(std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<tuple_t>>>{});
 }
 
 } // namespace crv::tuple
