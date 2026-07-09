@@ -133,6 +133,7 @@ target_sources_kernel(lib
     math/fixed/exp2.hpp
     math/fixed/fixed.hpp
     math/fixed/fma.hpp
+    math/fixed/uabs.hpp
     math/int_traits.hpp
     math/integer.hpp
     math/inverse.hpp
@@ -191,6 +192,7 @@ if (enable_testing)
         math/fixed/fma_test.cpp
         math/fixed/quantizer_test.cpp
         math/fixed/rsqrt_test.cpp
+        math/fixed/uabs_test.cpp
         math/float_limits_test.cpp
         math/int_traits_test.cpp
         math/integer_test.cpp
