@@ -357,8 +357,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
 
     /// \returns quotient, widened or narrowed to output type and rescaled to output precision using given rounding mode
     template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t = fixed::default_div_rounding_mode_t>
-    friend constexpr auto divide(
-        fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode = fixed::default_div_rounding_mode) noexcept -> out_t
+    friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode = rounding_mode_t{}) noexcept
+        -> out_t
     {
         using out_value_t = out_t::value_t;
         using lhs_value_t = fixed_t::value_t;
