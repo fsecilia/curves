@@ -43,18 +43,29 @@ template <> struct hardware_divider_t<uint32_t>
     using wide_t = uint64_t;
     using narrow_t = uint32_t;
 
-    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
     {
-        auto const high = int_cast<narrow_t>(dividend >> 32);
-        auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFF);
+        if consteval
+        {
+            return {.quotient = static_cast<narrow_t>(dividend / divisor),
+                .remainder = static_cast<narrow_t>(dividend % divisor)};
+        }
+        else
+        {
+            auto const high = int_cast<narrow_t>(dividend >> 32);
+            auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFF);
 
-        assert(high < divisor && "division parameters will trap");
+            assert(high < divisor && "division parameters will trap");
 
-        narrow_t quotient;
-        narrow_t remainder;
-        asm("divl %[divisor]" : "=a"(quotient), "=d"(remainder) : "d"(high), "a"(low), [divisor] "r"(divisor) : "cc");
+            narrow_t quotient;
+            narrow_t remainder;
+            asm("divl %[divisor]"
+                : "=a"(quotient), "=d"(remainder)
+                : "d"(high), "a"(low), [divisor] "r"(divisor)
+                : "cc");
 
-        return {quotient, remainder};
+            return {quotient, remainder};
+        }
     }
 };
 
@@ -66,18 +77,27 @@ template <> struct hardware_divider_t<uint64_t>
     using wide_t = uint128_t;
     using narrow_t = uint64_t;
 
-    auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor) const noexcept -> qr_pair_t<narrow_t>
     {
-        auto const high = int_cast<narrow_t>(dividend >> 64);
-        auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFFFFFFFFFFull);
+        if consteval
+        {
+            return {.quotient = static_cast<narrow_t>(dividend / divisor),
+                .remainder = static_cast<narrow_t>(dividend % divisor)};
+        }
+        else
+        {
+            auto const high = int_cast<narrow_t>(dividend >> 64);
+            auto const low = int_cast<narrow_t>(dividend & 0xFFFFFFFFFFFFFFFFull);
 
-        assert(high < divisor && "division parameters will trap");
-
-        narrow_t quotient;
-        narrow_t remainder;
-        asm("divq %[divisor]" : "=a"(quotient), "=d"(remainder) : "d"(high), "a"(low), [divisor] "r"(divisor) : "cc");
-
-        return {quotient, remainder};
+            narrow_t quotient;
+            narrow_t remainder;
+            assert(high < divisor && "division parameters will trap");
+            asm("divq %[divisor]"
+                : "=a"(quotient), "=d"(remainder)
+                : "d"(high), "a"(low), [divisor] "r"(divisor)
+                : "cc");
+            return {quotient, remainder};
+        }
     }
 };
 
