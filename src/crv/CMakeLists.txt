@@ -144,6 +144,7 @@ target_sources_kernel(lib
     math/scalar_traits.hpp
     math/shifter.hpp
     pipeline/filters/one_euro/ema_section.hpp
+    pipeline/filters/one_euro/to_smoothing_factor.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -233,6 +234,7 @@ if (enable_testing)
         model/shaping/transitions/smootherstep_integral_test.cpp
         overloaded_test.cpp
         pipeline/filters/one_euro/ema_section_test.cpp
+        pipeline/filters/one_euro/to_smoothing_factor_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
