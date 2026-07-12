@@ -38,6 +38,9 @@ template <typename type_t> static constexpr auto is_fixed_v = is_fixed_f<std::re
 template <typename type_t>
 concept is_fixed = is_fixed_v<type_t>;
 
+template <typename value_t, int frac_bits>
+inline constexpr auto is_signed_v<fixed_t<value_t, frac_bits>> = is_signed_v<value_t>;
+
 // --------------------------------------------------------------------------------------------------------------------
 // Type Traits
 // --------------------------------------------------------------------------------------------------------------------

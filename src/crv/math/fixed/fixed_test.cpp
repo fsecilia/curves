@@ -126,6 +126,13 @@ template <auto expected_value, int expected_count, auto return_value> struct moc
 // Concepts
 // ====================================================================================================================
 
+struct not_fixed_t
+{};
+
+//
+// is_fixed
+//
+
 static_assert(is_fixed<sut_t>);
 static_assert(is_fixed<i8_4_t>);
 static_assert(is_fixed<u16_4_t>);
@@ -136,10 +143,17 @@ static_assert(!is_fixed<int>);
 static_assert(!is_fixed<int_t>);
 static_assert(!is_fixed<float_t>);
 
-struct not_fixed_t
-{};
-
 static_assert(!is_fixed<not_fixed_t>);
+
+//
+// is_signed_v
+//
+
+static_assert(is_signed_v<i8_4_t>);
+static_assert(is_signed_v<i128_64_t>);
+static_assert(!is_signed_v<u8_4_t>);
+static_assert(!is_signed_v<u64_64_t>);
+static_assert(!is_signed_v<not_fixed_t>);
 
 // ====================================================================================================================
 // Type Traits
