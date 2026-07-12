@@ -41,6 +41,11 @@ concept is_fixed = is_fixed_v<type_t>;
 template <typename value_t, int frac_bits>
 inline constexpr auto is_signed_v<fixed_t<value_t, frac_bits>> = is_signed_v<value_t>;
 
+template <typename fixed_t>
+concept is_fixed_frac = is_fixed<fixed_t>
+    && ((is_signed_v<fixed_t> && (fixed_t::frac_bits + 1) == sizeof(typename fixed_t::value_t) * CHAR_BIT)
+        || (!is_signed_v<fixed_t> && fixed_t::frac_bits == sizeof(typename fixed_t::value_t) * CHAR_BIT));
+
 // --------------------------------------------------------------------------------------------------------------------
 // Type Traits
 // --------------------------------------------------------------------------------------------------------------------

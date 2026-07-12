@@ -155,6 +155,26 @@ static_assert(!is_signed_v<u8_4_t>);
 static_assert(!is_signed_v<u64_64_t>);
 static_assert(!is_signed_v<not_fixed_t>);
 
+//
+// is_fixed_frac
+//
+
+static_assert(!is_fixed_frac<fixed_t<int8_t, 0>>);
+static_assert(!is_fixed_frac<fixed_t<int8_t, 6>>);
+static_assert(is_fixed_frac<fixed_t<int8_t, 7>>);
+static_assert(!is_fixed_frac<fixed_t<int16_t, 0>>);
+static_assert(!is_fixed_frac<fixed_t<int16_t, 7>>);
+static_assert(!is_fixed_frac<fixed_t<int16_t, 14>>);
+static_assert(is_fixed_frac<fixed_t<int16_t, 15>>);
+
+static_assert(!is_fixed_frac<fixed_t<uint8_t, 0>>);
+static_assert(!is_fixed_frac<fixed_t<uint8_t, 7>>);
+static_assert(is_fixed_frac<fixed_t<uint8_t, 8>>);
+static_assert(!is_fixed_frac<fixed_t<uint16_t, 0>>);
+static_assert(!is_fixed_frac<fixed_t<uint16_t, 8>>);
+static_assert(!is_fixed_frac<fixed_t<uint16_t, 15>>);
+static_assert(is_fixed_frac<fixed_t<uint16_t, 16>>);
+
 // ====================================================================================================================
 // Type Traits
 // ====================================================================================================================
