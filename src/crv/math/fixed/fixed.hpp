@@ -92,7 +92,11 @@ template <integral value_t, int frac_bits> constexpr auto literal(value_t value)
 template <integral t_value_t, int t_frac_bits> struct fixed_t
 {
     using value_t = t_value_t;
-    static constexpr auto frac_bits = t_frac_bits;
+    static constexpr auto frac_bits = static_cast<int_t>(t_frac_bits);
+    static constexpr auto container_bits = static_cast<int_t>(sizeof(value_t) * CHAR_BIT);
+    static constexpr auto sign_bits = static_cast<int_t>(is_signed_v<value_t> ? 1 : 0);
+    static constexpr auto value_bits = container_bits - sign_bits;
+    static constexpr auto int_bits = value_bits - frac_bits;
 
     value_t value;
 

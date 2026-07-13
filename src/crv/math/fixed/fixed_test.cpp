@@ -50,6 +50,26 @@ using i128_64_t = fixed_t<int128_t, 64>;
 using i128_126_t = fixed_t<int128_t, 126>;
 using u128_128_t = fixed_t<uint128_t, 128>;
 
+static_assert(u8_1_t::container_bits == 8);
+static_assert(u8_1_t::sign_bits == 0);
+static_assert(u8_1_t::value_bits == 8);
+static_assert(u8_1_t::int_bits == 7);
+
+static_assert(i8_2_t::container_bits == 8);
+static_assert(i8_2_t::sign_bits == 1);
+static_assert(i8_2_t::value_bits == 7);
+static_assert(i8_2_t::int_bits == 5);
+
+static_assert(u16_4_t::container_bits == 16);
+static_assert(u16_4_t::sign_bits == 0);
+static_assert(u16_4_t::value_bits == 16);
+static_assert(u16_4_t::int_bits == 12);
+
+static_assert(i16_9_t::container_bits == 16);
+static_assert(i16_9_t::sign_bits == 1);
+static_assert(i16_9_t::value_bits == 15);
+static_assert(i16_9_t::int_bits == 6);
+
 constexpr auto rne = rounding_modes::shr::nearest_even;
 constexpr auto truncate = rounding_modes::shr::truncate;
 
