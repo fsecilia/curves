@@ -143,8 +143,9 @@ target_sources_kernel(lib
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    pipeline/filters/one_euro/ema_accumulator.hpp
     pipeline/filters/one_euro/alpha_map.hpp
+    pipeline/filters/one_euro/cutoff_rate_combiner.hpp
+    pipeline/filters/one_euro/ema_accumulator.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -233,8 +234,9 @@ if (enable_testing)
         model/shaping/transitions/quadratic_test.cpp
         model/shaping/transitions/smootherstep_integral_test.cpp
         overloaded_test.cpp
-        pipeline/filters/one_euro/ema_accumulator_test.cpp
         pipeline/filters/one_euro/alpha_map_test.cpp
+        pipeline/filters/one_euro/cutoff_rate_combiner_test.cpp
+        pipeline/filters/one_euro/ema_accumulator_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
