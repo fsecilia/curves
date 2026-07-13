@@ -146,6 +146,7 @@ target_sources_kernel(lib
     pipeline/filters/one_euro/alpha_map.hpp
     pipeline/filters/one_euro/cutoff_rate_combiner.hpp
     pipeline/filters/one_euro/cutoff_step_clamp.hpp
+    pipeline/filters/one_euro/derivative_estimator.hpp
     pipeline/filters/one_euro/ema_accumulator.hpp
     prefetcher.hpp
     ranges.hpp
@@ -238,6 +239,8 @@ if (enable_testing)
         pipeline/filters/one_euro/alpha_map_test.cpp
         pipeline/filters/one_euro/cutoff_rate_combiner_test.cpp
         pipeline/filters/one_euro/cutoff_step_clamp_test.cpp
+        pipeline/filters/one_euro/derivative_estimator_integration_test.cpp
+        pipeline/filters/one_euro/derivative_estimator_test.cpp
         pipeline/filters/one_euro/ema_accumulator_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
