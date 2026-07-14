@@ -271,6 +271,7 @@ if (enable_testing)
         model/shaping/transitions/quadratic_test.cpp
         model/shaping/transitions/smootherstep_integral_test.cpp
         overloaded_test.cpp
+        pipeline/filters/one_euro/filter_integration_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp

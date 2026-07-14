@@ -35,6 +35,7 @@ function(configure_shared target visibility)
         "${root}/math/saturate_cast.hpp"
         "${root}/math/scalar_traits.hpp"
         "${root}/math/shifter.hpp"
+        "${root}/pipeline/filters/one_euro/filter.hpp"
         "${root}/prefetcher.hpp"
         "${root}/ranges.hpp"
         "${root}/spline/pipeline_config.hpp"
