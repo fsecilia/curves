@@ -57,6 +57,8 @@ using product_t = fixed_t<int_by_bytes_t<max(sizeof(typename lhs_t::value_t), si
                               std::is_signed_v<typename lhs_t::value_t> || std::is_signed_v<typename rhs_t::value_t>>,
     lhs_t::frac_bits + rhs_t::frac_bits>;
 
+template <is_fixed narrow_t> using widened_t = fixed_t<crv::widened_t<typename narrow_t::value_t>, narrow_t::frac_bits>;
+
 inline constexpr auto default_div_rounding_mode = rounding_modes::div::truncate;
 using default_div_rounding_mode_t = std::remove_cv_t<decltype(default_div_rounding_mode)>;
 

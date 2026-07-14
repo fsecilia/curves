@@ -209,6 +209,9 @@ static_assert(std::same_as<fixed::product_t<fixed_t<int32_t, 16>, fixed_t<uint16
 static_assert(std::same_as<fixed::product_t<fixed_t<uint32_t, 16>, fixed_t<int16_t, 15>>, fixed_t<int64_t, 31>>);
 static_assert(std::same_as<fixed::product_t<fixed_t<uint32_t, 16>, fixed_t<uint16_t, 16>>, fixed_t<uint64_t, 32>>);
 
+static_assert(std::same_as<fixed_t<uint16_t, 5>, fixed::widened_t<fixed_t<uint8_t, 5>>>);
+static_assert(std::same_as<fixed_t<int32_t, 3>, fixed::widened_t<fixed_t<int16_t, 3>>>);
+
 // ====================================================================================================================
 // Construction
 // ====================================================================================================================
