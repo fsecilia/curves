@@ -149,6 +149,7 @@ target_sources_kernel(lib
     pipeline/filters/one_euro/cutoff_step_clamp.hpp
     pipeline/filters/one_euro/derivative_estimator.hpp
     pipeline/filters/one_euro/ema_accumulator.hpp
+    pipeline/filters/one_euro/filter.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -245,6 +246,8 @@ if (enable_testing)
         pipeline/filters/one_euro/derivative_estimator_integration_test.cpp
         pipeline/filters/one_euro/derivative_estimator_test.cpp
         pipeline/filters/one_euro/ema_accumulator_test.cpp
+        pipeline/filters/one_euro/filter_integration_test.cpp
+        pipeline/filters/one_euro/filter_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
