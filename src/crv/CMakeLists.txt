@@ -116,6 +116,7 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
+    ipc/spsc_ring/layout.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
     lib.hpp
@@ -171,6 +172,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         i18n_test.cpp
+        ipc/spsc_ring/layout_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
         math/cmp_test.cpp
