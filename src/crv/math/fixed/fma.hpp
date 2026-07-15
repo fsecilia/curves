@@ -15,10 +15,12 @@
 namespace crv {
 
 /// fused multiply-add for fixed-point types
-template <is_fixed out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
+template <is_fixed t_out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
     typename shifter_t = shifter_t<>, fixed::overflow_policy_t overflow_policy = fixed::overflow_policy_t::wrap>
 struct fma_t
 {
+    using out_t = t_out_t;
+
     [[no_unique_address]] shifter_t shifter = {};
 
     // wide intermediate
