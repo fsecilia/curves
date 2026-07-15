@@ -59,12 +59,20 @@ public:
         report_count_t gap_threshold_periods;
     };
 
+    enum class continuity_t : uint8_t
+    {
+        initial,
+        contiguous,
+        gap,
+        clock_reset,
+    };
+
     /// Timing assigned to one delivered batch.
     struct batch_timing_t
     {
         recovered_time_t final_report_time;
         period_t report_period;
-        bool follows_gap;
+        continuity_t continuity;
 
         /// Exact recovered time of report index within this batch.
         constexpr auto report_time(report_count_t index, report_count_t report_count) const noexcept -> recovered_time_t
@@ -101,6 +109,8 @@ public:
             static constexpr auto rne_shifter = shifter_t<rounding_modes::shr::nearest_even>{};
             return timestamp_t::template convert<rne_shifter>(preceding_zero_time(report_count));
         }
+
+        constexpr auto follows_gap() const noexcept -> bool { return continuity == continuity_t::gap; }
 
     private:
         using report_count_fixed_t = fixed_t<report_count_t, 0>;
@@ -178,28 +188,22 @@ public:
     /// The current batch always uses the period estimate that existed before this observation. Corrections apply
     /// prospectively, beginning with the next report, matching the source DLL recurrence.
     ///
+    /// observed_batch_time should be nominally monotonic. Backward observations cause reinitialization to reacquire
+    /// phase.
+    ///
     /// \pre report_count > 0
-    /// \pre observed_batch_time is monotonic
     constexpr auto operator()(timestamp_t observed_batch_time, report_count_t report_count) noexcept -> batch_timing_t
     {
         assert(report_count != 0);
 
         auto const observed_time = recovered_time_t::convert(observed_batch_time);
 
-        if (!initialized_) [[unlikely]]
+        if (!initialized_) [[unlikely]] { return initialize(observed_batch_time, continuity_t::initial); }
+        if (observed_batch_time < previous_observed_time_) [[unlikely]]
         {
-            initialized_ = true;
-            previous_observed_time_ = observed_batch_time;
-            next_report_time_ = observed_time + recovered_time_t::convert(estimated_period_);
-
-            return {
-                .final_report_time = observed_time,
-                .report_period = estimated_period_,
-                .follows_gap = true,
-            };
+            reset();
+            return initialize(observed_batch_time, continuity_t::clock_reset);
         }
-
-        assert(observed_batch_time >= previous_observed_time_);
         previous_observed_time_ = observed_batch_time;
 
         auto const batch_period = estimated_period_;
@@ -216,7 +220,7 @@ public:
             return {
                 .final_report_time = observed_time,
                 .report_period = batch_period,
-                .follows_gap = true,
+                .continuity = continuity_t::gap,
             };
         }
 
@@ -237,7 +241,7 @@ public:
         return {
             .final_report_time = predicted_final,
             .report_period = batch_period,
-            .follows_gap = false,
+            .continuity = continuity_t::contiguous,
         };
     }
 
@@ -247,6 +251,21 @@ public:
 
 private:
     using report_count_fixed_t = fixed_t<report_count_t, 0>;
+
+    constexpr auto initialize(timestamp_t observed_batch_time, continuity_t continuity) noexcept -> batch_timing_t
+    {
+        auto const observed_time = recovered_time_t::convert(observed_batch_time);
+
+        initialized_ = true;
+        previous_observed_time_ = observed_batch_time;
+        next_report_time_ = observed_time + recovered_time_t::convert(estimated_period_);
+
+        return {
+            .final_report_time = observed_time,
+            .report_period = estimated_period_,
+            .continuity = continuity,
+        };
+    }
 
     static constexpr auto scale_period(period_t period, report_count_t report_count) noexcept -> recovered_time_t
     {

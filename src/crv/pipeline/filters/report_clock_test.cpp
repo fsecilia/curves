@@ -44,9 +44,9 @@ constexpr auto initializes_by_right_justifying_the_first_batch() noexcept -> boo
     auto sut = sut_t{test_params()};
     auto const timing = sut(timestamp(1'000), 3);
 
-    return timing.follows_gap && timing.report_period == period(100) && timing.report_timestamp(0, 3) == timestamp(800)
-        && timing.report_timestamp(1, 3) == timestamp(900) && timing.report_timestamp(2, 3) == timestamp(1'000)
-        && timing.preceding_zero_timestamp(3) == timestamp(700)
+    return timing.continuity == sut_t::continuity_t::initial && timing.report_period == period(100)
+        && timing.report_timestamp(0, 3) == timestamp(800) && timing.report_timestamp(1, 3) == timestamp(900)
+        && timing.report_timestamp(2, 3) == timestamp(1'000) && timing.preceding_zero_timestamp(3) == timestamp(700)
         && sut.next_report_time() == sut_t::recovered_time_t{1'100};
 }
 static_assert(initializes_by_right_justifying_the_first_batch());
@@ -57,7 +57,7 @@ constexpr auto advances_prediction_across_every_report_in_a_batch() noexcept -> 
     static_cast<void>(sut(timestamp(1'000), 1));
 
     auto const timing = sut(timestamp(1'300), 3);
-    return !timing.follows_gap && timing.report_timestamp(0, 3) == timestamp(1'100)
+    return timing.continuity == sut_t::continuity_t::contiguous && timing.report_timestamp(0, 3) == timestamp(1'100)
         && timing.report_timestamp(1, 3) == timestamp(1'200) && timing.report_timestamp(2, 3) == timestamp(1'300)
         && sut.estimated_period() == period(100) && sut.next_report_time() == sut_t::recovered_time_t{1'400};
 }
@@ -76,7 +76,7 @@ constexpr auto correction_applies_to_future_reports_only() noexcept -> bool
     auto const twelve_and_a_half_raw = uint64_t{12} << 32 | uint64_t{1} << 31;
     auto const expected_period = period_t::literal(period(100).value + twelve_and_a_half_raw);
 
-    return !timing.follows_gap && timing.report_timestamp(0, 1) == timestamp(1'100)
+    return timing.continuity == sut_t::continuity_t::contiguous && timing.report_timestamp(0, 1) == timestamp(1'100)
         && timing.report_period == period(100) && sut.estimated_period() == expected_period
         && sut.next_report_time() == sut_t::recovered_time_t{1'225};
 }
@@ -90,7 +90,7 @@ constexpr auto gap_right_justifies_and_preserves_period() noexcept -> bool
     // predicted = 1100; 1501 is more than four periods late.
     auto const timing = sut(timestamp(1'501), 1);
 
-    return timing.follows_gap && timing.report_timestamp(0, 1) == timestamp(1'501)
+    return timing.continuity == sut_t::continuity_t::gap && timing.report_timestamp(0, 1) == timestamp(1'501)
         && timing.report_period == period(100) && sut.estimated_period() == period(100)
         && sut.next_report_time() == sut_t::recovered_time_t{1'601};
 }
@@ -103,9 +103,35 @@ constexpr auto exactly_the_gap_threshold_is_still_contiguous() noexcept -> bool
 
     // predicted = 1100; error = 400 exactly.
     auto const timing = sut(timestamp(1'500), 1);
-    return !timing.follows_gap;
+    return timing.continuity != sut_t::continuity_t::gap;
 }
 static_assert(exactly_the_gap_threshold_is_still_contiguous());
+
+constexpr auto equal_observations_do_not_reset_the_clock() noexcept -> bool
+{
+    auto sut = sut_t{test_params()};
+
+    static_cast<void>(sut(timestamp(1'000), 1));
+    auto const timing = sut(timestamp(1'000), 1);
+
+    return timing.continuity == sut_t::continuity_t::contiguous;
+}
+static_assert(equal_observations_do_not_reset_the_clock());
+
+constexpr auto backward_observation_resets_the_clock() noexcept -> bool
+{
+    auto sut = sut_t{test_params()};
+
+    static_cast<void>(sut(timestamp(1'000), 1));
+    static_cast<void>(sut(timestamp(1'100), 1));
+
+    auto const timing = sut(timestamp(1'099), 1);
+
+    return timing.continuity == sut_t::continuity_t::clock_reset && timing.report_timestamp(0, 1) == timestamp(1'099)
+        && timing.report_period == period(100) && sut.estimated_period() == period(100)
+        && sut.next_report_time() == sut_t::recovered_time_t{1'199} && sut.initialized();
+}
+static_assert(backward_observation_resets_the_clock());
 
 constexpr auto period_correction_clamps_to_the_configured_envelope() noexcept -> bool
 {
