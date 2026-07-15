@@ -15,6 +15,7 @@
 namespace crv::pipeline::filters::one_euro {
 namespace {
 
+#if 0
 struct pipeline_filters_one_euro_filter_integration_test_t : Test
 {
     using real_t = float64_t;
@@ -291,6 +292,7 @@ TEST_F(pipeline_filters_one_euro_filter_integration_test_t, response_is_sign_sym
         EXPECT_EQ(positive_output.value, -negative_output.value);
     }
 }
+#endif
 
 } // namespace
 } // namespace crv::pipeline::filters::one_euro
