@@ -35,7 +35,7 @@ constexpr auto test_params(gain_t phase_gain = gain_half, gain_t period_gain = g
         .period_error_gain = period_gain,
         .minimum_period = minimum,
         .maximum_period = maximum,
-        .gap_threshold_periods = 2,
+        .gap_threshold_periods = 4,
     };
 }
 
@@ -87,12 +87,12 @@ constexpr auto gap_right_justifies_and_preserves_period() noexcept -> bool
     auto sut = sut_t{test_params()};
     static_cast<void>(sut(timestamp(1'000), 1));
 
-    // predicted = 1100; 1301 is more than two periods late.
-    auto const timing = sut(timestamp(1'301), 1);
+    // predicted = 1100; 1501 is more than four periods late.
+    auto const timing = sut(timestamp(1'501), 1);
 
-    return timing.follows_gap && timing.report_timestamp(0, 1) == timestamp(1'301)
+    return timing.follows_gap && timing.report_timestamp(0, 1) == timestamp(1'501)
         && timing.report_period == period(100) && sut.estimated_period() == period(100)
-        && sut.next_report_time() == sut_t::recovered_time_t{1'401};
+        && sut.next_report_time() == sut_t::recovered_time_t{1'601};
 }
 static_assert(gap_right_justifies_and_preserves_period());
 
@@ -101,8 +101,8 @@ constexpr auto exactly_the_gap_threshold_is_still_contiguous() noexcept -> bool
     auto sut = sut_t{test_params()};
     static_cast<void>(sut(timestamp(1'000), 1));
 
-    // predicted = 1100; error = 200 exactly.
-    auto const timing = sut(timestamp(1'300), 1);
+    // predicted = 1100; error = 400 exactly.
+    auto const timing = sut(timestamp(1'500), 1);
     return !timing.follows_gap;
 }
 static_assert(exactly_the_gap_threshold_is_still_contiguous());
@@ -128,7 +128,7 @@ constexpr auto default_8khz_coefficients_are_stable() noexcept -> bool
         && params.period_error_gain.value == 2'844'719'789'032ULL
         && params.minimum_period.value == period(125'000).value - period(125'000).value / 20
         && params.maximum_period.value == period(125'000).value + period(125'000).value / 20
-        && params.gap_threshold_periods == 2;
+        && params.gap_threshold_periods == 4;
 }
 static_assert(default_8khz_coefficients_are_stable());
 

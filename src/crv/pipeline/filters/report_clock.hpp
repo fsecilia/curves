@@ -141,7 +141,7 @@ public:
             .period_error_gain = period_error_gain,
             .minimum_period = nominal_period - tolerance,
             .maximum_period = nominal_period + tolerance,
-            .gap_threshold_periods = 2,
+            .gap_threshold_periods = 4,
         };
     }
 
