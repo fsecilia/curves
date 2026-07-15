@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/fixed/uabs.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
@@ -276,24 +277,25 @@ private:
     {
         if (delta.value >= 0) return recovered_time_t::literal(time.value + static_cast<uint64_t>(delta.value));
 
-        // Avoid negating INT64_MIN directly.
-        auto const magnitude = static_cast<uint64_t>(-(delta.value + 1)) + uint64_t{1};
-        assert(time.value >= magnitude);
-        return recovered_time_t::literal(time.value - magnitude);
+        auto const magnitude = recovered_time_t::convert(uabs(delta));
+        assert(time >= magnitude);
+        return time - magnitude;
     }
 
     constexpr auto corrected_period(period_t period, timing_error_t correction) const noexcept -> period_t
     {
-        if (correction.value >= 0)
-        {
-            auto const magnitude = static_cast<uint64_t>(correction.value);
-            if (magnitude >= params_.maximum_period.value - period.value) return params_.maximum_period;
-            return period_t::literal(period.value + magnitude);
-        }
+        auto const magnitude = uabs(correction);
 
-        auto const magnitude = static_cast<uint64_t>(-(correction.value + 1)) + uint64_t{1};
-        if (magnitude >= period.value - params_.minimum_period.value) return params_.minimum_period;
-        return period_t::literal(period.value - magnitude);
+        if (correction >= timing_error_t{})
+        {
+            if (magnitude.value >= params_.maximum_period.value - period.value) return params_.maximum_period;
+            return period_t::literal(period.value + magnitude.value);
+        }
+        else
+        {
+            if (magnitude.value >= period.value - params_.minimum_period.value) return params_.minimum_period;
+            return period_t::literal(period.value - magnitude.value);
+        }
     }
 
     params_t params_;
