@@ -1,29 +1,41 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
-///
-/// Single-file proof of concept for a zero-copy SPSC ring shared between a kernel producer and a userspace consumer.
+
+/// \file
+/// \brief single-file proof of concept for a zero-copy SPSC ring shared between a kernel producer and a userspace
+/// consumer
 ///
 /// Part of this test is to see how far we can push std::atomic_ref in the kernel in the face of different compilers
 /// and different stdlib implementations across platforms, specifically {gcc,clang}x{libstdc++,libc++}x{x64,arm}. To
 /// that end, the production section uses std::atomic_ref on plain ABI storage.
 ///
+/// The public surface is two endpoints, producer_t and consumer_t, minted exclusively by ring_factory_t. The factory
+/// is the only component that can certify a mapping and construct endpoints over it; the typed view of the shared
+/// memory is an implementation detail. Code that constructs endpoints takes its factory as a template parameter (see
+/// the ring_factory concept), so tests can substitute factories that mint fakes.
+///
+/// std::expected is the second freestanding bet here, alongside std::atomic_ref: P2833 puts it on the C++26
+/// freestanding track, and it needs no exception machinery as long as kernel-side code sticks to has_value() and
+/// operator* rather than value().
+///
 /// The eventfd/epoll code is only a userspace stand-in for the driver's future waitqueue/poll implementation; the ring
 /// itself has no Linux dependency.
 ///
+/// \copyright Copyright (C) 2026 Frank Secilia
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 
 //
-// Production-ready code
+// production code
 //
 
-#include <algorithm>
 #include <atomic>
 #include <bit>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <limits>
 #include <memory>
 #include <new>
@@ -177,92 +189,91 @@ enum class bind_error_t : std::uint8_t
     misaligned_elements,
 };
 
+enum class push_result_t : std::uint8_t
+{
+    published,
+    full,
+    invalid_consumer_sequence,
+};
+
+namespace detail {
+
+// A certified, typed window over a mapping. Instances exist only downstream of validation (bind_view) or
+// initialization (initialize_mapping); nothing outside this namespace can mint one, and there is no null state.
 template <record_type element_t> class view_t
 {
 public:
-    constexpr view_t() noexcept = default;
+    view_t(header_t& header, element_t* elements, sequence_t capacity) noexcept
+        : header_{&header}, elements_{elements}, capacity_{capacity}
+    {}
 
-    static auto bind(void* memory, std::size_t bytes, view_t& output) noexcept -> bind_error_t
-    {
-        if (memory == nullptr) return bind_error_t::null_mapping;
-
-        if (reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0)
-        {
-            return bind_error_t::misaligned_header;
-        }
-
-        if (bytes < sizeof(header_t)) return bind_error_t::mapping_too_small;
-
-        auto* header = static_cast<header_t*>(memory);
-        auto const& description = header->description;
-
-        if (description.magic_value != magic) return bind_error_t::bad_magic;
-        if (description.abi_major_value != abi_major) return bind_error_t::unsupported_abi;
-        if (description.format != format_traits_t<element_t>::format) return bind_error_t::wrong_format;
-        if (description.element_size != sizeof(element_t)) return bind_error_t::wrong_element_size;
-        if (description.element_alignment != alignof(element_t)) return bind_error_t::wrong_element_alignment;
-        if (!std::has_single_bit(description.capacity)) return bind_error_t::invalid_capacity;
-
-        if (description.capacity > std::numeric_limits<std::size_t>::max()) { return bind_error_t::invalid_capacity; }
-
-        if (description.data_offset != data_offset_v<element_t>) return bind_error_t::wrong_data_offset;
-
-        auto const required = required_bytes<element_t>(description.capacity);
-        if (required == 0 || description.mapping_bytes < required || description.mapping_bytes > bytes)
-        {
-            return bind_error_t::invalid_mapping_size;
-        }
-
-        auto* data = static_cast<std::byte*>(memory) + description.data_offset;
-        if (reinterpret_cast<std::uintptr_t>(data) % alignof(element_t) != 0)
-        {
-            return bind_error_t::misaligned_elements;
-        }
-
-        output = view_t{
-            *header,
-            reinterpret_cast<element_t*>(data),
-            description.capacity,
-        };
-
-        return bind_error_t::none;
-    }
-
-    constexpr auto header() noexcept -> header_t& { return *header_; }
-    constexpr auto header() const noexcept -> header_t const& { return *header_; }
-
-    constexpr auto elements() noexcept -> std::span<element_t>
-    {
-        return {elements_, static_cast<std::size_t>(capacity_)};
-    }
-
-    constexpr auto elements() const noexcept -> std::span<element_t const>
-    {
-        return {elements_, static_cast<std::size_t>(capacity_)};
-    }
-
+    constexpr auto header() const noexcept -> header_t& { return *header_; }
     constexpr auto capacity() const noexcept -> sequence_t { return capacity_; }
     constexpr auto mask() const noexcept -> sequence_t { return capacity_ - 1; }
 
-    constexpr auto slot(sequence_t sequence) noexcept -> element_t&
-    {
-        return elements_[static_cast<std::size_t>(sequence & mask())];
-    }
-
-    constexpr auto slot(sequence_t sequence) const noexcept -> element_t const&
+    constexpr auto slot(sequence_t sequence) const noexcept -> element_t&
     {
         return elements_[static_cast<std::size_t>(sequence & mask())];
     }
 
 private:
-    constexpr view_t(header_t& header, element_t* elements, sequence_t capacity) noexcept
-        : header_{&header}, elements_{elements}, capacity_{capacity}
-    {}
-
-    header_t* header_{};
-    element_t* elements_{};
-    sequence_t capacity_{};
+    header_t* header_;
+    element_t* elements_;
+    sequence_t capacity_;
 };
+
+template <record_type element_t>
+auto bind_view(void* memory, std::size_t bytes) noexcept -> std::expected<view_t<element_t>, bind_error_t>
+{
+    if (memory == nullptr) return std::unexpected{bind_error_t::null_mapping};
+
+    if (reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0)
+    {
+        return std::unexpected{bind_error_t::misaligned_header};
+    }
+
+    if (bytes < sizeof(header_t)) return std::unexpected{bind_error_t::mapping_too_small};
+
+    auto* header = static_cast<header_t*>(memory);
+    auto const& description = header->description;
+
+    if (description.magic_value != magic) return std::unexpected{bind_error_t::bad_magic};
+    if (description.abi_major_value != abi_major) return std::unexpected{bind_error_t::unsupported_abi};
+    if (description.format != format_traits_t<element_t>::format) return std::unexpected{bind_error_t::wrong_format};
+    if (description.element_size != sizeof(element_t)) return std::unexpected{bind_error_t::wrong_element_size};
+    if (description.element_alignment != alignof(element_t))
+    {
+        return std::unexpected{bind_error_t::wrong_element_alignment};
+    }
+    if (!std::has_single_bit(description.capacity)) return std::unexpected{bind_error_t::invalid_capacity};
+
+    if (description.capacity > std::numeric_limits<std::size_t>::max())
+    {
+        return std::unexpected{bind_error_t::invalid_capacity};
+    }
+
+    if (description.data_offset != data_offset_v<element_t>) return std::unexpected{bind_error_t::wrong_data_offset};
+
+    auto const required = required_bytes<element_t>(description.capacity);
+    if (required == 0 || description.mapping_bytes < required || description.mapping_bytes > bytes)
+    {
+        return std::unexpected{bind_error_t::invalid_mapping_size};
+    }
+
+    auto* data = static_cast<std::byte*>(memory) + description.data_offset;
+    if (reinterpret_cast<std::uintptr_t>(data) % alignof(element_t) != 0)
+    {
+        return std::unexpected{bind_error_t::misaligned_elements};
+    }
+
+    return view_t<element_t>{
+        *header,
+        reinterpret_cast<element_t*>(data),
+        description.capacity,
+    };
+}
+
+} // namespace detail
 
 template <typename access_t>
 concept atomic_access = requires(access_t access, sequence_storage_t& storage, sequence_t value) {
@@ -306,22 +317,34 @@ public:
 
 static_assert(atomic_access<std_atomic_access_t>);
 
-enum class push_result_t : std::uint8_t
-{
-    published,
-    full,
-    invalid_consumer_sequence,
+template <typename notifier_t>
+concept notifier = requires(notifier_t value) {
+    { value.notify() } noexcept -> std::same_as<void>;
 };
 
-template <record_type element_t, atomic_access atomic_access_t = std_atomic_access_t> class producer_t
+struct null_notifier_t
+{
+    void notify() const noexcept {}
+};
+
+template <typename waiter_t>
+concept waiter = requires(waiter_t value, int timeout_ms) {
+    { value.wait(timeout_ms) } noexcept -> std::same_as<bool>;
+};
+
+// Degrades consumer_t::wait_until_readable to a single nonblocking poll.
+struct null_waiter_t
+{
+    auto wait(int) const noexcept -> bool { return false; }
+};
+
+template <record_type element_t> struct ring_factory_t;
+
+template <record_type element_t, atomic_access atomic_access_t = std_atomic_access_t,
+    notifier notifier_t = null_notifier_t>
+class producer_t
 {
 public:
-    explicit producer_t(view_t<element_t> view, atomic_access_t atomic_access = {}) noexcept
-        : view_{view}, atomic_access_{std::move(atomic_access)},
-          head_{atomic_access_.load_relaxed(view_.header().producer.head)},
-          dropped_{atomic_access_.load_relaxed(view_.header().producer.dropped)}
-    {}
-
     auto try_push(element_t const& element) noexcept -> push_result_t
     {
         auto const tail = atomic_access_.load_acquire(view_.header().consumer.tail);
@@ -344,32 +367,38 @@ public:
         view_.slot(head_) = element;
         ++head_;
 
-        // Publish the fully written record.
+        // Publish the fully written record, then wake the consumer.
         atomic_access_.store_release(view_.header().producer.head, head_);
+        notifier_.notify();
         return push_result_t::published;
     }
 
 private:
+    friend struct ring_factory_t<element_t>;
+
+    producer_t(detail::view_t<element_t> view, atomic_access_t atomic_access, notifier_t notifier_value) noexcept
+        : view_{view}, atomic_access_{std::move(atomic_access)}, notifier_{std::move(notifier_value)},
+          head_{atomic_access_.load_relaxed(view_.header().producer.head)},
+          dropped_{atomic_access_.load_relaxed(view_.header().producer.dropped)}
+    {}
+
     void record_drop() noexcept
     {
         ++dropped_;
         atomic_access_.store_relaxed(view_.header().producer.dropped, dropped_);
     }
 
-    view_t<element_t> view_;
+    detail::view_t<element_t> view_;
     [[no_unique_address]] atomic_access_t atomic_access_;
+    [[no_unique_address]] notifier_t notifier_;
     sequence_t head_{};
     sequence_t dropped_{};
 };
 
-template <record_type element_t, atomic_access atomic_access_t = std_atomic_access_t> class consumer_t
+template <record_type element_t, atomic_access atomic_access_t = std_atomic_access_t, waiter waiter_t = null_waiter_t>
+class consumer_t
 {
 public:
-    explicit consumer_t(view_t<element_t> view, atomic_access_t atomic_access = {}) noexcept
-        : view_{view}, atomic_access_{std::move(atomic_access)},
-          tail_{atomic_access_.load_relaxed(view_.header().consumer.tail)}
-    {}
-
     auto readable() noexcept -> std::span<element_t const>
     {
         if (leased_ != 0)
@@ -391,7 +420,7 @@ public:
 
         auto const index = tail_ & view_.mask();
         auto const until_wrap = view_.capacity() - index;
-        auto const contiguous = std::min(available, until_wrap);
+        auto const contiguous = available < until_wrap ? available : until_wrap;
 
         leased_ = static_cast<std::size_t>(contiguous);
         return {
@@ -434,94 +463,92 @@ public:
         return available == 0;
     }
 
-    auto dropped() noexcept -> sequence_t { return atomic_access_.load_relaxed(view_.header().producer.dropped); }
-
-    constexpr auto corrupt() const noexcept -> bool { return corrupt_; }
-
-private:
-    view_t<element_t> view_;
-    [[no_unique_address]] atomic_access_t atomic_access_;
-    sequence_t tail_{};
-    std::size_t leased_{};
-    bool corrupt_{};
-};
-
-struct null_notifier_t
-{
-    void notify() const noexcept {}
-};
-
-template <typename notifier_t>
-concept notifier = requires(notifier_t value) {
-    { value.notify() } noexcept -> std::same_as<void>;
-};
-
-template <record_type element_t, atomic_access atomic_access_t = std_atomic_access_t,
-    notifier notifier_t = null_notifier_t>
-class writer_t
-{
-public:
-    explicit writer_t(
-        view_t<element_t> view, notifier_t notifier_value = {}, atomic_access_t atomic_access_value = {}) noexcept
-        : producer_{view, std::move(atomic_access_value)}, notifier_{std::move(notifier_value)}
-    {}
-
-    auto try_push(element_t const& element) noexcept -> push_result_t
-    {
-        auto const result = producer_.try_push(element);
-        if (result == push_result_t::published) notifier_.notify();
-        return result;
-    }
-
-private:
-    producer_t<element_t, atomic_access_t> producer_;
-    [[no_unique_address]] notifier_t notifier_;
-};
-
-template <typename waiter_t>
-concept waiter = requires(waiter_t value, int timeout_ms) {
-    { value.wait(timeout_ms) } noexcept -> std::same_as<bool>;
-};
-
-template <record_type element_t, atomic_access atomic_access_t, waiter waiter_t> class reader_t
-{
-public:
-    explicit reader_t(view_t<element_t> view, waiter_t waiter_value, atomic_access_t atomic_access_value = {}) noexcept
-        : consumer_{view, std::move(atomic_access_value)}, waiter_{std::move(waiter_value)}
-    {}
-
     auto wait_until_readable(int timeout_ms = -1) noexcept -> bool
     {
-        while (consumer_.empty())
+        while (empty())
         {
-            if (consumer_.corrupt()) return false;
+            if (corrupt()) return false;
             if (!waiter_.wait(timeout_ms)) return false;
         }
 
         return true;
     }
 
-    auto readable() noexcept -> std::span<element_t const> { return consumer_.readable(); }
-    auto consume(std::size_t count) noexcept -> bool { return consumer_.consume(count); }
-    auto dropped() noexcept -> sequence_t { return consumer_.dropped(); }
-    auto corrupt() const noexcept -> bool { return consumer_.corrupt(); }
+    auto dropped() noexcept -> sequence_t { return atomic_access_.load_relaxed(view_.header().producer.dropped); }
+
+    constexpr auto corrupt() const noexcept -> bool { return corrupt_; }
 
 private:
-    consumer_t<element_t, atomic_access_t> consumer_;
+    friend struct ring_factory_t<element_t>;
+
+    consumer_t(detail::view_t<element_t> view, atomic_access_t atomic_access, waiter_t waiter_value) noexcept
+        : view_{view}, atomic_access_{std::move(atomic_access)}, waiter_{std::move(waiter_value)},
+          tail_{atomic_access_.load_relaxed(view_.header().consumer.tail)}
+    {}
+
+    detail::view_t<element_t> view_;
+    [[no_unique_address]] atomic_access_t atomic_access_;
     [[no_unique_address]] waiter_t waiter_;
+    sequence_t tail_{};
+    std::size_t leased_{};
+    bool corrupt_{};
 };
 
-template <record_type element_t>
-auto initialize_mapping(void* memory, std::size_t bytes, sequence_t capacity) noexcept -> bool
+// The sole minter of endpoints. Binding validates the mapping's ABI description before any sequence in it is
+// trusted, so a producer_t or consumer_t existing at all certifies its mapping. Code that constructs endpoints
+// should take its factory as a template parameter so tests can substitute one that mints fakes.
+template <record_type element_t> struct ring_factory_t
 {
-    if (memory == nullptr || reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0
-        || !std::has_single_bit(capacity))
+    template <notifier notifier_t = null_notifier_t, atomic_access atomic_access_t = std_atomic_access_t>
+    auto bind_producer(void* memory, std::size_t bytes, notifier_t notifier_value = {},
+        atomic_access_t atomic_access_value = {}) const noexcept
+        -> std::expected<producer_t<element_t, atomic_access_t, notifier_t>, bind_error_t>
     {
-        return false;
+        auto view = detail::bind_view<element_t>(memory, bytes);
+        if (!view.has_value()) return std::unexpected{view.error()};
+
+        return producer_t<element_t, atomic_access_t, notifier_t>{
+            *view,
+            std::move(atomic_access_value),
+            std::move(notifier_value),
+        };
     }
 
+    template <waiter waiter_t = null_waiter_t, atomic_access atomic_access_t = std_atomic_access_t>
+    auto bind_consumer(void* memory, std::size_t bytes, waiter_t waiter_value = {},
+        atomic_access_t atomic_access_value = {}) const noexcept
+        -> std::expected<consumer_t<element_t, atomic_access_t, waiter_t>, bind_error_t>
+    {
+        auto view = detail::bind_view<element_t>(memory, bytes);
+        if (!view.has_value()) return std::unexpected{view.error()};
+
+        return consumer_t<element_t, atomic_access_t, waiter_t>{
+            *view,
+            std::move(atomic_access_value),
+            std::move(waiter_value),
+        };
+    }
+};
+
+template <typename factory_t>
+concept ring_factory = requires(factory_t const factory, void* memory, std::size_t bytes) {
+    factory.bind_producer(memory, bytes);
+    factory.bind_consumer(memory, bytes);
+};
+
+static_assert(ring_factory<ring_factory_t<raw_displacement_t>>);
+static_assert(ring_factory<ring_factory_t<velocity_sample_t>>);
+
+template <record_type element_t>
+auto initialize_mapping(void* memory, std::size_t bytes, sequence_t capacity) noexcept -> bind_error_t
+{
+    if (memory == nullptr) return bind_error_t::null_mapping;
+    if (reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0) return bind_error_t::misaligned_header;
+    if (!std::has_single_bit(capacity)) return bind_error_t::invalid_capacity;
+
     auto const required = required_bytes<element_t>(capacity);
-    if (required == 0 || bytes < required) return false;
+    if (required == 0) return bind_error_t::invalid_capacity;
+    if (bytes < required) return bind_error_t::mapping_too_small;
 
     auto* header = ::new (memory) header_t{};
     header->description.magic_value = magic;
@@ -541,14 +568,22 @@ auto initialize_mapping(void* memory, std::size_t bytes, sequence_t capacity) no
         std::construct_at(elements + static_cast<std::size_t>(index));
     }
 
-    return true;
+    return bind_error_t::none;
 }
 
-template <record_type element_t> void destroy_mapping(view_t<element_t> view) noexcept
+// Only the initializing owner may call this, on memory it initialized.
+template <record_type element_t> void destroy_mapping(void* memory) noexcept
 {
-    for (sequence_t index = 0; index != view.capacity(); ++index) { std::destroy_at(&view.slot(index)); }
+    auto* header = static_cast<header_t*>(memory);
+    auto const capacity = header->description.capacity;
+    auto* elements = reinterpret_cast<element_t*>(static_cast<std::byte*>(memory) + data_offset_v<element_t>);
 
-    std::destroy_at(&view.header());
+    for (sequence_t index = 0; index != capacity; ++index)
+    {
+        std::destroy_at(elements + static_cast<std::size_t>(index));
+    }
+
+    std::destroy_at(header);
 }
 
 } // namespace crv::ipc::spsc_ring
@@ -557,6 +592,7 @@ template <record_type element_t> void destroy_mapping(view_t<element_t> view) no
 // Test-only stand-ins and host-side owners
 //
 
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
 #include <cstdlib>
@@ -577,13 +613,10 @@ public:
     explicit owned_mapping_t(sequence_t capacity)
         : bytes_{required_bytes<element_t>(capacity)}, alignment_{std::max(control_alignment, alignof(element_t))}
     {
-        if (!std::has_single_bit(capacity) || bytes_ == 0) std::abort();
+        if (bytes_ == 0) std::abort();
 
         memory_ = ::operator new(bytes_, std::align_val_t{alignment_});
-        if (!initialize_mapping<element_t>(memory_, bytes_, capacity)) std::abort();
-
-        auto const error = view_t<element_t>::bind(memory_, bytes_, view_);
-        if (error != bind_error_t::none) std::abort();
+        if (initialize_mapping<element_t>(memory_, bytes_, capacity) != bind_error_t::none) std::abort();
     }
 
     owned_mapping_t(owned_mapping_t const&) = delete;
@@ -593,11 +626,10 @@ public:
     {
         if (memory_ == nullptr) return;
 
-        destroy_mapping(view_);
+        destroy_mapping<element_t>(memory_);
         ::operator delete(memory_, std::align_val_t{alignment_});
     }
 
-    auto view() const noexcept -> view_t<element_t> { return view_; }
     auto memory() const noexcept -> void* { return memory_; }
     auto bytes() const noexcept -> std::size_t { return bytes_; }
 
@@ -605,7 +637,6 @@ private:
     void* memory_{};
     std::size_t bytes_{};
     std::size_t alignment_{};
-    view_t<element_t> view_{};
 };
 
 class unique_fd_t
@@ -741,13 +772,7 @@ public:
             std::abort();
         }
 
-        if (!initialize_mapping<element_t>(writer_memory_, bytes_, capacity)) std::abort();
-
-        if (view_t<element_t>::bind(writer_memory_, bytes_, writer_view_) != bind_error_t::none
-            || view_t<element_t>::bind(reader_memory_, bytes_, reader_view_) != bind_error_t::none)
-        {
-            std::abort();
-        }
+        if (initialize_mapping<element_t>(writer_memory_, bytes_, capacity) != bind_error_t::none) std::abort();
     }
 
     aliased_mapping_t(aliased_mapping_t const&) = delete;
@@ -757,15 +782,16 @@ public:
     {
         if (writer_memory_ != MAP_FAILED)
         {
-            destroy_mapping(writer_view_);
+            destroy_mapping<element_t>(writer_memory_);
             ::munmap(writer_memory_, bytes_);
         }
         if (reader_memory_ != MAP_FAILED) ::munmap(reader_memory_, bytes_);
         if (fd_ >= 0) ::close(fd_);
     }
 
-    auto writer_view() const noexcept -> view_t<element_t> { return writer_view_; }
-    auto reader_view() const noexcept -> view_t<element_t> { return reader_view_; }
+    auto writer_memory() const noexcept -> void* { return writer_memory_; }
+    auto reader_memory() const noexcept -> void* { return reader_memory_; }
+    auto bytes() const noexcept -> std::size_t { return bytes_; }
     auto mappings_are_distinct() const noexcept -> bool { return writer_memory_ != reader_memory_; }
 
 private:
@@ -773,8 +799,6 @@ private:
     void* writer_memory_{MAP_FAILED};
     void* reader_memory_{MAP_FAILED};
     std::size_t bytes_{};
-    view_t<element_t> writer_view_{};
-    view_t<element_t> reader_view_{};
 };
 
 } // namespace crv::ipc::spsc_ring::test_support
@@ -828,74 +852,103 @@ struct mock_atomic_access_delegate_t
 static_assert(std::copyable<mock_atomic_access_delegate_t>);
 static_assert(atomic_access<mock_atomic_access_delegate_t>);
 
+// The factory seam: a substituted factory mints its own endpoint types, so code templated on ring_factory can be
+// driven entirely by fakes.
+struct fake_ring_factory_t
+{
+    struct fake_producer_t
+    {
+        auto try_push(raw_displacement_t const&) noexcept -> push_result_t { return push_result_t::published; }
+    };
+
+    struct fake_consumer_t
+    {
+        auto readable() noexcept -> std::span<raw_displacement_t const> { return {}; }
+        auto consume(std::size_t) noexcept -> bool { return true; }
+    };
+
+    auto bind_producer(void*, std::size_t) const noexcept -> std::expected<fake_producer_t, bind_error_t>
+    {
+        return fake_producer_t{};
+    }
+
+    auto bind_consumer(void*, std::size_t) const noexcept -> std::expected<fake_consumer_t, bind_error_t>
+    {
+        return fake_consumer_t{};
+    }
+};
+
+static_assert(ring_factory<fake_ring_factory_t>);
+
 void store_sequence(sequence_storage_t& storage, sequence_t value) noexcept
 {
     storage.value = value;
 }
 
-TEST(SpscRingView, ValidatesAbiDescription)
+TEST(SpscRingFactory, ValidatesAbiDescription)
 {
     owned_mapping_t<raw_displacement_t> mapping{8};
 
-    view_t<raw_displacement_t> raw_view;
-    EXPECT_EQ(view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), raw_view), bind_error_t::none);
+    EXPECT_TRUE(ring_factory_t<raw_displacement_t>{}.bind_consumer(mapping.memory(), mapping.bytes()).has_value());
 
-    view_t<velocity_sample_t> wrong_view;
-    EXPECT_EQ(
-        view_t<velocity_sample_t>::bind(mapping.memory(), mapping.bytes(), wrong_view), bind_error_t::wrong_format);
+    auto const wrong_format = ring_factory_t<velocity_sample_t>{}.bind_consumer(mapping.memory(), mapping.bytes());
+    ASSERT_FALSE(wrong_format.has_value());
+    EXPECT_EQ(wrong_format.error(), bind_error_t::wrong_format);
 
-    auto const old_magic = raw_view.header().description.magic_value;
-    raw_view.header().description.magic_value = 0;
+    // Adversarial images are produced the way an adversary would produce them: through the raw mapping.
+    auto& header = *static_cast<header_t*>(mapping.memory());
+    auto const old_magic = header.description.magic_value;
+    header.description.magic_value = 0;
 
-    view_t<raw_displacement_t> bad_magic_view;
-    EXPECT_EQ(
-        view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), bad_magic_view), bind_error_t::bad_magic);
+    auto const bad_magic = ring_factory_t<raw_displacement_t>{}.bind_producer(mapping.memory(), mapping.bytes());
+    ASSERT_FALSE(bad_magic.has_value());
+    EXPECT_EQ(bad_magic.error(), bind_error_t::bad_magic);
 
-    raw_view.header().description.magic_value = old_magic;
+    header.description.magic_value = old_magic;
 }
 
 TEST(SpscRingAtomicSemantics, UsesAcquireReleaseAtThePublicationBoundaries)
 {
     owned_mapping_t<raw_displacement_t> mapping{4};
-    auto view = mapping.view();
+    auto& header = *static_cast<header_t*>(mapping.memory());
+    ring_factory_t<raw_displacement_t> const factory;
 
     StrictMock<mock_atomic_access_t> producer_atomic;
 
     {
         InSequence sequence;
-        EXPECT_CALL(producer_atomic, load_relaxed(Ref(view.header().producer.head))).WillOnce(Return(0));
-        EXPECT_CALL(producer_atomic, load_relaxed(Ref(view.header().producer.dropped))).WillOnce(Return(0));
+        EXPECT_CALL(producer_atomic, load_relaxed(Ref(header.producer.head))).WillOnce(Return(0));
+        EXPECT_CALL(producer_atomic, load_relaxed(Ref(header.producer.dropped))).WillOnce(Return(0));
     }
 
-    producer_t<raw_displacement_t, mock_atomic_access_delegate_t> producer{
-        view,
-        mock_atomic_access_delegate_t{.mock = &producer_atomic},
-    };
+    auto bound_producer = factory.bind_producer(
+        mapping.memory(), mapping.bytes(), null_notifier_t{}, mock_atomic_access_delegate_t{.mock = &producer_atomic});
+    ASSERT_TRUE(bound_producer.has_value());
+    auto& producer = *bound_producer;
 
     {
         InSequence sequence;
-        EXPECT_CALL(producer_atomic, load_acquire(Ref(view.header().consumer.tail))).WillOnce(Return(0));
-        EXPECT_CALL(producer_atomic, store_release(Ref(view.header().producer.head), 1))
-            .WillOnce(Invoke(store_sequence));
+        EXPECT_CALL(producer_atomic, load_acquire(Ref(header.consumer.tail))).WillOnce(Return(0));
+        EXPECT_CALL(producer_atomic, store_release(Ref(header.producer.head), 1)).WillOnce(Invoke(store_sequence));
     }
 
     EXPECT_EQ(producer.try_push({.timestamp_ns = 1, .x = 2, .y = 3}), push_result_t::published);
 
     StrictMock<mock_atomic_access_t> consumer_atomic;
-    EXPECT_CALL(consumer_atomic, load_relaxed(Ref(view.header().consumer.tail))).WillOnce(Return(0));
+    EXPECT_CALL(consumer_atomic, load_relaxed(Ref(header.consumer.tail))).WillOnce(Return(0));
 
-    consumer_t<raw_displacement_t, mock_atomic_access_delegate_t> consumer{
-        view,
-        mock_atomic_access_delegate_t{.mock = &consumer_atomic},
-    };
+    auto bound_consumer = factory.bind_consumer(
+        mapping.memory(), mapping.bytes(), null_waiter_t{}, mock_atomic_access_delegate_t{.mock = &consumer_atomic});
+    ASSERT_TRUE(bound_consumer.has_value());
+    auto& consumer = *bound_consumer;
 
-    EXPECT_CALL(consumer_atomic, load_acquire(Ref(view.header().producer.head))).WillOnce(Return(1));
+    EXPECT_CALL(consumer_atomic, load_acquire(Ref(header.producer.head))).WillOnce(Return(1));
 
     auto const readable = consumer.readable();
     ASSERT_EQ(readable.size(), 1u);
     EXPECT_EQ(readable.front(), (raw_displacement_t{.timestamp_ns = 1, .x = 2, .y = 3}));
 
-    EXPECT_CALL(consumer_atomic, store_release(Ref(view.header().consumer.tail), 1)).WillOnce(Invoke(store_sequence));
+    EXPECT_CALL(consumer_atomic, store_release(Ref(header.consumer.tail), 1)).WillOnce(Invoke(store_sequence));
 
     EXPECT_TRUE(consumer.consume(1));
 }
@@ -903,8 +956,14 @@ TEST(SpscRingAtomicSemantics, UsesAcquireReleaseAtThePublicationBoundaries)
 TEST(SpscRing, WrapsAndDropsNewRecordsWhenFull)
 {
     owned_mapping_t<raw_displacement_t> mapping{4};
-    producer_t<raw_displacement_t> producer{mapping.view()};
-    consumer_t<raw_displacement_t> consumer{mapping.view()};
+    ring_factory_t<raw_displacement_t> const factory;
+
+    auto bound_producer = factory.bind_producer(mapping.memory(), mapping.bytes());
+    auto bound_consumer = factory.bind_consumer(mapping.memory(), mapping.bytes());
+    ASSERT_TRUE(bound_producer.has_value());
+    ASSERT_TRUE(bound_consumer.has_value());
+    auto& producer = *bound_producer;
+    auto& consumer = *bound_consumer;
 
     for (std::uint64_t value = 1; value <= 4; ++value)
     {
@@ -953,10 +1012,21 @@ TEST(SpscRing, TransfersRecordsAcrossDistinctSharedMappingAliases)
     aliased_mapping_t<velocity_sample_t> mapping{1024};
     ASSERT_TRUE(mapping.mappings_are_distinct());
 
+    auto bound_consumer = ring_factory_t<velocity_sample_t>{}.bind_consumer(mapping.reader_memory(), mapping.bytes());
+    ASSERT_TRUE(bound_consumer.has_value());
+    auto& consumer = *bound_consumer;
+
     std::atomic<bool> producer_failed{false};
 
     std::jthread producer_thread{[&] {
-        producer_t<velocity_sample_t> producer{mapping.writer_view()};
+        auto bound_producer
+            = ring_factory_t<velocity_sample_t>{}.bind_producer(mapping.writer_memory(), mapping.bytes());
+        if (!bound_producer.has_value())
+        {
+            producer_failed.store(true, std::memory_order_relaxed);
+            return;
+        }
+        auto& producer = *bound_producer;
 
         for (std::uint64_t sequence = 1; sequence <= sample_count; ++sequence)
         {
@@ -979,7 +1049,6 @@ TEST(SpscRing, TransfersRecordsAcrossDistinctSharedMappingAliases)
         }
     }};
 
-    consumer_t<velocity_sample_t> consumer{mapping.reader_view()};
     auto expected = std::uint64_t{1};
     auto data_failed = false;
 
@@ -1012,29 +1081,29 @@ TEST(SpscRing, TransfersRecordsAcrossDistinctSharedMappingAliases)
     EXPECT_TRUE(consumer.empty());
 }
 
-TEST(SpscRingReader, WaitsThroughAnEpollShapedStandIn)
+TEST(SpscRingConsumer, WaitsThroughAnEpollShapedStandIn)
 {
     constexpr auto sample_count = std::uint64_t{32};
 
     owned_mapping_t<raw_displacement_t> mapping{64};
     eventfd_epoll_channel_t channel;
 
-    reader_t<raw_displacement_t, std_atomic_access_t, epoll_waiter_t> reader{
-        mapping.view(),
-        channel.waiter(),
-    };
+    auto bound_consumer
+        = ring_factory_t<raw_displacement_t>{}.bind_consumer(mapping.memory(), mapping.bytes(), channel.waiter());
+    ASSERT_TRUE(bound_consumer.has_value());
+    auto& consumer = *bound_consumer;
 
     std::jthread producer_thread{[&] {
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
-        writer_t<raw_displacement_t, std_atomic_access_t, eventfd_notifier_t> writer{
-            mapping.view(),
-            channel.notifier(),
-        };
+        auto bound_producer
+            = ring_factory_t<raw_displacement_t>{}.bind_producer(mapping.memory(), mapping.bytes(), channel.notifier());
+        if (!bound_producer.has_value()) std::abort();
+        auto& producer = *bound_producer;
 
         for (std::uint64_t sequence = 1; sequence <= sample_count; ++sequence)
         {
-            auto const result = writer.try_push({
+            auto const result = producer.try_push({
                 .timestamp_ns = sequence,
                 .x = static_cast<std::int64_t>(sequence),
                 .y = -static_cast<std::int64_t>(sequence),
@@ -1044,15 +1113,15 @@ TEST(SpscRingReader, WaitsThroughAnEpollShapedStandIn)
         }
     }};
 
-    ASSERT_TRUE(reader.wait_until_readable(2'000));
+    ASSERT_TRUE(consumer.wait_until_readable(2'000));
 
     auto expected = std::uint64_t{1};
     while (expected <= sample_count)
     {
-        auto const batch = reader.readable();
+        auto const batch = consumer.readable();
         if (batch.empty())
         {
-            ASSERT_TRUE(reader.wait_until_readable(2'000));
+            ASSERT_TRUE(consumer.wait_until_readable(2'000));
             continue;
         }
 
@@ -1064,11 +1133,11 @@ TEST(SpscRingReader, WaitsThroughAnEpollShapedStandIn)
             ++expected;
         }
 
-        ASSERT_TRUE(reader.consume(batch.size()));
+        ASSERT_TRUE(consumer.consume(batch.size()));
     }
 
     producer_thread.join();
-    EXPECT_FALSE(reader.corrupt());
+    EXPECT_FALSE(consumer.corrupt());
 }
 
 } // namespace
