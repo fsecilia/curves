@@ -30,9 +30,11 @@ template <unsigned_integral narrow_t> struct tracking_rounding_mode_t
 };
 
 // fake divider that tracks the rounding mode id
-struct tracking_wide_divider_t
+template <unsigned_integral t_narrow_t> struct tracking_wide_divider_t
 {
-    template <unsigned_integral narrow_t>
+    using narrow_t = t_narrow_t;
+    using wide_t = widened_t<narrow_t>;
+
     constexpr auto operator()(widened_t<narrow_t> dividend, narrow_t divisor,
         tracking_rounding_mode_t<make_unsigned_t<narrow_t>> rm) const noexcept -> widened_t<narrow_t>
     {
@@ -52,7 +54,7 @@ struct tracking_wide_divider_t
 // ====================================================================================================================
 
 // test that empty base optimization is enabled
-using ebo_sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, int_t, int_t, int_t, true>;
+using ebo_sut_t = shifted_int_divider_t<tracking_wide_divider_t<uint32_t>, default_shift, int_t, int_t, int_t, true>;
 static_assert(sizeof(ebo_sut_t) == 1, "shifted_int_divider_t should not add overhead for empty dividers");
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -61,9 +63,13 @@ static_assert(sizeof(ebo_sut_t) == 1, "shifted_int_divider_t should not add over
 
 struct heterogeneous_test_t
 {
-    static constexpr auto rounding_mode = tracking_rounding_mode_t<uint32_t>{.id = expected_tracking_rounding_mode_id};
+    using narrow_t = uint32_t;
+    using rounding_mode_t = tracking_rounding_mode_t<narrow_t>;
+    using wide_divider_t = tracking_wide_divider_t<narrow_t>;
 
-    using sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, int16_t, uint32_t, int8_t, true>;
+    static constexpr auto rounding_mode = rounding_mode_t{.id = expected_tracking_rounding_mode_id};
+
+    using sut_t = shifted_int_divider_t<wide_divider_t, default_shift, int16_t, uint32_t, int8_t, true>;
     static constexpr auto sut = sut_t{};
 
     // fits: (100 << 3) / -2 = 800 / -2 = -400
@@ -75,9 +81,8 @@ struct heterogeneous_test_t
     // bounds test: clamps to max<int16_t>
     static_assert(sut(uint32_t{10000}, int8_t{1}, rounding_mode) == max<int16_t>());
 
-    // Unsigned Output boundary test
-    using unsigned_out_sut_t
-        = shifted_int_divider_t<tracking_wide_divider_t, default_shift, uint16_t, int32_t, int32_t, true>;
+    // unsigned output boundary test
+    using unsigned_out_sut_t = shifted_int_divider_t<wide_divider_t, default_shift, uint16_t, int32_t, int32_t, true>;
     static constexpr auto u_sut = unsigned_out_sut_t{};
 
     // negative mathematical result correctly clamped to 0 for unsigned output type
@@ -90,7 +95,9 @@ struct heterogeneous_test_t
 
 template <typename narrow_t> struct unsigned_test_t
 {
-    using wide_t = widened_t<narrow_t>;
+    using wide_divider_t = tracking_wide_divider_t<narrow_t>;
+    using wide_t = wide_divider_t::wide_t;
+
     static constexpr auto rounding_mode = tracking_rounding_mode_t<narrow_t>{.id = expected_tracking_rounding_mode_id};
     static constexpr auto max_narrow = max<narrow_t>();
 
@@ -105,7 +112,7 @@ template <typename narrow_t> struct unsigned_test_t
 
     constexpr auto test_saturating() const noexcept -> void
     {
-        using sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, true>;
+        using sut_t = shifted_int_divider_t<wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, true>;
 
         constexpr auto sut = sut_t{};
 
@@ -121,8 +128,7 @@ template <typename narrow_t> struct unsigned_test_t
 
     constexpr auto test_truncating() const noexcept -> void
     {
-        using sut_t
-            = shifted_int_divider_t<tracking_wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, false>;
+        using sut_t = shifted_int_divider_t<wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, false>;
 
         constexpr auto sut = sut_t{};
 
@@ -145,10 +151,11 @@ template struct unsigned_test_t<uint32_t>;
 template <typename narrow_t> struct signed_test_t
 {
     using unsigned_t = make_unsigned_t<narrow_t>;
-    using wide_t = widened_t<unsigned_t>;
+    using rounding_mode_t = tracking_rounding_mode_t<unsigned_t>;
+    using wide_divider_t = tracking_wide_divider_t<unsigned_t>;
+    using wide_t = wide_divider_t::wide_t;
 
-    static constexpr auto rounding_mode
-        = tracking_rounding_mode_t<unsigned_t>{.id = expected_tracking_rounding_mode_id};
+    static constexpr auto rounding_mode = rounding_mode_t{.id = expected_tracking_rounding_mode_id};
 
     static constexpr auto max_narrow = max<narrow_t>();
     static constexpr auto min_narrow = min<narrow_t>();
@@ -168,7 +175,7 @@ template <typename narrow_t> struct signed_test_t
 
     constexpr auto test_saturating() const noexcept -> void
     {
-        using sut_t = shifted_int_divider_t<tracking_wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, true>;
+        using sut_t = shifted_int_divider_t<wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, true>;
 
         constexpr auto sut = sut_t{};
 
@@ -191,8 +198,7 @@ template <typename narrow_t> struct signed_test_t
 
     constexpr auto test_truncating() noexcept -> void
     {
-        using sut_t
-            = shifted_int_divider_t<tracking_wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, false>;
+        using sut_t = shifted_int_divider_t<wide_divider_t, default_shift, narrow_t, narrow_t, narrow_t, false>;
 
         constexpr auto sut = sut_t{};
 

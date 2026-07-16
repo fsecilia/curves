@@ -179,6 +179,7 @@ if (enable_testing)
         math/complex_traits_test.cpp
         math/conjugate_quantizer_test.cpp
         math/division/concepts_test.cpp
+        math/division/divider_test.cpp
         math/division/hardware_divider_test.cpp
         math/division/io_test.cpp
         math/division/shifted_int_divider_test.cpp

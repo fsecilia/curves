@@ -18,8 +18,9 @@ namespace crv::division {
 /// long division with rounding mode support
 ///
 /// Divides a wide dividend by a narrow divisor, rounds using the provided mode, and returns a wide quotient.
-template <unsigned_integral narrow_t, is_hardware_divider<narrow_t> hardware_divider_t> struct wide_divider_t
+template <unsigned_integral t_narrow_t, is_hardware_divider<t_narrow_t> hardware_divider_t> struct wide_divider_t
 {
+    using narrow_t = t_narrow_t;
     using wide_t = widened_t<narrow_t>;
 
     static constexpr auto const narrow_width = static_cast<int_t>(sizeof(narrow_t) * CHAR_BIT);

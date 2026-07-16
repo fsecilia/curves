@@ -29,15 +29,20 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    static constexpr auto narrow_size = max(sizeof(lhs_t), sizeof(rhs_t));
+    using narrow_t = typename wide_divider_t::narrow_t;
+    using wide_t = typename wide_divider_t::wide_t;
 
-    using narrow_t = int_by_bytes_t<narrow_size, false>;
-    using wide_t = widened_t<narrow_t>;
+    static_assert(
+        sizeof(lhs_t) <= sizeof(wide_t), "dividend is wider than the two-word dividend supported by the divisor");
+    static_assert(sizeof(rhs_t) <= sizeof(narrow_t), "divisor is wider than the selected native division word");
 
     static constexpr auto max_wide_pre_shift = max<wide_t>() >> shift;
 
     static constexpr auto max_possible_dividend = int_cast<wide_t>(max<lhs_t>());
-    static constexpr auto max_possible_quotient = int_cast<wide_t>(max_possible_dividend << shift);
+    static constexpr auto max_possible_quotient = [] {
+        if constexpr (max_possible_dividend > max_wide_pre_shift) return max<wide_t>();
+        else return int_cast<wide_t>(max_possible_dividend << shift);
+    }();
     static constexpr bool upper_saturation_possible = cmp_greater(max_possible_quotient, max<out_value_t>());
 
     template <typename rounding_mode_t>
