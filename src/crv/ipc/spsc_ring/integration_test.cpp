@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 
 /// \file
-/// \brief Single-file proof of concept for a generic zero-copy SPSC stream with
-///        driver-side and userspace-side factories.
+/// \brief Single-file proof of concept for a generic zero-copy SPSC stream shared across an address-space boundary.
 ///
-/// The public creation path is deliberately asymmetric:
+/// The shared ring is an operational bridge over a validated ABI mapping. The read and write algorithms depend only
+/// on its role-specific behavior, so isolated tests can substitute narrow delegates without exposing shared-memory
+/// layout or atomic implementation details.
 ///
-///   consumer_factory.create()
-///       -> control channel creates one driver stream
-///       -> driver service delegates allocation and initialization to producer_factory
-///       -> control channel returns an owning lease plus an export ticket
-///       -> userspace mapper maps the ticket
-///       -> consumer_factory validates the mapping and returns an owning reader instance
+/// Creation is asymmetric and factory-owned:
 ///
-/// The ring core knows only element_t and an opaque leaf-supplied contract id. It does
-/// not enumerate application record formats. Allocation, control transport, mapping,
-/// atomic access, notification, and waiting are all injected dependencies.
+///   reader_factory.create(capacity)
+///       -> control session creates one driver-side writer
+///       -> driver-side factory allocates and initializes the shared ring
+///       -> userspace maps the exported allocation
+///       -> userspace factory validates the mapping and returns an owning reader
 ///
-/// The test support uses memfd aliases and an in-process control channel to model the
-/// future ioctl + mmap path. The ring itself has no Linux dependency.
+/// The generic component knows only element_t and an opaque leaf-supplied contract id. It does not enumerate record
+/// formats. Allocation, layout interpretation, atomic access, notification, control transport, mapping, and waiting
+/// are injected values.
 ///
 /// \copyright Copyright (C) 2026 Frank Secilia
 
@@ -26,12 +25,11 @@
 #define _GNU_SOURCE
 #endif
 
-#include <array>
 #include <atomic>
 #include <bit>
+#include <chrono>
 #include <concepts>
 #include <cstddef>
-#include <cstdint>
 #include <expected>
 #include <limits>
 #include <memory>
@@ -62,13 +60,13 @@ template <typename element_t>
 concept record_type = std::is_standard_layout_v<element_t> && std::is_trivially_copyable_v<element_t>
     && std::is_nothrow_default_constructible_v<element_t> && std::is_trivially_destructible_v<element_t>;
 
+namespace abi {
+
 struct alignas(sequence_alignment) sequence_storage_t
 {
     sequence_t value{};
 };
 
-// These are intentionally passive ABI storage objects. Behavior lives in mapping_contract_t,
-// ring_mapping_t, and the endpoints.
 struct alignas(control_alignment) description_t
 {
     std::uint32_t magic_value{};
@@ -86,38 +84,40 @@ struct alignas(control_alignment) description_t
     std::byte reserved[16]{};
 };
 
-struct alignas(control_alignment) producer_state_t
+struct alignas(control_alignment) writer_state_t
 {
-    sequence_storage_t head{};
+    sequence_storage_t sequence{};
     sequence_storage_t dropped{};
     sequence_storage_t faults{};
     std::byte reserved[40]{};
 };
 
-struct alignas(control_alignment) consumer_state_t
+struct alignas(control_alignment) reader_state_t
 {
-    sequence_storage_t tail{};
+    sequence_storage_t sequence{};
     std::byte reserved[56]{};
 };
 
 struct alignas(control_alignment) header_t
 {
     description_t description{};
-    producer_state_t producer{};
-    consumer_state_t consumer{};
+    writer_state_t writer{};
+    reader_state_t reader{};
 };
 
 static_assert(sizeof(sequence_storage_t) == 8);
 static_assert(alignof(sequence_storage_t) == sequence_alignment);
 static_assert(sizeof(description_t) == 64);
-static_assert(sizeof(producer_state_t) == 64);
-static_assert(sizeof(consumer_state_t) == 64);
+static_assert(sizeof(writer_state_t) == 64);
+static_assert(sizeof(reader_state_t) == 64);
 static_assert(sizeof(header_t) == 192);
 static_assert(alignof(header_t) == control_alignment);
-static_assert(offsetof(header_t, producer) == 64);
-static_assert(offsetof(header_t, consumer) == 128);
+static_assert(offsetof(header_t, writer) == 64);
+static_assert(offsetof(header_t, reader) == 128);
 static_assert(std::is_standard_layout_v<header_t>);
 static_assert(std::is_trivially_copyable_v<header_t>);
+
+} // namespace abi
 
 struct allocation_request_t
 {
@@ -125,7 +125,7 @@ struct allocation_request_t
     std::size_t alignment{};
 };
 
-enum class mapping_error_t : std::uint8_t
+enum class stream_error_t : std::uint8_t
 {
     null_mapping,
     misaligned_header,
@@ -140,237 +140,20 @@ enum class mapping_error_t : std::uint8_t
     wrong_data_offset,
     invalid_mapping_size,
     misaligned_elements,
-};
-
-enum class allocation_error_t : std::uint8_t
-{
-    failed,
-};
-
-enum class map_error_t : std::uint8_t
-{
-    failed,
+    allocation_failed,
+    map_failed,
+    already_exists,
 };
 
 enum class push_result_t : std::uint8_t
 {
     published,
     full,
-    invalid_consumer_sequence,
+    invalid_reader_sequence,
 };
-
-// A typed interpretation of a mapping. It is a real component, not a miscellaneous detail.
-// Production instances are returned by mapping_contract_t::initialize() or bind(). Endpoint
-// tests may substitute another type satisfying ring_mapping.
-template <record_type element_t> class ring_mapping_t
-{
-public:
-    using element_type = element_t;
-
-    constexpr ring_mapping_t(header_t& header, element_t* elements, sequence_t capacity) noexcept
-        : header_{&header}, elements_{elements}, capacity_{capacity}
-    {}
-
-    constexpr auto capacity() const noexcept -> sequence_t { return capacity_; }
-    constexpr auto mask() const noexcept -> sequence_t { return capacity_ - 1; }
-
-    constexpr auto slot(sequence_t sequence) const noexcept -> element_t&
-    {
-        return elements_[static_cast<std::size_t>(sequence & mask())];
-    }
-
-    constexpr auto producer_head() const noexcept -> sequence_storage_t& { return header_->producer.head; }
-    constexpr auto producer_dropped() const noexcept -> sequence_storage_t& { return header_->producer.dropped; }
-    constexpr auto producer_faults() const noexcept -> sequence_storage_t& { return header_->producer.faults; }
-    constexpr auto consumer_tail() const noexcept -> sequence_storage_t& { return header_->consumer.tail; }
-
-private:
-    header_t* header_;
-    element_t* elements_;
-    sequence_t capacity_;
-};
-
-template <typename mapping_t, typename element_t>
-concept ring_mapping = record_type<element_t> && requires(mapping_t mapping, sequence_t sequence) {
-    { mapping.capacity() } noexcept -> std::same_as<sequence_t>;
-    { mapping.mask() } noexcept -> std::same_as<sequence_t>;
-    { mapping.slot(sequence) } noexcept -> std::same_as<element_t&>;
-    { mapping.producer_head() } noexcept -> std::same_as<sequence_storage_t&>;
-    { mapping.producer_dropped() } noexcept -> std::same_as<sequence_storage_t&>;
-    { mapping.producer_faults() } noexcept -> std::same_as<sequence_storage_t&>;
-    { mapping.consumer_tail() } noexcept -> std::same_as<sequence_storage_t&>;
-};
-
-static_assert(ring_mapping<ring_mapping_t<std::uint64_t>, std::uint64_t>);
-
-// Owns the complete shared-memory layout contract: sizing, alignment, initialization,
-// validation, and typed interpretation.
-template <record_type element_t> class mapping_contract_t
-{
-public:
-    using element_type = element_t;
-    using mapping_type = ring_mapping_t<element_t>;
-
-    static_assert(sizeof(element_t) <= std::numeric_limits<std::uint32_t>::max());
-    static_assert(alignof(element_t) <= std::numeric_limits<std::uint32_t>::max());
-
-    explicit constexpr mapping_contract_t(stream_contract_id_t id) noexcept : id_{id} {}
-
-    constexpr auto id() const noexcept -> stream_contract_id_t { return id_; }
-
-    constexpr auto allocation_for(sequence_t capacity) const noexcept
-        -> std::expected<allocation_request_t, mapping_error_t>
-    {
-        if (!std::has_single_bit(capacity)) { return std::unexpected{mapping_error_t::invalid_capacity}; }
-
-        constexpr auto offset = data_offset();
-        constexpr auto max_size = std::numeric_limits<std::size_t>::max();
-
-        if (capacity > static_cast<sequence_t>((max_size - offset) / sizeof(element_t)))
-        {
-            return std::unexpected{mapping_error_t::size_overflow};
-        }
-
-        return allocation_request_t{
-            .bytes = offset + static_cast<std::size_t>(capacity) * sizeof(element_t),
-            .alignment = allocation_alignment(),
-        };
-    }
-
-    auto initialize(std::span<std::byte> storage, sequence_t capacity) const noexcept
-        -> std::expected<mapping_type, mapping_error_t>
-    {
-        auto const request = allocation_for(capacity);
-        if (!request.has_value()) return std::unexpected{request.error()};
-
-        if (auto const error = validate_storage(storage, request->bytes); error.has_value())
-        {
-            return std::unexpected{*error};
-        }
-
-        auto* header = ::new (storage.data()) header_t{};
-        header->description.magic_value = magic;
-        header->description.abi_major_value = abi_major;
-        header->description.abi_minor_value = abi_minor;
-        header->description.contract_id = id_.value;
-        header->description.element_size = sizeof(element_t);
-        header->description.element_alignment = alignof(element_t);
-        header->description.capacity = capacity;
-        header->description.data_offset = data_offset();
-        header->description.mapping_bytes = storage.size();
-
-        auto* elements = reinterpret_cast<element_t*>(storage.data() + data_offset());
-        for (sequence_t index = 0; index != capacity; ++index)
-        {
-            std::construct_at(elements + static_cast<std::size_t>(index));
-        }
-
-        return mapping_type{*header, elements, capacity};
-    }
-
-    auto bind(std::span<std::byte> storage) const noexcept -> std::expected<mapping_type, mapping_error_t>
-    {
-        if (storage.data() == nullptr) return std::unexpected{mapping_error_t::null_mapping};
-        if (reinterpret_cast<std::uintptr_t>(storage.data()) % alignof(header_t) != 0)
-        {
-            return std::unexpected{mapping_error_t::misaligned_header};
-        }
-        if (storage.size() < sizeof(header_t)) { return std::unexpected{mapping_error_t::mapping_too_small}; }
-
-        auto* header = reinterpret_cast<header_t*>(storage.data());
-        auto const& description = header->description;
-
-        if (description.magic_value != magic) return std::unexpected{mapping_error_t::bad_magic};
-        if (description.abi_major_value != abi_major) { return std::unexpected{mapping_error_t::unsupported_abi}; }
-        if (description.contract_id != id_.value) { return std::unexpected{mapping_error_t::wrong_contract}; }
-        if (description.element_size != sizeof(element_t))
-        {
-            return std::unexpected{mapping_error_t::wrong_element_size};
-        }
-        if (description.element_alignment != alignof(element_t))
-        {
-            return std::unexpected{mapping_error_t::wrong_element_alignment};
-        }
-        if (!std::has_single_bit(description.capacity)) { return std::unexpected{mapping_error_t::invalid_capacity}; }
-        if (description.data_offset != data_offset()) { return std::unexpected{mapping_error_t::wrong_data_offset}; }
-
-        auto const request = allocation_for(description.capacity);
-        if (!request.has_value()) return std::unexpected{request.error()};
-
-        if (description.mapping_bytes < request->bytes || description.mapping_bytes > storage.size())
-        {
-            return std::unexpected{mapping_error_t::invalid_mapping_size};
-        }
-
-        auto* elements_bytes = storage.data() + description.data_offset;
-        if (reinterpret_cast<std::uintptr_t>(elements_bytes) % alignof(element_t) != 0)
-        {
-            return std::unexpected{mapping_error_t::misaligned_elements};
-        }
-
-        return mapping_type{
-            *header,
-            reinterpret_cast<element_t*>(elements_bytes),
-            description.capacity,
-        };
-    }
-
-private:
-    static constexpr auto align_up(std::size_t value, std::size_t alignment) noexcept -> std::size_t
-    {
-        return (value + alignment - 1) & ~(alignment - 1);
-    }
-
-    static constexpr auto data_offset() noexcept -> std::size_t
-    {
-        return align_up(sizeof(header_t), alignof(element_t));
-    }
-
-    static constexpr auto allocation_alignment() noexcept -> std::size_t
-    {
-        return control_alignment < alignof(element_t) ? alignof(element_t) : control_alignment;
-    }
-
-    static auto validate_storage(std::span<std::byte> storage, std::size_t required) noexcept
-        -> std::optional<mapping_error_t>
-    {
-        if (storage.data() == nullptr) return mapping_error_t::null_mapping;
-        if (reinterpret_cast<std::uintptr_t>(storage.data()) % alignof(header_t) != 0)
-        {
-            return mapping_error_t::misaligned_header;
-        }
-        if (storage.size() < required) return mapping_error_t::mapping_too_small;
-
-        auto* elements = storage.data() + data_offset();
-        if (reinterpret_cast<std::uintptr_t>(elements) % alignof(element_t) != 0)
-        {
-            return mapping_error_t::misaligned_elements;
-        }
-
-        return std::nullopt;
-    }
-
-    stream_contract_id_t id_;
-};
-
-template <typename contract_t, typename element_t>
-concept mapping_contract
-    = record_type<element_t> && requires(contract_t contract, std::span<std::byte> storage, sequence_t capacity) {
-          typename contract_t::mapping_type;
-          requires ring_mapping<typename contract_t::mapping_type, element_t>;
-          {
-              contract.allocation_for(capacity)
-          } noexcept -> std::same_as<std::expected<allocation_request_t, mapping_error_t>>;
-          {
-              contract.initialize(storage, capacity)
-          } noexcept -> std::same_as<std::expected<typename contract_t::mapping_type, mapping_error_t>>;
-          {
-              contract.bind(storage)
-          } noexcept -> std::same_as<std::expected<typename contract_t::mapping_type, mapping_error_t>>;
-      };
 
 template <typename access_t>
-concept atomic_access = requires(access_t& access, sequence_storage_t& storage, sequence_t value) {
+concept atomic_access = requires(access_t& access, abi::sequence_storage_t& storage, sequence_t value) {
     { access.load_relaxed(storage) } noexcept -> std::same_as<sequence_t>;
     { access.load_acquire(storage) } noexcept -> std::same_as<sequence_t>;
     { access.store_relaxed(storage, value) } noexcept -> std::same_as<void>;
@@ -385,25 +168,28 @@ private:
     static_assert(reference_t::is_always_lock_free);
     static_assert(sequence_alignment >= reference_t::required_alignment);
 
-    static auto reference(sequence_storage_t& storage) noexcept -> reference_t { return reference_t{storage.value}; }
+    static auto reference(abi::sequence_storage_t& storage) noexcept -> reference_t
+    {
+        return reference_t{storage.value};
+    }
 
 public:
-    auto load_relaxed(sequence_storage_t& storage) const noexcept -> sequence_t
+    auto load_relaxed(abi::sequence_storage_t& storage) const noexcept -> sequence_t
     {
         return reference(storage).load(std::memory_order_relaxed);
     }
 
-    auto load_acquire(sequence_storage_t& storage) const noexcept -> sequence_t
+    auto load_acquire(abi::sequence_storage_t& storage) const noexcept -> sequence_t
     {
         return reference(storage).load(std::memory_order_acquire);
     }
 
-    void store_relaxed(sequence_storage_t& storage, sequence_t value) const noexcept
+    void store_relaxed(abi::sequence_storage_t& storage, sequence_t value) const noexcept
     {
         reference(storage).store(value, std::memory_order_relaxed);
     }
 
-    void store_release(sequence_storage_t& storage, sequence_t value) const noexcept
+    void store_release(abi::sequence_storage_t& storage, sequence_t value) const noexcept
     {
         reference(storage).store(value, std::memory_order_release);
     }
@@ -431,67 +217,308 @@ struct null_waiter_t
     auto wait(int) const noexcept -> bool { return false; }
 };
 
-template <record_type element_t, typename mapping_t, atomic_access atomic_access_t = std_atomic_access_t,
-    notifier notifier_t = null_notifier_t>
-    requires ring_mapping<mapping_t, element_t>
-class producer_t
+template <record_type element_t, atomic_access atomic_access_t> class ring_t
 {
 public:
-    producer_t(mapping_t mapping, atomic_access_t atomic_access, notifier_t notifier_value) noexcept
-        : mapping_{std::move(mapping)}, atomic_access_{std::move(atomic_access)}, notifier_{std::move(notifier_value)},
-          head_{atomic_access_.load_relaxed(mapping_.producer_head())},
-          dropped_{atomic_access_.load_relaxed(mapping_.producer_dropped())},
-          faults_{atomic_access_.load_relaxed(mapping_.producer_faults())}
+    using element_type = element_t;
+
+    ring_t(abi::header_t& header, element_t* elements, sequence_t capacity, atomic_access_t atomic_access) noexcept
+        : header_{&header}, elements_{elements}, capacity_{capacity}, atomic_access_{std::move(atomic_access)}
+    {}
+
+    constexpr auto capacity() const noexcept -> sequence_t { return capacity_; }
+    constexpr auto mask() const noexcept -> sequence_t { return capacity_ - 1; }
+
+    auto writer_sequence_relaxed() noexcept -> sequence_t
+    {
+        return atomic_access_.load_relaxed(header_->writer.sequence);
+    }
+
+    auto writer_sequence_acquire() noexcept -> sequence_t
+    {
+        return atomic_access_.load_acquire(header_->writer.sequence);
+    }
+
+    auto reader_sequence_relaxed() noexcept -> sequence_t
+    {
+        return atomic_access_.load_relaxed(header_->reader.sequence);
+    }
+
+    auto reader_sequence_acquire() noexcept -> sequence_t
+    {
+        return atomic_access_.load_acquire(header_->reader.sequence);
+    }
+
+    void write(sequence_t sequence, element_t const& element) noexcept { elements_[index(sequence)] = element; }
+
+    auto read(sequence_t sequence) noexcept -> element_t const& { return elements_[index(sequence)]; }
+
+    void publish_writer_sequence(sequence_t sequence) noexcept
+    {
+        atomic_access_.store_release(header_->writer.sequence, sequence);
+    }
+
+    void publish_reader_sequence(sequence_t sequence) noexcept
+    {
+        atomic_access_.store_release(header_->reader.sequence, sequence);
+    }
+
+    auto dropped_relaxed() noexcept -> sequence_t { return atomic_access_.load_relaxed(header_->writer.dropped); }
+
+    void store_dropped_relaxed(sequence_t value) noexcept
+    {
+        atomic_access_.store_relaxed(header_->writer.dropped, value);
+    }
+
+    auto faults_relaxed() noexcept -> sequence_t { return atomic_access_.load_relaxed(header_->writer.faults); }
+
+    void store_faults_relaxed(sequence_t value) noexcept
+    {
+        atomic_access_.store_relaxed(header_->writer.faults, value);
+    }
+
+    auto has_pending() noexcept -> bool
+    {
+        auto const writer = writer_sequence_acquire();
+        auto const reader = reader_sequence_acquire();
+        return writer != reader;
+    }
+
+private:
+    constexpr auto index(sequence_t sequence) const noexcept -> std::size_t
+    {
+        return static_cast<std::size_t>(sequence & mask());
+    }
+
+    abi::header_t* header_;
+    element_t* elements_;
+    sequence_t capacity_;
+    [[no_unique_address]] atomic_access_t atomic_access_;
+};
+
+template <record_type element_t> class ring_layout_t
+{
+public:
+    static_assert(sizeof(element_t) <= std::numeric_limits<std::uint32_t>::max());
+    static_assert(alignof(element_t) <= std::numeric_limits<std::uint32_t>::max());
+
+    template <atomic_access atomic_access_t> using ring_type = ring_t<element_t, atomic_access_t>;
+
+    explicit constexpr ring_layout_t(stream_contract_id_t contract_id) noexcept : contract_id_{contract_id} {}
+
+    constexpr auto allocation_for(sequence_t capacity) const noexcept
+        -> std::expected<allocation_request_t, stream_error_t>
+    {
+        if (!std::has_single_bit(capacity)) { return std::unexpected{stream_error_t::invalid_capacity}; }
+
+        constexpr auto offset = data_offset();
+        constexpr auto max_size = std::numeric_limits<std::size_t>::max();
+
+        if (capacity > static_cast<sequence_t>((max_size - offset) / sizeof(element_t)))
+        {
+            return std::unexpected{stream_error_t::size_overflow};
+        }
+
+        return allocation_request_t{
+            .bytes = offset + static_cast<std::size_t>(capacity) * sizeof(element_t),
+            .alignment = allocation_alignment(),
+        };
+    }
+
+    template <atomic_access atomic_access_t>
+    auto initialize(std::span<std::byte> storage, sequence_t capacity, atomic_access_t atomic_access) const noexcept
+        -> std::expected<ring_type<atomic_access_t>, stream_error_t>
+    {
+        auto const request = allocation_for(capacity);
+        if (!request.has_value()) return std::unexpected{request.error()};
+
+        if (auto const error = validate_storage(storage, request->bytes); error.has_value())
+        {
+            return std::unexpected{*error};
+        }
+
+        auto* header = ::new (storage.data()) abi::header_t{};
+        header->description.magic_value = magic;
+        header->description.abi_major_value = abi_major;
+        header->description.abi_minor_value = abi_minor;
+        header->description.contract_id = contract_id_.value;
+        header->description.element_size = sizeof(element_t);
+        header->description.element_alignment = alignof(element_t);
+        header->description.capacity = capacity;
+        header->description.data_offset = data_offset();
+        header->description.mapping_bytes = storage.size();
+
+        auto* elements = reinterpret_cast<element_t*>(storage.data() + data_offset());
+        for (sequence_t index = 0; index != capacity; ++index)
+        {
+            std::construct_at(elements + static_cast<std::size_t>(index));
+        }
+
+        return ring_type<atomic_access_t>{*header, elements, capacity, std::move(atomic_access)};
+    }
+
+    template <atomic_access atomic_access_t>
+    auto bind(std::span<std::byte> storage, atomic_access_t atomic_access) const noexcept
+        -> std::expected<ring_type<atomic_access_t>, stream_error_t>
+    {
+        if (storage.data() == nullptr) return std::unexpected{stream_error_t::null_mapping};
+        if (reinterpret_cast<std::uintptr_t>(storage.data()) % alignof(abi::header_t) != 0)
+        {
+            return std::unexpected{stream_error_t::misaligned_header};
+        }
+        if (storage.size() < sizeof(abi::header_t)) { return std::unexpected{stream_error_t::mapping_too_small}; }
+
+        auto* header = std::start_lifetime_as<abi::header_t>(storage.data());
+        auto const& description = header->description;
+
+        if (description.magic_value != magic) return std::unexpected{stream_error_t::bad_magic};
+        if (description.abi_major_value != abi_major) { return std::unexpected{stream_error_t::unsupported_abi}; }
+        if (description.contract_id != contract_id_.value) { return std::unexpected{stream_error_t::wrong_contract}; }
+        if (description.element_size != sizeof(element_t))
+        {
+            return std::unexpected{stream_error_t::wrong_element_size};
+        }
+        if (description.element_alignment != alignof(element_t))
+        {
+            return std::unexpected{stream_error_t::wrong_element_alignment};
+        }
+        if (!std::has_single_bit(description.capacity)) { return std::unexpected{stream_error_t::invalid_capacity}; }
+        if (description.data_offset != data_offset()) { return std::unexpected{stream_error_t::wrong_data_offset}; }
+
+        auto const request = allocation_for(description.capacity);
+        if (!request.has_value()) return std::unexpected{request.error()};
+
+        if (description.mapping_bytes < request->bytes || description.mapping_bytes > storage.size())
+        {
+            return std::unexpected{stream_error_t::invalid_mapping_size};
+        }
+
+        auto* element_bytes = storage.data() + description.data_offset;
+        if (reinterpret_cast<std::uintptr_t>(element_bytes) % alignof(element_t) != 0)
+        {
+            return std::unexpected{stream_error_t::misaligned_elements};
+        }
+        auto* elements
+            = std::start_lifetime_as_array<element_t>(element_bytes, static_cast<std::size_t>(description.capacity));
+
+        return ring_type<atomic_access_t>{
+            *header,
+            elements,
+            description.capacity,
+            std::move(atomic_access),
+        };
+    }
+
+private:
+    static constexpr auto align_up(std::size_t value, std::size_t alignment) noexcept -> std::size_t
+    {
+        return (value + alignment - 1) & ~(alignment - 1);
+    }
+
+    static constexpr auto data_offset() noexcept -> std::size_t
+    {
+        return align_up(sizeof(abi::header_t), alignof(element_t));
+    }
+
+    static constexpr auto allocation_alignment() noexcept -> std::size_t
+    {
+        return control_alignment < alignof(element_t) ? alignof(element_t) : control_alignment;
+    }
+
+    static auto validate_storage(std::span<std::byte> storage, std::size_t required) noexcept
+        -> std::optional<stream_error_t>
+    {
+        if (storage.data() == nullptr) return stream_error_t::null_mapping;
+        if (reinterpret_cast<std::uintptr_t>(storage.data()) % alignof(abi::header_t) != 0)
+        {
+            return stream_error_t::misaligned_header;
+        }
+        if (storage.size() < required) return stream_error_t::mapping_too_small;
+
+        auto* elements = storage.data() + data_offset();
+        if (reinterpret_cast<std::uintptr_t>(elements) % alignof(element_t) != 0)
+        {
+            return stream_error_t::misaligned_elements;
+        }
+
+        return std::nullopt;
+    }
+
+    stream_contract_id_t contract_id_;
+};
+
+template <typename ring_t, typename element_t>
+concept writer_ring = record_type<element_t> && requires(ring_t& ring, sequence_t sequence, element_t const& element) {
+    { ring.capacity() } noexcept -> std::same_as<sequence_t>;
+    { ring.writer_sequence_relaxed() } noexcept -> std::same_as<sequence_t>;
+    { ring.reader_sequence_acquire() } noexcept -> std::same_as<sequence_t>;
+    { ring.write(sequence, element) } noexcept -> std::same_as<void>;
+    { ring.publish_writer_sequence(sequence) } noexcept -> std::same_as<void>;
+    { ring.dropped_relaxed() } noexcept -> std::same_as<sequence_t>;
+    { ring.store_dropped_relaxed(sequence) } noexcept -> std::same_as<void>;
+    { ring.faults_relaxed() } noexcept -> std::same_as<sequence_t>;
+    { ring.store_faults_relaxed(sequence) } noexcept -> std::same_as<void>;
+    { ring.has_pending() } noexcept -> std::same_as<bool>;
+};
+
+template <typename ring_t, typename element_t>
+concept reader_ring = record_type<element_t> && requires(ring_t& ring, sequence_t sequence) {
+    { ring.capacity() } noexcept -> std::same_as<sequence_t>;
+    { ring.reader_sequence_relaxed() } noexcept -> std::same_as<sequence_t>;
+    { ring.writer_sequence_acquire() } noexcept -> std::same_as<sequence_t>;
+    { ring.read(sequence) } noexcept -> std::same_as<element_t const&>;
+    { ring.publish_reader_sequence(sequence) } noexcept -> std::same_as<void>;
+    { ring.dropped_relaxed() } noexcept -> std::same_as<sequence_t>;
+    { ring.faults_relaxed() } noexcept -> std::same_as<sequence_t>;
+};
+
+template <record_type element_t, typename ring_t, notifier notifier_t>
+    requires writer_ring<ring_t, element_t>
+class ring_writer_t
+{
+public:
+    using element_type = element_t;
+
+    ring_writer_t(ring_t ring, notifier_t notifier_value) noexcept
+        : ring_{std::move(ring)}, notifier_{std::move(notifier_value)}, head_{ring_.writer_sequence_relaxed()},
+          dropped_{ring_.dropped_relaxed()}, faults_{ring_.faults_relaxed()}
     {}
 
     auto try_push(element_t const& element) noexcept -> push_result_t
     {
-        if (faulted_) return push_result_t::invalid_consumer_sequence;
+        if (faulted_) return push_result_t::invalid_reader_sequence;
 
-        auto const tail = atomic_access_.load_acquire(mapping_.consumer_tail());
+        auto const tail = ring_.reader_sequence_acquire();
         auto const occupied = head_ - tail;
+        auto const capacity = ring_.capacity();
 
-        // Userspace owns tail. An impossible sequence poisons this producer instance.
-        // Count the transition once; subsequent pushes report the latched fault without
-        // inflating either ABI-visible counter.
-        if (occupied > mapping_.capacity())
+        if (occupied > capacity)
         {
-            record_fault();
+            ++faults_;
+            ring_.store_faults_relaxed(faults_);
             faulted_ = true;
-            return push_result_t::invalid_consumer_sequence;
+            return push_result_t::invalid_reader_sequence;
         }
 
-        if (occupied == mapping_.capacity())
+        if (occupied == capacity)
         {
-            record_drop();
+            ++dropped_;
+            ring_.store_dropped_relaxed(dropped_);
             return push_result_t::full;
         }
 
-        mapping_.slot(head_) = element;
+        ring_.write(head_, element);
         ++head_;
-
-        atomic_access_.store_release(mapping_.producer_head(), head_);
+        ring_.publish_writer_sequence(head_);
         notifier_.notify();
         return push_result_t::published;
     }
 
+    auto has_pending() noexcept -> bool { return ring_.has_pending(); }
     constexpr auto faulted() const noexcept -> bool { return faulted_; }
 
 private:
-    void record_drop() noexcept
-    {
-        ++dropped_;
-        atomic_access_.store_relaxed(mapping_.producer_dropped(), dropped_);
-    }
-
-    void record_fault() noexcept
-    {
-        ++faults_;
-        atomic_access_.store_relaxed(mapping_.producer_faults(), faults_);
-    }
-
-    mapping_t mapping_;
-    [[no_unique_address]] atomic_access_t atomic_access_;
+    ring_t ring_;
     [[no_unique_address]] notifier_t notifier_;
     sequence_t head_{};
     sequence_t dropped_{};
@@ -499,38 +526,34 @@ private:
     bool faulted_{};
 };
 
-template <record_type element_t, typename mapping_t, atomic_access atomic_access_t = std_atomic_access_t,
-    waiter waiter_t = null_waiter_t>
-    requires ring_mapping<mapping_t, element_t>
-class consumer_t
+template <record_type element_t, typename ring_t>
+    requires reader_ring<ring_t, element_t>
+class ring_reader_t
 {
 public:
-    consumer_t(mapping_t mapping, atomic_access_t atomic_access, waiter_t waiter_value) noexcept
-        : mapping_{std::move(mapping)}, atomic_access_{std::move(atomic_access)}, waiter_{std::move(waiter_value)},
-          tail_{atomic_access_.load_relaxed(mapping_.consumer_tail())}
-    {}
+    explicit ring_reader_t(ring_t ring) noexcept : ring_{std::move(ring)}, tail_{ring_.reader_sequence_relaxed()} {}
 
     auto readable() noexcept -> std::span<element_t const>
     {
         if (corrupt_) return {};
+        if (leased_ != 0) return {&ring_.read(tail_), leased_};
 
-        if (leased_ != 0) { return {&mapping_.slot(tail_), leased_}; }
-
-        auto const head = atomic_access_.load_acquire(mapping_.producer_head());
+        auto const head = ring_.writer_sequence_acquire();
         auto const available = head - tail_;
+        auto const capacity = ring_.capacity();
 
-        if (available > mapping_.capacity())
+        if (available > capacity)
         {
             corrupt_ = true;
             return {};
         }
 
-        auto const index = tail_ & mapping_.mask();
-        auto const until_wrap = mapping_.capacity() - index;
+        auto const index = tail_ & (capacity - 1);
+        auto const until_wrap = capacity - index;
         auto const contiguous = available < until_wrap ? available : until_wrap;
 
         leased_ = static_cast<std::size_t>(contiguous);
-        return {&mapping_.slot(tail_), leased_};
+        return {&ring_.read(tail_), leased_};
     }
 
     auto consume(std::size_t count) noexcept -> bool
@@ -545,7 +568,7 @@ public:
 
         tail_ += static_cast<sequence_t>(count);
         leased_ -= count;
-        atomic_access_.store_release(mapping_.consumer_tail(), tail_);
+        ring_.publish_reader_sequence(tail_);
         return true;
     }
 
@@ -554,10 +577,11 @@ public:
         if (corrupt_) return true;
         if (leased_ != 0) return false;
 
-        auto const head = atomic_access_.load_acquire(mapping_.producer_head());
+        auto const head = ring_.writer_sequence_acquire();
         auto const available = head - tail_;
+        auto const capacity = ring_.capacity();
 
-        if (available > mapping_.capacity())
+        if (available > capacity)
         {
             corrupt_ = true;
             return true;
@@ -566,374 +590,233 @@ public:
         return available == 0;
     }
 
-    auto wait_until_readable(int timeout_ms = -1) noexcept -> bool
-    {
-        while (empty())
-        {
-            if (corrupt_) return false;
-            if (!waiter_.wait(timeout_ms)) return false;
-        }
-
-        return true;
-    }
-
-    auto dropped() noexcept -> sequence_t { return atomic_access_.load_relaxed(mapping_.producer_dropped()); }
-
-    auto producer_faults() noexcept -> sequence_t { return atomic_access_.load_relaxed(mapping_.producer_faults()); }
-
+    auto dropped() noexcept -> sequence_t { return ring_.dropped_relaxed(); }
+    auto writer_faults() noexcept -> sequence_t { return ring_.faults_relaxed(); }
     constexpr auto corrupt() const noexcept -> bool { return corrupt_; }
 
 private:
-    mapping_t mapping_;
-    [[no_unique_address]] atomic_access_t atomic_access_;
-    [[no_unique_address]] waiter_t waiter_;
+    ring_t ring_;
     sequence_t tail_{};
     std::size_t leased_{};
     bool corrupt_{};
 };
 
-template <typename allocation_t>
-concept writable_allocation = requires(allocation_t allocation) {
-    typename allocation_t::ticket_type;
-    { allocation.bytes() } noexcept -> std::same_as<std::span<std::byte>>;
-    { std::as_const(allocation).ticket() } noexcept -> std::same_as<typename allocation_t::ticket_type>;
-};
-
-template <typename provider_t>
-concept allocation_provider = requires(provider_t& provider, allocation_request_t request) {
-    typename provider_t::allocation_type;
-    requires writable_allocation<typename provider_t::allocation_type>;
-    {
-        provider.allocate(request)
-    } -> std::same_as<std::expected<typename provider_t::allocation_type, allocation_error_t>>;
-};
-
-enum class producer_create_stage_t : std::uint8_t
-{
-    layout,
-    allocation,
-    initialization,
-};
-
-struct producer_create_error_t
-{
-    producer_create_stage_t stage{};
-    mapping_error_t mapping_error{};
-    allocation_error_t allocation_error{};
-};
-
-template <writable_allocation allocation_t, typename producer_t> class producer_instance_t
+template <typename allocation_t, typename algorithm_t> class writer_t
 {
 public:
     using allocation_type = allocation_t;
-    using producer_type = producer_t;
+    using algorithm_type = algorithm_t;
     using ticket_type = typename allocation_t::ticket_type;
 
-    producer_instance_t(allocation_t allocation, producer_t producer) noexcept
-        : allocation_{std::move(allocation)}, producer_{std::move(producer)}
+    writer_t(allocation_t allocation, algorithm_t algorithm) noexcept
+        : allocation_{std::move(allocation)}, algorithm_{std::move(algorithm)}
     {}
 
-    producer_instance_t(producer_instance_t const&) = delete;
-    auto operator=(producer_instance_t const&) -> producer_instance_t& = delete;
-    producer_instance_t(producer_instance_t&&) noexcept = default;
-    auto operator=(producer_instance_t&&) noexcept -> producer_instance_t& = delete;
+    writer_t(writer_t const&) = delete;
+    auto operator=(writer_t const&) -> writer_t& = delete;
+    writer_t(writer_t&&) noexcept = default;
+    auto operator=(writer_t&&) noexcept -> writer_t& = delete;
 
     auto ticket() const noexcept -> ticket_type { return allocation_.ticket(); }
-    auto writer() noexcept -> producer_t& { return producer_; }
+
+    auto try_push(typename algorithm_t::element_type const& element) noexcept { return algorithm_.try_push(element); }
+
+    auto has_pending() noexcept -> bool { return algorithm_.has_pending(); }
+    auto faulted() const noexcept -> bool { return algorithm_.faulted(); }
 
 private:
-    // Reverse destruction order destroys the endpoint before releasing its storage.
     allocation_t allocation_;
-    producer_t producer_;
+    algorithm_t algorithm_;
 };
 
-template <record_type element_t, allocation_provider allocation_provider_t, typename contract_t,
-    atomic_access atomic_access_t = std_atomic_access_t, notifier notifier_t = null_notifier_t>
-    requires mapping_contract<contract_t, element_t>
-class producer_factory_t
+template <typename session_t, typename region_t, typename algorithm_t, waiter waiter_t> class reader_t
+{
+public:
+    reader_t(session_t session, region_t region, algorithm_t algorithm, waiter_t waiter_value) noexcept
+        : session_{std::move(session)}, region_{std::move(region)}, algorithm_{std::move(algorithm)},
+          waiter_{std::move(waiter_value)}
+    {}
+
+    reader_t(reader_t const&) = delete;
+    auto operator=(reader_t const&) -> reader_t& = delete;
+    reader_t(reader_t&&) noexcept = default;
+    auto operator=(reader_t&&) noexcept -> reader_t& = delete;
+
+    auto readable() noexcept { return algorithm_.readable(); }
+    auto consume(std::size_t count) noexcept { return algorithm_.consume(count); }
+    auto empty() noexcept { return algorithm_.empty(); }
+    auto dropped() noexcept { return algorithm_.dropped(); }
+    auto writer_faults() noexcept { return algorithm_.writer_faults(); }
+    auto corrupt() const noexcept { return algorithm_.corrupt(); }
+
+    auto wait_until_readable(int timeout_ms = -1) noexcept -> bool
+    {
+        if (timeout_ms < 0)
+        {
+            while (algorithm_.empty())
+            {
+                if (algorithm_.corrupt()) return false;
+                if (!waiter_.wait(-1)) return false;
+            }
+
+            return true;
+        }
+
+        using clock_t = std::chrono::steady_clock;
+        auto const deadline = clock_t::now() + std::chrono::milliseconds{timeout_ms};
+
+        while (algorithm_.empty())
+        {
+            if (algorithm_.corrupt()) return false;
+
+            auto const now = clock_t::now();
+            if (now >= deadline) return false;
+
+            auto const remaining = std::chrono::ceil<std::chrono::milliseconds>(deadline - now);
+
+            auto const remaining_ms = remaining.count() > std::numeric_limits<int>::max()
+                ? std::numeric_limits<int>::max()
+                : static_cast<int>(remaining.count());
+
+            if (!waiter_.wait(remaining_ms)) return false;
+        }
+
+        return true;
+    }
+
+    auto native_handle() const noexcept
+        requires requires(session_t const& session) { session.native_handle(); }
+    {
+        return session_.native_handle();
+    }
+
+private:
+    session_t session_;
+    region_t region_;
+    algorithm_t algorithm_;
+    [[no_unique_address]] waiter_t waiter_;
+};
+
+template <record_type element_t, typename allocation_provider_t, typename layout_t, atomic_access atomic_access_t,
+    notifier notifier_t>
+class writer_factory_t
 {
     static_assert(std::copy_constructible<atomic_access_t>);
     static_assert(std::copy_constructible<notifier_t>);
 
 public:
     using allocation_type = typename allocation_provider_t::allocation_type;
-    using mapping_type = typename contract_t::mapping_type;
-    using producer_type = producer_t<element_t, mapping_type, atomic_access_t, notifier_t>;
-    using instance_type = producer_instance_t<allocation_type, producer_type>;
-    using ticket_type = typename instance_type::ticket_type;
+    using ring_type = typename layout_t::template ring_type<atomic_access_t>;
+    using algorithm_type = ring_writer_t<element_t, ring_type, notifier_t>;
+    using writer_type = writer_t<allocation_type, algorithm_type>;
+    using ticket_type = typename writer_type::ticket_type;
 
-    producer_factory_t(allocation_provider_t allocation_provider, contract_t contract,
-        atomic_access_t atomic_access = {}, notifier_t notifier_value = {}) noexcept
-        : allocation_provider_{std::move(allocation_provider)}, contract_{std::move(contract)},
+    writer_factory_t(allocation_provider_t allocation_provider, layout_t layout, atomic_access_t atomic_access,
+        notifier_t notifier_value) noexcept
+        : allocation_provider_{std::move(allocation_provider)}, layout_{std::move(layout)},
           atomic_access_{std::move(atomic_access)}, notifier_{std::move(notifier_value)}
     {}
 
-    auto create(sequence_t capacity) -> std::expected<instance_type, producer_create_error_t>
+    auto create(sequence_t capacity) -> std::expected<writer_type, stream_error_t>
     {
-        auto const request = contract_.allocation_for(capacity);
-        if (!request.has_value())
-        {
-            return std::unexpected{producer_create_error_t{
-                .stage = producer_create_stage_t::layout,
-                .mapping_error = request.error(),
-            }};
-        }
+        auto const request = layout_.allocation_for(capacity);
+        if (!request.has_value()) return std::unexpected{request.error()};
 
         auto allocation = allocation_provider_.allocate(*request);
-        if (!allocation.has_value())
-        {
-            return std::unexpected{producer_create_error_t{
-                .stage = producer_create_stage_t::allocation,
-                .allocation_error = allocation.error(),
-            }};
-        }
+        if (!allocation.has_value()) return std::unexpected{allocation.error()};
 
-        auto mapping = contract_.initialize(allocation->bytes(), capacity);
-        if (!mapping.has_value())
-        {
-            return std::unexpected{producer_create_error_t{
-                .stage = producer_create_stage_t::initialization,
-                .mapping_error = mapping.error(),
-            }};
-        }
+        auto ring = layout_.initialize(allocation->bytes(), capacity, atomic_access_);
+        if (!ring.has_value()) return std::unexpected{ring.error()};
 
-        auto producer = producer_type{
-            std::move(*mapping),
-            atomic_access_,
-            notifier_,
-        };
-
-        return instance_type{std::move(*allocation), std::move(producer)};
+        auto algorithm = algorithm_type{std::move(*ring), notifier_};
+        return writer_type{std::move(*allocation), std::move(algorithm)};
     }
 
 private:
     [[no_unique_address]] allocation_provider_t allocation_provider_;
-    [[no_unique_address]] contract_t contract_;
+    [[no_unique_address]] layout_t layout_;
     [[no_unique_address]] atomic_access_t atomic_access_;
     [[no_unique_address]] notifier_t notifier_;
 };
 
-template <typename factory_t>
-concept producer_factory = requires(factory_t factory, sequence_t capacity) {
-    typename factory_t::instance_type;
-    typename factory_t::ticket_type;
-    {
-        factory.create(capacity)
-    } -> std::same_as<std::expected<typename factory_t::instance_type, producer_create_error_t>>;
-};
-
-struct create_request_t
-{
-    sequence_t capacity{};
-};
-
-enum class driver_create_error_t : std::uint8_t
-{
-    already_exists,
-    producer_creation_failed,
-};
-
-template <typename ticket_t> struct created_stream_t
-{
-    ticket_t ticket;
-    std::uint64_t generation{};
-};
-
-template <producer_factory producer_factory_t> class driver_stream_service_t
+template <typename writer_factory_t> class stream_service_t
 {
 public:
-    using factory_type = producer_factory_t;
-    using instance_type = typename producer_factory_t::instance_type;
-    using ticket_type = typename producer_factory_t::ticket_type;
-    using created_type = created_stream_t<ticket_type>;
-    using producer_type = typename instance_type::producer_type;
+    using factory_type = writer_factory_t;
+    using writer_type = typename writer_factory_t::writer_type;
+    using ticket_type = typename writer_factory_t::ticket_type;
 
-    explicit driver_stream_service_t(producer_factory_t factory) noexcept : factory_{std::move(factory)} {}
+    explicit stream_service_t(writer_factory_t factory) noexcept : factory_{std::move(factory)} {}
 
-    auto create(create_request_t request) -> std::expected<created_type, driver_create_error_t>
+    auto create(sequence_t capacity) -> std::expected<ticket_type, stream_error_t>
     {
-        if (instance_.has_value()) { return std::unexpected{driver_create_error_t::already_exists}; }
+        if (writer_.has_value()) return std::unexpected{stream_error_t::already_exists};
 
-        auto instance = factory_.create(request.capacity);
-        if (!instance.has_value())
-        {
-            last_create_error_ = instance.error();
-            return std::unexpected{driver_create_error_t::producer_creation_failed};
-        }
+        auto writer = factory_.create(capacity);
+        if (!writer.has_value()) return std::unexpected{writer.error()};
 
-        last_create_error_.reset();
-        auto const generation = ++generation_;
-        auto ticket = instance->ticket();
-        instance_.emplace(std::move(*instance));
-        return created_type{.ticket = std::move(ticket), .generation = generation};
+        auto ticket = writer->ticket();
+        writer_.emplace(std::move(*writer));
+        return ticket;
     }
 
-    void release(std::uint64_t generation) noexcept
-    {
-        if (instance_.has_value() && generation == generation_) instance_.reset();
-    }
+    void release() noexcept { writer_.reset(); }
 
-    auto writer() noexcept -> producer_type*
-    {
-        if (!instance_.has_value()) return nullptr;
-        return &instance_->writer();
-    }
+    auto writer() noexcept -> writer_type* { return writer_.has_value() ? &*writer_ : nullptr; }
 
-    constexpr auto has_instance() const noexcept -> bool { return instance_.has_value(); }
+    auto readable() noexcept -> bool { return writer_.has_value() && writer_->has_pending(); }
 
-    auto last_create_error() const noexcept -> std::optional<producer_create_error_t> { return last_create_error_; }
+    constexpr auto has_writer() const noexcept -> bool { return writer_.has_value(); }
 
 private:
-    producer_factory_t factory_;
-    std::optional<instance_type> instance_;
-    std::optional<producer_create_error_t> last_create_error_;
-    std::uint64_t generation_{};
+    writer_factory_t factory_;
+    std::optional<writer_type> writer_;
 };
 
-template <typename lease_t>
-concept stream_lease = requires(lease_t lease) {
-    typename lease_t::ticket_type;
-    { lease.ticket() } noexcept -> std::same_as<typename lease_t::ticket_type>;
-};
-
-template <typename control_t>
-concept control_channel = requires(control_t& control, create_request_t request) {
-    typename control_t::lease_type;
-    requires stream_lease<typename control_t::lease_type>;
-    {
-        control.create_stream(request)
-    } -> std::same_as<std::expected<typename control_t::lease_type, driver_create_error_t>>;
-};
-
-template <typename region_t>
-concept mapped_region = requires(region_t region) {
-    { region.bytes() } noexcept -> std::same_as<std::span<std::byte>>;
-};
-
-template <typename mapper_t, typename ticket_t>
-concept userspace_mapper = requires(mapper_t& mapper, ticket_t ticket) {
-    typename mapper_t::region_type;
-    requires mapped_region<typename mapper_t::region_type>;
-    { mapper.map(ticket) } -> std::same_as<std::expected<typename mapper_t::region_type, map_error_t>>;
-};
-
-enum class consumer_create_stage_t : std::uint8_t
-{
-    driver,
-    map,
-    bind,
-};
-
-struct consumer_create_error_t
-{
-    consumer_create_stage_t stage{};
-    driver_create_error_t driver_error{};
-    map_error_t map_error{};
-    mapping_error_t mapping_error{};
-};
-
-template <stream_lease lease_t, mapped_region region_t, typename consumer_t> class consumer_instance_t
-{
-public:
-    using lease_type = lease_t;
-    using region_type = region_t;
-    using consumer_type = consumer_t;
-
-    consumer_instance_t(lease_t lease, region_t region, consumer_t consumer) noexcept
-        : lease_{std::move(lease)}, region_{std::move(region)}, consumer_{std::move(consumer)}
-    {}
-
-    consumer_instance_t(consumer_instance_t const&) = delete;
-    auto operator=(consumer_instance_t const&) -> consumer_instance_t& = delete;
-    consumer_instance_t(consumer_instance_t&&) noexcept = default;
-    auto operator=(consumer_instance_t&&) noexcept -> consumer_instance_t& = delete;
-
-    auto readable() noexcept { return consumer_.readable(); }
-    auto consume(std::size_t count) noexcept { return consumer_.consume(count); }
-    auto empty() noexcept { return consumer_.empty(); }
-    auto wait_until_readable(int timeout_ms = -1) noexcept { return consumer_.wait_until_readable(timeout_ms); }
-    auto dropped() noexcept { return consumer_.dropped(); }
-    auto producer_faults() noexcept { return consumer_.producer_faults(); }
-    auto corrupt() const noexcept { return consumer_.corrupt(); }
-
-private:
-    // Reverse destruction order: endpoint, mapped region, then control lease. The lease
-    // teardown can therefore release the driver allocation only after userspace unmapped it.
-    lease_t lease_;
-    region_t region_;
-    consumer_t consumer_;
-};
-
-template <record_type element_t, control_channel control_channel_t, typename mapper_t, typename contract_t,
-    atomic_access atomic_access_t = std_atomic_access_t, waiter waiter_t = null_waiter_t>
-    requires mapping_contract<contract_t, element_t>
-    && userspace_mapper<mapper_t, typename control_channel_t::lease_type::ticket_type>
-class consumer_factory_t
+template <record_type element_t, typename control_t, typename mapper_t, typename layout_t,
+    atomic_access atomic_access_t, waiter waiter_t>
+class reader_factory_t
 {
     static_assert(std::copy_constructible<atomic_access_t>);
     static_assert(std::copy_constructible<waiter_t>);
 
 public:
-    using lease_type = typename control_channel_t::lease_type;
-    using ticket_type = typename lease_type::ticket_type;
+    using session_type = typename control_t::session_type;
     using region_type = typename mapper_t::region_type;
-    using mapping_type = typename contract_t::mapping_type;
-    using consumer_type = consumer_t<element_t, mapping_type, atomic_access_t, waiter_t>;
-    using instance_type = consumer_instance_t<lease_type, region_type, consumer_type>;
+    using ring_type = typename layout_t::template ring_type<atomic_access_t>;
+    using algorithm_type = ring_reader_t<element_t, ring_type>;
+    using reader_type = reader_t<session_type, region_type, algorithm_type, waiter_t>;
 
-    consumer_factory_t(create_request_t request, control_channel_t control_channel, mapper_t mapper,
-        contract_t contract, atomic_access_t atomic_access = {}, waiter_t waiter_value = {}) noexcept
-        : request_{request}, control_channel_{std::move(control_channel)}, mapper_{std::move(mapper)},
-          contract_{std::move(contract)}, atomic_access_{std::move(atomic_access)}, waiter_{std::move(waiter_value)}
+    reader_factory_t(control_t control, mapper_t mapper, layout_t layout, atomic_access_t atomic_access,
+        waiter_t waiter_value) noexcept
+        : control_{std::move(control)}, mapper_{std::move(mapper)}, layout_{std::move(layout)},
+          atomic_access_{std::move(atomic_access)}, waiter_{std::move(waiter_value)}
     {}
 
-    auto create() -> std::expected<instance_type, consumer_create_error_t>
+    auto create(sequence_t capacity) -> std::expected<reader_type, stream_error_t>
     {
-        auto lease = control_channel_.create_stream(request_);
-        if (!lease.has_value())
-        {
-            return std::unexpected{consumer_create_error_t{
-                .stage = consumer_create_stage_t::driver,
-                .driver_error = lease.error(),
-            }};
-        }
+        auto session = control_.create_stream(capacity);
+        if (!session.has_value()) return std::unexpected{session.error()};
 
-        auto region = mapper_.map(lease->ticket());
-        if (!region.has_value())
-        {
-            return std::unexpected{consumer_create_error_t{
-                .stage = consumer_create_stage_t::map,
-                .map_error = region.error(),
-            }};
-        }
+        auto region = mapper_.map(session->ticket());
+        if (!region.has_value()) return std::unexpected{region.error()};
 
-        auto mapping = contract_.bind(region->bytes());
-        if (!mapping.has_value())
-        {
-            return std::unexpected{consumer_create_error_t{
-                .stage = consumer_create_stage_t::bind,
-                .mapping_error = mapping.error(),
-            }};
-        }
+        auto ring = layout_.bind(region->bytes(), atomic_access_);
+        if (!ring.has_value()) return std::unexpected{ring.error()};
 
-        auto consumer = consumer_type{
-            std::move(*mapping),
-            atomic_access_,
-            waiter_,
-        };
-
-        return instance_type{
-            std::move(*lease),
+        auto algorithm = algorithm_type{std::move(*ring)};
+        return reader_type{
+            std::move(*session),
             std::move(*region),
-            std::move(consumer),
+            std::move(algorithm),
+            waiter_,
         };
     }
 
 private:
-    create_request_t request_;
-    [[no_unique_address]] control_channel_t control_channel_;
+    [[no_unique_address]] control_t control_;
     [[no_unique_address]] mapper_t mapper_;
-    [[no_unique_address]] contract_t contract_;
+    [[no_unique_address]] layout_t layout_;
     [[no_unique_address]] atomic_access_t atomic_access_;
     [[no_unique_address]] waiter_t waiter_;
 };
@@ -941,7 +824,7 @@ private:
 } // namespace crv::ipc::spsc_stream
 
 //
-// Host-side stand-ins for allocation, mmap, notification, and ioctl.
+// Host-side stand-ins for allocation, mapping, notification, and control transport.
 //
 
 #include <cerrno>
@@ -1049,30 +932,28 @@ class memfd_allocation_provider_t
 public:
     using allocation_type = memfd_allocation_t;
 
-    auto allocate(allocation_request_t request) const -> std::expected<allocation_type, allocation_error_t>
+    auto allocate(allocation_request_t request) const -> std::expected<allocation_type, stream_error_t>
     {
         auto fd = unique_fd_t{::memfd_create("crv-spsc-stream-poc", MFD_CLOEXEC)};
-        if (!fd) return std::unexpected{allocation_error_t::failed};
+        if (!fd) return std::unexpected{stream_error_t::allocation_failed};
 
         if (::ftruncate(fd.get(), static_cast<off_t>(request.bytes)) != 0)
         {
-            return std::unexpected{allocation_error_t::failed};
+            return std::unexpected{stream_error_t::allocation_failed};
         }
 
         auto* memory = ::mmap(nullptr, request.bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd.get(), 0);
-        if (memory == MAP_FAILED) return std::unexpected{allocation_error_t::failed};
+        if (memory == MAP_FAILED) return std::unexpected{stream_error_t::allocation_failed};
 
         if (reinterpret_cast<std::uintptr_t>(memory) % request.alignment != 0)
         {
             ::munmap(memory, request.bytes);
-            return std::unexpected{allocation_error_t::failed};
+            return std::unexpected{stream_error_t::allocation_failed};
         }
 
         return allocation_type{std::move(fd), memory, request.bytes};
     }
 };
-
-static_assert(allocation_provider<memfd_allocation_provider_t>);
 
 class mapped_region_t
 {
@@ -1117,16 +998,13 @@ class memfd_mapper_t
 public:
     using region_type = mapped_region_t;
 
-    auto map(host_mapping_ticket_t ticket) const -> std::expected<region_type, map_error_t>
+    auto map(host_mapping_ticket_t ticket) const -> std::expected<region_type, stream_error_t>
     {
         auto* memory = ::mmap(nullptr, ticket.bytes, PROT_READ | PROT_WRITE, MAP_SHARED, ticket.fd, 0);
-        if (memory == MAP_FAILED) return std::unexpected{map_error_t::failed};
+        if (memory == MAP_FAILED) return std::unexpected{stream_error_t::map_failed};
         return region_type{memory, ticket.bytes};
     }
 };
-
-static_assert(mapped_region<mapped_region_t>);
-static_assert(userspace_mapper<memfd_mapper_t, host_mapping_ticket_t>);
 
 struct eventfd_notifier_t
 {
@@ -1201,64 +1079,60 @@ private:
     unique_fd_t epoll_fd_;
 };
 
-template <typename service_t> class in_process_stream_lease_t
+template <typename service_t> class in_process_session_t
 {
 public:
     using ticket_type = typename service_t::ticket_type;
 
-    in_process_stream_lease_t() noexcept = default;
+    in_process_session_t() noexcept = default;
 
-    in_process_stream_lease_t(service_t& service, typename service_t::created_type created) noexcept
-        : service_{&service}, ticket_{std::move(created.ticket)}, generation_{created.generation}
+    in_process_session_t(service_t& service, ticket_type ticket) noexcept
+        : service_{&service}, ticket_{std::move(ticket)}
     {}
 
-    in_process_stream_lease_t(in_process_stream_lease_t const&) = delete;
-    auto operator=(in_process_stream_lease_t const&) -> in_process_stream_lease_t& = delete;
+    in_process_session_t(in_process_session_t const&) = delete;
+    auto operator=(in_process_session_t const&) -> in_process_session_t& = delete;
 
-    in_process_stream_lease_t(in_process_stream_lease_t&& other) noexcept
-        : service_{std::exchange(other.service_, nullptr)}, ticket_{std::move(other.ticket_)},
-          generation_{std::exchange(other.generation_, 0)}
+    in_process_session_t(in_process_session_t&& other) noexcept
+        : service_{std::exchange(other.service_, nullptr)}, ticket_{std::move(other.ticket_)}
     {}
 
-    auto operator=(in_process_stream_lease_t&& other) noexcept -> in_process_stream_lease_t&
+    auto operator=(in_process_session_t&& other) noexcept -> in_process_session_t&
     {
         if (this == &other) return *this;
         reset();
         service_ = std::exchange(other.service_, nullptr);
         ticket_ = std::move(other.ticket_);
-        generation_ = std::exchange(other.generation_, 0);
         return *this;
     }
 
-    ~in_process_stream_lease_t() { reset(); }
+    ~in_process_session_t() { reset(); }
 
-    auto ticket() noexcept -> ticket_type { return ticket_; }
+    auto ticket() const noexcept -> ticket_type { return ticket_; }
 
 private:
     void reset() noexcept
     {
-        if (service_ != nullptr) service_->release(generation_);
+        if (service_ != nullptr) service_->release();
         service_ = nullptr;
-        generation_ = 0;
     }
 
     service_t* service_{};
     ticket_type ticket_{};
-    std::uint64_t generation_{};
 };
 
-template <typename service_t> class in_process_control_channel_t
+template <typename service_t> class in_process_control_t
 {
 public:
-    using lease_type = in_process_stream_lease_t<service_t>;
+    using session_type = in_process_session_t<service_t>;
 
-    explicit in_process_control_channel_t(service_t& service) noexcept : service_{&service} {}
+    explicit in_process_control_t(service_t& service) noexcept : service_{&service} {}
 
-    auto create_stream(create_request_t request) -> std::expected<lease_type, driver_create_error_t>
+    auto create_stream(sequence_t capacity) -> std::expected<session_type, stream_error_t>
     {
-        auto created = service_->create(request);
-        if (!created.has_value()) return std::unexpected{created.error()};
-        return lease_type{*service_, std::move(*created)};
+        auto ticket = service_->create(capacity);
+        if (!ticket.has_value()) return std::unexpected{ticket.error()};
+        return session_type{*service_, std::move(*ticket)};
     }
 
 private:
@@ -1268,7 +1142,7 @@ private:
 } // namespace crv::ipc::spsc_stream::test_support
 
 //
-// Leaf stream definitions. The generic ring has no knowledge of these types or ids.
+// Leaf stream definitions.
 //
 
 namespace crv::mouse::streams {
@@ -1295,8 +1169,8 @@ inline constexpr auto raw_displacement_contract_id
 inline constexpr auto velocity_sample_contract_id
     = crv::ipc::spsc_stream::stream_contract_id_t{0x5645'4C4F'4349'5459}; // "VELOCITY"
 
-using raw_displacement_contract_t = crv::ipc::spsc_stream::mapping_contract_t<raw_displacement_t>;
-using velocity_sample_contract_t = crv::ipc::spsc_stream::mapping_contract_t<velocity_sample_t>;
+using raw_displacement_layout_t = crv::ipc::spsc_stream::ring_layout_t<raw_displacement_t>;
+using velocity_sample_layout_t = crv::ipc::spsc_stream::ring_layout_t<velocity_sample_t>;
 
 static_assert(sizeof(raw_displacement_t) == 24);
 static_assert(alignof(raw_displacement_t) == 8);
@@ -1309,12 +1183,10 @@ static_assert(alignof(velocity_sample_t) == 8);
 // GoogleTest/GoogleMock tests.
 //
 
-#include <chrono>
-#include <thread>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+namespace crv::mouse::streams {
 namespace {
 
 using namespace crv::ipc::spsc_stream;
@@ -1325,216 +1197,304 @@ using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::Ref;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::StrictMock;
-
-template <record_type element_t, std::size_t capacity_v> struct fake_mapping_storage_t
-{
-    static_assert(std::has_single_bit(capacity_v));
-
-    header_t header{};
-    std::array<element_t, capacity_v> elements{};
-};
-
-template <record_type element_t, std::size_t capacity_v> class fake_mapping_t
-{
-public:
-    explicit fake_mapping_t(fake_mapping_storage_t<element_t, capacity_v>& storage) noexcept : storage_{&storage} {}
-
-    constexpr auto capacity() const noexcept -> sequence_t { return capacity_v; }
-    constexpr auto mask() const noexcept -> sequence_t { return capacity_v - 1; }
-
-    auto slot(sequence_t sequence) const noexcept -> element_t&
-    {
-        return storage_->elements[static_cast<std::size_t>(sequence & mask())];
-    }
-
-    auto producer_head() const noexcept -> sequence_storage_t& { return storage_->header.producer.head; }
-    auto producer_dropped() const noexcept -> sequence_storage_t& { return storage_->header.producer.dropped; }
-    auto producer_faults() const noexcept -> sequence_storage_t& { return storage_->header.producer.faults; }
-    auto consumer_tail() const noexcept -> sequence_storage_t& { return storage_->header.consumer.tail; }
-
-private:
-    fake_mapping_storage_t<element_t, capacity_v>* storage_;
-};
-
-static_assert(ring_mapping<fake_mapping_t<raw_displacement_t, 4>, raw_displacement_t>);
 
 class mock_atomic_access_t
 {
 public:
-    MOCK_METHOD(sequence_t, load_relaxed, (sequence_storage_t & storage), (const, noexcept));
-    MOCK_METHOD(sequence_t, load_acquire, (sequence_storage_t & storage), (const, noexcept));
-    MOCK_METHOD(void, store_relaxed, (sequence_storage_t & storage, sequence_t value), (const, noexcept));
-    MOCK_METHOD(void, store_release, (sequence_storage_t & storage, sequence_t value), (const, noexcept));
+    MOCK_METHOD(sequence_t, load_relaxed, (abi::sequence_storage_t & storage), (const, noexcept));
+    MOCK_METHOD(sequence_t, load_acquire, (abi::sequence_storage_t & storage), (const, noexcept));
+    MOCK_METHOD(void, store_relaxed, (abi::sequence_storage_t & storage, sequence_t value), (const, noexcept));
+    MOCK_METHOD(void, store_release, (abi::sequence_storage_t & storage, sequence_t value), (const, noexcept));
 };
 
-// Test-only seam: production owns this small value normally; the delegate merely routes
-// calls to a noncopyable GoogleMock object.
 struct mock_atomic_access_delegate_t
 {
     mock_atomic_access_t* mock{};
 
-    auto load_relaxed(sequence_storage_t& storage) const noexcept -> sequence_t { return mock->load_relaxed(storage); }
+    auto load_relaxed(abi::sequence_storage_t& storage) const noexcept -> sequence_t
+    {
+        return mock->load_relaxed(storage);
+    }
 
-    auto load_acquire(sequence_storage_t& storage) const noexcept -> sequence_t { return mock->load_acquire(storage); }
+    auto load_acquire(abi::sequence_storage_t& storage) const noexcept -> sequence_t
+    {
+        return mock->load_acquire(storage);
+    }
 
-    void store_relaxed(sequence_storage_t& storage, sequence_t value) const noexcept
+    void store_relaxed(abi::sequence_storage_t& storage, sequence_t value) const noexcept
     {
         mock->store_relaxed(storage, value);
     }
 
-    void store_release(sequence_storage_t& storage, sequence_t value) const noexcept
+    void store_release(abi::sequence_storage_t& storage, sequence_t value) const noexcept
     {
         mock->store_release(storage, value);
     }
 };
 
-static_assert(std::copyable<mock_atomic_access_delegate_t>);
-static_assert(atomic_access<mock_atomic_access_delegate_t>);
+class mock_writer_ring_t
+{
+public:
+    MOCK_METHOD(sequence_t, capacity, (), (const, noexcept));
+    MOCK_METHOD(sequence_t, writer_sequence_relaxed, (), (noexcept));
+    MOCK_METHOD(sequence_t, reader_sequence_acquire, (), (noexcept));
+    MOCK_METHOD(void, write, (sequence_t sequence, raw_displacement_t const& element), (noexcept));
+    MOCK_METHOD(void, publish_writer_sequence, (sequence_t sequence), (noexcept));
+    MOCK_METHOD(sequence_t, dropped_relaxed, (), (noexcept));
+    MOCK_METHOD(void, store_dropped_relaxed, (sequence_t value), (noexcept));
+    MOCK_METHOD(sequence_t, faults_relaxed, (), (noexcept));
+    MOCK_METHOD(void, store_faults_relaxed, (sequence_t value), (noexcept));
+    MOCK_METHOD(bool, has_pending, (), (noexcept));
+};
 
-void store_sequence(sequence_storage_t& storage, sequence_t value) noexcept
+struct mock_writer_ring_delegate_t
+{
+    mock_writer_ring_t* mock{};
+
+    auto capacity() const noexcept -> sequence_t { return mock->capacity(); }
+    auto writer_sequence_relaxed() noexcept -> sequence_t { return mock->writer_sequence_relaxed(); }
+    auto reader_sequence_acquire() noexcept -> sequence_t { return mock->reader_sequence_acquire(); }
+    void write(sequence_t sequence, raw_displacement_t const& element) noexcept { mock->write(sequence, element); }
+    void publish_writer_sequence(sequence_t sequence) noexcept { mock->publish_writer_sequence(sequence); }
+    auto dropped_relaxed() noexcept -> sequence_t { return mock->dropped_relaxed(); }
+    void store_dropped_relaxed(sequence_t value) noexcept { mock->store_dropped_relaxed(value); }
+    auto faults_relaxed() noexcept -> sequence_t { return mock->faults_relaxed(); }
+    void store_faults_relaxed(sequence_t value) noexcept { mock->store_faults_relaxed(value); }
+    auto has_pending() noexcept -> bool { return mock->has_pending(); }
+};
+
+class mock_reader_ring_t
+{
+public:
+    MOCK_METHOD(sequence_t, capacity, (), (const, noexcept));
+    MOCK_METHOD(sequence_t, reader_sequence_relaxed, (), (noexcept));
+    MOCK_METHOD(sequence_t, writer_sequence_acquire, (), (noexcept));
+    MOCK_METHOD(raw_displacement_t const&, read, (sequence_t sequence), (noexcept));
+    MOCK_METHOD(void, publish_reader_sequence, (sequence_t sequence), (noexcept));
+    MOCK_METHOD(sequence_t, dropped_relaxed, (), (noexcept));
+    MOCK_METHOD(sequence_t, faults_relaxed, (), (noexcept));
+};
+
+struct mock_reader_ring_delegate_t
+{
+    mock_reader_ring_t* mock{};
+
+    auto capacity() const noexcept -> sequence_t { return mock->capacity(); }
+    auto reader_sequence_relaxed() noexcept -> sequence_t { return mock->reader_sequence_relaxed(); }
+    auto writer_sequence_acquire() noexcept -> sequence_t { return mock->writer_sequence_acquire(); }
+    auto read(sequence_t sequence) noexcept -> raw_displacement_t const& { return mock->read(sequence); }
+    auto publish_reader_sequence(sequence_t sequence) noexcept -> void { mock->publish_reader_sequence(sequence); }
+    auto dropped_relaxed() noexcept -> sequence_t { return mock->dropped_relaxed(); }
+    auto faults_relaxed() noexcept -> sequence_t { return mock->faults_relaxed(); }
+};
+
+class mock_notifier_t
+{
+public:
+    MOCK_METHOD(void, notify, (), (const, noexcept));
+};
+
+struct mock_notifier_delegate_t
+{
+    mock_notifier_t* mock{};
+    void notify() const noexcept { mock->notify(); }
+};
+
+static_assert(atomic_access<mock_atomic_access_delegate_t>);
+static_assert(writer_ring<mock_writer_ring_delegate_t, raw_displacement_t>);
+static_assert(reader_ring<mock_reader_ring_delegate_t, raw_displacement_t>);
+static_assert(notifier<mock_notifier_delegate_t>);
+
+void store_sequence(abi::sequence_storage_t& storage, sequence_t value) noexcept
 {
     storage.value = value;
 }
 
-TEST(SpscStreamMappingContract, OwnsSizingInitializationValidationAndTyping)
+TEST(SpscStreamLayout, OwnsSizingInitializationValidationAndTyping)
 {
-    raw_displacement_contract_t raw_contract{raw_displacement_contract_id};
-    velocity_sample_contract_t velocity_contract{velocity_sample_contract_id};
+    raw_displacement_layout_t raw_layout{raw_displacement_contract_id};
+    velocity_sample_layout_t velocity_layout{velocity_sample_contract_id};
 
-    auto const request = raw_contract.allocation_for(8);
+    auto const request = raw_layout.allocation_for(8);
     ASSERT_TRUE(request.has_value());
     EXPECT_EQ(request->alignment, 64u);
 
     auto allocation = memfd_allocation_provider_t{}.allocate(*request);
     ASSERT_TRUE(allocation.has_value());
 
-    auto initialized = raw_contract.initialize(allocation->bytes(), 8);
+    auto initialized = raw_layout.initialize(allocation->bytes(), 8, std_atomic_access_t{});
     ASSERT_TRUE(initialized.has_value());
     EXPECT_EQ(initialized->capacity(), 8u);
 
-    auto rebound = raw_contract.bind(allocation->bytes());
+    auto rebound = raw_layout.bind(allocation->bytes(), std_atomic_access_t{});
     ASSERT_TRUE(rebound.has_value());
     EXPECT_EQ(rebound->capacity(), 8u);
 
-    auto wrong_contract = velocity_contract.bind(allocation->bytes());
+    auto wrong_contract = velocity_layout.bind(allocation->bytes(), std_atomic_access_t{});
     ASSERT_FALSE(wrong_contract.has_value());
-    EXPECT_EQ(wrong_contract.error(), mapping_error_t::wrong_contract);
+    EXPECT_EQ(wrong_contract.error(), stream_error_t::wrong_contract);
 }
 
-TEST(SpscStreamEndpoints, UseInjectedMappingAndAtomicSeamsWithoutFriends)
+TEST(SpscStreamRing, GivesSharedMemoryOperationsSemanticAtomicBoundaries)
 {
-    fake_mapping_storage_t<raw_displacement_t, 4> storage;
-    auto mapping = fake_mapping_t<raw_displacement_t, 4>{storage};
+    abi::header_t header{};
+    raw_displacement_t elements[4]{};
+    StrictMock<mock_atomic_access_t> atomic;
 
-    StrictMock<mock_atomic_access_t> producer_atomic;
+    auto ring = ring_t<raw_displacement_t, mock_atomic_access_delegate_t>{
+        header,
+        elements,
+        4,
+        mock_atomic_access_delegate_t{.mock = &atomic},
+    };
+
+    EXPECT_CALL(atomic, load_relaxed(Ref(header.writer.sequence))).WillOnce(Return(3));
+    EXPECT_EQ(ring.writer_sequence_relaxed(), 3u);
+
+    EXPECT_CALL(atomic, load_acquire(Ref(header.reader.sequence))).WillOnce(Return(2));
+    EXPECT_EQ(ring.reader_sequence_acquire(), 2u);
+
+    EXPECT_CALL(atomic, store_release(Ref(header.writer.sequence), 4)).WillOnce(Invoke(store_sequence));
+    ring.publish_writer_sequence(4);
+    EXPECT_EQ(header.writer.sequence.value, 4u);
+}
+
+TEST(SpscStreamAlgorithms, WriterUsesOnlyTheInjectedWriterRing)
+{
+    StrictMock<mock_writer_ring_t> ring_mock;
+    StrictMock<mock_notifier_t> notifier_mock;
+
     {
         InSequence sequence;
-        EXPECT_CALL(producer_atomic, load_relaxed(Ref(storage.header.producer.head))).WillOnce(Return(0));
-        EXPECT_CALL(producer_atomic, load_relaxed(Ref(storage.header.producer.dropped))).WillOnce(Return(0));
-        EXPECT_CALL(producer_atomic, load_relaxed(Ref(storage.header.producer.faults))).WillOnce(Return(0));
+        EXPECT_CALL(ring_mock, writer_sequence_relaxed()).WillOnce(Return(0));
+        EXPECT_CALL(ring_mock, dropped_relaxed()).WillOnce(Return(0));
+        EXPECT_CALL(ring_mock, faults_relaxed()).WillOnce(Return(0));
     }
 
-    auto producer = producer_t<raw_displacement_t, decltype(mapping), mock_atomic_access_delegate_t>{
-        mapping,
-        mock_atomic_access_delegate_t{.mock = &producer_atomic},
-        null_notifier_t{},
+    auto writer = ring_writer_t<raw_displacement_t, mock_writer_ring_delegate_t, mock_notifier_delegate_t>{
+        mock_writer_ring_delegate_t{.mock = &ring_mock},
+        mock_notifier_delegate_t{.mock = &notifier_mock},
+    };
+
+    raw_displacement_t const sample{.timestamp_ns = 1, .x = 2, .y = 3};
+
+    {
+        InSequence sequence;
+        EXPECT_CALL(ring_mock, reader_sequence_acquire()).WillOnce(Return(0));
+        EXPECT_CALL(ring_mock, capacity()).WillOnce(Return(4));
+        EXPECT_CALL(ring_mock, write(0, Ref(sample)));
+        EXPECT_CALL(ring_mock, publish_writer_sequence(1));
+        EXPECT_CALL(notifier_mock, notify());
+    }
+
+    EXPECT_EQ(writer.try_push(sample), push_result_t::published);
+}
+
+TEST(SpscStreamAlgorithms, ReaderUsesOnlyTheInjectedReaderRing)
+{
+    StrictMock<mock_reader_ring_t> ring_mock;
+    raw_displacement_t const sample{.timestamp_ns = 1, .x = 2, .y = 3};
+
+    EXPECT_CALL(ring_mock, reader_sequence_relaxed()).WillOnce(Return(0));
+
+    auto reader = ring_reader_t<raw_displacement_t, mock_reader_ring_delegate_t>{
+        mock_reader_ring_delegate_t{.mock = &ring_mock},
     };
 
     {
         InSequence sequence;
-        EXPECT_CALL(producer_atomic, load_acquire(Ref(storage.header.consumer.tail))).WillOnce(Return(0));
-        EXPECT_CALL(producer_atomic, store_release(Ref(storage.header.producer.head), 1))
-            .WillOnce(Invoke(store_sequence));
+        EXPECT_CALL(ring_mock, writer_sequence_acquire()).WillOnce(Return(1));
+        EXPECT_CALL(ring_mock, capacity()).WillOnce(Return(4));
+        EXPECT_CALL(ring_mock, read(0)).WillOnce(ReturnRef(sample));
     }
 
-    EXPECT_EQ(producer.try_push({.timestamp_ns = 1, .x = 2, .y = 3}), push_result_t::published);
-
-    StrictMock<mock_atomic_access_t> consumer_atomic;
-    EXPECT_CALL(consumer_atomic, load_relaxed(Ref(storage.header.consumer.tail))).WillOnce(Return(0));
-
-    auto consumer = consumer_t<raw_displacement_t, decltype(mapping), mock_atomic_access_delegate_t>{
-        mapping,
-        mock_atomic_access_delegate_t{.mock = &consumer_atomic},
-        null_waiter_t{},
-    };
-
-    EXPECT_CALL(consumer_atomic, load_acquire(Ref(storage.header.producer.head))).WillOnce(Return(1));
-
-    auto const readable = consumer.readable();
+    auto const readable = reader.readable();
     ASSERT_EQ(readable.size(), 1u);
-    EXPECT_EQ(readable.front(), (raw_displacement_t{.timestamp_ns = 1, .x = 2, .y = 3}));
+    EXPECT_EQ(readable.front(), sample);
 
-    EXPECT_CALL(consumer_atomic, store_release(Ref(storage.header.consumer.tail), 1)).WillOnce(Invoke(store_sequence));
-    EXPECT_TRUE(consumer.consume(1));
+    EXPECT_CALL(ring_mock, publish_reader_sequence(1));
+    EXPECT_TRUE(reader.consume(1));
 }
 
-TEST(SpscStreamProducer, SeparatesCapacityDropsFromLatchedConsumerSequenceFaults)
+TEST(SpscStreamWriter, SeparatesCapacityDropsFromLatchedReaderSequenceFaults)
 {
-    fake_mapping_storage_t<raw_displacement_t, 4> storage;
-    auto mapping = fake_mapping_t<raw_displacement_t, 4>{storage};
+    raw_displacement_layout_t layout{raw_displacement_contract_id};
+    auto const request = layout.allocation_for(4);
+    ASSERT_TRUE(request.has_value());
 
-    auto producer = producer_t<raw_displacement_t, decltype(mapping)>{
-        mapping,
-        std_atomic_access_t{},
+    auto allocation = memfd_allocation_provider_t{}.allocate(*request);
+    ASSERT_TRUE(allocation.has_value());
+
+    auto ring = layout.initialize(allocation->bytes(), 4, std_atomic_access_t{});
+    ASSERT_TRUE(ring.has_value());
+
+    using ring_type = std::remove_cvref_t<decltype(*ring)>;
+    auto writer = ring_writer_t<raw_displacement_t, ring_type, null_notifier_t>{
+        std::move(*ring),
         null_notifier_t{},
     };
 
     for (std::uint64_t value = 1; value <= 4; ++value)
     {
-        EXPECT_EQ(producer.try_push({.timestamp_ns = value}), push_result_t::published);
+        EXPECT_EQ(writer.try_push({.timestamp_ns = value}), push_result_t::published);
     }
 
-    EXPECT_EQ(producer.try_push({.timestamp_ns = 5}), push_result_t::full);
-    EXPECT_EQ(storage.header.producer.dropped.value, 1u);
-    EXPECT_EQ(storage.header.producer.faults.value, 0u);
+    EXPECT_EQ(writer.try_push({.timestamp_ns = 5}), push_result_t::full);
 
-    storage.header.consumer.tail.value = 10;
+    auto& header = *reinterpret_cast<abi::header_t*>(allocation->bytes().data());
+    EXPECT_EQ(header.writer.dropped.value, 1u);
+    EXPECT_EQ(header.writer.faults.value, 0u);
 
-    EXPECT_EQ(producer.try_push({.timestamp_ns = 6}), push_result_t::invalid_consumer_sequence);
-    EXPECT_EQ(storage.header.producer.dropped.value, 1u);
-    EXPECT_EQ(storage.header.producer.faults.value, 1u);
+    header.reader.sequence.value = 10;
 
-    EXPECT_EQ(producer.try_push({.timestamp_ns = 7}), push_result_t::invalid_consumer_sequence);
-    EXPECT_EQ(storage.header.producer.dropped.value, 1u);
-    EXPECT_EQ(storage.header.producer.faults.value, 1u);
-    EXPECT_TRUE(producer.faulted());
+    EXPECT_EQ(writer.try_push({.timestamp_ns = 6}), push_result_t::invalid_reader_sequence);
+    EXPECT_EQ(header.writer.dropped.value, 1u);
+    EXPECT_EQ(header.writer.faults.value, 1u);
+
+    EXPECT_EQ(writer.try_push({.timestamp_ns = 7}), push_result_t::invalid_reader_sequence);
+    EXPECT_EQ(header.writer.faults.value, 1u);
+    EXPECT_TRUE(writer.faulted());
 }
 
-TEST(SpscStreamFactory, ConsumerCreateComposesTheCompleteLifecycle)
+TEST(SpscStreamFactory, ReaderCreateComposesTheCompleteLifecycle)
 {
     constexpr auto sample_count = std::uint64_t{250'000};
     constexpr auto checksum_mask = std::uint64_t{0x9E37'79B9'7F4A'7C15};
 
-    velocity_sample_contract_t contract{velocity_sample_contract_id};
-    using producer_factory_type
-        = producer_factory_t<velocity_sample_t, memfd_allocation_provider_t, velocity_sample_contract_t>;
+    velocity_sample_layout_t layout{velocity_sample_contract_id};
+    using writer_factory_type = writer_factory_t<velocity_sample_t, memfd_allocation_provider_t,
+        velocity_sample_layout_t, std_atomic_access_t, null_notifier_t>;
 
-    auto service = driver_stream_service_t<producer_factory_type>{producer_factory_type{
+    auto service = stream_service_t<writer_factory_type>{writer_factory_type{
         memfd_allocation_provider_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_notifier_t{},
     }};
-    auto control = in_process_control_channel_t{service};
+    auto control = in_process_control_t{service};
 
-    using consumer_factory_type
-        = consumer_factory_t<velocity_sample_t, decltype(control), memfd_mapper_t, velocity_sample_contract_t>;
+    using reader_factory_type = reader_factory_t<velocity_sample_t, decltype(control), memfd_mapper_t,
+        velocity_sample_layout_t, std_atomic_access_t, null_waiter_t>;
 
-    auto consumer_factory = consumer_factory_type{
-        create_request_t{.capacity = 1024},
+    auto factory = reader_factory_type{
         control,
         memfd_mapper_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_waiter_t{},
     };
 
-    auto reader_result = consumer_factory.create();
+    auto reader_result = factory.create(1024);
     ASSERT_TRUE(reader_result.has_value());
     auto reader = std::move(*reader_result);
-    ASSERT_TRUE(service.has_instance());
+    ASSERT_TRUE(service.has_writer());
     ASSERT_NE(service.writer(), nullptr);
 
-    std::atomic<bool> producer_failed{false};
+    std::atomic<bool> writer_failed{false};
 
-    std::jthread producer_thread{[&] {
+    std::jthread writer_thread{[&] {
         auto& writer = *service.writer();
         for (std::uint64_t sequence = 1; sequence <= sample_count; ++sequence)
         {
@@ -1547,9 +1507,9 @@ TEST(SpscStreamFactory, ConsumerCreateComposesTheCompleteLifecycle)
             {
                 auto const result = writer.try_push(sample);
                 if (result == push_result_t::published) break;
-                if (result == push_result_t::invalid_consumer_sequence)
+                if (result == push_result_t::invalid_reader_sequence)
                 {
-                    producer_failed.store(true, std::memory_order_relaxed);
+                    writer_failed.store(true, std::memory_order_relaxed);
                     return;
                 }
                 std::this_thread::yield();
@@ -1581,125 +1541,130 @@ TEST(SpscStreamFactory, ConsumerCreateComposesTheCompleteLifecycle)
         if (!reader.consume(batch.size())) data_failed = true;
     }
 
-    producer_thread.join();
+    writer_thread.join();
 
-    EXPECT_FALSE(producer_failed.load(std::memory_order_relaxed));
+    EXPECT_FALSE(writer_failed.load(std::memory_order_relaxed));
     EXPECT_FALSE(data_failed);
     EXPECT_FALSE(reader.corrupt());
     EXPECT_TRUE(reader.empty());
 }
 
-TEST(SpscStreamFactory, RejectsSecondInstanceAndLeaseDestructionReleasesFirst)
+TEST(SpscStreamFactory, RejectsSecondWriterAndSessionDestructionReleasesFirst)
 {
-    raw_displacement_contract_t contract{raw_displacement_contract_id};
-    using producer_factory_type
-        = producer_factory_t<raw_displacement_t, memfd_allocation_provider_t, raw_displacement_contract_t>;
+    raw_displacement_layout_t layout{raw_displacement_contract_id};
+    using writer_factory_type = writer_factory_t<raw_displacement_t, memfd_allocation_provider_t,
+        raw_displacement_layout_t, std_atomic_access_t, null_notifier_t>;
 
-    auto service = driver_stream_service_t<producer_factory_type>{producer_factory_type{
+    auto service = stream_service_t<writer_factory_type>{writer_factory_type{
         memfd_allocation_provider_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_notifier_t{},
     }};
-    auto control = in_process_control_channel_t{service};
+    auto control = in_process_control_t{service};
 
-    using consumer_factory_type
-        = consumer_factory_t<raw_displacement_t, decltype(control), memfd_mapper_t, raw_displacement_contract_t>;
+    using reader_factory_type = reader_factory_t<raw_displacement_t, decltype(control), memfd_mapper_t,
+        raw_displacement_layout_t, std_atomic_access_t, null_waiter_t>;
 
-    auto factory = consumer_factory_type{
-        create_request_t{.capacity = 64},
+    auto factory = reader_factory_type{
         control,
         memfd_mapper_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_waiter_t{},
     };
 
     {
-        auto first = factory.create();
+        auto first = factory.create(64);
         ASSERT_TRUE(first.has_value());
-        EXPECT_TRUE(service.has_instance());
+        EXPECT_TRUE(service.has_writer());
 
-        auto second = factory.create();
+        auto second = factory.create(64);
         ASSERT_FALSE(second.has_value());
-        EXPECT_EQ(second.error().stage, consumer_create_stage_t::driver);
-        EXPECT_EQ(second.error().driver_error, driver_create_error_t::already_exists);
+        EXPECT_EQ(second.error(), stream_error_t::already_exists);
     }
 
-    EXPECT_FALSE(service.has_instance());
-    EXPECT_TRUE(factory.create().has_value());
+    EXPECT_FALSE(service.has_writer());
+    EXPECT_TRUE(factory.create(64).has_value());
 }
 
-TEST(SpscStreamFactory, MappingFailureUnwindsDriverInstanceThroughLease)
+TEST(SpscStreamFactory, MappingFailureUnwindsTheDriverSession)
 {
     class failing_mapper_t
     {
     public:
         using region_type = mapped_region_t;
 
-        auto map(host_mapping_ticket_t) const -> std::expected<region_type, map_error_t>
+        auto map(host_mapping_ticket_t) const -> std::expected<region_type, stream_error_t>
         {
-            return std::unexpected{map_error_t::failed};
+            return std::unexpected{stream_error_t::map_failed};
         }
     };
 
-    raw_displacement_contract_t contract{raw_displacement_contract_id};
-    using producer_factory_type
-        = producer_factory_t<raw_displacement_t, memfd_allocation_provider_t, raw_displacement_contract_t>;
+    raw_displacement_layout_t layout{raw_displacement_contract_id};
+    using writer_factory_type = writer_factory_t<raw_displacement_t, memfd_allocation_provider_t,
+        raw_displacement_layout_t, std_atomic_access_t, null_notifier_t>;
 
-    auto service = driver_stream_service_t<producer_factory_type>{producer_factory_type{
+    auto service = stream_service_t<writer_factory_type>{writer_factory_type{
         memfd_allocation_provider_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_notifier_t{},
     }};
-    auto control = in_process_control_channel_t{service};
+    auto control = in_process_control_t{service};
 
-    using consumer_factory_type
-        = consumer_factory_t<raw_displacement_t, decltype(control), failing_mapper_t, raw_displacement_contract_t>;
+    using reader_factory_type = reader_factory_t<raw_displacement_t, decltype(control), failing_mapper_t,
+        raw_displacement_layout_t, std_atomic_access_t, null_waiter_t>;
 
-    auto factory = consumer_factory_type{
-        create_request_t{.capacity = 64},
+    auto factory = reader_factory_type{
         control,
         failing_mapper_t{},
-        contract,
+        layout,
+        std_atomic_access_t{},
+        null_waiter_t{},
     };
 
-    auto failed = factory.create();
+    auto failed = factory.create(64);
     ASSERT_FALSE(failed.has_value());
-    EXPECT_EQ(failed.error().stage, consumer_create_stage_t::map);
-    EXPECT_FALSE(service.has_instance());
+    EXPECT_EQ(failed.error(), stream_error_t::map_failed);
+    EXPECT_FALSE(service.has_writer());
 }
 
-TEST(SpscStreamConsumer, WaitsThroughAnEpollShapedInjectedChannel)
+TEST(SpscStreamReader, WaitsThroughAnEpollShapedInjectedAdapter)
 {
     constexpr auto sample_count = std::uint64_t{32};
 
-    raw_displacement_contract_t contract{raw_displacement_contract_id};
+    raw_displacement_layout_t layout{raw_displacement_contract_id};
     eventfd_epoll_channel_t events;
 
-    using producer_factory_type = producer_factory_t<raw_displacement_t, memfd_allocation_provider_t,
-        raw_displacement_contract_t, std_atomic_access_t, eventfd_notifier_t>;
+    using writer_factory_type = writer_factory_t<raw_displacement_t, memfd_allocation_provider_t,
+        raw_displacement_layout_t, std_atomic_access_t, eventfd_notifier_t>;
 
-    auto service = driver_stream_service_t<producer_factory_type>{producer_factory_type{
+    auto service = stream_service_t<writer_factory_type>{writer_factory_type{
         memfd_allocation_provider_t{},
-        contract,
+        layout,
         std_atomic_access_t{},
         events.notifier(),
     }};
-    auto control = in_process_control_channel_t{service};
+    auto control = in_process_control_t{service};
 
-    using consumer_factory_type = consumer_factory_t<raw_displacement_t, decltype(control), memfd_mapper_t,
-        raw_displacement_contract_t, std_atomic_access_t, epoll_waiter_t>;
+    using reader_factory_type = reader_factory_t<raw_displacement_t, decltype(control), memfd_mapper_t,
+        raw_displacement_layout_t, std_atomic_access_t, epoll_waiter_t>;
 
-    auto factory = consumer_factory_type{
-        create_request_t{.capacity = 64},
+    auto factory = reader_factory_type{
         control,
         memfd_mapper_t{},
-        contract,
+        layout,
         std_atomic_access_t{},
         events.waiter(),
     };
 
-    auto reader_result = factory.create();
+    auto reader_result = factory.create(64);
     ASSERT_TRUE(reader_result.has_value());
     auto reader = std::move(*reader_result);
+    EXPECT_FALSE(service.readable());
 
-    std::jthread producer_thread{[&] {
+    std::jthread writer_thread{[&] {
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
         auto& writer = *service.writer();
 
@@ -1715,6 +1680,7 @@ TEST(SpscStreamConsumer, WaitsThroughAnEpollShapedInjectedChannel)
     }};
 
     ASSERT_TRUE(reader.wait_until_readable(2'000));
+    EXPECT_TRUE(service.readable());
 
     auto expected = std::uint64_t{1};
     while (expected <= sample_count)
@@ -1737,8 +1703,10 @@ TEST(SpscStreamConsumer, WaitsThroughAnEpollShapedInjectedChannel)
         ASSERT_TRUE(reader.consume(batch.size()));
     }
 
-    producer_thread.join();
+    writer_thread.join();
     EXPECT_FALSE(reader.corrupt());
+    EXPECT_FALSE(service.readable());
 }
 
 } // namespace
+} // namespace crv::mouse::streams
