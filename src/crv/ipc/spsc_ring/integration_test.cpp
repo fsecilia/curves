@@ -2,35 +2,34 @@
 ///
 /// Single-file proof of concept for a zero-copy SPSC ring shared between a kernel producer and a userspace consumer.
 ///
-/// This file intentionally uses std::atomic_ref on plain ABI storage. The Linux eventfd side is only a userspace
-/// stand-in for the driver's future waitqueue/.poll implementation; the ring itself has no Linux dependency.
+/// Part of this test is to see how far we can push std::atomic_ref in the kernel in the face of different compilers
+/// and different stdlib implementations across platforms, specifically {gcc,clang}x{libstdc++,libc++}x{x64,arm}. To
+/// that end, the production section uses std::atomic_ref on plain ABI storage.
+///
+/// The eventfd/epoll code is only a userspace stand-in for the driver's future waitqueue/poll implementation; the ring
+/// itself has no Linux dependency.
+///
 
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 
+//
+// Production-ready code
+//
+
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <bit>
-#include <cerrno>
-#include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <limits>
 #include <memory>
 #include <new>
 #include <span>
-#include <thread>
 #include <type_traits>
 #include <utility>
-
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
 namespace crv::ipc::spsc_ring {
 
@@ -145,7 +144,7 @@ static_assert(alignof(velocity_sample_t) == 8);
 
 constexpr auto align_up(std::size_t value, std::size_t alignment) noexcept -> std::size_t
 {
-    return value + (alignment - value % alignment) % alignment;
+    return (value + alignment - 1) & -alignment;
 }
 
 template <record_type element_t> inline constexpr auto data_offset_v = align_up(sizeof(header_t), alignof(element_t));
@@ -187,7 +186,10 @@ public:
     {
         if (memory == nullptr) return bind_error_t::null_mapping;
 
-        if (reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0) return bind_error_t::misaligned_header;
+        if (reinterpret_cast<std::uintptr_t>(memory) % alignof(header_t) != 0)
+        {
+            return bind_error_t::misaligned_header;
+        }
 
         if (bytes < sizeof(header_t)) return bind_error_t::mapping_too_small;
 
@@ -195,18 +197,13 @@ public:
         auto const& description = header->description;
 
         if (description.magic_value != magic) return bind_error_t::bad_magic;
-
         if (description.abi_major_value != abi_major) return bind_error_t::unsupported_abi;
-
         if (description.format != format_traits_t<element_t>::format) return bind_error_t::wrong_format;
-
         if (description.element_size != sizeof(element_t)) return bind_error_t::wrong_element_size;
-
         if (description.element_alignment != alignof(element_t)) return bind_error_t::wrong_element_alignment;
-
         if (!std::has_single_bit(description.capacity)) return bind_error_t::invalid_capacity;
 
-        if (description.capacity > std::numeric_limits<std::size_t>::max()) return bind_error_t::invalid_capacity;
+        if (description.capacity > std::numeric_limits<std::size_t>::max()) { return bind_error_t::invalid_capacity; }
 
         if (description.data_offset != data_offset_v<element_t>) return bind_error_t::wrong_data_offset;
 
@@ -217,7 +214,10 @@ public:
         }
 
         auto* data = static_cast<std::byte*>(memory) + description.data_offset;
-        if (reinterpret_cast<std::uintptr_t>(data) % alignof(element_t) != 0) return bind_error_t::misaligned_elements;
+        if (reinterpret_cast<std::uintptr_t>(data) % alignof(element_t) != 0)
+        {
+            return bind_error_t::misaligned_elements;
+        }
 
         output = view_t{
             *header,
@@ -327,8 +327,8 @@ public:
         auto const tail = atomic_access_.load_acquire(view_.header().consumer.tail);
         auto const occupied = head_ - tail;
 
-        // The consumer controls tail from userspace. Never allow an impossible
-        // value to become an out-of-bounds index.
+        // The consumer controls tail from userspace. Reject impossible values
+        // before using the sequence as an index.
         if (occupied > view_.capacity())
         {
             record_drop();
@@ -502,9 +502,7 @@ public:
     }
 
     auto readable() noexcept -> std::span<element_t const> { return consumer_.readable(); }
-
     auto consume(std::size_t count) noexcept -> bool { return consumer_.consume(count); }
-
     auto dropped() noexcept -> sequence_t { return consumer_.dropped(); }
     auto corrupt() const noexcept -> bool { return consumer_.corrupt(); }
 
@@ -539,20 +537,40 @@ auto initialize_mapping(void* memory, std::size_t bytes, sequence_t capacity) no
     auto* elements = reinterpret_cast<element_t*>(static_cast<std::byte*>(memory) + data_offset_v<element_t>);
 
     for (sequence_t index = 0; index != capacity; ++index)
+    {
         std::construct_at(elements + static_cast<std::size_t>(index));
+    }
 
     return true;
 }
 
 template <record_type element_t> void destroy_mapping(view_t<element_t> view) noexcept
 {
-    for (sequence_t index = 0; index != view.capacity(); ++index) std::destroy_at(&view.slot(index));
+    for (sequence_t index = 0; index != view.capacity(); ++index) { std::destroy_at(&view.slot(index)); }
 
     std::destroy_at(&view.header());
 }
 
-// Test/host allocation owner. The future kernel owner will supply vmalloc'ed
-// pages and perform the same one-time initialization before exposing them.
+} // namespace crv::ipc::spsc_ring
+
+//
+// Test-only stand-ins and host-side owners
+//
+
+#include <cerrno>
+#include <chrono>
+#include <cstdlib>
+#include <thread>
+
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+namespace crv::ipc::spsc_ring::test_support {
+
+// Host allocation owner. The future kernel owner will supply page-backed
+// storage and perform the same one-time initialization before exposing it.
 template <record_type element_t> class owned_mapping_t
 {
 public:
@@ -590,8 +608,6 @@ private:
     view_t<element_t> view_{};
 };
 
-// The following Linux-userland classes stand in for the future kernel
-// waitqueue/.poll half and exercise the user-side epoll wrapper end to end.
 class unique_fd_t
 {
 public:
@@ -659,8 +675,8 @@ struct epoll_waiter_t
 
         if (count <= 0) return false;
 
-        // eventfd is edge persistence for this userland stand-in. The real
-        // device fd will be level-readable while the shared ring is nonempty.
+        // eventfd provides persistent edge state for this userspace stand-in.
+        // The real device fd will be level-readable while the ring is nonempty.
         for (;;)
         {
             std::uint64_t value{};
@@ -761,164 +777,130 @@ private:
     view_t<element_t> reader_view_{};
 };
 
-} // namespace crv::ipc::spsc_ring
+} // namespace crv::ipc::spsc_ring::test_support
+
+//
+// Explicit GoogleTest/GoogleMock tests
+//
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace {
 
 using namespace crv::ipc::spsc_ring;
+using namespace crv::ipc::spsc_ring::test_support;
 
-#define CHECK(expression)                                                                         \
-    do                                                                                            \
-    {                                                                                             \
-        if (!(expression))                                                                        \
-        {                                                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, #expression); \
-            return false;                                                                         \
-        }                                                                                         \
-    } while (false)
+using ::testing::InSequence;
+using ::testing::Invoke;
+using ::testing::Ref;
+using ::testing::Return;
+using ::testing::StrictMock;
 
-enum class atomic_operation_t : std::uint8_t
+class mock_atomic_access_t
 {
-    load_relaxed,
-    load_acquire,
-    store_relaxed,
-    store_release,
+public:
+    MOCK_METHOD(sequence_t, load_relaxed, (sequence_storage_t & storage), (const, noexcept));
+    MOCK_METHOD(sequence_t, load_acquire, (sequence_storage_t & storage), (const, noexcept));
+    MOCK_METHOD(void, store_relaxed, (sequence_storage_t & storage, sequence_t value), (const, noexcept));
+    MOCK_METHOD(void, store_release, (sequence_storage_t & storage, sequence_t value), (const, noexcept));
 };
 
-struct atomic_event_t
+struct mock_atomic_access_delegate_t
 {
-    atomic_operation_t operation{};
-    sequence_storage_t* storage{};
-    sequence_t value{};
-};
+    mock_atomic_access_t* mock{};
 
-struct atomic_log_t
-{
-    std::array<atomic_event_t, 32> events{};
-    std::size_t size{};
+    auto load_relaxed(sequence_storage_t& storage) const noexcept -> sequence_t { return mock->load_relaxed(storage); }
 
-    void clear() noexcept { size = 0; }
-
-    void record(atomic_operation_t operation, sequence_storage_t& storage, sequence_t value) noexcept
-    {
-        if (size == events.size()) std::abort();
-        events[size++] = {
-            .operation = operation,
-            .storage = &storage,
-            .value = value,
-        };
-    }
-};
-
-struct recording_atomic_access_t
-{
-    atomic_log_t* log{};
-
-    auto load_relaxed(sequence_storage_t& storage) const noexcept -> sequence_t
-    {
-        log->record(atomic_operation_t::load_relaxed, storage, storage.value);
-        return storage.value;
-    }
-
-    auto load_acquire(sequence_storage_t& storage) const noexcept -> sequence_t
-    {
-        log->record(atomic_operation_t::load_acquire, storage, storage.value);
-        return storage.value;
-    }
+    auto load_acquire(sequence_storage_t& storage) const noexcept -> sequence_t { return mock->load_acquire(storage); }
 
     void store_relaxed(sequence_storage_t& storage, sequence_t value) const noexcept
     {
-        storage.value = value;
-        log->record(atomic_operation_t::store_relaxed, storage, value);
+        mock->store_relaxed(storage, value);
     }
 
     void store_release(sequence_storage_t& storage, sequence_t value) const noexcept
     {
-        storage.value = value;
-        log->record(atomic_operation_t::store_release, storage, value);
+        mock->store_release(storage, value);
     }
 };
 
-static_assert(atomic_access<recording_atomic_access_t>);
+static_assert(std::copyable<mock_atomic_access_delegate_t>);
+static_assert(atomic_access<mock_atomic_access_delegate_t>);
 
-auto test_view_validation() -> bool
+void store_sequence(sequence_storage_t& storage, sequence_t value) noexcept
+{
+    storage.value = value;
+}
+
+TEST(SpscRingView, ValidatesAbiDescription)
 {
     owned_mapping_t<raw_displacement_t> mapping{8};
 
     view_t<raw_displacement_t> raw_view;
-    CHECK(view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), raw_view) == bind_error_t::none);
+    EXPECT_EQ(view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), raw_view), bind_error_t::none);
 
     view_t<velocity_sample_t> wrong_view;
-    CHECK(view_t<velocity_sample_t>::bind(mapping.memory(), mapping.bytes(), wrong_view) == bind_error_t::wrong_format);
+    EXPECT_EQ(
+        view_t<velocity_sample_t>::bind(mapping.memory(), mapping.bytes(), wrong_view), bind_error_t::wrong_format);
 
     auto const old_magic = raw_view.header().description.magic_value;
     raw_view.header().description.magic_value = 0;
 
     view_t<raw_displacement_t> bad_magic_view;
-    CHECK(
-        view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), bad_magic_view) == bind_error_t::bad_magic);
+    EXPECT_EQ(
+        view_t<raw_displacement_t>::bind(mapping.memory(), mapping.bytes(), bad_magic_view), bind_error_t::bad_magic);
 
     raw_view.header().description.magic_value = old_magic;
-    return true;
 }
 
-auto test_atomic_semantics() -> bool
+TEST(SpscRingAtomicSemantics, UsesAcquireReleaseAtThePublicationBoundaries)
 {
     owned_mapping_t<raw_displacement_t> mapping{4};
     auto view = mapping.view();
 
-    atomic_log_t producer_log;
-    producer_t<raw_displacement_t, recording_atomic_access_t> producer{
+    StrictMock<mock_atomic_access_t> producer_atomic;
+
+    {
+        InSequence sequence;
+        EXPECT_CALL(producer_atomic, load_relaxed(Ref(view.header().producer.head))).WillOnce(Return(0));
+        EXPECT_CALL(producer_atomic, load_relaxed(Ref(view.header().producer.dropped))).WillOnce(Return(0));
+    }
+
+    producer_t<raw_displacement_t, mock_atomic_access_delegate_t> producer{
         view,
-        recording_atomic_access_t{.log = &producer_log},
+        mock_atomic_access_delegate_t{.mock = &producer_atomic},
     };
 
-    CHECK(producer_log.size == 2);
-    CHECK(producer_log.events[0].operation == atomic_operation_t::load_relaxed);
-    CHECK(producer_log.events[0].storage == &view.header().producer.head);
-    CHECK(producer_log.events[1].operation == atomic_operation_t::load_relaxed);
-    CHECK(producer_log.events[1].storage == &view.header().producer.dropped);
+    {
+        InSequence sequence;
+        EXPECT_CALL(producer_atomic, load_acquire(Ref(view.header().consumer.tail))).WillOnce(Return(0));
+        EXPECT_CALL(producer_atomic, store_release(Ref(view.header().producer.head), 1))
+            .WillOnce(Invoke(store_sequence));
+    }
 
-    producer_log.clear();
-    CHECK(producer.try_push({.timestamp_ns = 1, .x = 2, .y = 3}) == push_result_t::published);
+    EXPECT_EQ(producer.try_push({.timestamp_ns = 1, .x = 2, .y = 3}), push_result_t::published);
 
-    CHECK(producer_log.size == 2);
-    CHECK(producer_log.events[0].operation == atomic_operation_t::load_acquire);
-    CHECK(producer_log.events[0].storage == &view.header().consumer.tail);
-    CHECK(producer_log.events[1].operation == atomic_operation_t::store_release);
-    CHECK(producer_log.events[1].storage == &view.header().producer.head);
-    CHECK(producer_log.events[1].value == 1);
+    StrictMock<mock_atomic_access_t> consumer_atomic;
+    EXPECT_CALL(consumer_atomic, load_relaxed(Ref(view.header().consumer.tail))).WillOnce(Return(0));
 
-    atomic_log_t consumer_log;
-    consumer_t<raw_displacement_t, recording_atomic_access_t> consumer{
+    consumer_t<raw_displacement_t, mock_atomic_access_delegate_t> consumer{
         view,
-        recording_atomic_access_t{.log = &consumer_log},
+        mock_atomic_access_delegate_t{.mock = &consumer_atomic},
     };
 
-    CHECK(consumer_log.size == 1);
-    CHECK(consumer_log.events[0].operation == atomic_operation_t::load_relaxed);
-    CHECK(consumer_log.events[0].storage == &view.header().consumer.tail);
+    EXPECT_CALL(consumer_atomic, load_acquire(Ref(view.header().producer.head))).WillOnce(Return(1));
 
-    consumer_log.clear();
     auto const readable = consumer.readable();
-    CHECK(readable.size() == 1);
-    auto const expected_record = raw_displacement_t{.timestamp_ns = 1, .x = 2, .y = 3};
-    CHECK(readable[0] == expected_record);
-    CHECK(consumer_log.size == 1);
-    CHECK(consumer_log.events[0].operation == atomic_operation_t::load_acquire);
-    CHECK(consumer_log.events[0].storage == &view.header().producer.head);
+    ASSERT_EQ(readable.size(), 1u);
+    EXPECT_EQ(readable.front(), (raw_displacement_t{.timestamp_ns = 1, .x = 2, .y = 3}));
 
-    consumer_log.clear();
-    CHECK(consumer.consume(1));
-    CHECK(consumer_log.size == 1);
-    CHECK(consumer_log.events[0].operation == atomic_operation_t::store_release);
-    CHECK(consumer_log.events[0].storage == &view.header().consumer.tail);
-    CHECK(consumer_log.events[0].value == 1);
+    EXPECT_CALL(consumer_atomic, store_release(Ref(view.header().consumer.tail), 1)).WillOnce(Invoke(store_sequence));
 
-    return true;
+    EXPECT_TRUE(consumer.consume(1));
 }
 
-auto test_wraparound_and_drop_new() -> bool
+TEST(SpscRing, WrapsAndDropsNewRecordsWhenFull)
 {
     owned_mapping_t<raw_displacement_t> mapping{4};
     producer_t<raw_displacement_t> producer{mapping.view()};
@@ -926,55 +908,54 @@ auto test_wraparound_and_drop_new() -> bool
 
     for (std::uint64_t value = 1; value <= 4; ++value)
     {
-        CHECK(producer.try_push({
-                  .timestamp_ns = value,
-                  .x = static_cast<std::int64_t>(value * 10),
-                  .y = -static_cast<std::int64_t>(value * 10),
-              })
-            == push_result_t::published);
+        EXPECT_EQ(producer.try_push({
+                      .timestamp_ns = value,
+                      .x = static_cast<std::int64_t>(value * 10),
+                      .y = -static_cast<std::int64_t>(value * 10),
+                  }),
+            push_result_t::published);
     }
 
-    CHECK(producer.try_push({.timestamp_ns = 5}) == push_result_t::full);
-    CHECK(consumer.dropped() == 1);
+    EXPECT_EQ(producer.try_push({.timestamp_ns = 5}), push_result_t::full);
+    EXPECT_EQ(consumer.dropped(), 1u);
 
     auto first = consumer.readable();
-    CHECK(first.size() == 4);
-    CHECK(first.front().timestamp_ns == 1);
-    CHECK(first.back().timestamp_ns == 4);
-    CHECK(consumer.consume(3));
+    ASSERT_EQ(first.size(), 4u);
+    EXPECT_EQ(first.front().timestamp_ns, 1u);
+    EXPECT_EQ(first.back().timestamp_ns, 4u);
+    ASSERT_TRUE(consumer.consume(3));
 
     for (std::uint64_t value = 5; value <= 7; ++value)
     {
-        CHECK(producer.try_push({.timestamp_ns = value}) == push_result_t::published);
+        EXPECT_EQ(producer.try_push({.timestamp_ns = value}), push_result_t::published);
     }
 
     auto wrapped_tail = consumer.readable();
-    CHECK(wrapped_tail.size() == 1);
-    CHECK(wrapped_tail[0].timestamp_ns == 4);
-    CHECK(consumer.consume(1));
+    ASSERT_EQ(wrapped_tail.size(), 1u);
+    EXPECT_EQ(wrapped_tail.front().timestamp_ns, 4u);
+    ASSERT_TRUE(consumer.consume(1));
 
     auto wrapped_head = consumer.readable();
-    CHECK(wrapped_head.size() == 3);
-    CHECK(wrapped_head[0].timestamp_ns == 5);
-    CHECK(wrapped_head[1].timestamp_ns == 6);
-    CHECK(wrapped_head[2].timestamp_ns == 7);
-    CHECK(consumer.consume(wrapped_head.size()));
-    CHECK(consumer.empty());
-    CHECK(!consumer.corrupt());
-
-    return true;
+    ASSERT_EQ(wrapped_head.size(), 3u);
+    EXPECT_EQ(wrapped_head[0].timestamp_ns, 5u);
+    EXPECT_EQ(wrapped_head[1].timestamp_ns, 6u);
+    EXPECT_EQ(wrapped_head[2].timestamp_ns, 7u);
+    EXPECT_TRUE(consumer.consume(wrapped_head.size()));
+    EXPECT_TRUE(consumer.empty());
+    EXPECT_FALSE(consumer.corrupt());
 }
 
-auto test_threaded_spsc() -> bool
+TEST(SpscRing, TransfersRecordsAcrossDistinctSharedMappingAliases)
 {
     constexpr auto sample_count = std::uint64_t{250'000};
     constexpr auto checksum_mask = std::uint64_t{0x9E37'79B9'7F4A'7C15};
 
     aliased_mapping_t<velocity_sample_t> mapping{1024};
-    CHECK(mapping.mappings_are_distinct());
+    ASSERT_TRUE(mapping.mappings_are_distinct());
+
     std::atomic<bool> producer_failed{false};
 
-    std::thread producer_thread{[&] {
+    std::jthread producer_thread{[&] {
         producer_t<velocity_sample_t> producer{mapping.writer_view()};
 
         for (std::uint64_t sequence = 1; sequence <= sample_count; ++sequence)
@@ -1025,14 +1006,13 @@ auto test_threaded_spsc() -> bool
 
     producer_thread.join();
 
-    CHECK(!producer_failed.load(std::memory_order_relaxed));
-    CHECK(!data_failed);
-    CHECK(!consumer.corrupt());
-    CHECK(consumer.empty());
-    return true;
+    EXPECT_FALSE(producer_failed.load(std::memory_order_relaxed));
+    EXPECT_FALSE(data_failed);
+    EXPECT_FALSE(consumer.corrupt());
+    EXPECT_TRUE(consumer.empty());
 }
 
-auto test_epoll_shaped_integration() -> bool
+TEST(SpscRingReader, WaitsThroughAnEpollShapedStandIn)
 {
     constexpr auto sample_count = std::uint64_t{32};
 
@@ -1044,7 +1024,7 @@ auto test_epoll_shaped_integration() -> bool
         channel.waiter(),
     };
 
-    std::thread producer_thread{[&] {
+    std::jthread producer_thread{[&] {
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
         writer_t<raw_displacement_t, std_atomic_access_t, eventfd_notifier_t> writer{
@@ -1064,7 +1044,7 @@ auto test_epoll_shaped_integration() -> bool
         }
     }};
 
-    CHECK(reader.wait_until_readable(2'000));
+    ASSERT_TRUE(reader.wait_until_readable(2'000));
 
     auto expected = std::uint64_t{1};
     while (expected <= sample_count)
@@ -1072,57 +1052,23 @@ auto test_epoll_shaped_integration() -> bool
         auto const batch = reader.readable();
         if (batch.empty())
         {
-            CHECK(reader.wait_until_readable(2'000));
+            ASSERT_TRUE(reader.wait_until_readable(2'000));
             continue;
         }
 
         for (auto const& sample : batch)
         {
-            CHECK(sample.timestamp_ns == expected);
-            CHECK(sample.x == static_cast<std::int64_t>(expected));
-            CHECK(sample.y == -static_cast<std::int64_t>(expected));
+            EXPECT_EQ(sample.timestamp_ns, expected);
+            EXPECT_EQ(sample.x, static_cast<std::int64_t>(expected));
+            EXPECT_EQ(sample.y, -static_cast<std::int64_t>(expected));
             ++expected;
         }
 
-        CHECK(reader.consume(batch.size()));
+        ASSERT_TRUE(reader.consume(batch.size()));
     }
 
     producer_thread.join();
-    CHECK(!reader.corrupt());
-    return true;
+    EXPECT_FALSE(reader.corrupt());
 }
-
-using test_function_t = auto (*)() -> bool;
-
-struct test_case_t
-{
-    char const* name;
-    test_function_t function;
-};
 
 } // namespace
-
-int main()
-{
-    auto const tests = std::array{
-        test_case_t{"view validation", &test_view_validation},
-        test_case_t{"atomic semantics", &test_atomic_semantics},
-        test_case_t{"wraparound and drop-new", &test_wraparound_and_drop_new},
-        test_case_t{"threaded SPSC", &test_threaded_spsc},
-        test_case_t{"epoll-shaped integration", &test_epoll_shaped_integration},
-    };
-
-    for (auto const& test : tests)
-    {
-        std::printf("[ RUN      ] %s\n", test.name);
-        if (!test.function())
-        {
-            std::printf("[  FAILED  ] %s\n", test.name);
-            return EXIT_FAILURE;
-        }
-        std::printf("[       OK ] %s\n", test.name);
-    }
-
-    std::printf("[  PASSED  ] %zu tests\n", tests.size());
-    return EXIT_SUCCESS;
-}
