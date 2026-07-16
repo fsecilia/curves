@@ -308,6 +308,13 @@ if (enable_testing)
             spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
+
+        add_executable(ipc_spsc_ring_integration_test
+            ipc/spsc_ring/integration_test.cpp
+        )
+        target_link_libraries(ipc_spsc_ring_integration_test PRIVATE lib testing)
+
+
     endif()
 endif()
 
