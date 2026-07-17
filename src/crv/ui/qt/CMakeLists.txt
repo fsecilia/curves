@@ -47,7 +47,17 @@ set(qml_cpp_files
 set(QT_FORCE_CMP0156_TO_VALUE NEW)
 
 # find qt
-find_package(Qt6 REQUIRED COMPONENTS Gui LinguistTools Qml Quick Test Widgets)
+find_package(Qt6 REQUIRED COMPONENTS
+    Core
+    Gui
+    LinguistTools
+    Qml
+    QmlModels
+    QmlWorkerScript
+    Quick
+    Test
+    Widgets
+)
 
 # bail if linking against static libs
 get_target_property(qt_qml_type Qt6::Qml TYPE)
@@ -77,18 +87,21 @@ target_include_directories(qt_ui PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/widgets"
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
+set_target_properties(qt_ui PROPERTIES DISABLE_STRICT_ALIASING ON)
 target_link_libraries(qt_ui PUBLIC
     lib
     ui
 
+    Qt6::Core
     Qt6::Gui
-    Qt6::Qml
     Qt6::Quick
+    Qt6::Qml
+    Qt6::QmlModels
+    Qt6::QmlWorkerScript
 
     # link against widgets for message box until we have a way to report errors
     Qt6::Widgets
 )
-set_target_properties(qt_ui PROPERTIES DISABLE_STRICT_ALIASING ON)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qt_ui PRIVATE
@@ -107,11 +120,11 @@ qt_add_qml_module(qml
     SOURCES ${qml_cpp_files}
 )
 target_include_directories(qml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
-target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
 endif()
 set_target_properties(qml PROPERTIES DISABLE_STRICT_ALIASING ON)
+target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 
 # common test library
 add_library(qt_ui_testing
@@ -130,14 +143,16 @@ add_executable(qt_ui_test
     widgets/graph/grid_renderer_test.cpp
     widgets/graph_test.cpp
 )
+set_target_properties(qt_ui_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing qml Qt6::Test)
 gtest_discover_tests(qt_ui_test)
 
 # main executable.
 qt_add_executable(qt ${qt_files})
-set_target_properties(qt
-    PROPERTIES OUTPUT_NAME ${project_name_dashes}-config
+set_target_properties(qt PROPERTIES
+    OUTPUT_NAME ${project_name_dashes}-config
     QT_EXCLUDE_FROM_TRANSLATION ON
+    QT_QML_MODULE_NO_IMPORT_SCAN ON
 )
 target_include_directories(qt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
 target_link_libraries(qt PRIVATE qt_ui qml)

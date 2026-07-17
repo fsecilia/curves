@@ -39,11 +39,11 @@ public:
     static auto construct(int& argc, char** argv) -> std::unique_ptr<app_t>;
     ~app_t() override;
 
-    Q_INVOKABLE auto apply() -> void;
+    Q_INVOKABLE void apply();
 
     Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
-    Q_INVOKABLE auto set_active_curve(int index) -> void;
+    Q_INVOKABLE void set_active_curve(int index);
 
     Q_PROPERTY(QVariant curve READ curve NOTIFY curveChanged)
     auto curve() const -> QVariant { return qt::pack_curve(*curve_); }

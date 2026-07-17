@@ -71,12 +71,8 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
 {
     sut_t sut{
         integral_t{&mock_integral},
-        {
-            {0.0, 0.0},
-            {1.0, 2.5},
-            {2.0, 5.0},
-            {3.0, 8.5},
-        },
+        {0.0, 1.0, 2.0, 3.0},
+        {0.0, 2.5, 5.0, 8.5},
     };
 
     auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
@@ -202,10 +198,8 @@ struct quadrature_antiderivative_test_minimal_cache_t : quadrature_antiderivativ
 {
     sut_t sut{
         integral_t{&mock_integral},
-        {
-            {0.0, 0.0},
-            {1.5, 3.0},
-        },
+        {0.0, 1.5},
+        {0.0, 3.0},
     };
 
     auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
@@ -268,18 +262,19 @@ struct quadrature_antiderivative_builder_t : Test
     using move_only_id_t = std::unique_ptr<int_t>;
     using integral_t = move_only_id_t;
 
-    using map_t = std::flat_map<scalar_t, scalar_t>;
+    using boundaries_t = std::vector<scalar_t>;
+    using cumulative_sums_t = std::vector<scalar_t>;
 
     struct antiderivative_t
     {
         using scalar_t = float_t;
-        using map_t = map_t;
-        using boundaries_t = map_t::key_container_type;
-        using cumulative_sums_t = map_t::mapped_container_type;
+        using boundaries_t = boundaries_t;
+        using cumulative_sums_t = cumulative_sums_t;
         using integral_t = integral_t;
 
         integral_t integral;
-        map_t intervals;
+        boundaries_t boundaries;
+        cumulative_sums_t cumulative_sums;
     };
 
     using sut_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
@@ -299,8 +294,9 @@ TEST_F(quadrature_antiderivative_builder_t, append_none)
 {
     auto const actual = finalize();
 
-    EXPECT_EQ(*actual.antiderivative.integral, expected_integral_id);
-    EXPECT_EQ((map_t{{0, 0}}), actual.antiderivative.intervals);
+    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
+    EXPECT_EQ(boundaries_t{0}, actual.antiderivative.boundaries);
+    EXPECT_EQ(cumulative_sums_t{0}, actual.antiderivative.cumulative_sums);
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 0.0);
     EXPECT_DOUBLE_EQ(actual.max_error, 0.0);
@@ -312,8 +308,13 @@ TEST_F(quadrature_antiderivative_builder_t, append_one)
 
     auto const actual = finalize();
 
-    EXPECT_EQ(*actual.antiderivative.integral, expected_integral_id);
-    EXPECT_EQ((map_t{{0, 0}, {1.3, 5.7}}), actual.antiderivative.intervals);
+    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
+
+    auto const expected_boundaries = boundaries_t{0.0, 1.3};
+    EXPECT_EQ(expected_boundaries, actual.antiderivative.boundaries);
+
+    auto const expected_cumulative_sums = cumulative_sums_t{0.0, 5.7};
+    EXPECT_EQ(expected_cumulative_sums, actual.antiderivative.cumulative_sums);
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11);
     EXPECT_DOUBLE_EQ(actual.max_error, 7.11);
@@ -327,9 +328,13 @@ TEST_F(quadrature_antiderivative_builder_t, append_many)
 
     auto const actual = finalize();
 
-    EXPECT_EQ(*actual.antiderivative.integral, expected_integral_id);
-    EXPECT_EQ((map_t{{0, 0}, {1.3, 5.7}, {13.17, 5.7 + 17.19}, {23.29, 5.7 + 17.19 + 31.37}}),
-        actual.antiderivative.intervals);
+    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
+
+    auto const expected_boundaries = boundaries_t{0, 1.3, 13.17, 23.29};
+    EXPECT_EQ(expected_boundaries, actual.antiderivative.boundaries);
+
+    auto const expected_cumulative_sums = cumulative_sums_t{0, 5.7, 5.7 + 17.19, 5.7 + 17.19 + 31.37};
+    EXPECT_EQ(expected_cumulative_sums, actual.antiderivative.cumulative_sums);
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11 + 53.59 + 41.43);
     EXPECT_DOUBLE_EQ(actual.max_error, 53.59);

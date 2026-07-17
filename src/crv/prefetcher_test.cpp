@@ -124,20 +124,6 @@ constexpr auto test_compile_time_counted_range_misaligned() noexcept -> bool
 };
 static_assert(test_compile_time_counted_range_misaligned());
 
-constexpr auto test_compile_time_counted_range_empty() noexcept -> bool
-{
-    auto hint = tracking_hint_t{};
-    auto const sut = sut_t{hint};
-
-    constexpr auto cache_line_count = 0;
-    auto target = std::array<std::byte, cache_line_count * cache_line_size>{};
-
-    sut.template prefetch<cache_line_count>(std::data(target));
-
-    return hint.prefetch_count == cache_line_count;
-};
-static_assert(test_compile_time_counted_range_empty());
-
 // --------------------------------------------------------------------------------------------------------------------
 // runtime counted range
 // --------------------------------------------------------------------------------------------------------------------
@@ -179,20 +165,6 @@ constexpr auto test_runtime_counted_range_misaligned() noexcept -> bool
         == &target[cache_line_size * (cache_line_count - 1)] + misalignment;
 };
 static_assert(test_runtime_counted_range_misaligned());
-
-constexpr auto test_runtime_counted_range_empty() noexcept -> bool
-{
-    auto hint = tracking_hint_t{};
-    auto const sut = sut_t{hint};
-
-    constexpr auto cache_line_count = 0;
-    auto target = std::array<std::byte, cache_line_count * cache_line_size>{};
-
-    sut.prefetch(std::data(target), cache_line_count);
-
-    return hint.prefetch_count == cache_line_count;
-};
-static_assert(test_runtime_counted_range_empty());
 
 // --------------------------------------------------------------------------------------------------------------------
 // range

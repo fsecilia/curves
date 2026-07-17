@@ -74,11 +74,11 @@ public:
     auto roleNames() const -> QHash<int, QByteArray> override;
 
     // called back from qml to handle changes from mouse wheel
-    Q_INVOKABLE auto on_wheel(int row, QVariant const& value) -> void;
+    Q_INVOKABLE void on_wheel(int row, QVariant const& value);
 
     // static ui lookups
-    Q_INVOKABLE auto get_value(QString const& path) const -> QVariant;
-    Q_INVOKABLE auto set_value(QString const& path, QVariant const& value, bool mergeable) -> void;
+    Q_INVOKABLE QVariant get_value(QString const& path) const;
+    Q_INVOKABLE void set_value(QString const& path, QVariant const& value, bool mergeable);
 
     /// called by command's notify lambda when value actually changes
     auto update_node_value(int_t row, QVariant const& new_value) -> void;

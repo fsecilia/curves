@@ -47,8 +47,8 @@ public:
     auto curve() const -> QVariant { return qt::pack_curve(*curve_); }
     void setCurve(QVariant const& curve);
 
-    Q_INVOKABLE auto pan(QPointF const& delta) -> void;
-    Q_INVOKABLE auto zoom(QPointF const& angle_delta, QPointF const& mouse_pos) -> void;
+    Q_INVOKABLE void pan(QPointF const& delta);
+    Q_INVOKABLE void zoom(QPointF const& angle_delta, QPointF const& mouse_pos);
 
 signals:
     void domainChanged();

@@ -60,10 +60,10 @@ static_assert(polynomial_t{int_t{3}, int_t{5}, int_t{7}}(int_t{10}) == (3 * 10 +
 
 namespace type_promotion_tests {
 
-// coeffs are 8-bit, evaluation t is 16-bit
+// coeffs are 8-bit, evaluation value_t is 16-bit
 static_assert(polynomial_t{int8_t{3}, int8_t{5}, int8_t{7}}(int16_t{100}) == int16_t{30507});
 
-// coeffs are integer, evaluation t is float
+// coeffs are integer, evaluation value_t is float
 //
 // LET THIS REMAIN AS A WARNING!
 //
@@ -115,15 +115,32 @@ struct scalar_t
 
     constexpr auto operator==(scalar_t const&) const noexcept -> bool = default;
 
-    // friend auto operator<<(std::ostream& out, scalar_t const& src) -> std::ostream& { return out << src.expression; }
+    friend auto operator<<(std::ostream& out, scalar_t const& src) -> std::ostream& { return out << src.expression; }
 };
 
-static_assert(polynomial_t{scalar_t{"a"}}(scalar_t{"t"}) == scalar_t{"a"});
-static_assert(polynomial_t{scalar_t{"a"}, scalar_t{"b"}}(scalar_t{"t"}) == scalar_t{"(a*t + b)"});
-static_assert(
-    polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}}(scalar_t{"t"}) == scalar_t{"((a*t + b)*t + c)"});
-static_assert(polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}, scalar_t{"d"}}(scalar_t{"t"})
-    == scalar_t{"(((a*t + b)*t + c)*t + d)"});
+TEST(polynomial_symbolic_evaluation_test, constant)
+{
+    auto const sut = polynomial_t{scalar_t{"a"}};
+    EXPECT_EQ(scalar_t{"a"}, sut(scalar_t{"t"}));
+}
+
+TEST(polynomial_symbolic_evaluation_test, linear)
+{
+    auto const sut = polynomial_t{scalar_t{"a"}, scalar_t{"b"}};
+    EXPECT_EQ(scalar_t{"(a*t + b)"}, sut(scalar_t{"t"}));
+}
+
+TEST(polynomial_symbolic_evaluation_test, quadratic)
+{
+    auto const sut = polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}};
+    EXPECT_EQ(scalar_t{"((a*t + b)*t + c)"}, sut(scalar_t{"t"}));
+}
+
+TEST(polynomial_symbolic_evaluation_test, cubic)
+{
+    auto const sut = polynomial_t{scalar_t{"a"}, scalar_t{"b"}, scalar_t{"c"}, scalar_t{"d"}};
+    EXPECT_EQ(scalar_t{"(((a*t + b)*t + c)*t + d)"}, sut(scalar_t{"t"}));
+}
 
 } // namespace symbolic_evaluation_tests
 

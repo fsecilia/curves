@@ -118,7 +118,7 @@ struct segment_quantizer_t
                 // remaining terms. Instead, equivalently zero all of the terms up to this point and restart from here.
 
                 // flush earlier terms to zero
-                std::fill_n(std::begin(unpacked), field_index, {});
+                std::fill_n(std::begin(unpacked), field_index, unpacked_field_t{});
 
                 // adopt next_term as the new accumulator baseline, restarting
                 accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
