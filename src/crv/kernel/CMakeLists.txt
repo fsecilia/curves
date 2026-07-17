@@ -229,12 +229,16 @@ if(kernel_is_clang)
 endif()
 
 # encapsulate external make command
-set(kbuild_make_command make -sC "${kbuild_root}" ${kbuild_compiler_flags} V=1 "M=${kbuild_shadow_root}")
+set(kbuild_make_command
+    make -sC "${kbuild_root}"
+    ${kbuild_compiler_flags} V=1
+    "M=${kbuild_shadow_root}"
+    "LDFLAGS_MODULE=--force-group-allocation")
 
 # main build
 add_custom_command(
     OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
-    COMMAND ${kbuild_make_command} $<$<CONFIG:DEBUG>:EXTRA_CFLAGS=-DNDEBUG> modules
+    COMMAND ${kbuild_make_command} $<$<NOT:$<CONFIG:Debug>>:KCFLAGS=-DNDEBUG> modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     DEPENDS ${srcs_kbuild_abs} ${srcs_kbuild_orig} "${makefile_dst}" "${kbuild_gen}"
     COMMENT "building kernel module"

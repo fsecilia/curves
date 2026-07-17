@@ -42,7 +42,6 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
     target_compile_options(project_options INTERFACE
         -fsized-deallocation
-        -gsplit-dwarf
 
         $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
         $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
