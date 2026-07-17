@@ -117,6 +117,7 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
+    kernel/input/abi.h
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
     lib.hpp

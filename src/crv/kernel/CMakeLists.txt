@@ -65,6 +65,7 @@ set(hdrs_kernel
 )
 
 set(srcs_kernel
+    input/abi.c
     input/handler.c
     copy_to_user.c
     entry_point.c
