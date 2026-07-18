@@ -12,8 +12,11 @@ namespace {
 
 // x_t = fixed_t<int64_t, 42>
 //
-// A 32khz mouse fully saturating input at max rate produces a velocity of sqrt(2*(2^15 - 1)^2)*32 ~= 20.5 bits, so
-// we need 21 integer bits, which gives Q21.42.
+// A 32khz mouse fully saturating input at max rate produces a velocity of
+//
+//    sqrt(2*(2^15 - 1)^2)*32 counts/ms ~= 20.5 bits
+//
+// so we need 21 integer bits, which gives Q21.42.
 static_assert(prod_pipeline_config_t::x_t::frac_bits == 42);
 
 // y_t = fixed_t<int64_t, 45>
