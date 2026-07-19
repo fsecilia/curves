@@ -117,6 +117,7 @@ target_compile_definitions(kernel_nav PRIVATE
     "KBUILD_MODNAME=${project_name_underscores}"
 )
 target_include_directories(kernel_nav PRIVATE
+    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
     "${kbuild_root}/include"
     "${kbuild_root}/arch/x86/include"
     "${kbuild_root}/arch/x86/include/generated"
