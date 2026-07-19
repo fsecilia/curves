@@ -55,11 +55,13 @@ set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 
 set(hdrs_kernel
     cxx/cassert
+    input/capture/device.h
     input/handler.h
 )
 
 set(srcs_kernel
     input/abi.c
+    input/capture/device.c
     input/handler.c
     entry_point.c
 )

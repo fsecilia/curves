@@ -119,6 +119,8 @@ target_sources_kernel(lib
     kernel/input/abi.h
     kernel/input/capture/abi.h
     kernel/input/capture/abi.cpp
+    kernel/input/capture/stream.cpp
+    kernel/input/capture/stream.hpp
     kernel/input/input_value_array_view.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
@@ -175,6 +177,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         i18n_test.cpp
+        kernel/input/capture/capture_integration_test.cpp
         kernel/input/input_value_array_view_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
