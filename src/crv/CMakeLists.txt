@@ -117,6 +117,8 @@ target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
     kernel/input/abi.h
+    kernel/input/capture/abi.h
+    kernel/input/capture/abi.cpp
     kernel/input/input_value_array_view.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
