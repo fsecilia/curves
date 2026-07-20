@@ -12,6 +12,8 @@ target_sources(lib PRIVATE
     concepts.hpp
     i18n.cpp
     i18n.hpp
+    io/capture_file.cpp
+    io/capture_file.hpp
     io/capture_stream.hpp
     io/unique_fd.hpp
     math/arg_min_max.hpp
@@ -175,6 +177,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         i18n_test.cpp
+        io/capture_file_integration_test.cpp
         io/capture_stream_test.cpp
         io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp
