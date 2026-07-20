@@ -177,6 +177,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         i18n_test.cpp
+        io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
