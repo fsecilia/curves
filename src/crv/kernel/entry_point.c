@@ -28,6 +28,9 @@
 #include <linux/types.h>
 #include <linux/wait.h>
 
+/// device, handle, and handler name; also the /dev node name
+#define CRV_CAPTURE_NAME "crv-input-capture"
+
 /// number of crv_capture_event objects retained in the stream FIFO
 ///
 /// At 24 bytes per value this occupies 1.5 MiB of module BSS. For a mouse producing four input values at 4 kHz, it
@@ -216,7 +219,7 @@ static const struct file_operations crv_capture_file_operations = {
 };
 static struct miscdevice crv_capture_misc_device = {
     .minor = MISC_DYNAMIC_MINOR,
-    .name = "crv-input-capture",
+    .name = CRV_CAPTURE_NAME,
     .fops = &crv_capture_file_operations,
     .mode = 0400,
 };
@@ -314,7 +317,7 @@ static int crv_capture_connect(
 
     source->handle.dev = device;
     source->handle.handler = handler;
-    source->handle.name = "crv-input-capture";
+    source->handle.name = CRV_CAPTURE_NAME;
     source->handle.private = source;
 
     error = input_register_handle(&source->handle);
@@ -406,7 +409,7 @@ static struct input_handler crv_capture_input_handler = {
     .events = crv_capture_events,
     .connect = crv_capture_connect,
     .disconnect = crv_capture_disconnect,
-    .name = "crv-input-capture",
+    .name = CRV_CAPTURE_NAME,
     .id_table = crv_capture_device_ids,
 };
 
