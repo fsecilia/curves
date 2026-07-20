@@ -50,7 +50,6 @@ struct crv_capture_state_t
     bool capture_active;
     bool stream_failed;
 
-    u64 session_generation;
     u64 next_batch_sequence;
     u64 dropped_batches;
     u64 dropped_values;
@@ -83,13 +82,9 @@ static int crv_capture_open(struct inode* inode, struct file* file)
         goto out_unlock;
     }
 
-    /*
-        capture_active is false before the exclusive-open token is released, so no producer can be writing while this
-        reset is performed.
-    */
+    // This occurs under the same lock the producer uses, so no producer can be writing while this reset is performed.
     kfifo_reset(&crv_capture_fifo);
 
-    crv_capture.session_generation++;
     crv_capture.next_batch_sequence = 0;
     crv_capture.dropped_batches = 0;
     crv_capture.dropped_values = 0;
@@ -232,20 +227,12 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
 {
     struct crv_capture_source_t* source = handle->private;
     ktime_t* timestamps;
-    u64 session_generation;
     u64 timestamp_ns;
     u64 sequence;
     unsigned long flags;
     unsigned int index;
 
     if (!count) return 0;
-
-    /*
-        Capture the session identity before doing any other work. If this callback started before a close/reopen
-        boundary but reaches the state lock afterward, the generation check below prevents it from leaking into the new
-        stream.
-    */
-    session_generation = READ_ONCE(crv_capture.session_generation);
 
     /*
         Use the report timestamp retained by the input core. If the lower driver did not supply one with
@@ -256,8 +243,7 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
 
     spin_lock_irqsave(&crv_capture.lock, flags);
 
-    if (!crv_capture.capture_active || crv_capture.stream_failed || crv_capture.session_generation != session_generation
-        || crv_capture.source != source)
+    if (!crv_capture.capture_active || crv_capture.stream_failed || crv_capture.source != source)
     {
         spin_unlock_irqrestore(&crv_capture.lock, flags);
         return count;
@@ -434,7 +420,6 @@ static int __init crv_init(void)
     crv_capture.source = NULL;
     crv_capture.capture_active = false;
     crv_capture.stream_failed = false;
-    crv_capture.session_generation = 0;
     crv_capture.next_batch_sequence = 0;
     crv_capture.dropped_batches = 0;
     crv_capture.dropped_values = 0;
