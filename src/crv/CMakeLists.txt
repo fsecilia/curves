@@ -119,6 +119,7 @@ target_sources_kernel(lib
     kernel/input/abi.h
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
+    kernel/input/capture_abi.h
     lib.hpp
     math/abs.hpp
     math/cmp.hpp
@@ -311,4 +312,5 @@ if (enable_testing)
 endif()
 
 add_subdirectory(kernel)
+add_subdirectory(tools)
 add_subdirectory(ui)
