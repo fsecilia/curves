@@ -21,6 +21,7 @@
 #include <linux/limits.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/poll.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/stringify.h>
@@ -139,6 +140,19 @@ static int crv_capture_release(struct inode* inode, struct file* file)
     return 0;
 }
 
+static __poll_t crv_capture_poll(struct file* file, poll_table* wait)
+{
+    __poll_t mask = 0;
+
+    poll_wait(file, &crv_capture.read_wait, wait);
+
+    if (!kfifo_is_empty(&crv_capture_fifo)) mask |= EPOLLIN | EPOLLRDNORM;
+    if (READ_ONCE(crv_capture.stream_failed)) mask |= EPOLLERR;
+    if (!READ_ONCE(crv_capture.capture_active)) mask |= EPOLLHUP;
+
+    return mask;
+}
+
 static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t count, loff_t* position)
 {
     unsigned int copied = 0;
@@ -179,9 +193,10 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
 
 static const struct file_operations crv_capture_file_operations = {
     .owner = THIS_MODULE,
+    .read = crv_capture_read,
+    .poll = crv_capture_poll,
     .open = crv_capture_open,
     .release = crv_capture_release,
-    .read = crv_capture_read,
 };
 static struct miscdevice crv_capture_misc_device = {
     .minor = MISC_DYNAMIC_MINOR,
