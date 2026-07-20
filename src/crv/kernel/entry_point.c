@@ -297,6 +297,9 @@ static int crv_capture_connect(
     /*
         input core serializes connect() and disconnect(). The state lock is still needed because open() may inspect
         source concurrently.
+
+        In this build, the first matching device wins for the duration of the module. When real acceleration comes
+        online, we will handle matching dynamically.
     */
     spin_lock_irqsave(&crv_capture.lock, flags);
     if (crv_capture.source)
