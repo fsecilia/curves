@@ -458,7 +458,7 @@ static void __exit crv_exit(void)
 module_init(crv_init);
 module_exit(crv_exit);
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("Dual MIT/GPL");
 MODULE_AUTHOR("Frank Secilia");
 MODULE_DESCRIPTION("Curves Mouse Acceleration Input Handler");
 MODULE_VERSION(__stringify(CRV_VERSION));
