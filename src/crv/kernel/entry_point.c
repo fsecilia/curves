@@ -86,8 +86,8 @@ static int crv_capture_open(struct inode* inode, struct file* file)
     crv_capture.next_batch_sequence = 0;
     crv_capture.dropped_batches = 0;
     crv_capture.dropped_values = 0;
-    crv_capture.stream_failed = false;
-    crv_capture.capture_active = true;
+    WRITE_ONCE(crv_capture.stream_failed, false);
+    WRITE_ONCE(crv_capture.capture_active, true);
 
     stream_open(inode, file);
 
@@ -111,7 +111,7 @@ static int crv_capture_release(struct inode* inode, struct file* file)
 
     spin_lock_irqsave(&crv_capture.lock, flags);
 
-    crv_capture.capture_active = false;
+    WRITE_ONCE(crv_capture.capture_active, false);
     dropped_batches = crv_capture.dropped_batches;
     dropped_values = crv_capture.dropped_values;
 
@@ -366,8 +366,8 @@ static void crv_capture_disconnect(struct input_handle* handle)
 
         if (crv_capture.capture_active)
         {
-            crv_capture.capture_active = false;
-            crv_capture.stream_failed = true;
+            WRITE_ONCE(crv_capture.capture_active, false);
+            WRITE_ONCE(crv_capture.stream_failed, true);
         }
     }
 
