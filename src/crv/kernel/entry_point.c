@@ -70,8 +70,6 @@ static int crv_capture_open(struct inode* inode, struct file* file)
     unsigned long flags;
     int error = 0;
 
-    (void)inode;
-
     if (atomic_cmpxchg(&crv_capture.opened, 0, 1) != 0) return -EBUSY;
 
     spin_lock_irqsave(&crv_capture.lock, flags);
@@ -91,7 +89,7 @@ static int crv_capture_open(struct inode* inode, struct file* file)
     crv_capture.stream_failed = false;
     crv_capture.capture_active = true;
 
-    file->private_data = &crv_capture;
+    stream_open(inode, file);
 
 out_unlock:
     spin_unlock_irqrestore(&crv_capture.lock, flags);
