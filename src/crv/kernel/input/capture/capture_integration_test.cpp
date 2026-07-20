@@ -5,7 +5,6 @@
 
 #include "stream.hpp"
 #include <crv/test/test.hpp>
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
@@ -520,6 +519,46 @@ TEST(capture_stream_producer, new_session_restarts_sequence_at_zero)
 
     EXPECT_EQ(first_batch_header.timestamp_ns, 200);
     EXPECT_EQ(first_batch_header.sequence, 0);
+}
+
+TEST(capture_stream_producer, calculates_required_scratch_size)
+{
+    constexpr auto capacity = std::size_t{64};
+    constexpr auto expected = sizeof(crv_capture_batch_header_t) + capacity * sizeof(crv_input_value_t);
+
+    auto result = crv_capture_size_t{};
+
+    ASSERT_TRUE(crv_capture_producer_required_scratch_size(capacity, &result));
+    EXPECT_EQ(result, expected);
+}
+
+TEST(capture_stream_producer, zero_capacity_requires_only_batch_header)
+{
+    auto result = crv_capture_size_t{};
+
+    ASSERT_TRUE(crv_capture_producer_required_scratch_size(0, &result));
+    EXPECT_EQ(result, sizeof(crv_capture_batch_header_t));
+}
+
+TEST(capture_stream_producer, required_scratch_size_rejects_null_result)
+{
+    EXPECT_FALSE(crv_capture_producer_required_scratch_size(64, nullptr));
+}
+
+TEST(capture_stream_producer, required_scratch_size_rejects_capacity_outside_wire_abi)
+{
+    if constexpr (sizeof(crv_capture_size_t) > sizeof(crv_capture_u32_t))
+    {
+        constexpr auto wire_max = std::numeric_limits<crv_capture_u32_t>::max();
+        constexpr auto too_large = static_cast<crv_capture_size_t>(wire_max) + 1;
+
+        auto result = crv_capture_size_t{123};
+
+        EXPECT_FALSE(crv_capture_producer_required_scratch_size(too_large, &result));
+
+        // Failure must not partially publish a result.
+        EXPECT_EQ(result, 123);
+    }
 }
 
 } // namespace

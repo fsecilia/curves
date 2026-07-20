@@ -119,6 +119,7 @@ target_sources_kernel(lib
     kernel/input/abi.h
     kernel/input/capture/abi.h
     kernel/input/capture/abi.cpp
+    kernel/input/capture/device.h
     kernel/input/capture/stream.cpp
     kernel/input/capture/stream.hpp
     kernel/input/input_value_array_view.hpp

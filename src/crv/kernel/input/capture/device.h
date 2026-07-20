@@ -10,12 +10,12 @@
 
 typedef __SIZE_TYPE__ crv_capture_size_t;
 
-/// opaque byte sink implemented by the linux c layer
+/// opaque byte sink implemented by linux c layer
 struct crv_capture_byte_sink_t;
 
 /// appends all bytes or appends nothing
 ///
-/// \returns true iff the complete byte range was appended.
+/// \returns true iff complete byte range was appended
 int crv_capture_byte_sink_try_write_exact(
     struct crv_capture_byte_sink_t* sink, void const* source, crv_capture_size_t size);
 
@@ -45,7 +45,12 @@ enum crv_capture_push_result_t
     CRV_CAPTURE_SCRATCH_TOO_SMALL,
 };
 
-/// resets producer state and appends the authoritative stream header
+/// calculates scratch storage required to frame a callback with given capacity
+///
+/// \returns true iff capacity is representable by wire ABI and size calculation succeeds
+int crv_capture_producer_required_scratch_size(crv_capture_size_t capacity, crv_capture_size_t* result);
+
+/// resets producer state and appends authoritative stream header
 ///
 /// The sink and scratch storage must already be initialized.
 int crv_capture_producer_begin_session(struct crv_capture_producer_context_t* context);
