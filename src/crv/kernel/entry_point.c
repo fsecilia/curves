@@ -153,13 +153,15 @@ static __poll_t crv_capture_poll(struct file* file, poll_table* wait)
     return mask;
 }
 
+static DEFINE_MUTEX(crv_capture_read_lock);
+
 static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t count, loff_t* position)
 {
     unsigned int copied = 0;
     unsigned int requested;
+    ssize_t result;
     int error;
 
-    (void)file;
     (void)position;
 
     if (count == 0) return 0;
@@ -169,6 +171,9 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
     requested = count > UINT_MAX ? UINT_MAX : (unsigned int)count;
     requested -= requested % sizeof(struct crv_capture_event_t);
 
+    error = mutex_lock_interruptible(&crv_capture_read_lock);
+    if (error) return error;
+
     for (;;)
     {
         if (!kfifo_is_empty(&crv_capture_fifo)) break;
@@ -177,18 +182,36 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
             A source disconnect is sticky for the current open session. Buffered values are drained first; the first
             empty read reports it.
         */
-        if (READ_ONCE(crv_capture.stream_failed)) return -ENODEV;
-        if (!READ_ONCE(crv_capture.capture_active)) return -EIO;
-        if (file->f_flags & O_NONBLOCK) return -EAGAIN;
+        if (READ_ONCE(crv_capture.stream_failed))
+        {
+            result = -ENODEV;
+            goto out_unlock;
+        }
+        if (!READ_ONCE(crv_capture.capture_active))
+        {
+            result = -EIO;
+            goto out_unlock;
+        }
+        if (file->f_flags & O_NONBLOCK)
+        {
+            result = -EAGAIN;
+            goto out_unlock;
+        }
 
         error = wait_event_interruptible(crv_capture.read_wait, crv_capture_read_ready());
-        if (error) return error;
+        if (error)
+        {
+            result = error;
+            goto out_unlock;
+        }
     }
 
     error = kfifo_to_user(&crv_capture_fifo, buffer, requested, &copied);
-    if (error) return error;
+    result = copied ? (ssize_t)copied : error;
 
-    return copied;
+out_unlock:
+    mutex_unlock(&crv_capture_read_lock);
+    return result;
 }
 
 static const struct file_operations crv_capture_file_operations = {
