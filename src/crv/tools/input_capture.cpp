@@ -4,9 +4,10 @@
 /// \brief blocking user-mode harness for the raw input capture stream
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include <crv/lib.hpp>
+#include <crv/io/unique_fd.hpp>
 #include <crv/kernel/input/capture_abi.h>
 
-#include <crv/lib.hpp>
 #include <array>
 #include <cerrno>
 #include <csignal>
@@ -22,6 +23,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+namespace crv {
 namespace {
 
 constexpr char default_device_path[] = "/dev/crv-input-capture";
@@ -32,45 +34,6 @@ extern "C" void stop_signal_handler(int)
 {
     stop_requested = 1;
 }
-
-class unique_fd_t
-{
-public:
-    unique_fd_t() noexcept = default;
-    explicit unique_fd_t(int fd) noexcept : fd_{fd} {}
-
-    unique_fd_t(unique_fd_t const&) = delete;
-    auto operator=(unique_fd_t const&) -> unique_fd_t& = delete;
-
-    unique_fd_t(unique_fd_t&& other) noexcept : fd_{other.release()} {}
-
-    auto operator=(unique_fd_t&& other) noexcept -> unique_fd_t&
-    {
-        if (this != &other) reset(other.release());
-        return *this;
-    }
-
-    ~unique_fd_t() { reset(); }
-
-    [[nodiscard]] explicit operator bool() const noexcept { return fd_ >= 0; }
-    [[nodiscard]] auto get() const noexcept -> int { return fd_; }
-
-    [[nodiscard]] auto release() noexcept -> int
-    {
-        int const result = fd_;
-        fd_ = -1;
-        return result;
-    }
-
-    void reset(int fd = -1) noexcept
-    {
-        if (fd_ >= 0) static_cast<void>(::close(fd_));
-        fd_ = fd;
-    }
-
-private:
-    int fd_ = -1;
-};
 
 auto install_signal_handlers() -> bool
 {
@@ -270,9 +233,12 @@ auto run_capture(char const* output_path, char const* device_path) -> int
 }
 
 } // namespace
+} // namespace crv
 
 auto main(int argc, char** argv) -> int
 {
+    using namespace crv;
+
     static_assert(std::is_trivially_copyable_v<crv_capture_file_header_t>);
     static_assert(std::is_trivially_copyable_v<crv_capture_event_t>);
 
