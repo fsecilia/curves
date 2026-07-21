@@ -395,10 +395,50 @@ static void crv_capture_disconnect(struct input_handle* handle)
     kfree(source);
 }
 
+static bool crv_capture_match(struct input_handler* handler, struct input_dev* device)
+{
+    (void)handler;
+
+    /*
+        Accept conventional external mice and virtual relative-pointer streams produced by input remappers.
+        USB includes wired mice and 2.4 GHz receiver dongles.
+    */
+    switch (device->id.bustype)
+    {
+        case BUS_USB:
+        case BUS_BLUETOOTH:
+        case BUS_VIRTUAL: break;
+
+        default: return false;
+    }
+
+    // reject device classes that may expose mouse-like compatibility capabilities but are not physical mice
+    if (test_bit(INPUT_PROP_DIRECT, device->propbit) || test_bit(INPUT_PROP_BUTTONPAD, device->propbit)
+        || test_bit(INPUT_PROP_SEMI_MT, device->propbit) || test_bit(INPUT_PROP_TOPBUTTONPAD, device->propbit)
+        || test_bit(INPUT_PROP_POINTING_STICK, device->propbit) || test_bit(INPUT_PROP_ACCELEROMETER, device->propbit))
+    {
+        return false;
+    }
+
+#ifdef INPUT_PROP_PRESSUREPAD
+    if (test_bit(INPUT_PROP_PRESSUREPAD, device->propbit)) return false;
+#endif
+
+    // catch touch and tablet nodes whose properties are absent or incomplete
+    if (test_bit(BTN_TOUCH, device->keybit) || test_bit(BTN_TOOL_FINGER, device->keybit)
+        || test_bit(BTN_TOOL_PEN, device->keybit) || test_bit(BTN_TOOL_MOUSE, device->keybit))
+    {
+        return false;
+    }
+
+    return true;
+}
+
 static const struct input_device_id crv_capture_device_ids[] = {
     {
-        .flags = INPUT_DEVICE_ID_MATCH_EVBIT | INPUT_DEVICE_ID_MATCH_RELBIT,
-        .evbit = {[BIT_WORD(EV_REL)] = BIT_MASK(EV_REL)},
+        .flags = INPUT_DEVICE_ID_MATCH_EVBIT | INPUT_DEVICE_ID_MATCH_KEYBIT | INPUT_DEVICE_ID_MATCH_RELBIT,
+        .evbit = {[BIT_WORD(EV_KEY)] = BIT_MASK(EV_KEY) | BIT_MASK(EV_REL)},
+        .keybit = {[BIT_WORD(BTN_LEFT)] = BIT_MASK(BTN_LEFT)},
         .relbit = {[BIT_WORD(REL_X)] = BIT_MASK(REL_X) | BIT_MASK(REL_Y)},
     },
     {},
@@ -409,6 +449,7 @@ static struct input_handler crv_capture_input_handler = {
     .events = crv_capture_events,
     .connect = crv_capture_connect,
     .disconnect = crv_capture_disconnect,
+    .match = crv_capture_match,
     .name = CRV_CAPTURE_NAME,
     .id_table = crv_capture_device_ids,
 };
