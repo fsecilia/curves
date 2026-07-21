@@ -12,6 +12,8 @@ target_sources(lib PRIVATE
     concepts.hpp
     i18n.cpp
     i18n.hpp
+    io/capture/file.hpp
+    io/capture/stream.hpp
     io/unique_fd.hpp
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
