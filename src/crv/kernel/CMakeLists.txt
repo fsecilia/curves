@@ -59,9 +59,9 @@ set(hdrs_kernel
 )
 
 set(srcs_kernel
+    entry_point.c
     input/abi.c
     input/handler.c
-    entry_point.c
 )
 
 # ---------------------------------------------------------------------------------------------------------------------
