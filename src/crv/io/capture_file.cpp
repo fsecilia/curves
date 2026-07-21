@@ -5,7 +5,7 @@
 
 #include "capture_file.hpp"
 #include <crv/io/unique_fd.hpp>
-#include <crv/kernel/input/capture_abi.h>
+#include <crv/kernel/input/capture/abi.h>
 #include <cerrno>
 #include <cstddef>
 #include <cstring>

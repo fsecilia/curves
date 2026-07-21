@@ -8,7 +8,7 @@
 
 #include <crv/io/unique_fd.hpp>
 #include <crv/kernel/input/abi.h>
-#include <crv/kernel/input/capture_abi.h>
+#include <crv/kernel/input/capture/abi.h>
 #include <array>
 #include <cassert>
 #include <cerrno>
