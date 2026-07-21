@@ -86,6 +86,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-ctad-maybe-unsupported
         -Wno-deprecated-copy-with-dtor
         -Wno-deprecated-copy-with-user-provided-dtor
+        -Wno-disabled-macro-expansion
         -Wno-documentation
         -Wno-documentation-unknown-command
         -Wno-exit-time-destructors
