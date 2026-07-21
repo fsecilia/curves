@@ -123,7 +123,7 @@ target_sources_kernel(lib
     kernel/input/abi.h
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
-    kernel/input/capture_abi.h
+    kernel/input/capture/abi.h
     lib.hpp
     math/abs.hpp
     math/cmp.hpp

@@ -6,7 +6,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <crv/kernel/input/capture_abi.h>
+#include <crv/kernel/input/capture/abi.h>
 
 #include <linux/atomic.h>
 #include <linux/bitops.h>
