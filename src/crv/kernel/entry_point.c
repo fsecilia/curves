@@ -7,6 +7,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <crv/kernel/input/capture/abi.h>
+#include <crv/kernel/input/capture/fifo.h>
 
 #include <linux/atomic.h>
 #include <linux/bitops.h>
@@ -16,7 +17,6 @@
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/kernel.h>
-#include <linux/kfifo.h>
 #include <linux/ktime.h>
 #include <linux/limits.h>
 #include <linux/miscdevice.h>
@@ -30,12 +30,6 @@
 
 /// device, handle, and handler name; also the /dev node name
 #define CRV_CAPTURE_NAME "crv-input-capture"
-
-/// number of crv_capture_event objects retained in the stream FIFO
-///
-/// At 24 bytes per value this occupies 1.5 MiB of module BSS. For a mouse producing four input values at 4 kHz, it
-/// holds approximately four seconds.
-#define CRV_CAPTURE_FIFO_EVENT_COUNT 65536u
 
 struct crv_capture_source_t
 {
@@ -60,11 +54,9 @@ struct crv_capture_state_t
 
 static struct crv_capture_state_t crv_capture;
 
-static DECLARE_KFIFO(crv_capture_fifo, struct crv_capture_event_t, CRV_CAPTURE_FIFO_EVENT_COUNT);
-
 static bool crv_capture_read_ready(void)
 {
-    return !kfifo_is_empty(&crv_capture_fifo) || READ_ONCE(crv_capture.stream_failed)
+    return !crv_fifo_is_empty(crv_fifo_instance()) || READ_ONCE(crv_capture.stream_failed)
         || !READ_ONCE(crv_capture.capture_active);
 }
 
@@ -84,7 +76,7 @@ static int crv_capture_open(struct inode* inode, struct file* file)
     }
 
     // This occurs under the same lock the producer uses, so no producer can be writing while this reset is performed.
-    kfifo_reset(&crv_capture_fifo);
+    crv_fifo_reset(crv_fifo_instance());
 
     crv_capture.next_batch_sequence = 0;
     crv_capture.dropped_batches = 0;
@@ -142,7 +134,7 @@ static __poll_t crv_capture_poll(struct file* file, poll_table* wait)
 
     poll_wait(file, &crv_capture.read_wait, wait);
 
-    if (!kfifo_is_empty(&crv_capture_fifo)) mask |= EPOLLIN | EPOLLRDNORM;
+    if (!crv_fifo_is_empty(crv_fifo_instance())) mask |= EPOLLIN | EPOLLRDNORM;
     if (READ_ONCE(crv_capture.stream_failed)) mask |= EPOLLERR;
     if (!READ_ONCE(crv_capture.capture_active)) mask |= EPOLLHUP;
 
@@ -172,7 +164,7 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
 
     for (;;)
     {
-        if (!kfifo_is_empty(&crv_capture_fifo)) break;
+        if (!crv_fifo_is_empty(crv_fifo_instance())) break;
 
         /*
             A source disconnect is sticky for the current open session. Buffered values are drained first; the first
@@ -202,7 +194,7 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
         }
     }
 
-    error = kfifo_to_user(&crv_capture_fifo, buffer, requested, &copied);
+    error = crv_fifo_to_user(crv_fifo_instance(), buffer, requested, &copied);
     result = copied ? (ssize_t)copied : error;
 
 out_unlock:
@@ -256,7 +248,7 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
         The callback is committed atomically: either every input_value enters the FIFO, or no value from this callback
         does. Advancing the sequence before this check makes the loss visible in the next successful batch.
     */
-    if (kfifo_avail(&crv_capture_fifo) < count)
+    if (crv_fifo_avail(crv_fifo_instance()) < count)
     {
         crv_capture.dropped_batches++;
         crv_capture.dropped_values += count;
@@ -278,7 +270,7 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
             The availability check above cannot become false: this is the only producer, it is serialized by
             crv_capture.lock, and the reader only creates more space.
         */
-        if (WARN_ON_ONCE(!kfifo_put(&crv_capture_fifo, event))) break;
+        if (WARN_ON_ONCE(!crv_fifo_put(crv_fifo_instance(), &event))) break;
     }
 
     spin_unlock_irqrestore(&crv_capture.lock, flags);
@@ -469,7 +461,7 @@ static int __init crv_init(void)
     crv_capture.dropped_batches = 0;
     crv_capture.dropped_values = 0;
 
-    INIT_KFIFO(crv_capture_fifo);
+    crv_fifo_init(crv_fifo_instance());
 
     error = misc_register(&crv_capture_misc_device);
     if (error)
