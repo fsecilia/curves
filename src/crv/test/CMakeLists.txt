@@ -11,6 +11,9 @@ add_library(testing
     test.hpp
     typed_equal.hpp
 )
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(testing PUBLIC -Wno-self-move)
+endif()
 target_link_libraries(testing PUBLIC
     GTest::gmock_main
     GTest::gtest_main
