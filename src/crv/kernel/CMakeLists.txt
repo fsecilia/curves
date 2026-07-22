@@ -64,6 +64,7 @@ set(hdrs_kernel
 set(srcs_kernel
     input/abi.c
     input/capture/abi.c
+    input/capture/capture.c
     input/handler.c
     entry_point.c
 )

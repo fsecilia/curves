@@ -9,6 +9,9 @@
 
 #pragma once
 
+/// device, handle, and handler name; also the /dev node name
+#define CRV_CAPTURE_NAME "crv-input-capture"
+
 typedef __INT32_TYPE__ crv_capture_s32_t;
 typedef __UINT8_TYPE__ crv_capture_u8_t;
 typedef __UINT16_TYPE__ crv_capture_u16_t;
