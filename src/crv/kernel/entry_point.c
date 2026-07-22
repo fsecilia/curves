@@ -30,7 +30,6 @@
 #include <linux/string.h>
 #include <linux/stringify.h>
 #include <linux/types.h>
-#include <linux/uaccess.h>
 #include <linux/wait.h>
 
 /// device, handle, and handler name; also the /dev node name
@@ -50,12 +49,6 @@ struct crv_capture_source_t
 {
     struct input_handle handle;
     unsigned int value_capacity;
-};
-
-struct crv_capture_reader_t
-{
-    struct crv_capture_stream_header_t header;
-    size_t header_offset;
 };
 
 struct crv_capture_state_t
@@ -78,18 +71,10 @@ struct crv_capture_state_t
 
 static struct crv_capture_state_t crv_capture;
 
-static DECLARE_KFIFO(crv_capture_fifo, unsigned char, CRV_CAPTURE_FIFO_BYTE_COUNT);
+static DEFINE_KFIFO(crv_capture_fifo, unsigned char, CRV_CAPTURE_FIFO_BYTE_COUNT);
 
-static bool crv_capture_calculate_input_values_frame_size(unsigned int value_count, unsigned int* frame_size)
-{
-    u64 const calculated_size
-        = sizeof(struct crv_capture_input_values_header_t) + (u64)value_count * sizeof(struct crv_input_value_t);
-
-    if (calculated_size > UINT_MAX) return false;
-
-    *frame_size = (unsigned int)calculated_size;
-    return true;
-}
+// stream is single-open, but multiple concurrent readers must still be protected against
+static DEFINE_MUTEX(crv_capture_read_lock);
 
 static void crv_capture_initialize_stream_header(struct crv_capture_stream_header_t* header)
 {
@@ -103,12 +88,20 @@ static void crv_capture_initialize_stream_header(struct crv_capture_stream_heade
     header->byte_order_marker = CRV_CAPTURE_BYTE_ORDER_MARKER;
 }
 
+/*
+    Callers hold crv_capture.lock. Readers that observe capture_active cleared confirm stream_error under the same
+    lock, so the two stores need no ordering of their own.
+*/
 static void crv_capture_fail_stream_locked(int error)
 {
     WRITE_ONCE(crv_capture.stream_error, error);
     WRITE_ONCE(crv_capture.capture_active, false);
 }
 
+/*
+    Wakeup condition only. The unlocked reads may observe the flags inconsistently on weakly ordered hardware; a
+    spurious wake costs one loop iteration in read(), which re-evaluates under proper ordering.
+*/
 static bool crv_capture_read_ready(void)
 {
     return !kfifo_is_empty(&crv_capture_fifo) || READ_ONCE(crv_capture.stream_error)
@@ -117,23 +110,16 @@ static bool crv_capture_read_ready(void)
 
 static int crv_capture_open(struct inode* inode, struct file* file)
 {
-    struct crv_capture_reader_t* reader;
+    struct crv_capture_stream_header_t header;
     unsigned long flags;
     int error;
 
     if (atomic_cmpxchg(&crv_capture.opened, 0, 1) != 0) return -EBUSY;
 
-    reader = kzalloc(sizeof(*reader), GFP_KERNEL);
-    if (!reader)
-    {
-        error = -ENOMEM;
-        goto err_release_open;
-    }
-
     error = stream_open(inode, file);
-    if (error) goto err_free_reader;
+    if (error) goto err_release_open;
 
-    crv_capture_initialize_stream_header(&reader->header);
+    crv_capture_initialize_stream_header(&header);
 
     spin_lock_irqsave(&crv_capture.lock, flags);
 
@@ -143,10 +129,7 @@ static int crv_capture_open(struct inode* inode, struct file* file)
         goto err_unlock;
     }
 
-    /*
-        This occurs under the same lock the producer uses, and the single-open token guarantees that no reader from a
-        previous session can still be consuming the FIFO.
-    */
+    // reset occurs under same lock producer uses, and single-open token guarantees no readers from a previous session
     kfifo_reset(&crv_capture_fifo);
 
     crv_capture.next_sequence = 0;
@@ -154,11 +137,16 @@ static int crv_capture_open(struct inode* inode, struct file* file)
     crv_capture.dropped_values = 0;
     WRITE_ONCE(crv_capture.stream_error, 0);
 
-    file->private_data = reader;
+    /*
+        The header insertion must stay inside this critical section, before capture_active is set. The producer
+        inserts only under this lock and only while capture_active is set, so no frame can precede the header in
+        FIFO order. The insertion cannot be short: the FIFO was just reset and is far larger than the header.
+    */
+    kfifo_in(&crv_capture_fifo, (unsigned char const*)&header, sizeof(header));
 
     /*
-        Enabling capture is the final operation. All stream state and the per-open header are initialized before the
-        producer can publish the first callback frame.
+        Enabling capture is the final operation. All stream state and the header are in place before the producer
+        can publish the first callback frame.
     */
     WRITE_ONCE(crv_capture.capture_active, true);
 
@@ -169,8 +157,6 @@ static int crv_capture_open(struct inode* inode, struct file* file)
 
 err_unlock:
     spin_unlock_irqrestore(&crv_capture.lock, flags);
-err_free_reader:
-    kfree(reader);
 err_release_open:
     atomic_set(&crv_capture.opened, 0);
     return error;
@@ -178,12 +164,12 @@ err_release_open:
 
 static int crv_capture_release(struct inode* inode, struct file* file)
 {
-    struct crv_capture_reader_t* reader = file->private_data;
     unsigned long flags;
     u64 dropped_callbacks;
     u64 dropped_values;
 
     (void)inode;
+    (void)file;
 
     spin_lock_irqsave(&crv_capture.lock, flags);
 
@@ -195,9 +181,10 @@ static int crv_capture_release(struct inode* inode, struct file* file)
 
     wake_up_interruptible(&crv_capture.read_wait);
 
-    file->private_data = NULL;
-    kfree(reader);
-
+    /*
+        Releasing the open token is last: a new open() must not begin resetting the FIFO until this session is
+        quiesced.
+    */
     atomic_set(&crv_capture.opened, 0);
 
     if (dropped_callbacks)
@@ -215,13 +202,14 @@ static int crv_capture_release(struct inode* inode, struct file* file)
 
 static __poll_t crv_capture_poll(struct file* file, poll_table* wait)
 {
-    struct crv_capture_reader_t* reader = file->private_data;
     __poll_t mask = 0;
 
     poll_wait(file, &crv_capture.read_wait, wait);
 
-    if (reader && READ_ONCE(reader->header_offset) < sizeof(reader->header)) { mask |= EPOLLIN | EPOLLRDNORM; }
-
+    /*
+        Unlocked reads: on weakly ordered hardware, poll may transiently report EPOLLHUP without EPOLLERR after a
+        stream failure. Poll is advisory; read() reports the authoritative errno under the state lock.
+    */
     if (!kfifo_is_empty(&crv_capture_fifo)) mask |= EPOLLIN | EPOLLRDNORM;
     if (READ_ONCE(crv_capture.stream_error)) mask |= EPOLLERR;
     if (!READ_ONCE(crv_capture.capture_active)) mask |= EPOLLHUP;
@@ -229,50 +217,20 @@ static __poll_t crv_capture_poll(struct file* file, poll_table* wait)
     return mask;
 }
 
-static DEFINE_MUTEX(crv_capture_read_lock);
-
-static ssize_t crv_capture_read_stream_header(struct crv_capture_reader_t* reader, char __user* buffer, size_t count)
-{
-    size_t const remaining = sizeof(reader->header) - reader->header_offset;
-    size_t const requested = count < remaining ? count : remaining;
-    unsigned long const not_copied
-        = copy_to_user(buffer, (unsigned char const*)&reader->header + reader->header_offset, requested);
-    size_t const copied = requested - not_copied;
-
-    if (copied)
-    {
-        WRITE_ONCE(reader->header_offset, reader->header_offset + copied);
-        return (ssize_t)copied;
-    }
-
-    return -EFAULT;
-}
-
 static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t count, loff_t* position)
 {
-    struct crv_capture_reader_t* reader = file->private_data;
     unsigned int copied = 0;
     unsigned int requested;
+    unsigned long flags;
     ssize_t result;
     int error;
 
     (void)position;
 
     if (count == 0) return 0;
-    if (!reader) return -EIO;
 
     error = mutex_lock_interruptible(&crv_capture_read_lock);
     if (error) return error;
-
-    /*
-        Return the stream header by itself. The next read begins with FIFO data. Byte sources and decoders must already
-        tolerate arbitrary read boundaries, and keeping the two sources separate makes the read path much simpler.
-    */
-    if (reader->header_offset < sizeof(reader->header))
-    {
-        result = crv_capture_read_stream_header(reader, buffer, count);
-        goto out_unlock;
-    }
 
     requested = count > UINT_MAX ? UINT_MAX : (unsigned int)count;
 
@@ -281,13 +239,21 @@ static ssize_t crv_capture_read(struct file* file, char __user* buffer, size_t c
         if (!kfifo_is_empty(&crv_capture_fifo)) break;
 
         /*
-            Terminal stream state is sticky for the current open session. Buffered bytes are drained first; the first
-            empty read reports the terminal error. A normal close cannot race an active read because the file reference
-            held by the system call delays release().
+            The unlocked read of capture_active is only a hint; it cannot return to true within a session because
+            only open() sets it and the single-open token excludes a concurrent open. Taking the state lock pairs
+            with the producer's unlock, making the stream_error stored before capture_active was cleared visible.
+
+            Terminal state is sticky for the session: buffered bytes drain first, and the first empty read reports
+            the error. Every clear of capture_active reachable here stores a nonzero error first -- release() cannot
+            race an active read because the file reference held by the system call delays it -- so the -EIO default
+            is unreachable and kept only as the terminal fallback.
         */
         if (!READ_ONCE(crv_capture.capture_active))
         {
-            error = READ_ONCE(crv_capture.stream_error);
+            spin_lock_irqsave(&crv_capture.lock, flags);
+            error = crv_capture.stream_error;
+            spin_unlock_irqrestore(&crv_capture.lock, flags);
+
             result = error ? -error : -EIO;
             goto out_unlock;
         }
@@ -338,8 +304,6 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
     u64 sequence;
     unsigned long flags;
     unsigned int frame_size;
-    unsigned int value_bytes;
-    unsigned int inserted;
 
     if (!count) return 0;
 
@@ -364,12 +328,11 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
     }
 
     /*
-        These are input-core or module invariants rather than ordinary stream-loss conditions. Stop the stream loudly
-        instead of silently producing data whose framing or recorded capacity cannot be trusted.
+        Input-core invariant rather than an ordinary stream-loss condition: connect() sized everything against
+        max_vals. A violation means the recorded capacity cannot be trusted; stop the stream loudly rather than
+        produce data under a broken contract.
     */
-    if (WARN_ON_ONCE(count > source->value_capacity)
-        || WARN_ON_ONCE(!crv_capture_calculate_input_values_frame_size(count, &frame_size))
-        || WARN_ON_ONCE(frame_size > kfifo_size(&crv_capture_fifo)))
+    if (WARN_ON_ONCE(count > source->value_capacity))
     {
         crv_capture_fail_stream_locked(EIO);
         spin_unlock_irqrestore(&crv_capture.lock, flags);
@@ -377,8 +340,29 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
         return count;
     }
 
-    value_bytes = frame_size - sizeof(frame_header);
+    /*
+        Cannot overflow: connect() bounded the maximum frame for max_vals values by the FIFO size, and count is at
+        most max_vals.
+    */
+    frame_size = (unsigned int)sizeof(frame_header) + count * (unsigned int)sizeof(struct crv_input_value_t);
+
+    /*
+        The sequence advances even when the frame is dropped, making the loss visible as a gap in the next
+        successful frame.
+    */
     sequence = crv_capture.next_sequence++;
+
+    /*
+        The callback is committed atomically with respect to FIFO capacity: either enough space exists for the
+        complete frame before any insertion begins, or no byte from this callback enters the FIFO.
+    */
+    if (kfifo_avail(&crv_capture_fifo) < frame_size)
+    {
+        crv_capture.dropped_callbacks++;
+        crv_capture.dropped_values += count;
+        spin_unlock_irqrestore(&crv_capture.lock, flags);
+        return count;
+    }
 
     frame_header = (struct crv_capture_input_values_header_t){
         .frame = {
@@ -393,50 +377,12 @@ static unsigned int crv_capture_events(struct input_handle* handle, struct input
     };
 
     /*
-        The callback is committed atomically with respect to FIFO capacity: either enough space exists for the complete
-        frame before either insertion begins, or no byte from this callback enters the FIFO. Advancing the sequence
-        before this check makes the loss visible in the next successful frame.
+        Neither insertion can be short: the availability check covered the complete frame, this callback is the sole
+        producer, it holds the producer lock, and the reader can only create more space. struct input_value and
+        crv_input_value_t have identical layouts, asserted by the input ABI compatibility unit.
     */
-    if (kfifo_avail(&crv_capture_fifo) < frame_size)
-    {
-        crv_capture.dropped_callbacks++;
-        crv_capture.dropped_values += count;
-        spin_unlock_irqrestore(&crv_capture.lock, flags);
-        return count;
-    }
-
-    inserted = kfifo_in(&crv_capture_fifo, (unsigned char const*)&frame_header, sizeof(frame_header));
-
-    if (WARN_ON_ONCE(inserted != sizeof(frame_header)))
-    {
-        /*
-            This should be impossible after the complete-frame availability check. If it occurs, terminate the stream.
-            Any bytes already inserted form a truncated final frame rather than allowing later frames to follow it.
-        */
-        crv_capture_fail_stream_locked(EIO);
-        spin_unlock_irqrestore(&crv_capture.lock, flags);
-        wake_up_interruptible(&crv_capture.read_wait);
-        return count;
-    }
-
-    /*
-        struct input_value and crv_input_value_t have identical layouts, asserted by the input ABI compatibility unit.
-        The availability check above cannot become false: this callback is the only producer, it holds the producer
-        lock, and the reader can only create more space.
-    */
-    inserted = kfifo_in(&crv_capture_fifo, (unsigned char const*)values, value_bytes);
-
-    if (WARN_ON_ONCE(inserted != value_bytes))
-    {
-        /*
-            As above, terminate rather than permit a partial frame to be followed by additional frames. The decoder can
-            discard this final truncated frame.
-        */
-        crv_capture_fail_stream_locked(EIO);
-        spin_unlock_irqrestore(&crv_capture.lock, flags);
-        wake_up_interruptible(&crv_capture.read_wait);
-        return count;
-    }
+    kfifo_in(&crv_capture_fifo, (unsigned char const*)&frame_header, sizeof(frame_header));
+    kfifo_in(&crv_capture_fifo, (unsigned char const*)values, frame_size - (unsigned int)sizeof(frame_header));
 
     spin_unlock_irqrestore(&crv_capture.lock, flags);
 
@@ -450,7 +396,7 @@ static int crv_capture_connect(
 {
     struct crv_capture_source_t* source;
     unsigned long flags;
-    unsigned int maximum_frame_size;
+    u64 maximum_frame_size;
     int error;
 
     (void)id;
@@ -462,8 +408,14 @@ static int crv_capture_connect(
         return -EINVAL;
     }
 
-    if (!crv_capture_calculate_input_values_frame_size(device->max_vals, &maximum_frame_size)
-        || maximum_frame_size > CRV_CAPTURE_FIFO_BYTE_COUNT)
+    /*
+        The FIFO bound is far below UINT_MAX, so this single comparison also guarantees the per-callback frame-size
+        arithmetic in crv_capture_events() cannot overflow.
+    */
+    maximum_frame_size
+        = sizeof(struct crv_capture_input_values_header_t) + (u64)device->max_vals * sizeof(struct crv_input_value_t);
+
+    if (maximum_frame_size > CRV_CAPTURE_FIFO_BYTE_COUNT)
     {
         pr_warn("rejecting input device '%s': value capacity %u requires a frame larger than the %u-byte FIFO\n",
             device->name ? device->name : "<unnamed>", device->max_vals, CRV_CAPTURE_FIFO_BYTE_COUNT);
@@ -502,21 +454,12 @@ static int crv_capture_connect(
     error = input_open_device(&source->handle);
     if (error) goto err_unregister_handle;
 
-    spin_lock_irqsave(&crv_capture.lock, flags);
-
     /*
-        A second successful connect cannot race us because input core serializes connect callbacks. Keep the check as a
-        defensive invariant.
+        No second connect can have raced the check above: input core serializes connect callbacks. The lock only
+        orders the assignment against open().
     */
-    if (WARN_ON_ONCE(crv_capture.source))
-    {
-        spin_unlock_irqrestore(&crv_capture.lock, flags);
-        error = -EBUSY;
-        goto err_close_device;
-    }
-
+    spin_lock_irqsave(&crv_capture.lock, flags);
     crv_capture.source = source;
-
     spin_unlock_irqrestore(&crv_capture.lock, flags);
 
     pr_info("attached to input device '%s', phys '%s', bus %04x vendor %04x product %04x version %04x, "
@@ -526,8 +469,6 @@ static int crv_capture_connect(
 
     return 0;
 
-err_close_device:
-    input_close_device(&source->handle);
 err_unregister_handle:
     input_unregister_handle(&source->handle);
 err_free_source:
@@ -637,18 +578,9 @@ static int __init crv_init(void)
 
     if (crv_capture_allow_i8042) { pr_warn("legacy i8042 pointer matching enabled\n"); }
 
+    // the remaining state fields and the fifo are statically zero-initialized
     spin_lock_init(&crv_capture.lock);
     init_waitqueue_head(&crv_capture.read_wait);
-    atomic_set(&crv_capture.opened, 0);
-
-    crv_capture.source = NULL;
-    crv_capture.capture_active = false;
-    crv_capture.stream_error = 0;
-    crv_capture.next_sequence = 0;
-    crv_capture.dropped_callbacks = 0;
-    crv_capture.dropped_values = 0;
-
-    INIT_KFIFO(crv_capture_fifo);
 
     error = misc_register(&crv_capture_misc_device);
     if (error)
