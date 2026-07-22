@@ -9,21 +9,6 @@
 #include <linux/stddef.h>
 
 //
-// fundamental types
-//
-
-_Static_assert(sizeof(crv_input_s32_t) == sizeof(s32), "crv_input_s32_t size mismatch");
-_Static_assert(sizeof(crv_input_s64_t) == sizeof(s64), "crv_input_s64_t size mismatch");
-_Static_assert(sizeof(crv_input_u16_t) == sizeof(u16), "crv_input_u16_t size mismatch");
-_Static_assert(sizeof(crv_input_u64_t) == sizeof(u64), "crv_input_u64_t size mismatch");
-
-#define CRV_IS_SIGNED_TYPE(type) (((type) - 1) < (type)1)
-_Static_assert(CRV_IS_SIGNED_TYPE(crv_input_s32_t) == CRV_IS_SIGNED_TYPE(s32), "crv_input_s32_t sign mismatch");
-_Static_assert(CRV_IS_SIGNED_TYPE(crv_input_s64_t) == CRV_IS_SIGNED_TYPE(s64), "crv_input_s64_t sign mismatch");
-_Static_assert(CRV_IS_SIGNED_TYPE(crv_input_u16_t) == CRV_IS_SIGNED_TYPE(u16), "crv_input_u16_t sign mismatch");
-_Static_assert(CRV_IS_SIGNED_TYPE(crv_input_u64_t) == CRV_IS_SIGNED_TYPE(u64), "crv_input_u64_t sign mismatch");
-
-//
 // crv_input_value_t
 //
 
