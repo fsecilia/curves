@@ -41,10 +41,6 @@
 /// holds approximately eight seconds.
 #define CRV_CAPTURE_FIFO_BYTE_COUNT (2u * 1024u * 1024u)
 
-static bool crv_capture_allow_i8042;
-module_param_named(allow_i8042, crv_capture_allow_i8042, bool, 0444);
-MODULE_PARM_DESC(allow_i8042, "Allow legacy i8042 relative-pointer devices; intended for virtual-machine testing.");
-
 struct crv_capture_source_t
 {
     struct input_handle handle;
@@ -523,10 +519,6 @@ static bool crv_capture_match(struct input_handler* handler, struct input_dev* d
         case BUS_BLUETOOTH:
         case BUS_VIRTUAL: break;
 
-        case BUS_I8042:
-            if (!crv_capture_allow_i8042) return false;
-            break;
-
         default: return false;
     }
 
@@ -575,8 +567,6 @@ static struct input_handler crv_capture_input_handler = {
 static int __init crv_init(void)
 {
     int error;
-
-    if (crv_capture_allow_i8042) { pr_warn("legacy i8042 pointer matching enabled\n"); }
 
     // the remaining state fields and the fifo are statically zero-initialized
     spin_lock_init(&crv_capture.lock);
