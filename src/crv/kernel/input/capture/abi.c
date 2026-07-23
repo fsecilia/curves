@@ -8,10 +8,6 @@
 #include <linux/input.h>
 #include <linux/stddef.h>
 
-#define CRV_VALIDATE_FIELD(type, member, size, offset)                                                 \
-    _Static_assert(sizeof((*(struct type*)(0)).member) == size, #type "::" #member ": size mismatch"); \
-    _Static_assert(offsetof(struct type, member) == offset, #type "::" #member ": offset mismatch")
-
 //
 // fundamental types
 //

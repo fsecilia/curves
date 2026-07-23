@@ -19,3 +19,7 @@ typedef __UINT8_TYPE__ crv_u8_t;
 typedef __UINT16_TYPE__ crv_u16_t;
 typedef __UINT32_TYPE__ crv_u32_t;
 typedef __UINT64_TYPE__ crv_u64_t;
+
+#define CRV_VALIDATE_FIELD(type, member, size, offset)                                                 \
+    _Static_assert(sizeof((*(struct type*)(0)).member) == size, #type "::" #member ": size mismatch"); \
+    _Static_assert(offsetof(struct type, member) == offset, #type "::" #member ": offset mismatch")
