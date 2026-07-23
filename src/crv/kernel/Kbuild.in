@@ -45,7 +45,9 @@ endif
 
 # add standard c++ compile rule
 quiet_cmd_cxx_o_cpp = CXX [M]  $@
-cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -Wp,-MMD,$(depfile) -c -o $@ $< $(cmd_objtool)
+cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -Wp,-MMD,$(depfile) -c -o $@ $< \
+	$(cmd_ld_single) \
+	$(cmd_objtool)
 
 # add standard c++ pattern
 define rule_cxx_o_cpp
