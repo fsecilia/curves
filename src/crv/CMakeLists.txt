@@ -120,8 +120,8 @@ target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
-    kernel/cxx_build_test.cpp
-    kernel/cxx_build_test.h
+    kernel/cxx_lib_build_test.cpp
+    kernel/cxx_lib_build_test.h
     kernel/input/abi.h
     kernel/input/capture/abi.h
     kernel/input/capture/capture.h
