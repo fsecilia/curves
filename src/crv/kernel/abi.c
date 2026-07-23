@@ -16,8 +16,6 @@ _Static_assert(sizeof(crv_u16_t) == sizeof(u16), "crv_u16_t size mismatch");
 _Static_assert(sizeof(crv_u32_t) == sizeof(u32), "crv_u32_t size mismatch");
 _Static_assert(sizeof(crv_u64_t) == sizeof(u64), "crv_u64_t size mismatch");
 
-#define CRV_IS_SIGNED_TYPE(type) (((type) - 1) < (type)1)
-
 _Static_assert(CRV_IS_SIGNED_TYPE(crv_s8_t) == CRV_IS_SIGNED_TYPE(s8), "crv_s8_t sign mismatch");
 _Static_assert(CRV_IS_SIGNED_TYPE(crv_s16_t) == CRV_IS_SIGNED_TYPE(s16), "crv_s16_t sign mismatch");
 _Static_assert(CRV_IS_SIGNED_TYPE(crv_s32_t) == CRV_IS_SIGNED_TYPE(s32), "crv_s32_t sign mismatch");
