@@ -188,6 +188,7 @@ set(shared_lib_kernel_files
     pipeline/velocity.hpp
     prefetcher.hpp
     queue/record_copier.hpp
+    queue/spsc.hpp
     ranges.hpp
     spline/pipeline_config.hpp
     spline/segment_locator.hpp
@@ -300,6 +301,9 @@ set(unit_test_files
     quadrature/stack_test.cpp
     quadrature/subdivider_test.cpp
     queue/record_copier_test.cpp
+    queue/spsc_integration_test.cpp
+    queue/spsc_test.cpp
+    queue/spsc_test.hpp
     ranges_test.cpp
     reflection/constraints_test.cpp
     reflection/enum_test.cpp
