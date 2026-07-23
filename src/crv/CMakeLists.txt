@@ -146,6 +146,7 @@ target_sources_kernel(lib
     math/shifter.hpp
     prefetcher.hpp
     queue/record_copier.hpp
+    queue/spsc.hpp
     ranges.hpp
     spline/pipeline_config.hpp
     spline/segment_locator.hpp
@@ -247,6 +248,9 @@ if (enable_testing)
         quadrature/stack_test.cpp
         quadrature/subdivider_test.cpp
         queue/record_copier_test.cpp
+        queue/spsc_integration_test.cpp
+        queue/spsc_test.cpp
+        queue/spsc_test.hpp
         ranges_test.cpp
         reflection/constraints_test.cpp
         reflection/enum_test.cpp
