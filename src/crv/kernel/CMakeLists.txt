@@ -58,11 +58,13 @@ file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG
 
 set(hdrs_kernel
     cxx/cassert
+    cxx_kernel_build_test.hpp
     input/handler.h
 )
 
 set(srcs_kernel
     abi.c
+    cxx_kernel_build_test.cpp
     entry_point.c
     input/abi.c
     input/capture/abi.c
