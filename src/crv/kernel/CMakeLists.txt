@@ -20,6 +20,7 @@ set(kernel_files
     input/abi.c
     input/handler.c
     input/handler.h
+    copy_to_user.c
 )
 
 #
