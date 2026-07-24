@@ -222,7 +222,7 @@ TEST_F(record_copier_test_t, short_copy_state_is_sticky_after_a_later_complete_c
     auto const records = make_records(3, 0x600u);
     auto const source_bytes = std::as_bytes(std::span<record_t const>{records});
 
-    InSequence sequence;
+    auto const seq = InSequence{};
 
     EXPECT_CALL(mock_byte_copier, call(0, source_bytes.data(), source_bytes.size())).WillOnce(Return(sizeof(record_t)));
 

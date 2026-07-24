@@ -461,7 +461,7 @@ TEST_F(spsc_whole_record_integration_test_t, wrapped_partial_record_consumes_onl
     ASSERT_TRUE(sut.try_write(records));
 
     {
-        InSequence sequence;
+        auto const seq = InSequence{};
 
         // two complete records before the physical wrap
         EXPECT_CALL(mock_byte_copier, call(0, _, 2 * sizeof(record_t))).WillOnce(Return(2 * sizeof(record_t)));
