@@ -52,8 +52,7 @@ public:
 
     /// constructs an empty queue whose logical positions begin at initial_position
     ///
-    /// A nonzero initial position is useful for exercising unsigned counter rollover without transferring 2^32
-    /// records.
+    /// A nonzero initial position is useful for exercising unsigned counter rollover without transferring 2^32 records.
     explicit constexpr spsc_t(position_t initial_position) noexcept
         : producer_{initial_position}, consumer_{initial_position}
     {}
@@ -75,9 +74,9 @@ public:
 
     /// attempts to append two record spans as one logical write
     ///
-    /// A successful two-span write publishes both spans together with one release store.
-    /// Both spans are copied before the new producer position is published. A consumer therefore observes either
-    /// the complete combined write or none of it.
+    /// A successful two-span write publishes both spans together with one release store. Both spans are copied before
+    /// the new producer position is published. A consumer therefore observes either the complete combined write or none
+    /// of it.
     ///
     /// For a std::byte queue, this is a common pattern when writing a frame header and frame content.
     ///
@@ -110,9 +109,9 @@ public:
 
     /// copies and consumes at most maximum records
     ///
-    /// copier(destination_offset, source) receives one contiguous physical source span and returns the number of
-    /// records copied from it. The copier must not throw, and its returned count must not exceed source.size(). It is
-    /// called at most twice when the readable range wraps around the physical end of the queue.
+    /// copier(destination_offset, src) receives one contiguous physical src span and returns the number of records
+    /// copied from it. The copier must not throw, and its returned count must not exceed src.size(). It is called at
+    /// most twice when the readable range wraps around the physical end of the queue.
     ///
     /// A short copy stops the read. Successfully copied records are consumed, and the consumer position is published
     /// at most once per read().
@@ -125,8 +124,8 @@ public:
     ///
     /// \returns the number of records copied and consumed
     template <typename copier_t>
-        requires requires(copier_t& copier, std::size_t destination_offset, span_t source) {
-            { copier(destination_offset, source) } noexcept -> std::same_as<std::size_t>;
+        requires requires(copier_t& copier, std::size_t destination_offset, span_t src) {
+            { copier(destination_offset, src) } noexcept -> std::same_as<std::size_t>;
         }
     [[nodiscard]] auto read(std::size_t maximum, copier_t&& copier) noexcept -> std::size_t
     {
@@ -161,9 +160,9 @@ public:
 
     /// advisory lockless observation for polling and wait predicates
     ///
-    /// The result may become stale immediately. When the caller excludes consumer advancement, it may transition
-    /// from true to false, but not false to true. When the caller excludes producer advancement, it may transition
-    /// from false to true, but not true to false. A caller racing both endpoints has no directional guarantee.
+    /// The result may become stale immediately. When the caller excludes consumer advancement, it may transition from
+    /// true to false, but not false to true. When the caller excludes producer advancement, it may transition from
+    /// false to true, but not true to false. A caller racing both endpoints has no directional guarantee.
     ///
     /// This must not replace the authoritative read-side check.
     [[nodiscard]] auto empty() const noexcept -> bool
@@ -251,11 +250,10 @@ private:
     }
 
     template <typename copier_t>
-    [[nodiscard]] static auto copy_span(copier_t& copier, std::size_t destination_offset, span_t source) noexcept
-        -> std::size_t
+    [[nodiscard]] static auto copy_span(copier_t& copier, std::size_t dst_offset, span_t src) noexcept -> std::size_t
     {
-        auto const copied = copier(destination_offset, source);
-        assert(copied <= source.size());
+        auto const copied = copier(dst_offset, src);
+        assert(copied <= src.size());
         return copied;
     }
 

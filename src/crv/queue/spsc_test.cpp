@@ -148,9 +148,9 @@ struct spsc_byte_unit_mock_test_t : spsc_byte_unit_test_t
     struct copier_t
     {
         mock_copier_t* mock = nullptr;
-        auto operator()(std::size_t offset, std::span<std::byte const> source) noexcept -> std::size_t
+        auto operator()(std::size_t offset, std::span<std::byte const> src) noexcept -> std::size_t
         {
-            return mock->call(offset, source.data(), source.size());
+            return mock->call(offset, src.data(), src.size());
         }
     };
 };
@@ -186,14 +186,14 @@ TEST_F(spsc_byte_unit_mock_test_t, wrapped_second_short_copy_consumes_first_span
         auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
-            .WillOnce(Invoke([&](std::size_t, std::byte const* source, std::size_t size) noexcept -> std::size_t {
-                EXPECT_TRUE(std::equal(source, source + size, bytes.begin()));
+            .WillOnce(Invoke([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
+                EXPECT_TRUE(std::equal(src, src + size, bytes.begin()));
                 return size;
             }));
 
         EXPECT_CALL(mock_copier, call(2, _, 4))
-            .WillOnce(Invoke([&](std::size_t, std::byte const* source, std::size_t size) noexcept -> std::size_t {
-                EXPECT_TRUE(std::equal(source, source + size, bytes.begin() + 2));
+            .WillOnce(Invoke([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
+                EXPECT_TRUE(std::equal(src, src + size, bytes.begin() + 2));
                 return 2;
             }));
     }
@@ -275,7 +275,7 @@ TEST_F(spsc_record_unit_test_t, capacity_is_measured_in_records)
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-TEST_F(spsc_byte_unit_test_t, copier_cannot_report_more_than_source_size)
+TEST_F(spsc_byte_unit_test_t, copier_cannot_report_more_than_src_size)
 {
     auto sut = sut_t{};
     auto const bytes = make_bytes(4, 0x60u);
@@ -283,9 +283,8 @@ TEST_F(spsc_byte_unit_test_t, copier_cannot_report_more_than_source_size)
 
     EXPECT_DEBUG_DEATH(
         {
-            auto copier = [](std::size_t, std::span<std::byte const> source) noexcept -> std::size_t {
-                return source.size() + 1;
-            };
+            auto copier
+                = [](std::size_t, std::span<std::byte const> src) noexcept -> std::size_t { return src.size() + 1; };
             static_cast<void>(sut.read(4, copier));
         },
         "");
@@ -305,14 +304,14 @@ struct spsc_record_unit_mock_test_t : spsc_record_unit_test_t
     struct copier_t
     {
         mock_copier_t* mock = nullptr;
-        auto operator()(std::size_t offset, std::span<record_t const> source) noexcept -> std::size_t
+        auto operator()(std::size_t offset, std::span<record_t const> src) noexcept -> std::size_t
         {
-            return mock->call(offset, source.data(), source.size());
+            return mock->call(offset, src.data(), src.size());
         }
     };
 };
 
-TEST_F(spsc_record_unit_mock_test_t, wrapped_read_reports_destination_offsets_in_records)
+TEST_F(spsc_record_unit_mock_test_t, wrapped_read_reports_dst_offsets_in_records)
 {
     auto sut = sut_t{};
     advance_empty_queue_to(sut, 6);
@@ -324,14 +323,14 @@ TEST_F(spsc_record_unit_mock_test_t, wrapped_read_reports_destination_offsets_in
         auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
-            .WillOnce(Invoke([&](std::size_t, record_t const* source, std::size_t size) noexcept -> std::size_t {
-                EXPECT_TRUE(std::equal(source, source + size, records.begin()));
+            .WillOnce(Invoke([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
+                EXPECT_TRUE(std::equal(src, src + size, records.begin()));
                 return size;
             }));
 
         EXPECT_CALL(mock_copier, call(2, _, 4))
-            .WillOnce(Invoke([&](std::size_t, record_t const* source, std::size_t size) noexcept -> std::size_t {
-                EXPECT_TRUE(std::equal(source, source + size, records.begin() + 2));
+            .WillOnce(Invoke([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
+                EXPECT_TRUE(std::equal(src, src + size, records.begin() + 2));
                 return size;
             }));
     }

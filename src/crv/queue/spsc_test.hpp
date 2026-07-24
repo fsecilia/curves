@@ -25,16 +25,16 @@ struct spsc_test_t : Test
 {
     template <typename record_t> struct vector_copier_t
     {
-        std::span<record_t> destination;
+        std::span<record_t> dst;
 
-        auto operator()(std::size_t offset, std::span<record_t const> source) noexcept -> std::size_t
+        auto operator()(std::size_t offset, std::span<record_t const> src) noexcept -> std::size_t
         {
-            assert(offset <= destination.size());
-            assert(source.size() <= destination.size() - offset);
+            assert(offset <= dst.size());
+            assert(src.size() <= dst.size() - offset);
 
-            if (!source.empty()) { std::memcpy(destination.data() + offset, source.data(), source.size_bytes()); }
+            if (!src.empty()) { std::memcpy(dst.data() + offset, src.data(), src.size_bytes()); }
 
-            return source.size();
+            return src.size();
         }
     };
 

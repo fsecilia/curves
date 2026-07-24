@@ -17,18 +17,17 @@
 namespace crv {
 
 template <typename copier_t>
-concept is_byte_copier = requires(copier_t copier, std::size_t destination_offset, std::span<std::byte const> source) {
-    { copier(destination_offset, source) } noexcept -> std::same_as<std::size_t>;
+concept is_byte_copier = requires(copier_t copier, std::size_t dst_offset, std::span<std::byte const> src) {
+    { copier(dst_offset, src) } noexcept -> std::same_as<std::size_t>;
 };
 
 /// adapts a byte copier to the record-based spsc copier contract
 ///
 /// This type copies whole records out of an spsc queue. The underlying copier reports bytes copied. This adapter
 /// reports only complete records copied. If the byte copier stops within a record, that record is not included in the
-/// returned count and so remains in the source queue.
+/// returned count and so remains in the src queue.
 ///
-/// Bytes written for an incomplete record are beyond the reported complete-record range and must be ignored by the
-/// destination.
+/// Bytes written for an incomplete record are beyond the reported complete-record range and must be ignored by dst.
 template <typename record_t, is_byte_copier byte_copier_t>
     requires(std::is_trivially_copyable_v<record_t>)
 class record_copier_t
@@ -36,15 +35,15 @@ class record_copier_t
 public:
     explicit record_copier_t(byte_copier_t copier) noexcept : copier_{std::move(copier)} {}
 
-    auto operator()(std::size_t destination_offset, std::span<record_t const> source) noexcept -> std::size_t
+    auto operator()(std::size_t dst_offset, std::span<record_t const> src) noexcept -> std::size_t
     {
-        assert(destination_offset <= std::numeric_limits<std::size_t>::max() / sizeof(record_t));
+        assert(dst_offset <= std::numeric_limits<std::size_t>::max() / sizeof(record_t));
 
-        auto const destination_byte_offset = destination_offset * sizeof(record_t);
-        auto const source_bytes = std::as_bytes(source);
-        auto const copied_bytes = copier_(destination_byte_offset, source_bytes);
+        auto const dst_byte_offset = dst_offset * sizeof(record_t);
+        auto const src_bytes = std::as_bytes(src);
+        auto const copied_bytes = copier_(dst_byte_offset, src_bytes);
 
-        assert(copied_bytes <= source_bytes.size());
+        assert(copied_bytes <= src_bytes.size());
 
         return copied_bytes / sizeof(record_t);
     }
