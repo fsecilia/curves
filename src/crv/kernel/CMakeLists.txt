@@ -58,6 +58,7 @@ file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG
 
 set(hdrs_kernel
     cxx/cassert
+    composition.hpp
     copy_to_user.h
     copy_to_user.hpp
     input/handler.h
