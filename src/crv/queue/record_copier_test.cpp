@@ -25,8 +25,8 @@ struct record_copier_test_t : Test
     {
         virtual ~mock_byte_copier_t() = default;
         MOCK_METHOD(std::size_t, call, (std::size_t, std::byte const*, std::size_t), (noexcept));
+        MOCK_METHOD(int, error, (), (const, noexcept));
     };
-
     StrictMock<mock_byte_copier_t> mock_byte_copier;
 
     struct byte_copier_t
@@ -37,16 +37,8 @@ struct record_copier_test_t : Test
         {
             return mock->call(offset, src.data(), src.size());
         }
-    };
 
-    struct record_t
-    {
-        std::uint32_t sequence;
-        std::uint32_t inverse;
-        std::int16_t x;
-        std::int16_t y;
-
-        auto operator==(record_t const&) const -> bool = default;
+        auto error() const noexcept -> int { return mock->error(); }
     };
 
     struct byte_copier_spy_state_t
@@ -78,6 +70,16 @@ struct record_copier_test_t : Test
         std::size_t copied_bytes{};
 
         auto operator()(std::size_t, std::span<std::byte const>) noexcept -> std::size_t { return copied_bytes; }
+    };
+
+    struct record_t
+    {
+        std::uint32_t sequence;
+        std::uint32_t inverse;
+        std::int16_t x;
+        std::int16_t y;
+
+        auto operator==(record_t const&) const -> bool = default;
     };
 
     auto make_record(std::uint32_t sequence) -> record_t
@@ -115,14 +117,23 @@ struct potentially_throwing_byte_copier_t
 {
     auto operator()(std::size_t, std::span<std::byte const>) -> std::size_t;
 };
+static_assert(!is_byte_copier<potentially_throwing_byte_copier_t>);
 
 struct wrong_result_byte_copier_t
 {
     auto operator()(std::size_t, std::span<std::byte const>) noexcept -> bool;
 };
-
-static_assert(!is_byte_copier<potentially_throwing_byte_copier_t>);
 static_assert(!is_byte_copier<wrong_result_byte_copier_t>);
+
+struct does_report_copy_error_t
+{
+    auto error() const noexcept -> int;
+};
+static_assert(reports_copy_error<does_report_copy_error_t>);
+
+struct does_not_report_copy_error_t
+{};
+static_assert(!reports_copy_error<does_not_report_copy_error_t>);
 
 template <typename record_t, typename copier_t>
 concept can_form_record_copier = requires { typename record_copier_t<record_t, copier_t>; };
@@ -131,8 +142,17 @@ struct nontrivial_record_t
 {
     ~nontrivial_record_t() {}
 };
-
 static_assert(!can_form_record_copier<nontrivial_record_t, record_copier_test_t::byte_copier_t>);
+
+TEST_F(record_copier_test_t, forwards_errors)
+{
+    auto const expected = -3;
+    EXPECT_CALL(mock_byte_copier, error()).WillOnce(Return(expected));
+
+    auto const actual = sut.error();
+
+    EXPECT_EQ(expected, actual);
+}
 
 TEST_F(record_copier_test_t, complete_copy_forwards_the_byte_offset_and_exact_src_span)
 {
