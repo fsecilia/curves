@@ -15,6 +15,10 @@
 namespace crv {
 namespace {
 
+//
+// record_copier_t
+//
+
 struct record_copier_test_t : Test
 {
     struct mock_byte_copier_t
@@ -245,6 +249,42 @@ TEST_F(record_copier_test_t, byte_copier_overreport_asserts)
 }
 
 #endif
+
+//
+// record_copier_factory_t
+//
+
+struct record_copier_factory_test_t : Test
+{
+    using record_t = int_t;
+
+    struct byte_copier_factory_t
+    {
+        using product_t = int_t;
+        static constexpr auto expected_product = 3;
+
+        constexpr auto operator()() const -> int_t { return expected_product; }
+    };
+
+    struct product_t
+    {
+        byte_copier_factory_t::product_t byte_copier_factory_product;
+
+        constexpr auto operator==(product_t const&) const noexcept -> bool = default;
+    };
+
+    using sut_t = record_copier_factory_t<record_t, byte_copier_factory_t, product_t>;
+    sut_t sut{byte_copier_factory_t{}};
+};
+
+TEST_F(record_copier_factory_test_t, product)
+{
+    auto const expected = product_t{.byte_copier_factory_product = byte_copier_factory_t::expected_product};
+
+    auto const actual = sut();
+
+    EXPECT_EQ(expected, actual);
+}
 
 } // namespace
 } // namespace crv
