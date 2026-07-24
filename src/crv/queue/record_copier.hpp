@@ -76,7 +76,10 @@ public:
         : byte_copier_factory_{std::move(byte_copier_factory)}
     {}
 
-    constexpr auto operator()() const noexcept -> product_t { return product_t{byte_copier_factory_()}; }
+    constexpr auto operator()(auto&&... args) const noexcept -> product_t
+    {
+        return product_t{byte_copier_factory_(std::forward<decltype(args)>(args)...)};
+    }
 
 private:
     [[no_unique_address]] byte_copier_factory_t byte_copier_factory_{};

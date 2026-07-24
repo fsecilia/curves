@@ -280,10 +280,20 @@ struct record_copier_factory_test_t : Test
 
     struct byte_copier_factory_t
     {
-        using product_t = int_t;
-        static constexpr auto expected_product = 3;
+        static constexpr auto expected_product_value = 3;
+        struct product_t
+        {
+            int_t value;
+            void* dst;
+            std::size_t size;
 
-        constexpr auto operator()() const -> int_t { return expected_product; }
+            constexpr auto operator==(product_t const&) const noexcept -> bool = default;
+        };
+
+        constexpr auto operator()(void* dst, std::size_t size) const -> product_t
+        {
+            return {.value = expected_product_value, .dst = dst, .size = size};
+        }
     };
 
     struct product_t
@@ -299,11 +309,17 @@ struct record_copier_factory_test_t : Test
 
 TEST_F(record_copier_factory_test_t, product)
 {
-    auto const expected = product_t{.byte_copier_factory_product = byte_copier_factory_t::expected_product};
+    auto const expected_size = std::size_t{5};
+    auto dst_storage = std::array<std::byte, 64>{};
+    auto const expected_dst = dst_storage.data();
 
-    auto const actual = sut();
+    auto const expected_product = product_t{
+        .byte_copier_factory_product = byte_copier_factory_t::product_t{
+            .value = byte_copier_factory_t::expected_product_value, .dst = expected_dst, .size = expected_size}};
 
-    EXPECT_EQ(expected, actual);
+    auto const actual = sut(expected_dst, expected_size);
+
+    EXPECT_EQ(expected_product, actual);
 }
 
 } // namespace
