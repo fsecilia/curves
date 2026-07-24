@@ -66,13 +66,20 @@ private:
 
 template <typename record_t, typename byte_copier_factory_t,
     typename t_product_t = record_copier_t<record_t, typename byte_copier_factory_t::product_t>>
-struct record_copier_factory_t
+class record_copier_factory_t
 {
+public:
     using product_t = t_product_t;
 
-    byte_copier_factory_t byte_copier_factory;
+    record_copier_factory_t() noexcept = default;
+    explicit record_copier_factory_t(byte_copier_factory_t byte_copier_factory) noexcept
+        : byte_copier_factory_{std::move(byte_copier_factory)}
+    {}
 
-    constexpr auto operator()() const noexcept -> product_t { return product_t{byte_copier_factory()}; }
+    constexpr auto operator()() const noexcept -> product_t { return product_t{byte_copier_factory_()}; }
+
+private:
+    [[no_unique_address]] byte_copier_factory_t byte_copier_factory_{};
 };
 
 } // namespace crv
