@@ -198,6 +198,7 @@ set(shared_lib_kernel_files
     pipeline/validator.hpp
     pipeline/velocity.hpp
     prefetcher.hpp
+    queue/record_copier.hpp
     ranges.hpp
     spline/pipeline_config.hpp
     spline/segment_locator.hpp
@@ -326,6 +327,7 @@ set(regression_test_files
     quadrature/construction/subdivider_test.cpp
     quadrature/integral_test.cpp
     quadrature/rules_test.cpp
+    queue/record_copier_test.cpp
     ranges_test.cpp
     reflection/constraints_test.cpp
     reflection/enum_test.cpp
