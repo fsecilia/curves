@@ -33,9 +33,9 @@ struct record_copier_test_t : Test
     {
         mock_byte_copier_t* mock = nullptr;
 
-        auto operator()(std::size_t offset, std::span<std::byte const> source) noexcept -> std::size_t
+        auto operator()(std::size_t offset, std::span<std::byte const> src) noexcept -> std::size_t
         {
-            return mock->call(offset, source.data(), source.size());
+            return mock->call(offset, src.data(), src.size());
         }
     };
 
@@ -53,21 +53,21 @@ struct record_copier_test_t : Test
     {
         std::size_t copied_bytes_to_return{};
         std::size_t call_count{};
-        std::size_t destination_offset{};
-        std::byte const* source_data{};
-        std::size_t source_size{};
+        std::size_t dst_offset{};
+        std::byte const* src_data{};
+        std::size_t src_size{};
     };
 
     struct byte_copier_spy_t
     {
         byte_copier_spy_state_t* state = nullptr;
 
-        auto operator()(std::size_t destination_offset, std::span<std::byte const> source) noexcept -> std::size_t
+        auto operator()(std::size_t dst_offset, std::span<std::byte const> src) noexcept -> std::size_t
         {
             ++state->call_count;
-            state->destination_offset = destination_offset;
-            state->source_data = source.data();
-            state->source_size = source.size();
+            state->dst_offset = dst_offset;
+            state->src_data = src.data();
+            state->src_size = src.size();
 
             return state->copied_bytes_to_return;
         }
@@ -134,28 +134,28 @@ struct nontrivial_record_t
 
 static_assert(!can_form_record_copier<nontrivial_record_t, record_copier_test_t::byte_copier_t>);
 
-TEST_F(record_copier_test_t, complete_copy_forwards_the_byte_offset_and_exact_source_span)
+TEST_F(record_copier_test_t, complete_copy_forwards_the_byte_offset_and_exact_src_span)
 {
     auto const records = make_records(6, 0x100u);
-    auto const source = std::span<record_t const>{records}.subspan(1, 4);
-    auto const source_bytes = std::as_bytes(source);
+    auto const src = std::span<record_t const>{records}.subspan(1, 4);
+    auto const src_bytes = std::as_bytes(src);
 
-    EXPECT_CALL(mock_byte_copier, call(3 * sizeof(record_t), source_bytes.data(), source_bytes.size()))
-        .WillOnce(Return(source_bytes.size()));
+    EXPECT_CALL(mock_byte_copier, call(3 * sizeof(record_t), src_bytes.data(), src_bytes.size()))
+        .WillOnce(Return(src_bytes.size()));
 
-    EXPECT_EQ(sut(3, source), source.size());
+    EXPECT_EQ(sut(3, src), src.size());
 }
 
-TEST_F(record_copier_test_t, empty_source_is_a_complete_copy)
+TEST_F(record_copier_test_t, empty_src_is_a_complete_copy)
 {
-    auto const source = std::span<record_t const>{};
+    auto const src = std::span<record_t const>{};
 
     EXPECT_CALL(mock_byte_copier, call(7 * sizeof(record_t), _, 0)).WillOnce(Return(0));
 
-    EXPECT_EQ(sut(7, source), 0);
+    EXPECT_EQ(sut(7, src), 0);
 }
 
-TEST_F(record_copier_test_t, zero_byte_copy_of_nonempty_source_reports_no_records)
+TEST_F(record_copier_test_t, zero_byte_copy_of_nonempty_src_reports_no_records)
 {
     auto const records = make_records(4, 0x200u);
 
@@ -187,11 +187,11 @@ TEST_F(record_copier_test_t, partial_record_is_rounded_down)
 TEST_F(record_copier_test_t, every_possible_byte_count_reports_only_complete_records)
 {
     auto const records = make_records(4, 0x500u);
-    auto const source = std::span<record_t const>{records};
-    auto const source_bytes = std::as_bytes(source);
-    constexpr auto destination_offset = std::size_t{11};
+    auto const src = std::span<record_t const>{records};
+    auto const src_bytes = std::as_bytes(src);
+    constexpr auto dst_offset = std::size_t{11};
 
-    for (auto copied_bytes = std::size_t{}; copied_bytes <= source_bytes.size(); ++copied_bytes)
+    for (auto copied_bytes = std::size_t{}; copied_bytes <= src_bytes.size(); ++copied_bytes)
     {
         SCOPED_TRACE(copied_bytes);
 
@@ -201,29 +201,29 @@ TEST_F(record_copier_test_t, every_possible_byte_count_reports_only_complete_rec
 
         auto local_sut = record_copier_t<record_t, byte_copier_spy_t>{byte_copier_spy_t{&state}};
 
-        EXPECT_EQ(local_sut(destination_offset, source), copied_bytes / sizeof(record_t));
+        EXPECT_EQ(local_sut(dst_offset, src), copied_bytes / sizeof(record_t));
 
         EXPECT_EQ(state.call_count, 1);
-        EXPECT_EQ(state.destination_offset, destination_offset * sizeof(record_t));
-        EXPECT_EQ(state.source_data, source_bytes.data());
-        EXPECT_EQ(state.source_size, source_bytes.size());
+        EXPECT_EQ(state.dst_offset, dst_offset * sizeof(record_t));
+        EXPECT_EQ(state.src_data, src_bytes.data());
+        EXPECT_EQ(state.src_size, src_bytes.size());
     }
 }
 
-TEST_F(record_copier_test_t, largest_valid_destination_offset_is_scaled_without_overflow)
+TEST_F(record_copier_test_t, largest_valid_dst_offset_is_scaled_without_overflow)
 {
-    auto const destination_offset = std::numeric_limits<std::size_t>::max() / sizeof(record_t);
-    auto const destination_byte_offset = destination_offset * sizeof(record_t);
-    auto const source = std::span<record_t const>{};
+    auto const dst_offset = std::numeric_limits<std::size_t>::max() / sizeof(record_t);
+    auto const dst_byte_offset = dst_offset * sizeof(record_t);
+    auto const src = std::span<record_t const>{};
 
-    EXPECT_CALL(mock_byte_copier, call(destination_byte_offset, _, 0)).WillOnce(Return(0));
+    EXPECT_CALL(mock_byte_copier, call(dst_byte_offset, _, 0)).WillOnce(Return(0));
 
-    EXPECT_EQ(sut(destination_offset, source), 0);
+    EXPECT_EQ(sut(dst_offset, src), 0);
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-TEST_F(record_copier_test_t, destination_offset_overflow_asserts)
+TEST_F(record_copier_test_t, dst_offset_overflow_asserts)
 {
     EXPECT_DEBUG_DEATH(([] {
         auto local_sut = record_copier_t<record_t, fixed_result_byte_copier_t>{fixed_result_byte_copier_t{0}};
