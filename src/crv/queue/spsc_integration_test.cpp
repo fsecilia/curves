@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
 #include "spsc_test.hpp"
 #include <crv/queue/record_copier.hpp>
 #include <algorithm>
