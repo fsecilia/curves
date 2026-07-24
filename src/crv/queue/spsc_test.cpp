@@ -180,7 +180,7 @@ TEST_F(spsc_byte_unit_mock_test_t, wrapped_second_short_copy_consumes_first_span
     ASSERT_TRUE(sut.try_write(bytes));
 
     {
-        InSequence sequence;
+        auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
             .WillOnce(Invoke([&](std::size_t, std::byte const* source, std::size_t size) noexcept -> std::size_t {
@@ -318,7 +318,7 @@ TEST_F(spsc_record_unit_mock_test_t, wrapped_read_reports_destination_offsets_in
     ASSERT_TRUE(sut.try_write(records));
 
     {
-        InSequence sequence;
+        auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
             .WillOnce(Invoke([&](std::size_t, record_t const* source, std::size_t size) noexcept -> std::size_t {
