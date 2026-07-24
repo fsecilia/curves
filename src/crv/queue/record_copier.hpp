@@ -21,6 +21,11 @@ concept is_byte_copier = requires(copier_t copier, std::size_t dst_offset, std::
     { copier(dst_offset, src) } noexcept -> std::same_as<std::size_t>;
 };
 
+template <typename copier_t>
+concept reports_copy_error = requires(copier_t const& copier) {
+    { copier.error() } noexcept -> std::same_as<int>;
+};
+
 /// adapts a byte copier to the record-based spsc copier contract
 ///
 /// This type copies whole records out of an spsc queue. The underlying copier reports bytes copied. This adapter
@@ -46,6 +51,13 @@ public:
         assert(copied_bytes <= src_bytes.size());
 
         return copied_bytes / sizeof(record_t);
+    }
+
+    /// forwards the underlying copier's retained error state
+    [[nodiscard]] auto error() const noexcept -> int
+        requires reports_copy_error<byte_copier_t>
+    {
+        return copier_.error();
     }
 
 private:
