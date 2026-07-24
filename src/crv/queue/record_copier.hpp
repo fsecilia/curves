@@ -53,4 +53,15 @@ private:
     byte_copier_t copier_;
 };
 
+template <typename record_t, typename byte_copier_factory_t,
+    typename t_product_t = record_copier_t<record_t, typename byte_copier_factory_t::product_t>>
+struct record_copier_factory_t
+{
+    using product_t = t_product_t;
+
+    byte_copier_factory_t byte_copier_factory;
+
+    constexpr auto operator()() const noexcept -> product_t { return product_t{byte_copier_factory()}; }
+};
+
 } // namespace crv
