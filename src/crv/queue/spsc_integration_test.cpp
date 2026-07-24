@@ -261,10 +261,10 @@ struct spsc_byte_integration_thread_test_t : spsc_byte_integration_test_t
         return record;
     }
 
-    auto append_record(std::vector<std::byte>& destination, record_t const& record) -> void
+    auto append_record(std::vector<std::byte>& dst, record_t const& record) -> void
     {
-        destination.insert(destination.end(), record.first.begin(), record.first.begin() + record.first_size);
-        destination.insert(destination.end(), record.second.begin(), record.second.begin() + record.second_size);
+        dst.insert(dst.end(), record.first.begin(), record.first.begin() + record.first_size);
+        dst.insert(dst.end(), record.second.begin(), record.second.begin() + record.second_size);
     }
 };
 
@@ -323,16 +323,16 @@ TEST_F(spsc_byte_integration_thread_test_t, randomly_chunked_stream)
             if (failure.load(std::memory_order_relaxed)) return;
 
             auto const maximum = std::size_t{1} + random() % 97u;
-            auto const copied = sut.read(maximum,
-                [&](std::size_t destination_offset, std::span<std::byte const> source) noexcept -> std::size_t {
-                    if (written + destination_offset + source.size() > actual.size())
+            auto const copied = sut.read(
+                maximum, [&](std::size_t dst_offset, std::span<std::byte const> src) noexcept -> std::size_t {
+                    if (written + dst_offset + src.size() > actual.size())
                     {
                         failure.store(2, std::memory_order_relaxed);
                         return std::size_t{};
                     }
 
-                    std::memcpy(actual.data() + written + destination_offset, source.data(), source.size());
-                    return source.size();
+                    std::memcpy(actual.data() + written + dst_offset, src.data(), src.size());
+                    return src.size();
                 });
 
             written += copied;
@@ -426,9 +426,9 @@ struct spsc_whole_record_integration_test_t : spsc_record_test_t
     struct byte_copier_t
     {
         mock_byte_copier_t* mock = nullptr;
-        auto operator()(std::size_t offset, std::span<std::byte const> source) noexcept -> std::size_t
+        auto operator()(std::size_t offset, std::span<std::byte const> src) noexcept -> std::size_t
         {
-            return mock->call(offset, source.data(), source.size());
+            return mock->call(offset, src.data(), src.size());
         }
     };
 
