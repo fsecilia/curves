@@ -174,7 +174,6 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         i18n_test.cpp
-        io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp
         math/abs_test.cpp
         math/arg_min_max_test.cpp
@@ -243,12 +242,10 @@ if (enable_testing)
         quadrature/antiderivative_test.cpp
         quadrature/bisector_test.cpp
         quadrature/integral_test.cpp
-        quadrature/integration_test.cpp
         quadrature/rules_test.cpp
         quadrature/stack_test.cpp
         quadrature/subdivider_test.cpp
         queue/record_copier_test.cpp
-        queue/spsc_integration_test.cpp
         queue/spsc_test.cpp
         queue/spsc_test.hpp
         ranges_test.cpp
@@ -310,6 +307,13 @@ if (enable_testing)
     add_dependencies(build_tests unit_tests)
 
     if (BUILD_INTEGRATION_TESTS)
+        add_executable(integration_test
+            io/unique_fd_integration_test.cpp
+            quadrature/integration_test.cpp
+            queue/spsc_integration_test.cpp
+        )
+        target_link_libraries(integration_test PRIVATE lib testing)
+
         add_executable(spline_integration_test
             spline/segment_integration_test.cpp
             spline/spline_integration_test.cpp
