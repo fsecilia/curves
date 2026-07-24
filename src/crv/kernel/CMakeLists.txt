@@ -16,6 +16,7 @@ set(kernel_files
     cxx/cassert
     control/control.c
     control/control.h
+    copy_to_user.c
     entry_point.c
     input/abi.c
     input/handler.c

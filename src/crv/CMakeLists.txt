@@ -144,6 +144,8 @@ set(shared_lib_kernel_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
+    kernel/copy_to_user.h
+    kernel/copy_to_user.hpp
     kernel/control/abi.h
     kernel/control/prepared_configuration.cpp
     kernel/control/prepared_configuration.h
@@ -198,6 +200,7 @@ set(shared_lib_kernel_files
     pipeline/validator.hpp
     pipeline/velocity.hpp
     prefetcher.hpp
+    queue/copy_to_user_copier.hpp
     queue/record_copier.hpp
     queue/spsc.hpp
     ranges.hpp
@@ -328,6 +331,7 @@ set(regression_test_files
     quadrature/construction/subdivider_test.cpp
     quadrature/integral_test.cpp
     quadrature/rules_test.cpp
+    queue/copy_to_user_copier_test.cpp
     queue/record_copier_test.cpp
     queue/spsc_integration_test.cpp
     queue/spsc_test.cpp

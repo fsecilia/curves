@@ -186,16 +186,16 @@ TEST_F(spsc_byte_unit_mock_test_t, wrapped_second_short_copy_consumes_first_span
         auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
-            .WillOnce(Invoke([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
+            .WillOnce([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
                 EXPECT_TRUE(std::equal(src, src + size, bytes.begin()));
                 return size;
-            }));
+            });
 
         EXPECT_CALL(mock_copier, call(2, _, 4))
-            .WillOnce(Invoke([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
+            .WillOnce([&](std::size_t, std::byte const* src, std::size_t size) noexcept -> std::size_t {
                 EXPECT_TRUE(std::equal(src, src + size, bytes.begin() + 2));
                 return 2;
-            }));
+            });
     }
 
     auto const copied = sut.read(6, copier_t{&mock_copier});
@@ -323,16 +323,16 @@ TEST_F(spsc_record_unit_mock_test_t, wrapped_read_reports_dst_offsets_in_records
         auto const seq = InSequence{};
 
         EXPECT_CALL(mock_copier, call(0, _, 2))
-            .WillOnce(Invoke([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
+            .WillOnce([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
                 EXPECT_TRUE(std::equal(src, src + size, records.begin()));
                 return size;
-            }));
+            });
 
         EXPECT_CALL(mock_copier, call(2, _, 4))
-            .WillOnce(Invoke([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
+            .WillOnce([&](std::size_t, record_t const* src, std::size_t size) noexcept -> std::size_t {
                 EXPECT_TRUE(std::equal(src, src + size, records.begin() + 2));
                 return size;
-            }));
+            });
     }
 
     EXPECT_EQ(sut.read(6, copier_t{&mock_copier}), 6);
