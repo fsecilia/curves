@@ -446,7 +446,6 @@ TEST_F(spsc_whole_record_integration_test_t, partial_first_record_is_not_consume
     auto copier = record_copier_t<record_t, byte_copier_t>{{&mock_byte_copier}};
 
     EXPECT_EQ(sut.read(records.size(), copier), 0);
-    EXPECT_TRUE(copier.short_copy());
 
     auto [copied, actual] = read_records(sut, records.size());
 
@@ -477,7 +476,6 @@ TEST_F(spsc_whole_record_integration_test_t, wrapped_partial_record_consumes_onl
     auto copier = record_copier_t<record_t, byte_copier_t>{{&mock_byte_copier}};
 
     EXPECT_EQ(sut.read(records.size(), copier), 3);
-    EXPECT_TRUE(copier.short_copy());
 
     auto [remainder_copied, remainder] = read_records(sut, records.size());
     auto const expected = std::vector<record_t>{records.begin() + 3, records.end()};

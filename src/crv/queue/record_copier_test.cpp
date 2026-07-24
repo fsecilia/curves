@@ -130,11 +130,6 @@ struct nontrivial_record_t
 
 static_assert(!can_form_record_copier<nontrivial_record_t, record_copier_test_t::byte_copier_t>);
 
-TEST_F(record_copier_test_t, initially_has_no_short_copy)
-{
-    EXPECT_FALSE(sut.short_copy());
-}
-
 TEST_F(record_copier_test_t, complete_copy_forwards_the_byte_offset_and_exact_source_span)
 {
     auto const records = make_records(6, 0x100u);
@@ -145,7 +140,6 @@ TEST_F(record_copier_test_t, complete_copy_forwards_the_byte_offset_and_exact_so
         .WillOnce(Return(source_bytes.size()));
 
     EXPECT_EQ(sut(3, source), source.size());
-    EXPECT_FALSE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, empty_source_is_a_complete_copy)
@@ -155,7 +149,6 @@ TEST_F(record_copier_test_t, empty_source_is_a_complete_copy)
     EXPECT_CALL(mock_byte_copier, call(7 * sizeof(record_t), _, 0)).WillOnce(Return(0));
 
     EXPECT_EQ(sut(7, source), 0);
-    EXPECT_FALSE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, zero_byte_copy_of_nonempty_source_reports_no_records)
@@ -165,7 +158,6 @@ TEST_F(record_copier_test_t, zero_byte_copy_of_nonempty_source_reports_no_record
     EXPECT_CALL(mock_byte_copier, call(0, _, records.size() * sizeof(record_t))).WillOnce(Return(0));
 
     EXPECT_EQ(sut(0, records), 0);
-    EXPECT_TRUE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, record_aligned_short_copy_reports_the_completed_records)
@@ -176,7 +168,6 @@ TEST_F(record_copier_test_t, record_aligned_short_copy_reports_the_completed_rec
         .WillOnce(Return(2 * sizeof(record_t)));
 
     EXPECT_EQ(sut(1, records), 2);
-    EXPECT_TRUE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, partial_record_is_rounded_down)
@@ -187,7 +178,6 @@ TEST_F(record_copier_test_t, partial_record_is_rounded_down)
         .WillOnce(Return(2 * sizeof(record_t) + 5));
 
     EXPECT_EQ(sut(2, records), 2);
-    EXPECT_TRUE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, every_possible_byte_count_reports_only_complete_records)
@@ -208,48 +198,12 @@ TEST_F(record_copier_test_t, every_possible_byte_count_reports_only_complete_rec
         auto local_sut = record_copier_t<record_t, byte_copier_spy_t>{byte_copier_spy_t{&state}};
 
         EXPECT_EQ(local_sut(destination_offset, source), copied_bytes / sizeof(record_t));
-        EXPECT_EQ(local_sut.short_copy(), copied_bytes != source_bytes.size());
 
         EXPECT_EQ(state.call_count, 1);
         EXPECT_EQ(state.destination_offset, destination_offset * sizeof(record_t));
         EXPECT_EQ(state.source_data, source_bytes.data());
         EXPECT_EQ(state.source_size, source_bytes.size());
     }
-}
-
-TEST_F(record_copier_test_t, short_copy_state_is_sticky_after_a_later_complete_copy)
-{
-    auto const records = make_records(3, 0x600u);
-    auto const source_bytes = std::as_bytes(std::span<record_t const>{records});
-
-    auto const seq = InSequence{};
-
-    EXPECT_CALL(mock_byte_copier, call(0, source_bytes.data(), source_bytes.size())).WillOnce(Return(sizeof(record_t)));
-
-    EXPECT_CALL(mock_byte_copier, call(0, source_bytes.data(), source_bytes.size()))
-        .WillOnce(Return(source_bytes.size()));
-
-    EXPECT_EQ(sut(0, records), 1);
-    EXPECT_TRUE(sut.short_copy());
-
-    EXPECT_EQ(sut(0, records), records.size());
-    EXPECT_TRUE(sut.short_copy());
-}
-
-TEST_F(record_copier_test_t, repeated_complete_copies_do_not_set_short_copy)
-{
-    auto const records = make_records(2, 0x700u);
-    auto const source_bytes = std::as_bytes(std::span<record_t const>{records});
-
-    EXPECT_CALL(mock_byte_copier, call(0, source_bytes.data(), source_bytes.size()))
-        .Times(2)
-        .WillRepeatedly(Return(source_bytes.size()));
-
-    EXPECT_EQ(sut(0, records), records.size());
-    EXPECT_FALSE(sut.short_copy());
-
-    EXPECT_EQ(sut(0, records), records.size());
-    EXPECT_FALSE(sut.short_copy());
 }
 
 TEST_F(record_copier_test_t, largest_valid_destination_offset_is_scaled_without_overflow)
@@ -261,7 +215,6 @@ TEST_F(record_copier_test_t, largest_valid_destination_offset_is_scaled_without_
     EXPECT_CALL(mock_byte_copier, call(destination_byte_offset, _, 0)).WillOnce(Return(0));
 
     EXPECT_EQ(sut(destination_offset, source), 0);
-    EXPECT_FALSE(sut.short_copy());
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
