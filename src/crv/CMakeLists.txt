@@ -131,6 +131,7 @@ set(shared_lib_kernel_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
+    kernel/composition.hpp
     kernel/copy_to_user.h
     kernel/copy_to_user.hpp
     kernel/cxx_build_test.cpp
