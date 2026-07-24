@@ -55,11 +55,14 @@ set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 
 set(hdrs_kernel
     cxx/cassert
+    copy_to_user.h
+    copy_to_user.hpp
     input/handler.h
 )
 
 set(srcs_kernel
     input/handler.c
+    copy_to_user.c
     entry_point.c
 )
 

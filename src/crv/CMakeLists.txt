@@ -145,6 +145,7 @@ target_sources_kernel(lib
     math/scalar_traits.hpp
     math/shifter.hpp
     prefetcher.hpp
+    queue/copy_to_user_copier.hpp
     queue/record_copier.hpp
     queue/spsc.hpp
     ranges.hpp
@@ -245,6 +246,7 @@ if (enable_testing)
         quadrature/rules_test.cpp
         quadrature/stack_test.cpp
         quadrature/subdivider_test.cpp
+        queue/copy_to_user_copier_test.cpp
         queue/record_copier_test.cpp
         queue/spsc_test.cpp
         queue/spsc_test.hpp
