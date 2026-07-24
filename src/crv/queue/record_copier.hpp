@@ -46,16 +46,11 @@ public:
 
         assert(copied_bytes <= source_bytes.size());
 
-        short_copy_ = short_copy_ || copied_bytes != source_bytes.size();
-
         return copied_bytes / sizeof(record_t);
     }
 
-    [[nodiscard]] auto short_copy() const noexcept -> bool { return short_copy_; }
-
 private:
     byte_copier_t copier_;
-    bool short_copy_{};
 };
 
 } // namespace crv
