@@ -39,6 +39,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -Werror
         -Wextra
         -Wswitch
+
+        # We don't actually use any floating point stuff, but clang hard errors when it encounters long double if this
+        # flag is not specified on x64. We need to gate this behind x64 when we support arm.
+        -m80387
     )
     target_compile_options(project_options INTERFACE
         -fsized-deallocation
@@ -65,12 +69,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    list(APPEND compile_options_common
-        # We don't actually use any floating point stuff, but clang hard errors when it encounters long double if this
-        # flag is not specified on x64. We need to gate this behind x64 when we support arm.
-        -m80387
-    )
-
     target_compile_options(project_options INTERFACE
         -fcolor-diagnostics
         -fsafe-buffer-usage-suggestions
