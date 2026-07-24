@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0+ OR MIT
 
 /// \file
-/// \brief adapts a byte copier to copy only complete records
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
