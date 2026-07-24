@@ -117,7 +117,7 @@ TEST_F(unique_fd_test_t, reset_to_disarmed_preserves_closer_for_later_adoption)
     auto const new_fd = int{23};
     auto sut = sut_t{old_fd, closer_t{&mock_closer}};
 
-    auto seq = InSequence{};
+    auto const seq = InSequence{};
     expect_close(old_fd);
 
     sut.reset();
@@ -372,7 +372,7 @@ TEST_F(unique_fd_test_armed_t, reset_closes_old_and_adopts_new_fd)
 // this test documents behavior, but doing this in prod would double close
 TEST_F(unique_fd_test_armed_t, reset_to_same_fd_invokes_old_and_new_closers)
 {
-    auto seq = InSequence{};
+    auto const seq = InSequence{};
     expect_close(fd);
 
     sut.reset(sut.get(), closer_t{&new_mock_closer});
@@ -386,7 +386,7 @@ TEST_F(unique_fd_test_armed_t, reset_with_closer_closes_old_with_old_closer_and_
 {
     auto const new_fd = int{1};
 
-    auto seq = InSequence{};
+    auto const seq = InSequence{};
     expect_close(fd);
     expect_close(new_fd, new_mock_closer);
 
