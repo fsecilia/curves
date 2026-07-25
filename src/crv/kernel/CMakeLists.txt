@@ -41,6 +41,9 @@ set(kbuild_root "/lib/modules/${kernel_version}/build")
 # shadow build location
 set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
 
+# read kernel config to detect if it was built with clang or gcc
+file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG=y$")
+
 # =====================================================================================================================
 # Source Files
 # =====================================================================================================================
@@ -223,8 +226,6 @@ install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
 # Build Targets
 # ---------------------------------------------------------------------------------------------------------------------
 
-# read kernel config to detect if it was built with clang or gcc
-file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG=y$")
 if(kernel_is_clang)
     set(kbuild_compiler_flags "LLVM=1")
 endif()
