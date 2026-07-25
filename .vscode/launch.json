@@ -6,7 +6,10 @@
             "type": "lldb",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
-            "args": [],
+            "args": [
+                "/home/frank/mouse.capture",
+                "4000"
+            ],
             "env": {
                 "GTEST_COLOR": "1"
             },

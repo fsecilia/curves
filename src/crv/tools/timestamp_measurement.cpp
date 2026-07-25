@@ -5,8 +5,11 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/filter/poll_interval_quantizer.hpp>
 #include <crv/io/capture/file.hpp>
 #include <crv/io/capture/stream.hpp>
+#include <crv/math/fixed/fixed.hpp>
+#include <crv/math/fixed/io.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -18,6 +21,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>
+#include <iostream>
 #include <limits>
 #include <optional>
 #include <utility>
@@ -192,10 +197,10 @@ private:
     };
 
 public:
-    explicit timestamp_stats_t(std::optional<long double> expected_rate_hz)
+    explicit timestamp_stats_t(long double expected_rate_hz)
         : expected_rate_hz_{expected_rate_hz}, histogram_counts_(histogram_bin_count, 0)
     {
-        if (expected_rate_hz_) { expected_period_ns_ = 1'000'000'000.0L / *expected_rate_hz_; }
+        expected_period_ns_ = 1'000'000'000.0L / expected_rate_hz_;
     }
 
     auto observe(capture_input_values_view_t const& frame) -> void
@@ -399,28 +404,13 @@ public:
 
         print_duration("mean", delta_sum_ns_ / static_cast<long double>(deltas_ns_.size()));
 
-        if (expected_period_ns_)
-        {
-            std::fprintf(stdout, "\nexpected polling rate\n");
-
-            std::fprintf(stdout, "  %-37s %12.3Lf Hz\n", "configured rate", *expected_rate_hz_);
-
-            print_duration("expected period", *expected_period_ns_);
-
-            print_count("delta < 25% expected period", below_quarter_period_count_, deltas_ns_.size());
-
-            print_count("delta < 50% expected period", below_half_period_count_, deltas_ns_.size());
-
-            print_count("delta < 75% expected period", below_three_quarters_period_count_, deltas_ns_.size());
-
-            print_short_delta_compensation();
-        }
-        else
-        {
-            std::fprintf(stdout,
-                "\nno expected polling rate was supplied; "
-                "rate-relative and compensation statistics were not calculated\n");
-        }
+        std::fprintf(stdout, "\nexpected polling rate\n");
+        std::fprintf(stdout, "  %-37s %12.3Lf Hz\n", "configured rate", expected_rate_hz_);
+        print_duration("expected period", expected_period_ns_);
+        print_count("delta < 25% expected period", below_quarter_period_count_, deltas_ns_.size());
+        print_count("delta < 50% expected period", below_half_period_count_, deltas_ns_.size());
+        print_count("delta < 75% expected period", below_three_quarters_period_count_, deltas_ns_.size());
+        print_short_delta_compensation();
 
         print_histogram_peaks();
         print_shortest_delta_contexts();
@@ -452,22 +442,18 @@ private:
             ++histogram_overflow_count_;
         }
 
-        if (expected_period_ns_)
-        {
-            auto const delta = static_cast<long double>(sample.delta_ns);
-
-            if (delta < *expected_period_ns_ * 0.25L) ++below_quarter_period_count_;
-            if (delta < *expected_period_ns_ * 0.50L) ++below_half_period_count_;
-            if (delta < *expected_period_ns_ * 0.75L) ++below_three_quarters_period_count_;
-        }
+        auto const delta = static_cast<long double>(sample.delta_ns);
+        if (delta < expected_period_ns_ * 0.25L) ++below_quarter_period_count_;
+        if (delta < expected_period_ns_ * 0.50L) ++below_half_period_count_;
+        if (delta < expected_period_ns_ * 0.75L) ++below_three_quarters_period_count_;
 
         auto previous_delta_ns = std::optional<std::uint64_t>{};
 
         if (pending_delta_)
         {
             /*
-                A pending context can only survive when this delta immediately
-                follows it. Gaps and regressions call break_delta_chain().
+                A pending context can only survive when this delta immediately follows it. Gaps and regressions call
+                break_delta_chain().
             */
             assert(pending_delta_->sample.sequence == sample.previous_sequence);
 
@@ -502,10 +488,8 @@ private:
 
     auto observe_compensation(delta_context_t const& context) -> void
     {
-        if (!expected_period_ns_) return;
-
         auto const delta = static_cast<long double>(context.sample.delta_ns);
-        auto const short_threshold = *expected_period_ns_ * 0.50L;
+        auto const short_threshold = expected_period_ns_ * 0.50L;
 
         if (delta >= short_threshold) return;
 
@@ -520,7 +504,7 @@ private:
 
             auto const pair = static_cast<long double>(*context.previous_delta_ns) + delta;
 
-            previous_compensates = approximately(pair, *expected_period_ns_ * 2.0L);
+            previous_compensates = approximately(pair, expected_period_ns_ * 2.0L);
 
             if (previous_compensates) { ++previous_plus_short_compensation_count_; }
         }
@@ -531,7 +515,7 @@ private:
 
             auto const pair = delta + static_cast<long double>(*context.next_delta_ns);
 
-            next_compensates = approximately(pair, *expected_period_ns_ * 2.0L);
+            next_compensates = approximately(pair, expected_period_ns_ * 2.0L);
 
             if (next_compensates) { ++short_plus_next_compensation_count_; }
         }
@@ -547,15 +531,13 @@ private:
             auto const triplet = static_cast<long double>(*context.previous_delta_ns) + delta
                 + static_cast<long double>(*context.next_delta_ns);
 
-            if (approximately(triplet, *expected_period_ns_ * 3.0L)) { ++triplet_compensation_count_; }
+            if (approximately(triplet, expected_period_ns_ * 3.0L)) { ++triplet_compensation_count_; }
         }
     }
 
     [[nodiscard]] auto approximately(long double value, long double target) const noexcept -> bool
     {
-        assert(expected_period_ns_);
-
-        auto const tolerance = *expected_period_ns_ * compensation_tolerance_fraction;
+        auto const tolerance = expected_period_ns_ * compensation_tolerance_fraction;
 
         return std::fabs(value - target) <= tolerance;
     }
@@ -585,12 +567,10 @@ private:
 
     auto print_short_delta_compensation() const -> void
     {
-        assert(expected_period_ns_);
-
-        auto const short_threshold = *expected_period_ns_ * 0.50L;
-        auto const pair_target = *expected_period_ns_ * 2.0L;
-        auto const triplet_target = *expected_period_ns_ * 3.0L;
-        auto const tolerance = *expected_period_ns_ * compensation_tolerance_fraction;
+        auto const short_threshold = expected_period_ns_ * 0.50L;
+        auto const pair_target = expected_period_ns_ * 2.0L;
+        auto const triplet_target = expected_period_ns_ * 3.0L;
+        auto const tolerance = expected_period_ns_ * compensation_tolerance_fraction;
 
         std::fprintf(stdout, "\nshort-delta neighborhood compensation\n");
 
@@ -772,8 +752,8 @@ private:
         }
     }
 
-    std::optional<long double> expected_rate_hz_;
-    std::optional<long double> expected_period_ns_;
+    long double expected_rate_hz_;
+    long double expected_period_ns_;
 
     bool initialized_ = false;
     std::uint64_t frame_count_ = 0;
@@ -829,7 +809,201 @@ private:
     std::optional<sequence_discontinuity_t> first_sequence_discontinuity_;
 };
 
-[[nodiscard]] auto run_stats(char const* path, std::optional<long double> expected_rate_hz) -> int
+template <typename quantizer_t> class poll_interval_quantizer_stats_t
+{
+public:
+    using timestamp_t = typename quantizer_t::timestamp_t;
+    using period_t = typename quantizer_t::period_t;
+    using residual_t = typename quantizer_t::residual_t;
+    using tick_count_t = typename quantizer_t::tick_count_t;
+    using interval_t = typename quantizer_t::interval_t;
+    using status_t = typename quantizer_t::status_t;
+
+    auto observe(timestamp_t timestamp, interval_t const& interval, residual_t residual) -> void
+    {
+        ++observations_;
+
+        switch (interval.status)
+        {
+            case status_t::initialized:
+                ++initializations_;
+                forced_run_ = 0;
+                break;
+
+            case status_t::continuous:
+                ++continuous_intervals_;
+                observe_continuous_interval(timestamp, interval, residual);
+                break;
+
+            case status_t::timestamp_regressed:
+                ++timestamp_regressions_;
+                forced_run_ = 0;
+                break;
+        }
+
+        if (!have_residual_)
+        {
+            minimum_residual_ = residual;
+            maximum_residual_ = residual;
+            have_residual_ = true;
+        }
+        else
+        {
+            if (residual < minimum_residual_) minimum_residual_ = residual;
+            if (residual > maximum_residual_) maximum_residual_ = residual;
+        }
+
+        previous_timestamp_ = timestamp;
+        previous_residual_ = residual;
+        final_residual_ = residual;
+        have_previous_ = true;
+    }
+
+    auto print() const -> void { print(std::cout); }
+
+    auto print(std::ostream& out) const -> void
+    {
+        out << "poll interval quantizer\n";
+        print_count(out, "observations", observations_);
+        print_count(out, "initializations", initializations_);
+        print_count(out, "continuous intervals", continuous_intervals_);
+        print_count(out, "timestamp regressions", timestamp_regressions_);
+
+        out << '\n' << "tick inference\n";
+        print_count(out, "inferred elapsed ticks", inferred_elapsed_ticks_);
+        print_count(out, "inferred hidden zero ticks", inferred_hidden_zero_ticks_);
+        print_count_and_percentage(
+            out, "minimum-tick-forced intervals", minimum_tick_forced_intervals_, continuous_intervals_);
+        print_count(out, "longest forced run", longest_forced_run_);
+        print_count(out, "maximum elapsed ticks", maximum_elapsed_ticks_);
+
+        out << '\n' << "elapsed-tick distribution\n";
+        print_histogram_row(out, "1", tick_histogram_[0]);
+        print_histogram_row(out, "2", tick_histogram_[1]);
+        print_histogram_row(out, "3", tick_histogram_[2]);
+        print_histogram_row(out, "4", tick_histogram_[3]);
+        print_histogram_row(out, "5-8", tick_histogram_[4]);
+        print_histogram_row(out, "9-16", tick_histogram_[5]);
+        print_histogram_row(out, "17-64", tick_histogram_[6]);
+        print_histogram_row(out, "65+", tick_histogram_[7]);
+
+        out << '\n' << "residual\n";
+
+        if (!have_residual_) { out << "  no observations\n"; }
+        else
+        {
+            out << "  minimum residual                    " << minimum_residual_ << " ns\n";
+            out << "  maximum residual                    " << maximum_residual_ << " ns\n";
+            out << "  final residual                      " << final_residual_ << " ns\n";
+        }
+
+        out << '\n' << "conservation\n";
+        out << "  accumulated identity error          " << conservation_error_ << " ns\n";
+    }
+
+private:
+    static constexpr auto histogram_index(tick_count_t ticks) noexcept -> std::size_t
+    {
+        if (ticks <= 4) return static_cast<std::size_t>(ticks - 1);
+        if (ticks <= 8) return 4;
+        if (ticks <= 16) return 5;
+        if (ticks <= 64) return 6;
+        return 7;
+    }
+
+    auto observe_continuous_interval(timestamp_t timestamp, interval_t const& interval, residual_t residual) -> void
+    {
+        assert(have_previous_);
+        assert(timestamp >= previous_timestamp_);
+        assert(interval.elapsed_ticks != 0);
+
+        auto const raw_interval = timestamp - previous_timestamp_;
+
+        using tick_count_fixed_t = fixed_t<tick_count_t, 0>;
+
+        auto const quantized_interval = residual_t::convert(
+            multiply(interval.report_period, tick_count_fixed_t::literal(interval.elapsed_ticks)));
+
+        // Check the recurrence directly for every individual observation:
+        //
+        //     raw + previous residual
+        //         = quantized + current residual
+        conservation_error_ += residual_t::convert(raw_interval) + previous_residual_ - quantized_interval - residual;
+
+        assert(inferred_elapsed_ticks_ <= max<uint64_t>() - interval.elapsed_ticks);
+        inferred_elapsed_ticks_ += interval.elapsed_ticks;
+
+        auto const hidden_zero_ticks = interval.hidden_zero_ticks();
+        assert(inferred_hidden_zero_ticks_ <= max<uint64_t>() - hidden_zero_ticks);
+        inferred_hidden_zero_ticks_ += hidden_zero_ticks;
+
+        if (interval.minimum_tick_forced)
+        {
+            ++minimum_tick_forced_intervals_;
+            ++forced_run_;
+
+            if (forced_run_ > longest_forced_run_) longest_forced_run_ = forced_run_;
+        }
+        else
+        {
+            forced_run_ = 0;
+        }
+
+        if (interval.elapsed_ticks > maximum_elapsed_ticks_) maximum_elapsed_ticks_ = interval.elapsed_ticks;
+
+        ++tick_histogram_[histogram_index(interval.elapsed_ticks)];
+    }
+
+    static auto percentage(uint64_t count, uint64_t total) noexcept -> double
+    {
+        if (total == 0) return 0.0;
+
+        return static_cast<double>(count) * 100.0 / static_cast<double>(total);
+    }
+
+    static auto print_count(std::ostream& out, char const* label, uint64_t count) -> void
+    {
+        out << "  " << std::left << std::setw(38) << label << std::right << std::setw(12) << count << '\n';
+    }
+
+    static auto print_count_and_percentage(std::ostream& out, char const* label, uint64_t count, uint64_t total) -> void
+    {
+        out << "  " << std::left << std::setw(38) << label << std::right << std::setw(12) << count << "  " << std::fixed
+            << std::setprecision(5) << std::setw(10) << percentage(count, total) << "%\n";
+    }
+
+    auto print_histogram_row(std::ostream& out, char const* label, uint64_t count) const -> void
+    {
+        out << "  " << std::left << std::setw(38) << label << std::right << std::setw(12) << count << "  " << std::fixed
+            << std::setprecision(5) << std::setw(10) << percentage(count, continuous_intervals_) << "%\n";
+    }
+
+    uint64_t observations_{};
+    uint64_t initializations_{};
+    uint64_t continuous_intervals_{};
+    uint64_t timestamp_regressions_{};
+
+    uint64_t inferred_elapsed_ticks_{};
+    uint64_t inferred_hidden_zero_ticks_{};
+    uint64_t minimum_tick_forced_intervals_{};
+    uint64_t forced_run_{};
+    uint64_t longest_forced_run_{};
+
+    tick_count_t maximum_elapsed_ticks_{};
+    std::array<uint64_t, 8> tick_histogram_{};
+
+    timestamp_t previous_timestamp_{};
+    residual_t previous_residual_{};
+    residual_t minimum_residual_{};
+    residual_t maximum_residual_{};
+    residual_t final_residual_{};
+    residual_t conservation_error_{};
+
+    bool have_previous_{};
+    bool have_residual_{};
+};
+
+[[nodiscard]] auto run_stats(char const* path, long double expected_rate_hz) -> int
 {
     auto opened = open_capture_file(path);
 
@@ -846,7 +1020,10 @@ private:
     }
 
     auto stream = std::move(*opened);
-    auto stats = timestamp_stats_t{expected_rate_hz};
+    auto timestamp_stats = timestamp_stats_t{expected_rate_hz};
+    auto poll_interval_quantizer
+        = poll_interval_quantizer_t{to_fixed<poll_interval_quantizer_t::period_t>(1'000'000'000.0L / expected_rate_hz)};
+    auto poll_interval_quantizer_stats = poll_interval_quantizer_stats_t<poll_interval_quantizer_t>{};
     auto complete = true;
 
     while (!stop_requested)
@@ -873,7 +1050,11 @@ private:
         if (!result->has_value()) break;
 
         // The view expires on the next read, but observe() copies everything it retains.
-        stats.observe(result->value());
+        timestamp_stats.observe(result->value());
+
+        auto const timestamp = typename poll_interval_quantizer_t::timestamp_t{result->value().timestamp_ns};
+        auto const interval = poll_interval_quantizer.observe(timestamp);
+        poll_interval_quantizer_stats.observe(timestamp, interval, poll_interval_quantizer.residual());
     }
 
     if (stop_requested)
@@ -882,7 +1063,9 @@ private:
         std::fprintf(stderr, "analysis interrupted; reported statistics are partial\n");
     }
 
-    stats.print();
+    timestamp_stats.print();
+    std::fprintf(stderr, "\n");
+    poll_interval_quantizer_stats.print();
 
     return complete ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -894,9 +1077,9 @@ auto main(int argc, char** argv) -> int
 {
     using namespace crv;
 
-    if (argc < 2 || 3 < argc)
+    if (argc < 3 || 3 < argc)
     {
-        std::fprintf(stderr, "usage: %s CAPTURE_FILE [EXPECTED_POLL_RATE_HZ]\n", argv[0]);
+        std::fprintf(stderr, "usage: %s CAPTURE_FILE EXPECTED_POLL_RATE_HZ\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -906,18 +1089,12 @@ auto main(int argc, char** argv) -> int
         return EXIT_FAILURE;
     }
 
-    auto expected_rate_hz = std::optional<long double>{};
-
-    if (argc == 3)
+    auto expected_rate_hz = parse_expected_rate(argv[2]);
+    if (!expected_rate_hz || *expected_rate_hz < 0.0L)
     {
-        expected_rate_hz = parse_expected_rate(argv[2]);
-
-        if (!expected_rate_hz)
-        {
-            std::fprintf(stderr, "invalid expected polling rate: %s\n", argv[2]);
-            return EXIT_FAILURE;
-        }
+        std::fprintf(stderr, "invalid expected polling rate: %s\n", argv[2]);
+        return EXIT_FAILURE;
     }
 
-    return run_stats(argv[1], expected_rate_hz);
+    return run_stats(argv[1], *expected_rate_hz);
 }
