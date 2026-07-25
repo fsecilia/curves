@@ -319,4 +319,5 @@ if (enable_testing)
 endif()
 
 add_subdirectory(kernel)
+add_subdirectory(tools)
 add_subdirectory(ui)
