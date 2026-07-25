@@ -303,5 +303,31 @@ TEST(poll_interval_quantizer_test, long_bunched_trace_conserves_elapsed_time)
     EXPECT_EQ(sut.residual(), residual_t{});
 }
 
+constexpr auto timestamp_regression_preserves_monotonic_logical_time() noexcept -> bool
+{
+    auto sut = sut_t{period(100)};
+
+    auto const initialized = sut.observe(timestamp(1'000));
+    if (initialized.quantized_timestamp() != timestamp(1'000)) return false;
+
+    auto const continuous = sut.observe(timestamp(1'100));
+    if (continuous.quantized_timestamp() != timestamp(1'100)) return false;
+
+    auto const regression = sut.observe(timestamp(900));
+
+    if (regression.status != status_t::timestamp_regressed) return false;
+    if (regression.elapsed_ticks != 1) return false;
+    if (regression.quantized_timestamp() != timestamp(1'200)) return false;
+    if (sut.residual() != residual_t{}) return false;
+
+    // Observation history was reanchored at 900, so this is an ordinary
+    // one-period raw interval while logical time continues independently.
+    auto const recovered = sut.observe(timestamp(1'000));
+
+    return recovered.status == status_t::continuous && recovered.elapsed_ticks == 1
+        && recovered.quantized_timestamp() == timestamp(1'300) && sut.residual() == residual_t{};
+}
+static_assert(timestamp_regression_preserves_monotonic_logical_time());
+
 } // namespace
 } // namespace crv

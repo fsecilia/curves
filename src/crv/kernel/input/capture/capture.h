@@ -6,8 +6,13 @@
 
 #pragma once
 
+#include <crv/kernel/abi.h>
+
 struct input_handle;
 struct input_value;
+
+void crv_log_timestamp_regression(
+    crv_u64_t previous_timestamp, crv_u64_t observed_timestamp, crv_u64_t repaired_timestamp);
 
 /// registers userspace capture-stream device
 ///
@@ -25,7 +30,8 @@ int crv_capture_attach(struct input_handle* handle);
 ///
 /// Capture is observational. This function neither modifies the values nor determines how many values the input handler
 /// forwards.
-void crv_capture_record(struct input_handle* handle, const struct input_value* values, unsigned int count);
+void crv_capture_record(
+    struct input_handle* handle, const struct input_value* values, unsigned int count, crv_u64_t timestamp_ns);
 
 /// detaches input handle
 ///

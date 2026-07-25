@@ -22,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/poll.h>
+#include <linux/printk.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/types.h>
@@ -86,6 +87,15 @@ struct crv_capture_state_t
 static struct crv_capture_state_t crv_capture;
 
 static DEFINE_KFIFO(crv_capture_fifo, unsigned char, CRV_CAPTURE_FIFO_BYTE_COUNT);
+
+void crv_log_timestamp_regression(
+    crv_u64_t previous_timestamp, crv_u64_t observed_timestamp, crv_u64_t repaired_timestamp)
+{
+    pr_warn_ratelimited("crv: input timestamp regressed from %llu ns to %llu ns; "
+                        "continued logical clock at %llu ns\n",
+        (unsigned long long)previous_timestamp, (unsigned long long)observed_timestamp,
+        (unsigned long long)repaired_timestamp);
+}
 
 //
 // stream layout: stream header -> callback frames -> buffered drain -> terminal errno, if any
@@ -387,11 +397,10 @@ int crv_capture_attach(struct input_handle* handle)
     return 0;
 }
 
-void crv_capture_record(struct input_handle* handle, const struct input_value* values, unsigned int count)
+void crv_capture_record(
+    struct input_handle* handle, const struct input_value* values, unsigned int count, crv_u64_t timestamp_ns)
 {
     struct crv_capture_input_values_header_t frame_header;
-    ktime_t* timestamps;
-    u64 timestamp_ns;
     u64 sequence;
     unsigned long flags;
     unsigned int payload_size;
@@ -404,10 +413,6 @@ void crv_capture_record(struct input_handle* handle, const struct input_value* v
 
     // fast-path rejection only; both conditions are rechecked under state_lock
     if (READ_ONCE(crv_capture.source) != handle || !READ_ONCE(crv_capture.session_active)) return;
-
-    // report timestamp retained by input core; input_get_timestamp() synthesizes CLOCK_MONOTONIC if not set
-    timestamps = input_get_timestamp(handle->dev);
-    timestamp_ns = (u64)ktime_to_ns(timestamps[INPUT_CLK_MONO]);
 
     spin_lock_irqsave(&crv_capture.state_lock, flags);
 

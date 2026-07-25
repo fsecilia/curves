@@ -8,6 +8,8 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/rounding_mode.hpp>
+#include <crv/math/shifter.hpp>
 #include <cassert>
 
 namespace crv {
@@ -40,6 +42,7 @@ public:
     /// Q32.32 covers periods up to almost 2^32 ns while retaining substantially more fractional precision than mouse
     /// polling requires.
     using period_t = fixed_t<uint64_t, 32>;
+    using quantized_time_t = fixed_t<uint128_t, period_t::frac_bits>;
 
     /// Signed carried timing error in nanoseconds.
     ///
@@ -70,6 +73,9 @@ public:
         /// Always at least one. Hidden zero-displacement ticks are `elapsed_ticks - 1`.
         tick_count_t elapsed_ticks;
 
+        /// Absolute logical report time on the quantized polling grid.
+        quantized_time_t quantized_time;
+
         status_t status;
 
         /// True when unconstrained nearest-even quantization selected zero or a negative tick count and the
@@ -82,6 +88,13 @@ public:
         {
             assert(elapsed_ticks != 0);
             return elapsed_ticks - 1;
+        }
+
+        /// Quantized report time rounded to integral nanoseconds for the kernel API.
+        constexpr auto quantized_timestamp() const noexcept -> timestamp_t
+        {
+            static constexpr auto rne_shifter = shifter_t<rounding_modes::shr::nearest_even>{};
+            return timestamp_t::template convert<rne_shifter>(quantized_time);
         }
     };
 
@@ -105,11 +118,13 @@ public:
         {
             previous_timestamp_ = timestamp;
             residual_ = {};
+            quantized_time_ = quantized_time_t::convert(timestamp);
             initialized_ = true;
 
             return {
                 .report_period = polling_period_,
                 .elapsed_ticks = 1,
+                .quantized_time = quantized_time_,
                 .status = status_t::initialized,
                 .minimum_tick_forced = false,
             };
@@ -117,17 +132,24 @@ public:
 
         if (timestamp < previous_timestamp_) [[unlikely]]
         {
+            // The observed clock is discontinuous. Reanchor observation history at the new timestamp, but preserve the
+            // downstream logical timeline.
+            //
+            // This delivered report must occur after the previous delivered report, so advance the logical clock by the
+            // minimum valid interval: one tick.
             previous_timestamp_ = timestamp;
             residual_ = {};
+
+            quantized_time_ += quantized_time_t::convert(polling_period_);
 
             return {
                 .report_period = polling_period_,
                 .elapsed_ticks = 1,
+                .quantized_time = quantized_time_,
                 .status = status_t::timestamp_regressed,
                 .minimum_tick_forced = false,
             };
         }
-
         auto const observed_interval = timestamp - previous_timestamp_;
         previous_timestamp_ = timestamp;
 
@@ -140,11 +162,15 @@ public:
         // u64 Q32 * u64 Q0 -> u128 Q32. No 128-bit operand is multiplied.
         auto const quantized_interval = multiply(polling_period_, tick_count_fixed_t::literal(quantized.elapsed_ticks));
 
+        // u128 Q32 accumulator plus u128 Q32 interval.
+        quantized_time_ += quantized_time_t::convert(quantized_interval);
+
         residual_ = corrected_interval - residual_t::convert(quantized_interval);
 
         return {
             .report_period = polling_period_,
             .elapsed_ticks = quantized.elapsed_ticks,
+            .quantized_time = quantized_time_,
             .status = status_t::continuous,
             .minimum_tick_forced = quantized.minimum_tick_forced,
         };
@@ -152,18 +178,25 @@ public:
 
     constexpr void reset() noexcept
     {
+        quantized_time_ = {};
         previous_timestamp_ = {};
         residual_ = {};
         initialized_ = false;
     }
 
     constexpr auto polling_period() const noexcept -> period_t { return polling_period_; }
+
+    constexpr auto previous_timestamp() const noexcept -> timestamp_t
+    {
+        assert(initialized_);
+        return previous_timestamp_;
+    }
+
     constexpr auto residual() const noexcept -> residual_t { return residual_; }
     constexpr auto initialized() const noexcept -> bool { return initialized_; }
 
 private:
     using positive_interval_t = fixed_t<uint128_t, period_t::frac_bits>;
-
     using tick_count_fixed_t = fixed_t<tick_count_t, 0>;
 
     struct quantized_tick_count_t
@@ -232,7 +265,7 @@ private:
     }
 
     period_t polling_period_;
-
+    quantized_time_t quantized_time_{};
     timestamp_t previous_timestamp_{};
     residual_t residual_{};
     bool initialized_{};

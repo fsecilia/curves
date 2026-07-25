@@ -60,6 +60,7 @@ set(hdrs_kernel
     cxx/cassert
     cxx_kernel_build_test.hpp
     input/handler.h
+    input/poll_interval_quantizer.h
 )
 
 set(srcs_kernel
@@ -70,6 +71,7 @@ set(srcs_kernel
     input/capture/abi.c
     input/capture/capture.c
     input/handler.c
+    input/poll_interval_quantizer.cpp
 )
 
 # ---------------------------------------------------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <crv/kernel/input/capture/capture.h>
+#include <crv/kernel/input/poll_interval_quantizer.h>
 
 #include <linux/bitops.h>
 #include <linux/errno.h>
@@ -153,7 +154,19 @@ err_free_handle:
 
 static unsigned int crv_input_events(struct input_handle* handle, struct input_value* values, unsigned int count)
 {
-    crv_capture_record(handle, values, count);
+    u64 timestamp_ns, quantized_timestamp_ns;
+    ktime_t* timestamps;
+
+    if (!count) return 0;
+    if (WARN_ON_ONCE(!handle || !values)) return count;
+
+    // filter timestamp
+    timestamps = input_get_timestamp(handle->dev);
+    timestamp_ns = (u64)ktime_to_ns(timestamps[INPUT_CLK_MONO]);
+    quantized_timestamp_ns = crv_quantize_timestamp(timestamp_ns);
+    input_set_timestamp(handle->dev, ns_to_ktime(quantized_timestamp_ns));
+
+    crv_capture_record(handle, values, count, timestamp_ns);
 
     return count;
 }
