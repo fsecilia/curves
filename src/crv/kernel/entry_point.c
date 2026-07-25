@@ -33,6 +33,27 @@ static const struct input_device_id crv_input_device_ids[] = {
 
 MODULE_DEVICE_TABLE(input, crv_input_device_ids);
 
+/// implements input_register_handle, but inserts to head instead of tail
+static int crv_input_register_handle_head(struct input_handle* handle)
+{
+    struct input_handler* handler = handle->handler;
+    struct input_dev* dev = handle->dev;
+    int error;
+
+    handle->handle_events = handler->events;
+
+    error = mutex_lock_interruptible(&dev->mutex);
+    if (error) return error;
+    list_add_rcu(&handle->d_node, &dev->h_list);
+    mutex_unlock(&dev->mutex);
+
+    list_add_tail_rcu(&handle->h_node, &handler->h_list);
+
+    if (handler->start) handler->start(handle);
+
+    return 0;
+}
+
 //
 // input-device lifecycle
 //
@@ -98,7 +119,7 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
     handle->handler = handler;
     handle->name = CRV_INPUT_HANDLER_NAME;
 
-    error = input_register_handle(handle);
+    error = crv_input_register_handle_head(handle);
     if (error) goto err_free_handle;
 
     error = input_open_device(handle);
