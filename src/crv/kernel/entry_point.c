@@ -20,8 +20,7 @@
 /// name reported by input core for the handler and its handles
 #define CRV_INPUT_HANDLER_NAME KBUILD_MODNAME
 
-// Input core first applies this capability table, then calls match() for the policy checks that cannot be represented
-// by input_device_id.
+// input core applies this capability table then calls match() for policy checks
 static const struct input_device_id crv_input_device_ids[] = {
     {
         .flags = INPUT_DEVICE_ID_MATCH_EVBIT | INPUT_DEVICE_ID_MATCH_KEYBIT | INPUT_DEVICE_ID_MATCH_RELBIT,
@@ -49,15 +48,11 @@ MODULE_DEVICE_TABLE(input, crv_input_device_ids);
 
 static bool crv_input_match(struct input_handler* handler, struct input_dev* device)
 {
-    // The first eligible device wins. Other eligible devices remain unbound to this handler until device selection
-    // becomes explicit in the ui.
+    // first eligible device wins
 
     (void)handler;
 
-    // filter by bus
-    //
-    // This accepts conventional external mice and virtual relative-pointer streams produced by input remappers. USB
-    // includes wired mice and 2.4 GHz receiver dongles.
+    // accepts external mice and virtual relative-pointer streams
     switch (device->id.bustype)
     {
         case BUS_USB:
@@ -67,10 +62,7 @@ static bool crv_input_match(struct input_handler* handler, struct input_dev* dev
         default: return false;
     }
 
-    // filter near-misses
-    //
-    // Reject device classes that may expose mouse-like compatibility capabilities but are not physical or remapped
-    // relative mice.
+    // reject device classes that may expose mouse-like capabilities but are not relative mice
     if (test_bit(INPUT_PROP_DIRECT, device->propbit) || test_bit(INPUT_PROP_BUTTONPAD, device->propbit)
         || test_bit(INPUT_PROP_SEMI_MT, device->propbit) || test_bit(INPUT_PROP_TOPBUTTONPAD, device->propbit)
         || test_bit(INPUT_PROP_POINTING_STICK, device->propbit) || test_bit(INPUT_PROP_ACCELEROMETER, device->propbit))
@@ -82,7 +74,7 @@ static bool crv_input_match(struct input_handler* handler, struct input_dev* dev
     if (test_bit(INPUT_PROP_PRESSUREPAD, device->propbit)) return false;
 #endif
 
-    // Filter touch and tablet nodes whose property bits are absent or incomplete.
+    // filter touch and tablet nodes whose property bits are absent or incomplete
     if (test_bit(BTN_TOUCH, device->keybit) || test_bit(BTN_TOOL_FINGER, device->keybit)
         || test_bit(BTN_TOOL_PEN, device->keybit) || test_bit(BTN_TOOL_MOUSE, device->keybit))
     {
@@ -112,8 +104,6 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
     error = input_open_device(handle);
     if (error) goto err_unregister_handle;
 
-    // Capture snapshots device->max_vals and publishes this handle as the current source; must happen after input core
-    // has opened it.
     error = crv_capture_attach(handle);
     if (error)
     {
@@ -151,14 +141,7 @@ static void crv_input_disconnect(struct input_handle* handle)
 {
     struct input_dev* device = handle->dev;
 
-    // Remove the borrowed pointer from capture before input core begins tearing down the handle. An active stream
-    // receives ENODEV after its buffered bytes drain.
     crv_capture_detach(handle);
-
-    // During handler removal, input_close_device() waits for in-flight delivery. During physical device removal, input
-    // core has already disabled this handle while holding the device event lock.
-    //
-    // In either case, the handle remains alive until no callback can still pass it to crv_capture_record().
     input_close_device(handle);
     input_unregister_handle(handle);
 

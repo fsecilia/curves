@@ -32,8 +32,9 @@
 /// For a mouse producing 4 input values per callback at 4 kHz, each frame occupies 64 bytes.This 2 MiB FIFO holds ~8 s.
 #define CRV_CAPTURE_FIFO_BYTE_COUNT (2u * 1024u * 1024u)
 
+/// subsystem state
 ///
-/// Synchronization
+/// #Synchronization
 ///
 /// Lock ordering: read_mutex -> state_lock.
 ///
@@ -52,7 +53,6 @@
 ///
 /// source is borrowed from the input handler. detach() clears it before input_close_device(),
 /// input_unregister_handle(), and freeing the handle; lockless readers never dereference it.
-///
 struct crv_capture_state_t
 {
     spinlock_t state_lock;
@@ -103,6 +103,8 @@ static void crv_capture_initialize_stream_header(struct crv_capture_stream_heade
     header->byte_order_marker = CRV_CAPTURE_BYTE_ORDER_MARKER;
 }
 
+/// signals stream failure under lock
+///
 /// Readers confirm both stores under the same lock, so the pair needs no independent ordering.
 ///
 /// \pre callers hold crv_capture.state_lock
@@ -274,7 +276,7 @@ static int crv_capture_release(struct inode* inode, struct file* file)
 
     wake_up_interruptible(&crv_capture.read_wait);
 
-    // Token release last: a new open() must not reset the FIFO before this session has quiesced.
+    // release token last: a new open() must not reset the FIFO before this session has quiesced
     atomic_set(&crv_capture.opened, 0);
 
     if (dropped_callbacks)
@@ -347,6 +349,7 @@ int crv_capture_attach(struct input_handle* handle)
 
     device = handle->dev;
 
+    // bounce devices with no input capacity
     if (!device->max_vals)
     {
         pr_warn(
@@ -355,11 +358,9 @@ int crv_capture_attach(struct input_handle* handle)
         return -EINVAL;
     }
 
-    // This bound also guarantees record()'s unsigned-int frame-size arithmetic cannot overflow for
-    // count <= value_capacity.
+    // guarantee record()'s unsigned-int frame-size arithmetic cannot overflow for count <= value_capacity
     maximum_frame_size
         = sizeof(struct crv_capture_input_values_header_t) + (u64)device->max_vals * sizeof(struct crv_input_value_t);
-
     if (maximum_frame_size > CRV_CAPTURE_FIFO_BYTE_COUNT)
     {
         pr_warn("rejecting input device '%s': value capacity %u requires "
@@ -371,6 +372,7 @@ int crv_capture_attach(struct input_handle* handle)
 
     spin_lock_irqsave(&crv_capture.state_lock, flags);
 
+    // bounce if capture is already connected
     if (crv_capture.source)
     {
         spin_unlock_irqrestore(&crv_capture.state_lock, flags);
@@ -403,8 +405,7 @@ void crv_capture_record(struct input_handle* handle, const struct input_value* v
     // fast-path rejection only; both conditions are rechecked under state_lock
     if (READ_ONCE(crv_capture.source) != handle || !READ_ONCE(crv_capture.session_active)) return;
 
-    // Report timestamp retained by input core; input_get_timestamp() synthesizes CLOCK_MONOTONIC if the lower driver
-    // set none.
+    // report timestamp retained by input core; input_get_timestamp() synthesizes CLOCK_MONOTONIC if not set
     timestamps = input_get_timestamp(handle->dev);
     timestamp_ns = (u64)ktime_to_ns(timestamps[INPUT_CLK_MONO]);
 
