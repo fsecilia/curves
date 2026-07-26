@@ -119,11 +119,9 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
+    filter/poll_interval_quantizer.cpp
+    filter/poll_interval_quantizer.h
     filter/poll_interval_quantizer.hpp
-
-    kernel/input/poll_interval_quantizer.h
-    kernel/input/poll_interval_quantizer.cpp
-
     kernel/abi.h
     kernel/cxx_lib_build_test.cpp
     kernel/cxx_lib_build_test.h
