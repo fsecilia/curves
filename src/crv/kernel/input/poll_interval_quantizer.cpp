@@ -26,11 +26,13 @@ crv_u64_t crv_quantize_timestamp(crv_u64_t timestamp)
     using timestamp_t = quantizer_t::timestamp_t;
     using status_t = quantizer_t::status_t;
 
-    static auto poll_interval_quantizer = quantizer_t{quantizer_t::period_t{1'000'000'000ULL / 4000}};
+    // hardcode 4khz to match my real mouse; this comes out when we start properly estimating polling periods
+    static constexpr auto period = quantizer_t::period_t{1'000'000'000ULL / 4000};
+    static auto poll_interval_quantizer = quantizer_t{};
 
     auto const had_previous = poll_interval_quantizer.initialized();
     auto const previous_timestamp = had_previous ? poll_interval_quantizer.previous_timestamp().value : timestamp;
-    auto const result = poll_interval_quantizer.observe(timestamp_t::literal(timestamp));
+    auto const result = poll_interval_quantizer.observe(timestamp_t::literal(timestamp), period);
     auto const quantized_timestamp = result.quantized_timestamp().value;
 
     if (result.status == status_t::timestamp_regressed)

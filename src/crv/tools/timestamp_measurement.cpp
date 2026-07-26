@@ -1021,8 +1021,9 @@ private:
 
     auto stream = std::move(*opened);
     auto timestamp_stats = timestamp_stats_t{expected_rate_hz};
-    auto poll_interval_quantizer
-        = poll_interval_quantizer_t{to_fixed<poll_interval_quantizer_t::period_t>(1'000'000'000.0L / expected_rate_hz)};
+
+    auto const period = to_fixed<poll_interval_quantizer_t::period_t>(1'000'000'000.0L / expected_rate_hz);
+    auto poll_interval_quantizer = poll_interval_quantizer_t{};
     auto poll_interval_quantizer_stats = poll_interval_quantizer_stats_t<poll_interval_quantizer_t>{};
     auto complete = true;
 
@@ -1053,7 +1054,7 @@ private:
         timestamp_stats.observe(result->value());
 
         auto const timestamp = typename poll_interval_quantizer_t::timestamp_t{result->value().timestamp_ns};
-        auto const interval = poll_interval_quantizer.observe(timestamp);
+        auto const interval = poll_interval_quantizer.observe(timestamp, period);
         poll_interval_quantizer_stats.observe(timestamp, interval, poll_interval_quantizer.residual());
     }
 
