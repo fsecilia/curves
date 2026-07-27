@@ -38,9 +38,12 @@ filtered_cxx_flags = $(filter-out $(conflicted_cxx_flags), \
 # combine c++ flags
 cxx_flags = $(filtered_cxx_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
 
-# find relative c++ compiler
+# use c compiler directly to compile
+#
+# Since the file suffixes are .cpp, it chooses the right driver regardless of invoked path. Linking doesn't happen
+# through this command, so it always works correctly.
 ifeq ($(CXX),)
-    CXX := $(patsubst %cc,%g++,$(patsubst %gcc,%g++,$(patsubst %clang,%clang++,$(CC))))
+    CXX := $(CC)
 endif
 
 # add standard c++ compile rule
