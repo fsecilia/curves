@@ -4,7 +4,7 @@
 # runs the actual kernel module build using the native Kbuild
 
 # final kernel module output, the .ko itself
-obj-m += @kbuild_output@
+obj-m += @kbuild_link_object@
 
 # flags to build c files
 ccflags-y += -I$(src)/crv/kernel/cxx -I$(src) -DCRV_VERSION=\"@PROJECT_VERSION@-@git_hash@\"

@@ -222,7 +222,8 @@ list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")                    # replac
 list(JOIN objs_kbuild " " objs_kbuild)                                  # delimit with space instead of ;
 
 # generate file
-set(kbuild_output "${project_name_underscores}.o")
+set(kbuild_link_object "${project_name_underscores}.o")
+set(kbuild_module_file "${project_name_underscores}.ko")
 set(kbuild_gen "${kbuild_shadow_root}/Kbuild")
 configure_file("Kbuild.in" "${kbuild_gen}" @ONLY)
 install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
@@ -245,7 +246,7 @@ set(kbuild_make_command
 
 # main build
 add_custom_command(
-    OUTPUT "${kbuild_shadow_root}/${kbuild_output}"
+    OUTPUT "${kbuild_shadow_root}/${kbuild_module_file}"
     COMMAND ${kbuild_make_command} $<$<NOT:$<CONFIG:Debug>>:KCFLAGS=-DNDEBUG> modules
     WORKING_DIRECTORY "${kbuild_shadow_root}"
     DEPENDS ${srcs_kbuild_abs} ${srcs_kbuild_orig} "${makefile_dst}" "${kbuild_gen}"
@@ -253,7 +254,7 @@ add_custom_command(
     VERBATIM
     USES_TERMINAL
 )
-add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_output}")
+add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_module_file}")
 add_dependencies(kbuild lib)
 if (enable_testing)
     add_dependencies(kbuild unit_tests)
