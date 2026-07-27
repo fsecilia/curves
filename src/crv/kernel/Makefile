@@ -21,5 +21,8 @@ default: modules
 
 install: modules_install
 
-modules modules_install clean:
+modules clean:
 	+$(MAKE) $(KBUILD_ARGS) $@
+
+modules_install:
+	+$(MAKE) $(KBUILD_ARGS) INSTALL_MOD_STRIP=1 $@
