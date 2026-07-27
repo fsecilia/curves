@@ -100,7 +100,6 @@ set(kernel_cxx_flags
     -fno-threadsafe-statics
     -fno-use-cxa-atexit
     -nostdlib
-    -g0
 )
 
 if (NOT kernel_is_clang)
@@ -241,6 +240,7 @@ set(kbuild_make_command
     make -sC "${kbuild_root}"
     ${kbuild_compiler_flags} V=1
     "M=${kbuild_shadow_root}"
+    "CONFIG_DEBUG_INFO_BTF_MODULES="
     "LDFLAGS_MODULE=--force-group-allocation")
 
 # main build

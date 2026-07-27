@@ -6,7 +6,8 @@ KERNEL_DIR     ?= /lib/modules/$(KERNEL_RELEASE)/build
 
 KBUILD_ARGS := -C "$(KERNEL_DIR)" \
                M="$(CURDIR)" \
-               LDFLAGS_MODULE=--force-group-allocation
+               LDFLAGS_MODULE=--force-group-allocation \
+               CONFIG_DEBUG_INFO_BTF_MODULES=
 
 .PHONY: default modules clean install modules_install
 
