@@ -14,81 +14,49 @@
 
 namespace crv {
 
-/// quantizes jittered intervals between delivered input reports using a supplied polling period
+/// quantizes delivered report timestamps onto a polling timeline
 ///
-/// Linux input may elide zero-displacement reports, and host-side timestamp latency can bunch adjacent delivered
-/// reports. Consequently, one delivered report always consumes at least one polling tick, but consecutive delivered
-/// reports may be separated by more than one tick.
-///
-/// The quantizer carries timing error forward:
+/// Zero-displacement reports may be absent, so each delivered report consumes at least one tick while one observation
+/// may represent multiple elapsed ticks.
 ///
 ///     corrected_interval = observed_interval + residual
-///     elapsed_ticks      = max(1, round_to_nearest_even(corrected_interval / report_period))
+///     elapsed_ticks      = max(1, RNE(corrected_interval/report_period))
 ///     residual           = corrected_interval - elapsed_ticks * report_period
-///
-/// Carrying residual makes timestamp compression and expansion repay one another instead of independently rounding
-/// every observed interval.
-///
-/// The caller supplies one polling-period snapshot for each observation. That snapshot is used consistently for tick
-/// assignment, logical-time advancement, residual calculation, and the returned interval. It is not retained.
-///
-/// This type does not recover absolute clock phase and does not estimate polling frequency.
 class poll_interval_quantizer_t
 {
 public:
-    /// Host timestamp in integral nanoseconds.
     using timestamp_t = fixed_t<uint64_t, 0>;
 
-    /// Nanoseconds per hardware polling tick.
-    ///
-    /// Q32.32 covers periods up to almost 2^32 ns while retaining substantially more fractional precision than mouse
-    /// polling requires.
+    // Q32.32 covers sub-nanosecond periods without exceeding the range needed for input-device polling
     using period_t = fixed_t<uint64_t, 32>;
 
-    /// Monotonic logical report time in nanoseconds.
     using quantized_time_t = fixed_t<uint128_t, period_t::frac_bits>;
 
-    /// Signed carried timing error in nanoseconds.
-    ///
-    /// Within a continuity epoch, this is the difference between observed elapsed time and quantized elapsed time.
-    /// A new epoch begins on initialization or timestamp regression.
-    ///
-    /// This is intentionally wide and additive-only. It is never multiplied.
+    // wide because minimum-tick forcing permits residual below -report_period/2
     using residual_t = fixed_t<int128_t, period_t::frac_bits>;
 
     using tick_count_t = uint64_t;
 
     enum class status_t
     {
-        /// First timestamp after construction or reset; no observed interval existed.
         initialized,
-
-        /// Timestamp followed the previous timestamp monotonically and was quantized.
         continuous,
 
-        /// Timestamp moved backward. Observation history was reanchored at the new timestamp.
+        // raw time reanchored after moving backward; logical time remains monotonic
         timestamp_regressed,
     };
 
     struct interval_t
     {
-        /// Polling period used for this observation.
         period_t report_period;
 
-        /// Polling ticks elapsed since the previous delivered report.
-        ///
-        /// Always at least one. Hidden zero-displacement ticks are `elapsed_ticks - 1`.
+        // hidden zero-displacement ticks are elapsed_ticks - 1
         tick_count_t elapsed_ticks;
 
-        /// Monotonic logical report time accumulated from quantized intervals.
         quantized_time_t quantized_time;
-
         status_t status;
 
-        /// True when the corrected interval was nonpositive or unconstrained nearest-even quantization selected zero,
-        /// and the one-tick-per-delivered-report invariant supplied the result instead.
-        ///
-        /// This is normal timing information, not a continuity failure.
+        // true when nonpositive or zero-tick quantization was clamped to one tick
         bool minimum_tick_forced;
 
         constexpr auto hidden_zero_ticks() const noexcept -> tick_count_t
@@ -97,28 +65,19 @@ public:
             return elapsed_ticks - 1;
         }
 
-        /// Quantized report time rounded to integral nanoseconds for the kernel API.
         constexpr auto quantized_timestamp() const noexcept -> timestamp_t
         {
             static constexpr auto rne_shifter = shifter_t<rounding_modes::shr::nearest_even>{};
+
             return timestamp_t::template convert<rne_shifter>(quantized_time);
         }
     };
 
     constexpr poll_interval_quantizer_t() noexcept = default;
 
-    /// Observes one delivered report timestamp using one polling-period snapshot.
-    ///
-    /// The first observation initializes timestamp state and returns one elapsed tick for processing the current
-    /// delivered report. Its logical time remains the observed timestamp.
-    ///
-    /// A regressed timestamp is not silently quantized. Observation history is reanchored, carried error is cleared,
-    /// and the existing logical timeline advances by one supplied report period.
     constexpr auto observe(timestamp_t timestamp, period_t report_period) noexcept -> interval_t
     {
-        // Within a continuity epoch, a positive corrected interval cannot exceed the raw elapsed time since the epoch
-        // anchor. Requiring at least one integral nanosecond per tick therefore keeps every tick count representable by
-        // tick_count_t.
+        // keep every possible timestamp interval representable as tick_count_t
         assert(report_period >= period_t{1});
 
         if (!initialized_) [[unlikely]]
@@ -139,7 +98,6 @@ public:
 
         if (timestamp < previous_timestamp_) [[unlikely]]
         {
-            // Preserve the downstream logical timeline while beginning a new raw-timestamp continuity epoch.
             previous_timestamp_ = timestamp;
             residual_ = {};
 
@@ -158,13 +116,11 @@ public:
         previous_timestamp_ = timestamp;
 
         auto const corrected_interval = residual_t::convert(observed_interval) + residual_;
-
         auto const quantized = quantize(corrected_interval, report_period);
 
-        // u64 Q32 * u64 Q0 -> u128 Q32. No 128-bit operand is multiplied.
+        // (u64 Q32)*(u64 Q0) -> (u128 Q32)
         auto const quantized_interval = multiply(report_period, tick_count_fixed_t::literal(quantized.elapsed_ticks));
 
-        // u128 Q32 accumulator plus u128 Q32 interval.
         quantized_time_ += quantized_time_t::convert(quantized_interval);
 
         residual_ = corrected_interval - residual_t::convert(quantized_interval);
@@ -218,7 +174,7 @@ private:
 
         auto const positive_interval = positive_interval_t::convert(corrected_interval);
 
-        // u128 Q32 / u64 Q32 -> u64 Q0.
+        // (u128 Q32)/(u64 Q32) -> (u64 Q0)
         auto const rounded_ticks
             = divide<tick_count_fixed_t>(positive_interval, report_period, rounding_modes::div::nearest_even);
 

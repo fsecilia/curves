@@ -15,6 +15,7 @@ using timestamp_t = sut_t::timestamp_t;
 using period_t = sut_t::period_t;
 using residual_t = sut_t::residual_t;
 using status_t = sut_t::status_t;
+using tick_count_fixed_t = fixed_t<sut_t::tick_count_t, 0>;
 
 constexpr auto timestamp(uint64_t nanoseconds) noexcept -> timestamp_t
 {
@@ -93,6 +94,7 @@ constexpr auto short_then_long_intervals_repay_timing_debt() noexcept -> bool
     // 20 ns rounds to zero ticks, but a delivered report must consume one:
     //
     //     residual = 20 - 100 = -80 ns
+    //
     auto const short_result = sut.observe(timestamp(1'020), report_period);
 
     if (short_result.elapsed_ticks != 1) return false;
@@ -174,8 +176,7 @@ constexpr auto half_tick_zero_tie_is_forced_to_one() noexcept -> bool
 
     static_cast<void>(sut.observe(timestamp(1'000), report_period));
 
-    // Nearest-even selects zero because zero is even. The stream invariant then
-    // forces one consumed tick.
+    // nearest-even selects zero because zero is even; stream invariant then forces one consumed tick
     auto const result = sut.observe(timestamp(1'050), report_period);
 
     return result.elapsed_ticks == 1 && result.minimum_tick_forced && result.quantized_timestamp() == timestamp(1'100)
@@ -268,6 +269,7 @@ constexpr auto alternating_periods_are_prospective_and_conserve_elapsed_time() n
     // Within the continuity epoch:
     //
     //     observed elapsed = quantized elapsed + residual
+    //
     return residual(340) == residual(380) + sut.residual();
 }
 static_assert(alternating_periods_are_prospective_and_conserve_elapsed_time());
@@ -281,6 +283,7 @@ constexpr auto minimum_tick_forcing_uses_current_supplied_period() noexcept -> b
     // The current period is 120 ns, so forcing one tick leaves:
     //
     //     residual = 20 - 120 = -100 ns
+    //
     auto const forced = sut.observe(timestamp(1'020), period(120));
 
     if (forced.report_period != period(120)) return false;
@@ -289,8 +292,7 @@ constexpr auto minimum_tick_forcing_uses_current_supplied_period() noexcept -> b
     if (forced.quantized_timestamp() != timestamp(1'120)) return false;
     if (sut.residual() != residual(-100)) return false;
 
-    // The following 180 ns raw interval corrects to 80 ns, exactly one current
-    // 80 ns period.
+    // following 180 ns raw interval corrects to 80 ns, exactly one current 80 ns period
     auto const repaid = sut.observe(timestamp(1'200), period(80));
 
     return repaid.report_period == period(80) && repaid.elapsed_ticks == 1 && !repaid.minimum_tick_forced
@@ -317,8 +319,8 @@ constexpr auto timestamp_regression_uses_current_period_and_begins_a_new_epoch()
     if (sut.previous_timestamp() != timestamp(900)) return false;
     if (sut.residual() != residual_t{}) return false;
 
-    // The new observation epoch starts at raw timestamp 900 and logical time
-    // 1'225. One exact 125 ns interval advances both by 125 ns.
+    // new observation epoch starts at raw timestamp 900 and logical time 1'225
+    // one exact 125 ns interval advances both by 125 ns
     auto const recovered = sut.observe(timestamp(1'025), period(125));
 
     return recovered.report_period == period(125) && recovered.status == status_t::continuous
@@ -370,11 +372,7 @@ constexpr auto mixed_fixed_period_trace_conserves_elapsed_time() noexcept -> boo
     for (auto index = std::size_t{1}; index < timestamps.size(); ++index)
     {
         auto const raw_delta = timestamp_t{timestamps[index]} - timestamp_t{timestamps[index - 1]};
-
         auto const result = sut.observe(timestamp(timestamps[index]), report_period);
-
-        using tick_count_fixed_t = fixed_t<sut_t::tick_count_t, 0>;
-
         auto const quantized_interval
             = multiply(result.report_period, tick_count_fixed_t::literal(result.elapsed_ticks));
 
@@ -394,7 +392,7 @@ TEST(poll_interval_quantizer_test, long_bunched_trace_conserves_elapsed_time)
     auto sut = sut_t{};
     auto const report_period = period(polling_period_nanoseconds);
 
-    // Every four observed intervals total exactly four polling periods.
+    // every four observed intervals total exactly four polling periods
     constexpr auto interval_pattern = std::array<uint64_t, 4>{
         10'000,
         15'000,
@@ -416,8 +414,6 @@ TEST(poll_interval_quantizer_test, long_bunched_trace_conserves_elapsed_time)
             current_timestamp += raw_interval;
 
             auto const result = sut.observe(timestamp(current_timestamp), report_period);
-
-            using tick_count_fixed_t = fixed_t<sut_t::tick_count_t, 0>;
 
             observed_sum += residual_t::convert(timestamp_t{raw_interval});
             quantized_sum += residual_t::convert(
