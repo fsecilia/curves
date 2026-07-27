@@ -126,6 +126,9 @@ target_sources(lib PRIVATE
 set(crv_kernel_shared_files
     algorithm.hpp
     bitwise_enum.hpp
+    filter/poll_interval_quantizer.cpp
+    filter/poll_interval_quantizer.h
+    filter/poll_interval_quantizer.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
     lib.hpp
@@ -271,6 +274,7 @@ if (enable_testing)
         bit_test.cpp
         bitwise_enum_test.cpp
         concepts_test.cpp
+        filter/poll_interval_quantizer_test.cpp
         i18n_test.cpp
         io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp

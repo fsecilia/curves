@@ -6,6 +6,9 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <crv/filter/poll_interval_quantizer.h>
+#include <crv/kernel/abi.h>
+
 #include <linux/bitops.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -30,6 +33,15 @@ static const struct input_device_id crv_input_device_ids[] = {
 };
 
 MODULE_DEVICE_TABLE(input, crv_input_device_ids);
+
+void crv_log_timestamp_regression(
+    crv_u64_t previous_timestamp, crv_u64_t observed_timestamp, crv_u64_t repaired_timestamp)
+{
+    pr_warn_ratelimited("crv: input timestamp regressed from %llu ns to %llu ns; "
+                        "continued logical clock at %llu ns\n",
+        (unsigned long long)previous_timestamp, (unsigned long long)observed_timestamp,
+        (unsigned long long)repaired_timestamp);
+}
 
 /// implements input_register_handle, but inserts to head instead of tail
 static int crv_input_register_handle_head(struct input_handle* handle)
