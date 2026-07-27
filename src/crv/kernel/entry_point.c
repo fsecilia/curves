@@ -161,8 +161,19 @@ err_report:
 
 static unsigned int crv_input_events(struct input_handle* handle, struct input_value* values, unsigned int count)
 {
+    u64 timestamp_ns, quantized_timestamp_ns;
+    ktime_t* timestamps;
+
     if (!count) return 0;
     if (WARN_ON_ONCE(!handle || !values)) return count;
+
+    // quantize timestamp
+    timestamps = input_get_timestamp(handle->dev);
+    timestamp_ns = (u64)ktime_to_ns(timestamps[INPUT_CLK_MONO]);
+    quantized_timestamp_ns = crv_quantize_timestamp(timestamp_ns);
+
+    // EXPERIMENT: write timestamps back so downstream mouse acceleration driver sees it
+    input_set_timestamp(handle->dev, ns_to_ktime(quantized_timestamp_ns));
 
     return count;
 }
