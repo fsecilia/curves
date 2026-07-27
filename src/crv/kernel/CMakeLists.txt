@@ -242,7 +242,8 @@ set(kbuild_make_command
     ${kbuild_compiler_flags} V=1
     "M=${kbuild_shadow_root}"
     "CONFIG_DEBUG_INFO_BTF_MODULES="
-    "LDFLAGS_MODULE=--force-group-allocation")
+    "LDFLAGS_MODULE=--force-group-allocation"
+)
 
 # main build
 add_custom_command(
