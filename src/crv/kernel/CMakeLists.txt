@@ -57,11 +57,13 @@ file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG
 # these exist only for the kernel module and aren't shared with user-mode code
 
 set(hdrs_kernel
+    abi.h
     cxx/cassert
     input/handler.h
 )
 
 set(srcs_kernel
+    abi.c
     input/handler.c
     entry_point.c
 )
