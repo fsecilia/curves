@@ -8,8 +8,8 @@ extern "C" {
 #include <crv/kernel/abi.h>
 } // extern "C" {
 
+#include "poll_interval_quantizer.hpp"
 #include <crv/lib.hpp>
-#include <crv/filter/poll_interval_quantizer.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <cassert>
 
