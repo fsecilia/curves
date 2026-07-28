@@ -120,6 +120,7 @@ target_sources_kernel(lib
     filter/timing_recovery/filter.cpp
     filter/timing_recovery/filter.h
     filter/timing_recovery/poll_interval_quantizer.hpp
+    filter/timing_recovery/poll_period_tracker.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
     lib.hpp
@@ -175,6 +176,7 @@ if (enable_testing)
         bitwise_enum_test.cpp
         concepts_test.cpp
         filter/timing_recovery/poll_interval_quantizer_test.cpp
+        filter/timing_recovery/poll_period_tracker_test.cpp
         i18n_test.cpp
         io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp
