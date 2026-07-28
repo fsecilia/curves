@@ -4,12 +4,12 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 extern "C" {
-#include "poll_interval_quantizer.h"
+#include "filter.h"
 #include <crv/kernel/abi.h>
 } // extern "C" {
 
-#include "poll_interval_quantizer.hpp"
 #include <crv/lib.hpp>
+#include <crv/filter/timing_recovery/poll_interval_quantizer.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <cassert>
 
