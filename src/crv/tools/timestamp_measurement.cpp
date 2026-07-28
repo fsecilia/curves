@@ -1487,27 +1487,92 @@ private:
 
     auto print_block_duration_stability(temporal_support_summary_t const& summary) const -> void
     {
-        auto durations = std::vector<long double>{};
-        durations.reserve(summary.blocks.size());
+        auto full_block_durations = std::vector<long double>{};
+        full_block_durations.reserve(summary.blocks.size());
 
-        auto unavailable = std::size_t{0};
+        auto full_block_count = std::size_t{0};
+        auto unavailable_full_block_count = std::size_t{0};
+        auto partial_block_indices = std::vector<std::size_t>{};
 
-        for (auto const& block : summary.blocks)
+        for (auto block_index = std::size_t{0}; block_index < summary.blocks.size(); ++block_index)
         {
-            if (block.wall_duration_ns) durations.push_back(static_cast<long double>(*block.wall_duration_ns));
-            else ++unavailable;
+            auto const& block = summary.blocks[block_index];
+
+            assert(block.report_begin <= block.report_end);
+
+            auto const block_report_count = block.report_end - block.report_begin;
+
+            if (block_report_count == temporal_support_block_size)
+            {
+                ++full_block_count;
+
+                if (block.wall_duration_ns)
+                {
+                    full_block_durations.push_back(static_cast<long double>(*block.wall_duration_ns));
+                }
+                else
+                {
+                    ++unavailable_full_block_count;
+                }
+
+                continue;
+            }
+
+            /*
+                Fixed report blocks can produce at most one partial block, and
+                it can only be the final block in the capture.
+            */
+            assert(block_report_count < temporal_support_block_size);
+            assert(block_index + 1 == summary.blocks.size());
+
+            partial_block_indices.push_back(block_index);
         }
 
-        auto const distribution = summarize_across_blocks(std::move(durations));
+        auto const distribution = summarize_across_blocks(std::move(full_block_durations));
 
-        std::fprintf(stdout, "\nobserved wall-time per fixed report block (seconds)\n");
-        std::fprintf(
-            stdout, "  available blocks %zu  unavailable blocks %zu\n", distribution.sample_count, unavailable);
-        std::fprintf(
-            stdout, "  %12s %12s %12s %12s %12s %12s %12s\n", "minimum", "p1", "p5", "median", "p95", "p99", "maximum");
-        std::fprintf(stdout, " ");
-        print_across_block_distribution(distribution, 1'000'000'000.0L);
-        std::fputc('\n', stdout);
+        std::fprintf(stdout, "\nobserved wall-time per full fixed report block (seconds)\n");
+        std::fprintf(stdout, "  block size %zu reports  full blocks %zu  available %zu  unavailable %zu\n",
+            temporal_support_block_size, full_block_count, distribution.sample_count, unavailable_full_block_count);
+
+        if (distribution.sample_count == 0)
+        {
+            std::fprintf(stdout, "  no full blocks had an available wall-time duration\n");
+        }
+        else
+        {
+            std::fprintf(stdout, "  %12s %12s %12s %12s %12s %12s %12s\n", "minimum", "p1", "p5", "median", "p95",
+                "p99", "maximum");
+            std::fprintf(stdout, " ");
+            print_across_block_distribution(distribution, 1'000'000'000.0L);
+            std::fputc('\n', stdout);
+        }
+
+        if (partial_block_indices.empty())
+        {
+            std::fprintf(stdout, "  trailing partial block: none\n");
+            return;
+        }
+
+        for (auto const block_index : partial_block_indices)
+        {
+            auto const& block = summary.blocks[block_index];
+            auto const block_report_count = block.report_end - block.report_begin;
+
+            std::fprintf(stdout, "  trailing partial block %zu: reports [%zu, %zu) (%zu reports), ", block_index,
+                block.report_begin, block.report_end, block_report_count);
+
+            if (block.wall_duration_ns)
+            {
+                std::fprintf(stdout, "duration %.6Lf s; excluded from full-block distribution\n",
+                    static_cast<long double>(*block.wall_duration_ns) / 1'000'000'000.0L);
+            }
+            else
+            {
+                std::fprintf(stdout,
+                    "duration unavailable (timestamp regression within block); "
+                    "excluded from full-block distribution\n");
+            }
+        }
     }
 
     [[nodiscard]] static auto select_metric_extremes(
