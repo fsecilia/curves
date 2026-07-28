@@ -6,7 +6,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-#include <crv/filter/poll_interval_quantizer.h>
+#include <crv/filter/timing_recovery/poll_interval_quantizer.h>
 #include <crv/kernel/abi.h>
 
 #include <linux/bitops.h>
