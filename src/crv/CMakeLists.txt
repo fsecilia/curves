@@ -117,8 +117,8 @@ target_sources(lib PRIVATE
 target_sources_kernel(lib
     algorithm.hpp
     bitwise_enum.hpp
-    filter/timing_recovery/poll_interval_quantizer.cpp
-    filter/timing_recovery/poll_interval_quantizer.h
+    filter/timing_recovery/filter.cpp
+    filter/timing_recovery/filter.h
     filter/timing_recovery/poll_interval_quantizer.hpp
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
