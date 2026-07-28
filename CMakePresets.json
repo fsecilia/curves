@@ -4,46 +4,59 @@
         {
             "name": "base",
             "hidden": true,
-            "binaryDir": "build/${presetName}",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
             }
         },
-
         {
             "name": "ninja",
             "hidden": true,
             "generator": "Ninja",
-            "inherits": ["base"]
+            "inherits": [
+                "base"
+            ]
         },
-
         {
             "name": "debug",
             "hidden": true,
-            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         },
         {
             "name": "release",
             "hidden": true,
-            "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         },
-
         {
             "name": "linux-host",
             "hidden": true,
-            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"}
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
         },
         {
             "name": "osx-host",
             "hidden": true,
-            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin"}
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            }
         },
         {
             "name": "windows-host",
             "hidden": true,
-            "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"}
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
         },
-
         {
             "name": "clang",
             "hidden": true,
@@ -68,49 +81,107 @@
                 "CMAKE_CXX_COMPILER": "cl.exe"
             }
         },
-
         {
             "name": "ninja-linux-clang-debug",
-            "inherits": ["ninja", "linux-host", "clang", "debug"]
+            "inherits": [
+                "ninja",
+                "linux-host",
+                "clang",
+                "debug"
+            ],
+            "binaryDir": "build/clang/debug"
         },
         {
             "name": "ninja-linux-clang-release",
-            "inherits": ["ninja", "linux-host", "clang", "release"]
+            "inherits": [
+                "ninja",
+                "linux-host",
+                "clang",
+                "release"
+            ],
+            "binaryDir": "build/clang/release"
         },
         {
             "name": "ninja-linux-gcc-debug",
-            "inherits": ["ninja", "linux-host", "gcc", "debug"]
+            "inherits": [
+                "ninja",
+                "linux-host",
+                "gcc",
+                "debug"
+            ],
+            "binaryDir": "build/gcc/debug"
         },
         {
             "name": "ninja-linux-gcc-release",
-            "inherits": ["ninja", "linux-host", "gcc", "release"]
+            "inherits": [
+                "ninja",
+                "linux-host",
+                "gcc",
+                "release"
+            ],
+            "binaryDir": "build/gcc/release"
         },
         {
             "name": "ninja-osx-clang-debug",
-            "inherits": ["ninja", "osx-host", "clang", "debug"]
+            "inherits": [
+                "ninja",
+                "osx-host",
+                "clang",
+                "debug"
+            ],
+            "binaryDir": "build/clang/debug"
         },
         {
             "name": "ninja-osx-clang-release",
-            "inherits": ["ninja", "osx-host", "clang", "release"]
+            "inherits": [
+                "ninja",
+                "osx-host",
+                "clang",
+                "release"
+            ],
+            "binaryDir": "build/clang/release"
         },
         {
             "name": "ninja-windows-clang-debug",
-            "inherits": ["ninja", "windows-host", "clang", "debug"]
+            "inherits": [
+                "ninja",
+                "windows-host",
+                "clang",
+                "debug"
+            ],
+            "binaryDir": "build/clang/debug"
         },
         {
             "name": "ninja-windows-clang-release",
-            "inherits": ["ninja", "windows-host", "clang", "release"]
+            "inherits": [
+                "ninja",
+                "windows-host",
+                "clang",
+                "release"
+            ],
+            "binaryDir": "build/clang/release"
         },
         {
             "name": "ninja-windows-cl-debug",
-            "inherits": ["ninja", "windows-host", "cl", "debug"]
+            "inherits": [
+                "ninja",
+                "windows-host",
+                "cl",
+                "debug"
+            ],
+            "binaryDir": "build/cl/release"
         },
         {
             "name": "ninja-windows-cl-release",
-            "inherits": ["ninja", "windows-host", "cl", "release"]
+            "inherits": [
+                "ninja",
+                "windows-host",
+                "cl",
+                "release"
+            ],
+            "binaryDir": "build/cl/release"
         }
     ],
-
     "buildPresets": [
         {
             "name": "ninja-linux-clang-debug",
