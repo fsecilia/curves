@@ -4,10 +4,16 @@
 KERNEL_RELEASE ?= $(shell uname -r)
 KERNEL_DIR     ?= /lib/modules/$(KERNEL_RELEASE)/build
 
+include $(KERNEL_DIR)/include/config/auto.conf
+
 KBUILD_ARGS := -C "$(KERNEL_DIR)" \
                M="$(CURDIR)" \
                LDFLAGS_MODULE=--force-group-allocation \
                CONFIG_DEBUG_INFO_BTF_MODULES=
+
+ifeq ($(CONFIG_CC_IS_CLANG),y)
+KBUILD_ARGS += LLVM=1
+endif
 
 .PHONY: default modules clean install modules_install
 
