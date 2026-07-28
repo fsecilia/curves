@@ -1,5 +1,6 @@
 PACKAGE_NAME="@project_name_dashes@"
 PACKAGE_VERSION="@PROJECT_VERSION@"
+MAKE[0]="make -C \"$kernel_source_dir\" M=\"\$PWD\" LDFLAGS_MODULE=--force-group-allocation CONFIG_DEBUG_INFO_BTF_MODULES= modules"
 BUILT_MODULE_NAME[0]="@project_name_underscores@"
 DEST_MODULE_LOCATION[0]="/updates"
 AUTOINSTALL="yes"
