@@ -5,6 +5,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/filter/timing_recovery/polling_period_replay.hpp>
 #include <crv/io/capture/file.hpp>
 #include <crv/io/capture/stream.hpp>
 
@@ -21,6 +22,7 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <optional>
 #include <string>
@@ -646,8 +648,8 @@ private:
         }
 
         auto const delta_end = deltas_ns_.size();
-        auto const chain_report_count = report_end - current_chain_report_begin_;
-        auto const chain_delta_count = delta_end - current_chain_delta_begin_;
+        [[maybe_unused]] auto const chain_report_count = report_end - current_chain_report_begin_;
+        [[maybe_unused]] auto const chain_delta_count = delta_end - current_chain_delta_begin_;
 
         /*
             A valid timestamp chain with n reports contains exactly n - 1
@@ -1002,7 +1004,7 @@ private:
         if (segment_report_count <= lag) return;
 
         auto const first_delta = chain.delta_begin + (segment_report_begin - chain.report_begin);
-        auto const segment_delta_count = segment_report_count - 1;
+        [[maybe_unused]] auto const segment_delta_count = segment_report_count - 1;
 
         assert(first_delta <= chain.delta_end);
         assert(segment_delta_count <= chain.delta_end - first_delta);
@@ -1949,7 +1951,7 @@ private:
     std::optional<sequence_discontinuity_t> first_sequence_discontinuity_;
 };
 
-[[nodiscard]] auto run_stats(char const* path, std::optional<long double> expected_rate_hz) -> int
+[[nodiscard]] auto run_stats(char const* path, std::optional<long double> expected_rate_hz, int skip) -> int
 {
     auto opened = open_capture_file(path);
 
@@ -1967,7 +1969,16 @@ private:
 
     auto stream = std::move(*opened);
     auto stats = timestamp_stats_t{expected_rate_hz};
+
+    auto replay = polling_period_replay_t{{
+        .capture_identity = "capture",
+        .sidecar_path = "/home/frank/dev/prj/curves/src/crv/tools/capture.tsv",
+    }};
+
     auto complete = true;
+
+    // skip initial records
+    for (auto i = 0; i < skip; ++i) static_cast<void>(stream.read_input_values());
 
     while (!stop_requested)
     {
@@ -1983,6 +1994,8 @@ private:
                     break;
                 }
 
+                replay.reset("batch interrupted");
+
                 continue;
             }
 
@@ -1994,6 +2007,8 @@ private:
 
         // The view expires on the next read, but observe() copies everything it retains.
         stats.observe(result->value());
+
+        replay.observe(result->value().timestamp_ns);
     }
 
     if (stop_requested)
@@ -2002,7 +2017,10 @@ private:
         std::fprintf(stderr, "analysis interrupted; reported statistics are partial\n");
     }
 
-    auto printed = stats.print();
+    auto printed = true; // stats.print();
+
+    replay.finish();
+    replay.print(std::cout);
 
     return complete && printed ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -2039,5 +2057,18 @@ auto main(int argc, char** argv) -> int
         }
     }
 
-    return run_stats(argv[1], expected_rate_hz);
+    // auto const skips
+    //     = std::array{1'425'408, 1'426'432, 1'427'456, 1'428'480, 1'429'504, 1'430'528, 1'431'552, 1'432'576,
+    //     1'433'600};
+    // auto const skips = std::array{0, 1'425'408};
+    auto const skips = std::array{0};
+    for (auto const skip : skips)
+    {
+        if (skip != 0) std::cout << "\nskip " << skip << "\n";
+
+        auto result = run_stats(argv[1], expected_rate_hz, skip);
+        if (result != EXIT_SUCCESS) return result;
+    }
+
+    return EXIT_SUCCESS;
 }

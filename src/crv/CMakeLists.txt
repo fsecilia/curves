@@ -10,6 +10,8 @@ add_library(lib)
 target_sources(lib PRIVATE
     bit.hpp
     concepts.hpp
+    filter/timing_recovery/polling_period_replay.cpp
+    filter/timing_recovery/polling_period_replay.hpp
     i18n.cpp
     i18n.hpp
     io/capture/file.hpp
@@ -177,6 +179,7 @@ if (enable_testing)
         bit_test.cpp
         bitwise_enum_test.cpp
         concepts_test.cpp
+        filter/timing_recovery/polling_period_replay_test.cpp
         i18n_test.cpp
         io/unique_fd_integration_test.cpp
         io/unique_fd_test.cpp
