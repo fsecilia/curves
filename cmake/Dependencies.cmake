@@ -66,7 +66,7 @@ macro(find_or_bundle NAME VERSION)
         message(CHECK_FAIL "system ${NAME} missing or old; using bundled")
 
         # disable install
-        set(${${NAME}_INSTALL} OFF CACHE BOOL "disable install" FORCE)
+        set(${NAME}_INSTALL ON CACHE BOOL "install ${NAME} transitively" FORCE)
 
         # check for empty submodule
         if (NOT EXISTS "${CMAKE_SOURCE_DIR}/external/${NAME}/CMakeLists.txt")
