@@ -12,7 +12,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectPolicies)
 include(ProjectOptions)
 include(Dependencies)
-include(KernelManifest)
 include(Installation)
 
 # aggregate target that depends on all tests, so all tests can be built with one target

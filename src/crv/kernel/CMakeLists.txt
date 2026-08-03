@@ -2,270 +2,48 @@
 # Copyright (c) 2026 Frank Secilia
 #
 # kernel module build
-#
-# This file serves these purposes:
-#  - collects files listed in the global kernel manifest
-#  - generates the Kbuild necessary to build the kernel module
-#  - manages the kernel module cmake install to stage dkms for packaging
-#  - symlinks a shadow build in the build tree to build the kernel module locally, directly
 
-# =====================================================================================================================
-# Environment
-# =====================================================================================================================
-# detect external paths and versions needed by both user-mode targets and Kbuild
+cmake_minimum_required(VERSION 3.31.6)
+project(curves_kernel LANGUAGES C CXX)
 
-# git hash for version string
-execute_process(
-    COMMAND git rev-parse --short HEAD
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    OUTPUT_VARIABLE git_hash
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
-if(NOT git_hash)
-    set(git_hash standalone)
-endif()
+foreach(required IN ITEMS CRV_VERSION)
+    if(NOT DEFINED "${required}" OR "${${required}}" STREQUAL "")
+        message(FATAL_ERROR "${required} is required")
+    endif()
+endforeach()
 
-# kernel headers location
-if("$ENV{KVER}" STREQUAL "")
-    execute_process(
-        COMMAND uname -r
-        OUTPUT_VARIABLE kernel_version
-        OUTPUT_STRIP_TRAILING_WHITESPACE
+add_library(driver OBJECT EXCLUDE_FROM_ALL)
+target_compile_definitions(driver PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(driver PRIVATE
+        -Wno-keyword-macro
+        -Wno-reserved-identifier
+        -Wno-variadic-macros
     )
-else()
-    set(kernel_version "$ENV{KVER}")
 endif()
-set(kbuild_root "/lib/modules/${kernel_version}/build")
 
-# shadow build location
-set(kbuild_shadow_root "${CMAKE_BINARY_DIR}/shadow")
-
-# read kernel config to detect if it was built with clang or gcc
-file(STRINGS "${kbuild_root}/.config" kernel_is_clang REGEX "^CONFIG_CC_IS_CLANG=y$")
-
-# =====================================================================================================================
-# Source Files
-# =====================================================================================================================
-# collect source from two places:
-#   - global kernel_manifest, populated by target_sources_kernel() calls throughout the tree
-#   - local, kernel-only files that aren't part of any user-mode libraries
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Kernel-Only Files
-# ---------------------------------------------------------------------------------------------------------------------
-# these exist only for the kernel module and aren't shared with user-mode code
-
-set(hdrs_kernel
-    abi.h
+target_sources(driver PRIVATE
+    abi.c
     cxx/cassert
+    cxx_build_test.cpp
+    cxx_build_test.h
+    entry_point.c
+    input/handler.c
     input/handler.h
 )
 
-set(srcs_kernel
-    abi.c
-    input/handler.c
-    entry_point.c
+include(../config.cmake)
+configure_shared(driver PRIVATE)
+
+target_include_directories(driver PRIVATE
+    cxx
+    ../..
 )
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Shared Files from Manifest
-# ---------------------------------------------------------------------------------------------------------------------
-# these were registered elsewhere via target_sources_kernel() and compile into both the kernel module and user-mode
-# libraries
-
-get_property(manifest_files GLOBAL PROPERTY kernel_manifest)
-
-set(hdrs_shared_abs ${manifest_files})
-list(FILTER hdrs_shared_abs INCLUDE REGEX "\\.(h|hpp)$")
-
-set(srcs_shared_abs ${manifest_files})
-list(FILTER srcs_shared_abs INCLUDE REGEX "\\.(c|cpp)$")
-
-# =====================================================================================================================
-# Compiler Flags
-# =====================================================================================================================
-# flags that make user-mode compilation kernel-compatible
-#
-# These are also forwarded to the Kbuild for c++ files.
-
-set(kernel_c_flags -ffreestanding)
-set(kernel_cxx_flags
-    "${CMAKE_CXX${CMAKE_CXX_STANDARD}_STANDARD_COMPILE_OPTION}"
-    ${compile_options_common}
-    -Wframe-larger-than=1024
-    -fno-builtin
-    -fno-exceptions
-    -fno-rtti
-    -fno-threadsafe-statics
-    -fno-use-cxa-atexit
-    -nostdlib
-)
-
-if (NOT kernel_is_clang)
-    set(kernel_cxx_flags ${kernel_cxx_flags} -Wno-changes-meaning)
-endif()
-
-# =====================================================================================================================
-# User-Mode Targets
-# =====================================================================================================================
-
-# ---------------------------------------------------------------------------------------------------------------------
-# kernel_nav
-# ---------------------------------------------------------------------------------------------------------------------
-# fake target for kernel-only files to provide ide navigation
-#
-# This target uses the real kernel headers. It is never actually linked into anything.
-
-add_library(kernel_nav OBJECT EXCLUDE_FROM_ALL ${hdrs_kernel} ${srcs_kernel})
-add_dependencies(kernel_nav kbuild)
-target_compile_definitions(kernel_nav PRIVATE
-    __KERNEL__
-    MODULE
-    "KBUILD_MODNAME=${project_name_underscores}"
-)
-target_include_directories(kernel_nav PRIVATE
-    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>"
-    "${kbuild_root}/include"
-    "${kbuild_root}/arch/x86/include"
-    "${kbuild_root}/arch/x86/include/generated"
-    "${kbuild_root}/include/uapi"
-    "${kbuild_root}/arch/x86/include/uapi"
-    "${kbuild_root}/include/generated/uapi"
-)
-target_compile_options(kernel_nav PRIVATE
-    -include "${kbuild_root}/include/linux/kconfig.h"
-)
-
-# =====================================================================================================================
-# Kbuild
-# =====================================================================================================================
-# manage Kbuilds to build kernel module
-#
-# The kernel module is built using Kbuild. We either kick it off locally using a shadow build in the build tree, or
-# package it for dkms using cmake install.
-
-# creates shadow build symlink and registers file for cmake install
-macro(add_to_kbuild src_abs)
-    # find paths relative to project source root
-    file(RELATIVE_PATH _src_rel "${PROJECT_SOURCE_DIR}/src" "${src_abs}")
-    get_filename_component(_subdir "${_src_rel}" DIRECTORY)
-    set(_dst_dir "${kbuild_shadow_root}/${_subdir}")
-    set(_dst "${kbuild_shadow_root}/${_src_rel}")
-
-    # track for Kbuild and dependencies
-    list(APPEND srcs_kbuild_rel "${_src_rel}")
-    list(APPEND srcs_kbuild_abs "${_dst}")
-    list(APPEND srcs_kbuild_orig "${src_abs}")
-
-    # symlink to shadow build
-    add_custom_command(
-        OUTPUT "${_dst}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${_dst_dir}"
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink "${src_abs}" "${_dst}"
-        DEPENDS "${src_abs}"
-        COMMENT "shadowing ${_src_rel}"
-        VERBATIM
-    )
-
-    # install to dkms tree
-    install(FILES "${src_abs}" DESTINATION "${dkms_dst_dir}/${_subdir}" COMPONENT dkms)
-endmacro()
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Shadow Build
-# ---------------------------------------------------------------------------------------------------------------------
-# build symlinked kernel module source in build tree
-#
-# Kbuild expects to build in the source tree. To maintain hygiene, we symlink the kernel module source into
-# kbuild_shadow_root and build from there. This way, the real source stays in place and build artifacts land in the
-# build tree.
-
-# shadow shared files
-foreach(src_abs IN LISTS hdrs_shared_abs srcs_shared_abs)
-    add_to_kbuild("${src_abs}")
-endforeach()
-
-# shadow kernel-only files
-foreach(src_rel IN LISTS hdrs_kernel srcs_kernel)
-    get_filename_component(src_abs "${src_rel}" ABSOLUTE)
-    add_to_kbuild("${src_abs}")
-endforeach()
-
-# shadow the standalone Makefile
-set(makefile_src "${CMAKE_CURRENT_SOURCE_DIR}/Makefile")
-set(makefile_dst "${kbuild_shadow_root}/Makefile")
-add_custom_command(
-    OUTPUT "${makefile_dst}"
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink "${makefile_src}" "${makefile_dst}"
-    DEPENDS "${makefile_src}"
-    COMMENT "shadowing Makefile"
-    VERBATIM
-)
-install(FILES "Makefile" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Kbuild Generation
-# ---------------------------------------------------------------------------------------------------------------------
-# generate the actual Kbuild file
-
-# format flags for Kbuild template
-set(kbuild_c_flags ${kernel_c_flags})
-set(kbuild_cxx_flags ${kernel_cxx_flags})
-list(JOIN kbuild_c_flags " " kbuild_c_flags)
-list(JOIN kbuild_cxx_flags " " kbuild_cxx_flags)
-
-# convert source list to object list
-set(objs_kbuild ${srcs_kbuild_rel})
-list(FILTER objs_kbuild EXCLUDE REGEX "(\\.(h|hpp)$)|^crv/kernel/cxx/") # filter headers
-list(TRANSFORM objs_kbuild REPLACE "\\.[^.]+$" ".o")                    # replace extension
-list(JOIN objs_kbuild " " objs_kbuild)                                  # delimit with space instead of ;
-
-# generate file
-set(kbuild_link_object "${project_name_underscores}.o")
-set(kbuild_module_file "${project_name_underscores}.ko")
-set(kbuild_gen "${kbuild_shadow_root}/Kbuild")
-configure_file("Kbuild.in" "${kbuild_gen}" @ONLY)
-install(FILES "${kbuild_gen}" DESTINATION "${dkms_dst_dir}" COMPONENT dkms)
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Build Targets
-# ---------------------------------------------------------------------------------------------------------------------
-
-if(kernel_is_clang)
-    set(kbuild_compiler_flags "LLVM=1")
-endif()
-
-# encapsulate external make command
-set(kbuild_make_command
-    make -sC "${kbuild_root}"
-    ${kbuild_compiler_flags} V=1
-    "M=${kbuild_shadow_root}"
-    "CONFIG_DEBUG_INFO_BTF_MODULES="
-    "LDFLAGS_MODULE=--force-group-allocation"
-)
-
-# main build
-add_custom_command(
-    OUTPUT "${kbuild_shadow_root}/${kbuild_module_file}"
-    COMMAND ${kbuild_make_command} $<$<NOT:$<CONFIG:Debug>>:KCFLAGS=-DNDEBUG> modules
-    WORKING_DIRECTORY "${kbuild_shadow_root}"
-    DEPENDS ${srcs_kbuild_abs} ${srcs_kbuild_orig} "${makefile_dst}" "${kbuild_gen}"
-    COMMENT "building kernel module"
-    VERBATIM
-    USES_TERMINAL
-)
-add_custom_target(kbuild DEPENDS "${kbuild_shadow_root}/${kbuild_module_file}")
-add_dependencies(kbuild lib)
-if (enable_testing)
-    add_dependencies(kbuild unit_tests)
-endif()
-
-# clean
-add_custom_target(clean_kbuild
-    COMMAND ${kbuild_make_command} clean
-    WORKING_DIRECTORY "${kbuild_shadow_root}"
-    COMMENT "cleaning kernel module"
-    VERBATIM
-    USES_TERMINAL
+set_property(
+    SOURCE entry_point.c
+    TARGET_DIRECTORY driver
+    APPEND PROPERTY COMPILE_DEFINITIONS
+        "CRV_VERSION=${CRV_VERSION}"
 )

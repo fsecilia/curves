@@ -78,7 +78,7 @@ set(CMAKE_AUTORCC ON)
 set(qt_ui_export_header ${CMAKE_CURRENT_BINARY_DIR}/crv/ui/qt/export.hpp)
 add_library(qt_ui SHARED ${qt_ui_files})
 generate_export_header(qt_ui
-    EXPORT_MACRO_NAME qt_ui_api
+    EXPORT_MACRO_NAME qt-ui-api
     EXPORT_FILE_NAME ${qt_ui_export_header}
 )
 target_sources(qt_ui PRIVATE ${qt_ui_export_header})
@@ -87,7 +87,10 @@ target_include_directories(qt_ui PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/widgets"
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
-set_target_properties(qt_ui PROPERTIES DISABLE_STRICT_ALIASING ON)
+set_target_properties(qt_ui PROPERTIES
+    DISABLE_STRICT_ALIASING ON
+    OUTPUT_NAME "crv-qt-ui"
+)
 target_link_libraries(qt_ui PUBLIC
     lib
     ui
@@ -123,7 +126,10 @@ target_include_directories(qml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CUR
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
 endif()
-set_target_properties(qml PROPERTIES DISABLE_STRICT_ALIASING ON)
+set_target_properties(qml PROPERTIES
+    DISABLE_STRICT_ALIASING ON
+    OUTPUT_NAME "crv-qt-qml"
+)
 target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 
 # common test library
@@ -159,6 +165,11 @@ target_link_libraries(qt PRIVATE qt_ui qml)
 
 install(TARGETS qt RUNTIME
     DESTINATION bin
+    COMPONENT ui
+)
+
+install(TARGETS qt_ui qml RUNTIME
+    DESTINATION lib
     COMPONENT ui
 )
 

@@ -7,6 +7,13 @@
 # tests, and ui.
 
 add_library(lib)
+set_target_properties(lib
+    PROPERTIES
+        OUTPUT_NAME curves
+        VERSION ${PROJECT_VERSION}
+        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
+
 target_sources(lib PRIVATE
     bit.hpp
     concepts.hpp
@@ -114,53 +121,82 @@ target_sources(lib PRIVATE
     tuple.hpp
     variant.hpp
 )
-target_sources_kernel(lib
-    algorithm.hpp
-    bitwise_enum.hpp
-    kernel/cxx_build_test.cpp
-    kernel/cxx_build_test.h
-    lib.hpp
-    math/abs.hpp
-    math/cmp.hpp
-    math/division/concepts.hpp
-    math/division/divider.hpp
-    math/division/hardware_divider.hpp
-    math/division/io.hpp
-    math/division/qr_pair.hpp
-    math/division/shifted_int_divider.hpp
-    math/division/wide_divider.hpp
-    math/fixed/exp2_neg_m1.cpp
-    math/fixed/exp2_neg_m1.hpp
-    math/fixed/exp2.hpp
-    math/fixed/fixed.hpp
-    math/fixed/fma.hpp
-    math/fixed/uabs.hpp
-    math/int_traits.hpp
-    math/integer.hpp
-    math/inverse.hpp
-    math/limits.hpp
-    math/linear.hpp
-    math/rounding_mode.hpp
-    math/saturate_cast.hpp
-    math/scalar_traits.hpp
-    math/shifter.hpp
-    prefetcher.hpp
-    ranges.hpp
-    spline/pipeline_config.hpp
-    spline/segment_locator.hpp
-    spline/segment.hpp
-    spline/spline.hpp
-    spline/tangent_extension.hpp
-    traits.hpp
+
+include(config.cmake)
+configure_shared(lib PUBLIC)
+
+target_compile_options(lib PUBLIC
+    -Wdouble-promotion
+    -Wfloat-conversion
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(lib PUBLIC
+        -Wno-exit-time-destructors
+        -Wno-float-equal
+        -Wno-global-constructors
+    )
+endif()
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(lib PUBLIC
+        -fsized-deallocation
+
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
+    )
+    target_link_options(lib PUBLIC
+        "LINKER:-z,relro"
+        "LINKER:-z,now"
+    )
+endif()
+
 target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
-set_target_properties(lib
-    PROPERTIES
-        OUTPUT_NAME curves
-        VERSION ${PROJECT_VERSION}
-        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+target_link_libraries(lib tomlplusplus::tomlplusplus)
+
+# git hash for version string
+execute_process(
+    COMMAND git rev-parse --short HEAD
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE git_hash
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
 )
-target_link_libraries(lib project_options tomlplusplus::tomlplusplus)
+if(NOT git_hash)
+    set(git_hash standalone)
+endif()
+set(crv_version ${PROJECT_VERSION}-${git_hash})
+
+option(ENABLE_ASAN "Enable AddressSanitizer (ASan) for debug builds." OFF)
+if (ENABLE_ASAN)
+    target_compile_options(lib PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(lib PUBLIC link_options_user_mode -fsanitize=address)
+endif()
+
+kontra_add_kernel_project(
+    kernel_modules
+
+    PROJECTION_ROOT "${PROJECT_SOURCE_DIR}/src"
+
+    CMAKE_ARGUMENTS
+        "-DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}"
+        "-DCMAKE_CXX_STANDARD_REQUIRED=${CMAKE_CXX_STANDARD_REQUIRED}"
+        "-DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}"
+
+        "-DCRV_VERSION=${crv_version}"
+)
+
+kontra_add_kernel_module(
+    driver
+    PROJECT kernel_modules
+    OUTPUT_NAME "${project_name_underscores}"
+)
+
+kontra_install_kernel_module(
+    kernel_modules.driver
+    DESTINATION "${dkms_dst_dir}"
+    COMPONENT dkms
+)
 
 if (enable_testing)
     add_subdirectory(test)
@@ -312,5 +348,4 @@ if (enable_testing)
     endif()
 endif()
 
-add_subdirectory(kernel)
 add_subdirectory(ui)
