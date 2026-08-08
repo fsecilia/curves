@@ -65,9 +65,6 @@ macro(find_or_bundle NAME VERSION)
     else()
         message(CHECK_FAIL "system ${NAME} missing or old; using bundled")
 
-        # disable install
-        set(${NAME}_INSTALL ON CACHE BOOL "install ${NAME} transitively" FORCE)
-
         # check for empty submodule
         if (NOT EXISTS "${CMAKE_SOURCE_DIR}/external/${NAME}/CMakeLists.txt")
              message(FATAL_ERROR
@@ -75,6 +72,10 @@ macro(find_or_bundle NAME VERSION)
                 "run: git submodule update --init --recursive")
         endif()
 
+        # disable transitive installs
+        set(${NAME}_INSTALL OFF CACHE BOOL "install ${NAME} transitively")
+
+        # use vendored submodule
         add_subdirectory("external/${NAME}" EXCLUDE_FROM_ALL)
     endif()
 endmacro()
