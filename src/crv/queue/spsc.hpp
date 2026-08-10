@@ -93,8 +93,7 @@ public:
         // Refresh it only when the cached value cannot admit the complete logical write.
         if (writable_size_from_cache() < record_count)
         {
-            producer_.cached_peer_position = consumer_.published_position.load(std::memory_order_acquire);
-
+            producer_.update_cache(consumer_);
             if (writable_size_from_cache() < record_count) return false;
         }
 
@@ -138,7 +137,7 @@ public:
         // If the cache already satisfies maximum, newly published records cannot improve this operation.
         if (maximum > readable)
         {
-            consumer_.cached_peer_position = producer_.published_position.load(std::memory_order_acquire);
+            consumer_.update_cache(producer_);
             readable = readable_size_from_cache();
         }
 
@@ -179,13 +178,8 @@ public:
     /// The caller must externally exclude both producer and consumer endpoints.
     auto reset() noexcept -> void
     {
-        producer_.position = 0;
-        producer_.cached_peer_position = 0;
-        producer_.published_position.store(0, std::memory_order_relaxed);
-
-        consumer_.position = 0;
-        consumer_.cached_peer_position = 0;
-        consumer_.published_position.store(0, std::memory_order_relaxed);
+        producer_.reset();
+        consumer_.reset();
     }
 
 private:
@@ -198,6 +192,18 @@ private:
         position_t position;
         position_t cached_peer_position;
         std::atomic<position_t> published_position;
+
+        constexpr auto update_cache(endpoint_t const& peer) noexcept -> void
+        {
+            cached_peer_position = peer.published_position.load(std::memory_order_acquire);
+        }
+
+        constexpr auto reset() noexcept -> void
+        {
+            position = 0;
+            cached_peer_position = 0;
+            published_position.store(0, std::memory_order_relaxed);
+        }
     };
 
     struct split_t
