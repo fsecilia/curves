@@ -1,12 +1,20 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# main library cmake
+# main library definition
 #
 # This file contains the main library. It contains just about all of the code other than the kernel module itself,
 # tests, and ui.
 
 add_library(lib)
+set_target_properties(lib
+    PROPERTIES
+        OUTPUT_NAME curves
+        VERSION ${PROJECT_VERSION}
+        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
+
+# files specific to the library
 target_sources(lib PRIVATE
     bit.hpp
     concepts.hpp
@@ -114,7 +122,9 @@ target_sources(lib PRIVATE
     tuple.hpp
     variant.hpp
 )
-target_sources_kernel(lib
+
+# files compiled in both user mode and the kernel
+set(crv_kernel_shared_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/cxx_build_test.cpp
@@ -153,14 +163,105 @@ target_sources_kernel(lib
     spline/tangent_extension.hpp
     traits.hpp
 )
-target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
-set_target_properties(lib
-    PROPERTIES
-        OUTPUT_NAME curves
-        VERSION ${PROJECT_VERSION}
-        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+target_sources(lib PRIVATE ${crv_kernel_shared_files})
+list(TRANSFORM crv_kernel_shared_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+
+# c++ options shared by lib and kernel
+set(crv_shared_cxx_options
+    -Wall
+    -Werror
+    -Wextra
+    -Wno-psabi
+    -Wswitch
 )
-target_link_libraries(lib project_options tomlplusplus::tomlplusplus)
+set(crv_gnu_shared_cxx_options
+    -fdiagnostics-color=always
+    -fext-numeric-literals
+    -ftemplate-backtrace-limit=1
+    -Wno-changes-meaning
+)
+set(crv_clang_shared_cxx_options
+    -fcolor-diagnostics
+    -fsafe-buffer-usage-suggestions
+    -Weverything
+    -Wno-c++20-compat
+    -Wno-c++23-compat
+    -Wno-c++98-compat
+    -Wno-c++98-compat-pedantic
+    -Wno-c++2c-compat
+    -Wno-c++2c-extensions
+    -Wno-c99-extensions
+    -Wno-ctad-maybe-unsupported
+    -Wno-deprecated-copy-with-dtor
+    -Wno-deprecated-copy-with-user-provided-dtor
+    -Wno-disabled-macro-expansion
+    -Wno-documentation
+    -Wno-documentation-unknown-command
+    -Wno-missing-prototypes
+    -Wno-padded
+    -Wno-reserved-macro-identifier
+    -Wno-sign-conversion
+    -Wno-shadow
+    -Wno-shadow-field
+    -Wno-shadow-field-in-constructor
+    -Wno-switch-default
+    -Wno-switch-enum
+    -Wno-unneeded-member-function
+    -Wno-unsafe-buffer-usage
+    -Wno-unused-function
+    -Wno-unused-member-function
+    -Wno-unused-template
+    -Wno-weak-vtables
+)
+
+# specify lib options
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(lib PUBLIC
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
+        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
+
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -Wdouble-promotion
+            -Wfloat-conversion
+
+            -fsized-deallocation
+
+            ${crv_shared_cxx_options}
+        >
+    )
+
+    target_link_options(lib PUBLIC
+        "LINKER:-z,relro"
+        "LINKER:-z,now"
+    )
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(lib PUBLIC
+        $<$<COMPILE_LANGUAGE:CXX>:
+            ${crv_gnu_shared_cxx_options}
+        >
+    )
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(lib PUBLIC
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -Wno-exit-time-destructors
+            -Wno-float-equal
+            -Wno-global-constructors
+
+            ${crv_clang_shared_cxx_options}
+        >
+    )
+endif()
+
+target_include_directories(lib PUBLIC "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/src>")
+target_link_libraries(lib tomlplusplus::tomlplusplus)
+
+option(ENABLE_ASAN "Enable AddressSanitizer (ASan) for debug builds." OFF)
+if (ENABLE_ASAN)
+    target_compile_options(lib PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(lib PUBLIC link_options_user_mode -fsanitize=address)
+endif()
 
 if (enable_testing)
     add_subdirectory(test)

@@ -1,66 +1,147 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
 # Copyright (c) 2026 Frank Secilia
 #
-# runs the actual kernel module build using the native Kbuild
+# kbuild rules for the kernel module
 
-# final kernel module output, the .ko itself
-obj-m += @kbuild_link_object@
-
-# flags to build c files
-ccflags-y += -I$(src)/crv/kernel/cxx -I$(src) -DCRV_VERSION=\"@PROJECT_VERSION@-@git_hash@\"
-
-# c warnings that conflict with c++
-conflicting_c_warnings := designated-init \
-                          implicit-function-declaration \
-                          implicit-int \
-                          incompatible-pointer-types \
-                          missing-prototypes \
-                          no-override-init \
-                          no-pointer-sign \
-                          no-unterminated-string-initialization \
-                          no-unused-const-variable \
-                          strict-prototypes
-
-# c flags that conflict with c++
+# match kernel build rules
 #
-# The warnings may be prefixed with either `-W` or `-Werror=`, so use addprefix to filter both.
-conflicted_cxx_flags := -std=gnu% \
-                      $(addprefix -W, $(conflicting_c_warnings)) \
-                      $(addprefix -Werror=, $(conflicting_c_warnings))
+# The C++ rule below intentionally uses a subset set of Kbuild internals. Fail here if a future kernel removes one of
+# them instead of continuing with a incomplete compile command.
+crv_required_kbuild_symbols = \
+    CC \
+    depfile \
+    _c_flags \
+    modkern_cflags \
+    basename_flags \
+    modname_flags \
+    cmd \
+    cmd_and_fixdep \
+    if_changed_rule \
+    $(if $(CONFIG_FUNCTION_TRACER),CC_FLAGS_FTRACE) \
+    $(if $(CONFIG_OBJTOOL),cmd_objtool cmd_gen_objtooldep) \
+    $(if $(findstring 1,$(KBUILD_EXTRA_WARN)),cmd_warn_shared_object)
 
-# c flags, filtered for conflicts
-filtered_cxx_flags = $(filter-out $(conflicted_cxx_flags), \
+crv_missing_kbuild_symbols = $(strip $(foreach symbol,$(crv_required_kbuild_symbols),$(if $(filter undefined,$(origin $(symbol))),$(symbol))))
+
+always-y += crv-kbuild-compatibility
+
+$(obj)/crv-kbuild-compatibility: FORCE
+	@if test -n "$(crv_missing_kbuild_symbols)"; then \
+		echo "Curves: unsupported Kbuild; missing symbols: $(crv_missing_kbuild_symbols)" >&2; \
+		exit 1; \
+	fi
+	@touch "$@"
+
+# feature test --force-group-allocation
+#
+# This flag is required to keep C++ COMDAT sections through Kbuild's relocatable module link. Probe the linker
+# selected by the prepared kernel before the real module build.
+ifeq ($(CRV_VALIDATE_LINKER),1)
+crv_linker_probe_status := $(shell $(LD) --force-group-allocation --version >/dev/null 2>&1; printf '%s' $$?)
+ifneq ($(filter 126 127,$(crv_linker_probe_status)),)
+$(error Curves: Kbuild linker '$(LD)' could not be executed)
+endif
+ifneq ($(crv_linker_probe_status),0)
+$(error Curves: Kbuild linker '$(LD)' does not support required option '--force-group-allocation')
+endif
+endif
+
+obj-m += @kbuild_module_name@.o
+@kbuild_module_name@-y := @kbuild_objects_text@
+
+ccflags-y += -I$(src)/crv/kernel/cxx -I$(src)
+
+ifneq ($(CRV_DEBUG),1)
+ccflags-y += -DNDEBUG
+endif
+
+CFLAGS_crv/kernel/entry_point.o += -DCRV_VERSION=\"@crv_version@\"
+
+# filter c warnings
+conflicting_c_warnings := \
+    bad-function-cast \
+    designated-init \
+    implicit-function-declaration \
+    implicit-int \
+    incompatible-pointer-types \
+    missing-parameter-type \
+    missing-prototypes \
+    nested-externs \
+    no-override-init \
+    no-pointer-sign \
+    no-unterminated-string-initialization \
+    no-unused-const-variable \
+    old-style-definition \
+    strict-prototypes
+
+conflicting_cxx_flags := \
+    $(CC_FLAGS_FTRACE) \
+    -DCC_USING_% \
+    -std=% \
+    $(addprefix -W, $(conflicting_c_warnings)) \
+    $(addprefix -Werror=, $(conflicting_c_warnings))
+
+# compose cxx flags
+#
+# Start with _c_flags rather than c_flags because c_flags adds include settings meant only for C and forces
+# compiler_types.h. ftrace metadata is unsafe for C++ functions emitted as COMDAT in more than one translation unit, so
+# remove ftrace for C++ only; native C keeps the normal Kbuild behavior.
+filtered_cxx_flags = $(filter-out $(conflicting_cxx_flags), \
     $(_c_flags) \
     $(modkern_cflags) \
     $(basename_flags) \
     $(modname_flags))
 
-# combine c++ flags
-cxx_flags = $(filtered_cxx_flags) @kbuild_c_flags@ @kbuild_cxx_flags@
+crv_cxx_baseline_flags := \
+    -ffreestanding \
+    -fno-builtin \
+    -fno-exceptions \
+    -fno-rtti \
+    -fno-threadsafe-statics \
+    -fno-use-cxa-atexit \
+    -nostdlib
 
-# use c compiler directly to compile
-#
-# Since the file suffixes are .cpp, it chooses the right driver regardless of invoked path. Linking doesn't happen
-# through this command, so it always works correctly.
-ifeq ($(CXX),)
-    CXX := $(CC)
+# x86-64 Kbuild disables x87 to catch floating-point code. Some freestanding C++ headers still need the ABI long double
+# type, so allow x87 instructions during C++ compilation. This does not make floating-point work valid in the kernel.
+crv_cxx_compatibility_flags :=
+ifeq ($(CONFIG_X86_64),y)
+crv_cxx_compatibility_flags += -m80387
 endif
 
-# add standard c++ compile rule
-quiet_cmd_cxx_o_cpp = CXX [M]  $@
-cmd_cxx_o_cpp = $(CXX) $(cxx_flags) -Wp,-MMD,$(depfile) -c -o $@ $< \
-	$(cmd_ld_single) \
-	$(cmd_objtool)
+crv_cxx_project_flags := @kbuild_cxx_standard_option@ @kbuild_shared_cxx_options@
+ifeq ($(CONFIG_CC_IS_GCC),y)
+crv_cxx_project_flags += @kbuild_gnu_shared_cxx_options@
+endif
+ifeq ($(CONFIG_CC_IS_CLANG),y)
+crv_cxx_project_flags += @kbuild_clang_shared_cxx_options@ \
+    -Wno-keyword-macro \
+    -Wno-reserved-identifier \
+    -Wno-variadic-macros
+endif
 
-# add standard c++ pattern
+cxx_flags = $(filtered_cxx_flags) \
+    $(crv_cxx_baseline_flags) \
+    $(crv_cxx_compatibility_flags) \
+    $(crv_cxx_project_flags)
+
+# build c++ with the c compiler Kbuild selected
+#
+# Both GCC and Clang select the C++ compiler driver from the source suffix, and linking never happens through this
+# command, so compiling C++ this way is safe.
+quiet_cmd_cxx_o_cpp = CXX [M]  $@
+cmd_cxx_o_cpp = $(CC) $(cxx_flags) -Wp,-MMD,$(depfile) -c -o $@ $< $(cmd_objtool)
+
 define rule_cxx_o_cpp
 	$(call cmd_and_fixdep,cxx_o_cpp)
 	$(call cmd,gen_objtooldep)
-	$(call cmd,record_mcount)
 	$(call cmd,warn_shared_object)
 endef
+
+$(obj)/%.o: $(src)/%.cc FORCE
+	$(call if_changed_rule,cxx_o_cpp)
+
 $(obj)/%.o: $(src)/%.cpp FORCE
 	$(call if_changed_rule,cxx_o_cpp)
 
-# list of object files to build
-@project_name_underscores@-y := @objs_kbuild@
+$(obj)/%.o: $(src)/%.cxx FORCE
+	$(call if_changed_rule,cxx_o_cpp)

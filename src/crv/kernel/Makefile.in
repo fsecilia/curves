@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-2.0+ OR MIT
+# Copyright (c) 2026 Frank Secilia
+
+KERNEL_RELEASE ?= $(shell uname -r)
+KERNEL_DIR     ?= /lib/modules/$(KERNEL_RELEASE)/build
+CRV_DEBUG      ?= 0
+
+include $(KERNEL_DIR)/include/config/auto.conf
+
+KBUILD_ARGS := --no-print-directory \
+               -C "$(KERNEL_DIR)" \
+               M="$(CURDIR)"
+
+# determine compiler and linker families from prepare kernel
+CRV_DERIVED_KBUILD_ARGUMENTS :=
+ifeq ($(CONFIG_CC_IS_CLANG),y)
+ifeq ($(CONFIG_LD_IS_LLD),y)
+CRV_DERIVED_KBUILD_ARGUMENTS += LLVM=1
+else
+CRV_DERIVED_KBUILD_ARGUMENTS += CC=clang
+endif
+else
+ifeq ($(CONFIG_LD_IS_LLD),y)
+CRV_DERIVED_KBUILD_ARGUMENTS += LD=ld.lld
+endif
+endif
+
+# specify required commandline options
+#
+# - Keep C++ COMDAT sections through Kbuild's relocatable module link.
+# - Linux's module BTF tooling does not support the C++ DWARF emitted here, so disable module BTF.
+# - CRV_DEBUG is forwarded so local Debug builds can omit NDEBUG; detached DKMS builds default to release behavior.
+CRV_REQUIRED_KBUILD_ARGUMENTS := LDFLAGS_MODULE=--force-group-allocation \
+                                 CONFIG_DEBUG_INFO_BTF_MODULES= \
+                                 CRV_DEBUG=$(CRV_DEBUG)
+
+.PHONY: default modules modules_install clean install
+
+default: modules
+
+install: modules_install
+
+# defer to Kbuild and update timestamp if the file exists
+#
+# Kbuild may successfully check an up-to-date module without changing its timestamp. Touch the existing .ko after that
+# check so the outer CMake dependency rule stays quiet until one of its explicit inputs changes again.
+modules:
+	+@$(MAKE) $(KBUILD_ARGS) $(CRV_DERIVED_KBUILD_ARGUMENTS) $(CRV_REQUIRED_KBUILD_ARGUMENTS) CRV_VALIDATE_LINKER=1 $@
+	@test -f "$(CURDIR)/@kbuild_module_name@.ko"
+	@touch "$(CURDIR)/@kbuild_module_name@.ko"
+
+clean:
+	+@$(MAKE) $(KBUILD_ARGS) $(CRV_DERIVED_KBUILD_ARGUMENTS) $(CRV_REQUIRED_KBUILD_ARGUMENTS) $@
+
+modules_install:
+	+@$(MAKE) $(KBUILD_ARGS) $(CRV_DERIVED_KBUILD_ARGUMENTS) $(CRV_REQUIRED_KBUILD_ARGUMENTS) INSTALL_MOD_STRIP=1 $@
