@@ -4,3 +4,6 @@
 [submodule "external/dink"]
 	path = external/dink
 	url = https://github.com/fsecilia/dink.git
+[submodule "external/kontraband"]
+	path = external/kontraband
+	url = git@github.com:fsecilia/kontraband.git
