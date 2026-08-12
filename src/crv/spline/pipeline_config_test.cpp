@@ -12,17 +12,20 @@ namespace {
 
 // x_t = fixed_t<int64_t, 42>
 //
-// A 32khz mouse fully saturating input at max rate produces a velocity of
+// Choose a generous human physical limit of 1000 in/s. Saturating at 128kdpi gives a max rate of 128k counts/ms:
 //
-//    sqrt(2*(2^15 - 1)^2)*32 counts/ms ~= 20.5 bits
+//     1000 in/s * 1 s/1000 ms * 128000 counts/in = 128000 counts/ms
+//     sqrt(2*128000^2) = sqrt(2)*128000 ~= 181019.335983756
+//     log2(181019.335983756) ~= 17.465784285 bits
 //
-// so we need 21 integer bits, which gives Q21.42.
-static_assert(prod_pipeline_config_t::x_t::frac_bits == 42);
+// so we need 18 integer bits, which gives Q18.45.
+static_assert(prod_pipeline_config_t::x_t::frac_bits == 45);
 
 // y_t = fixed_t<int64_t, 45>
 //
 // For a domain of [0, 2^8) and soft limiter on the integrand at y=1000, the largest integral possible is a pinned
-// straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving about 0.6% headroom.
+// straight line, integrating to 256000. The integer limit of Q18.45 is 262144, giving 6,144/256,000 = 0.024 = 2.4%
+// headroom.
 static_assert(prod_pipeline_config_t::y_t::frac_bits == 45);
 
 // shift widths must be large enough to hold 7 bit shifts
