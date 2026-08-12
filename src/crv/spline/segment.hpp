@@ -9,7 +9,6 @@
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/fixed/fixed.hpp>
-#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/saturate_cast.hpp>

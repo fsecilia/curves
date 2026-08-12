@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "segment.hpp"
+#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/spline/construction/segment/field_packer.hpp>
 #include <crv/spline/construction/segment/segment_factory.hpp>
 #include <crv/test/test.hpp>
