@@ -26,7 +26,7 @@ struct extended_tangent_t
 
     unpacked_field_t slope; // shift is exponent + x_t::frac_bits - y_t::frac_bits
     y_t y0;
-    x_t x_max_delta; // clips tgangent to y_max
+    x_t x_max_delta; // clips tangent line to y_max
 
     // \param x position relative to end of segment
     constexpr auto operator()(x_t x) const noexcept -> y_t
