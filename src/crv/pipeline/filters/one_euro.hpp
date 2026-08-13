@@ -10,6 +10,7 @@
 #include <crv/math/fixed/fma.hpp>
 #include <crv/math/fixed/uabs.hpp>
 #include <crv/math/int_traits.hpp>
+#include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 
@@ -23,122 +24,143 @@ namespace crv::pipeline::filters::one_euro {
 namespace detail {
 
 using rne_shifter_t = shifter_t<rounding_modes::shr::nearest_even>;
+using truncate_shifter_t = shifter_t<rounding_modes::shr::truncate>;
 
 static constexpr auto rne_shifter = rne_shifter_t{};
+static constexpr auto truncate_shifter = truncate_shifter_t{};
 
-/// Finite dimensionless cutoff interval or its unrepresentably large limit.
+/// Finite dimensionless cutoff interval or its unrepresentably large limiting case.
 ///
-/// For cutoff rate k and elapsed time dt:
-///
-///     value = k*dt
-///
-/// A finite value reserves room for the recurrence denominator:
-///
-///     1 + k*dt
-///
-/// When is_limit is true, the caller evaluates its recurrence's mathematical
-/// k*dt -> infinity limit instead.
+/// A finite value always leaves room for the denominator's `+1`.
 template <is_fixed t_value_t>
-    requires(is_signed_v<t_value_t> && !is_fixed_frac<t_value_t>)
+    requires(is_signed_v<t_value_t>)
 struct cutoff_interval_t
 {
     using value_t = t_value_t;
+
+    /// Largest finite interval for which `value + 1` is representable.
+    static constexpr auto maximum_finite = max<value_t>() - value_t{1};
 
     value_t value{};
     bool is_limit{};
 };
 
-/// Forms the dimensionless cutoff interval k*dt.
+/// Forms the dimensionless cutoff interval `cutoff_rate*dt_ns`.
 ///
-/// cutoff_interval_value_t must preserve at least the cutoff rate's fractional
-/// precision. Since dt_ns is a positive integer, a positive representable
-/// cutoff rate therefore cannot underflow to zero while forming k*dt.
+/// Values too large for the finite working representation are represented explicitly as the mathematical
+/// cutoff-interval limit. Finite values always satisfy:
 ///
-/// Products too large to leave room for the denominator's +1 are represented
-/// by the limiting case rather than numerically saturated.
+///     0 < value <= maximum_finite
+///
+/// so `value + 1` is representable.
+///
+/// \pre cutoff_rate > 0
+/// \pre dt_ns > 0
 template <is_fixed t_cutoff_interval_value_t, is_fixed cutoff_rate_t, is_fixed dt_ns_t>
-    requires(is_signed_v<t_cutoff_interval_value_t> && is_signed_v<cutoff_rate_t> && !is_signed_v<dt_ns_t>
-        && !is_fixed_frac<t_cutoff_interval_value_t> && !is_fixed_frac<dt_ns_t>)
+    requires(is_signed_v<t_cutoff_interval_value_t> && is_signed_v<cutoff_rate_t> && !is_signed_v<dt_ns_t>)
 constexpr auto make_cutoff_interval(cutoff_rate_t cutoff_rate, dt_ns_t dt_ns) noexcept
     -> cutoff_interval_t<t_cutoff_interval_value_t>
 {
     using cutoff_interval_value_t = t_cutoff_interval_value_t;
     using output_t = cutoff_interval_t<cutoff_interval_value_t>;
+    using product_t = fixed::product_t<cutoff_rate_t, dt_ns_t>;
 
-    static_assert(cutoff_interval_value_t::frac_bits >= cutoff_rate_t::frac_bits);
+    static_assert(cutoff_interval_value_t::int_bits > 0, "cutoff interval must represent one");
+    static_assert(cutoff_interval_value_t::frac_bits >= cutoff_rate_t::frac_bits,
+        "cutoff interval must preserve cutoff-rate precision for positive integer dt");
+    static_assert(product_t::int_bits >= cutoff_interval_value_t::int_bits,
+        "cutoff-rate/time product must contain the finite cutoff-interval range");
 
     assert(cutoff_rate > cutoff_rate_t{});
     assert(dt_ns > dt_ns_t{});
 
-    static constexpr auto finite_ceiling = max<cutoff_interval_value_t>() - cutoff_interval_value_t{1};
-
     auto const product = multiply(cutoff_rate, dt_ns);
-    using product_t = std::remove_cvref_t<decltype(product)>;
 
-    static constexpr auto product_ceiling = product_t::convert(finite_ceiling);
+    // The ceiling comparison must be conservative. maximum_finite can have more fractional precision than product_t,
+    // so explicitly truncate it into the product representation rather than allowing a nearest conversion to round the
+    // ceiling upward.
+    static constexpr auto product_ceiling = product_t::template convert<truncate_shifter>(output_t::maximum_finite);
 
-    if (product > product_ceiling) return output_t{.is_limit = true};
+    // Converting the truncated ceiling back into the working interval cannot cross maximum_finite. This is the property
+    // that guarantees the later denominator addition is safe.
+    static_assert(cutoff_interval_value_t::convert(product_ceiling) <= output_t::maximum_finite);
 
+    if (product > product_ceiling) return {.is_limit = true};
+
+    // dt_ns is a positive integer and the working interval has at least the cutoff rate's fractional precision, so a
+    // positive representable cutoff rate cannot underflow to zero here.
     auto const value = cutoff_interval_value_t::template convert<rne_shifter>(product);
 
-    // cutoff_rate > 0, dt_ns >= 1, and the output preserves at least the
-    // cutoff rate's fractional precision.
     assert(value > cutoff_interval_value_t{});
+    assert(value <= output_t::maximum_finite);
 
-    return output_t{.value = value};
+    return {.value = value};
 }
 
-/// Returns whether the adaptive signal cutoff would exceed cutoff_rate_t.
+/// Result of calculating the adaptive signal cutoff rate.
 ///
-/// Calculates:
+/// `value` is meaningful only when `overflows` is false.
+template <is_fixed t_cutoff_rate_t> struct signal_cutoff_rate_result_t
+{
+    using cutoff_rate_t = t_cutoff_rate_t;
+
+    cutoff_rate_t value{};
+    bool overflows{};
+};
+
+/// Calculates and range-checks:
 ///
 ///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
 ///
-/// without first performing the potentially overflowing addition.
+/// The addition is performed only after proving it cannot exceed cutoff_rate_t.
 template <is_fixed cutoff_rate_t, is_fixed cutoff_slope_t, is_fixed dx_t>
     requires(is_signed_v<cutoff_rate_t> && is_signed_v<cutoff_slope_t> && is_signed_v<dx_t>)
-constexpr auto signal_cutoff_rate_overflows(
-    cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope, dx_t filtered_derivative) noexcept -> bool
+constexpr auto try_signal_cutoff_rate(cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope,
+    dx_t filtered_derivative) noexcept -> signal_cutoff_rate_result_t<cutoff_rate_t>
 {
     assert(minimum_cutoff_rate > cutoff_rate_t{});
     assert(cutoff_slope >= cutoff_slope_t{});
 
     auto const adaptive_cutoff_rate = multiply(cutoff_slope, uabs(filtered_derivative));
+    using accumulator_t = std::remove_cvref_t<decltype(adaptive_cutoff_rate)>;
 
-    using adaptive_cutoff_rate_t = std::remove_cvref_t<decltype(adaptive_cutoff_rate)>;
-
-    using accumulator_t = fixed_t<typename adaptive_cutoff_rate_t::value_t, adaptive_cutoff_rate_t::frac_bits>;
-
+    static_assert(is_fixed<accumulator_t>);
     static_assert(is_signed_v<accumulator_t>);
+    static_assert(sizeof(typename cutoff_rate_t::value_t) < sizeof(typename accumulator_t::value_t));
     static_assert(cutoff_rate_t::frac_bits <= accumulator_t::frac_bits);
     static_assert(cutoff_rate_t::int_bits <= accumulator_t::int_bits);
 
-    auto const adaptive = accumulator_t::convert(adaptive_cutoff_rate);
     auto const minimum = accumulator_t::convert(minimum_cutoff_rate);
-    auto const output_max = accumulator_t::convert(max<cutoff_rate_t>());
+    auto const adaptive = accumulator_t::convert(adaptive_cutoff_rate);
+    auto const maximum = accumulator_t::convert(max<cutoff_rate_t>());
 
-    return adaptive > output_max - minimum;
+    // Check before adding. This is valid because all three values are nonnegative.
+    if (adaptive > maximum - minimum) return {.overflows = true};
+
+    auto const combined = minimum + adaptive;
+
+    return {
+        .value = cutoff_rate_t::template convert<rne_shifter>(combined),
+    };
 }
 
-/// Calculates the adaptive signal cutoff.
-///
-/// Preconditions are independently checkable by signal_cutoff_rate_overflows().
+template <is_fixed cutoff_rate_t, is_fixed cutoff_slope_t, is_fixed dx_t>
+    requires(is_signed_v<cutoff_rate_t> && is_signed_v<cutoff_slope_t> && is_signed_v<dx_t>)
+constexpr auto signal_cutoff_rate_overflows(
+    cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope, dx_t filtered_derivative) noexcept -> bool
+{
+    return try_signal_cutoff_rate(minimum_cutoff_rate, cutoff_slope, filtered_derivative).overflows;
+}
+
 template <is_fixed cutoff_rate_t, is_fixed cutoff_slope_t, is_fixed dx_t>
     requires(is_signed_v<cutoff_rate_t> && is_signed_v<cutoff_slope_t> && is_signed_v<dx_t>)
 constexpr auto signal_cutoff_rate(
     cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope, dx_t filtered_derivative) noexcept -> cutoff_rate_t
 {
-    assert(!signal_cutoff_rate_overflows(minimum_cutoff_rate, cutoff_slope, filtered_derivative));
+    auto const result = try_signal_cutoff_rate(minimum_cutoff_rate, cutoff_slope, filtered_derivative);
 
-    auto const adaptive_cutoff_rate = multiply(cutoff_slope, uabs(filtered_derivative));
-
-    using adaptive_cutoff_rate_t = std::remove_cvref_t<decltype(adaptive_cutoff_rate)>;
-
-    using accumulator_t = fixed_t<typename adaptive_cutoff_rate_t::value_t, adaptive_cutoff_rate_t::frac_bits>;
-
-    auto const combined = accumulator_t::convert(minimum_cutoff_rate) + accumulator_t::convert(adaptive_cutoff_rate);
-
-    return cutoff_rate_t::template convert<rne_shifter>(combined);
+    assert(!result.overflows);
+    return result.value;
 }
 
 } // namespace detail
@@ -151,12 +173,19 @@ constexpr auto signal_cutoff_rate(
 ///     minimum_cutoff_rate     1/ns
 ///     cutoff_slope            1/signal-unit
 ///
-/// The filtered derivative uses signal-units/ns, so:
+/// The filtered derivative has units signal-unit/ns, so:
 ///
-///     minimum_cutoff_rate
-///         + cutoff_slope*abs(filtered_derivative)
+///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
 ///
 /// has units 1/ns.
+///
+/// Given paper-style cutoff frequencies in Hz:
+///
+///     cutoff_rate = 2*pi*f*1e-9
+///
+/// Given paper-style beta in Hz/(signal-unit/second):
+///
+///     cutoff_slope = 2*pi*beta
 template <is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t>
     requires(is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>)
 struct parameters_t
@@ -177,12 +206,16 @@ enum class validation_error
     signal_cutoff_rate_overflow,
 };
 
-/// Validates runtime parameters.
+/// Validates runtime parameters over every representable derivative state.
 ///
-/// Validation is independent of object construction so the same operation can
-/// be used for user-mode input and for an already-constructed ioctl payload.
+/// Construction alone cannot establish this invariant because parameter objects may arrive through external storage
+/// such as an ioctl payload.
 ///
-/// The cutoff overflow check covers every representable derivative state.
+/// The adaptive-cutoff check covers:
+///
+///     [min<dx_t>(), max<dx_t>()]
+///
+/// and therefore uses `min<dx_t>()`, whose two's-complement magnitude is the larger endpoint.
 template <is_fixed t_dx_t, is_fixed cutoff_rate_t, is_fixed cutoff_slope_t>
     requires(is_signed_v<t_dx_t> && is_signed_v<cutoff_rate_t> && is_signed_v<cutoff_slope_t>)
 constexpr auto validate(parameters_t<cutoff_rate_t, cutoff_slope_t> const& params) noexcept
@@ -202,9 +235,6 @@ constexpr auto validate(parameters_t<cutoff_rate_t, cutoff_slope_t> const& param
 
     if (params.cutoff_slope < cutoff_slope_t{}) { return std::unexpected{validation_error::cutoff_slope_negative}; }
 
-    // This is one raw unit more conservative than the physically reachable
-    // symmetric derivative domain when dx_t uses two's-complement storage,
-    // but proves the parameter set for every representable dx_t state.
     if (detail::signal_cutoff_rate_overflows(params.minimum_cutoff_rate, params.cutoff_slope, min<dx_t>()))
     {
         return std::unexpected{validation_error::signal_cutoff_rate_overflow};
@@ -215,31 +245,41 @@ constexpr auto validate(parameters_t<cutoff_rate_t, cutoff_slope_t> const& param
 
 /// Low-pass filter for the signal derivative.
 ///
-/// The reference calculation is:
+/// The maintained 1-Euro reference implementation uses the previous filtered signal as the derivative baseline:
 ///
-///     raw_derivative =
-///         (input - previous_filtered_input) / dt
+///     raw_derivative = (input - previous_filtered_input)/dt
 ///
-///     alpha_d =
-///         derivative_cutoff_rate*dt
-///         / (1 + derivative_cutoff_rate*dt)
+/// This intentionally differs from the original 2012 paper, which uses the previous raw input.
 ///
-///     filtered_derivative =
-///         previous_filtered_derivative
+/// With:
+///
+///     alpha_d = derivative_cutoff_rate*dt/(1 + derivative_cutoff_rate*dt)
+///
+/// the ordinary recurrence:
+///
+///     filtered_derivative
+///         = previous_filtered_derivative
 ///         + alpha_d*(raw_derivative - previous_filtered_derivative)
 ///
-/// Rearranging gives:
+/// rearranges to:
 ///
-///     filtered_derivative =
-///         (previous_filtered_derivative
-///             + derivative_cutoff_rate
-///                 * (input - previous_filtered_input))
-///         / (1 + derivative_cutoff_rate*dt)
+///     filtered_derivative
+///         = (previous_filtered_derivative
+///            + derivative_cutoff_rate*(input - previous_filtered_input))
+///           /(1 + derivative_cutoff_rate*dt)
 ///
-/// This eliminates the raw derivative division and does not materialize alpha.
+/// eliminating the raw-derivative division and narrowing only once at the final division.
+///
+/// `x_t` uses signed storage, but this filter's signal is a nonnegative velocity magnitude. Because both signal values
+/// lie in x_t's nonnegative range, `input - previous_filtered_input` is representable directly in x_t.
+///
+/// \pre input >= 0
+/// \pre previous_filtered_input >= 0
+/// \pre derivative_cutoff_rate > 0
+/// \pre dt_ns > 0
 template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_interval_value_t>
     requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t>
-        && is_signed_v<t_cutoff_interval_value_t> && !is_fixed_frac<t_cutoff_interval_value_t>)
+        && is_signed_v<t_cutoff_interval_value_t>)
 class derivative_filter_t
 {
 public:
@@ -248,13 +288,13 @@ public:
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_interval_value_t = t_cutoff_interval_value_t;
 
-    using numerator_fma_t = fma_t<fixed::product_t<cutoff_rate_t, x_t>, cutoff_rate_t, x_t, dx_t, detail::rne_shifter_t,
-        fixed::overflow_policy_t::saturate>;
+    using numerator_t = fixed::product_t<cutoff_rate_t, x_t>;
+    using numerator_fma_t
+        = fma_t<numerator_t, cutoff_rate_t, x_t, dx_t, detail::rne_shifter_t, fixed::overflow_policy_t::saturate>;
 
-    using numerator_t = typename numerator_fma_t::out_t;
-
-    static_assert(is_fixed<numerator_t>);
-    static_assert(is_signed_v<numerator_t>);
+    // this constraint competes with the divider's requirement that shifts only be right; the net effect is dx_t = x_t
+    static_assert(
+        dx_t::int_bits >= x_t::int_bits, "derivative state must contain the maximum raw derivative at dt_ns == 1");
 
     static_assert(
         numerator_t::int_bits >= dx_t::int_bits, "derivative numerator must contain the derivative state range");
@@ -262,14 +302,18 @@ public:
     static_assert(
         numerator_t::frac_bits >= dx_t::frac_bits, "derivative numerator must contain the derivative state precision");
 
-    constexpr derivative_filter_t() noexcept = default;
+    // The FMA output representation has enough headroom for every representable operand combination. Saturation is a
+    // defensive policy only; it must never be reachable.
+    static_assert(!numerator_fma_t::lower_saturation_possible, "derivative numerator FMA can saturate");
+    static_assert(!numerator_fma_t::upper_saturation_possible, "derivative numerator FMA can saturate");
 
+    constexpr derivative_filter_t() noexcept = default;
     constexpr explicit derivative_filter_t(dx_t initial) noexcept : output_{initial} {}
 
     constexpr void reset(dx_t initial = {}) noexcept { output_ = initial; }
 
     template <is_fixed dt_ns_t>
-        requires(!is_signed_v<dt_ns_t> && !is_fixed_frac<dt_ns_t>)
+        requires(!is_signed_v<dt_ns_t>)
     constexpr auto operator()(
         x_t input, x_t previous_filtered_input, cutoff_rate_t derivative_cutoff_rate, dt_ns_t dt_ns) noexcept -> dx_t
     {
@@ -278,27 +322,20 @@ public:
         assert(derivative_cutoff_rate > cutoff_rate_t{});
         assert(dt_ns > dt_ns_t{});
 
-        // Both operands lie in x_t's nonnegative range, so their difference
-        // lies in [-max<x_t>(), max<x_t>()] and remains representable in x_t.
         auto const delta = input - previous_filtered_input;
-
         auto const interval = detail::make_cutoff_interval<cutoff_interval_value_t>(derivative_cutoff_rate, dt_ns);
 
         if (interval.is_limit)
         {
-            // As k_d*dt -> infinity, alpha_d -> 1 and the derivative leg
-            // approaches the current raw derivative.
+            // alpha_d -> 1, so the derivative state approaches the current raw derivative.
             output_ = divide<dx_t>(delta, dt_ns, rounding_modes::div::nearest_even);
-
             return output_;
         }
 
         auto const numerator = numerator_fma_t{}(derivative_cutoff_rate, delta, output_);
-
         auto const denominator = interval.value + cutoff_interval_value_t{1};
 
         output_ = divide<dx_t>(numerator, denominator, rounding_modes::div::nearest_even);
-
         return output_;
     }
 
@@ -308,25 +345,22 @@ private:
 
 /// Low-pass filter for the input signal.
 ///
-/// The reference calculation is:
+/// The ordinary recurrence:
 ///
-///     alpha = cutoff_rate*dt / (1 + cutoff_rate*dt)
+///     alpha = cutoff_rate*dt/(1 + cutoff_rate*dt)
+///     filtered = previous_filtered + alpha*(input - previous_filtered)
 ///
-///     filtered =
-///         previous_filtered
-///         + alpha*(input - previous_filtered)
+/// rearranges to:
 ///
-/// Rearranging gives:
+///     filtered = (previous_filtered + cutoff_rate*dt*input)/(1 + cutoff_rate*dt)
 ///
-///     filtered =
-///         (previous_filtered + cutoff_rate*dt*input)
-///         / (1 + cutoff_rate*dt)
+/// The same quantized finite cutoff interval is used in the numerator and denominator.
 ///
-/// The finite implementation materializes cutoff_rate*dt once in the narrow
-/// denominator representation, then uses that same value in the numerator.
+/// \pre input >= 0
+/// \pre cutoff_rate > 0
+/// \pre dt_ns > 0
 template <is_fixed t_x_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_interval_value_t>
-    requires(is_signed_v<t_x_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_interval_value_t>
-        && !is_fixed_frac<t_cutoff_interval_value_t>)
+    requires(is_signed_v<t_x_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_interval_value_t>)
 class signal_filter_t
 {
 public:
@@ -334,28 +368,26 @@ public:
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_interval_value_t = t_cutoff_interval_value_t;
 
-    using numerator_fma_t = fma_t<fixed::product_t<cutoff_interval_value_t, x_t>, cutoff_interval_value_t, x_t, x_t,
-        detail::rne_shifter_t, fixed::overflow_policy_t::saturate>;
-
-    using numerator_t = typename numerator_fma_t::out_t;
-
-    static_assert(is_fixed<numerator_t>);
-    static_assert(is_signed_v<numerator_t>);
+    using numerator_t = fixed::product_t<cutoff_interval_value_t, x_t>;
+    using numerator_fma_t = fma_t<numerator_t, cutoff_interval_value_t, x_t, x_t, detail::rne_shifter_t,
+        fixed::overflow_policy_t::saturate>;
 
     static_assert(numerator_t::int_bits >= x_t::int_bits, "signal numerator must contain the signal state range");
 
     static_assert(numerator_t::frac_bits >= x_t::frac_bits, "signal numerator must contain the signal state precision");
 
-    constexpr signal_filter_t() noexcept = default;
+    // As above, saturation is retained defensively but must be statically unreachable.
+    static_assert(!numerator_fma_t::lower_saturation_possible, "signal numerator FMA can saturate");
+    static_assert(!numerator_fma_t::upper_saturation_possible, "signal numerator FMA can saturate");
 
+    constexpr signal_filter_t() noexcept = default;
     constexpr explicit signal_filter_t(x_t initial) noexcept : output_{initial} {}
 
     constexpr auto output() const noexcept -> x_t { return output_; }
-
     constexpr void reset(x_t initial = {}) noexcept { output_ = initial; }
 
     template <is_fixed dt_ns_t>
-        requires(!is_signed_v<dt_ns_t> && !is_fixed_frac<dt_ns_t>)
+        requires(!is_signed_v<dt_ns_t>)
     constexpr auto operator()(x_t input, cutoff_rate_t cutoff_rate, dt_ns_t dt_ns) noexcept -> x_t
     {
         assert(input >= x_t{});
@@ -373,11 +405,9 @@ public:
         }
 
         auto const numerator = numerator_fma_t{}(interval.value, input, output_);
-
         auto const denominator = interval.value + cutoff_interval_value_t{1};
 
         output_ = divide<x_t>(numerator, denominator, rounding_modes::div::nearest_even);
-
         return output_;
     }
 
@@ -387,22 +417,32 @@ private:
 
 /// Variable-interval fixed-point 1-Euro filter.
 ///
-/// The first sample initializes the reference state:
+/// This implementation follows the maintained reference implementation's derivative baseline: each derivative sample is
+/// measured from the previous filtered signal rather than the previous raw signal.
 ///
-///     filtered_derivative = 0
-///     filtered_signal     = input
+/// For each sample after initialization:
 ///
-/// Subsequent samples preserve reference update order:
+///     previous_filtered_input = signal_filter.output()
+///     filtered_derivative
+///         = derivative_filter(input, previous_filtered_input, derivative_cutoff_rate, dt_ns)
+///     cutoff_rate
+///         = minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
+///     filtered_input
+///         = signal_filter(input, cutoff_rate, dt_ns)
 ///
-///     filtered_derivative = derivative_filter(...)
-///     cutoff              = minimum + slope*abs(filtered_derivative)
-///     filtered_signal     = signal_filter(...)
+/// The ordinary constructor creates an uninitialized filter. Its first input seeds the signal state and clears the
+/// derivative state.
+///
+/// The dependency/state injection constructor instead accepts complete recursive state and is immediately initialized.
+///
+/// \pre input >= 0
+/// \pre dt_ns > 0
 template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t,
     is_fixed t_cutoff_interval_value_t,
     typename t_derivative_filter_t = derivative_filter_t<t_x_t, t_dx_t, t_cutoff_rate_t, t_cutoff_interval_value_t>,
     typename t_signal_filter_t = signal_filter_t<t_x_t, t_cutoff_rate_t, t_cutoff_interval_value_t>>
     requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>
-        && is_signed_v<t_cutoff_interval_value_t> && !is_fixed_frac<t_cutoff_interval_value_t>)
+        && is_signed_v<t_cutoff_interval_value_t>)
 class filter_t
 {
 public:
@@ -417,15 +457,23 @@ public:
 
     using params_t = parameters_t<cutoff_rate_t, cutoff_slope_t>;
 
+    /// Constructs a new filter with no recursive history.
+    constexpr explicit filter_t(params_t params) noexcept : params_{params}
+    {
+        assert((validate<dx_t>(params_).has_value()));
+    }
+
+    /// Constructs an initialized filter from complete recursive component state.
     constexpr explicit filter_t(
-        params_t params, derivative_filter_type derivative_filter = {}, signal_filter_type signal_filter = {}) noexcept
-        : params_{params}, derivative_filter_{std::move(derivative_filter)}, signal_filter_{std::move(signal_filter)}
+        params_t params, derivative_filter_type derivative_filter, signal_filter_type signal_filter) noexcept
+        : params_{params}, derivative_filter_{std::move(derivative_filter)}, signal_filter_{std::move(signal_filter)},
+          initialized_{true}
     {
         assert((validate<dx_t>(params_).has_value()));
     }
 
     template <is_fixed dt_ns_t>
-        requires(!is_signed_v<dt_ns_t> && !is_fixed_frac<dt_ns_t>)
+        requires(!is_signed_v<dt_ns_t>)
     constexpr auto operator()(x_t input, dt_ns_t dt_ns) noexcept -> x_t
     {
         assert(input >= x_t{});
@@ -453,8 +501,11 @@ public:
 private:
     params_t params_;
 
-    derivative_filter_type derivative_filter_;
-    signal_filter_type signal_filter_;
+    [[no_unique_address]]
+    derivative_filter_type derivative_filter_{};
+
+    [[no_unique_address]]
+    signal_filter_type signal_filter_{};
 
     bool initialized_{};
 };

@@ -87,8 +87,8 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     using real_t = long double;
 
     // Test representations only. Production representations should be justified from the production parameter envelope.
-    using x_t = fixed_t<int64_t, 44>;
-    using dx_t = fixed_t<int64_t, 45>;
+    using x_t = fixed_t<int64_t, 45>;
+    using dx_t = x_t;
 
     using cutoff_rate_t = fixed_t<int64_t, 46>;
     using cutoff_slope_t = fixed_t<int64_t, 47>;
