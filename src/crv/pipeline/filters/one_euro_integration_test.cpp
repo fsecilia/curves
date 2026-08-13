@@ -93,12 +93,17 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     using cutoff_rate_t = fixed_t<int64_t, 46>;
     using cutoff_slope_t = fixed_t<int64_t, 47>;
     using cutoff_interval_value_t = fixed_t<int64_t, 48>;
+    using cutoff_interval_t = cutoff_interval_t<cutoff_interval_value_t>;
+    using cutoff_interval_calculator_t = cutoff_interval_calculator_t<cutoff_interval_t>;
 
     using dt_ns_t = fixed_t<uint64_t, 0>;
 
     using params_t = parameters_t<cutoff_rate_t, cutoff_slope_t>;
 
-    using sut_t = filter_t<x_t, dx_t, cutoff_rate_t, cutoff_slope_t, cutoff_interval_value_t>;
+    using derivative_filter_t = derivative_filter_t<x_t, dx_t, cutoff_rate_t, cutoff_interval_calculator_t>;
+    using signal_filter_t = signal_filter_t<x_t, cutoff_rate_t, cutoff_interval_calculator_t>;
+
+    using sut_t = filter_t<x_t, dx_t, cutoff_rate_t, cutoff_slope_t, derivative_filter_t, signal_filter_t>;
 
     struct sample_t
     {

@@ -17,7 +17,6 @@
 #include <crv/pipeline/filters/one_euro/signal_cutoff_rate.hpp>
 #include <cassert>
 #include <expected>
-#include <type_traits>
 #include <utility>
 
 namespace crv::pipeline::filters::one_euro {
@@ -144,16 +143,17 @@ constexpr auto validate(parameters_t<cutoff_rate_t, cutoff_slope_t> const& param
 /// \pre previous_filtered_input >= 0
 /// \pre derivative_cutoff_rate > 0
 /// \pre dt_ns > 0
-template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_interval_value_t>
-    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t>
-        && is_signed_v<t_cutoff_interval_value_t>)
+template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, typename t_cutoff_interval_calculator_t>
+    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t>)
 class derivative_filter_t
 {
 public:
     using x_t = t_x_t;
     using dx_t = t_dx_t;
     using cutoff_rate_t = t_cutoff_rate_t;
-    using cutoff_interval_value_t = t_cutoff_interval_value_t;
+    using cutoff_interval_calculator_t = t_cutoff_interval_calculator_t;
+    using cutoff_interval_t = cutoff_interval_calculator_t::cutoff_interval_t;
+    using cutoff_interval_value_t = cutoff_interval_t::value_t;
 
     using numerator_t = fixed::product_t<cutoff_rate_t, x_t>;
     using numerator_fma_t
@@ -175,7 +175,10 @@ public:
     static_assert(!numerator_fma_t::upper_saturation_possible, "derivative numerator FMA can saturate");
 
     constexpr derivative_filter_t() noexcept = default;
-    constexpr explicit derivative_filter_t(dx_t initial) noexcept : output_{initial} {}
+    constexpr explicit derivative_filter_t(
+        dx_t initial, cutoff_interval_calculator_t calc_cutoff_interval = {}) noexcept
+        : calc_cutoff_interval_{std::move(calc_cutoff_interval)}, output_{initial}
+    {}
 
     constexpr void reset(dx_t initial = {}) noexcept { output_ = initial; }
 
@@ -190,7 +193,7 @@ public:
         assert(dt_ns > dt_ns_t{});
 
         auto const delta = input - previous_filtered_input;
-        auto const interval = make_cutoff_interval<cutoff_interval_value_t>(derivative_cutoff_rate, dt_ns);
+        auto const interval = calc_cutoff_interval_(derivative_cutoff_rate, dt_ns);
 
         if (interval.is_limit)
         {
@@ -207,6 +210,7 @@ public:
     }
 
 private:
+    [[no_unique_address]] cutoff_interval_calculator_t calc_cutoff_interval_{};
     dx_t output_{};
 };
 
@@ -226,29 +230,33 @@ private:
 /// \pre input >= 0
 /// \pre cutoff_rate > 0
 /// \pre dt_ns > 0
-template <is_fixed t_x_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_interval_value_t>
-    requires(is_signed_v<t_x_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_interval_value_t>)
+template <is_fixed t_x_t, is_fixed t_cutoff_rate_t, typename t_cutoff_interval_calculator_t>
+    requires(is_signed_v<t_x_t> && is_signed_v<t_cutoff_rate_t>)
 class signal_filter_t
 {
 public:
     using x_t = t_x_t;
     using cutoff_rate_t = t_cutoff_rate_t;
-    using cutoff_interval_value_t = t_cutoff_interval_value_t;
+    using cutoff_interval_calculator_t = t_cutoff_interval_calculator_t;
+    using cutoff_interval_t = cutoff_interval_calculator_t::cutoff_interval_t;
+    using cutoff_interval_value_t = cutoff_interval_t::value_t;
 
     using numerator_t = fixed::product_t<cutoff_interval_value_t, x_t>;
     using numerator_fma_t = fma_t<numerator_t, cutoff_interval_value_t, x_t, x_t, detail::rne_shifter_t,
         fixed::overflow_policy_t::saturate>;
 
     static_assert(numerator_t::int_bits >= x_t::int_bits, "signal numerator must contain the signal state range");
-
     static_assert(numerator_t::frac_bits >= x_t::frac_bits, "signal numerator must contain the signal state precision");
 
-    // As above, saturation is retained defensively but must be statically unreachable.
+    // The FMA output representation has enough headroom for every representable operand combination. Saturation is a
+    // defensive policy only; it must never be reachable.
     static_assert(!numerator_fma_t::lower_saturation_possible, "signal numerator FMA can saturate");
     static_assert(!numerator_fma_t::upper_saturation_possible, "signal numerator FMA can saturate");
 
     constexpr signal_filter_t() noexcept = default;
-    constexpr explicit signal_filter_t(x_t initial) noexcept : output_{initial} {}
+    constexpr explicit signal_filter_t(x_t initial, cutoff_interval_calculator_t calc_cutoff_interval = {}) noexcept
+        : calc_cutoff_interval_{std::move(calc_cutoff_interval)}, output_{initial}
+    {}
 
     constexpr auto output() const noexcept -> x_t { return output_; }
     constexpr void reset(x_t initial = {}) noexcept { output_ = initial; }
@@ -262,7 +270,7 @@ public:
         assert(cutoff_rate > cutoff_rate_t{});
         assert(dt_ns > dt_ns_t{});
 
-        auto const interval = make_cutoff_interval<cutoff_interval_value_t>(cutoff_rate, dt_ns);
+        auto const interval = calc_cutoff_interval_(cutoff_rate, dt_ns);
 
         if (interval.is_limit)
         {
@@ -279,6 +287,7 @@ public:
     }
 
 private:
+    [[no_unique_address]] cutoff_interval_calculator_t calc_cutoff_interval_{};
     x_t output_{};
 };
 
@@ -305,11 +314,8 @@ private:
 /// \pre input >= 0
 /// \pre dt_ns > 0
 template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t,
-    is_fixed t_cutoff_interval_value_t,
-    typename t_derivative_filter_t = derivative_filter_t<t_x_t, t_dx_t, t_cutoff_rate_t, t_cutoff_interval_value_t>,
-    typename t_signal_filter_t = signal_filter_t<t_x_t, t_cutoff_rate_t, t_cutoff_interval_value_t>>
-    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>
-        && is_signed_v<t_cutoff_interval_value_t>)
+    typename t_derivative_filter_t, typename t_signal_filter_t>
+    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>)
 class filter_t
 {
 public:
@@ -317,7 +323,6 @@ public:
     using dx_t = t_dx_t;
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_slope_t = t_cutoff_slope_t;
-    using cutoff_interval_value_t = t_cutoff_interval_value_t;
 
     using derivative_filter_type = t_derivative_filter_t;
     using signal_filter_type = t_signal_filter_t;
@@ -333,7 +338,7 @@ public:
     /// Constructs an initialized filter from complete recursive component state.
     constexpr explicit filter_t(
         params_t params, derivative_filter_type derivative_filter, signal_filter_type signal_filter) noexcept
-        : params_{params}, derivative_filter_{std::move(derivative_filter)}, signal_filter_{std::move(signal_filter)},
+        : derivative_filter_{std::move(derivative_filter)}, signal_filter_{std::move(signal_filter)}, params_{params},
           initialized_{true}
     {
         assert((validate<dx_t>(params_).has_value()));
@@ -366,14 +371,9 @@ public:
     }
 
 private:
+    [[no_unique_address]] derivative_filter_type derivative_filter_{};
+    [[no_unique_address]] signal_filter_type signal_filter_{};
     params_t params_;
-
-    [[no_unique_address]]
-    derivative_filter_type derivative_filter_{};
-
-    [[no_unique_address]]
-    signal_filter_type signal_filter_{};
-
     bool initialized_{};
 };
 
