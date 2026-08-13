@@ -91,30 +91,42 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    static constexpr auto narrow_size = max(sizeof(lhs_t), sizeof(rhs_t));
+    using narrow_t = typename wide_divider_t::narrow_t;
+    using wide_t = typename wide_divider_t::wide_t;
 
-    using narrow_t = int_by_bytes_t<narrow_size, false>;
-    using wide_t = widened_t<narrow_t>;
-    using wide_signed_t = make_signed_t<wide_t>;
+    static_assert(
+        sizeof(lhs_t) <= sizeof(wide_t), "dividend is wider than the two-word dividend supported by the divisor");
+    static_assert(sizeof(rhs_t) <= sizeof(narrow_t), "divisor is wider than the selected native division word");
 
-    static constexpr bool lhs_can_be_negative = std::is_signed_v<lhs_t>;
-    static constexpr bool rhs_can_be_negative = std::is_signed_v<rhs_t>;
+    using unsigned_lhs_t = make_unsigned_t<lhs_t>;
+    using unsigned_rhs_t = make_unsigned_t<rhs_t>;
+    using unsigned_out_t = make_unsigned_t<out_value_t>;
 
     static constexpr auto max_wide_pre_shift = max<wide_t>() >> shift;
 
-    static constexpr wide_t max_abs_dividend = lhs_can_be_negative
-        ? int_cast<wide_t>(static_cast<make_unsigned_t<lhs_t>>(min<lhs_t>()))
-        : int_cast<wide_t>(max<lhs_t>());
+    static constexpr auto max_abs_dividend = []() -> wide_t {
+        // in two's-complement, converting the minimum signed value to unsigned produces its positive magnitude
+        if constexpr (std::is_signed_v<lhs_t>) return int_cast<wide_t>(static_cast<unsigned_lhs_t>(min<lhs_t>()));
+        else return int_cast<wide_t>(max<lhs_t>());
+    }();
 
-    static constexpr wide_t max_shifted_dividend = int_cast<wide_t>(max_abs_dividend << shift);
+    static constexpr auto max_shifted_dividend = []() -> wide_t {
+        if constexpr (max_abs_dividend > max_wide_pre_shift) return max<wide_t>();
+        else return int_cast<wide_t>(max_abs_dividend << shift);
+    }();
+
+    static constexpr auto max_abs_out_min = []() -> wide_t {
+        if constexpr (std::is_signed_v<out_value_t>)
+        {
+            return int_cast<wide_t>(static_cast<unsigned_out_t>(min<out_value_t>()));
+        }
+        else return wide_t{};
+    }();
+
     static constexpr bool upper_saturation_possible = cmp_greater(max_shifted_dividend, max<out_value_t>());
 
-    static constexpr wide_t max_abs_out_min = std::is_signed_v<out_value_t>
-        ? static_cast<wide_t>(static_cast<make_unsigned_t<out_value_t>>(min<out_value_t>()))
-        : wide_t{0};
-
     static constexpr bool lower_saturation_possible
-        = std::is_unsigned_v<out_value_t> ? true : (max_shifted_dividend > max_abs_out_min);
+        = std::is_unsigned_v<out_value_t> || (max_shifted_dividend >= max_abs_out_min);
 
     template <typename rounding_mode_t>
     constexpr auto operator()(lhs_t dividend, rhs_t divisor, rounding_mode_t rounding_mode) const noexcept
@@ -134,44 +146,81 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
             assert(divisor != 0);
         }
 
-        // strip sign
-        bool const lhs_negative = lhs_can_be_negative ? cmp_less(dividend, 0) : false;
-        bool const rhs_negative = rhs_can_be_negative ? cmp_less(divisor, 0) : false;
+        // strip signs
+        bool const lhs_negative = std::is_signed_v<lhs_t> ? cmp_less(dividend, 0) : false;
+        bool const rhs_negative = std::is_signed_v<rhs_t> ? cmp_less(divisor, 0) : false;
         bool const negative = lhs_negative != rhs_negative;
 
-        auto const abs_dividend
-            = static_cast<narrow_t>(lhs_negative ? -static_cast<narrow_t>(dividend) : static_cast<narrow_t>(dividend));
-        auto const abs_divisor
-            = static_cast<narrow_t>(rhs_negative ? -static_cast<narrow_t>(divisor) : static_cast<narrow_t>(divisor));
+        // dividend may use the wide type
+        auto const abs_dividend = [&]() -> wide_t {
+            if constexpr (std::is_signed_v<lhs_t>)
+            {
+                auto const bits = static_cast<unsigned_lhs_t>(dividend);
+                auto const magnitude = lhs_negative ? static_cast<unsigned_lhs_t>(unsigned_lhs_t{} - bits) : bits;
+                return int_cast<wide_t>(magnitude);
+            }
+            else
+            {
+                return int_cast<wide_t>(dividend);
+            }
+        }();
 
-        // widen
-        auto const wide_dividend = int_cast<wide_t>(abs_dividend);
-        assert(wide_dividend <= max_wide_pre_shift && "crv::division::shifted_int_divider_t: pre-shift would overflow");
+        // divisor must fit in narrow word
+        auto const abs_divisor = [&]() -> narrow_t {
+            if constexpr (std::is_signed_v<rhs_t>)
+            {
+                auto const bits = static_cast<unsigned_rhs_t>(divisor);
+                auto const magnitude = rhs_negative ? static_cast<unsigned_rhs_t>(unsigned_rhs_t{} - bits) : bits;
+                return int_cast<narrow_t>(magnitude);
+            }
+            else
+            {
+                return int_cast<narrow_t>(divisor);
+            }
+        }();
 
         // shift
-        auto const shifted_dividend = int_cast<wide_t>(wide_dividend << shift);
+        assert(abs_dividend <= max_wide_pre_shift && "crv::division::shifted_int_divider_t: pre-shift would overflow");
+
+        auto const shifted_dividend = int_cast<wide_t>(abs_dividend << shift);
 
         // divide
         auto const wide_quotient = divide(shifted_dividend, abs_divisor, rounding_mode);
 
-        // restore sign
-        auto const signed_result
-            = negative ? -static_cast<wide_signed_t>(wide_quotient) : static_cast<wide_signed_t>(wide_quotient);
-
-        // optionally saturate
+        // restore sign and optionally saturate
         if constexpr (saturate)
         {
-            if constexpr (lower_saturation_possible)
+            if (negative)
             {
-                if (cmp_less(signed_result, min<out_value_t>())) return min<out_value_t>();
+                if constexpr (std::is_unsigned_v<out_value_t>) return min<out_value_t>();
+                else
+                {
+                    // >= deliberately includes the exactly representable minimum value. Returning min directly avoids
+                    // trying to materialize its positive magnitude in out_value_t before negating it.
+                    if constexpr (lower_saturation_possible)
+                    {
+                        if (wide_quotient >= max_abs_out_min) return min<out_value_t>();
+                    }
+
+                    return static_cast<out_value_t>(-static_cast<out_value_t>(wide_quotient));
+                }
             }
-            if constexpr (upper_saturation_possible)
+            else
             {
-                if (cmp_greater(signed_result, max<out_value_t>())) return max<out_value_t>();
+                if constexpr (upper_saturation_possible)
+                {
+                    if (cmp_greater(wide_quotient, max<out_value_t>())) return max<out_value_t>();
+                }
+
+                return static_cast<out_value_t>(wide_quotient);
             }
         }
-
-        return static_cast<out_value_t>(signed_result);
+        else
+        {
+            auto const magnitude = static_cast<unsigned_out_t>(wide_quotient);
+            auto const result = negative ? static_cast<unsigned_out_t>(unsigned_out_t{} - magnitude) : magnitude;
+            return static_cast<out_value_t>(result);
+        }
     }
 };
 

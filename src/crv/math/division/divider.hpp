@@ -17,11 +17,9 @@ namespace crv::division {
 
 namespace detail {
 
-// decides the minimum unsigned narrow integer size capable of representing the absolute values of the passed operands
-// without data loss.
+// choose the smallest native word whose wide form contains the dividend and whose narrow form contains the divisor
 template <integral lhs_t, integral rhs_t>
-using native_division_word_t = std::conditional_t<!is_signed_v<lhs_t> && !is_signed_v<rhs_t>, rhs_t,
-    int_by_bytes_t<max(sizeof(lhs_t), sizeof(rhs_t)), false>>;
+using native_division_word_t = int_by_bytes_t<max(sizeof(rhs_t), (sizeof(lhs_t) + 1) / 2), false>;
 
 } // namespace detail
 

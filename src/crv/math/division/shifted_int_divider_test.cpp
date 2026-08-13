@@ -35,16 +35,13 @@ template <unsigned_integral t_narrow_t> struct tracking_wide_divider_t
     using narrow_t = t_narrow_t;
     using wide_t = widened_t<narrow_t>;
 
-    constexpr auto operator()(widened_t<narrow_t> dividend, narrow_t divisor,
-        tracking_rounding_mode_t<make_unsigned_t<narrow_t>> rm) const noexcept -> widened_t<narrow_t>
+    constexpr auto operator()(wide_t dividend, narrow_t divisor, tracking_rounding_mode_t<narrow_t> rm) const noexcept
+        -> wide_t
     {
-        using wide_t = widened_t<narrow_t>;
-
-        // verify correct rounding mode instance was forwarded
         if (rm.id != expected_tracking_rounding_mode_id) return static_cast<wide_t>(poisoned_rounded_sentinel);
 
         auto const actual = dividend / divisor;
-        assert(actual != poisoned_rounded_sentinel); // ensure sure sentinel doesn't come up naturally
+        assert(actual != poisoned_rounded_sentinel);
         return int_cast<wide_t>(actual);
     }
 };
@@ -54,7 +51,8 @@ template <unsigned_integral t_narrow_t> struct tracking_wide_divider_t
 // ====================================================================================================================
 
 // test that empty base optimization is enabled
-using ebo_sut_t = shifted_int_divider_t<tracking_wide_divider_t<uint32_t>, default_shift, int_t, int_t, int_t, true>;
+using ebo_sut_t
+    = shifted_int_divider_t<tracking_wide_divider_t<uint32_t>, default_shift, int32_t, int32_t, int32_t, true>;
 static_assert(sizeof(ebo_sut_t) == 1, "shifted_int_divider_t should not add overhead for empty dividers");
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -87,6 +85,65 @@ struct heterogeneous_test_t
 
     // negative mathematical result correctly clamped to 0 for unsigned output type
     static_assert(u_sut(int32_t{100}, int32_t{-2}, rounding_mode) == uint16_t{0});
+};
+
+// --------------------------------------------------------------------------------------------------------------------
+// Wide Dividend
+// --------------------------------------------------------------------------------------------------------------------
+
+struct wide_dividend_test_t
+{
+    using narrow_t = uint64_t;
+    using wide_t = uint128_t;
+    using signed_wide_t = int128_t;
+
+    using rounding_mode_t = tracking_rounding_mode_t<narrow_t>;
+    using wide_divider_t = tracking_wide_divider_t<narrow_t>;
+
+    static constexpr auto rounding_mode = rounding_mode_t{.id = expected_tracking_rounding_mode_id};
+    static constexpr auto shift = 0;
+
+    using signed_signed_sut_t = shifted_int_divider_t<wide_divider_t, shift, int64_t, signed_wide_t, int64_t, true>;
+
+    using signed_unsigned_sut_t = shifted_int_divider_t<wide_divider_t, shift, int64_t, signed_wide_t, uint64_t, true>;
+
+    using unsigned_signed_sut_t = shifted_int_divider_t<wide_divider_t, shift, int64_t, wide_t, int64_t, true>;
+
+    static constexpr auto signed_signed_sut = signed_signed_sut_t{};
+    static constexpr auto signed_unsigned_sut = signed_unsigned_sut_t{};
+    static constexpr auto unsigned_signed_sut = unsigned_signed_sut_t{};
+
+    // s128 / s64, all sign quadrants
+    static_assert(signed_signed_sut(signed_wide_t{100}, int64_t{2}, rounding_mode) == int64_t{50});
+    static_assert(signed_signed_sut(signed_wide_t{-100}, int64_t{2}, rounding_mode) == int64_t{-50});
+    static_assert(signed_signed_sut(signed_wide_t{100}, int64_t{-2}, rounding_mode) == int64_t{-50});
+    static_assert(signed_signed_sut(signed_wide_t{-100}, int64_t{-2}, rounding_mode) == int64_t{50});
+
+    // s128 / u64
+    static_assert(signed_unsigned_sut(signed_wide_t{100}, uint64_t{2}, rounding_mode) == int64_t{50});
+    static_assert(signed_unsigned_sut(signed_wide_t{-100}, uint64_t{2}, rounding_mode) == int64_t{-50});
+
+    // u128 / s64
+    static_assert(unsigned_signed_sut(wide_t{100}, int64_t{2}, rounding_mode) == int64_t{50});
+    static_assert(unsigned_signed_sut(wide_t{100}, int64_t{-2}, rounding_mode) == int64_t{-50});
+
+    // exact signed-output minimum; must not attempt to materialize +2^63 as int64_t
+    static_assert(signed_unsigned_sut(signed_wide_t{min<int64_t>()}, uint64_t{1}, rounding_mode) == min<int64_t>());
+
+    // divisor minimum magnitude is 2^63 and must survive sign stripping
+    static_assert(signed_signed_sut(signed_wide_t{min<int64_t>()}, min<int64_t>(), rounding_mode) == int64_t{1});
+
+    // dividend minimum magnitude is 2^127 and must survive sign stripping
+    static_assert(signed_unsigned_sut(min<signed_wide_t>(), uint64_t{1}, rounding_mode) == min<int64_t>());
+
+    // large positive result saturates
+    static_assert(signed_unsigned_sut(max<signed_wide_t>(), uint64_t{1}, rounding_mode) == max<int64_t>());
+
+    // unsigned wide dividend with negative divisor saturates negative
+    static_assert(unsigned_signed_sut(max<wide_t>(), int64_t{-1}, rounding_mode) == min<int64_t>());
+
+    // unsigned wide dividend with positive divisor saturates positive
+    static_assert(unsigned_signed_sut(max<wide_t>(), int64_t{1}, rounding_mode) == max<int64_t>());
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -204,11 +261,20 @@ template <typename narrow_t> struct signed_test_t
 
         test_common(sut);
 
-        // truncation on negative overflow
-        constexpr auto abs_min_val = static_cast<wide_t>(max_narrow) + 1;
-        constexpr auto truncated = (abs_min_val << default_shift) / 1;
-        constexpr auto magnitude = static_cast<unsigned_t>(truncated);
-        static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == static_cast<narrow_t>(-magnitude));
+        // Exact minimum magnitude shifted by 3 is a multiple of the output modulus, so truncation produces zero.
+        static_assert(sut(min_narrow, narrow_t{1}, rounding_mode) == narrow_t{0});
+
+        // One above minimum has magnitude:
+        //
+        //     2^(N-1) - 1
+        //
+        // After shifting by 3:
+        //
+        //     2^(N+2) - 8
+        //
+        // Truncating that magnitude to N bits produces 2^N - 8. Restoring the negative sign modulo N bits produces +8.
+        constexpr auto negative_overflow = static_cast<narrow_t>(min_narrow + narrow_t{1});
+        static_assert(sut(negative_overflow, narrow_t{1}, rounding_mode) == narrow_t{8});
     }
 };
 
