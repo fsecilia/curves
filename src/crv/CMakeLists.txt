@@ -154,6 +154,7 @@ set(crv_kernel_shared_files
     math/scalar_traits.hpp
     math/shifter.hpp
     pipeline/filters/one_euro.hpp
+    pipeline/filters/one_euro/cutoff_interval.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -337,6 +338,7 @@ if (enable_testing)
         model/shaping/transitions/smootherstep_integral_test.cpp
         overloaded_test.cpp
         pipeline/filters/one_euro_integration_test.cpp
+        pipeline/filters/one_euro/cutoff_interval_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
