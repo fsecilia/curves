@@ -9,13 +9,12 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/fma.hpp>
 #include <crv/math/int_traits.hpp>
-#include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/pipeline/filters/one_euro/cutoff_interval.hpp>
+#include <crv/pipeline/filters/one_euro/params.hpp>
 #include <crv/pipeline/filters/one_euro/signal_cutoff_rate.hpp>
 #include <cassert>
-#include <expected>
 #include <utility>
 
 namespace crv::pipeline::filters::one_euro {
@@ -25,85 +24,6 @@ namespace detail {
 using rne_shifter_t = shifter_t<rounding_modes::shr::nearest_even>;
 
 } // namespace detail
-
-/// Preconverted runtime parameters for a 1-Euro filter.
-///
-/// Runtime units:
-///
-///     derivative_cutoff_rate  1/ns
-///     minimum_cutoff_rate     1/ns
-///     cutoff_slope            1/signal-unit
-///
-/// The filtered derivative has units signal-unit/ns, so:
-///
-///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
-///
-/// has units 1/ns.
-///
-/// Given paper-style cutoff frequencies in Hz:
-///
-///     cutoff_rate = 2*pi*f*1e-9
-///
-/// Given paper-style beta in Hz/(signal-unit/second):
-///
-///     cutoff_slope = 2*pi*beta
-template <is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t>
-    requires(is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>)
-struct params_t
-{
-    using cutoff_rate_t = t_cutoff_rate_t;
-    using cutoff_slope_t = t_cutoff_slope_t;
-
-    cutoff_rate_t derivative_cutoff_rate;
-    cutoff_rate_t minimum_cutoff_rate;
-    cutoff_slope_t cutoff_slope;
-
-    enum class validation_error
-    {
-        derivative_cutoff_rate_not_positive,
-        minimum_cutoff_rate_not_positive,
-        cutoff_slope_negative,
-        signal_cutoff_rate_overflow,
-    };
-
-    /// Validates whether these parameters are safe to apply over every representable derivative state.
-    ///
-    /// Parameter objects are plain data and may temporarily contain invalid values, for example while a user edits them
-    /// or when they arrive through external storage such as an ioctl payload.
-    ///
-    /// The adaptive-cutoff check covers:
-    ///
-    ///     [min<dx_t>(), max<dx_t>()]
-    ///
-    /// and therefore uses `min<dx_t>()`, whose two's-complement magnitude is the larger endpoint.
-    template <is_fixed t_dx_t,
-        typename t_signal_cutoff_rate_calculator_t = signal_cutoff_rate_calculator_t<cutoff_rate_t>>
-        requires(is_signed_v<t_dx_t>)
-    constexpr auto validate(t_signal_cutoff_rate_calculator_t const& signal_cutoff_rate_calculator = {}) const noexcept
-        -> std::expected<void, validation_error>
-    {
-        using dx_t = t_dx_t;
-
-        if (derivative_cutoff_rate <= cutoff_rate_t{})
-        {
-            return std::unexpected{validation_error::derivative_cutoff_rate_not_positive};
-        }
-
-        if (minimum_cutoff_rate <= cutoff_rate_t{})
-        {
-            return std::unexpected{validation_error::minimum_cutoff_rate_not_positive};
-        }
-
-        if (cutoff_slope < cutoff_slope_t{}) { return std::unexpected{validation_error::cutoff_slope_negative}; }
-
-        if (!signal_cutoff_rate_calculator.try_calc(minimum_cutoff_rate, cutoff_slope, min<dx_t>()))
-        {
-            return std::unexpected{validation_error::signal_cutoff_rate_overflow};
-        }
-
-        return {};
-    }
-};
 
 /// Low-pass filter for the signal derivative.
 ///
@@ -326,7 +246,7 @@ public:
     /// Constructs a new filter with no recursive history.
     constexpr explicit filter_t(params_t params) noexcept : params_{params}
     {
-        assert(params_.template validate<dx_t>());
+        assert(params_.template validate<dx_t>(signal_cutoff_rate_calculator_));
     }
 
     /// Constructs an initialized filter from complete recursive component state.
@@ -336,7 +256,7 @@ public:
           signal_cutoff_rate_calculator_{std::move(signal_cutoff_rate_calculator)},
           signal_filter_{std::move(signal_filter)}, params_{params}, initialized_{true}
     {
-        assert(params_.template validate<dx_t>());
+        assert(params_.template validate<dx_t>(signal_cutoff_rate_calculator_));
     }
 
     template <is_fixed dt_ns_t>

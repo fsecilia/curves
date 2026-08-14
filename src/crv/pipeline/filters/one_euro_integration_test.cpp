@@ -144,8 +144,6 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     {
         using oracle_t = t_real_t;
 
-        ASSERT_TRUE(params.template validate<dx_t>());
-
         auto sut = sut_t{params};
         auto reference = reference_filter_t<oracle_t>{make_reference_params<oracle_t>(params)};
 
@@ -169,44 +167,6 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
         }
     }
 };
-
-TEST_F(pipeline_filters_one_euro_filter_integration_test_t, valid_parameters_validate)
-{
-    EXPECT_TRUE(ordinary_params().template validate<dx_t>());
-}
-
-TEST_F(pipeline_filters_one_euro_filter_integration_test_t, derivative_cutoff_rate_must_be_positive)
-{
-    auto params = ordinary_params();
-    params.derivative_cutoff_rate = cutoff_rate_t{};
-
-    auto const result = params.template validate<dx_t>();
-
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(params_t::validation_error::derivative_cutoff_rate_not_positive, result.error());
-}
-
-TEST_F(pipeline_filters_one_euro_filter_integration_test_t, minimum_cutoff_rate_must_be_positive)
-{
-    auto params = ordinary_params();
-    params.minimum_cutoff_rate = cutoff_rate_t{};
-
-    auto const result = params.template validate<dx_t>();
-
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(params_t::validation_error::minimum_cutoff_rate_not_positive, result.error());
-}
-
-TEST_F(pipeline_filters_one_euro_filter_integration_test_t, cutoff_slope_must_not_be_negative)
-{
-    auto params = ordinary_params();
-    params.cutoff_slope = cutoff_slope_t{-1};
-
-    auto const result = params.template validate<dx_t>();
-
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(params_t::validation_error::cutoff_slope_negative, result.error());
-}
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, first_sample_is_unfiltered)
 {
