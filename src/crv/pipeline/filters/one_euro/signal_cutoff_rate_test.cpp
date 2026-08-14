@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "cutoff_rate.hpp"
+#include "signal_cutoff_rate.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 
@@ -14,7 +14,7 @@ using cutoff_rate_t = fixed_t<int8_t, 4>;
 using cutoff_slope_t = fixed_t<int8_t, 4>;
 using dx_t = fixed_t<int8_t, 4>;
 
-using sut_t = cutoff_rate_calculator_t<cutoff_rate_t>;
+using sut_t = signal_cutoff_rate_calculator_t<cutoff_rate_t>;
 constexpr auto sut = sut_t{};
 
 constexpr auto minimum = cutoff_rate_t{1};

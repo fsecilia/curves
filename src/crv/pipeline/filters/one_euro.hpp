@@ -8,13 +8,12 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/fma.hpp>
-#include <crv/math/fixed/uabs.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/pipeline/filters/one_euro/cutoff_interval.hpp>
-#include <crv/pipeline/filters/one_euro/cutoff_rate.hpp>
+#include <crv/pipeline/filters/one_euro/signal_cutoff_rate.hpp>
 #include <cassert>
 #include <expected>
 #include <utility>
@@ -24,10 +23,6 @@ namespace crv::pipeline::filters::one_euro {
 namespace detail {
 
 using rne_shifter_t = shifter_t<rounding_modes::shr::nearest_even>;
-using truncate_shifter_t = shifter_t<rounding_modes::shr::truncate>;
-
-static constexpr auto rne_shifter = rne_shifter_t{};
-static constexpr auto truncate_shifter = truncate_shifter_t{};
 
 } // namespace detail
 
@@ -54,7 +49,7 @@ static constexpr auto truncate_shifter = truncate_shifter_t{};
 ///     cutoff_slope = 2*pi*beta
 template <is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t>
     requires(is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>)
-struct parameters_t
+struct params_t
 {
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_slope_t = t_cutoff_slope_t;
@@ -71,19 +66,20 @@ struct parameters_t
         signal_cutoff_rate_overflow,
     };
 
-    /// Validates runtime parameters over every representable derivative state.
+    /// Validates whether these parameters are safe to apply over every representable derivative state.
     ///
-    /// Construction alone cannot establish this invariant because parameter objects may arrive through external storage
-    /// such as an ioctl payload.
+    /// Parameter objects are plain data and may temporarily contain invalid values, for example while a user edits them
+    /// or when they arrive through external storage such as an ioctl payload.
     ///
     /// The adaptive-cutoff check covers:
     ///
     ///     [min<dx_t>(), max<dx_t>()]
     ///
     /// and therefore uses `min<dx_t>()`, whose two's-complement magnitude is the larger endpoint.
-    template <is_fixed t_dx_t, typename cutoff_rate_calculator_t = cutoff_rate_calculator_t<cutoff_rate_t>>
+    template <is_fixed t_dx_t,
+        typename t_signal_cutoff_rate_calculator_t = signal_cutoff_rate_calculator_t<cutoff_rate_t>>
         requires(is_signed_v<t_dx_t>)
-    constexpr auto validate(cutoff_rate_calculator_t const& cutoff_rate_calculator = {}) const noexcept
+    constexpr auto validate(t_signal_cutoff_rate_calculator_t const& signal_cutoff_rate_calculator = {}) const noexcept
         -> std::expected<void, validation_error>
     {
         using dx_t = t_dx_t;
@@ -100,7 +96,7 @@ struct parameters_t
 
         if (cutoff_slope < cutoff_slope_t{}) { return std::unexpected{validation_error::cutoff_slope_negative}; }
 
-        if (!cutoff_rate_calculator.try_calc(minimum_cutoff_rate, cutoff_slope, min<dx_t>()))
+        if (!signal_cutoff_rate_calculator.try_calc(minimum_cutoff_rate, cutoff_slope, min<dx_t>()))
         {
             return std::unexpected{validation_error::signal_cutoff_rate_overflow};
         }
@@ -152,14 +148,15 @@ public:
     using dx_t = t_dx_t;
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_interval_calculator_t = t_cutoff_interval_calculator_t;
-    using cutoff_interval_t = cutoff_interval_calculator_t::cutoff_interval_t;
-    using cutoff_interval_value_t = cutoff_interval_t::value_t;
+    using cutoff_interval_t = typename cutoff_interval_calculator_t::cutoff_interval_t;
 
     using numerator_t = fixed::product_t<cutoff_rate_t, x_t>;
     using numerator_fma_t
         = fma_t<numerator_t, cutoff_rate_t, x_t, dx_t, detail::rne_shifter_t, fixed::overflow_policy_t::saturate>;
 
-    // this constraint competes with the divider's requirement that shifts only be right; the net effect is dx_t = x_t
+    // dt_ns == 1 can produce a raw derivative spanning x_t's full signal magnitude. The divider independently
+    // requires enough derivative fractional precision to avoid a left scaling shift; with equal-width signed storage,
+    // the two constraints force x_t and dx_t to the same Q format.
     static_assert(
         dx_t::int_bits >= x_t::int_bits, "derivative state must contain maximum raw derivative at dt_ns == 1");
     static_assert(numerator_t::int_bits >= dx_t::int_bits, "derivative numerator must contain derivative state range");
@@ -173,8 +170,8 @@ public:
 
     constexpr derivative_filter_t() noexcept = default;
     constexpr explicit derivative_filter_t(
-        dx_t initial, cutoff_interval_calculator_t calc_cutoff_interval = {}) noexcept
-        : calc_cutoff_interval_{std::move(calc_cutoff_interval)}, output_{initial}
+        dx_t initial, cutoff_interval_calculator_t cutoff_interval_calculator = {}) noexcept
+        : cutoff_interval_calculator_{std::move(cutoff_interval_calculator)}, output_{initial}
     {}
 
     constexpr void reset(dx_t initial = {}) noexcept { output_ = initial; }
@@ -190,9 +187,9 @@ public:
         assert(dt_ns > dt_ns_t{});
 
         auto const delta = input - previous_filtered_input;
-        auto const interval = calc_cutoff_interval_(derivative_cutoff_rate, dt_ns);
+        auto const interval = cutoff_interval_calculator_.calc(derivative_cutoff_rate, dt_ns);
 
-        if (interval.is_limit)
+        if (!interval)
         {
             // alpha_d -> 1, so the derivative state approaches the current raw derivative.
             output_ = divide<dx_t>(delta, dt_ns, rounding_modes::div::nearest_even);
@@ -200,14 +197,14 @@ public:
         }
 
         auto const numerator = numerator_fma_t{}(derivative_cutoff_rate, delta, output_);
-        auto const denominator = interval.value + cutoff_interval_value_t{1};
+        auto const denominator = *interval + cutoff_interval_t{1};
 
         output_ = divide<dx_t>(numerator, denominator, rounding_modes::div::nearest_even);
         return output_;
     }
 
 private:
-    [[no_unique_address]] cutoff_interval_calculator_t calc_cutoff_interval_{};
+    [[no_unique_address]] cutoff_interval_calculator_t cutoff_interval_calculator_{};
     dx_t output_{};
 };
 
@@ -235,12 +232,11 @@ public:
     using x_t = t_x_t;
     using cutoff_rate_t = t_cutoff_rate_t;
     using cutoff_interval_calculator_t = t_cutoff_interval_calculator_t;
-    using cutoff_interval_t = cutoff_interval_calculator_t::cutoff_interval_t;
-    using cutoff_interval_value_t = cutoff_interval_t::value_t;
+    using cutoff_interval_t = typename cutoff_interval_calculator_t::cutoff_interval_t;
 
-    using numerator_t = fixed::product_t<cutoff_interval_value_t, x_t>;
-    using numerator_fma_t = fma_t<numerator_t, cutoff_interval_value_t, x_t, x_t, detail::rne_shifter_t,
-        fixed::overflow_policy_t::saturate>;
+    using numerator_t = fixed::product_t<cutoff_interval_t, x_t>;
+    using numerator_fma_t
+        = fma_t<numerator_t, cutoff_interval_t, x_t, x_t, detail::rne_shifter_t, fixed::overflow_policy_t::saturate>;
 
     static_assert(numerator_t::int_bits >= x_t::int_bits, "signal numerator must contain the signal state range");
     static_assert(numerator_t::frac_bits >= x_t::frac_bits, "signal numerator must contain the signal state precision");
@@ -251,8 +247,9 @@ public:
     static_assert(!numerator_fma_t::upper_saturation_possible, "signal numerator FMA can saturate");
 
     constexpr signal_filter_t() noexcept = default;
-    constexpr explicit signal_filter_t(x_t initial, cutoff_interval_calculator_t calc_cutoff_interval = {}) noexcept
-        : calc_cutoff_interval_{std::move(calc_cutoff_interval)}, output_{initial}
+    constexpr explicit signal_filter_t(
+        x_t initial, cutoff_interval_calculator_t cutoff_interval_calculator = {}) noexcept
+        : cutoff_interval_calculator_{std::move(cutoff_interval_calculator)}, output_{initial}
     {}
 
     constexpr auto output() const noexcept -> x_t { return output_; }
@@ -267,24 +264,24 @@ public:
         assert(cutoff_rate > cutoff_rate_t{});
         assert(dt_ns > dt_ns_t{});
 
-        auto const interval = calc_cutoff_interval_(cutoff_rate, dt_ns);
+        auto const interval = cutoff_interval_calculator_.calc(cutoff_rate, dt_ns);
 
-        if (interval.is_limit)
+        if (!interval)
         {
             // alpha -> 1
             output_ = input;
             return output_;
         }
 
-        auto const numerator = numerator_fma_t{}(interval.value, input, output_);
-        auto const denominator = interval.value + cutoff_interval_value_t{1};
+        auto const numerator = numerator_fma_t{}(*interval, input, output_);
+        auto const denominator = *interval + cutoff_interval_t{1};
 
         output_ = divide<x_t>(numerator, denominator, rounding_modes::div::nearest_even);
         return output_;
     }
 
 private:
-    [[no_unique_address]] cutoff_interval_calculator_t calc_cutoff_interval_{};
+    [[no_unique_address]] cutoff_interval_calculator_t cutoff_interval_calculator_{};
     x_t output_{};
 };
 
@@ -311,7 +308,7 @@ private:
 /// \pre input >= 0
 /// \pre dt_ns > 0
 template <is_fixed t_x_t, is_fixed t_dx_t, typename t_params_t, typename t_derivative_filter_t,
-    typename t_cutoff_rate_calculator_t, typename t_signal_filter_t>
+    typename t_signal_cutoff_rate_calculator_t, typename t_signal_filter_t>
     requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t>)
 class filter_t
 {
@@ -319,7 +316,7 @@ public:
     using x_t = t_x_t;
     using dx_t = t_dx_t;
     using derivative_filter_t = t_derivative_filter_t;
-    using cutoff_rate_calculator_t = t_cutoff_rate_calculator_t;
+    using signal_cutoff_rate_calculator_t = t_signal_cutoff_rate_calculator_t;
     using signal_filter_t = t_signal_filter_t;
     using params_t = t_params_t;
 
@@ -334,8 +331,9 @@ public:
 
     /// Constructs an initialized filter from complete recursive component state.
     constexpr explicit filter_t(params_t params, derivative_filter_t derivative_filter,
-        cutoff_rate_calculator_t cutoff_rate_calculator, signal_filter_t signal_filter) noexcept
-        : derivative_filter_{std::move(derivative_filter)}, cutoff_rate_calculator_{std::move(cutoff_rate_calculator)},
+        signal_cutoff_rate_calculator_t signal_cutoff_rate_calculator, signal_filter_t signal_filter) noexcept
+        : derivative_filter_{std::move(derivative_filter)},
+          signal_cutoff_rate_calculator_{std::move(signal_cutoff_rate_calculator)},
           signal_filter_{std::move(signal_filter)}, params_{params}, initialized_{true}
     {
         assert(params_.template validate<dx_t>());
@@ -361,15 +359,15 @@ public:
         auto const filtered_derivative
             = derivative_filter_(input, previous_filtered_input, params_.derivative_cutoff_rate, dt_ns);
 
-        auto const cutoff_rate
-            = cutoff_rate_calculator_.calc(params_.minimum_cutoff_rate, params_.cutoff_slope, filtered_derivative);
+        auto const cutoff_rate = signal_cutoff_rate_calculator_.calc(
+            params_.minimum_cutoff_rate, params_.cutoff_slope, filtered_derivative);
 
         return signal_filter_(input, cutoff_rate, dt_ns);
     }
 
 private:
     [[no_unique_address]] derivative_filter_t derivative_filter_{};
-    [[no_unique_address]] cutoff_rate_calculator_t cutoff_rate_calculator_{};
+    [[no_unique_address]] signal_cutoff_rate_calculator_t signal_cutoff_rate_calculator_{};
     [[no_unique_address]] signal_filter_t signal_filter_{};
     params_t params_;
     bool initialized_{};

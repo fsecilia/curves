@@ -4,7 +4,6 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "one_euro.hpp"
-
 #include <crv/math/abs.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/test/test.hpp>
@@ -88,19 +87,19 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
 
     using cutoff_rate_t = fixed_t<int64_t, 46>;
     using cutoff_slope_t = fixed_t<int64_t, 47>;
-    using cutoff_interval_value_t = fixed_t<int64_t, 48>;
-    using cutoff_interval_t = cutoff_interval_t<cutoff_interval_value_t>;
-    using cutoff_interval_calculator_t = cutoff_interval_calculator_t<cutoff_interval_t>;
-    using cutoff_rate_calculator_t = cutoff_rate_calculator_t<cutoff_rate_t>;
+    using cutoff_interval_t = fixed_t<int64_t, 48>;
+    using cutoff_interval_calculator_t = one_euro::cutoff_interval_calculator_t<cutoff_interval_t>;
+    using signal_cutoff_rate_calculator_t = one_euro::signal_cutoff_rate_calculator_t<cutoff_rate_t>;
 
     using dt_ns_t = fixed_t<uint64_t, 0>;
 
-    using params_t = parameters_t<cutoff_rate_t, cutoff_slope_t>;
+    using params_t = one_euro::params_t<cutoff_rate_t, cutoff_slope_t>;
 
-    using derivative_filter_t = derivative_filter_t<x_t, dx_t, cutoff_rate_t, cutoff_interval_calculator_t>;
-    using signal_filter_t = signal_filter_t<x_t, cutoff_rate_t, cutoff_interval_calculator_t>;
+    using derivative_filter_t = one_euro::derivative_filter_t<x_t, dx_t, cutoff_rate_t, cutoff_interval_calculator_t>;
+    using signal_filter_t = one_euro::signal_filter_t<x_t, cutoff_rate_t, cutoff_interval_calculator_t>;
 
-    using sut_t = filter_t<x_t, dx_t, params_t, derivative_filter_t, cutoff_rate_calculator_t, signal_filter_t>;
+    using sut_t = one_euro::filter_t<x_t, dx_t, params_t, derivative_filter_t, signal_cutoff_rate_calculator_t,
+        signal_filter_t>;
 
     struct sample_t
     {

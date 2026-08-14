@@ -8,22 +8,28 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/uabs.hpp>
+#include <crv/math/limits.hpp>
+#include <crv/math/rounding_mode.hpp>
+#include <crv/math/shifter.hpp>
 #include <cassert>
 #include <optional>
+#include <type_traits>
 
 namespace crv::pipeline::filters::one_euro {
 
-template <typename t_cutoff_rate_t>
-    requires(is_signed_v<t_cutoff_rate_t>)
-struct cutoff_rate_calculator_t
+/// Calculates the adaptive signal cutoff rate:
+///
+///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
+///
+/// `try_calc()` reports an unrepresentable result without performing an overflowing addition. `calc()` requires the
+/// result to be representable and is intended for parameter sets whose derivative domain has already been validated.
+template <is_fixed cutoff_rate_t>
+    requires(is_signed_v<cutoff_rate_t>)
+struct signal_cutoff_rate_calculator_t
 {
-    using cutoff_rate_t = t_cutoff_rate_t;
-
-    /// Calculates and range-checks:
+    /// Calculates and range-checks the adaptive signal cutoff rate.
     ///
-    ///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
-    ///
-    /// The addition is performed only after proving it cannot exceed cutoff_rate_t.
+    /// \returns the cutoff rate, or `std::nullopt` if the result cannot be represented by cutoff_rate_t
     template <is_fixed cutoff_slope_t, is_fixed dx_t>
         requires(is_signed_v<cutoff_slope_t> && is_signed_v<dx_t>)
     constexpr auto try_calc(cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope,
@@ -53,6 +59,9 @@ struct cutoff_rate_calculator_t
         return cutoff_rate_t::template convert<shifter_t<rounding_modes::shr::nearest_even>{}>(combined);
     }
 
+    /// Calculates an adaptive signal cutoff rate known to be representable.
+    ///
+    /// \pre try_calc(minimum_cutoff_rate, cutoff_slope, filtered_derivative) has a value
     template <is_fixed cutoff_slope_t, is_fixed dx_t>
         requires(is_signed_v<cutoff_slope_t> && is_signed_v<dx_t>)
     constexpr auto calc(cutoff_rate_t minimum_cutoff_rate, cutoff_slope_t cutoff_slope,
