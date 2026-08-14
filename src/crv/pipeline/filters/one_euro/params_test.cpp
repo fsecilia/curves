@@ -41,7 +41,7 @@ TEST(pipeline_filters_one_euro_params_test, derivative_cutoff_rate_must_be_posit
         auto const result = params.validate<dx_t>();
 
         ASSERT_FALSE(result.has_value());
-        EXPECT_EQ(sut_t::validation_error::derivative_cutoff_rate_not_positive, result.error());
+        EXPECT_EQ(validation_errors_t::derivative_cutoff_rate_not_positive, result.error());
     }
 }
 
@@ -55,7 +55,7 @@ TEST(pipeline_filters_one_euro_params_test, minimum_cutoff_rate_must_be_positive
         auto const result = params.validate<dx_t>();
 
         ASSERT_FALSE(result.has_value());
-        EXPECT_EQ(sut_t::validation_error::minimum_cutoff_rate_not_positive, result.error());
+        EXPECT_EQ(validation_errors_t::minimum_cutoff_rate_not_positive, result.error());
     }
 }
 
@@ -67,7 +67,7 @@ TEST(pipeline_filters_one_euro_params_test, cutoff_slope_must_not_be_negative)
     auto const result = params.validate<dx_t>();
 
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(sut_t::validation_error::cutoff_slope_negative, result.error());
+    EXPECT_EQ(validation_errors_t::cutoff_slope_negative, result.error());
 }
 
 struct test_signal_cutoff_rate_calculator_state_t
@@ -105,12 +105,54 @@ TEST(pipeline_filters_one_euro_params_test, validates_signal_cutoff_rate_over_fu
     auto const result = valid_params.validate<dx_t>(calculator);
 
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(sut_t::validation_error::signal_cutoff_rate_overflow, result.error());
+    EXPECT_EQ(validation_errors_t::signal_cutoff_rate_overflow, result.error());
 
     ASSERT_TRUE(state.called);
     EXPECT_EQ(valid_params.minimum_cutoff_rate, state.minimum_cutoff_rate);
     EXPECT_EQ(valid_params.cutoff_slope, state.cutoff_slope);
     EXPECT_EQ(min<dx_t>(), state.filtered_derivative);
+}
+
+TEST(pipeline_filters_one_euro_params_test, accumulates_independent_errors)
+{
+    auto params = valid_params;
+    params.derivative_cutoff_rate = cutoff_rate_t{};
+    params.minimum_cutoff_rate = cutoff_rate_t{};
+    params.cutoff_slope = cutoff_slope_t::literal(-1);
+
+    auto state = test_signal_cutoff_rate_calculator_state_t{};
+    auto const calculator = test_signal_cutoff_rate_calculator_t{
+        .state = &state,
+        .result = std::nullopt,
+    };
+
+    auto const result = params.validate<dx_t>(calculator);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(validation_errors_t::derivative_cutoff_rate_not_positive
+            | validation_errors_t::minimum_cutoff_rate_not_positive | validation_errors_t::cutoff_slope_negative,
+        result.error());
+    EXPECT_FALSE(state.called);
+}
+
+TEST(pipeline_filters_one_euro_params_test, accumulates_independent_error_with_signal_cutoff_overflow)
+{
+    auto params = valid_params;
+    params.derivative_cutoff_rate = cutoff_rate_t{};
+
+    auto state = test_signal_cutoff_rate_calculator_state_t{};
+    auto const calculator = test_signal_cutoff_rate_calculator_t{
+        .state = &state,
+        .result = std::nullopt,
+    };
+
+    auto const result = params.validate<dx_t>(calculator);
+
+    ASSERT_FALSE(result.has_value());
+    EXPECT_EQ(
+        validation_errors_t::derivative_cutoff_rate_not_positive | validation_errors_t::signal_cutoff_rate_overflow,
+        result.error());
+    EXPECT_TRUE(state.called);
 }
 
 } // namespace
