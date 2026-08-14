@@ -158,6 +158,7 @@ set(crv_kernel_shared_files
     pipeline/filters/one_euro/derivative_filter.hpp
     pipeline/filters/one_euro/params.hpp
     pipeline/filters/one_euro/signal_cutoff_rate.hpp
+    pipeline/filters/one_euro/signal_filter.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -345,6 +346,7 @@ if (enable_testing)
         pipeline/filters/one_euro/derivative_filter_test.cpp
         pipeline/filters/one_euro/params_test.cpp
         pipeline/filters/one_euro/signal_cutoff_rate_test.cpp
+        pipeline/filters/one_euro/signal_filter_test.cpp
         prefetcher_test.cpp
         priority_queue_test.cpp
         quadrature/adaptive_integrator_test.cpp
