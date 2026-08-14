@@ -62,52 +62,52 @@ struct parameters_t
     cutoff_rate_t derivative_cutoff_rate;
     cutoff_rate_t minimum_cutoff_rate;
     cutoff_slope_t cutoff_slope;
+
+    enum class validation_error
+    {
+        derivative_cutoff_rate_not_positive,
+        minimum_cutoff_rate_not_positive,
+        cutoff_slope_negative,
+        signal_cutoff_rate_overflow,
+    };
+
+    /// Validates runtime parameters over every representable derivative state.
+    ///
+    /// Construction alone cannot establish this invariant because parameter objects may arrive through external storage
+    /// such as an ioctl payload.
+    ///
+    /// The adaptive-cutoff check covers:
+    ///
+    ///     [min<dx_t>(), max<dx_t>()]
+    ///
+    /// and therefore uses `min<dx_t>()`, whose two's-complement magnitude is the larger endpoint.
+    template <is_fixed t_dx_t, typename cutoff_rate_calculator_t = cutoff_rate_calculator_t<cutoff_rate_t>>
+        requires(is_signed_v<t_dx_t>)
+    constexpr auto validate(cutoff_rate_calculator_t const& cutoff_rate_calculator = {}) const noexcept
+        -> std::expected<void, validation_error>
+    {
+        using dx_t = t_dx_t;
+
+        if (derivative_cutoff_rate <= cutoff_rate_t{})
+        {
+            return std::unexpected{validation_error::derivative_cutoff_rate_not_positive};
+        }
+
+        if (minimum_cutoff_rate <= cutoff_rate_t{})
+        {
+            return std::unexpected{validation_error::minimum_cutoff_rate_not_positive};
+        }
+
+        if (cutoff_slope < cutoff_slope_t{}) { return std::unexpected{validation_error::cutoff_slope_negative}; }
+
+        if (!cutoff_rate_calculator.try_calc(minimum_cutoff_rate, cutoff_slope, min<dx_t>()))
+        {
+            return std::unexpected{validation_error::signal_cutoff_rate_overflow};
+        }
+
+        return {};
+    }
 };
-
-enum class validation_error
-{
-    derivative_cutoff_rate_not_positive,
-    minimum_cutoff_rate_not_positive,
-    cutoff_slope_negative,
-    signal_cutoff_rate_overflow,
-};
-
-/// Validates runtime parameters over every representable derivative state.
-///
-/// Construction alone cannot establish this invariant because parameter objects may arrive through external storage
-/// such as an ioctl payload.
-///
-/// The adaptive-cutoff check covers:
-///
-///     [min<dx_t>(), max<dx_t>()]
-///
-/// and therefore uses `min<dx_t>()`, whose two's-complement magnitude is the larger endpoint.
-template <is_fixed t_dx_t, is_fixed cutoff_rate_t, is_fixed cutoff_slope_t>
-    requires(is_signed_v<t_dx_t> && is_signed_v<cutoff_rate_t> && is_signed_v<cutoff_slope_t>)
-constexpr auto validate(parameters_t<cutoff_rate_t, cutoff_slope_t> const& params) noexcept
-    -> std::expected<void, validation_error>
-{
-    using dx_t = t_dx_t;
-
-    if (params.derivative_cutoff_rate <= cutoff_rate_t{})
-    {
-        return std::unexpected{validation_error::derivative_cutoff_rate_not_positive};
-    }
-
-    if (params.minimum_cutoff_rate <= cutoff_rate_t{})
-    {
-        return std::unexpected{validation_error::minimum_cutoff_rate_not_positive};
-    }
-
-    if (params.cutoff_slope < cutoff_slope_t{}) { return std::unexpected{validation_error::cutoff_slope_negative}; }
-
-    if (try_signal_cutoff_rate(params.minimum_cutoff_rate, params.cutoff_slope, min<dx_t>()).overflows)
-    {
-        return std::unexpected{validation_error::signal_cutoff_rate_overflow};
-    }
-
-    return {};
-}
 
 /// Low-pass filter for the signal derivative.
 ///
@@ -161,13 +161,10 @@ public:
 
     // this constraint competes with the divider's requirement that shifts only be right; the net effect is dx_t = x_t
     static_assert(
-        dx_t::int_bits >= x_t::int_bits, "derivative state must contain the maximum raw derivative at dt_ns == 1");
-
+        dx_t::int_bits >= x_t::int_bits, "derivative state must contain maximum raw derivative at dt_ns == 1");
+    static_assert(numerator_t::int_bits >= dx_t::int_bits, "derivative numerator must contain derivative state range");
     static_assert(
-        numerator_t::int_bits >= dx_t::int_bits, "derivative numerator must contain the derivative state range");
-
-    static_assert(
-        numerator_t::frac_bits >= dx_t::frac_bits, "derivative numerator must contain the derivative state precision");
+        numerator_t::frac_bits >= dx_t::frac_bits, "derivative numerator must contain derivative state precision");
 
     // The FMA output representation has enough headroom for every representable operand combination. Saturation is a
     // defensive policy only; it must never be reachable.
@@ -313,35 +310,35 @@ private:
 ///
 /// \pre input >= 0
 /// \pre dt_ns > 0
-template <is_fixed t_x_t, is_fixed t_dx_t, is_fixed t_cutoff_rate_t, is_fixed t_cutoff_slope_t,
-    typename t_derivative_filter_t, typename t_signal_filter_t>
-    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t> && is_signed_v<t_cutoff_rate_t> && is_signed_v<t_cutoff_slope_t>)
+template <is_fixed t_x_t, is_fixed t_dx_t, typename t_params_t, typename t_derivative_filter_t,
+    typename t_cutoff_rate_calculator_t, typename t_signal_filter_t>
+    requires(is_signed_v<t_x_t> && is_signed_v<t_dx_t>)
 class filter_t
 {
 public:
     using x_t = t_x_t;
     using dx_t = t_dx_t;
-    using cutoff_rate_t = t_cutoff_rate_t;
-    using cutoff_slope_t = t_cutoff_slope_t;
+    using derivative_filter_t = t_derivative_filter_t;
+    using cutoff_rate_calculator_t = t_cutoff_rate_calculator_t;
+    using signal_filter_t = t_signal_filter_t;
+    using params_t = t_params_t;
 
-    using derivative_filter_type = t_derivative_filter_t;
-    using signal_filter_type = t_signal_filter_t;
-
-    using params_t = parameters_t<cutoff_rate_t, cutoff_slope_t>;
+    using cutoff_rate_t = params_t::cutoff_rate_t;
+    using cutoff_slope_t = params_t::cutoff_slope_t;
 
     /// Constructs a new filter with no recursive history.
     constexpr explicit filter_t(params_t params) noexcept : params_{params}
     {
-        assert((validate<dx_t>(params_).has_value()));
+        assert(params_.template validate<dx_t>());
     }
 
     /// Constructs an initialized filter from complete recursive component state.
-    constexpr explicit filter_t(
-        params_t params, derivative_filter_type derivative_filter, signal_filter_type signal_filter) noexcept
-        : derivative_filter_{std::move(derivative_filter)}, signal_filter_{std::move(signal_filter)}, params_{params},
-          initialized_{true}
+    constexpr explicit filter_t(params_t params, derivative_filter_t derivative_filter,
+        cutoff_rate_calculator_t cutoff_rate_calculator, signal_filter_t signal_filter) noexcept
+        : derivative_filter_{std::move(derivative_filter)}, cutoff_rate_calculator_{std::move(cutoff_rate_calculator)},
+          signal_filter_{std::move(signal_filter)}, params_{params}, initialized_{true}
     {
-        assert((validate<dx_t>(params_).has_value()));
+        assert(params_.template validate<dx_t>());
     }
 
     template <is_fixed dt_ns_t>
@@ -365,14 +362,15 @@ public:
             = derivative_filter_(input, previous_filtered_input, params_.derivative_cutoff_rate, dt_ns);
 
         auto const cutoff_rate
-            = signal_cutoff_rate(params_.minimum_cutoff_rate, params_.cutoff_slope, filtered_derivative);
+            = cutoff_rate_calculator_.calc(params_.minimum_cutoff_rate, params_.cutoff_slope, filtered_derivative);
 
         return signal_filter_(input, cutoff_rate, dt_ns);
     }
 
 private:
-    [[no_unique_address]] derivative_filter_type derivative_filter_{};
-    [[no_unique_address]] signal_filter_type signal_filter_{};
+    [[no_unique_address]] derivative_filter_t derivative_filter_{};
+    [[no_unique_address]] cutoff_rate_calculator_t cutoff_rate_calculator_{};
+    [[no_unique_address]] signal_filter_t signal_filter_{};
     params_t params_;
     bool initialized_{};
 };

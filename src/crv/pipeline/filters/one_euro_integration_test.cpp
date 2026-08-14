@@ -48,15 +48,11 @@ public:
         }
 
         auto const raw_derivative = (input - filtered_signal_) / dt_ns;
-
         auto const derivative_alpha = alpha(params_.derivative_cutoff_rate, dt_ns);
-
         filtered_derivative_ = filtered_derivative_ + derivative_alpha * (raw_derivative - filtered_derivative_);
 
         auto const cutoff_rate = params_.minimum_cutoff_rate + params_.cutoff_slope * abs(filtered_derivative_);
-
         auto const signal_alpha = alpha(cutoff_rate, dt_ns);
-
         filtered_signal_ = filtered_signal_ + signal_alpha * (input - filtered_signal_);
 
         return filtered_signal_;
@@ -95,6 +91,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     using cutoff_interval_value_t = fixed_t<int64_t, 48>;
     using cutoff_interval_t = cutoff_interval_t<cutoff_interval_value_t>;
     using cutoff_interval_calculator_t = cutoff_interval_calculator_t<cutoff_interval_t>;
+    using cutoff_rate_calculator_t = cutoff_rate_calculator_t<cutoff_rate_t>;
 
     using dt_ns_t = fixed_t<uint64_t, 0>;
 
@@ -103,7 +100,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     using derivative_filter_t = derivative_filter_t<x_t, dx_t, cutoff_rate_t, cutoff_interval_calculator_t>;
     using signal_filter_t = signal_filter_t<x_t, cutoff_rate_t, cutoff_interval_calculator_t>;
 
-    using sut_t = filter_t<x_t, dx_t, cutoff_rate_t, cutoff_slope_t, derivative_filter_t, signal_filter_t>;
+    using sut_t = filter_t<x_t, dx_t, params_t, derivative_filter_t, cutoff_rate_calculator_t, signal_filter_t>;
 
     struct sample_t
     {
@@ -135,9 +132,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
 
         return {
             .derivative_cutoff_rate = from_fixed<oracle_t>(params.derivative_cutoff_rate),
-
             .minimum_cutoff_rate = from_fixed<oracle_t>(params.minimum_cutoff_rate),
-
             .cutoff_slope = from_fixed<oracle_t>(params.cutoff_slope),
         };
     }
@@ -150,7 +145,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
     {
         using oracle_t = t_real_t;
 
-        ASSERT_TRUE(validate<dx_t>(params).has_value());
+        ASSERT_TRUE(params.template validate<dx_t>());
 
         auto sut = sut_t{params};
         auto reference = reference_filter_t<oracle_t>{make_reference_params<oracle_t>(params)};
@@ -178,7 +173,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, valid_parameters_validate)
 {
-    EXPECT_TRUE(validate<dx_t>(ordinary_params()).has_value());
+    EXPECT_TRUE(ordinary_params().template validate<dx_t>());
 }
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, derivative_cutoff_rate_must_be_positive)
@@ -186,10 +181,10 @@ TEST_F(pipeline_filters_one_euro_filter_integration_test_t, derivative_cutoff_ra
     auto params = ordinary_params();
     params.derivative_cutoff_rate = cutoff_rate_t{};
 
-    auto const result = validate<dx_t>(params);
+    auto const result = params.template validate<dx_t>();
 
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(validation_error::derivative_cutoff_rate_not_positive, result.error());
+    EXPECT_EQ(params_t::validation_error::derivative_cutoff_rate_not_positive, result.error());
 }
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, minimum_cutoff_rate_must_be_positive)
@@ -197,10 +192,10 @@ TEST_F(pipeline_filters_one_euro_filter_integration_test_t, minimum_cutoff_rate_
     auto params = ordinary_params();
     params.minimum_cutoff_rate = cutoff_rate_t{};
 
-    auto const result = validate<dx_t>(params);
+    auto const result = params.template validate<dx_t>();
 
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(validation_error::minimum_cutoff_rate_not_positive, result.error());
+    EXPECT_EQ(params_t::validation_error::minimum_cutoff_rate_not_positive, result.error());
 }
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, cutoff_slope_must_not_be_negative)
@@ -208,10 +203,10 @@ TEST_F(pipeline_filters_one_euro_filter_integration_test_t, cutoff_slope_must_no
     auto params = ordinary_params();
     params.cutoff_slope = cutoff_slope_t{-1};
 
-    auto const result = validate<dx_t>(params);
+    auto const result = params.template validate<dx_t>();
 
     ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(validation_error::cutoff_slope_negative, result.error());
+    EXPECT_EQ(params_t::validation_error::cutoff_slope_negative, result.error());
 }
 
 TEST_F(pipeline_filters_one_euro_filter_integration_test_t, first_sample_is_unfiltered)
