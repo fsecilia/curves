@@ -155,6 +155,7 @@ set(crv_kernel_shared_files
     math/shifter.hpp
     pipeline/filters/one_euro.hpp
     pipeline/filters/one_euro/cutoff_interval.hpp
+    pipeline/filters/one_euro/derivative_filter.hpp
     pipeline/filters/one_euro/params.hpp
     pipeline/filters/one_euro/signal_cutoff_rate.hpp
     prefetcher.hpp
@@ -341,6 +342,7 @@ if (enable_testing)
         overloaded_test.cpp
         pipeline/filters/one_euro_integration_test.cpp
         pipeline/filters/one_euro/cutoff_interval_test.cpp
+        pipeline/filters/one_euro/derivative_filter_test.cpp
         pipeline/filters/one_euro/params_test.cpp
         pipeline/filters/one_euro/signal_cutoff_rate_test.cpp
         prefetcher_test.cpp
