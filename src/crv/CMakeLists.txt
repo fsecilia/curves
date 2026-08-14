@@ -156,6 +156,7 @@ set(crv_kernel_shared_files
     pipeline/filters/one_euro.hpp
     pipeline/filters/one_euro/cutoff_interval.hpp
     pipeline/filters/one_euro/derivative_filter.hpp
+    pipeline/filters/one_euro/filter.hpp
     pipeline/filters/one_euro/params.hpp
     pipeline/filters/one_euro/signal_cutoff_rate.hpp
     pipeline/filters/one_euro/signal_filter.hpp

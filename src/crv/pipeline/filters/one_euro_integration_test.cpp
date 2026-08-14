@@ -6,7 +6,6 @@
 #include "one_euro.hpp"
 #include <crv/math/abs.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
-#include <crv/pipeline/filters/one_euro/cutoff_interval.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <numbers>
