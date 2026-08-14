@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "signal_cutoff_rate.hpp"
+#include "cutoff_rate.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 

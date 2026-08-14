@@ -14,7 +14,7 @@
 #include <crv/math/rounding_mode.hpp>
 #include <crv/math/shifter.hpp>
 #include <crv/pipeline/filters/one_euro/cutoff_interval.hpp>
-#include <crv/pipeline/filters/one_euro/signal_cutoff_rate.hpp>
+#include <crv/pipeline/filters/one_euro/cutoff_rate.hpp>
 #include <cassert>
 #include <expected>
 #include <utility>
