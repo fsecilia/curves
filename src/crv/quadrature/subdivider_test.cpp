@@ -36,7 +36,7 @@ constexpr auto sut = sut_t{};
 // --------------------------------------------------------------------------------------------------------------------
 // baseline
 //
-// Everything here is well within limits. Predicate must return true, requiring refinement.
+// comfortably inside every limit, so refinement continues
 // --------------------------------------------------------------------------------------------------------------------
 
 constexpr auto base_limit = 10;
@@ -57,10 +57,9 @@ constexpr auto base_segment = segment_t{
 static_assert(sut(base_segment, base_area, base_error, base_limit));
 
 // --------------------------------------------------------------------------------------------------------------------
-// isolated failures
+// isolated stops
 //
-// Each case here isolates one failure condition by altering the baseline. Predicate must return false, indicating
-// halt refinement.
+// change one baseline condition at a time; each case should stop refinement
 // --------------------------------------------------------------------------------------------------------------------
 
 // depth dominates
@@ -98,9 +97,7 @@ static_assert(!sut(low_tolerance_segment, base_area, noise_dominated_error, base
 // edge and boundary cases
 // --------------------------------------------------------------------------------------------------------------------
 
-// tolerance tie, segment.tolerance == noise_floor
-//
-// logic should still hold when both tolerances are the same
+// tolerance tie; segment.tolerance == noise_floor
 constexpr auto tie_segment = [] {
     auto segment = base_segment;
     segment.tolerance = base_noise;
@@ -113,9 +110,7 @@ static_assert(sut(tie_segment, base_area, base_noise + 0.1, base_limit));
 // error exactly equal to tie must halt refinement
 static_assert(!sut(tie_segment, base_area, base_noise, base_limit));
 
-// zero area
-//
-// noise_floor becomes 0.0, so local_tolerance must fall back to segment.tolerance.
+// zero area; noise floor is zero, so segment tolerance wins
 constexpr auto zero_area_segment = [] {
     auto segment = base_segment;
     segment.tolerance = 1.0;
@@ -124,16 +119,11 @@ constexpr auto zero_area_segment = [] {
 static_assert(sut(zero_area_segment, 0.0, 2.0, base_limit));
 static_assert(!sut(zero_area_segment, 0.0, 0.5, base_limit));
 
-// negative area
-//
-// std::abs(area) must trigger and prevent a negative noise floor from breaking the math.
-// We use low_error to test logic behaves exactly as in positive area test.
+// negative area still uses positive noise floor through abs(area)
 constexpr auto negative_area = -base_area;
 static_assert(!sut(base_segment, negative_area, low_error, base_limit));
 
-// negative width, inverted segment, left > right
-//
-// If the geometry is corrupted or inverted, current_width becomes negative, which is definitely smaller than min width.
+// inverted segment has negative width and must stop refinement
 constexpr auto inverted_segment = [] {
     auto s = base_segment;
     s.left = 100.0;
@@ -142,9 +132,7 @@ constexpr auto inverted_segment = [] {
 }();
 static_assert(!sut(inverted_segment, base_area, base_error, base_limit));
 
-// negative error
-//
-// If error metric drops below zero, it is definitively lower than any valid positive tolerance.
+// negative error is below any valid positive tolerance
 static_assert(!sut(base_segment, base_area, -1.0, base_limit));
 
 } // namespace refinement_predicate_test
@@ -341,8 +329,7 @@ auto make_balanced_refinement(segment_t const& seg) -> refinement_t
 
 TEST(quadrature_subdivider_bisector_contract_test, refines_once_per_popped_segment_at_depth_two)
 {
-    // stub predicate halts at depth 2: the loop traverses a complete binary tree to depth 2, refining every node
-    // (root + 2 at depth 1 + 4 at depth 2 = 7 calls) before appending the four leaves
+    // complete tree through depth 2: 1 + 2 + 4 = 7 refine calls, then four leaves append
     auto stack = stack_t{};
     auto builder = builder_t{};
     stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});

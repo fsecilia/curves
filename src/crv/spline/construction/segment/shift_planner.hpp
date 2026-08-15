@@ -13,31 +13,21 @@
 
 namespace crv::spline {
 
-/// determines safe relative shifts to align radices between products and the next coefficient during evaluation
+/// plans right shifts between Horner terms
 ///
-/// The evaluator only shifts right. This type determines if a simple right shift is sufficient, how much to shift, and
-/// how much to destructively preshift the mantissa when a left shift is required.
+/// Runtime only shifts right. If radix alignment would need a left shift, the planner preshifts the next coefficient
+/// instead. It works from accumulator bit counts because a partial sum can be one bit wider than either input.
 ///
-/// The planner works purely in bit counts. The caller is responsible for tracking the runtime accumulator's bit count,
-/// which is not the bit count of any single coefficient: at runtime, the accumulator is a partial sum (aligned_product
-/// + coefficient), which can be 1 bit wider than either operand. Passing the mantissa bit of the next coefficient count
-/// here would understate the actual accumulator width and undersize the shift.
-///
-/// coordinate_radix_shift and coordinate_magnitude_bits are deliberately separate. The radix shift is the semantic
-/// radix contributed by multiplying by the raw fixed-point coordinate. The magnitude is only an overflow bound derived
-/// from the actual interval width.
+/// coordinate_radix_shift describes fixed-point radix alignment. coordinate_magnitude_bits is separate and only bounds
+/// product growth from the interval width.
 template <signed_integral t_mantissa_t> struct shift_planner_t
 {
     using mantissa_t = t_mantissa_t;
 
-    /// largest accumulator bit count planner can model
-    ///
-    /// This is the bit width minus the sign bit, the signed magnitude bits.
+    /// largest accumulator magnitude the planner can model
     static constexpr auto max_accumulator_bit_count = static_cast<int_t>(sizeof(mantissa_t) * CHAR_BIT) - 1;
 
-    /// largest safe accumulator bit count when summing
-    ///
-    /// This leaves room for a carry without wrapping.
+    /// largest accumulator magnitude that still leaves one carry bit
     static constexpr auto max_safe_bits = max_accumulator_bit_count - 1;
 
     struct plan_t
@@ -49,10 +39,9 @@ template <signed_integral t_mantissa_t> struct shift_planner_t
         auto operator==(plan_t const&) const noexcept -> bool = default;
     };
 
-    /// plan runtime right-shift for one evaluation step
+    /// plans one runtime right shift
     ///
-    /// \param accumulator_bit_count bit-count upper bound on the runtime accumulator entering the next multiplication.
-    /// 0 signals the accumulator is exactly zero and no bits are used.
+    /// \param accumulator_bit_count upper bound on accumulator magnitude bits; 0 means exact zero
     constexpr auto operator()(int_t accumulator_bit_count, int_t accumulator_exponent, int_t next_exponent,
         int_t coordinate_radix_shift, int_t coordinate_magnitude_bits) const noexcept -> plan_t
     {
@@ -61,27 +50,27 @@ template <signed_integral t_mantissa_t> struct shift_planner_t
         assert(coordinate_radix_shift >= 0 && "shift_planner_t: coordinate radix shift must be nonnegative");
         assert(coordinate_magnitude_bits >= 0 && "shift_planner_t: coordinate magnitude bits must be nonnegative");
 
-        // Multiplying by u may add coordinate_magnitude_bits to the accumulator. Shift enough to keep room for a carry.
+        // leave one carry bit after multiplying by u
         auto const min_safe_shift = max<int_t>(0, accumulator_bit_count + coordinate_magnitude_bits - max_safe_bits);
 
         auto const relative_shift = next_exponent - accumulator_exponent;
         auto const ideal_runtime_shift = coordinate_radix_shift + relative_shift;
 
         auto const plan = ideal_runtime_shift >= min_safe_shift
-            // dynamic shift has room to absorb the coefficient exponent
+            // runtime shift can absorb coefficient exponent
             ? plan_t{
                 .packed_runtime_shift = ideal_runtime_shift,
                 .destructive_preshift = 0,
                 .next_accumulator_exponent = next_exponent,
             }
-            // exponent is larger than the dynamic shift can absorb; destructively right-shift the coefficient
+            // preshift coefficient when runtime alignment cannot absorb its exponent
             : plan_t{
                 .packed_runtime_shift = min_safe_shift,
                 .destructive_preshift = min_safe_shift - ideal_runtime_shift,
                 .next_accumulator_exponent = next_exponent + (min_safe_shift - ideal_runtime_shift),
             };
 
-        // aligned product is now bounded by max_safe_bits, leaving headroom for the sum
+        // aligned product now leaves headroom for the sum
         assert((accumulator_bit_count == 0
                    || accumulator_bit_count + coordinate_magnitude_bits - plan.packed_runtime_shift <= max_safe_bits)
             && "shift_planner_t: planned shift fails aligned_product invariant");

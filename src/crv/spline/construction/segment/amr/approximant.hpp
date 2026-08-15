@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief polynomial approximation of target function
+/// \brief fixed induced-gain approximation used by AMR
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -14,7 +14,7 @@
 
 namespace crv::spline {
 
-/// approximates a segment with a cubic polynomial
+/// adapts a final fixed induced-gain segment to floating AMR coordinates
 template <std::floating_point t_scalar_t, typename t_segment_t> struct approximant_t
 {
     using scalar_t = t_scalar_t;

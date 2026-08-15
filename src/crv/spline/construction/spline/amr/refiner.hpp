@@ -10,12 +10,10 @@
 
 namespace crv::spline {
 
-/// best-fit-first adaptive mesh refiner
+/// best-first adaptive mesh refiner
 ///
-/// This type applies a subdivision predicate to the top of the refinement pool. If subdivision is necessary, it applies
-/// the subdivider and inserts both subdivisions back into the pool. If not, it collects completed intervals. Refinement
-/// continues until either the refinement pool empties and all segments are within tolerance, or the segment budget is
-/// reached.
+/// The worst pending interval is either split and returned to the pool or moved to completed. Refinement stops when the
+/// pool is empty or the segment budget is full.
 template <typename typestate_t, typename subdivider_t, typename subdivision_predicate_t, int_t max_segment_count>
 struct refiner_t
 {
@@ -42,10 +40,10 @@ struct refiner_t
 private:
     constexpr auto subdivide_all(auto& refinement_pool, auto& completed_intervals, auto const& target) const -> void
     {
-        // subdivide until empty or full
+        // refine until pool empty or budget full
         while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
         {
-            // this uses a *reference*; pop must be very specifically placed
+            // interval is a reference; pop only after subdivision decision
             auto const& interval = refinement_pool.top();
             if (requires_subdivision(interval))
             {
@@ -64,7 +62,7 @@ private:
 
     constexpr auto drain_remaining(auto& refinement_pool, auto& completed_intervals) const -> void
     {
-        // drain remaining
+        // move remaining intervals to completed
         while (!refinement_pool.empty())
         {
             completed_intervals.push_back(refinement_pool.top());

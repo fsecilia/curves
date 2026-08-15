@@ -20,9 +20,10 @@ namespace {
 using scalar_t = float_t;
 using base_policy_t = default_spline_policy_t<scalar_t, prod_pipeline_config_t>;
 
-// The production minimum width is intentionally much coarser than the near-zero probes below. Tighten only the test
-// refinement floor so this integration test measures gain-space AMR and fixed representation accuracy rather than the
-// production policy's stopping rule.
+// use a finer test-only refinement floor
+//
+// Production min_width is coarser than these near-zero probes. Tightening it here isolates gain-space AMR and fixed
+// representation error from the production stopping policy.
 struct policy_t : base_policy_t
 {
     static constexpr auto log2_min_width = -44;
@@ -106,7 +107,7 @@ TEST(spline_factory_integration_test, sensitivity_authored_fractional_power_retu
     auto const spline = build_spline(built_target.target);
     expect_gain_matches_target(spline, built_target.target, scalar_t{3e-6});
 
-    // The conditioned target itself has the analytic mean gain x^alpha/(alpha+1).
+    // conditioned target has analytic mean gain x^alpha/(alpha+1)
     for (auto const x :
         std::array{std::ldexp(scalar_t{1}, -40), std::ldexp(scalar_t{1}, -24), scalar_t{1}, scalar_t{16}})
         EXPECT_NEAR(built_target.target.gain(x), std::pow(x, alpha) / (alpha + 1.0), 1e-10);
@@ -127,8 +128,9 @@ TEST(spline_factory_integration_test, knot_ownership_and_tail_are_continuous_in_
     EXPECT_EQ(at_location.origin, knot);
     EXPECT_EQ(after_location.origin, knot);
 
-    // Exercise x1-1 and x1 on the left segment, then x0 and x0+1 on the right. Locator ownership at the exact knot
-    // belongs to the right segment, whose x==x0 identity returns its directly quantized g0.
+    // probe both sides of the knot
+    //
+    // The exact knot belongs to the right segment, where x == x0 returns its directly quantized g0.
     auto const left_before = spline.payload.segments[before_location.index](before, before_location.origin);
     auto const left_at_knot = spline.payload.segments[before_location.index](knot, before_location.origin);
     auto const right_at_knot = spline.payload.segments[at_location.index](knot, at_location.origin);

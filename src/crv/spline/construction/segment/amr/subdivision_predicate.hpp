@@ -16,8 +16,7 @@ namespace crv::spline {
 
 /// decides if an interval should subdivide
 ///
-/// min_width constrains only children created by AMR. Existing interval geometry is never snapped or rejected just
-/// because it is narrower than min_width.
+/// min_width applies only to new AMR children. Existing knots may already define a narrower interval.
 template <std::floating_point scalar_t, is_fixed t_x_t, int_t log2_min_width> struct subdivision_predicate_t
 {
     using x_t = t_x_t;
@@ -26,11 +25,9 @@ template <std::floating_point scalar_t, is_fixed t_x_t, int_t log2_min_width> st
 
     static constexpr auto min_width = log2_min_width >= 0 ? (x_t{1} << log2_min_width) : (x_t{1} >> -log2_min_width);
 
-    // total noise budget in ulps relative to interval scale
+    // rounding-noise allowance in ulps
     //
-    // The margin is determined roughly by the number of ops per sample and error introduced by rounding after each op.
-    // The ops include hermite-to-polynomial basis conversion, cubic Horner, and norm, each contrbuting up to
-    // ulps_per_op of error.
+    // Covers floating construction, fixed-segment evaluation, and residual measurement together.
     static constexpr auto ops_per_sample = int_t{16};
     static constexpr auto ulps_per_op = int_t{4};
     static constexpr auto relative_noise_margin

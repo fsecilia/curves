@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief shared production pipline configuration
+/// \brief shared production pipeline configuration
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once

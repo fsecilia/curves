@@ -69,12 +69,9 @@ constexpr auto depth_limit = int_t{64};
 constexpr auto empty_critical_points = std::array<scalar_t, 0>{};
 
 // ====================================================================================================================
-// correctness on smooth integrands
+// smooth-integrand correctness
 //
-// For each (integrand, analytic antiderivative), verify that the integrator:
-//   - reports achieved_error and max_error strictly below the requested tolerance
-//   - matches the analytic F (and its derivative, the original integrand via FToC) at multiple evaluation points
-//   - does not blow up the segment budget for that integrand
+// Check reported error, analytic F and f at several points, and a reasonable segment count.
 // ====================================================================================================================
 
 struct param_t
@@ -141,9 +138,8 @@ INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, Value
 
 // localized bump
 //
-// This test contains a narrow gaussian bump centered far from the domain boundaries. The integrator must actually find
-// and resolve the feature rather than coarse-stepping past it. A uniform-grid integrator with modest spacing would miss
-// it entirely.
+// A narrow gaussian far from the boundaries forces adaptive refinement to find a feature that a coarse uniform grid
+// could skip.
 TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 {
     constexpr auto sigma = scalar_t{0.5};
@@ -166,8 +162,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
 
     EXPECT_LT(result.achieved_error, tolerance);
 
-    // Feature is a few sigma wide inside a 256-wide domain. Meaningful adaptive refinement must produce many more
-    // segments than the 1-4 that a smooth polynomial takes.
+    // narrow feature should need many more segments than a smooth polynomial
     EXPECT_GT(result.antiderivative.segment_count(), 8);
 
     auto const& numeric_antiderivative = result.antiderivative;
@@ -177,10 +172,9 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     }
 }
 
-// absolute value kink
+// absolute-value kink
 //
-// This test contains an absolute value kink at a known location. Passing the location as a critical point should cut
-// refinement dramatically, since each resulting half becomes linear and is integrated exactly by gk15.
+// Supplying the kink as a critical point splits the function into two linear pieces, which gk15 integrates exactly.
 TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 {
     constexpr auto kink_location = scalar_t{3.0};
@@ -212,7 +206,7 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
         EXPECT_CLOSE(analytic_antiderivative(x), guided_result.antiderivative(x), 1e-9, 1e-12);
     }
 
-    // guided path resolves each linear half exactly; blind path has to find the kink via refinement
+    // guided path is exact; blind path must refine around the kink
     EXPECT_LT(guided_result.antiderivative.segment_count(), blind_result.antiderivative.segment_count());
 }
 
@@ -237,8 +231,7 @@ TEST(quadrature_integration_adaptive_test_t, structural_refinement_limit_returns
 
 // changing tolerances
 //
-// Tightening the requested tolerance should never increase achieved_error, and should never decrease segment count.
-// A regression in the refinement predicate, like a reversed comparison, would break one or both of these.
+// Tighter tolerance should not increase achieved error or reduce segment count.
 TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 {
     auto const integrand = integrand_t{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }};
@@ -264,9 +257,8 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 
 // critical points only change layout on smooth curves
 //
-// Critical points on a smooth integrand reshape the segment layout but must not bias the integrated result. This pins
-// stack_seeder_t's proportional tolerance allocation against regressions that would subtly shift accumulated error
-// between segments.
+// Extra critical points may change segmentation, but not the integral. This also checks proportional tolerance
+// allocation across seeded segments.
 TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth_result)
 {
     auto const integrand = integrand_t{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }};

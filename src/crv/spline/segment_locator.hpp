@@ -16,15 +16,9 @@ namespace crv::spline {
 
 /// branchless quaternary bfs tree over spline segments
 ///
-/// A binary tree is a k-ary tree with 2 branches and 1 condition. A quaternary tree is a k-ary tree with 4 branches and
-/// 3 conditions.
-///
-/// This implementation is branchless, so as it descends through the tree, it chooses the next child arithmetically,
-/// rather than conditionally. This avoids branch mispredictions at the cost of data dependency. It is naturally
-/// shallower than an equivalent binary tree, so requires fewer iterations, though it may perform more comparisons
-/// overall. It performs 3 comparisons per fetch, so it must fetch fewer times than a binary tree. Each node stores 3
-/// keys, and the top nodes of the tree are stored adjacently, so the first cache line contains the first few conditions
-/// with a single fetch.
+/// Each node stores three keys and chooses among four children arithmetically. Compared with a binary tree this trades
+/// more comparisons per node for fewer levels and no branch prediction. The upper nodes are adjacent, so the first
+/// cache line covers the first few decisions.
 template <typename t_x_t, int t_depth_max> class segment_locator_t
 {
 public:
@@ -123,15 +117,15 @@ public:
     /// validates tree structure and capacity
     constexpr auto is_valid() const noexcept -> bool
     {
-        // validate segment_count is in valid range
+        // validate segment count
         if (segment_count_ <= 0 || max_segment_count < segment_count_) return false;
 
-        // validate x_max is nonnegative
+        // validate domain end
         if (x_max_ <= x_t{0}) return false;
 
         auto previous_key = min<x_t>();
 
-        // validate real breakpoints in sorted order
+        // validate sorted real breakpoints
         for (auto i = 1; i < segment_count_; ++i)
         {
             auto const key = key_at(i);
@@ -141,7 +135,7 @@ public:
             previous_key = key;
         }
 
-        // padding keys: must be >= x_max_ so descent remains structurally sound
+        // keep padding at or past domain end
         for (auto i = segment_count_; i <= total_key_count; ++i)
         {
             auto const key = key_at(i);
@@ -155,7 +149,7 @@ public:
 
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
-        // prefetch first two cache lines at head of tree; this includes the first two levels of comparison
+        // prefetch first two cache lines covering the top levels
         prefetcher.prefetch(&nodes_[0], 2);
     }
 
@@ -171,23 +165,19 @@ private:
         {
             static constexpr auto branching_mask = branching_factor - 1;
 
-            // The relationship between an in-order index and its flat position in the tree is bijective, closed form.
-            // The height is the number of trailing zeros in its quaternary representation, which is the number of pairs
-            // of trailing zeros in its binary representation. The index must be one-based so that the root has the
-            // maximum trailing-zero count rather than the degenerate all-zeros case.
+            // map in-order key index to flat tree position
             //
-            // After stripping off the pairs of zeros, what remains is the offset of the key within the row. The bottom
-            // 2 bits contain the offset of the key within its containing node, and the remaining bits define the offset
-            // of the node within the row. The index of the node in the flat array is found relative to the offset to
-            // the base index of the row.
+            // In a one-based in-order index, each pair of trailing zero bits raises the key one quaternary level. After
+            // removing those pairs, the low two bits select the key inside its node and the remaining bits select the
+            // node within that row. Adding the row base gives the flat-array position.
 
-            // height above floor; intrinsic to ordering, independent of tree layout
+            // height from in-order trailing zeros
             auto const height_above_floor = std::countr_zero(int_cast<uint_t>(in_order_index)) >> 1;
 
             auto const key_offset_in_row = in_order_index >> (2 * height_above_floor); // strip trailing 0 pairs
             auto const node_offset_in_row = key_offset_in_row >> 2; // remaining bits above low 2
 
-            // depth below root; a layout property depending on tree structure
+            // convert height to tree depth
             auto const depth_below_root = depth_max - 1 - height_above_floor;
 
             node_index = row_offsets.base_index[depth_below_root] + node_offset_in_row;

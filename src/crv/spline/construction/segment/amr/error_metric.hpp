@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief metric used to measure error between target function and its approximant
+/// \brief metric used to measure pointwise gain error
 /// \copyright Copyright (C) 2026 Frank Secilia
 ///
-/// During development, many metrics were tested. Simple Sobolev has no units and tuning is arbitrary. Including units
-/// in Sobolev requires scaling the derivative term by a factor with units, or canceling units in the linear term. Both
-/// require smooth max. Neither produces more accurate curves when accuracy is later measured using L_1.
+/// L_1 is also the final accuracy measure. Sobolev variants add scaling choices and did not improve the resulting
+/// curves under that measure.
 
 #pragma once
 

@@ -19,21 +19,19 @@
 
 namespace crv::spline {
 
-/// interpretation applied to an authored curve before spline construction
+/// interpretation applied before spline construction
 ///
-/// This enum belongs at the outer construction dispatch boundary. Once a branch has been selected, gain and
-/// sensitivity targets remain distinct static types.
+/// Dispatch uses this enum once, then gain and sensitivity continue as separate static target types.
 enum class curve_construction_t
 {
     gain,
     sensitivity,
 };
 
-/// Conditioned target for a gain-authored curve.
+/// conditioned target for a gain-authored curve
 ///
-/// Source curves are not necessarily suitable for direct Hermite interpolation. In particular, a finite continuous
-/// gain may have a cusp or singular derivative at the origin. The transfer T(x) = x G(x) regularizes those cases and
-/// is the quantity interpolated by the current spline representation.
+/// A finite gain can still have a cusp or singular derivative at the origin. Interpolating transfer
+/// T(x) = x G(x) removes that problem, so Hermite construction works in transfer space.
 template <typename t_curve_t> struct gain_curve_target_t
 {
     using curve_t = t_curve_t;
@@ -51,9 +49,10 @@ template <typename t_curve_t> struct gain_curve_target_t
     {
         auto const primal_x = primal(x);
 
-        // Do not evaluate curve(jet{0,...}) here. A valid gain such as x^alpha, 0 < alpha < 1, has finite f(0) but
-        // singular f'(0). Applying the product rule mechanically would manufacture 0 * inf -> NaN even though the
-        // transfer is regular and T'(0) = f(0).
+        // use limit definition to avoid evaluating gain derivative at origin
+        //
+        // A gain such as x^alpha, 0 < alpha < 1, has finite f(0) but singular f'(0). Using the product rule there
+        // would create 0 * inf -> NaN even though transfer is regular and T'(0) = f(0).
         if (primal_x == scalar_t{0}) return {scalar_t{0}, curve(primal_x) * tangent(x)};
 
         return x * curve(x);
@@ -62,13 +61,11 @@ template <typename t_curve_t> struct gain_curve_target_t
 
 template <typename curve_t> gain_curve_target_t(curve_t) -> gain_curve_target_t<curve_t>;
 
-/// Conditioned target for a sensitivity-authored curve.
+/// conditioned target for a sensitivity-authored curve
 ///
-/// Sensitivity f induces transfer T(x) = integral_0^x f(t) dt and effective gain G(x) = T(x) / x. The gain is not
-/// evaluated by dividing an absolute-error prefix integral by x. antiderivative_t::mean_integrand() evaluates the
-/// equivalent mean directly, G(x) = integral_0^1 f(xu) du, and reuses the adaptive prefix cache with a conditioned
-/// convex blend. Transfer is then reconstructed as x * G(x), so its absolute numerical error naturally shrinks toward
-/// the origin. Its tangent is the retained integrand directly by the Fundamental Theorem of Calculus.
+/// Sensitivity f gives transfer T(x) = integral_0^x f(t) dt and gain G(x) = T(x) / x. Near zero, dividing a prefix
+/// integral by x would magnify its absolute error. mean_integrand() evaluates the same gain as a mean instead and
+/// reuses the adaptive prefix cache. Transfer is rebuilt as x * G(x), while its tangent is f(x).
 template <typename t_antiderivative_t> struct sensitivity_curve_target_t
 {
     using antiderivative_t = t_antiderivative_t;
@@ -78,9 +75,7 @@ template <typename t_antiderivative_t> struct sensitivity_curve_target_t
     antiderivative_t antiderivative;
 
     constexpr auto gain(scalar_t x) const noexcept -> scalar_t { return antiderivative.mean_integrand(x); }
-
     constexpr auto transfer(scalar_t x) const noexcept -> scalar_t { return x * gain(x); }
-
     constexpr auto transfer(jet_t x) const noexcept -> jet_t
     {
         auto const primal_x = primal(x);
@@ -92,11 +87,11 @@ template <typename t_antiderivative_t> struct sensitivity_curve_target_t
 template <typename antiderivative_t>
 sensitivity_curve_target_t(antiderivative_t) -> sensitivity_curve_target_t<antiderivative_t>;
 
-/// translates a requested sensitivity gain error into the absolute-area units used by adaptive quadrature
+/// converts gain error tolerance to quadrature area tolerance
 ///
-/// Adaptive seeding allocates the global area tolerance in proportion to interval width and bisection preserves that
-/// allocation. With complete domain width X, choosing epsilon_T = X * epsilon_G therefore gives a prefix of length a
-/// approximately epsilon_T(a) <= a * epsilon_G, keeping the cached prefix mean on the requested gain-error scale.
+/// Quadrature splits the global area tolerance by interval width and preserves that split during bisection. For domain
+/// width X, epsilon_T = X * epsilon_G keeps prefix error near a * epsilon_G for a prefix of length a. Dividing by a
+/// leaves the cached mean on the requested gain-error scale.
 template <std::floating_point scalar_t>
 constexpr auto gain_tolerance_to_integral_tolerance(scalar_t domain_width, scalar_t gain_tolerance) noexcept -> scalar_t
 {
@@ -105,10 +100,10 @@ constexpr auto gain_tolerance_to_integral_tolerance(scalar_t domain_width, scala
     return domain_width * gain_tolerance;
 }
 
-/// sensitivity-target construction receipt
+/// sensitivity-target construction result
 ///
-/// Quadrature remains best effort when a structural refinement limit is reached. The target is still usable, while
-/// the receipt preserves whether the requested/noise-floor acceptance condition was not reached everywhere.
+/// Hitting a refinement limit does not discard the target. The receipt records whether every interval reached the
+/// requested tolerance or noise floor.
 template <typename t_target_t> struct sensitivity_curve_target_result_t
 {
     using target_t = t_target_t;

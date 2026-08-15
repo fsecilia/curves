@@ -16,12 +16,11 @@
 
 namespace crv::spline {
 
-/// linear output-space extension of the final spline tangent
+/// linear gain-space extension after the spline domain
 ///
-/// The authored-curve contract makes the induced gain nondecreasing, so the stored slope is nonnegative. A positive
-/// slope clamps at y_limit; a quantized zero slope continues constantly. x_max_delta is derived from this same stored
-/// slope/intercept and the same rounding rule used by operator(), so the separately stored clamp point cannot disagree
-/// with the actual quantized line.
+/// Induced gain is nondecreasing, so the stored slope is nonnegative. Positive slopes clamp at y_limit; zero stays
+/// constant. clamp_delta() uses the same quantized line and rounding as operator(), so the stored clamp point matches
+/// runtime evaluation.
 template <typename t_x_t, typename t_y_t, typename t_unpacked_field_t,
     auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
 struct extended_tangent_t
@@ -57,9 +56,9 @@ struct extended_tangent_t
                 return widen(y0.value) + delta <= widen(y_limit.value);
             }
 
-            // A negative stored shift is an exact left shift at runtime. Compare the unshifted nonnegative product
-            // against the available output-space headroom first so this construction-side check never needs an
-            // overflowing wide shift.
+            // check headroom before exact runtime left shift
+            //
+            // Comparing the unshifted nonnegative product avoids an overflowing wide shift during construction.
             auto const left_shift = -slope.shift;
             auto const headroom = widen(y_limit.value) - widen(y0.value);
             if (product == 0) return true;
@@ -94,8 +93,9 @@ struct extended_tangent_t
         if (slope.shift >= 0) delta = shifter.template shr<typename y_t::value_t>(wide_product, slope.shift);
         else
         {
-            // Use an unsigned shift so malformed data cannot turn an oversized left shift into signed-overflow UB.
-            // For a valid constructed tangent, clamp_delta guarantees the bounded result fits output space.
+            // shift unsigned to avoid signed-overflow UB on malformed data
+            //
+            // Valid constructed tangents are already bounded by clamp_delta().
             auto const left_shift = -slope.shift;
             assert(left_shift < int_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
             using unsigned_wide_t = make_unsigned_t<wide_t>;

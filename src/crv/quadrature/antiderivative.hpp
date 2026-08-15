@@ -46,11 +46,10 @@ public:
     /// evaluates accumulation function with a scalar, returning F(x)
     constexpr auto operator()(scalar_t x) const noexcept -> scalar_t { return integrate(x); }
 
-    /// evaluates accumulation function with a jet, returning F(x) and its derivative f(x).
+    /// evaluates F(x) and derivative f(x) with a jet
     ///
-    /// The primal of the integral is the sum of the nearest cached base integral and a local residual calculated
-    /// using the quadrature rule and integrand. The tangent of the integral, by the First Fundamental Theorem of
-    /// Calculus, is the original integrand itself, evaluated directly.
+    /// F(x) is the nearest cached prefix plus a local residual integral. Its derivative is the original integrand
+    /// evaluated directly.
     constexpr auto operator()(jet_t x) const noexcept -> jet_t
     {
         auto const primal_x = primal(x);
@@ -64,17 +63,15 @@ public:
         return integral_.evaluate_integrand(x);
     }
 
-    /// evaluates the mean of the retained integrand over [0, x]
+    /// evaluates mean integrand over [0, x]
     ///
-    /// For x > 0, this is F(x) / x, but evaluating it by dividing a prefix integral with fixed absolute error by a
-    /// small x is poorly conditioned. Instead, let a be the cached boundary immediately before x, let
-    /// g_a = F(a) / a, and let m(a,x) be the directly evaluated mean of the uncached residual interval. Then
+    /// Directly computing F(x) / x would magnify fixed absolute integration error near zero. Let a be the previous
+    /// cached boundary, g_a = F(a) / a, and m(a,x) the mean over the uncached remainder. Then
     ///
-    ///     G(x) = [a*g_a + (x-a)*m(a,x)] / x
-    ///          = m(a,x) + (a/x) * (g_a - m(a,x)).
+    ///     G(x) = m(a,x) + (a/x) * (g_a - m(a,x)).
     ///
-    /// The blend factor a/x stays in [0,1]. In the first interval a == 0, so G(x) is just the residual mean. At the
-    /// origin the continuous value is the integrand itself.
+    /// Since a/x is in [0,1], this stays well conditioned. In the first interval a == 0, so only the residual mean is
+    /// needed. At x == 0, the continuous mean is f(0).
     constexpr auto mean_integrand(scalar_t x) const noexcept -> scalar_t
     {
         assert_domain(x);
@@ -84,7 +81,7 @@ public:
         auto const left_index = find_left_index(x);
         auto const left = boundaries_[left_index];
 
-        // An exact cache boundary already has the best retained prefix value and needs no residual rule evaluation.
+        // exact cache boundary needs no residual evaluation
         if (x == left) return cumulative_sums_[left_index] / left;
 
         auto const residual_mean = integral_.average(left, x);
@@ -95,9 +92,7 @@ public:
         return residual_mean + prefix_fraction * (cached_prefix_mean - residual_mean);
     }
 
-    /// number of accepted quadrature segments
-    ///
-    /// the interval map always carries the origin plus one entry per accepted segment, so the count is size - 1
+    /// number of accepted quadrature segments; cache also stores the origin
     constexpr auto segment_count() const noexcept -> int_t { return static_cast<int_t>(boundaries_.size() - 1); }
 
 private:
@@ -110,7 +105,7 @@ private:
         return cumulative_sums_[left_index] + residual;
     }
 
-    constexpr auto assert_domain(scalar_t x) const noexcept -> void
+    constexpr auto assert_domain([[maybe_unused]] scalar_t x) const noexcept -> void
     {
         assert(boundaries_.front() <= x && x <= boundaries_.back() && "antiderivative_t: domain error");
     }

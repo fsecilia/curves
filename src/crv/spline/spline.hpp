@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief fixed-point cubic spline
+/// \brief fixed-point induced-gain spline
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -13,7 +13,7 @@
 
 namespace crv::spline {
 
-/// fixed-point cubic spline approximating a function over a specific domain
+/// fixed-point spline evaluating gain induced by local transfer Hermite cubics over a specific domain
 template <typename t_segment_t, typename t_extended_tangent_t, typename t_segment_locator_t> class spline_t
 {
 public:
@@ -39,8 +39,8 @@ public:
 
     /// public payload
     ///
-    /// This type is large, at least 10kiB. Making this data public saves an extra 10k copy on assign. It can't be a
-    /// pointer or it will cause cache misses in the kernel. The composed types protect their own invariants.
+    /// The spline is at least 10 KiB. Keeping the payload inline avoids another full copy on assignment and avoids a
+    /// pointer chase in the kernel. Its component types keep their own invariants.
     payload_t payload{};
 
     constexpr spline_t() noexcept = default;
@@ -53,7 +53,6 @@ public:
 
         auto const x_max = payload.segment_locator.x_max();
 
-        // this will need to change to use an extension segment that isn't part of the array
         if (x >= x_max) return payload.extend_final_tangent(x - x_max);
 
         auto const location = payload.segment_locator.locate(x);
@@ -92,22 +91,19 @@ public:
     }
 
 private:
-    /// prefetches the most recently selected segment and the two adjacent
+    /// prefetches the last selected segment and its neighbors
     ///
-    /// Prefetching these 3 segments serves as our hint to exploit the natural temporal locality of mouse velocity.
+    /// Mouse velocity usually stays near its previous segment, so these are the most likely next cache lines.
     auto prefetch_segments(auto const& prefetcher) const noexcept -> void
     {
         // these casts are required to prevent ub when forming addresses outside of the array
         auto const base_address = reinterpret_cast<std::uintptr_t>(payload.segments.data());
         auto const offset = sizeof(segment_t);
 
-        // prefetch most recent segment
+        // prefetch current segment and neighbors
         //
-        // Because segments_ is aligned to a cache line, one of these two will contain the cache line containing the
-        // previous segment and one adjacent, and the other will contain the other adjacent. If prev_segment_index is 0
-        // or segment_count_ - 1, these both technically are out of bounds, either prefetching the end of the segment
-        // locator or whatever follows this type as a whole, but prefetching is built to be resiliant to this pattern.
-        // We do not have to guard it with an condition, saving a pair of misprediction sources.
+        // Cache-line alignment lets two addresses cover all three segments. At either end, one address may land in
+        // neighboring payload storage; prefetch tolerates that, so no boundary branches are needed.
         prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ - 1) * offset));
         prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ + 1) * offset));
     }

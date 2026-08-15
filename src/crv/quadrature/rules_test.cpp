@@ -98,9 +98,8 @@ static_assert(k15_exact.error > 1e-8);
 
 // demonstrated failure
 //
-// K15 exactness mathematically ends at degree 23. However, for degree 24, the theoretical truncation error is so
-// infinitesimally small that it hides entirely beneath 64-bit floating-point epsilon. Since we cannot strictly test the
-// true boundary without arbitrary precision, we use degree 40 to force a truncation error large enough to be detected.
+// K15 exactness mathematically ends at degree 23. For degree 24, the theoretical truncation error falls below the
+// resolution of scalar_t. Degree 40 produces a truncation error large enough to detect without arbitrary precision.
 constexpr auto demonstrated_failure = rule.estimate(0.0, 1.0, [](scalar_t x) { return power(x, 40); });
 static_assert(abs(demonstrated_failure.sum - (1.0 / 41.0)) > std::numeric_limits<scalar_t>::epsilon());
 static_assert(demonstrated_failure.error > 1e-8);

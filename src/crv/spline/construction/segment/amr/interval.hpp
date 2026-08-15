@@ -97,7 +97,7 @@ struct interval_factory_t
         assert(width_fixed > x_t{0});
         auto const width = from_fixed<scalar_t>(width_fixed);
 
-        // convert from spline-global dy/dx to normalized Hermite dy/dt via dx/dt = width
+        // convert transfer-space dT/dx to normalized Hermite dT/dt via dx/dt = width
         auto const local_left_y = jet_t{subdomain.left.y.f, subdomain.left.y.df * width};
         auto const local_right_y = jet_t{subdomain.right.y.f, subdomain.right.y.df * width};
 

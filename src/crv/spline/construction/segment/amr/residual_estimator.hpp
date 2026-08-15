@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief estimates error between target and approximation
+/// \brief estimates gain error between target and fixed approximation
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -23,11 +23,10 @@ template <std::floating_point scalar_t> struct residual_t
     constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
 
-/// estimates worst-case residual error between a target function and its approximant
+/// estimates worst sampled gain error over a subdomain
 ///
-/// This type searches for the maximum deviation, a discrete L-infinity norm, over a specific interval. It sweeps the
-/// domain using the given node generator, measures the gap using an error metric, and scales the result by a perceptual
-/// weight.
+/// Samples come from node_generator_t, error_metric_t measures each target/approximant gap, and the largest error is
+/// scaled by the domain weight.
 ///
 /// \pre node_generator_t yields standard nodes in (0, 1)
 /// \pre error_metric_t assigns only nonnegative values
@@ -45,23 +44,23 @@ struct residual_estimator_t
     {
         auto const interval_width = right - left;
 
-        // sample function at generated nodes, calc error, and track extrema
+        // sample nodes and track largest scale/error
         auto max_residual = residual_t{};
         for (auto const standard_node : generate_nodes())
         {
             assert(scalar_t{0} < standard_node && standard_node < scalar_t{1} && "nodes must be in (0, 1)");
 
-            // convert from standard nodes in (0, 1) to domain nodes in (left, right).
+            // map standard node to this subdomain
             auto const domain_node = left + standard_node * interval_width;
 
-            // measure error between target function and approximant
+            // measure target/approximant gain error
             auto const approximation = approximant(domain_node);
             auto const target_gain = target.gain(domain_node);
             auto const metric_error = measure_error(target_gain, approximation);
 
             assert(metric_error >= scalar_t{0} && "metrics must assign nonnegative values");
 
-            // track maxes
+            // keep maxima
             max_residual.scale = max(max_residual.scale, abs(target_gain));
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }

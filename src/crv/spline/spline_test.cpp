@@ -93,8 +93,6 @@ static_assert(sut(max<x_t>()) == 162);
 // prefetch
 // --------------------------------------------------------------------------------------------------------------------
 
-// TODO: figure out how to test prefetching the tangent extension segment
-
 struct spline_prefetch_test_t : Test
 {
     struct segment_t
@@ -196,13 +194,13 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
     sut.prefetch(prefetcher);
     auto const* segments = static_cast<std::byte const*>(initial_prefetched_cache_lines[0]) + sizeof(segment_t);
 
-    // call into sut to get it to cache a new previous segment; previous_cache_line_ should become 2
+    // evaluate through the final segment so prev_segment_index_ becomes 2
     auto const x = x_t{expected_segment};
     EXPECT_CALL(mock_locator, locate(x))
         .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
     sut(x);
 
-    // prefetch again to see that previous_cache_line_ moved correctly
+    // prefetch again using the updated prev_segment_index_
     EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
 
     void const* prefetched_cache_lines[3];

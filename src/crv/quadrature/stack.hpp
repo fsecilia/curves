@@ -21,10 +21,9 @@ template <std::floating_point t_scalar_t> class stack_seeder_t
 public:
     using scalar_t = t_scalar_t;
 
-    /// seeds stack with one segment per subdomain, splitting at critical points
+    /// seeds one stack segment between each critical point
     ///
-    /// critical_points should not include 0 and domain_end; these are implied. An empty range yields a single segment
-    /// across the full domain.
+    /// 0 and domain_end are implied. With no critical points, one segment covers the full domain.
     ///
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique

@@ -46,11 +46,10 @@ template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponen
     }
 };
 
-/// compiles T(u) = a + b*u + c*u^2 + d*u^3 into its fixed induced-gain representation
+/// compiles a transfer cubic into the fixed induced-gain segment
 ///
-/// Only S(u) = b + c*u + d*u^2 participates in dynamic Horner shift planning. The transfer constant a is represented
-/// separately as g0 = a/x0 in ordinary output-space fixed point, so its scale cannot force destructive preshifting of
-/// d/c/b. For the first segment x0 == 0, transfer construction requires a == T(0) == 0 and g0 is unused.
+/// Dynamic shift planning uses only S(u) = b + c*u + d*u^2. The constant a is stored separately as g0 = a/x0 in y_t,
+/// so a large g0 cannot reduce precision in d/c/b. At x0 == 0, transfer requires a == 0 and g0 is unused.
 template <typename t_unpacked_segment_t, typename float_extractor_t, typename shift_planner_t,
     typename mantissa_quantizer_t, typename radix_aligner_t, int_t t_max_intermediate_shift, is_fixed t_x_t>
 struct segment_quantizer_t
@@ -80,7 +79,7 @@ struct segment_quantizer_t
         auto const coordinate_magnitude_bits = int_cast<int_t>(bit_width(width.value - 1));
         auto unpacked = unpacked_segment_t{};
 
-        // Project polynomial order is {d, c, b, a}. The first three terms are exactly S's quadratic Horner chain.
+        // polynomial order {d, c, b, a}; first three terms form S's Horner chain
         auto next_term = extract_float(cubic[0]);
         auto accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
         auto accumulator_exponent = next_term.exponent;
@@ -90,7 +89,7 @@ struct segment_quantizer_t
         {
             next_term = extract_float(cubic[field_index + 1]);
 
-            // Zero has no intrinsic exponent. Keep the relative shift neutral when either term is exactly zero.
+            // zero has no useful exponent; keep relative shift neutral
             auto const eval_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
             auto const eval_accumulator_exponent
                 = (accumulator_mantissa == 0) ? eval_next_exponent : accumulator_exponent;

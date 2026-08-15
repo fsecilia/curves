@@ -115,11 +115,10 @@ template <typename t_scalar_t> struct gauss_kronrod_t
         return estimate_t{sum, error};
     }
 
-    /// evaluates the interval mean of the integrand over [left, right]
+    /// evaluates the interval mean over [left, right]
     ///
-    /// K15 forms an interval integral as k15_sum * half_width. Dividing that integral by the full interval width
-    /// would cancel the same scale factor again. The normalized mean is therefore k15_sum / 2 directly, which avoids
-    /// introducing a poorly scaled integral when the interval is very narrow.
+    /// K15 integral is k15_sum * half_width. Dividing by full width cancels that scale, so the mean is simply
+    /// k15_sum / 2. Computing it directly avoids forming a tiny integral first.
     template <std::invocable<scalar_t> integrand_t>
     constexpr auto average(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
     {

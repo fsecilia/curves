@@ -3,8 +3,8 @@
 /// \file
 /// \brief common linux c++ abi
 ///
-/// C++ code can't include Linux headers directly, so types are redeclared here compatibly, then asserted in abi.c for
-/// bitwise compatibility.
+/// C++ code can't include Linux headers directly, so types are redeclared here, then asserted in abi.c for bitwise
+/// compatibility.
 ///
 /// \copyright Copyright (C) 2026 Frank Secilia
 

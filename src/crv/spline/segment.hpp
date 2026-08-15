@@ -182,21 +182,15 @@ struct segment_unpacker_t
 // evaluation
 //
 
-/// evaluates gain induced by one local-coordinate transfer Hermite cubic
+/// evaluates gain from one local transfer cubic
 ///
-/// Construction interpolates transfer because authored gain/sensitivity curves may have cusps or singular derivatives
-/// that transfer regularizes. Runtime, however, consumes gain T(x)/x, and dividing a quantized absolute-error transfer
-/// near zero magnifies that error. Instead, for the completed floating transfer cubic
+/// Construction interpolates transfer, but runtime needs gain. Dividing a quantized T(x) by x would amplify error near
+/// zero, so each transfer cubic is rewritten as
 ///
-///     T(u) = a + b*u + c*u^2 + d*u^3 = a + u*S(u),  S(u) = b + c*u + d*u^2,
-///     u = x - x0,
+///     T(u) = a + u*S(u),  S(u) = b + c*u + d*u^2,  u = x - x0.
 ///
-/// we store S and g0 = a/x0. For x0 > 0,
-///
-///     T(x)/x = S(u) + (x0/x) * (g0 - S(u)).
-///
-/// For x0 == 0, transfer construction guarantees a == T(0) == 0, so the continuous value is simply G(x) = S(u)
-/// and no division occurs. This is an algebraic compilation of the one transfer Hermite cubic, not a second spline.
+/// For x0 > 0, G(x) = S(u) + (x0/x) * (g0 - S(u)), where g0 = a/x0. At x0 == 0, a == 0 and G(x) = S(u), so no
+/// division is needed. This is the same transfer cubic in gain form.
 template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t,
     auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
     auto division_rounding_mode = rounding_modes::div::fast::nearest_away>
@@ -213,8 +207,10 @@ struct segment_evaluator_t
     using correction_product_t = fixed::product_t<y_t, x_t>;
     using correction_product_value_t = typename correction_product_t::value_t;
 
-    // A located nonzero segment has 0 < x0/x <= 1. Since delta is already a y_t value, the correction magnitude
-    // cannot exceed |delta|, so the generic divider does not need output saturation here.
+    // correction stays within delta
+    //
+    // For a located nonzero segment, 0 < x0/x <= 1. delta is already y_t, so the divider cannot grow its magnitude
+    // and needs no output saturation.
     using correction_divider_t
         = division::divider_t<typename y_t::value_t, correction_product_value_t, typename x_t::value_t, 0, false>;
 
@@ -267,10 +263,9 @@ private:
 // orchestration
 //
 
-/// dynamically-packed fixed-point induced-gain segment occupying half a cache line
+/// dynamically packed induced-gain segment occupying half a cache line
 ///
-/// The three packed fields are Horner coefficients for S(u). g0 is an ordinary y_t ordinate and deliberately carries
-/// no dynamic-shift metadata.
+/// The packed fields are S(u) Horner coefficients. g0 stays as an ordinary y_t value with no dynamic-shift metadata.
 template <typename traits_t, is_fixed t_x_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
 class alignas(32) segment_t
 {
