@@ -46,10 +46,10 @@ template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponen
     }
 };
 
-/// quantizes a floating-point cubic into an unpacked segment with relative shifts
+/// quantizes a floating-point local-coordinate cubic into an unpacked segment with relative shifts
 template <typename t_unpacked_field_t, typename float_extractor_t, typename shift_planner_t,
-    typename mantissa_quantizer_t, typename radix_aligner_t, int_t t_max_intermediate_shift, int_t in_frac_bits,
-    int_t out_frac_bits, int_t log2_min_width>
+    typename mantissa_quantizer_t, typename radix_aligner_t, int_t t_max_intermediate_shift, is_fixed t_x_t,
+    int_t out_frac_bits>
 struct segment_quantizer_t
 {
     using unpacked_field_t = t_unpacked_field_t;
@@ -59,24 +59,24 @@ struct segment_quantizer_t
     using scalar_t = float_extractor_t::scalar_t;
     using cubic_t = cubic_t<scalar_t>;
     using scaled_int_t = radix_aligner_t::scaled_int_t;
+    using x_t = t_x_t;
 
     static constexpr auto max_intermediate_shift = t_max_intermediate_shift;
-
-    // prevent left shifts during evaluation
-    //
-    // This is the base amount shifted right after every iteration of the evaluation loop. If this is negative, the loop
-    // diverges and amplifies after each step instead of contracting.
-    static_assert(in_frac_bits + log2_min_width >= 0);
+    static constexpr auto coordinate_radix_shift = int_cast<int_t>(x_t::frac_bits);
 
     [[no_unique_address]] float_extractor_t extract_float;
     [[no_unique_address]] shift_planner_t plan_shift;
     [[no_unique_address]] mantissa_quantizer_t quantize_mantissa;
     [[no_unique_address]] radix_aligner_t align_radix;
 
-    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> unpacked_segment_t
+    constexpr auto operator()(cubic_t const& cubic, x_t width) const noexcept -> unpacked_segment_t
     {
-        assert(log2_width >= log2_min_width);
-        auto const t_to_x_shift = in_frac_bits + log2_width;
+        assert(width > x_t{0});
+
+        // Multiplication uses the raw fixed-point coordinate. The radix contribution is always x_t::frac_bits. The
+        // actual interval width contributes only to the maximum magnitude of that raw coordinate. bit_width(width-1)
+        // is ceil(log2(width)) for a positive integer width, so powers of two retain the old exact magnitude bound.
+        auto const coordinate_magnitude_bits = int_cast<int_t>(bit_width(width.value - 1));
 
         auto unpacked = unpacked_segment_t{};
 
@@ -85,42 +85,27 @@ struct segment_quantizer_t
         auto accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
         auto accumulator_exponent = next_term.exponent;
 
-        // upper bound on the runtime accumulator's bit count entering the next multiplication
-        //
-        // At runtime, the accumulator entering step i is the partial sum from step i-1: aligned_product + coeff from
-        // unpacked[i].mantissa. That sum can exceed the bit count of either operand alone, so the planner cannot infer
-        // it from any single mantissa; it must be tracked here as state.
+        // Upper bound on the runtime accumulator entering the next multiplication. The accumulator is a partial sum,
+        // so it may be one bit wider than either operand and must be tracked as state.
         auto runtime_accumulator_bit_count = int_cast<int_t>(bit_width(accumulator_mantissa));
 
-        // proceed in pairs
         for (auto field_index = 0; field_index < fields_per_segment - 1; ++field_index)
         {
             next_term = extract_float(cubic[field_index + 1]);
 
-            // preserve exponent across zero terms
-            //
-            // A mantissa of 0 has no intrinsic magnitude. By mutually adapting their exponents, we guarantee a relative
-            // shift of 0 when either term is exactly 0. This prevents meaningless exponents from causing destructive
-            // preshifts or triggering false flushes.
+            // Zero has no intrinsic exponent. Keep the relative shift neutral when either term is exactly zero.
             auto const eval_next_exponent = (next_term.mantissa == 0) ? accumulator_exponent : next_term.exponent;
             auto const eval_accumulator_exponent
                 = (accumulator_mantissa == 0) ? eval_next_exponent : accumulator_exponent;
 
-            // plan and apply shifts
-            auto const plan = plan_shift(
-                runtime_accumulator_bit_count, eval_accumulator_exponent, eval_next_exponent, t_to_x_shift);
+            auto const plan = plan_shift(runtime_accumulator_bit_count, eval_accumulator_exponent, eval_next_exponent,
+                coordinate_radix_shift, coordinate_magnitude_bits);
             if (plan.packed_runtime_shift > max_intermediate_shift)
             {
-                // flush earlier terms to zero and restart from here
-                //
-                // The current term's relative right shift is so large it shifts off all bits accumulated by previous
-                // terms. Allowing this zero output but maintaining the large shift would break the relative shift to
-                // remaining terms. Instead, equivalently zero all of the terms up to this point and restart from here.
-
-                // flush earlier terms to zero
+                // The next coefficient dominates everything accumulated so far. Flush those earlier terms and restart
+                // here so the remaining relative shifts stay representable.
                 std::fill_n(std::begin(unpacked), field_index, unpacked_field_t{});
 
-                // adopt next_term as the new accumulator baseline, restarting
                 accumulator_mantissa = int_cast<mantissa_t>(next_term.mantissa);
                 accumulator_exponent = eval_next_exponent;
                 runtime_accumulator_bit_count = bit_width(accumulator_mantissa);
@@ -130,9 +115,8 @@ struct segment_quantizer_t
             auto const quantized_next = quantize_mantissa(next_term.mantissa, plan.destructive_preshift);
             unpacked[field_index] = {.mantissa = accumulator_mantissa, .shift = plan.packed_runtime_shift};
 
-            // step forward
-            auto const aligned_product_bit_count
-                = max<int_t>(0, runtime_accumulator_bit_count + t_to_x_shift - plan.packed_runtime_shift);
+            auto const aligned_product_bit_count = max<int_t>(
+                0, runtime_accumulator_bit_count + coordinate_magnitude_bits - plan.packed_runtime_shift);
             auto const quantized_next_bit_count = int_cast<int_t>(bit_width(quantized_next));
             auto const carry = (aligned_product_bit_count > 0 && quantized_next_bit_count > 0) ? 1 : 0;
             runtime_accumulator_bit_count = max(aligned_product_bit_count, quantized_next_bit_count) + carry;

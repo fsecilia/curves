@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
+#include <crv/math/integer.hpp>
 #include <crv/math/shifter.hpp>
 
 namespace crv::spline {

@@ -9,6 +9,7 @@
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <iomanip>
+#include <iostream>
 #include <stdfloat>
 #include <vector>
 
@@ -37,7 +38,18 @@ TEST(spline_factory_integration_test, evaluates_spline_within_tolerance)
     using spline_factory_t = spline_factory_t<policy_t, spline_generator_factory_t<policy_t>>;
     using spline_t = spline_factory_t::spline_t;
     auto spline = spline_t{};
-    spline_factory_t{}(spline, target_function, global_tolerance, {x_t{1 << 3}, x_t{1 << 5}, to_fixed<x_t>(248.973)});
+
+    auto const arbitrary_knot = to_fixed<x_t>(7.123456789);
+    auto const adjacent_knot = x_t::literal(arbitrary_knot.value + 1);
+    auto critical_points = std::vector{x_t{1 << 3}, x_t{1 << 5}, arbitrary_knot, adjacent_knot, to_fixed<x_t>(248.973)};
+    spline_factory_t{}(spline, target_function, global_tolerance, critical_points);
+
+    // test knots closer than min_segment_width
+    //
+    // Supplied knots are exact geometry. In particular, the arbitrary knot is not snapped to the a min_width grid, and
+    // an adjacent raw fixed-point knot remains a distinct segment boundary even though it is far below min_width.
+    EXPECT_EQ(spline.payload.segment_locator.locate(arbitrary_knot).origin, arbitrary_knot);
+    EXPECT_EQ(spline.payload.segment_locator.locate(adjacent_knot).origin, adjacent_knot);
 
     auto x_fixed = x_t{0};
     auto const sample_count = 255;

@@ -10,10 +10,13 @@ namespace crv::spline {
 namespace {
 
 using scalar_t = float_t;
+using x_t = fixed_t<int_t, 0>;
 
 struct subdomain_t
 {
-    int log2_width;
+    x_t left_x;
+    x_t midpoint_x;
+    x_t right_x;
 };
 
 struct residual_t
@@ -29,24 +32,22 @@ struct interval_t
 };
 
 constexpr auto global_tolerance = 1e-4;
-constexpr auto log2_min_width = 2;
-constexpr auto sut = subdivision_predicate_t<scalar_t, log2_min_width>{.global_tolerance = global_tolerance};
+constexpr auto log2_min_width = 1; // min AMR-created child width = 2
+constexpr auto sut = subdivision_predicate_t<scalar_t, x_t, log2_min_width>{.global_tolerance = global_tolerance};
 
-// nominal subdivision; interval is wide enough and error exceeds both global tolerance and noise floor
-static_assert(sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
+static_assert(sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
 
-// width limit exhaustion; error is massive, but the interval cannot be subdivided any further
-static_assert(
-    !sut(interval_t{.subdomain = {.log2_width = log2_min_width}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
+// odd width is fine when both resulting children satisfy min_width
+static_assert(sut(interval_t{.subdomain = {x_t{0}, x_t{2}, x_t{5}}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
 
-// global tolerance satisfaction; interval is wide, but the error is within the acceptable global margin
-static_assert(!sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1.0, .metric_error = 1e-5}}));
+// min_width constrains newly created children, not the location of existing knots
+static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{1}, x_t{3}}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
 
-// submerged in noise floor
-// double epsilon is around 2.22e-16, unscaled noise floor is ~2.22e-16 * 64 ~= 1.42e-14
-// scaling that by 1e-6 gives 1.42e-8
-// error of 5e-9 exceeds this
-static_assert(!sut(interval_t{.subdomain = {.log2_width = 4}, .residual = {.scale = 1e6, .metric_error = 5e-9}}));
+// no distinct representable midpoint
+static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{0}, x_t{1}}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
+
+static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1.0, .metric_error = 1e-5}}));
+static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1e6, .metric_error = 5e-9}}));
 
 } // namespace
 } // namespace crv::spline

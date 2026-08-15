@@ -17,9 +17,9 @@
 
 namespace crv::spline {
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // traits
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 constexpr auto fields_per_segment = 4;
 
@@ -34,9 +34,9 @@ template <typename t_unpacked_field_t> struct traits_t
     using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
 };
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // layouts
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 template <typename t_packed_field_t> struct field_layout_t
 {
@@ -70,9 +70,9 @@ template <typename field_layout_t> struct segment_layout_t
     constexpr auto operator==(segment_layout_t const&) const noexcept -> bool = default;
 };
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // unpacking
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 template <signed_integral t_mantissa_t> struct unpacked_field_t
 {
@@ -147,9 +147,9 @@ struct segment_unpacker_t
     }
 };
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // evaluation
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t,
     auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
@@ -206,9 +206,9 @@ private:
     }
 };
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // orchestration
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 /// dynamic, fixed-point cubic spline segment packed into half a cache line
 template <typename traits_t, is_fixed t_x_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>

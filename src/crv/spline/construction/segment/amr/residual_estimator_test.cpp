@@ -38,9 +38,9 @@ struct target_function_sample_t
     scalar_t y;
 };
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // compile-time tests
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 namespace compile_time_tests {
 
@@ -77,9 +77,9 @@ static_assert(identifies_maximum_error());
 
 } // namespace compile_time_tests
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // death tests
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -131,7 +131,7 @@ TEST_F(spline_residual_estimator_test_node_endpoints_t, nodes_excludes_right_end
     EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "in \\(0, 1\\)");
 }
 
-#endif
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::spline

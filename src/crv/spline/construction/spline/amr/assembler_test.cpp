@@ -27,13 +27,7 @@ struct interval_t
 
     struct subdomain_t
     {
-        struct function_sample_t
-        {
-            float_t x{};
-
-            constexpr auto operator==(function_sample_t const&) const noexcept -> bool = default;
-        };
-        function_sample_t left;
+        x_t left_x{};
 
         constexpr auto operator==(subdomain_t const&) const noexcept -> bool = default;
     };
@@ -53,17 +47,17 @@ namespace dependency_tests {
 constexpr auto test_interval_sorter() noexcept -> bool
 {
     auto actual = std::array<interval_t, 3>{{
-        {.subdomain = {.left{.x = 3.0}}, .segment = {.payload_id = 99}},
-        {.subdomain = {.left{.x = 1.0}}, .segment = {.payload_id = 37}},
-        {.subdomain = {.left{.x = 2.0}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{3}}, .segment = {.payload_id = 99}},
+        {.subdomain = {.left_x = x_t{1}}, .segment = {.payload_id = 37}},
+        {.subdomain = {.left_x = x_t{2}}, .segment = {.payload_id = 73}},
     }};
 
     interval_sorter_t{}(actual);
 
     auto const expected = std::array<interval_t, 3>{{
-        {.subdomain = {.left{.x = 1.0}}, .segment = {.payload_id = 37}},
-        {.subdomain = {.left{.x = 2.0}}, .segment = {.payload_id = 73}},
-        {.subdomain = {.left{.x = 3.0}}, .segment = {.payload_id = 99}},
+        {.subdomain = {.left_x = x_t{1}}, .segment = {.payload_id = 37}},
+        {.subdomain = {.left_x = x_t{2}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{3}}, .segment = {.payload_id = 99}},
     }};
 
     return expected == actual;
@@ -100,7 +94,7 @@ static_assert(test_key_padder_pad_all());
 TEST(spline_assembler_test, interval_unzipper_single_interval)
 {
     auto const intervals
-        = std::array<interval_t, 1>{{{.subdomain = {.left = {.x = 10.0}}, .segment = {.payload_id = 37}}}};
+        = std::array<interval_t, 1>{{{.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}}}};
 
     auto const active_count = 1;
     auto actual_segments = std::array<segment_t, 1>{};
@@ -114,8 +108,8 @@ TEST(spline_assembler_test, interval_unzipper_single_interval)
 TEST(spline_assembler_test, interval_unzipper)
 {
     auto const intervals = std::array<interval_t, 2>{{
-        {.subdomain = {.left = {.x = 10.0}}, .segment = {.payload_id = 37}},
-        {.subdomain = {.left = {.x = 20.0}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}},
+        {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
     }};
 
     auto const active_count = 2;
@@ -125,7 +119,7 @@ TEST(spline_assembler_test, interval_unzipper)
     interval_unzipper_t{}(intervals, active_count, actual_segments, actual_keys);
 
     auto const expected_segments = std::array{intervals[0].segment, intervals[1].segment};
-    auto const expected_keys = std::array{to_fixed<x_t>(intervals[1].subdomain.left.x)};
+    auto const expected_keys = std::array{intervals[1].subdomain.left_x};
 
     EXPECT_EQ(expected_segments, actual_segments);
     EXPECT_EQ(expected_keys, actual_keys);
@@ -191,8 +185,8 @@ TEST(spline_assembler_test, vs_real_dependencies)
 
     // initialized out-of-order to prove the sorter runs in the pipeline
     state.workspace.completed_intervals = {
-        {.subdomain = {.left = {.x = 20.0}}, .segment = {.payload_id = 73}},
-        {.subdomain = {.left = {.x = 10.0}}, .segment = {.payload_id = 42}},
+        {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 42}},
     };
 
     auto spline = spline_t{};
@@ -248,7 +242,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
     {
         auto const descending_value = count - i;
         state.workspace.completed_intervals.push_back({
-            .subdomain = {.left = {.x = static_cast<float_t>(descending_value) * 10.0}},
+            .subdomain = {.left_x = x_t{descending_value * 10}},
             .segment = {.payload_id = descending_value},
         });
     }
@@ -325,7 +319,7 @@ TEST(spline_assembler_test, asserts_on_capacity_exceeded)
     EXPECT_DEATH(sut(std::move(state), spline), "max_segment_count");
 }
 
-#endif
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace assembler_tests
 

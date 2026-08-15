@@ -13,105 +13,59 @@ namespace {
 using scalar_t = float_t;
 using jet_t = jet_t<scalar_t>;
 
-// --------------------------------------------------------------------------------------------------------------------
-// interval_priority_less_t
-// --------------------------------------------------------------------------------------------------------------------
-
 namespace interval_priority_less_tests {
 
-using scalar_t = float_t;
+using x_t = fixed_t<int_t, 0>;
 
 struct subdomain_t
 {
-    using scalar_t = scalar_t;
-
-    struct function_sample_t
-    {
-        scalar_t x;
-    };
-    function_sample_t left;
-
-    struct residual_t
-    {
-        scalar_t weighted_error;
-    };
-    residual_t residual;
+    using scalar_t = float_t;
+    x_t left_x;
 };
 
 using segment_t = int_t;
 using cubic_t = int_t;
-
 using sut_t = interval_t<subdomain_t, cubic_t, segment_t>;
 
-constexpr auto construct_sut(scalar_t weighted_error, scalar_t left_x) noexcept -> sut_t
+constexpr auto construct_sut(scalar_t weighted_error, x_t left_x) noexcept -> sut_t
 {
     auto result = sut_t{};
-    result.subdomain.left.x = left_x;
+    result.subdomain.left_x = left_x;
     result.residual.weighted_error = weighted_error;
     return result;
 }
 
 constexpr auto sut = interval_priority_less_t{};
 
-// weighted error dominates left.x
-static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
-static_assert(sut(construct_sut(0.0, 1e30), construct_sut(1.0, 0.0)));
-
-// left.x breaks ties
-static_assert(sut(construct_sut(5.0, 1.0), construct_sut(5.0, 2.0)));
-static_assert(!sut(construct_sut(5.0, 2.0), construct_sut(5.0, 1.0)));
+static_assert(sut(construct_sut(0.0, x_t{100}), construct_sut(1.0, x_t{0})));
+static_assert(sut(construct_sut(5.0, x_t{1}), construct_sut(5.0, x_t{2})));
+static_assert(!sut(construct_sut(5.0, x_t{2}), construct_sut(5.0, x_t{1})));
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-namespace death_tests {
-
-constexpr auto nan = std::numeric_limits<scalar_t>::quiet_NaN();
-constexpr auto inf = std::numeric_limits<scalar_t>::infinity();
-
-TEST(spline_interval_priority_less, death_by_lhs_residual_weighted_error)
+TEST(spline_interval_priority_less, death_by_nonfinite_weighted_error)
 {
-    EXPECT_DEBUG_DEATH(sut(construct_sut(nan, 0.0), construct_sut(0.0, 0.0)), "isfinite");
+    auto const nan = std::numeric_limits<scalar_t>::quiet_NaN();
+    EXPECT_DEBUG_DEATH(sut(construct_sut(nan, x_t{0}), construct_sut(0.0, x_t{0})), "isfinite");
 }
-
-TEST(spline_interval_priority_less, death_by_lhs_left_x)
-{
-    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, inf), construct_sut(0.0, 0.0)), "isfinite");
-}
-
-TEST(spline_interval_priority_less, death_by_rhs_residual_weighted_error)
-{
-    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, 0.0), construct_sut(-inf, 0.0)), "isfinite");
-}
-
-TEST(spline_interval_priority_less, death_by_rhs_left_x)
-{
-    EXPECT_DEBUG_DEATH(sut(construct_sut(0.0, 0.0), construct_sut(0.0, nan)), "isfinite");
-}
-
-} // namespace death_tests
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace interval_priority_less_tests
 
-// --------------------------------------------------------------------------------------------------------------------
-// interval_factory_t
-// --------------------------------------------------------------------------------------------------------------------
-
 namespace interval_factory_tests {
 
 struct spline_interval_factory_test_t : Test
 {
-    using subdomain_t = subdomain_t<scalar_t>;
-    using function_sample_t = function_sample_t<jet_t>;
-
+    using x_t = fixed_t<int64_t, 2>;
+    using subdomain_t = spline::subdomain_t<scalar_t, x_t>;
+    using function_sample_t = subdomain_t::function_sample_t;
     using cubic_t = cubic_t<scalar_t>;
-    using x_t = fixed_t<int64_t, 0>;
 
     struct segment_t
     {
         cubic_t cubic;
-        int_t log2_width;
+        x_t width;
 
         constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
     };
@@ -120,9 +74,9 @@ struct spline_interval_factory_test_t : Test
     {
         using segment_t = segment_t;
 
-        constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
+        constexpr auto operator()(cubic_t const& cubic, x_t width) const noexcept -> segment_t
         {
-            return {cubic, log2_width};
+            return {cubic, width};
         }
     };
 
@@ -142,7 +96,7 @@ struct spline_interval_factory_test_t : Test
 
         constexpr auto operator()(segment_t const& segment, x_t x0) const noexcept -> approximant_t
         {
-            return approximant_t{segment, x0};
+            return {segment, x0};
         }
     };
 
@@ -157,6 +111,22 @@ struct spline_interval_factory_test_t : Test
     {
         mock_hermite_converter_t* mock = nullptr;
         auto operator()(jet_t left_y, jet_t right_y) const noexcept -> cubic_t { return mock->call(left_y, right_y); }
+    };
+
+    struct mock_local_coordinate_converter_t
+    {
+        virtual ~mock_local_coordinate_converter_t() = default;
+        MOCK_METHOD(cubic_t, call, (cubic_t const& normalized, scalar_t width), (const, noexcept));
+    };
+    StrictMock<mock_local_coordinate_converter_t> mock_local_coordinate_converter;
+
+    struct local_coordinate_converter_t
+    {
+        mock_local_coordinate_converter_t* mock = nullptr;
+        auto operator()(cubic_t const& normalized, scalar_t width) const noexcept -> cubic_t
+        {
+            return mock->call(normalized, width);
+        }
     };
 
     struct residual_t
@@ -193,7 +163,8 @@ struct spline_interval_factory_test_t : Test
 
     struct interval_t
     {
-        using scalar_t = scalar_t;
+        using scalar_t = float_t;
+        using subdomain_t = spline_interval_factory_test_t::subdomain_t;
 
         cubic_t cubic;
         segment_t segment;
@@ -203,56 +174,61 @@ struct spline_interval_factory_test_t : Test
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t = interval_factory_t<interval_t, segment_factory_t, approximant_factory_t, hermite_converter_t,
-        residual_estimator_t>;
+    using sut_t = spline::interval_factory_t<interval_t, segment_factory_t, approximant_factory_t, hermite_converter_t,
+        local_coordinate_converter_t, residual_estimator_t>;
     sut_t sut{
         .segment_factory = {},
         .approximant_factory = {},
         .convert_hermite = hermite_converter_t{&mock_hermite_converter},
+        .convert_local_coordinate = local_coordinate_converter_t{&mock_local_coordinate_converter},
         .estimate_residual = residual_estimator_t{&mock_residual_estimator},
     };
 
     sample_target_function_t const sample_target_function{1};
+    x_t const left_x = x_t::literal(8); // 2.0
+    x_t const midpoint_x = x_t::literal(10); // 2.5
+    x_t const right_x = x_t::literal(13); // 3.25, odd raw width = 5
     function_sample_t const left{.x = 2.0, .y = {3.0, 4.0}};
-    function_sample_t const midpoint{.x = 5.0, .y = {6.0, 7.0}};
-    function_sample_t const right{.x = 8.0, .y = {9.0, 10.0}};
-    int_t log2_width = 11;
-    cubic_t const cubic{1.0, 2.0, 3.0, 4.0};
-    segment_t segment = segment_t{.cubic = cubic, .log2_width = log2_width};
-    residual_t const residual{14};
-
-    x_t x0 = to_fixed<x_t>(left.x);
-
-    interval_t const expected
-    {
-        .cubic = cubic,
-        .segment = segment,
-        .subdomain = subdomain_t{
-            .left = left,
-            .midpoint = midpoint,
-            .right = right,
-            .log2_width = log2_width,
-        },
-        .residual = residual,
+    function_sample_t const midpoint{.x = 2.5, .y = {6.0, 7.0}};
+    function_sample_t const right{.x = 3.25, .y = {9.0, 10.0}};
+    subdomain_t const subdomain{
+        .left_x = left_x,
+        .midpoint_x = midpoint_x,
+        .right_x = right_x,
+        .left = left,
+        .midpoint = midpoint,
+        .right = right,
     };
+
+    scalar_t const width = 1.25;
+    x_t const width_fixed = x_t::literal(5);
+    cubic_t const normalized_cubic{1.0, 2.0, 3.0, 4.0};
+    cubic_t const local_cubic{10.0, 20.0, 30.0, 40.0};
+    segment_t const segment{.cubic = local_cubic, .width = width_fixed};
+    residual_t const residual{14};
 };
 
-TEST_F(spline_interval_factory_test_t, call)
+TEST_F(spline_interval_factory_test_t, builds_normalized_hermite_then_reparameterizes_to_local_u)
 {
-    // sut applies chain rule locally from dy/dx to dy/dt.
-    auto const dx_dt = static_cast<scalar_t>(1 << log2_width);
     auto local_left_y = left.y;
     auto local_right_y = right.y;
-    local_left_y.df *= dx_dt;
-    local_right_y.df *= dx_dt;
-    EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(cubic));
+    local_left_y.df *= width;
+    local_right_y.df *= width;
 
+    EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
+    EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_residual_estimator,
-        call(sample_target_function, approximant_t{.segment = segment, .x0 = x0}, left.x, midpoint.x, right.x))
+        call(sample_target_function, approximant_t{.segment = segment, .x0 = left_x}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
 
-    auto const actual = sut(sample_target_function, subdomain_t{left, midpoint, right, log2_width});
+    auto const actual = sut(sample_target_function, subdomain);
 
+    auto const expected = interval_t{
+        .cubic = local_cubic,
+        .segment = segment,
+        .subdomain = subdomain,
+        .residual = residual,
+    };
     EXPECT_EQ(expected, actual);
 }
 

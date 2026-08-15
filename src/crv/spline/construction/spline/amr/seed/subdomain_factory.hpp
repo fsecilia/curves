@@ -8,17 +8,12 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
-#include <crv/math/int_traits.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <bit>
+#include <numeric>
 
 namespace crv::spline::seed {
 
-/// creates subdomains used to seed the refinement pool
-///
-/// This differs from a standard factory because of what information is available during seeding. The generated
-/// subdomains are sequential, so the left sample is the previous subdomain's right sample. Widths are determined by a
-/// dyadic stride rather than by pure bisection, so log2_width is not known and must be calculated.
+/// creates a subdomain directly between two exact fixed-point endpoints
 template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
 {
     using x_t = t_x_t;
@@ -27,25 +22,29 @@ template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
     using scalar_t = subdomain_t::scalar_t;
     using jet_t = subdomain_t::jet_t;
     using function_sample_t = subdomain_t::function_sample_t;
-    using signed_t = x_t::value_t;
-    using unsigned_t = make_unsigned_t<signed_t>;
+
+    static constexpr auto midpoint(x_t left, x_t right) noexcept -> x_t
+    {
+        return x_t::literal(std::midpoint(left.value, right.value));
+    }
 
     static constexpr auto operator()(auto const& sample_target_function, function_sample_t const& left_sample,
-        x_t const& left, x_t const& stride) noexcept -> subdomain_t
+        x_t left, x_t right) noexcept -> subdomain_t
     {
-        auto const right = left + stride;
-        auto const midpoint = (left + right) / 2;
+        assert(left < right && "subdomain endpoints must be strictly increasing");
 
+        auto const midpoint_x = midpoint(left, right);
+        auto const midpoint_sample
+            = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
         auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
-        auto const midpoint_sample = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint), scalar_t{1}});
-
-        auto const log2_width = std::countr_zero(static_cast<unsigned_t>(stride.value)) - x_t::frac_bits;
 
         return {
+            .left_x = left,
+            .midpoint_x = midpoint_x,
+            .right_x = right,
             .left = left_sample,
             .midpoint = midpoint_sample,
             .right = right_sample,
-            .log2_width = log2_width,
         };
     }
 };

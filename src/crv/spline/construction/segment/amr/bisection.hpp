@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/fixed/float_conversions.hpp>
 #include <numeric>
 
 namespace crv::spline {
@@ -20,11 +21,12 @@ template <typename t_subdomain_t> struct bisection_t
     subdomain_t right;
 };
 
-/// bisects subdomains
+/// bisects subdomains at an exact representable fixed-point midpoint
 template <typename t_bisection_t> struct bisector_t
 {
     using bisection_t = t_bisection_t;
     using subdomain_t = bisection_t::subdomain_t;
+    using x_t = subdomain_t::x_t;
 
     constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
         -> bisection_t
@@ -34,19 +36,30 @@ template <typename t_bisection_t> struct bisector_t
         using scalar_t = subdomain_t::scalar_t;
         using jet_t = subdomain_t::jet_t;
 
-        auto const child_log2_width = parent.log2_width - 1;
+        auto const split = parent.midpoint_x;
+        assert(parent.left_x < split && split < parent.right_x && "subdomain has no distinct representable midpoint");
+
+        auto const left_midpoint_x = x_t::literal(std::midpoint(parent.left_x.value, split.value));
+        auto const right_midpoint_x = x_t::literal(std::midpoint(split.value, parent.right_x.value));
+
         return {
             .left = subdomain_t{
+                .left_x = parent.left_x,
+                .midpoint_x = left_midpoint_x,
+                .right_x = split,
                 .left = parent.left,
-                .midpoint = sample_target_function(jet_t{midpoint(parent.left.x, parent.midpoint.x), scalar_t{1}}),
+                .midpoint = sample_target_function(
+                    jet_t{from_fixed<scalar_t>(left_midpoint_x), scalar_t{1}}),
                 .right = parent.midpoint,
-                .log2_width = child_log2_width,
             },
             .right = subdomain_t{
+                .left_x = split,
+                .midpoint_x = right_midpoint_x,
+                .right_x = parent.right_x,
                 .left = parent.midpoint,
-                .midpoint = sample_target_function(jet_t{midpoint(parent.midpoint.x, parent.right.x), scalar_t{1}}),
+                .midpoint = sample_target_function(
+                    jet_t{from_fixed<scalar_t>(right_midpoint_x), scalar_t{1}}),
                 .right = parent.right,
-                .log2_width = child_log2_width,
             },
         };
     }

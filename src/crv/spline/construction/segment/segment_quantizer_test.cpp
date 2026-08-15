@@ -94,6 +94,8 @@ auto const max_intermediate_shift = 0x7f;
 
 namespace isolation_tests {
 
+using x_t = fixed_t<int64_t, 10>;
+
 struct float_extractor_t
 {
     using scalar_t = scalar_t;
@@ -110,10 +112,11 @@ struct shift_planner_t
     using plan_t = spline::shift_planner_t<mantissa_t>::plan_t;
 
     constexpr auto operator()(int_t accumulator_bit_count, int_t accumulator_exponent, int_t next_exponent,
-        int_t t_to_x_shift) const noexcept -> plan_t
+        int_t coordinate_radix_shift, int_t coordinate_magnitude_bits) const noexcept -> plan_t
     {
         return {
-            .packed_runtime_shift = t_to_x_shift + accumulator_exponent + next_exponent + accumulator_bit_count,
+            .packed_runtime_shift = coordinate_radix_shift + coordinate_magnitude_bits + accumulator_exponent
+                + next_exponent + accumulator_bit_count,
             .destructive_preshift = 0,
             .next_accumulator_exponent = next_exponent,
         };
@@ -138,25 +141,26 @@ struct radix_aligner_t
 };
 
 constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
-    radix_aligner_t, max_intermediate_shift, 10, 20, 0>{};
+    radix_aligner_t, max_intermediate_shift, x_t, 20>{};
 
 // The fake planner echoes accumulator_bit_count into the shift, so each iteration's shift holds what bit count the
 // quantizer is tracking for the runtime accumulator. Initial accumulator is c3's mantissa (bit_count 4 for 10). Later
-// iterations track max(aligned_product_bits, next_coeff_bits) [+1 if both non-zero]; here aligned_product_bits is 0
-// every iteration because the fake's shift always exceeds runtime_acc_bits + t_to_x_shift.
+// iterations track max(aligned_product_bits, next_coeff_bits) (+1 if both non-zero). Here aligned_product_bits is 0
+// every iteration because the fake's shift exceeds the aligned-product bit count. Width raw=5 contributes 3 magnitude
+// bits independently from the fixed radix of 10.
 //
 // 1.0 -> accum(10, 1), bit_count = 4
-// 2.0 -> next(20, 2) -> plan(shift: 10+1+2+4=17, next_exp: 2) -> unpacked[0] = {10, 17}, accum = 20, bit_count = 5
-// 3.0 -> next(30, 3) -> plan(shift: 10+2+3+5=20, next_exp: 3) -> unpacked[1] = {20, 20}, accum = 30, bit_count = 5
-// 4.0 -> next(40, 4) -> plan(shift: 10+3+4+5=22, next_exp: 4) -> unpacked[2] = {30, 22}, accum = 40
+// 2.0 -> next(20, 2) -> plan(shift: 10+3+1+2+4=20) -> unpacked[0] = {10, 20}
+// 3.0 -> next(30, 3) -> plan(shift: 10+3+2+3+5=23) -> unpacked[1] = {20, 23}
+// 4.0 -> next(40, 4) -> plan(shift: 10+3+3+4+5=25) -> unpacked[2] = {30, 25}
 // align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
 constexpr auto const expected = unpacked_segment_t{
-    unpacked_field_t{.mantissa = 10, .shift = 17},
-    unpacked_field_t{.mantissa = 20, .shift = 20},
-    unpacked_field_t{.mantissa = 30, .shift = 22},
+    unpacked_field_t{.mantissa = 10, .shift = 20},
+    unpacked_field_t{.mantissa = 20, .shift = 23},
+    unpacked_field_t{.mantissa = 30, .shift = 25},
     unpacked_field_t{.mantissa = 60, .shift = 4},
 };
-static_assert(sut({1.0, 2.0, 3.0, 4.0}, 0) == expected);
+static_assert(sut({1.0, 2.0, 3.0, 4.0}, x_t::literal(5)) == expected);
 
 } // namespace isolation_tests
 
@@ -169,13 +173,13 @@ using cubic_t = std::array<scalar_t, 4>;
 constexpr auto aligner = exponent_aligner_t<-30, 30>{};
 constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t<mantissa_t>,
     mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift,
-    x_t::frac_bits, y_t::frac_bits, -8>{};
+    x_t, y_t::frac_bits>{};
 
 // y = 0.125x^3 + 0.25x^2 + 0.5x + 1.0
 //
 // Each coefficient here has the same mantissa, but in the packed format, the shifts cancel and the mantissas are
 // preserved.
-static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
+static_assert(sut({0.125, 0.25, 0.5, 1.0}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
@@ -196,7 +200,7 @@ static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
 //    relative_shift = next_exponent - accumulator_exponent = -53 - (-52) = -1
 //    destructive_preshift = max(0, 1) = 1
 //    0.5 mantissa is shifted right by 1 -> 2251799813685248
-//    packed_runtime_shift = t_to_x_shift (14) + max(0, -1) = 14
+//    packed_runtime_shift = coordinate radix (14) + max(0, -1) = 14
 //    accumulator_exponent remains -52
 // iteration 2 & 3:
 //    Follows the same pattern, destructively shifting the next mantissa by 2 and 3 respectively, yielding the halved
@@ -206,7 +210,7 @@ static_assert(sut({0.125, 0.25, 0.5, 1.0}, 0)
 //    target_exponent = -52 + 25 = -27
 //    -27 is within the exponent_aligner_t bounds [-30, 30], so left_shift is 0
 //    output shift = -(-27) = 27
-static_assert(sut({1.0, 0.5, 0.25, 0.125}, 0)
+static_assert(sut({1.0, 0.5, 0.25, 0.125}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
@@ -215,7 +219,7 @@ static_assert(sut({1.0, 0.5, 0.25, 0.125}, 0)
     });
 
 // flush first term
-static_assert(sut({0.0, 0.5, 0.25, 0.125}, 0)
+static_assert(sut({0.0, 0.5, 0.25, 0.125}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
@@ -224,7 +228,7 @@ static_assert(sut({0.0, 0.5, 0.25, 0.125}, 0)
     });
 
 // flush first two terms
-static_assert(sut({0.0, 0.0, 0.25, 0.125}, 0)
+static_assert(sut({0.0, 0.0, 0.25, 0.125}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 14},
@@ -233,7 +237,7 @@ static_assert(sut({0.0, 0.0, 0.25, 0.125}, 0)
     });
 
 // flush first three terms
-static_assert(sut({0.0, 0.0, 0.0, 0.125}, 0)
+static_assert(sut({0.0, 0.0, 0.0, 0.125}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 0, .shift = 14},
         unpacked_field_t{.mantissa = 0, .shift = 14},
@@ -247,9 +251,9 @@ static_assert(sut({0.0, 0.0, 0.0, 0.125}, 0)
 // be flushed to zero.
 //
 // unpacked[2].shift is 15 (not the ideal 14) because by the time c1 is summed in, the runtime accumulator carries the
-// full max_safe_bits from aligned_product[0] plus c1's 53 bits, so its bit count reaches 63 -- one bit wider than the
+// full max_safe_bits from aligned_product[0] plus c1's 53 bits, so its bit count reaches 63 - one bit wider than the
 // 62-bit-clean aligned_product. Compensating costs one bit of c0 precision via destructive_preshift = 1.
-static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, 0)
+static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, x_t{1})
     == unpacked_segment_t{
         unpacked_field_t{.mantissa = 4503599627370496, .shift = 5},
         unpacked_field_t{.mantissa = 0, .shift = 14},

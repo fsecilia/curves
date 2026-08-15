@@ -20,7 +20,7 @@ struct interval_sorter_t
     constexpr auto operator()(auto& intervals) const noexcept -> void
     {
         std::ranges::sort(
-            intervals, std::ranges::less{}, [](auto const& interval) noexcept { return interval.subdomain.left.x; });
+            intervals, std::ranges::less{}, [](auto const& interval) noexcept { return interval.subdomain.left_x; });
     }
 };
 
@@ -31,15 +31,12 @@ struct interval_unzipper_t
     constexpr auto operator()(
         auto const& intervals, int_t segment_count, segments_t& segments, keys_t& keys) const noexcept -> void
     {
-        using segment_t = segments_t::value_type;
-        using x_t = segment_t::x_t;
-
         segments[0] = intervals[0].segment;
         for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
         {
             auto const& interval = intervals[segment_index];
             segments[segment_index] = interval.segment;
-            keys[segment_index - 1] = to_fixed<x_t>(interval.subdomain.left.x);
+            keys[segment_index - 1] = interval.subdomain.left_x;
         }
     }
 };

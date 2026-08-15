@@ -30,12 +30,10 @@
 #include <crv/spline/construction/segment/segment_packer.hpp>
 #include <crv/spline/construction/segment/segment_quantizer.hpp>
 #include <crv/spline/construction/segment/shift_planner.hpp>
+#include <crv/spline/construction/segment/local_coordinate.hpp>
 #include <crv/spline/construction/spline/amr/assembler.hpp>
 #include <crv/spline/construction/spline/amr/refinement_pool_seeder.hpp>
 #include <crv/spline/construction/spline/amr/refiner.hpp>
-#include <crv/spline/construction/spline/amr/seed/critical_point_conditioner.hpp>
-#include <crv/spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp>
-#include <crv/spline/construction/spline/amr/seed/span_decomposer.hpp>
 #include <crv/spline/construction/spline/amr/seed/subdomain_factory.hpp>
 #include <crv/spline/construction/spline/amr/spline_generator.hpp>
 #include <crv/spline/construction/spline/amr/typestates.hpp>
@@ -91,7 +89,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using segment_unpacker_t
         = crv::spline::segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
     using segment_t = crv::spline::segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
-    using subdomain_t = crv::spline::subdomain_t<scalar_t>;
+    using subdomain_t = crv::spline::subdomain_t<scalar_t, x_t>;
     using interval_t = crv::spline::interval_t<subdomain_t, cubic_t, segment_t>;
 
     // auantization and packing
@@ -104,7 +102,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using shift_planner_t = crv::spline::shift_planner_t<mantissa_t>;
     using segment_quantizer_t
         = crv::spline::segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
-            radix_aligner_t, intermediate_layout_max_shift, x_t::frac_bits, y_t::frac_bits, log2_min_width>;
+            radix_aligner_t, intermediate_layout_max_shift, x_t, y_t::frac_bits>;
     using segment_packer_t
         = crv::spline::segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = crv::spline::segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
@@ -117,11 +115,12 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using hermite_converter_t = hermite_converter_t<scalar_t>;
     using approximant_t = crv::spline::approximant_t<scalar_t, segment_t>;
     using approximant_factory_t = crv::spline::approximant_factory_t<approximant_t>;
+    using local_coordinate_converter_t = crv::spline::local_coordinate_converter_t<scalar_t>;
     using interval_factory_t = crv::spline::interval_factory_t<interval_t, segment_factory_t, approximant_factory_t,
-        hermite_converter_t, residual_estimator_t>;
+        hermite_converter_t, local_coordinate_converter_t, residual_estimator_t>;
     using bisection_t = crv::spline::bisection_t<subdomain_t>;
     using bisector_t = crv::spline::bisector_t<bisection_t>;
-    using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, log2_min_width>;
+    using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, x_t, log2_min_width>;
     using subdivision_t = crv::spline::subdivision_t<interval_t>;
     using subdivider_t = crv::spline::subdivider_t<subdivision_t, bisector_t, interval_factory_t>;
 
@@ -138,18 +137,14 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
             crv::spline::interval_unzipper_t, crv::spline::key_padder_t, tangent_extender_t, domain_end>;
     using refiner_t = crv::spline::refiner_t<typename typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t,
         max_segment_count>;
-    using dyadic_stride_calculator_t = crv::spline::seed::dyadic_stride_calculator_t<x_t>;
     using subdomain_factory_t = crv::spline::seed::subdomain_factory_t<x_t, subdomain_t>;
-    using span_decomposer_t = crv::spline::seed::span_decomposer_t<dyadic_stride_calculator_t, subdomain_factory_t,
-        interval_factory_t, max_segment_count, log2_min_width>;
-    using refinement_pool_seeder_t
-        = crv::spline::refinement_pool_seeder_t<typename typestates_t::unseeded_t, span_decomposer_t, log2_domain_end>;
+    using refinement_pool_seeder_t = crv::spline::refinement_pool_seeder_t<typename typestates_t::unseeded_t,
+        subdomain_factory_t, interval_factory_t, max_segment_count, log2_domain_end>;
 
     // final target
     using spline_t = crv::spline::spline_t<segment_t, extended_tangent_t, segment_locator_t>;
-    using critical_point_conditioner_t = crv::spline::seed::critical_point_conditioner_t<x_t, log2_min_width>;
     using spline_generator_t = crv::spline::spline_generator_t<scalar_t, x_t, spline_t, typestates_t,
-        critical_point_conditioner_t, refinement_pool_t, refinement_pool_seeder_t, refiner_t, assembler_t>;
+        refinement_pool_t, refinement_pool_seeder_t, refiner_t, assembler_t>;
 };
 
 } // namespace crv::spline

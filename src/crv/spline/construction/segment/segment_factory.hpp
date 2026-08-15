@@ -7,10 +7,11 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <concepts>
 
 namespace crv::spline {
 
-/// creates final segment from its cubic and width
+/// creates final segment from its local-coordinate cubic and exact fixed-point width
 template <typename t_segment_t, typename segment_quantizer_t, typename segment_packer_t> struct segment_factory_t
 {
     using segment_t = t_segment_t;
@@ -28,9 +29,10 @@ template <typename t_segment_t, typename segment_quantizer_t, typename segment_p
     [[no_unique_address]] segment_quantizer_t quantize_segment;
     [[no_unique_address]] segment_packer_t pack_segment;
 
-    constexpr auto operator()(cubic_t const& cubic, int_t log2_width) const noexcept -> segment_t
+    constexpr auto operator()(cubic_t const& cubic, typename segment_t::x_t width) const noexcept -> segment_t
     {
-        auto const unpacked_segment = quantize_segment(cubic, log2_width);
+        static_assert(std::same_as<typename segment_quantizer_t::x_t, typename segment_t::x_t>);
+        auto const unpacked_segment = quantize_segment(cubic, width);
         auto const packed_segment = pack_segment(unpacked_segment);
         return segment_t{packed_segment};
     }

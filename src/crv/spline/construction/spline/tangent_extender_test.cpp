@@ -4,8 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "tangent_extender.hpp"
+#include <crv/math/polynomial.hpp>
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
 
 namespace crv::spline {
 namespace {
@@ -13,7 +13,6 @@ namespace {
 struct spline_tangent_extender_test_t : Test
 {
     using scalar_t = float_t;
-    using jet_t = jet_t<scalar_t>;
     using x_t = fixed_t<int64_t, 14>;
     using y_t = fixed_t<int64_t, 25>;
     using mantissa_t = int64_t;
@@ -27,9 +26,9 @@ struct spline_tangent_extender_test_t : Test
 
     struct extended_tangent_t
     {
-        using x_t = x_t;
-        using y_t = y_t;
-        using unpacked_field_t = unpacked_field_t;
+        using x_t = spline_tangent_extender_test_t::x_t;
+        using y_t = spline_tangent_extender_test_t::y_t;
+        using unpacked_field_t = spline_tangent_extender_test_t::unpacked_field_t;
 
         unpacked_field_t slope;
         y_t y0;
@@ -40,7 +39,7 @@ struct spline_tangent_extender_test_t : Test
 
     struct float_extractor_t
     {
-        using scalar_t = scalar_t;
+        using scalar_t = spline_tangent_extender_test_t::scalar_t;
 
         struct scaled_int_t
         {
@@ -56,60 +55,43 @@ struct spline_tangent_extender_test_t : Test
 
     struct segment_t
     {
-        using x_t = x_t;
-        constexpr auto operator()(x_t) const noexcept -> y_t { return y_t{37}; }
+        using x_t = spline_tangent_extender_test_t::x_t;
+        constexpr auto operator()(x_t) const noexcept -> y_t { return y_t{45}; }
+    };
+
+    struct subdomain_t
+    {
+        x_t width_ = x_t{2};
+        constexpr auto width() const noexcept -> x_t { return width_; }
     };
 
     struct interval_t
     {
-        using segment_t = segment_t;
+        using segment_t = spline_tangent_extender_test_t::segment_t;
 
-        struct subdomain_t
-        {
-            int_t log2_width = 47;
-        };
-        subdomain_t subdomain;
-
-        struct cubic_result_t
-        {
-            scalar_t y;
-            scalar_t df;
-
-            friend constexpr auto primal(cubic_result_t const& r) noexcept -> scalar_t { return r.y; }
-            friend constexpr auto tangent(cubic_result_t const& r) noexcept -> scalar_t { return r.df; }
-        };
-
-        constexpr auto cubic(jet_t jet) const noexcept -> cubic_result_t { return {.y = 37.0, .df = jet.df}; }
-
+        cubic_t<scalar_t> cubic{0.0, 0.0, 4.0, 37.0}; // T(u) = 4u + 37
         segment_t segment;
+        subdomain_t subdomain;
     };
 
     using sut_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
     sut_t sut{.y_limit = 100.0, .extract_float = {}};
-
     interval_t interval{};
 };
 
-TEST_F(spline_tangent_extender_test_t, result)
+TEST_F(spline_tangent_extender_test_t, uses_local_coordinate_transfer_derivative_without_extra_width_scaling)
 {
-    // dt_dx = 1.0 * 2^(49 - 47) = 4.0
-    // extracted_slope = { .mantissa = 4, .exponent = -5 }
-    // shift = 14 - 25 - (-5) = -6
-    //
-    // x_max_delta:
-    // dy_dx = 4.0
-    // y = 37.0
-    // y_limit = 100.0
-    // delta_x_real = (100.0 - 37.0) / 4.0 = 15.75
+    // At u = 2, T = 45 and dT/dx = dT/du = 4.
+    // extracted_slope = {.mantissa = 4, .exponent = -5}
+    // packed slope shift = 14 - 25 - (-5) = -6
+    // extension limit = (100 - 45) / 4 = 13.75
+    auto const expected = extended_tangent_t{
+        .slope = {.mantissa = 4, .shift = -6},
+        .y0 = y_t{45},
+        .x_max_delta = to_fixed<x_t>(13.75),
+    };
 
-    auto const expected_delta = to_fixed<x_t>(15.75f);
-
-    auto const expected
-        = extended_tangent_t{.slope = {.mantissa = 4, .shift = -6}, .y0 = y_t{37}, .x_max_delta = expected_delta};
-
-    auto const actual = sut(interval);
-
-    EXPECT_EQ(expected, actual);
+    EXPECT_EQ(expected, sut(interval));
 }
 
 } // namespace

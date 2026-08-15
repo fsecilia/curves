@@ -99,6 +99,7 @@ target_sources(lib PRIVATE
     spline/construction/segment/amr/subdivision_predicate.hpp
     spline/construction/segment/amr/subdivision.hpp
     spline/construction/segment/field_packer.hpp
+    spline/construction/segment/local_coordinate.hpp
     spline/construction/segment/segment_factory.hpp
     spline/construction/segment/segment_packer.hpp
     spline/construction/segment/segment_quantizer.hpp
@@ -106,9 +107,6 @@ target_sources(lib PRIVATE
     spline/construction/spline/amr/assembler.hpp
     spline/construction/spline/amr/refinement_pool_seeder.hpp
     spline/construction/spline/amr/refiner.hpp
-    spline/construction/spline/amr/seed/critical_point_conditioner.hpp
-    spline/construction/spline/amr/seed/dyadic_stride_calculator.hpp
-    spline/construction/spline/amr/seed/span_decomposer.hpp
     spline/construction/spline/amr/seed/subdomain_factory.hpp
     spline/construction/spline/amr/spline_generator.hpp
     spline/construction/spline/amr/typestates.hpp
@@ -370,6 +368,7 @@ if (enable_testing)
         spline/construction/segment/amr/subdivision_predicate_test.cpp
         spline/construction/segment/amr/subdivision_test.cpp
         spline/construction/segment/field_packer_test.cpp
+        spline/construction/segment/local_coordinate_test.cpp
         spline/construction/segment/segment_factory_test.cpp
         spline/construction/segment/segment_packer_test.cpp
         spline/construction/segment/segment_quantizer_test.cpp
@@ -377,9 +376,6 @@ if (enable_testing)
         spline/construction/spline/amr/assembler_test.cpp
         spline/construction/spline/amr/refinement_pool_seeder_test.cpp
         spline/construction/spline/amr/refiner_test.cpp
-        spline/construction/spline/amr/seed/critical_point_conditioner_test.cpp
-        spline/construction/spline/amr/seed/dyadic_stride_calculator_test.cpp
-        spline/construction/spline/amr/seed/span_decomposer_test.cpp
         spline/construction/spline/amr/seed/subdomain_factory_test.cpp
         spline/construction/spline/amr/spline_generator_test.cpp
         spline/construction/spline/amr/workspace_test.cpp

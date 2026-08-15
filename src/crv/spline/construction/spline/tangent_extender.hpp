@@ -8,15 +8,16 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
+#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/spline/construction/segment/amr/interval.hpp>
 #include <crv/spline/tangent_extension.hpp>
-#include <climits>
+#include <cmath>
 
 namespace crv::spline {
 
-/// generates linear extension of final tangent of a segment
+/// generates linear extension of final tangent of a local-coordinate transfer segment
 template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t> struct tangent_extender_t
 {
     using interval_t = t_interval_t;
@@ -32,17 +33,14 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
 
     constexpr auto operator()(interval_t const& interval) const noexcept -> extended_tangent_t
     {
-        auto const log2_x_max
-            = sizeof(typename x_t::value_t) * CHAR_BIT - x_t::frac_bits - is_signed_v<typename x_t::value_t>;
-        auto const log2_width = interval.subdomain.log2_width;
+        auto const segment_width = interval.subdomain.width();
+        auto const u = from_fixed<scalar_t>(segment_width);
 
-        // find jet at t=1
-        auto const t = scalar_t{1};
-        auto const dt_dx = std::ldexp(scalar_t{1}, int_cast<int>(log2_x_max - log2_width));
-        auto const y_jet = interval.cubic(jet_t{t, dt_dx});
-
-        // extract slope
+        // interval.cubic is already reparameterized from normalized t to local u. Evaluating its jet with du/dx = 1
+        // produces the transfer derivative directly in spline-global x coordinates.
+        auto const y_jet = interval.cubic(jet_t{u, scalar_t{1}});
         auto const dy_dx = tangent(y_jet);
+
         auto const extracted_slope = extract_float(dy_dx);
         auto const required_shift = x_t::frac_bits - extended_tangent_t::y_t::frac_bits - extracted_slope.exponent;
         auto const slope
@@ -57,15 +55,12 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
             auto const delta_x_real = (y_limit - y) / dy_dx;
             if (delta_x_real >= scalar_t{0})
             {
-                // floor and convert manually instead of rounding to avoid overflow
-                auto const scale = 1LL << x_t::frac_bits;
+                auto const scale = std::ldexp(scalar_t{1}, x_t::frac_bits);
                 auto const floored = std::floor(delta_x_real * scale);
-                x_max_delta = min(x_max_delta, x_t::literal(static_cast<x_t::value_t>(floored)));
+                x_max_delta = min(x_max_delta, x_t::literal(static_cast<typename x_t::value_t>(floored)));
             }
         }
 
-        // extract quantized y intercept
-        auto const segment_width = x_t{1} << log2_width;
         auto const y0 = interval.segment(segment_width);
 
         return extended_tangent_t{.slope = slope, .y0 = y0, .x_max_delta = x_max_delta};

@@ -13,19 +13,22 @@
 
 namespace crv::spline {
 
-/// seeds refinement pool with initial set of interval spans between critical points in the domain
+/// seeds one initial interval directly between each pair of supplied knots
 ///
-/// This type splits the mapped domain using pure bisection to subdivide at a set of critical points.
-template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_end> struct refinement_pool_seeder_t
+/// Supplied knot positions are exact fixed-point geometry. They are not aligned to min_width.
+template <typename typestate_t, typename subdomain_factory_t, typename interval_factory_t, int_t max_segment_count,
+    int_t log2_domain_end>
+struct refinement_pool_seeder_t
 {
-    using x_t = span_decomposer_t::x_t;
-    using scalar_t = span_decomposer_t::scalar_t;
-    using jet_t = span_decomposer_t::jet_t;
-    using function_sample_t = span_decomposer_t::function_sample_t;
+    using x_t = subdomain_factory_t::x_t;
+    using scalar_t = subdomain_factory_t::scalar_t;
+    using jet_t = subdomain_factory_t::jet_t;
+    using function_sample_t = subdomain_factory_t::function_sample_t;
 
     using critical_points_t = std::vector<x_t>;
 
-    [[no_unique_address]] span_decomposer_t decompose_span;
+    [[no_unique_address]] subdomain_factory_t create_subdomain;
+    [[no_unique_address]] interval_factory_t create_interval;
 
     static constexpr auto domain_end = x_t{1} << log2_domain_end;
 
@@ -36,27 +39,34 @@ template <typename typestate_t, typename span_decomposer_t, int_t log2_domain_en
             && "critical points must be unique and strictly monotonically increasing");
         assert((critical_points.empty() || (critical_points.front() > x_t{0} && critical_points.back() < domain_end))
             && "all critical points must be in (0, domain_end)");
+        assert(int_cast<int_t>(critical_points.size()) + 1 <= max_segment_count
+            && "critical point partitioning exceeded segment budget");
 
         auto& workspace = state.workspace;
         auto& refinement_pool = workspace.refinement_pool;
         assert(refinement_pool.empty());
 
-        // start at 0
-        auto left_critical_point = x_t{0};
-        auto left_function_sample = sample_target_function(jet_t{scalar_t{0.0}, scalar_t{1}});
+        auto left_x = x_t{0};
+        auto left_sample = sample_target_function(jet_t{from_fixed<scalar_t>(left_x), scalar_t{1}});
 
-        // proceed through pairs of critical points
-        for (auto const& right_critical_point : critical_points)
+        for (auto const right_x : critical_points)
         {
-            left_function_sample = decompose_span(sample_target_function, left_function_sample, left_critical_point,
-                right_critical_point, refinement_pool);
-            left_critical_point = right_critical_point;
+            left_sample = seed_interval(sample_target_function, left_sample, left_x, right_x, refinement_pool);
+            left_x = right_x;
         }
 
-        // finish with end of domain
-        decompose_span(sample_target_function, left_function_sample, left_critical_point, domain_end, refinement_pool);
+        seed_interval(sample_target_function, left_sample, left_x, domain_end, refinement_pool);
 
         return typename typestate_t::next_t{workspace};
+    }
+
+private:
+    constexpr auto seed_interval(auto const& sample_target_function, function_sample_t const& left_sample, x_t left_x,
+        x_t right_x, auto& refinement_pool) const -> function_sample_t
+    {
+        auto const subdomain = create_subdomain(sample_target_function, left_sample, left_x, right_x);
+        refinement_pool.emplace(create_interval(sample_target_function, subdomain));
+        return subdomain.right;
     }
 };
 

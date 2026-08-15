@@ -214,7 +214,7 @@ TEST_F(spline_refiner_test_t, asserts_on_non_empty_completed_intervals)
     EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "must be empty");
 }
 
-#endif
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::spline

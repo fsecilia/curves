@@ -4,111 +4,49 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "subdomain_factory.hpp"
+#include <crv/spline/construction/segment/amr/interval.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline::seed {
 namespace {
 
 using scalar_t = float_t;
+using x_t = fixed_t<int_t, 8>;
+using subdomain_t = spline::subdomain_t<scalar_t, x_t>;
+using jet_t = subdomain_t::jet_t;
+using function_sample_t = subdomain_t::function_sample_t;
+using sut_t = subdomain_factory_t<x_t, subdomain_t>;
 
-struct vector_t
+constexpr auto sample = [](jet_t input) noexcept -> function_sample_t { return {.x = input.f, .y = input}; };
+
+TEST(spline_seed_subdomain_factory_test, preserves_exact_non_dyadic_endpoints)
 {
-    scalar_t left;
-    scalar_t expected_midpoint;
-    scalar_t expected_right;
-    int_t expected_log2_width;
-};
+    auto const left = x_t::literal(100);
+    auto const right = x_t::literal(105); // odd raw width
+    auto const left_sample = sample(jet_t{from_fixed<scalar_t>(left), 1.0});
 
-struct spline_seed_subdomain_factory_test_t : TestWithParam<vector_t>
-{
-    using x_t = fixed_t<int_t, 8>;
-    using jet_t = jet_t<scalar_t>;
+    auto const actual = sut_t{}(sample, left_sample, left, right);
 
-    struct function_sample_t
-    {
-        jet_t input;
-
-        constexpr auto operator==(function_sample_t const&) const noexcept -> bool = default;
-    };
-
-    struct subdomain_t
-    {
-        using scalar_t = scalar_t;
-        using jet_t = jet_t;
-        using function_sample_t = function_sample_t;
-
-        function_sample_t left;
-        function_sample_t midpoint;
-        function_sample_t right;
-        int_t log2_width;
-
-        constexpr auto operator==(subdomain_t const&) const noexcept -> bool = default;
-    };
-
-    using sut_t = subdomain_factory_t<x_t, subdomain_t>;
-
-    static auto to_sample(scalar_t x) noexcept -> function_sample_t
-    {
-        return function_sample_t{.input = jet_t{x, 1.0}};
-    }
-
-    vector_t const& vector = GetParam();
-
-    sut_t sut{};
-};
-
-TEST_P(spline_seed_subdomain_factory_test_t, calculates_subdomain_and_stride)
-{
-    auto const left_sample = to_sample(vector.left);
-    auto const left = to_fixed<x_t>(vector.left);
-    auto const right = to_fixed<x_t>(vector.expected_right);
-    auto const stride = right - left;
-
-    auto const actual = sut([](jet_t input) noexcept { return function_sample_t{input}; }, left_sample, left, stride);
-
-    auto const expected = subdomain_t{
-        .left = left_sample,
-        .midpoint = to_sample(vector.expected_midpoint),
-        .right = to_sample(vector.expected_right),
-        .log2_width = vector.expected_log2_width,
-    };
-    EXPECT_EQ(expected, actual);
+    EXPECT_EQ(actual.left_x, left);
+    EXPECT_EQ(actual.midpoint_x, x_t::literal(102));
+    EXPECT_EQ(actual.right_x, right);
+    EXPECT_EQ(actual.left, left_sample);
+    EXPECT_EQ(actual.midpoint.x, from_fixed<scalar_t>(actual.midpoint_x));
+    EXPECT_EQ(actual.right.x, from_fixed<scalar_t>(right));
 }
 
-vector_t const vectors[] = {
-    // zero start, integer stride
-    {
-        .left = 0.0,
-        .expected_midpoint = 0.5,
-        .expected_right = 1.0,
-        .expected_log2_width = 0,
-    },
+TEST(spline_seed_subdomain_factory_test, permits_adjacent_representable_endpoints)
+{
+    auto const left = x_t::literal(100);
+    auto const right = x_t::literal(101);
+    auto const left_sample = sample(jet_t{from_fixed<scalar_t>(left), 1.0});
 
-    // fractional width (0.5 to 0.75)
-    {
-        .left = 0.5,
-        .expected_midpoint = 0.625,
-        .expected_right = 0.75,
-        .expected_log2_width = -2,
-    },
+    auto const actual = sut_t{}(sample, left_sample, left, right);
 
-    // bisection floor; stride of 2 (0.0078125)
-    {
-        .left = 0.0,
-        .expected_midpoint = 0.00390625,
-        .expected_right = 0.0078125,
-        .expected_log2_width = -7,
-    },
-
-    // large power of two
-    {
-        .left = 2.0,
-        .expected_midpoint = 6.0,
-        .expected_right = 10.0,
-        .expected_log2_width = 3,
-    },
-};
-INSTANTIATE_TEST_SUITE_P(edge_cases, spline_seed_subdomain_factory_test_t, ValuesIn(vectors));
+    EXPECT_EQ(actual.left_x, left);
+    EXPECT_EQ(actual.midpoint_x, left);
+    EXPECT_EQ(actual.right_x, right);
+}
 
 } // namespace
 } // namespace crv::spline::seed

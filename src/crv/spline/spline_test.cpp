@@ -11,8 +11,8 @@
 namespace crv::spline {
 namespace {
 
-using x_t = int8_t; // narrower than out
-using y_t = int16_t; // wider than in
+using x_t = int8_t; // narrower than y_t
+using y_t = int16_t; // wider than x_t
 constexpr auto segment_count = 3;
 constexpr auto x_max = x_t{5};
 
@@ -89,9 +89,9 @@ static_assert(sut(6) == -41); // -40 - (5 - 6)
 // extended base_val is -40, result should be -40 - 122 = -162.
 static_assert(sut(max<x_t>()) == -162);
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // prefetch
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 // TODO: figure out how to test prefetching the tangent extension segment
 
@@ -223,9 +223,9 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
     EXPECT_EQ(expected_cache_line_0, static_cast<std::byte const*>(prefetched_cache_lines[0]));
 }
 
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 // death tests
-// ====================================================================================================================
+// --------------------------------------------------------------------------------------------------------------------
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -246,9 +246,9 @@ TEST_F(spline_death_test_t, call_operator_catches_negative_x)
         (sut_t{sut_t::payload_t{segment_locator_t{}, segments, extended_tangent}}(x_t{-1})), "input out of bounds");
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+//
 // call operator interactions with segment_locator_t
-// --------------------------------------------------------------------------------------------------------------------
+//
 
 struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
 {
@@ -299,7 +299,7 @@ TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
     EXPECT_DEATH(sut(x), "origin out of range");
 }
 
-#endif
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::spline
