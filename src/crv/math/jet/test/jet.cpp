@@ -1278,7 +1278,6 @@ TEST_P(jet_test_sqrt_t, result)
 // clang-format off
 // d(sqrt(x)) = dx/(2*sqrt(x))
 const math_func_test_vector_x_t sqrt_vectors[] = {
-    {"0", {0.0, 1.3}, {0.0, inf}},
     {"0.25", {0.25, 1.3}, {0.5, 1.3}},
     {"1.0", {1.0, 1.3}, {1.0, 1.3/2.0}},
     {"4.0", {4.0, 1.3}, {2.0, 1.3/4.0}},
@@ -1289,6 +1288,14 @@ const math_func_test_vector_x_t sqrt_vectors[] = {
 // clang-format on
 INSTANTIATE_TEST_SUITE_P(
     sqrt, jet_test_sqrt_t, ValuesIn(sqrt_vectors), test_name_generator_t<math_func_test_vector_x_t>{});
+
+TEST_F(jet_test_t, sqrt_0)
+{
+    auto const actual = sqrt(sut_t{0.0, 1.3});
+
+    EXPECT_NEAR(0.0, actual.f, eps);
+    EXPECT_TRUE(!isfinite(actual.df));
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 // tan
