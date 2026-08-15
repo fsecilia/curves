@@ -7,7 +7,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/spline/construction/segment/amr/function_sampler.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {

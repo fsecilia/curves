@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief samples target function, retaining location and result
+/// \brief samples a construction target's transfer view, retaining location and result
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -40,18 +40,20 @@ template <std::floating_point t_scalar_t> struct function_sample_t<jet_t<t_scala
     auto operator==(function_sample_t const& src) const noexcept -> bool = default;
 };
 
-// samples target function, returning the sample location and resulting value
+// samples target.transfer(), returning the sample location and resulting value
 //
-// The call operator is overloaded for scalar and jet. The scalar overload returns a scalar sample. The jet overload
-// returns a jet sample.
-template <typename target_function_t> struct function_sampler_t
+// The sampler is deliberately transfer-specific. Gain and sensitivity targets expose both mathematical views, while
+// the current Hermite/packed-spline path continues to approximate transfer only.
+template <typename t_target_t> struct transfer_sampler_t
 {
-    target_function_t target_function;
+    using target_t = t_target_t;
+
+    target_t target;
 
     template <std::floating_point scalar_t>
     constexpr auto operator()(scalar_t x) const noexcept -> function_sample_t<scalar_t>
     {
-        auto const result = function_sample_t<scalar_t>{.x = x, .y = target_function(x)};
+        auto const result = function_sample_t<scalar_t>{.x = x, .y = target.transfer(x)};
 
         using std::isfinite;
         assert(isfinite(x));
@@ -63,7 +65,7 @@ template <typename target_function_t> struct function_sampler_t
     template <std::floating_point scalar_t>
     constexpr auto operator()(jet_t<scalar_t> x) const noexcept -> function_sample_t<jet_t<scalar_t>>
     {
-        auto const result = function_sample_t<jet_t<scalar_t>>{.x = x.f, .y = target_function(x)};
+        auto const result = function_sample_t<jet_t<scalar_t>>{.x = x.f, .y = target.transfer(x)};
 
         using std::isfinite;
         assert(isfinite(result.x));

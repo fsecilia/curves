@@ -43,6 +43,12 @@ public:
         return rule_.integrate(left, right, integrand_);
     }
 
+    /// evaluates the interval mean of the integrand over [left, right]
+    constexpr auto average(scalar_t left, scalar_t right) const noexcept -> scalar_t
+    {
+        return rule_.average(left, right, integrand_);
+    }
+
     /// evaluates integrand at a point
     constexpr auto evaluate_integrand(scalar_t position) const noexcept -> scalar_t { return integrand_(position); }
 

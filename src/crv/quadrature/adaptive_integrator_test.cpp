@@ -130,8 +130,12 @@ TEST_F(quadrature_adaptive_integrator_test, orchestrates_dependencies)
     EXPECT_CALL(mock_stack_seeder, seed(_, integral, domain_end, tolerance, critical_points));
     EXPECT_CALL(mock_subdivider, run(_, integral, bisector, Ref(mock_antiderivative_builder), depth_limit));
 
-    auto const expected_result
-        = result_t{.antiderivative = antiderivative, .achieved_error = achieved_error, .max_error = max_error};
+    auto const expected_result = result_t{
+        .antiderivative = antiderivative,
+        .achieved_error = achieved_error,
+        .max_error = max_error,
+        .refinement_limited = false,
+    };
     EXPECT_CALL(mock_antiderivative_builder, finalize(integral)).WillOnce(Return(expected_result));
 
     [[maybe_unused]] result_t actual_result

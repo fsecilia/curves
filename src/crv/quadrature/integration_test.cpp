@@ -107,6 +107,7 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 
     EXPECT_LT(result.achieved_error, tolerance);
     EXPECT_LT(result.max_error, tolerance);
+    EXPECT_FALSE(result.refinement_limited);
     EXPECT_LE(result.antiderivative.segment_count(), max_segment_count);
 
     auto const& antiderivative = result.antiderivative;
@@ -213,6 +214,21 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
 
     // guided path resolves each linear half exactly; blind path has to find the kink via refinement
     EXPECT_LT(guided_result.antiderivative.segment_count(), blind_result.antiderivative.segment_count());
+}
+
+TEST(quadrature_integration_adaptive_test_t, structural_refinement_limit_returns_best_effort_with_diagnostic)
+{
+    auto const difficult = integrand_t{"x^40", [](scalar_t x) { return std::pow(x, 40.0); }};
+    constexpr auto tolerance = scalar_t{1e-18};
+    constexpr auto restrictive_depth_limit = int_t{0};
+
+    auto integrator = adaptive_integrator_t<scalar_t>{tolerance, restrictive_depth_limit};
+    auto const result = integrator(integral_t{difficult, rule_t{}}, scalar_t{1.0}, empty_critical_points);
+
+    EXPECT_TRUE(result.refinement_limited);
+    EXPECT_GT(result.achieved_error, tolerance);
+    EXPECT_EQ(result.antiderivative.segment_count(), 1);
+    EXPECT_NEAR(result.antiderivative(1.0), 1.0 / 41.0, 1e-8);
 }
 
 // ====================================================================================================================

@@ -5,6 +5,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/composed_curve.hpp>
+#include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/construction/spline/amr/spline_generator.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline.hpp>
@@ -39,10 +40,11 @@ struct curves_test_t
         curve_config.smooth.value(0.25);
         curve_config.sync_speed.value(0.75);
         auto const curve = model::curves::create_composed_curve<reference_float_t>(curve_config);
-        auto const ref_impl = [&curve](auto x) { return x * curve(x); };
+        auto const target = spline::gain_curve_target_t{curve};
+        auto const ref_impl = [&target](auto x) { return target.transfer(x); };
 
         auto approx_impl = impl_t{};
-        spline_factory_t{}(approx_impl, ref_impl, reference_float_t{1e-10});
+        spline_factory_t{}(approx_impl, target, reference_float_t{1e-10});
 
         auto const runner
             = accuracy_test_runner_t<decltype(approx_impl), decltype(ref_impl), error_metrics_t>{approx_impl, ref_impl};

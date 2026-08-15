@@ -89,15 +89,16 @@ target_sources(lib PRIVATE
     serialization/toml/toml.hpp
     serialization/toml/writer_adapter.hpp
     serialization/writer.hpp
+    spline/construction/curve_target.hpp
     spline/construction/segment/amr/approximant.hpp
     spline/construction/segment/amr/bisection.hpp
     spline/construction/segment/amr/error_metric.hpp
-    spline/construction/segment/amr/function_sampler.hpp
     spline/construction/segment/amr/interval.hpp
     spline/construction/segment/amr/node_generator.hpp
     spline/construction/segment/amr/residual_estimator.hpp
     spline/construction/segment/amr/subdivision_predicate.hpp
     spline/construction/segment/amr/subdivision.hpp
+    spline/construction/segment/amr/transfer_sampler.hpp
     spline/construction/segment/field_packer.hpp
     spline/construction/segment/local_coordinate.hpp
     spline/construction/segment/segment_factory.hpp
@@ -358,15 +359,16 @@ if (enable_testing)
         serialization/toml/reader_adapter_test.cpp
         serialization/toml/writer_adapter_test.cpp
         serialization/writer_test.cpp
+        spline/construction/curve_target_test.cpp
         spline/construction/segment/amr/approximant_test.cpp
         spline/construction/segment/amr/bisection_test.cpp
         spline/construction/segment/amr/error_metric_test.cpp
-        spline/construction/segment/amr/function_sampler_test.cpp
         spline/construction/segment/amr/interval_test.cpp
         spline/construction/segment/amr/node_generator_test.cpp
         spline/construction/segment/amr/residual_estimator_test.cpp
         spline/construction/segment/amr/subdivision_predicate_test.cpp
         spline/construction/segment/amr/subdivision_test.cpp
+        spline/construction/segment/amr/transfer_sampler_test.cpp
         spline/construction/segment/field_packer_test.cpp
         spline/construction/segment/local_coordinate_test.cpp
         spline/construction/segment/segment_factory_test.cpp

@@ -28,7 +28,7 @@ template <typename t_bisection_t> struct bisector_t
     using subdomain_t = bisection_t::subdomain_t;
     using x_t = subdomain_t::x_t;
 
-    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& parent) const noexcept
+    constexpr auto operator()(auto const& sample_transfer, subdomain_t const& parent) const noexcept
         -> bisection_t
     {
         using std::midpoint;
@@ -48,7 +48,7 @@ template <typename t_bisection_t> struct bisector_t
                 .midpoint_x = left_midpoint_x,
                 .right_x = split,
                 .left = parent.left,
-                .midpoint = sample_target_function(
+                .midpoint = sample_transfer(
                     jet_t{from_fixed<scalar_t>(left_midpoint_x), scalar_t{1}}),
                 .right = parent.midpoint,
             },
@@ -57,7 +57,7 @@ template <typename t_bisection_t> struct bisector_t
                 .midpoint_x = right_midpoint_x,
                 .right_x = parent.right_x,
                 .left = parent.midpoint,
-                .midpoint = sample_target_function(
+                .midpoint = sample_transfer(
                     jet_t{from_fixed<scalar_t>(right_midpoint_x), scalar_t{1}}),
                 .right = parent.right,
             },

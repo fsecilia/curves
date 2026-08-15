@@ -6,7 +6,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/spline/construction/segment/amr/function_sampler.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
 #include <algorithm>
 #include <concepts>
 #include <utility>
@@ -33,8 +33,8 @@ public:
           assemble_{std::move(assemble)}, workspace_{std::move(workspace)}
     {}
 
-    template <typename target_function_t>
-    constexpr auto operator()(auto& spline, target_function_t&& target_function, critical_points_t critical_points)
+    template <typename target_t>
+    constexpr auto operator()(auto& spline, target_t&& target, critical_points_t critical_points)
         -> void
     {
         assert(workspace_.empty());
@@ -45,11 +45,11 @@ public:
         critical_points.erase(duplicates.begin(), duplicates.end());
 
         auto unseeded_state = typename typestates_t::initial_t{workspace_};
-        auto sample_target_function = function_sampler_t<std::remove_cvref_t<target_function_t>>{
-            std::forward<target_function_t>(target_function)};
+        auto sample_transfer
+            = transfer_sampler_t<std::remove_cvref_t<target_t>>{std::forward<target_t>(target)};
         auto unrefined_state
-            = seed_refinement_pool_(std::move(unseeded_state), sample_target_function, critical_points);
-        auto unassembled_state = refine_(std::move(unrefined_state), sample_target_function);
+            = seed_refinement_pool_(std::move(unseeded_state), sample_transfer, critical_points);
+        auto unassembled_state = refine_(std::move(unrefined_state), sample_transfer);
         assemble_(std::move(unassembled_state), spline);
 
         assert(workspace_.empty());

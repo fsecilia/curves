@@ -12,8 +12,11 @@ namespace {
 
 struct spline_generator_test_t : Test
 {
-    static constexpr auto target_function = [](float_t x) { return x; };
-    using target_function_t = std::remove_cvref_t<decltype(target_function)>;
+    struct target_t
+    {
+        constexpr auto transfer(float_t x) const noexcept -> float_t { return x; }
+    };
+    static constexpr auto target = target_t{};
     using scalar_t = float_t;
 
     struct x_t
@@ -64,7 +67,7 @@ struct spline_generator_test_t : Test
     {
         virtual ~mock_refinement_seeder_t() = default;
         MOCK_METHOD(
-            unrefined_state_t, call, (initial_state_t, function_sampler_t<target_function_t> const&, critical_points_t));
+            unrefined_state_t, call, (initial_state_t, transfer_sampler_t<target_t> const&, critical_points_t));
     };
     StrictMock<mock_refinement_seeder_t> mock_seeder;
 
@@ -83,7 +86,7 @@ struct spline_generator_test_t : Test
     struct mock_refiner_t
     {
         virtual ~mock_refiner_t() = default;
-        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, function_sampler_t<target_function_t> const&));
+        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, transfer_sampler_t<target_t> const&));
     };
     StrictMock<mock_refiner_t> mock_refiner;
 
@@ -136,7 +139,7 @@ TEST_F(spline_generator_test_t, forwards_states_and_sampler)
     });
     EXPECT_CALL(mock_assembler, call(unassembled_state, _));
 
-    generator(spline, target_function, {});
+    generator(spline, target, {});
 }
 
 TEST_F(spline_generator_test_t, preserves_exact_critical_points_while_sorting_and_deduplicating)
@@ -148,7 +151,7 @@ TEST_F(spline_generator_test_t, preserves_exact_critical_points_while_sorting_an
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(unassembled_state));
     EXPECT_CALL(mock_assembler, call(_, _));
 
-    generator(spline, target_function, critical_points);
+    generator(spline, target, critical_points);
 }
 
 TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state)
@@ -160,7 +163,7 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state)
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(unassembled_state));
     EXPECT_CALL(mock_assembler, call(_, _));
 
-    generator(spline, target_function, {});
+    generator(spline, target, {});
 }
 
 TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
@@ -169,14 +172,14 @@ TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(unassembled_state));
     EXPECT_CALL(mock_assembler, call(_, Ref(spline)));
 
-    generator(spline, target_function, {});
+    generator(spline, target, {});
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 TEST_F(spline_generator_test_t, asserts_when_initial_workspace_dirty)
 {
     workspace_empty = false;
-    EXPECT_DEATH(generator(spline, target_function, {}), "workspace_.empty");
+    EXPECT_DEATH(generator(spline, target, {}), "workspace_.empty");
 }
 #endif
 

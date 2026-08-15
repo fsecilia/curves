@@ -40,7 +40,7 @@ struct residual_estimator_t
     error_metric_t measure_error;
     weight_function_t apply_weight;
 
-    constexpr auto operator()(auto const& sample_target_function, auto const& approximant, scalar_t left,
+    constexpr auto operator()(auto const& sample_transfer, auto const& approximant, scalar_t left,
         scalar_t midpoint, scalar_t right) const noexcept -> residual_t
     {
         auto const interval_width = right - left;
@@ -56,7 +56,7 @@ struct residual_estimator_t
 
             // measure error between target function and approximant
             auto const approximation = approximant(domain_node);
-            auto const target = sample_target_function(domain_node).y;
+            auto const target = sample_transfer(domain_node).y;
             auto const metric_error = measure_error(target, approximation);
 
             assert(metric_error >= scalar_t{0} && "metrics must assign nonnegative values");

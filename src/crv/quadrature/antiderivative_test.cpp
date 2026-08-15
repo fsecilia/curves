@@ -5,6 +5,7 @@
 
 #include "antiderivative.hpp"
 #include <crv/test/test.hpp>
+#include <cmath>
 #include <gmock/gmock.h>
 
 namespace crv::quadrature::generic {
@@ -22,6 +23,7 @@ struct quadrature_antiderivative_test_t : Test
     struct mock_integral_t
     {
         MOCK_METHOD(scalar_t, integrate, (scalar_t left, scalar_t right), (const, noexcept));
+        MOCK_METHOD(scalar_t, average, (scalar_t left, scalar_t right), (const, noexcept));
         MOCK_METHOD(scalar_t, evaluate_integrand, (scalar_t x), (const, noexcept));
         virtual ~mock_integral_t() = default;
     };
@@ -37,6 +39,8 @@ struct quadrature_antiderivative_test_t : Test
         {
             return mock->integrate(left, right);
         }
+
+        auto average(scalar_t left, scalar_t right) const noexcept -> scalar_t { return mock->average(left, right); }
 
         auto evaluate_integrand(scalar_t x) const noexcept -> scalar_t { return mock->evaluate_integrand(x); }
     };
@@ -84,6 +88,54 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
 TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
 {
     EXPECT_EQ(3, sut.segment_count());
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t, derivative_evaluates_retained_integrand)
+{
+    auto const x = 1.25;
+    EXPECT_CALL(mock_integral, evaluate_integrand(x)).WillOnce(Return(expected_derivative));
+    EXPECT_EQ(expected_derivative, sut.derivative(x));
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t, mean_integrand_at_origin_is_integrand)
+{
+    EXPECT_CALL(mock_integral, evaluate_integrand(0.0)).WillOnce(Return(expected_derivative));
+    EXPECT_EQ(expected_derivative, sut.mean_integrand(0.0));
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t, mean_integrand_in_first_interval_is_direct_residual_mean)
+{
+    auto const x = 0.5;
+    auto const residual_mean = 1.75;
+    EXPECT_CALL(mock_integral, average(0.0, x)).WillOnce(Return(residual_mean));
+    EXPECT_EQ(residual_mean, sut.mean_integrand(x));
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t, mean_integrand_on_cache_boundary_uses_cached_prefix)
+{
+    EXPECT_DOUBLE_EQ(2.5, sut.mean_integrand(1.0));
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t,
+    mean_integrand_immediately_after_boundary_blends_prefix_and_residual)
+{
+    auto const x = std::nextafter(1.0, 2.0);
+    auto const residual_mean = 7.0;
+    EXPECT_CALL(mock_integral, average(1.0, x)).WillOnce(Return(residual_mean));
+
+    auto const expected = residual_mean + (1.0 / x) * (2.5 - residual_mean);
+    EXPECT_DOUBLE_EQ(expected, sut.mean_integrand(x));
+}
+
+TEST_F(quadrature_antiderivative_test_small_cache_t,
+    mean_integrand_in_later_interval_blends_cached_prefix_and_local_mean)
+{
+    auto const x = 1.5;
+    auto const residual_mean = 4.0;
+    EXPECT_CALL(mock_integral, average(1.0, x)).WillOnce(Return(residual_mean));
+
+    auto const expected = residual_mean + (1.0 / x) * (2.5 - residual_mean);
+    EXPECT_DOUBLE_EQ(expected, sut.mean_integrand(x));
 }
 
 // test left edge of the domain with scalar
@@ -300,6 +352,7 @@ TEST_F(quadrature_antiderivative_builder_t, append_none)
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 0.0);
     EXPECT_DOUBLE_EQ(actual.max_error, 0.0);
+    EXPECT_FALSE(actual.refinement_limited);
 }
 
 TEST_F(quadrature_antiderivative_builder_t, append_one)
@@ -318,6 +371,7 @@ TEST_F(quadrature_antiderivative_builder_t, append_one)
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11);
     EXPECT_DOUBLE_EQ(actual.max_error, 7.11);
+    EXPECT_FALSE(actual.refinement_limited);
 }
 
 TEST_F(quadrature_antiderivative_builder_t, append_many)
@@ -338,6 +392,17 @@ TEST_F(quadrature_antiderivative_builder_t, append_many)
 
     EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11 + 53.59 + 41.43);
     EXPECT_DOUBLE_EQ(actual.max_error, 53.59);
+    EXPECT_FALSE(actual.refinement_limited);
+}
+
+TEST_F(quadrature_antiderivative_builder_t, retains_refinement_limit_diagnostic)
+{
+    sut.append(1.0, 2.0, 3.0, true);
+    sut.append(2.0, 4.0, 5.0, false);
+
+    auto const actual = finalize();
+
+    EXPECT_TRUE(actual.refinement_limited);
 }
 
 } // namespace

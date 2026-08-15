@@ -10,8 +10,8 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/polynomial.hpp>
-#include <crv/spline/construction/segment/amr/function_sampler.hpp>
 #include <crv/spline/construction/segment/amr/residual_estimator.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
 #include <crv/spline/construction/segment/local_coordinate.hpp>
 
 namespace crv::spline {
@@ -91,8 +91,7 @@ struct interval_factory_t
     [[no_unique_address]] local_coordinate_converter_t convert_local_coordinate;
     residual_estimator_t estimate_residual;
 
-    constexpr auto operator()(auto const& sample_target_function, subdomain_t const& subdomain) const noexcept
-        -> interval_t
+    constexpr auto operator()(auto const& sample_transfer, subdomain_t const& subdomain) const noexcept -> interval_t
     {
         auto const width_fixed = subdomain.width();
         assert(width_fixed > x_t{0});
@@ -114,8 +113,8 @@ struct interval_factory_t
             .cubic = cubic,
             .segment = segment,
             .subdomain = subdomain,
-            .residual = estimate_residual(
-                sample_target_function, approximant_factory(segment, subdomain.left_x), left, midpoint, right),
+            .residual
+            = estimate_residual(sample_transfer, approximant_factory(segment, subdomain.left_x), left, midpoint, right),
         };
     }
 };

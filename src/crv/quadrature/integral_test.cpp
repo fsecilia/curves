@@ -41,6 +41,11 @@ struct rule_t
     {
         return integrand(left) + integrand(right);
     }
+
+    constexpr auto average(auto left, auto right, auto const& integrand) const noexcept -> scalar_t
+    {
+        return (integrand(left) + integrand(right)) / 2.0;
+    }
 };
 constexpr auto rule = rule_t{};
 
@@ -48,6 +53,7 @@ constexpr auto compile_time_sut = integral_t{integrand, rule};
 
 static_assert(compile_time_sut.estimate(3.0, 5.0) == rule_t::estimate_t{16.0, 3.5});
 static_assert(compile_time_sut.integrate(3.0, 5.0) == 16.0);
+static_assert(compile_time_sut.average(3.0, 5.0) == 8.0);
 static_assert(compile_time_sut.evaluate_integrand(3.0) == 6.0);
 
 } // namespace compile_time_tests
@@ -88,6 +94,8 @@ struct quadrature_integral_test_t : Test
             (const, noexcept));
         MOCK_METHOD(
             scalar_t, integrate, (scalar_t left, scalar_t right, mock_integrand_t const& integrand), (const, noexcept));
+        MOCK_METHOD(
+            scalar_t, average, (scalar_t left, scalar_t right, mock_integrand_t const& integrand), (const, noexcept));
 
         virtual ~mock_rule_t() = default;
     };
@@ -108,6 +116,11 @@ struct quadrature_integral_test_t : Test
         auto integrate(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
         {
             return mock->integrate(left, right, *integrand.mock);
+        }
+
+        auto average(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
+        {
+            return mock->average(left, right, *integrand.mock);
         }
     };
 
@@ -135,6 +148,18 @@ TEST_F(quadrature_integral_test_t, integrate_delegates_to_rule)
     EXPECT_CALL(mock_rule, integrate(left, right, Ref(mock_integrand))).WillOnce(Return(expected));
 
     auto const actual = sut.integrate(left, right);
+
+    EXPECT_EQ(expected, actual);
+}
+
+TEST_F(quadrature_integral_test_t, average_delegates_to_rule)
+{
+    auto const left = 3.0;
+    auto const right = 5.0;
+    auto const expected = 7.0;
+    EXPECT_CALL(mock_rule, average(left, right, Ref(mock_integrand))).WillOnce(Return(expected));
+
+    auto const actual = sut.average(left, right);
 
     EXPECT_EQ(expected, actual);
 }

@@ -59,13 +59,17 @@ TEST_F(spline_factory_test_t, forwards_arguments_to_generator)
 {
     auto const target_tolerance = 0.05;
     auto const target_points = std::vector<float_t>{1.0, 2.0};
-    auto const callable = [](float_t x) { return x; };
+    struct target_t
+    {
+        constexpr auto transfer(float_t x) const noexcept -> float_t { return x; }
+    };
+    auto const target = target_t{};
     auto spline = int_t{0};
 
     EXPECT_CALL(mock_factory, call(target_tolerance)).WillOnce(::testing::Return(generator_t{&mock_generator}));
     EXPECT_CALL(mock_generator, call(target_points));
 
-    sut(spline, callable, target_tolerance, target_points);
+    sut(spline, target, target_tolerance, target_points);
 }
 
 } // namespace

@@ -16,6 +16,15 @@
 namespace crv::spline {
 namespace {
 
+struct logarithmic_transfer_target_t
+{
+    template <typename value_t> constexpr auto transfer(value_t x) const noexcept -> value_t
+    {
+        using std::log1p;
+        return 2.1 * log1p(x);
+    }
+};
+
 TEST(spline_factory_integration_test, evaluates_spline_within_tolerance)
 {
 #if 0
@@ -30,10 +39,7 @@ TEST(spline_factory_integration_test, evaluates_spline_within_tolerance)
     constexpr auto global_tolerance = scalar_t{1e-10};
     constexpr auto domain_end = policy_t::domain_end;
 
-    auto const target_function = [](auto x) static noexcept -> decltype(x) {
-        using std::log1p;
-        return 2.1 * log1p(x);
-    };
+    auto constexpr target = logarithmic_transfer_target_t{};
 
     using spline_factory_t = spline_factory_t<policy_t, spline_generator_factory_t<policy_t>>;
     using spline_t = spline_factory_t::spline_t;
@@ -41,8 +47,14 @@ TEST(spline_factory_integration_test, evaluates_spline_within_tolerance)
 
     auto const arbitrary_knot = to_fixed<x_t>(7.123456789);
     auto const adjacent_knot = x_t::literal(arbitrary_knot.value + 1);
+
+#if 0
     auto critical_points = std::vector{x_t{1 << 3}, x_t{1 << 5}, arbitrary_knot, adjacent_knot, to_fixed<x_t>(248.973)};
     spline_factory_t{}(spline, target_function, global_tolerance, critical_points);
+#endif
+
+    auto critical_points = std::vector{x_t{1 << 3}, x_t{1 << 5}, arbitrary_knot, adjacent_knot, to_fixed<x_t>(248.973)};
+    spline_factory_t{}(spline, target, global_tolerance, critical_points);
 
     // test knots closer than min_segment_width
     //
@@ -59,7 +71,7 @@ TEST(spline_factory_integration_test, evaluates_spline_within_tolerance)
     {
         auto const x_real = from_fixed<scalar_t>(x_fixed);
 
-        auto const expected_y = target_function(x_real);
+        auto const expected_y = target.transfer(x_real);
         auto const actual_y = from_fixed<scalar_t>(spline(x_fixed));
 
         auto const difference = actual_y - expected_y;

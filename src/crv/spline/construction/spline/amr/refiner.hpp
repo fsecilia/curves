@@ -24,7 +24,7 @@ struct refiner_t
     subdivision_predicate_t requires_subdivision;
     subdivider_t subdivide;
 
-    constexpr auto operator()(typestate_t&& state, auto const& sample_target_function) const ->
+    constexpr auto operator()(typestate_t&& state, auto const& sample_transfer) const ->
         typename typestate_t::next_t
     {
         auto& workspace = state.workspace;
@@ -34,7 +34,7 @@ struct refiner_t
         assert(refinement_pool.size() <= max_segment_count && "refinement_pool overfull");
         assert(completed_intervals.empty() && "completed_intervals must be empty");
 
-        subdivide_all(refinement_pool, completed_intervals, sample_target_function);
+        subdivide_all(refinement_pool, completed_intervals, sample_transfer);
         drain_remaining(refinement_pool, completed_intervals);
 
         return typename typestate_t::next_t{workspace};
@@ -42,7 +42,7 @@ struct refiner_t
 
 private:
     constexpr auto subdivide_all(
-        auto& refinement_pool, auto& completed_intervals, auto const& sample_target_function) const -> void
+        auto& refinement_pool, auto& completed_intervals, auto const& sample_transfer) const -> void
     {
         // subdivide until empty or full
         while (!refinement_pool.empty() && refinement_pool.size() + completed_intervals.size() < max_segment_count)
@@ -51,7 +51,7 @@ private:
             auto const& interval = refinement_pool.top();
             if (requires_subdivision(interval))
             {
-                auto const children = subdivide(sample_target_function, interval);
+                auto const children = subdivide(sample_transfer, interval);
                 refinement_pool.pop();
                 refinement_pool.push(children.left);
                 refinement_pool.push(children.right);

@@ -8,6 +8,7 @@
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <numbers>
+#include <numeric>
 
 namespace crv::quadrature::rules {
 namespace {
@@ -34,6 +35,19 @@ constexpr auto rule = gauss_kronrod_t<scalar_t>{};
 
 // constant: f(x) = 5, integral [0, 2] = 10
 static_assert(near(rule.integrate(0.0, 2.0, [](scalar_t) { return 5.0; }), 10.0));
+
+// direct interval means
+static_assert(near(rule.average(0.0, 2.0, [](scalar_t) { return 5.0; }), 5.0));
+static_assert(near(rule.average(2.0, 6.0, [](scalar_t x) { return x; }), 4.0));
+static_assert(near(rule.average(3.0, 7.0, [](scalar_t x) { return x * x; }), 79.0 / 3.0));
+
+constexpr auto tiny_left = scalar_t{1};
+constexpr auto tiny_right = tiny_left + scalar_t{0x1p-30};
+constexpr auto tiny_midpoint = std::midpoint(tiny_left, tiny_right);
+constexpr auto tiny_affine = [](scalar_t x) { return 2.0 * x + 3.0; };
+constexpr auto tiny_average = rule.average(tiny_left, tiny_right, tiny_affine);
+static_assert(near(tiny_average, 2.0 * tiny_midpoint + 3.0));
+static_assert(near(tiny_average, rule.integrate(tiny_left, tiny_right, tiny_affine) / (tiny_right - tiny_left)));
 
 // reversed bounds: f(x) = x^2, integral [2, 0] = -8/3
 static_assert(near(rule.integrate(2.0, 0.0, [](scalar_t x) { return x * x; }), -8.0 / 3.0));
@@ -94,6 +108,17 @@ static_assert(demonstrated_failure.error > 1e-8);
 // ====================================================================================================================
 // runtime tests
 // ====================================================================================================================
+
+TEST(quadrature_rules_test, direct_average_matches_analytic_smooth_nonlinear_mean_away_from_zero)
+{
+    auto constexpr left = scalar_t{1.25};
+    auto constexpr right = scalar_t{2.75};
+    auto const expected = (std::cos(left) - std::cos(right)) / (right - left);
+    auto const actual = rule.average(left, right, [](scalar_t x) { return std::sin(x); });
+
+    EXPECT_NEAR(actual, expected, 1e-14);
+    EXPECT_NEAR(actual, rule.integrate(left, right, [](scalar_t x) { return std::sin(x); }) / (right - left), 1e-14);
+}
 
 // endpoint singularity: f(x) = ln(x), integral [0, 1] = -1
 TEST(quadrature_rules_test, endpoint_singularity_log)

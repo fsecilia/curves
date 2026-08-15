@@ -28,15 +28,15 @@ template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
         return x_t::literal(std::midpoint(left.value, right.value));
     }
 
-    static constexpr auto operator()(auto const& sample_target_function, function_sample_t const& left_sample,
+    static constexpr auto operator()(auto const& sample_transfer, function_sample_t const& left_sample,
         x_t left, x_t right) noexcept -> subdomain_t
     {
         assert(left < right && "subdomain endpoints must be strictly increasing");
 
         auto const midpoint_x = midpoint(left, right);
         auto const midpoint_sample
-            = sample_target_function(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
-        auto const right_sample = sample_target_function(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
+            = sample_transfer(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
+        auto const right_sample = sample_transfer(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
 
         return {
             .left_x = left,

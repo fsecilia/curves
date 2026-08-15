@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief accumulation function yielding a 1-jet using adaptive quadrature
+/// \brief cached antiderivative and conditioned integrand-prefix evaluation using adaptive quadrature
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -57,6 +57,44 @@ public:
         return jet_t{integrate(primal_x), integral_.evaluate_integrand(primal_x) * tangent(x)};
     }
 
+    /// evaluates the derivative of the antiderivative, which is the retained integrand
+    constexpr auto derivative(scalar_t x) const noexcept -> scalar_t
+    {
+        assert_domain(x);
+        return integral_.evaluate_integrand(x);
+    }
+
+    /// evaluates the mean of the retained integrand over [0, x]
+    ///
+    /// For x > 0, this is F(x) / x, but evaluating it by dividing a prefix integral with fixed absolute error by a
+    /// small x is poorly conditioned. Instead, let a be the cached boundary immediately before x, let
+    /// g_a = F(a) / a, and let m(a,x) be the directly evaluated mean of the uncached residual interval. Then
+    ///
+    ///     G(x) = [a*g_a + (x-a)*m(a,x)] / x
+    ///          = m(a,x) + (a/x) * (g_a - m(a,x)).
+    ///
+    /// The blend factor a/x stays in [0,1]. In the first interval a == 0, so G(x) is just the residual mean. At the
+    /// origin the continuous value is the integrand itself.
+    constexpr auto mean_integrand(scalar_t x) const noexcept -> scalar_t
+    {
+        assert_domain(x);
+
+        if (x == scalar_t{0}) return derivative(x);
+
+        auto const left_index = find_left_index(x);
+        auto const left = boundaries_[left_index];
+
+        // An exact cache boundary already has the best retained prefix value and needs no residual rule evaluation.
+        if (x == left) return cumulative_sums_[left_index] / left;
+
+        auto const residual_mean = integral_.average(left, x);
+        if (left == scalar_t{0}) return residual_mean;
+
+        auto const cached_prefix_mean = cumulative_sums_[left_index] / left;
+        auto const prefix_fraction = left / x;
+        return residual_mean + prefix_fraction * (cached_prefix_mean - residual_mean);
+    }
+
     /// number of accepted quadrature segments
     ///
     /// the interval map always carries the origin plus one entry per accepted segment, so the count is size - 1
@@ -65,14 +103,23 @@ public:
 private:
     constexpr auto integrate(scalar_t x) const noexcept -> scalar_t
     {
-        assert(boundaries_.front() <= x && x <= boundaries_.back() && "antiderivative_t: domain error");
+        assert_domain(x);
 
-        // x >= front(), so upper_bound() is always past begin()
-        auto const right = std::ranges::upper_bound(boundaries_, x);
-        auto const left_index = static_cast<std::size_t>(right - boundaries_.begin() - 1);
-
+        auto const left_index = find_left_index(x);
         auto const residual = integral_.integrate(boundaries_[left_index], x);
         return cumulative_sums_[left_index] + residual;
+    }
+
+    constexpr auto assert_domain(scalar_t x) const noexcept -> void
+    {
+        assert(boundaries_.front() <= x && x <= boundaries_.back() && "antiderivative_t: domain error");
+    }
+
+    constexpr auto find_left_index(scalar_t x) const noexcept -> std::size_t
+    {
+        // x >= front(), so upper_bound() is always past begin()
+        auto const right = std::ranges::upper_bound(boundaries_, x);
+        return static_cast<std::size_t>(right - boundaries_.begin() - 1);
     }
 
     integral_t integral_;
@@ -89,6 +136,7 @@ template <typename t_antiderivative_t> struct integration_result_t
     antiderivative_t antiderivative;
     scalar_t achieved_error;
     scalar_t max_error;
+    bool refinement_limited = false;
 
     auto operator<=>(integration_result_t const&) const noexcept -> auto = default;
     auto operator==(integration_result_t const&) const noexcept -> bool = default;
@@ -115,7 +163,7 @@ public:
         cumulative_sums_.push_back(scalar_t{0});
     }
 
-    constexpr auto append(scalar_t right_bound, scalar_t area, scalar_t error) -> void
+    constexpr auto append(scalar_t right_bound, scalar_t area, scalar_t error, bool refinement_limited = false) -> void
     {
         assert(right_bound > boundaries_.back()
             && "antiderivative_builder_t: boundaries must be monotonically increasing");
@@ -123,6 +171,7 @@ public:
         running_area_ += area;
         running_error_ += error;
         max_error_ = max(max_error_, error);
+        refinement_limited_ |= refinement_limited;
 
         boundaries_.push_back(right_bound);
         cumulative_sums_.push_back(static_cast<scalar_t>(running_area_));
@@ -138,6 +187,7 @@ public:
             },
             static_cast<scalar_t>(running_error_),
             max_error_,
+            refinement_limited_,
         };
     }
 
@@ -150,6 +200,7 @@ private:
     accumulator_t running_area_{};
     accumulator_t running_error_{};
     scalar_t max_error_{0};
+    bool refinement_limited_{false};
 };
 
 } // namespace generic

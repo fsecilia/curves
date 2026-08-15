@@ -65,6 +65,7 @@ static_assert(sut(base_segment, base_area, base_error, base_limit));
 
 // depth dominates
 static_assert(!sut(base_segment, base_area, base_error, 5));
+static_assert(sut(base_segment, base_area, base_error, 5).refinement_limited);
 
 // width dominates
 constexpr auto narrow_segment = [] {
@@ -73,12 +74,14 @@ constexpr auto narrow_segment = [] {
     return segment;
 }();
 static_assert(!sut(narrow_segment, base_area, base_error, base_limit));
+static_assert(sut(narrow_segment, base_area, base_error, base_limit).refinement_limited);
 
 // error dominates, falling below tolerance, but above noise floor
 //
 // base_segment.tolerance is base_noise * 2.0. Set error right between them.
 constexpr auto low_error = base_noise * 1.5;
 static_assert(!sut(base_segment, base_area, low_error, base_limit));
+static_assert(!sut(base_segment, base_area, low_error, base_limit).refinement_limited);
 
 // noise floor dominates, becoming the ceiling
 constexpr auto low_tolerance_segment = [] {
@@ -157,11 +160,13 @@ struct builder_t
 {
     int_t appended_segment_count = 0;
     scalar_t total_integral = 0.0;
+    bool was_refinement_limited = false;
 
-    constexpr auto append(scalar_t, scalar_t integral, scalar_t) -> void
+    constexpr auto append(scalar_t, scalar_t integral, scalar_t, bool refinement_limited) -> void
     {
         ++appended_segment_count;
         total_integral += integral;
+        was_refinement_limited |= refinement_limited;
     }
 };
 
@@ -245,6 +250,29 @@ constexpr auto test_shallow_subdivision() -> bool
 }
 static_assert(test_shallow_subdivision());
 
+constexpr auto test_structural_limit_is_forwarded_to_builder() -> bool
+{
+    struct always_limited_predicate_t
+    {
+        using scalar_t = float_t;
+
+        constexpr auto operator()(segment_t const&, scalar_t, scalar_t, int_t) const noexcept -> refinement_decision_t
+        {
+            return {.refine = false, .refinement_limited = true};
+        }
+    };
+
+    auto stack = stack_t{};
+    auto builder = builder_t{};
+    stack.push_back(segment_t{.left = 0.0, .right = 1.0, .coarse_integral = 1.0, .tolerance = 0.0, .depth = 0});
+
+    auto const sut = subdivider_t<always_limited_predicate_t>{};
+    sut.run(stack, stub_integral_t{}, stub_bisector_t{}, builder, 10);
+
+    return builder.appended_segment_count == 1 && builder.was_refinement_limited;
+}
+static_assert(test_structural_limit_is_forwarded_to_builder());
+
 } // namespace subdivider_test
 
 // ====================================================================================================================
@@ -271,7 +299,7 @@ struct builder_t
 {
     int_t appended_segment_count = 0;
 
-    auto append(scalar_t, scalar_t, scalar_t) -> void { ++appended_segment_count; }
+    auto append(scalar_t, scalar_t, scalar_t, bool) -> void { ++appended_segment_count; }
 };
 
 // predicate that strictly stops at a given depth

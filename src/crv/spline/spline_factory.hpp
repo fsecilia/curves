@@ -19,13 +19,13 @@ template <typename policy_t, typename generator_factory_t> struct spline_factory
 
     generator_factory_t create_generator;
 
-    template <typename target_function_t>
-    void operator()(spline_t& spline, target_function_t&& target_function, scalar_t global_tolerance,
+    template <typename target_t>
+    void operator()(spline_t& spline, target_t&& target, scalar_t global_tolerance,
         std::vector<x_t> critical_points = {}) const
     {
         auto generate_spline = create_generator(global_tolerance);
 
-        generate_spline(spline, std::forward<target_function_t>(target_function), std::move(critical_points));
+        generate_spline(spline, std::forward<target_t>(target), std::move(critical_points));
     }
 };
 

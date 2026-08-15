@@ -17,6 +17,16 @@
 namespace crv::quadrature {
 namespace generic {
 
+/// outcome of applying the adaptive refinement policy
+struct refinement_decision_t
+{
+    bool refine;
+    bool refinement_limited;
+
+    constexpr explicit operator bool() const noexcept { return refine; }
+    constexpr auto operator==(refinement_decision_t const&) const noexcept -> bool = default;
+};
+
 /// decides whether a segment should be refined further
 template <typename t_scalar_t> struct refinement_predicate_t
 {
@@ -28,12 +38,19 @@ template <typename t_scalar_t> struct refinement_predicate_t
     static constexpr auto relative_noise_margin = epsilon * scalar_t{64};
 
     constexpr auto operator()(segment_t const& segment, scalar_t area, scalar_t error, int_t depth_limit) const noexcept
-        -> bool
+        -> refinement_decision_t
     {
         auto const current_width = segment.right - segment.left;
         auto const noise_floor = abs(area) * relative_noise_margin;
         auto const local_tolerance = max(segment.tolerance, noise_floor);
-        return segment.depth < depth_limit && current_width > min_width && error > local_tolerance;
+        auto const converged = error <= local_tolerance;
+        auto const structurally_limited
+            = !converged && (segment.depth >= depth_limit || current_width <= min_width);
+
+        return {
+            .refine = !converged && !structurally_limited,
+            .refinement_limited = structurally_limited,
+        };
     }
 };
 
@@ -56,7 +73,10 @@ template <typename t_refinement_predicate_t> struct subdivider_t
 
             auto const refinement = bisect(integral, segment);
 
-            if (should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit))
+            auto const decision
+                = should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit);
+
+            if (decision)
             {
                 // push right then left so left pops first
                 stack.push_back(refinement.right);
@@ -64,7 +84,12 @@ template <typename t_refinement_predicate_t> struct subdivider_t
             }
             else
             {
-                builder.append(refinement.right.right, refinement.refined_integral, refinement.refined_error);
+                auto const refinement_limited = [&] constexpr noexcept {
+                    if constexpr (requires { decision.refinement_limited; }) return decision.refinement_limited;
+                    else return false;
+                }();
+                builder.append(
+                    refinement.right.right, refinement.refined_integral, refinement.refined_error, refinement_limited);
             }
         }
     }
