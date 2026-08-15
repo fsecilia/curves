@@ -53,7 +53,6 @@ public:
 
         auto const x_max = payload.segment_locator.x_max();
 
-        // this will need to change to use an extension segment that isn't part of the array
         if (x >= x_max) return payload.extend_final_tangent(x - x_max);
 
         auto const location = payload.segment_locator.locate(x);
