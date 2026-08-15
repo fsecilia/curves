@@ -2,15 +2,26 @@
 
 Control Mouse Sensitivity with Speed
 
-Curves is a kernel-mode input handler that controls your mouse sensitivity with mouse velocity. When moving the mouse slowly, it has low sensitivity. When moving it quickly, it has high sensitivity. The transition between them is smooth. This gives high precision at low speed while still being able to cover 3 monitors using only a few inches of desk space. The feeling is unique, but intuitive.
+Curves is a kernel-mode input handler that controls mouse sensitivity with mouse movement speed. When moving the mouse slowly, it has low sensitivity. When moving it quickly, it has high sensitivity. The transition between high and low sensitivity is smooth. This gives high precision at low speed while still being able to cover 3 monitors using only a few inches of desk space. The feeling is unique, but intuitive.
 
 ## Requirements
 
-This project uses c++23. It must be built with g++ >= 14 or clang >= 18. The frontend config ui can be built with either, but the backend kernel module builds with the same compiler that was used to build the kernel.
+. CMake 3.31.6 or newer;
+. g++ 14 or Clang 17, or newer
+. Qt6;
+. GNU Make;
+. a prepared Linux kernel build directory;
+. Linux 6.12 as the oldest supported and continuously tested Kbuild baseline;
+. the compiler and utilities required by that kernel;
+. a linker supporting --force-group-allocation.
+
+This project uses c++(26|2c). The frontend config ui can be built with either g++ or Clang, but the backend kernel module builds with the same compiler that was used to build the kernel. GNU Make is only required for the kernel module Kbuild. The rest of the project builds using any standard CMake generator.
+
+The build requires Toml++ and Qt6. When building from git, Toml++ is vendored via git submodule if not available. Testing is optional and requires gtest to enable.
 
 ## Building
 
-The build is standard cmake. Presets for debug and release using clang and gcc are provided. The build directory defaults to ./builds, but shadow builds are supported, as is overriding the path in CMakeUserPresets.json.
+The build is standard cmake. Presets for debug and release using Clang and g++ are provided. The build directory defaults to ./builds, but shadow builds are supported, as is overriding the path in CMakeUserPresets.json.
 
 The install will place the config binary in `bin`, prep a dkms build of the kernel module in `usr/src`, place supporting udev rules in `lib/udev/rules.d`, systemd integration in `lib/systemd/system`, and the initial module load in `lib/modules-load.d`, all relative to `CMAKE_INSTALL_PREFIX`. Packages can be staged using DESTDIR.
 
