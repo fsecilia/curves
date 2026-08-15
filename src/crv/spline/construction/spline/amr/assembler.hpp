@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief assembles completed intervals into segments and populate segment_locator
+/// \brief assembles completed intervals into segments and populates segment_locator
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -79,7 +79,7 @@ struct assembler_t
         // write to segments directly, in-place
         auto& segments = spline.payload.segments;
 
-        // segment_locator_t does not yet support in-place construction, so create its ctor params locally
+        // construct the locator from a local sorted-key array after writing segments in place
         using sorted_keys_t = std::array<x_t, total_key_count>;
         sorted_keys_t sorted_keys;
 

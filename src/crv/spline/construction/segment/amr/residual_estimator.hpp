@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief estimates error between target and approximation
+/// \brief estimates gain error between target and fixed approximation
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -23,7 +23,7 @@ template <std::floating_point scalar_t> struct residual_t
     constexpr auto operator==(residual_t const&) const noexcept -> bool = default;
 };
 
-/// estimates worst-case residual error between a target function and its approximant
+/// estimates worst-case residual error between target gain and fixed approximant gain
 ///
 /// This type searches for the maximum deviation, a discrete L-infinity norm, over a specific interval. It sweeps the
 /// domain using the given node generator, measures the gap using an error metric, and scales the result by a perceptual
@@ -54,7 +54,7 @@ struct residual_estimator_t
             // convert from standard nodes in (0, 1) to domain nodes in (left, right).
             auto const domain_node = left + standard_node * interval_width;
 
-            // measure error between target function and approximant
+            // measure gain error between target and approximant
             auto const approximation = approximant(domain_node);
             auto const target_gain = target.gain(domain_node);
             auto const metric_error = measure_error(target_gain, approximation);

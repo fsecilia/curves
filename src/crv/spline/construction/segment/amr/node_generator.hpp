@@ -15,8 +15,7 @@ namespace crv::spline {
 
 /// generates equioscillation extrema at Chebyshev nodes of the second kind in (0, 1), excluding the endpoints
 ///
-/// The endpoints are excluded because these cubics start in hermite form, which means they go through the knots
-/// by construction at the endpoints, so these will always have error of effectively zero.
+/// Hermite construction interpolates the endpoint knots exactly, so endpoint residuals are zero by construction.
 template <typename scalar_t, int_t sample_count> struct node_generator_t
 {
     using nodes_t = std::array<scalar_t, sample_count>;

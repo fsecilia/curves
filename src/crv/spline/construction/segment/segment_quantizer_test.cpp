@@ -58,7 +58,7 @@ struct unpacked_field_t
     constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
 };
 
-// instantiate the aligner with arbitrary safe bounds for our 32-bit test container
+// instantiate the aligner with arbitrary safe bounds for the 32-bit test container
 constexpr auto aligner = exponent_aligner_t<-20, 20>{};
 constexpr auto align_radix = radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>{};
 

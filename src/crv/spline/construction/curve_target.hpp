@@ -33,7 +33,7 @@ enum class curve_construction_t
 ///
 /// Source curves are not necessarily suitable for direct Hermite interpolation. In particular, a finite continuous
 /// gain may have a cusp or singular derivative at the origin. The transfer T(x) = x G(x) regularizes those cases and
-/// is the quantity interpolated by the current spline representation.
+/// is the quantity interpolated by Hermite construction.
 template <typename t_curve_t> struct gain_curve_target_t
 {
     using curve_t = t_curve_t;

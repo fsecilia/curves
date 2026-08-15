@@ -10,7 +10,7 @@
 namespace crv::spline {
 namespace {
 
-// x_t = fixed_t<int64_t, 42>
+// x_t = fixed_t<int64_t, 45>
 //
 // Choose a generous human physical limit of 1000 in/s. Saturating at 128kdpi gives a max rate of 128k counts/ms:
 //
@@ -18,7 +18,7 @@ namespace {
 //     sqrt(2*128000^2) = sqrt(2)*128000 ~= 181019.335983756
 //     log2(181019.335983756) ~= 17.465784285 bits
 //
-// so we need 18 integer bits, which gives Q18.45.
+// This requires 18 integer bits, which gives Q18.45.
 static_assert(prod_pipeline_config_t::x_t::frac_bits == 45);
 
 // y_t = fixed_t<int64_t, 45>

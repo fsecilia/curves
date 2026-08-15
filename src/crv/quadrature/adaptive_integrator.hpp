@@ -45,10 +45,8 @@ public:
     constexpr auto operator()(integral_t integral, antiderivative_builder_t antiderivative_builder, scalar_t domain_end,
         compatible_range<scalar_t> auto const& critical_points) const -> typename antiderivative_builder_t::result_t
     {
-        // TODO: Automatically clearing the stack here prevents issues if a previous run threw an exception. However,
-        // this becomes a slippery slope when we support incremental evaluation or resuming an interrupted integration.
-        // When those features are added, this clear must be removed and replaced with explicit lifecycle management by
-        // the caller.
+        // The stack is reusable scratch state. Clear it before seeding so an interrupted invocation cannot contaminate
+        // the next integration.
         stack_.clear();
 
         stack_seeder_.seed(stack_, integral, domain_end, tolerance_, critical_points);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief metric used to measure error between target function and its approximant
+/// \brief metric used to measure pointwise gain error
 /// \copyright Copyright (C) 2026 Frank Secilia
 ///
 /// During development, many metrics were tested. Simple Sobolev has no units and tuning is arbitrary. Including units

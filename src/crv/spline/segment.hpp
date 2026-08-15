@@ -191,7 +191,7 @@ struct segment_unpacker_t
 ///     T(u) = a + b*u + c*u^2 + d*u^3 = a + u*S(u),  S(u) = b + c*u + d*u^2,
 ///     u = x - x0,
 ///
-/// we store S and g0 = a/x0. For x0 > 0,
+/// the representation stores S and g0 = a/x0. For x0 > 0,
 ///
 ///     T(x)/x = S(u) + (x0/x) * (g0 - S(u)).
 ///
