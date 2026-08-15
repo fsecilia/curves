@@ -13,7 +13,7 @@
 
 namespace crv::spline {
 
-/// max scale of target and error between target and approximant over a subdomain
+/// max gain scale and error between target gain and final fixed approximant over a subdomain
 template <std::floating_point scalar_t> struct residual_t
 {
     scalar_t metric_error; // error measured using a metric
@@ -40,8 +40,8 @@ struct residual_estimator_t
     error_metric_t measure_error;
     weight_function_t apply_weight;
 
-    constexpr auto operator()(auto const& sample_transfer, auto const& approximant, scalar_t left,
-        scalar_t midpoint, scalar_t right) const noexcept -> residual_t
+    constexpr auto operator()(auto const& target, auto const& approximant, scalar_t left, scalar_t midpoint,
+        scalar_t right) const noexcept -> residual_t
     {
         auto const interval_width = right - left;
 
@@ -56,13 +56,13 @@ struct residual_estimator_t
 
             // measure error between target function and approximant
             auto const approximation = approximant(domain_node);
-            auto const target = sample_transfer(domain_node).y;
-            auto const metric_error = measure_error(target, approximation);
+            auto const target_gain = target.gain(domain_node);
+            auto const metric_error = measure_error(target_gain, approximation);
 
             assert(metric_error >= scalar_t{0} && "metrics must assign nonnegative values");
 
             // track maxes
-            max_residual.scale = max(max_residual.scale, abs(target));
+            max_residual.scale = max(max_residual.scale, abs(target_gain));
             max_residual.metric_error = max(max_residual.metric_error, metric_error);
         }
 

@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <numeric>
 
 namespace crv::spline {
@@ -28,8 +29,7 @@ template <typename t_bisection_t> struct bisector_t
     using subdomain_t = bisection_t::subdomain_t;
     using x_t = subdomain_t::x_t;
 
-    constexpr auto operator()(auto const& sample_transfer, subdomain_t const& parent) const noexcept
-        -> bisection_t
+    constexpr auto operator()(auto const& target, subdomain_t const& parent) const noexcept -> bisection_t
     {
         using std::midpoint;
 
@@ -48,8 +48,7 @@ template <typename t_bisection_t> struct bisector_t
                 .midpoint_x = left_midpoint_x,
                 .right_x = split,
                 .left = parent.left,
-                .midpoint = sample_transfer(
-                    jet_t{from_fixed<scalar_t>(left_midpoint_x), scalar_t{1}}),
+                .midpoint = sample_transfer(target, jet_t{from_fixed<scalar_t>(left_midpoint_x), scalar_t{1}}),
                 .right = parent.midpoint,
             },
             .right = subdomain_t{
@@ -57,8 +56,7 @@ template <typename t_bisection_t> struct bisector_t
                 .midpoint_x = right_midpoint_x,
                 .right_x = parent.right_x,
                 .left = parent.midpoint,
-                .midpoint = sample_transfer(
-                    jet_t{from_fixed<scalar_t>(right_midpoint_x), scalar_t{1}}),
+                .midpoint = sample_transfer(target, jet_t{from_fixed<scalar_t>(right_midpoint_x), scalar_t{1}}),
                 .right = parent.right,
             },
         };

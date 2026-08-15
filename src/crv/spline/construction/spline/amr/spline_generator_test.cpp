@@ -66,8 +66,7 @@ struct spline_generator_test_t : Test
     struct mock_refinement_seeder_t
     {
         virtual ~mock_refinement_seeder_t() = default;
-        MOCK_METHOD(
-            unrefined_state_t, call, (initial_state_t, transfer_sampler_t<target_t> const&, critical_points_t));
+        MOCK_METHOD(unrefined_state_t, call, (initial_state_t, target_t const&, critical_points_t));
     };
     StrictMock<mock_refinement_seeder_t> mock_seeder;
 
@@ -76,24 +75,24 @@ struct spline_generator_test_t : Test
         using critical_points_t = spline_generator_test_t::critical_points_t;
         mock_refinement_seeder_t* mock;
 
-        auto operator()(initial_state_t state, auto const& sampler, critical_points_t const& critical_points)
+        auto operator()(initial_state_t state, auto const& passed_target, critical_points_t const& critical_points)
             -> unrefined_state_t
         {
-            return mock->call(state, sampler, critical_points);
+            return mock->call(state, passed_target, critical_points);
         }
     };
 
     struct mock_refiner_t
     {
         virtual ~mock_refiner_t() = default;
-        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, transfer_sampler_t<target_t> const&));
+        MOCK_METHOD(unassembled_state_t, call, (unrefined_state_t, target_t const&));
     };
     StrictMock<mock_refiner_t> mock_refiner;
 
     struct refiner_t
     {
         mock_refiner_t* mock;
-        auto operator()(unrefined_state_t state, auto const& sampler) { return mock->call(state, sampler); }
+        auto operator()(unrefined_state_t state, auto const& passed_target) { return mock->call(state, passed_target); }
     };
 
     struct mock_assembler_t
@@ -124,17 +123,17 @@ struct spline_generator_test_t : Test
     unassembled_state_t const unassembled_state{200};
 };
 
-TEST_F(spline_generator_test_t, forwards_states_and_sampler)
+TEST_F(spline_generator_test_t, forwards_states_and_target)
 {
     InSequence seq;
-    void const* expected_sampler_address = nullptr;
+    void const* expected_target_address = nullptr;
 
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t, auto const& sampler, auto) {
-        expected_sampler_address = &sampler;
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t, auto const& passed_target, auto) {
+        expected_target_address = &passed_target;
         return unrefined_state;
     });
-    EXPECT_CALL(mock_refiner, call(unrefined_state, _)).WillOnce([&](unrefined_state_t, auto const& sampler) {
-        EXPECT_EQ(static_cast<void const*>(&sampler), expected_sampler_address);
+    EXPECT_CALL(mock_refiner, call(unrefined_state, _)).WillOnce([&](unrefined_state_t, auto const& passed_target) {
+        EXPECT_EQ(static_cast<void const*>(&passed_target), expected_target_address);
         return unassembled_state;
     });
     EXPECT_CALL(mock_assembler, call(unassembled_state, _));

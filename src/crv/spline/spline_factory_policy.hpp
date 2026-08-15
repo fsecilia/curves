@@ -26,11 +26,11 @@
 #include <crv/spline/construction/segment/amr/subdivision.hpp>
 #include <crv/spline/construction/segment/amr/subdivision_predicate.hpp>
 #include <crv/spline/construction/segment/field_packer.hpp>
+#include <crv/spline/construction/segment/local_coordinate.hpp>
 #include <crv/spline/construction/segment/segment_factory.hpp>
 #include <crv/spline/construction/segment/segment_packer.hpp>
 #include <crv/spline/construction/segment/segment_quantizer.hpp>
 #include <crv/spline/construction/segment/shift_planner.hpp>
-#include <crv/spline/construction/segment/local_coordinate.hpp>
 #include <crv/spline/construction/spline/amr/assembler.hpp>
 #include <crv/spline/construction/spline/amr/refinement_pool_seeder.hpp>
 #include <crv/spline/construction/spline/amr/refiner.hpp>
@@ -46,6 +46,7 @@
 #include <crv/spline/spline.hpp>
 #include <crv/spline/tangent_extension.hpp>
 #include <concepts>
+#include <type_traits>
 
 namespace crv::spline {
 
@@ -72,7 +73,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
 
     // fundamental traits
     using unpacked_field_t = unpacked_field_t<int_t>;
-    using traits_t = traits_t<unpacked_field_t>;
+    using traits_t = traits_t<unpacked_field_t, y_t>;
     using mantissa_t = typename traits_t::mantissa_t;
     using packed_field_t = typename traits_t::packed_field_t;
     using unpacked_segment_t = typename traits_t::unpacked_segment_t;
@@ -89,10 +90,15 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using segment_unpacker_t
         = crv::spline::segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
     using segment_t = crv::spline::segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
+    static_assert(sizeof(packed_segment_t) == 32);
+    static_assert(sizeof(segment_t) == 32);
+    static_assert(alignof(segment_t) == 32);
+    static_assert(std::is_trivially_copyable_v<packed_segment_t>);
+    static_assert(std::is_trivially_copyable_v<segment_t>);
     using subdomain_t = crv::spline::subdomain_t<scalar_t, x_t>;
     using interval_t = crv::spline::interval_t<subdomain_t, cubic_t, segment_t>;
 
-    // auantization and packing
+    // quantization and packing
     using float_extractor_t = float_extractor_t<scalar_t>;
     using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
@@ -100,9 +106,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using field_packer_t = crv::spline::field_packer_t<packed_field_t>;
     using mantissa_quantizer_t = crv::spline::mantissa_quantizer_t<mantissa_t>;
     using shift_planner_t = crv::spline::shift_planner_t<mantissa_t>;
-    using segment_quantizer_t
-        = crv::spline::segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
-            radix_aligner_t, intermediate_layout_max_shift, x_t, y_t::frac_bits>;
+    using segment_quantizer_t = crv::spline::segment_quantizer_t<unpacked_segment_t, float_extractor_t, shift_planner_t,
+        mantissa_quantizer_t, radix_aligner_t, intermediate_layout_max_shift, x_t>;
     using segment_packer_t
         = crv::spline::segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = crv::spline::segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
@@ -143,8 +148,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
 
     // final target
     using spline_t = crv::spline::spline_t<segment_t, extended_tangent_t, segment_locator_t>;
-    using spline_generator_t = crv::spline::spline_generator_t<scalar_t, x_t, spline_t, typestates_t,
-        refinement_pool_t, refinement_pool_seeder_t, refiner_t, assembler_t>;
+    using spline_generator_t = crv::spline::spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
+        refinement_pool_seeder_t, refiner_t, assembler_t>;
 };
 
 } // namespace crv::spline

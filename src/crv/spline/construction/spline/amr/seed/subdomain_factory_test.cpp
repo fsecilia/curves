@@ -17,6 +17,11 @@ using jet_t = subdomain_t::jet_t;
 using function_sample_t = subdomain_t::function_sample_t;
 using sut_t = subdomain_factory_t<x_t, subdomain_t>;
 
+struct target_t
+{
+    constexpr auto transfer(jet_t input) const noexcept -> jet_t { return input; }
+};
+constexpr auto target = target_t{};
 constexpr auto sample = [](jet_t input) noexcept -> function_sample_t { return {.x = input.f, .y = input}; };
 
 TEST(spline_seed_subdomain_factory_test, preserves_exact_non_dyadic_endpoints)
@@ -25,7 +30,7 @@ TEST(spline_seed_subdomain_factory_test, preserves_exact_non_dyadic_endpoints)
     auto const right = x_t::literal(105); // odd raw width
     auto const left_sample = sample(jet_t{from_fixed<scalar_t>(left), 1.0});
 
-    auto const actual = sut_t{}(sample, left_sample, left, right);
+    auto const actual = sut_t{}(target, left_sample, left, right);
 
     EXPECT_EQ(actual.left_x, left);
     EXPECT_EQ(actual.midpoint_x, x_t::literal(102));
@@ -41,7 +46,7 @@ TEST(spline_seed_subdomain_factory_test, permits_adjacent_representable_endpoint
     auto const right = x_t::literal(101);
     auto const left_sample = sample(jet_t{from_fixed<scalar_t>(left), 1.0});
 
-    auto const actual = sut_t{}(sample, left_sample, left, right);
+    auto const actual = sut_t{}(target, left_sample, left, right);
 
     EXPECT_EQ(actual.left_x, left);
     EXPECT_EQ(actual.midpoint_x, left);

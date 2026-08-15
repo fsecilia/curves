@@ -6,8 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
+
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <utility>
 
@@ -34,8 +35,7 @@ public:
     {}
 
     template <typename target_t>
-    constexpr auto operator()(auto& spline, target_t&& target, critical_points_t critical_points)
-        -> void
+    constexpr auto operator()(auto& spline, target_t&& target, critical_points_t critical_points) -> void
     {
         assert(workspace_.empty());
         workspace_.clear();
@@ -45,11 +45,9 @@ public:
         critical_points.erase(duplicates.begin(), duplicates.end());
 
         auto unseeded_state = typename typestates_t::initial_t{workspace_};
-        auto sample_transfer
-            = transfer_sampler_t<std::remove_cvref_t<target_t>>{std::forward<target_t>(target)};
-        auto unrefined_state
-            = seed_refinement_pool_(std::move(unseeded_state), sample_transfer, critical_points);
-        auto unassembled_state = refine_(std::move(unrefined_state), sample_transfer);
+        auto const& construction_target = target;
+        auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), construction_target, critical_points);
+        auto unassembled_state = refine_(std::move(unrefined_state), construction_target);
         assemble_(std::move(unassembled_state), spline);
 
         assert(workspace_.empty());

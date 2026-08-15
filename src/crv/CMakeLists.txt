@@ -98,7 +98,7 @@ target_sources(lib PRIVATE
     spline/construction/segment/amr/residual_estimator.hpp
     spline/construction/segment/amr/subdivision_predicate.hpp
     spline/construction/segment/amr/subdivision.hpp
-    spline/construction/segment/amr/transfer_sampler.hpp
+    spline/construction/segment/amr/transfer_sample.hpp
     spline/construction/segment/field_packer.hpp
     spline/construction/segment/local_coordinate.hpp
     spline/construction/segment/segment_factory.hpp
@@ -368,7 +368,6 @@ if (enable_testing)
         spline/construction/segment/amr/residual_estimator_test.cpp
         spline/construction/segment/amr/subdivision_predicate_test.cpp
         spline/construction/segment/amr/subdivision_test.cpp
-        spline/construction/segment/amr/transfer_sampler_test.cpp
         spline/construction/segment/field_packer_test.cpp
         spline/construction/segment/local_coordinate_test.cpp
         spline/construction/segment/segment_factory_test.cpp

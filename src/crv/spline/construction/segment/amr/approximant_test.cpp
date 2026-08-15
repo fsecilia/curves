@@ -23,7 +23,7 @@ struct spline_approximant_test_t : Test
     struct segment_t
     {
         using x_t = x_t;
-        constexpr auto operator()(x_t x) const noexcept -> y_t { return y_t::convert(x * 7); }
+        constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t { return y_t::convert((x - x0) * 7); }
     };
 
     using sut_t = approximant_t<scalar_t, segment_t>;

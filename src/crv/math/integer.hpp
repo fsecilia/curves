@@ -36,6 +36,16 @@ template <typename value_t> constexpr auto add_wrap(value_t lhs, value_t rhs) no
     return static_cast<value_t>(static_cast<unsigned_t>(lhs) + static_cast<unsigned_t>(rhs));
 }
 
+/// subtracts using wrapping unsigned semantics, regardless of type
+///
+/// This is the subtraction counterpart to add_wrap(). Converting both operands to unsigned before subtracting keeps
+/// malformed signed inputs from invoking signed-overflow UB.
+template <typename value_t> constexpr auto subtract_wrap(value_t lhs, value_t rhs) noexcept -> value_t
+{
+    using unsigned_t = make_unsigned_t<value_t>;
+    return static_cast<value_t>(static_cast<unsigned_t>(lhs) - static_cast<unsigned_t>(rhs));
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 // conversions
 // --------------------------------------------------------------------------------------------------------------------

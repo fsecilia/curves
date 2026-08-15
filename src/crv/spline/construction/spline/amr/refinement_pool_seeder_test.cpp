@@ -62,16 +62,18 @@ struct spline_refinement_pool_seeder_test_t : Test
 
     sut_t sut{};
 
-    static constexpr auto sample_target_function = [](jet_t input) noexcept -> function_sample_t {
-        return {.x = input.f, .y = jet_t{input.f * 2.0, input.df * 2.0}};
+    struct target_t
+    {
+        constexpr auto transfer(jet_t input) const noexcept -> jet_t { return {input.f * 2.0, input.df * 2.0}; }
     };
+    static constexpr auto target = target_t{};
 };
 
 TEST_F(spline_refinement_pool_seeder_test_t, seeds_one_interval_between_each_exact_supplied_knot)
 {
     auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(102)};
 
-    auto const actual_state = sut(typestate_t{workspace}, sample_target_function, critical_points);
+    auto const actual_state = sut(typestate_t{workspace}, target, critical_points);
 
     ASSERT_EQ(workspace.refinement_pool.size(), 3u);
     EXPECT_EQ(workspace.refinement_pool[0].left_x, x_t{0});
@@ -87,7 +89,7 @@ TEST_F(spline_refinement_pool_seeder_test_t, permits_supplied_knots_one_raw_unit
 {
     auto const critical_points = critical_points_t{x_t::literal(100), x_t::literal(101)};
 
-    sut(typestate_t{workspace}, sample_target_function, critical_points);
+    sut(typestate_t{workspace}, target, critical_points);
 
     ASSERT_EQ(workspace.refinement_pool.size(), 3u);
     EXPECT_EQ(workspace.refinement_pool[1].width(), x_t::literal(1));
@@ -98,32 +100,30 @@ TEST_F(spline_refinement_pool_seeder_test_t, permits_supplied_knots_one_raw_unit
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_unique)
 {
     auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(101)};
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function, critical_points), "unique");
+    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "unique");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_monotonically_increasing)
 {
     auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(100)};
-    EXPECT_DEBUG_DEATH(
-        sut(typestate_t{workspace}, sample_target_function, critical_points), "monotonically increasing");
+    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "monotonically increasing");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_inside_domain)
 {
-    EXPECT_DEBUG_DEATH(
-        sut(typestate_t{workspace}, sample_target_function, critical_points_t{x_t{0}}), "in \\(0, domain_end\\)");
+    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points_t{x_t{0}}), "in \\(0, domain_end\\)");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_point_partitioning_must_fit_segment_budget)
 {
     auto const critical_points = critical_points_t{x_t::literal(100), x_t::literal(101), x_t::literal(102)};
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function, critical_points), "exceeded segment budget");
+    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "exceeded segment budget");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, refinement_pool_must_be_empty)
 {
     workspace.refinement_pool.push_back({});
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function, {}), "empty");
+    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, {}), "empty");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

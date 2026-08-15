@@ -30,13 +30,12 @@ template <typename t_subdivision_t, typename bisector_t, typename interval_facto
     [[no_unique_address]] bisector_t bisect;
     interval_factory_t create_interval;
 
-    constexpr auto operator()(auto const& sample_transfer, interval_t const& interval) const noexcept
-        -> subdivision_t
+    constexpr auto operator()(auto const& target, interval_t const& interval) const noexcept -> subdivision_t
     {
-        auto const child_domains = bisect(sample_transfer, interval.subdomain);
+        auto const child_domains = bisect(target, interval.subdomain);
         return subdivision_t{
-            .left = create_interval(sample_transfer, child_domains.left),
-            .right = create_interval(sample_transfer, child_domains.right),
+            .left = create_interval(target, child_domains.left),
+            .right = create_interval(target, child_domains.right),
         };
     }
 };

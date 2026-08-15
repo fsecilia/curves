@@ -33,11 +33,6 @@ struct linear_weight_function_t
     constexpr auto operator()(scalar_t node) const noexcept -> scalar_t { return node * weight; }
 };
 
-struct target_function_sample_t
-{
-    scalar_t y;
-};
-
 //
 // compile-time tests
 //
@@ -58,7 +53,11 @@ constexpr auto identifies_maximum_error() noexcept -> bool
     constexpr auto target_scale = 1.1;
     constexpr auto approximant_scale = 0.9;
 
-    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{node * target_scale}; };
+    struct target_t
+    {
+        constexpr auto gain(scalar_t node) const noexcept -> scalar_t { return node * target_scale; }
+    };
+    constexpr auto target = target_t{};
     auto approximant = [](scalar_t node) constexpr { return scalar_t{node * approximant_scale}; };
     using sut_t = residual_estimator_t<scalar_t, fake_node_generator_t, uniform_metric_t, linear_weight_function_t>;
     constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
@@ -68,7 +67,7 @@ constexpr auto identifies_maximum_error() noexcept -> bool
     constexpr auto expected_metric_error = domain_node * target_scale - domain_node * approximant_scale;
     constexpr auto expected_weight = midpoint * weight;
 
-    constexpr auto actual = sut(sample_target, approximant, left, midpoint, right);
+    constexpr auto actual = sut(target, approximant, left, midpoint, right);
 
     return actual.scale == expected_max_scale * target_scale && actual.metric_error == expected_metric_error
         && actual.weighted_error == actual.metric_error * expected_weight;
@@ -105,30 +104,33 @@ TEST_F(spline_residual_estimator_death_test_t, metrics_must_be_positive)
 {
     constexpr auto sut = sut_t{.generate_nodes = {}, .measure_error = {}, .apply_weight = {}};
 
-    auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{-node}; };
-
-    EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "nonnegative");
+    struct target_t
+    {
+        constexpr auto gain(scalar_t node) const noexcept -> scalar_t { return -node; }
+    };
+    EXPECT_DEBUG_DEATH(sut(target_t{}, approximant, left, midpoint, right), "nonnegative");
 }
 
 // nodes must be in (0, 1)
-//
-// Standard nodes must be in [0, 1], but for a cubic spline generated from a hermite basis, the spline always goes
-// through the knots, so measuring at segment endpoints is not effective.
 struct spline_residual_estimator_test_node_endpoints_t : spline_residual_estimator_death_test_t
 {
-    static constexpr auto sample_target = [](scalar_t node) constexpr { return target_function_sample_t{node}; };
+    struct target_t
+    {
+        constexpr auto gain(scalar_t node) const noexcept -> scalar_t { return node; }
+    };
+    static constexpr auto target = target_t{};
 };
 
 TEST_F(spline_residual_estimator_test_node_endpoints_t, nodes_excludes_left_endpoint)
 {
     constexpr auto sut = sut_t{.generate_nodes = {.node = 0.0}, .measure_error = {}, .apply_weight = {}};
-    EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "in \\(0, 1\\)");
+    EXPECT_DEBUG_DEATH(sut(target, approximant, left, midpoint, right), "in \\(0, 1\\)");
 }
 
 TEST_F(spline_residual_estimator_test_node_endpoints_t, nodes_excludes_right_endpoint)
 {
     constexpr auto sut = sut_t{.generate_nodes = {.node = 1.0}, .measure_error = {}, .apply_weight = {}};
-    EXPECT_DEBUG_DEATH(sut(sample_target, approximant, left, midpoint, right), "in \\(0, 1\\)");
+    EXPECT_DEBUG_DEATH(sut(target, approximant, left, midpoint, right), "in \\(0, 1\\)");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

@@ -9,7 +9,7 @@
 namespace crv::spline {
 namespace {
 
-using traits_t = traits_t<unpacked_field_t<int_t>>;
+using traits_t = traits_t<unpacked_field_t<int_t>, fixed_t<int64_t, 20>>;
 
 using packed_field_t = traits_t::packed_field_t;
 using unpacked_field_t = traits_t::unpacked_field_t;

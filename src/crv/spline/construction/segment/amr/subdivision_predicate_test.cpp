@@ -46,8 +46,10 @@ static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{1}, x_t{3}}, .residual =
 // no distinct representable midpoint
 static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{0}, x_t{1}}, .residual = {.scale = 1.0, .metric_error = 1.0}}));
 
-static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1.0, .metric_error = 1e-5}}));
-static_assert(!sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1e6, .metric_error = 5e-9}}));
+static_assert(
+    !sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1.0, .metric_error = 1e-5}}));
+static_assert(
+    !sut(interval_t{.subdomain = {x_t{0}, x_t{4}, x_t{9}}, .residual = {.scale = 1e6, .metric_error = 5e-9}}));
 
 } // namespace
 } // namespace crv::spline

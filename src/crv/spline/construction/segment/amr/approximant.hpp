@@ -25,10 +25,10 @@ template <std::floating_point t_scalar_t, typename t_segment_t> struct approxima
     segment_t segment;
     x_t x0;
 
-    /// \returns spline-global spatial coordinate y in float, routing through fixed segment
+    /// \returns spline-global gain in float, routing through the final fixed induced-gain segment
     constexpr auto operator()(scalar_t x) const noexcept -> scalar_t
     {
-        return from_fixed<scalar_t>(segment(to_fixed<x_t>(x) - x0));
+        return from_fixed<scalar_t>(segment(to_fixed<x_t>(x), x0));
     }
 
     constexpr auto operator==(approximant_t const&) const noexcept -> bool = default;

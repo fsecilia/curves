@@ -86,19 +86,20 @@ namespace segment_quantizer_tests {
 
 using scalar_t = float_t;
 using mantissa_t = int_t;
-using unpacked_field_t = unpacked_field_t<mantissa_t>;
-using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
-using scaled_int_t = scaled_int_t<mantissa_t>;
+using unpacked_field_t = spline::unpacked_field_t<mantissa_t>;
+using scaled_int_t = crv::scaled_int_t<mantissa_t>;
 
 auto const max_intermediate_shift = 0x7f;
 
 namespace isolation_tests {
 
 using x_t = fixed_t<int64_t, 10>;
+using y_t = fixed_t<int64_t, 20>;
+using unpacked_segment_t = spline::unpacked_segment_t<unpacked_field_t, y_t>;
 
 struct float_extractor_t
 {
-    using scalar_t = scalar_t;
+    using scalar_t = float_t;
 
     // mantissa is 10x, exponent is 1x
     constexpr auto operator()(scalar_t scalar) const noexcept -> scaled_int_t
@@ -133,135 +134,82 @@ struct mantissa_quantizer_t
 
 struct radix_aligner_t
 {
-    using scaled_int_t = scaled_int_t;
+    using scaled_int_t = crv::scaled_int_t<mantissa_t>;
+
     constexpr auto operator()(scaled_int_t const& accum, int_t radix) const noexcept -> unpacked_field_t
     {
         return {.mantissa = static_cast<mantissa_t>(accum.mantissa + radix), .shift = accum.exponent};
     }
 };
 
-constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
-    radix_aligner_t, max_intermediate_shift, x_t, 20>{};
+constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
+    radix_aligner_t, max_intermediate_shift, x_t>{};
 
-// The fake planner echoes accumulator_bit_count into the shift, so each iteration's shift holds what bit count the
-// quantizer is tracking for the runtime accumulator. Initial accumulator is c3's mantissa (bit_count 4 for 10). Later
-// iterations track max(aligned_product_bits, next_coeff_bits) (+1 if both non-zero). Here aligned_product_bits is 0
-// every iteration because the fake's shift exceeds the aligned-product bit count. Width raw=5 contributes 3 magnitude
-// bits independently from the fixed radix of 10.
+// Project cubic order is {d, c, b, a}. Width raw=5 contributes three magnitude bits.
 //
-// 1.0 -> accum(10, 1), bit_count = 4
-// 2.0 -> next(20, 2) -> plan(shift: 10+3+1+2+4=20) -> unpacked[0] = {10, 20}
-// 3.0 -> next(30, 3) -> plan(shift: 10+3+2+3+5=23) -> unpacked[1] = {20, 23}
-// 4.0 -> next(40, 4) -> plan(shift: 10+3+3+4+5=25) -> unpacked[2] = {30, 25}
-// align final -> accum(40, 4), out_frac(20) -> unpacked[3] = {60, 4}
-constexpr auto const expected = unpacked_segment_t{
-    unpacked_field_t{.mantissa = 10, .shift = 20},
-    unpacked_field_t{.mantissa = 20, .shift = 23},
-    unpacked_field_t{.mantissa = 30, .shift = 25},
-    unpacked_field_t{.mantissa = 60, .shift = 4},
-};
-static_assert(sut({1.0, 2.0, 3.0, 4.0}, x_t::literal(5)) == expected);
+// d=1 -> accum(10, 1), bit_count=4
+// c=2 -> shift=10+3+1+2+4=20 -> d={10,20}, accum=(20,2), bit_count=5
+// b=3 -> shift=10+3+2+3+5=23 -> c={20,23}, accum=(30,3)
+// final y-radix alignment -> b={30+20,3}
+// a=4 never enters that recurrence; with x0=1 it becomes plain y_t g0=4.
+TEST(segment_quantizer_isolation_tests, transfer_constant_does_not_participate_in_dynamic_shift_planning)
+{
+    auto const expected = unpacked_segment_t{
+        .d = {.mantissa = 10, .shift = 20},
+        .c = {.mantissa = 20, .shift = 23},
+        .b = {.mantissa = 50, .shift = 3},
+        .g0 = y_t{4},
+    };
+    EXPECT_EQ(sut({1.0, 2.0, 3.0, 4.0}, x_t::literal(5), x_t{1}), expected);
+
+    auto const small_a = sut({1.0, 2.0, 3.0, 0.25}, x_t::literal(5), x_t{1});
+    auto const large_a = sut({1.0, 2.0, 3.0, 64.0}, x_t::literal(5), x_t{1});
+    EXPECT_EQ(small_a.d, large_a.d);
+    EXPECT_EQ(small_a.c, large_a.c);
+    EXPECT_EQ(small_a.b, large_a.b);
+    EXPECT_EQ(small_a.g0, to_fixed<y_t>(0.25));
+    EXPECT_EQ(large_a.g0, y_t{64});
+}
+
+// at the global origin g0 is unused and stored as zero; the transfer cubic must itself satisfy T(0)=0
+constexpr auto const first = sut({1.0, 2.0, 3.0, 0.0}, x_t::literal(5), x_t{0});
+static_assert(first.g0 == y_t{0});
 
 } // namespace isolation_tests
 
-namespace end_to_end_test {
+namespace end_to_end_tests {
 
 using x_t = fixed_t<int64_t, 14>;
 using y_t = fixed_t<int64_t, 25>;
-using cubic_t = std::array<scalar_t, 4>;
+using unpacked_segment_t = spline::unpacked_segment_t<unpacked_field_t, y_t>;
 
 constexpr auto aligner = exponent_aligner_t<-30, 30>{};
-constexpr auto sut = segment_quantizer_t<unpacked_field_t, float_extractor_t<scalar_t>, shift_planner_t<mantissa_t>,
+constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t<scalar_t>, shift_planner_t<mantissa_t>,
     mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift,
-    x_t, y_t::frac_bits>{};
+    x_t>{};
 
-// y = 0.125x^3 + 0.25x^2 + 0.5x + 1.0
-//
-// Each coefficient here has the same mantissa, but in the packed format, the shifts cancel and the mantissas are
-// preserved.
-static_assert(sut({0.125, 0.25, 0.5, 1.0}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 15},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 27},
-    });
+// The three S coefficients maintain a high-precision dynamic representation. g0 is directly quantized from the
+// floating Hermite endpoint a and the actual fixed runtime origin converted back to scalar.
+TEST(segment_quantizer_end_to_end_tests, quantizes_s_and_g0_in_their_distinct_representations)
+{
+    auto const segment = sut({0.125, 0.25, 0.5, 3.0}, x_t{1}, x_t{2});
+    EXPECT_EQ(segment.d, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 15}));
+    EXPECT_EQ(segment.c, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 15}));
+    EXPECT_EQ(segment.b, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 28}));
+    EXPECT_EQ(segment.g0, to_fixed<y_t>(1.5));
+}
 
-// y = 1.0x^3 + 0.5x^2 + 0.25x + 0.125
-//
-// Each coefficient here starts with the same mantissa, but in the packed format, each must be shifted destructively to
-// prevent left shifts during evaluation.
-//
-// float extraction:
-//    1.0 is exactly 2^52 * 2^-52.
-//    initial accumulator: mantissa = 4503599627370496 (2^52), exponent = -52
-//    next term (0.5): exponent is -53
-// iteration 1 (c3 and c2):
-//    relative_shift = next_exponent - accumulator_exponent = -53 - (-52) = -1
-//    destructive_preshift = max(0, 1) = 1
-//    0.5 mantissa is shifted right by 1 -> 2251799813685248
-//    packed_runtime_shift = coordinate radix (14) + max(0, -1) = 14
-//    accumulator_exponent remains -52
-// iteration 2 & 3:
-//    Follows the same pattern, destructively shifting the next mantissa by 2 and 3 respectively, yielding the halved
-//    mantissas
-// final radix alignment:
-//    accumulator_exponent is still -52, out_frac_bits is 25
-//    target_exponent = -52 + 25 = -27
-//    -27 is within the exponent_aligner_t bounds [-30, 30], so left_shift is 0
-//    output shift = -(-27) = 27
-static_assert(sut({1.0, 0.5, 0.25, 0.125}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
-    });
+TEST(segment_quantizer_end_to_end_tests, transfer_constant_cannot_cause_destructive_dynamic_flushing)
+{
+    auto const flushed = sut({1.0, 1.2e-35, 0.25, 7.0}, x_t{1}, x_t{2});
+    auto const flushed_other_a = sut({1.0, 1.2e-35, 0.25, 0.125}, x_t{1}, x_t{2});
+    EXPECT_EQ(flushed.d, flushed_other_a.d);
+    EXPECT_EQ(flushed.c, flushed_other_a.c);
+    EXPECT_EQ(flushed.b, flushed_other_a.b);
+    EXPECT_NE(flushed.g0, flushed_other_a.g0);
+}
 
-// flush first term
-static_assert(sut({0.0, 0.5, 0.25, 0.125}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
-    });
-
-// flush first two terms
-static_assert(sut({0.0, 0.0, 0.25, 0.125}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 13},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
-    });
-
-// flush first three terms
-static_assert(sut({0.0, 0.0, 0.0, 0.125}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 30},
-    });
-
-// destructive flushing
-//
-// c2 is so small relative to c3 that the required destructive preshift exceeds the 64-bit container size, causing it to
-// be flushed to zero.
-//
-// unpacked[2].shift is 15 (not the ideal 14) because by the time c1 is summed in, the runtime accumulator carries the
-// full max_safe_bits from aligned_product[0] plus c1's 53 bits, so its bit count reaches 63 - one bit wider than the
-// 62-bit-clean aligned_product. Compensating costs one bit of c0 precision via destructive_preshift = 1.
-static_assert(sut({1.0, 1.2e-35, 1.2e-35, 1.2e-35}, x_t{1})
-    == unpacked_segment_t{
-        unpacked_field_t{.mantissa = 4503599627370496, .shift = 5},
-        unpacked_field_t{.mantissa = 0, .shift = 14},
-        unpacked_field_t{.mantissa = 8979466059761068, .shift = 15},
-        unpacked_field_t{.mantissa = 0, .shift = 30},
-    });
-
-} // namespace end_to_end_test
+} // namespace end_to_end_tests
 } // namespace segment_quantizer_tests
 
 } // namespace

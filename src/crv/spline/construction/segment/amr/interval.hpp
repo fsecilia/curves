@@ -11,7 +11,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/polynomial.hpp>
 #include <crv/spline/construction/segment/amr/residual_estimator.hpp>
-#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <crv/spline/construction/segment/local_coordinate.hpp>
 
 namespace crv::spline {
@@ -91,7 +91,7 @@ struct interval_factory_t
     [[no_unique_address]] local_coordinate_converter_t convert_local_coordinate;
     residual_estimator_t estimate_residual;
 
-    constexpr auto operator()(auto const& sample_transfer, subdomain_t const& subdomain) const noexcept -> interval_t
+    constexpr auto operator()(auto const& target, subdomain_t const& subdomain) const noexcept -> interval_t
     {
         auto const width_fixed = subdomain.width();
         assert(width_fixed > x_t{0});
@@ -103,7 +103,7 @@ struct interval_factory_t
 
         auto const normalized_cubic = convert_hermite(local_left_y, local_right_y);
         auto const cubic = convert_local_coordinate(normalized_cubic, width);
-        auto const segment = segment_factory(cubic, width_fixed);
+        auto const segment = segment_factory(cubic, width_fixed, subdomain.left_x);
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);
         auto const midpoint = from_fixed<scalar_t>(subdomain.midpoint_x);
@@ -114,7 +114,7 @@ struct interval_factory_t
             .segment = segment,
             .subdomain = subdomain,
             .residual
-            = estimate_residual(sample_transfer, approximant_factory(segment, subdomain.left_x), left, midpoint, right),
+            = estimate_residual(target, approximant_factory(segment, subdomain.left_x), left, midpoint, right),
         };
     }
 };

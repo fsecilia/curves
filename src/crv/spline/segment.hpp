@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief dynamic, fixed-point cubic spline segment
+/// \brief dynamically-packed fixed-point induced-gain spline segment
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -11,9 +11,10 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
+#include <crv/math/rounding_mode.hpp>
 #include <crv/math/saturate_cast.hpp>
-#include <array>
 #include <climits>
+#include <type_traits>
 
 namespace crv::spline {
 
@@ -21,17 +22,44 @@ namespace crv::spline {
 // traits
 //
 
-constexpr auto fields_per_segment = 4;
+constexpr auto dynamic_fields_per_segment = 3;
 
-template <typename t_unpacked_field_t> struct traits_t
+template <typename t_unpacked_field_t, is_fixed t_y_t> struct unpacked_segment_t
+{
+    using unpacked_field_t = t_unpacked_field_t;
+    using y_t = t_y_t;
+
+    unpacked_field_t d;
+    unpacked_field_t c;
+    unpacked_field_t b;
+    y_t g0;
+
+    constexpr auto operator==(unpacked_segment_t const&) const noexcept -> bool = default;
+};
+
+template <typename t_packed_field_t, is_fixed t_y_t> struct packed_segment_t
+{
+    using packed_field_t = t_packed_field_t;
+    using y_t = t_y_t;
+
+    packed_field_t d;
+    packed_field_t c;
+    packed_field_t b;
+    y_t g0;
+
+    constexpr auto operator==(packed_segment_t const&) const noexcept -> bool = default;
+};
+
+template <typename t_unpacked_field_t, is_fixed t_y_t> struct traits_t
 {
     using unpacked_field_t = t_unpacked_field_t;
     using mantissa_t = unpacked_field_t::mantissa_t;
+    using y_t = t_y_t;
 
     using packed_field_t = make_unsigned_t<mantissa_t>; // [signed mantissa | unsigned shift]
 
-    using packed_segment_t = std::array<packed_field_t, fields_per_segment>;
-    using unpacked_segment_t = std::array<unpacked_field_t, fields_per_segment>;
+    using packed_segment_t = crv::spline::packed_segment_t<packed_field_t, y_t>;
+    using unpacked_segment_t = crv::spline::unpacked_segment_t<unpacked_field_t, y_t>;
 };
 
 //
@@ -121,7 +149,6 @@ template <typename packed_segment_t, typename t_unpacked_segment_t, typename fie
 struct segment_unpacker_t
 {
     using unpacked_segment_t = t_unpacked_segment_t;
-
     using unpacked_field_t = field_unpacker_t::unpacked_field_t;
 
     static constexpr auto segment_layout = t_segment_layout;
@@ -131,18 +158,22 @@ struct segment_unpacker_t
     constexpr auto operator()(packed_segment_t const& packed_segment, int_t field_index) const noexcept
         -> unpacked_field_t
     {
+        assert(0 <= field_index && field_index < dynamic_fields_per_segment);
         auto const layout
-            = (field_index == fields_per_segment - 1) ? segment_layout.final : segment_layout.intermediate;
-        return unpack_field(packed_segment[field_index], layout);
+            = (field_index == dynamic_fields_per_segment - 1) ? segment_layout.final : segment_layout.intermediate;
+        auto const packed_field = field_index == 0 ? packed_segment.d
+            : field_index == 1                     ? packed_segment.c
+                                                   : packed_segment.b;
+        return unpack_field(packed_field, layout);
     }
 
     constexpr auto operator()(packed_segment_t const& packed_segment) const noexcept -> unpacked_segment_t
     {
         return unpacked_segment_t{
-            unpack_field(packed_segment[0], segment_layout.intermediate),
-            unpack_field(packed_segment[1], segment_layout.intermediate),
-            unpack_field(packed_segment[2], segment_layout.intermediate),
-            unpack_field(packed_segment[3], segment_layout.final),
+            .d = unpack_field(packed_segment.d, segment_layout.intermediate),
+            .c = unpack_field(packed_segment.c, segment_layout.intermediate),
+            .b = unpack_field(packed_segment.b, segment_layout.final),
+            .g0 = packed_segment.g0,
         };
     }
 };
@@ -151,8 +182,24 @@ struct segment_unpacker_t
 // evaluation
 //
 
+/// evaluates gain induced by one local-coordinate transfer Hermite cubic
+///
+/// Construction interpolates transfer because authored gain/sensitivity curves may have cusps or singular derivatives
+/// that transfer regularizes. Runtime, however, consumes gain T(x)/x, and dividing a quantized absolute-error transfer
+/// near zero magnifies that error. Instead, for the completed floating transfer cubic
+///
+///     T(u) = a + b*u + c*u^2 + d*u^3 = a + u*S(u),  S(u) = b + c*u + d*u^2,
+///     u = x - x0,
+///
+/// we store S and g0 = a/x0. For x0 > 0,
+///
+///     T(x)/x = S(u) + (x0/x) * (g0 - S(u)).
+///
+/// For x0 == 0, transfer construction guarantees a == T(0) == 0, so the continuous value is simply G(x) = S(u)
+/// and no division occurs. This is an algebraic compilation of the one transfer Hermite cubic, not a second spline.
 template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t,
-    auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
+    auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
+    auto division_rounding_mode = rounding_modes::div::fast::nearest_away>
 struct segment_evaluator_t
 {
     using x_t = t_x_t;
@@ -163,41 +210,51 @@ struct segment_evaluator_t
 
     using narrow_t = make_signed_t<mantissa_t>;
     using wide_t = widened_t<narrow_t>;
+    using correction_product_t = fixed::product_t<y_t, x_t>;
+    using correction_product_value_t = typename correction_product_t::value_t;
+
+    // A located nonzero segment has 0 < x0/x <= 1. Since delta is already a y_t value, the correction magnitude
+    // cannot exceed |delta|, so the generic divider does not need output saturation here.
+    using correction_divider_t
+        = division::divider_t<typename y_t::value_t, correction_product_value_t, typename x_t::value_t, 0, false>;
 
     static constexpr auto max_shift = static_cast<int_t>(sizeof(wide_t) * CHAR_BIT) - 1;
+    static constexpr auto correction_divide_shift = x_t::frac_bits - correction_product_t::frac_bits + y_t::frac_bits;
+    static_assert(correction_divide_shift == 0);
 
-    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t const& x) const noexcept -> y_t
+    constexpr auto operator()(unpacked_segment_t const& unpacked_segment, x_t x, x_t x0) const noexcept -> y_t
     {
-        auto accumulator = unpacked_segment[0].mantissa;
-        accumulator = apply_coefficient(unpacked_segment[1].mantissa, unpacked_segment[0].shift, x, accumulator);
-        accumulator = apply_coefficient(unpacked_segment[2].mantissa, unpacked_segment[1].shift, x, accumulator);
-        accumulator = apply_coefficient(unpacked_segment[3].mantissa, unpacked_segment[2].shift, x, accumulator);
-        return align_to_y(accumulator, unpacked_segment[3].shift);
+        assert(x0 >= x_t{0});
+        assert(x >= x0);
+
+        auto const u = x_t::literal(subtract_wrap(x.value, x0.value));
+
+        if (x0 == x_t{0}) return evaluate_s(unpacked_segment, u);
+
+        auto const s = evaluate_s(unpacked_segment, u);
+
+        assert(x > x_t{0});
+        auto const delta = y_t::literal(subtract_wrap(unpacked_segment.g0.value, s.value));
+        auto const product = multiply(delta, x0);
+        auto const correction = divide<y_t>(product, x, division_rounding_mode, correction_divider_t{});
+        return y_t::literal(add_wrap(s.value, correction.value));
     }
 
 private:
-    // prevents UB from signed integer overflow
-    //
-    // The segments we generate do not overflow by construction, but a malformed segment might. None of the segment
-    // evaluation result is used to index into memory, so an overflow wrapping just means a bad mouse curve, not a CVE.
-    // This function is used to sum two signed, 2's complement values using unsigned arithmetic. The result is the same,
-    // but overflow just wraps; it does not induce UB.
-    template <typename value_t> static constexpr auto safe_add(value_t lhs, value_t rhs) noexcept -> value_t
+    constexpr auto evaluate_s(unpacked_segment_t const& unpacked_segment, x_t u) const noexcept -> y_t
     {
-        return add_wrap(lhs, rhs);
+        auto accumulator = unpacked_segment.d.mantissa;
+        accumulator = apply_coefficient(unpacked_segment.c.mantissa, unpacked_segment.d.shift, u, accumulator);
+        accumulator = apply_coefficient(unpacked_segment.b.mantissa, unpacked_segment.c.shift, u, accumulator);
+        return align_to_y(accumulator, unpacked_segment.b.shift);
     }
 
     constexpr auto apply_coefficient(
-        mantissa_t coeff, int_t relative_shift, x_t const& x, mantissa_t accumulator) const noexcept -> mantissa_t
+        mantissa_t coeff, int_t relative_shift, x_t x, mantissa_t accumulator) const noexcept -> mantissa_t
     {
-        // multiply wide
         auto const wide_product = widen(accumulator) * x.value;
-
-        // align product radix to next coeff
         auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
-
-        // sum aligned terms
-        return safe_add(aligned_product, coeff);
+        return add_wrap(aligned_product, coeff);
     }
 
     constexpr auto align_to_y(mantissa_t accumulator, int_t shift) const noexcept -> y_t
@@ -210,7 +267,10 @@ private:
 // orchestration
 //
 
-/// dynamic, fixed-point cubic spline segment packed into half a cache line
+/// dynamically-packed fixed-point induced-gain segment occupying half a cache line
+///
+/// The three packed fields are Horner coefficients for S(u). g0 is an ordinary y_t ordinate and deliberately carries
+/// no dynamic-shift metadata.
 template <typename traits_t, is_fixed t_x_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
 class alignas(32) segment_t
 {
@@ -218,12 +278,9 @@ public:
     using x_t = t_x_t;
     using segment_unpacker_t = t_segment_unpacker_t;
     using segment_evaluator_t = t_segment_evaluator_t;
-
     using packed_segment_t = traits_t::packed_segment_t;
-
     using y_t = segment_evaluator_t::y_t;
 
-    // enforce evaluator's accumulator is wide enough for shifts the layout can encode
     static_assert(segment_unpacker_t::segment_layout.intermediate.max_shift() <= segment_evaluator_t::max_shift);
     static_assert(segment_unpacker_t::segment_layout.final.max_shift() <= segment_evaluator_t::max_shift);
     static_assert(-segment_unpacker_t::segment_layout.final.min_shift() <= segment_evaluator_t::max_shift);
@@ -232,17 +289,13 @@ public:
 
     explicit constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
     {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<segment_t>);
-
-        // this type must be aligned to at least half a cache line; during prod it must be exactly 32, but during
-        // testing, it may be overaligned
         static_assert(alignof(segment_t) >= 32);
     }
 
-    constexpr auto operator()(x_t x) const noexcept -> y_t
+    constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t
     {
-        return evaluate_segment(unpack_segment(packed_segment_), x);
+        return evaluate_segment(unpack_segment(packed_segment_), x, x0);
     }
 
 private:

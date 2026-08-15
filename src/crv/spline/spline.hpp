@@ -64,7 +64,7 @@ public:
         if !consteval { prev_segment_index_ = location.index; }
 
         auto const& segment = payload.segments[location.index];
-        return segment(x - location.origin);
+        return segment(x, location.origin);
     }
 
     /// validates data the driver receives

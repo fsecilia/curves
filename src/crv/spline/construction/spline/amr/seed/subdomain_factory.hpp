@@ -9,6 +9,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <numeric>
 
 namespace crv::spline::seed {
@@ -28,15 +29,14 @@ template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
         return x_t::literal(std::midpoint(left.value, right.value));
     }
 
-    static constexpr auto operator()(auto const& sample_transfer, function_sample_t const& left_sample,
-        x_t left, x_t right) noexcept -> subdomain_t
+    static constexpr auto operator()(
+        auto const& target, function_sample_t const& left_sample, x_t left, x_t right) noexcept -> subdomain_t
     {
         assert(left < right && "subdomain endpoints must be strictly increasing");
 
         auto const midpoint_x = midpoint(left, right);
-        auto const midpoint_sample
-            = sample_transfer(jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
-        auto const right_sample = sample_transfer(jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
+        auto const midpoint_sample = sample_transfer(target, jet_t{from_fixed<scalar_t>(midpoint_x), scalar_t{1}});
+        auto const right_sample = sample_transfer(target, jet_t{from_fixed<scalar_t>(right), scalar_t{1}});
 
         return {
             .left_x = left,

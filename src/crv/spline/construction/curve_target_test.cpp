@@ -137,8 +137,7 @@ TEST(curve_target_sensitivity_test, power_law_gain_and_transfer_remain_condition
         EXPECT_LE(abs(expected_gain - actual_gain), gain_tolerance)
             << "x=" << x << ", expected gain=" << expected_gain << ", actual gain=" << actual_gain;
 
-        auto const transfer_rounding
-            = scalar_t{8} * std::numeric_limits<scalar_t>::epsilon() * abs(expected_transfer);
+        auto const transfer_rounding = scalar_t{8} * std::numeric_limits<scalar_t>::epsilon() * abs(expected_transfer);
         EXPECT_LE(abs(expected_transfer - actual_transfer), x * gain_tolerance + transfer_rounding)
             << "x=" << x << ", expected transfer=" << expected_transfer << ", actual transfer=" << actual_transfer;
         EXPECT_DOUBLE_EQ(x * actual_gain, actual_transfer);
@@ -156,8 +155,7 @@ TEST(curve_target_sensitivity_test, builder_scales_gain_tolerance_into_integral_
     auto constexpr gain_tolerance = scalar_t{0x1p-30};
     auto constexpr expected_integral_tolerance = scalar_t{0x1p-24};
 
-    EXPECT_DOUBLE_EQ(
-        expected_integral_tolerance, gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance));
+    EXPECT_DOUBLE_EQ(expected_integral_tolerance, gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance));
 }
 
 } // namespace

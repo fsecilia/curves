@@ -7,7 +7,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/spline/construction/segment/amr/transfer_sampler.hpp>
+#include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <crv/test/test.hpp>
 
 namespace crv::spline {
@@ -32,13 +32,15 @@ struct subdomain_t
     function_sample_t right;
 };
 
-constexpr auto sample_target_function = [](sample_jet_t const& jet) constexpr noexcept -> function_sample_t {
-    return {.x = jet.f, .y = sample_jet_t{jet.f + 100.0, jet.df}};
+struct target_t
+{
+    constexpr auto transfer(sample_jet_t jet) const noexcept -> sample_jet_t { return {jet.f + 100.0, jet.df}; }
 };
+constexpr auto target = target_t{};
 
 constexpr auto make_sample(fixed_x_t x) noexcept -> function_sample_t
 {
-    return sample_target_function(sample_jet_t{from_fixed<scalar_t>(x), 1.0});
+    return sample_transfer(target, sample_jet_t{from_fixed<scalar_t>(x), 1.0});
 }
 
 auto const parent = subdomain_t{
@@ -54,7 +56,7 @@ auto const bisector = bisector_t<bisection_t<subdomain_t>>{};
 
 TEST(spline_bisection_test, bisects_at_exact_representable_midpoints)
 {
-    auto const result = bisector(sample_target_function, parent);
+    auto const result = bisector(target, parent);
 
     EXPECT_EQ(result.left.left_x, fixed_x_t{0});
     EXPECT_EQ(result.left.midpoint_x, fixed_x_t{2});
@@ -81,7 +83,7 @@ TEST(spline_bisection_test, fails_loudly_without_distinct_representable_midpoint
         .right = make_sample(fixed_x_t{1}),
     };
 
-    EXPECT_DEBUG_DEATH(bisector(sample_target_function, unsplittable), "distinct representable midpoint");
+    EXPECT_DEBUG_DEATH(bisector(target, unsplittable), "distinct representable midpoint");
 }
 #endif
 

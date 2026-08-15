@@ -24,15 +24,15 @@ struct segment_t
 
     y_t base_val;
 
-    constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val + x); }
+    constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t { return static_cast<y_t>(base_val + (x - x0)); }
 };
 
-// subtracts dx from a distinct base_val
+// adds dx to a distinct base_val
 struct extended_tangent_t
 {
     y_t base_val;
 
-    constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val - x); }
+    constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val + x); }
 };
 
 // maps subdomains of width 2 to sequential indices
@@ -67,7 +67,7 @@ struct segment_locator_t
 using sut_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
 
 constexpr auto segments = std::array<segment_t, sut_t::max_segment_count>{{{10}, {20}, {30}}};
-constexpr auto extended_tangent = extended_tangent_t{-40};
+constexpr auto extended_tangent = extended_tangent_t{40};
 constexpr auto const sut = sut_t{sut_t::payload_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent}};
 
 // x in [0, 1] -> base 10
@@ -82,12 +82,12 @@ static_assert(sut(3) == 21);
 static_assert(sut(4) == 30);
 
 // extended final tangent: x >= x_max (5)
-static_assert(sut(5) == -40); // -40 - (5 - 5)
-static_assert(sut(6) == -41); // -40 - (5 - 6)
+static_assert(sut(5) == 40);
+static_assert(sut(6) == 41);
 
 // maximum input value; x_max is 5, max_in is 127, x = 122.
-// extended base_val is -40, result should be -40 - 122 = -162.
-static_assert(sut(max<x_t>()) == -162);
+// extended base_val is 40, result should be 40 + 122 = 162.
+static_assert(sut(max<x_t>()) == 162);
 
 // --------------------------------------------------------------------------------------------------------------------
 // prefetch
@@ -104,7 +104,7 @@ struct spline_prefetch_test_t : Test
 
         alignas(32) std::array<std::byte, 32> padding;
 
-        constexpr auto operator()(x_t) const noexcept -> y_t { return y_t{0}; }
+        constexpr auto operator()(x_t, x_t) const noexcept -> y_t { return y_t{0}; }
     };
 
     struct extended_tangent_t

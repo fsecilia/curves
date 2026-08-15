@@ -42,14 +42,12 @@ template <typename t_curve_t> struct gain_curve_target_t
 
     template <typename value_t> constexpr auto gain(value_t x) const noexcept -> value_t { return curve(x); }
 
-    template <std::floating_point scalar_t>
-    constexpr auto transfer(scalar_t x) const noexcept -> scalar_t
+    template <std::floating_point scalar_t> constexpr auto transfer(scalar_t x) const noexcept -> scalar_t
     {
         return x * curve(x);
     }
 
-    template <std::floating_point scalar_t>
-    constexpr auto transfer(jet_t<scalar_t> x) const noexcept -> jet_t<scalar_t>
+    template <std::floating_point scalar_t> constexpr auto transfer(jet_t<scalar_t> x) const noexcept -> jet_t<scalar_t>
     {
         auto const primal_x = primal(x);
 
@@ -131,8 +129,7 @@ template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builde
     scalar_t gain_tolerance;
     int_t depth_limit;
 
-    template <typename curve_t>
-    auto operator()(curve_t curve, scalar_t domain_end) const
+    template <typename curve_t> auto operator()(curve_t curve, scalar_t domain_end) const
     {
         return operator()(std::move(curve), domain_end, std::array<scalar_t, 0>{});
     }
@@ -143,8 +140,7 @@ template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builde
         assert(domain_end > scalar_t{0});
         auto const integral_tolerance = gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance);
         auto integrate = quadrature::adaptive_integrator_t<scalar_t>{integral_tolerance, depth_limit};
-        auto result = integrate(
-            quadrature::integral_t{std::move(curve), rule_t{}}, domain_end, critical_points);
+        auto result = integrate(quadrature::integral_t{std::move(curve), rule_t{}}, domain_end, critical_points);
 
         auto target = sensitivity_curve_target_t{std::move(result.antiderivative)};
         return sensitivity_curve_target_result_t<decltype(target)>{
@@ -155,8 +151,5 @@ template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builde
         };
     }
 };
-
-// The current fixed spline still stores transfer. A later representation pass compiles each transfer Hermite cubic
-// algebraically into its induced-gain form, so runtime gain evaluation does not divide a quantized transfer by x.
 
 } // namespace crv::spline

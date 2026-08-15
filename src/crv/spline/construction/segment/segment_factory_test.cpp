@@ -42,6 +42,7 @@ struct unpacked_segment_t
 {
     cubic_t cubic;
     int_t width;
+    int_t x0;
     constexpr auto operator==(unpacked_segment_t const&) const noexcept -> bool = default;
 };
 
@@ -74,9 +75,9 @@ struct segment_quantizer_t
 
     static constexpr auto max_intermediate_shift = spline::segment_layout.intermediate.max_shift();
 
-    constexpr auto operator()(cubic_t const& cubic, x_t width) const noexcept -> unpacked_segment_t
+    constexpr auto operator()(cubic_t const& cubic, x_t width, x_t x0) const noexcept -> unpacked_segment_t
     {
-        return unpacked_segment_t{.cubic = cubic, .width = width};
+        return unpacked_segment_t{.cubic = cubic, .width = width, .x0 = x0};
     }
 };
 
@@ -92,8 +93,8 @@ struct segment_packer_t
 constexpr auto build_segment = segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>{};
 
 // verify the factory correctly delegates to the quantizer, then the packer, then wraps the result
-static_assert(build_segment(cubic_t{.id = 42}, 8)
-    == segment_t{packed_segment_t{unpacked_segment_t{.cubic = cubic_t{.id = 42}, .width = 8}}});
+static_assert(build_segment(cubic_t{.id = 42}, 8, 3)
+    == segment_t{packed_segment_t{unpacked_segment_t{.cubic = cubic_t{.id = 42}, .width = 8, .x0 = 3}}});
 
 } // namespace
 } // namespace crv::spline

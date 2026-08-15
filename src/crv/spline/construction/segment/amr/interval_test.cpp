@@ -66,6 +66,7 @@ struct spline_interval_factory_test_t : Test
     {
         cubic_t cubic;
         x_t width;
+        x_t x0;
 
         constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
     };
@@ -74,9 +75,9 @@ struct spline_interval_factory_test_t : Test
     {
         using segment_t = segment_t;
 
-        constexpr auto operator()(cubic_t const& cubic, x_t width) const noexcept -> segment_t
+        constexpr auto operator()(cubic_t const& cubic, x_t width, x_t x0) const noexcept -> segment_t
         {
-            return {cubic, width};
+            return {cubic, width, x0};
         }
     };
 
@@ -204,11 +205,11 @@ struct spline_interval_factory_test_t : Test
     x_t const width_fixed = x_t::literal(5);
     cubic_t const normalized_cubic{1.0, 2.0, 3.0, 4.0};
     cubic_t const local_cubic{10.0, 20.0, 30.0, 40.0};
-    segment_t const segment{.cubic = local_cubic, .width = width_fixed};
+    segment_t const segment{.cubic = local_cubic, .width = width_fixed, .x0 = left_x};
     residual_t const residual{14};
 };
 
-TEST_F(spline_interval_factory_test_t, builds_normalized_hermite_then_reparameterizes_to_local_u)
+TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_same_fixed_segment_it_stores)
 {
     auto local_left_y = left.y;
     auto local_right_y = right.y;

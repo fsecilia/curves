@@ -43,8 +43,8 @@ TEST(spline_local_coordinate_test, preserves_polynomial_over_supported_width_ran
             auto const u = t * width;
             auto const expected = normalized(t);
             auto const actual = local(u);
-            auto const tolerance = std::max(std::abs(expected), scalar_t{1})
-                * std::numeric_limits<scalar_t>::epsilon() * scalar_t{32};
+            auto const tolerance
+                = std::max(std::abs(expected), scalar_t{1}) * std::numeric_limits<scalar_t>::epsilon() * scalar_t{32};
             EXPECT_NEAR(expected, actual, tolerance);
         }
     }
