@@ -6,12 +6,13 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/fixed/fixed.hpp>
 #include <cassert>
 #include <utility>
 
 namespace crv::pipeline::filters::one_euro {
 
-/// Variable-interval fixed-point 1-Euro filter.
+/// variable-interval fixed-point 1-Euro filter
 ///
 /// This type owns only the top-level state transition and data flow. Derivative filtering, adaptive signal-cutoff
 /// calculation, and signal filtering are supplied as collaborators.
@@ -74,7 +75,6 @@ public:
     constexpr auto operator()(x_t input, dt_ns_t dt_ns) noexcept -> x_t
     {
         assert(input >= x_t{});
-        assert(dt_ns > dt_ns_t{});
 
         if (!initialized_) [[unlikely]]
         {
@@ -83,6 +83,8 @@ public:
             initialized_ = true;
             return input;
         }
+
+        assert(dt_ns > dt_ns_t{});
 
         auto const previous_filtered_input = signal_filter_.output();
 

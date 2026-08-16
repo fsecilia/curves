@@ -14,7 +14,7 @@
 
 namespace crv::pipeline::filters::one_euro {
 
-/// Violations that prevent a parameter set from being applied to a 1-Euro filter.
+/// violations that prevent a parameter set from being applied to a 1-Euro filter
 ///
 /// Multiple independent violations may be reported by one validation pass. The signal-cutoff overflow check is only
 /// meaningful when its minimum cutoff and slope inputs are themselves valid.
@@ -37,7 +37,7 @@ template <> inline constexpr auto bitwise_for_enum_enabled<pipeline::filters::on
 
 namespace crv::pipeline::filters::one_euro {
 
-/// Preconverted runtime parameters for a 1-Euro filter.
+/// preconverted runtime parameters for a 1-Euro filter
 ///
 /// Runtime units:
 ///

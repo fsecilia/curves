@@ -22,7 +22,7 @@ using rne_shifter_t = shifter_t<rounding_modes::shr::nearest_even>;
 
 } // namespace derivative_filter_detail
 
-/// Low-pass filter for the signal derivative.
+/// low-pass filter for the signal derivative
 ///
 /// The maintained 1-Euro reference implementation uses the previous filtered signal as the derivative baseline:
 ///
@@ -75,11 +75,13 @@ public:
     using numerator_fma_t = fma_t<numerator_t, cutoff_rate_t, x_t, dx_t, derivative_filter_detail::rne_shifter_t,
         fixed::overflow_policy_t::saturate>;
 
-    // dt_ns == 1 can produce a raw derivative spanning x_t's full signal magnitude. The divider independently
-    // requires enough derivative fractional precision to avoid a left scaling shift; with equal-width signed storage,
-    // the two constraints force x_t and dx_t to the same Q format.
+    // At dt_ns == 1, the raw derivative is the signal delta itself. The derivative state must therefore preserve both
+    // the signal's range and its fixed-point resolution. With equal-width signed storage these constraints imply the
+    // same Q format; a wider derivative state may provide additional range or precision.
     static_assert(
         dx_t::int_bits >= x_t::int_bits, "derivative state must contain maximum raw derivative at dt_ns == 1");
+    static_assert(
+        dx_t::frac_bits >= x_t::frac_bits, "derivative state must preserve raw derivative precision at dt_ns == 1");
     static_assert(numerator_t::int_bits >= dx_t::int_bits, "derivative numerator must contain derivative state range");
     static_assert(
         numerator_t::frac_bits >= dx_t::frac_bits, "derivative numerator must contain derivative state precision");

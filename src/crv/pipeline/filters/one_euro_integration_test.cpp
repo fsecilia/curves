@@ -87,7 +87,7 @@ struct pipeline_filters_one_euro_filter_integration_test_t : Test
 
     using cutoff_rate_t = fixed_t<int64_t, 46>;
     using cutoff_slope_t = fixed_t<int64_t, 47>;
-    using cutoff_interval_t = fixed_t<int64_t, 48>;
+    using cutoff_interval_t = fixed_t<int64_t, 46>;
     using cutoff_interval_calculator_t = one_euro::cutoff_interval_calculator_t<cutoff_interval_t>;
     using signal_cutoff_rate_calculator_t = one_euro::signal_cutoff_rate_calculator_t<cutoff_rate_t>;
 

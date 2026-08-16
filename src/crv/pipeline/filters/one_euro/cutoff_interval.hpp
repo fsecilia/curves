@@ -15,7 +15,7 @@
 
 namespace crv::pipeline::filters::one_euro {
 
-/// Calculates the dimensionless cutoff interval `cutoff_rate*dt_ns` in a bounded working representation.
+/// calculates dimensionless cutoff interval `cutoff_rate*dt_ns` in a bounded working representation
 ///
 /// Finite results always leave room for the denominator's `+1`:
 ///
@@ -45,7 +45,7 @@ struct cutoff_interval_calculator_t
 
         static_assert(cutoff_interval_t::int_bits > 0, "cutoff interval must represent one");
         static_assert(dt_ns_t::frac_bits == 0, "elapsed nanoseconds must use an integer representation");
-        static_assert(cutoff_interval_t::frac_bits >= cutoff_rate_t::frac_bits,
+        static_assert(cutoff_interval_t::frac_bits == cutoff_rate_t::frac_bits,
             "cutoff interval must preserve cutoff-rate precision for positive integer dt");
         static_assert(product_t::int_bits >= cutoff_interval_t::int_bits,
             "cutoff-rate/time product must contain the finite cutoff-interval range");

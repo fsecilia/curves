@@ -17,7 +17,7 @@
 
 namespace crv::pipeline::filters::one_euro {
 
-/// Calculates the adaptive signal cutoff rate:
+/// calculates signal cutoff rate
 ///
 ///     minimum_cutoff_rate + cutoff_slope*abs(filtered_derivative)
 ///

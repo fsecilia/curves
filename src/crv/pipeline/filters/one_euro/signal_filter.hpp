@@ -22,7 +22,7 @@ using rne_shifter_t = shifter_t<rounding_modes::shr::nearest_even>;
 
 } // namespace signal_filter_detail
 
-/// Low-pass filter for the input signal.
+/// low-pass filter for input signal
 ///
 /// The ordinary recurrence:
 ///
