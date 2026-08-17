@@ -13,9 +13,13 @@
 set(kernel_files
     abi_validation.h
     abi.c
+    cxx_kernel_build_test.cpp
+    cxx_kernel_build_test.hpp
     cxx/cassert
     entry_point.c
     input/abi.c
+    input/capture/abi.c
+    input/capture/capture.c
     input/handler.c
     input/handler.h
 )
@@ -106,6 +110,7 @@ file(MAKE_DIRECTORY "${kbuild_workspace}")
 
 list(TRANSFORM kernel_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 set(kernel_files ${shared_lib_kernel_files} ${kernel_files})
+
 set(projection_source_root "${PROJECT_SOURCE_DIR}/src")
 cmake_path(NORMAL_PATH projection_source_root)
 

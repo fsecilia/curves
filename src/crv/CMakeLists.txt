@@ -124,9 +124,11 @@ set(shared_lib_kernel_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
-    kernel/cxx_build_test.cpp
-    kernel/cxx_build_test.h
+    kernel/cxx_lib_build_test.cpp
+    kernel/cxx_lib_build_test.h
     kernel/input/abi.h
+    kernel/input/capture/abi.h
+    kernel/input/capture/capture.h
     kernel/input/input_value_array_adapter.cpp
     kernel/input/input_value_array_adapter.hpp
     kernel/pipeline/abi.cpp

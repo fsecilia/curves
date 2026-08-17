@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "cxx_build_test.h"
+#include "cxx_lib_build_test.h"
 #include <crv/kernel/input/input_value_array_adapter.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <cassert>

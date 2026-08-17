@@ -6,6 +6,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <crv/kernel/input/capture/capture.h>
 #include <crv/kernel/pipeline/pipeline.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
@@ -145,9 +146,23 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
     error = input_open_device(handle);
     if (error) goto err_unregister_handle;
 
-    pr_info("attached to input device\n");
+    error = crv_capture_attach(handle);
+    if (error)
+    {
+        if (error == -EBUSY) error = -ENODEV;
+
+        goto err_close_device;
+    }
+
+    pr_info("attached to input device '%s', phys '%s', bus %04x vendor %04x product %04x version %04x, "
+            "input-value capacity %u\n",
+        device->name ? device->name : "<unnamed>", device->phys ? device->phys : "<unknown>", device->id.bustype,
+        device->id.vendor, device->id.product, device->id.version, device->max_vals);
 
     return 0;
+
+err_close_device:
+    input_close_device(handle);
 
 err_unregister_handle:
     input_unregister_handle(handle);
@@ -163,8 +178,7 @@ err_report:
 
 static unsigned int crv_input_events(struct input_handle* handle, struct input_value* values, unsigned int count)
 {
-    if (!count) return 0;
-    if (WARN_ON_ONCE(!handle || !values)) return count;
+    crv_capture_record(handle, values, count);
 
     return count;
 }
@@ -174,6 +188,7 @@ static void crv_input_disconnect(struct input_handle* handle)
     struct crv_input_handle* crv_handle = container_of(handle, struct crv_input_handle, input);
     struct input_dev* device = handle->dev;
 
+    crv_capture_detach(handle);
     input_close_device(handle);
     input_unregister_handle(handle);
 
@@ -197,10 +212,17 @@ static int __init crv_init(void)
 {
     int error;
 
+    // Capture is initialized first because input_register_handler() may immediately connect devices already known to
+    // input core.
+    error = crv_capture_register();
+    if (error) return error;
+
     error = input_register_handler(&crv_input_handler);
     if (error)
     {
         pr_err("failed to register input handler: %d\n", error);
+
+        crv_capture_unregister();
         return error;
     }
 
@@ -210,7 +232,10 @@ static int __init crv_init(void)
 
 static void __exit crv_exit(void)
 {
+    // Handler removal runs disconnect() for the attached source before the capture subsystem asserts that no borrowed
+    // handle remains.
     input_unregister_handler(&crv_input_handler);
+    crv_capture_unregister();
 
     pr_info("unloaded\n");
 }
