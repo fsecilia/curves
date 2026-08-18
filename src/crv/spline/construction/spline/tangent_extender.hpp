@@ -16,7 +16,7 @@
 
 namespace crv::spline {
 
-/// generates the output/gain tangent induced by the final local-coordinate transfer Hermite cubic
+/// builds the final gain-space tangent from the last transfer cubic
 template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t> struct tangent_extender_t
 {
     using interval_t = t_interval_t;
@@ -37,16 +37,19 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
         auto const x_max = from_fixed<scalar_t>(interval.subdomain.right_x);
         assert(x_max > scalar_t{0});
 
-        // The cubic remains transfer-space construction data. Since u = x - x0, du/dx = 1 and this jet gives T(X)
-        // and T'(X) directly. The gain-space slope is G'(X) = (T'(X) - G(X)) / X.
+        // derive endpoint transfer and gain slope
+        //
+        // Since u = x - x0, du/dx = 1. The jet gives T(X) and T'(X), then G'(X) = (T'(X) - G(X)) / X.
         auto const transfer_jet = interval.cubic(jet_t{u, scalar_t{1}});
         auto const transfer = primal(transfer_jet);
         auto const transfer_slope = tangent(transfer_jet);
         auto const gain = transfer / x_max;
         auto const gain_slope = (transfer_slope - gain) / x_max;
 
-        // Authored gain and sensitivity curves are nondecreasing, so their induced gain is nondecreasing as well.
-        // The final Hermite endpoint preserves T(X) and T'(X), hence the gain-space extension inherits G'(X) >= 0.
+        // final gain slope must stay nonnegative
+        //
+        // Authored gain and sensitivity are nondecreasing. Hermite preserves the final T(X) and T'(X), so the induced
+        // endpoint gain slope must also be nonnegative.
         assert(gain_slope >= scalar_t{0});
 
         auto const extracted_slope = extract_float(gain_slope);
@@ -54,7 +57,7 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
         auto const slope
             = unpacked_field_t{.mantissa = extracted_slope.mantissa, .shift = int_cast<int_t>(required_shift)};
 
-        // Match the line intercept to the actual fixed segment being shipped, not the floating cubic endpoint.
+        // anchor extension to shipped fixed segment, not floating endpoint
         auto const y0 = interval.segment(interval.subdomain.right_x, interval.subdomain.left_x);
         auto const y_limit_fixed = to_fixed<y_t>(y_limit);
         auto const x_max_delta = extended_tangent_t::clamp_delta(slope, y0, y_limit_fixed);
