@@ -8,4 +8,6 @@
 ///
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#pragma once
+
 int reference_cxx(void);
