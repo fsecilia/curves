@@ -6,9 +6,9 @@
 # This file builds the kernel module through Kbuild, maintains an exact symlink projection for local development, and
 # installs the same explicit source manifest for DKMS.
 
-# =====================================================================================================================
+#
 # Environment
-# =====================================================================================================================
+#
 
 if(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     message(FATAL_ERROR "curves kernel module requires a Linux host")
@@ -67,9 +67,9 @@ set(kbuild_workspace "${CMAKE_BINARY_DIR}/kernel")
 set(kbuild_projection_state "${CMAKE_CURRENT_BINARY_DIR}/projection.manifest")
 file(MAKE_DIRECTORY "${kbuild_workspace}")
 
-# =====================================================================================================================
+#
 # Source Manifest
-# =====================================================================================================================
+#
 
 set(crv_kernel_only_files
     abi_validation.h
@@ -132,9 +132,9 @@ if(NOT kbuild_objects)
     message(FATAL_ERROR "kernel manifest contains no compilation units")
 endif()
 
-# =====================================================================================================================
+#
 # Development Projection
-# =====================================================================================================================
+#
 
 # reconcile workspace with previous manifest
 set(previous_projected_files)
@@ -199,9 +199,9 @@ elseif(projection_changed)
     file(TOUCH "${kbuild_projection_state}")
 endif()
 
-# =====================================================================================================================
+#
 # Kbuild Generation
-# =====================================================================================================================
+#
 
 if(CMAKE_CXX_EXTENSIONS)
     set(cxx_standard_option_variable "CMAKE_CXX${CMAKE_CXX_STANDARD}_EXTENSION_COMPILE_OPTION")
@@ -240,9 +240,9 @@ set(makefile "${kbuild_workspace}/Makefile")
 configure_file("Kbuild.in" "${kbuild_file}" @ONLY)
 configure_file("Makefile.in" "${makefile}" @ONLY)
 
-# =====================================================================================================================
+#
 # compile_commands.json / clangd
-# =====================================================================================================================
+#
 
 # index kernel-only files so they can be refactored with clangd
 add_library(kernel_index OBJECT EXCLUDE_FROM_ALL ${crv_kernel_only_files})
@@ -338,9 +338,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     )
 endif()
 
-# =====================================================================================================================
+#
 # Build Targets
-# =====================================================================================================================
+#
 
 set(kbuild_module_file "${kbuild_workspace}/${kbuild_module_name}.ko")
 add_custom_command(
@@ -372,9 +372,9 @@ add_custom_target(clean_kbuild
     JOB_SERVER_AWARE TRUE
 )
 
-# =====================================================================================================================
+#
 # Installation
-# =====================================================================================================================
+#
 
 foreach(file relative IN ZIP_LISTS crv_kernel_files projected_files)
     get_filename_component(relative_directory "${relative}" DIRECTORY)
