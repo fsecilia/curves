@@ -10,4 +10,12 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int reference_cxx(void);
+
+#ifdef __cplusplus
+} // extern "C" {
+#endif

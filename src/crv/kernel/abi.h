@@ -10,6 +10,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef __INT8_TYPE__ crv_s8_t;
 typedef __INT16_TYPE__ crv_s16_t;
 typedef __INT32_TYPE__ crv_s32_t;
@@ -22,4 +26,8 @@ typedef __UINT64_TYPE__ crv_u64_t;
 
 #if !defined __KERNEL__
 #define __user
+#endif
+
+#ifdef __cplusplus
+} // extern "C" {
 #endif

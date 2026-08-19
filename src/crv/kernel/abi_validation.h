@@ -10,6 +10,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// compatible static_assert across languages
 #if defined(__cplusplus)
 #define CRV_STATIC_ASSERT(condition, message) static_assert(condition, message)
@@ -61,3 +65,7 @@
     CRV_MEMBER_SAME_LAYOUT(compat_type, ref_type, member);                                           \
     CRV_STATIC_ASSERT(CRV_MEMBER_SIGNED(compat_type, member) == CRV_MEMBER_SIGNED(ref_type, member), \
         #compat_type "::" #member ": signedness does not match reference type " #ref_type)
+
+#ifdef __cplusplus
+} // extern "C" {
+#endif

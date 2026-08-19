@@ -5,3 +5,11 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+} // extern "C" {
+#endif

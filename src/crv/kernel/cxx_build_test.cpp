@@ -3,10 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-extern "C" {
 #include "cxx_build_test.h"
-} // extern "C"
-
 #include <crv/math/fixed/fixed.hpp>
 
 namespace crv {
