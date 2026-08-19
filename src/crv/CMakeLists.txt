@@ -126,6 +126,8 @@ set(shared_lib_kernel_files
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
     kernel/input/abi.h
+    kernel/input/input_value_array_view.cpp
+    kernel/input/input_value_array_view.hpp
     lib.hpp
     math/abs.hpp
     math/cmp.hpp
@@ -171,6 +173,7 @@ set(unit_test_files
     i18n_test.cpp
     io/unique_fd_integration_test.cpp
     io/unique_fd_test.cpp
+    kernel/input/input_value_array_view_test.cpp
     math/abs_test.cpp
     math/arg_min_max_test.cpp
     math/cmp_test.cpp
