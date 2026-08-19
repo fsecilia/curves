@@ -72,6 +72,7 @@ file(MAKE_DIRECTORY "${kbuild_workspace}")
 # =====================================================================================================================
 
 set(crv_kernel_only_files
+    abi_validation.h
     abi.c
     abi.h
     cxx/cassert

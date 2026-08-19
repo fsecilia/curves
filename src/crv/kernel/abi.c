@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "abi.h"
+#include <crv/kernel/abi_validation.h>
 #include <linux/compiler.h>
 
 _Static_assert(sizeof(crv_s8_t) == sizeof(s8), "crv_s8_t size mismatch");
