@@ -8,24 +8,25 @@
 
 #include <source_location>
 
+#ifndef NDEBUG
+
 extern "C" [[noreturn]] void panic(char const* fmt, ...);
 
 namespace crv {
 
 inline constexpr auto kernel_assert(bool expression, char const* expression_string,
-                                    std::source_location const source_location = std::source_location::current())
-    -> void
+    std::source_location const source_location = std::source_location::current()) -> void
 {
     if (expression) [[likely]] { return; }
 
     panic("%s:%u: %s: Assertion `%s' failed.", source_location.file_name(), source_location.line(),
-          source_location.function_name(), expression_string);
+        source_location.function_name(), expression_string);
 }
 
 } // namespace crv
 
-#ifndef NDEBUG
 #define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
+
 #else
 #define assert(expr) ((void)0)
 #endif
