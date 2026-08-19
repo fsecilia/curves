@@ -4,9 +4,9 @@
 /// \brief kernel shim for cassert
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <source_location>
-
 #pragma once
+
+#include <source_location>
 
 extern "C" [[noreturn]] void panic(char const* fmt, ...);
 
