@@ -15,6 +15,7 @@ set(kernel_files
     abi.c
     cxx/cassert
     entry_point.c
+    input/abi.c
     input/handler.c
     input/handler.h
 )
