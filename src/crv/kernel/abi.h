@@ -24,10 +24,6 @@ typedef __UINT16_TYPE__ crv_u16_t;
 typedef __UINT32_TYPE__ crv_u32_t;
 typedef __UINT64_TYPE__ crv_u64_t;
 
-#if !defined __KERNEL__
-#define __user
-#endif
-
 #ifdef __cplusplus
 } // extern "C" {
 #endif
