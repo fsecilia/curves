@@ -5,7 +5,7 @@
 
 #include "abi.h"
 #include <crv/kernel/abi_validation.h>
-#include <linux/compiler.h>
+#include <linux/types.h>
 
 _Static_assert(sizeof(crv_s8_t) == sizeof(s8), "crv_s8_t size mismatch");
 _Static_assert(sizeof(crv_s16_t) == sizeof(s16), "crv_s16_t size mismatch");

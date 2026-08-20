@@ -10,6 +10,12 @@
 
 #pragma once
 
+#if defined __KERNEL__
+#include <linux/stddef.h>
+#else
+#include <stddef.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
