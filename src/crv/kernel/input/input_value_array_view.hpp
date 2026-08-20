@@ -93,9 +93,10 @@ public:
     }
 
     /// appends x or y record to end of array, moving SYN_REPORT to accommodate
-    auto append(input_value_t::code_rel_t code, input_value_t::value_t value) noexcept -> void
+    [[nodiscard]] auto try_append(input_value_t::code_rel_t code, input_value_t::value_t value) noexcept -> bool
     {
-        assert(count_ < capacity_);
+        if (count_ == capacity_) return false;
+
         ++count_;
 
         // move SYN_REPORT right one slot
@@ -108,31 +109,8 @@ public:
                 .code = static_cast<input_value_t::code_t>(code),
                 .value = value,
             });
-    }
 
-    /// appends x and y record, moving SYN_REPORT to accommodate
-    auto append(input_value_t::value_t x, input_value_t::value_t y) noexcept -> void
-    {
-        assert(count_ < capacity_);
-        assert(capacity_ - count_ >= 2);
-        count_ += 2;
-
-        // move SYN_REPORT right two slots
-        __builtin_memmove(address(count_ - 1), address(count_ - 3), stride);
-
-        // store new (x, y) value starting in previous SYN_REPORT slot
-        store(count_ - 3,
-            input_value_t{
-                .type = input_value_t::type_t::rel,
-                .code = static_cast<input_value_t::code_t>(input_value_t::code_rel_t::x),
-                .value = x,
-            });
-        store(count_ - 2,
-            input_value_t{
-                .type = input_value_t::type_t::rel,
-                .code = static_cast<input_value_t::code_t>(input_value_t::code_rel_t::y),
-                .value = y,
-            });
+        return true;
     }
 
     /// erases an x or y record, moving SYN_REPORT to accommodate
@@ -178,7 +156,7 @@ private:
 
     std::byte* values_;
     std::size_t count_;
-    [[maybe_unused]] std::size_t capacity_;
+    std::size_t capacity_;
 };
 
 } // namespace crv

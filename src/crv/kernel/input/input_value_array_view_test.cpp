@@ -138,7 +138,7 @@ TEST_F(input_value_array_view_test_t, appends_x_before_syn_report)
     storage_[0] = syn_report(syn_marker);
 
     auto sut = make(1, 2);
-    sut.append(input_value_t::code_rel_t::x, 17);
+    EXPECT_TRUE(sut.try_append(input_value_t::code_rel_t::x, 17));
 
     EXPECT_TRUE(matches(sut, std::array{rel_x(17), syn_report(syn_marker)}));
 }
@@ -148,67 +148,47 @@ TEST_F(input_value_array_view_test_t, appends_y_before_syn_report)
     storage_[0] = syn_report(syn_marker);
 
     auto sut = make(1, 2);
-    sut.append(input_value_t::code_rel_t::y, -17);
+    EXPECT_TRUE(sut.try_append(input_value_t::code_rel_t::y, -17));
 
     EXPECT_TRUE(matches(sut, std::array{rel_y(-17), syn_report(syn_marker)}));
 }
 
-TEST_F(input_value_array_view_test_t, appends_two_records_before_syn_report)
-{
-    storage_[0] = syn_report(syn_marker);
-
-    auto sut = make(1, 3);
-    sut.append(17, -29);
-
-    EXPECT_TRUE(matches(sut, std::array{rel_x(17), rel_y(-29), syn_report(syn_marker)}));
-}
-
-TEST_F(input_value_array_view_test_t, single_append_preserves_existing_record_order)
+TEST_F(input_value_array_view_test_t, append_preserves_existing_record_order)
 {
     storage_[0] = event_a;
     storage_[1] = event_b;
     storage_[2] = syn_report(syn_marker);
 
     auto sut = make(3, 4);
-    sut.append(input_value_t::code_rel_t::x, 17);
+    EXPECT_TRUE(sut.try_append(input_value_t::code_rel_t::x, 17));
 
     EXPECT_TRUE(matches(sut, std::array{event_a, event_b, rel_x(17), syn_report(syn_marker)}));
 }
 
-TEST_F(input_value_array_view_test_t, pair_append_preserves_existing_record_order)
-{
-    storage_[0] = event_a;
-    storage_[1] = event_b;
-    storage_[2] = syn_report(syn_marker);
-
-    auto sut = make(3, 5);
-    sut.append(17, -29);
-
-    EXPECT_TRUE(matches(sut, std::array{event_a, event_b, rel_x(17), rel_y(-29), syn_report(syn_marker)}));
-}
-
-TEST_F(input_value_array_view_test_t, single_append_does_not_write_beyond_capacity)
+TEST_F(input_value_array_view_test_t, append_does_not_write_beyond_capacity)
 {
     storage_[0] = syn_report();
     storage_[2] = canary_a;
     storage_[3] = canary_b;
 
     auto sut = make(1, 2);
-    sut.append(input_value_t::code_rel_t::x, 17);
+    EXPECT_TRUE(sut.try_append(input_value_t::code_rel_t::x, 17));
 
     EXPECT_TRUE(same(storage_[2], canary_a) && same(storage_[3], canary_b));
 }
 
-TEST_F(input_value_array_view_test_t, pair_append_does_not_write_beyond_capacity)
+TEST_F(input_value_array_view_test_t, append_at_capacity_fails_without_mutation)
 {
-    storage_[0] = syn_report();
-    storage_[3] = canary_a;
-    storage_[4] = canary_b;
+    storage_[0] = event_a;
+    storage_[1] = syn_report(syn_marker);
+    storage_[2] = canary_a;
+    storage_[3] = canary_b;
 
-    auto sut = make(1, 3);
-    sut.append(17, -29);
+    auto sut = make(2, 2);
+    EXPECT_FALSE(sut.try_append(input_value_t::code_rel_t::x, 17));
 
-    EXPECT_TRUE(same(storage_[3], canary_a) && same(storage_[4], canary_b));
+    EXPECT_TRUE(matches(sut, std::array{event_a, syn_report(syn_marker)}));
+    EXPECT_TRUE(same(storage_[2], canary_a) && same(storage_[3], canary_b));
 }
 
 TEST_F(input_value_array_view_test_t, erases_first_payload_record)
@@ -344,9 +324,9 @@ TEST_F(input_value_array_view_test_t, append_then_erase_preserves_report)
     storage_[0] = event_a;
     storage_[1] = syn_report(syn_marker);
 
-    auto sut = make(2, 4);
-    sut.append(17, -29);
-    sut.erase(1, 2);
+    auto sut = make(2, 3);
+    ASSERT_TRUE(sut.try_append(input_value_t::code_rel_t::x, 17));
+    sut.erase(1);
 
     EXPECT_TRUE(matches(sut, std::array{event_a, syn_report(syn_marker)}));
 }
@@ -411,30 +391,6 @@ TEST_F(input_value_array_view_test_t, store_aborts_on_out_of_bounds_index)
     auto sut = make(2);
 
     EXPECT_DEBUG_DEATH(sut.store(2, rel_y(20)), "index < count_ - 1");
-}
-
-TEST_F(input_value_array_view_test_t, append_aborts_when_at_capacity)
-{
-    storage_[0] = syn_report();
-    auto sut = make(1, 1);
-
-    EXPECT_DEBUG_DEATH(sut.append(input_value_t::code_rel_t::x, 17), "count_ < capacity_");
-}
-
-TEST_F(input_value_array_view_test_t, pair_append_aborts_when_at_capacity)
-{
-    storage_[0] = syn_report();
-    auto sut = make(1, 1);
-
-    EXPECT_DEBUG_DEATH(sut.append(17, -29), "count_ < capacity_");
-}
-
-TEST_F(input_value_array_view_test_t, pair_append_aborts_with_insufficient_capacity)
-{
-    storage_[0] = syn_report();
-    auto sut = make(1, 2);
-
-    EXPECT_DEBUG_DEATH(sut.append(17, -29), "capacity_ - count_ >= 2");
 }
 
 TEST_F(input_value_array_view_test_t, erase_aborts_on_syn_report_index)
