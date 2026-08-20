@@ -3,8 +3,46 @@
 #
 # kernel module definition
 #
-# This file builds the kernel module through Kbuild, maintains an exact symlink projection for local development, and
-# installs the same explicit source manifest for DKMS.
+# This file builds the kernel module through Kbuild, maintains a symlink projection for local development, and installs
+# the same explicit source manifest for DKMS.
+
+#
+# source manifest
+#
+
+set(kernel_files
+    abi_validation.h
+    abi.c
+    cxx/cassert
+    entry_point.c
+    input/handler.c
+    input/handler.h
+)
+
+#
+# kernel-specific build settings
+#
+
+set(kernel_cxx_options
+    -ffreestanding
+    -fno-builtin
+    -fno-exceptions
+    -fno-rtti
+    -fno-threadsafe-statics
+    -fno-use-cxa-atexit
+    -nostdlib
+)
+
+set(kernel_gnu_cxx_options
+)
+
+set(kernel_clang_cxx_options
+    -Wno-keyword-macro
+    -Wno-old-style-cast
+    -Wno-zero-as-null-pointer-constant
+    -Wno-reserved-identifier
+    -Wno-variadic-macros
+)
 
 #
 # Environment
@@ -67,49 +105,15 @@ set(kbuild_workspace "${CMAKE_BINARY_DIR}/kernel")
 set(kbuild_projection_state "${CMAKE_CURRENT_BINARY_DIR}/projection.manifest")
 file(MAKE_DIRECTORY "${kbuild_workspace}")
 
-#
-# Source Manifest
-#
-
-set(crv_kernel_only_files
-    abi_validation.h
-    abi.c
-    cxx/cassert
-    entry_point.c
-    input/handler.c
-    input/handler.h
-)
-
-set(crv_kernel_shared_cxx_options
-    -ffreestanding
-    -fno-builtin
-    -fno-exceptions
-    -fno-rtti
-    -fno-threadsafe-statics
-    -fno-use-cxa-atexit
-    -nostdlib
-)
-
-set(crv_kernel_gnu_shared_cxx_options
-)
-
-set(crv_kernel_clang_shared_cxx_options
-    -Wno-keyword-macro
-    -Wno-old-style-cast
-    -Wno-zero-as-null-pointer-constant
-    -Wno-reserved-identifier
-    -Wno-variadic-macros
-)
-
-list(TRANSFORM crv_kernel_only_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
-set(crv_kernel_files ${crv_kernel_shared_files} ${crv_kernel_only_files})
+list(TRANSFORM kernel_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+set(kernel_files ${shared_lib_kernel_files} ${kernel_files})
 set(projection_source_root "${PROJECT_SOURCE_DIR}/src")
 cmake_path(NORMAL_PATH projection_source_root)
 
 # validate manifest then derive projected relative paths and Kbuild object list
 set(projected_files)
 set(kbuild_objects)
-foreach(file IN LISTS crv_kernel_files)
+foreach(file IN LISTS kernel_files)
     cmake_path(ABSOLUTE_PATH file NORMALIZE OUTPUT_VARIABLE absolute)
     if(NOT EXISTS "${absolute}" AND NOT IS_SYMLINK "${absolute}")
         message(FATAL_ERROR "kernel manifest file does not exist: '${absolute}'")
@@ -187,7 +191,7 @@ foreach(relative IN LISTS stale_projected_files)
     endif()
 endforeach()
 
-foreach(source relative IN ZIP_LISTS crv_kernel_files projected_files)
+foreach(source relative IN ZIP_LISTS kernel_files projected_files)
     set(destination "${kbuild_workspace}/${relative}")
     get_filename_component(destination_directory "${destination}" DIRECTORY)
     file(MAKE_DIRECTORY "${destination_directory}")
@@ -234,12 +238,12 @@ if(NOT DEFINED "${cxx_standard_option_variable}" OR "${${cxx_standard_option_var
 endif()
 set(kbuild_cxx_standard_option "${${cxx_standard_option_variable}}")
 
-set(kbuild_shared_cxx_options "${crv_shared_cxx_options};${crv_kernel_shared_cxx_options}")
-set(kbuild_gnu_shared_cxx_options "${crv_gnu_shared_cxx_options};${crv_kernel_gnu_shared_cxx_options}")
-set(kbuild_clang_shared_cxx_options "${crv_clang_shared_cxx_options};${crv_kernel_clang_shared_cxx_options}")
+set(kbuild_shared_cxx_options "${shared_lib_kernel_cxx_options};${kernel_cxx_options}")
+set(kbuild_shared_cxx_options_gnu "${shared_lib_kernel_cxx_options_gnu};${kernel_gnu_cxx_options}")
+set(kbuild_shared_cxx_options_clang "${shared_lib_kernel_cxx_options_clang};${kernel_clang_cxx_options}")
 list(JOIN kbuild_shared_cxx_options " " kbuild_shared_cxx_options)
-list(JOIN kbuild_gnu_shared_cxx_options " " kbuild_gnu_shared_cxx_options)
-list(JOIN kbuild_clang_shared_cxx_options " " kbuild_clang_shared_cxx_options)
+list(JOIN kbuild_shared_cxx_options_gnu " " kbuild_shared_cxx_options_gnu)
+list(JOIN kbuild_shared_cxx_options_clang " " kbuild_shared_cxx_options_clang)
 list(JOIN kbuild_objects " " kbuild_objects_text)
 
 # git hash for the version string
@@ -266,7 +270,7 @@ configure_file("Makefile.in" "${makefile}" @ONLY)
 #
 
 # index kernel-only files so they can be refactored with clangd
-add_library(kernel_index OBJECT EXCLUDE_FROM_ALL ${crv_kernel_only_files})
+add_library(kernel_index OBJECT EXCLUDE_FROM_ALL ${kernel_files})
 set_property(TARGET kernel_index PROPERTY EXPORT_COMPILE_COMMANDS ON)
 
 target_compile_definitions(kernel_index PRIVATE
@@ -334,13 +338,13 @@ target_compile_options(kernel_index PRIVATE
     -include "${kernel_source_root}/include/linux/compiler_types.h"
 
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
-    "$<$<COMPILE_LANGUAGE:CXX>:${crv_shared_cxx_options}>"
+    "$<$<COMPILE_LANGUAGE:CXX>:${shared_lib_kernel_cxx_options}>"
 )
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${crv_gnu_shared_cxx_options}>")
+    target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${shared_lib_kernel_cxx_options_gnu}>")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${crv_clang_shared_cxx_options}>")
+    target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${shared_lib_kernel_cxx_options_clang}>")
 endif()
 
 #
@@ -355,7 +359,7 @@ add_custom_command(
         "CRV_DEBUG=$<IF:$<CONFIG:Debug>,1,0>"
         modules
     DEPENDS
-        ${crv_kernel_files}
+        ${kernel_files}
         "${kbuild_projection_state}"
         "${kbuild_file}"
         "${makefile}"
@@ -381,7 +385,7 @@ add_custom_target(clean_kbuild
 # Installation
 #
 
-foreach(file relative IN ZIP_LISTS crv_kernel_files projected_files)
+foreach(file relative IN ZIP_LISTS kernel_files projected_files)
     get_filename_component(relative_directory "${relative}" DIRECTORY)
     if(relative_directory STREQUAL "")
         set(destination "${dkms_dst_dir}")

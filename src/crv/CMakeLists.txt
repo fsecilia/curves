@@ -6,16 +6,12 @@
 # This file contains the main library. It contains just about all of the code other than the kernel module itself,
 # tests, and ui.
 
-add_library(lib)
-set_target_properties(lib
-    PROPERTIES
-        OUTPUT_NAME curves
-        VERSION ${PROJECT_VERSION}
-        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
-)
+#
+# source files
+#
 
 # files specific to the library
-target_sources(lib PRIVATE
+set(lib_files
     bit.hpp
     concepts.hpp
     i18n.cpp
@@ -123,7 +119,7 @@ target_sources(lib PRIVATE
 )
 
 # files compiled in both user mode and the kernel
-set(crv_kernel_shared_files
+set(shared_lib_kernel_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
@@ -164,24 +160,186 @@ set(crv_kernel_shared_files
     spline/tangent_extension.hpp
     traits.hpp
 )
-target_sources(lib PRIVATE ${crv_kernel_shared_files})
-list(TRANSFORM crv_kernel_shared_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+
+# files in user-mode unit test
+set(unit_test_files
+    algorithm_test.cpp
+    bit_test.cpp
+    bitwise_enum_test.cpp
+    concepts_test.cpp
+    i18n_test.cpp
+    io/unique_fd_integration_test.cpp
+    io/unique_fd_test.cpp
+    math/abs_test.cpp
+    math/arg_min_max_test.cpp
+    math/cmp_test.cpp
+    math/compensated_accumulator_test.cpp
+    math/complex_test.cpp
+    math/complex_traits_test.cpp
+    math/conjugate_quantizer_test.cpp
+    math/division/concepts_test.cpp
+    math/division/divider_test.cpp
+    math/division/hardware_divider_test.cpp
+    math/division/io_test.cpp
+    math/division/shifted_int_divider_test.cpp
+    math/division/wide_divider_test.cpp
+    math/elementwise_max_test.cpp
+    math/error_metrics_test.cpp
+    math/fixed/exp2_neg_m1_test.cpp
+    math/fixed/fixed_limits_test.cpp
+    math/fixed/fixed_test.cpp
+    math/fixed/float_conversions_test.cpp
+    math/fixed/fma_test.cpp
+    math/fixed/quantizer_test.cpp
+    math/fixed/rsqrt_test.cpp
+    math/fixed/uabs_test.cpp
+    math/float_limits_test.cpp
+    math/int_traits_test.cpp
+    math/integer_test.cpp
+    math/inverse_test.cpp
+    math/io_test.cpp
+    math/jet/test/jet.cpp
+    math/jet/test/nested_jet.cpp
+    math/lambert_test.cpp
+    math/limits_test.cpp
+    math/linear_test.cpp
+    math/polynomial_test.cpp
+    math/rounding_mode_test.cpp
+    math/saturate_cast_test.cpp
+    math/scalar_traits_test.cpp
+    math/shifter_test.cpp
+    math/stats_test.cpp
+    model/composed_curve_test.cpp
+    model/config_test.cpp
+    model/curves/concepts_test.cpp
+    model/curves/log_normal_test.cpp
+    model/curves/synchronous_test.cpp
+    model/curves/test.hpp
+    model/curves/traits_test.cpp
+    model/shaping/construction/limit_engager_test.cpp
+    model/shaping/construction/limit_factory_test.cpp
+    model/shaping/construction/limit_locator_test.cpp
+    model/shaping/params_test.cpp
+    model/shaping/shaped_curve_test.cpp
+    model/shaping/stages/input_test.cpp
+    model/shaping/stages/output_test.cpp
+    model/shaping/transforms/composite_test.cpp
+    model/shaping/transforms/input_affine_test.cpp
+    model/shaping/transforms/limit_test.cpp
+    model/shaping/transforms/offset_test.cpp
+    model/shaping/transforms/output_affine_test.cpp
+    model/shaping/transitions/quadratic_test.cpp
+    model/shaping/transitions/smootherstep_integral_test.cpp
+    overloaded_test.cpp
+    pipeline/filters/half_life_ema_test.cpp
+    prefetcher_test.cpp
+    priority_queue_test.cpp
+    quadrature/adaptive_integrator_test.cpp
+    quadrature/antiderivative_test.cpp
+    quadrature/bisector_test.cpp
+    quadrature/integral_test.cpp
+    quadrature/integration_test.cpp
+    quadrature/rules_test.cpp
+    quadrature/stack_test.cpp
+    quadrature/subdivider_test.cpp
+    ranges_test.cpp
+    reflection/constraints_test.cpp
+    reflection/enum_test.cpp
+    reflection/param_test.cpp
+    sequential_enum_name_map_test.cpp
+    serialization/deserializer_test.cpp
+    serialization/reader_test.cpp
+    serialization/serializer_test.cpp
+    serialization/toml/archive_test.cpp
+    serialization/toml/concepts_test.cpp
+    serialization/toml/error_reporting_test.cpp
+    serialization/toml/reader_adapter_test.cpp
+    serialization/toml/writer_adapter_test.cpp
+    serialization/writer_test.cpp
+    spline/construction/curve_target_test.cpp
+    spline/construction/segment/amr/approximant_test.cpp
+    spline/construction/segment/amr/bisection_test.cpp
+    spline/construction/segment/amr/error_metric_test.cpp
+    spline/construction/segment/amr/interval_test.cpp
+    spline/construction/segment/amr/node_generator_test.cpp
+    spline/construction/segment/amr/residual_estimator_test.cpp
+    spline/construction/segment/amr/subdivision_predicate_test.cpp
+    spline/construction/segment/amr/subdivision_test.cpp
+    spline/construction/segment/field_packer_test.cpp
+    spline/construction/segment/local_coordinate_test.cpp
+    spline/construction/segment/segment_factory_test.cpp
+    spline/construction/segment/segment_packer_test.cpp
+    spline/construction/segment/segment_quantizer_test.cpp
+    spline/construction/segment/shift_planner_test.cpp
+    spline/construction/spline/amr/assembler_test.cpp
+    spline/construction/spline/amr/refinement_pool_seeder_test.cpp
+    spline/construction/spline/amr/refiner_test.cpp
+    spline/construction/spline/amr/seed/subdomain_factory_test.cpp
+    spline/construction/spline/amr/spline_generator_test.cpp
+    spline/construction/spline/amr/workspace_test.cpp
+    spline/construction/spline/tangent_extender_test.cpp
+    spline/construction/weight_functions/exponential_decay_test.cpp
+    spline/construction/weight_functions/hyperbolic_decay_test.cpp
+    spline/construction/weight_functions/uniform_test.cpp
+    spline/pipeline_config_test.cpp
+    spline/segment_locator_test.cpp
+    spline/segment_test.cpp
+    spline/spline_factory_test.cpp
+    spline/spline_test.cpp
+    spline/tangent_extension_test.cpp
+    traits_test.cpp
+    tuple_test.cpp
+    variant_test.cpp
+)
+
+#
+# build options
+#
+
+# common build options
+set(shared_lib_kernel_options
+    $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
+    $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
+)
+
+# c++ options specific to lib
+set(lib_cxx_options
+    -fsized-deallocation
+
+    -Wdouble-promotion
+    -Wfloat-conversion
+)
+
+# gnu-specific c++ options used by lib
+set(gnu_lib_kernel_cxx_options
+)
+
+# clang-specific c++ options used by lib
+set(clang_lib_kernel_cxx_options
+    -Wno-exit-time-destructors
+    -Wno-float-equal
+    -Wno-global-constructors
+)
 
 # c++ options shared by lib and kernel
-set(crv_shared_cxx_options
+set(shared_lib_kernel_cxx_options
     -Wall
     -Werror
     -Wextra
     -Wno-psabi
     -Wswitch
 )
-set(crv_gnu_shared_cxx_options
+
+# gnu-specific c++ options shared by lib and kernel
+set(shared_lib_kernel_cxx_options_gnu
     -fdiagnostics-color=always
     -fext-numeric-literals
     -ftemplate-backtrace-limit=1
     -Wno-changes-meaning
 )
-set(crv_clang_shared_cxx_options
+
+# clang-specific c++ options shared by lib and kernel
+set(shared_lib_kernel_cxx_options_clang
     -fcolor-diagnostics
     -fsafe-buffer-usage-suggestions
     -Weverything
@@ -215,19 +373,30 @@ set(crv_clang_shared_cxx_options
     -Wno-weak-vtables
 )
 
+#
+# project definition
+#
+
+add_library(lib)
+set_target_properties(lib
+    PROPERTIES
+        OUTPUT_NAME curves
+        VERSION ${PROJECT_VERSION}
+        SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
+target_sources(lib PRIVATE
+    ${lib_files}
+    ${shared_lib_kernel_files}
+)
+list(TRANSFORM shared_lib_kernel_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
+
 # specify lib options
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(lib PUBLIC
-        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-fstrict-aliasing>
-        $<$<NOT:$<BOOL:$<TARGET_PROPERTY:DISABLE_STRICT_ALIASING>>>:-Wstrict-aliasing=2>
-
+        ${shared_lib_kernel_options}
         $<$<COMPILE_LANGUAGE:CXX>:
-            -Wdouble-promotion
-            -Wfloat-conversion
-
-            -fsized-deallocation
-
-            ${crv_shared_cxx_options}
+            ${lib_cxx_options}
+            ${shared_lib_kernel_cxx_options}
         >
     )
 
@@ -239,18 +408,16 @@ endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(lib PUBLIC
         $<$<COMPILE_LANGUAGE:CXX>:
-            ${crv_gnu_shared_cxx_options}
+            ${gnu_lib_kernel_cxx_options}
+            ${shared_lib_kernel_cxx_options_gnu}
         >
     )
 endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(lib PUBLIC
         $<$<COMPILE_LANGUAGE:CXX>:
-            -Wno-exit-time-destructors
-            -Wno-float-equal
-            -Wno-global-constructors
-
-            ${crv_clang_shared_cxx_options}
+            ${clang_lib_kernel_cxx_options}
+            ${shared_lib_kernel_cxx_options_clang}
         >
     )
 endif()
@@ -268,135 +435,7 @@ if (enable_testing)
     add_subdirectory(test)
 
     add_executable(unit_tests)
-    target_sources(unit_tests PRIVATE
-        algorithm_test.cpp
-        bit_test.cpp
-        bitwise_enum_test.cpp
-        concepts_test.cpp
-        i18n_test.cpp
-        io/unique_fd_integration_test.cpp
-        io/unique_fd_test.cpp
-        math/abs_test.cpp
-        math/arg_min_max_test.cpp
-        math/cmp_test.cpp
-        math/compensated_accumulator_test.cpp
-        math/complex_test.cpp
-        math/complex_traits_test.cpp
-        math/conjugate_quantizer_test.cpp
-        math/division/concepts_test.cpp
-        math/division/divider_test.cpp
-        math/division/hardware_divider_test.cpp
-        math/division/io_test.cpp
-        math/division/shifted_int_divider_test.cpp
-        math/division/wide_divider_test.cpp
-        math/elementwise_max_test.cpp
-        math/error_metrics_test.cpp
-        math/fixed/exp2_neg_m1_test.cpp
-        math/fixed/fixed_limits_test.cpp
-        math/fixed/fixed_test.cpp
-        math/fixed/float_conversions_test.cpp
-        math/fixed/fma_test.cpp
-        math/fixed/quantizer_test.cpp
-        math/fixed/rsqrt_test.cpp
-        math/fixed/uabs_test.cpp
-        math/float_limits_test.cpp
-        math/int_traits_test.cpp
-        math/integer_test.cpp
-        math/inverse_test.cpp
-        math/io_test.cpp
-        math/jet/test/jet.cpp
-        math/jet/test/nested_jet.cpp
-        math/lambert_test.cpp
-        math/limits_test.cpp
-        math/linear_test.cpp
-        math/polynomial_test.cpp
-        math/rounding_mode_test.cpp
-        math/saturate_cast_test.cpp
-        math/scalar_traits_test.cpp
-        math/shifter_test.cpp
-        math/stats_test.cpp
-        model/composed_curve_test.cpp
-        model/config_test.cpp
-        model/curves/concepts_test.cpp
-        model/curves/log_normal_test.cpp
-        model/curves/synchronous_test.cpp
-        model/curves/test.hpp
-        model/curves/traits_test.cpp
-        model/shaping/construction/limit_engager_test.cpp
-        model/shaping/construction/limit_factory_test.cpp
-        model/shaping/construction/limit_locator_test.cpp
-        model/shaping/params_test.cpp
-        model/shaping/shaped_curve_test.cpp
-        model/shaping/stages/input_test.cpp
-        model/shaping/stages/output_test.cpp
-        model/shaping/transforms/composite_test.cpp
-        model/shaping/transforms/input_affine_test.cpp
-        model/shaping/transforms/limit_test.cpp
-        model/shaping/transforms/offset_test.cpp
-        model/shaping/transforms/output_affine_test.cpp
-        model/shaping/transitions/quadratic_test.cpp
-        model/shaping/transitions/smootherstep_integral_test.cpp
-        overloaded_test.cpp
-        pipeline/filters/half_life_ema_test.cpp
-        prefetcher_test.cpp
-        priority_queue_test.cpp
-        quadrature/adaptive_integrator_test.cpp
-        quadrature/antiderivative_test.cpp
-        quadrature/bisector_test.cpp
-        quadrature/integral_test.cpp
-        quadrature/integration_test.cpp
-        quadrature/rules_test.cpp
-        quadrature/stack_test.cpp
-        quadrature/subdivider_test.cpp
-        ranges_test.cpp
-        reflection/constraints_test.cpp
-        reflection/enum_test.cpp
-        reflection/param_test.cpp
-        sequential_enum_name_map_test.cpp
-        serialization/deserializer_test.cpp
-        serialization/reader_test.cpp
-        serialization/serializer_test.cpp
-        serialization/toml/archive_test.cpp
-        serialization/toml/concepts_test.cpp
-        serialization/toml/error_reporting_test.cpp
-        serialization/toml/reader_adapter_test.cpp
-        serialization/toml/writer_adapter_test.cpp
-        serialization/writer_test.cpp
-        spline/construction/curve_target_test.cpp
-        spline/construction/segment/amr/approximant_test.cpp
-        spline/construction/segment/amr/bisection_test.cpp
-        spline/construction/segment/amr/error_metric_test.cpp
-        spline/construction/segment/amr/interval_test.cpp
-        spline/construction/segment/amr/node_generator_test.cpp
-        spline/construction/segment/amr/residual_estimator_test.cpp
-        spline/construction/segment/amr/subdivision_predicate_test.cpp
-        spline/construction/segment/amr/subdivision_test.cpp
-        spline/construction/segment/field_packer_test.cpp
-        spline/construction/segment/local_coordinate_test.cpp
-        spline/construction/segment/segment_factory_test.cpp
-        spline/construction/segment/segment_packer_test.cpp
-        spline/construction/segment/segment_quantizer_test.cpp
-        spline/construction/segment/shift_planner_test.cpp
-        spline/construction/spline/amr/assembler_test.cpp
-        spline/construction/spline/amr/refinement_pool_seeder_test.cpp
-        spline/construction/spline/amr/refiner_test.cpp
-        spline/construction/spline/amr/seed/subdomain_factory_test.cpp
-        spline/construction/spline/amr/spline_generator_test.cpp
-        spline/construction/spline/amr/workspace_test.cpp
-        spline/construction/spline/tangent_extender_test.cpp
-        spline/construction/weight_functions/exponential_decay_test.cpp
-        spline/construction/weight_functions/hyperbolic_decay_test.cpp
-        spline/construction/weight_functions/uniform_test.cpp
-        spline/pipeline_config_test.cpp
-        spline/segment_locator_test.cpp
-        spline/segment_test.cpp
-        spline/spline_factory_test.cpp
-        spline/spline_test.cpp
-        spline/tangent_extension_test.cpp
-        traits_test.cpp
-        tuple_test.cpp
-        variant_test.cpp
-    )
+    target_sources(unit_tests PRIVATE "${unit_test_files}")
     target_link_libraries(unit_tests PUBLIC
         lib
         testing

@@ -101,10 +101,10 @@ endif
 
 crv_cxx_project_flags := @kbuild_cxx_standard_option@ @kbuild_shared_cxx_options@
 ifeq ($(CONFIG_CC_IS_GCC),y)
-crv_cxx_project_flags += @kbuild_gnu_shared_cxx_options@
+crv_cxx_project_flags += @kbuild_shared_cxx_options_gnu@
 endif
 ifeq ($(CONFIG_CC_IS_CLANG),y)
-crv_cxx_project_flags += @kbuild_clang_shared_cxx_options@
+crv_cxx_project_flags += @kbuild_shared_cxx_options_clang@
 endif
 
 cxx_flags = $(filtered_cxx_flags) \
