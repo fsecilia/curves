@@ -79,8 +79,29 @@ set(crv_kernel_only_files
     input/handler.c
     input/handler.h
 )
-list(TRANSFORM crv_kernel_only_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
+set(crv_kernel_shared_cxx_options
+    -ffreestanding
+    -fno-builtin
+    -fno-exceptions
+    -fno-rtti
+    -fno-threadsafe-statics
+    -fno-use-cxa-atexit
+    -nostdlib
+)
+
+set(crv_kernel_gnu_shared_cxx_options
+)
+
+set(crv_kernel_clang_shared_cxx_options
+    -Wno-keyword-macro
+    -Wno-old-style-cast
+    -Wno-zero-as-null-pointer-constant
+    -Wno-reserved-identifier
+    -Wno-variadic-macros
+)
+
+list(TRANSFORM crv_kernel_only_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 set(crv_kernel_files ${crv_kernel_shared_files} ${crv_kernel_only_files})
 set(projection_source_root "${PROJECT_SOURCE_DIR}/src")
 cmake_path(NORMAL_PATH projection_source_root)
@@ -213,9 +234,9 @@ if(NOT DEFINED "${cxx_standard_option_variable}" OR "${${cxx_standard_option_var
 endif()
 set(kbuild_cxx_standard_option "${${cxx_standard_option_variable}}")
 
-set(kbuild_shared_cxx_options "${crv_shared_cxx_options}")
-set(kbuild_gnu_shared_cxx_options "${crv_gnu_shared_cxx_options}")
-set(kbuild_clang_shared_cxx_options "${crv_clang_shared_cxx_options}")
+set(kbuild_shared_cxx_options "${crv_shared_cxx_options};${crv_kernel_shared_cxx_options}")
+set(kbuild_gnu_shared_cxx_options "${crv_gnu_shared_cxx_options};${crv_kernel_gnu_shared_cxx_options}")
+set(kbuild_clang_shared_cxx_options "${crv_clang_shared_cxx_options};${crv_kernel_clang_shared_cxx_options}")
 list(JOIN kbuild_shared_cxx_options " " kbuild_shared_cxx_options)
 list(JOIN kbuild_gnu_shared_cxx_options " " kbuild_gnu_shared_cxx_options)
 list(JOIN kbuild_clang_shared_cxx_options " " kbuild_clang_shared_cxx_options)
@@ -313,29 +334,13 @@ target_compile_options(kernel_index PRIVATE
     -include "${kernel_source_root}/include/linux/compiler_types.h"
 
     $<$<COMPILE_LANGUAGE:C>:-ffreestanding>
-
-    "$<$<COMPILE_LANGUAGE:CXX>:
-        -ffreestanding;
-        -fno-builtin;
-        -fno-exceptions;
-        -fno-rtti;
-        -fno-threadsafe-statics;
-        -fno-use-cxa-atexit;
-        ${crv_shared_cxx_options}
-    >"
+    "$<$<COMPILE_LANGUAGE:CXX>:${crv_shared_cxx_options}>"
 )
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${crv_gnu_shared_cxx_options}>")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(kernel_index PRIVATE
-        "$<$<COMPILE_LANGUAGE:CXX>:
-            ${crv_clang_shared_cxx_options};
-            -Wno-keyword-macro;
-            -Wno-reserved-identifier;
-            -Wno-variadic-macros
-        >"
-    )
+    target_compile_options(kernel_index PRIVATE "$<$<COMPILE_LANGUAGE:CXX>:${crv_clang_shared_cxx_options}>")
 endif()
 
 #

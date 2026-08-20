@@ -92,15 +92,6 @@ filtered_cxx_flags = $(filter-out $(conflicting_cxx_flags), \
     $(basename_flags) \
     $(modname_flags))
 
-crv_cxx_baseline_flags := \
-    -ffreestanding \
-    -fno-builtin \
-    -fno-exceptions \
-    -fno-rtti \
-    -fno-threadsafe-statics \
-    -fno-use-cxa-atexit \
-    -nostdlib
-
 # x86-64 Kbuild disables x87 to catch floating-point code. Some freestanding C++ headers still need the ABI long double
 # type, so allow x87 instructions during C++ compilation. This does not make floating-point work valid in the kernel.
 crv_cxx_compatibility_flags :=
@@ -113,14 +104,10 @@ ifeq ($(CONFIG_CC_IS_GCC),y)
 crv_cxx_project_flags += @kbuild_gnu_shared_cxx_options@
 endif
 ifeq ($(CONFIG_CC_IS_CLANG),y)
-crv_cxx_project_flags += @kbuild_clang_shared_cxx_options@ \
-    -Wno-keyword-macro \
-    -Wno-reserved-identifier \
-    -Wno-variadic-macros
+crv_cxx_project_flags += @kbuild_clang_shared_cxx_options@
 endif
 
 cxx_flags = $(filtered_cxx_flags) \
-    $(crv_cxx_baseline_flags) \
     $(crv_cxx_compatibility_flags) \
     $(crv_cxx_project_flags)
 
