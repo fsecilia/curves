@@ -178,7 +178,7 @@ private:
 
     std::byte* values_;
     std::size_t count_;
-    std::size_t capacity_;
+    [[maybe_unused]] std::size_t capacity_;
 };
 
 } // namespace crv

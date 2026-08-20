@@ -39,8 +39,6 @@ set(kernel_gnu_cxx_options
 
 set(kernel_clang_cxx_options
     -Wno-keyword-macro
-    -Wno-old-style-cast
-    -Wno-zero-as-null-pointer-constant
     -Wno-reserved-identifier
     -Wno-variadic-macros
 )

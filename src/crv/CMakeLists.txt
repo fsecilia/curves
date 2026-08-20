@@ -330,8 +330,11 @@ set(shared_lib_kernel_cxx_options
     -Wall
     -Werror
     -Wextra
-    -Wno-psabi
     -Wswitch
+
+    -Wno-old-style-cast
+    -Wno-psabi
+    -Wno-zero-as-null-pointer-constant
 )
 
 # gnu-specific c++ options shared by lib and kernel
