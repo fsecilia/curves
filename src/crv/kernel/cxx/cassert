@@ -4,11 +4,10 @@
 /// \brief kernel shim for cassert
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#pragma once
+#ifndef CRV_KERNEL_CXX_CASSERT_HPP
+#define CRV_KERNEL_CXX_CASSERT_HPP
 
 #include <source_location>
-
-#ifndef NDEBUG
 
 extern "C" [[noreturn]] void panic(char const* fmt, ...);
 
@@ -25,8 +24,12 @@ inline constexpr auto kernel_assert(bool expression, char const* expression_stri
 
 } // namespace crv
 
-#define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
+#endif // #ifndef CRV_KERNEL_CXX_CASSERT_HPP
 
+#undef assert
+
+#ifndef NDEBUG
+#define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
 #else
 #define assert(expr) ((void)0)
 #endif
