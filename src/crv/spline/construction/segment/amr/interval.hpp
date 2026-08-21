@@ -83,7 +83,7 @@ struct interval_factory_t
     using scalar_t = interval_t::scalar_t;
     using approximant_t = approximant_factory_t::approximant_t;
     using x_t = approximant_t::x_t;
-    using subdomain_t = typename interval_t::subdomain_t;
+    using subdomain_t = interval_t::subdomain_t;
 
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] approximant_factory_t approximant_factory;

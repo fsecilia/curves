@@ -205,7 +205,7 @@ struct segment_evaluator_t
     using narrow_t = make_signed_t<mantissa_t>;
     using wide_t = widened_t<narrow_t>;
     using correction_product_t = fixed::product_t<y_t, x_t>;
-    using correction_product_value_t = typename correction_product_t::value_t;
+    using correction_product_value_t = correction_product_t::value_t;
 
     // correction stays within delta
     //

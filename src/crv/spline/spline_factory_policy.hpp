@@ -54,8 +54,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
 {
     using scalar_t = t_scalar_t;
     using pipeline_config_t = t_pipeline_config_t;
-    using x_t = typename pipeline_config_t::x_t;
-    using y_t = typename pipeline_config_t::y_t;
+    using x_t = pipeline_config_t::x_t;
+    using y_t = pipeline_config_t::y_t;
 
     // bounds and constraints
     static constexpr auto depth_max = 4;
@@ -74,10 +74,10 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     // fundamental traits
     using unpacked_field_t = unpacked_field_t<int_t>;
     using traits_t = traits_t<unpacked_field_t, y_t>;
-    using mantissa_t = typename traits_t::mantissa_t;
-    using packed_field_t = typename traits_t::packed_field_t;
-    using unpacked_segment_t = typename traits_t::unpacked_segment_t;
-    using packed_segment_t = typename traits_t::packed_segment_t;
+    using mantissa_t = traits_t::mantissa_t;
+    using packed_field_t = traits_t::packed_field_t;
+    using unpacked_segment_t = traits_t::unpacked_segment_t;
+    using packed_segment_t = traits_t::packed_segment_t;
 
     // math components
     using cubic_t = crv::cubic_t<scalar_t>;

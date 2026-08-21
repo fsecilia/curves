@@ -28,8 +28,8 @@ struct policy_t : base_policy_t
 {
     static constexpr auto log2_min_width = -44;
     using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, x_t, log2_min_width>;
-    using refiner_t = crv::spline::refiner_t<typename typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t,
-        max_segment_count>;
+    using refiner_t
+        = crv::spline::refiner_t<typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t, max_segment_count>;
     using spline_generator_t = crv::spline::spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
         refinement_pool_seeder_t, refiner_t, assembler_t>;
 };

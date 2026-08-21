@@ -55,8 +55,8 @@ template <typename t_unpacked_segment_t, typename float_extractor_t, typename sh
 struct segment_quantizer_t
 {
     using unpacked_segment_t = t_unpacked_segment_t;
-    using unpacked_field_t = typename unpacked_segment_t::unpacked_field_t;
-    using y_t = typename unpacked_segment_t::y_t;
+    using unpacked_field_t = unpacked_segment_t::unpacked_field_t;
+    using y_t = unpacked_segment_t::y_t;
     using mantissa_t = unpacked_field_t::mantissa_t;
     using scalar_t = float_extractor_t::scalar_t;
     using cubic_t = cubic_t<scalar_t>;

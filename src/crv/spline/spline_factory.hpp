@@ -13,9 +13,9 @@ namespace crv::spline {
 
 template <typename policy_t, typename generator_factory_t> struct spline_factory_t
 {
-    using scalar_t = typename policy_t::scalar_t;
-    using x_t = typename policy_t::x_t;
-    using spline_t = typename policy_t::spline_t;
+    using scalar_t = policy_t::scalar_t;
+    using x_t = policy_t::x_t;
+    using spline_t = policy_t::spline_t;
 
     generator_factory_t create_generator;
 

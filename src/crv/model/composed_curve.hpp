@@ -15,7 +15,7 @@ namespace crv::model::curves {
 
 template <typename scalar_t> struct composed_curve_type_transform_t
 {
-    template <typename curve_t> using curve_evaluator_t = typename curve_t::template evaluator_t<scalar_t>;
+    template <typename curve_t> using curve_evaluator_t = curve_t::template evaluator_t<scalar_t>;
     template <typename curve_t> using shaped_curve_t = shaping::shaped_curve_builder_t::result_t<curve_t>;
     template <typename curve_t> using result_t = shaped_curve_t<curve_evaluator_t<curve_t>>;
 };

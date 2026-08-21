@@ -29,8 +29,8 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    using narrow_t = typename wide_divider_t::narrow_t;
-    using wide_t = typename wide_divider_t::wide_t;
+    using narrow_t = wide_divider_t::narrow_t;
+    using wide_t = wide_divider_t::wide_t;
 
     static_assert(
         sizeof(lhs_t) <= sizeof(wide_t), "dividend is wider than the two-word dividend supported by the divisor");
@@ -91,8 +91,8 @@ struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, s
 {
     [[no_unique_address]] wide_divider_t divide;
 
-    using narrow_t = typename wide_divider_t::narrow_t;
-    using wide_t = typename wide_divider_t::wide_t;
+    using narrow_t = wide_divider_t::narrow_t;
+    using wide_t = wide_divider_t::wide_t;
 
     static_assert(
         sizeof(lhs_t) <= sizeof(wide_t), "dividend is wider than the two-word dividend supported by the divisor");

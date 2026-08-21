@@ -69,7 +69,7 @@ template <typename curve_t> gain_curve_target_t(curve_t) -> gain_curve_target_t<
 template <typename t_antiderivative_t> struct sensitivity_curve_target_t
 {
     using antiderivative_t = t_antiderivative_t;
-    using scalar_t = typename antiderivative_t::scalar_t;
+    using scalar_t = antiderivative_t::scalar_t;
     using jet_t = crv::jet_t<scalar_t>;
 
     antiderivative_t antiderivative;
@@ -107,7 +107,7 @@ constexpr auto gain_tolerance_to_integral_tolerance(scalar_t domain_width, scala
 template <typename t_target_t> struct sensitivity_curve_target_result_t
 {
     using target_t = t_target_t;
-    using scalar_t = typename target_t::scalar_t;
+    using scalar_t = target_t::scalar_t;
 
     target_t target;
     scalar_t achieved_error;

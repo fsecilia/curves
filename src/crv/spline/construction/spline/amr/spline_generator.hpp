@@ -19,8 +19,8 @@ template <std::floating_point scalar_t, typename x_t, typename spline_t, typenam
 class spline_generator_t
 {
 public:
-    using critical_points_t = typename refinement_pool_seeder_t::critical_points_t;
-    using workspace_t = typename typestates_t::workspace_t;
+    using critical_points_t = refinement_pool_seeder_t::critical_points_t;
+    using workspace_t = typestates_t::workspace_t;
 
     constexpr spline_generator_t() : spline_generator_t{{}, {}, {}} {}
 
@@ -62,8 +62,8 @@ private:
 
 template <typename policy_t> struct spline_generator_factory_t
 {
-    using scalar_t = typename policy_t::scalar_t;
-    using product_t = typename policy_t::spline_generator_t;
+    using scalar_t = policy_t::scalar_t;
+    using product_t = policy_t::spline_generator_t;
 
     [[nodiscard]] auto operator()(scalar_t global_tolerance) const -> product_t
     {

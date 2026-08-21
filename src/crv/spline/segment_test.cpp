@@ -162,7 +162,7 @@ constexpr auto segment_layout = segment_layout_t{
     .intermediate = {.shift_width = 4, .is_signed = false},
     .final = {.shift_width = 4, .is_signed = true},
 };
-using field_unpacker_t = spline::field_unpacker_t<typename traits_t::unpacked_field_t>;
+using field_unpacker_t = spline::field_unpacker_t<traits_t::unpacked_field_t>;
 using unpacker_t = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
 using evaluator_t = segment_evaluator_t<traits_t, x_t, y_t>;
 using sut_t = segment_t<traits_t, x_t, unpacker_t, evaluator_t>;

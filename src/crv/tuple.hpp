@@ -61,7 +61,7 @@ struct transform_f<std::tuple<types_t...>, wrapper_t>
 ///
 /// transform_tuple_t<tuple<a, b, c>, op_t> -> tuple<op_t<a>, op_t<b>, op_t<c>>
 template <typename tuple_t, template <typename> class op_t>
-using transform_t = typename detail::transform_f<tuple_t, op_t>::type;
+using transform_t = detail::transform_f<tuple_t, op_t>::type;
 
 //
 // iteration
