@@ -143,6 +143,7 @@ set(shared_lib_kernel_files
     math/fixed/exp2.hpp
     math/fixed/fixed.hpp
     math/fixed/fma.hpp
+    math/fixed/rsqrt.hpp
     math/fixed/uabs.hpp
     math/int_traits.hpp
     math/integer.hpp
