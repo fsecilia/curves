@@ -101,8 +101,7 @@ TEST_F(spline_tangent_extender_test_t, intercept_comes_from_fixed_segment_not_fl
 TEST_F(spline_tangent_extender_test_t, rejects_negative_gain_slope)
 {
     // at X=5: T=45, T'=4, G=9, so G'=-1, which violates the nondecreasing authored-curve contract
-    auto const interval
-        = interval_t{.cubic = {0.0, 0.0, 4.0, 37.0}, .segment = {&mock_segment}, .subdomain = {}};
+    auto const interval = interval_t{.cubic = {0.0, 0.0, 4.0, 37.0}, .segment = {&mock_segment}, .subdomain = {}};
     EXPECT_DEATH(static_cast<void>(sut(interval)), "gain_slope");
 }
 

@@ -116,8 +116,8 @@ TEST_F(quadrature_antiderivative_test_small_cache_t, mean_integrand_on_cache_bou
     EXPECT_DOUBLE_EQ(2.5, sut.mean_integrand(1.0));
 }
 
-TEST_F(quadrature_antiderivative_test_small_cache_t,
-    mean_integrand_immediately_after_boundary_blends_prefix_and_residual)
+TEST_F(
+    quadrature_antiderivative_test_small_cache_t, mean_integrand_immediately_after_boundary_blends_prefix_and_residual)
 {
     auto const x = std::nextafter(1.0, 2.0);
     auto const residual_mean = 7.0;
@@ -127,8 +127,8 @@ TEST_F(quadrature_antiderivative_test_small_cache_t,
     EXPECT_DOUBLE_EQ(expected, sut.mean_integrand(x));
 }
 
-TEST_F(quadrature_antiderivative_test_small_cache_t,
-    mean_integrand_in_later_interval_blends_cached_prefix_and_local_mean)
+TEST_F(
+    quadrature_antiderivative_test_small_cache_t, mean_integrand_in_later_interval_blends_cached_prefix_and_local_mean)
 {
     auto const x = 1.5;
     auto const residual_mean = 4.0;

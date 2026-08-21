@@ -44,8 +44,7 @@ template <typename t_scalar_t> struct refinement_predicate_t
         auto const noise_floor = abs(area) * relative_noise_margin;
         auto const local_tolerance = max(segment.tolerance, noise_floor);
         auto const converged = error <= local_tolerance;
-        auto const structurally_limited
-            = !converged && (segment.depth >= depth_limit || current_width <= min_width);
+        auto const structurally_limited = !converged && (segment.depth >= depth_limit || current_width <= min_width);
 
         return {
             .refine = !converged && !structurally_limited,
