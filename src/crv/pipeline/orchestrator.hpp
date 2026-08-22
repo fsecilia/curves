@@ -57,7 +57,9 @@ public:
         prefetcher.prefetch(&state);
     }
 
-    template <typename report_t> auto process(report_t& report, timestamp_t timestamp) noexcept -> pipeline_result_t
+    /// This function is marked always_inline because the mangled name is too long and breaks objtool.
+    template <typename report_t>
+    CRV_ALWAYS_INLINE auto process(report_t& report, timestamp_t timestamp) noexcept -> pipeline_result_t
     {
         if (!report.valid()) return pipeline_result_t::invalid_report;
 

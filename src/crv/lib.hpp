@@ -34,4 +34,10 @@ using float64_t = double;
 using float_max_t = long double;
 using float_t = float64_t;
 
+#if defined(__GNUC__) || defined(__clang__)
+#define CRV_ALWAYS_INLINE [[gnu::always_inline]]
+#else
+#define CRV_ALWAYS_INLINE
+#endif
+
 } // namespace crv

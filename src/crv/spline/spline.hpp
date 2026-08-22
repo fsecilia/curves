@@ -47,7 +47,8 @@ public:
     constexpr spline_t(payload_t payload) noexcept : payload{std::move(payload)} {}
 
     /// \pre 0 <= x
-    constexpr auto operator()(x_t x) const noexcept -> y_t
+    /// This function is marked always_inline because the mangled name is too long and breaks objtool.
+    CRV_ALWAYS_INLINE constexpr auto operator()(x_t x) const noexcept -> y_t
     {
         assert(x_t{0} <= x && "spline_t: input out of bounds");
 
