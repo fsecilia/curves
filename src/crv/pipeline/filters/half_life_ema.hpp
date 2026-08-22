@@ -12,7 +12,7 @@
 #include <crv/math/shifter.hpp>
 #include <cassert>
 
-namespace crv {
+namespace crv::pipeline {
 
 /// exponential moving average parameterized by half-life
 ///
@@ -53,4 +53,4 @@ private:
     sample_t output_{};
 };
 
-} // namespace crv
+} // namespace crv::pipeline

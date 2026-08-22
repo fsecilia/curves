@@ -6,7 +6,7 @@
 #include "half_life_ema.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv {
+namespace crv::pipeline {
 namespace {
 
 struct half_life_ema_test_t : Test
@@ -115,4 +115,4 @@ struct half_life_ema_test_t : Test
 };
 
 } // namespace
-} // namespace crv
+} // namespace crv::pipeline
