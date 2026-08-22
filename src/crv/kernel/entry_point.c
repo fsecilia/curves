@@ -6,6 +6,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <crv/kernel/pipeline/pipeline.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -17,6 +18,12 @@
 
 /// name reported by input core for the handler and its handles
 #define CRV_INPUT_HANDLER_NAME KBUILD_MODNAME
+
+struct crv_input_handle
+{
+    struct input_handle input;
+    unsigned char pipeline_storage[];
+};
 
 // input core applies this capability table then calls match() for policy checks
 static const struct input_device_id crv_input_device_ids[] = {
@@ -105,7 +112,9 @@ static bool crv_input_match(struct input_handler* handler, struct input_dev* dev
 
 static int crv_input_connect(struct input_handler* handler, struct input_dev* device, const struct input_device_id* id)
 {
+    struct crv_input_handle* crv_handle;
     struct input_handle* handle;
+    size_t allocation_size;
     int error;
 
     (void)id;
@@ -115,19 +124,23 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
         device->name ? device->name : "<unnamed>", device->phys ? device->phys : "<unknown>", device->id.bustype,
         device->id.vendor, device->id.product, device->id.version, device->max_vals);
 
-    handle = kzalloc(sizeof(*handle), GFP_KERNEL);
-    if (!handle)
+    allocation_size = sizeof(*crv_handle) + crv_pipeline_storage_size();
+
+    crv_handle = kzalloc(allocation_size, GFP_KERNEL);
+    if (!crv_handle)
     {
         error = -ENOMEM;
         goto err_report;
     }
 
+    handle = &crv_handle->input;
+    handle->private = crv_pipeline_construct(crv_handle->pipeline_storage);
     handle->dev = device;
     handle->handler = handler;
     handle->name = CRV_INPUT_HANDLER_NAME;
 
     error = crv_input_register_handle_head(handle);
-    if (error) goto err_free_handle;
+    if (error) goto err_destroy_pipeline;
 
     error = input_open_device(handle);
     if (error) goto err_unregister_handle;
@@ -139,8 +152,9 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
 err_unregister_handle:
     input_unregister_handle(handle);
 
-err_free_handle:
-    kfree(handle);
+err_destroy_pipeline:
+    crv_pipeline_destroy(handle->private);
+    kfree(crv_handle);
 
 err_report:
     pr_err("failed to attach to input device: %d\n", error);
@@ -157,6 +171,7 @@ static unsigned int crv_input_events(struct input_handle* handle, struct input_v
 
 static void crv_input_disconnect(struct input_handle* handle)
 {
+    struct crv_input_handle* crv_handle = container_of(handle, struct crv_input_handle, input);
     struct input_dev* device = handle->dev;
 
     input_close_device(handle);
@@ -165,7 +180,8 @@ static void crv_input_disconnect(struct input_handle* handle)
     pr_info("detached from input device '%s', phys '%s'\n", device->name ? device->name : "<unnamed>",
         device->phys ? device->phys : "<unknown>");
 
-    kfree(handle);
+    crv_pipeline_destroy(handle->private);
+    kfree(crv_handle);
 }
 
 static struct input_handler crv_input_handler = {
