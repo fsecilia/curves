@@ -65,8 +65,6 @@ IncludeCategories:
     Priority: 3
   - Regex: '/(bin|lib|test).hpp>'
     Priority: 4
-  - Regex: '<dink/'
-    Priority: 5
   - Regex: '.*'
     Priority: 63
 IncludeIsMainRegex: '(_test|_integration_test)?$'
