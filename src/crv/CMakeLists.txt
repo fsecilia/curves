@@ -156,6 +156,7 @@ set(shared_lib_kernel_files
     math/shifter.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
+    pipeline/velocity.hpp
     prefetcher.hpp
     ranges.hpp
     spline/pipeline_config.hpp
@@ -239,6 +240,7 @@ set(unit_test_files
     overloaded_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
+    pipeline/velocity_test.cpp
     prefetcher_test.cpp
     priority_queue_test.cpp
     quadrature/adaptive_integrator_test.cpp
