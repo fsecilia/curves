@@ -158,6 +158,7 @@ set(shared_lib_kernel_files
     pipeline/input_frame.hpp
     pipeline/output_transform.hpp
     pipeline/report_timer.hpp
+    pipeline/residual_accumulator.hpp
     pipeline/velocity.hpp
     prefetcher.hpp
     ranges.hpp
@@ -244,6 +245,7 @@ set(unit_test_files
     pipeline/input_frame_test.cpp
     pipeline/output_transform_test.cpp
     pipeline/report_timer_test.cpp
+    pipeline/residual_accumulator_test.cpp
     pipeline/velocity_test.cpp
     prefetcher_test.cpp
     priority_queue_test.cpp
