@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "input_value_array_view.hpp"
+#include "input_value_array_adapter.hpp"
 
 namespace crv {
 namespace {
