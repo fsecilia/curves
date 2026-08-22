@@ -130,6 +130,8 @@ set(shared_lib_kernel_files
     kernel/input/input_value_array_adapter.hpp
     kernel/pipeline/abi.cpp
     kernel/pipeline/abi.h
+    kernel/pipeline/pipeline.cpp
+    kernel/pipeline/pipeline.h
     lib.hpp
     math/abs.hpp
     math/cmp.hpp
@@ -156,11 +158,11 @@ set(shared_lib_kernel_files
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
-    pipeline.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
-    pipeline/orchestrator.hpp
     pipeline/output_transform.hpp
+    pipeline.hpp
+    pipeline/orchestrator.hpp
     pipeline/relative_report.hpp
     pipeline/report_timer.hpp
     pipeline/residual_accumulator.hpp
@@ -186,6 +188,7 @@ set(unit_test_files
     io/unique_fd_integration_test.cpp
     io/unique_fd_test.cpp
     kernel/input/input_value_array_adapter_test.cpp
+    kernel/pipeline/pipeline_test.cpp
     math/abs_test.cpp
     math/arg_min_max_test.cpp
     math/cmp_test.cpp
@@ -249,9 +252,9 @@ set(unit_test_files
     overloaded_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
-    pipeline/orchestrator_test.cpp
     pipeline/output_transform_test.cpp
     pipeline/pipeline_integration_test.cpp
+    pipeline/orchestrator_test.cpp
     pipeline/relative_report_test.cpp
     pipeline/report_timer_test.cpp
     pipeline/residual_accumulator_test.cpp
