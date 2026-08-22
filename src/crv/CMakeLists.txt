@@ -128,6 +128,8 @@ set(shared_lib_kernel_files
     kernel/input/abi.h
     kernel/input/input_value_array_adapter.cpp
     kernel/input/input_value_array_adapter.hpp
+    kernel/pipeline/abi.cpp
+    kernel/pipeline/abi.h
     lib.hpp
     math/abs.hpp
     math/cmp.hpp
