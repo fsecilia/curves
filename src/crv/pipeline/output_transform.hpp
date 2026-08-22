@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#pragma once
+
+#include <crv/lib.hpp>
+#include <crv/math/fixed/fixed.hpp>
+#include <crv/math/integer.hpp>
+#include <crv/math/rounding_mode.hpp>
+#include <crv/math/shifter.hpp>
+#include <array>
+#include <cassert>
+
+namespace crv::pipeline {
+
+/// applies a precomposed rotation/anisotropy matrix, then scalar gain
+template <is_fixed t_gain_t>
+    requires(is_signed_v<t_gain_t>)
+struct output_transform_t
+{
+    using input_t = int32_t;
+    using gain_t = t_gain_t;
+
+    // signed Q10.53 covers matrix terms through anisotropy 1000
+    using coefficient_t = fixed_t<int64_t, 53>;
+    using row_t = std::array<coefficient_t, 2>;
+    using matrix_t = std::array<row_t, 2>;
+
+    // |axis| < 2^20 and |matrix term| <= 1000 fit each result in signed Q31.32
+    using transform_t = fixed_t<int64_t, 32>;
+
+    // gain comes last so residual accumulation can use the wide product
+    using out_t = fixed_t<int128_t, gain_t::frac_bits>;
+
+    static constexpr auto input_limit = input_t{1} << 20;
+
+    struct result_t
+    {
+        out_t x{};
+        out_t y{};
+        bool valid = false;
+
+        constexpr auto operator==(result_t const&) const noexcept -> bool = default;
+    };
+
+    matrix_t matrix{{
+        {coefficient_t{1}, coefficient_t{}},
+        {coefficient_t{}, coefficient_t{1}},
+    }};
+
+    constexpr auto operator()(input_t x, input_t y, gain_t gain) const noexcept -> result_t
+    {
+        if (!input_in_range(x) || !input_in_range(y)) return {};
+
+        auto const& [x_row, y_row] = matrix;
+
+        assert(component_in_range(x_row[0], one) && component_in_range(x_row[1], one)
+            && "output_transform_t: rotation row component outside range");
+        assert(component_in_range(y_row[0], max_anisotropy) && component_in_range(y_row[1], max_anisotropy)
+            && "output_transform_t: anisotropy row component outside range");
+        assert(row_norm_is_unit(x_row) && "output_transform_t: rotation row norm must be one");
+        assert(row_norm_squared(y_row) <= row_norm_limit_squared(max_anisotropy)
+            && "output_transform_t: anisotropy outside supported range");
+        assert(rows_are_orthogonal(x_row, y_row) && "output_transform_t: matrix rows must be orthogonal");
+        assert(determinant(x_row, y_row) > matrix_product_t{} && "output_transform_t: anisotropy must be positive");
+
+        using axis_t = fixed_t<int64_t, 0>;
+        auto const fx = axis_t{x};
+        auto const fy = axis_t{y};
+
+        auto const x0 = multiply(fx, x_row[0]);
+        auto const x1 = multiply(fy, x_row[1]);
+        auto const y0 = multiply(fx, y_row[0]);
+        auto const y1 = multiply(fy, y_row[1]);
+
+        auto const transformed_x = transform_t::template convert<shifter>(x0 + x1);
+        auto const transformed_y = transform_t::template convert<shifter>(y0 + y1);
+
+        return {
+            .x = out_t::template convert<shifter>(multiply(transformed_x, gain)),
+            .y = out_t::template convert<shifter>(multiply(transformed_y, gain)),
+            .valid = true,
+        };
+    }
+
+private:
+    static constexpr auto input_in_range(input_t value) noexcept -> bool
+    {
+        return -input_limit < value && value < input_limit;
+    }
+
+    static constexpr auto component_in_range(coefficient_t value, coefficient_t limit) noexcept -> bool
+    {
+        return -limit <= value && value <= limit;
+    }
+
+    using matrix_product_t = fixed::product_t<coefficient_t, coefficient_t>;
+
+    static constexpr auto row_norm_squared(row_t const& row) noexcept -> matrix_product_t
+    {
+        return multiply(row[0], row[0]) + multiply(row[1], row[1]);
+    }
+
+    static constexpr auto row_norm_limit_squared(coefficient_t limit) noexcept -> matrix_product_t
+    {
+        auto const upper = limit + coefficient_ulp;
+        return multiply(upper, upper);
+    }
+
+    static constexpr auto row_norm_is_unit(row_t const& row) noexcept -> bool
+    {
+        auto const lower = one - coefficient_ulp;
+        auto const upper = one + coefficient_ulp;
+        auto const norm = row_norm_squared(row);
+        return multiply(lower, lower) <= norm && norm <= multiply(upper, upper);
+    }
+
+    static constexpr auto row_dot(row_t const& lhs, row_t const& rhs) noexcept -> matrix_product_t
+    {
+        return multiply(lhs[0], rhs[0]) + multiply(lhs[1], rhs[1]);
+    }
+
+    static constexpr auto rows_are_orthogonal(row_t const& lhs, row_t const& rhs) noexcept -> bool
+    {
+        auto const dot = row_dot(lhs, rhs);
+        return -orthogonality_tolerance <= dot && dot <= orthogonality_tolerance;
+    }
+
+    static constexpr auto determinant(row_t const& x_row, row_t const& y_row) noexcept -> matrix_product_t
+    {
+        return multiply(x_row[0], y_row[1]) - multiply(x_row[1], y_row[0]);
+    }
+
+    static constexpr auto shifter = shifter_t<rounding_modes::shr::fast::nearest_away>{};
+    static constexpr auto one = coefficient_t{1};
+    static constexpr auto coefficient_ulp = coefficient_t::literal(1);
+    static constexpr auto max_anisotropy = coefficient_t{1000};
+    static constexpr auto max_anisotropy_raw = static_cast<uint128_t>(max_anisotropy.value);
+
+    // one-ulp coefficient error bounds row-dot error by both row scales plus the error cross term
+    static constexpr auto orthogonality_tolerance
+        = multiply(one + max_anisotropy, coefficient_ulp) + multiply(coefficient_ulp, coefficient_ulp);
+
+    static_assert(max_anisotropy_raw <= static_cast<uint128_t>(max<int128_t>()) / uint128_t{2} / max_anisotropy_raw,
+        "output_transform_t: anisotropy row norm can overflow int128");
+};
+
+} // namespace crv::pipeline

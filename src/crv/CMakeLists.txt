@@ -156,6 +156,7 @@ set(shared_lib_kernel_files
     math/shifter.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
+    pipeline/output_transform.hpp
     pipeline/report_timer.hpp
     pipeline/velocity.hpp
     prefetcher.hpp
@@ -241,6 +242,7 @@ set(unit_test_files
     overloaded_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
+    pipeline/output_transform_test.cpp
     pipeline/report_timer_test.cpp
     pipeline/velocity_test.cpp
     prefetcher_test.cpp
