@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: MIT
+
+/// \file
+/// \copyright Copyright (C) 2026 Frank Secilia
+
+#include <crv/pipeline.hpp>
+#include <crv/spline/construction/curve_target.hpp>
+#include <crv/spline/spline_factory.hpp>
+#include <crv/spline/spline_factory_policy.hpp>
+#include <crv/test/test.hpp>
+#include <array>
+#include <concepts>
+#include <vector>
+
+namespace crv {
+namespace {
+
+struct pipeline_integration_test_t : Test
+{
+    using sut_t = pipeline_t;
+    using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
+    using spline_t = spline_policy_t::spline_t;
+    using speed_t = spline_policy_t::x_t;
+    using duration_t = sut_t::duration_t;
+    using output_transform_t = pipeline::output_transform_t<spline_policy_t::y_t>;
+
+    static_assert(std::same_as<spline_t, sut_t::gain_t>);
+    static_assert(sizeof(sut_t::config_t) == 64);
+
+    struct constant_gain_t
+    {
+        auto operator()(float_t) const noexcept -> float_t { return 2.0; }
+        auto operator()(jet_t<float_t>) const noexcept -> jet_t<float_t> { return {2.0, 0.0}; }
+    };
+
+    static auto build_gain_spline() -> spline_t
+    {
+        using factory_t
+            = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
+
+        auto result = spline_t{};
+        factory_t{}(result, spline::gain_curve_target_t{constant_gain_t{}}, float_t{2e-6}, std::vector<speed_t>{});
+        return result;
+    }
+
+    static constexpr auto rel(input_value_t::code_rel_t code, input_value_t::value_t value) noexcept -> input_value_t
+    {
+        return {
+            .type = input_value_t::type_t::rel,
+            .code = static_cast<input_value_t::code_t>(code),
+            .value = value,
+        };
+    }
+
+    static constexpr auto syn() noexcept -> input_value_t
+    {
+        return {
+            .type = input_value_t::type_t::syn,
+            .code = static_cast<input_value_t::code_t>(input_value_t::code_syn_t::report),
+            .value = 0,
+        };
+    }
+
+    static constexpr auto abi(input_value_t const& value) noexcept -> crv_input_value_t
+    {
+        return {
+            .type = static_cast<crv_u16_t>(value.type),
+            .code = value.code,
+            .value = value.value,
+        };
+    }
+
+    template <std::size_t size>
+    static auto load(std::array<crv_input_value_t, size>& storage, std::size_t index) noexcept -> input_value_t
+    {
+        return input_value_array_adapter_t{storage.data(), storage.size()}.load(index);
+    }
+
+    static auto make_config() -> sut_t::config_t
+    {
+        return {
+            .velocity_scale = sut_t::velocity_scale_t{1'000'000},
+            .half_life = duration_t{1'500'000},
+            .output_transform
+            = output_transform_t{.matrix = {{
+                                     {output_transform_t::coefficient_t{}, -output_transform_t::coefficient_t{1}},
+                                     {output_transform_t::coefficient_t{2}, output_transform_t::coefficient_t{}},
+                                 }}},
+        };
+    }
+
+    sut_t sut{make_config(), build_gain_spline()};
+};
+
+TEST_F(pipeline_integration_test_t, real_components_compose_through_missing_axis_insertion)
+{
+    auto warmup_storage = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}};
+    auto const warmup = sut(warmup_storage.data(), 2, warmup_storage.size(), 1'000'000);
+
+    ASSERT_EQ(warmup.status, pipeline::pipeline_result_t::warmup);
+    ASSERT_EQ(warmup.count, 2u);
+    EXPECT_EQ(load(warmup_storage, 0), rel(input_value_t::code_rel_t::x, 1));
+
+    auto storage = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}};
+    auto const result = sut(storage.data(), 2, storage.size(), 2'000'000);
+
+    ASSERT_EQ(result.status, pipeline::pipeline_result_t::applied);
+    ASSERT_EQ(result.count, 2u);
+    EXPECT_EQ(load(storage, 0), rel(input_value_t::code_rel_t::y, 12));
+    EXPECT_EQ(load(storage, 1), syn());
+}
+
+TEST_F(pipeline_integration_test_t, full_raw_frame_reports_append_failure_without_mutation)
+{
+    auto warmup_storage = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}};
+    ASSERT_EQ(sut(warmup_storage.data(), 2, warmup_storage.size(), 1'000'000).status,
+        pipeline::pipeline_result_t::warmup);
+
+    auto storage = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn())};
+    auto const result = sut(storage.data(), storage.size(), storage.size(), 2'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::append_failed);
+    EXPECT_EQ(result.count, 2u);
+    EXPECT_EQ(load(storage, 0), rel(input_value_t::code_rel_t::x, 3));
+    EXPECT_EQ(load(storage, 1), syn());
+}
+
+TEST_F(pipeline_integration_test_t, invalid_raw_frame_returns_original_count_without_accessing_past_capacity)
+{
+    auto storage = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn())};
+
+    auto const result = sut(storage.data(), 3, storage.size(), 1'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::invalid_report);
+    EXPECT_EQ(result.count, 3u);
+    EXPECT_EQ(load(storage, 0), rel(input_value_t::code_rel_t::x, 3));
+    EXPECT_EQ(load(storage, 1), syn());
+}
+
+} // namespace
+} // namespace crv

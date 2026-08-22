@@ -154,6 +154,7 @@ set(shared_lib_kernel_files
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
+    pipeline.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
     pipeline/orchestrator.hpp
@@ -248,6 +249,7 @@ set(unit_test_files
     pipeline/input_frame_test.cpp
     pipeline/orchestrator_test.cpp
     pipeline/output_transform_test.cpp
+    pipeline/pipeline_integration_test.cpp
     pipeline/relative_report_test.cpp
     pipeline/report_timer_test.cpp
     pipeline/residual_accumulator_test.cpp
