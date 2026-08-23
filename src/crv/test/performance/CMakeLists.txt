@@ -15,4 +15,10 @@ if (BUILD_INTEGRATION_TESTS)
         pipeline.cpp
     )
     target_link_libraries(performance_test_pipeline PRIVATE lib)
+
+    add_executable(performance_test_spline_hint
+        performance.hpp
+        spline_hint.cpp
+    )
+    target_link_libraries(performance_test_spline_hint PRIVATE lib)
 endif()
