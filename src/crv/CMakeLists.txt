@@ -16,6 +16,8 @@ set(lib_files
     concepts.hpp
     i18n.cpp
     i18n.hpp
+    io/capture/file.hpp
+    io/capture/stream.hpp
     io/unique_fd.hpp
     math/arg_min_max.hpp
     math/compensated_accumulator.hpp
@@ -486,4 +488,5 @@ if (enable_testing)
 endif()
 
 add_subdirectory(kernel)
+add_subdirectory(tools)
 add_subdirectory(ui)
