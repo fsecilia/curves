@@ -21,6 +21,7 @@ class spline_generator_t
 public:
     using critical_points_t = refinement_pool_seeder_t::critical_points_t;
     using workspace_t = typestates_t::workspace_t;
+    using result_t = refiner_t::result_t;
 
     constexpr spline_generator_t() : spline_generator_t{{}, {}, {}} {}
 
@@ -35,7 +36,7 @@ public:
     {}
 
     template <typename target_t>
-    constexpr auto operator()(auto& spline, target_t&& target, critical_points_t critical_points) -> void
+    constexpr auto operator()(auto& spline, target_t&& target, critical_points_t critical_points) -> result_t
     {
         assert(workspace_.empty());
         workspace_.clear();
@@ -47,10 +48,17 @@ public:
         auto unseeded_state = typename typestates_t::initial_t{workspace_};
         auto const& construction_target = target;
         auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), construction_target, critical_points);
-        auto unassembled_state = refine_(std::move(unrefined_state), construction_target);
-        assemble_(std::move(unassembled_state), spline);
+        auto const result = refine_(std::move(unrefined_state), construction_target);
+        if (!result)
+        {
+            workspace_.clear();
+            return result;
+        }
+
+        assemble_(typename typestates_t::unassembled_t{workspace_}, spline);
 
         assert(workspace_.empty());
+        return result;
     }
 
 private:

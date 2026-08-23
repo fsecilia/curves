@@ -102,6 +102,7 @@ set(lib_files
     spline/construction/segment/segment_quantizer.hpp
     spline/construction/segment/shift_planner.hpp
     spline/construction/spline/amr/assembler.hpp
+    spline/construction/spline/amr/generation_result.hpp
     spline/construction/spline/amr/refinement_pool_seeder.hpp
     spline/construction/spline/amr/refiner.hpp
     spline/construction/spline/amr/seed/subdomain_factory.hpp

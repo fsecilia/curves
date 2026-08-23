@@ -148,6 +148,70 @@ TEST(segment_evaluator_test, malformed_extreme_ordinates_use_wrapping_subtractio
 
 } // namespace segment_evaluator_tests
 
+namespace segment_safety_tests {
+
+using x_t = fixed_t<int64_t, 0>;
+using y_t = fixed_t<int64_t, 0>;
+using traits_t = spline::traits_t<spline::unpacked_field_t<int64_t>, y_t>;
+using unpacked_segment_t = traits_t::unpacked_segment_t;
+constexpr auto sut = segment_evaluator_t<traits_t, x_t, y_t>{};
+constexpr auto narrow_min = min<int64_t>();
+constexpr auto narrow_max = max<int64_t>();
+
+constexpr auto make_segment(int64_t d, int_t d_shift, int64_t c, int_t c_shift, int64_t b, int_t b_shift,
+    int64_t g0 = 0) noexcept -> unpacked_segment_t
+{
+    return {
+        .d = {.mantissa = d, .shift = d_shift},
+        .c = {.mantissa = c, .shift = c_shift},
+        .b = {.mantissa = b, .shift = b_shift},
+        .g0 = y_t::literal(g0),
+    };
+}
+
+// zero local coordinate still validates coefficient additions and final alignment
+static_assert(sut.is_safe_through(make_segment(narrow_max, 0, narrow_min, 0, 0, 0), x_t::literal(0), x_t{0}));
+
+// signed minimum is handled as a value, not by taking an unrepresentable signed absolute value
+static_assert(sut.is_safe_through(make_segment(narrow_min, 0, 0, 0, 0, 0), x_t::literal(1), x_t{0}));
+
+// largest positive product and widest right-shift bias fit the wide intermediate
+static_assert(sut.is_safe_through(
+    make_segment(narrow_max, 127, 0, 127, 0, 0), x_t::literal(narrow_max), x_t{0}));
+
+// stage narrowing boundary and one-past coefficient addition
+static_assert(sut.is_safe_through(make_segment(narrow_max, 0, 0, 0, 0, 0), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(narrow_max, 0, 1, 0, 0, 0), x_t::literal(1), x_t{0}));
+
+// first Horner stage can fit while the second overflows its mathematical accumulator
+static_assert(!sut.is_safe_through(
+    make_segment(1, 0, narrow_max - 1, 0, 1, 0), x_t::literal(1), x_t{0}));
+
+// mandatory subdivision can turn an unsafe quadratic envelope into a safe one
+constexpr auto quadratic = make_segment(1, 0, 0, 0, 0, 0);
+static_assert(!sut.is_safe_through(quadratic, x_t::literal(3'037'000'500), x_t{0}));
+static_assert(sut.is_safe_through(quadratic, x_t::literal(1'518'500'250), x_t{0}));
+
+// deliberate final saturation and in-range signed left shifts are safe
+static_assert(sut.is_safe_through(make_segment(0, 0, 0, 0, 1, -63), x_t::literal(1), x_t{0}));
+static_assert(sut.is_safe_through(make_segment(0, 0, 0, 0, -1, -1), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(0, 0, 0, 0, narrow_max, -127), x_t::literal(1), x_t{0}));
+static_assert(sut.is_safe_through(make_segment(0, 0, 0, 0, -1, -127), x_t::literal(1), x_t{0}));
+
+// dynamic shift extrema are accepted when arithmetic permits them and rejected when the count is invalid
+static_assert(sut.is_safe_through(make_segment(0, 127, 0, 127, 0, -127), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(0, 128, 0, 0, 0, 0), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(0, 0, 0, 0, 0, 128), x_t::literal(1), x_t{0}));
+
+// correction subtraction must fit y_t before the bounded x0/x correction can execute
+static_assert(sut.is_safe_through(make_segment(0, 0, 0, 0, narrow_min, 0, narrow_max), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(0, 0, 0, 0, narrow_min, 0, narrow_max), x_t::literal(1), x_t{1}));
+
+// interval endpoint itself must be representable
+static_assert(!sut.is_safe_through(make_segment(0, 0, 0, 0, 0, 0), x_t::literal(1), x_t::literal(narrow_max)));
+
+} // namespace segment_safety_tests
+
 namespace segment_tests {
 
 using x_t = fixed_t<int64_t, 14>;
@@ -180,6 +244,7 @@ static_assert(sizeof(sut_t) == 32);
 static_assert(alignof(sut_t) == 32);
 static_assert(std::is_trivially_copyable_v<sut_t>);
 static_assert(sut(x_t::literal(2), x_t::literal(2)) == y_t::literal(11));
+static_assert(sut.is_safe_through(x_t::literal(4), x_t::literal(2)));
 
 } // namespace segment_tests
 

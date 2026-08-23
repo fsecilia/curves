@@ -14,34 +14,40 @@ struct spline_factory_test_t : Test
 {
     struct mock_generator_t
     {
+        using result_t = int_t;
+
         virtual ~mock_generator_t() = default;
-        MOCK_METHOD(void, call, (std::vector<float_t> const&), ());
+        MOCK_METHOD(result_t, call, (std::vector<float_t> const&), ());
     };
     StrictMock<mock_generator_t> mock_generator;
 
     struct generator_t
     {
+        using result_t = mock_generator_t::result_t;
+
         mock_generator_t* mock = nullptr;
 
         template <typename spline_t, typename target_function_t, typename critical_points_t>
-        void operator()(spline_t&, target_function_t&&, critical_points_t&& points) const
+        auto operator()(spline_t&, target_function_t&&, critical_points_t&& points) const -> result_t
         {
-            mock->call(points);
+            return mock->call(points);
         }
     };
 
-    struct mock_generator_factory_impl_t
+    struct mock_generator_factory_t
     {
-        virtual ~mock_generator_factory_impl_t() = default;
+        virtual ~mock_generator_factory_t() = default;
         MOCK_METHOD(generator_t, call, (float_t), ());
     };
-    StrictMock<mock_generator_factory_impl_t> mock_factory;
+    StrictMock<mock_generator_factory_t> mock_factory;
 
     struct generator_factory_t
     {
-        mock_generator_factory_impl_t* mock = nullptr;
+        using product_t = generator_t;
 
-        auto operator()(float_t tolerance) const -> generator_t { return mock->call(tolerance); }
+        mock_generator_factory_t* mock = nullptr;
+
+        auto operator()(float_t tolerance) const -> product_t { return mock->call(tolerance); }
     };
 
     struct policy_t
@@ -67,9 +73,9 @@ TEST_F(spline_factory_test_t, forwards_arguments_to_generator)
     auto spline = int_t{0};
 
     EXPECT_CALL(mock_factory, call(target_tolerance)).WillOnce(::testing::Return(generator_t{&mock_generator}));
-    EXPECT_CALL(mock_generator, call(target_points));
+    EXPECT_CALL(mock_generator, call(target_points)).WillOnce(Return(17));
 
-    sut(spline, target, target_tolerance, target_points);
+    EXPECT_EQ(sut(spline, target, target_tolerance, target_points), 17);
 }
 
 } // namespace

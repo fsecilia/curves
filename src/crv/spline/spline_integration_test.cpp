@@ -52,11 +52,43 @@ struct fractional_power_t
     }
 };
 
+auto expect_all_segments_safe(spline_t const& spline) -> void
+{
+    auto const& locator = spline.payload.segment_locator;
+    auto const segment_count = locator.segment_count();
+    ASSERT_GT(segment_count, 0);
+
+    auto const find_origin = [&](int_t segment_index) noexcept -> x_t {
+        if (segment_index == 0) return x_t{0};
+        if (segment_index == segment_count) return locator.x_max();
+
+        auto low = typename x_t::value_t{0};
+        auto high = locator.x_max().value;
+        while (low < high)
+        {
+            auto const midpoint = low + (high - low) / 2;
+            if (locator.locate(x_t::literal(midpoint)).index < segment_index) low = midpoint + 1;
+            else high = midpoint;
+        }
+        return x_t::literal(low);
+    };
+
+    for (auto segment_index = int_t{0}; segment_index < segment_count; ++segment_index)
+    {
+        auto const left = find_origin(segment_index);
+        auto const right = find_origin(segment_index + 1);
+        EXPECT_TRUE(spline.payload.segments[segment_index].is_safe_through(right - left, left))
+            << "segment=" << segment_index << " left_raw=" << left.value << " right_raw=" << right.value;
+    }
+}
+
 template <typename target_t> auto build_spline(target_t const& target) -> spline_t
 {
     auto spline = spline_t{};
     auto critical_points = std::vector<x_t>{to_fixed<x_t>(7.123456789), to_fixed<x_t>(31.0000003)};
-    spline_factory_t{}(spline, target, scalar_t{2e-6}, std::move(critical_points));
+    auto const result = spline_factory_t{}(spline, target, scalar_t{2e-6}, std::move(critical_points));
+    EXPECT_TRUE(result);
+    if (result) expect_all_segments_safe(spline);
     return spline;
 }
 

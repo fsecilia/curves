@@ -13,6 +13,7 @@
 #include <crv/spline/construction/segment/amr/residual_estimator.hpp>
 #include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <crv/spline/construction/segment/local_coordinate.hpp>
+#include <optional>
 
 namespace crv::spline {
 
@@ -53,23 +54,26 @@ template <typename t_subdomain_t, typename t_cubic_t, typename t_segment_t> stru
     cubic_t cubic; // local-u polynomial
     segment_t segment;
     subdomain_t subdomain;
-    residual_t residual;
+    std::optional<residual_t> residual;
 
     constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
 };
 
-/// orders by residual.weighted_error then exact domain.left_x
+/// orders unsafe intervals first, then by residual.weighted_error and exact domain.left_x
 struct interval_priority_less_t
 {
     template <typename interval_t>
     constexpr auto operator()(interval_t const& lhs, interval_t const& rhs) const noexcept -> bool
     {
-        using std::isfinite;
-        assert(isfinite(lhs.residual.weighted_error));
-        assert(isfinite(rhs.residual.weighted_error));
+        if (lhs.residual.has_value() != rhs.residual.has_value()) return lhs.residual.has_value();
+        if (!lhs.residual) return lhs.subdomain.left_x < rhs.subdomain.left_x;
 
-        return std::tie(lhs.residual.weighted_error, lhs.subdomain.left_x)
-            < std::tie(rhs.residual.weighted_error, rhs.subdomain.left_x);
+        using std::isfinite;
+        assert(isfinite(lhs.residual->weighted_error));
+        assert(isfinite(rhs.residual->weighted_error));
+
+        return std::tie(lhs.residual->weighted_error, lhs.subdomain.left_x)
+            < std::tie(rhs.residual->weighted_error, rhs.subdomain.left_x);
     }
 };
 
@@ -104,6 +108,12 @@ struct interval_factory_t
         auto const normalized_cubic = convert_hermite(local_left_y, local_right_y);
         auto const cubic = convert_local_coordinate(normalized_cubic, width);
         auto const segment = segment_factory(cubic, width_fixed, subdomain.left_x);
+
+        // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
+        if (!segment.is_safe_through(width_fixed, subdomain.left_x))
+        {
+            return {.cubic = cubic, .segment = segment, .subdomain = subdomain, .residual = std::nullopt};
+        }
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);
         auto const midpoint = from_fixed<scalar_t>(subdomain.midpoint_x);

@@ -6,6 +6,7 @@
 #include "refiner.hpp"
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
+#include <optional>
 #include <queue>
 #include <vector>
 
@@ -14,13 +15,40 @@ namespace {
 
 struct spline_refiner_test_t : Test
 {
+    using x_t = fixed_t<int_t, 0>;
+
+    struct subdomain_t
+    {
+        using x_t = spline_refiner_test_t::x_t;
+
+        x_t left_x;
+        x_t midpoint_x;
+        x_t right_x;
+
+        constexpr auto operator==(subdomain_t const&) const noexcept -> bool = default;
+    };
+
     struct interval_t
     {
-        int_t id;
+        using subdomain_t = spline_refiner_test_t::subdomain_t;
 
-        constexpr auto operator<=>(interval_t const&) const noexcept -> auto = default;
+        int_t id;
+        subdomain_t subdomain;
+        std::optional<int_t> residual;
+
+        constexpr auto operator<(interval_t const& rhs) const noexcept -> bool { return id < rhs.id; }
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
+
+    static constexpr auto safe(int_t id, x_t left = x_t{0}, x_t midpoint = x_t{1}, x_t right = x_t{2}) -> interval_t
+    {
+        return {.id = id, .subdomain = {left, midpoint, right}, .residual = 0};
+    }
+
+    static constexpr auto unsafe(int_t id, x_t left = x_t{0}, x_t midpoint = x_t{1}, x_t right = x_t{2}) -> interval_t
+    {
+        return {.id = id, .subdomain = {left, midpoint, right}, .residual = std::nullopt};
+    }
 
     struct subdivision_t
     {
@@ -37,17 +65,9 @@ struct spline_refiner_test_t : Test
     };
     workspace_t workspace;
 
-    struct common_typestate_t
+    struct typestate_t
     {
         workspace_t& workspace;
-    };
-
-    struct next_typestate_t : common_typestate_t
-    {};
-
-    struct typestate_t : common_typestate_t
-    {
-        using next_t = next_typestate_t;
     };
 
     struct sample_target_function_t
@@ -92,101 +112,95 @@ struct spline_refiner_test_t : Test
         .subdivide = subdivider_t{&mock_subdivide}};
 };
 
-TEST_F(spline_refiner_test_t, no_subdivision_required_drains_immediately)
+TEST_F(spline_refiner_test_t, safe_complete_interval_finishes)
 {
-    // start with 1 interval
-    workspace.refinement_pool.push(interval_t{1});
+    workspace.refinement_pool.push(safe(1));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(1))).WillOnce(Return(false));
 
-    // predicate consulted; return false - loop not entered
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{1})).WillOnce(Return(false));
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
 
-    next_typestate_t const actual = sut(typestate_t{workspace}, sample_target_function);
-
-    EXPECT_EQ(&workspace, &actual.workspace);
+    EXPECT_TRUE(result);
     EXPECT_TRUE(workspace.refinement_pool.empty());
-    EXPECT_EQ(workspace.completed_intervals, (intervals_t{{1}}));
+    EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(1)}));
 }
 
-TEST_F(spline_refiner_test_t, refinement_pool_starts_full)
+TEST_F(spline_refiner_test_t, safe_full_pool_can_complete)
 {
-    // start with max_segment_count intervals
-    workspace.refinement_pool.push(interval_t{1});
-    workspace.refinement_pool.push(interval_t{2});
-    workspace.refinement_pool.push(interval_t{3});
-    workspace.refinement_pool.push(interval_t{4});
+    for (auto id = int_t{1}; id <= max_segment_count; ++id) workspace.refinement_pool.push(safe(id));
+    for (auto id = max_segment_count; id >= 1; --id)
+        EXPECT_CALL(mock_requires_subdivision, call(safe(id))).WillOnce(Return(false));
 
-    // predicate isn't consulted - loop not entered
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
 
-    next_typestate_t const actual = sut(typestate_t{workspace}, sample_target_function);
-
-    EXPECT_EQ(&workspace, &actual.workspace);
+    EXPECT_TRUE(result);
     EXPECT_TRUE(workspace.refinement_pool.empty());
-    EXPECT_EQ(workspace.completed_intervals, (intervals_t{{4}, {3}, {2}, {1}}));
+    EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(4), safe(3), safe(2), safe(1)}));
 }
 
-TEST_F(spline_refiner_test_t, refinement_pool_empties_before_budget_hit)
+TEST_F(spline_refiner_test_t, unsafe_interval_forces_subdivision_without_quality_evaluation)
 {
-    // start with 1 interval
-    // subdivide just a few, then stop and let main loop drain pool
-    workspace.refinement_pool.push({10});
+    workspace.refinement_pool.push(unsafe(10));
 
-    // pool={10}, completed={}; pop 10, push {20, 30}
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{10})).WillOnce(Return(true));
-    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), interval_t{10}))
-        .WillOnce(Return(subdivision_t{interval_t{20}, interval_t{30}}));
+    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), unsafe(10)))
+        .WillOnce(Return(subdivision_t{safe(20), safe(30)}));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(30))).WillOnce(Return(false));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(20))).WillOnce(Return(false));
 
-    // pool={30, 20}, completed={}; pop 30, push {40, 50}
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{30})).WillOnce(Return(true));
-    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), interval_t{30}))
-        .WillOnce(Return(subdivision_t{interval_t{50}, interval_t{40}}));
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
 
-    // pool={50, 40, 20}, completed={}; stop subdividing and let main loop drain pool
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{50})).WillOnce(Return(false));
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{40})).WillOnce(Return(false));
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{20})).WillOnce(Return(false));
-
-    // pool={}, completed={50, 40, 20}; pool is empty so main loop stops
-    // drain_remaining is called but has no work to do
-    next_typestate_t const actual = sut(typestate_t{workspace}, sample_target_function);
-
-    EXPECT_EQ(&workspace, &actual.workspace);
-    EXPECT_TRUE(workspace.refinement_pool.empty());
-    EXPECT_EQ(workspace.completed_intervals, (intervals_t{{50}, {40}, {20}}));
+    EXPECT_TRUE(result);
+    EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(30), safe(20)}));
 }
 
-TEST_F(spline_refiner_test_t, subdivision_hits_combined_max_segment_budget_and_drains)
+TEST_F(spline_refiner_test_t, optional_refinement_stops_at_combined_segment_budget)
 {
-    // start with multiple intervals
-    // subdivide until combined budget hit
-    workspace.refinement_pool.push({10});
-    workspace.refinement_pool.push({20});
+    workspace.refinement_pool.push(safe(10));
+    workspace.refinement_pool.push(safe(20));
 
-    // pool={20, 10}, completed={}; pop 20, push {40, 30}
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{20})).WillOnce(Return(true));
-    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), interval_t{20}))
-        .WillOnce(Return(subdivision_t{interval_t{40}, interval_t{30}}));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(20))).WillOnce(Return(true));
+    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), safe(20)))
+        .WillOnce(Return(subdivision_t{safe(40), safe(30)}));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(40))).WillOnce(Return(false));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(30))).WillOnce(Return(true));
+    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), safe(30)))
+        .WillOnce(Return(subdivision_t{safe(50), safe(60)}));
+    EXPECT_CALL(mock_requires_subdivision, call(safe(60))).WillOnce(Return(true));
 
-    // pool={40, 30, 10}, completed={}; decide interval is complete, moves 40 to completed
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{40})).WillOnce(Return(false));
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
 
-    // pool={30, 10}, completed={40}; loop runs again, pop 30, push{50, 60}
-    // subdivision budget hit
-    EXPECT_CALL(mock_requires_subdivision, call(interval_t{30})).WillOnce(Return(true));
-    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), interval_t{30}))
-        .WillOnce(Return(subdivision_t{interval_t{50}, interval_t{60}}));
-
-    // pool={60, 50, 10}, completed={40}; loop exits
-    // drain_remaining sweeps remaining
-    next_typestate_t const actual = sut(typestate_t{workspace}, sample_target_function);
-
-    EXPECT_EQ(&workspace, &actual.workspace);
+    EXPECT_TRUE(result);
     EXPECT_TRUE(workspace.refinement_pool.empty());
-    EXPECT_EQ(workspace.completed_intervals, (intervals_t{{40}, {60}, {50}, {10}}));
+    EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(40), safe(60), safe(50), safe(10)}));
 }
 
-//
-// death tests
-//
+TEST_F(spline_refiner_test_t, required_refinement_fails_at_segment_budget_with_exact_range)
+{
+    workspace.refinement_pool.push(safe(1));
+    workspace.refinement_pool.push(safe(2));
+    workspace.refinement_pool.push(safe(3));
+    workspace.refinement_pool.push(unsafe(4, x_t{11}, x_t{12}, x_t{15}));
+
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
+
+    ASSERT_FALSE(result);
+    ASSERT_TRUE(result.error.has_value());
+    EXPECT_EQ(result.error->reason, spline_generation_error_reason_t::segment_budget_exhausted);
+    EXPECT_EQ(result.error->left, x_t{11});
+    EXPECT_EQ(result.error->right, x_t{15});
+}
+
+TEST_F(spline_refiner_test_t, required_refinement_fails_when_no_distinct_midpoint_exists)
+{
+    workspace.refinement_pool.push(unsafe(1, x_t{7}, x_t{7}, x_t{8}));
+
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
+
+    ASSERT_FALSE(result);
+    ASSERT_TRUE(result.error.has_value());
+    EXPECT_EQ(result.error->reason, spline_generation_error_reason_t::minimum_interval_width);
+    EXPECT_EQ(result.error->left, x_t{7});
+    EXPECT_EQ(result.error->right, x_t{8});
+}
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -197,20 +211,14 @@ TEST_F(spline_refiner_test_t, asserts_on_empty_refinement_pool)
 
 TEST_F(spline_refiner_test_t, asserts_on_overfull_refinement_pool)
 {
-    workspace.refinement_pool.push(interval_t{1});
-    workspace.refinement_pool.push(interval_t{2});
-    workspace.refinement_pool.push(interval_t{3});
-    workspace.refinement_pool.push(interval_t{4});
-    workspace.refinement_pool.push(interval_t{5});
-
+    for (auto id = int_t{1}; id <= max_segment_count + 1; ++id) workspace.refinement_pool.push(safe(id));
     EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "overfull");
 }
 
 TEST_F(spline_refiner_test_t, asserts_on_non_empty_completed_intervals)
 {
-    workspace.refinement_pool.push(interval_t{1});
-    workspace.completed_intervals.push_back(interval_t{2});
-
+    workspace.refinement_pool.push(safe(1));
+    workspace.completed_intervals.push_back(safe(2));
     EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "must be empty");
 }
 

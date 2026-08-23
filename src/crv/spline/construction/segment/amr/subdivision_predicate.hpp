@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <limits>
 
@@ -37,10 +38,11 @@ template <std::floating_point scalar_t, is_fixed t_x_t, int_t log2_min_width> st
 
     constexpr auto operator()(auto const& interval) const noexcept -> bool
     {
-        auto const noise_floor = interval.residual.scale * relative_noise_margin;
+        assert(interval.residual.has_value());
+        auto const noise_floor = interval.residual->scale * relative_noise_margin;
         auto const local_tolerance = std::max(global_tolerance, noise_floor);
 
-        return can_subdivide(interval.subdomain) && interval.residual.metric_error > local_tolerance;
+        return can_subdivide(interval.subdomain) && interval.residual->metric_error > local_tolerance;
     }
 
 private:

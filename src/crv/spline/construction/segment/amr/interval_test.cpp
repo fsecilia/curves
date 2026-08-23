@@ -31,7 +31,8 @@ constexpr auto construct_sut(scalar_t weighted_error, x_t left_x) noexcept -> su
 {
     auto result = sut_t{};
     result.subdomain.left_x = left_x;
-    result.residual.weighted_error = weighted_error;
+    result.residual.emplace();
+    result.residual->weighted_error = weighted_error;
     return result;
 }
 
@@ -40,6 +41,16 @@ constexpr auto sut = interval_priority_less_t{};
 static_assert(sut(construct_sut(0.0, x_t{100}), construct_sut(1.0, x_t{0})));
 static_assert(sut(construct_sut(5.0, x_t{1}), construct_sut(5.0, x_t{2})));
 static_assert(!sut(construct_sut(5.0, x_t{2}), construct_sut(5.0, x_t{1})));
+
+constexpr auto construct_unsafe(x_t left_x) noexcept -> sut_t
+{
+    auto result = sut_t{};
+    result.subdomain.left_x = left_x;
+    return result;
+}
+
+static_assert(sut(construct_sut(100.0, x_t{0}), construct_unsafe(x_t{1})));
+static_assert(!sut(construct_unsafe(x_t{1}), construct_sut(100.0, x_t{0})));
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
@@ -67,6 +78,12 @@ struct spline_interval_factory_test_t : Test
         cubic_t cubic;
         x_t width;
         x_t x0;
+        bool safe;
+
+        constexpr auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
+        {
+            return safe && u_max == width && passed_x0 == x0;
+        }
 
         constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
     };
@@ -75,9 +92,11 @@ struct spline_interval_factory_test_t : Test
     {
         using segment_t = segment_t;
 
+        bool safe = true;
+
         constexpr auto operator()(cubic_t const& cubic, x_t width, x_t x0) const noexcept -> segment_t
         {
-            return {cubic, width, x0};
+            return {cubic, width, x0, safe};
         }
     };
 
@@ -170,7 +189,7 @@ struct spline_interval_factory_test_t : Test
         cubic_t cubic;
         segment_t segment;
         subdomain_t subdomain;
-        residual_t residual;
+        std::optional<residual_t> residual;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
@@ -205,7 +224,7 @@ struct spline_interval_factory_test_t : Test
     x_t const width_fixed = x_t::literal(5);
     cubic_t const normalized_cubic{1.0, 2.0, 3.0, 4.0};
     cubic_t const local_cubic{10.0, 20.0, 30.0, 40.0};
-    segment_t const segment{.cubic = local_cubic, .width = width_fixed, .x0 = left_x};
+    segment_t const segment{.cubic = local_cubic, .width = width_fixed, .x0 = left_x, .safe = true};
     residual_t const residual{14};
 };
 
@@ -231,6 +250,25 @@ TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_
         .residual = residual,
     };
     EXPECT_EQ(expected, actual);
+}
+
+TEST_F(spline_interval_factory_test_t, unsafe_segment_is_not_evaluated_for_residual)
+{
+    sut.segment_factory.safe = false;
+
+    auto local_left_y = left.y;
+    auto local_right_y = right.y;
+    local_left_y.df *= width;
+    local_right_y.df *= width;
+
+    EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
+    EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
+    EXPECT_CALL(mock_residual_estimator, call(_, _, _, _, _)).Times(0);
+
+    auto const actual = sut(sample_target_function, subdomain);
+
+    EXPECT_FALSE(actual.residual.has_value());
+    EXPECT_FALSE(actual.segment.safe);
 }
 
 } // namespace interval_factory_tests
