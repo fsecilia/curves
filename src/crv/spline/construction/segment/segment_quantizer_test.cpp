@@ -22,6 +22,8 @@ constexpr auto quantize = mantissa_quantizer_t<mantissa_t>{};
 
 // passthrough with no shift
 static_assert(quantize(100, 0) == 100);
+static_assert(quantize(3, 0) == 3);
+static_assert(quantize(-3, 0) == -3);
 
 // basic shifting
 static_assert(quantize(100, 2) == 25);
