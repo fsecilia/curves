@@ -143,8 +143,10 @@ template <typename underlying_t> struct test_t
     static constexpr auto bit_width = int_cast<int_t>(sizeof(underlying_t) * CHAR_BIT);
     static constexpr auto src = src_t{0xAA}; // arbitrary bit pattern
 
-    static constexpr auto expected_carry(underlying_t original_src, int_t count) -> underlying_t
+    static constexpr auto expected_shr_result(underlying_t original_src, int_t count) -> underlying_t
     {
+        if (count == 0) return original_src;
+
         auto const unshifted = static_cast<underlying_t>(original_src + count + rounding_mode_t::bias_magic);
         auto const shifted = static_cast<underlying_t>(unshifted >> count);
         return static_cast<underlying_t>(shifted + unshifted + count + rounding_mode_t::carry_magic);
@@ -153,7 +155,7 @@ template <typename underlying_t> struct test_t
     template <int_t count> struct dynamic_shift_test_t
     {
         // shr
-        static auto const expected_shr = expected_carry(src.underlying, count);
+        static auto const expected_shr = expected_shr_result(src.underlying, count);
         static_assert(expected_shr == sut.shr(src, count).underlying);
         static_assert(expected_shr == sut.template shr<dst_t>(src, count).underlying);
 
@@ -166,7 +168,7 @@ template <typename underlying_t> struct test_t
     template <int_t count> struct static_shift_test_t
     {
         // shr
-        static auto const expected_shr = expected_carry(src.underlying, count);
+        static auto const expected_shr = expected_shr_result(src.underlying, count);
         static_assert(expected_shr == sut.template shr<count>(src).underlying);
         static_assert(expected_shr == sut.template shr<dst_t, count>(src).underlying);
 
