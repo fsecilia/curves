@@ -19,6 +19,10 @@ This project uses c++(26|2c). The frontend config ui can be built with either g+
 
 The build requires Toml++ and Qt6. When building from git, Toml++ is vendored via git submodule if not available. Testing is optional and requires gtest to enable.
 
+## Known limitations
+
+Linux may split a very large mouse report into pieces. Curves cannot always tell which pieces belong to the same report. When that happens, it passes the input through unchanged until it can safely start again. If this happens often, that device may get little or no acceleration. See [Input report splitting](guide.md#input-report-splitting) for details.
+
 ## Building
 
 The build is standard cmake. Presets for debug and release using Clang and g++ are provided. The build directory defaults to ./builds, but shadow builds are supported, as is overriding the path in CMakeUserPresets.json.

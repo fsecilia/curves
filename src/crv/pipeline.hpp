@@ -77,11 +77,38 @@ public:
         std::size_t count;
     };
 
-    auto operator()(void* values, std::size_t count, std::size_t capacity, timestamp_t timestamp) noexcept -> result_t
+    auto operator()(void* values, std::size_t count, std::size_t max_vals, std::size_t num_vals, timestamp_t timestamp)
+        noexcept -> result_t
     {
         orchestrator_.prefetch();
 
-        auto adapter = input_value_array_adapter_t{values, capacity};
+        if (!synchronized_) [[unlikely]]
+        {
+            if (!input_core_forced_split(num_vals, max_vals))
+            {
+                orchestrator_.state = {};
+                (void)orchestrator_.state.timer(timestamp);
+                synchronized_ = true;
+            }
+
+            return {
+                .status = count > max_vals ? pipeline::pipeline_result_t::invalid_report
+                                           : pipeline::pipeline_result_t::split_report_bypassed,
+                .count = count,
+            };
+        }
+
+        if (input_core_forced_split(num_vals, max_vals)) [[unlikely]]
+        {
+            synchronized_ = false;
+            return {
+                .status = count > max_vals ? pipeline::pipeline_result_t::invalid_report
+                                           : pipeline::pipeline_result_t::split_report_bypassed,
+                .count = count,
+            };
+        }
+
+        auto adapter = input_value_array_adapter_t{values, max_vals};
         auto frame = pipeline::input_frame_t{adapter, count};
         auto report = pipeline::relative_report_t{frame};
 
@@ -92,7 +119,14 @@ public:
     }
 
 private:
+    static constexpr auto input_core_forced_split(std::size_t num_vals, std::size_t max_vals) noexcept -> bool
+    {
+        // supported input-core baseline appends SYN_REPORT after reaching max_vals - 2
+        return max_vals > 1 && num_vals >= max_vals - 1;
+    }
+
     orchestrator_t orchestrator_{};
+    bool synchronized_ = true;
 };
 
 } // namespace crv

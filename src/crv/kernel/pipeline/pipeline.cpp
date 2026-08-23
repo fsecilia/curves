@@ -50,11 +50,10 @@ extern "C" auto crv_pipeline_destroy(crv_pipeline* pipeline) -> void
     cpp_pipeline(pipeline)->~pipeline_t();
 }
 
-extern "C" auto crv_pipeline_process(
-    crv_pipeline* pipeline, void* values, crv_u32_t count, crv_u32_t capacity, crv_u64_t timestamp)
-    -> crv_pipeline_result_t
+extern "C" auto crv_pipeline_process(crv_pipeline* pipeline, void* values, crv_u32_t count, crv_u32_t max_vals,
+    crv_u32_t num_vals, crv_u64_t timestamp) -> crv_pipeline_result_t
 {
-    auto const result = (*cpp_pipeline(pipeline))(values, count, capacity, timestamp);
+    auto const result = (*cpp_pipeline(pipeline))(values, count, max_vals, num_vals, timestamp);
 
     return {
         .status = static_cast<crv_u32_t>(result.status),
