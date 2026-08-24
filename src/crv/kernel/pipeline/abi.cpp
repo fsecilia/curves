@@ -18,10 +18,11 @@ static_assert(
     static_cast<crv_u32_t>(pipeline_result_t::velocity_out_of_range) == CRV_PIPELINE_RESULT_VELOCITY_OUT_OF_RANGE);
 static_assert(static_cast<crv_u32_t>(pipeline_result_t::transform_input_out_of_range)
     == CRV_PIPELINE_RESULT_TRANSFORM_INPUT_OUT_OF_RANGE);
-static_assert(static_cast<crv_u32_t>(pipeline_result_t::output_out_of_range) == CRV_PIPELINE_RESULT_OUTPUT_OUT_OF_RANGE);
+static_assert(
+    static_cast<crv_u32_t>(pipeline_result_t::output_out_of_range) == CRV_PIPELINE_RESULT_OUTPUT_OUT_OF_RANGE);
 static_assert(static_cast<crv_u32_t>(pipeline_result_t::append_failed) == CRV_PIPELINE_RESULT_APPEND_FAILED);
-static_assert(static_cast<crv_u32_t>(pipeline_result_t::split_report_bypassed)
-    == CRV_PIPELINE_RESULT_SPLIT_REPORT_BYPASSED);
+static_assert(
+    static_cast<crv_u32_t>(pipeline_result_t::split_report_bypassed) == CRV_PIPELINE_RESULT_SPLIT_REPORT_BYPASSED);
 
 } // namespace
 } // namespace crv::pipeline

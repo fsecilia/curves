@@ -35,10 +35,7 @@ struct curves_test_t
         impl_t const* spline;
         mutable impl_t::hint_t hint{};
 
-        auto operator()(in_t x) const noexcept -> out_t
-        {
-            return spline->evaluate(x, hint);
-        }
+        auto operator()(in_t x) const noexcept -> out_t { return spline->evaluate(x, hint); }
     };
 
     auto operator()() noexcept -> void

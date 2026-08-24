@@ -125,7 +125,6 @@ struct tracking_prefetcher_t
         actual_node = *node;
         actual_cache_line_count = 1;
     }
-
 };
 
 constexpr auto test_leaf_prefetch() noexcept -> bool

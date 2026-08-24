@@ -6,8 +6,8 @@
 #include "pipeline.h"
 #include <crv/kernel/input/abi.h>
 #include <crv/pipeline.hpp>
-#include <gtest/gtest.h>
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace crv {
@@ -24,8 +24,7 @@ TEST(kernel_pipeline_test, constructs_processes_and_destroys_in_c_owned_storage)
     auto storage = std::vector<std::byte>(storage_size + 1);
     auto* unaligned_storage = static_cast<void*>(storage.data());
 
-    if (reinterpret_cast<uint_t>(unaligned_storage) % alignof(pipeline_t) == 0)
-        unaligned_storage = storage.data() + 1;
+    if (reinterpret_cast<uint_t>(unaligned_storage) % alignof(pipeline_t) == 0) unaligned_storage = storage.data() + 1;
 
     auto* const pipeline = crv_pipeline_construct(unaligned_storage);
     EXPECT_EQ(0U, reinterpret_cast<uint_t>(pipeline) % alignof(pipeline_t));

@@ -221,10 +221,7 @@ struct spline_death_test_evaluate_malicious_locator_t : spline_death_test_t
         x_t index = 0;
         x_t origin = 0;
 
-        constexpr auto locate(x_t, hint_t&) const noexcept -> result_t
-        {
-            return {.index = index, .origin = origin};
-        }
+        constexpr auto locate(x_t, hint_t&) const noexcept -> result_t { return {.index = index, .origin = origin}; }
         constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
         constexpr auto segment_count() const noexcept -> int_t { return spline::segment_count; }
     };

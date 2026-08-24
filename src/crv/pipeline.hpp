@@ -108,8 +108,8 @@ public:
         std::size_t count;
     };
 
-    auto operator()(void* values, std::size_t count, std::size_t max_vals, std::size_t num_vals, timestamp_t timestamp)
-        noexcept -> result_t
+    auto operator()(void* values, std::size_t count, std::size_t max_vals, std::size_t num_vals,
+        timestamp_t timestamp) noexcept -> result_t
     {
         if (!storage_.control.synchronized) [[unlikely]]
         {
@@ -141,8 +141,7 @@ public:
         auto report = pipeline::relative_report_t{frame};
 
         return {
-            .status = orchestrator_.process(
-                report, timestamp, storage_.control.config, storage_.state, storage_.gain),
+            .status = orchestrator_.process(report, timestamp, storage_.control.config, storage_.state, storage_.gain),
             .count = frame.count(),
         };
     }
