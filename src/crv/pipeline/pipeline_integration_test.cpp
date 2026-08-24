@@ -25,7 +25,7 @@ struct pipeline_integration_test_t : Test
     using output_transform_t = pipeline::output_transform_t<spline_policy_t::y_t>;
 
     static_assert(std::same_as<spline_t, sut_t::gain_t>);
-    static_assert(sizeof(sut_t::config_t) == 64);
+    static_assert(sizeof(sut_t::config_t) == 48);
 
     struct constant_gain_t
     {

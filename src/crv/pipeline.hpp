@@ -6,8 +6,8 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/pipeline/input_frame.hpp>
 #include <crv/pipeline/filters/half_life_ema.hpp>
+#include <crv/pipeline/input_frame.hpp>
 #include <crv/pipeline/orchestrator.hpp>
 #include <crv/pipeline/output_transform.hpp>
 #include <crv/pipeline/relative_report.hpp>
@@ -56,10 +56,6 @@ class pipeline_t
     using orchestrator_t = pipeline::orchestrator_t<timer_t, velocity_impl_t, speed_filter_t, gain_impl_t,
         output_transform_impl_t, accumulator_t, static_prefetcher_t>;
 
-    static_assert(sizeof(gain_impl_t::hint_t) == 24);
-    static_assert(sizeof(orchestrator_t::config_t) == 64);
-    static_assert(sizeof(orchestrator_t::state_t) == 64);
-
 public:
     using config_t = orchestrator_t::config_t;
     using duration_t = orchestrator_t::duration_t;
@@ -67,9 +63,43 @@ public:
     using velocity_scale_t = orchestrator_t::velocity_scale_t;
     using gain_t = gain_impl_t;
 
+private:
+    using state_t = orchestrator_t::state_t;
+
+    struct alignas(64) control_t
+    {
+        config_t config{};
+        bool synchronized = true;
+    };
+
+    struct alignas(64) storage_t
+    {
+        control_t control{};
+        state_t state{};
+        gain_t gain{};
+    };
+
+    static_assert(sizeof(gain_t::hint_t) == 24);
+    static_assert(sizeof(config_t) == 48);
+    static_assert(sizeof(control_t) == 64);
+    static_assert(offsetof(control_t, config) == 0);
+    static_assert(offsetof(control_t, synchronized) == 48);
+
+    static_assert(sizeof(state_t) == 64);
+    static_assert(offsetof(state_t, timer) == 0);
+    static_assert(offsetof(state_t, speed_filter) == 16);
+    static_assert(offsetof(state_t, accumulator) == 24);
+    static_assert(offsetof(state_t, gain_hint) == 40);
+
+    static_assert(offsetof(storage_t, control) == 0);
+    static_assert(offsetof(storage_t, state) == 64);
+    static_assert(offsetof(storage_t, gain) == 128);
+    static_assert(sizeof(storage_t) == sizeof(control_t) + sizeof(state_t) + sizeof(gain_t));
+
+public:
     constexpr pipeline_t() noexcept = default;
     constexpr pipeline_t(config_t config, gain_t const& gain) noexcept
-        : orchestrator_{.config = std::move(config), .gain = gain}
+        : storage_{.control = {.config = std::move(config)}, .gain = gain}
     {}
 
     struct result_t
@@ -81,15 +111,12 @@ public:
     auto operator()(void* values, std::size_t count, std::size_t max_vals, std::size_t num_vals, timestamp_t timestamp)
         noexcept -> result_t
     {
-        orchestrator_.prefetch();
-
-        if (!synchronized_) [[unlikely]]
+        if (!storage_.control.synchronized) [[unlikely]]
         {
             if (!input_core_forced_split(num_vals, max_vals))
             {
-                orchestrator_.state = {};
-                (void)orchestrator_.state.timer(timestamp);
-                synchronized_ = true;
+                reset_numerical_state(timestamp);
+                storage_.control.synchronized = true;
             }
 
             return {
@@ -101,7 +128,7 @@ public:
 
         if (input_core_forced_split(num_vals, max_vals)) [[unlikely]]
         {
-            synchronized_ = false;
+            storage_.control.synchronized = false;
             return {
                 .status = count > max_vals ? pipeline::pipeline_result_t::invalid_report
                                            : pipeline::pipeline_result_t::split_report_bypassed,
@@ -114,7 +141,8 @@ public:
         auto report = pipeline::relative_report_t{frame};
 
         return {
-            .status = orchestrator_.process(report, timestamp),
+            .status = orchestrator_.process(
+                report, timestamp, storage_.control.config, storage_.state, storage_.gain),
             .count = frame.count(),
         };
     }
@@ -126,8 +154,17 @@ private:
         return max_vals > 1 && num_vals >= max_vals - 1;
     }
 
-    orchestrator_t orchestrator_{};
-    bool synchronized_ = true;
+    auto reset_numerical_state(timestamp_t timestamp) noexcept -> void
+    {
+        storage_.state = {};
+        (void)storage_.state.timer(timestamp);
+    }
+
+    storage_t storage_{};
+    [[no_unique_address]] orchestrator_t orchestrator_{};
 };
+
+static_assert(sizeof(pipeline_t) == 11'200);
+static_assert(alignof(pipeline_t) == 64);
 
 } // namespace crv

@@ -118,7 +118,7 @@ public:
     }
 
     /// locates a segment and maintains a four-segment leaf hint
-    constexpr auto locate(x_t x, hint_t& hint, bool use_hint) const noexcept -> result_t
+    constexpr auto locate(x_t x, hint_t& hint) const noexcept -> result_t
     {
         if constexpr (depth_max == 0)
         {
@@ -127,7 +127,7 @@ public:
         }
         else
         {
-            if (use_hint && hint.leaf_origin <= x && x < hint.leaf_end) return locate_in_leaf(x, hint);
+            if (hint.leaf_origin <= x && x < hint.leaf_end) return locate_in_leaf(x, hint);
             return locate_full(x, hint);
         }
     }
@@ -169,12 +169,6 @@ public:
         }
 
         return true;
-    }
-
-    /// prefetches upper tree levels for a full lookup
-    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
-    {
-        if constexpr (depth_max != 0) prefetcher.prefetch(&nodes_[0], 2);
     }
 
     /// prefetches the leaf selected by the previous lookup

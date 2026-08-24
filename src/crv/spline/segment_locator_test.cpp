@@ -126,26 +126,7 @@ struct tracking_prefetcher_t
         actual_cache_line_count = 1;
     }
 
-    constexpr auto prefetch(sut_t::node_t const* node, int_t cache_line_count) const noexcept -> void
-    {
-        actual_node = *node;
-        actual_cache_line_count = cache_line_count;
-    }
 };
-
-constexpr auto test_prefetcher() noexcept -> bool
-{
-    auto const prefetcher = tracking_prefetcher_t{};
-
-    auto keys = std::array<x_t, sut_t::total_key_count>{};
-    for (auto i = 0u; i < keys.size(); ++i) keys[i] = x_t{i + 1};
-
-    auto const sut = sut_t{keys, 0, sut_t::max_segment_count};
-    sut.prefetch(prefetcher);
-
-    return prefetcher.actual_cache_line_count == 2 && prefetcher.actual_node.keys == node_keys_t{{16, 32, 48}};
-}
-static_assert(test_prefetcher());
 
 constexpr auto test_leaf_prefetch() noexcept -> bool
 {
@@ -182,15 +163,15 @@ constexpr auto test_leaf_hits_and_fallback() noexcept -> bool
 {
     auto hint = sut_t::hint_t{};
 
-    auto const first = sut.locate(25, hint, true);
+    auto const first = sut.locate(25, hint);
     if (first != sut_t::result_t{2, 20}) return false;
     if (hint != sut_t::hint_t{.segment_index = 2, .leaf_origin = 0, .leaf_end = 40}) return false;
 
-    auto const same_leaf = sut.locate(35, hint, true);
+    auto const same_leaf = sut.locate(35, hint);
     if (same_leaf != sut_t::result_t{3, 30}) return false;
     if (hint != sut_t::hint_t{.segment_index = 3, .leaf_origin = 0, .leaf_end = 40}) return false;
 
-    auto const next_leaf = sut.locate(45, hint, true);
+    auto const next_leaf = sut.locate(45, hint);
     if (next_leaf != sut_t::result_t{4, 40}) return false;
     if (hint != sut_t::hint_t{.segment_index = 4, .leaf_origin = 40, .leaf_end = 80}) return false;
 
@@ -198,14 +179,14 @@ constexpr auto test_leaf_hits_and_fallback() noexcept -> bool
 }
 static_assert(test_leaf_hits_and_fallback());
 
-constexpr auto test_full_lookup_refreshes_hint() noexcept -> bool
+constexpr auto test_leaf_miss_refreshes_hint() noexcept -> bool
 {
     auto hint = sut_t::hint_t{.segment_index = 15, .leaf_origin = 120, .leaf_end = 160};
-    auto const location = sut.locate(25, hint, false);
+    auto const location = sut.locate(25, hint);
     return location == sut_t::result_t{2, 20}
     && hint == sut_t::hint_t{.segment_index = 2, .leaf_origin = 0, .leaf_end = 40};
 }
-static_assert(test_full_lookup_refreshes_hint());
+static_assert(test_leaf_miss_refreshes_hint());
 
 } // namespace leaf_hint_tests
 

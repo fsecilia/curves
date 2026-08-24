@@ -37,7 +37,7 @@ struct curves_test_t
 
         auto operator()(in_t x) const noexcept -> out_t
         {
-            return spline->evaluate(x, hint, impl_t::lookup_mode_t::full);
+            return spline->evaluate(x, hint);
         }
     };
 

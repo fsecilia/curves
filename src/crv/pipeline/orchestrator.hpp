@@ -12,7 +12,7 @@ namespace crv::pipeline {
 
 /// runtime mouse pipeline with injected stages
 ///
-/// Orders stages, prefetches their data, and commits residual state after the report update succeeds.
+/// Orders stages and commits residual state after the report update succeeds.
 template <typename t_timer_t, typename t_velocity_t, typename t_speed_filter_t, typename t_gain_t,
     typename t_output_transform_t, typename t_accumulator_t, typename t_prefetcher_t>
 class orchestrator_t
@@ -31,7 +31,7 @@ public:
     using velocity_scale_t = velocity_t::scale_t;
     using gain_hint_t = gain_t::hint_t;
 
-    struct alignas(64) config_t
+    struct config_t
     {
         velocity_scale_t velocity_scale{};
         duration_t half_life{};
@@ -46,22 +46,13 @@ public:
         gain_hint_t gain_hint{};
     };
 
-    config_t config{};
-    state_t state{};
-    gain_t gain{};
-
     [[no_unique_address]] velocity_t velocity{};
     [[no_unique_address]] prefetcher_t prefetcher{};
 
-    auto prefetch() const noexcept -> void
-    {
-        prefetcher.prefetch(&config);
-        prefetcher.prefetch(&state);
-    }
-
     /// This function is marked always_inline because the mangled name is too long and breaks objtool.
     template <typename report_t>
-    CRV_ALWAYS_INLINE auto process(report_t& report, timestamp_t timestamp) noexcept -> pipeline_result_t
+    CRV_ALWAYS_INLINE auto process(report_t& report, timestamp_t timestamp, config_t const& config, state_t& state,
+        gain_t const& gain) const noexcept -> pipeline_result_t
     {
         if (!report.valid()) return pipeline_result_t::invalid_report;
 
@@ -70,8 +61,7 @@ public:
         if (timing.status != timer_t::status_t::ready) return pipeline_result_t::invalid_timestamp;
 
         auto const filter_enabled = config.half_life != duration_t{};
-        static constexpr auto lookup_mode = gain_t::lookup_mode_t::full;
-        gain.prefetch(state.gain_hint, lookup_mode, prefetcher);
+        gain.prefetch(state.gain_hint, prefetcher);
 
         auto const speed = velocity(report.x(), report.y(), timing.duration, config.velocity_scale);
         if (!speed.valid) return pipeline_result_t::velocity_out_of_range;
@@ -79,7 +69,7 @@ public:
         auto filtered_speed = speed.value;
         if (filter_enabled) filtered_speed = state.speed_filter(speed.value, config.half_life, timing.duration);
 
-        auto const scalar_gain = gain.evaluate(filtered_speed, state.gain_hint, lookup_mode);
+        auto const scalar_gain = gain.evaluate(filtered_speed, state.gain_hint);
         auto const transformed = config.output_transform(report.x(), report.y(), scalar_gain);
         if (!transformed.valid) return pipeline_result_t::transform_input_out_of_range;
 

@@ -50,7 +50,7 @@ struct segment_locator_t
         int_t segment_index{};
     };
 
-    constexpr auto locate(x_t x, hint_t& hint, bool) const noexcept -> result_t
+    constexpr auto locate(x_t x, hint_t& hint) const noexcept -> result_t
     {
         x_t const index = x / 2;
         hint.segment_index = index;
@@ -79,7 +79,7 @@ constexpr auto const sut = sut_t{
 constexpr auto evaluate(x_t x) noexcept -> y_t
 {
     auto hint = sut_t::hint_t{};
-    return sut.evaluate(x, hint, sut_t::lookup_mode_t::full);
+    return sut.evaluate(x, hint);
 }
 
 static_assert(evaluate(0) == 10);
@@ -125,7 +125,6 @@ struct spline_prefetch_test_t : Test
     struct mock_locator_t
     {
         virtual ~mock_locator_t() = default;
-        MOCK_METHOD(void, prefetch_full, (), (const, noexcept));
         MOCK_METHOD(void, prefetch_hint, (int_t), (const, noexcept));
     };
     StrictMock<mock_locator_t> mock_locator;
@@ -150,8 +149,7 @@ struct spline_prefetch_test_t : Test
         auto segment_count() const noexcept -> int_t { return spline::segment_count; }
         auto x_max() const noexcept -> x_t { return spline::x_max; }
         auto is_valid() const noexcept -> bool { return true; }
-        auto locate(x_t, hint_t&, bool) const noexcept -> result_t { return {}; }
-        auto prefetch(auto const&) const noexcept -> void { mock->prefetch_full(); }
+        auto locate(x_t, hint_t&) const noexcept -> result_t { return {}; }
         auto prefetch(hint_t const& hint, auto const&) const noexcept -> void
         {
             mock->prefetch_hint(hint.segment_index);
@@ -167,34 +165,17 @@ struct spline_prefetch_test_t : Test
     typename sut_t::hint_t hint{};
 };
 
-TEST_F(spline_prefetch_test_t, full_lookup_prefetches_upper_locator_and_segment_neighbors)
-{
-    EXPECT_CALL(mock_locator, prefetch_full());
-    void const* prefetched_cache_lines[3];
-    {
-        auto const seq = InSequence{};
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[0]));
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[2]));
-    }
-    sut.prefetch(hint, sut_t::lookup_mode_t::full, prefetcher);
-    auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
-        - static_cast<std::byte const*>(prefetched_cache_lines[0]);
-    EXPECT_EQ(expected_fetch_distance, actual_distance);
-}
-
-TEST_F(spline_prefetch_test_t, hinted_lookup_prefetches_leaf_and_new_segment_neighbors)
+TEST_F(spline_prefetch_test_t, prefetches_leaf_then_segment_neighbors)
 {
     hint.segment_index = expected_segment;
-    EXPECT_CALL(mock_locator, prefetch_hint(expected_segment));
-    void const* prefetched_cache_lines[3];
+    void const* prefetched_cache_lines[2];
     {
         auto const seq = InSequence{};
+        EXPECT_CALL(mock_locator, prefetch_hint(expected_segment));
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[0]));
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[2]));
     }
-    sut.prefetch(hint, sut_t::lookup_mode_t::hinted_leaf, prefetcher);
+    sut.prefetch(hint, prefetcher);
     auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
         - static_cast<std::byte const*>(prefetched_cache_lines[0]);
     EXPECT_EQ(expected_fetch_distance, actual_distance);
@@ -226,7 +207,7 @@ TEST_F(spline_death_test_t, evaluate_catches_negative_x)
     auto const spline
         = sut_t{.segment_locator = segment_locator_t{}, .segments = segments, .extend_final_tangent = extended_tangent};
     auto hint = sut_t::hint_t{};
-    EXPECT_DEATH(spline.evaluate(x_t{-1}, hint, sut_t::lookup_mode_t::full), "input out of bounds");
+    EXPECT_DEATH(spline.evaluate(x_t{-1}, hint), "input out of bounds");
 }
 
 struct spline_death_test_evaluate_malicious_locator_t : spline_death_test_t
@@ -240,7 +221,7 @@ struct spline_death_test_evaluate_malicious_locator_t : spline_death_test_t
         x_t index = 0;
         x_t origin = 0;
 
-        constexpr auto locate(x_t, hint_t&, bool) const noexcept -> result_t
+        constexpr auto locate(x_t, hint_t&) const noexcept -> result_t
         {
             return {.index = index, .origin = origin};
         }
@@ -261,7 +242,7 @@ TEST_F(spline_death_test_evaluate_malicious_locator_t, negative_index)
         .extend_final_tangent = extended_tangent,
     };
 
-    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "index out of bounds");
+    EXPECT_DEATH(spline.evaluate(0, hint), "index out of bounds");
 }
 
 TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_index)
@@ -272,7 +253,7 @@ TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_index)
         .extend_final_tangent = extended_tangent,
     };
 
-    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "index out of bounds");
+    EXPECT_DEATH(spline.evaluate(0, hint), "index out of bounds");
 }
 
 TEST_F(spline_death_test_evaluate_malicious_locator_t, negative_origin)
@@ -283,7 +264,7 @@ TEST_F(spline_death_test_evaluate_malicious_locator_t, negative_origin)
         .extend_final_tangent = extended_tangent,
     };
 
-    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "origin out of range");
+    EXPECT_DEATH(spline.evaluate(0, hint), "origin out of range");
 }
 
 TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_origin)
@@ -295,7 +276,7 @@ TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_origin)
         .extend_final_tangent = extended_tangent,
     };
 
-    EXPECT_DEATH(spline.evaluate(x, hint, sut_t::lookup_mode_t::full), "origin out of range");
+    EXPECT_DEATH(spline.evaluate(x, hint), "origin out of range");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

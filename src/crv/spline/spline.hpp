@@ -28,26 +28,20 @@ template <typename t_segment_t, typename t_extended_tangent_t, typename t_segmen
     static constexpr auto max_segment_count = segment_locator_t::max_segment_count;
     using segments_t = std::array<segment_t, max_segment_count>;
 
-    enum class lookup_mode_t
-    {
-        full,
-        hinted_leaf,
-    };
-
     segment_locator_t segment_locator{};
     alignas(64) segments_t segments{};
     extended_tangent_t extend_final_tangent{};
 
     /// \pre 0 <= x
     /// This function is marked always_inline because the mangled name is too long and breaks objtool.
-    CRV_ALWAYS_INLINE constexpr auto evaluate(x_t x, hint_t& hint, lookup_mode_t lookup_mode) const noexcept -> y_t
+    CRV_ALWAYS_INLINE constexpr auto evaluate(x_t x, hint_t& hint) const noexcept -> y_t
     {
         assert(x_t{0} <= x && "spline_t: input out of bounds");
 
         auto const x_max = segment_locator.x_max();
         if (x >= x_max) return extend_final_tangent(x - x_max);
 
-        auto const location = segment_locator.locate(x, hint, lookup_mode == lookup_mode_t::hinted_leaf);
+        auto const location = segment_locator.locate(x, hint);
         assert(0 <= location.index && location.index < segment_locator.segment_count()
             && "spline_t: located segment index out of bounds");
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
@@ -64,15 +58,10 @@ template <typename t_segment_t, typename t_extended_tangent_t, typename t_segmen
         return segment_locator.is_valid();
     }
 
-    constexpr auto prefetch(hint_t const& hint, lookup_mode_t lookup_mode, auto const& prefetcher) const noexcept
-        -> void
+    constexpr auto prefetch(hint_t const& hint, auto const& prefetcher) const noexcept -> void
     {
+        segment_locator.prefetch(hint, prefetcher);
         prefetch_segments(hint, prefetcher);
-
-        if (lookup_mode == lookup_mode_t::hinted_leaf) segment_locator.prefetch(hint, prefetcher);
-        else segment_locator.prefetch(prefetcher);
-
-        prefetcher.prefetch(&extend_final_tangent);
     }
 
 private:

@@ -41,7 +41,7 @@ using spline_t = spline_factory_t::spline_t;
 auto evaluate_spline(spline_t const& spline, x_t x) noexcept -> y_t
 {
     auto hint = spline_t::hint_t{};
-    return spline.evaluate(x, hint, spline_t::lookup_mode_t::full);
+    return spline.evaluate(x, hint);
 }
 
 struct fractional_power_t
