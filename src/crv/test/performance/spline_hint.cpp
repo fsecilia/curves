@@ -5,19 +5,39 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/lib.hpp>
+#include <crv/io/capture/file.hpp>
+#include <crv/math/fixed/float_conversions.hpp>
+#include <crv/model/composed_curve.hpp>
+#include <crv/model/config.hpp>
+#include <crv/pipeline/filters/half_life_ema.hpp>
+#include <crv/pipeline/report_timer.hpp>
+#include <crv/pipeline/velocity.hpp>
 #include <crv/prefetcher.hpp>
+#include <crv/serialization/toml/toml.hpp>
+#include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/segment_locator.hpp>
+#include <crv/spline/spline_factory.hpp>
+#include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/performance/performance.hpp>
+#include <crv/tuple.hpp>
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
+#include <concepts>
 #include <cstddef>
+#include <cstring>
+#include <exception>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <numeric>
+#include <optional>
 #include <random>
+#include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace crv {
@@ -26,6 +46,19 @@ namespace {
 using x_t = spline::prod_pipeline_config_t::x_t;
 constexpr auto depth_max = int_t{4};
 using production_locator_t = spline::segment_locator_t<x_t, depth_max>;
+using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
+using production_spline_t = spline_policy_t::spline_t;
+using spline_factory_t
+    = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
+
+using replay_magnitude_rsqrt_t = rsqrt_t<fixed_t<uint64_t, 62>, fixed_t<uint64_t, 0>>;
+using replay_magnitude_t = pipeline::displacement_magnitude_t<replay_magnitude_rsqrt_t>;
+using replay_velocity_t = pipeline::velocity_t<x_t, replay_magnitude_t>;
+using replay_duration_t = replay_velocity_t::duration_t;
+using replay_filter_t = pipeline::half_life_ema_t<x_t, replay_duration_t>;
+using replay_timer_t = pipeline::report_timer_t<replay_duration_t>;
+
+static_assert(std::same_as<typename production_spline_t::segment_locator_t, production_locator_t>);
 
 /// benchmark-visible mirror of the production quaternary tree
 ///
@@ -174,6 +207,8 @@ public:
     }
 
     auto leaf(int_t leaf_index) const noexcept -> node_t const& { return nodes_[leaf_base_index + leaf_index]; }
+
+    auto x_max() const noexcept -> x_t { return x_max_; }
 
     auto prefetch_root(static_prefetcher_t const& prefetcher) const noexcept -> void
     {
@@ -536,11 +571,66 @@ auto make_sorted_keys() -> std::array<x_t, benchmark_locator_t::total_key_count>
     return keys;
 }
 
+auto recover_sorted_keys(production_locator_t const& locator)
+    -> std::optional<std::array<x_t, benchmark_locator_t::total_key_count>>
+{
+    if (!locator.is_valid()) return std::nullopt;
+
+    auto keys = std::array<x_t, benchmark_locator_t::total_key_count>{};
+    auto const segment_count = locator.segment_count();
+    auto const domain_end = locator.x_max();
+    auto previous = typename x_t::value_t{};
+
+    for (auto segment_index = int_t{1}; segment_index < segment_count; ++segment_index)
+    {
+        auto lower = previous + 1;
+        auto upper = domain_end.value;
+
+        while (lower < upper)
+        {
+            auto const midpoint = lower + (upper - lower) / 2;
+            auto const location = locator.locate(x_t::literal(midpoint));
+            if (location.index < segment_index) lower = midpoint + 1;
+            else upper = midpoint;
+        }
+
+        auto const breakpoint = x_t::literal(lower);
+        auto const location = locator.locate(breakpoint);
+        if (location.index != segment_index || location.origin != breakpoint) return std::nullopt;
+
+        keys[int_cast<std::size_t>(segment_index - 1)] = breakpoint;
+        previous = lower;
+    }
+
+    auto const padding_begin = int_cast<std::size_t>(max(int_t{0}, segment_count - 1));
+    for (auto index = padding_begin; index < keys.size(); ++index) keys[index] = domain_end;
+
+    return keys;
+}
+
 auto make_prototype() -> spline_data_t
 {
     auto result = spline_data_t{};
     auto const keys = make_sorted_keys();
     result.locator = benchmark_locator_t{keys, x_max};
+
+    for (auto index = std::size_t{0}; index < result.segments.size(); ++index)
+    {
+        auto const seed = mix(index + 1);
+        result.segments[index].words = {seed, mix(seed), mix(seed + 1), mix(seed + 2)};
+    }
+
+    result.tangent = {1, 2, 3, 4};
+    return result;
+}
+
+auto make_prototype(production_locator_t const& locator) -> std::optional<spline_data_t>
+{
+    auto const recovered_keys = recover_sorted_keys(locator);
+    if (!recovered_keys) return std::nullopt;
+
+    auto result = spline_data_t{};
+    result.locator = benchmark_locator_t{*recovered_keys, locator.x_max()};
 
     for (auto index = std::size_t{0}; index < result.segments.size(); ++index)
     {
@@ -588,6 +678,302 @@ auto verify_locator() -> bool
         if (leaf_extended.index != expected.index || leaf_extended.origin != expected.origin) return false;
         if (!(leaf_extended.leaf_origin <= x && x < leaf_extended.leaf_end)) return false;
         if (leaf_extended.index / benchmark_locator_t::branching_factor != leaf_extended.leaf_index) return false;
+    }
+
+    return true;
+}
+
+auto verify_locator(production_locator_t const& production, benchmark_locator_t const& benchmark) -> bool
+{
+    auto const segment_count = production.segment_count();
+    if (segment_count <= 0) return false;
+
+    auto const recovered_keys = recover_sorted_keys(production);
+    if (!recovered_keys) return false;
+
+    auto origin = x_t{};
+    for (auto segment_index = int_t{0}; segment_index < segment_count; ++segment_index)
+    {
+        auto const at_origin = production.locate(origin);
+        auto const benchmark_at_origin = benchmark.locate(origin);
+        if (at_origin.index != segment_index || benchmark_at_origin.index != at_origin.index
+            || benchmark_at_origin.origin != at_origin.origin)
+        {
+            return false;
+        }
+
+        if (segment_index + 1 < segment_count)
+        {
+            auto const next_origin = (*recovered_keys)[int_cast<std::size_t>(segment_index)];
+            if (next_origin.value <= origin.value) return false;
+
+            auto const before_next = x_t::literal(next_origin.value - 1);
+            auto const expected_before_next = production.locate(before_next);
+            auto const actual_before_next = benchmark.locate(before_next);
+            if (actual_before_next.index != expected_before_next.index
+                || actual_before_next.origin != expected_before_next.origin)
+            {
+                return false;
+            }
+
+            origin = next_origin;
+        }
+    }
+
+    auto const last = x_t::literal(production.x_max().value - 1);
+    auto const expected_last = production.locate(last);
+    auto const actual_last = benchmark.locate(last);
+    return actual_last.index == expected_last.index && actual_last.origin == expected_last.origin;
+}
+
+constexpr auto capture_stream_error_name(capture_stream_error_code_t code) noexcept -> std::string_view
+{
+    switch (code)
+    {
+        case capture_stream_error_code_t::interrupted: return "interrupted";
+        case capture_stream_error_code_t::source_disconnected: return "source disconnected";
+        case capture_stream_error_code_t::source_read_failed: return "source read failed";
+        case capture_stream_error_code_t::truncated_stream_header: return "truncated stream header";
+        case capture_stream_error_code_t::invalid_magic: return "invalid magic";
+        case capture_stream_error_code_t::unsupported_format_version: return "unsupported format version";
+        case capture_stream_error_code_t::invalid_stream_header_size: return "invalid stream header size";
+        case capture_stream_error_code_t::stream_header_too_large: return "stream header too large";
+        case capture_stream_error_code_t::unsupported_input_value_size: return "unsupported input value size";
+        case capture_stream_error_code_t::unsupported_clock: return "unsupported capture clock";
+        case capture_stream_error_code_t::unsupported_byte_order: return "unsupported byte order";
+        case capture_stream_error_code_t::unsupported_stream_flags: return "unsupported stream flags";
+        case capture_stream_error_code_t::truncated_frame: return "truncated frame";
+        case capture_stream_error_code_t::invalid_frame_size: return "invalid frame size";
+        case capture_stream_error_code_t::invalid_frame_header_size: return "invalid frame header size";
+        case capture_stream_error_code_t::frame_too_large: return "frame too large";
+        case capture_stream_error_code_t::invalid_input_values_header_size: return "invalid input values header size";
+        case capture_stream_error_code_t::invalid_input_value_count: return "invalid input value count";
+        case capture_stream_error_code_t::invalid_input_value_capacity: return "invalid input value capacity";
+        case capture_stream_error_code_t::input_value_capacity_too_large: return "input value capacity too large";
+        case capture_stream_error_code_t::inconsistent_input_values_frame_size:
+            return "inconsistent input values frame size";
+    }
+    return "unknown capture stream error";
+}
+
+struct replay_report_t
+{
+    int32_t x{};
+    int32_t y{};
+};
+
+auto decode_report(capture_input_values_view_t const& frame) noexcept -> std::optional<replay_report_t>
+{
+    if (frame.values.empty()) return std::nullopt;
+
+    auto const& terminator = frame.values.back();
+    if (terminator.type != CRV_EV_SYN || terminator.code != CRV_SYN_REPORT) return std::nullopt;
+
+    auto result = replay_report_t{};
+    auto has_x = false;
+    auto has_y = false;
+
+    for (auto const& value : frame.values.first(frame.values.size() - 1))
+    {
+        if (value.type != CRV_EV_REL) continue;
+
+        if (value.code == CRV_REL_X)
+        {
+            if (has_x) return std::nullopt;
+            result.x = value.value;
+            has_x = true;
+        }
+        else if (value.code == CRV_REL_Y)
+        {
+            if (has_y) return std::nullopt;
+            result.y = value.value;
+            has_y = true;
+        }
+    }
+
+    return result;
+}
+
+auto is_capture_split(capture_input_values_view_t const& frame) noexcept -> bool
+{
+    if (frame.values.empty()) return false;
+    auto const& terminator = frame.values.back();
+    return terminator.type == CRV_EV_SYN && terminator.code == CRV_SYN_REPORT && terminator.value != 0;
+}
+
+struct replay_configuration_t
+{
+    production_spline_t spline{};
+    replay_velocity_t::scale_t velocity_scale{};
+    replay_duration_t half_life{};
+    int_t dpi{};
+    float_t half_life_ms{};
+};
+
+auto load_replay_configuration(char const* path, replay_configuration_t& result) -> bool
+{
+    auto root = model::root_t{};
+
+    try
+    {
+        serialization::tomlpp::deserializer_t{}(path, root);
+    }
+    catch (std::exception const& exception)
+    {
+        std::cerr << path << ": config read failed: " << exception.what() << '\n';
+        return false;
+    }
+
+    result.dpi = root.device.dpi.value();
+    result.half_life_ms = root.profile.filter_halflife.value();
+
+    if (result.dpi <= 0)
+    {
+        std::cerr << path << ": dpi must be positive for capture replay\n";
+        return false;
+    }
+    if (!std::isfinite(result.half_life_ms) || result.half_life_ms < 0)
+    {
+        std::cerr << path << ": filter half-life must be finite and nonnegative\n";
+        return false;
+    }
+
+    result.velocity_scale
+        = to_fixed<replay_velocity_t::scale_t>(float_t{1'000'000'000} / static_cast<float_t>(result.dpi));
+    result.half_life = to_fixed<replay_duration_t>(result.half_life_ms * float_t{1'000'000});
+
+    using curve_t = decltype(model::curves::create_composed_curve<float_t>(model::curves::synchronous_t::config_t{}));
+    auto curve = curve_t{model::curves::create_composed_curve<float_t>(model::curves::synchronous_t::config_t{})};
+
+    auto const active_curve = static_cast<std::size_t>(root.profile.curves.active.value());
+    if (active_curve >= model::curves::curves_count)
+    {
+        std::cerr << path << ": active curve id is out of range\n";
+        return false;
+    }
+
+    tuple::visit_at(root.profile.curves.configs, active_curve,
+        [&](auto const& curve_config) { curve = model::curves::create_composed_curve<float_t>(curve_config.specific); });
+
+    auto const generation = spline_factory_t{}(
+        result.spline, spline::gain_curve_target_t{curve}, float_t{2e-6}, std::vector<x_t>{});
+    if (!generation)
+    {
+        auto const& error = *generation.error;
+        std::cerr << path << ": spline generation failed over [" << from_fixed<float_t>(error.left) << ", "
+                  << from_fixed<float_t>(error.right) << ")\n";
+        return false;
+    }
+
+    return true;
+}
+
+struct replay_trace_t
+{
+    std::vector<x_t> speed;
+    std::vector<uint64_t> epoch;
+    std::size_t frame_count{};
+    std::size_t invalid_report_count{};
+    std::size_t split_frame_count{};
+    std::size_t resynchronization_count{};
+    std::size_t invalid_timestamp_count{};
+    std::size_t velocity_out_of_range_count{};
+};
+
+auto load_replay_trace(char const* path, replay_configuration_t const& config, replay_trace_t& result) -> bool
+{
+    auto opened = open_capture_file(path);
+    if (!opened)
+    {
+        std::cerr << path << ": capture open failed";
+        if (opened.error().system_error != 0) std::cerr << ": " << std::strerror(opened.error().system_error);
+        std::cerr << '\n';
+        return false;
+    }
+
+    auto stream = std::move(*opened);
+    auto timer = replay_timer_t{};
+    auto filter = replay_filter_t{};
+    auto velocity = replay_velocity_t{};
+    auto synchronized = true;
+    auto previous_sequence = std::optional<uint64_t>{};
+    auto epoch = uint64_t{};
+
+    for (;;)
+    {
+        auto frame_result = stream.read_input_values();
+        if (!frame_result)
+        {
+            auto const& error = frame_result.error();
+            std::cerr << path << ": capture decode failed at byte " << error.stream_offset << ": "
+                      << capture_stream_error_name(error.code);
+            if (error.system_error != 0) std::cerr << ": " << std::strerror(error.system_error);
+            std::cerr << '\n';
+            return false;
+        }
+        if (!frame_result->has_value()) break;
+
+        auto const& frame = frame_result->value();
+        ++result.frame_count;
+
+        if (previous_sequence && frame.sequence != *previous_sequence + 1)
+        {
+            std::cerr << path << ": capture sequence discontinuity: expected " << (*previous_sequence + 1)
+                      << ", received " << frame.sequence << '\n';
+            return false;
+        }
+        previous_sequence = frame.sequence;
+
+        if (is_capture_split(frame))
+        {
+            ++result.split_frame_count;
+            synchronized = false;
+            continue;
+        }
+
+        if (!synchronized)
+        {
+            timer = {};
+            filter = {};
+            (void)timer(frame.timestamp_ns);
+            synchronized = true;
+            ++epoch;
+            ++result.resynchronization_count;
+            continue;
+        }
+
+        auto const report = decode_report(frame);
+        if (!report)
+        {
+            ++result.invalid_report_count;
+            continue;
+        }
+
+        auto const timing = timer(frame.timestamp_ns);
+        if (timing.status == replay_timer_t::status_t::initial) continue;
+        if (timing.status != replay_timer_t::status_t::ready)
+        {
+            ++result.invalid_timestamp_count;
+            continue;
+        }
+
+        auto const speed = velocity(report->x, report->y, timing.duration, config.velocity_scale);
+        if (!speed.valid)
+        {
+            ++result.velocity_out_of_range_count;
+            continue;
+        }
+
+        auto const filtered
+            = config.half_life == replay_duration_t{} ? speed.value : filter(speed.value, config.half_life, timing.duration);
+        result.speed.push_back(filtered);
+        result.epoch.push_back(epoch);
+    }
+
+    if (result.speed.size() < 2)
+    {
+        std::cerr << path << ": capture produced fewer than two spline-input samples\n";
+        return false;
     }
 
     return true;
@@ -768,6 +1154,140 @@ auto hit_rates(std::size_t instance_count, motion_t motion, std::size_t rotation
     };
 }
 
+template <typename policy_t>
+auto evaluate_trace_sample(spline_data_t const& data, typename policy_t::hint_t& hint, x_t x,
+    static_prefetcher_t const& prefetcher) noexcept -> uint64_t
+{
+    prefetcher.prefetch(&data.tangent);
+    policy_t::prefetch(data, hint, prefetcher);
+
+    if (x >= data.locator.x_max())
+    {
+        return data.tangent[0] ^ data.tangent[1] ^ data.tangent[2] ^ data.tangent[3]
+            ^ int_cast<uint64_t>(x.value);
+    }
+
+    return policy_t::evaluate(data, hint, x);
+}
+
+auto make_trace_offsets(
+    std::size_t instance_count, std::vector<uint64_t> const& epochs, std::size_t rotations) -> std::vector<std::size_t>
+{
+    auto valid_offsets = std::vector<std::size_t>{};
+    valid_offsets.reserve(epochs.size());
+    for (auto offset = std::size_t{0}; offset + rotations < epochs.size(); ++offset)
+        if (epochs[offset] == epochs[offset + rotations]) valid_offsets.push_back(offset);
+
+    if (valid_offsets.empty()) return {};
+
+    auto result = std::vector<std::size_t>(instance_count);
+    auto rng = std::mt19937_64{0x747261636568696eull};
+    auto distribution = std::uniform_int_distribution<std::size_t>{0, valid_offsets.size() - 1};
+    for (auto& offset : result) offset = valid_offsets[distribution(rng)];
+    return result;
+}
+
+template <typename policy_t>
+auto warmup_trace(std::vector<spline_data_t> const& data, std::vector<typename policy_t::hint_t>& hints,
+    std::vector<std::size_t> const& order, std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace)
+    noexcept -> uint64_t
+{
+    auto result = uint64_t{};
+    auto const prefetcher = static_prefetcher_t{};
+    for (auto const index : order)
+        result ^= evaluate_trace_sample<policy_t>(data[index], hints[index], trace[offsets[index]], prefetcher);
+    return result;
+}
+
+template <typename policy_t>
+auto benchmark_trace(std::vector<spline_data_t> const& data, std::vector<std::size_t> const& order,
+    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace, std::size_t rotations) -> float_t
+{
+    auto hints = std::vector<typename policy_t::hint_t>(data.size());
+    do_not_optimize(warmup_trace<policy_t>(data, hints, order, offsets, trace));
+
+    auto const prefetcher = static_prefetcher_t{};
+    auto result = uint64_t{};
+    auto aux = uint32_t{};
+
+    _mm_lfence();
+    auto const start_cycles = __rdtsc();
+    _mm_lfence();
+
+    for (auto rotation = std::size_t{1}; rotation <= rotations; ++rotation)
+        for (auto const index : order)
+            result ^= evaluate_trace_sample<policy_t>(
+                data[index], hints[index], trace[offsets[index] + rotation], prefetcher);
+
+    _mm_lfence();
+    auto const end_cycles = __rdtscp(&aux);
+    _mm_lfence();
+
+    do_not_optimize(result);
+    auto const sample_count = rotations * data.size();
+    return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
+}
+
+template <typename policy_t>
+auto benchmark_trace_median(std::vector<spline_data_t> const& data, std::vector<std::size_t> const& order,
+    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace, std::size_t rotations, std::size_t trials)
+    -> float_t
+{
+    auto results = std::vector<float_t>{};
+    results.reserve(trials);
+    for (auto trial = std::size_t{0}; trial < trials; ++trial)
+        results.push_back(benchmark_trace<policy_t>(data, order, offsets, trace, rotations));
+    std::ranges::sort(results);
+    return results[results.size() / 2];
+}
+
+struct trace_hit_rates_t
+{
+    double segment{};
+    double leaf{};
+    double tangent{};
+};
+
+auto trace_hit_rates(benchmark_locator_t const& locator, std::vector<std::size_t> const& offsets,
+    std::vector<x_t> const& trace, std::size_t rotations) -> trace_hit_rates_t
+{
+    auto segment_hits = std::size_t{};
+    auto leaf_hits = std::size_t{};
+    auto located_samples = std::size_t{};
+    auto tangent_samples = std::size_t{};
+
+    for (auto const offset : offsets)
+    {
+        auto previous_index = int_t{0};
+        auto const initial_x = trace[offset];
+        if (initial_x < locator.x_max()) previous_index = locator.locate(initial_x).index;
+
+        for (auto rotation = std::size_t{1}; rotation <= rotations; ++rotation)
+        {
+            auto const x = trace[offset + rotation];
+            if (x >= locator.x_max())
+            {
+                ++tangent_samples;
+                continue;
+            }
+
+            auto const index = locator.locate(x).index;
+            segment_hits += index == previous_index;
+            leaf_hits += index / benchmark_locator_t::branching_factor
+                == previous_index / benchmark_locator_t::branching_factor;
+            previous_index = index;
+            ++located_samples;
+        }
+    }
+
+    auto const total_samples = offsets.size() * rotations;
+    return {
+        .segment = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(segment_hits) / located_samples,
+        .leaf = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(leaf_hits) / located_samples,
+        .tangent = total_samples == 0 ? 0.0 : 100.0 * static_cast<double>(tangent_samples) / total_samples,
+    };
+}
+
 auto parse_size(char const* text, std::size_t& value) -> bool
 {
     auto const view = std::string_view{text};
@@ -879,6 +1399,95 @@ auto run(std::size_t working_set_mib, std::size_t rotations, std::size_t trials)
     return 0;
 }
 
+auto run_capture(char const* capture_path, char const* config_path, std::size_t working_set_mib,
+    std::size_t rotations, std::size_t trials) -> int
+{
+    auto config = replay_configuration_t{};
+    if (!load_replay_configuration(config_path, config)) return 1;
+
+    auto trace = replay_trace_t{};
+    if (!load_replay_trace(capture_path, config, trace)) return 1;
+    if (trace.speed.size() <= rotations)
+    {
+        std::cerr << capture_path << ": capture has too few spline-input samples for " << rotations
+                  << " rotations\n";
+        return 1;
+    }
+
+    auto const& production_locator = config.spline.segment_locator;
+    auto const prototype = make_prototype(production_locator);
+    if (!prototype)
+    {
+        std::cerr << "failed to recover production locator breakpoints for replay benchmark\n";
+        return 1;
+    }
+    if (!verify_locator(production_locator, prototype->locator))
+    {
+        std::cerr << "recovered replay locator does not match production locator\n";
+        return 1;
+    }
+
+    constexpr auto bytes_per_mib = std::size_t{1024 * 1024};
+    auto const requested_bytes = working_set_mib * bytes_per_mib;
+    auto const instance_count = max(std::size_t{1}, requested_bytes / sizeof(spline_data_t));
+    auto const actual_bytes = instance_count * sizeof(spline_data_t);
+
+    auto data = std::vector<spline_data_t>(instance_count, *prototype);
+    auto order = std::vector<std::size_t>(instance_count);
+    std::iota(order.begin(), order.end(), std::size_t{0});
+    auto rng = std::mt19937_64{0x637572766573ull};
+    std::shuffle(order.begin(), order.end(), rng);
+    auto const offsets = make_trace_offsets(instance_count, trace.epoch, rotations);
+    if (offsets.empty())
+    {
+        std::cerr << capture_path << ": no contiguous replay window spans " << rotations << " rotations\n";
+        return 1;
+    }
+    auto const hits = trace_hit_rates(prototype->locator, offsets, trace.speed, rotations);
+
+    auto const baseline = benchmark_trace_median<baseline_policy_t>(data, order, offsets, trace.speed, rotations, trials);
+    auto const segment
+        = benchmark_trace_median<segment_hint_policy_t>(data, order, offsets, trace.speed, rotations, trials);
+    auto const leaf = benchmark_trace_median<leaf_hint_policy>(data, order, offsets, trace.speed, rotations, trials);
+    auto const leaf_root
+        = benchmark_trace_median<leaf_hint_root_policy>(data, order, offsets, trace.speed, rotations, trials);
+    auto const leaf_top2
+        = benchmark_trace_median<leaf_hint_top2_policy>(data, order, offsets, trace.speed, rotations, trials);
+
+    std::cout << "capture replay\n";
+    std::cout << "  frames:                 " << trace.frame_count << '\n';
+    std::cout << "  spline-input samples:   " << trace.speed.size() << '\n';
+    std::cout << "  invalid reports:        " << trace.invalid_report_count << '\n';
+    std::cout << "  split callbacks:        " << trace.split_frame_count << '\n';
+    std::cout << "  resynchronizations:     " << trace.resynchronization_count << '\n';
+    std::cout << "  invalid timestamps:     " << trace.invalid_timestamp_count << '\n';
+    std::cout << "  velocity out of range:  " << trace.velocity_out_of_range_count << '\n';
+    std::cout << "  dpi:                    " << config.dpi << '\n';
+    std::cout << "  filter half-life:       " << std::fixed << std::setprecision(3) << config.half_life_ms << " ms\n";
+    std::cout << "  spline segments:        " << production_locator.segment_count() << '\n';
+    std::cout << "  tangent samples:        " << std::setprecision(2) << hits.tangent << "%\n\n";
+
+    std::cout << "spline data: " << sizeof(spline_data_t) << " bytes\n";
+    std::cout << "instances:   " << instance_count << '\n';
+    std::cout << "working set: " << std::fixed << std::setprecision(1)
+              << static_cast<double>(actual_bytes) / static_cast<double>(bytes_per_mib) << " MiB\n";
+    std::cout << "rotations:   " << rotations << '\n';
+    std::cout << "trials:      " << trials << " (median reported)\n\n";
+
+    std::cout << std::left << std::setw(18) << "motion" << std::right << std::setw(10) << "seg-hit%" << std::setw(10)
+              << "leaf-hit%" << std::setw(18) << baseline_policy_t::name << std::setw(18) << segment_hint_policy_t::name
+              << std::setw(18) << leaf_hint_policy::name << std::setw(18) << leaf_hint_root_policy::name << std::setw(18)
+              << leaf_hint_top2_policy::name << '\n';
+
+    std::cout << std::left << std::setw(18) << "capture" << std::right << std::fixed << std::setprecision(1)
+              << std::setw(10) << hits.segment << std::setw(10) << hits.leaf << std::setprecision(2) << std::setw(18)
+              << baseline << std::setw(18) << segment << std::setw(18) << leaf << std::setw(18) << leaf_root
+              << std::setw(18) << leaf_top2 << '\n';
+
+    std::cout << "\ncycles/sample; each rotating spline instance replays a contiguous capture window\n";
+    return 0;
+}
+
 } // namespace
 } // namespace crv
 
@@ -887,6 +1496,39 @@ auto main(int argc, char** argv) -> int
     auto working_set_mib = std::size_t{256};
     auto rotations = std::size_t{4};
     auto trials = std::size_t{5};
+
+    if (argc > 1 && std::string_view{argv[1]} == "--capture")
+    {
+        if (argc < 4 || argc > 7)
+        {
+            std::cerr << "usage: performance_test_spline_hint --capture CAPTURE_FILE CONFIG_FILE "
+                         "[working-set-mib] [rotations] [odd-trials]\n";
+            return 2;
+        }
+
+        if (argc > 4 && !crv::parse_size(argv[4], working_set_mib))
+        {
+            std::cerr << "invalid working-set MiB\n";
+            return 2;
+        }
+        if (argc > 5 && !crv::parse_size(argv[5], rotations))
+        {
+            std::cerr << "invalid rotation count\n";
+            return 2;
+        }
+        if (argc > 6 && !crv::parse_size(argv[6], trials))
+        {
+            std::cerr << "invalid trial count\n";
+            return 2;
+        }
+        if ((trials & 1u) == 0)
+        {
+            std::cerr << "trial count must be odd\n";
+            return 2;
+        }
+
+        return crv::run_capture(argv[2], argv[3], working_set_mib, rotations, trials);
+    }
 
     if (argc > 1 && !crv::parse_size(argv[1], working_set_mib))
     {
