@@ -57,6 +57,13 @@ class pipeline_t
         output_transform_impl_t, accumulator_t, static_prefetcher_t>;
 
 public:
+    enum class mode_t : uint8_t
+    {
+        unconfigured,
+        bypassed,
+        active,
+    };
+
     using config_t = orchestrator_t::config_t;
     using duration_t = orchestrator_t::duration_t;
     using timestamp_t = orchestrator_t::timestamp_t;
@@ -70,6 +77,7 @@ private:
     {
         config_t config{};
         bool synchronized = true;
+        mode_t mode = mode_t::unconfigured;
     };
 
     struct alignas(64) storage_t
@@ -81,9 +89,11 @@ private:
 
     static_assert(sizeof(gain_t::hint_t) == 24);
     static_assert(sizeof(config_t) == 48);
+    static_assert(sizeof(mode_t) == 1);
     static_assert(sizeof(control_t) == 64);
     static_assert(offsetof(control_t, config) == 0);
     static_assert(offsetof(control_t, synchronized) == 48);
+    static_assert(offsetof(control_t, mode) == 49);
 
     static_assert(sizeof(state_t) == 64);
     static_assert(offsetof(state_t, timer) == 0);
@@ -101,6 +111,9 @@ public:
     constexpr pipeline_t(config_t config, gain_t const& gain) noexcept
         : storage_{.control = {.config = std::move(config)}, .gain = gain}
     {}
+
+    constexpr auto mode() const noexcept -> mode_t { return storage_.control.mode; }
+    constexpr auto synchronized() const noexcept -> bool { return storage_.control.synchronized; }
 
     struct result_t
     {

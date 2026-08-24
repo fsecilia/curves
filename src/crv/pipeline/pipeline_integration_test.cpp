@@ -26,6 +26,7 @@ struct pipeline_integration_test_t : Test
 
     static_assert(std::same_as<spline_t, sut_t::gain_t>);
     static_assert(sizeof(sut_t::config_t) == 48);
+    static_assert(sizeof(sut_t::mode_t) == 1);
 
     struct constant_gain_t
     {
@@ -104,6 +105,33 @@ struct pipeline_integration_test_t : Test
 
     sut_t sut{make_config(), build_gain_spline(constant_gain_t{})};
 };
+
+TEST_F(pipeline_integration_test_t, defaults_to_unconfigured_and_synchronized)
+{
+    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_TRUE(sut.synchronized());
+}
+
+TEST_F(pipeline_integration_test_t, activation_mode_is_independent_of_report_synchronization)
+{
+    auto split = std::array{
+        abi(rel(input_value_t::code_rel_t::x, 3)),
+        abi(syn()),
+        crv_input_value_t{},
+        crv_input_value_t{},
+    };
+    ASSERT_EQ(sut(split.data(), 2, split.size(), split.size() - 1, 1'000'000).status,
+        pipeline::pipeline_result_t::split_report_bypassed);
+    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_FALSE(sut.synchronized());
+
+    auto followup
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 2)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    ASSERT_EQ(sut(followup.data(), 2, followup.size(), 2, 2'000'000).status,
+        pipeline::pipeline_result_t::split_report_bypassed);
+    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_TRUE(sut.synchronized());
+}
 
 TEST_F(pipeline_integration_test_t, real_components_compose_through_missing_axis_insertion)
 {
