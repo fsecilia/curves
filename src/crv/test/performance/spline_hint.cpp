@@ -621,6 +621,87 @@ struct staged_prefetch_policy
     }
 };
 
+enum class entry_schedule_t
+{
+    none,
+    control,
+    control_state,
+    staged,
+};
+
+constexpr auto entry_schedules = std::array{
+    entry_schedule_t::none,
+    entry_schedule_t::control,
+    entry_schedule_t::control_state,
+    entry_schedule_t::staged,
+};
+
+constexpr auto entry_schedule_index(entry_schedule_t schedule) noexcept -> std::size_t
+{
+    switch (schedule)
+    {
+        case entry_schedule_t::none: return 0;
+        case entry_schedule_t::control: return 1;
+        case entry_schedule_t::control_state: return 2;
+        case entry_schedule_t::staged: return 3;
+    }
+    __builtin_unreachable();
+}
+
+template <std::size_t option_count> struct paired_benchmark_result_t
+{
+    std::array<float_t, option_count> cycles{};
+    std::array<float_t, option_count> delta{};
+};
+
+auto median(std::vector<float_t> values) -> float_t
+{
+    std::ranges::sort(values);
+    return values[values.size() / 2];
+}
+
+template <typename option_t, std::size_t option_count, typename index_t, typename run_t>
+auto benchmark_paired(std::array<option_t, option_count> options, std::size_t reference_index, std::size_t trials,
+    uint64_t seed, index_t&& index_of, run_t&& run) -> paired_benchmark_result_t<option_count>
+{
+    auto cycle_samples = std::array<std::vector<float_t>, option_count>{};
+    auto delta_samples = std::array<std::vector<float_t>, option_count>{};
+    for (auto index = std::size_t{0}; index < option_count; ++index)
+    {
+        cycle_samples[index].reserve(trials);
+        delta_samples[index].reserve(trials);
+    }
+
+    auto rng = std::mt19937_64{seed};
+    for (auto trial = std::size_t{0}; trial < trials; ++trial)
+    {
+        auto trial_order = options;
+        std::shuffle(trial_order.begin(), trial_order.end(), rng);
+
+        auto trial_cycles = std::array<float_t, option_count>{};
+        for (auto const option : trial_order)
+        {
+            auto const index = index_of(option);
+            trial_cycles[index] = run(option);
+        }
+
+        auto const reference = trial_cycles[reference_index];
+        for (auto index = std::size_t{0}; index < option_count; ++index)
+        {
+            cycle_samples[index].push_back(trial_cycles[index]);
+            delta_samples[index].push_back(trial_cycles[index] - reference);
+        }
+    }
+
+    auto result = paired_benchmark_result_t<option_count>{};
+    for (auto index = std::size_t{0}; index < option_count; ++index)
+    {
+        result.cycles[index] = median(std::move(cycle_samples[index]));
+        result.delta[index] = median(std::move(delta_samples[index]));
+    }
+    return result;
+}
+
 struct no_spline_extra_prefetch_policy
 {
     static constexpr auto name = std::string_view{"none"};
@@ -647,6 +728,68 @@ struct header_prefetch_policy
         prefetcher.prefetch(&pipeline.spline.locator);
     }
 };
+
+enum class spline_extra_prefetch_t
+{
+    tangent,
+    header,
+    none,
+};
+
+constexpr auto spline_extra_prefetches = std::array{
+    spline_extra_prefetch_t::tangent,
+    spline_extra_prefetch_t::header,
+    spline_extra_prefetch_t::none,
+};
+
+constexpr auto spline_extra_prefetch_index(spline_extra_prefetch_t policy) noexcept -> std::size_t
+{
+    switch (policy)
+    {
+        case spline_extra_prefetch_t::tangent: return 0;
+        case spline_extra_prefetch_t::header: return 1;
+        case spline_extra_prefetch_t::none: return 2;
+    }
+    __builtin_unreachable();
+}
+
+enum class tangent_workload_t
+{
+    below_xmax,
+    tangent,
+    boundary,
+};
+
+constexpr auto tangent_workloads = std::array{
+    tangent_workload_t::below_xmax,
+    tangent_workload_t::tangent,
+    tangent_workload_t::boundary,
+};
+
+constexpr auto tangent_workload_name(tangent_workload_t workload) noexcept -> std::string_view
+{
+    switch (workload)
+    {
+        case tangent_workload_t::below_xmax: return "below-xmax";
+        case tangent_workload_t::tangent: return "tangent";
+        case tangent_workload_t::boundary: return "boundary";
+    }
+    __builtin_unreachable();
+}
+
+constexpr auto tangent_workload_x(
+    tangent_workload_t workload, x_t domain_end, std::size_t instance_index, std::size_t rotation) noexcept -> x_t
+{
+    auto const below = domain_end.value - 1;
+    switch (workload)
+    {
+        case tangent_workload_t::below_xmax: return x_t::literal(below);
+        case tangent_workload_t::tangent: return domain_end;
+        case tangent_workload_t::boundary:
+            return ((instance_index + rotation) & 1u) == 0 ? x_t::literal(below) : domain_end;
+    }
+    __builtin_unreachable();
+}
 
 enum class motion_t
 {
@@ -1395,16 +1538,82 @@ auto benchmark_scheduled_entry(std::vector<pipeline_data_t>& data, std::vector<s
     return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
 }
 
-template <typename entry_policy_t, typename spline_policy_t>
-auto benchmark_scheduled_entry_median(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
-    motion_t motion, std::size_t rotations, std::size_t trials) -> float_t
+template <typename spline_policy_t>
+auto benchmark_scheduled_entry_for_schedule(entry_schedule_t schedule, std::vector<pipeline_data_t>& data,
+    std::vector<std::size_t> const& order, motion_t motion, std::size_t rotations) -> float_t
 {
-    auto results = std::vector<float_t>{};
-    results.reserve(trials);
-    for (auto trial = std::size_t{0}; trial < trials; ++trial)
-        results.push_back(benchmark_scheduled_entry<entry_policy_t, spline_policy_t>(data, order, motion, rotations));
-    std::ranges::sort(results);
-    return results[results.size() / 2];
+    switch (schedule)
+    {
+        case entry_schedule_t::none:
+            return benchmark_scheduled_entry<no_entry_prefetch_policy, spline_policy_t>(data, order, motion, rotations);
+        case entry_schedule_t::control:
+            return benchmark_scheduled_entry<control_prefetch_policy, spline_policy_t>(data, order, motion, rotations);
+        case entry_schedule_t::control_state:
+            return benchmark_scheduled_entry<control_state_prefetch_policy, spline_policy_t>(
+                data, order, motion, rotations);
+        case entry_schedule_t::staged:
+            return benchmark_scheduled_entry<staged_prefetch_policy, spline_policy_t>(data, order, motion, rotations);
+    }
+    __builtin_unreachable();
+}
+
+template <typename entry_policy_t, typename spline_policy_t, typename spline_extra_prefetch_policy_t>
+auto benchmark_tangent_workload(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    tangent_workload_t workload, std::size_t rotations) -> float_t
+{
+    for (auto& pipeline : data) pipeline.state = {};
+
+    auto const prefetcher = static_prefetcher_t{};
+    auto result = uint64_t{};
+    for (auto const index : order)
+    {
+        auto const x = tangent_workload_x(workload, data[index].spline.locator.x_max(), index, 0);
+        result ^= evaluate_scheduled_entry_with_x<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+            data[index], index, 0, x, prefetcher);
+    }
+    do_not_optimize(result);
+
+    auto aux = uint32_t{};
+    _mm_lfence();
+    auto const start_cycles = __rdtsc();
+    _mm_lfence();
+
+    for (auto rotation = std::size_t{1}; rotation <= rotations; ++rotation)
+    {
+        for (auto const index : order)
+        {
+            auto const x = tangent_workload_x(workload, data[index].spline.locator.x_max(), index, rotation);
+            result ^= evaluate_scheduled_entry_with_x<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+                data[index], index, rotation, x, prefetcher);
+        }
+    }
+
+    _mm_lfence();
+    auto const end_cycles = __rdtscp(&aux);
+    _mm_lfence();
+
+    do_not_optimize(result);
+    auto const sample_count = rotations * data.size();
+    return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
+}
+
+template <typename entry_policy_t, typename spline_policy_t>
+auto benchmark_tangent_workload_for_prefetch(spline_extra_prefetch_t policy, std::vector<pipeline_data_t>& data,
+    std::vector<std::size_t> const& order, tangent_workload_t workload, std::size_t rotations) -> float_t
+{
+    switch (policy)
+    {
+        case spline_extra_prefetch_t::tangent:
+            return benchmark_tangent_workload<entry_policy_t, spline_policy_t, tangent_prefetch_policy>(
+                data, order, workload, rotations);
+        case spline_extra_prefetch_t::header:
+            return benchmark_tangent_workload<entry_policy_t, spline_policy_t, header_prefetch_policy>(
+                data, order, workload, rotations);
+        case spline_extra_prefetch_t::none:
+            return benchmark_tangent_workload<entry_policy_t, spline_policy_t, no_spline_extra_prefetch_policy>(
+                data, order, workload, rotations);
+    }
+    __builtin_unreachable();
 }
 
 template <typename policy_t>
@@ -1628,20 +1837,27 @@ auto benchmark_scheduled_trace_entry(std::vector<pipeline_data_t>& data, std::ve
     return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
 }
 
-template <typename entry_policy_t, typename spline_policy_t,
-    typename spline_extra_prefetch_policy_t = tangent_prefetch_policy>
-auto benchmark_scheduled_trace_entry_median(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
-    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace, std::size_t rotations, std::size_t trials)
-    -> float_t
+template <typename spline_policy_t>
+auto benchmark_scheduled_trace_entry_for_schedule(entry_schedule_t schedule, std::vector<pipeline_data_t>& data,
+    std::vector<std::size_t> const& order, std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace,
+    std::size_t rotations) -> float_t
 {
-    auto results = std::vector<float_t>{};
-    results.reserve(trials);
-    for (auto trial = std::size_t{0}; trial < trials; ++trial)
-        results.push_back(
-            benchmark_scheduled_trace_entry<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
-                data, order, offsets, trace, rotations));
-    std::ranges::sort(results);
-    return results[results.size() / 2];
+    switch (schedule)
+    {
+        case entry_schedule_t::none:
+            return benchmark_scheduled_trace_entry<no_entry_prefetch_policy, spline_policy_t>(
+                data, order, offsets, trace, rotations);
+        case entry_schedule_t::control:
+            return benchmark_scheduled_trace_entry<control_prefetch_policy, spline_policy_t>(
+                data, order, offsets, trace, rotations);
+        case entry_schedule_t::control_state:
+            return benchmark_scheduled_trace_entry<control_state_prefetch_policy, spline_policy_t>(
+                data, order, offsets, trace, rotations);
+        case entry_schedule_t::staged:
+            return benchmark_scheduled_trace_entry<staged_prefetch_policy, spline_policy_t>(
+                data, order, offsets, trace, rotations);
+    }
+    __builtin_unreachable();
 }
 
 struct trace_hit_rates_t
@@ -1826,34 +2042,74 @@ auto run(std::size_t working_set_mib, std::size_t rotations, std::size_t trials)
 
         std::cout << "\ncycles/sample; early prefetch precedes framing-derived work and synchronization check\n";
 
-        std::cout << "\nstaged entry schedule\n";
-        std::cout << std::left << std::setw(18) << "lookup" << std::setw(18) << "motion" << std::right << std::setw(18)
-                  << no_entry_prefetch_policy::name << std::setw(18) << control_prefetch_policy::name << std::setw(18)
-                  << control_state_prefetch_policy::name << std::setw(18) << staged_prefetch_policy::name << '\n';
+        std::cout << "\nstaged entry schedule (paired trials)\n";
+        std::cout << std::left << std::setw(18) << "lookup" << std::setw(18) << "motion" << std::setw(12) << "metric"
+                  << std::right << std::setw(18) << no_entry_prefetch_policy::name << std::setw(18)
+                  << control_prefetch_policy::name << std::setw(18) << control_state_prefetch_policy::name
+                  << std::setw(18) << staged_prefetch_policy::name << '\n';
 
-        auto print_staged = [&]<typename spline_policy_t>(std::string_view lookup_name) {
+        auto print_staged = [&]<typename spline_policy_t>(std::string_view lookup_name, uint64_t seed) {
             for (auto const motion : motions)
             {
-                auto const none = benchmark_scheduled_entry_median<no_entry_prefetch_policy, spline_policy_t>(
-                    data, order, motion, rotations, trials);
-                auto const control = benchmark_scheduled_entry_median<control_prefetch_policy, spline_policy_t>(
-                    data, order, motion, rotations, trials);
-                auto const both = benchmark_scheduled_entry_median<control_state_prefetch_policy, spline_policy_t>(
-                    data, order, motion, rotations, trials);
-                auto const staged = benchmark_scheduled_entry_median<staged_prefetch_policy, spline_policy_t>(
-                    data, order, motion, rotations, trials);
+                auto const result = benchmark_paired(entry_schedules, 0, trials,
+                    seed ^ static_cast<uint64_t>(motion), entry_schedule_index, [&](entry_schedule_t schedule) {
+                        return benchmark_scheduled_entry_for_schedule<spline_policy_t>(
+                            schedule, data, order, motion, rotations);
+                    });
 
                 std::cout << std::left << std::setw(18) << lookup_name << std::setw(18) << motion_name(motion)
-                          << std::right << std::fixed << std::setprecision(2) << std::setw(18) << none << std::setw(18)
-                          << control << std::setw(18) << both << std::setw(18) << staged << '\n';
+                          << std::setw(12) << "cycles" << std::right << std::fixed << std::setprecision(2);
+                for (auto const value : result.cycles) std::cout << std::setw(18) << value;
+                std::cout << '\n';
+
+                std::cout << std::left << std::setw(18) << "" << std::setw(18) << "" << std::setw(12)
+                          << "delta" << std::right;
+                for (auto const value : result.delta) std::cout << std::setw(18) << value;
+                std::cout << '\n';
             }
         };
 
-        print_staged.template operator()<full_hint_policy_t>("production-full");
-        print_staged.template operator()<leaf_hint_policy>("leaf-range");
+        print_staged.template operator()<full_hint_policy_t>("production-full", 0x66756c6c2d656e74ull);
+        print_staged.template operator()<leaf_hint_policy>("leaf-range", 0x6c6561662d656e74ull);
 
-        std::cout << "\nstate prefetch in staged mode is issued after synchronization and before real frame/report "
+        std::cout << "\ndelta is the median within-trial cycles/sample difference from none; policy order is "
+                     "randomized independently in every trial\n";
+        std::cout << "state prefetch in staged mode is issued after synchronization and before real frame/report "
                      "inspection\n";
+
+        std::cout << "\nspline x-max prefetch stress (paired trials)\n";
+        std::cout << std::left << std::setw(18) << "entry" << std::setw(18) << "workload" << std::setw(12) << "metric"
+                  << std::right << std::setw(18) << tangent_prefetch_policy::name << std::setw(18)
+                  << header_prefetch_policy::name << std::setw(18) << no_spline_extra_prefetch_policy::name << '\n';
+
+        auto print_tangent_stress = [&]<typename entry_policy_t>(std::string_view entry_name, uint64_t seed) {
+            for (auto const workload : tangent_workloads)
+            {
+                auto const result = benchmark_paired(spline_extra_prefetches, 2, trials,
+                    seed ^ static_cast<uint64_t>(workload), spline_extra_prefetch_index,
+                    [&](spline_extra_prefetch_t policy) {
+                        return benchmark_tangent_workload_for_prefetch<entry_policy_t, leaf_hint_policy>(
+                            policy, data, order, workload, rotations);
+                    });
+
+                std::cout << std::left << std::setw(18) << entry_name << std::setw(18)
+                          << tangent_workload_name(workload) << std::setw(12) << "cycles" << std::right << std::fixed
+                          << std::setprecision(2);
+                for (auto const value : result.cycles) std::cout << std::setw(18) << value;
+                std::cout << '\n';
+
+                std::cout << std::left << std::setw(18) << "" << std::setw(18) << "" << std::setw(12)
+                          << "delta" << std::right;
+                for (auto const value : result.delta) std::cout << std::setw(18) << value;
+                std::cout << '\n';
+            }
+        };
+
+        print_tangent_stress.template operator()<control_state_prefetch_policy>(
+            "control+state", 0x74616e67656e7421ull);
+        print_tangent_stress.template operator()<staged_prefetch_policy>("staged", 0x74616e67656e7422ull);
+        std::cout << "\ndelta is relative to no extra spline request; below-xmax uses the last representable x before "
+                     "x_max, tangent uses x_max, and boundary alternates between them\n";
     }
 
     return 0;
@@ -1988,65 +2244,87 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
         return 1;
     }
 
-    std::cout << "\ncapture-driven staged entry schedule\n";
+    std::cout << "\ncapture-driven staged entry schedule (paired trials)\n";
     std::cout << "entry pipeline data: " << sizeof(pipeline_data_t) << " bytes\n";
     std::cout << "instances:           " << entry_instance_count << '\n';
     std::cout << "working set:         " << std::fixed << std::setprecision(1)
               << static_cast<double>(entry_actual_bytes) / static_cast<double>(bytes_per_mib) << " MiB\n\n";
-    std::cout << std::left << std::setw(18) << "lookup" << std::right << std::setw(18) << no_entry_prefetch_policy::name
-              << std::setw(18) << control_prefetch_policy::name << std::setw(18) << control_state_prefetch_policy::name
-              << std::setw(18) << staged_prefetch_policy::name << '\n';
+    std::cout << std::left << std::setw(18) << "lookup" << std::setw(12) << "metric" << std::right << std::setw(18)
+              << no_entry_prefetch_policy::name << std::setw(18) << control_prefetch_policy::name << std::setw(18)
+              << control_state_prefetch_policy::name << std::setw(18) << staged_prefetch_policy::name << '\n';
 
-    auto print_capture_staged = [&]<typename spline_policy_t>(std::string_view lookup_name) {
-        auto const none = benchmark_scheduled_trace_entry_median<no_entry_prefetch_policy, spline_policy_t>(
-            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
-        auto const control = benchmark_scheduled_trace_entry_median<control_prefetch_policy, spline_policy_t>(
-            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
-        auto const both = benchmark_scheduled_trace_entry_median<control_state_prefetch_policy, spline_policy_t>(
-            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
-        auto const staged = benchmark_scheduled_trace_entry_median<staged_prefetch_policy, spline_policy_t>(
-            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+    auto print_capture_staged = [&]<typename spline_policy_t>(std::string_view lookup_name, uint64_t seed) {
+        auto const result = benchmark_paired(entry_schedules, 0, trials, seed, entry_schedule_index,
+            [&](entry_schedule_t schedule) {
+                return benchmark_scheduled_trace_entry_for_schedule<spline_policy_t>(
+                    schedule, entry_data, entry_order, entry_offsets, trace.speed, rotations);
+            });
 
-        std::cout << std::left << std::setw(18) << lookup_name << std::right << std::fixed << std::setprecision(2)
-                  << std::setw(18) << none << std::setw(18) << control << std::setw(18) << both << std::setw(18)
-                  << staged << '\n';
+        std::cout << std::left << std::setw(18) << lookup_name << std::setw(12) << "cycles" << std::right << std::fixed
+                  << std::setprecision(2);
+        for (auto const value : result.cycles) std::cout << std::setw(18) << value;
+        std::cout << '\n';
+
+        std::cout << std::left << std::setw(18) << "" << std::setw(12) << "delta" << std::right;
+        for (auto const value : result.delta) std::cout << std::setw(18) << value;
+        std::cout << '\n';
     };
 
-    print_capture_staged.template operator()<full_hint_policy_t>("production-full");
-    print_capture_staged.template operator()<leaf_hint_policy>("leaf-range");
-    std::cout << "\nentry schedule uses replayed spline x with synthetic normal framing and real frame/report "
+    print_capture_staged.template operator()<full_hint_policy_t>("production-full", 0x66756c6c2d747263ull);
+    print_capture_staged.template operator()<leaf_hint_policy>("leaf-range", 0x6c6561662d747263ull);
+    std::cout << "\ndelta is the median within-trial cycles/sample difference from none; policy order is randomized "
+                 "independently in every trial\n";
+    std::cout << "entry schedule uses replayed spline x with synthetic normal framing and real frame/report "
                  "inspection\n";
 
-    std::cout << "\nspline extra-prefetch request\n";
-    std::cout << std::left << std::setw(18) << "entry" << std::setw(18) << "lookup" << std::right << std::setw(18)
-              << tangent_prefetch_policy::name << std::setw(18) << header_prefetch_policy::name << std::setw(18)
-              << no_spline_extra_prefetch_policy::name << '\n';
+    std::cout << "\nspline extra-prefetch request (paired trials)\n";
+    std::cout << std::left << std::setw(18) << "entry" << std::setw(18) << "lookup" << std::setw(12) << "metric"
+              << std::right << std::setw(18) << tangent_prefetch_policy::name << std::setw(18)
+              << header_prefetch_policy::name << std::setw(18) << no_spline_extra_prefetch_policy::name << '\n';
 
-    auto print_capture_extra = [&]<typename entry_policy_t, typename spline_policy_t>(
-                                   std::string_view entry_name, std::string_view lookup_name) {
-        auto const tangent
-            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, tangent_prefetch_policy>(
-                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
-        auto const header
-            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, header_prefetch_policy>(
-                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
-        auto const none
-            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, no_spline_extra_prefetch_policy>(
-                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+    auto print_capture_extra = [&]<typename entry_policy_t, typename spline_policy_t>(std::string_view entry_name,
+                                   std::string_view lookup_name, uint64_t seed) {
+        auto const result = benchmark_paired(spline_extra_prefetches, 2, trials, seed, spline_extra_prefetch_index,
+            [&](spline_extra_prefetch_t policy) {
+                switch (policy)
+                {
+                    case spline_extra_prefetch_t::tangent:
+                        return benchmark_scheduled_trace_entry<
+                            entry_policy_t, spline_policy_t, tangent_prefetch_policy>(
+                            entry_data, entry_order, entry_offsets, trace.speed, rotations);
+                    case spline_extra_prefetch_t::header:
+                        return benchmark_scheduled_trace_entry<
+                            entry_policy_t, spline_policy_t, header_prefetch_policy>(
+                            entry_data, entry_order, entry_offsets, trace.speed, rotations);
+                    case spline_extra_prefetch_t::none:
+                        return benchmark_scheduled_trace_entry<
+                            entry_policy_t, spline_policy_t, no_spline_extra_prefetch_policy>(
+                            entry_data, entry_order, entry_offsets, trace.speed, rotations);
+                }
+                __builtin_unreachable();
+            });
 
-        std::cout << std::left << std::setw(18) << entry_name << std::setw(18) << lookup_name << std::right
-                  << std::fixed << std::setprecision(2) << std::setw(18) << tangent << std::setw(18) << header
-                  << std::setw(18) << none << '\n';
+        std::cout << std::left << std::setw(18) << entry_name << std::setw(18) << lookup_name << std::setw(12)
+                  << "cycles" << std::right << std::fixed << std::setprecision(2);
+        for (auto const value : result.cycles) std::cout << std::setw(18) << value;
+        std::cout << '\n';
+
+        std::cout << std::left << std::setw(18) << "" << std::setw(18) << "" << std::setw(12) << "delta"
+                  << std::right;
+        for (auto const value : result.delta) std::cout << std::setw(18) << value;
+        std::cout << '\n';
     };
 
     print_capture_extra.template operator()<control_state_prefetch_policy, full_hint_policy_t>(
-        "control+state", "production-full");
-    print_capture_extra.template operator()<staged_prefetch_policy, full_hint_policy_t>("staged", "production-full");
+        "control+state", "production-full", 0x65787472612d6631ull);
+    print_capture_extra.template operator()<staged_prefetch_policy, full_hint_policy_t>(
+        "staged", "production-full", 0x65787472612d6632ull);
     print_capture_extra.template operator()<control_state_prefetch_policy, leaf_hint_policy>(
-        "control+state", "leaf-range");
-    print_capture_extra.template operator()<staged_prefetch_policy, leaf_hint_policy>("staged", "leaf-range");
-    std::cout << "\nheader is the spline locator/header line containing x_max; tangent is the current production "
-                 "request\n";
+        "control+state", "leaf-range", 0x65787472612d6c31ull);
+    print_capture_extra.template operator()<staged_prefetch_policy, leaf_hint_policy>(
+        "staged", "leaf-range", 0x65787472612d6c32ull);
+    std::cout << "\ndelta is relative to no extra spline request; header is the locator/header line containing "
+                 "x_max and tangent is the current production request\n";
     return 0;
 }
 
