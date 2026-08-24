@@ -21,6 +21,41 @@ using sut_t = extended_tangent_t<x_t, y_t, unpacked_field_t>;
 
 constexpr auto x_inf = max<x_t>();
 
+// safety proof
+static_assert(sut_t{.slope = {.mantissa = 0, .shift = 0}, .y0 = y_t{3}, .x_max_delta = x_inf}.is_safe());
+static_assert(!sut_t{.slope = {.mantissa = -1, .shift = 0}, .y0 = y_t{3}, .x_max_delta = x_inf}.is_safe());
+static_assert(!sut_t{.slope = {.mantissa = 1, .shift = 0}, .y0 = y_t{3}, .x_max_delta = x_t::literal(-1)}.is_safe());
+static_assert(!sut_t{.slope = {.mantissa = 1, .shift = 128}, .y0 = y_t{3}, .x_max_delta = x_t{1}}.is_safe());
+static_assert(!sut_t{.slope = {.mantissa = 1, .shift = min<int_t>()}, .y0 = y_t{3}, .x_max_delta = x_t{1}}.is_safe());
+
+// right-shift narrowing boundary: max*max needs 63 bits of right shift to fit int64
+using integer_x_t = fixed_t<int64_t, 0>;
+using integer_y_t = fixed_t<int64_t, 0>;
+using integer_sut_t = extended_tangent_t<integer_x_t, integer_y_t, unpacked_field_t>;
+constexpr auto integer_max = max<int64_t>();
+static_assert(integer_sut_t{
+    .slope = {.mantissa = integer_max, .shift = 63},
+    .y0 = integer_y_t{},
+    .x_max_delta = integer_x_t::literal(integer_max),
+}.is_safe());
+static_assert(!integer_sut_t{
+    .slope = {.mantissa = integer_max, .shift = 62},
+    .y0 = integer_y_t{},
+    .x_max_delta = integer_x_t::literal(integer_max),
+}.is_safe());
+
+// exact left-shift boundary and one raw unit beyond it
+static_assert(integer_sut_t{
+    .slope = {.mantissa = 1, .shift = -1},
+    .y0 = integer_y_t{},
+    .x_max_delta = integer_x_t::literal(integer_max >> 1),
+}.is_safe());
+static_assert(!integer_sut_t{
+    .slope = {.mantissa = 1, .shift = -1},
+    .y0 = integer_y_t{},
+    .x_max_delta = integer_x_t::literal((integer_max >> 1) + 1),
+}.is_safe());
+
 // constant slope
 // y = 0.0*x + 3.0
 static_assert(sut_t{.slope = {.mantissa = 0, .shift = 0}, .y0 = y_t{3}, .x_max_delta = x_inf}(x_t{5}) == y_t{3});

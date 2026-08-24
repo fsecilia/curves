@@ -10,7 +10,6 @@
 #include <crv/math/int_traits.hpp>
 #include <array>
 #include <cassert>
-#include <type_traits>
 
 namespace crv::spline {
 
@@ -47,15 +46,6 @@ template <typename t_segment_t, typename t_extended_tangent_t, typename t_segmen
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
 
         return segments[location.index](x, location.origin);
-    }
-
-    /// validates data the driver receives
-    constexpr auto is_valid() const noexcept -> bool
-    {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
-        static_assert(std::is_trivially_copyable_v<spline_t>);
-        static_assert(std::is_standard_layout_v<spline_t>);
-        return segment_locator.is_valid();
     }
 
     constexpr auto prefetch(hint_t const& hint, auto const& prefetcher) const noexcept -> void

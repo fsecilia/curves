@@ -70,6 +70,10 @@ constexpr auto x_max = x_t{40};
 
 static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_count() == sut_t::max_segment_count);
 static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.x_max() == x_max);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_origin(0) == 0);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_origin(2) == 20);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_end(2) == 30);
+static_assert(sut_t{keys, x_max, sut_t::max_segment_count}.segment_end(3) == x_max);
 
 } // namespace property_tests
 
@@ -200,6 +204,10 @@ using segments_t = std::array<x_t, 3>;
 
 // valid baseline
 static_assert(sut_t{segments_t{10, 20, 30}, 40, 4}.is_valid());
+
+// first breakpoint must leave a positive first segment
+static_assert(!sut_t{segments_t{0, 20, 30}, 40, 4}.is_valid());
+static_assert(sut_t{segments_t{1, 20, 30}, 40, 4}.is_valid());
 
 // negative key
 static_assert(!sut_t{segments_t{-10, 20, 30}, 40, 4}.is_valid());

@@ -7,6 +7,7 @@
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline_factory.hpp>
 #include <crv/spline/spline_factory_policy.hpp>
+#include <crv/spline/validator.hpp>
 #include <crv/test/test.hpp>
 #include <algorithm>
 #include <array>
@@ -64,25 +65,10 @@ auto expect_all_segments_safe(spline_t const& spline) -> void
     auto const segment_count = locator.segment_count();
     ASSERT_GT(segment_count, 0);
 
-    auto const find_origin = [&](int_t segment_index) noexcept -> x_t {
-        if (segment_index == 0) return x_t{0};
-        if (segment_index == segment_count) return locator.x_max();
-
-        auto low = typename x_t::value_t{0};
-        auto high = locator.x_max().value;
-        while (low < high)
-        {
-            auto const midpoint = low + (high - low) / 2;
-            if (locator.locate(x_t::literal(midpoint)).index < segment_index) low = midpoint + 1;
-            else high = midpoint;
-        }
-        return x_t::literal(low);
-    };
-
     for (auto segment_index = int_t{0}; segment_index < segment_count; ++segment_index)
     {
-        auto const left = find_origin(segment_index);
-        auto const right = find_origin(segment_index + 1);
+        auto const left = locator.segment_origin(segment_index);
+        auto const right = locator.segment_end(segment_index);
         EXPECT_TRUE(spline.segments[segment_index].is_safe_through(right - left, left))
             << "segment=" << segment_index << " left_raw=" << left.value << " right_raw=" << right.value;
     }
@@ -94,7 +80,11 @@ template <typename target_t> auto build_spline(target_t const& target) -> spline
     auto critical_points = std::vector<x_t>{to_fixed<x_t>(7.123456789), to_fixed<x_t>(31.0000003)};
     auto const result = spline_factory_t{}(spline, target, scalar_t{2e-6}, std::move(critical_points));
     EXPECT_TRUE(result);
-    if (result) expect_all_segments_safe(spline);
+    if (result)
+    {
+        expect_all_segments_safe(spline);
+        EXPECT_TRUE(spline_validator_t<spline_t>{}(spline));
+    }
     return spline;
 }
 

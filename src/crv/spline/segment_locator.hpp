@@ -138,6 +138,20 @@ public:
     /// end of final segment
     constexpr auto x_max() const noexcept -> x_t { return x_max_; }
 
+    /// start of one active segment
+    constexpr auto segment_origin(int_t segment_index) const noexcept -> x_t
+    {
+        assert(0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
+        return segment_index == 0 ? x_t{0} : key_at(segment_index);
+    }
+
+    /// end of one active segment
+    constexpr auto segment_end(int_t segment_index) const noexcept -> x_t
+    {
+        assert(0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
+        return segment_index + 1 == segment_count_ ? x_max_ : key_at(segment_index + 1);
+    }
+
     /// validates tree structure and capacity
     constexpr auto is_valid() const noexcept -> bool
     {
@@ -153,7 +167,7 @@ public:
         for (auto i = 1; i < segment_count_; ++i)
         {
             auto const key = key_at(i);
-            if (key < x_t{0}) return false;
+            if (key <= x_t{0}) return false;
             if (key <= previous_key) return false;
             if (key >= x_max_) return false;
             previous_key = key;

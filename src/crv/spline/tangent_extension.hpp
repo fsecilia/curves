@@ -80,6 +80,44 @@ struct extended_tangent_t
         return x_t::literal(low);
     }
 
+    /// proves evaluator arithmetic safe for every clamped runtime delta
+    constexpr auto is_safe() const noexcept -> bool
+    {
+        using x_value_t = typename x_t::value_t;
+        using y_value_t = typename y_t::value_t;
+        using unsigned_wide_t = make_unsigned_t<wide_t>;
+
+        static_assert(signed_integral<x_value_t>);
+        static_assert(signed_integral<y_value_t>);
+        static_assert(signed_integral<mantissa_t>);
+        static_assert(sizeof(x_value_t) <= sizeof(wide_t));
+        static_assert(sizeof(y_value_t) <= sizeof(wide_t));
+
+        if (slope.mantissa < 0 || x_max_delta < x_t{0}) return false;
+
+        constexpr auto wide_bits = int_t{sizeof(wide_t) * CHAR_BIT};
+        if (slope.shift >= wide_bits) return false;
+        if (slope.shift == min<int_t>()) return false;
+
+        auto const mantissa = widen(slope.mantissa);
+        auto const x_delta = int_cast<wide_t>(x_max_delta.value);
+        if (mantissa != 0 && x_delta > max<wide_t>() / mantissa) return false;
+        auto const product = mantissa * x_delta;
+
+        auto const y_max = int_cast<wide_t>(max<y_value_t>());
+        if (slope.shift >= 0)
+        {
+            auto const shift = slope.shift;
+            auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
+            if (product > max<wide_t>() - half) return false;
+            return ((product + half) >> shift) <= y_max;
+        }
+
+        auto const left_shift = -slope.shift;
+        if (left_shift >= wide_bits) return false;
+        return product <= (y_max >> left_shift);
+    }
+
     // \param x position relative to end of spline domain
     constexpr auto operator()(x_t x) const noexcept -> y_t
     {

@@ -176,6 +176,7 @@ set(shared_lib_kernel_files
     spline/segment.hpp
     spline/spline.hpp
     spline/tangent_extension.hpp
+    spline/validator.hpp
     traits.hpp
 )
 
@@ -315,6 +316,7 @@ set(unit_test_files
     spline/spline_factory_test.cpp
     spline/spline_test.cpp
     spline/tangent_extension_test.cpp
+    spline/validator_test.cpp
     traits_test.cpp
     tuple_test.cpp
     variant_test.cpp
