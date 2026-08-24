@@ -10,6 +10,8 @@
 #include <crv/model/composed_curve.hpp>
 #include <crv/model/config.hpp>
 #include <crv/pipeline/filters/half_life_ema.hpp>
+#include <crv/pipeline/input_frame.hpp>
+#include <crv/pipeline/relative_report.hpp>
 #include <crv/pipeline/report_timer.hpp>
 #include <crv/pipeline/velocity.hpp>
 #include <crv/prefetcher.hpp>
@@ -48,8 +50,7 @@ constexpr auto depth_max = int_t{4};
 using production_locator_t = spline::segment_locator_t<x_t, depth_max>;
 using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
 using production_spline_t = spline_policy_t::spline_t;
-using spline_factory_t
-    = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
+using spline_factory_t = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
 
 using replay_magnitude_rsqrt_t = rsqrt_t<fixed_t<uint64_t, 62>, fixed_t<uint64_t, 0>>;
 using replay_magnitude_t = pipeline::displacement_magnitude_t<replay_magnitude_rsqrt_t>;
@@ -289,9 +290,18 @@ struct leaf_hint_t
     x_t end{};
 };
 
+struct adaptive_leaf_hint_t
+{
+    x_t origin{};
+    x_t end{};
+    uint8_t segment_index{};
+    uint8_t confidence{};
+};
+
 static_assert(sizeof(index_hint_t) == 8);
 static_assert(sizeof(segment_hint_t) == 24);
 static_assert(sizeof(leaf_hint_t) == 24);
+static_assert(sizeof(adaptive_leaf_hint_t) == 24);
 
 struct timer_state_t
 {
@@ -360,6 +370,8 @@ constexpr auto x_max = x_t{benchmark_locator_t::max_segment_count * segment_widt
 
 auto prefetch_segment_neighbors(
     spline_data_t const& data, int_t segment_index, static_prefetcher_t const& prefetcher) noexcept -> void;
+auto prefetch_leaf_segment_lines(
+    spline_data_t const& data, int_t segment_index, static_prefetcher_t const& prefetcher) noexcept -> void;
 auto evaluate_segment(segment_t const& segment, x_t x, x_t origin) noexcept -> uint64_t;
 
 struct baseline_policy_t
@@ -401,6 +413,26 @@ struct segment_hint_policy_t
 
         auto const location = data.locator.locate_with_segment_range(x);
         hint = {.segment_index = location.index, .origin = location.origin, .end = location.end};
+        return evaluate_segment(data.segments[location.index], x, location.origin);
+    }
+};
+
+struct full_hint_policy_t
+{
+    using hint_t = leaf_hint_t;
+    static constexpr auto name = std::string_view{"production-full"};
+
+    static auto prefetch(spline_data_t const& data, hint_t const& hint, static_prefetcher_t const& prefetcher) noexcept
+        -> void
+    {
+        data.locator.prefetch_top(prefetcher);
+        prefetch_segment_neighbors(data, hint.segment_index, prefetcher);
+    }
+
+    static auto evaluate(spline_data_t const& data, hint_t& hint, x_t x) noexcept -> uint64_t
+    {
+        auto const location = data.locator.locate_with_leaf_range(x);
+        hint = {.segment_index = location.index, .origin = location.leaf_origin, .end = location.leaf_end};
         return evaluate_segment(data.segments[location.index], x, location.origin);
     }
 };
@@ -449,8 +481,94 @@ using leaf_hint_policy = leaf_hint_policy_t<0>;
 using leaf_hint_root_policy = leaf_hint_policy_t<1>;
 using leaf_hint_top2_policy = leaf_hint_policy_t<2>;
 
+struct leaf_lines_policy_t
+{
+    using hint_t = leaf_hint_t;
+    static constexpr auto name = std::string_view{"leaf-lines"};
+
+    static auto prefetch(spline_data_t const& data, hint_t const& hint, static_prefetcher_t const& prefetcher) noexcept
+        -> void
+    {
+        auto const leaf_index = hint.segment_index / benchmark_locator_t::branching_factor;
+        data.locator.prefetch_leaf(prefetcher, leaf_index);
+        prefetch_leaf_segment_lines(data, hint.segment_index, prefetcher);
+    }
+
+    static auto evaluate(spline_data_t const& data, hint_t& hint, x_t x) noexcept -> uint64_t
+    {
+        return leaf_hint_policy::evaluate(data, hint, x);
+    }
+};
+
+template <uint8_t max_confidence, uint8_t leaf_threshold> struct adaptive_leaf_policy_t
+{
+    static_assert(0 < leaf_threshold && leaf_threshold <= max_confidence);
+
+    using hint_t = adaptive_leaf_hint_t;
+    static constexpr auto name
+        = max_confidence == 1 ? std::string_view{"adaptive-1bit"} : std::string_view{"adaptive-2bit"};
+
+    static auto prefetch(spline_data_t const& data, hint_t const& hint, static_prefetcher_t const& prefetcher) noexcept
+        -> void
+    {
+        auto const segment_index = int_cast<int_t>(hint.segment_index);
+        if (hint.confidence >= leaf_threshold)
+        {
+            auto const leaf_index = segment_index / benchmark_locator_t::branching_factor;
+            data.locator.prefetch_leaf(prefetcher, leaf_index);
+        }
+        else
+        {
+            data.locator.prefetch_top(prefetcher);
+        }
+        prefetch_segment_neighbors(data, segment_index, prefetcher);
+    }
+
+    static auto evaluate(spline_data_t const& data, hint_t& hint, x_t x) noexcept -> uint64_t
+    {
+        auto const leaf_hit = hint.origin <= x && x < hint.end;
+        auto const use_leaf = hint.confidence >= leaf_threshold;
+        auto result = uint64_t{};
+
+        if (use_leaf && leaf_hit)
+        {
+            auto const leaf_index = int_cast<int_t>(hint.segment_index) / benchmark_locator_t::branching_factor;
+            auto const& keys = data.locator.leaf(leaf_index).keys;
+            auto origin = hint.origin;
+            origin = (x >= keys[0]) ? keys[0] : origin;
+            origin = (x >= keys[1]) ? keys[1] : origin;
+            origin = (x >= keys[2]) ? keys[2] : origin;
+            auto const child_offset = int_t{(x >= keys[0]) + (x >= keys[1]) + (x >= keys[2])};
+            auto const segment_index = leaf_index * benchmark_locator_t::branching_factor + child_offset;
+            hint.segment_index = int_cast<uint8_t>(segment_index);
+            result = evaluate_segment(data.segments[segment_index], x, origin);
+        }
+        else
+        {
+            auto const location = data.locator.locate_with_leaf_range(x);
+            hint.segment_index = int_cast<uint8_t>(location.index);
+            hint.origin = location.leaf_origin;
+            hint.end = location.leaf_end;
+            result = evaluate_segment(data.segments[location.index], x, location.origin);
+        }
+
+        if (leaf_hit)
+        {
+            if (hint.confidence < max_confidence) ++hint.confidence;
+        }
+        else if (hint.confidence != 0) { --hint.confidence; }
+
+        return result;
+    }
+};
+
+using adaptive_leaf_1bit_policy = adaptive_leaf_policy_t<1, 1>;
+using adaptive_leaf_2bit_policy = adaptive_leaf_policy_t<3, 2>;
+
 template <bool prefetch_control, bool prefetch_state> struct entry_prefetch_policy_t
 {
+    static constexpr auto has_entry_prefetch = prefetch_control || prefetch_state;
+    static constexpr auto has_staged_prefetch = false;
     static constexpr auto name = !prefetch_control && !prefetch_state ? std::string_view{"none"}
         : prefetch_control && !prefetch_state                         ? std::string_view{"control"}
         : !prefetch_control && prefetch_state                         ? std::string_view{"state"}
@@ -461,6 +579,8 @@ template <bool prefetch_control, bool prefetch_state> struct entry_prefetch_poli
         if constexpr (prefetch_control) prefetcher.prefetch(&pipeline.control);
         if constexpr (prefetch_state) prefetcher.prefetch(&pipeline.state);
     }
+
+    static auto after_synchronized(pipeline_data_t const&, static_prefetcher_t const&) noexcept -> void {}
 };
 
 using no_entry_prefetch_policy = entry_prefetch_policy_t<false, false>;
@@ -470,12 +590,61 @@ using control_state_prefetch_policy = entry_prefetch_policy_t<true, true>;
 
 struct state_control_prefetch_policy
 {
+    [[maybe_unused]] static constexpr auto has_entry_prefetch = true;
+    [[maybe_unused]] static constexpr auto has_staged_prefetch = false;
     static constexpr auto name = std::string_view{"state+control"};
 
     static auto prefetch(pipeline_data_t const& pipeline, static_prefetcher_t const& prefetcher) noexcept -> void
     {
         prefetcher.prefetch(&pipeline.state);
         prefetcher.prefetch(&pipeline.control);
+    }
+
+    static auto after_synchronized(pipeline_data_t const&, static_prefetcher_t const&) noexcept -> void {}
+};
+
+struct staged_prefetch_policy
+{
+    static constexpr auto has_entry_prefetch = true;
+    static constexpr auto has_staged_prefetch = true;
+    static constexpr auto name = std::string_view{"staged"};
+
+    static auto prefetch(pipeline_data_t const& pipeline, static_prefetcher_t const& prefetcher) noexcept -> void
+    {
+        prefetcher.prefetch(&pipeline.control);
+    }
+
+    static auto after_synchronized(pipeline_data_t const& pipeline, static_prefetcher_t const& prefetcher) noexcept
+        -> void
+    {
+        prefetcher.prefetch(&pipeline.state);
+    }
+};
+
+struct no_spline_extra_prefetch_policy
+{
+    static constexpr auto name = std::string_view{"none"};
+
+    static auto prefetch(pipeline_data_t const&, static_prefetcher_t const&) noexcept -> void {}
+};
+
+struct tangent_prefetch_policy
+{
+    static constexpr auto name = std::string_view{"tangent"};
+
+    static auto prefetch(pipeline_data_t const& pipeline, static_prefetcher_t const& prefetcher) noexcept -> void
+    {
+        prefetcher.prefetch(&pipeline.spline.tangent);
+    }
+};
+
+struct header_prefetch_policy
+{
+    static constexpr auto name = std::string_view{"header"};
+
+    static auto prefetch(pipeline_data_t const& pipeline, static_prefetcher_t const& prefetcher) noexcept -> void
+    {
+        prefetcher.prefetch(&pipeline.spline.locator);
     }
 };
 
@@ -545,6 +714,30 @@ constexpr auto make_framing_inputs(std::size_t instance_index, std::size_t rotat
     };
 }
 
+constexpr auto make_normal_framing_inputs(std::size_t instance_index, std::size_t rotation) noexcept -> framing_inputs_t
+{
+    return {
+        .count = 4,
+        .max_vals = std::size_t{16} + ((instance_index >> 1) & 15u),
+        .num_vals = std::size_t{4} + ((instance_index + rotation) & 3u),
+        .timestamp = (uint64_t{rotation} << 20) + (uint64_t{instance_index} & 0x3ffu),
+    };
+}
+
+auto make_report_values(std::size_t instance_index, std::size_t rotation) noexcept -> std::array<crv_input_value_t, 4>
+{
+    auto const mixed = mix(instance_index ^ (rotation * 0x9e3779b97f4a7c15ull));
+    auto const x = static_cast<int32_t>((mixed & 0x3ffu) - 0x200u);
+    auto const y = static_cast<int32_t>(((mixed >> 10) & 0x3ffu) - 0x200u);
+
+    return {{
+        {.type = CRV_EV_REL, .code = 8, .value = 1},
+        {.type = CRV_EV_REL, .code = CRV_REL_X, .value = x},
+        {.type = CRV_EV_REL, .code = CRV_REL_Y, .value = y},
+        {.type = CRV_EV_SYN, .code = CRV_SYN_REPORT, .value = 0},
+    }};
+}
+
 auto prefetch_segment_neighbors(
     spline_data_t const& data, int_t segment_index, static_prefetcher_t const& prefetcher) noexcept -> void
 {
@@ -552,6 +745,14 @@ auto prefetch_segment_neighbors(
     auto const offset = sizeof(segment_t);
     prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (segment_index - 1) * offset));
     prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (segment_index + 1) * offset));
+}
+
+auto prefetch_leaf_segment_lines(
+    spline_data_t const& data, int_t segment_index, static_prefetcher_t const& prefetcher) noexcept -> void
+{
+    auto const leaf_base = segment_index - segment_index % benchmark_locator_t::branching_factor;
+    prefetcher.prefetch(&data.segments[int_cast<std::size_t>(leaf_base)]);
+    prefetcher.prefetch(&data.segments[int_cast<std::size_t>(leaf_base + 2)]);
 }
 
 auto evaluate_segment(segment_t const& segment, x_t x, x_t origin) noexcept -> uint64_t
@@ -657,6 +858,24 @@ auto make_pipeline_prototype() -> pipeline_data_t
     return result;
 }
 
+auto make_pipeline_prototype(production_locator_t const& locator) -> std::optional<pipeline_data_t>
+{
+    auto const spline = make_prototype(locator);
+    if (!spline) return std::nullopt;
+
+    auto result = pipeline_data_t{};
+    result.control.config.words = {
+        0x243f6a8885a308d3ull,
+        0x13198a2e03707344ull,
+        0xa4093822299f31d0ull,
+        0x082efa98ec4e6c89ull,
+        0x452821e638d01377ull,
+        0xbe5466cf34e90c6cull,
+    };
+    result.spline = *spline;
+    return result;
+}
+
 auto verify_locator() -> bool
 {
     auto const keys = make_sorted_keys();
@@ -667,10 +886,13 @@ auto verify_locator() -> bool
     {
         auto const x = x_t{raw};
         auto const expected = production.locate(x);
+        auto production_hint = production_locator_t::hint_t{};
+        auto const hinted_expected = production.locate(x, production_hint, false);
         auto const actual = benchmark.locate(x);
         auto const extended = benchmark.locate_with_segment_range(x);
         auto const leaf_extended = benchmark.locate_with_leaf_range(x);
         if (actual.index != expected.index || actual.origin != expected.origin) return false;
+        if (hinted_expected != expected) return false;
         if (extended.index != expected.index || extended.origin != expected.origin) return false;
         if (!(extended.origin <= x && x < extended.end)) return false;
         if (!(extended.leaf_origin <= x && x < extended.leaf_end)) return false;
@@ -678,6 +900,12 @@ auto verify_locator() -> bool
         if (leaf_extended.index != expected.index || leaf_extended.origin != expected.origin) return false;
         if (!(leaf_extended.leaf_origin <= x && x < leaf_extended.leaf_end)) return false;
         if (leaf_extended.index / benchmark_locator_t::branching_factor != leaf_extended.leaf_index) return false;
+        if (production_hint.segment_index != leaf_extended.index
+            || production_hint.leaf_origin != leaf_extended.leaf_origin
+            || production_hint.leaf_end != leaf_extended.leaf_end)
+        {
+            return false;
+        }
     }
 
     return true;
@@ -691,6 +919,14 @@ auto verify_locator(production_locator_t const& production, benchmark_locator_t 
     auto const recovered_keys = recover_sorted_keys(production);
     if (!recovered_keys) return false;
 
+    auto const matches = [&](x_t x) {
+        auto hint = production_locator_t::hint_t{};
+        auto const expected = production.locate(x, hint, false);
+        auto const actual = benchmark.locate_with_leaf_range(x);
+        return actual.index == expected.index && actual.origin == expected.origin && hint.segment_index == actual.index
+            && hint.leaf_origin == actual.leaf_origin && hint.leaf_end == actual.leaf_end;
+    };
+
     auto origin = x_t{};
     for (auto segment_index = int_t{0}; segment_index < segment_count; ++segment_index)
     {
@@ -701,6 +937,7 @@ auto verify_locator(production_locator_t const& production, benchmark_locator_t 
         {
             return false;
         }
+        if (!matches(origin)) return false;
 
         if (segment_index + 1 < segment_count)
         {
@@ -715,6 +952,7 @@ auto verify_locator(production_locator_t const& production, benchmark_locator_t 
             {
                 return false;
             }
+            if (!matches(before_next)) return false;
 
             origin = next_origin;
         }
@@ -723,7 +961,7 @@ auto verify_locator(production_locator_t const& production, benchmark_locator_t 
     auto const last = x_t::literal(production.x_max().value - 1);
     auto const expected_last = production.locate(last);
     auto const actual_last = benchmark.locate(last);
-    return actual_last.index == expected_last.index && actual_last.origin == expected_last.origin;
+    return actual_last.index == expected_last.index && actual_last.origin == expected_last.origin && matches(last);
 }
 
 constexpr auto capture_stream_error_name(capture_stream_error_code_t code) noexcept -> std::string_view
@@ -852,11 +1090,12 @@ auto load_replay_configuration(char const* path, replay_configuration_t& result)
         return false;
     }
 
-    tuple::visit_at(root.profile.curves.configs, active_curve,
-        [&](auto const& curve_config) { curve = model::curves::create_composed_curve<float_t>(curve_config.specific); });
+    tuple::visit_at(root.profile.curves.configs, active_curve, [&](auto const& curve_config) {
+        curve = model::curves::create_composed_curve<float_t>(curve_config.specific);
+    });
 
-    auto const generation = spline_factory_t{}(
-        result.spline, spline::gain_curve_target_t{curve}, float_t{2e-6}, std::vector<x_t>{});
+    auto const generation
+        = spline_factory_t{}(result.spline, spline::gain_curve_target_t{curve}, float_t{2e-6}, std::vector<x_t>{});
     if (!generation)
     {
         auto const& error = *generation.error;
@@ -964,8 +1203,9 @@ auto load_replay_trace(char const* path, replay_configuration_t const& config, r
             continue;
         }
 
-        auto const filtered
-            = config.half_life == replay_duration_t{} ? speed.value : filter(speed.value, config.half_life, timing.duration);
+        auto const filtered = config.half_life == replay_duration_t{}
+            ? speed.value
+            : filter(speed.value, config.half_life, timing.duration);
         result.speed.push_back(filtered);
         result.epoch.push_back(epoch);
     }
@@ -1011,6 +1251,67 @@ auto evaluate_entry(pipeline_data_t& pipeline, std::size_t instance_index, std::
     state.accumulator.y ^= value + pipeline.control.config.words[5];
 
     return value ^ runway ^ state.accumulator.x ^ state.accumulator.y ^ framing_bits;
+}
+
+template <typename entry_policy_t, typename spline_policy_t,
+    typename spline_extra_prefetch_policy_t = tangent_prefetch_policy>
+auto evaluate_scheduled_entry_with_x(pipeline_data_t& pipeline, std::size_t instance_index, std::size_t rotation, x_t x,
+    static_prefetcher_t const& prefetcher) noexcept -> uint64_t
+{
+    auto values = make_report_values(instance_index, rotation);
+    do_not_optimize(values);
+
+    entry_policy_t::prefetch(pipeline, prefetcher);
+    if constexpr (entry_policy_t::has_entry_prefetch) clobber_memory();
+
+    auto const framing = make_normal_framing_inputs(instance_index, rotation);
+    auto const forced_split = framing.max_vals > 1 && framing.num_vals >= framing.max_vals - 1;
+    auto const invalid_count = framing.count > framing.max_vals;
+    auto const framing_bits = uint64_t{forced_split} | (uint64_t{invalid_count} << 1);
+
+    if (!pipeline.control.framing.synchronized) [[unlikely]]
+        return framing_bits;
+    if (forced_split) [[unlikely]]
+        return framing_bits;
+
+    entry_policy_t::after_synchronized(pipeline, prefetcher);
+    if constexpr (entry_policy_t::has_staged_prefetch) clobber_memory();
+
+    auto adapter = input_value_array_adapter_t{values.data(), values.size()};
+    auto frame = pipeline::input_frame_t{adapter, framing.count};
+    auto report = pipeline::relative_report_t{frame};
+    if (!report.valid()) return framing_bits ^ uint64_t{4};
+
+    spline_extra_prefetch_policy_t::prefetch(pipeline, prefetcher);
+    spline_policy_t::prefetch(pipeline.spline, pipeline.state.gain_hint, prefetcher);
+
+    auto& state = pipeline.state;
+    auto const duration = state.timer.initialized ? framing.timestamp - state.timer.previous_timestamp : uint64_t{};
+    state.timer.previous_timestamp = framing.timestamp;
+    state.timer.initialized = true;
+
+    auto const config_index = (framing.count ^ framing.num_vals) & std::size_t{3};
+    auto runway = mix(duration ^ pipeline.control.config.words[config_index] ^ int_cast<uint64_t>(x.value));
+    runway ^= mix(int_cast<uint64_t>(report.x()) ^ (int_cast<uint64_t>(report.y()) << 1));
+    runway ^= mix(state.filter.output + pipeline.control.config.words[4]);
+    state.filter.output = runway;
+
+    auto const value = x >= pipeline.spline.locator.x_max()
+        ? pipeline.spline.tangent[0] ^ pipeline.spline.tangent[1] ^ pipeline.spline.tangent[2]
+            ^ pipeline.spline.tangent[3] ^ int_cast<uint64_t>(x.value)
+        : spline_policy_t::evaluate(pipeline.spline, state.gain_hint, x);
+    state.accumulator.x += value ^ runway;
+    state.accumulator.y ^= value + pipeline.control.config.words[5];
+
+    return value ^ runway ^ state.accumulator.x ^ state.accumulator.y ^ framing_bits;
+}
+
+template <typename entry_policy_t, typename spline_policy_t>
+auto evaluate_scheduled_entry(pipeline_data_t& pipeline, std::size_t instance_index, std::size_t rotation,
+    motion_t motion, static_prefetcher_t const& prefetcher) noexcept -> uint64_t
+{
+    return evaluate_scheduled_entry_with_x<entry_policy_t, spline_policy_t>(
+        pipeline, instance_index, rotation, sample_x(motion, instance_index, rotation), prefetcher);
 }
 
 template <typename policy_t>
@@ -1059,6 +1360,49 @@ auto benchmark_entry_median(std::vector<pipeline_data_t>& data, std::vector<std:
     results.reserve(trials);
     for (auto trial = std::size_t{0}; trial < trials; ++trial)
         results.push_back(benchmark_entry<policy_t>(data, order, motion, rotations));
+    std::ranges::sort(results);
+    return results[results.size() / 2];
+}
+
+template <typename entry_policy_t, typename spline_policy_t>
+auto benchmark_scheduled_entry(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    motion_t motion, std::size_t rotations) -> float_t
+{
+    for (auto& pipeline : data) pipeline.state = {};
+
+    auto const prefetcher = static_prefetcher_t{};
+    auto result = uint64_t{};
+    for (auto const index : order)
+        result ^= evaluate_scheduled_entry<entry_policy_t, spline_policy_t>(data[index], index, 0, motion, prefetcher);
+    do_not_optimize(result);
+
+    auto aux = uint32_t{};
+    _mm_lfence();
+    auto const start_cycles = __rdtsc();
+    _mm_lfence();
+
+    for (auto rotation = std::size_t{1}; rotation <= rotations; ++rotation)
+        for (auto const index : order)
+            result ^= evaluate_scheduled_entry<entry_policy_t, spline_policy_t>(
+                data[index], index, rotation, motion, prefetcher);
+
+    _mm_lfence();
+    auto const end_cycles = __rdtscp(&aux);
+    _mm_lfence();
+
+    do_not_optimize(result);
+    auto const sample_count = rotations * data.size();
+    return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
+}
+
+template <typename entry_policy_t, typename spline_policy_t>
+auto benchmark_scheduled_entry_median(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    motion_t motion, std::size_t rotations, std::size_t trials) -> float_t
+{
+    auto results = std::vector<float_t>{};
+    results.reserve(trials);
+    for (auto trial = std::size_t{0}; trial < trials; ++trial)
+        results.push_back(benchmark_scheduled_entry<entry_policy_t, spline_policy_t>(data, order, motion, rotations));
     std::ranges::sort(results);
     return results[results.size() / 2];
 }
@@ -1163,15 +1507,14 @@ auto evaluate_trace_sample(spline_data_t const& data, typename policy_t::hint_t&
 
     if (x >= data.locator.x_max())
     {
-        return data.tangent[0] ^ data.tangent[1] ^ data.tangent[2] ^ data.tangent[3]
-            ^ int_cast<uint64_t>(x.value);
+        return data.tangent[0] ^ data.tangent[1] ^ data.tangent[2] ^ data.tangent[3] ^ int_cast<uint64_t>(x.value);
     }
 
     return policy_t::evaluate(data, hint, x);
 }
 
-auto make_trace_offsets(
-    std::size_t instance_count, std::vector<uint64_t> const& epochs, std::size_t rotations) -> std::vector<std::size_t>
+auto make_trace_offsets(std::size_t instance_count, std::vector<uint64_t> const& epochs, std::size_t rotations)
+    -> std::vector<std::size_t>
 {
     auto valid_offsets = std::vector<std::size_t>{};
     valid_offsets.reserve(epochs.size());
@@ -1189,8 +1532,8 @@ auto make_trace_offsets(
 
 template <typename policy_t>
 auto warmup_trace(std::vector<spline_data_t> const& data, std::vector<typename policy_t::hint_t>& hints,
-    std::vector<std::size_t> const& order, std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace)
-    noexcept -> uint64_t
+    std::vector<std::size_t> const& order, std::vector<std::size_t> const& offsets,
+    std::vector<x_t> const& trace) noexcept -> uint64_t
 {
     auto result = uint64_t{};
     auto const prefetcher = static_prefetcher_t{};
@@ -1241,11 +1584,72 @@ auto benchmark_trace_median(std::vector<spline_data_t> const& data, std::vector<
     return results[results.size() / 2];
 }
 
+template <typename entry_policy_t, typename spline_policy_t,
+    typename spline_extra_prefetch_policy_t = tangent_prefetch_policy>
+auto warmup_scheduled_trace_entry(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace) noexcept -> uint64_t
+{
+    auto result = uint64_t{};
+    auto const prefetcher = static_prefetcher_t{};
+    for (auto const index : order)
+        result ^= evaluate_scheduled_entry_with_x<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+            data[index], index, 0, trace[offsets[index]], prefetcher);
+    return result;
+}
+
+template <typename entry_policy_t, typename spline_policy_t,
+    typename spline_extra_prefetch_policy_t = tangent_prefetch_policy>
+auto benchmark_scheduled_trace_entry(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace, std::size_t rotations) -> float_t
+{
+    for (auto& pipeline : data) pipeline.state = {};
+    do_not_optimize(warmup_scheduled_trace_entry<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+        data, order, offsets, trace));
+
+    auto const prefetcher = static_prefetcher_t{};
+    auto result = uint64_t{};
+    auto aux = uint32_t{};
+
+    _mm_lfence();
+    auto const start_cycles = __rdtsc();
+    _mm_lfence();
+
+    for (auto rotation = std::size_t{1}; rotation <= rotations; ++rotation)
+        for (auto const index : order)
+            result ^= evaluate_scheduled_entry_with_x<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+                data[index], index, rotation, trace[offsets[index] + rotation], prefetcher);
+
+    _mm_lfence();
+    auto const end_cycles = __rdtscp(&aux);
+    _mm_lfence();
+
+    do_not_optimize(result);
+    auto const sample_count = rotations * data.size();
+    return static_cast<float_t>(end_cycles - start_cycles) / static_cast<float_t>(sample_count);
+}
+
+template <typename entry_policy_t, typename spline_policy_t,
+    typename spline_extra_prefetch_policy_t = tangent_prefetch_policy>
+auto benchmark_scheduled_trace_entry_median(std::vector<pipeline_data_t>& data, std::vector<std::size_t> const& order,
+    std::vector<std::size_t> const& offsets, std::vector<x_t> const& trace, std::size_t rotations, std::size_t trials)
+    -> float_t
+{
+    auto results = std::vector<float_t>{};
+    results.reserve(trials);
+    for (auto trial = std::size_t{0}; trial < trials; ++trial)
+        results.push_back(
+            benchmark_scheduled_trace_entry<entry_policy_t, spline_policy_t, spline_extra_prefetch_policy_t>(
+                data, order, offsets, trace, rotations));
+    std::ranges::sort(results);
+    return results[results.size() / 2];
+}
+
 struct trace_hit_rates_t
 {
     double segment{};
     double leaf{};
     double tangent{};
+    std::size_t tangent_samples{};
 };
 
 auto trace_hit_rates(benchmark_locator_t const& locator, std::vector<std::size_t> const& offsets,
@@ -1282,9 +1686,13 @@ auto trace_hit_rates(benchmark_locator_t const& locator, std::vector<std::size_t
 
     auto const total_samples = offsets.size() * rotations;
     return {
-        .segment = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(segment_hits) / located_samples,
-        .leaf = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(leaf_hits) / located_samples,
-        .tangent = total_samples == 0 ? 0.0 : 100.0 * static_cast<double>(tangent_samples) / total_samples,
+        .segment
+        = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(segment_hits) / static_cast<double>(located_samples),
+        .leaf
+        = located_samples == 0 ? 0.0 : 100.0 * static_cast<double>(leaf_hits) / static_cast<double>(located_samples),
+        .tangent
+        = total_samples == 0 ? 0.0 : 100.0 * static_cast<double>(tangent_samples) / static_cast<double>(total_samples),
+        .tangent_samples = tangent_samples,
     };
 }
 
@@ -1351,6 +1759,29 @@ auto run(std::size_t working_set_mib, std::size_t rotations, std::size_t trials)
         }
 
         std::cout << "\ncycles/sample; rotating order is fixed and randomized\n";
+
+        std::cout << "\ncandidate spline policies\n";
+        std::cout << std::left << std::setw(18) << "motion" << std::right << std::setw(18) << full_hint_policy_t::name
+                  << std::setw(18) << leaf_hint_policy::name << std::setw(18) << leaf_lines_policy_t::name
+                  << std::setw(18) << adaptive_leaf_1bit_policy::name << std::setw(18)
+                  << adaptive_leaf_2bit_policy::name << '\n';
+
+        for (auto const motion : motions)
+        {
+            auto const full = benchmark_median<full_hint_policy_t>(data, order, motion, rotations, trials);
+            auto const leaf = benchmark_median<leaf_hint_policy>(data, order, motion, rotations, trials);
+            auto const leaf_lines = benchmark_median<leaf_lines_policy_t>(data, order, motion, rotations, trials);
+            auto const adaptive_1bit
+                = benchmark_median<adaptive_leaf_1bit_policy>(data, order, motion, rotations, trials);
+            auto const adaptive_2bit
+                = benchmark_median<adaptive_leaf_2bit_policy>(data, order, motion, rotations, trials);
+
+            std::cout << std::left << std::setw(18) << motion_name(motion) << std::right << std::fixed
+                      << std::setprecision(2) << std::setw(18) << full << std::setw(18) << leaf << std::setw(18)
+                      << leaf_lines << std::setw(18) << adaptive_1bit << std::setw(18) << adaptive_2bit << '\n';
+        }
+
+        std::cout << "\nproduction-full refreshes the same 24-byte leaf hint as the runtime full lookup\n";
     }
 
     {
@@ -1394,14 +1825,46 @@ auto run(std::size_t working_set_mib, std::size_t rotations, std::size_t trials)
         }
 
         std::cout << "\ncycles/sample; early prefetch precedes framing-derived work and synchronization check\n";
+
+        std::cout << "\nstaged entry schedule\n";
+        std::cout << std::left << std::setw(18) << "lookup" << std::setw(18) << "motion" << std::right << std::setw(18)
+                  << no_entry_prefetch_policy::name << std::setw(18) << control_prefetch_policy::name << std::setw(18)
+                  << control_state_prefetch_policy::name << std::setw(18) << staged_prefetch_policy::name << '\n';
+
+        auto print_staged = [&]<typename spline_policy_t>(std::string_view lookup_name) {
+            for (auto const motion : motions)
+            {
+                auto const none = benchmark_scheduled_entry_median<no_entry_prefetch_policy, spline_policy_t>(
+                    data, order, motion, rotations, trials);
+                auto const control = benchmark_scheduled_entry_median<control_prefetch_policy, spline_policy_t>(
+                    data, order, motion, rotations, trials);
+                auto const both = benchmark_scheduled_entry_median<control_state_prefetch_policy, spline_policy_t>(
+                    data, order, motion, rotations, trials);
+                auto const staged = benchmark_scheduled_entry_median<staged_prefetch_policy, spline_policy_t>(
+                    data, order, motion, rotations, trials);
+
+                std::cout << std::left << std::setw(18) << lookup_name << std::setw(18) << motion_name(motion)
+                          << std::right << std::fixed << std::setprecision(2) << std::setw(18) << none << std::setw(18)
+                          << control << std::setw(18) << both << std::setw(18) << staged << '\n';
+            }
+        };
+
+        print_staged.template operator()<full_hint_policy_t>("production-full");
+        print_staged.template operator()<leaf_hint_policy>("leaf-range");
+
+        std::cout << "\nstate prefetch in staged mode is issued after synchronization and before real frame/report "
+                     "inspection\n";
     }
 
     return 0;
 }
 
-auto run_capture(char const* capture_path, char const* config_path, std::size_t working_set_mib,
-    std::size_t rotations, std::size_t trials) -> int
+auto run_capture(char const* capture_path, char const* config_path, std::size_t working_set_mib, std::size_t rotations,
+    std::size_t trials) -> int
 {
+    std::cerr << "warning: capture format v1 does not store live input-core num_vals; split detection uses the legacy "
+                 "SYN_REPORT.value hint and is not production-equivalent\n";
+
     auto config = replay_configuration_t{};
     if (!load_replay_configuration(config_path, config)) return 1;
 
@@ -1409,8 +1872,7 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
     if (!load_replay_trace(capture_path, config, trace)) return 1;
     if (trace.speed.size() <= rotations)
     {
-        std::cerr << capture_path << ": capture has too few spline-input samples for " << rotations
-                  << " rotations\n";
+        std::cerr << capture_path << ": capture has too few spline-input samples for " << rotations << " rotations\n";
         return 1;
     }
 
@@ -1445,7 +1907,8 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
     }
     auto const hits = trace_hit_rates(prototype->locator, offsets, trace.speed, rotations);
 
-    auto const baseline = benchmark_trace_median<baseline_policy_t>(data, order, offsets, trace.speed, rotations, trials);
+    auto const baseline
+        = benchmark_trace_median<baseline_policy_t>(data, order, offsets, trace.speed, rotations, trials);
     auto const segment
         = benchmark_trace_median<segment_hint_policy_t>(data, order, offsets, trace.speed, rotations, trials);
     auto const leaf = benchmark_trace_median<leaf_hint_policy>(data, order, offsets, trace.speed, rotations, trials);
@@ -1453,6 +1916,14 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
         = benchmark_trace_median<leaf_hint_root_policy>(data, order, offsets, trace.speed, rotations, trials);
     auto const leaf_top2
         = benchmark_trace_median<leaf_hint_top2_policy>(data, order, offsets, trace.speed, rotations, trials);
+    auto const full_hint
+        = benchmark_trace_median<full_hint_policy_t>(data, order, offsets, trace.speed, rotations, trials);
+    auto const leaf_lines
+        = benchmark_trace_median<leaf_lines_policy_t>(data, order, offsets, trace.speed, rotations, trials);
+    auto const adaptive_1bit
+        = benchmark_trace_median<adaptive_leaf_1bit_policy>(data, order, offsets, trace.speed, rotations, trials);
+    auto const adaptive_2bit
+        = benchmark_trace_median<adaptive_leaf_2bit_policy>(data, order, offsets, trace.speed, rotations, trials);
 
     std::cout << "capture replay\n";
     std::cout << "  frames:                 " << trace.frame_count << '\n';
@@ -1465,7 +1936,8 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
     std::cout << "  dpi:                    " << config.dpi << '\n';
     std::cout << "  filter half-life:       " << std::fixed << std::setprecision(3) << config.half_life_ms << " ms\n";
     std::cout << "  spline segments:        " << production_locator.segment_count() << '\n';
-    std::cout << "  tangent samples:        " << std::setprecision(2) << hits.tangent << "%\n\n";
+    std::cout << "  tangent samples:        " << std::setprecision(2) << hits.tangent << "% (" << hits.tangent_samples
+              << ")\n\n";
 
     std::cout << "spline data: " << sizeof(spline_data_t) << " bytes\n";
     std::cout << "instances:   " << instance_count << '\n';
@@ -1476,8 +1948,8 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
 
     std::cout << std::left << std::setw(18) << "motion" << std::right << std::setw(10) << "seg-hit%" << std::setw(10)
               << "leaf-hit%" << std::setw(18) << baseline_policy_t::name << std::setw(18) << segment_hint_policy_t::name
-              << std::setw(18) << leaf_hint_policy::name << std::setw(18) << leaf_hint_root_policy::name << std::setw(18)
-              << leaf_hint_top2_policy::name << '\n';
+              << std::setw(18) << leaf_hint_policy::name << std::setw(18) << leaf_hint_root_policy::name
+              << std::setw(18) << leaf_hint_top2_policy::name << '\n';
 
     std::cout << std::left << std::setw(18) << "capture" << std::right << std::fixed << std::setprecision(1)
               << std::setw(10) << hits.segment << std::setw(10) << hits.leaf << std::setprecision(2) << std::setw(18)
@@ -1485,6 +1957,96 @@ auto run_capture(char const* capture_path, char const* config_path, std::size_t 
               << std::setw(18) << leaf_top2 << '\n';
 
     std::cout << "\ncycles/sample; each rotating spline instance replays a contiguous capture window\n";
+
+    std::cout << "\ncandidate spline policies\n";
+    std::cout << std::left << std::setw(18) << "motion" << std::right << std::setw(18) << full_hint_policy_t::name
+              << std::setw(18) << leaf_hint_policy::name << std::setw(18) << leaf_lines_policy_t::name << std::setw(18)
+              << adaptive_leaf_1bit_policy::name << std::setw(18) << adaptive_leaf_2bit_policy::name << '\n';
+    std::cout << std::left << std::setw(18) << "capture" << std::right << std::fixed << std::setprecision(2)
+              << std::setw(18) << full_hint << std::setw(18) << leaf << std::setw(18) << leaf_lines << std::setw(18)
+              << adaptive_1bit << std::setw(18) << adaptive_2bit << '\n';
+    std::cout << "\nproduction-full refreshes the same 24-byte leaf hint as the runtime full lookup\n";
+
+    auto const pipeline_prototype = make_pipeline_prototype(production_locator);
+    if (!pipeline_prototype)
+    {
+        std::cerr << "failed to construct production-topology entry prototype for replay benchmark\n";
+        return 1;
+    }
+
+    auto const entry_instance_count = max(std::size_t{1}, requested_bytes / sizeof(pipeline_data_t));
+    auto const entry_actual_bytes = entry_instance_count * sizeof(pipeline_data_t);
+    auto entry_data = std::vector<pipeline_data_t>(entry_instance_count, *pipeline_prototype);
+    auto entry_order = std::vector<std::size_t>(entry_instance_count);
+    std::iota(entry_order.begin(), entry_order.end(), std::size_t{0});
+    std::shuffle(entry_order.begin(), entry_order.end(), rng);
+    auto const entry_offsets = make_trace_offsets(entry_instance_count, trace.epoch, rotations);
+    if (entry_offsets.empty())
+    {
+        std::cerr << capture_path << ": no contiguous replay window spans " << rotations
+                  << " rotations for entry benchmark\n";
+        return 1;
+    }
+
+    std::cout << "\ncapture-driven staged entry schedule\n";
+    std::cout << "entry pipeline data: " << sizeof(pipeline_data_t) << " bytes\n";
+    std::cout << "instances:           " << entry_instance_count << '\n';
+    std::cout << "working set:         " << std::fixed << std::setprecision(1)
+              << static_cast<double>(entry_actual_bytes) / static_cast<double>(bytes_per_mib) << " MiB\n\n";
+    std::cout << std::left << std::setw(18) << "lookup" << std::right << std::setw(18) << no_entry_prefetch_policy::name
+              << std::setw(18) << control_prefetch_policy::name << std::setw(18) << control_state_prefetch_policy::name
+              << std::setw(18) << staged_prefetch_policy::name << '\n';
+
+    auto print_capture_staged = [&]<typename spline_policy_t>(std::string_view lookup_name) {
+        auto const none = benchmark_scheduled_trace_entry_median<no_entry_prefetch_policy, spline_policy_t>(
+            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+        auto const control = benchmark_scheduled_trace_entry_median<control_prefetch_policy, spline_policy_t>(
+            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+        auto const both = benchmark_scheduled_trace_entry_median<control_state_prefetch_policy, spline_policy_t>(
+            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+        auto const staged = benchmark_scheduled_trace_entry_median<staged_prefetch_policy, spline_policy_t>(
+            entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+
+        std::cout << std::left << std::setw(18) << lookup_name << std::right << std::fixed << std::setprecision(2)
+                  << std::setw(18) << none << std::setw(18) << control << std::setw(18) << both << std::setw(18)
+                  << staged << '\n';
+    };
+
+    print_capture_staged.template operator()<full_hint_policy_t>("production-full");
+    print_capture_staged.template operator()<leaf_hint_policy>("leaf-range");
+    std::cout << "\nentry schedule uses replayed spline x with synthetic normal framing and real frame/report "
+                 "inspection\n";
+
+    std::cout << "\nspline extra-prefetch request\n";
+    std::cout << std::left << std::setw(18) << "entry" << std::setw(18) << "lookup" << std::right << std::setw(18)
+              << tangent_prefetch_policy::name << std::setw(18) << header_prefetch_policy::name << std::setw(18)
+              << no_spline_extra_prefetch_policy::name << '\n';
+
+    auto print_capture_extra = [&]<typename entry_policy_t, typename spline_policy_t>(
+                                   std::string_view entry_name, std::string_view lookup_name) {
+        auto const tangent
+            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, tangent_prefetch_policy>(
+                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+        auto const header
+            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, header_prefetch_policy>(
+                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+        auto const none
+            = benchmark_scheduled_trace_entry_median<entry_policy_t, spline_policy_t, no_spline_extra_prefetch_policy>(
+                entry_data, entry_order, entry_offsets, trace.speed, rotations, trials);
+
+        std::cout << std::left << std::setw(18) << entry_name << std::setw(18) << lookup_name << std::right
+                  << std::fixed << std::setprecision(2) << std::setw(18) << tangent << std::setw(18) << header
+                  << std::setw(18) << none << '\n';
+    };
+
+    print_capture_extra.template operator()<control_state_prefetch_policy, full_hint_policy_t>(
+        "control+state", "production-full");
+    print_capture_extra.template operator()<staged_prefetch_policy, full_hint_policy_t>("staged", "production-full");
+    print_capture_extra.template operator()<control_state_prefetch_policy, leaf_hint_policy>(
+        "control+state", "leaf-range");
+    print_capture_extra.template operator()<staged_prefetch_policy, leaf_hint_policy>("staged", "leaf-range");
+    std::cout << "\nheader is the spline locator/header line containing x_max; tangent is the current production "
+                 "request\n";
     return 0;
 }
 
