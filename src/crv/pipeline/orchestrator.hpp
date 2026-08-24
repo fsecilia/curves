@@ -26,9 +26,10 @@ public:
     using accumulator_t = t_accumulator_t;
     using prefetcher_t = t_prefetcher_t;
 
-    using duration_t = typename timer_t::duration_t;
-    using timestamp_t = typename timer_t::timestamp_t;
-    using velocity_scale_t = typename velocity_t::scale_t;
+    using duration_t = timer_t::duration_t;
+    using timestamp_t = timer_t::timestamp_t;
+    using velocity_scale_t = velocity_t::scale_t;
+    using gain_hint_t = gain_t::hint_t;
 
     struct alignas(64) config_t
     {
@@ -42,6 +43,7 @@ public:
         timer_t timer{};
         speed_filter_t speed_filter{};
         accumulator_t accumulator{};
+        gain_hint_t gain_hint{};
     };
 
     config_t config{};
@@ -67,13 +69,17 @@ public:
         if (timing.status == timer_t::status_t::initial) return pipeline_result_t::warmup;
         if (timing.status != timer_t::status_t::ready) return pipeline_result_t::invalid_timestamp;
 
-        gain.prefetch(prefetcher);
+        auto const filter_enabled = config.half_life != duration_t{};
+        static constexpr auto lookup_mode = gain_t::lookup_mode_t::full;
+        gain.prefetch(state.gain_hint, lookup_mode, prefetcher);
 
         auto const speed = velocity(report.x(), report.y(), timing.duration, config.velocity_scale);
         if (!speed.valid) return pipeline_result_t::velocity_out_of_range;
 
-        auto const filtered_speed = state.speed_filter(speed.value, config.half_life, timing.duration);
-        auto const scalar_gain = gain(filtered_speed);
+        auto filtered_speed = speed.value;
+        if (filter_enabled) filtered_speed = state.speed_filter(speed.value, config.half_life, timing.duration);
+
+        auto const scalar_gain = gain.evaluate(filtered_speed, state.gain_hint, lookup_mode);
         auto const transformed = config.output_transform(report.x(), report.y(), scalar_gain);
         if (!transformed.valid) return pipeline_result_t::transform_input_out_of_range;
 

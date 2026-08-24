@@ -30,6 +30,17 @@ struct curves_test_t
     using impl_t = spline_factory_t::spline_t;
     using error_metrics_t = error_metrics_t<error_metrics_policy_t<in_t, reference_float_t, out_t>>;
 
+    struct approximation_t
+    {
+        impl_t const* spline;
+        mutable impl_t::hint_t hint{};
+
+        auto operator()(in_t x) const noexcept -> out_t
+        {
+            return spline->evaluate(x, hint, impl_t::lookup_mode_t::full);
+        }
+    };
+
     auto operator()() noexcept -> void
     {
         using range_t = sweep_range_t<in_t>;
@@ -46,8 +57,9 @@ struct curves_test_t
         auto approx_impl = impl_t{};
         spline_factory_t{}(approx_impl, target, reference_float_t{1e-10});
 
-        auto const runner
-            = accuracy_test_runner_t<decltype(approx_impl), decltype(ref_impl), error_metrics_t>{approx_impl, ref_impl};
+        auto const approximation = approximation_t{.spline = &approx_impl};
+        auto const runner = accuracy_test_runner_t<decltype(approximation), decltype(ref_impl), error_metrics_t>{
+            approximation, ref_impl};
 
         auto const min = in_t{};
         auto const max = in_t{spline_factory_policy_t::domain_end};

@@ -112,16 +112,35 @@ struct orchestrator_test_t : Test
     struct mock_gain_t
     {
         virtual ~mock_gain_t() = default;
-        MOCK_METHOD(void, prefetch, (), (const, noexcept));
-        MOCK_METHOD(gain_value_t, call, (speed_t), (const, noexcept));
+        MOCK_METHOD(void, prefetch, (int_t, bool), (const, noexcept));
+        MOCK_METHOD(gain_value_t, call, (speed_t, int_t, bool), (const, noexcept));
     };
     StrictMock<mock_gain_t> mock_gain;
 
     struct gain_t
     {
+        struct hint_t
+        {
+            int_t value{};
+        };
+
+        enum class lookup_mode_t
+        {
+            full,
+            hinted_leaf
+        };
+
         mock_gain_t* mock = nullptr;
-        auto prefetch(prefetcher_t const&) const noexcept -> void { mock->prefetch(); }
-        auto operator()(speed_t speed) const noexcept -> gain_value_t { return mock->call(speed); }
+
+        auto prefetch(hint_t const& hint, lookup_mode_t mode, prefetcher_t const&) const noexcept -> void
+        {
+            mock->prefetch(hint.value, mode == lookup_mode_t::hinted_leaf);
+        }
+
+        auto evaluate(speed_t speed, hint_t& hint, lookup_mode_t mode) const noexcept -> gain_value_t
+        {
+            return mock->call(speed, hint.value, mode == lookup_mode_t::hinted_leaf);
+        }
     };
 
     struct output_transform_result_t
@@ -143,6 +162,7 @@ struct orchestrator_test_t : Test
         using result_t = output_transform_result_t;
 
         mock_output_transform_t* mock = nullptr;
+
         auto operator()(int32_t x, int32_t y, gain_value_t gain) const noexcept -> result_t
         {
             return mock->call(x, y, gain);
@@ -171,6 +191,7 @@ struct orchestrator_test_t : Test
         using reservation_t = accumulator_reservation_t;
 
         mock_accumulator_t* mock = nullptr;
+
         auto reserve(transformed_t x, transformed_t y) const noexcept -> reservation_t { return mock->reserve(x, y); }
         auto commit(reservation_t const& reservation) noexcept -> void { mock->commit(reservation); }
     };
@@ -230,22 +251,23 @@ struct orchestrator_test_t : Test
 
         EXPECT_CALL(mock_timer, call(timestamp))
             .WillOnce(Return(timer_t::result_t{.duration = duration, .status = timer_t::status_t::ready}));
-        EXPECT_CALL(mock_gain, prefetch());
+        EXPECT_CALL(mock_gain, prefetch(0, false));
         EXPECT_CALL(mock_velocity, call(original_x, original_y, duration, velocity_scale))
             .WillOnce(Return(velocity_t::result_t{.value = speed, .valid = true}));
         EXPECT_CALL(mock_speed_filter, call(speed, half_life, duration)).WillOnce(Return(filtered_speed));
-        EXPECT_CALL(mock_gain, call(filtered_speed)).WillOnce(Return(scalar_gain));
+        EXPECT_CALL(mock_gain, call(filtered_speed, 0, false)).WillOnce(Return(scalar_gain));
         EXPECT_CALL(mock_output_transform, call(original_x, original_y, scalar_gain))
             .WillOnce(Return(output_transform_t::result_t{.x = transformed_x, .y = transformed_y, .valid = true}));
         EXPECT_CALL(mock_accumulator, reserve(transformed_x, transformed_y))
             .WillOnce(Return(
                 accumulator_t::reservation_t{.x = reservation.x, .y = reservation.y, .valid = reservation_valid}));
     }
+
+    InSequence const seq{};
 };
 
 TEST_F(orchestrator_test_t, prefetches_config_and_state)
 {
-    auto const seq = InSequence{};
     EXPECT_CALL(mock_prefetcher, prefetch(&sut.config));
     EXPECT_CALL(mock_prefetcher, prefetch(&sut.state));
 
@@ -255,7 +277,7 @@ TEST_F(orchestrator_test_t, prefetches_config_and_state)
 TEST_F(orchestrator_test_t, orchestrates_real_stage_order_and_commits_only_after_store)
 {
     auto input = report();
-    auto const seq = InSequence{};
+
     expect_through_reservation();
     EXPECT_CALL(mock_report, try_store(reservation.x, reservation.y)).WillOnce(Return(true));
     EXPECT_CALL(mock_accumulator, commit(reservation));
@@ -266,7 +288,7 @@ TEST_F(orchestrator_test_t, orchestrates_real_stage_order_and_commits_only_after
 TEST_F(orchestrator_test_t, append_failure_keeps_observation_calls_but_does_not_commit_residual)
 {
     auto input = report();
-    auto const seq = InSequence{};
+
     expect_through_reservation();
     EXPECT_CALL(mock_report, try_store(reservation.x, reservation.y)).WillOnce(Return(false));
 
@@ -279,10 +301,9 @@ TEST_F(orchestrator_test_t, velocity_failure_stops_before_filter_and_preserves_r
     auto const original_y = int32_t{-4};
     auto input = report(original_x, original_y);
 
-    auto const seq = InSequence{};
     EXPECT_CALL(mock_timer, call(timestamp))
         .WillOnce(Return(timer_t::result_t{.duration = duration, .status = timer_t::status_t::ready}));
-    EXPECT_CALL(mock_gain, prefetch());
+    EXPECT_CALL(mock_gain, prefetch(0, false));
     EXPECT_CALL(mock_velocity, call(original_x, original_y, duration, velocity_scale))
         .WillOnce(Return(velocity_t::result_t{}));
 
@@ -295,14 +316,13 @@ TEST_F(orchestrator_test_t, transform_failure_keeps_observation_state_but_does_n
     auto const original_y = int32_t{-4};
     auto input = report(original_x, original_y);
 
-    auto const seq = InSequence{};
     EXPECT_CALL(mock_timer, call(timestamp))
         .WillOnce(Return(timer_t::result_t{.duration = duration, .status = timer_t::status_t::ready}));
-    EXPECT_CALL(mock_gain, prefetch());
+    EXPECT_CALL(mock_gain, prefetch(0, false));
     EXPECT_CALL(mock_velocity, call(original_x, original_y, duration, velocity_scale))
         .WillOnce(Return(velocity_t::result_t{.value = speed, .valid = true}));
     EXPECT_CALL(mock_speed_filter, call(speed, half_life, duration)).WillOnce(Return(filtered_speed));
-    EXPECT_CALL(mock_gain, call(filtered_speed)).WillOnce(Return(scalar_gain));
+    EXPECT_CALL(mock_gain, call(filtered_speed, 0, false)).WillOnce(Return(scalar_gain));
     EXPECT_CALL(mock_output_transform, call(original_x, original_y, scalar_gain))
         .WillOnce(Return(output_transform_t::result_t{}));
 
@@ -312,16 +332,36 @@ TEST_F(orchestrator_test_t, transform_failure_keeps_observation_state_but_does_n
 TEST_F(orchestrator_test_t, invalid_reservation_does_not_mutate_report_or_commit_residual)
 {
     auto input = report();
-    auto const seq = InSequence{};
+
     expect_through_reservation(false);
 
     EXPECT_EQ(sut.process(input, timestamp), pipeline_result_t::output_out_of_range);
 }
 
+TEST_F(orchestrator_test_t, zero_half_life_bypasses_filter_and_uses_full_locator)
+{
+    sut.config.half_life = duration_t{};
+    auto input = report();
+
+    EXPECT_CALL(mock_timer, call(timestamp))
+        .WillOnce(Return(timer_t::result_t{.duration = duration, .status = timer_t::status_t::ready}));
+    EXPECT_CALL(mock_gain, prefetch(0, false));
+    EXPECT_CALL(mock_velocity, call(3, -4, duration, velocity_scale))
+        .WillOnce(Return(velocity_t::result_t{.value = speed, .valid = true}));
+    EXPECT_CALL(mock_gain, call(speed, 0, false)).WillOnce(Return(scalar_gain));
+    EXPECT_CALL(mock_output_transform, call(3, -4, scalar_gain))
+        .WillOnce(Return(output_transform_t::result_t{.x = transformed_x, .y = transformed_y, .valid = true}));
+    EXPECT_CALL(mock_accumulator, reserve(transformed_x, transformed_y)).WillOnce(Return(reservation));
+    EXPECT_CALL(mock_report, try_store(reservation.x, reservation.y)).WillOnce(Return(true));
+    EXPECT_CALL(mock_accumulator, commit(reservation));
+
+    EXPECT_EQ(sut.process(input, timestamp), pipeline_result_t::applied);
+}
+
 TEST_F(orchestrator_test_t, first_report_only_initializes_observation_timing)
 {
     auto input = report();
-    auto const seq = InSequence{};
+
     EXPECT_CALL(mock_timer, call(timestamp)).WillOnce(Return(timer_t::result_t{.status = timer_t::status_t::initial}));
 
     EXPECT_EQ(sut.process(input, timestamp), pipeline_result_t::warmup);
@@ -338,7 +378,7 @@ TEST_F(orchestrator_test_t, invalid_report_stops_before_observation_state)
 TEST_F(orchestrator_test_t, invalid_timestamp_stops_before_spline_and_numerical_path)
 {
     auto input = report();
-    auto const seq = InSequence{};
+
     EXPECT_CALL(mock_timer, call(timestamp)).WillOnce(Return(timer_t::result_t{.status = timer_t::status_t::invalid}));
 
     EXPECT_EQ(sut.process(input, timestamp), pipeline_result_t::invalid_timestamp);

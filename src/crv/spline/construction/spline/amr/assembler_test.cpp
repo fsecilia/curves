@@ -151,13 +151,9 @@ struct spline_t
     using segment_locator_t = segment_locator_t;
     static constexpr auto max_segment_count = segment_locator_t::max_segment_count;
 
-    struct payload_t
-    {
-        std::array<segment_t, max_segment_count> segments{};
-        segment_locator_t segment_locator{};
-        int_t extend_final_tangent{};
-    };
-    payload_t payload;
+    std::array<segment_t, max_segment_count> segments{};
+    segment_locator_t segment_locator{};
+    int_t extend_final_tangent{};
 };
 
 struct workspace_t
@@ -202,11 +198,11 @@ TEST(spline_assembler_test, vs_real_dependencies)
     EXPECT_TRUE(state.workspace.completed_intervals.empty());
 
     // payload must be sorted
-    EXPECT_EQ(spline.payload.segments[0].payload_id, 42);
-    EXPECT_EQ(spline.payload.segments[1].payload_id, 73);
+    EXPECT_EQ(spline.segments[0].payload_id, 42);
+    EXPECT_EQ(spline.segments[1].payload_id, 73);
 
     // locator must be populated
-    auto const& locator = spline.payload.segment_locator;
+    auto const& locator = spline.segment_locator;
     EXPECT_EQ(locator.count, 2);
     EXPECT_EQ(locator.max_x, to_fixed<x_t>(100.0));
 
@@ -215,7 +211,7 @@ TEST(spline_assembler_test, vs_real_dependencies)
     EXPECT_EQ(locator.keys[1], to_fixed<x_t>(100.0));
 
     // tangent extender must run on final interval
-    EXPECT_EQ(spline.payload.segments[1].payload_id, spline.payload.extend_final_tangent);
+    EXPECT_EQ(spline.segments[1].payload_id, spline.extend_final_tangent);
 }
 
 //
@@ -254,7 +250,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
 
     EXPECT_TRUE(state.workspace.completed_intervals.empty());
 
-    auto const& locator = spline.payload.segment_locator;
+    auto const& locator = spline.segment_locator;
     EXPECT_EQ(locator.count, count);
     EXPECT_EQ(locator.max_x, x_max_fixed);
 
@@ -262,7 +258,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
     for (auto i = 0; i < count; ++i)
     {
         auto const expected_id = i + 1;
-        EXPECT_EQ(spline.payload.segments[i].payload_id, expected_id);
+        EXPECT_EQ(spline.segments[i].payload_id, expected_id);
     }
 
     // inner keys should be in sorted order up to count - 2
@@ -277,7 +273,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
     for (auto i = count - 1; i < segment_locator_t::total_key_count; ++i) { EXPECT_EQ(locator.keys[i], x_max_fixed); }
 
     // tangent extender should run against final segment
-    EXPECT_EQ(spline.payload.segments[count - 1].payload_id, spline.payload.extend_final_tangent);
+    EXPECT_EQ(spline.segments[count - 1].payload_id, spline.extend_final_tangent);
 }
 
 INSTANTIATE_TEST_SUITE_P(

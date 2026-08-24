@@ -56,6 +56,7 @@ class pipeline_t
     using orchestrator_t = pipeline::orchestrator_t<timer_t, velocity_impl_t, speed_filter_t, gain_impl_t,
         output_transform_impl_t, accumulator_t, static_prefetcher_t>;
 
+    static_assert(sizeof(gain_impl_t::hint_t) == 24);
     static_assert(sizeof(orchestrator_t::config_t) == 64);
     static_assert(sizeof(orchestrator_t::state_t) == 64);
 
@@ -67,8 +68,8 @@ public:
     using gain_t = gain_impl_t;
 
     constexpr pipeline_t() noexcept = default;
-    constexpr pipeline_t(config_t config, gain_t gain) noexcept
-        : orchestrator_{.config = std::move(config), .gain = std::move(gain)}
+    constexpr pipeline_t(config_t config, gain_t const& gain) noexcept
+        : orchestrator_{.config = std::move(config), .gain = gain}
     {}
 
     struct result_t

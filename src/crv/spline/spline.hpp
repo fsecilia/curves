@@ -10,61 +10,49 @@
 #include <crv/math/int_traits.hpp>
 #include <array>
 #include <cassert>
+#include <type_traits>
 
 namespace crv::spline {
 
 /// fixed-point spline evaluating gain induced by local transfer Hermite cubics over a specific domain
-template <typename t_segment_t, typename t_extended_tangent_t, typename t_segment_locator_t> class spline_t
+template <typename t_segment_t, typename t_extended_tangent_t, typename t_segment_locator_t> struct spline_t
 {
-public:
     using segment_t = t_segment_t;
     using extended_tangent_t = t_extended_tangent_t;
     using segment_locator_t = t_segment_locator_t;
 
     using x_t = segment_t::x_t;
     using y_t = segment_t::y_t;
+    using hint_t = segment_locator_t::hint_t;
 
     static constexpr auto max_segment_count = segment_locator_t::max_segment_count;
-
     using segments_t = std::array<segment_t, max_segment_count>;
 
-    /// wire format
-    struct payload_t
+    enum class lookup_mode_t
     {
-        // these are ordered for overall cache-friendliness in operator ()
-        segment_locator_t segment_locator{};
-        alignas(64) segments_t segments{}; // *must* be aligned or the prefetching scheme is useless
-        extended_tangent_t extend_final_tangent{};
+        full,
+        hinted_leaf,
     };
 
-    /// public payload
-    ///
-    /// The spline is at least 10 KiB. Keeping the payload inline avoids another full copy on assignment and avoids a
-    /// pointer chase in the kernel. Its component types keep their own invariants.
-    payload_t payload{};
-
-    constexpr spline_t() noexcept = default;
-    constexpr spline_t(payload_t payload) noexcept : payload{std::move(payload)} {}
+    segment_locator_t segment_locator{};
+    alignas(64) segments_t segments{};
+    extended_tangent_t extend_final_tangent{};
 
     /// \pre 0 <= x
     /// This function is marked always_inline because the mangled name is too long and breaks objtool.
-    CRV_ALWAYS_INLINE constexpr auto operator()(x_t x) const noexcept -> y_t
+    CRV_ALWAYS_INLINE constexpr auto evaluate(x_t x, hint_t& hint, lookup_mode_t lookup_mode) const noexcept -> y_t
     {
         assert(x_t{0} <= x && "spline_t: input out of bounds");
 
-        auto const x_max = payload.segment_locator.x_max();
+        auto const x_max = segment_locator.x_max();
+        if (x >= x_max) return extend_final_tangent(x - x_max);
 
-        if (x >= x_max) return payload.extend_final_tangent(x - x_max);
-
-        auto const location = payload.segment_locator.locate(x);
-        assert(0 <= location.index && location.index < payload.segment_locator.segment_count()
+        auto const location = segment_locator.locate(x, hint, lookup_mode == lookup_mode_t::hinted_leaf);
+        assert(0 <= location.index && location.index < segment_locator.segment_count()
             && "spline_t: located segment index out of bounds");
         assert(0 <= location.origin && location.origin <= x && "spline_t: located segment origin out of range");
 
-        if !consteval { prev_segment_index_ = location.index; }
-
-        auto const& segment = payload.segments[location.index];
-        return segment(x, location.origin);
+        return segments[location.index](x, location.origin);
     }
 
     /// validates data the driver receives
@@ -72,44 +60,41 @@ public:
     {
         // this type goes over the ioctl boundary, so it must be trivially copyable
         static_assert(std::is_trivially_copyable_v<spline_t>);
-
-        auto const segment_count = payload.segment_locator.segment_count();
-
-        // prev_segment_index_ must be in [0, locator.segment_count()); locator.is_valid() owns the count's range check
-        if (prev_segment_index_ < 0 || segment_count <= prev_segment_index_) return false;
-
-        // dispatch to segment locator
-        if (!payload.segment_locator.is_valid()) return false;
-
-        return true;
+        static_assert(std::is_standard_layout_v<spline_t>);
+        return segment_locator.is_valid();
     }
 
-    constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
+    constexpr auto prefetch(hint_t const& hint, lookup_mode_t lookup_mode, auto const& prefetcher) const noexcept
+        -> void
     {
-        prefetch_segments(prefetcher);
-        payload.segment_locator.prefetch(prefetcher);
-        prefetcher.prefetch(&payload.extend_final_tangent);
+        prefetch_segments(hint, prefetcher);
+
+        if (lookup_mode == lookup_mode_t::hinted_leaf) segment_locator.prefetch(hint, prefetcher);
+        else segment_locator.prefetch(prefetcher);
+
+        prefetcher.prefetch(&extend_final_tangent);
     }
 
 private:
     /// prefetches the last selected segment and its neighbors
     ///
     /// Mouse velocity usually stays near its previous segment, so these are the most likely next cache lines.
-    auto prefetch_segments(auto const& prefetcher) const noexcept -> void
+    auto prefetch_segments(hint_t const& hint, auto const& prefetcher) const noexcept -> void
     {
+        assert(
+            0 <= hint.segment_index && hint.segment_index < max_segment_count && "spline_t: hint index out of bounds");
+
         // these casts are required to prevent ub when forming addresses outside of the array
-        auto const base_address = reinterpret_cast<std::uintptr_t>(payload.segments.data());
+        auto const base_address = reinterpret_cast<std::uintptr_t>(segments.data());
         auto const offset = sizeof(segment_t);
 
         // prefetch current segment and neighbors
         //
         // Cache-line alignment lets two addresses cover all three segments. At either end, one address may land in
         // neighboring payload storage; prefetch tolerates that, so no boundary branches are needed.
-        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ - 1) * offset));
-        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (prev_segment_index_ + 1) * offset));
+        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (hint.segment_index - 1) * offset));
+        prefetcher.prefetch(reinterpret_cast<void const*>(base_address + (hint.segment_index + 1) * offset));
     }
-
-    mutable int_t prev_segment_index_ = 0;
 };
 
 } // namespace crv::spline

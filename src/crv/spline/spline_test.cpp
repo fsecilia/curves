@@ -11,12 +11,11 @@
 namespace crv::spline {
 namespace {
 
-using x_t = int8_t; // narrower than y_t
-using y_t = int16_t; // wider than x_t
+using x_t = int8_t;
+using y_t = int16_t;
 constexpr auto segment_count = 3;
 constexpr auto x_max = x_t{5};
 
-// adds dx to a distinct base_val
 struct segment_t
 {
     using x_t = x_t;
@@ -27,7 +26,6 @@ struct segment_t
     constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t { return static_cast<y_t>(base_val + (x - x0)); }
 };
 
-// adds dx to a distinct base_val
 struct extended_tangent_t
 {
     y_t base_val;
@@ -35,7 +33,6 @@ struct extended_tangent_t
     constexpr auto operator()(x_t x) const noexcept -> y_t { return static_cast<y_t>(base_val + x); }
 };
 
-// maps subdomains of width 2 to sequential indices
 struct segment_locator_t
 {
     static constexpr auto max_segment_count = segment_count;
@@ -44,14 +41,19 @@ struct segment_locator_t
     {
         int_t index;
         x_t origin;
-
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
     };
 
-    constexpr auto locate(x_t x) const noexcept -> result_t
+    struct hint_t
+    {
+        int_t segment_index{};
+    };
+
+    constexpr auto locate(x_t x, hint_t& hint, bool) const noexcept -> result_t
     {
         x_t const index = x / 2;
+        hint.segment_index = index;
         return {.index = static_cast<int_t>(index), .origin = static_cast<x_t>(index * 2)};
     }
 
@@ -68,30 +70,26 @@ using sut_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
 
 constexpr auto segments = std::array<segment_t, sut_t::max_segment_count>{{{10}, {20}, {30}}};
 constexpr auto extended_tangent = extended_tangent_t{40};
-constexpr auto const sut = sut_t{sut_t::payload_t{segment_locator_t{x_max, segment_count}, segments, extended_tangent}};
+constexpr auto const sut = sut_t{
+    .segment_locator = segment_locator_t{x_max, segment_count},
+    .segments = segments,
+    .extend_final_tangent = extended_tangent,
+};
 
-// x in [0, 1] -> base 10
-static_assert(sut(0) == 10);
-static_assert(sut(1) == 11);
+constexpr auto evaluate(x_t x) noexcept -> y_t
+{
+    auto hint = sut_t::hint_t{};
+    return sut.evaluate(x, hint, sut_t::lookup_mode_t::full);
+}
 
-// x in [2, 3] -> base 20
-static_assert(sut(2) == 20);
-static_assert(sut(3) == 21);
-
-// x in [4] -> base 30
-static_assert(sut(4) == 30);
-
-// extended final tangent: x >= x_max (5)
-static_assert(sut(5) == 40);
-static_assert(sut(6) == 41);
-
-// maximum input value; x_max is 5, max_in is 127, x = 122.
-// extended base_val is 40, result should be 40 + 122 = 162.
-static_assert(sut(max<x_t>()) == 162);
-
-// --------------------------------------------------------------------------------------------------------------------
-// prefetch
-// --------------------------------------------------------------------------------------------------------------------
+static_assert(evaluate(0) == 10);
+static_assert(evaluate(1) == 11);
+static_assert(evaluate(2) == 20);
+static_assert(evaluate(3) == 21);
+static_assert(evaluate(4) == 30);
+static_assert(evaluate(5) == 40);
+static_assert(evaluate(6) == 41);
+static_assert(evaluate(max<x_t>()) == 162);
 
 struct spline_prefetch_test_t : Test
 {
@@ -112,28 +110,23 @@ struct spline_prefetch_test_t : Test
 
     struct mock_prefetcher_t
     {
-        MOCK_METHOD(void, prefetch, (void const* address), (const, noexcept));
-
         virtual ~mock_prefetcher_t() = default;
+        MOCK_METHOD(void, prefetch, (void const* address), (const, noexcept));
     };
     StrictMock<mock_prefetcher_t> mock_prefetcher;
 
     struct prefetcher_t
     {
         mock_prefetcher_t* mock = nullptr;
-
         auto prefetch(void const* address) const noexcept -> void { mock->prefetch(address); }
     };
     prefetcher_t prefetcher{&mock_prefetcher};
 
     struct mock_locator_t
     {
-        using result_t = segment_locator_t::result_t;
-
         virtual ~mock_locator_t() = default;
-
-        MOCK_METHOD(result_t, locate, (x_t), (const, noexcept));
-        MOCK_METHOD(void, prefetch, (mock_prefetcher_t const& prefetcher), (const, noexcept));
+        MOCK_METHOD(void, prefetch_full, (), (const, noexcept));
+        MOCK_METHOD(void, prefetch_hint, (int_t), (const, noexcept));
     };
     StrictMock<mock_locator_t> mock_locator;
 
@@ -141,29 +134,42 @@ struct spline_prefetch_test_t : Test
     {
         static constexpr auto max_segment_count = segment_count;
 
-        using result_t = mock_locator_t::result_t;
+        struct result_t
+        {
+            int_t index;
+            x_t origin;
+        };
+
+        struct hint_t
+        {
+            int_t segment_index{};
+        };
 
         mock_locator_t* mock = nullptr;
 
         auto segment_count() const noexcept -> int_t { return spline::segment_count; }
         auto x_max() const noexcept -> x_t { return spline::x_max; }
         auto is_valid() const noexcept -> bool { return true; }
-
-        auto locate(x_t in) const noexcept -> result_t { return mock->locate(in); }
-        auto prefetch(auto const& prefetcher) const noexcept -> void { mock->prefetch(*prefetcher.mock); }
+        auto locate(x_t, hint_t&, bool) const noexcept -> result_t { return {}; }
+        auto prefetch(auto const&) const noexcept -> void { mock->prefetch_full(); }
+        auto prefetch(hint_t const& hint, auto const&) const noexcept -> void
+        {
+            mock->prefetch_hint(hint.segment_index);
+        }
     };
-
-    using sut_t = spline_t<segment_t, extended_tangent_t, locator_t>;
-    sut_t sut{sut_t::payload_t{locator_t{.mock = &mock_locator}, {}, {}}};
 
     static constexpr auto expected_segment = segment_count - 1;
     static constexpr auto expected_fetch_distance = 2 * sizeof(segment_t);
+
+    using sut_t = spline_t<segment_t, extended_tangent_t, locator_t>;
+    sut_t sut{.segment_locator = locator_t{.mock = &mock_locator}};
+
+    typename sut_t::hint_t hint{};
 };
 
-TEST_F(spline_prefetch_test_t, initial_state_prefetches_adjacents_at_head)
+TEST_F(spline_prefetch_test_t, full_lookup_prefetches_upper_locator_and_segment_neighbors)
 {
-    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
-
+    EXPECT_CALL(mock_locator, prefetch_full());
     void const* prefetched_cache_lines[3];
     {
         auto const seq = InSequence{};
@@ -171,38 +177,16 @@ TEST_F(spline_prefetch_test_t, initial_state_prefetches_adjacents_at_head)
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[2]));
     }
-
-    sut.prefetch(prefetcher);
-
+    sut.prefetch(hint, sut_t::lookup_mode_t::full, prefetcher);
     auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
         - static_cast<std::byte const*>(prefetched_cache_lines[0]);
-
     EXPECT_EQ(expected_fetch_distance, actual_distance);
 }
 
-TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
+TEST_F(spline_prefetch_test_t, hinted_lookup_prefetches_leaf_and_new_segment_neighbors)
 {
-    // prefetch initial to find location of segments
-    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
-    void const* initial_prefetched_cache_lines[3];
-    {
-        auto const seq = InSequence{};
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&initial_prefetched_cache_lines[0]));
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&initial_prefetched_cache_lines[1]));
-        EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&initial_prefetched_cache_lines[2]));
-    }
-    sut.prefetch(prefetcher);
-    auto const* segments = static_cast<std::byte const*>(initial_prefetched_cache_lines[0]) + sizeof(segment_t);
-
-    // evaluate through the final segment so prev_segment_index_ becomes 2
-    auto const x = x_t{expected_segment};
-    EXPECT_CALL(mock_locator, locate(x))
-        .WillOnce(Return(segment_locator_t::result_t{.index = expected_segment, .origin = 0}));
-    sut(x);
-
-    // prefetch again using the updated prev_segment_index_
-    EXPECT_CALL(mock_locator, prefetch(Ref(mock_prefetcher)));
-
+    hint.segment_index = expected_segment;
+    EXPECT_CALL(mock_locator, prefetch_hint(expected_segment));
     void const* prefetched_cache_lines[3];
     {
         auto const seq = InSequence{};
@@ -210,14 +194,12 @@ TEST_F(spline_prefetch_test_t, mutates_index_and_prefetches_new_adjacents)
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[1]));
         EXPECT_CALL(mock_prefetcher, prefetch(_)).WillOnce(SaveArg<0>(&prefetched_cache_lines[2]));
     }
-
-    sut.prefetch(prefetcher);
-
+    sut.prefetch(hint, sut_t::lookup_mode_t::hinted_leaf, prefetcher);
     auto const actual_distance = static_cast<std::byte const*>(prefetched_cache_lines[1])
         - static_cast<std::byte const*>(prefetched_cache_lines[0]);
     EXPECT_EQ(expected_fetch_distance, actual_distance);
-
-    auto const expected_cache_line_0 = segments + (expected_segment - 1) * sizeof(segment_t);
+    auto const expected_cache_line_0
+        = reinterpret_cast<std::byte const*>(sut.segments.data()) + (expected_segment - 1) * sizeof(segment_t);
     EXPECT_EQ(expected_cache_line_0, static_cast<std::byte const*>(prefetched_cache_lines[0]));
 }
 
@@ -235,66 +217,85 @@ struct spline_death_test_t : Test
 
 TEST_F(spline_death_test_t, establish_valid_case)
 {
-    static_cast<void>(sut_t{sut_t::payload_t{segment_locator_t{}, segments, extended_tangent}});
+    static_cast<void>(
+        sut_t{.segment_locator = segment_locator_t{}, .segments = segments, .extend_final_tangent = extended_tangent});
 }
 
-TEST_F(spline_death_test_t, call_operator_catches_negative_x)
+TEST_F(spline_death_test_t, evaluate_catches_negative_x)
 {
-    EXPECT_DEATH(
-        (sut_t{sut_t::payload_t{segment_locator_t{}, segments, extended_tangent}}(x_t{-1})), "input out of bounds");
+    auto const spline
+        = sut_t{.segment_locator = segment_locator_t{}, .segments = segments, .extend_final_tangent = extended_tangent};
+    auto hint = sut_t::hint_t{};
+    EXPECT_DEATH(spline.evaluate(x_t{-1}, hint, sut_t::lookup_mode_t::full), "input out of bounds");
 }
 
-//
-// call operator interactions with segment_locator_t
-//
-
-struct spline_death_test_call_operator_malicious_locator_t : spline_death_test_t
+struct spline_death_test_evaluate_malicious_locator_t : spline_death_test_t
 {
     struct malicious_locator_t
     {
-        static constexpr auto max_segment_count = segment_count;
-
         using result_t = segment_locator_t::result_t;
+        using hint_t = segment_locator_t::hint_t;
 
+        static constexpr auto max_segment_count = segment_count;
         x_t index = 0;
         x_t origin = 0;
-        constexpr auto locate(x_t) const noexcept -> result_t { return {.index = index, .origin = origin}; }
 
+        constexpr auto locate(x_t, hint_t&, bool) const noexcept -> result_t
+        {
+            return {.index = index, .origin = origin};
+        }
         constexpr auto x_max() const noexcept -> x_t { return spline::x_max; }
         constexpr auto segment_count() const noexcept -> int_t { return spline::segment_count; }
     };
 
     using sut_t = spline_t<segment_t, extended_tangent_t, malicious_locator_t>;
+
+    sut_t::hint_t hint{};
 };
 
-TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_index)
+TEST_F(spline_death_test_evaluate_malicious_locator_t, negative_index)
 {
-    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.index = -1}, segments, extended_tangent}};
+    auto const spline = sut_t{
+        .segment_locator = malicious_locator_t{.index = -1},
+        .segments = segments,
+        .extend_final_tangent = extended_tangent,
+    };
 
-    EXPECT_DEATH(sut(0), "index out of bounds");
+    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "index out of bounds");
 }
 
-TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_index)
+TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_index)
 {
-    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.index = 127}, segments, extended_tangent}};
+    auto const spline = sut_t{
+        .segment_locator = malicious_locator_t{.index = 127},
+        .segments = segments,
+        .extend_final_tangent = extended_tangent,
+    };
 
-    EXPECT_DEATH(sut(0), "index out of bounds");
+    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "index out of bounds");
 }
 
-TEST_F(spline_death_test_call_operator_malicious_locator_t, negative_origin)
+TEST_F(spline_death_test_evaluate_malicious_locator_t, negative_origin)
 {
-    auto const sut = sut_t{sut_t::payload_t{malicious_locator_t{.origin = -1}, segments, extended_tangent}};
+    auto const spline = sut_t{
+        .segment_locator = malicious_locator_t{.origin = -1},
+        .segments = segments,
+        .extend_final_tangent = extended_tangent,
+    };
 
-    EXPECT_DEATH(sut(0), "origin out of range");
+    EXPECT_DEATH(spline.evaluate(0, hint, sut_t::lookup_mode_t::full), "origin out of range");
 }
 
-TEST_F(spline_death_test_call_operator_malicious_locator_t, oor_origin)
+TEST_F(spline_death_test_evaluate_malicious_locator_t, oor_origin)
 {
     auto const x = x_t{x_max - 2};
-    auto const sut
-        = sut_t{sut_t::payload_t{malicious_locator_t{.origin = static_cast<x_t>(x + 1)}, segments, extended_tangent}};
+    auto const spline = sut_t{
+        .segment_locator = malicious_locator_t{.origin = static_cast<x_t>(x + 1)},
+        .segments = segments,
+        .extend_final_tangent = extended_tangent,
+    };
 
-    EXPECT_DEATH(sut(x), "origin out of range");
+    EXPECT_DEATH(spline.evaluate(x, hint, sut_t::lookup_mode_t::full), "origin out of range");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

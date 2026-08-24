@@ -10,6 +10,7 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <array>
 #include <bit>
+#include <cassert>
 #include <span>
 
 namespace crv::spline {
@@ -30,6 +31,10 @@ public:
     static constexpr auto total_key_count = max_segment_count - 1;
     static constexpr auto node_key_count = branching_factor - 1;
     static constexpr auto node_count = total_key_count / node_key_count;
+    static constexpr auto leaf_base_index = []() constexpr {
+        if constexpr (depth_max == 0) return int_t{0};
+        else return ((int_t{1} << (2 * (depth_max - 1))) - 1) / node_key_count;
+    }();
 
     struct result_t
     {
@@ -38,6 +43,16 @@ public:
 
         auto operator<=>(result_t const&) const noexcept -> auto = default;
         auto operator==(result_t const&) const noexcept -> bool = default;
+    };
+
+    struct hint_t
+    {
+        int_t segment_index{};
+        x_t leaf_origin{};
+        x_t leaf_end{};
+
+        auto operator<=>(hint_t const&) const noexcept -> auto = default;
+        auto operator==(hint_t const&) const noexcept -> bool = default;
     };
 
     using node_keys_t = std::array<x_t, node_key_count>;
@@ -89,23 +104,32 @@ public:
 
         for (auto depth = 0; depth < depth_max; ++depth)
         {
-            // alias keys locally in sorted order
-            auto const key0 = nodes_[index].keys[0];
-            auto const key1 = nodes_[index].keys[1];
-            auto const key2 = nodes_[index].keys[2];
+            auto const& keys = nodes_[index].keys;
 
-            // choose lower bound key
-            origin = (x >= key0) ? key0 : origin;
-            origin = (x >= key1) ? key1 : origin;
-            origin = (x >= key2) ? key2 : origin;
+            origin = (x >= keys[0]) ? keys[0] : origin;
+            origin = (x >= keys[1]) ? keys[1] : origin;
+            origin = (x >= keys[2]) ? keys[2] : origin;
 
-            // choose lower bound offset
-            auto const child_offset = (x >= key0) + (x >= key1) + (x >= key2);
-
-            index = 4 * index + 1 + child_offset;
+            auto const child_offset = (x >= keys[0]) + (x >= keys[1]) + (x >= keys[2]);
+            index = branching_factor * index + 1 + child_offset;
         }
 
         return {.index = index - node_count, .origin = origin};
+    }
+
+    /// locates a segment and maintains a four-segment leaf hint
+    constexpr auto locate(x_t x, hint_t& hint, bool use_hint) const noexcept -> result_t
+    {
+        if constexpr (depth_max == 0)
+        {
+            hint = {.segment_index = 0, .leaf_origin = x_t{0}, .leaf_end = x_max_};
+            return {.index = 0, .origin = x_t{0}};
+        }
+        else
+        {
+            if (use_hint && hint.leaf_origin <= x && x < hint.leaf_end) return locate_in_leaf(x, hint);
+            return locate_full(x, hint);
+        }
     }
 
     /// number of real segments; the rest of the key array is padding
@@ -147,10 +171,22 @@ public:
         return true;
     }
 
+    /// prefetches upper tree levels for a full lookup
     constexpr auto prefetch(auto const& prefetcher) const noexcept -> void
     {
-        // prefetch first two cache lines covering the top levels
-        prefetcher.prefetch(&nodes_[0], 2);
+        if constexpr (depth_max != 0) prefetcher.prefetch(&nodes_[0], 2);
+    }
+
+    /// prefetches the leaf selected by the previous lookup
+    constexpr auto prefetch(hint_t const& hint, auto const& prefetcher) const noexcept -> void
+    {
+        if constexpr (depth_max != 0)
+        {
+            assert(0 <= hint.segment_index && hint.segment_index < max_segment_count
+                && "segment_locator_t: hint index out of bounds");
+            auto const leaf_index = hint.segment_index / branching_factor;
+            prefetcher.prefetch(&nodes_[leaf_base_index + leaf_index]);
+        }
     }
 
 private:
@@ -184,6 +220,64 @@ private:
             key_offset = (key_offset_in_row & branching_mask) - 1; // low 2 bits, 0-based
         }
     };
+
+    constexpr auto locate_full(x_t x, hint_t& hint) const noexcept -> result_t
+    {
+        auto index = int_t{0};
+        auto origin = x_t{0};
+        auto end = x_max_;
+
+        for (auto depth = int_t{0}; depth < depth_max - 1; ++depth)
+        {
+            auto const& keys = nodes_[index].keys;
+
+            origin = (x >= keys[0]) ? keys[0] : origin;
+            origin = (x >= keys[1]) ? keys[1] : origin;
+            origin = (x >= keys[2]) ? keys[2] : origin;
+            end = (x < keys[2]) ? keys[2] : end;
+            end = (x < keys[1]) ? keys[1] : end;
+            end = (x < keys[0]) ? keys[0] : end;
+
+            auto const child_offset = (x >= keys[0]) + (x >= keys[1]) + (x >= keys[2]);
+            index = branching_factor * index + 1 + child_offset;
+        }
+
+        auto const leaf_index = index - leaf_base_index;
+        auto const leaf_origin = origin;
+        auto const leaf_end = end;
+        auto const& keys = nodes_[index].keys;
+
+        origin = (x >= keys[0]) ? keys[0] : origin;
+        origin = (x >= keys[1]) ? keys[1] : origin;
+        origin = (x >= keys[2]) ? keys[2] : origin;
+
+        auto const child_offset = (x >= keys[0]) + (x >= keys[1]) + (x >= keys[2]);
+        auto const segment_index = branching_factor * leaf_index + child_offset;
+
+        hint = {.segment_index = segment_index, .leaf_origin = leaf_origin, .leaf_end = leaf_end};
+        return {.index = segment_index, .origin = origin};
+    }
+
+    constexpr auto locate_in_leaf(x_t x, hint_t& hint) const noexcept -> result_t
+    {
+        assert(hint.leaf_origin <= x && x < hint.leaf_end && "segment_locator_t: input outside hinted leaf");
+        assert(0 <= hint.segment_index && hint.segment_index < max_segment_count
+            && "segment_locator_t: hint index out of bounds");
+
+        auto const leaf_index = hint.segment_index / branching_factor;
+        auto const& keys = nodes_[leaf_base_index + leaf_index].keys;
+        auto origin = hint.leaf_origin;
+
+        origin = (x >= keys[0]) ? keys[0] : origin;
+        origin = (x >= keys[1]) ? keys[1] : origin;
+        origin = (x >= keys[2]) ? keys[2] : origin;
+
+        auto const child_offset = (x >= keys[0]) + (x >= keys[1]) + (x >= keys[2]);
+        auto const segment_index = branching_factor * leaf_index + child_offset;
+        hint.segment_index = segment_index;
+
+        return {.index = segment_index, .origin = origin};
+    }
 
     constexpr auto key_at(int_t in_order_index) const noexcept -> x_t
     {

@@ -176,16 +176,14 @@ static_assert(sut.is_safe_through(make_segment(narrow_max, 0, narrow_min, 0, 0, 
 static_assert(sut.is_safe_through(make_segment(narrow_min, 0, 0, 0, 0, 0), x_t::literal(1), x_t{0}));
 
 // largest positive product and widest right-shift bias fit the wide intermediate
-static_assert(sut.is_safe_through(
-    make_segment(narrow_max, 127, 0, 127, 0, 0), x_t::literal(narrow_max), x_t{0}));
+static_assert(sut.is_safe_through(make_segment(narrow_max, 127, 0, 127, 0, 0), x_t::literal(narrow_max), x_t{0}));
 
 // stage narrowing boundary and one-past coefficient addition
 static_assert(sut.is_safe_through(make_segment(narrow_max, 0, 0, 0, 0, 0), x_t::literal(1), x_t{0}));
 static_assert(!sut.is_safe_through(make_segment(narrow_max, 0, 1, 0, 0, 0), x_t::literal(1), x_t{0}));
 
 // first Horner stage can fit while the second overflows its mathematical accumulator
-static_assert(!sut.is_safe_through(
-    make_segment(1, 0, narrow_max - 1, 0, 1, 0), x_t::literal(1), x_t{0}));
+static_assert(!sut.is_safe_through(make_segment(1, 0, narrow_max - 1, 0, 1, 0), x_t::literal(1), x_t{0}));
 
 // mandatory subdivision can turn an unsafe quadratic envelope into a safe one
 constexpr auto quadratic = make_segment(1, 0, 0, 0, 0, 0);

@@ -38,6 +38,12 @@ using y_t = policy_t::y_t;
 using spline_factory_t = spline_factory_t<policy_t, spline_generator_factory_t<policy_t>>;
 using spline_t = spline_factory_t::spline_t;
 
+auto evaluate_spline(spline_t const& spline, x_t x) noexcept -> y_t
+{
+    auto hint = spline_t::hint_t{};
+    return spline.evaluate(x, hint, spline_t::lookup_mode_t::full);
+}
+
 struct fractional_power_t
 {
     scalar_t alpha;
@@ -54,7 +60,7 @@ struct fractional_power_t
 
 auto expect_all_segments_safe(spline_t const& spline) -> void
 {
-    auto const& locator = spline.payload.segment_locator;
+    auto const& locator = spline.segment_locator;
     auto const segment_count = locator.segment_count();
     ASSERT_GT(segment_count, 0);
 
@@ -77,7 +83,7 @@ auto expect_all_segments_safe(spline_t const& spline) -> void
     {
         auto const left = find_origin(segment_index);
         auto const right = find_origin(segment_index + 1);
-        EXPECT_TRUE(spline.payload.segments[segment_index].is_safe_through(right - left, left))
+        EXPECT_TRUE(spline.segments[segment_index].is_safe_through(right - left, left))
             << "segment=" << segment_index << " left_raw=" << left.value << " right_raw=" << right.value;
     }
 }
@@ -113,7 +119,7 @@ auto expect_gain_matches_target(spline_t const& spline, target_t const& target, 
     {
         auto const x_real = from_fixed<scalar_t>(x);
         auto const expected = target.gain(x_real);
-        auto const actual = from_fixed<scalar_t>(spline(x));
+        auto const actual = from_fixed<scalar_t>(evaluate_spline(spline, x));
         EXPECT_NEAR(actual, expected, tolerance * std::max(std::abs(expected), scalar_t{1})) << "x=" << x_real;
     }
 }
@@ -153,9 +159,9 @@ TEST(spline_factory_integration_test, knot_ownership_and_tail_are_continuous_in_
     auto const before = x_t::literal(knot.value - 1);
     auto const after = x_t::literal(knot.value + 1);
 
-    auto const before_location = spline.payload.segment_locator.locate(before);
-    auto const at_location = spline.payload.segment_locator.locate(knot);
-    auto const after_location = spline.payload.segment_locator.locate(after);
+    auto const before_location = spline.segment_locator.locate(before);
+    auto const at_location = spline.segment_locator.locate(knot);
+    auto const after_location = spline.segment_locator.locate(after);
     EXPECT_LT(before_location.origin, knot);
     EXPECT_EQ(at_location.origin, knot);
     EXPECT_EQ(after_location.origin, knot);
@@ -163,13 +169,13 @@ TEST(spline_factory_integration_test, knot_ownership_and_tail_are_continuous_in_
     // probe both sides of the knot
     //
     // The exact knot belongs to the right segment, where x == x0 returns its directly quantized g0.
-    auto const left_before = spline.payload.segments[before_location.index](before, before_location.origin);
-    auto const left_at_knot = spline.payload.segments[before_location.index](knot, before_location.origin);
-    auto const right_at_knot = spline.payload.segments[at_location.index](knot, at_location.origin);
-    auto const right_after = spline.payload.segments[after_location.index](after, after_location.origin);
-    EXPECT_EQ(spline(before), left_before);
-    EXPECT_EQ(spline(knot), right_at_knot);
-    EXPECT_EQ(spline(after), right_after);
+    auto const left_before = spline.segments[before_location.index](before, before_location.origin);
+    auto const left_at_knot = spline.segments[before_location.index](knot, before_location.origin);
+    auto const right_at_knot = spline.segments[at_location.index](knot, at_location.origin);
+    auto const right_after = spline.segments[after_location.index](after, after_location.origin);
+    EXPECT_EQ(evaluate_spline(spline, before), left_before);
+    EXPECT_EQ(evaluate_spline(spline, knot), right_at_knot);
+    EXPECT_EQ(evaluate_spline(spline, after), right_after);
 
     auto const knot_gain = target.gain(from_fixed<scalar_t>(knot));
     EXPECT_NEAR(from_fixed<scalar_t>(left_at_knot), knot_gain, 3e-6);
@@ -177,14 +183,14 @@ TEST(spline_factory_integration_test, knot_ownership_and_tail_are_continuous_in_
 
     auto const x_max = x_t{policy_t::domain_end};
     auto const inside = x_t::literal(x_max.value - 1);
-    auto const final_location = spline.payload.segment_locator.locate(inside);
-    auto const fixed_endpoint = spline.payload.segments[final_location.index](x_max, final_location.origin);
+    auto const final_location = spline.segment_locator.locate(inside);
+    auto const fixed_endpoint = spline.segments[final_location.index](x_max, final_location.origin);
 
-    EXPECT_EQ(spline.payload.extend_final_tangent.y0, fixed_endpoint);
-    EXPECT_EQ(spline(x_max), fixed_endpoint);
+    EXPECT_EQ(spline.extend_final_tangent.y0, fixed_endpoint);
+    EXPECT_EQ(evaluate_spline(spline, x_max), fixed_endpoint);
 
     auto const first_beyond = x_t::literal(x_max.value + 1);
-    EXPECT_EQ(spline(first_beyond), spline.payload.extend_final_tangent(x_t::literal(1)));
+    EXPECT_EQ(evaluate_spline(spline, first_beyond), spline.extend_final_tangent(x_t::literal(1)));
 }
 
 } // namespace

@@ -36,10 +36,7 @@ struct pipeline_integration_test_t : Test
     struct varying_gain_t
     {
         auto operator()(float_t x) const noexcept -> float_t { return 1.0 + x / 32.0; }
-        auto operator()(jet_t<float_t> x) const noexcept -> jet_t<float_t>
-        {
-            return {1.0 + x.f / 32.0, x.df / 32.0};
-        }
+        auto operator()(jet_t<float_t> x) const noexcept -> jet_t<float_t> { return {1.0 + x.f / 32.0, x.df / 32.0}; }
     };
 
     static auto build_gain_spline(auto curve) -> spline_t
@@ -110,16 +107,16 @@ struct pipeline_integration_test_t : Test
 
 TEST_F(pipeline_integration_test_t, real_components_compose_through_missing_axis_insertion)
 {
-    auto warmup_storage = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto warmup_storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     auto const warmup = sut(warmup_storage.data(), 2, warmup_storage.size(), 2, 1'000'000);
 
     ASSERT_EQ(warmup.status, pipeline::pipeline_result_t::warmup);
     ASSERT_EQ(warmup.count, 2u);
     EXPECT_EQ(load(warmup_storage, 0), rel(input_value_t::code_rel_t::x, 1));
 
-    auto storage = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     auto const result = sut(storage.data(), 2, storage.size(), 2, 2'000'000);
 
     ASSERT_EQ(result.status, pipeline::pipeline_result_t::applied);
@@ -130,10 +127,10 @@ TEST_F(pipeline_integration_test_t, real_components_compose_through_missing_axis
 
 TEST_F(pipeline_integration_test_t, full_raw_frame_reports_append_failure_without_mutation)
 {
-    auto warmup_storage = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
-    ASSERT_EQ(sut(warmup_storage.data(), 2, warmup_storage.size(), 2, 1'000'000).status,
-        pipeline::pipeline_result_t::warmup);
+    auto warmup_storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    ASSERT_EQ(
+        sut(warmup_storage.data(), 2, warmup_storage.size(), 2, 1'000'000).status, pipeline::pipeline_result_t::warmup);
 
     auto storage = std::array{
         abi(rel(input_value_t::code_rel_t::x, 3)),
@@ -243,12 +240,12 @@ TEST_F(pipeline_integration_test_t, first_report_after_resynchronization_uses_a_
     auto active = sut_t{make_config(), build_gain_spline(varying_gain_t{})};
     auto fresh = sut_t{make_config(), build_gain_spline(varying_gain_t{})};
 
-    auto warmup = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto warmup
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     ASSERT_EQ(active(warmup.data(), 2, warmup.size(), 2, 1'000'000).status, pipeline::pipeline_result_t::warmup);
 
-    auto history = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 13)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto history
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 13)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     ASSERT_EQ(active(history.data(), 2, history.size(), 2, 2'000'000).status, pipeline::pipeline_result_t::applied);
 
     auto split = std::array{
@@ -260,17 +257,16 @@ TEST_F(pipeline_integration_test_t, first_report_after_resynchronization_uses_a_
     ASSERT_EQ(active(split.data(), 2, split.size(), split.size() - 1, 3'000'000).status,
         pipeline::pipeline_result_t::split_report_bypassed);
 
-    auto sync_active = std::array{
-        abi(rel(input_value_t::code_rel_t::y, 9)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto sync_active
+        = std::array{abi(rel(input_value_t::code_rel_t::y, 9)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     auto sync_fresh = sync_active;
     ASSERT_EQ(active(sync_active.data(), 2, sync_active.size(), 2, 4'000'000).status,
         pipeline::pipeline_result_t::split_report_bypassed);
-    ASSERT_EQ(fresh(sync_fresh.data(), 2, sync_fresh.size(), 2, 4'000'000).status,
-        pipeline::pipeline_result_t::warmup);
+    ASSERT_EQ(fresh(sync_fresh.data(), 2, sync_fresh.size(), 2, 4'000'000).status, pipeline::pipeline_result_t::warmup);
     expect_unchanged(sync_active, sync_fresh);
 
-    auto next_active = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto next_active
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     auto next_fresh = next_active;
     auto const active_result = active(next_active.data(), 2, next_active.size(), 2, 5'000'000);
     auto const fresh_result = fresh(next_fresh.data(), 2, next_fresh.size(), 2, 5'000'000);
@@ -280,7 +276,8 @@ TEST_F(pipeline_integration_test_t, first_report_after_resynchronization_uses_a_
     expect_unchanged(next_active, next_fresh);
 }
 
-TEST_F(pipeline_integration_test_t, malformed_forced_callback_enters_desynchronized_state_without_accessing_past_capacity)
+TEST_F(
+    pipeline_integration_test_t, malformed_forced_callback_enters_desynchronized_state_without_accessing_past_capacity)
 {
     auto storage = std::array{
         abi(rel(input_value_t::code_rel_t::x, 3)),
@@ -295,8 +292,8 @@ TEST_F(pipeline_integration_test_t, malformed_forced_callback_enters_desynchroni
     EXPECT_EQ(malformed.count, storage.size() + 1);
     expect_unchanged(storage, original);
 
-    auto followup = std::array{
-        abi(rel(input_value_t::code_rel_t::x, 2)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto followup
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 2)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
     auto const followup_original = followup;
     auto const result = sut(followup.data(), 2, followup.size(), 2, 2'000'000);
 

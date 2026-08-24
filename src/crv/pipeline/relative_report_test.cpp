@@ -87,8 +87,8 @@ TEST_F(relative_report_test_t, stores_existing_axes_after_inspection)
 
     ASSERT_TRUE(std::move(report).try_store(-3, 4));
 
-    EXPECT_TRUE(matches(
-        frame, std::array{rel(input_value_t::code_rel_t::x, -3), rel(input_value_t::code_rel_t::y, 4), syn()}));
+    EXPECT_TRUE(
+        matches(frame, std::array{rel(input_value_t::code_rel_t::x, -3), rel(input_value_t::code_rel_t::y, 4), syn()}));
 }
 
 TEST_F(relative_report_test_t, appends_missing_axis_then_erases_existing_axis_that_became_zero)

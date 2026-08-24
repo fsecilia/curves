@@ -77,7 +77,7 @@ struct assembler_t
         assert(segment_count <= segment_locator_t::max_segment_count);
 
         // write to segments directly, in-place
-        auto& segments = spline.payload.segments;
+        auto& segments = spline.segments;
 
         // construct the locator from a local sorted-key array after writing segments in place
         using sorted_keys_t = std::array<x_t, total_key_count>;
@@ -88,9 +88,9 @@ struct assembler_t
         unzip_intervals(completed_intervals, segment_count, segments, sorted_keys);
         pad_keys(sorted_keys, segment_count - 1, x_max);
 
-        // write remaining fields to payload
-        spline.payload.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline.payload.extend_final_tangent = extend_tangent(completed_intervals[segment_count - 1]);
+        // write remaining fields
+        spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
+        spline.extend_final_tangent = extend_tangent(completed_intervals[segment_count - 1]);
 
         // mark intervals as consumed
         completed_intervals.clear();
