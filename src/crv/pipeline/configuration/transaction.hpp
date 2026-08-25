@@ -27,7 +27,7 @@ template <typename validator_t, typename committer_t> struct transaction_t
         std::declval<candidate_t const&>().config, std::declval<candidate_t const&>().gain));
 
     template <typename candidate_t>
-    constexpr auto validate(candidate_t const& candidate) const noexcept
+    CRV_ALWAYS_INLINE constexpr auto validate(candidate_t const& candidate) const noexcept
         -> std::expected<validated_candidate_t<candidate_t>, validation_result_t<candidate_t>>
     {
         auto result = validator(candidate.config, candidate.gain);
@@ -37,8 +37,7 @@ template <typename validator_t, typename committer_t> struct transaction_t
     }
 
     template <typename target_t, typename candidate_t>
-    constexpr auto commit(target_t& target, validated_candidate_t<candidate_t> const& validated) const noexcept
-        -> void
+    constexpr auto commit(target_t& target, validated_candidate_t<candidate_t> const& validated) const noexcept -> void
     {
         committer(target, validated);
     }

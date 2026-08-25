@@ -45,6 +45,7 @@ template <typename t_config_t, typename t_gain_t, typename t_speed_filter_t> str
     using gain_t = t_gain_t;
     using speed_filter_t = t_speed_filter_t;
 
+    CRV_ALWAYS_INLINE
     constexpr auto operator()(config_t const& config, gain_t const& gain) const noexcept
         -> runtime_config_validation_result_t
     {

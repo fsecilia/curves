@@ -40,8 +40,8 @@ public:
     using validation_result_t = typename transaction_t::template validation_result_t<candidate_t>;
     using validated_candidate_t = typename transaction_t::template validated_candidate_t<candidate_t>;
 
-    constexpr explicit configuration_t(pipeline::configuration::apply_mode_t mode, transaction_t transaction = {})
-        noexcept
+    constexpr explicit configuration_t(
+        pipeline::configuration::apply_mode_t mode, transaction_t transaction = {}) noexcept
         : candidate_{.mode = mode}, transaction_{std::move(transaction)}
     {
         static_assert(std::is_trivially_copyable_v<decltype(candidate_.config)>);
@@ -58,6 +58,7 @@ public:
         return std::as_writable_bytes(std::span{&candidate_.gain, std::size_t{1}});
     }
 
+    CRV_ALWAYS_INLINE
     constexpr auto validate() noexcept -> validation_result_t
     {
         auto result = transaction_.validate(candidate_);

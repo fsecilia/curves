@@ -35,6 +35,7 @@ template <typename t_spline_t> struct spline_validator_t
     using spline_t = t_spline_t;
     using x_t = spline_t::x_t;
 
+    CRV_ALWAYS_INLINE
     constexpr auto operator()(spline_t const& spline) const noexcept -> spline_validation_result_t
     {
         static_assert(std::is_trivially_copyable_v<spline_t>);
