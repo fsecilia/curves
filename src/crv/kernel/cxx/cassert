@@ -13,11 +13,9 @@ extern "C" [[noreturn]] void panic(char const* fmt, ...);
 
 namespace crv {
 
-inline constexpr auto kernel_assert(bool expression, char const* expression_string,
-    std::source_location const source_location = std::source_location::current()) -> void
+[[noreturn]] static inline auto kernel_assert_failed(
+    char const* expression_string, std::source_location const source_location = std::source_location::current()) -> void
 {
-    if (expression) [[likely]] { return; }
-
     panic("%s:%u: %s: Assertion `%s' failed.", source_location.file_name(), source_location.line(),
         source_location.function_name(), expression_string);
 }
@@ -29,7 +27,7 @@ inline constexpr auto kernel_assert(bool expression, char const* expression_stri
 #undef assert
 
 #ifndef NDEBUG
-#define assert(expr) ::crv::kernel_assert(static_cast<bool>(expr), #expr)
+#define assert(expr) (static_cast<bool>(expr) ? static_cast<void>(0) : ::crv::kernel_assert_failed(#expr))
 #else
 #define assert(expr) ((void)0)
 #endif
