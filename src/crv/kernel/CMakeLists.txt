@@ -28,7 +28,6 @@ set(kernel_files
 
 set(kernel_cxx_options
     -ffreestanding
-    -fno-builtin
     -fno-exceptions
     -fno-rtti
     -fno-threadsafe-statics
