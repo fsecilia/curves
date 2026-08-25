@@ -70,8 +70,9 @@ public:
     using timestamp_t = orchestrator_t::timestamp_t;
     using velocity_scale_t = orchestrator_t::velocity_scale_t;
     using gain_t = gain_impl_t;
-    using validator_t = pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>;
-    using validation_result_t = pipeline::runtime_config_validation_result_t;
+    struct validator_t : pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>
+    {};
+    using validation_result_t = validator_t::result_t;
 
     static constexpr auto validate(config_t const& config, gain_t const& gain) noexcept -> validation_result_t
     {

@@ -37,7 +37,7 @@ template <typename t_candidate_t, typename t_transaction_t> class configuration_
 public:
     using candidate_t = t_candidate_t;
     using transaction_t = t_transaction_t;
-    using validation_result_t = typename transaction_t::template validation_result_t<candidate_t>;
+    using validation_result_t = typename transaction_t::validation_result_t;
     using validated_candidate_t = typename transaction_t::template validated_candidate_t<candidate_t>;
 
     constexpr explicit configuration_t(
@@ -58,7 +58,6 @@ public:
         return std::as_writable_bytes(std::span{&candidate_.gain, std::size_t{1}});
     }
 
-    CRV_ALWAYS_INLINE
     constexpr auto validate() noexcept -> validation_result_t
     {
         auto result = transaction_.validate(candidate_);

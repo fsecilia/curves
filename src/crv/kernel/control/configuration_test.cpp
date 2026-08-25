@@ -62,6 +62,8 @@ struct configuration_test_t : Test
 
     struct validator_t
     {
+        using result_t = validation_result_t;
+
         mock_validator_t* mock = nullptr;
 
         auto operator()(config_t const& config, gain_t const& gain) const noexcept -> validation_result_t

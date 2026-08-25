@@ -22,13 +22,11 @@ template <typename validator_t, typename committer_t> struct transaction_t
         candidate_t const& candidate;
     };
 
-    template <typename candidate_t>
-    using validation_result_t = decltype(std::declval<validator_t const&>()(
-        std::declval<candidate_t const&>().config, std::declval<candidate_t const&>().gain));
+    using validation_result_t = typename validator_t::result_t;
 
     template <typename candidate_t>
-    CRV_ALWAYS_INLINE constexpr auto validate(candidate_t const& candidate) const noexcept
-        -> std::expected<validated_candidate_t<candidate_t>, validation_result_t<candidate_t>>
+    constexpr auto validate(candidate_t const& candidate) const noexcept
+        -> std::expected<validated_candidate_t<candidate_t>, validation_result_t>
     {
         auto result = validator(candidate.config, candidate.gain);
         if (!result) return std::unexpected{std::move(result)};
