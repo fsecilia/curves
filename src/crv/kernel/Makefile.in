@@ -27,11 +27,9 @@ endif
 
 # specify required commandline options
 #
-# - Keep C++ COMDAT sections through Kbuild's relocatable module link.
 # - Linux's module BTF tooling does not support the C++ DWARF emitted here, so disable module BTF.
 # - CRV_DEBUG is forwarded so local Debug builds can omit NDEBUG; detached DKMS builds default to release behavior.
-CRV_REQUIRED_KBUILD_ARGUMENTS := LDFLAGS_MODULE=--force-group-allocation \
-                                 CONFIG_DEBUG_INFO_BTF_MODULES= \
+CRV_REQUIRED_KBUILD_ARGUMENTS := CONFIG_DEBUG_INFO_BTF_MODULES= \
                                  CRV_DEBUG=$(CRV_DEBUG)
 
 .PHONY: default modules modules_install clean install

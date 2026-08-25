@@ -49,6 +49,9 @@ endif
 obj-m += @kbuild_module_name@.o
 @kbuild_module_name@-y := @kbuild_objects_text@
 
+# resolve c++ comdat groups before objtool adds metadata to the relocatable module object
+ldflags-y += --force-group-allocation
+
 ccflags-y += -I$(src)/crv/kernel/cxx -I$(src)
 
 ifneq ($(CRV_DEBUG),1)
