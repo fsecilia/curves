@@ -22,6 +22,12 @@ template <is_fixed sample_t, is_fixed time_t>
 class half_life_ema_t
 {
 public:
+    static constexpr auto max_safe_half_life() noexcept -> time_t
+    {
+        auto const max_scaled_duration = multiply<time_t, shifter>(max<time_t>(), ln2);
+        return time_t::literal(max<time_t>().value - max_scaled_duration.value);
+    }
+
     constexpr auto output() const noexcept -> sample_t { return output_; }
 
     constexpr auto operator()(sample_t input, time_t half_life, time_t duration) noexcept -> sample_t

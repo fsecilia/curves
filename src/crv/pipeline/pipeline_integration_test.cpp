@@ -112,6 +112,11 @@ TEST_F(pipeline_integration_test_t, defaults_to_unconfigured_and_synchronized)
     EXPECT_TRUE(sut.synchronized());
 }
 
+TEST_F(pipeline_integration_test_t, generated_runtime_candidate_passes_shared_validation)
+{
+    EXPECT_TRUE(sut_t::validate(make_config(), build_gain_spline(varying_gain_t{})));
+}
+
 TEST_F(pipeline_integration_test_t, activation_mode_is_independent_of_report_synchronization)
 {
     auto split = std::array{

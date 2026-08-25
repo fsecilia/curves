@@ -4,8 +4,13 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "output_transform.hpp"
+#include <crv/math/fixed/float_conversions.hpp>
+#include <crv/math/limits.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
+#include <array>
+#include <cmath>
+#include <numbers>
 
 namespace crv::pipeline {
 namespace {
@@ -18,6 +23,44 @@ struct output_transform_test_t : Test
 
     static constexpr auto one = sut_t::coefficient_t{1};
     static constexpr auto zero = sut_t::coefficient_t{};
+
+    static auto generated_transform(float_t degrees, float_t anisotropy) -> sut_t
+    {
+        using std::cos;
+        using std::sin;
+
+        auto const radians = degrees * std::numbers::pi_v<float_t> / float_t{180};
+        auto const cosine = cos(radians);
+        auto const sine = sin(radians);
+
+        return sut_t{.matrix = {{
+                         {to_fixed<sut_t::coefficient_t>(cosine), to_fixed<sut_t::coefficient_t>(-sine)},
+                         {to_fixed<sut_t::coefficient_t>(anisotropy * sine),
+                             to_fixed<sut_t::coefficient_t>(anisotropy * cosine)},
+                     }}};
+    }
+
+    static constexpr auto is_valid(sut_t const& transform) noexcept -> bool
+    {
+        return transform.rotation_components_are_valid() && transform.anisotropy_components_are_valid()
+            && transform.rotation_norm_is_valid() && transform.anisotropy_norm_is_valid()
+            && transform.rows_are_orthogonal() && transform.determinant_is_positive();
+    }
+
+    static auto generated_transforms_are_valid(float_t degrees) -> AssertionResult
+    {
+        constexpr auto anisotropies = std::array{float_t{0.001}, float_t{1}, float_t{1000}};
+
+        for (auto const anisotropy : anisotropies)
+        {
+            if (!is_valid(generated_transform(degrees, anisotropy)))
+            {
+                return AssertionFailure() << "degrees=" << degrees << ", anisotropy=" << anisotropy;
+            }
+        }
+
+        return AssertionSuccess();
+    }
 
     static_assert(sut_t::coefficient_t::int_bits == 10);
     static_assert(sut_t::coefficient_t::frac_bits == 53);
@@ -108,6 +151,97 @@ TEST_F(output_transform_test_t, pathological_gain_anisotropy_case_keeps_error_in
     // 997,343,718 Q53 ulps ~= 1.1073e-7 output counts
     EXPECT_LT(error, int128_t{1'100'000'000});
 }
+
+TEST_F(output_transform_test_t, zero_degree_userspace_matrix_quantization_satisfies_validation_tolerances)
+{
+    EXPECT_TRUE(generated_transforms_are_valid(float_t{0}));
+}
+
+struct output_transform_quantization_test_t : output_transform_test_t, WithParamInterface<float_t>
+{};
+
+TEST_P(output_transform_quantization_test_t, positive_angle_satisfies_validation_tolerances)
+{
+    EXPECT_TRUE(generated_transforms_are_valid(GetParam()));
+}
+
+TEST_P(output_transform_quantization_test_t, negative_angle_satisfies_validation_tolerances)
+{
+    EXPECT_TRUE(generated_transforms_are_valid(-GetParam()));
+}
+
+constexpr float_t quantization_degrees[]
+    = {0.1, 45, 89.9, 90, 90.1, 135, 179.9, 180, 180.1, 225, 269.9, 270, 270.1, 315, 359.9};
+
+INSTANTIATE_TEST_SUITE_P(degrees, output_transform_quantization_test_t, ValuesIn(quantization_degrees));
+
+constexpr auto validation_boundaries = [] {
+    using sut_t = output_transform_test_t::sut_t;
+    using coefficient_t = sut_t::coefficient_t;
+
+    auto const one = coefficient_t{1};
+    auto const raw_one = coefficient_t::literal(1);
+
+    auto rotation_component = sut_t{};
+    rotation_component.matrix[0][0] = one + raw_one;
+    if (!rotation_component.rotation_components_are_valid()) return false;
+    rotation_component.matrix[0][0] += raw_one;
+    if (rotation_component.rotation_components_are_valid()) return false;
+
+    rotation_component.matrix[0][0] = -one - raw_one;
+    if (!rotation_component.rotation_components_are_valid()) return false;
+    rotation_component.matrix[0][0] -= raw_one;
+    if (rotation_component.rotation_components_are_valid()) return false;
+
+    auto rotation_norm = sut_t{};
+    rotation_norm.matrix[0] = {one - coefficient_t::literal(2), coefficient_t{}};
+    if (!rotation_norm.rotation_norm_is_valid()) return false;
+    rotation_norm.matrix[0][0] -= raw_one;
+    if (rotation_norm.rotation_norm_is_valid()) return false;
+
+    auto anisotropy_component = sut_t{};
+    auto const anisotropy_limit = coefficient_t{1000} + coefficient_t::literal(4096);
+    anisotropy_component.matrix[1] = {anisotropy_limit, coefficient_t{}};
+    if (!anisotropy_component.anisotropy_components_are_valid()) return false;
+    anisotropy_component.matrix[1][0] += raw_one;
+    if (anisotropy_component.anisotropy_components_are_valid()) return false;
+
+    auto anisotropy_norm = sut_t{};
+    anisotropy_norm.matrix[1] = {coefficient_t{}, anisotropy_limit};
+    if (!anisotropy_norm.anisotropy_norm_is_valid()) return false;
+    anisotropy_norm.matrix[1][0] = raw_one;
+    if (anisotropy_norm.anisotropy_norm_is_valid()) return false;
+
+    auto orthogonality = sut_t{};
+    orthogonality.matrix[1] = {coefficient_t::literal(10'192), one};
+    if (!orthogonality.rows_are_orthogonal()) return false;
+    orthogonality.matrix[1][0] += raw_one;
+    if (orthogonality.rows_are_orthogonal()) return false;
+
+    auto determinant = sut_t{};
+    determinant.matrix[1] = {coefficient_t{}, raw_one};
+    if (!determinant.determinant_is_positive()) return false;
+    determinant.matrix[1][1] = {};
+    if (determinant.determinant_is_positive()) return false;
+
+    return true;
+}();
+
+static_assert(validation_boundaries);
+
+constexpr auto hostile_transform = [] {
+    auto transform = output_transform_test_t::sut_t{};
+    auto const minimum = output_transform_test_t::sut_t::coefficient_t::literal(min<int64_t>());
+    transform.matrix = {{{minimum, minimum}, {minimum, minimum}}};
+    return transform;
+}();
+
+static_assert(!hostile_transform.rotation_components_are_valid());
+static_assert(!hostile_transform.anisotropy_components_are_valid());
+static_assert(!hostile_transform.rotation_norm_is_valid());
+static_assert(!hostile_transform.anisotropy_norm_is_valid());
+static_assert(!hostile_transform.rows_are_orthogonal());
+static_assert(!hostile_transform.determinant_is_positive());
 
 //
 // death tests

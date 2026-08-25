@@ -13,6 +13,7 @@
 #include <crv/pipeline/relative_report.hpp>
 #include <crv/pipeline/report_timer.hpp>
 #include <crv/pipeline/residual_accumulator.hpp>
+#include <crv/pipeline/validator.hpp>
 #include <crv/pipeline/velocity.hpp>
 #include <crv/prefetcher.hpp>
 #include <crv/spline/pipeline_config.hpp>
@@ -69,6 +70,12 @@ public:
     using timestamp_t = orchestrator_t::timestamp_t;
     using velocity_scale_t = orchestrator_t::velocity_scale_t;
     using gain_t = gain_impl_t;
+    using validation_result_t = pipeline::runtime_config_validation_result_t;
+
+    static constexpr auto validate(config_t const& config, gain_t const& gain) noexcept -> validation_result_t
+    {
+        return pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>{}(config, gain);
+    }
 
 private:
     using state_t = orchestrator_t::state_t;

@@ -26,6 +26,7 @@ struct half_life_ema_test_t : Test
 
     static_assert(sizeof(sut_t) == sizeof(sample_t));
     static_assert(sut_t{}.output() == sample_t{});
+    static_assert(sut_t::max_safe_half_life() == time_t::literal(5'660'435'428'506'895'956ULL));
 
     static constexpr auto zero_duration_does_not_advance = [] {
         auto sut = sut_t{};
