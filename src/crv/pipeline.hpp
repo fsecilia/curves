@@ -70,11 +70,12 @@ public:
     using timestamp_t = orchestrator_t::timestamp_t;
     using velocity_scale_t = orchestrator_t::velocity_scale_t;
     using gain_t = gain_impl_t;
+    using validator_t = pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>;
     using validation_result_t = pipeline::runtime_config_validation_result_t;
 
     static constexpr auto validate(config_t const& config, gain_t const& gain) noexcept -> validation_result_t
     {
-        return pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>{}(config, gain);
+        return validator_t{}(config, gain);
     }
 
 private:
@@ -121,6 +122,13 @@ public:
 
     constexpr auto mode() const noexcept -> mode_t { return storage_.control.mode; }
     constexpr auto synchronized() const noexcept -> bool { return storage_.control.synchronized; }
+
+    template <typename operation_t>
+    constexpr auto commit_configuration(operation_t&& operation) noexcept -> void
+    {
+        std::forward<operation_t>(operation)(
+            storage_.control.config, storage_.gain, storage_.state, storage_.control.mode);
+    }
 
     struct result_t
     {

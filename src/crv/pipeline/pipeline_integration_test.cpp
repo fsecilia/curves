@@ -4,6 +4,9 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include <crv/pipeline.hpp>
+#include <crv/pipeline/configuration/candidate.hpp>
+#include <crv/pipeline/configuration/committer.hpp>
+#include <crv/pipeline/configuration/transaction.hpp>
 #include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/spline_factory.hpp>
 #include <crv/spline/spline_factory_policy.hpp>
@@ -23,6 +26,8 @@ struct pipeline_integration_test_t : Test
     using speed_t = spline_policy_t::x_t;
     using duration_t = sut_t::duration_t;
     using output_transform_t = pipeline::output_transform_t<spline_policy_t::y_t>;
+    using configuration_transaction_t
+        = pipeline::configuration::transaction_t<sut_t::validator_t, pipeline::configuration::committer_t>;
 
     static_assert(std::same_as<spline_t, sut_t::gain_t>);
     static_assert(sizeof(sut_t::config_t) == 48);
@@ -103,8 +108,79 @@ struct pipeline_integration_test_t : Test
         };
     }
 
+    static auto make_candidate(pipeline::configuration::apply_mode_t mode) -> pipeline::configuration::candidate_t
+    {
+        return {
+            .config = make_config(),
+            .mode = mode,
+            .gain = build_gain_spline(varying_gain_t{}),
+        };
+    }
+
+    configuration_transaction_t transaction{};
     sut_t sut{make_config(), build_gain_spline(constant_gain_t{})};
 };
+
+TEST_F(pipeline_integration_test_t, committed_active_candidate_sets_active_mode)
+{
+    auto const candidate = make_candidate(pipeline::configuration::apply_mode_t::active);
+    auto const validated = transaction.validate(candidate).value();
+
+    transaction.commit(sut, validated);
+
+    EXPECT_EQ(sut.mode(), sut_t::mode_t::active);
+}
+
+TEST_F(pipeline_integration_test_t, committed_bypassed_candidate_sets_bypassed_mode)
+{
+    auto const candidate = make_candidate(pipeline::configuration::apply_mode_t::bypassed);
+    auto const validated = transaction.validate(candidate).value();
+
+    transaction.commit(sut, validated);
+
+    EXPECT_EQ(sut.mode(), sut_t::mode_t::bypassed);
+}
+
+TEST_F(pipeline_integration_test_t, configuration_commit_preserves_desynchronized_state)
+{
+    auto split = std::array{
+        abi(rel(input_value_t::code_rel_t::x, 3)),
+        abi(syn()),
+        crv_input_value_t{},
+        crv_input_value_t{},
+    };
+    (void)sut(split.data(), 2, split.size(), split.size() - 1, 1'000'000);
+
+    auto const candidate = make_candidate(pipeline::configuration::apply_mode_t::bypassed);
+    auto const validated = transaction.validate(candidate).value();
+    transaction.commit(sut, validated);
+
+    EXPECT_FALSE(sut.synchronized());
+}
+
+TEST_F(pipeline_integration_test_t, first_report_after_configuration_commit_uses_warmup_path)
+{
+    auto initial = std::array{
+        abi(rel(input_value_t::code_rel_t::x, 3)),
+        abi(syn()),
+        crv_input_value_t{},
+        crv_input_value_t{},
+    };
+    (void)sut(initial.data(), 2, initial.size(), 2, 1'000'000);
+
+    auto const candidate = make_candidate(pipeline::configuration::apply_mode_t::active);
+    auto const validated = transaction.validate(candidate).value();
+    transaction.commit(sut, validated);
+
+    auto next = std::array{
+        abi(rel(input_value_t::code_rel_t::x, 3)),
+        abi(syn()),
+        crv_input_value_t{},
+        crv_input_value_t{},
+    };
+
+    EXPECT_EQ(sut(next.data(), 2, next.size(), 2, 2'000'000).status, pipeline::pipeline_result_t::warmup);
+}
 
 TEST_F(pipeline_integration_test_t, defaults_to_unconfigured_and_synchronized)
 {
