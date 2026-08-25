@@ -86,7 +86,7 @@ public:
         std::span<x_t const, total_key_count> sorted_keys, x_t x_max, int_t segment_count) noexcept
         : x_max_{x_max}, segment_count_{segment_count}
     {
-        // this type goes over the ioctl boundary, so it must be trivially copyable
+        // object representation crosses the control uapi
         static_assert(std::is_trivially_copyable_v<segment_locator_t>);
 
         // walk tree in-order and place next sorted key into each position

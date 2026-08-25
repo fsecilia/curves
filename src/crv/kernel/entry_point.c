@@ -6,6 +6,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <crv/kernel/control/control.h>
 #include <crv/kernel/pipeline/pipeline.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
@@ -22,8 +23,11 @@
 struct crv_input_handle
 {
     struct input_handle input;
+    struct crv_control_attachment control_attachment;
     unsigned char pipeline_storage[];
 };
+
+static struct crv_control crv_control;
 
 // input core applies this capability table then calls match() for policy checks
 static const struct input_device_id crv_input_device_ids[] = {
@@ -66,16 +70,14 @@ static int crv_input_register_handle_head(struct input_handle* handle)
 //     -> policy match
 //     -> allocate and register handle
 //     -> open device
-//     -> attach capture observer
+//     -> publish control attachment
 //     -> receive callbacks
-//     -> detach capture observer
+//     -> remove control attachment
 //     -> close and free handle
 //
 
 static bool crv_input_match(struct input_handler* handler, struct input_dev* device)
 {
-    // first eligible device wins
-
     (void)handler;
 
     // accepts external mice and virtual relative-pointer streams
@@ -145,9 +147,15 @@ static int crv_input_connect(struct input_handler* handler, struct input_dev* de
     error = input_open_device(handle);
     if (error) goto err_unregister_handle;
 
+    error = crv_control_attach(&crv_control, &crv_handle->control_attachment, handle, handle->private);
+    if (error) goto err_close_device;
+
     pr_info("attached to input device\n");
 
     return 0;
+
+err_close_device:
+    input_close_device(handle);
 
 err_unregister_handle:
     input_unregister_handle(handle);
@@ -174,6 +182,7 @@ static void crv_input_disconnect(struct input_handle* handle)
     struct crv_input_handle* crv_handle = container_of(handle, struct crv_input_handle, input);
     struct input_dev* device = handle->dev;
 
+    crv_control_detach(&crv_control, &crv_handle->control_attachment);
     input_close_device(handle);
     input_unregister_handle(handle);
 
@@ -197,10 +206,14 @@ static int __init crv_init(void)
 {
     int error;
 
+    error = crv_control_register(&crv_control);
+    if (error) return error;
+
     error = input_register_handler(&crv_input_handler);
     if (error)
     {
         pr_err("failed to register input handler: %d\n", error);
+        crv_control_unregister(&crv_control);
         return error;
     }
 
@@ -211,6 +224,7 @@ static int __init crv_init(void)
 static void __exit crv_exit(void)
 {
     input_unregister_handler(&crv_input_handler);
+    crv_control_unregister(&crv_control);
 
     pr_info("unloaded\n");
 }

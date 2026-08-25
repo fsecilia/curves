@@ -56,6 +56,7 @@ ccflags-y += -DNDEBUG
 endif
 
 CFLAGS_crv/kernel/entry_point.o += -DCRV_VERSION=\"@crv_version@\"
+CFLAGS_crv/kernel/control/control.o += -DCRV_CONTROL_DEVICE_NAME=\"@kbuild_control_device_name@\"
 
 # filter c warnings
 conflicting_c_warnings := \

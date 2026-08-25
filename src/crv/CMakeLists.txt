@@ -126,6 +126,11 @@ set(shared_lib_kernel_files
     kernel/abi.h
     kernel/cxx_build_test.cpp
     kernel/cxx_build_test.h
+    kernel/control/abi.h
+    kernel/control/configuration.cpp
+    kernel/control/configuration.h
+    kernel/control/configuration.hpp
+    kernel/control/ioctl.h
     kernel/input/abi.h
     kernel/input/input_value_array_adapter.cpp
     kernel/input/input_value_array_adapter.hpp
@@ -194,6 +199,7 @@ set(unit_test_files
     i18n_test.cpp
     io/unique_fd_integration_test.cpp
     io/unique_fd_test.cpp
+    kernel/control/configuration_test.cpp
     kernel/input/input_value_array_adapter_test.cpp
     kernel/pipeline/pipeline_test.cpp
     math/abs_test.cpp

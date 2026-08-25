@@ -14,6 +14,8 @@ set(kernel_files
     abi_validation.h
     abi.c
     cxx/cassert
+    control/control.c
+    control/control.h
     entry_point.c
     input/abi.c
     input/handler.c
@@ -258,6 +260,7 @@ if(NOT git_hash)
 endif()
 set(crv_version "${PROJECT_VERSION}-${git_hash}")
 set(kbuild_module_name "${project_name_underscores}")
+set(kbuild_control_device_name "${project_name_dashes}")
 
 set(kbuild_file "${kbuild_workspace}/Kbuild")
 set(makefile "${kbuild_workspace}/Makefile")
@@ -277,6 +280,7 @@ target_compile_definitions(kernel_index PRIVATE
     MODULE
     "KBUILD_MODNAME=${project_name_underscores}"
     "CRV_VERSION=${crv_version}"
+    "CRV_CONTROL_DEVICE_NAME=\"${kbuild_control_device_name}\""
 )
 
 execute_process(
