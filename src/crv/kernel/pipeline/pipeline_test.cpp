@@ -8,6 +8,7 @@
 #include <crv/pipeline.hpp>
 #include <cstddef>
 #include <gtest/gtest.h>
+#include <tuple>
 #include <vector>
 
 namespace crv {
@@ -34,6 +35,23 @@ TEST(kernel_pipeline_test, constructs_processes_and_destroys_in_c_owned_storage)
 
     EXPECT_EQ(CRV_PIPELINE_RESULT_INVALID_REPORT, result.status);
     EXPECT_EQ(2U, result.count);
+
+    crv_pipeline_destroy(pipeline);
+}
+
+TEST(kernel_pipeline_test, exposes_inactive_status_through_c_bridge)
+{
+    auto const storage_size = static_cast<std::size_t>(crv_pipeline_storage_size());
+    auto storage = std::vector<std::byte>(storage_size);
+    auto* const pipeline = crv_pipeline_construct(storage.data());
+
+    auto values = std::vector<crv_input_value_t>(4);
+    values[1] = {.type = CRV_EV_SYN, .code = CRV_SYN_REPORT, .value = 0};
+    auto const result = crv_pipeline_process(pipeline, values.data(), 2, 4, 2, 1);
+    auto const actual = std::tuple{result.status, result.count};
+    auto const expected = std::tuple{crv_u32_t{CRV_PIPELINE_RESULT_INACTIVE}, crv_u32_t{2}};
+
+    EXPECT_EQ(actual, expected);
 
     crv_pipeline_destroy(pipeline);
 }

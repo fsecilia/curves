@@ -20,6 +20,7 @@ enum class pipeline_result_t : uint32_t
     output_out_of_range = 6,
     append_failed = 7,
     split_report_bypassed = 8,
+    inactive = 9,
 };
 
 } // namespace crv::pipeline

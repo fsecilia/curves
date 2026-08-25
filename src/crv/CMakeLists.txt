@@ -200,6 +200,7 @@ set(unit_test_files
     io/unique_fd_integration_test.cpp
     io/unique_fd_test.cpp
     kernel/control/configuration_test.cpp
+    kernel/input/handler_test.cpp
     kernel/input/input_value_array_adapter_test.cpp
     kernel/pipeline/pipeline_test.cpp
     math/abs_test.cpp

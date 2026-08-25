@@ -140,17 +140,19 @@ public:
     auto operator()(void* values, std::size_t count, std::size_t max_vals, std::size_t num_vals,
         timestamp_t timestamp) noexcept -> result_t
     {
+        auto const invalid_report = count > max_vals;
+
         if (!storage_.control.synchronized) [[unlikely]]
         {
             if (!input_core_forced_split(num_vals, max_vals))
             {
-                reset_numerical_state(timestamp);
+                if (storage_.control.mode == mode_t::active) reset_numerical_state(timestamp);
                 storage_.control.synchronized = true;
             }
 
             return {
-                .status = count > max_vals ? pipeline::pipeline_result_t::invalid_report
-                                           : pipeline::pipeline_result_t::split_report_bypassed,
+                .status = invalid_report ? pipeline::pipeline_result_t::invalid_report
+                                         : pipeline::pipeline_result_t::split_report_bypassed,
                 .count = count,
             };
         }
@@ -159,8 +161,25 @@ public:
         {
             storage_.control.synchronized = false;
             return {
-                .status = count > max_vals ? pipeline::pipeline_result_t::invalid_report
-                                           : pipeline::pipeline_result_t::split_report_bypassed,
+                .status = invalid_report ? pipeline::pipeline_result_t::invalid_report
+                                         : pipeline::pipeline_result_t::split_report_bypassed,
+                .count = count,
+            };
+        }
+
+        if (invalid_report) [[unlikely]]
+        {
+            return {
+                .status = pipeline::pipeline_result_t::invalid_report,
+                .count = count,
+            };
+        }
+
+        // inactive modes track framing but leave numerical state untouched
+        if (storage_.control.mode != mode_t::active) [[unlikely]]
+        {
+            return {
+                .status = pipeline::pipeline_result_t::inactive,
                 .count = count,
             };
         }

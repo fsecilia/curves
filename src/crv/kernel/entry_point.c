@@ -7,12 +7,14 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <crv/kernel/control/control.h>
+#include <crv/kernel/input/handler.h>
 #include <crv/kernel/pipeline/pipeline.h>
 #include <linux/bitops.h>
 #include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/input.h>
 #include <linux/kernel.h>
+#include <linux/ktime.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/stringify.h>
@@ -169,12 +171,81 @@ err_report:
     return error;
 }
 
+static noinline __cold void crv_input_report_pipeline_diagnostic(crv_u32_t diagnostic,
+    struct crv_pipeline_result_t result, unsigned int count, unsigned int capacity)
+{
+    switch (diagnostic)
+    {
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_SPLIT_REPORT:
+            pr_warn_ratelimited(
+                "input passed through because Linux split report framing; persistent splits may prevent acceleration "
+                "and should be reported as a compatibility issue\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_INVALID_REPORT:
+            pr_warn_ratelimited("malformed input report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_INVALID_COUNT:
+            pr_warn_ratelimited("dropping malformed input callback (count %u, capacity %u)\n", count, capacity);
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_INVALID_TIMESTAMP:
+            pr_warn_ratelimited("input timestamp did not increase; report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_VELOCITY_OUT_OF_RANGE:
+            pr_warn_ratelimited("input velocity exceeded runtime range; report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_TRANSFORM_INPUT_OUT_OF_RANGE:
+            pr_warn_ratelimited("output transform input exceeded runtime range; report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_OUTPUT_OUT_OF_RANGE:
+            pr_warn_ratelimited("transformed output exceeded runtime range; report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_APPEND_FAILED:
+            pr_warn_ratelimited("input report had no room for transformed axes; report passed through unchanged\n");
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_UNKNOWN_STATUS:
+            WARN_ON_ONCE(1);
+            pr_err_ratelimited("pipeline returned unknown status %u\n", result.status);
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_IMPOSSIBLE_COUNT:
+            WARN_ON_ONCE(1);
+            pr_err_ratelimited("pipeline returned impossible count %u for capacity %u; dropping callback\n",
+                result.count, capacity);
+            break;
+
+        case CRV_INPUT_PIPELINE_DIAGNOSTIC_NONE: break;
+        default: WARN_ON_ONCE(1); break;
+    }
+}
+
 static unsigned int crv_input_events(struct input_handle* handle, struct input_value* values, unsigned int count)
 {
-    if (!count) return 0;
+    struct input_dev* device;
+    struct crv_input_pipeline_decision_t decision;
+    struct crv_pipeline_result_t result;
+    u64 timestamp;
+
     if (WARN_ON_ONCE(!handle || !values)) return count;
 
-    return count;
+    device = handle->dev;
+    if (WARN_ON_ONCE(!device || !handle->private)) return count;
+
+    timestamp = (u64)ktime_to_ns(input_get_timestamp(device)[INPUT_CLK_MONO]);
+    result = crv_pipeline_process(handle->private, values, count, device->max_vals, device->num_vals, timestamp);
+    decision = crv_input_decide_pipeline_result(result, count, device->max_vals);
+
+    if (decision.diagnostic != CRV_INPUT_PIPELINE_DIAGNOSTIC_NONE)
+        crv_input_report_pipeline_diagnostic(decision.diagnostic, result, count, device->max_vals);
+
+    return decision.count;
 }
 
 static void crv_input_disconnect(struct input_handle* handle)

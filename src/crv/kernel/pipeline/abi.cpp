@@ -23,6 +23,7 @@ static_assert(
 static_assert(static_cast<crv_u32_t>(pipeline_result_t::append_failed) == CRV_PIPELINE_RESULT_APPEND_FAILED);
 static_assert(
     static_cast<crv_u32_t>(pipeline_result_t::split_report_bypassed) == CRV_PIPELINE_RESULT_SPLIT_REPORT_BYPASSED);
+static_assert(static_cast<crv_u32_t>(pipeline_result_t::inactive) == CRV_PIPELINE_RESULT_INACTIVE);
 
 } // namespace
 } // namespace crv::pipeline

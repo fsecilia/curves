@@ -108,17 +108,51 @@ struct pipeline_integration_test_t : Test
         };
     }
 
-    static auto make_candidate(pipeline::configuration::apply_mode_t mode) -> pipeline::configuration::candidate_t
+    static auto make_candidate(pipeline::configuration::apply_mode_t mode, auto curve)
+        -> pipeline::configuration::candidate_t
     {
         return {
             .config = make_config(),
             .mode = mode,
-            .gain = build_gain_spline(varying_gain_t{}),
+            .gain = build_gain_spline(curve),
         };
     }
 
+    static auto make_candidate(pipeline::configuration::apply_mode_t mode) -> pipeline::configuration::candidate_t
+    {
+        return make_candidate(mode, varying_gain_t{});
+    }
+
+    auto apply(sut_t& target, pipeline::configuration::apply_mode_t mode, auto curve) -> void
+    {
+        auto const candidate = make_candidate(mode, curve);
+        auto const validated = transaction.validate(candidate);
+        ASSERT_TRUE(validated);
+        transaction.commit(target, *validated);
+    }
+
+    auto apply(sut_t& target, pipeline::configuration::apply_mode_t mode) -> void
+    {
+        apply(target, mode, varying_gain_t{});
+    }
+
+    static auto timer_initialized(sut_t& target) noexcept -> bool
+    {
+        auto initialized = false;
+        target.commit_configuration([&](auto&, auto&, auto& state, auto&) noexcept
+        {
+            initialized = state.timer.initialized();
+        });
+        return initialized;
+    }
+
+    auto SetUp() -> void override
+    {
+        apply(sut, pipeline::configuration::apply_mode_t::active, constant_gain_t{});
+    }
+
     configuration_transaction_t transaction{};
-    sut_t sut{make_config(), build_gain_spline(constant_gain_t{})};
+    sut_t sut{};
 };
 
 TEST_F(pipeline_integration_test_t, committed_active_candidate_sets_active_mode)
@@ -184,8 +218,10 @@ TEST_F(pipeline_integration_test_t, first_report_after_configuration_commit_uses
 
 TEST_F(pipeline_integration_test_t, defaults_to_unconfigured_and_synchronized)
 {
-    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
-    EXPECT_TRUE(sut.synchronized());
+    auto const unconfigured = sut_t{};
+
+    EXPECT_EQ(unconfigured.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_TRUE(unconfigured.synchronized());
 }
 
 TEST_F(pipeline_integration_test_t, generated_runtime_candidate_passes_shared_validation)
@@ -195,23 +231,120 @@ TEST_F(pipeline_integration_test_t, generated_runtime_candidate_passes_shared_va
 
 TEST_F(pipeline_integration_test_t, activation_mode_is_independent_of_report_synchronization)
 {
+    auto unconfigured = sut_t{};
     auto split = std::array{
         abi(rel(input_value_t::code_rel_t::x, 3)),
         abi(syn()),
         crv_input_value_t{},
         crv_input_value_t{},
     };
-    ASSERT_EQ(sut(split.data(), 2, split.size(), split.size() - 1, 1'000'000).status,
+    ASSERT_EQ(unconfigured(split.data(), 2, split.size(), split.size() - 1, 1'000'000).status,
         pipeline::pipeline_result_t::split_report_bypassed);
-    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
-    EXPECT_FALSE(sut.synchronized());
+    EXPECT_EQ(unconfigured.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_FALSE(unconfigured.synchronized());
 
     auto followup
         = std::array{abi(rel(input_value_t::code_rel_t::x, 2)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
-    ASSERT_EQ(sut(followup.data(), 2, followup.size(), 2, 2'000'000).status,
+    ASSERT_EQ(unconfigured(followup.data(), 2, followup.size(), 2, 2'000'000).status,
         pipeline::pipeline_result_t::split_report_bypassed);
-    EXPECT_EQ(sut.mode(), sut_t::mode_t::unconfigured);
-    EXPECT_TRUE(sut.synchronized());
+    EXPECT_EQ(unconfigured.mode(), sut_t::mode_t::unconfigured);
+    EXPECT_TRUE(unconfigured.synchronized());
+}
+
+TEST_F(pipeline_integration_test_t, unconfigured_report_is_inactive_and_leaves_timer_dormant)
+{
+    auto unconfigured = sut_t{};
+    auto storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto const original = storage;
+
+    auto const result = unconfigured(storage.data(), 2, storage.size(), 2, 1'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::inactive);
+    EXPECT_FALSE(timer_initialized(unconfigured));
+    expect_unchanged(storage, original);
+}
+
+TEST_F(pipeline_integration_test_t, bypassed_report_is_inactive_and_leaves_timer_dormant)
+{
+    auto bypassed = sut_t{};
+    apply(bypassed, pipeline::configuration::apply_mode_t::bypassed, constant_gain_t{});
+    auto storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto const original = storage;
+
+    auto const result = bypassed(storage.data(), 2, storage.size(), 2, 1'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::inactive);
+    EXPECT_FALSE(timer_initialized(bypassed));
+    expect_unchanged(storage, original);
+}
+
+TEST_F(pipeline_integration_test_t, forced_split_while_unconfigured_desynchronizes_without_advancing_timer)
+{
+    auto unconfigured = sut_t{};
+    auto storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+
+    auto const result = unconfigured(storage.data(), 2, storage.size(), storage.size() - 1, 1'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::split_report_bypassed);
+    EXPECT_FALSE(unconfigured.synchronized());
+    EXPECT_FALSE(timer_initialized(unconfigured));
+}
+
+TEST_F(pipeline_integration_test_t, forced_split_while_bypassed_desynchronizes_without_advancing_timer)
+{
+    auto bypassed = sut_t{};
+    apply(bypassed, pipeline::configuration::apply_mode_t::bypassed, constant_gain_t{});
+    auto storage
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+
+    auto const result = bypassed(storage.data(), 2, storage.size(), storage.size() - 1, 1'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::split_report_bypassed);
+    EXPECT_FALSE(bypassed.synchronized());
+    EXPECT_FALSE(timer_initialized(bypassed));
+}
+
+TEST_F(pipeline_integration_test_t, inactive_recovery_restores_framing_without_advancing_timer)
+{
+    auto bypassed = sut_t{};
+    apply(bypassed, pipeline::configuration::apply_mode_t::bypassed, constant_gain_t{});
+    auto split
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    ASSERT_EQ(bypassed(split.data(), 2, split.size(), split.size() - 1, 1'000'000).status,
+        pipeline::pipeline_result_t::split_report_bypassed);
+
+    auto recovery
+        = std::array{abi(rel(input_value_t::code_rel_t::y, 4)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    auto const result = bypassed(recovery.data(), 2, recovery.size(), 2, 2'000'000);
+
+    EXPECT_EQ(result.status, pipeline::pipeline_result_t::split_report_bypassed);
+    EXPECT_TRUE(bypassed.synchronized());
+    EXPECT_FALSE(timer_initialized(bypassed));
+}
+
+TEST_F(pipeline_integration_test_t, apply_active_during_split_recovery_preserves_framing_epoch)
+{
+    auto pipeline = sut_t{};
+    apply(pipeline, pipeline::configuration::apply_mode_t::bypassed, constant_gain_t{});
+    auto split
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    ASSERT_EQ(pipeline(split.data(), 2, split.size(), split.size() - 1, 1'000'000).status,
+        pipeline::pipeline_result_t::split_report_bypassed);
+
+    apply(pipeline, pipeline::configuration::apply_mode_t::active, constant_gain_t{});
+
+    auto recovery
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 5)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+    ASSERT_EQ(pipeline(recovery.data(), 2, recovery.size(), 2, 2'000'000).status,
+        pipeline::pipeline_result_t::split_report_bypassed);
+
+    auto next
+        = std::array{abi(rel(input_value_t::code_rel_t::x, 3)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
+
+    EXPECT_EQ(pipeline(next.data(), 2, next.size(), 2, 3'000'000).status, pipeline::pipeline_result_t::applied);
 }
 
 TEST_F(pipeline_integration_test_t, real_components_compose_through_missing_axis_insertion)
@@ -346,8 +479,10 @@ TEST_F(pipeline_integration_test_t, split_callbacks_and_first_complete_followup_
 
 TEST_F(pipeline_integration_test_t, first_report_after_resynchronization_uses_a_fresh_runtime_state)
 {
-    auto active = sut_t{make_config(), build_gain_spline(varying_gain_t{})};
-    auto fresh = sut_t{make_config(), build_gain_spline(varying_gain_t{})};
+    auto active = sut_t{};
+    auto fresh = sut_t{};
+    apply(active, pipeline::configuration::apply_mode_t::active);
+    apply(fresh, pipeline::configuration::apply_mode_t::active);
 
     auto warmup
         = std::array{abi(rel(input_value_t::code_rel_t::x, 1)), abi(syn()), crv_input_value_t{}, crv_input_value_t{}};
