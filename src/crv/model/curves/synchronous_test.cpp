@@ -163,6 +163,26 @@ TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_
     EXPECT_EQ(0.0, y.df);
 }
 
+
+//
+// unit motivity
+//
+
+struct model_curves_synchronous_unit_motivity_test_t : Test
+{
+    evaluator_t const eval{params_t{1.0, 3.0, 0.5, 5.0}};
+};
+
+TEST_F(model_curves_synchronous_unit_motivity_test_t, value_is_constant_one)
+{
+    EXPECT_EQ(eval(7.0), 1.0);
+}
+
+TEST_F(model_curves_synchronous_unit_motivity_test_t, jet_derivative_is_zero)
+{
+    EXPECT_EQ(eval(jet_t{7.0, df}), (jet_t{1.0, 0.0}));
+}
+
 //
 // complex-step derivative
 //

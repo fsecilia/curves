@@ -70,8 +70,11 @@ struct synchronous_t
 
         constexpr explicit evaluator_t(params_t<real_t> const& params) noexcept
             : m_{static_cast<scalar_t>(params.motivity)}, p_{static_cast<scalar_t>(params.sync_speed)},
-              g_{static_cast<scalar_t>(params.gamma)}, P_{log(p_)}, M_{std::log(m_)}, G_{g_ / M_},
-              k_{scalar_t{0.5} / static_cast<scalar_t>(params.smooth)}, r_{scalar_t{1} / k_}
+              g_{static_cast<scalar_t>(params.gamma)}, P_{log(p_)}, M_{std::log(m_)},
+              G_{params.motivity == real_t{1} ? scalar_t{} : g_ / M_},
+              k_{scalar_t{0.5} / static_cast<scalar_t>(params.smooth)}, r_{scalar_t{1} / k_},
+              unit_motivity_{params.motivity == real_t{1}},
+              u_cusp_threshold_{unit_motivity_ ? real_t{} : calc_u_cusp_threshold()}
         {}
 
         template <typename value_t> constexpr auto operator()(value_t input) const noexcept -> value_t
@@ -134,6 +137,8 @@ struct synchronous_t
             using std::pow;
             using std::real;
             using std::tanh;
+
+            if (unit_motivity_) return value_t{scalar_t{1}};
 
             auto const x = primal(input);
 
@@ -217,6 +222,7 @@ struct synchronous_t
         scalar_t G_; // gamma/log(motivity)
         scalar_t k_; // 0.5/smooth
         scalar_t r_; // smooth/0.5
+        bool unit_motivity_;
 
     public:
         // find threshold near u=0 that is affected by the cusp in the first derivative there
@@ -257,7 +263,7 @@ struct synchronous_t
         }
 
     private:
-        real_t u_cusp_threshold_ = calc_u_cusp_threshold();
+        real_t u_cusp_threshold_;
         inline static real_t x_origin_limit_threshold_ = calc_x_origin_limit_threshold();
     };
 
