@@ -165,6 +165,7 @@ set(shared_lib_kernel_files
     math/scalar_traits.hpp
     math/shifter.hpp
     pipeline.hpp
+    pipeline/compiler.hpp
     pipeline/configuration/apply_mode.hpp
     pipeline/configuration/authored_validator.hpp
     pipeline/configuration/committer.hpp
@@ -270,6 +271,7 @@ set(unit_test_files
     model/shaping/transitions/quadratic_test.cpp
     model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
+    pipeline/compiler_test.cpp
     pipeline/configuration/authored_validator_test.cpp
     pipeline/configuration/committer_test.cpp
     pipeline/configuration/compiler_test.cpp
