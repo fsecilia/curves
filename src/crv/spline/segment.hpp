@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
+#include <crv/math/division/divider.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/integer.hpp>
@@ -208,13 +209,6 @@ struct segment_evaluator_t
     using correction_product_t = fixed::product_t<y_t, x_t>;
     using correction_product_value_t = correction_product_t::value_t;
 
-    // correction stays within delta
-    //
-    // For a located nonzero segment, 0 < x0/x <= 1. delta is already y_t, so the divider cannot grow its magnitude
-    // and needs no output saturation.
-    using correction_divider_t
-        = division::divider_t<typename y_t::value_t, correction_product_value_t, typename x_t::value_t, 0, false>;
-
     static constexpr auto max_shift = static_cast<int_t>(sizeof(wide_t) * CHAR_BIT) - 1;
     static constexpr auto correction_divide_shift = x_t::frac_bits - correction_product_t::frac_bits + y_t::frac_bits;
     static_assert(correction_divide_shift == 0);
@@ -237,8 +231,15 @@ struct segment_evaluator_t
         assert(x > x_t{0});
         auto const delta = y_t::literal(subtract_wrap(unpacked_segment.g0.value, s.value));
         auto const product = multiply(delta, x0);
-        auto const correction = divide<y_t>(product, x, division_rounding_mode, correction_divider_t{});
-        return y_t::literal(add_wrap(s.value, correction.value));
+
+        // correction stays within delta
+        //
+        // For a located nonzero segment, 0 < x0/x <= 1. delta is already y_t, so the divider cannot grow its
+        // magnitude and needs no output saturation.
+        auto const correction_value
+            = division::divide<y_value_t, correction_product_value_t, x_value_t, correction_divide_shift, false>(
+                product.value, x.value, division_rounding_mode);
+        return y_t::literal(add_wrap(s.value, correction_value));
     }
 
     /// proves evaluator arithmetic safe for every local coordinate in [0, u_max]

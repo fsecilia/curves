@@ -21,16 +21,16 @@ namespace detail {
 template <integral lhs_t, integral rhs_t>
 using native_division_word_t = int_by_bytes_t<max(sizeof(rhs_t), (sizeof(lhs_t) + 1) / 2), false>;
 
-} // namespace detail
-
-/// fully-composed division stack
-template <integral out_value_t, integral lhs_t, integral rhs_t, int shift, bool saturate = true>
-using divider_t = shifted_int_divider_t<wide_divider_t<detail::native_division_word_t<lhs_t, rhs_t>,
-                                            hardware_divider_t<detail::native_division_word_t<lhs_t, rhs_t>>>,
+// fully-compose the native, wide, and scaled division machinery
+template <integral out_value_t, integral lhs_t, integral rhs_t, int_t shift, bool saturate>
+using divider_t = shifted_int_divider_t<wide_divider_t<native_division_word_t<lhs_t, rhs_t>,
+                                            hardware_divider_t<native_division_word_t<lhs_t, rhs_t>>>,
     shift, out_value_t, lhs_t, rhs_t, saturate>;
 
-/// convenience variable template
-template <integral out_value_t, integral lhs_t, integral rhs_t, int shift, bool saturate = true>
-inline constexpr auto divide = divider_t<out_value_t, lhs_t, rhs_t, shift, saturate>{};
+} // namespace detail
+
+/// rounded and scaled integer division operation
+template <integral out_value_t, integral lhs_t, integral rhs_t, int_t shift, bool saturate = true>
+inline constexpr auto divide = detail::divider_t<out_value_t, lhs_t, rhs_t, shift, saturate>{};
 
 } // namespace crv::division

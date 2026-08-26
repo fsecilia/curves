@@ -378,16 +378,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         using rhs_value_t = rhs_t::value_t;
 
         static constexpr auto shift = rhs_t::frac_bits - fixed_t::frac_bits + out_t::frac_bits;
+        static_assert(shift >= 0, "fixed_t: division requires nonnegative pre-division scaling");
 
-        return divide<out_t>(lhs, rhs, rounding_mode, division::divide<out_value_t, lhs_value_t, rhs_value_t, shift>);
-    }
-
-    /// \returns quotient using divider
-    template <is_fixed out_t, is_fixed rhs_t, typename rounding_mode_t, typename divider_t>
-    friend constexpr auto divide(fixed_t lhs, rhs_t rhs, rounding_mode_t rounding_mode, divider_t divider) noexcept
-        -> out_t
-    {
-        return out_t::literal(divider(lhs.value, rhs.value, rounding_mode));
+        auto const quotient = division::divide<out_value_t, lhs_value_t, rhs_value_t, shift>(
+            lhs.value, rhs.value, rounding_mode);
+        return out_t::literal(quotient);
     }
 
     /// calcs remainder of lhs/rhs

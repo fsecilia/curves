@@ -55,6 +55,14 @@ using ebo_sut_t
     = shifted_int_divider_t<tracking_wide_divider_t<uint32_t>, default_shift, int32_t, int32_t, int32_t, true>;
 static_assert(sizeof(ebo_sut_t) == 1, "shifted_int_divider_t should not add overhead for empty dividers");
 
+template <int_t shift>
+concept is_supported_shift = requires {
+    sizeof(shifted_int_divider_t<tracking_wide_divider_t<uint32_t>, shift, int32_t, int32_t, int32_t, true>);
+};
+
+static_assert(is_supported_shift<0>);
+static_assert(!is_supported_shift<-1>);
+
 // --------------------------------------------------------------------------------------------------------------------
 // Heterogeneous
 // --------------------------------------------------------------------------------------------------------------------
