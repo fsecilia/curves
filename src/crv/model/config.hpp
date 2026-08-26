@@ -181,6 +181,8 @@ struct curves_t
 struct profile_t
 {
     float_param_t anisotropy{"anisotropy", 1.0};
+
+    // milliseconds; zero disables filtering
     param_t<float_t, static_t<float_t, 0.0, 1000.0>> filter_halflife{"filter_halflife", 2.0};
 
     curves_t curves;
