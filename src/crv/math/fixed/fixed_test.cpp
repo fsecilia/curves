@@ -9,7 +9,6 @@
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <concepts>
-#include <gmock/gmock.h>
 
 namespace crv {
 namespace {
@@ -73,74 +72,12 @@ static_assert(i16_9_t::int_bits == 6);
 constexpr auto rne = rounding_modes::shr::nearest_even;
 constexpr auto truncate = rounding_modes::shr::truncate;
 
-static auto const shifter_truncate = shifter_t<truncate>{};
-static auto const shifter_rne = shifter_t<rne>{};
-
 using value_t = int_t;
 constexpr auto frac_bits = 21;
 using sut_t = fixed_t<value_t, frac_bits>;
 
 // Standard division is not constexpr. This type forces a specific type to go through the constexpr path.
 using constexpr_div_sut_t = i16_4_t;
-
-// ====================================================================================================================
-// Test Fixtures
-// ====================================================================================================================
-
-// strict nttp mock that fails compilation if any shift operation is called
-struct strict_mock_shifter_t
-{
-    template <int_t count, integral value_t> constexpr auto shl(value_t) const -> value_t
-    {
-        throw "shl() called unexpectedly";
-        return {};
-    }
-
-    template <int_t count, integral value_t> constexpr auto shr(value_t) const -> value_t
-    {
-        throw "shr() called unexpectedly";
-        return {};
-    }
-
-    template <int_t count, integral value_t> constexpr auto shift(value_t) const -> value_t
-    {
-        throw "shift() called unexpectedly";
-        return {};
-    }
-};
-
-// nttp mock that expects shl, verifies inputs, and returns a mocked result
-template <auto expected_value, int_t expected_count, auto return_value> struct mock_shl_t : strict_mock_shifter_t
-{
-    template <int_t count, integral value_t> constexpr auto shl(value_t value) const -> value_t
-    {
-        if constexpr (count != expected_count) throw "shl() received incorrect shift count";
-        if (value != expected_value) throw "shl() received incorrect input value";
-        return static_cast<value_t>(return_value);
-    }
-};
-
-// nttp mock that expects shr, verifies inputs, and returns a mocked result
-template <auto expected_value, int_t expected_count, auto return_value> struct mock_shr_t : strict_mock_shifter_t
-{
-    template <int_t count, integral value_t> constexpr auto shr(value_t value) const -> value_t
-    {
-        if constexpr (count != expected_count) throw "shr()() received incorrect shift count";
-        if (value != expected_value) throw "shr() received incorrect input value";
-        return static_cast<value_t>(return_value);
-    }
-};
-
-// Mock that expects shift
-template <auto expected_value, int expected_count, auto return_value> struct mock_shift_t : strict_mock_shifter_t
-{
-    template <int count, std::integral value_t> constexpr auto shift(value_t value) const -> value_t
-    {
-        if constexpr (count != expected_count) throw "shift() received incorrect shift count";
-        if (value != expected_value) throw "shift() received incorrect input value";
-        return static_cast<value_t>(return_value);
-    }
-};
 
 // ====================================================================================================================
 // Concepts
@@ -253,49 +190,6 @@ static_assert(i8_2_t ::convert(i16_4_t::literal(40)).value == 10);
 static_assert(i16_9_t::convert(i8_7_t::literal(64)).value == 256);
 static_assert(i8_7_t ::convert(i16_9_t::literal(256)).value == 64);
 
-constexpr auto convert_calls_shl_with_correct_shift() noexcept -> bool
-{
-    constexpr auto expected_shift = 4;
-    using src_t = fixed_t<int16_t, 2>;
-    using dst_t = fixed_t<int16_t, src_t::frac_bits + expected_shift>;
-
-    constexpr auto input = src_t::literal(7);
-    constexpr auto shifter = mock_shl_t<input.value, expected_shift, input.value << expected_shift>{};
-
-    constexpr auto result = dst_t::convert<shifter>(input);
-    return result.value == input.value << expected_shift;
-}
-static_assert(convert_calls_shl_with_correct_shift());
-
-constexpr auto convert_calls_shr_with_correct_shift() noexcept -> bool
-{
-    constexpr auto expected_shift = 4;
-    using src_t = fixed_t<int16_t, 6>;
-    using dst_t = fixed_t<int16_t, src_t::frac_bits - expected_shift>;
-
-    constexpr auto input = src_t::literal(112);
-    constexpr auto shifter = mock_shr_t<input.value, expected_shift, (input.value >> expected_shift)>{};
-
-    constexpr auto result = dst_t::convert<shifter>(input);
-    return result.value == input.value >> expected_shift;
-}
-static_assert(convert_calls_shr_with_correct_shift());
-
-constexpr auto convert_does_not_call_shifter_for_zero_shift() noexcept -> bool
-{
-    using src_t = fixed_t<int16_t, 4>;
-    using dst_t = fixed_t<int16_t, 4>;
-
-    constexpr auto input = src_t::literal(37);
-    constexpr auto shifter = strict_mock_shifter_t{};
-
-    // test should fail if shifter is called during no-shift conversion
-
-    constexpr auto result = dst_t::convert<shifter>(input);
-    return result == input;
-}
-static_assert(convert_does_not_call_shifter_for_zero_shift());
-
 namespace rounding {
 
 using src_t = i16_4_t;
@@ -304,18 +198,21 @@ constexpr auto min = crv::min<int8_t>();
 constexpr auto max = crv::max<int8_t>();
 
 // default truncation
-static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min)).value == min / 4);
-static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min + 1)).value == min / 4);
-static_assert(dst_t::convert<shifter_truncate>(src_t::literal(min + 4)).value == min / 4 + 1);
-static_assert(dst_t::convert<shifter_truncate>(src_t::literal(max - 4)).value == max / 4 - 1);
-static_assert(dst_t::convert<shifter_truncate>(src_t::literal(max)).value == max / 4);
+static_assert(dst_t::convert<truncate>(src_t::literal(min)).value == min / 4);
+static_assert(dst_t::convert<truncate>(src_t::literal(min + 1)).value == min / 4);
+static_assert(dst_t::convert<truncate>(src_t::literal(min + 4)).value == min / 4 + 1);
+static_assert(dst_t::convert<truncate>(src_t::literal(max - 4)).value == max / 4 - 1);
+static_assert(dst_t::convert<truncate>(src_t::literal(max)).value == max / 4);
 
 // round nearest even
-static_assert(dst_t::convert<shifter_rne>(src_t::literal(min)).value == min / 4);
-static_assert(dst_t::convert<shifter_rne>(src_t::literal(min + 1)).value == min / 4);
-static_assert(dst_t::convert<shifter_rne>(src_t::literal(min + 3)).value == min / 4 + 1);
-static_assert(dst_t::convert<shifter_rne>(src_t::literal(max - 4)).value == max / 4);
-static_assert(dst_t::convert<shifter_rne>(src_t::literal(max)).value == max / 4 + 1);
+static_assert(dst_t::convert<rne>(src_t::literal(min)).value == min / 4);
+static_assert(dst_t::convert<rne>(src_t::literal(min + 1)).value == min / 4);
+static_assert(dst_t::convert<rne>(src_t::literal(min + 3)).value == min / 4 + 1);
+static_assert(dst_t::convert<rne>(src_t::literal(max - 4)).value == max / 4);
+static_assert(dst_t::convert<rne>(src_t::literal(max)).value == max / 4 + 1);
+
+// safe rounding mode is a valid nttp
+static_assert(dst_t::convert<rounding_modes::shr::nearest_away>(src_t::literal(126)).value == 32);
 
 } // namespace rounding
 
@@ -345,38 +242,6 @@ static_assert(i16_4_t::convert(i32_8_t::literal(-2'000'000'000)).value == i16_mi
 // convenience overload
 static_assert(u8_4_t::convert<fixed::overflow_policy_t::saturate>(u16_4_t{256}).value == 255);
 static_assert(u8_4_t::convert<fixed::overflow_policy_t::wrap>(u16_4_t{256}).value == 0);
-
-// when upscaling, saturation can be detected before shifting
-constexpr auto upscale_saturates_without_calling_shifter() noexcept -> bool
-{
-    constexpr auto expected_shift = 4;
-    using src_t = fixed_t<int16_t, 0>;
-    using dst_t = fixed_t<int8_t, src_t::frac_bits + expected_shift>;
-
-    constexpr auto input = src_t::literal(1000); // will overflow after shift
-    constexpr auto shifter = strict_mock_shifter_t{};
-
-    // test should fail if shifter is called during upscale saturation
-
-    auto const result = dst_t::convert<shifter>(input);
-    return result == max<dst_t>();
-}
-static_assert(upscale_saturates_without_calling_shifter());
-
-// when downscaling, saturation is detected after shifting
-constexpr auto downscale_calls_shifter_before_saturation() noexcept -> bool
-{
-    constexpr auto expected_shift = 8;
-    using src_t = fixed_t<int32_t, 8>;
-    using dst_t = fixed_t<int8_t, src_t::frac_bits - expected_shift>;
-
-    constexpr auto input = src_t::literal((max<dst_t>().value + 1) << expected_shift);
-    constexpr auto shifter = mock_shr_t<input.value, expected_shift, (input.value >> expected_shift)>{};
-
-    constexpr auto result = dst_t::convert<shifter>(input);
-    return result == max<dst_t>();
-}
-static_assert(downscale_calls_shifter_before_saturation());
 
 } // namespace saturation
 
@@ -711,53 +576,30 @@ static_assert(multiply(u64_64_t::literal(max<uint64_t>()), u64_64_t::literal(max
 // Multiplication to Specific Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t, shifter_truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, truncate>(fixed_t<int16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, truncate>(fixed_t<int16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<int32_t, 1>{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, truncate>(fixed_t<uint16_t, 1>{2}, fixed_t<uint32_t, 1>{3}) == i8_1_t{2 * 3});
 
-constexpr auto multiplication_to_specific_type_calls_shift_with_correct_type() noexcept -> bool
-{
-    using out_t = fixed_t<uint_t, 1>;
+using multiplication_rounding_input_t = fixed_t<int16_t, 1>;
+constexpr auto multiplication_rounding_lhs = multiplication_rounding_input_t::literal(3);
+constexpr auto multiplication_rounding_rhs = multiplication_rounding_input_t::literal(1);
 
-    constexpr auto lhs = u8_1_t{2};
-    constexpr auto rhs = fixed_t<int16_t, 1>{3};
-    constexpr auto shift_input = multiply(lhs, rhs);
-    constexpr auto expected_shift = decltype(shift_input)::frac_bits - out_t::frac_bits;
-    constexpr auto expected = out_t::literal(shift_input.value << expected_shift);
-
-    constexpr auto shifter = mock_shr_t<shift_input.value, expected_shift, expected.value>{};
-
-    constexpr auto result = multiply<out_t, shifter>(lhs, rhs);
-    return result == expected;
-}
-static_assert(multiplication_to_specific_type_calls_shift_with_correct_type());
+static_assert(multiply<multiplication_rounding_input_t, truncate>(
+                  multiplication_rounding_lhs, multiplication_rounding_rhs)
+    == multiplication_rounding_input_t::literal(1));
+static_assert(multiply<multiplication_rounding_input_t, rne>(
+                  multiplication_rounding_lhs, multiplication_rounding_rhs)
+    == multiplication_rounding_input_t::literal(2));
 
 // --------------------------------------------------------------------------------------------------------------------
-// Multiplication to LHS Type with shifter
+// Multiplication to LHS Type with Rounding Mode
 // --------------------------------------------------------------------------------------------------------------------
 
-static_assert(multiply<i8_1_t, shifter_truncate>(i8_1_t{2}, i8_1_t{3}) == i8_1_t{2 * 3});
-static_assert(multiply<i8_1_t, shifter_truncate>(i8_1_t{2}, u8_1_t{3}) == i8_1_t{2 * 3});
-static_assert(multiply<u8_1_t, shifter_truncate>(u8_1_t{2}, i8_1_t{3}) == u8_1_t{2 * 3});
-static_assert(multiply<u8_1_t, shifter_truncate>(u8_1_t{2}, u8_1_t{3}) == u8_1_t{2 * 3});
-
-constexpr auto multiplication_to_lhs_type_calls_shift_with_correct_type() noexcept -> bool
-{
-    using sut_t = fixed_t<int_t, 1>;
-
-    constexpr auto lhs = sut_t{2};
-    constexpr auto rhs = sut_t{3};
-    constexpr auto shift_input = multiply(lhs, rhs);
-    constexpr auto expected_shift = sut_t::frac_bits;
-    constexpr auto expected = sut_t::literal(shift_input.value >> expected_shift);
-
-    constexpr auto shifter = mock_shr_t<shift_input.value, expected_shift, expected.value>{};
-
-    constexpr auto result = multiply<shifter>(lhs, rhs);
-    return result == expected;
-}
-static_assert(multiplication_to_lhs_type_calls_shift_with_correct_type());
+static_assert(multiply<i8_1_t, truncate>(i8_1_t{2}, i8_1_t{3}) == i8_1_t{2 * 3});
+static_assert(multiply<i8_1_t, truncate>(i8_1_t{2}, u8_1_t{3}) == i8_1_t{2 * 3});
+static_assert(multiply<u8_1_t, truncate>(u8_1_t{2}, i8_1_t{3}) == u8_1_t{2 * 3});
+static_assert(multiply<u8_1_t, truncate>(u8_1_t{2}, u8_1_t{3}) == u8_1_t{2 * 3});
 
 // --------------------------------------------------------------------------------------------------------------------
 // Division
@@ -981,23 +823,12 @@ static_assert(i32_16_t{5} % i32_0_t{2} == i32_16_t{1});
 // narrowing truncation
 static_assert(mod<i8_1_t>(i8_4_t::literal(34), i8_4_t{1}) == i8_1_t{0});
 
-constexpr auto modulo_to_specific_type_calls_shift_with_correct_type() noexcept -> bool
-{
-    using out_t = fixed_t<uint_t, 1>;
+using rounded_modulo_out_t = fixed_t<uint_t, 1>;
+constexpr auto rounded_modulo_lhs = fixed_t<uint8_t, 3>::literal(31);
+constexpr auto rounded_modulo_rhs = fixed_t<int16_t, 4>::literal(23);
 
-    constexpr auto lhs = fixed_t<uint8_t, 3>::literal(31);
-    constexpr auto rhs = fixed_t<int16_t, 4>::literal(23);
-
-    constexpr auto shift_input = (31 << 1) % 23;
-    constexpr auto expected_shift = 3;
-    constexpr auto expected = out_t::literal(shift_input >> expected_shift);
-
-    constexpr auto shifter = mock_shr_t<shift_input, expected_shift, expected.value>{};
-
-    constexpr auto result = mod<out_t, shifter>(lhs, rhs);
-    return result == expected;
-}
-static_assert(modulo_to_specific_type_calls_shift_with_correct_type());
+static_assert(mod<rounded_modulo_out_t, truncate>(rounded_modulo_lhs, rounded_modulo_rhs)
+    == rounded_modulo_out_t::literal(2));
 
 } // namespace modulo
 

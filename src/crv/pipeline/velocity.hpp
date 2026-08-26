@@ -11,7 +11,6 @@
 #include <crv/math/fixed/uabs.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/rounding_mode.hpp>
-#include <crv/math/shifter.hpp>
 #include <cassert>
 
 namespace crv::pipeline {
@@ -83,8 +82,8 @@ struct velocity_t
             "velocity_t: scaled rate must not require a left shift when converting to output");
 
         using wide_out_t = fixed_t<typename scaled_t::value_t, out_t::frac_bits>;
-        static constexpr auto shifter = shifter_t<rounding_modes::shr::nearest_up>{};
-        auto const wide_output = wide_out_t::template convert<shifter>(scaled);
+        static constexpr auto rounding_mode = rounding_modes::shr::nearest_up;
+        auto const wide_output = wide_out_t::template convert<rounding_mode>(scaled);
         if (wide_output > wide_out_t::convert(max<out_t>())) return {};
 
         return {

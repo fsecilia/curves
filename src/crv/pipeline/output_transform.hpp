@@ -9,7 +9,6 @@
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/integer.hpp>
 #include <crv/math/rounding_mode.hpp>
-#include <crv/math/shifter.hpp>
 #include <array>
 #include <cassert>
 
@@ -109,12 +108,12 @@ struct output_transform_t
         auto const y0 = multiply(fx, y_row[0]);
         auto const y1 = multiply(fy, y_row[1]);
 
-        auto const transformed_x = transform_t::template convert<shifter>(x0 + x1);
-        auto const transformed_y = transform_t::template convert<shifter>(y0 + y1);
+        auto const transformed_x = transform_t::template convert<rounding_mode>(x0 + x1);
+        auto const transformed_y = transform_t::template convert<rounding_mode>(y0 + y1);
 
         return {
-            .x = out_t::template convert<shifter>(multiply(transformed_x, gain)),
-            .y = out_t::template convert<shifter>(multiply(transformed_y, gain)),
+            .x = out_t::template convert<rounding_mode>(multiply(transformed_x, gain)),
+            .y = out_t::template convert<rounding_mode>(multiply(transformed_y, gain)),
             .valid = true,
         };
     }
@@ -168,7 +167,7 @@ private:
         return multiply(x_row[0], y_row[1]) - multiply(x_row[1], y_row[0]);
     }
 
-    static constexpr auto shifter = shifter_t<rounding_modes::shr::fast::nearest_away>{};
+    static constexpr auto rounding_mode = rounding_modes::shr::fast::nearest_away;
     static constexpr auto one = coefficient_t{1};
     static constexpr auto coefficient_ulp = coefficient_t::literal(1);
     static constexpr auto rotation_norm_tolerance = coefficient_t::literal(2);

@@ -125,13 +125,25 @@ inline constexpr auto nearest_up = nearest_up_t{};
 ///
 /// Bias per shift by k: +/-1/2^(k + 1) ulp, sign matches input
 /// Accumulated error:   sqrt(N) for sign-balanced data, biases cancel; same as nearest_up for same-sign data
-struct nearest_away_t : private nearest_up_t
+struct nearest_away_t
 {
-    // biases are the same passthrough
-    using nearest_up_t::bias;
+    /// returns unshifted unchanged
+    template <integral value_t> constexpr auto bias(value_t unshifted, int_t) const noexcept -> value_t
+    {
+        return unshifted;
+    }
 
-    // unsigned carries are the same
-    using nearest_up_t::carry;
+    /// unsigned carry matches nearest up
+    template <unsigned_integral value_t>
+    constexpr auto carry(value_t shifted, value_t unshifted, int_t shift) const noexcept -> value_t
+    {
+        assert(is_valid_shift<value_t>(shift) && "shr::nearest_away_t: shift out of range");
+
+        auto const mask = (value_t{1} << shift) >> 1;
+        auto const carry = static_cast<value_t>((unshifted & mask) != 0);
+
+        return int_cast<value_t>(shifted + carry);
+    }
 
     /// carry = frac >= (half + negative)
     template <signed_integral value_t>
