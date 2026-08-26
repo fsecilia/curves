@@ -5,7 +5,6 @@
 
 #include "configuration.h"
 #include "configuration.hpp"
-#include <crv/kernel/control/abi.h>
 #include <crv/pipeline.hpp>
 #include <crv/pipeline/configuration/candidate.hpp>
 #include <crv/pipeline/configuration/committer.hpp>

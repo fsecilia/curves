@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <crv/kernel/control/abi.h>
 #include <crv/lib.hpp>
 #include <crv/pipeline/configuration/apply_mode.hpp>
 #include <cassert>
@@ -24,8 +25,8 @@ struct apply_mode_decoder_t
 
         switch (raw)
         {
-            case 0: return mode_t::bypassed;
-            case 1: return mode_t::active;
+            case CRV_CONTROL_APPLY_MODE_BYPASSED: return mode_t::bypassed;
+            case CRV_CONTROL_APPLY_MODE_ACTIVE: return mode_t::active;
             default: return std::nullopt;
         }
     }

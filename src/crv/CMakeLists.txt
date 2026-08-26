@@ -65,6 +65,9 @@ set(lib_files
     pipeline/configuration/construction/gain_compiler.hpp
     pipeline/configuration/construction/output_transform_builder.hpp
     pipeline/configuration/construction/runtime.hpp
+    pipeline/control/client.hpp
+    pipeline/control/linux_io.cpp
+    pipeline/control/linux_io.hpp
     priority_queue.hpp
     quadrature/adaptive_integrator.hpp
     quadrature/antiderivative.hpp
@@ -278,6 +281,7 @@ set(unit_test_files
     pipeline/configuration/construction/config_builder_test.cpp
     pipeline/configuration/construction/gain_compiler_test.cpp
     pipeline/configuration/transaction_test.cpp
+    pipeline/control/client_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
     pipeline/orchestrator_test.cpp
@@ -447,6 +451,9 @@ set_target_properties(lib
 target_sources(lib PRIVATE
     ${lib_files}
     ${shared_lib_kernel_files}
+)
+set_source_files_properties(pipeline/control/linux_io.cpp PROPERTIES
+    COMPILE_DEFINITIONS "CRV_CONTROL_DEVICE_PATH=\"/dev/${project_name_dashes}\""
 )
 list(TRANSFORM shared_lib_kernel_files PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 

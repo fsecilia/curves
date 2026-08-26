@@ -5,7 +5,6 @@
 
 #include "configuration.h"
 #include "configuration.hpp"
-#include <crv/kernel/control/abi.h>
 #include <crv/pipeline/configuration/transaction.hpp>
 #include <crv/test/test.hpp>
 #include <cstddef>
