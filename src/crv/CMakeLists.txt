@@ -170,6 +170,7 @@ set(shared_lib_kernel_files
     pipeline/configuration/transaction.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
+    pipeline/output_transform_builder.hpp
     pipeline/output_transform.hpp
     pipeline.hpp
     pipeline/orchestrator.hpp

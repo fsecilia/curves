@@ -4,13 +4,12 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "output_transform.hpp"
-#include <crv/math/fixed/float_conversions.hpp>
+#include <crv/pipeline/output_transform_builder.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <cmath>
-#include <numbers>
 
 namespace crv::pipeline {
 namespace {
@@ -26,18 +25,7 @@ struct output_transform_test_t : Test
 
     static auto generated_transform(float_t degrees, float_t anisotropy) -> sut_t
     {
-        using std::cos;
-        using std::sin;
-
-        auto const radians = degrees * std::numbers::pi_v<float_t> / float_t{180};
-        auto const cosine = cos(radians);
-        auto const sine = sin(radians);
-
-        return sut_t{.matrix = {{
-                         {to_fixed<sut_t::coefficient_t>(cosine), to_fixed<sut_t::coefficient_t>(-sine)},
-                         {to_fixed<sut_t::coefficient_t>(anisotropy * sine),
-                             to_fixed<sut_t::coefficient_t>(anisotropy * cosine)},
-                     }}};
+        return output_transform_builder_t<sut_t>{}(degrees, anisotropy);
     }
 
     static constexpr auto is_valid(sut_t const& transform) noexcept -> bool
