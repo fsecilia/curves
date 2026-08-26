@@ -65,6 +65,14 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     static constexpr auto max_segment_count = 1 << (depth_max * 2);
     static constexpr auto domain_end = 1 << log2_domain_end;
 
+    // provisional production error budgets in gain space
+    //
+    // These values still need to be tuned.
+    static constexpr auto spline_gain_tolerance = scalar_t{2e-6};
+    static constexpr auto sensitivity_gain_tolerance = scalar_t{1e-10};
+    static constexpr auto sensitivity_depth_limit = int_t{64};
+    static_assert(sensitivity_gain_tolerance < spline_gain_tolerance);
+
     // layout configuration
     static constexpr auto segment_layout = pipeline_config_t::segment_layout;
     static constexpr auto intermediate_layout_max_shift = segment_layout.intermediate.max_shift();

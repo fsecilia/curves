@@ -78,7 +78,7 @@ template <typename target_t> auto build_spline(target_t const& target) -> spline
 {
     auto spline = spline_t{};
     auto critical_points = std::vector<x_t>{to_fixed<x_t>(7.123456789), to_fixed<x_t>(31.0000003)};
-    auto const result = spline_factory_t{}(spline, target, scalar_t{2e-6}, std::move(critical_points));
+    auto const result = spline_factory_t{}(spline, target, policy_t::spline_gain_tolerance, std::move(critical_points));
     EXPECT_TRUE(result);
     if (result)
     {
@@ -127,8 +127,8 @@ TEST(spline_factory_integration_test, sensitivity_authored_fractional_power_retu
     auto const alpha = scalar_t{0.5};
     auto const curve = fractional_power_t{.alpha = alpha};
     auto const built_target = sensitivity_curve_target_builder_t<scalar_t>{
-        .gain_tolerance = scalar_t{1e-10},
-        .depth_limit = 64,
+        .gain_tolerance = policy_t::sensitivity_gain_tolerance,
+        .depth_limit = policy_t::sensitivity_depth_limit,
     }(curve, scalar_t{policy_t::domain_end});
     ASSERT_FALSE(built_target.refinement_limited);
 
