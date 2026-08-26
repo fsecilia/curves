@@ -164,16 +164,17 @@ set(shared_lib_kernel_files
     math/saturate_cast.hpp
     math/scalar_traits.hpp
     math/shifter.hpp
+    pipeline.hpp
     pipeline/configuration/apply_mode.hpp
     pipeline/configuration/candidate.hpp
     pipeline/configuration/committer.hpp
+    pipeline/configuration/config_builder.hpp
     pipeline/configuration/transaction.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
+    pipeline/orchestrator.hpp
     pipeline/output_transform_builder.hpp
     pipeline/output_transform.hpp
-    pipeline.hpp
-    pipeline/orchestrator.hpp
     pipeline/relative_report.hpp
     pipeline/report_timer.hpp
     pipeline/residual_accumulator.hpp
@@ -266,12 +267,13 @@ set(unit_test_files
     model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
     pipeline/configuration/committer_test.cpp
+    pipeline/configuration/config_builder_test.cpp
     pipeline/configuration/transaction_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
+    pipeline/orchestrator_test.cpp
     pipeline/output_transform_test.cpp
     pipeline/pipeline_integration_test.cpp
-    pipeline/orchestrator_test.cpp
     pipeline/relative_report_test.cpp
     pipeline/report_timer_test.cpp
     pipeline/residual_accumulator_test.cpp
