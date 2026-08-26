@@ -167,8 +167,9 @@ set(shared_lib_kernel_files
     pipeline.hpp
     pipeline/configuration/apply_mode.hpp
     pipeline/configuration/authored_validator.hpp
-    pipeline/configuration/candidate.hpp
     pipeline/configuration/committer.hpp
+    pipeline/configuration/compiler.hpp
+    pipeline/configuration/candidate.hpp
     pipeline/configuration/config_builder.hpp
     pipeline/configuration/gain_compiler.hpp
     pipeline/configuration/runtime.hpp
@@ -271,6 +272,7 @@ set(unit_test_files
     overloaded_test.cpp
     pipeline/configuration/authored_validator_test.cpp
     pipeline/configuration/committer_test.cpp
+    pipeline/configuration/compiler_test.cpp
     pipeline/configuration/config_builder_test.cpp
     pipeline/configuration/gain_compiler_test.cpp
     pipeline/configuration/transaction_test.cpp
