@@ -161,7 +161,7 @@ struct quadratic_minimax_t
 /// results in a specific Q-format. The number of iterations and the algorithm for the initial guess are tunable
 /// parameters
 template <int_t nr_iteration_count = 4, typename initial_guess_t = rsqrt_initial_guesses::quadratic_minimax_t,
-    typename shifter_t = shifter_t<rounding_modes::shr::truncate>>
+    auto rounding_mode = rounding_modes::shr::truncate>
     requires(nr_iteration_count > 0)
 struct normalized_rsqrt_t
 {
@@ -176,14 +176,16 @@ struct normalized_rsqrt_t
     [[no_unique_address]] initial_guess_t initial_guess{};
 
     // \pre in must be in [0.5, 1)
-    constexpr auto operator()(in_t x, shifter_t shifter = {}) const noexcept -> out_t
+    constexpr auto operator()(in_t x) const noexcept -> out_t
     {
+        constexpr auto shifter = shifter_t<rounding_mode>{};
+
         // Newton-Raphson
         auto y = initial_guess(x);
         for (int_t i = 0; i < nr_iteration_count - 1; ++i)
         {
-            auto const yy = multiply<shifter>(y, y);
-            auto const xyy = multiply<nr_t, shifter>(x, yy);
+            auto const yy = multiply<rounding_mode>(y, y);
+            auto const xyy = multiply<nr_t, rounding_mode>(x, yy);
             auto const product = multiply(y, three - xyy);
 
             // this cracks the fixed_t to combine the rescale with division by 2 in a single fused shift
@@ -191,8 +193,8 @@ struct normalized_rsqrt_t
         }
 
         // Final iteration does not narrow at the end.
-        auto const yy = multiply<shifter>(y, y);
-        auto const xyy = multiply<nr_t, shifter>(x, yy);
+        auto const yy = multiply<rounding_mode>(y, y);
+        auto const xyy = multiply<nr_t, rounding_mode>(x, yy);
         auto const product = multiply(y, three - xyy);
         return out_t::literal(shifter.template shr<nr_t::frac_bits + 1>(product.value));
     }
@@ -230,9 +232,10 @@ struct rsqrt_t
     [[no_unique_address]] normalized_rsqrt_t normalized_rsqrt{};
 
     // \pre x > 0
-    template <typename shifter_t = shifter_t<>>
-    constexpr auto operator()(in_t x, shifter_t shifter = {}) const noexcept -> out_t
+    template <auto rounding_mode = rounding_modes::shr::nearest_even>
+    constexpr auto operator()(in_t x) const noexcept -> out_t
     {
+        constexpr auto shifter = shifter_t<rounding_mode>{};
         assert(x.value > 0);
 
         // normalize x to [0.5, 1.0) in the format expected by normalized_rsqrt
@@ -248,15 +251,15 @@ struct rsqrt_t
         auto const odd_exponent = (x_norm_frac_bits & 1) != 0;
         if (odd_exponent)
         {
-            auto const y_narrow = nr_t::template convert<shifter>(y);
-            y = multiply<typename normalized_rsqrt_t::out_t, shifter>(y_narrow, sqrt2);
+            auto const y_narrow = nr_t::template convert<rounding_mode>(y);
+            y = multiply<typename normalized_rsqrt_t::out_t, rounding_mode>(y_narrow, sqrt2);
         }
 
         auto const y_denorm_frac_bits = y_frac_bits + (x_norm_t::frac_bits >> 1) - (x_norm_frac_bits >> 1);
         auto const shift = out_t::frac_bits - y_denorm_frac_bits;
 
         auto const result = wide_out_t::literal(shifter.shift(y.value, shift));
-        return out_t::template convert<shifter>(result);
+        return out_t::template convert<rounding_mode>(result);
     }
 };
 
