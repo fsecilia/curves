@@ -14,7 +14,7 @@
 #include <crv/tuple.hpp>
 #include <cmath>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 
 enum class authored_validation_error_t : uint8_t
 {
@@ -151,4 +151,4 @@ private:
     }
 };
 
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

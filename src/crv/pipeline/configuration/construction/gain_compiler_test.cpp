@@ -11,7 +11,7 @@
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 namespace {
 
 using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
@@ -181,4 +181,4 @@ TEST_F(gain_compiler_test_t, spline_failure_is_preserved)
 }
 
 } // namespace
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

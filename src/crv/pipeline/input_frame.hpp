@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/kernel/input/input_value_array_adapter.hpp>
 #include <cassert>

@@ -19,7 +19,7 @@
 #include <variant>
 #include <vector>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 
 template <std::floating_point t_scalar_t, is_fixed t_x_t> struct critical_point_builder_t
 {
@@ -138,4 +138,4 @@ private:
     }
 };
 
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

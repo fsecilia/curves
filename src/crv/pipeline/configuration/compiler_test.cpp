@@ -9,7 +9,7 @@
 #include <array>
 #include <variant>
 
-namespace crv::pipeline {
+namespace crv::pipeline::configuration {
 namespace {
 
 constexpr auto supported_curve_ids = [] {
@@ -67,7 +67,7 @@ TEST_F(pipeline_compiler_test_t, high_anisotropy_rotated_transform_is_accepted_e
 TEST_F(pipeline_compiler_test_t, authored_validation_is_available_without_compilation)
 {
     device.dpi.value(0);
-    EXPECT_EQ(sut.validate(device, profile).error, configuration::authored_validation_error_t::dpi);
+    EXPECT_EQ(sut.validate(device, profile).error, construction::authored_validation_error_t::dpi);
 }
 
 TEST_F(pipeline_compiler_test_t, zero_dpi_fails_before_numerical_construction)
@@ -75,8 +75,8 @@ TEST_F(pipeline_compiler_test_t, zero_dpi_fails_before_numerical_construction)
     device.dpi.value(0);
     auto const result = sut(device, profile);
     ASSERT_FALSE(result);
-    EXPECT_EQ(std::get<configuration::authored_validation_result_t>(result.error()).error,
-        configuration::authored_validation_error_t::dpi);
+    EXPECT_EQ(std::get<construction::authored_validation_result_t>(result.error()).error,
+        construction::authored_validation_error_t::dpi);
 }
 
 TEST_F(pipeline_compiler_test_t, synchronous_runtime_spline_keeps_quantized_sync_speed_as_knot)
@@ -90,4 +90,4 @@ TEST_F(pipeline_compiler_test_t, synchronous_runtime_spline_keeps_quantized_sync
 }
 
 } // namespace
-} // namespace crv::pipeline
+} // namespace crv::pipeline::configuration

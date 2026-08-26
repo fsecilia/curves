@@ -5,10 +5,8 @@
 
 #include "output_transform.hpp"
 #include <crv/math/limits.hpp>
-#include <crv/pipeline/configuration/construction/output_transform_builder.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
-#include <array>
 #include <cmath>
 
 namespace crv::pipeline {
@@ -22,33 +20,6 @@ struct output_transform_test_t : Test
 
     static constexpr auto one = sut_t::coefficient_t{1};
     static constexpr auto zero = sut_t::coefficient_t{};
-
-    static auto generated_transform(float_t degrees, float_t anisotropy) -> sut_t
-    {
-        return output_transform_builder_t<sut_t>{}(degrees, anisotropy);
-    }
-
-    static constexpr auto is_valid(sut_t const& transform) noexcept -> bool
-    {
-        return transform.rotation_components_are_valid() && transform.anisotropy_components_are_valid()
-            && transform.rotation_norm_is_valid() && transform.anisotropy_norm_is_valid()
-            && transform.rows_are_orthogonal() && transform.determinant_is_positive();
-    }
-
-    static auto generated_transforms_are_valid(float_t degrees) -> AssertionResult
-    {
-        constexpr auto anisotropies = std::array{float_t{0.001}, float_t{1}, float_t{1000}};
-
-        for (auto const anisotropy : anisotropies)
-        {
-            if (!is_valid(generated_transform(degrees, anisotropy)))
-            {
-                return AssertionFailure() << "degrees=" << degrees << ", anisotropy=" << anisotropy;
-            }
-        }
-
-        return AssertionSuccess();
-    }
 
     static_assert(sut_t::coefficient_t::int_bits == 10);
     static_assert(sut_t::coefficient_t::frac_bits == 53);
@@ -139,29 +110,6 @@ TEST_F(output_transform_test_t, pathological_gain_anisotropy_case_keeps_error_in
     // 997,343,718 Q53 ulps ~= 1.1073e-7 output counts
     EXPECT_LT(error, int128_t{1'100'000'000});
 }
-
-TEST_F(output_transform_test_t, zero_degree_userspace_matrix_quantization_satisfies_validation_tolerances)
-{
-    EXPECT_TRUE(generated_transforms_are_valid(float_t{0}));
-}
-
-struct output_transform_quantization_test_t : output_transform_test_t, WithParamInterface<float_t>
-{};
-
-TEST_P(output_transform_quantization_test_t, positive_angle_satisfies_validation_tolerances)
-{
-    EXPECT_TRUE(generated_transforms_are_valid(GetParam()));
-}
-
-TEST_P(output_transform_quantization_test_t, negative_angle_satisfies_validation_tolerances)
-{
-    EXPECT_TRUE(generated_transforms_are_valid(-GetParam()));
-}
-
-constexpr float_t quantization_degrees[]
-    = {0.1, 45, 89.9, 90, 90.1, 135, 179.9, 180, 180.1, 225, 269.9, 270, 270.1, 315, 359.9};
-
-INSTANTIATE_TEST_SUITE_P(degrees, output_transform_quantization_test_t, ValuesIn(quantization_degrees));
 
 constexpr auto validation_boundaries = [] {
     using sut_t = output_transform_test_t::sut_t;

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <crv/lib.hpp>
 #include <crv/pipeline/status.hpp>
 #include <utility>
 

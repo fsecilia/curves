@@ -11,7 +11,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace crv::pipeline {
+namespace crv::pipeline::configuration::construction {
 
 template <typename t_transform_t> struct output_transform_builder_t
 {
@@ -35,4 +35,4 @@ template <typename t_transform_t> struct output_transform_builder_t
     }
 };
 
-} // namespace crv::pipeline
+} // namespace crv::pipeline::configuration::construction

@@ -6,7 +6,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include "control.h"
-#include "configuration.h"
+#include "prepared_configuration.h"
 #include "ioctl.h"
 #include <linux/errno.h>
 #include <linux/fs.h>
@@ -16,9 +16,9 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 
-static struct crv_control_attachment* crv_control_find_attachment(struct crv_control* control, u64 id)
+static struct crv_control_attachment_t* crv_control_find_attachment(struct crv_control_t* control, u64 id)
 {
-    struct crv_control_attachment* attachment;
+    struct crv_control_attachment_t* attachment;
 
     list_for_each_entry(attachment, &control->attachments, node)
     {
@@ -28,9 +28,9 @@ static struct crv_control_attachment* crv_control_find_attachment(struct crv_con
     return NULL;
 }
 
-static struct crv_control_attachment* crv_control_find_attachment_after(struct crv_control* control, u64 id)
+static struct crv_control_attachment_t* crv_control_find_attachment_after(struct crv_control_t* control, u64 id)
 {
-    struct crv_control_attachment* attachment;
+    struct crv_control_attachment_t* attachment;
 
     list_for_each_entry(attachment, &control->attachments, node)
     {
@@ -40,10 +40,10 @@ static struct crv_control_attachment* crv_control_find_attachment_after(struct c
     return NULL;
 }
 
-static int crv_control_get_device(struct crv_control* control, void __user* argument)
+static int crv_control_get_device(struct crv_control_t* control, void __user* argument)
 {
     struct crv_control_device_v1_t result;
-    struct crv_control_attachment* attachment;
+    struct crv_control_attachment_t* attachment;
     struct input_dev* device;
     int error;
 
@@ -93,7 +93,7 @@ static int crv_control_get_device(struct crv_control* control, void __user* argu
 }
 
 static int crv_control_copy_configuration(
-    struct crv_control_prepared_configuration* configuration, struct crv_control_apply_v1_t const* request)
+    struct crv_control_prepared_configuration_t* configuration, struct crv_control_apply_v1_t const* request)
 {
     void __user* user_configuration = u64_to_user_ptr((u64)request->configuration);
     char __user* user_bytes = user_configuration;
@@ -115,9 +115,9 @@ static int crv_control_copy_configuration(
 }
 
 static int crv_control_publish_configuration(
-    struct crv_control* control, u64 attachment_id, struct crv_control_prepared_configuration const* configuration)
+    struct crv_control_t* control, u64 attachment_id, struct crv_control_prepared_configuration_t const* configuration)
 {
-    struct crv_control_attachment* attachment;
+    struct crv_control_attachment_t* attachment;
     struct input_dev* device;
     unsigned long flags;
     int error = 0;
@@ -151,10 +151,10 @@ out_control:
     return error;
 }
 
-static int crv_control_apply(struct crv_control* control, void __user* argument)
+static int crv_control_apply(struct crv_control_t* control, void __user* argument)
 {
     struct crv_control_apply_v1_t request;
-    struct crv_control_prepared_configuration* configuration = NULL;
+    struct crv_control_prepared_configuration_t* configuration = NULL;
     struct crv_control_validation_result_t validation;
     void* storage = NULL;
     int error;
@@ -199,7 +199,7 @@ out_free:
 static long crv_control_ioctl(struct file* file, unsigned int command, unsigned long argument)
 {
     struct miscdevice* misc = file->private_data;
-    struct crv_control* control = container_of(misc, struct crv_control, misc);
+    struct crv_control_t* control = container_of(misc, struct crv_control_t, misc);
     void __user* user_argument = (void __user*)argument;
 
     switch (command)
@@ -216,7 +216,7 @@ static const struct file_operations crv_control_file_operations = {
     .compat_ioctl = compat_ptr_ioctl,
 };
 
-int crv_control_register(struct crv_control* control)
+int crv_control_register(struct crv_control_t* control)
 {
     int error;
 
@@ -234,14 +234,14 @@ int crv_control_register(struct crv_control* control)
     return error;
 }
 
-void crv_control_unregister(struct crv_control* control)
+void crv_control_unregister(struct crv_control_t* control)
 {
     misc_deregister(&control->misc);
     WARN_ON(!list_empty(&control->attachments));
 }
 
-int crv_control_attach(struct crv_control* control, struct crv_control_attachment* attachment,
-    struct input_handle* input, struct crv_pipeline* pipeline)
+int crv_control_attach(struct crv_control_t* control, struct crv_control_attachment_t* attachment,
+    struct input_handle* input, struct crv_pipeline_t* pipeline)
 {
     int error = 0;
 
@@ -264,7 +264,7 @@ out:
     return error;
 }
 
-void crv_control_detach(struct crv_control* control, struct crv_control_attachment* attachment)
+void crv_control_detach(struct crv_control_t* control, struct crv_control_attachment_t* attachment)
 {
     mutex_lock(&control->mutex);
 

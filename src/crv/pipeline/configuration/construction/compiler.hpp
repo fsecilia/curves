@@ -8,12 +8,12 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/config.hpp>
-#include <crv/pipeline/configuration/construction/runtime.hpp>
+#include <crv/pipeline/configuration/runtime.hpp>
 #include <expected>
 #include <utility>
 #include <variant>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 
 template <typename t_authored_validator_t, typename t_config_builder_t, typename t_gain_compiler_t,
     typename t_runtime_validator_t>
@@ -49,4 +49,4 @@ struct compiler_t
     }
 };
 
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

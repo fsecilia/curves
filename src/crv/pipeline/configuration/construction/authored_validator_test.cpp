@@ -8,7 +8,7 @@
 #include <crv/test/test.hpp>
 #include <limits>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 namespace {
 
 struct authored_validator_test_t : Test
@@ -89,4 +89,4 @@ TEST_F(authored_validator_test_t, rejects_log_normal_nonpositive_scale)
 }
 
 } // namespace
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

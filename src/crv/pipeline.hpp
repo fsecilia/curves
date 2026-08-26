@@ -117,9 +117,6 @@ private:
 
 public:
     constexpr pipeline_t() noexcept = default;
-    constexpr pipeline_t(config_t config, gain_t const& gain) noexcept
-        : storage_{.control = {.config = std::move(config)}, .gain = gain}
-    {}
 
     constexpr auto mode() const noexcept -> mode_t { return storage_.control.mode; }
     constexpr auto synchronized() const noexcept -> bool { return storage_.control.synchronized; }

@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-struct crv_control_prepared_configuration;
+struct crv_control_prepared_configuration_t;
 
 struct crv_control_validation_result_t
 {
@@ -23,20 +23,21 @@ struct crv_control_validation_result_t
 
 crv_u32_t crv_control_prepared_configuration_storage_size(void);
 
-struct crv_control_prepared_configuration* crv_control_prepared_configuration_construct(void* storage, crv_u32_t mode);
-void crv_control_prepared_configuration_destroy(struct crv_control_prepared_configuration* configuration);
+struct crv_control_prepared_configuration_t* crv_control_prepared_configuration_construct(
+    void* storage, crv_u32_t mode);
+void crv_control_prepared_configuration_destroy(struct crv_control_prepared_configuration_t* configuration);
 
-void* crv_control_prepared_configuration_config(struct crv_control_prepared_configuration* configuration);
+void* crv_control_prepared_configuration_config(struct crv_control_prepared_configuration_t* configuration);
 crv_u32_t crv_control_prepared_configuration_config_size(void);
-void* crv_control_prepared_configuration_gain(struct crv_control_prepared_configuration* configuration);
+void* crv_control_prepared_configuration_gain(struct crv_control_prepared_configuration_t* configuration);
 crv_u32_t crv_control_prepared_configuration_gain_size(void);
 
 struct crv_control_validation_result_t crv_control_prepared_configuration_validate(
-    struct crv_control_prepared_configuration* configuration);
+    struct crv_control_prepared_configuration_t* configuration);
 char const* crv_control_validation_error_name(crv_u32_t error);
 
 void crv_control_prepared_configuration_commit(
-    struct crv_control_prepared_configuration const* configuration, struct crv_pipeline* pipeline);
+    struct crv_control_prepared_configuration_t const* configuration, struct crv_pipeline_t* pipeline);
 
 #ifdef __cplusplus
 } // extern "C" {

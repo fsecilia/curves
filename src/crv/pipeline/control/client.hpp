@@ -9,7 +9,7 @@
 #include <crv/kernel/control/abi.h>
 #include <crv/lib.hpp>
 #include <crv/pipeline/configuration/apply_mode.hpp>
-#include <crv/pipeline/configuration/construction/runtime.hpp>
+#include <crv/pipeline/configuration/runtime.hpp>
 #include <crv/pipeline/control/linux_io.hpp>
 #include <cerrno>
 #include <compare>

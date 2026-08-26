@@ -20,6 +20,7 @@ set(kernel_files
     input/abi.c
     input/handler.c
     input/handler.h
+    input/pipeline_decision.h
 )
 
 #

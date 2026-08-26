@@ -8,7 +8,7 @@
 #include <array>
 #include <gmock/gmock.h>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 namespace {
 
 using velocity_scale_t = pipeline_t::velocity_scale_t;
@@ -105,4 +105,4 @@ TEST_F(config_builder_test_t, composes_scalar_runtime_configuration)
 }
 
 } // namespace
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

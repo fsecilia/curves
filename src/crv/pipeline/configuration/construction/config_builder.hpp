@@ -14,7 +14,7 @@
 #include <crv/pipeline.hpp>
 #include <cassert>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 
 struct runtime_units_t
 {
@@ -70,4 +70,4 @@ struct config_builder_t
     }
 };
 
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

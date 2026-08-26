@@ -10,7 +10,7 @@
 #include <gmock/gmock.h>
 #include <variant>
 
-namespace crv::pipeline::configuration {
+namespace crv::pipeline::configuration::construction {
 namespace {
 
 struct compiler_test_t : Test
@@ -151,4 +151,4 @@ TEST_F(compiler_test_t, success_returns_constructed_runtime_value)
 }
 
 } // namespace
-} // namespace crv::pipeline::configuration
+} // namespace crv::pipeline::configuration::construction

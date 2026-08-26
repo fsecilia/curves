@@ -17,7 +17,7 @@ static_assert((pipeline_alignment & (pipeline_alignment - 1)) == 0);
 static_assert(pipeline_storage_size <= ~crv_u32_t{});
 static_assert(sizeof(crv::pipeline_t::timestamp_t) == sizeof(crv_u64_t));
 
-inline auto cpp_pipeline(crv_pipeline* pipeline) noexcept -> crv::pipeline_t*
+inline auto cpp_pipeline(crv_pipeline_t* pipeline) noexcept -> crv::pipeline_t*
 {
     assert(nullptr != pipeline);
     return reinterpret_cast<crv::pipeline_t*>(pipeline);
@@ -39,18 +39,18 @@ extern "C" auto crv_pipeline_storage_size(void) -> crv_u32_t
     return pipeline_storage_size;
 }
 
-extern "C" auto crv_pipeline_construct(void* storage) -> crv_pipeline*
+extern "C" auto crv_pipeline_construct(void* storage) -> crv_pipeline_t*
 {
     auto* const pipeline = ::new (align_pipeline_storage(storage)) crv::pipeline_t{};
-    return reinterpret_cast<crv_pipeline*>(pipeline);
+    return reinterpret_cast<crv_pipeline_t*>(pipeline);
 }
 
-extern "C" auto crv_pipeline_destroy(crv_pipeline* pipeline) -> void
+extern "C" auto crv_pipeline_destroy(crv_pipeline_t* pipeline) -> void
 {
     cpp_pipeline(pipeline)->~pipeline_t();
 }
 
-extern "C" auto crv_pipeline_process(crv_pipeline* pipeline, void* values, crv_u32_t count, crv_u32_t max_vals,
+extern "C" auto crv_pipeline_process(crv_pipeline_t* pipeline, void* values, crv_u32_t count, crv_u32_t max_vals,
     crv_u32_t num_vals, crv_u64_t timestamp) -> crv_pipeline_result_t
 {
     auto const result = (*cpp_pipeline(pipeline))(values, count, max_vals, num_vals, timestamp);

@@ -33,7 +33,7 @@ struct apply_mode_decoder_t
 };
 
 /// owns one transient configuration candidate through validation and commit
-template <typename t_candidate_t, typename t_transaction_t> class configuration_t
+template <typename t_candidate_t, typename t_transaction_t> class prepared_configuration_t
 {
 public:
     using candidate_t = t_candidate_t;
@@ -41,7 +41,7 @@ public:
     using validation_result_t = typename transaction_t::validation_result_t;
     using validated_candidate_t = typename transaction_t::template validated_candidate_t<candidate_t>;
 
-    constexpr explicit configuration_t(
+    constexpr explicit prepared_configuration_t(
         pipeline::configuration::apply_mode_t mode, transaction_t transaction = {}) noexcept
         : candidate_{.mode = mode}, transaction_{std::move(transaction)}
     {
@@ -76,7 +76,7 @@ public:
 
     template <typename target_t> constexpr auto commit(target_t& target) const noexcept -> void
     {
-        assert(validated_.has_value() && "configuration_t: commit requires successful validation");
+        assert(validated_.has_value() && "prepared_configuration_t: commit requires successful validation");
         transaction_.commit(target, *validated_);
     }
 

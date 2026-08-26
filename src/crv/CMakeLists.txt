@@ -58,13 +58,13 @@ set(lib_files
     model/shaping/transitions/quadratic.hpp
     model/shaping/transitions/smootherstep_integral.hpp
     overloaded.hpp
-    pipeline/compiler.hpp
+    pipeline/configuration/compiler.hpp
     pipeline/configuration/construction/authored_validator.hpp
     pipeline/configuration/construction/compiler.hpp
     pipeline/configuration/construction/config_builder.hpp
     pipeline/configuration/construction/gain_compiler.hpp
     pipeline/configuration/construction/output_transform_builder.hpp
-    pipeline/configuration/construction/runtime.hpp
+    pipeline/configuration/runtime.hpp
     pipeline/control/client.hpp
     pipeline/control/linux_io.cpp
     pipeline/control/linux_io.hpp
@@ -134,12 +134,10 @@ set(shared_lib_kernel_files
     algorithm.hpp
     bitwise_enum.hpp
     kernel/abi.h
-    kernel/cxx_build_test.cpp
-    kernel/cxx_build_test.h
     kernel/control/abi.h
-    kernel/control/configuration.cpp
-    kernel/control/configuration.h
-    kernel/control/configuration.hpp
+    kernel/control/prepared_configuration.cpp
+    kernel/control/prepared_configuration.h
+    kernel/control/prepared_configuration.hpp
     kernel/control/ioctl.h
     kernel/input/abi.h
     kernel/input/input_value_array_adapter.cpp
@@ -209,8 +207,8 @@ set(unit_test_files
     i18n_test.cpp
     io/unique_fd_integration_test.cpp
     io/unique_fd_test.cpp
-    kernel/control/configuration_test.cpp
-    kernel/input/handler_test.cpp
+    kernel/control/prepared_configuration_test.cpp
+    kernel/input/pipeline_decision_test.cpp
     kernel/input/input_value_array_adapter_test.cpp
     kernel/pipeline/pipeline_test.cpp
     math/abs_test.cpp
@@ -274,12 +272,13 @@ set(unit_test_files
     model/shaping/transitions/quadratic_test.cpp
     model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
-    pipeline/compiler_test.cpp
+    pipeline/configuration/compiler_test.cpp
     pipeline/configuration/committer_test.cpp
     pipeline/configuration/construction/authored_validator_test.cpp
     pipeline/configuration/construction/compiler_test.cpp
     pipeline/configuration/construction/config_builder_test.cpp
     pipeline/configuration/construction/gain_compiler_test.cpp
+    pipeline/configuration/construction/output_transform_builder_test.cpp
     pipeline/configuration/transaction_test.cpp
     pipeline/control/client_test.cpp
     pipeline/filters/half_life_ema_test.cpp
