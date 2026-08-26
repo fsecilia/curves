@@ -58,6 +58,12 @@ set(lib_files
     model/shaping/transitions/quadratic.hpp
     model/shaping/transitions/smootherstep_integral.hpp
     overloaded.hpp
+    pipeline/compiler.hpp
+    pipeline/configuration/authored_validator.hpp
+    pipeline/configuration/compiler.hpp
+    pipeline/configuration/config_builder.hpp
+    pipeline/configuration/gain_compiler.hpp
+    pipeline/configuration/runtime.hpp
     priority_queue.hpp
     quadrature/adaptive_integrator.hpp
     quadrature/antiderivative.hpp
@@ -165,15 +171,9 @@ set(shared_lib_kernel_files
     math/scalar_traits.hpp
     math/shifter.hpp
     pipeline.hpp
-    pipeline/compiler.hpp
     pipeline/configuration/apply_mode.hpp
-    pipeline/configuration/authored_validator.hpp
     pipeline/configuration/committer.hpp
-    pipeline/configuration/compiler.hpp
     pipeline/configuration/candidate.hpp
-    pipeline/configuration/config_builder.hpp
-    pipeline/configuration/gain_compiler.hpp
-    pipeline/configuration/runtime.hpp
     pipeline/configuration/transaction.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
