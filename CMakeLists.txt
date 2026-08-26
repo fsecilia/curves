@@ -17,10 +17,12 @@ include(Installation)
 # aggregate target that depends on all tests, so all tests can be built with one target
 add_custom_target(build_tests COMMENT "building all test executables...")
 
+if (crv_enable_testing)
+    enable_testing()
+endif()
+
 option(ENABLE_COVERAGE "enable test coverage reporting" OFF)
 if(ENABLE_COVERAGE)
-    enable_testing()
-
     add_custom_target(coverage
         # wipe old coverage data so we get a fresh count
         COMMAND lcov --zerocounters --directory .

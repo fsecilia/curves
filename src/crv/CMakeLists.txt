@@ -479,7 +479,7 @@ if (ENABLE_ASAN)
     target_link_options(lib PUBLIC link_options_user_mode -fsanitize=address)
 endif()
 
-if (enable_testing)
+if (crv_enable_testing)
     add_subdirectory(test)
 
     add_executable(unit_tests)
@@ -488,7 +488,7 @@ if (enable_testing)
         lib
         testing
     )
-    gtest_discover_tests(unit_tests)
+    add_test(NAME unit_tests COMMAND unit_tests)
     add_dependencies(build_tests unit_tests)
 
     if (BUILD_INTEGRATION_TESTS)
@@ -497,6 +497,8 @@ if (enable_testing)
             spline/spline_integration_test.cpp
         )
         target_link_libraries(spline_integration_test PRIVATE lib testing)
+        add_test(NAME spline_integration_test COMMAND spline_integration_test)
+        add_dependencies(build_tests spline_integration_test)
     endif()
 endif()
 

@@ -8,4 +8,6 @@ if (BUILD_INTEGRATION_TESTS)
         math/stats/percentile_calculator.cpp
     )
     target_link_libraries(integration_tests PRIVATE lib testing)
+    add_test(NAME integration_tests COMMAND integration_tests)
+    add_dependencies(build_tests integration_tests)
 endif()

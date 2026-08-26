@@ -151,7 +151,8 @@ add_executable(qt_ui_test
 )
 set_target_properties(qt_ui_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing qml Qt6::Test)
-gtest_discover_tests(qt_ui_test)
+add_test(NAME qt_ui_test COMMAND qt_ui_test)
+add_dependencies(build_tests qt_ui_test)
 
 # main executable.
 qt_add_executable(qt ${qt_files})

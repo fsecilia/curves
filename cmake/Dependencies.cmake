@@ -38,7 +38,7 @@ if(NOT TARGET GTest::gtest)
     endif()
 endif()
 if(TARGET GTest::gtest)
-    set(enable_testing True)
+    set(crv_enable_testing True)
 endif()
 
 # ---------------------------------------------------------------------------------------------------------------------

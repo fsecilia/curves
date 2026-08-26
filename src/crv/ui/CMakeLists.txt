@@ -22,12 +22,14 @@ add_executable(ui_test
     hierarchical_inspector_test.cpp
 )
 target_link_libraries(ui_test PRIVATE ui lib testing)
-gtest_discover_tests(ui_test)
+add_test(NAME ui_test COMMAND ui_test)
+add_dependencies(build_tests ui_test)
 
 add_executable(ui_integration_test
     command/command_integration_test.cpp
 )
 target_link_libraries(ui_integration_test PRIVATE ui lib testing)
-gtest_discover_tests(ui_integration_test)
+add_test(NAME ui_integration_test COMMAND ui_integration_test)
+add_dependencies(build_tests ui_integration_test)
 
 add_subdirectory(qt)
