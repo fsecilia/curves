@@ -170,6 +170,7 @@ set(shared_lib_kernel_files
     pipeline/configuration/candidate.hpp
     pipeline/configuration/committer.hpp
     pipeline/configuration/config_builder.hpp
+    pipeline/configuration/gain_compiler.hpp
     pipeline/configuration/transaction.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
@@ -270,6 +271,7 @@ set(unit_test_files
     pipeline/configuration/authored_validator_test.cpp
     pipeline/configuration/committer_test.cpp
     pipeline/configuration/config_builder_test.cpp
+    pipeline/configuration/gain_compiler_test.cpp
     pipeline/configuration/transaction_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
