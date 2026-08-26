@@ -363,8 +363,7 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     }
 
     /// \returns product rescaled to input type using the given rounding mode
-    template <auto rounding_mode>
-    friend constexpr auto multiply(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
+    template <auto rounding_mode> friend constexpr auto multiply(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
     {
         return multiply<fixed_t, rounding_mode>(lhs, rhs);
     }

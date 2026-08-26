@@ -24,18 +24,18 @@ using pure_int_t = fixed_t<int16_t, 0>;
 using frac_t = fixed_t<int16_t, 12>;
 
 // common rounding modes
-constexpr auto rne = shifter_t<rounding_modes::shr::nearest_even>{};
-constexpr auto trunc = shifter_t<rounding_modes::shr::truncate>{};
+constexpr auto rne = rounding_modes::shr::nearest_even;
+constexpr auto trunc = rounding_modes::shr::truncate;
 
 constexpr auto saturate = fixed::overflow_policy_t::saturate;
 constexpr auto wrap = fixed::overflow_policy_t::wrap;
 
 // autodeducing wrapper
 template <typename out_t, fixed::overflow_policy_t saturation, typename multiplicand_t, typename multiplier_t,
-    typename addend_t, typename shifter_t>
-constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, shifter_t shifter) -> out_t
+    typename addend_t, typename rounding_mode_t>
+constexpr auto fma(multiplicand_t multiplicand, multiplier_t multiplier, addend_t addend, rounding_mode_t) -> out_t
 {
-    return fma_t<out_t, multiplicand_t, multiplier_t, addend_t, shifter_t, saturation>{std::move(shifter)}(
+    return fma_t<out_t, multiplicand_t, multiplier_t, addend_t, rounding_mode_t{}, saturation>{}(
         multiplicand, multiplier, addend);
 }
 

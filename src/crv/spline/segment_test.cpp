@@ -105,6 +105,7 @@ using y_t = fixed_t<int64_t, 19>;
 using traits_t = spline::traits_t<spline::unpacked_field_t<int64_t>, y_t>;
 using unpacked_segment_t = traits_t::unpacked_segment_t;
 constexpr auto evaluate = segment_evaluator_t<traits_t, x_t, y_t>{};
+constexpr auto evaluate_truncating = segment_evaluator_t<traits_t, x_t, y_t, rounding_modes::shr::truncate>{};
 static_assert(decltype(evaluate)::correction_divide_shift == 0);
 
 template <typename value_t> constexpr auto constant_s(value_t s_raw, value_t g0_raw) noexcept -> unpacked_segment_t
@@ -120,6 +121,14 @@ template <typename value_t> constexpr auto constant_s(value_t s_raw, value_t g0_
 // First segment: x==0 is valid and no division occurs.
 static_assert(evaluate(constant_s(11, 99), x_t::literal(0), x_t::literal(0)) == y_t::literal(11));
 static_assert(evaluate(constant_s(11, 99), x_t::literal(7), x_t::literal(0)) == y_t::literal(11));
+
+constexpr auto rounded_s = unpacked_segment_t{
+    .d = {.mantissa = 0, .shift = 0},
+    .c = {.mantissa = 0, .shift = 0},
+    .b = {.mantissa = 3, .shift = 1},
+    .g0 = y_t{},
+};
+static_assert(evaluate_truncating(rounded_s, x_t{}, x_t{}) == y_t::literal(1));
 
 // At a nonzero segment origin x==x0, the induced identity returns g0 exactly.
 static_assert(evaluate(constant_s(10, 14), x_t::literal(3), x_t::literal(3)) == y_t::literal(14));

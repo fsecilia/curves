@@ -22,7 +22,7 @@ namespace crv::spline {
 /// constant. clamp_delta() uses the same quantized line and rounding as operator(), so the stored clamp point matches
 /// runtime evaluation.
 template <typename t_x_t, typename t_y_t, typename t_unpacked_field_t,
-    auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{}>
+    auto rounding_mode = rounding_modes::shr::fast::nearest_up>
 struct extended_tangent_t
 {
     using x_t = t_x_t;
@@ -52,7 +52,7 @@ struct extended_tangent_t
             if (slope.shift >= 0)
             {
                 assert(slope.shift < int_cast<int_t>(sizeof(wide_t) * CHAR_BIT));
-                auto const delta = shifter.template shr<wide_t>(product, slope.shift);
+                auto const delta = shifter_t<rounding_mode>{}.template shr<wide_t>(product, slope.shift);
                 return widen(y0.value) + delta <= widen(y_limit.value);
             }
 
@@ -110,7 +110,7 @@ struct extended_tangent_t
             auto const shift = slope.shift;
             auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
             if (product > max<wide_t>() - half) return false;
-            return ((product + half) >> shift) <= y_max;
+            return shifter_t<rounding_mode>{}.shr(product, shift) <= y_max;
         }
 
         auto const left_shift = -slope.shift;
@@ -128,7 +128,10 @@ struct extended_tangent_t
         auto const wide_product = widen(slope.mantissa) * x_bounded;
 
         typename y_t::value_t delta;
-        if (slope.shift >= 0) delta = shifter.template shr<typename y_t::value_t>(wide_product, slope.shift);
+        if (slope.shift >= 0)
+        {
+            delta = shifter_t<rounding_mode>{}.template shr<typename y_t::value_t>(wide_product, slope.shift);
+        }
         else
         {
             // shift unsigned to avoid signed-overflow UB on malformed data

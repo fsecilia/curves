@@ -19,6 +19,7 @@ namespace mantissa_quantizer_tests {
 
 using mantissa_t = int32_t;
 constexpr auto quantize = mantissa_quantizer_t<mantissa_t>{};
+constexpr auto truncating_quantize = mantissa_quantizer_t<mantissa_t, rounding_modes::shr::truncate>{};
 
 // passthrough with no shift
 static_assert(quantize(100, 0) == 100);
@@ -28,6 +29,7 @@ static_assert(quantize(-3, 0) == -3);
 // basic shifting
 static_assert(quantize(100, 2) == 25);
 static_assert(quantize(-100, 2) == -25);
+static_assert(truncating_quantize(3, 1) == 1);
 
 // rne boundary conditions
 static_assert(quantize(3, 1) == 2); // 1.5 rounds up to 2
@@ -62,11 +64,16 @@ struct unpacked_field_t
 
 // instantiate the aligner with arbitrary safe bounds for the 32-bit test container
 constexpr auto aligner = exponent_aligner_t<-20, 20>{};
+constexpr auto truncating_aligner = exponent_aligner_t<-20, 20, rounding_modes::shr::truncate>{};
 constexpr auto align_radix = radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>{};
 
 // passthrough; exponent is well within the aligner's bounds
 // exponent = 5 + 2 = 7, shift output becomes -7, mantissa is untouched
 static_assert(align_radix({.mantissa = 100, .exponent = 5}, 2) == unpacked_field_t{.mantissa = 100, .shift = -7});
+
+// rounding mode controls right shifts
+static_assert(
+    truncating_aligner(scaled_int_t{.mantissa = 3, .exponent = -21}) == scaled_int_t{.mantissa = 1, .exponent = -20});
 
 // positive saturation; exponent exceeds max
 // exponent = 15 + 10 = 25, clamps to 20

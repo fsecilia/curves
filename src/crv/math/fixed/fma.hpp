@@ -16,12 +16,11 @@ namespace crv {
 
 /// fused multiply-add for fixed-point types
 template <is_fixed t_out_t, is_fixed multiplicand_t, is_fixed multiplier_t, is_fixed addend_t,
-    typename shifter_t = shifter_t<>, fixed::overflow_policy_t overflow_policy = fixed::overflow_policy_t::wrap>
+    auto rounding_mode = rounding_modes::shr::nearest_even,
+    fixed::overflow_policy_t overflow_policy = fixed::overflow_policy_t::wrap>
 struct fma_t
 {
     using out_t = t_out_t;
-
-    [[no_unique_address]] shifter_t shifter = {};
 
     // wide intermediate
     using product_t = fixed::product_t<multiplicand_t, multiplier_t>;
@@ -129,6 +128,7 @@ struct fma_t
         auto const sum = static_cast<sum_t>(aligned_product + aligned_addend);
 
         // shift to out_t precision
+        constexpr auto shifter = shifter_t<rounding_mode>{};
         auto const shifted_sum = shifter.template shift<out_shift>(sum);
 
         // optionally saturate upper

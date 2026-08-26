@@ -18,14 +18,15 @@
 namespace crv::spline {
 
 /// applies right-shifts to coefficients, flushing to zero when the shift exceeds container size
-template <signed_integral mantissa_t, auto shifter = shifter_t<>{}> struct mantissa_quantizer_t
+template <signed_integral mantissa_t, auto rounding_mode = rounding_modes::shr::nearest_even>
+struct mantissa_quantizer_t
 {
     static constexpr auto max_container_shift = int_t{sizeof(mantissa_t) * CHAR_BIT} - 1;
 
     constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
     {
         if (preshift >= max_container_shift) return 0;
-        return shifter.shr(mantissa, preshift);
+        return shifter_t<rounding_mode>{}.shr(mantissa, preshift);
     }
 };
 

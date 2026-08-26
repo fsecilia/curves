@@ -191,8 +191,7 @@ struct segment_unpacker_t
 ///
 /// For x0 > 0, G(x) = S(u) + (x0/x) * (g0 - S(u)), where g0 = a/x0. At x0 == 0, a == 0 and G(x) = S(u), so no
 /// division is needed. This is the same transfer cubic in gain form.
-template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t,
-    auto shifter = shifter_t<rounding_modes::shr::fast::nearest_up>{},
+template <typename traits_t, is_fixed t_x_t, is_fixed t_y_t, auto rounding_mode = rounding_modes::shr::fast::nearest_up,
     auto division_rounding_mode = rounding_modes::div::fast::nearest_away>
 struct segment_evaluator_t
 {
@@ -323,7 +322,7 @@ private:
         return -max_shift <= shift && shift <= max_shift;
     }
 
-    static constexpr auto rounded_nearest_up(wide_t value, int_t shift, wide_t& result) noexcept -> bool
+    static constexpr auto rounded_shift(wide_t value, int_t shift, wide_t& result) noexcept -> bool
     {
         if (!valid_shift(shift)) return false;
         if (shift == 0)
@@ -336,7 +335,7 @@ private:
         auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
         if (value > max<wide_t>() - half) return false;
 
-        result = (value + half) >> shift;
+        result = shifter_t<rounding_mode>{}.shr(value, shift);
         return true;
     }
 
@@ -352,8 +351,8 @@ private:
 
         auto aligned_lower = wide_t{};
         auto aligned_upper = wide_t{};
-        if (!rounded_nearest_up(product_lower, shift, aligned_lower)) return false;
-        if (!rounded_nearest_up(product_upper, shift, aligned_upper)) return false;
+        if (!rounded_shift(product_lower, shift, aligned_lower)) return false;
+        if (!rounded_shift(product_upper, shift, aligned_upper)) return false;
 
         auto const narrow_min = widen(min<narrow_t>());
         auto const narrow_max = widen(max<narrow_t>());
@@ -376,8 +375,8 @@ private:
         auto aligned_upper = wide_t{};
         if (shift >= 0)
         {
-            if (!rounded_nearest_up(accumulator.lower, shift, aligned_lower)) return false;
-            if (!rounded_nearest_up(accumulator.upper, shift, aligned_upper)) return false;
+            if (!rounded_shift(accumulator.lower, shift, aligned_lower)) return false;
+            if (!rounded_shift(accumulator.upper, shift, aligned_upper)) return false;
         }
         else
         {
@@ -412,13 +411,14 @@ private:
         mantissa_t coeff, int_t relative_shift, x_t x, mantissa_t accumulator) const noexcept -> mantissa_t
     {
         auto const wide_product = widen(accumulator) * x.value;
-        auto const aligned_product = shifter.template shr<narrow_t>(wide_product, relative_shift);
+        auto const aligned_product = shifter_t<rounding_mode>{}.template shr<narrow_t>(wide_product, relative_shift);
         return add_wrap(aligned_product, coeff);
     }
 
     constexpr auto align_to_y(mantissa_t accumulator, int_t shift) const noexcept -> y_t
     {
-        return y_t::literal(saturate_cast<typename y_t::value_t>(shifter.shift(widen(accumulator), -shift)));
+        return y_t::literal(
+            saturate_cast<typename y_t::value_t>(shifter_t<rounding_mode>{}.shift(widen(accumulator), -shift)));
     }
 };
 

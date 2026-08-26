@@ -32,6 +32,8 @@ static_assert(!sut_t{.slope = {.mantissa = 1, .shift = min<int_t>()}, .y0 = y_t{
 using integer_x_t = fixed_t<int64_t, 0>;
 using integer_y_t = fixed_t<int64_t, 0>;
 using integer_sut_t = extended_tangent_t<integer_x_t, integer_y_t, unpacked_field_t>;
+using truncating_integer_sut_t
+    = extended_tangent_t<integer_x_t, integer_y_t, unpacked_field_t, rounding_modes::shr::truncate>;
 constexpr auto integer_max = max<int64_t>();
 static_assert(integer_sut_t{
     .slope = {.mantissa = integer_max, .shift = 63},
@@ -45,6 +47,14 @@ static_assert(!integer_sut_t{
     .x_max_delta = integer_x_t::literal(integer_max),
 }
         .is_safe());
+
+// rounding mode controls runtime right shifts
+static_assert(truncating_integer_sut_t{
+                  .slope = {.mantissa = 3, .shift = 1},
+                  .y0 = integer_y_t{},
+                  .x_max_delta = integer_x_t{1},
+              }(integer_x_t{1})
+    == integer_y_t{1});
 
 // exact left-shift boundary and one raw unit beyond it
 static_assert(integer_sut_t{

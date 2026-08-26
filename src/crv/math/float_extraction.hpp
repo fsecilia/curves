@@ -79,7 +79,8 @@ private:
 };
 
 /// shifts integer mantissa to keep integer exponent within a range; saturates
-template <int_t t_exponent_min, int_t t_exponent_max, auto shifter = saturating_shifter_t<>{}> struct exponent_aligner_t
+template <int_t t_exponent_min, int_t t_exponent_max, auto rounding_mode = rounding_modes::shr::nearest_even>
+struct exponent_aligner_t
 {
     static constexpr auto exponent_min = t_exponent_min;
     static constexpr auto exponent_max = t_exponent_max;
@@ -88,6 +89,7 @@ template <int_t t_exponent_min, int_t t_exponent_max, auto shifter = saturating_
     {
         auto const exponent_clamped = std::clamp(src.exponent, exponent_min, exponent_max);
         auto const left_shift = src.exponent - exponent_clamped;
+        constexpr auto shifter = saturating_shifter_t<shifter_t<rounding_mode>{}>{};
         return {.mantissa = shifter.shift(src.mantissa, left_shift), .exponent = exponent_clamped};
     }
 };

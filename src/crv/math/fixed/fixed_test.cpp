@@ -585,11 +585,10 @@ using multiplication_rounding_input_t = fixed_t<int16_t, 1>;
 constexpr auto multiplication_rounding_lhs = multiplication_rounding_input_t::literal(3);
 constexpr auto multiplication_rounding_rhs = multiplication_rounding_input_t::literal(1);
 
-static_assert(multiply<multiplication_rounding_input_t, truncate>(
-                  multiplication_rounding_lhs, multiplication_rounding_rhs)
+static_assert(
+    multiply<multiplication_rounding_input_t, truncate>(multiplication_rounding_lhs, multiplication_rounding_rhs)
     == multiplication_rounding_input_t::literal(1));
-static_assert(multiply<multiplication_rounding_input_t, rne>(
-                  multiplication_rounding_lhs, multiplication_rounding_rhs)
+static_assert(multiply<multiplication_rounding_input_t, rne>(multiplication_rounding_lhs, multiplication_rounding_rhs)
     == multiplication_rounding_input_t::literal(2));
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -827,8 +826,8 @@ using rounded_modulo_out_t = fixed_t<uint_t, 1>;
 constexpr auto rounded_modulo_lhs = fixed_t<uint8_t, 3>::literal(31);
 constexpr auto rounded_modulo_rhs = fixed_t<int16_t, 4>::literal(23);
 
-static_assert(mod<rounded_modulo_out_t, truncate>(rounded_modulo_lhs, rounded_modulo_rhs)
-    == rounded_modulo_out_t::literal(2));
+static_assert(
+    mod<rounded_modulo_out_t, truncate>(rounded_modulo_lhs, rounded_modulo_rhs) == rounded_modulo_out_t::literal(2));
 
 } // namespace modulo
 
