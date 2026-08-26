@@ -3,6 +3,8 @@
 #
 # contains the qt6-specific ui
 
+set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml")
+
 # source files in main executable
 set(qt_files main.cpp)
 
