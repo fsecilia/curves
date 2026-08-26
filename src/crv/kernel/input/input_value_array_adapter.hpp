@@ -8,8 +8,10 @@
 #include <crv/lib.hpp>
 #include <crv/kernel/abi_validation.h>
 #include <crv/kernel/input/abi.h>
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 
 namespace crv {
 
@@ -59,7 +61,8 @@ public:
         assert(index < capacity_);
 
         crv_input_value_t result;
-        __builtin_memcpy(&result, address(index), sizeof(result));
+        std::copy_n(static_cast<std::byte const*>(address(index)), sizeof(result),
+                    reinterpret_cast<std::byte*>(&result));
 
         return input_value_t{
             .type = static_cast<input_value_t::type_t>(result.type),
@@ -78,7 +81,8 @@ public:
             .value = value.value,
         };
 
-        __builtin_memcpy(address(index), &result, sizeof(result));
+        std::copy_n(reinterpret_cast<std::byte const*>(&result), sizeof(result),
+                    static_cast<std::byte*>(address(index)));
     }
 
     auto move(std::size_t destination, std::size_t source, std::size_t count) noexcept -> void
@@ -89,7 +93,7 @@ public:
         assert(count <= capacity_ - destination);
 
         if (count == 0) return;
-        __builtin_memmove(address(destination), address(source), count * stride);
+        std::memmove(address(destination), address(source), count * stride);
     }
 
 private:
