@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/config.hpp>
-#include <crv/pipeline/configuration/runtime.hpp>
+#include <crv/pipeline/configuration/construction/runtime.hpp>
 #include <expected>
 #include <utility>
 #include <variant>

@@ -4,7 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "authored_validator.hpp"
-#include <crv/pipeline/configuration/config_builder.hpp>
+#include <crv/pipeline/configuration/construction/config_builder.hpp>
 #include <crv/test/test.hpp>
 #include <limits>
 

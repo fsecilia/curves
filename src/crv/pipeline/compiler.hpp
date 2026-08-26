@@ -10,12 +10,12 @@
 #include <crv/model/config.hpp>
 #include <crv/model/shaping/shaped_curve.hpp>
 #include <crv/pipeline.hpp>
-#include <crv/pipeline/configuration/authored_validator.hpp>
-#include <crv/pipeline/configuration/compiler.hpp>
-#include <crv/pipeline/configuration/config_builder.hpp>
-#include <crv/pipeline/configuration/gain_compiler.hpp>
-#include <crv/pipeline/configuration/runtime.hpp>
-#include <crv/pipeline/output_transform_builder.hpp>
+#include <crv/pipeline/configuration/construction/authored_validator.hpp>
+#include <crv/pipeline/configuration/construction/compiler.hpp>
+#include <crv/pipeline/configuration/construction/config_builder.hpp>
+#include <crv/pipeline/configuration/construction/gain_compiler.hpp>
+#include <crv/pipeline/configuration/construction/output_transform_builder.hpp>
+#include <crv/pipeline/configuration/construction/runtime.hpp>
 #include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/construction/spline/amr/spline_generator.hpp>
 #include <crv/spline/pipeline_config.hpp>
@@ -29,9 +29,8 @@ class compiler_t
     using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
     using output_transform_builder_t
         = pipeline::output_transform_builder_t<decltype(pipeline_t::config_t{}.output_transform)>;
-    using config_builder_t
-        = configuration::config_builder_t<configuration::velocity_scale_builder_t,
-            configuration::half_life_builder_t, output_transform_builder_t>;
+    using config_builder_t = configuration::config_builder_t<configuration::velocity_scale_builder_t,
+        configuration::half_life_builder_t, output_transform_builder_t>;
     using authored_validator_t = configuration::authored_validator_t<configuration::half_life_builder_t>;
     using critical_point_builder_t
         = configuration::critical_point_builder_t<typename spline_policy_t::scalar_t, typename spline_policy_t::x_t>;

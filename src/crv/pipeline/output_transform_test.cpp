@@ -4,8 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "output_transform.hpp"
-#include <crv/pipeline/output_transform_builder.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/pipeline/configuration/construction/output_transform_builder.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
 #include <array>

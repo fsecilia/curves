@@ -59,11 +59,12 @@ set(lib_files
     model/shaping/transitions/smootherstep_integral.hpp
     overloaded.hpp
     pipeline/compiler.hpp
-    pipeline/configuration/authored_validator.hpp
-    pipeline/configuration/compiler.hpp
-    pipeline/configuration/config_builder.hpp
-    pipeline/configuration/gain_compiler.hpp
-    pipeline/configuration/runtime.hpp
+    pipeline/configuration/construction/authored_validator.hpp
+    pipeline/configuration/construction/compiler.hpp
+    pipeline/configuration/construction/config_builder.hpp
+    pipeline/configuration/construction/gain_compiler.hpp
+    pipeline/configuration/construction/output_transform_builder.hpp
+    pipeline/configuration/construction/runtime.hpp
     priority_queue.hpp
     quadrature/adaptive_integrator.hpp
     quadrature/antiderivative.hpp
@@ -178,7 +179,6 @@ set(shared_lib_kernel_files
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
     pipeline/orchestrator.hpp
-    pipeline/output_transform_builder.hpp
     pipeline/output_transform.hpp
     pipeline/relative_report.hpp
     pipeline/report_timer.hpp
@@ -272,11 +272,11 @@ set(unit_test_files
     model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
     pipeline/compiler_test.cpp
-    pipeline/configuration/authored_validator_test.cpp
     pipeline/configuration/committer_test.cpp
-    pipeline/configuration/compiler_test.cpp
-    pipeline/configuration/config_builder_test.cpp
-    pipeline/configuration/gain_compiler_test.cpp
+    pipeline/configuration/construction/authored_validator_test.cpp
+    pipeline/configuration/construction/compiler_test.cpp
+    pipeline/configuration/construction/config_builder_test.cpp
+    pipeline/configuration/construction/gain_compiler_test.cpp
     pipeline/configuration/transaction_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp

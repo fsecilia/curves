@@ -4,10 +4,10 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "compiler.hpp"
-#include <crv/pipeline/configuration/authored_validator.hpp>
+#include <crv/pipeline/configuration/construction/authored_validator.hpp>
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
 #include <expected>
+#include <gmock/gmock.h>
 #include <variant>
 
 namespace crv::pipeline::configuration {
@@ -73,8 +73,8 @@ struct compiler_test_t : Test
 
     struct mock_runtime_validator_t
     {
-        MOCK_METHOD(pipeline_t::validation_result_t, call, (pipeline_t::config_t const&, pipeline_t::gain_t const&),
-            (const));
+        MOCK_METHOD(
+            pipeline_t::validation_result_t, call, (pipeline_t::config_t const&, pipeline_t::gain_t const&), (const));
     };
     StrictMock<mock_runtime_validator_t> mock_runtime_validator;
 
