@@ -68,7 +68,7 @@ if(NOT qt_qml_type STREQUAL "SHARED_LIBRARY")
     message(FATAL_ERROR "A dynamically linked Qt installation is required. Found a static build instead.")
 endif()
 
-# expect reource prefix to be /qt/qml instead of /
+# expect resource prefix to be /qt/qml instead of /
 qt_policy(SET QTP0001 NEW)
 
 # enable qt's build automation
@@ -113,26 +113,18 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-ctad-maybe-unsupported
         -Wno-unsafe-buffer-usage
         -Wno-unsafe-buffer-usage-in-libc-call
+        -Wno-extra-semi-stmt
     )
 endif()
 
 # register qml modules and attach them to target
-qt_add_qml_module(qml
-    URI "Curves"
+qt_add_qml_module(qt_ui
+    URI Curves
     VERSION 1.0
-    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Curves"
     QML_FILES ${qml_files}
     SOURCES ${qml_cpp_files}
+    NO_PLUGIN
 )
-target_include_directories(qml PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(qml PRIVATE -Wno-extra-semi-stmt)
-endif()
-set_target_properties(qml PROPERTIES
-    DISABLE_STRICT_ALIASING ON
-    OUTPUT_NAME "crv-qt-qml"
-)
-target_link_libraries(qml PRIVATE qt_ui Qt6::Quick)
 
 # common test library
 add_library(qt_ui_testing
@@ -152,7 +144,7 @@ add_executable(qt_ui_test
     widgets/graph_test.cpp
 )
 set_target_properties(qt_ui_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
-target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing qml Qt6::Test)
+target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
 add_test(NAME qt_ui_test COMMAND qt_ui_test)
 add_dependencies(build_tests qt_ui_test)
 
@@ -161,17 +153,19 @@ qt_add_executable(qt ${qt_files})
 set_target_properties(qt PROPERTIES
     OUTPUT_NAME ${project_name_dashes}-config
     QT_EXCLUDE_FROM_TRANSLATION ON
+
+    # System qml modules are distro runtime dependencies. Skip qt deployment/plugin scanning. Otherwise, trixie warns.
     QT_QML_MODULE_NO_IMPORT_SCAN ON
 )
 target_include_directories(qt PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/widgets")
-target_link_libraries(qt PRIVATE qt_ui qml)
+target_link_libraries(qt PRIVATE qt_ui)
 
 install(TARGETS qt RUNTIME
     DESTINATION bin
     COMPONENT ui
 )
 
-install(TARGETS qt_ui qml RUNTIME
+install(TARGETS qt_ui RUNTIME
     DESTINATION lib
     COMPONENT ui
 )
