@@ -131,7 +131,6 @@ add_library(qt_ui_testing
     test_app.cpp
     test_app.hpp
 )
-set_target_properties(qt_ui_testing PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 target_link_libraries(qt_ui_testing PUBLIC qt_ui lib)
 
 # qt ui unit tests
@@ -143,7 +142,6 @@ add_executable(qt_ui_test
     widgets/graph/grid_renderer_test.cpp
     widgets/graph_test.cpp
 )
-set_target_properties(qt_ui_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
 add_test(NAME qt_ui_test COMMAND qt_ui_test)
 add_dependencies(build_tests qt_ui_test)
@@ -152,7 +150,6 @@ add_dependencies(build_tests qt_ui_test)
 qt_add_executable(qt ${qt_files})
 set_target_properties(qt PROPERTIES
     OUTPUT_NAME ${project_name_dashes}-config
-    QT_EXCLUDE_FROM_TRANSLATION ON
 
     # System qml modules are distro runtime dependencies. Skip qt deployment/plugin scanning. Otherwise, trixie warns.
     QT_QML_MODULE_NO_IMPORT_SCAN ON
@@ -170,15 +167,12 @@ install(TARGETS qt_ui RUNTIME
     COMPONENT ui
 )
 
-# translations
 qt6_add_translations(qt
+    SOURCE_TARGETS
+        qt
+        qt_ui
     TS_FILES
         i18n/en.ts
-    SOURCES
-        ${qt_files}
-        ${qt_ui_files}
-        ${qml_files}
-        ${qml_cpp_files}
     LUPDATE_OPTIONS "-tr-function-alias" "tr+=CRV_TR,translate+=CRV_TR_C"
     RESOURCE_PREFIX "/i18n"
 )
