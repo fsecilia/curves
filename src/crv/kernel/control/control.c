@@ -114,8 +114,8 @@ static int crv_control_copy_configuration(
     return 0;
 }
 
-static int crv_control_publish_configuration(struct crv_control* control, u64 attachment_id,
-    struct crv_control_prepared_configuration const* configuration)
+static int crv_control_publish_configuration(
+    struct crv_control* control, u64 attachment_id, struct crv_control_prepared_configuration const* configuration)
 {
     struct crv_control_attachment* attachment;
     struct input_dev* device;

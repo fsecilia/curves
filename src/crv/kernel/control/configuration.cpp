@@ -26,8 +26,8 @@ using config_t = pipeline_t::config_t;
 using gain_t = pipeline_t::gain_t;
 using validation_error_t = pipeline::runtime_config_validation_error_t;
 
-static_assert(apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_BYPASSED)
-    == pipeline::configuration::apply_mode_t::bypassed);
+static_assert(
+    apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_BYPASSED) == pipeline::configuration::apply_mode_t::bypassed);
 static_assert(apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_ACTIVE) == pipeline::configuration::apply_mode_t::active);
 static_assert(!apply_mode_decoder_t{}(2));
 
@@ -56,8 +56,8 @@ static_assert(sizeof(gain_t::segment_locator_t) == sizeof(crv_u64_t) * CRV_CONTR
 static_assert(sizeof(gain_t::segments_t)
     == sizeof(crv_u64_t) * (CRV_CONTROL_GAIN_V1_TANGENT_WORD_OFFSET - CRV_CONTROL_GAIN_V1_SEGMENTS_WORD_OFFSET));
 static_assert(sizeof(gain_t::extended_tangent_t) == sizeof(crv_u64_t) * CRV_CONTROL_GAIN_V1_TANGENT_WORD_COUNT);
-static_assert(offsetof(gain_t, extend_final_tangent) + sizeof(gain_t::extended_tangent_t)
-    == sizeof(crv_control_gain_v1_t));
+static_assert(
+    offsetof(gain_t, extend_final_tangent) + sizeof(gain_t::extended_tangent_t) == sizeof(crv_control_gain_v1_t));
 static_assert(sizeof(gain_t) - sizeof(crv_control_gain_v1_t) == 32);
 static_assert(std::is_trivially_copyable_v<gain_t>);
 static_assert(std::is_standard_layout_v<gain_t>);
@@ -93,7 +93,6 @@ inline auto align_storage(void* storage) noexcept -> void*
     auto const aligned_address = (address + prepared_alignment - 1) & ~(prepared_alignment - 1);
     return reinterpret_cast<void*>(aligned_address);
 }
-
 
 inline auto destroy_configuration(crv_control_prepared_configuration* configuration) noexcept -> void
 {

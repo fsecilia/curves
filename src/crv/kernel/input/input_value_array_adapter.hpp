@@ -61,8 +61,8 @@ public:
         assert(index < capacity_);
 
         crv_input_value_t result;
-        std::copy_n(static_cast<std::byte const*>(address(index)), sizeof(result),
-                    reinterpret_cast<std::byte*>(&result));
+        std::copy_n(
+            static_cast<std::byte const*>(address(index)), sizeof(result), reinterpret_cast<std::byte*>(&result));
 
         return input_value_t{
             .type = static_cast<input_value_t::type_t>(result.type),
@@ -81,8 +81,8 @@ public:
             .value = value.value,
         };
 
-        std::copy_n(reinterpret_cast<std::byte const*>(&result), sizeof(result),
-                    static_cast<std::byte*>(address(index)));
+        std::copy_n(
+            reinterpret_cast<std::byte const*>(&result), sizeof(result), static_cast<std::byte*>(address(index)));
     }
 
     auto move(std::size_t destination, std::size_t source, std::size_t count) noexcept -> void

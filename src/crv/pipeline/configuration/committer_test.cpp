@@ -47,8 +47,7 @@ struct committer_test_t : Test
         bool synchronized = false;
         mode_t mode = mode_t::unconfigured;
 
-        template <typename operation_t>
-        auto commit_configuration(operation_t&& operation) noexcept -> void
+        template <typename operation_t> auto commit_configuration(operation_t&& operation) noexcept -> void
         {
             std::forward<operation_t>(operation)(config, gain, state, mode);
         }
@@ -100,9 +99,7 @@ TEST_F(committer_test_t, preserves_synchronization)
 
 using live_mode_t = committer_test_t::mode_t;
 
-struct committer_mode_test_t
-    : committer_test_t
-    , WithParamInterface<std::tuple<live_mode_t, apply_mode_t, live_mode_t>>
+struct committer_mode_test_t : committer_test_t, WithParamInterface<std::tuple<live_mode_t, apply_mode_t, live_mode_t>>
 {};
 
 TEST_P(committer_mode_test_t, maps_apply_mode_independently_of_previous_live_mode)
@@ -180,8 +177,7 @@ struct assignment_order_test_t : Test
         tracked_t<3> state{&trace, 3};
         mode_t mode{&trace, mode_t::value_t::unconfigured};
 
-        template <typename operation_t>
-        auto commit_configuration(operation_t&& operation) noexcept -> void
+        template <typename operation_t> auto commit_configuration(operation_t&& operation) noexcept -> void
         {
             std::forward<operation_t>(operation)(config, gain, state, mode);
         }

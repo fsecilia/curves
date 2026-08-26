@@ -141,14 +141,16 @@ public:
     /// start of one active segment
     constexpr auto segment_origin(int_t segment_index) const noexcept -> x_t
     {
-        assert(0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
+        assert(
+            0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
         return segment_index == 0 ? x_t{0} : key_at(segment_index);
     }
 
     /// end of one active segment
     constexpr auto segment_end(int_t segment_index) const noexcept -> x_t
     {
-        assert(0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
+        assert(
+            0 <= segment_index && segment_index < segment_count_ && "segment_locator_t: segment index out of bounds");
         return segment_index + 1 == segment_count_ ? x_max_ : key_at(segment_index + 1);
     }
 

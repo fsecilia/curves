@@ -77,8 +77,7 @@ struct gain_compiler_test_t : Test
         MOCK_METHOD(void, shape_curve, (), (const));
         MOCK_METHOD(critical_points_t, critical_points, (scalar_t), (const));
         MOCK_METHOD(target_result_t, sensitivity_target, (scalar_t, std::vector<scalar_t> const&), (const));
-        MOCK_METHOD(spline_result_t, spline,
-            (pipeline_t::gain_t*, scalar_t, std::vector<x_t> const&), (const));
+        MOCK_METHOD(spline_result_t, spline, (pipeline_t::gain_t*, scalar_t, std::vector<x_t> const&), (const));
     };
     StrictMock<mock_t> mock;
 
@@ -152,8 +151,8 @@ TEST_F(gain_compiler_test_t, forwards_curve_through_sensitivity_construction)
 
 TEST_F(gain_compiler_test_t, refinement_limit_is_preserved)
 {
-    auto const target_result
-        = target_result_t{.target = {}, .achieved_error = scalar_t{3}, .max_error = scalar_t{2}, .refinement_limited = true};
+    auto const target_result = target_result_t{
+        .target = {}, .achieved_error = scalar_t{3}, .max_error = scalar_t{2}, .refinement_limited = true};
     EXPECT_CALL(mock, critical_points).WillOnce(Return(critical_points_t{}));
     EXPECT_CALL(mock, shape_curve());
     EXPECT_CALL(mock, sensitivity_target).WillOnce(Return(target_result));

@@ -27,11 +27,11 @@ template <typename t_transform_t> struct output_transform_builder_t
         auto const sine = sin(radians);
         using coefficient_t = transform_t::coefficient_t;
 
-        return transform_t{.matrix = {{
-                               {to_fixed<coefficient_t>(cosine), to_fixed<coefficient_t>(-sine)},
-                               {to_fixed<coefficient_t>(anisotropy * sine),
-                                   to_fixed<coefficient_t>(anisotropy * cosine)},
-                           }}};
+        return transform_t{
+            .matrix = {{
+                {to_fixed<coefficient_t>(cosine), to_fixed<coefficient_t>(-sine)},
+                {to_fixed<coefficient_t>(anisotropy * sine), to_fixed<coefficient_t>(anisotropy * cosine)},
+            }}};
     }
 };
 

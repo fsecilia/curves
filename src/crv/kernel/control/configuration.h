@@ -33,7 +33,7 @@ crv_u32_t crv_control_prepared_configuration_gain_size(void);
 
 struct crv_control_validation_result_t crv_control_prepared_configuration_validate(
     struct crv_control_prepared_configuration* configuration);
-const char* crv_control_validation_error_name(crv_u32_t error);
+char const* crv_control_validation_error_name(crv_u32_t error);
 
 void crv_control_prepared_configuration_commit(
     struct crv_control_prepared_configuration const* configuration, struct crv_pipeline* pipeline);

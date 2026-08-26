@@ -51,8 +51,8 @@ struct pipeline_integration_test_t : Test
             = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
 
         auto result = spline_t{};
-        factory_t{}(result, spline::gain_curve_target_t{curve}, spline_policy_t::spline_gain_tolerance,
-            std::vector<speed_t>{});
+        factory_t{}(
+            result, spline::gain_curve_target_t{curve}, spline_policy_t::spline_gain_tolerance, std::vector<speed_t>{});
         return result;
     }
 
@@ -140,17 +140,12 @@ struct pipeline_integration_test_t : Test
     static auto timer_initialized(sut_t& target) noexcept -> bool
     {
         auto initialized = false;
-        target.commit_configuration([&](auto&, auto&, auto& state, auto&) noexcept
-        {
-            initialized = state.timer.initialized();
-        });
+        target.commit_configuration(
+            [&](auto&, auto&, auto& state, auto&) noexcept { initialized = state.timer.initialized(); });
         return initialized;
     }
 
-    auto SetUp() -> void override
-    {
-        apply(sut, pipeline::configuration::apply_mode_t::active, constant_gain_t{});
-    }
+    auto SetUp() -> void override { apply(sut, pipeline::configuration::apply_mode_t::active, constant_gain_t{}); }
 
     configuration_transaction_t transaction{};
     sut_t sut{};

@@ -49,8 +49,8 @@ INSTANTIATE_TEST_SUITE_P(runtime_statuses, input_handler_status_test_t,
 
 TEST_F(input_handler_decision_test_t, malformed_count_is_dropped)
 {
-    auto const actual = crv_input_decide_pipeline_result(
-        {.status = CRV_PIPELINE_RESULT_INVALID_REPORT, .count = 5}, 5, 4);
+    auto const actual
+        = crv_input_decide_pipeline_result({.status = CRV_PIPELINE_RESULT_INVALID_REPORT, .count = 5}, 5, 4);
     auto const actual_tuple = std::tuple{actual.count, actual.diagnostic};
     auto const expected = std::tuple{crv_u32_t{0}, crv_u32_t{CRV_INPUT_PIPELINE_DIAGNOSTIC_INVALID_COUNT}};
 

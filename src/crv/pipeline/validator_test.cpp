@@ -132,16 +132,16 @@ constexpr auto nonorthogonal_config = [] {
     config.output_transform.matrix[1] = {fixture_t::coefficient_t{1}, fixture_t::coefficient_t{1}};
     return config;
 }();
-static_assert(crv::pipeline_t::validate(nonorthogonal_config, valid_gain).error
-    == error_t::output_transform_orthogonality);
+static_assert(
+    crv::pipeline_t::validate(nonorthogonal_config, valid_gain).error == error_t::output_transform_orthogonality);
 
 constexpr auto negative_determinant_config = [] {
     auto config = fixture_t::make_valid_config();
     config.output_transform.matrix[1] = {fixture_t::coefficient_t{}, fixture_t::coefficient_t{-1}};
     return config;
 }();
-static_assert(crv::pipeline_t::validate(negative_determinant_config, valid_gain).error
-    == error_t::output_transform_determinant);
+static_assert(
+    crv::pipeline_t::validate(negative_determinant_config, valid_gain).error == error_t::output_transform_determinant);
 
 constexpr auto invalid_locator_gain = [] {
     auto gain = fixture_t::make_valid_gain();

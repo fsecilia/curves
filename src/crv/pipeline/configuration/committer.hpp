@@ -19,8 +19,7 @@ struct committer_t
     constexpr auto operator()(target_t& target, validated_candidate_t const& validated) const noexcept -> void
     {
         auto const& candidate = validated.candidate;
-        target.commit_configuration([&](auto& config, auto& gain, auto& state, auto& mode) noexcept
-        {
+        target.commit_configuration([&](auto& config, auto& gain, auto& state, auto& mode) noexcept {
             using mode_t = std::remove_cvref_t<decltype(mode)>;
             auto const target_mode = map_mode<mode_t>(candidate.mode);
 
@@ -32,8 +31,7 @@ struct committer_t
     }
 
 private:
-    template <typename mode_t>
-    static constexpr auto map_mode(apply_mode_t mode) noexcept -> mode_t
+    template <typename mode_t> static constexpr auto map_mode(apply_mode_t mode) noexcept -> mode_t
     {
         switch (mode)
         {

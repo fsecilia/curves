@@ -124,8 +124,7 @@ public:
     constexpr auto mode() const noexcept -> mode_t { return storage_.control.mode; }
     constexpr auto synchronized() const noexcept -> bool { return storage_.control.synchronized; }
 
-    template <typename operation_t>
-    constexpr auto commit_configuration(operation_t&& operation) noexcept -> void
+    template <typename operation_t> constexpr auto commit_configuration(operation_t&& operation) noexcept -> void
     {
         std::forward<operation_t>(operation)(
             storage_.control.config, storage_.gain, storage_.state, storage_.control.mode);

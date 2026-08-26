@@ -37,24 +37,28 @@ static_assert(integer_sut_t{
     .slope = {.mantissa = integer_max, .shift = 63},
     .y0 = integer_y_t{},
     .x_max_delta = integer_x_t::literal(integer_max),
-}.is_safe());
+}
+        .is_safe());
 static_assert(!integer_sut_t{
     .slope = {.mantissa = integer_max, .shift = 62},
     .y0 = integer_y_t{},
     .x_max_delta = integer_x_t::literal(integer_max),
-}.is_safe());
+}
+        .is_safe());
 
 // exact left-shift boundary and one raw unit beyond it
 static_assert(integer_sut_t{
     .slope = {.mantissa = 1, .shift = -1},
     .y0 = integer_y_t{},
     .x_max_delta = integer_x_t::literal(integer_max >> 1),
-}.is_safe());
+}
+        .is_safe());
 static_assert(!integer_sut_t{
     .slope = {.mantissa = 1, .shift = -1},
     .y0 = integer_y_t{},
     .x_max_delta = integer_x_t::literal((integer_max >> 1) + 1),
-}.is_safe());
+}
+        .is_safe());
 
 // constant slope
 // y = 0.0*x + 3.0

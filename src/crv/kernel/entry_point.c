@@ -171,8 +171,8 @@ err_report:
     return error;
 }
 
-static noinline __cold void crv_input_report_pipeline_diagnostic(crv_u32_t diagnostic,
-    struct crv_pipeline_result_t result, unsigned int count, unsigned int capacity)
+static noinline __cold void crv_input_report_pipeline_diagnostic(
+    crv_u32_t diagnostic, struct crv_pipeline_result_t result, unsigned int count, unsigned int capacity)
 {
     switch (diagnostic)
     {
@@ -217,8 +217,8 @@ static noinline __cold void crv_input_report_pipeline_diagnostic(crv_u32_t diagn
 
         case CRV_INPUT_PIPELINE_DIAGNOSTIC_IMPOSSIBLE_COUNT:
             WARN_ON_ONCE(1);
-            pr_err_ratelimited("pipeline returned impossible count %u for capacity %u; dropping callback\n",
-                result.count, capacity);
+            pr_err_ratelimited(
+                "pipeline returned impossible count %u for capacity %u; dropping callback\n", result.count, capacity);
             break;
 
         case CRV_INPUT_PIPELINE_DIAGNOSTIC_NONE: break;

@@ -16,8 +16,8 @@
 namespace crv::kernel::control {
 namespace {
 
-static_assert(apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_BYPASSED)
-    == pipeline::configuration::apply_mode_t::bypassed);
+static_assert(
+    apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_BYPASSED) == pipeline::configuration::apply_mode_t::bypassed);
 static_assert(apply_mode_decoder_t{}(CRV_CONTROL_APPLY_MODE_ACTIVE) == pipeline::configuration::apply_mode_t::active);
 static_assert(!apply_mode_decoder_t{}(2));
 

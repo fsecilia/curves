@@ -58,14 +58,8 @@ template <typename t_half_life_builder_t> struct authored_validator_t
         {
             return {.error = authored_validation_error_t::dpi};
         }
-        if (!satisfies_constraint(device.rotation))
-        {
-            return {.error = authored_validation_error_t::rotation};
-        }
-        if (!satisfies_constraint(profile.anisotropy))
-        {
-            return {.error = authored_validation_error_t::anisotropy};
-        }
+        if (!satisfies_constraint(device.rotation)) return {.error = authored_validation_error_t::rotation};
+        if (!satisfies_constraint(profile.anisotropy)) return {.error = authored_validation_error_t::anisotropy};
         if (!satisfies_constraint(profile.filter_halflife))
         {
             return {.error = authored_validation_error_t::filter_half_life};
@@ -83,9 +77,8 @@ template <typename t_half_life_builder_t> struct authored_validator_t
         }
 
         auto result = result_t{};
-        tuple::visit_at(profile.curves.configs, static_cast<std::size_t>(curve_index), [&](auto const& curve_config) {
-            result = validate_curve(curve_config);
-        });
+        tuple::visit_at(profile.curves.configs, static_cast<std::size_t>(curve_index),
+            [&](auto const& curve_config) { result = validate_curve(curve_config); });
         return result;
     }
 
@@ -120,14 +113,8 @@ private:
         {
             return {.error = authored_validation_error_t::synchronous_motivity};
         }
-        if (!satisfies_constraint(config.gamma))
-        {
-            return {.error = authored_validation_error_t::synchronous_gamma};
-        }
-        if (!satisfies_constraint(config.smooth))
-        {
-            return {.error = authored_validation_error_t::synchronous_smooth};
-        }
+        if (!satisfies_constraint(config.gamma)) return {.error = authored_validation_error_t::synchronous_gamma};
+        if (!satisfies_constraint(config.smooth)) return {.error = authored_validation_error_t::synchronous_smooth};
         if (!satisfies_constraint(config.sync_speed))
         {
             return {.error = authored_validation_error_t::synchronous_sync_speed};

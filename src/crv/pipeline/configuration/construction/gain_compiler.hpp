@@ -73,8 +73,7 @@ template <std::floating_point scalar_t> struct sensitivity_refinement_error_t
 
 template <std::floating_point scalar_t, is_fixed x_t> struct gain_compilation_error_t
 {
-    using detail_t
-        = std::variant<sensitivity_refinement_error_t<scalar_t>, spline::spline_generation_error_t<x_t>>;
+    using detail_t = std::variant<sensitivity_refinement_error_t<scalar_t>, spline::spline_generation_error_t<x_t>>;
 
     detail_t detail;
 
@@ -127,13 +126,13 @@ private:
         if (target.refinement_limited)
         {
             return std::unexpected{error_t{.detail = sensitivity_refinement_error_t<scalar_t>{
-                                              .achieved_error = target.achieved_error,
-                                              .max_error = target.max_error,
-                                          }}};
+                                               .achieved_error = target.achieved_error,
+                                               .max_error = target.max_error,
+                                           }}};
         }
 
-        auto const spline_result = build_spline(gain, std::move(target.target), spline_policy_t::spline_gain_tolerance,
-            std::move(critical_points.spline));
+        auto const spline_result = build_spline(
+            gain, std::move(target.target), spline_policy_t::spline_gain_tolerance, std::move(critical_points.spline));
         if (!spline_result) return std::unexpected{error_t{.detail = *spline_result.error}};
         return {};
     }

@@ -5,8 +5,8 @@
 
 #include "config_builder.hpp"
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
 #include <array>
+#include <gmock/gmock.h>
 
 namespace crv::pipeline::configuration {
 namespace {

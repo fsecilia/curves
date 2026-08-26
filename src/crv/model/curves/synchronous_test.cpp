@@ -163,7 +163,6 @@ TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_
     EXPECT_EQ(0.0, y.df);
 }
 
-
 //
 // unit motivity
 //
