@@ -9,7 +9,6 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/spline/construction/segment/amr/transfer_sample.hpp>
-#include <numeric>
 
 namespace crv::spline {
 
@@ -31,16 +30,14 @@ template <typename t_bisection_t> struct bisector_t
 
     constexpr auto operator()(auto const& target, subdomain_t const& parent) const noexcept -> bisection_t
     {
-        using std::midpoint;
-
         using scalar_t = subdomain_t::scalar_t;
         using jet_t = subdomain_t::jet_t;
 
         auto const split = parent.midpoint_x;
         assert(parent.left_x < split && split < parent.right_x && "subdomain has no distinct representable midpoint");
 
-        auto const left_midpoint_x = x_t::literal(std::midpoint(parent.left_x.value, split.value));
-        auto const right_midpoint_x = x_t::literal(std::midpoint(split.value, parent.right_x.value));
+        auto const left_midpoint_x = midpoint(parent.left_x, split);
+        auto const right_midpoint_x = midpoint(split, parent.right_x);
 
         return {
             .left = subdomain_t{

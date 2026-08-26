@@ -10,7 +10,6 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/spline/construction/segment/amr/transfer_sample.hpp>
-#include <numeric>
 
 namespace crv::spline::seed {
 
@@ -23,11 +22,6 @@ template <is_fixed t_x_t, typename t_subdomain_t> struct subdomain_factory_t
     using scalar_t = subdomain_t::scalar_t;
     using jet_t = subdomain_t::jet_t;
     using function_sample_t = subdomain_t::function_sample_t;
-
-    static constexpr auto midpoint(x_t left, x_t right) noexcept -> x_t
-    {
-        return x_t::literal(std::midpoint(left.value, right.value));
-    }
 
     static constexpr auto operator()(
         auto const& target, function_sample_t const& left_sample, x_t left, x_t right) noexcept -> subdomain_t

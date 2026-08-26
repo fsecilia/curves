@@ -17,6 +17,7 @@
 #include <climits>
 #include <compare>
 #include <concepts>
+#include <numeric>
 #include <type_traits>
 
 namespace crv {
@@ -226,6 +227,11 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
     friend constexpr auto operator==(value_t lhs, fixed_t rhs) noexcept -> bool { return fixed_t{lhs} == rhs; }
     friend constexpr auto operator<=>(fixed_t lhs, value_t rhs) noexcept -> auto { return lhs <=> fixed_t{rhs}; }
     friend constexpr auto operator<=>(value_t lhs, fixed_t rhs) noexcept -> auto { return fixed_t{lhs} <=> rhs; }
+
+    friend constexpr auto midpoint(fixed_t lhs, fixed_t rhs) noexcept -> fixed_t
+    {
+        return literal(std::midpoint(lhs.value, rhs.value));
+    }
 
     // ----------------------------------------------------------------------------------------------------------------
     // Unary Arithmetic
@@ -524,6 +530,14 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         return src.value < 0 ? -src : src;
     }
 };
+
+/// checks whether a same-resolution fixed value fits the destination representation
+template <is_fixed to_t, is_fixed from_t>
+    requires(to_t::frac_bits == from_t::frac_bits)
+constexpr auto in_range(from_t from) noexcept -> bool
+{
+    return in_range<typename to_t::value_t>(from.value);
+}
 
 template <typename value_t, int frac_bits> struct min_max_t<fixed_t<value_t, frac_bits>>
 {

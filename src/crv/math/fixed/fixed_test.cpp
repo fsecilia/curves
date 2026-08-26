@@ -150,6 +150,34 @@ static_assert(std::same_as<fixed_t<uint16_t, 5>, fixed::widened_t<fixed_t<uint8_
 static_assert(std::same_as<fixed_t<int32_t, 3>, fixed::widened_t<fixed_t<int16_t, 3>>>);
 
 // ====================================================================================================================
+// Generic Math
+// ====================================================================================================================
+
+namespace generic_math {
+
+template <typename to_t, typename from_t>
+concept has_in_range = requires(from_t from) {
+    { in_range<to_t>(from) } -> std::same_as<bool>;
+};
+
+static_assert(has_in_range<i16_8_t, i32_8_t>);
+static_assert(!has_in_range<i16_8_t, i16_4_t>);
+
+static_assert(in_range<i16_8_t>(i32_8_t::literal(min<int16_t>())));
+static_assert(in_range<i16_8_t>(i32_8_t::literal(max<int16_t>())));
+static_assert(!in_range<i16_8_t>(i32_8_t::literal(static_cast<int32_t>(min<int16_t>()) - 1)));
+static_assert(!in_range<i16_8_t>(i32_8_t::literal(static_cast<int32_t>(max<int16_t>()) + 1)));
+static_assert(!in_range<u16_8_t>(i32_8_t::literal(-1)));
+static_assert(!in_range<i16_8_t>(u32_8_t::literal(static_cast<uint32_t>(max<int16_t>()) + 1)));
+
+static_assert(midpoint(i16_8_t::literal(100), i16_8_t::literal(105)) == i16_8_t::literal(102));
+static_assert(midpoint(i16_8_t::literal(105), i16_8_t::literal(100)) == i16_8_t::literal(103));
+static_assert(midpoint(i16_8_t::literal(min<int16_t>()), i16_8_t::literal(max<int16_t>())) == i16_8_t::literal(-1));
+static_assert(midpoint(i16_8_t::literal(max<int16_t>()), i16_8_t::literal(min<int16_t>())) == i16_8_t::literal(0));
+
+} // namespace generic_math
+
+// ====================================================================================================================
 // Construction
 // ====================================================================================================================
 

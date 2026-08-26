@@ -49,7 +49,7 @@ template <typename t_spline_t> struct spline_validator_t
         {
             auto const origin = locator.segment_origin(segment_index);
             auto const end = locator.segment_end(segment_index);
-            auto const width = x_t::literal(end.value - origin.value);
+            auto const width = end - origin;
             if (!spline.segments[segment_index].is_safe_through(width, origin))
             {
                 return {.error = spline_validation_error_t::segment, .segment_index = segment_index};

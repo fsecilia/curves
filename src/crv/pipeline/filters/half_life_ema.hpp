@@ -24,7 +24,7 @@ public:
     static constexpr auto max_safe_half_life() noexcept -> time_t
     {
         auto const max_scaled_duration = multiply<time_t, rounding_mode>(max<time_t>(), ln2);
-        return time_t::literal(max<time_t>().value - max_scaled_duration.value);
+        return max<time_t>() - max_scaled_duration;
     }
 
     constexpr auto output() const noexcept -> sample_t { return output_; }

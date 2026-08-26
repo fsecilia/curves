@@ -72,7 +72,7 @@ struct velocity_t
         assert(scale > scale_t{} && "velocity_t: velocity scale must be positive");
 
         auto const wide_rate = divide<wide_rate_t>(magnitude(x, y), duration, rounding_modes::div::nearest_away);
-        if (wide_rate > wide_rate_t::convert(max<rate_t>())) return {};
+        if (!in_range<rate_t>(wide_rate)) return {};
 
         auto const rate = rate_t::convert(wide_rate);
         auto const scaled = multiply(rate, scale);
@@ -84,7 +84,7 @@ struct velocity_t
         using wide_out_t = fixed_t<typename scaled_t::value_t, out_t::frac_bits>;
         static constexpr auto rounding_mode = rounding_modes::shr::nearest_up;
         auto const wide_output = wide_out_t::template convert<rounding_mode>(scaled);
-        if (wide_output > wide_out_t::convert(max<out_t>())) return {};
+        if (!in_range<out_t>(wide_output)) return {};
 
         return {
             .value = out_t::convert(wide_output),
