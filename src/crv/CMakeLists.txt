@@ -171,6 +171,7 @@ set(shared_lib_kernel_files
     pipeline/configuration/committer.hpp
     pipeline/configuration/config_builder.hpp
     pipeline/configuration/gain_compiler.hpp
+    pipeline/configuration/runtime.hpp
     pipeline/configuration/transaction.hpp
     pipeline/filters/half_life_ema.hpp
     pipeline/input_frame.hpp
