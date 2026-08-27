@@ -16,7 +16,6 @@
 #include <crv/ui/qt/property_model.hpp>
 #include <crv/ui/qt/session_view.hpp>
 #include <QApplication>
-#include <QGuiApplication>
 #include <QMessageBox>
 #include <QObject>
 #include <QQmlApplicationEngine>

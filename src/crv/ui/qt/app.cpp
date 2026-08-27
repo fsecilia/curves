@@ -261,7 +261,7 @@ auto app_t::notify(QObject* receiver, QEvent* event) -> bool
 {
     try
     {
-        return QGuiApplication::notify(receiver, event);
+        return QApplication::notify(receiver, event);
     }
     catch (std::bad_alloc const&)
     {
@@ -289,7 +289,6 @@ auto app_t::load_active_curve_model() -> void
         curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific);
     });
 }
-
 
 auto app_t::update_dpi_state() -> void
 {
