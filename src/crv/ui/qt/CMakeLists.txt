@@ -111,8 +111,6 @@ target_link_libraries(qt_ui PUBLIC
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(qt_ui PRIVATE
         -Wno-ctad-maybe-unsupported
-        -Wno-unsafe-buffer-usage
-        -Wno-unsafe-buffer-usage-in-libc-call
         -Wno-extra-semi-stmt
     )
 endif()
@@ -125,26 +123,6 @@ qt_add_qml_module(qt_ui
     SOURCES ${qml_cpp_files}
     NO_PLUGIN
 )
-
-# common test library
-add_library(qt_ui_testing
-    test_app.cpp
-    test_app.hpp
-)
-target_link_libraries(qt_ui_testing PUBLIC qt_ui lib)
-
-# qt ui unit tests
-add_executable(qt_ui_test
-    app_test.cpp
-    command/stack_adapter_test.cpp
-    i18n_test.cpp
-    property_model_test.cpp
-    widgets/graph/grid_renderer_test.cpp
-    widgets/graph_test.cpp
-)
-target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
-add_test(NAME qt_ui_test COMMAND qt_ui_test)
-add_dependencies(build_tests qt_ui_test)
 
 # main executable.
 qt_add_executable(qt ${qt_files})
@@ -177,4 +155,26 @@ qt6_add_translations(qt
     RESOURCE_PREFIX "/i18n"
 )
 
-add_subdirectory(test)
+if (crv_enable_testing)
+    # common test library
+    add_library(qt_ui_testing
+        test_app.cpp
+        test_app.hpp
+    )
+    target_link_libraries(qt_ui_testing PUBLIC qt_ui lib)
+
+    # qt ui unit tests
+    add_executable(qt_ui_test
+        app_test.cpp
+        command/stack_adapter_test.cpp
+        i18n_test.cpp
+        property_model_test.cpp
+        widgets/graph/grid_renderer_test.cpp
+        widgets/graph_test.cpp
+    )
+    target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
+    add_test(NAME qt_ui_test COMMAND qt_ui_test)
+    add_dependencies(build_tests qt_ui_test)
+
+    add_subdirectory(test)
+endif()

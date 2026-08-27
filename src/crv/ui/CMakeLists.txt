@@ -14,22 +14,24 @@ add_library(ui
 )
 target_link_libraries(ui PUBLIC lib)
 
-add_executable(ui_test
-    command/command_test.cpp
-    command/mutate_param_test.cpp
-    command/stack_test.cpp
-    command/timeline_test.cpp
-    hierarchical_inspector_test.cpp
-)
-target_link_libraries(ui_test PRIVATE ui lib testing)
-add_test(NAME ui_test COMMAND ui_test)
-add_dependencies(build_tests ui_test)
+if (crv_enable_testing)
+    add_executable(ui_test
+        command/command_test.cpp
+        command/mutate_param_test.cpp
+        command/stack_test.cpp
+        command/timeline_test.cpp
+        hierarchical_inspector_test.cpp
+    )
+    target_link_libraries(ui_test PRIVATE ui lib testing)
+    add_test(NAME ui_test COMMAND ui_test)
+    add_dependencies(build_tests ui_test)
 
-add_executable(ui_integration_test
-    command/command_integration_test.cpp
-)
-target_link_libraries(ui_integration_test PRIVATE ui lib testing)
-add_test(NAME ui_integration_test COMMAND ui_integration_test)
-add_dependencies(build_tests ui_integration_test)
+    add_executable(ui_integration_test
+        command/command_integration_test.cpp
+    )
+    target_link_libraries(ui_integration_test PRIVATE ui lib testing)
+    add_test(NAME ui_integration_test COMMAND ui_integration_test)
+    add_dependencies(build_tests ui_integration_test)
+endif()
 
 add_subdirectory(qt)
