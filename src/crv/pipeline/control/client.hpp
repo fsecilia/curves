@@ -72,7 +72,7 @@ public:
     using apply_result_t = std::expected<void, error_t>;
     using open_result_t = std::expected<client_t, error_t>;
 
-    explicit client_t(io_t io) noexcept(std::is_nothrow_move_constructible_v<io_t>) : io_{std::move(io)} {}
+    explicit client_t(io_t io) noexcept : io_{std::move(io)} {}
 
     [[nodiscard]] static auto open() -> open_result_t
     {
