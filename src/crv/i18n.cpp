@@ -38,7 +38,7 @@ auto provider() noexcept -> provider_i const&
 }
 
 //
-// transltion macros
+// translation macros
 //
 
 auto translate(char const* context, char const* source) -> std::string
