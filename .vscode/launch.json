@@ -7,9 +7,12 @@
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [],
-            "env": {
-                "GTEST_COLOR": "1"
-            },
+            "environment": [
+                {
+                    "name": "GTEST_COLOR",
+                    "value": "1"
+                }
+            ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "all + kbuild"
         }
