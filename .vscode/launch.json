@@ -15,6 +15,22 @@
             ],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "all + kbuild"
+        },
+        {
+            "name": "Debug Curves - VM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/host/dev/build/debian/build/gcc/Debug/installed/bin/curves-mouse-acceleration-config",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/host/dev/build/debian/build/gcc/Debug/installed/lib"
+                }
+            ],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "stopAtEntry": false
         }
     ]
 }
