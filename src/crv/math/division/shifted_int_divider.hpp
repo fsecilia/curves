@@ -23,8 +23,8 @@ template <typename wide_divider_t, int_t shift, integral out_value_t, integral l
 struct shifted_int_divider_t;
 
 /// strictly unsigned division
-template <typename wide_divider_t, int_t shift, integral out_value_t, unsigned_integral lhs_t,
-    unsigned_integral rhs_t, bool saturate>
+template <typename wide_divider_t, int_t shift, integral out_value_t, unsigned_integral lhs_t, unsigned_integral rhs_t,
+    bool saturate>
     requires(shift >= 0)
 struct shifted_int_divider_t<wide_divider_t, shift, out_value_t, lhs_t, rhs_t, saturate>
 {

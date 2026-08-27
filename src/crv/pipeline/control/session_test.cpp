@@ -39,7 +39,8 @@ struct session_open_test_t : Test
 
         [[nodiscard]] static auto open() -> open_result_t { return successful_open_client_t{}; }
         auto devices() const -> devices_result_t { return std::vector<attachment_t>{}; }
-        auto apply(attachment_id_t, configuration::runtime_t const&, configuration::apply_mode_t) const -> apply_result_t
+        auto apply(attachment_id_t, configuration::runtime_t const&, configuration::apply_mode_t) const
+            -> apply_result_t
         {
             return {};
         }
@@ -55,7 +56,8 @@ struct session_open_test_t : Test
 
         [[nodiscard]] static auto open() -> open_result_t { return std::unexpected{open_error}; }
         auto devices() const -> devices_result_t { return std::vector<attachment_t>{}; }
-        auto apply(attachment_id_t, configuration::runtime_t const&, configuration::apply_mode_t) const -> apply_result_t
+        auto apply(attachment_id_t, configuration::runtime_t const&, configuration::apply_mode_t) const
+            -> apply_result_t
         {
             return {};
         }

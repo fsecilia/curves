@@ -71,8 +71,7 @@ inline auto cpp_configuration(crv_control_prepared_configuration_t* configuratio
     return reinterpret_cast<prepared_t*>(configuration);
 }
 
-inline auto cpp_configuration(crv_control_prepared_configuration_t const* configuration) noexcept
-    -> prepared_t const*
+inline auto cpp_configuration(crv_control_prepared_configuration_t const* configuration) noexcept -> prepared_t const*
 {
     assert(nullptr != configuration);
     return reinterpret_cast<prepared_t const*>(configuration);

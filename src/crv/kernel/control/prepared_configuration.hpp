@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include <crv/kernel/control/abi.h>
 #include <crv/lib.hpp>
+#include <crv/kernel/control/abi.h>
 #include <crv/pipeline/configuration/apply_mode.hpp>
 #include <cassert>
 #include <cstddef>

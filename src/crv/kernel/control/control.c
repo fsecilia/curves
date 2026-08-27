@@ -6,8 +6,8 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include "control.h"
-#include "prepared_configuration.h"
 #include "ioctl.h"
+#include "prepared_configuration.h"
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>

@@ -23,8 +23,8 @@ using native_division_word_t = int_by_bytes_t<max(sizeof(rhs_t), (sizeof(lhs_t) 
 
 // fully-compose the native, wide, and scaled division machinery
 template <integral out_value_t, integral lhs_t, integral rhs_t, int_t shift, bool saturate>
-using divider_t = shifted_int_divider_t<wide_divider_t<native_division_word_t<lhs_t, rhs_t>,
-                                            hardware_divider_t<native_division_word_t<lhs_t, rhs_t>>>,
+using divider_t = shifted_int_divider_t<
+    wide_divider_t<native_division_word_t<lhs_t, rhs_t>, hardware_divider_t<native_division_word_t<lhs_t, rhs_t>>>,
     shift, out_value_t, lhs_t, rhs_t, saturate>;
 
 } // namespace detail

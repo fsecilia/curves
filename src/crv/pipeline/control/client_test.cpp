@@ -37,7 +37,10 @@ struct client_test_t : Test
 
     struct successful_open_io_t
     {
-        [[nodiscard]] static auto open() -> std::expected<successful_open_io_t, int_t> { return successful_open_io_t{}; }
+        [[nodiscard]] static auto open() -> std::expected<successful_open_io_t, int_t>
+        {
+            return successful_open_io_t{};
+        }
     };
 
     struct failing_open_io_t
@@ -86,8 +89,7 @@ struct client_test_t : Test
     {
         EXPECT_CALL(mock_io, apply).WillOnce(Invoke([this, result](crv_control_apply_v1_t const& request) {
             captured_apply.request = request;
-            auto const* configuration
-                = reinterpret_cast<crv_control_configuration_v1_t const*>(request.configuration);
+            auto const* configuration = reinterpret_cast<crv_control_configuration_v1_t const*>(request.configuration);
             captured_apply.configuration = *configuration;
             return result;
         }));
@@ -128,14 +130,15 @@ TEST_F(client_test_t, enumeration_preserves_attachment_identity)
 
     auto const result = sut.devices();
 
-    EXPECT_EQ(result->front(), (attachment_t{
-                                   .id = attachment_id_t{41},
-                                   .bustype = 7,
-                                   .vendor = 11,
-                                   .product = 13,
-                                   .version = 17,
-                                   .sysname = "event23",
-                               }));
+    EXPECT_EQ(result->front(),
+        (attachment_t{
+            .id = attachment_id_t{41},
+            .bustype = 7,
+            .vendor = 11,
+            .product = 13,
+            .version = 17,
+            .sysname = "event23",
+        }));
 }
 
 TEST_F(client_test_t, enumeration_walks_multiple_devices)
@@ -147,14 +150,15 @@ TEST_F(client_test_t, enumeration_walks_multiple_devices)
 
     auto const result = sut.devices();
 
-    EXPECT_EQ(*result, (std::vector<attachment_t>{
-                           attachment_t{.id = attachment_id_t{2}, .bustype = 3, .vendor = 4, .product = 5,
-                               .version = 6, .sysname = "input7"},
-                           attachment_t{.id = attachment_id_t{9}, .bustype = 3, .vendor = 4, .product = 5,
-                               .version = 6, .sysname = "input7"},
-                           attachment_t{.id = attachment_id_t{31}, .bustype = 3, .vendor = 4, .product = 5,
-                               .version = 6, .sysname = "input7"},
-                       }));
+    EXPECT_EQ(*result,
+        (std::vector<attachment_t>{
+            attachment_t{
+                .id = attachment_id_t{2}, .bustype = 3, .vendor = 4, .product = 5, .version = 6, .sysname = "input7"},
+            attachment_t{
+                .id = attachment_id_t{9}, .bustype = 3, .vendor = 4, .product = 5, .version = 6, .sysname = "input7"},
+            attachment_t{
+                .id = attachment_id_t{31}, .bustype = 3, .vendor = 4, .product = 5, .version = 6, .sysname = "input7"},
+        }));
 }
 
 TEST_F(client_test_t, enumeration_passes_previous_attachment_id_to_next_request)
@@ -276,8 +280,8 @@ TEST_F(client_test_t, apply_passes_runtime_gain_representation)
     auto const result = sut.apply(attachment_id_t{1}, runtime, configuration::apply_mode_t::active);
     static_cast<void>(result);
 
-    EXPECT_EQ(std::memcmp(&captured_apply.configuration.gain, &runtime.gain, sizeof(captured_apply.configuration.gain)),
-        0);
+    EXPECT_EQ(
+        std::memcmp(&captured_apply.configuration.gain, &runtime.gain, sizeof(captured_apply.configuration.gain)), 0);
 }
 
 TEST_F(client_test_t, apply_encodes_configuration_size)

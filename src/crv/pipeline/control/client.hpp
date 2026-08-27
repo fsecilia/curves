@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include <crv/kernel/control/abi.h>
 #include <crv/lib.hpp>
+#include <crv/kernel/control/abi.h>
 #include <crv/pipeline/configuration/apply_mode.hpp>
 #include <crv/pipeline/configuration/runtime.hpp>
 #include <crv/pipeline/control/linux_io.hpp>
@@ -79,8 +79,7 @@ public:
         auto io = io_t::open();
         if (!io)
         {
-            return std::unexpected{
-                error_t{.code = error_code_t::endpoint_open_failed, .native_error = io.error()}};
+            return std::unexpected{error_t{.code = error_code_t::endpoint_open_failed, .native_error = io.error()}};
         }
 
         return client_t{std::move(*io)};
@@ -99,15 +98,15 @@ public:
             if (!result)
             {
                 if (result.error() == ENOENT) return attachments;
-                return std::unexpected{error_t{.code = error_code_t::enumeration_failed,
-                    .native_error = result.error()}};
+                return std::unexpected{
+                    error_t{.code = error_code_t::enumeration_failed, .native_error = result.error()}};
             }
 
             auto attachment = decode_attachment(request, after);
             if (!attachment)
             {
-                return std::unexpected{error_t{
-                    .code = error_code_t::enumeration_failed, .native_error = attachment.error()}};
+                return std::unexpected{
+                    error_t{.code = error_code_t::enumeration_failed, .native_error = attachment.error()}};
             }
 
             attachments.push_back(std::move(*attachment));
@@ -130,9 +129,9 @@ public:
         auto const result = io_.apply(request);
         if (result) return {};
 
-        auto const code = result.error() == ENODEV   ? error_code_t::attachment_unavailable
-            : result.error() == EINVAL               ? error_code_t::apply_rejected
-                                                     : error_code_t::apply_failed;
+        auto const code = result.error() == ENODEV ? error_code_t::attachment_unavailable
+            : result.error() == EINVAL             ? error_code_t::apply_rejected
+                                                   : error_code_t::apply_failed;
         return std::unexpected{error_t{.code = code, .native_error = result.error()}};
     }
 

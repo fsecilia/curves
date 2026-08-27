@@ -32,8 +32,7 @@ public:
 
     session_t(compiler_t compiler, client_t client) noexcept
         : compiler_{std::move(compiler)}, client_{std::move(client)}
-    {
-    }
+    {}
 
     [[nodiscard]] static auto open() -> open_result_t
     {

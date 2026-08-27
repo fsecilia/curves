@@ -386,8 +386,8 @@ template <integral t_value_t, int t_frac_bits> struct fixed_t
         static constexpr auto shift = rhs_t::frac_bits - fixed_t::frac_bits + out_t::frac_bits;
         static_assert(shift >= 0, "fixed_t: division requires nonnegative pre-division scaling");
 
-        auto const quotient = division::divide<out_value_t, lhs_value_t, rhs_value_t, shift>(
-            lhs.value, rhs.value, rounding_mode);
+        auto const quotient
+            = division::divide<out_value_t, lhs_value_t, rhs_value_t, shift>(lhs.value, rhs.value, rounding_mode);
         return out_t::literal(quotient);
     }
 
