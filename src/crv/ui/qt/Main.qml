@@ -45,6 +45,7 @@ ApplicationWindow {
             Layout.fillHeight: true
 
             CurveSelector {
+                enabled: app.dpiConfigured
                 Layout.preferredWidth: 15*em
                 Layout.maximumWidth: 15*em
                 Layout.minimumWidth: 15*em
@@ -52,6 +53,7 @@ ApplicationWindow {
             }
 
             CurveConfig {
+                enabled: app.dpiConfigured
                 Layout.preferredWidth: 25*em
                 Layout.maximumWidth: 25*em
                 Layout.minimumWidth: 25*em

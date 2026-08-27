@@ -14,6 +14,7 @@
 #include <crv/ui/qt/i18n.hpp>
 #include <crv/ui/qt/packed_curve.hpp>
 #include <crv/ui/qt/property_model.hpp>
+#include <crv/ui/qt/session_view.hpp>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QMessageBox>
@@ -40,6 +41,10 @@ public:
     ~app_t() override;
 
     Q_INVOKABLE void apply();
+    Q_INVOKABLE void disable();
+
+    Q_PROPERTY(bool dpiConfigured READ dpiConfigured NOTIFY dpiConfiguredChanged)
+    auto dpiConfigured() const noexcept -> bool { return model_root_.device.dpi.value() > 0; }
 
     Q_PROPERTY(int activeCurveIndex READ activeCurveIndex NOTIFY activeCurveChanged)
     auto activeCurveIndex() const -> int { return static_cast<int>(model_root_.profile.curves.active.value()); }
@@ -52,15 +57,18 @@ public:
 
 signals:
     void activeCurveChanged();
+    void dpiConfiguredChanged();
     void curveChanged(QVariant const& curve);
 
 private:
     auto load_active_curve_model() -> void;
+    auto update_dpi_state() -> void;
     auto on_model_changed(QString path, QVariant const& value) -> void;
 
     static constexpr char const app_name[] = {"curves"};
 
     std::unique_ptr<config_store_t> store_;
+    std::unique_ptr<qt::session_view_t> session_view_;
     model::root_t model_root_;
     QStringList curve_names_;
 

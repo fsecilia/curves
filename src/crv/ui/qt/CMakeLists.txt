@@ -21,6 +21,9 @@ set(qt_ui_files
     packed_curve.hpp
     property_model.cpp
     property_model.hpp
+    session_model.hpp
+    session_view.cpp
+    session_view.hpp
 )
 
 # qml files
@@ -169,6 +172,7 @@ if (crv_enable_testing)
         command/stack_adapter_test.cpp
         i18n_test.cpp
         property_model_test.cpp
+        session_model_test.cpp
         widgets/graph/grid_renderer_test.cpp
         widgets/graph_test.cpp
     )

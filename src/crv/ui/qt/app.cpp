@@ -130,6 +130,15 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
         return result;
     }
 
+    auto session_view = qt::session_view_t::open();
+    if (!session_view)
+    {
+        report_error(qt::session_view_t::control_error_message(session_view.error()));
+        result.reset();
+        return result;
+    }
+    result->session_view_ = std::move(*session_view);
+
     for (auto curve_id = 0; curve_id < model::curves::curves_count; ++curve_id)
     {
         result->curve_names_.append(QString::fromStdString(
@@ -143,6 +152,7 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
     result->device_model_
         = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
     result->device_model_->load_config(result->model_root_.device);
+    result->update_dpi_state();
 
     result->profile_model_
         = std::make_unique<property_model_t>(result->command_stack_, hierarchical_inspector_factory_t{});
@@ -190,6 +200,7 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
     context.setContextProperty("anchorModel", result->anchor_model_.get());
     context.setContextProperty("ceilingModel", result->ceiling_model_.get());
     context.setContextProperty("specificCurveModel", result->specific_curve_model_.get());
+    context.setContextProperty("sessionView", result->session_view_.get());
     context.setContextProperty("app", result.get());
 
     QObject::connect(
@@ -203,7 +214,26 @@ auto app_t::construct(int& argc, char** argv) -> std::unique_ptr<app_t>
 
 auto app_t::apply() -> void
 {
-    store_->save(model_root_);
+    if (!session_view_->apply_active(model_root_.device, model_root_.profile)) return;
+
+    try
+    {
+        store_->save(model_root_);
+        session_view_->report_saved();
+    }
+    catch (std::bad_alloc const&)
+    {
+        throw;
+    }
+    catch (std::exception const& exception)
+    {
+        session_view_->report_save_failure(QString::fromLocal8Bit(exception.what()));
+    }
+}
+
+auto app_t::disable() -> void
+{
+    session_view_->disable(model_root_.device, model_root_.profile);
 }
 
 auto app_t::set_active_curve(int index) -> void
@@ -260,8 +290,19 @@ auto app_t::load_active_curve_model() -> void
     });
 }
 
-auto app_t::on_model_changed(QString, QVariant const&) -> void
+
+auto app_t::update_dpi_state() -> void
 {
+    auto const configured = dpiConfigured();
+    device_model_->error_message(
+        "dpi", configured ? QString{} : QString::fromStdString(CRV_TR("Enter mouse DPI to begin.")));
+    emit dpiConfiguredChanged();
+}
+
+auto app_t::on_model_changed(QString path, QVariant const&) -> void
+{
+    if (path == "dpi") update_dpi_state();
+
     auto const target = static_cast<std::size_t>(model_root_.profile.curves.active.value());
     tuple::visit_at(model_root_.profile.curves.configs, target,
         [&](auto& curve_config) { curve_ = model::curves::create_composed_curve<float_t>(curve_config.specific); });

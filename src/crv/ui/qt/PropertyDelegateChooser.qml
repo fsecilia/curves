@@ -24,7 +24,12 @@ DelegateChooser {
                 ? parent.layoutMode
                 : PropertyDelegateChooser.Mode.Vertical
             readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+            readonly property bool controlsEnabled: parent.controlsEnabled !== undefined ? parent.controlsEnabled : true
+            readonly property string enabledPath: parent.enabledPath !== undefined ? parent.enabledPath : ""
+            readonly property string focusPath: parent.focusPath !== undefined ? parent.focusPath : ""
+            readonly property bool shouldFocus: focusPath === model.path
 
+            enabled: controlsEnabled || enabledPath === model.path
             Layout.fillWidth: true
             spacing: 8
 
@@ -38,6 +43,7 @@ DelegateChooser {
 
             // numeric text box
             Loader {
+                id: floatLoader
                 source: qtVersion >= 0x060900 ? "FloatField_v6_9.qml" : "FloatField.qml"
 
                 Layout.fillWidth: true
@@ -55,8 +61,12 @@ DelegateChooser {
                     {
                         floatControl.parent.sectionModel.on_wheel(index, val)
                     })
+                    if (floatControl.shouldFocus) Qt.callLater(() => item.forceActiveFocus())
                 }
             }
+
+            onShouldFocusChanged: if (shouldFocus && floatLoader.item)
+                Qt.callLater(() => floatLoader.item.forceActiveFocus())
         }
     }
 
@@ -70,7 +80,12 @@ DelegateChooser {
                 ? parent.layoutMode
                 : PropertyDelegateChooser.Mode.Vertical
             readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+            readonly property bool controlsEnabled: parent.controlsEnabled !== undefined ? parent.controlsEnabled : true
+            readonly property string enabledPath: parent.enabledPath !== undefined ? parent.enabledPath : ""
+            readonly property string focusPath: parent.focusPath !== undefined ? parent.focusPath : ""
+            readonly property bool shouldFocus: focusPath === model.path
 
+            enabled: controlsEnabled || enabledPath === model.path
             Layout.fillWidth: true
             spacing: 16
 
@@ -84,6 +99,7 @@ DelegateChooser {
 
             // numeric text box
             Loader {
+                id: intLoader
                 source: qtVersion >= 0x060900 ? "IntField_v6_9.qml" : "IntField.qml"
 
                 Layout.fillWidth: true
@@ -101,8 +117,12 @@ DelegateChooser {
                     {
                         intControl.parent.sectionModel.on_wheel(index, val)
                     })
+                    if (intControl.shouldFocus) Qt.callLater(() => item.forceActiveFocus())
                 }
             }
+
+            onShouldFocusChanged: if (shouldFocus && intLoader.item)
+                Qt.callLater(() => intLoader.item.forceActiveFocus())
         }
     }
 
@@ -111,6 +131,10 @@ DelegateChooser {
         roleValue: 2
         delegate: RowLayout {
             id: boolControl
+            readonly property bool controlsEnabled: parent.controlsEnabled !== undefined ? parent.controlsEnabled : true
+            readonly property string enabledPath: parent.enabledPath !== undefined ? parent.enabledPath : ""
+
+            enabled: controlsEnabled || enabledPath === model.path
             Layout.preferredWidth: 10*em
             spacing: 8
 
@@ -144,7 +168,10 @@ DelegateChooser {
                 ? parent.layoutMode
                 : PropertyDelegateChooser.Mode.Vertical
             readonly property bool isHorizontal: layoutMode === PropertyDelegateChooser.Mode.Horizontal
+            readonly property bool controlsEnabled: parent.controlsEnabled !== undefined ? parent.controlsEnabled : true
+            readonly property string enabledPath: parent.enabledPath !== undefined ? parent.enabledPath : ""
 
+            enabled: controlsEnabled || enabledPath === model.path
             Layout.fillWidth: true
             spacing: 8
 
