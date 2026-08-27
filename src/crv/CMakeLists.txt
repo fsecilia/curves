@@ -66,6 +66,7 @@ set(lib_files
     pipeline/configuration/construction/output_transform_builder.hpp
     pipeline/configuration/runtime.hpp
     pipeline/control/client.hpp
+    pipeline/control/session.hpp
     pipeline/control/linux_io.cpp
     pipeline/control/linux_io.hpp
     priority_queue.hpp
@@ -281,6 +282,7 @@ set(unit_test_files
     pipeline/configuration/construction/output_transform_builder_test.cpp
     pipeline/configuration/transaction_test.cpp
     pipeline/control/client_test.cpp
+    pipeline/control/session_test.cpp
     pipeline/filters/half_life_ema_test.cpp
     pipeline/input_frame_test.cpp
     pipeline/orchestrator_test.cpp
