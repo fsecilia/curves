@@ -23,6 +23,7 @@ using transaction_t
 using prepared_t = prepared_configuration_t<candidate_t, transaction_t>;
 using config_t = pipeline_t::config_t;
 using gain_t = pipeline_t::gain_t;
+using output_transform_t = decltype(config_t::output_transform);
 using validation_error_t = pipeline::runtime_config_validation_error_t;
 
 static_assert(
@@ -42,9 +43,12 @@ static_assert(alignof(config_t) == alignof(crv_control_runtime_config_v1_t));
 static_assert(offsetof(config_t, velocity_scale) == offsetof(crv_control_runtime_config_v1_t, velocity_scale));
 static_assert(offsetof(config_t, half_life) == offsetof(crv_control_runtime_config_v1_t, half_life));
 static_assert(offsetof(config_t, output_transform) == offsetof(crv_control_runtime_config_v1_t, output_transform));
+static_assert(offsetof(config_t, output_transform) + offsetof(output_transform_t, output_scale)
+    == offsetof(crv_control_runtime_config_v1_t, output_scale));
 static_assert(sizeof(decltype(config_t::velocity_scale)) == sizeof(crv_u64_t));
 static_assert(sizeof(decltype(config_t::half_life)) == sizeof(crv_u64_t));
-static_assert(sizeof(decltype(config_t::output_transform)) == sizeof(crv_s64_t) * 4);
+static_assert(sizeof(decltype(output_transform_t::matrix)) == sizeof(crv_s64_t) * 4);
+static_assert(sizeof(decltype(output_transform_t::output_scale)) == sizeof(crv_u64_t));
 static_assert(std::is_trivially_copyable_v<config_t>);
 static_assert(std::is_standard_layout_v<config_t>);
 
@@ -103,6 +107,7 @@ constexpr auto validation_error_name(validation_error_t error) noexcept -> char 
     {
         case validation_error_t::none: return "none";
         case validation_error_t::velocity_scale: return "velocity scale";
+        case validation_error_t::output_scale: return "output scale";
         case validation_error_t::half_life: return "half life";
         case validation_error_t::output_transform_rotation_component: return "output transform rotation component";
         case validation_error_t::output_transform_anisotropy_component: return "output transform anisotropy component";

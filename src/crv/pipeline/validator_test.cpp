@@ -66,6 +66,13 @@ constexpr auto valid_gain = fixture_t::make_valid_gain();
 
 static_assert(crv::pipeline_t::validate(valid_config, valid_gain) == runtime_config_validation_result_t{});
 
+constexpr auto zero_output_scale_config = [] {
+    auto config = fixture_t::make_valid_config();
+    config.output_transform.output_scale = {};
+    return config;
+}();
+static_assert(crv::pipeline_t::validate(zero_output_scale_config, valid_gain).error == error_t::output_scale);
+
 constexpr auto zero_velocity_scale_config = [] {
     auto config = fixture_t::make_valid_config();
     config.velocity_scale = {};

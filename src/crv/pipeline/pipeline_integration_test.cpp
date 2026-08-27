@@ -25,12 +25,12 @@ struct pipeline_integration_test_t : Test
     using spline_t = spline_policy_t::spline_t;
     using speed_t = spline_policy_t::x_t;
     using duration_t = sut_t::duration_t;
-    using output_transform_t = pipeline::output_transform_t<spline_policy_t::y_t>;
+    using output_transform_t = decltype(sut_t::config_t{}.output_transform);
     using configuration_transaction_t
         = pipeline::configuration::transaction_t<sut_t::validator_t, pipeline::configuration::committer_t>;
 
     static_assert(std::same_as<spline_t, sut_t::gain_t>);
-    static_assert(sizeof(sut_t::config_t) == 48);
+    static_assert(sizeof(sut_t::config_t) == 56);
     static_assert(sizeof(sut_t::mode_t) == 1);
 
     struct constant_gain_t

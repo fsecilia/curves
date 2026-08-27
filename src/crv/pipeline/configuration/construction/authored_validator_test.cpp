@@ -33,6 +33,19 @@ TEST_F(authored_validator_test_t, rejects_zero_dpi)
     EXPECT_EQ(validate().error, authored_validation_error_t::dpi);
 }
 
+TEST_F(authored_validator_test_t, rejects_nonpositive_output_dpi)
+{
+    profile.output_dpi.value(0);
+    EXPECT_EQ(validate().error, authored_validation_error_t::output_dpi);
+}
+
+TEST_F(authored_validator_test_t, rejects_output_scale_beyond_runtime_capacity)
+{
+    device.dpi.value(1);
+    profile.output_dpi.value(static_cast<int_t>(pipeline_t::max_output_scale) + 1);
+    EXPECT_EQ(validate().error, authored_validation_error_t::output_dpi);
+}
+
 TEST_F(authored_validator_test_t, rejects_nonfinite_rotation)
 {
     device.rotation.value(std::numeric_limits<float_t>::quiet_NaN());

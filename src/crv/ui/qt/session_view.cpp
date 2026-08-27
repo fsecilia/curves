@@ -33,6 +33,8 @@ static auto authored_error_message(authored_error_t const& result) -> QString
     {
         case error_t::none: break;
         case error_t::dpi: return QString::fromStdString(CRV_TR("Device DPI must be greater than zero."));
+        case error_t::output_dpi:
+            return QString::fromStdString(CRV_TR("Output DPI is outside the supported range for this device DPI."));
         case error_t::rotation:
             return QString::fromStdString(CRV_TR("Device rotation is outside the supported range."));
         case error_t::anisotropy:
@@ -102,6 +104,8 @@ static auto runtime_error_message(runtime_error_t const& result) -> QString
         case error_t::none: break;
         case error_t::velocity_scale:
             return QString::fromStdString(CRV_TR("Runtime validation rejected the derived velocity scale."));
+        case error_t::output_scale:
+            return QString::fromStdString(CRV_TR("Runtime validation rejected the derived output scale."));
         case error_t::half_life:
             return QString::fromStdString(CRV_TR("Runtime validation rejected the derived filter half-life."));
         case error_t::output_transform_rotation_component:

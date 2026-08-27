@@ -20,6 +20,7 @@ enum class authored_validation_error_t : uint8_t
 {
     none,
     dpi,
+    output_dpi,
     rotation,
     anisotropy,
     filter_half_life,
@@ -57,6 +58,12 @@ template <typename t_half_life_builder_t> struct authored_validator_t
         if (!satisfies_constraint(device.dpi) || device.dpi.value() == 0)
         {
             return {.error = authored_validation_error_t::dpi};
+        }
+        if (!satisfies_constraint(profile.output_dpi) || profile.output_dpi.value() == 0
+            || static_cast<uint128_t>(profile.output_dpi.value())
+                > static_cast<uint128_t>(device.dpi.value()) * pipeline_t::max_output_scale)
+        {
+            return {.error = authored_validation_error_t::output_dpi};
         }
         if (!satisfies_constraint(device.rotation)) return {.error = authored_validation_error_t::rotation};
         if (!satisfies_constraint(profile.anisotropy)) return {.error = authored_validation_error_t::anisotropy};

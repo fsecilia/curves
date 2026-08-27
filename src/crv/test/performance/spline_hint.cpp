@@ -277,7 +277,7 @@ struct accumulator_state_t
 
 struct config_t
 {
-    std::array<uint64_t, 6> words{};
+    std::array<uint64_t, 7> words{};
 };
 
 struct framing_state_t
@@ -302,9 +302,9 @@ struct alignas(64) runtime_state_t
 static_assert(sizeof(timer_state_t) == 16);
 static_assert(sizeof(filter_state_t) == 8);
 static_assert(sizeof(accumulator_state_t) == 16);
-static_assert(sizeof(config_t) == 48);
+static_assert(sizeof(config_t) == 56);
 static_assert(sizeof(control_t) == 64);
-static_assert(offsetof(control_t, framing) == 48);
+static_assert(offsetof(control_t, framing) == 56);
 static_assert(sizeof(runtime_state_t) == 64);
 static_assert(offsetof(runtime_state_t, gain_hint) == 40);
 

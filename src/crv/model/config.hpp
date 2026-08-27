@@ -180,6 +180,7 @@ struct curves_t
 
 struct profile_t
 {
+    param_t<int_t, static_lower_bound_t<int_t, 0>> output_dpi{"output_dpi", 1000};
     float_param_t anisotropy{"anisotropy", 1.0};
 
     // milliseconds; zero disables filtering
@@ -190,6 +191,7 @@ struct profile_t
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
+        inspector.inspect(self.output_dpi);
         inspector.inspect(self.anisotropy);
         inspector.inspect(self.filter_halflife);
 

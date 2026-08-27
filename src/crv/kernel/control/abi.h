@@ -44,6 +44,7 @@ struct crv_control_runtime_config_v1_t
     crv_u64_t velocity_scale;
     crv_u64_t half_life;
     crv_s64_t output_transform[4];
+    crv_u64_t output_scale;
 };
 
 struct crv_control_gain_v1_t

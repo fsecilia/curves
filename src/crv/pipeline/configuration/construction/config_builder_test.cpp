@@ -49,41 +49,47 @@ struct config_builder_test_t : Test
     {
         MOCK_METHOD(velocity_scale_t, velocity_scale, (int_t), (const));
         MOCK_METHOD(duration_t, half_life, (float_t), (const));
-        MOCK_METHOD(output_transform_t, output_transform, (float_t, float_t), (const));
+        MOCK_METHOD(output_transform_t, output_transform, (float_t, float_t, int_t, int_t), (const));
     };
     StrictMock<mock_t> mock;
 
-    struct velocity_scale_delegate_t
+    struct velocity_scale_builder_t
     {
         mock_t* mock;
         auto operator()(int_t dpi) const -> velocity_scale_t { return mock->velocity_scale(dpi); }
     };
 
-    struct half_life_delegate_t
+    struct half_life_builder_t
     {
         mock_t* mock;
         auto operator()(float_t milliseconds) const -> duration_t { return mock->half_life(milliseconds); }
     };
 
-    struct output_transform_delegate_t
+    struct output_transform_builder_t
     {
         mock_t* mock;
-        auto operator()(float_t rotation, float_t anisotropy) const -> output_transform_t
+        auto operator()(float_t rotation, float_t anisotropy, int_t input_dpi, int_t output_dpi) const
+            -> output_transform_t
         {
-            return mock->output_transform(rotation, anisotropy);
+            return mock->output_transform(rotation, anisotropy, input_dpi, output_dpi);
         }
     };
 
-    using sut_t = config_builder_t<velocity_scale_delegate_t, half_life_delegate_t, output_transform_delegate_t>;
+    using sut_t = config_builder_t<velocity_scale_builder_t, half_life_builder_t, output_transform_builder_t>;
 
     model::device_t device;
     model::profile_t profile;
-    sut_t sut{{&mock}, {&mock}, {&mock}};
+    sut_t sut{
+        .build_velocity_scale = {&mock},
+        .build_half_life = {&mock},
+        .build_output_transform = {&mock},
+    };
 
     config_builder_test_t()
     {
         device.dpi.value(800);
         device.rotation.value(45.0);
+        profile.output_dpi.value(1000);
         profile.filter_halflife.value(3.0);
         profile.anisotropy.value(2.0);
     }
@@ -96,12 +102,13 @@ TEST_F(config_builder_test_t, composes_scalar_runtime_configuration)
     auto const output_transform = output_transform_t{};
     EXPECT_CALL(mock, velocity_scale(800)).WillOnce(Return(velocity_scale));
     EXPECT_CALL(mock, half_life(3.0)).WillOnce(Return(half_life));
-    EXPECT_CALL(mock, output_transform(45.0, 2.0)).WillOnce(Return(output_transform));
+    EXPECT_CALL(mock, output_transform(45.0, 2.0, 800, 1000)).WillOnce(Return(output_transform));
 
     auto const result = sut(device, profile);
 
     EXPECT_TRUE(result.velocity_scale == velocity_scale && result.half_life == half_life
-        && result.output_transform.matrix == output_transform.matrix);
+        && result.output_transform.matrix == output_transform.matrix
+        && result.output_transform.output_scale == output_transform.output_scale);
 }
 
 } // namespace

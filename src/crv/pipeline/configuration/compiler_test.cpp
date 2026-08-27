@@ -57,6 +57,17 @@ TEST_F(pipeline_compiler_test_t, disabled_filter_reaches_runtime_zero)
     EXPECT_EQ(result->config.half_life, pipeline_t::duration_t{});
 }
 
+TEST_F(pipeline_compiler_test_t, output_dpi_reaches_runtime_scale)
+{
+    device.dpi.value(26'000);
+    profile.output_dpi.value(1000);
+
+    auto const result = sut(device, profile);
+
+    EXPECT_TRUE(
+        result && result->config.output_transform.output_scale == pipeline_t::output_scale_t::literal(82'595'525));
+}
+
 TEST_F(pipeline_compiler_test_t, high_anisotropy_rotated_transform_is_accepted_end_to_end)
 {
     device.rotation.value(45.0);

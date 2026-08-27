@@ -16,6 +16,7 @@ enum class runtime_config_validation_error_t : uint8_t
 {
     none,
     velocity_scale,
+    output_scale,
     half_life,
     output_transform_rotation_component,
     output_transform_anisotropy_component,
@@ -63,6 +64,10 @@ template <typename t_config_t, typename t_gain_t, typename t_speed_filter_t> str
         }
 
         auto const& transform = config.output_transform;
+        if (!transform.output_scale_is_valid())
+        {
+            return {.error = runtime_config_validation_error_t::output_scale};
+        }
         if (!transform.rotation_components_are_valid())
         {
             return {.error = runtime_config_validation_error_t::output_transform_rotation_component};

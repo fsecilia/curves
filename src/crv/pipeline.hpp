@@ -69,6 +69,8 @@ public:
     using duration_t = orchestrator_t::duration_t;
     using timestamp_t = orchestrator_t::timestamp_t;
     using velocity_scale_t = orchestrator_t::velocity_scale_t;
+    using output_scale_t = output_transform_impl_t::scale_t;
+    static constexpr auto max_output_scale = output_transform_impl_t::max_scale_integer;
     using gain_t = gain_impl_t;
     struct validator_t : pipeline::runtime_config_validator_t<config_t, gain_t, speed_filter_t>
     {};
@@ -97,12 +99,12 @@ private:
     };
 
     static_assert(sizeof(gain_t::hint_t) == 24);
-    static_assert(sizeof(config_t) == 48);
+    static_assert(sizeof(config_t) == 56);
     static_assert(sizeof(mode_t) == 1);
     static_assert(sizeof(control_t) == 64);
     static_assert(offsetof(control_t, config) == 0);
-    static_assert(offsetof(control_t, synchronized) == 48);
-    static_assert(offsetof(control_t, mode) == 49);
+    static_assert(offsetof(control_t, synchronized) == 56);
+    static_assert(offsetof(control_t, mode) == 57);
 
     static_assert(sizeof(state_t) == 64);
     static_assert(offsetof(state_t, timer) == 0);

@@ -25,7 +25,11 @@ struct output_transform_test_t : Test
     static_assert(sut_t::coefficient_t::frac_bits == 53);
     static_assert(sut_t::transform_t::int_bits == 31);
     static_assert(sut_t::transform_t::frac_bits == 32);
+    static_assert(sut_t::scale_t::int_bits == 33);
+    static_assert(sut_t::scale_t::frac_bits == 31);
+    static_assert(sut_t::max_scale_integer == 8'589'934'591);
     static_assert(sut_t::out_t::frac_bits == gain_t::frac_bits);
+    static_assert(sut_t::out_t::frac_bits == 53);
     static_assert(sut_t::input_limit == (int32_t{1} << 20));
 
     // At 128k DPI, 1000 in/s, and 125 Hz, one axis reaches 1,024,000 counts/report. The |axis| < 2^20 envelope
@@ -71,6 +75,47 @@ TEST_F(output_transform_test_t, scalar_gain_is_applied_after_linear_transform)
     ASSERT_TRUE(result.valid);
     EXPECT_EQ(result.x, out_t{-6});
     EXPECT_EQ(result.y, out_t{6});
+}
+
+TEST_F(output_transform_test_t, output_scale_is_applied_without_reducing_output_precision)
+{
+    sut.output_scale = sut_t::scale_t::literal(uint64_t{1} << (sut_t::scale_t::frac_bits - 1));
+
+    auto const result = sut(1, -1, gain_t{1});
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(result.x.value, int128_t{1} << (out_t::frac_bits - 1));
+}
+
+TEST_F(output_transform_test_t, output_scale_preserves_sign)
+{
+    sut.output_scale = sut_t::scale_t::literal(uint64_t{1} << (sut_t::scale_t::frac_bits - 1));
+
+    auto const result = sut(1, -1, gain_t{1});
+
+    ASSERT_TRUE(result.valid);
+    EXPECT_EQ(result.y.value, -(int128_t{1} << (out_t::frac_bits - 1)));
+}
+
+TEST_F(output_transform_test_t, output_scale_rounds_half_to_even_down)
+{
+    sut.output_scale = sut_t::scale_t::literal(uint64_t{1} << (sut_t::scale_t::frac_bits - 1));
+    auto const result = sut(1, 0, gain_t::literal(1));
+    EXPECT_EQ(result.x.value, 0);
+}
+
+TEST_F(output_transform_test_t, output_scale_rounds_half_to_even_up)
+{
+    sut.output_scale = sut_t::scale_t::literal(uint64_t{1} << (sut_t::scale_t::frac_bits - 1));
+    auto const result = sut(1, 0, gain_t::literal(3));
+    EXPECT_EQ(result.x.value, 2);
+}
+
+TEST_F(output_transform_test_t, negative_output_scale_rounds_half_to_even)
+{
+    sut.output_scale = sut_t::scale_t::literal(uint64_t{1} << (sut_t::scale_t::frac_bits - 1));
+    auto const result = sut(-1, 0, gain_t::literal(3));
+    EXPECT_EQ(result.x.value, -2);
 }
 
 TEST_F(output_transform_test_t, supported_input_envelope_is_checked_before_transform)

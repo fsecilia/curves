@@ -22,7 +22,7 @@ struct candidate_t
 static_assert(sizeof(candidate_t) == 11'136);
 static_assert(alignof(candidate_t) == 64);
 static_assert(offsetof(candidate_t, config) == 0);
-static_assert(offsetof(candidate_t, mode) == 48);
+static_assert(offsetof(candidate_t, mode) == 56);
 static_assert(offsetof(candidate_t, gain) == 64);
 
 } // namespace crv::pipeline::configuration

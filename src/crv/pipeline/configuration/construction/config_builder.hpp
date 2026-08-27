@@ -65,7 +65,8 @@ struct config_builder_t
         return {
             .velocity_scale = build_velocity_scale(device.dpi.value()),
             .half_life = build_half_life(profile.filter_halflife.value()),
-            .output_transform = build_output_transform(device.rotation.value(), profile.anisotropy.value()),
+            .output_transform = build_output_transform(
+                device.rotation.value(), profile.anisotropy.value(), device.dpi.value(), profile.output_dpi.value()),
         };
     }
 };
