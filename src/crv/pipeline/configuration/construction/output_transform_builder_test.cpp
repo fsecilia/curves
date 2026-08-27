@@ -33,10 +33,11 @@ TEST_P(output_transform_builder_test_t, matrix_satisfies_validation_tolerances)
     auto const [degrees, anisotropy] = GetParam();
 
     EXPECT_TRUE(is_valid(sut_t{}(degrees, anisotropy)));
+    EXPECT_TRUE(is_valid(sut_t{}(-degrees, anisotropy)));
 }
 
-constexpr float_t rotation_degrees[] = {0, 0.1, -0.1, 45, -45, 89.9, -89.9, 90, -90, 90.1, -90.1, 135, -135, 179.9,
-    -179.9, 180, -180, 180.1, -180.1, 225, -225, 269.9, -269.9, 270, -270, 270.1, -270.1, 315, -315, 359.9, -359.9};
+constexpr float_t rotation_degrees[]
+    = {0, 0.1, 45, 89.9, 90, 90.1, 135, 179.9, 180, 180.1, 225, 269.9, 270, 270.1, 315, 359.9};
 
 INSTANTIATE_TEST_SUITE_P(degrees_and_anisotropy, output_transform_builder_test_t,
     Combine(ValuesIn(rotation_degrees), Values(float_t{0.001}, float_t{1}, float_t{1000})));
