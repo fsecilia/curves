@@ -7,8 +7,8 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
+#include <crv/math/fixed/uabs.hpp>
 #include <crv/math/integer.hpp>
-#include <crv/math/rounding_mode.hpp>
 #include <array>
 #include <cassert>
 
@@ -27,14 +27,16 @@ struct output_transform_t
     using row_t = std::array<coefficient_t, 2>;
     using matrix_t = std::array<row_t, 2>;
 
-    // |axis| < 2^20 and |matrix term| <= 1000 fit each result in signed Q31.32
-    using transform_t = fixed_t<int64_t, 32>;
+    // Matrix products naturally land in wide Q53. The supported input/matrix envelope needs at most 31 signed integer
+    // bits, independently of the int128 container used to retain fractional precision.
+    using matrix_result_t = fixed_t<int128_t, coefficient_t::frac_bits>;
+    static constexpr auto matrix_result_integer_bits = 31;
 
     // gain comes last so residual accumulation can use the wide product
     using out_t = fixed_t<int128_t, gain_t::frac_bits>;
 
     // use the final output headroom for DPI scaling while retaining Q53 output precision
-    static constexpr auto scale_integer_bits = out_t::int_bits - transform_t::int_bits - gain_t::int_bits;
+    static constexpr auto scale_integer_bits = out_t::int_bits - matrix_result_integer_bits - gain_t::int_bits;
     static_assert(0 < scale_integer_bits && scale_integer_bits < 64);
     using scale_t = fixed_t<uint64_t, 64 - scale_integer_bits>;
     static constexpr auto max_scale_integer = (uint64_t{1} << scale_integer_bits) - 1;
@@ -118,11 +120,13 @@ struct output_transform_t
         auto const y0 = multiply(fx, y_row[0]);
         auto const y1 = multiply(fy, y_row[1]);
 
-        auto const transformed_x = transform_t::template convert<rounding_mode>(x0 + x1);
-        auto const transformed_y = transform_t::template convert<rounding_mode>(y0 + y1);
+        auto const transformed_x = matrix_result_t::convert(x0 + x1);
+        auto const transformed_y = matrix_result_t::convert(y0 + y1);
 
-        auto const gained_x = out_t::template convert<rounding_mode>(multiply(transformed_x, gain));
-        auto const gained_y = out_t::template convert<rounding_mode>(multiply(transformed_y, gain));
+        auto const gain_magnitude = uabs(gain).value;
+        auto const gain_negative = gain.value < 0;
+        auto const gained_x = apply_gain(transformed_x, gain_magnitude, gain_negative);
+        auto const gained_y = apply_gain(transformed_y, gain_magnitude, gain_negative);
 
         return {
             .x = apply_output_scale(gained_x),
@@ -132,6 +136,27 @@ struct output_transform_t
     }
 
 private:
+    using gain_magnitude_t = make_unsigned_t<typename gain_t::value_t>;
+
+    constexpr auto apply_gain(matrix_result_t input, gain_magnitude_t gain_magnitude, bool gain_negative) const noexcept
+        -> out_t
+    {
+        static constexpr auto shift = matrix_result_t::frac_bits;
+        static constexpr auto mask = (uint64_t{1} << shift) - 1;
+        static constexpr auto half = uint64_t{1} << (shift - 1);
+
+        auto const input_magnitude = uabs(input).value;
+        auto const whole = static_cast<uint64_t>(input_magnitude >> shift);
+        auto const fraction = static_cast<uint64_t>(input_magnitude) & mask;
+        auto const fractional_product = uint128_t{fraction} * gain_magnitude;
+        auto magnitude = uint128_t{whole} * gain_magnitude + (fractional_product >> shift);
+        if ((static_cast<uint64_t>(fractional_product) & mask) >= half) ++magnitude;
+
+        auto const signed_magnitude = int_cast<int128_t>(magnitude);
+        auto const negative = (input.value < 0) != gain_negative;
+        return out_t::literal(negative ? -signed_magnitude : signed_magnitude);
+    }
+
     constexpr auto apply_output_scale(out_t input) const noexcept -> out_t
     {
         using unsigned_out_value_t = make_unsigned_t<typename out_t::value_t>;
@@ -201,7 +226,6 @@ private:
         return multiply(x_row[0], y_row[1]) - multiply(x_row[1], y_row[0]);
     }
 
-    static constexpr auto rounding_mode = rounding_modes::shr::fast::nearest_away;
     static constexpr auto one = coefficient_t{1};
     static constexpr auto coefficient_ulp = coefficient_t::literal(1);
     static constexpr auto rotation_norm_tolerance = coefficient_t::literal(2);
@@ -218,7 +242,20 @@ private:
 
     static_assert(max_anisotropy_raw <= static_cast<uint128_t>(max<int128_t>()) / uint128_t{2} / max_anisotropy_raw,
         "output_transform_t: anisotropy row norm can overflow int128");
-    static_assert(out_t::int_bits == transform_t::int_bits + gain_t::int_bits + scale_t::int_bits,
+    static constexpr auto max_matrix_result_raw
+        = uint128_t{2} * static_cast<uint128_t>(input_limit - 1) * max_anisotropy_raw;
+    static_assert(max_matrix_result_raw < (uint128_t{1} << (matrix_result_t::frac_bits + matrix_result_integer_bits)),
+        "output_transform_t: matrix result exceeds semantic integer envelope");
+    static_assert(sizeof(typename gain_t::value_t) <= sizeof(uint64_t),
+        "output_transform_t: decomposed wide gain multiplication supports gain containers through 64 bits");
+    static_assert(0 < matrix_result_t::frac_bits && matrix_result_t::frac_bits < int_t{sizeof(uint64_t) * 8},
+        "output_transform_t: matrix radix must fit the narrow decomposition remainder");
+    static_assert(matrix_result_integer_bits + gain_t::container_bits - 1 < int_t{sizeof(uint128_t) * 8},
+        "output_transform_t: whole matrix/gain product can overflow uint128");
+    static_assert(matrix_result_t::frac_bits + gain_t::container_bits - 1 < int_t{sizeof(uint128_t) * 8},
+        "output_transform_t: fractional matrix/gain product can overflow uint128");
+
+    static_assert(out_t::int_bits == matrix_result_integer_bits + gain_t::int_bits + scale_t::int_bits,
         "output_transform_t: output scale must consume only final output headroom");
 };
 

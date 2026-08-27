@@ -23,8 +23,9 @@ struct output_transform_test_t : Test
 
     static_assert(sut_t::coefficient_t::int_bits == 10);
     static_assert(sut_t::coefficient_t::frac_bits == 53);
-    static_assert(sut_t::transform_t::int_bits == 31);
-    static_assert(sut_t::transform_t::frac_bits == 32);
+    static_assert(sut_t::matrix_result_t::int_bits == 74);
+    static_assert(sut_t::matrix_result_t::frac_bits == 53);
+    static_assert(sut_t::matrix_result_integer_bits == 31);
     static_assert(sut_t::scale_t::int_bits == 33);
     static_assert(sut_t::scale_t::frac_bits == 31);
     static_assert(sut_t::max_scale_integer == 8'589'934'591);
@@ -33,8 +34,8 @@ struct output_transform_test_t : Test
     static_assert(sut_t::input_limit == (int32_t{1} << 20));
 
     // At 128k DPI, 1000 in/s, and 125 Hz, one axis reaches 1,024,000 counts/report. The |axis| < 2^20 envelope
-    // leaves 24,576 counts of headroom. Matrix terms can reach 1000, so both row dot products stay below 2^31.
-    // Q10.53 coefficient rounding plus Q31.32 narrowing stays below about 2.33e-7 output counts at gain 1000.
+    // leaves 24,576 counts of headroom. Matrix terms can reach 1000, so both row dot products stay below 2^31
+    // semantically while remaining Q53 in the int128 container.
 
     sut_t sut{};
 };
@@ -125,16 +126,57 @@ TEST_F(output_transform_test_t, supported_input_envelope_is_checked_before_trans
     EXPECT_FALSE(sut(-sut_t::input_limit, 0, gain_t{1}).valid);
 }
 
-TEST_F(output_transform_test_t, envelope_and_coefficient_bounds_fit_q31_32_intermediate)
+TEST_F(output_transform_test_t, envelope_and_coefficient_bounds_fit_semantic_matrix_result)
 {
     auto const max_input = int64_t{sut_t::input_limit - 1};
     auto const worst_row = int128_t{2} * max_input * 1000;
-    auto const transform_integer_limit = int128_t{1} << sut_t::transform_t::int_bits;
+    auto const matrix_integer_limit = int128_t{1} << sut_t::matrix_result_integer_bits;
 
-    EXPECT_LT(worst_row, transform_integer_limit);
+    EXPECT_LT(worst_row, matrix_integer_limit);
 }
 
-TEST_F(output_transform_test_t, pathological_gain_anisotropy_case_keeps_error_in_low_e7_range)
+TEST_F(output_transform_test_t, gain_rounding_preserves_q53_information)
+{
+    sut.matrix[0][0] += sut_t::coefficient_t::literal(1);
+    auto const half_gain = gain_t::literal(int64_t{1} << (gain_t::frac_bits - 1));
+
+    auto const result = sut(1, 0, half_gain);
+    ASSERT_TRUE(result.valid);
+
+    EXPECT_EQ(result.x.value, (int128_t{1} << (out_t::frac_bits - 1)) + 1);
+}
+
+TEST_F(output_transform_test_t, negative_gain_rounding_tie_is_away_from_zero)
+{
+    sut.matrix[0][0] += sut_t::coefficient_t::literal(1);
+    auto const half_gain = gain_t::literal(int64_t{1} << (gain_t::frac_bits - 1));
+
+    auto const result = sut(-1, 0, half_gain);
+    ASSERT_TRUE(result.valid);
+
+    EXPECT_EQ(result.x.value, -((int128_t{1} << (out_t::frac_bits - 1)) + 1));
+}
+
+TEST_F(output_transform_test_t, near_cancellation_q53_residue_survives_max_output_scale)
+{
+    constexpr auto inv_sqrt2 = sut_t::coefficient_t::literal(6369051672525773LL);
+    constexpr auto ulp = sut_t::coefficient_t::literal(1);
+    sut.matrix = {{
+        {inv_sqrt2, -inv_sqrt2 + ulp},
+        {inv_sqrt2 - ulp, inv_sqrt2},
+    }};
+    sut.output_scale = sut_t::scale_t{sut_t::max_scale_integer};
+    auto const input = sut_t::input_limit - 1;
+
+    auto const result = sut(input, input, gain_t{1000});
+    ASSERT_TRUE(result.valid);
+
+    // The first row is exactly input Q53 ulps. Q31.32 would round it to zero; wide Q53 keeps it through gain and scale.
+    auto const expected_raw = int128_t{input} * 1000 * sut_t::max_scale_integer;
+    EXPECT_EQ(result.x.value, expected_raw);
+}
+
+TEST_F(output_transform_test_t, pathological_gain_anisotropy_case_keeps_total_error_below_one_e7_count)
 {
     // 45-degree rotation at anisotropy 1000, rounded to Q10.53
     constexpr auto inv_sqrt2 = sut_t::coefficient_t::literal(6369051672525773LL);
@@ -152,8 +194,8 @@ TEST_F(output_transform_test_t, pathological_gain_anisotropy_case_keeps_error_in
     constexpr auto expected_raw = (int128_t{0x2b28886d} << 64) | int128_t{0x66abc7cf358dbe1aULL};
     auto const error = result.y.value >= expected_raw ? result.y.value - expected_raw : expected_raw - result.y.value;
 
-    // 997,343,718 Q53 ulps ~= 1.1073e-7 output counts
-    EXPECT_LT(error, int128_t{1'100'000'000});
+    // 788,917,718 Q53 ulps ~= 8.7587e-8 output counts; the remaining error is upstream coefficient quantization.
+    EXPECT_LT(error, int128_t{900'000'000});
 }
 
 constexpr auto validation_boundaries = [] {
