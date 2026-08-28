@@ -41,6 +41,7 @@ set(lib_files
     model/curves/concepts.hpp
     model/curves/curves.hpp
     model/curves/log_normal.hpp
+    model/curves/power_law.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
     model/shaping/construction/limit_engager.hpp
@@ -255,6 +256,7 @@ set(unit_test_files
     model/config_test.cpp
     model/curves/concepts_test.cpp
     model/curves/log_normal_test.cpp
+    model/curves/power_law_test.cpp
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
     model/curves/traits_test.cpp
