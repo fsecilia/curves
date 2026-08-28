@@ -71,6 +71,7 @@ private:
 
     mutable QPolygonF function_points_;
     mutable QPolygonF derivative_points_;
+    mutable QPolygonF elasticity_points_;
 };
 
 } // namespace crv

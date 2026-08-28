@@ -144,10 +144,16 @@ auto GraphWidget::sample_count() const -> int_t
 auto GraphWidget::drawCurves(QPainter* painter) -> void
 {
     auto derivative_pen = QPen{Qt::magenta, 0.0};
-    derivative_pen.setWidthF(1.6);
+    derivative_pen.setWidthF(1.1);
     derivative_pen.setCosmetic(true);
     painter->setPen(derivative_pen);
     painter->drawPolyline(derivative_points_);
+
+    auto elasticity_pen = QPen{Qt::yellow, 0.0};
+    derivative_pen.setWidthF(1.6);
+    derivative_pen.setCosmetic(true);
+    painter->setPen(elasticity_pen);
+    painter->drawPolyline(elasticity_points_);
 
     auto function_pen = QPen{Qt::cyan, 0.0};
     function_pen.setWidthF(2.1);
@@ -160,6 +166,7 @@ auto GraphWidget::updateCurves() -> void
 {
     function_points_.clear();
     derivative_points_.clear();
+    elasticity_points_.clear();
 
     if (!window() || !curve_) return;
 
@@ -173,12 +180,19 @@ auto GraphWidget::updateCurves() -> void
         auto const x = step * (static_cast<float_t>(sample) + 0.5);
         auto const y = (*curve_)(jet_t{x, 1.0});
 
-        function_points_ << QPointF(x, primal(y));
+        auto const function = primal(y);
+        function_points_ << QPointF{x, function};
 
         auto const derivative = tangent(y);
         using std::isfinite;
-        // if (isfinite(tangent(y))) derivative_points_ << QPointF(x, std::clamp(tangent(y), y_lo, y_hi));
-        if (isfinite(derivative)) derivative_points_ << QPointF(x, derivative);
+        if (!isfinite(derivative)) continue;
+
+        derivative_points_ << QPointF(x, derivative);
+
+        if (function == 0.0) continue;
+
+        auto const elasticity = x * derivative / function;
+        elasticity_points_ << QPointF(x, elasticity);
     }
 }
 
