@@ -95,9 +95,9 @@ TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 {
     auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
 
-    EXPECT_LT(result.achieved_error, tolerance);
-    EXPECT_LT(result.max_error, tolerance);
-    EXPECT_FALSE(result.refinement_limited);
+    EXPECT_LT(result.receipt.achieved_error, tolerance);
+    EXPECT_LT(result.receipt.max_error, tolerance);
+    EXPECT_FALSE(result.receipt.refinement_limited);
     EXPECT_LE(result.antiderivative.segment_count(), max_segment_count);
 
     auto const& antiderivative = result.antiderivative;
@@ -153,7 +153,7 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     auto integrator = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
     auto const result = integrator(integral_t{bump, rule_t{}}, domain_end, empty_critical_points);
 
-    EXPECT_LT(result.achieved_error, tolerance);
+    EXPECT_LT(result.receipt.achieved_error, tolerance);
 
     // narrow feature should need many more segments than a smooth polynomial
     EXPECT_GT(result.antiderivative.segment_count(), 8);
@@ -190,8 +190,8 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
     auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_end, empty_critical_points);
     auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_end, std::array{kink_location});
 
-    EXPECT_LT(blind_result.achieved_error, tolerance);
-    EXPECT_LT(guided_result.achieved_error, tolerance);
+    EXPECT_LT(blind_result.receipt.achieved_error, tolerance);
+    EXPECT_LT(guided_result.receipt.achieved_error, tolerance);
 
     for (auto const x : std::array{0.0, 1.0, 3.0, 5.0, 100.0, domain_end})
     {
@@ -212,8 +212,8 @@ TEST(quadrature_integration_adaptive_test_t, structural_refinement_limit_returns
     auto integrator = adaptive_integrator_t<scalar_t>{tolerance, restrictive_depth_limit};
     auto const result = integrator(integral_t{difficult, rule_t{}}, scalar_t{1.0}, empty_critical_points);
 
-    EXPECT_TRUE(result.refinement_limited);
-    EXPECT_GT(result.achieved_error, tolerance);
+    EXPECT_TRUE(result.receipt.refinement_limited);
+    EXPECT_GT(result.receipt.achieved_error, tolerance);
     EXPECT_EQ(result.antiderivative.segment_count(), 1);
     EXPECT_NEAR(result.antiderivative(1.0), 1.0 / 41.0, 1e-8);
 }
@@ -239,11 +239,11 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
         auto integrator = adaptive_integrator_t<scalar_t>{tol, depth_limit};
         auto const result = integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
 
-        EXPECT_LT(result.achieved_error, tol);
-        EXPECT_LE(result.achieved_error, prev_error);
+        EXPECT_LT(result.receipt.achieved_error, tol);
+        EXPECT_LE(result.receipt.achieved_error, prev_error);
         EXPECT_GE(result.antiderivative.segment_count(), prev_segments);
 
-        prev_error = result.achieved_error;
+        prev_error = result.receipt.achieved_error;
         prev_segments = result.antiderivative.segment_count();
     }
 }

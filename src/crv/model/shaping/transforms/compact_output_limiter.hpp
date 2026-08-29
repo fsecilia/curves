@@ -157,7 +157,7 @@ public:
         auto const log_output = std::log(value);
         auto const u = normalized_coordinate(log_output);
         auto const limited = transition_value_from_u(u);
-        auto const multiplier = limited / value * transition_(u);
+        auto const multiplier = limited / value * transition_.value(u);
         return {limited, tangent(output) * multiplier};
     }
 

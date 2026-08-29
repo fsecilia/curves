@@ -14,8 +14,7 @@ namespace crv::shaping::transitions {
 /// compact C2 smootherstep transition
 struct smootherstep_t
 {
-    template <std::floating_point scalar_t>
-    [[nodiscard]] constexpr auto operator()(scalar_t u) const noexcept -> scalar_t
+    template <std::floating_point scalar_t> [[nodiscard]] constexpr auto value(scalar_t u) const noexcept -> scalar_t
     {
         if (u <= scalar_t{0}) return scalar_t{0};
         if (u >= scalar_t{1}) return scalar_t{1};
@@ -25,10 +24,10 @@ struct smootherstep_t
     }
 
     template <std::floating_point scalar_t>
-    [[nodiscard]] constexpr auto operator()(jet_t<scalar_t> u) const noexcept -> jet_t<scalar_t>
+    [[nodiscard]] constexpr auto value(jet_t<scalar_t> u) const noexcept -> jet_t<scalar_t>
     {
         auto const value = primal(u);
-        return {operator()(value), derivative(value) * tangent(u)};
+        return {this->value(value), derivative(value) * tangent(u)};
     }
 
     template <std::floating_point scalar_t>
@@ -53,7 +52,7 @@ struct smootherstep_t
     [[nodiscard]] constexpr auto antiderivative(jet_t<scalar_t> u) const noexcept -> jet_t<scalar_t>
     {
         auto const value = primal(u);
-        return {antiderivative(value), operator()(value) * tangent(u)};
+        return {antiderivative(value), this->value(value) * tangent(u)};
     }
 };
 

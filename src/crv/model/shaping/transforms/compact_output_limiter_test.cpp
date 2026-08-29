@@ -33,20 +33,20 @@ struct shaping_transforms_compact_output_limiter_test_t : Test
     {
         mock_transition_t* mock;
 
-        auto operator()(scalar_t u) const noexcept -> scalar_t { return mock->value(u); }
+        auto value(scalar_t u) const noexcept -> scalar_t { return mock->value(u); }
         auto derivative(scalar_t u) const noexcept -> scalar_t { return mock->derivative(u); }
         auto antiderivative(scalar_t u) const noexcept -> scalar_t { return mock->antiderivative(u); }
 
-        auto operator()(jet_t u) const noexcept -> jet_t
+        auto value(jet_t u) const noexcept -> jet_t
         {
             auto const value = primal(u);
-            return {operator()(value), derivative(value) * tangent(u)};
+            return {this->value(value), derivative(value) * tangent(u)};
         }
 
         auto antiderivative(jet_t u) const noexcept -> jet_t
         {
             auto const value = primal(u);
-            return {antiderivative(value), operator()(value) * tangent(u)};
+            return {antiderivative(value), this->value(value) * tangent(u)};
         }
     };
 

@@ -4,20 +4,29 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "compact_output_limiter.hpp"
-#include <crv/model/shaping/transitions/construction/nast_builder.hpp>
-#include <crv/model/shaping/transitions/nast.hpp>
+#include <crv/model/shaping/transitions/construction/transition_factory_builder.hpp>
 #include <crv/model/shaping/transitions/smootherstep.hpp>
 #include <crv/model/shaping/transitions/smootheststep.hpp>
 #include <crv/model/shaping/transitions/smoothstep.hpp>
+#include <crv/quadrature/construction/adaptive_integrator.hpp>
+#include <crv/quadrature/construction/antiderivative_cache_builder.hpp>
+#include <crv/quadrature/construction/stack_seeder.hpp>
+#include <crv/quadrature/construction/subdivider.hpp>
 #include <crv/test/test.hpp>
-#include <cmath>
+#include <optional>
 #include <utility>
 
 namespace crv::shaping::transforms {
 namespace {
 
 using scalar_t = float_t;
-using nast_t = transitions::nast_t<scalar_t>;
+using cache_builder_factory_t = quadrature::construction::antiderivative_cache_builder_factory_t<scalar_t>;
+using subdivider_t = quadrature::construction::subdivider_t<scalar_t>;
+using stack_seeder_t = quadrature::construction::stack_seeder_t<scalar_t>;
+using integrator_t
+    = quadrature::construction::adaptive_integrator_t<scalar_t, cache_builder_factory_t, subdivider_t, stack_seeder_t>;
+using builder_t = transitions::construction::transition_factory_builder_t<scalar_t, integrator_t>;
+using nast_t = builder_t::nast_t;
 using transition_types_t
     = Types<transitions::smoothstep_t, transitions::smootherstep_t, transitions::smootheststep_t, nast_t>;
 
@@ -30,10 +39,15 @@ template <> struct transition_factory_t<nast_t>
 {
     auto operator()() const -> nast_t
     {
-        using builder_t = transitions::construction::nast_builder_t<scalar_t>;
-        auto builder = builder_t{builder_t::integrator_t{builder_t::requested_tolerance, builder_t::depth_limit}};
-        auto result = builder();
-        return std::move(result).value().transition;
+        auto builder = builder_t{integrator_t{scalar_t{1e-12}, int_t{32}}};
+        auto factory = builder();
+        auto selected = factory(transitions::continuity_t::cinfinity,
+            []<typename product_t>(product_t product) -> std::optional<nast_t> {
+                if constexpr (std::same_as<typename product_t::transition_t, nast_t>)
+                    return std::move(product.transition);
+                return std::nullopt;
+            });
+        return std::move(selected).value();
     }
 };
 

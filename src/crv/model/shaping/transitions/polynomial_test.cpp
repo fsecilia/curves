@@ -18,11 +18,11 @@ struct polynomial_contract_test_t
     static constexpr auto sut = transition_t{};
     using jet_t = crv::jet_t<scalar_t>;
 
-    static_assert(sut(scalar_t{-1}) == scalar_t{0});
-    static_assert(sut(scalar_t{0}) == scalar_t{0});
-    static_assert(sut(scalar_t{0.5}) == scalar_t{0.5});
-    static_assert(sut(scalar_t{1}) == scalar_t{1});
-    static_assert(sut(scalar_t{2}) == scalar_t{1});
+    static_assert(sut.value(scalar_t{-1}) == scalar_t{0});
+    static_assert(sut.value(scalar_t{0}) == scalar_t{0});
+    static_assert(sut.value(scalar_t{0.5}) == scalar_t{0.5});
+    static_assert(sut.value(scalar_t{1}) == scalar_t{1});
+    static_assert(sut.value(scalar_t{2}) == scalar_t{1});
 
     static_assert(sut.derivative(scalar_t{-1}) == scalar_t{0});
     static_assert(sut.derivative(scalar_t{0}) == scalar_t{0});
@@ -37,12 +37,13 @@ struct polynomial_contract_test_t
     static_assert(sut.antiderivative(scalar_t{1}) == scalar_t{0.5});
     static_assert(sut.antiderivative(scalar_t{2}) == scalar_t{1.5});
 
-    static_assert(sut(jet_t{scalar_t{0.5}, scalar_t{2}}) == jet_t{scalar_t{0.5}, scalar_t{2} * midpoint_derivative});
+    static_assert(
+        sut.value(jet_t{scalar_t{0.5}, scalar_t{2}}) == jet_t{scalar_t{0.5}, scalar_t{2} * midpoint_derivative});
     static_assert(sut.antiderivative(jet_t{scalar_t{0.5}, scalar_t{2}}) == jet_t{midpoint_antiderivative, scalar_t{1}});
     static_assert(sut.antiderivative(jet_t{scalar_t{-1}, scalar_t{3}}) == jet_t{scalar_t{0}, scalar_t{0}});
     static_assert(sut.antiderivative(jet_t{scalar_t{2}, scalar_t{3}}) == jet_t{scalar_t{1.5}, scalar_t{3}});
 
-    static_assert(sut(scalar_t{0.25}) == scalar_t{1} - sut(scalar_t{0.75}));
+    static_assert(sut.value(scalar_t{0.25}) == scalar_t{1} - sut.value(scalar_t{0.75}));
     static_assert(sut.derivative(scalar_t{0.25}) == sut.derivative(scalar_t{0.75}));
 };
 

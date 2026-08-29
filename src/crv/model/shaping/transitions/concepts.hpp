@@ -14,10 +14,10 @@ namespace crv::shaping::transitions {
 template <typename transition_t, typename scalar_t>
 concept is_transition = std::floating_point<scalar_t> && requires(transition_t const& transition, scalar_t u,
     jet_t<scalar_t> jet) {
-    { transition(u) } -> std::same_as<scalar_t>;
+    { transition.value(u) } -> std::same_as<scalar_t>;
     { transition.derivative(u) } -> std::same_as<scalar_t>;
     { transition.antiderivative(u) } -> std::same_as<scalar_t>;
-    { transition(jet) } -> std::same_as<jet_t<scalar_t>>;
+    { transition.value(jet) } -> std::same_as<jet_t<scalar_t>>;
     { transition.antiderivative(jet) } -> std::same_as<jet_t<scalar_t>>;
 };
 

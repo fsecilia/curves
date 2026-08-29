@@ -59,7 +59,9 @@ set(lib_files
     model/shaping/transforms/offset.hpp
     model/shaping/transforms/output_affine.hpp
     model/shaping/transitions/concepts.hpp
-    model/shaping/transitions/construction/nast_builder.hpp
+    model/shaping/transitions/construction/transition_factory_builder.hpp
+    model/shaping/transitions/factory.hpp
+    model/shaping/transitions/continuity.hpp
     model/shaping/transitions/nast.hpp
     model/shaping/transitions/quadratic.hpp
     model/shaping/transitions/smootherstep_integral.hpp
@@ -286,7 +288,8 @@ set(unit_test_files
     model/shaping/transforms/offset_test.cpp
     model/shaping/transforms/output_affine_test.cpp
     model/shaping/transitions/concepts_test.cpp
-    model/shaping/transitions/construction/nast_builder_test.cpp
+    model/shaping/transitions/construction/transition_factory_builder_test.cpp
+    model/shaping/transitions/factory_test.cpp
     model/shaping/transitions/nast_test.cpp
     model/shaping/transitions/polynomial_test.cpp
     model/shaping/transitions/quadratic_test.cpp

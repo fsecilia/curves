@@ -140,9 +140,9 @@ template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builde
         auto target = sensitivity_curve_target_t{std::move(result.antiderivative)};
         return sensitivity_curve_target_result_t<decltype(target)>{
             .target = std::move(target),
-            .achieved_error = result.achieved_error,
-            .max_error = result.max_error,
-            .refinement_limited = result.refinement_limited,
+            .achieved_error = result.receipt.achieved_error,
+            .max_error = result.receipt.max_error,
+            .refinement_limited = result.receipt.refinement_limited,
         };
     }
 };

@@ -13,12 +13,27 @@
 #include <crv/quadrature/construction/stack_seeder.hpp>
 #include <crv/quadrature/construction/subdivider.hpp>
 #include <crv/ranges.hpp>
+#include <cassert>
+#include <cmath>
 #include <concepts>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace crv::quadrature::construction {
+
+template <std::floating_point t_scalar_t> struct adaptive_integration_receipt_t
+{
+    using scalar_t = t_scalar_t;
+
+    scalar_t requested_tolerance;
+    scalar_t achieved_error;
+    scalar_t max_error;
+    int_t segment_count;
+    bool refinement_limited = false;
+
+    constexpr auto operator==(adaptive_integration_receipt_t const&) const noexcept -> bool = default;
+};
 
 /// top-level adaptive quadrature construction entrypoint
 template <std::floating_point t_scalar_t,
@@ -32,15 +47,16 @@ public:
     using subdivider_t = t_subdivider_t;
     using stack_seeder_t = t_stack_seeder_t;
 
+    using receipt_t = adaptive_integration_receipt_t<scalar_t>;
+
     template <typename t_integral_t> struct result_t
     {
         using integral_t = std::remove_cvref_t<t_integral_t>;
         using antiderivative_t = quadrature::antiderivative_t<integral_t>;
+        using receipt_t = adaptive_integration_receipt_t<scalar_t>;
 
         antiderivative_t antiderivative;
-        scalar_t achieved_error;
-        scalar_t max_error;
-        bool refinement_limited = false;
+        receipt_t receipt;
     };
 
     constexpr adaptive_integrator_t(scalar_t tolerance, int_t depth_limit,
@@ -49,6 +65,9 @@ public:
         : cache_builder_factory_{std::move(cache_builder_factory)}, subdivider_{std::move(subdivider)},
           stack_seeder_{std::move(stack_seeder)}, tolerance_{tolerance}, depth_limit_{depth_limit}
     {
+        assert(std::isfinite(tolerance_) && tolerance_ > scalar_t{0}
+            && "adaptive_integrator_t: tolerance must be finite and positive");
+        assert(depth_limit_ >= int_t{0} && "adaptive_integrator_t: depth limit must be nonnegative");
         stack_.reserve(32);
     }
 
@@ -69,13 +88,16 @@ public:
 
         auto cache_result = std::move(cache_builder).finalize();
         using antiderivative_t = quadrature::antiderivative_t<std::remove_cvref_t<integral_t>>;
-
-        return {
-            .antiderivative = antiderivative_t{std::move(integral), std::move(cache_result.cache)},
+        auto antiderivative = antiderivative_t{std::move(integral), std::move(cache_result.cache)};
+        auto const receipt = receipt_t{
+            .requested_tolerance = tolerance_,
             .achieved_error = cache_result.achieved_error,
             .max_error = cache_result.max_error,
+            .segment_count = antiderivative.segment_count(),
             .refinement_limited = cache_result.refinement_limited,
         };
+
+        return {.antiderivative = std::move(antiderivative), .receipt = receipt};
     }
 
 private:
