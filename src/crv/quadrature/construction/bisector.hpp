@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief segment building and refinement
+/// \brief adaptive quadrature segment refinement
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -9,12 +9,12 @@
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
+#include <crv/quadrature/construction/segment.hpp>
 #include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/segment.hpp>
-#include <cassert>
+#include <concepts>
 #include <numeric>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 
 /// callable that refines a parent segment into two children and the parent's refined estimate
 template <typename bisector_t, typename integral_t, typename scalar_t>
@@ -26,7 +26,7 @@ concept is_bisector = requires(bisector_t const& bisector, integral_t const& int
 struct bisector_t
 {
     template <std::floating_point scalar_t>
-    constexpr auto operator()(is_integral<scalar_t> auto const& integral,
+    constexpr auto operator()(quadrature::is_integral<scalar_t> auto const& integral,
         segment_t<scalar_t> const& parent) const noexcept -> refinement_t<scalar_t>
     {
         auto const parent_midpoint = std::midpoint(parent.left, parent.right);
@@ -67,4 +67,4 @@ struct bisector_t
     }
 };
 
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

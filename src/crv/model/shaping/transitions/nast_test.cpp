@@ -14,9 +14,17 @@ namespace {
 
 using builder_t = construction::nast_builder_t<>;
 
+struct builder_factory_t
+{
+    auto operator()() const -> builder_t
+    {
+        return builder_t{builder_t::integrator_t{builder_t::requested_tolerance, builder_t::depth_limit}};
+    }
+};
+
 struct nast_test_t : Test
 {
-    builder_t::result_t construction = builder_t{}();
+    builder_t::result_t construction = builder_factory_t{}()();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
@@ -34,7 +42,7 @@ struct value_reference_t
 
 struct nast_value_test_t : TestWithParam<value_reference_t>
 {
-    builder_t::result_t construction = builder_t{}();
+    builder_t::result_t construction = builder_factory_t{}()();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
@@ -62,7 +70,7 @@ struct antiderivative_reference_t
 
 struct nast_antiderivative_test_t : TestWithParam<antiderivative_reference_t>
 {
-    builder_t::result_t construction = builder_t{}();
+    builder_t::result_t construction = builder_factory_t{}()();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
@@ -92,7 +100,7 @@ struct monotone_interval_t
 
 struct nast_monotonicity_test_t : TestWithParam<monotone_interval_t>
 {
-    builder_t::result_t construction = builder_t{}();
+    builder_t::result_t construction = builder_factory_t{}()();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
@@ -119,7 +127,7 @@ struct symmetry_input_t
 
 struct nast_symmetry_test_t : TestWithParam<symmetry_input_t>
 {
-    builder_t::result_t construction = builder_t{}();
+    builder_t::result_t construction = builder_factory_t{}()();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override

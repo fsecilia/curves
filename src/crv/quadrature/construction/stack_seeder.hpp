@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief segment working stack
+/// \brief adaptive quadrature segment-stack seeding
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/quadrature/construction/segment.hpp>
 #include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/segment.hpp>
 #include <crv/ranges.hpp>
 #include <cassert>
 #include <concepts>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 
 /// seeds empty stack with domain-level segments
 template <std::floating_point t_scalar_t> class stack_seeder_t
@@ -28,8 +28,8 @@ public:
     /// \pre stack.empty()
     /// \pre critical_points are sorted increasing and unique
     /// \pre critical_points in (0, domain_end)
-    auto seed(auto& stack, is_integral<scalar_t> auto const& integral, scalar_t domain_end, scalar_t global_tolerance,
-        compatible_range<scalar_t> auto const& critical_points) const -> void
+    auto seed(auto& stack, quadrature::is_integral<scalar_t> auto const& integral, scalar_t domain_end,
+        scalar_t global_tolerance, compatible_range<scalar_t> auto const& critical_points) const -> void
     {
         assert(stack.empty() && "stack_seeder_t: stack must be empty before seeding");
 
@@ -63,4 +63,4 @@ public:
     }
 };
 
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

@@ -6,25 +6,18 @@
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
-#include <crv/math/compensated_accumulator.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/quadrature/adaptive_integrator.hpp>
-#include <crv/quadrature/antiderivative.hpp>
-#include <crv/quadrature/bisector.hpp>
+#include <crv/quadrature/construction/adaptive_integrator.hpp>
 #include <crv/quadrature/integral.hpp>
 #include <crv/quadrature/rules.hpp>
-#include <crv/quadrature/segment.hpp>
-#include <crv/quadrature/stack.hpp>
-#include <crv/quadrature/subdivider.hpp>
-#include <crv/ranges.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <cmath>
 #include <functional>
 #include <ostream>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -280,4 +273,4 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
 }
 
 } // namespace
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/quadrature/adaptive_integrator.hpp>
+#include <crv/quadrature/construction/adaptive_integrator.hpp>
 #include <crv/quadrature/integral.hpp>
 #include <crv/quadrature/rules.hpp>
 #include <crv/ranges.hpp>
@@ -134,7 +134,7 @@ template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builde
     {
         assert(domain_end > scalar_t{0});
         auto const integral_tolerance = gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance);
-        auto integrate = quadrature::adaptive_integrator_t<scalar_t>{integral_tolerance, depth_limit};
+        auto integrate = quadrature::construction::adaptive_integrator_t<scalar_t>{integral_tolerance, depth_limit};
         auto result = integrate(quadrature::integral_t{std::move(curve), rule_t{}}, domain_end, critical_points);
 
         auto target = sensitivity_curve_target_t{std::move(result.antiderivative)};

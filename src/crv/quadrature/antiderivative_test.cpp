@@ -8,7 +8,7 @@
 #include <cmath>
 #include <gmock/gmock.h>
 
-namespace crv::quadrature::generic {
+namespace crv::quadrature {
 namespace {
 
 // ====================================================================================================================
@@ -75,8 +75,7 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
 {
     sut_t sut{
         integral_t{&mock_integral},
-        {0.0, 1.0, 2.0, 3.0},
-        {0.0, 2.5, 5.0, 8.5},
+        antiderivative_cache_t<scalar_t>{{0.0, 1.0, 2.0, 3.0}, {0.0, 2.5, 5.0, 8.5}},
     };
 
     auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
@@ -255,8 +254,7 @@ struct quadrature_antiderivative_test_minimal_cache_t : quadrature_antiderivativ
 {
     sut_t sut{
         integral_t{&mock_integral},
-        {0.0, 1.5},
-        {0.0, 3.0},
+        antiderivative_cache_t<scalar_t>{{0.0, 1.5}, {0.0, 3.0}},
     };
 
     auto test_call(auto x, scalar_t expected_left, scalar_t expected_sum) const noexcept -> void
@@ -306,109 +304,5 @@ TEST_F(quadrature_antiderivative_test_minimal_cache_t, domain_end_jet)
     test_call(jet_t{1.5, input_tangent}, 1.5, 3.0);
 }
 
-// ====================================================================================================================
-// antiderivative_builder_t
-// ====================================================================================================================
-
-struct quadrature_antiderivative_builder_t : Test
-{
-    using scalar_t = float_t;
-    using accumulator_t = scalar_t;
-    using real_vec_t = std::vector<scalar_t>;
-
-    using move_only_id_t = std::unique_ptr<int_t>;
-    using integral_t = move_only_id_t;
-
-    using boundaries_t = std::vector<scalar_t>;
-    using cumulative_sums_t = std::vector<scalar_t>;
-
-    struct antiderivative_t
-    {
-        using scalar_t = float_t;
-        using boundaries_t = boundaries_t;
-        using cumulative_sums_t = cumulative_sums_t;
-        using integral_t = integral_t;
-
-        integral_t integral;
-        boundaries_t boundaries;
-        cumulative_sums_t cumulative_sums;
-    };
-
-    using sut_t = antiderivative_builder_t<accumulator_t, antiderivative_t>;
-    sut_t sut{};
-
-    using result_t = sut_t::result_t;
-
-    static constexpr auto expected_integral_id = 5;
-
-    auto finalize() noexcept -> result_t
-    {
-        return std::move(sut).finalize(std::make_unique<int_t>(expected_integral_id));
-    }
-};
-
-TEST_F(quadrature_antiderivative_builder_t, append_none)
-{
-    auto const actual = finalize();
-
-    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
-    EXPECT_EQ(boundaries_t{0}, actual.antiderivative.boundaries);
-    EXPECT_EQ(cumulative_sums_t{0}, actual.antiderivative.cumulative_sums);
-
-    EXPECT_DOUBLE_EQ(actual.achieved_error, 0.0);
-    EXPECT_DOUBLE_EQ(actual.max_error, 0.0);
-    EXPECT_FALSE(actual.refinement_limited);
-}
-
-TEST_F(quadrature_antiderivative_builder_t, append_one)
-{
-    sut.append(1.3, 5.7, 7.11);
-
-    auto const actual = finalize();
-
-    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
-
-    auto const expected_boundaries = boundaries_t{0.0, 1.3};
-    EXPECT_EQ(expected_boundaries, actual.antiderivative.boundaries);
-
-    auto const expected_cumulative_sums = cumulative_sums_t{0.0, 5.7};
-    EXPECT_EQ(expected_cumulative_sums, actual.antiderivative.cumulative_sums);
-
-    EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11);
-    EXPECT_DOUBLE_EQ(actual.max_error, 7.11);
-    EXPECT_FALSE(actual.refinement_limited);
-}
-
-TEST_F(quadrature_antiderivative_builder_t, append_many)
-{
-    sut.append(1.3, 5.7, 7.11);
-    sut.append(13.17, 17.19, 53.59); // max error does not come last
-    sut.append(23.29, 31.37, 41.43);
-
-    auto const actual = finalize();
-
-    EXPECT_EQ(expected_integral_id, *actual.antiderivative.integral);
-
-    auto const expected_boundaries = boundaries_t{0, 1.3, 13.17, 23.29};
-    EXPECT_EQ(expected_boundaries, actual.antiderivative.boundaries);
-
-    auto const expected_cumulative_sums = cumulative_sums_t{0, 5.7, 5.7 + 17.19, 5.7 + 17.19 + 31.37};
-    EXPECT_EQ(expected_cumulative_sums, actual.antiderivative.cumulative_sums);
-
-    EXPECT_DOUBLE_EQ(actual.achieved_error, 7.11 + 53.59 + 41.43);
-    EXPECT_DOUBLE_EQ(actual.max_error, 53.59);
-    EXPECT_FALSE(actual.refinement_limited);
-}
-
-TEST_F(quadrature_antiderivative_builder_t, retains_refinement_limit_diagnostic)
-{
-    sut.append(1.0, 2.0, 3.0, true);
-    sut.append(2.0, 4.0, 5.0, false);
-
-    auto const actual = finalize();
-
-    EXPECT_TRUE(actual.refinement_limited);
-}
-
 } // namespace
-} // namespace crv::quadrature::generic
+} // namespace crv::quadrature

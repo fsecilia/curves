@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief segment types
+/// \brief adaptive quadrature segment types
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -9,7 +9,7 @@
 #include <crv/lib.hpp>
 #include <concepts>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 
 /// interval plus its current rule estimate
 ///
@@ -35,7 +35,7 @@ template <std::floating_point t_scalar_t> struct segment_t
 template <std::floating_point t_scalar_t> struct refinement_t
 {
     using scalar_t = t_scalar_t;
-    using segment_t = segment_t<scalar_t>;
+    using segment_t = construction::segment_t<scalar_t>;
 
     segment_t left;
     segment_t right;
@@ -46,4 +46,4 @@ template <std::floating_point t_scalar_t> struct refinement_t
     auto operator==(refinement_t const&) const noexcept -> bool = default;
 };
 
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

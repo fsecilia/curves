@@ -79,14 +79,16 @@ set(lib_files
     pipeline/control/linux_io.cpp
     pipeline/control/linux_io.hpp
     priority_queue.hpp
-    quadrature/adaptive_integrator.hpp
     quadrature/antiderivative.hpp
-    quadrature/bisector.hpp
+    quadrature/antiderivative_cache.hpp
+    quadrature/construction/adaptive_integrator.hpp
+    quadrature/construction/antiderivative_cache_builder.hpp
+    quadrature/construction/bisector.hpp
+    quadrature/construction/segment.hpp
+    quadrature/construction/stack_seeder.hpp
+    quadrature/construction/subdivider.hpp
     quadrature/integral.hpp
     quadrature/rules.hpp
-    quadrature/segment.hpp
-    quadrature/stack.hpp
-    quadrature/subdivider.hpp
     reflection/constraints.hpp
     reflection/enum.hpp
     reflection/param.hpp
@@ -312,14 +314,16 @@ set(unit_test_files
     pipeline/velocity_test.cpp
     prefetcher_test.cpp
     priority_queue_test.cpp
-    quadrature/adaptive_integrator_test.cpp
+    quadrature/antiderivative_cache_test.cpp
     quadrature/antiderivative_test.cpp
-    quadrature/bisector_test.cpp
+    quadrature/construction/adaptive_integrator_test.cpp
+    quadrature/construction/antiderivative_cache_builder_test.cpp
+    quadrature/construction/bisector_test.cpp
+    quadrature/construction/integration_test.cpp
+    quadrature/construction/stack_seeder_test.cpp
+    quadrature/construction/subdivider_test.cpp
     quadrature/integral_test.cpp
-    quadrature/integration_test.cpp
     quadrature/rules_test.cpp
-    quadrature/stack_test.cpp
-    quadrature/subdivider_test.cpp
     ranges_test.cpp
     reflection/constraints_test.cpp
     reflection/enum_test.cpp

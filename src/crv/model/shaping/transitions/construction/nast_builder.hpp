@@ -8,36 +8,23 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/shaping/transitions/nast.hpp>
-#include <crv/quadrature/adaptive_integrator.hpp>
+#include <crv/quadrature/construction/adaptive_integrator.hpp>
 #include <array>
 #include <cmath>
 #include <expected>
 #include <utility>
 
 namespace crv::shaping::transitions::construction {
-namespace detail {
 
-struct nast_integrator_t
-{
-    using scalar_t = float_t;
-    using integral_t = transitions::detail::nast_integral_t;
-
-    [[nodiscard]] auto operator()(scalar_t domain_end, scalar_t tolerance, int_t depth_limit) const
-    {
-        auto integrate = quadrature::adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
-        return integrate(integral_t{transitions::detail::nast_integrand_t{}, transitions::detail::nast_rule_t{}},
-            domain_end, std::array<scalar_t, 0>{});
-    }
-};
-
-} // namespace detail
-
-template <typename t_integrator_t = detail::nast_integrator_t, typename t_transition_t = nast_t> class nast_builder_t
+template <typename t_integrator_t = quadrature::construction::adaptive_integrator_t<float_t>,
+    typename t_transition_t = nast_t>
+class nast_builder_t
 {
 public:
     using integrator_t = t_integrator_t;
     using transition_t = t_transition_t;
     using scalar_t = float_t;
+    using integral_t = transitions::detail::nast_integral_t;
 
     struct receipt_t
     {
@@ -72,11 +59,13 @@ public:
     static constexpr auto requested_tolerance = scalar_t{1e-12};
     static constexpr auto depth_limit = int_t{32};
 
-    constexpr explicit nast_builder_t(integrator_t integrator = {}) noexcept : integrator_{std::move(integrator)} {}
+    constexpr explicit nast_builder_t(integrator_t integrator) noexcept : integrator_{std::move(integrator)} {}
 
     [[nodiscard]] auto operator()() const -> result_t
     {
-        auto integration = integrator_(domain_end, requested_tolerance, depth_limit);
+        auto integration = integrator_(
+            integral_t{transitions::detail::nast_integrand_t{}, transitions::detail::nast_rule_t{}}, domain_end,
+            std::array<scalar_t, 0>{});
         auto const error = error_t{
             .requested_tolerance = requested_tolerance,
             .achieved_error = integration.achieved_error,

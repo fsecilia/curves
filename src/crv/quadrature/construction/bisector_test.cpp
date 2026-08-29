@@ -6,7 +6,7 @@
 #include "bisector.hpp"
 #include <crv/test/test.hpp>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 namespace {
 
 constexpr auto initial_tolerance = 7.65; // arbitrary
@@ -357,4 +357,4 @@ static_assert(refinement.refined_integral == 81.0f);
 } // namespace float32_test
 
 } // namespace
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

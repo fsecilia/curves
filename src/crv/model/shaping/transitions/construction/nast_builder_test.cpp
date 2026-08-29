@@ -34,7 +34,7 @@ struct nast_builder_test_t : Test
     struct mock_integrator_t
     {
         virtual ~mock_integrator_t() = default;
-        MOCK_METHOD(integration_result_t, call, (float_t domain_end, float_t tolerance, int_t depth_limit), (const));
+        MOCK_METHOD(integration_result_t, call, (float_t domain_end), (const));
     };
     StrictMock<mock_integrator_t> mock_integrator;
 
@@ -42,9 +42,10 @@ struct nast_builder_test_t : Test
     {
         mock_integrator_t* mock = nullptr;
 
-        auto operator()(float_t domain_end, float_t tolerance, int_t depth_limit) const -> integration_result_t
+        auto operator()(transitions::detail::nast_integral_t, float_t domain_end, std::array<float_t, 0> const&) const
+            -> integration_result_t
         {
-            return mock->call(domain_end, tolerance, depth_limit);
+            return mock->call(domain_end);
         }
     };
 
@@ -60,8 +61,7 @@ struct nast_builder_test_t : Test
 
     auto expect_integration(integration_result_t integration) -> void
     {
-        EXPECT_CALL(mock_integrator, call(sut_t::domain_end, sut_t::requested_tolerance, sut_t::depth_limit))
-            .WillOnce(Return(std::move(integration)));
+        EXPECT_CALL(mock_integrator, call(sut_t::domain_end)).WillOnce(Return(std::move(integration)));
     }
 };
 
@@ -158,14 +158,17 @@ struct nast_builder_production_test_t : Test
 {
     using sut_t = nast_builder_t<>;
 
-    sut_t::result_t result = sut_t{}();
+    sut_t sut{sut_t::integrator_t{sut_t::requested_tolerance, sut_t::depth_limit}};
+    sut_t::result_t result = sut();
 
     auto SetUp() -> void override { ASSERT_TRUE(result.has_value()); }
 };
 
 TEST(nast_builder_production_construction_test_t, constructs_transition)
 {
-    EXPECT_TRUE(nast_builder_t<>{}().has_value());
+    using sut_t = nast_builder_t<>;
+    auto sut = sut_t{sut_t::integrator_t{sut_t::requested_tolerance, sut_t::depth_limit}};
+    EXPECT_TRUE(sut().has_value());
 }
 
 TEST_F(nast_builder_production_test_t, cache_meets_requested_tolerance)

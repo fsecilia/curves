@@ -10,12 +10,13 @@
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/quadrature/bisector.hpp>
+#include <crv/quadrature/construction/bisector.hpp>
+#include <crv/quadrature/construction/segment.hpp>
 #include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/segment.hpp>
+#include <concepts>
+#include <utility>
 
-namespace crv::quadrature {
-namespace generic {
+namespace crv::quadrature::construction {
 
 /// outcome of applying the adaptive refinement policy
 struct refinement_decision_t
@@ -31,7 +32,7 @@ struct refinement_decision_t
 template <typename t_scalar_t> struct refinement_predicate_t
 {
     using scalar_t = t_scalar_t;
-    using segment_t = segment_t<scalar_t>;
+    using segment_t = construction::segment_t<scalar_t>;
 
     static constexpr auto epsilon = std::numeric_limits<scalar_t>::epsilon();
     static constexpr auto min_width = epsilon * scalar_t{1024};
@@ -54,16 +55,19 @@ template <typename t_scalar_t> struct refinement_predicate_t
 };
 
 /// adaptively subdivides the contents of a segment stack
-template <typename t_refinement_predicate_t> struct subdivider_t
+template <std::floating_point t_scalar_t, typename t_refinement_predicate_t = refinement_predicate_t<t_scalar_t>,
+    typename t_bisector_t = bisector_t>
+struct subdivider_t
 {
+    using scalar_t = t_scalar_t;
     using refinement_predicate_t = t_refinement_predicate_t;
-    using scalar_t = refinement_predicate_t::scalar_t;
+    using bisector_t = t_bisector_t;
 
     [[no_unique_address]] refinement_predicate_t should_refine{};
+    [[no_unique_address]] bisector_t bisect{};
 
-    template <is_integral<scalar_t> integral_t>
-    constexpr auto run(auto& stack, integral_t const& integral, is_bisector<integral_t, scalar_t> auto const& bisect,
-        auto& builder, int_t depth_limit) const -> void
+    template <quadrature::is_integral<scalar_t> integral_t>
+    constexpr auto run(auto& stack, integral_t const& integral, auto& builder, int_t depth_limit) const -> void
     {
         while (!stack.empty())
         {
@@ -71,7 +75,6 @@ template <typename t_refinement_predicate_t> struct subdivider_t
             stack.pop_back();
 
             auto const refinement = bisect(integral, segment);
-
             auto const decision
                 = should_refine(segment, refinement.refined_integral, refinement.refined_error, depth_limit);
 
@@ -83,19 +86,11 @@ template <typename t_refinement_predicate_t> struct subdivider_t
             }
             else
             {
-                auto const refinement_limited = [&] constexpr noexcept {
-                    if constexpr (requires { decision.refinement_limited; }) return decision.refinement_limited;
-                    else return false;
-                }();
-                builder.append(
-                    refinement.right.right, refinement.refined_integral, refinement.refined_error, refinement_limited);
+                builder.append(refinement.right.right, refinement.refined_integral, refinement.refined_error,
+                    decision.refinement_limited);
             }
         }
     }
 };
 
-} // namespace generic
-
-template <typename scalar_t> using subdivider_t = generic::subdivider_t<generic::refinement_predicate_t<scalar_t>>;
-
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

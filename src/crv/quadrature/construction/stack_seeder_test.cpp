@@ -3,18 +3,16 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "stack.hpp"
-#include <crv/quadrature/segment.hpp>
-#include <crv/ranges.hpp>
+#include "stack_seeder.hpp"
 #include <crv/test/test.hpp>
 #include <initializer_list>
 
-namespace crv::quadrature {
+namespace crv::quadrature::construction {
 namespace {
 
 using scalar_t = float_t;
-using segment_t = segment_t<scalar_t>;
-using refinement_t = refinement_t<scalar_t>;
+using segment_t = construction::segment_t<scalar_t>;
+using refinement_t = construction::refinement_t<scalar_t>;
 using stack_t = std::vector<segment_t>;
 
 // ====================================================================================================================
@@ -175,4 +173,4 @@ TEST_F(quadrature_stack_seeder_death_tests_t, asserts_on_duplicate_critical_poin
 #endif
 
 } // namespace
-} // namespace crv::quadrature
+} // namespace crv::quadrature::construction

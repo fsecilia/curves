@@ -28,7 +28,9 @@ template <> struct transition_factory_t<transitions::nast_t>
 {
     auto operator()() const -> transitions::nast_t
     {
-        auto result = transitions::construction::nast_builder_t<>{}();
+        using builder_t = transitions::construction::nast_builder_t<>;
+        auto builder = builder_t{builder_t::integrator_t{builder_t::requested_tolerance, builder_t::depth_limit}};
+        auto result = builder();
         return std::move(result).value().transition;
     }
 };

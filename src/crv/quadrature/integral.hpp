@@ -7,7 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/quadrature/rules.hpp>
+#include <concepts>
 #include <utility>
 
 namespace crv::quadrature {
