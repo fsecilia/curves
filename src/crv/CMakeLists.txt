@@ -56,8 +56,13 @@ set(lib_files
     model/shaping/transforms/limit.hpp
     model/shaping/transforms/offset.hpp
     model/shaping/transforms/output_affine.hpp
+    model/shaping/transitions/concepts.hpp
+    model/shaping/transitions/nast.hpp
     model/shaping/transitions/quadratic.hpp
     model/shaping/transitions/smootherstep_integral.hpp
+    model/shaping/transitions/smootherstep.hpp
+    model/shaping/transitions/smootheststep.hpp
+    model/shaping/transitions/smoothstep.hpp
     overloaded.hpp
     pipeline/configuration/compiler.hpp
     pipeline/configuration/construction/authored_validator.hpp
@@ -272,6 +277,10 @@ set(unit_test_files
     model/shaping/transforms/limit_test.cpp
     model/shaping/transforms/offset_test.cpp
     model/shaping/transforms/output_affine_test.cpp
+    model/shaping/transitions/concepts_test.cpp
+    model/shaping/transitions/nast_cache_builder_test.cpp
+    model/shaping/transitions/nast_test.cpp
+    model/shaping/transitions/polynomial_test.cpp
     model/shaping/transitions/quadratic_test.cpp
     model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
