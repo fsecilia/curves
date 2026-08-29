@@ -47,10 +47,12 @@ set(lib_files
     model/shaping/construction/limit_engager.hpp
     model/shaping/construction/limit_factory.hpp
     model/shaping/construction/limit_locator.hpp
+    model/shaping/output_limited_curve.hpp
     model/shaping/params.hpp
     model/shaping/shaped_curve.hpp
     model/shaping/stages/input.hpp
     model/shaping/stages/output.hpp
+    model/shaping/transforms/compact_output_limiter.hpp
     model/shaping/transforms/composite.hpp
     model/shaping/transforms/input_affine.hpp
     model/shaping/transforms/limit.hpp
@@ -268,6 +270,9 @@ set(unit_test_files
     model/shaping/construction/limit_engager_test.cpp
     model/shaping/construction/limit_factory_test.cpp
     model/shaping/construction/limit_locator_test.cpp
+    model/shaping/output_limited_curve_test.cpp
+    model/shaping/transforms/compact_output_limiter_test.cpp
+    model/shaping/transforms/compact_output_limiter_transition_test.cpp
     model/shaping/params_test.cpp
     model/shaping/shaped_curve_test.cpp
     model/shaping/stages/input_test.cpp
