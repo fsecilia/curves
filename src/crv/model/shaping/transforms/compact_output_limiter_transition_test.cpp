@@ -16,19 +16,21 @@
 namespace crv::shaping::transforms {
 namespace {
 
+using scalar_t = float_t;
+using nast_t = transitions::nast_t<scalar_t>;
 using transition_types_t
-    = Types<transitions::smoothstep_t, transitions::smootherstep_t, transitions::smootheststep_t, transitions::nast_t>;
+    = Types<transitions::smoothstep_t, transitions::smootherstep_t, transitions::smootheststep_t, nast_t>;
 
 template <typename transition_t> struct transition_factory_t
 {
     auto operator()() const -> transition_t { return {}; }
 };
 
-template <> struct transition_factory_t<transitions::nast_t>
+template <> struct transition_factory_t<nast_t>
 {
-    auto operator()() const -> transitions::nast_t
+    auto operator()() const -> nast_t
     {
-        using builder_t = transitions::construction::nast_builder_t<>;
+        using builder_t = transitions::construction::nast_builder_t<scalar_t>;
         auto builder = builder_t{builder_t::integrator_t{builder_t::requested_tolerance, builder_t::depth_limit}};
         auto result = builder();
         return std::move(result).value().transition;
@@ -37,7 +39,7 @@ template <> struct transition_factory_t<transitions::nast_t>
 
 template <typename t_transition_t> struct shaping_transforms_compact_output_limiter_transition_test_t : Test
 {
-    using scalar_t = float_t;
+    using scalar_t = crv::float_t;
     using transition_t = t_transition_t;
     using upper_t = upper_output_limiter_t<scalar_t, transition_t>;
     using lower_t = lower_output_limiter_t<scalar_t, transition_t>;

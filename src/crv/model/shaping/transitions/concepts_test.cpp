@@ -13,7 +13,8 @@
 namespace crv::shaping::transitions {
 namespace {
 
-static_assert(is_transition<nast_t, float_t>);
+static_assert(is_transition<nast_t<float32_t>, float32_t>);
+static_assert(is_transition<nast_t<float64_t>, float64_t>);
 static_assert(is_transition<smoothstep_t, float32_t>);
 static_assert(is_transition<smoothstep_t, float64_t>);
 static_assert(is_transition<smootherstep_t, float32_t>);

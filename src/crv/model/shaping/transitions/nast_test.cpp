@@ -12,7 +12,9 @@
 namespace crv::shaping::transitions {
 namespace {
 
-using builder_t = construction::nast_builder_t<>;
+using scalar_t = float_t;
+using transition_t = nast_t<scalar_t>;
+using builder_t = construction::nast_builder_t<scalar_t>;
 
 struct builder_factory_t
 {
@@ -25,7 +27,7 @@ struct builder_factory_t
 struct nast_test_t : Test
 {
     builder_t::result_t construction = builder_factory_t{}()();
-    nast_t const* sut = nullptr;
+    transition_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
@@ -36,14 +38,14 @@ struct nast_test_t : Test
 
 struct value_reference_t
 {
-    float_t u;
-    float_t expected;
+    scalar_t u;
+    scalar_t expected;
 };
 
 struct nast_value_test_t : TestWithParam<value_reference_t>
 {
     builder_t::result_t construction = builder_factory_t{}()();
-    nast_t const* sut = nullptr;
+    transition_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
@@ -64,14 +66,14 @@ INSTANTIATE_TEST_SUITE_P(high_precision_reference, nast_value_test_t,
 
 struct antiderivative_reference_t
 {
-    float_t u;
-    float_t expected;
+    scalar_t u;
+    scalar_t expected;
 };
 
 struct nast_antiderivative_test_t : TestWithParam<antiderivative_reference_t>
 {
     builder_t::result_t construction = builder_factory_t{}()();
-    nast_t const* sut = nullptr;
+    transition_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
@@ -94,14 +96,14 @@ INSTANTIATE_TEST_SUITE_P(high_precision_reference, nast_antiderivative_test_t,
 
 struct monotone_interval_t
 {
-    float_t left;
-    float_t right;
+    scalar_t left;
+    scalar_t right;
 };
 
 struct nast_monotonicity_test_t : TestWithParam<monotone_interval_t>
 {
     builder_t::result_t construction = builder_factory_t{}()();
-    nast_t const* sut = nullptr;
+    transition_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
@@ -122,13 +124,13 @@ INSTANTIATE_TEST_SUITE_P(interior_intervals, nast_monotonicity_test_t,
 
 struct symmetry_input_t
 {
-    float_t u;
+    scalar_t u;
 };
 
 struct nast_symmetry_test_t : TestWithParam<symmetry_input_t>
 {
     builder_t::result_t construction = builder_factory_t{}()();
-    nast_t const* sut = nullptr;
+    transition_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
@@ -210,7 +212,7 @@ TEST_F(nast_test_t, value_jet_uses_analytic_transition_derivative)
 {
     auto const u = 0.25;
     auto const tangent = 2.5;
-    auto const actual = (*sut)(jet_t<float_t>{u, tangent});
+    auto const actual = (*sut)(jet_t<scalar_t>{u, tangent});
 
     EXPECT_EQ(actual.df, sut->derivative(u) * tangent);
 }
@@ -219,19 +221,19 @@ TEST_F(nast_test_t, antiderivative_jet_uses_transition_value_as_derivative)
 {
     auto const u = 0.75;
     auto const tangent = 2.5;
-    auto const actual = sut->antiderivative(jet_t<float_t>{u, tangent});
+    auto const actual = sut->antiderivative(jet_t<scalar_t>{u, tangent});
 
     EXPECT_EQ(actual.df, (*sut)(u) * tangent);
 }
 
 TEST_F(nast_test_t, antiderivative_jet_on_lower_plateau_has_zero_tangent)
 {
-    EXPECT_EQ(sut->antiderivative(jet_t<float_t>{-1.0, 3.0}), (jet_t<float_t>{0.0, 0.0}));
+    EXPECT_EQ(sut->antiderivative(jet_t<scalar_t>{-1.0, 3.0}), (jet_t<scalar_t>{0.0, 0.0}));
 }
 
 TEST_F(nast_test_t, antiderivative_jet_on_upper_exterior_has_input_tangent)
 {
-    EXPECT_EQ(sut->antiderivative(jet_t<float_t>{2.0, 3.0}), (jet_t<float_t>{1.5, 3.0}));
+    EXPECT_EQ(sut->antiderivative(jet_t<scalar_t>{2.0, 3.0}), (jet_t<scalar_t>{1.5, 3.0}));
 }
 
 } // namespace

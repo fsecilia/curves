@@ -12,20 +12,21 @@
 #include <crv/quadrature/rules.hpp>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <utility>
 
 namespace crv::shaping::transitions {
 
 namespace construction {
-template <typename integrator_t, typename transition_t> class nast_builder_t;
+template <std::floating_point scalar_t, typename integrator_t, typename transition_t> class nast_builder_t;
 }
 
 namespace detail {
 
 /// normalized sigmoid form of the non-analytic smooth transition
-struct nast_integrand_t
+template <std::floating_point t_scalar_t> struct nast_integrand_t
 {
-    using scalar_t = float_t;
+    using scalar_t = t_scalar_t;
 
     [[nodiscard]] auto operator()(scalar_t u) const noexcept -> scalar_t
     {
@@ -44,20 +45,25 @@ struct nast_integrand_t
     }
 };
 
-using nast_rule_t = quadrature::rules::gauss_kronrod_t<float_t>;
-using nast_integral_t = quadrature::integral_t<nast_integrand_t, nast_rule_t>;
-using nast_antiderivative_t = quadrature::antiderivative_t<nast_integral_t>;
+template <std::floating_point scalar_t> using nast_rule_t = quadrature::rules::gauss_kronrod_t<scalar_t>;
+template <std::floating_point scalar_t>
+using nast_integral_t = quadrature::integral_t<nast_integrand_t<scalar_t>, nast_rule_t<scalar_t>>;
+template <std::floating_point scalar_t>
+using nast_antiderivative_t = quadrature::antiderivative_t<nast_integral_t<scalar_t>>;
 
 } // namespace detail
 
 /// compact C-infinity NAST transition backed by a retained half-domain antiderivative
-class nast_t
+template <std::floating_point t_scalar_t> class nast_t
 {
 public:
-    using scalar_t = float_t;
+    using scalar_t = t_scalar_t;
     using jet_t = crv::jet_t<scalar_t>;
 
-    [[nodiscard]] auto operator()(scalar_t u) const noexcept -> scalar_t { return detail::nast_integrand_t{}(u); }
+    [[nodiscard]] auto operator()(scalar_t u) const noexcept -> scalar_t
+    {
+        return detail::nast_integrand_t<scalar_t>{}(u);
+    }
 
     [[nodiscard]] auto operator()(jet_t u) const noexcept -> jet_t
     {
@@ -94,15 +100,16 @@ public:
 private:
     static constexpr auto support_midpoint = scalar_t{0.5};
 
-    explicit nast_t(detail::nast_antiderivative_t antiderivative) noexcept : antiderivative_{std::move(antiderivative)}
+    explicit nast_t(detail::nast_antiderivative_t<scalar_t> antiderivative) noexcept
+        : antiderivative_{std::move(antiderivative)}
     {
         assert(antiderivative_.domain_end() == support_midpoint && "nast_t: antiderivative must cover half domain");
     }
 
-    template <typename integrator_t, typename transition_t>
+    template <std::floating_point, typename, typename>
     friend class construction::nast_builder_t;
 
-    detail::nast_antiderivative_t antiderivative_;
+    detail::nast_antiderivative_t<scalar_t> antiderivative_;
 };
 
 } // namespace crv::shaping::transitions

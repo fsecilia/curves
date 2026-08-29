@@ -11,20 +11,22 @@
 #include <crv/quadrature/construction/adaptive_integrator.hpp>
 #include <array>
 #include <cmath>
+#include <concepts>
 #include <expected>
 #include <utility>
 
 namespace crv::shaping::transitions::construction {
 
-template <typename t_integrator_t = quadrature::construction::adaptive_integrator_t<float_t>,
-    typename t_transition_t = nast_t>
+template <std::floating_point t_scalar_t,
+    typename t_integrator_t = quadrature::construction::adaptive_integrator_t<t_scalar_t>,
+    typename t_transition_t = nast_t<t_scalar_t>>
 class nast_builder_t
 {
 public:
+    using scalar_t = t_scalar_t;
     using integrator_t = t_integrator_t;
     using transition_t = t_transition_t;
-    using scalar_t = float_t;
-    using integral_t = transitions::detail::nast_integral_t;
+    using integral_t = transitions::detail::nast_integral_t<scalar_t>;
 
     struct receipt_t
     {
@@ -63,9 +65,9 @@ public:
 
     [[nodiscard]] auto operator()() const -> result_t
     {
-        auto integration = integrator_(
-            integral_t{transitions::detail::nast_integrand_t{}, transitions::detail::nast_rule_t{}}, domain_end,
-            std::array<scalar_t, 0>{});
+        auto integration = integrator_(integral_t{transitions::detail::nast_integrand_t<scalar_t>{},
+                                           transitions::detail::nast_rule_t<scalar_t>{}},
+            domain_end, std::array<scalar_t, 0>{});
         auto const error = error_t{
             .requested_tolerance = requested_tolerance,
             .achieved_error = integration.achieved_error,

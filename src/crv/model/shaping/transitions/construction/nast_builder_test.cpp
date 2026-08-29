@@ -15,6 +15,8 @@ namespace {
 
 struct nast_builder_test_t : Test
 {
+    using scalar_t = float_t;
+
     struct antiderivative_t
     {
         int_t segments = 0;
@@ -26,15 +28,15 @@ struct nast_builder_test_t : Test
     struct integration_result_t
     {
         antiderivative_t antiderivative;
-        float_t achieved_error;
-        float_t max_error;
+        scalar_t achieved_error;
+        scalar_t max_error;
         bool refinement_limited;
     };
 
     struct mock_integrator_t
     {
         virtual ~mock_integrator_t() = default;
-        MOCK_METHOD(integration_result_t, call, (float_t domain_end), (const));
+        MOCK_METHOD(integration_result_t, call, (scalar_t domain_end), (const));
     };
     StrictMock<mock_integrator_t> mock_integrator;
 
@@ -42,8 +44,8 @@ struct nast_builder_test_t : Test
     {
         mock_integrator_t* mock = nullptr;
 
-        auto operator()(transitions::detail::nast_integral_t, float_t domain_end, std::array<float_t, 0> const&) const
-            -> integration_result_t
+        auto operator()(transitions::detail::nast_integral_t<scalar_t>, scalar_t domain_end,
+            std::array<scalar_t, 0> const&) const -> integration_result_t
         {
             return mock->call(domain_end);
         }
@@ -56,7 +58,7 @@ struct nast_builder_test_t : Test
         explicit transition_t(antiderivative_t value) noexcept : antiderivative{std::move(value)} {}
     };
 
-    using sut_t = nast_builder_t<integrator_t, transition_t>;
+    using sut_t = nast_builder_t<scalar_t, integrator_t, transition_t>;
     sut_t sut{integrator_t{&mock_integrator}};
 
     auto expect_integration(integration_result_t integration) -> void
@@ -140,7 +142,7 @@ TEST_F(nast_builder_test_t, rejects_integration_above_requested_tolerance)
 
 TEST_F(nast_builder_test_t, rejects_nonfinite_error_receipt)
 {
-    auto const achieved_error = std::numeric_limits<float_t>::quiet_NaN();
+    auto const achieved_error = std::numeric_limits<nast_builder_test_t::scalar_t>::quiet_NaN();
     expect_integration({
         .antiderivative = {.segments = 3},
         .achieved_error = achieved_error,
@@ -156,7 +158,8 @@ TEST_F(nast_builder_test_t, rejects_nonfinite_error_receipt)
 
 struct nast_builder_production_test_t : Test
 {
-    using sut_t = nast_builder_t<>;
+    using scalar_t = float_t;
+    using sut_t = nast_builder_t<scalar_t>;
 
     sut_t sut{sut_t::integrator_t{sut_t::requested_tolerance, sut_t::depth_limit}};
     sut_t::result_t result = sut();
@@ -166,7 +169,7 @@ struct nast_builder_production_test_t : Test
 
 TEST(nast_builder_production_construction_test_t, constructs_transition)
 {
-    using sut_t = nast_builder_t<>;
+    using sut_t = nast_builder_t<float_t>;
     auto sut = sut_t{sut_t::integrator_t{sut_t::requested_tolerance, sut_t::depth_limit}};
     EXPECT_TRUE(sut().has_value());
 }
