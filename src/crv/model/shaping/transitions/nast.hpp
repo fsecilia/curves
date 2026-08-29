@@ -23,7 +23,7 @@ template <std::floating_point scalar_t, typename integrator_t, typename transiti
 
 namespace detail {
 
-/// normalized sigmoid form of the non-analytic smooth transition
+/// non-analytic smooth transition based on the normalized sigmoid form of the non-analytic smooth bump
 template <std::floating_point t_scalar_t> struct nast_integrand_t
 {
     using scalar_t = t_scalar_t;
@@ -106,8 +106,7 @@ private:
         assert(antiderivative_.domain_end() == support_midpoint && "nast_t: antiderivative must cover half domain");
     }
 
-    template <std::floating_point, typename, typename>
-    friend class construction::nast_builder_t;
+    template <std::floating_point, typename, typename> friend class construction::nast_builder_t;
 
     detail::nast_antiderivative_t<scalar_t> antiderivative_;
 };
