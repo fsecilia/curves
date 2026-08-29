@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "nast.hpp"
+#include <crv/model/shaping/transitions/construction/nast_builder.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <cmath>
@@ -11,45 +12,19 @@
 namespace crv::shaping::transitions {
 namespace {
 
+using builder_t = construction::nast_builder_t<>;
+
 struct nast_test_t : Test
 {
-    nast_t::construction_result_t construction = nast_t::make();
+    builder_t::result_t construction = builder_t{}();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
         ASSERT_TRUE(construction.has_value());
-        sut = &*construction;
+        sut = &construction->transition;
     }
 };
-
-TEST(nast_construction_test_t, production_cache_constructs_successfully)
-{
-    EXPECT_TRUE(nast_t::make().has_value());
-}
-
-TEST_F(nast_test_t, cache_meets_requested_tolerance)
-{
-    EXPECT_LE(sut->construction_receipt().achieved_error, nast_cache_config_t::requested_tolerance);
-}
-
-TEST_F(nast_test_t, cache_is_not_refinement_limited)
-{
-    EXPECT_FALSE(sut->construction_receipt().refinement_limited);
-}
-
-TEST_F(nast_test_t, half_domain_cache_remains_small)
-{
-    EXPECT_LE(sut->construction_receipt().segment_count, 8);
-}
-
-TEST_F(nast_test_t, repeated_construction_reuses_process_cache)
-{
-    auto const other = nast_t::make();
-    ASSERT_TRUE(other.has_value());
-
-    EXPECT_EQ(&sut->construction_receipt(), &other->construction_receipt());
-}
 
 struct value_reference_t
 {
@@ -59,13 +34,13 @@ struct value_reference_t
 
 struct nast_value_test_t : TestWithParam<value_reference_t>
 {
-    nast_t::construction_result_t construction = nast_t::make();
+    builder_t::result_t construction = builder_t{}();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
         ASSERT_TRUE(construction.has_value());
-        sut = &*construction;
+        sut = &construction->transition;
     }
 };
 
@@ -87,13 +62,13 @@ struct antiderivative_reference_t
 
 struct nast_antiderivative_test_t : TestWithParam<antiderivative_reference_t>
 {
-    nast_t::construction_result_t construction = nast_t::make();
+    builder_t::result_t construction = builder_t{}();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
         ASSERT_TRUE(construction.has_value());
-        sut = &*construction;
+        sut = &construction->transition;
     }
 };
 
@@ -117,13 +92,13 @@ struct monotone_interval_t
 
 struct nast_monotonicity_test_t : TestWithParam<monotone_interval_t>
 {
-    nast_t::construction_result_t construction = nast_t::make();
+    builder_t::result_t construction = builder_t{}();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
         ASSERT_TRUE(construction.has_value());
-        sut = &*construction;
+        sut = &construction->transition;
     }
 };
 
@@ -144,13 +119,13 @@ struct symmetry_input_t
 
 struct nast_symmetry_test_t : TestWithParam<symmetry_input_t>
 {
-    nast_t::construction_result_t construction = nast_t::make();
+    builder_t::result_t construction = builder_t{}();
     nast_t const* sut = nullptr;
 
     auto SetUp() -> void override
     {
         ASSERT_TRUE(construction.has_value());
-        sut = &*construction;
+        sut = &construction->transition;
     }
 };
 

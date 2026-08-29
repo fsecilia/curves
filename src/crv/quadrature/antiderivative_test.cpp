@@ -85,6 +85,11 @@ struct quadrature_antiderivative_test_small_cache_t : quadrature_antiderivative_
     }
 };
 
+TEST_F(quadrature_antiderivative_test_small_cache_t, domain_end)
+{
+    EXPECT_EQ(3.0, sut.domain_end());
+}
+
 TEST_F(quadrature_antiderivative_test_small_cache_t, segment_count)
 {
     EXPECT_EQ(3, sut.segment_count());

@@ -4,12 +4,14 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "compact_output_limiter.hpp"
+#include <crv/model/shaping/transitions/construction/nast_builder.hpp>
 #include <crv/model/shaping/transitions/nast.hpp>
 #include <crv/model/shaping/transitions/smootherstep.hpp>
 #include <crv/model/shaping/transitions/smootheststep.hpp>
 #include <crv/model/shaping/transitions/smoothstep.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
+#include <utility>
 
 namespace crv::shaping::transforms {
 namespace {
@@ -24,7 +26,11 @@ template <typename transition_t> struct transition_factory_t
 
 template <> struct transition_factory_t<transitions::nast_t>
 {
-    auto operator()() const -> transitions::nast_t { return transitions::nast_t::make().value(); }
+    auto operator()() const -> transitions::nast_t
+    {
+        auto result = transitions::construction::nast_builder_t<>{}();
+        return std::move(result).value().transition;
+    }
 };
 
 template <typename t_transition_t> struct shaping_transforms_compact_output_limiter_transition_test_t : Test

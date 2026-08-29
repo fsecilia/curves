@@ -92,6 +92,9 @@ public:
         return residual_mean + prefix_fraction * (cached_prefix_mean - residual_mean);
     }
 
+    /// right edge of the cached domain
+    constexpr auto domain_end() const noexcept -> scalar_t { return boundaries_.back(); }
+
     /// number of accepted quadrature segments; cache also stores the origin
     constexpr auto segment_count() const noexcept -> int_t { return static_cast<int_t>(boundaries_.size() - 1); }
 
