@@ -47,6 +47,8 @@ set(lib_files
     model/domain.hpp
     model/shaping/input_affine_curve.hpp
     model/shaping/transforms/input_affine.hpp
+    model/shaping/domain_warp_curve.hpp
+    model/shaping/transforms/domain_warp.hpp
     model/shaping/output_limited_curve.hpp
     model/shaping/shaped_curve.hpp
     model/shaping/transforms/compact_output_limiter.hpp
@@ -265,6 +267,9 @@ set(regression_test_files
     model/shaping/input_affine_curve_test.cpp
     model/shaping/input_affine_curve_integration_test.cpp
     model/shaping/transforms/input_affine_test.cpp
+    model/shaping/domain_warp_curve_test.cpp
+    model/shaping/domain_warp_curve_integration_test.cpp
+    model/shaping/transforms/domain_warp_test.cpp
     model/shaping/output_limited_curve_integration_test.cpp
     model/shaping/output_limited_curve_test.cpp
     model/shaping/transforms/compact_output_limiter_test.cpp
