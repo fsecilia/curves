@@ -14,7 +14,7 @@ add_library(ui
 )
 target_link_libraries(ui PUBLIC lib)
 
-if (crv_enable_testing)
+if (BUILD_TESTING)
     add_executable(ui_regression_tests
         command/command_integration_test.cpp
         command/command_test.cpp
@@ -25,6 +25,7 @@ if (crv_enable_testing)
     )
     target_link_libraries(ui_regression_tests PRIVATE ui lib testing)
     add_test(NAME ui_regression_tests COMMAND ui_regression_tests)
+    set_tests_properties(ui_regression_tests PROPERTIES LABELS regression)
     add_dependencies(build_tests ui_regression_tests)
 endif()
 

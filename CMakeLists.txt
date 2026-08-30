@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.31.6)
 project(curves VERSION 0.0.1)
 
 include(GenerateExportHeader)
+include(CTest)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectPolicies)
@@ -15,10 +16,8 @@ include(Dependencies)
 include(Installation)
 
 # aggregate target that depends on all tests, so all tests can be built with one target
-add_custom_target(build_tests COMMENT "building all test executables...")
-
-if (crv_enable_testing)
-    enable_testing()
+if (BUILD_TESTING)
+    add_custom_target(build_tests COMMENT "building all test executables...")
 endif()
 
 option(ENABLE_COVERAGE "enable test coverage reporting" OFF)

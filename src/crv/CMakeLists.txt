@@ -506,7 +506,7 @@ if (ENABLE_ASAN)
     target_link_options(lib PUBLIC link_options_user_mode -fsanitize=address)
 endif()
 
-if (crv_enable_testing)
+if (BUILD_TESTING)
     add_subdirectory(test)
 
     add_executable(regression_tests)
@@ -516,6 +516,7 @@ if (crv_enable_testing)
         testing
     )
     add_test(NAME regression_tests COMMAND regression_tests)
+    set_tests_properties(regression_tests PROPERTIES LABELS regression)
     add_dependencies(build_tests regression_tests)
 
     add_executable(validation_tests)
@@ -525,6 +526,7 @@ if (crv_enable_testing)
         testing
     )
     add_test(NAME validation_tests COMMAND validation_tests)
+    set_tests_properties(validation_tests PROPERTIES LABELS validation)
     add_dependencies(build_tests validation_tests)
 endif()
 

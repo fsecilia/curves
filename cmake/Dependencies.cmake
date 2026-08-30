@@ -25,20 +25,23 @@ if (ccache)
     set(CMAKE_CXX_LINKER_LAUNCHER "${ccache}")
 endif()
 
-# find gtest; enable testing if found
-set(INSTALL_GTEST OFF)
-if(NOT TARGET GTest::gtest)
-    # try finding system package normally
-    find_package(GTest QUIET)
-endif()
-if(NOT TARGET GTest::gtest)
-    # look where debian puts the source build
-    if (EXISTS /usr/src/googletest)
-        add_subdirectory(/usr/src/googletest "${CMAKE_BINARY_DIR}/external/googletest" EXCLUDE_FROM_ALL)
+# find gtest when testing is requested
+if (BUILD_TESTING)
+    set(INSTALL_GTEST OFF)
+    if (NOT TARGET GTest::gtest)
+        # try finding system package normally
+        find_package(GTest QUIET)
     endif()
-endif()
-if(TARGET GTest::gtest)
-    set(crv_enable_testing True)
+    if (NOT TARGET GTest::gtest)
+        # look where debian puts the source build
+        if (EXISTS /usr/src/googletest)
+            add_subdirectory(/usr/src/googletest "${CMAKE_BINARY_DIR}/external/googletest" EXCLUDE_FROM_ALL)
+        endif()
+    endif()
+    if (NOT TARGET GTest::gtest)
+        message(WARNING "GoogleTest not found: disabling BUILD_TESTING")
+        set(BUILD_TESTING OFF CACHE BOOL "build project tests" FORCE)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------------------------------------------------

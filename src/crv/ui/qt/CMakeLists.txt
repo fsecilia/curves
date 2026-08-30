@@ -158,7 +158,7 @@ qt6_add_translations(qt
     RESOURCE_PREFIX "/i18n"
 )
 
-if (crv_enable_testing)
+if (BUILD_TESTING)
     # common test library
     add_library(qt_ui_testing
         test_app.cpp
@@ -178,6 +178,7 @@ if (crv_enable_testing)
     )
     target_link_libraries(qt_ui_regression_tests PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
     add_test(NAME qt_ui_regression_tests COMMAND qt_ui_regression_tests)
+    set_tests_properties(qt_ui_regression_tests PROPERTIES LABELS regression)
     add_dependencies(build_tests qt_ui_regression_tests)
 
     add_subdirectory(test)

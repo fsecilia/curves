@@ -223,5 +223,102 @@
             "name": "ninja-windows-cl-release",
             "configurePreset": "ninja-windows-cl-release"
         }
+    ],
+    "testPresets": [
+        {
+            "name": "regression",
+            "hidden": true,
+            "output": {
+                "outputOnFailure": true
+            },
+            "filter": {
+                "include": {
+                    "label": "^regression$"
+                }
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "ninja-linux-clang-debug-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-linux-clang-debug"
+        },
+        {
+            "name": "ninja-linux-clang-release-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-linux-clang-release"
+        },
+        {
+            "name": "ninja-linux-gcc-debug-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-linux-gcc-debug"
+        },
+        {
+            "name": "ninja-linux-gcc-release-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-linux-gcc-release"
+        },
+        {
+            "name": "ninja-osx-clang-debug-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-osx-clang-debug"
+        },
+        {
+            "name": "ninja-osx-clang-release-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-osx-clang-release"
+        },
+        {
+            "name": "ninja-windows-clang-debug-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-windows-clang-debug"
+        },
+        {
+            "name": "ninja-windows-clang-release-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-windows-clang-release"
+        },
+        {
+            "name": "ninja-windows-cl-debug-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-windows-cl-debug"
+        },
+        {
+            "name": "ninja-windows-cl-release-regression",
+            "displayName": "Regression",
+            "inherits": [
+                "regression"
+            ],
+            "configurePreset": "ninja-windows-cl-release"
+        }
     ]
 }
