@@ -227,6 +227,7 @@ TEST_F(nast_test_t, antiderivative_jet_on_upper_exterior_has_input_tangent)
     EXPECT_EQ(sut.antiderivative(jet_t<scalar_t>{2.0, 3.0}), (jet_t<scalar_t>{1.5, 3.0}));
 }
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 struct domain_tracking_antiderivative_t
 {
     int_t* domain_end_calls;
@@ -260,6 +261,7 @@ TEST(shaping_transitions_nast_domain_test_t, rejects_antiderivative_that_does_no
     EXPECT_DEATH(static_cast<void>(nast_t<scalar_t, wrong_domain_antiderivative_t>{wrong_domain_antiderivative_t{}}),
         "half domain");
 }
+#endif // defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::shaping::transitions

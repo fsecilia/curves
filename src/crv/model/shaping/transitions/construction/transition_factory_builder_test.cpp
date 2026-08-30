@@ -113,6 +113,7 @@ TEST_F(transition_factory_builder_test_t, forwards_quadrature_receipt_unchanged)
     EXPECT_EQ(actual, receipt);
 }
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 TEST_F(transition_factory_builder_test_t, asserts_refinement_limited_integration)
 {
     auto const sut = assertion_sut({
@@ -138,6 +139,8 @@ TEST_F(transition_factory_builder_test_t, asserts_error_above_requested_toleranc
 
     EXPECT_DEATH(static_cast<void>(sut()), "missed requested tolerance");
 }
+
+#endif // defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 struct transition_factory_builder_production_test_t : Test
 {
