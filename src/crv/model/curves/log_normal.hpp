@@ -11,10 +11,12 @@
 #include <crv/math/lambert.hpp>
 #include <crv/math/scalar_traits.hpp>
 #include <crv/model/curves/traits.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/param.hpp>
 #include <complex>
 #include <numbers>
+#include <vector>
 
 namespace crv::model::curves {
 
@@ -57,8 +59,9 @@ struct log_normal_t
     public:
         using curve_t = log_normal_t;
         using scalar_t = t_scalar_t;
-
         using real_t = real_type_t<scalar_t>;
+        using domain_t = model::unbounded_domain_t<real_t>;
+
         using jet_t = crv::jet_t<scalar_t>;
 
         static constexpr auto x_origin_saturation_threshold = real_t{1e-12};
@@ -94,6 +97,15 @@ struct log_normal_t
             }
             else return value_t{scaled_f};
         }
+
+        /// scalar evaluation is saturated and finite for every finite real input
+        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t
+        {
+            return {};
+        }
+
+        /// no interior critical points
+        [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
 
     private:
         static constexpr auto sqrt2_ = std::numbers::sqrt2_v<real_t>;

@@ -8,6 +8,7 @@
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <complex>
+#include <limits>
 #include <numbers>
 
 namespace crv::model::curves {
@@ -204,6 +205,34 @@ TEST_P(model_curves_log_normal_math_test_t, first_derivative_matches_complex_ste
 
 INSTANTIATE_TEST_SUITE_P(
     core_math, model_curves_log_normal_math_test_t, ValuesIn(sweep_vectors), test_name_generator_t<vector_t>{});
+
+//
+// domain
+//
+
+TEST(model_curves_log_normal_domain_test_t, contains_lowest_finite_input)
+{
+    auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
+    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::lowest()));
+}
+
+TEST(model_curves_log_normal_domain_test_t, contains_largest_finite_input)
+{
+    auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
+    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::max()));
+}
+
+TEST(model_curves_log_normal_domain_test_t, lowest_finite_input_evaluates_finitely)
+{
+    auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
+    EXPECT_TRUE(std::isfinite(eval(std::numeric_limits<real_t>::lowest())));
+}
+
+TEST(model_curves_log_normal_domain_test_t, largest_finite_input_evaluates_finitely)
+{
+    auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
+    EXPECT_TRUE(std::isfinite(eval(std::numeric_limits<real_t>::max())));
+}
 
 //
 // adapter

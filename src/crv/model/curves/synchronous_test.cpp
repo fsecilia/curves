@@ -6,7 +6,9 @@
 #include "synchronous.hpp"
 #include <crv/model/curves/test.hpp>
 #include <crv/test/test.hpp>
+#include <cmath>
 #include <complex>
+#include <limits>
 #include <vector>
 
 namespace crv::model::curves {
@@ -161,6 +163,26 @@ TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_
     auto const y = eval(jet_t{x, df});
     EXPECT_NEAR(1.0 / 2.0, y.f, tolerance);
     EXPECT_EQ(0.0, y.df);
+}
+
+TEST_F(model_curves_synchronous_origin_test_t, domain_contains_lowest_finite_input)
+{
+    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::lowest()));
+}
+
+TEST_F(model_curves_synchronous_origin_test_t, domain_contains_largest_finite_input)
+{
+    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::max()));
+}
+
+TEST_F(model_curves_synchronous_origin_test_t, lowest_finite_scalar_input_evaluates_finitely)
+{
+    EXPECT_TRUE(std::isfinite(eval(std::numeric_limits<real_t>::lowest())));
+}
+
+TEST_F(model_curves_synchronous_origin_test_t, largest_finite_scalar_input_evaluates_finitely)
+{
+    EXPECT_TRUE(std::isfinite(eval(std::numeric_limits<real_t>::max())));
 }
 
 //

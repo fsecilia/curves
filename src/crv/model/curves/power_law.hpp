@@ -80,22 +80,36 @@ struct power_law_t
             return {y, tangent(input) * g_ * y / x};
         }
 
+        /// input domain
+        class domain_t
+        {
+        public:
+            constexpr domain_t(scalar_t power, scalar_t log_unit_speed) noexcept
+                : power_{power}, log_unit_speed_{log_unit_speed}
+            {}
+
+            [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool
+            {
+                if (!std::isfinite(input) || input < scalar_t{0}) return false;
+                if (power_ == scalar_t{0} || input == scalar_t{0}) return true;
+
+                auto const log_ratio = std::log(input) - log_unit_speed_;
+                if (log_ratio <= scalar_t{0}) return true;
+
+                auto const max_log = std::log(std::numeric_limits<scalar_t>::max());
+                if (power_ < max_log / std::numeric_limits<scalar_t>::max()) return true;
+                return log_ratio <= max_log / power_;
+            }
+
+        private:
+            scalar_t power_;
+            scalar_t log_unit_speed_;
+        };
+
+        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {g_, log_p_}; }
+
         /// no interior critical points
         auto critical_points() const -> std::vector<scalar_t> { return {}; }
-
-        /// leftmost point where input remains finite, nonnegative, and monotone-nondecreasing
-        [[nodiscard]] constexpr auto monotone_extension_min() const noexcept -> scalar_t { return scalar_t{0}; }
-
-        /// whether the raw curve remains representable through the end of a nonnegative finite domain
-        [[nodiscard]] auto finite_through(scalar_t domain_end) const noexcept -> bool
-        {
-            assert(std::isfinite(domain_end) && domain_end >= scalar_t{0}
-                && "power_law_t: domain end must be finite and nonnegative");
-            if (g_ == scalar_t{0} || domain_end == scalar_t{0}) return true;
-
-            auto const log_y = g_ * (std::log(domain_end) - log_p_);
-            return !std::isnan(log_y) && log_y <= std::log(std::numeric_limits<scalar_t>::max());
-        }
 
     private:
         scalar_t p_;

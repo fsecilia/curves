@@ -116,7 +116,7 @@ TEST_F(shaping_output_limited_curve_power_law_integration_test_t,
     EXPECT_EQ(sut(input), bound);
 }
 
-TEST_F(shaping_output_limited_curve_power_law_integration_test_t, zero_upper_can_skip_power_law_scalar_domain_entirely)
+TEST_F(shaping_output_limited_curve_power_law_integration_test_t, zero_upper_can_skip_power_law_domain_entirely)
 {
     auto const limiter = upper_t::make(0.0, 0.0, transition_t{}).value();
     auto const sut = output_limited_curve_t{limiter, make_power_law(0.5, 2.0)};

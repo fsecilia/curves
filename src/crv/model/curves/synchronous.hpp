@@ -10,6 +10,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
 #include <crv/model/curves/traits.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/param.hpp>
 #include <complex>
@@ -64,8 +65,9 @@ struct synchronous_t
     public:
         using curve_t = synchronous_t;
         using scalar_t = t_scalar_t;
-
         using real_t = real_type_t<scalar_t>;
+        using domain_t = model::unbounded_domain_t<real_t>;
+
         using jet_t = crv::jet_t<scalar_t>;
 
         constexpr explicit evaluator_t(params_t<real_t> const& params) noexcept
@@ -206,6 +208,12 @@ struct synchronous_t
                 return {f, d1 * tangent(input)};
             }
             else return value_t{f};
+        }
+
+        /// scalar evaluation is saturated and finite for every finite real input
+        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t
+        {
+            return {};
         }
 
         /// array of critical points

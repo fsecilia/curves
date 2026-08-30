@@ -96,7 +96,7 @@ struct gain_compiler_test_t : Test
     {
         mock_t* mock;
 
-        template <typename curve_t> auto operator()(curve_t const&, scalar_t domain_end) const -> critical_points_t
+        auto operator()(shaped_curve_t const&, scalar_t domain_end) const -> critical_points_t
         {
             return mock->critical_points(domain_end);
         }

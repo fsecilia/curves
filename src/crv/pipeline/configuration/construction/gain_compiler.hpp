@@ -34,7 +34,7 @@ template <std::floating_point t_scalar_t, is_fixed t_x_t> struct critical_point_
 
     template <typename curve_t> auto operator()(curve_t const& curve, scalar_t domain_end) const -> result_t
     {
-        auto integration = collect(curve);
+        auto integration = curve.critical_points();
         std::erase_if(integration, [&](auto value) { return !(scalar_t{0} < value && value < domain_end); });
         std::ranges::sort(integration);
         auto const integration_duplicates = std::ranges::unique(integration);
@@ -53,13 +53,6 @@ template <std::floating_point t_scalar_t, is_fixed t_x_t> struct critical_point_
         spline.erase(spline_duplicates.begin(), spline_duplicates.end());
 
         return {.integration = std::move(integration), .spline = std::move(spline)};
-    }
-
-private:
-    template <typename curve_t> static auto collect(curve_t const& curve) -> std::vector<scalar_t>
-    {
-        if constexpr (requires { curve.critical_points(); }) return curve.critical_points();
-        else return {};
     }
 };
 
@@ -119,8 +112,8 @@ private:
         using evaluator_t = typename curve_t::template evaluator_t<scalar_t>;
 
         auto evaluator = evaluator_t{model::curves::to_params<scalar_t>(config)};
-        auto critical_points = build_critical_points(evaluator, scalar_t{spline_policy_t::domain_end});
         auto curve = shape_curve(std::move(evaluator));
+        auto critical_points = build_critical_points(curve, scalar_t{spline_policy_t::domain_end});
         auto target = build_sensitivity_target(
             std::move(curve), scalar_t{spline_policy_t::domain_end}, critical_points.integration);
         if (target.refinement_limited)

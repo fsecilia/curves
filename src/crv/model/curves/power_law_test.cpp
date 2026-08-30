@@ -106,10 +106,16 @@ TEST_F(model_curves_power_law_test_t, fractional_power_exposes_origin_derivative
     EXPECT_TRUE(std::isinf(y.df));
 }
 
-TEST_F(model_curves_power_law_test_t, monotone_extension_begins_at_zero)
+TEST_F(model_curves_power_law_test_t, domain_begins_at_zero)
 {
     auto const sut = evaluator_t{params_t{p, 0.5}};
-    EXPECT_EQ(sut.monotone_extension_min(), 0.0);
+    EXPECT_FALSE(sut.domain().contains(std::nextafter(0.0, -1.0)));
+}
+
+TEST_F(model_curves_power_law_test_t, domain_contains_origin_for_fractional_power)
+{
+    auto const sut = evaluator_t{params_t{p, 0.5}};
+    EXPECT_TRUE(sut.domain().contains(0.0));
 }
 
 TEST_F(model_curves_power_law_test_t, has_no_interior_critical_points)
@@ -118,23 +124,22 @@ TEST_F(model_curves_power_law_test_t, has_no_interior_critical_points)
     EXPECT_TRUE(sut.critical_points().empty());
 }
 
-TEST_F(model_curves_power_law_test_t, finite_domain_check_accepts_zero_power_independent_of_p)
+TEST_F(model_curves_power_law_test_t, domain_accepts_maximum_input_for_zero_power)
 {
     auto const sut = evaluator_t{params_t{std::numeric_limits<real_t>::denorm_min(), 0.0}};
-    EXPECT_TRUE(sut.finite_through(std::numeric_limits<real_t>::max()));
+    EXPECT_TRUE(sut.domain().contains(std::numeric_limits<real_t>::max()));
 }
 
-TEST_F(model_curves_power_law_test_t, finite_domain_check_accepts_representable_endpoint)
+TEST_F(model_curves_power_law_test_t, domain_accepts_representable_positive_endpoint)
 {
-    auto const sut = evaluator_t{params_t{p, 0.5}};
-    EXPECT_TRUE(sut.finite_through(256.0));
+    auto const sut = evaluator_t{params_t{1.0, 256.0}};
+    EXPECT_TRUE(sut.domain().contains(16.0));
 }
 
-TEST_F(model_curves_power_law_test_t, finite_domain_check_rejects_overflowing_endpoint)
+TEST_F(model_curves_power_law_test_t, domain_rejects_unrepresentable_positive_input)
 {
-    auto const tiny_p = std::numeric_limits<real_t>::min();
-    auto const sut = evaluator_t{params_t{tiny_p, 2.0}};
-    EXPECT_FALSE(sut.finite_through(256.0));
+    auto const sut = evaluator_t{params_t{1.0, 256.0}};
+    EXPECT_FALSE(sut.domain().contains(std::nextafter(16.0, std::numeric_limits<real_t>::infinity())));
 }
 
 TEST_F(model_curves_power_law_test_t, config_constraint_rejects_nonpositive_p)

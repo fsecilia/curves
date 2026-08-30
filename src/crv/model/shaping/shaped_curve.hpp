@@ -6,7 +6,6 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <utility>
 
 namespace crv::shaping {
 
@@ -23,19 +22,14 @@ template <typename input_t, typename curve_t, typename output_t> struct shaped_c
     }
 };
 
-/// temporary standin builder that just produces a valid curve with identity transforms
+/// temporary standin builder that leaves the curve unchanged
 struct shaped_curve_builder_t
 {
-    struct identity_transform_t
-    {
-        template <typename value_t> constexpr auto operator()(value_t value) const noexcept -> value_t { return value; }
-    };
-
-    template <typename curve_t> using result_t = shaped_curve_t<identity_transform_t, curve_t, identity_transform_t>;
+    template <typename curve_t> using result_t = curve_t;
 
     template <typename curve_t> constexpr auto operator()(curve_t curve) const noexcept -> result_t<curve_t>
     {
-        return {.in = identity_transform_t{}, .curve = std::move(curve), .out = identity_transform_t{}};
+        return curve;
     }
 };
 

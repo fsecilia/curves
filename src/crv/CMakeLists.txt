@@ -44,6 +44,9 @@ set(lib_files
     model/curves/power_law.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
+    model/domain.hpp
+    model/shaping/input_affine_curve.hpp
+    model/shaping/transforms/input_affine.hpp
     model/shaping/output_limited_curve.hpp
     model/shaping/shaped_curve.hpp
     model/shaping/transforms/compact_output_limiter.hpp
@@ -259,6 +262,9 @@ set(regression_test_files
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
     model/curves/traits_test.cpp
+    model/shaping/input_affine_curve_test.cpp
+    model/shaping/input_affine_curve_integration_test.cpp
+    model/shaping/transforms/input_affine_test.cpp
     model/shaping/output_limited_curve_integration_test.cpp
     model/shaping/output_limited_curve_test.cpp
     model/shaping/transforms/compact_output_limiter_test.cpp
