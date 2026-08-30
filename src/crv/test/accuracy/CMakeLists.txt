@@ -3,7 +3,7 @@
 #
 # fixed-point accuracy tests
 
-if (BUILD_INTEGRATION_TESTS)
+if (BUILD_INTEGRATION_TESTS AND TARGET float128)
     add_executable(accuracy_curves
         accuracy_test_runner.hpp
         curves.cpp

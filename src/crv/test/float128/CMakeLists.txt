@@ -17,39 +17,50 @@ option(polyfill_float128_round "Define std::round(std::float128_t) polyfill" ON)
 option(polyfill_float128_sqrt "Define std::sqrt(std::float128_t) polyfill" ON)
 
 if (BUILD_INTEGRATION_TESTS)
-    # The library is a shell unless float128 is available. By default, it only includes the header to signal to other
-    # targets whether float128 is available or not.
-    add_library(float128)
-    target_sources(float128 PRIVATE float128.hpp)
+    # libquadmath often lives in compiler-private directories omitted from ordinary CMake search paths.
+    find_library(libquadmath NAMES quadmath)
+    find_path(libquadmath_include NAMES quadmath.h)
 
-    # Try finding quadmath.
-    find_library(libquadmath quadmath)
-    if(libquadmath)
-        # The library is typically installed to the normal library location, but the header is technially private to
-        # gcc. Try finding it globally first, then ask gcc where to find it.
-        find_path(libquadmath_include NAMES quadmath.h)
-        if (NOT libquadmath_include)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        if (NOT libquadmath)
             execute_process(
-                COMMAND gcc -print-file-name=include
-                OUTPUT_VARIABLE gcc_private_include_path
+                COMMAND "${CMAKE_CXX_COMPILER}" "-print-file-name=libquadmath${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                RESULT_VARIABLE libquadmath_query_result
+                OUTPUT_VARIABLE compiler_libquadmath
                 OUTPUT_STRIP_TRAILING_WHITESPACE
             )
-            find_path(libquadmath_include
-                NAMES quadmath.h
-                HINTS "${gcc_private_include_path}"
-                NO_DEFAULT_PATH
-            )
+            if (libquadmath_query_result EQUAL 0 AND EXISTS "${compiler_libquadmath}")
+                set(libquadmath "${compiler_libquadmath}")
+            endif()
         endif()
 
-        # Add dependency if header was found.
-        if (libquadmath_include)
-            set(libquadmath_FOUND TRUE)
+        if (NOT libquadmath)
+            execute_process(
+                COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libquadmath.a
+                RESULT_VARIABLE libquadmath_query_result
+                OUTPUT_VARIABLE compiler_libquadmath
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            if (libquadmath_query_result EQUAL 0 AND EXISTS "${compiler_libquadmath}")
+                set(libquadmath "${compiler_libquadmath}")
+            endif()
+        endif()
+
+        if (NOT libquadmath_include)
+            execute_process(
+                COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=include/quadmath.h
+                RESULT_VARIABLE libquadmath_include_query_result
+                OUTPUT_VARIABLE compiler_quadmath_header
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+            )
+            if (libquadmath_include_query_result EQUAL 0 AND EXISTS "${compiler_quadmath_header}")
+                get_filename_component(libquadmath_include "${compiler_quadmath_header}" DIRECTORY)
+            endif()
         endif()
     endif()
 
-    if (libquadmath_FOUND)
-        # add implementation to library
-        target_sources(float128 PRIVATE float128.cpp)
+    if (libquadmath AND libquadmath_include)
+        add_library(float128 float128.cpp)
         set_target_properties(float128 PROPERTIES CXX_EXTENSIONS TRUE)
         target_compile_definitions(float128 PUBLIC "-DCRV_FEATURE_FLOAT_128")
         target_link_libraries(float128 PUBLIC "${libquadmath}" lib)
@@ -59,11 +70,10 @@ if (BUILD_INTEGRATION_TESTS)
         #   target_include_directories(float128 SYSTEM PUBLIC "${libquadmath_include}")
         #
         # However, libquadmath is shipped as part of gcc. When compiling, gcc already implicitly searches this path.
-        # CMake knows this, so when building with gcc, cmake does not emit this path to compile_commands.json.
-        # However, clangd does not know this, and requires the path.
+        # CMake knows this, so when building with gcc, cmake does not emit this path to compile_commands.json. However,
+        # clangd does not know this and requires the path.
         #
-        # Instead, we manually specify the argument. This way, cmake emits it to compile_commands.json and clangd picks
-        # it up there.
+        # Instead, specify the argument manually so CMake emits it to compile_commands.json for clangd.
         if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             target_compile_options(float128 PUBLIC "SHELL:-isystem ${libquadmath_include}")
         endif()
@@ -116,14 +126,12 @@ if (BUILD_INTEGRATION_TESTS)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_SQRT")
         endif()
 
-        # add test executable
-        add_executable(float128_tests)
-        target_sources(float128_tests PRIVATE float128_test.cpp)
+        add_executable(float128_tests float128_test.cpp)
         set_target_properties(float128_tests PROPERTIES CXX_EXTENSIONS TRUE)
         target_link_libraries(float128_tests PRIVATE float128 testing)
         add_test(NAME float128_tests COMMAND float128_tests)
         add_dependencies(build_tests float128_tests)
     else()
-        message(WARNING "libquadmath not found: 128-bit floating-point unavailable")
+        message(WARNING "quadmath development files not found: float128 tests and accuracy programs unavailable")
     endif()
 endif()
