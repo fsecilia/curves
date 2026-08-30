@@ -9,12 +9,10 @@
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
-#include <crv/math/limits.hpp>
-#include <crv/quadrature/construction/bisector.hpp>
 #include <crv/quadrature/construction/segment.hpp>
 #include <crv/quadrature/integral.hpp>
 #include <concepts>
-#include <utility>
+#include <limits>
 
 namespace crv::quadrature::construction {
 
@@ -55,8 +53,7 @@ template <typename t_scalar_t> struct refinement_predicate_t
 };
 
 /// adaptively subdivides the contents of a segment stack
-template <std::floating_point t_scalar_t, typename t_refinement_predicate_t = refinement_predicate_t<t_scalar_t>,
-    typename t_bisector_t = bisector_t>
+template <std::floating_point t_scalar_t, typename t_refinement_predicate_t, typename t_bisector_t>
 struct subdivider_t
 {
     using scalar_t = t_scalar_t;

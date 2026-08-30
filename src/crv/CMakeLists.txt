@@ -295,7 +295,7 @@ set(unit_test_files
     quadrature/construction/adaptive_integrator_test.cpp
     quadrature/construction/antiderivative_cache_builder_test.cpp
     quadrature/construction/bisector_test.cpp
-    quadrature/construction/integration_test.cpp
+    quadrature/antiderivative_factory_test.cpp
     quadrature/construction/stack_seeder_test.cpp
     quadrature/construction/subdivider_test.cpp
     quadrature/integral_test.cpp

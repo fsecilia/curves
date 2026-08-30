@@ -3,6 +3,8 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include <crv/math/abs.hpp>
+#include <crv/quadrature/antiderivative_factory.hpp>
 #include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline_factory.hpp>
@@ -12,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -126,7 +129,8 @@ TEST(spline_factory_integration_test, sensitivity_authored_fractional_power_retu
 {
     auto const alpha = scalar_t{0.5};
     auto const curve = fractional_power_t{.alpha = alpha};
-    auto const built_target = sensitivity_curve_target_builder_t<scalar_t>{
+    auto const built_target = sensitivity_curve_target_builder_t<quadrature::antiderivative_factory_t<scalar_t>>{
+        .build_antiderivative = quadrature::antiderivative_factory_t<scalar_t>{},
         .gain_tolerance = policy_t::sensitivity_gain_tolerance,
         .depth_limit = policy_t::sensitivity_depth_limit,
     }(curve, scalar_t{policy_t::domain_end});
@@ -139,6 +143,61 @@ TEST(spline_factory_integration_test, sensitivity_authored_fractional_power_retu
     for (auto const x :
         std::array{std::ldexp(scalar_t{1}, -40), std::ldexp(scalar_t{1}, -24), scalar_t{1}, scalar_t{16}})
         EXPECT_NEAR(built_target.target.gain(x), std::pow(x, alpha) / (alpha + 1.0), 1e-10);
+}
+
+TEST(sensitivity_curve_target_integration_test, power_law_gain_and_transfer_remain_conditioned_below_spline_refinement_scale)
+{
+    auto const alpha = scalar_t{0.5};
+    auto const curve = fractional_power_t{.alpha = alpha};
+    auto constexpr domain_end = scalar_t{256};
+    auto constexpr gain_tolerance = scalar_t{1e-9};
+    auto constexpr depth_limit = int_t{64};
+
+    auto const build_target =
+        sensitivity_curve_target_builder_t<quadrature::antiderivative_factory_t<scalar_t>>{
+            .build_antiderivative = quadrature::antiderivative_factory_t<scalar_t>{},
+            .gain_tolerance = gain_tolerance,
+            .depth_limit = depth_limit,
+        };
+    auto const result = build_target(curve, domain_end);
+    auto const& target = result.target;
+
+    EXPECT_FALSE(result.refinement_limited);
+
+    auto const xs = std::array{
+        scalar_t{0},
+        std::ldexp(scalar_t{1}, -50),
+        std::ldexp(scalar_t{1}, -40),
+        std::ldexp(scalar_t{1}, -32),
+        std::ldexp(scalar_t{1}, -24),
+        std::ldexp(scalar_t{1}, -16),
+        scalar_t{1e-3},
+        scalar_t{0.25},
+        scalar_t{1},
+        scalar_t{16},
+    };
+
+    for (auto const x : xs)
+    {
+        auto const sensitivity = curve(x);
+        auto const expected_gain = sensitivity / (alpha + 1.0);
+        auto const expected_transfer = x * expected_gain;
+        auto const actual_gain = target.gain(x);
+        auto const actual_transfer = target.transfer(x);
+
+        EXPECT_LE(abs(expected_gain - actual_gain), gain_tolerance)
+            << "x=" << x << ", expected gain=" << expected_gain << ", actual gain=" << actual_gain;
+
+        auto const transfer_rounding = scalar_t{8} * std::numeric_limits<scalar_t>::epsilon() * abs(expected_transfer);
+        EXPECT_LE(abs(expected_transfer - actual_transfer), x * gain_tolerance + transfer_rounding)
+            << "x=" << x << ", expected transfer=" << expected_transfer << ", actual transfer=" << actual_transfer;
+        EXPECT_DOUBLE_EQ(x * actual_gain, actual_transfer);
+
+        auto const input_tangent = scalar_t{1.75};
+        auto const actual_jet = target.transfer(jet_t<scalar_t>{x, input_tangent});
+        EXPECT_DOUBLE_EQ(actual_transfer, actual_jet.f);
+        EXPECT_DOUBLE_EQ(sensitivity * input_tangent, actual_jet.df);
+    }
 }
 
 TEST(spline_factory_integration_test, knot_ownership_and_tail_are_continuous_in_gain_space)

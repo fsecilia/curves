@@ -130,8 +130,7 @@ struct quadrature_adaptive_integrator_test_t : Test
     static constexpr auto max_error = scalar_t{5e-14};
 
     using sut_t = adaptive_integrator_t<scalar_t, cache_builder_factory_t, subdivider_t, stack_seeder_t>;
-    sut_t sut{tolerance, depth_limit,
-        cache_builder_factory_t{.factory = &mock_cache_builder_factory, .builder = &mock_cache_builder},
+    sut_t sut{cache_builder_factory_t{.factory = &mock_cache_builder_factory, .builder = &mock_cache_builder},
         subdivider_t{&mock_subdivider}, stack_seeder_t{&mock_stack_seeder}};
 
     auto expect_integration(critical_points_t const& critical_points) -> void
@@ -155,7 +154,7 @@ TEST_F(quadrature_adaptive_integrator_test_t, orchestrates_dependencies_through_
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
     expect_integration(critical_points);
 
-    auto const result = sut(integral, domain_end, critical_points);
+    auto const result = sut(integral, domain_end, tolerance, depth_limit, critical_points);
 
     EXPECT_EQ(result.antiderivative.domain_end(), domain_end);
 }
@@ -165,7 +164,7 @@ TEST_F(quadrature_adaptive_integrator_test_t, receipt_retains_requested_toleranc
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
     expect_integration(critical_points);
 
-    auto const result = sut(integral, domain_end, critical_points);
+    auto const result = sut(integral, domain_end, tolerance, depth_limit, critical_points);
 
     EXPECT_EQ(result.receipt.requested_tolerance, tolerance);
 }
@@ -175,7 +174,7 @@ TEST_F(quadrature_adaptive_integrator_test_t, receipt_retains_segment_count)
     auto const critical_points = critical_points_t{0.25, 0.33, 1.0};
     expect_integration(critical_points);
 
-    auto const result = sut(integral, domain_end, critical_points);
+    auto const result = sut(integral, domain_end, tolerance, depth_limit, critical_points);
 
     EXPECT_EQ(result.receipt.segment_count, int_t{1});
 }

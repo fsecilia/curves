@@ -8,7 +8,6 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
-#include <crv/math/compensated_accumulator.hpp>
 #include <crv/quadrature/antiderivative_cache.hpp>
 #include <cassert>
 #include <concepts>
@@ -18,8 +17,7 @@
 namespace crv::quadrature::construction {
 
 /// accumulates accepted quadrature segments into an antiderivative cache
-template <std::floating_point t_scalar_t, typename t_accumulator_t = compensated_accumulator_t<t_scalar_t>>
-class antiderivative_cache_builder_t
+template <std::floating_point t_scalar_t, typename t_accumulator_t> class antiderivative_cache_builder_t
 {
 public:
     using scalar_t = t_scalar_t;
@@ -79,8 +77,7 @@ private:
 };
 
 /// creates fresh one-shot antiderivative cache builders
-template <std::floating_point t_scalar_t, typename t_accumulator_t = compensated_accumulator_t<t_scalar_t>>
-struct antiderivative_cache_builder_factory_t
+template <std::floating_point t_scalar_t, typename t_accumulator_t> struct antiderivative_cache_builder_factory_t
 {
     using builder_t = antiderivative_cache_builder_t<t_scalar_t, t_accumulator_t>;
 

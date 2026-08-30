@@ -6,6 +6,7 @@
 #include "subdivider.hpp"
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
+#include <numeric>
 
 namespace crv::quadrature::construction {
 namespace {

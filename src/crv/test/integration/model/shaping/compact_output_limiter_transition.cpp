@@ -5,13 +5,9 @@
 
 #include <crv/model/shaping/transforms/compact_output_limiter.hpp>
 #include <crv/model/shaping/transitions/construction/transition_factory_builder.hpp>
-#include <crv/quadrature/construction/adaptive_integrator.hpp>
-#include <crv/quadrature/construction/antiderivative_cache_builder.hpp>
-#include <crv/quadrature/construction/stack_seeder.hpp>
-#include <crv/quadrature/construction/subdivider.hpp>
+#include <crv/quadrature/antiderivative_factory.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
-#include <utility>
 
 namespace crv::shaping::transforms {
 namespace {
@@ -21,19 +17,15 @@ struct shaping_compact_output_limiter_transition_integration_test_t : Test,
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
-    using cache_builder_factory_t = quadrature::construction::antiderivative_cache_builder_factory_t<scalar_t>;
-    using subdivider_t = quadrature::construction::subdivider_t<scalar_t>;
-    using stack_seeder_t = quadrature::construction::stack_seeder_t<scalar_t>;
-    using integrator_t = quadrature::construction::adaptive_integrator_t<scalar_t, cache_builder_factory_t,
-        subdivider_t, stack_seeder_t>;
-    using builder_t = transitions::construction::transition_factory_builder_t<scalar_t, integrator_t>;
-    using factory_t = decltype(std::declval<builder_t const&>()());
+    using antiderivative_factory_t = quadrature::antiderivative_factory_t<scalar_t>;
+    using builder_t = transitions::construction::transition_factory_builder_t<antiderivative_factory_t>;
+    using factory_t = builder_t::factory_t;
 
     static constexpr auto bound = scalar_t{2};
     static constexpr auto delta_y = scalar_t{0.5};
     static constexpr auto tolerance = scalar_t{2e-12};
 
-    builder_t builder{integrator_t{scalar_t{1e-12}, int_t{32}}};
+    builder_t builder{antiderivative_factory_t{}, scalar_t{1e-12}, int_t{32}};
     factory_t factory = builder();
 };
 

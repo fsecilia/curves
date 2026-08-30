@@ -5,7 +5,9 @@
 
 #include "curve_target.hpp"
 #include <crv/math/abs.hpp>
+#include <crv/quadrature/adaptive_integration_receipt.hpp>
 #include <crv/test/test.hpp>
+#include <gmock/gmock.h>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -96,57 +98,95 @@ TEST(curve_target_sensitivity_test, transfer_is_reconstructed_from_conditioned_g
 
 static_assert(gain_tolerance_to_integral_tolerance(scalar_t{256}, scalar_t{0x1p-40}) == scalar_t{0x1p-32});
 
-TEST(curve_target_sensitivity_test, power_law_gain_and_transfer_remain_conditioned_below_spline_refinement_scale)
+struct sensitivity_curve_target_builder_test_t : Test
 {
-    auto const alpha = scalar_t{0.5};
-    auto const curve = fractional_power_t{.alpha = alpha};
-    auto constexpr domain_end = scalar_t{256};
-    auto constexpr gain_tolerance = scalar_t{1e-9};
-    auto constexpr depth_limit = int_t{64};
+    using receipt_t = quadrature::adaptive_integration_receipt_t<scalar_t>;
 
-    auto const build_target = sensitivity_curve_target_builder_t<scalar_t>{
+    struct antiderivative_t
+    {
+        using scalar_t = crv::float_t;
+
+        constexpr auto mean_integrand(scalar_t) const noexcept -> scalar_t { return scalar_t{2}; }
+        constexpr auto derivative(scalar_t) const noexcept -> scalar_t { return scalar_t{3}; }
+    };
+
+    struct result_t
+    {
+        antiderivative_t antiderivative;
+        receipt_t receipt;
+    };
+
+    struct mock_antiderivative_factory_t
+    {
+        virtual ~mock_antiderivative_factory_t() = default;
+        MOCK_METHOD(result_t, call, (scalar_t domain_end, scalar_t tolerance, int_t depth_limit), (const));
+    };
+    StrictMock<mock_antiderivative_factory_t> mock_antiderivative_factory;
+
+    struct antiderivative_factory_t
+    {
+        using scalar_t = crv::float_t;
+
+        template <typename integrand_t>
+        using antiderivative_t = sensitivity_curve_target_builder_test_t::antiderivative_t;
+
+        mock_antiderivative_factory_t* mock = nullptr;
+
+        template <typename curve_t>
+        auto operator()(curve_t, scalar_t domain_end, scalar_t tolerance, int_t depth_limit) const -> result_t
+        {
+            return mock->call(domain_end, tolerance, depth_limit);
+        }
+
+        template <typename curve_t>
+        auto operator()(curve_t, scalar_t domain_end, scalar_t tolerance, auto const&, int_t depth_limit) const
+            -> result_t
+        {
+            return mock->call(domain_end, tolerance, depth_limit);
+        }
+    };
+
+    using sut_t = sensitivity_curve_target_builder_t<antiderivative_factory_t>;
+
+    static constexpr auto domain_end = scalar_t{64};
+    static constexpr auto gain_tolerance = scalar_t{0x1p-30};
+    static constexpr auto integral_tolerance = scalar_t{0x1p-24};
+    static constexpr auto depth_limit = int_t{37};
+
+    sut_t sut{
+        .build_antiderivative = antiderivative_factory_t{&mock_antiderivative_factory},
         .gain_tolerance = gain_tolerance,
         .depth_limit = depth_limit,
     };
-    auto const result = build_target(curve, domain_end);
-    auto const& target = result.target;
+};
 
-    EXPECT_FALSE(result.refinement_limited);
+TEST_F(sensitivity_curve_target_builder_test_t, forwards_integral_tolerance_and_depth_limit)
+{
+    EXPECT_CALL(mock_antiderivative_factory, call(domain_end, integral_tolerance, depth_limit))
+        .WillOnce(Return(result_t{.antiderivative = {},
+            .receipt = {.requested_tolerance = integral_tolerance,
+                .achieved_error = scalar_t{0x1p-27},
+                .max_error = scalar_t{0x1p-28},
+                .segment_count = 9,
+                .refinement_limited = false}}));
 
-    auto const xs = std::array{
-        scalar_t{0},
-        std::ldexp(scalar_t{1}, -50),
-        std::ldexp(scalar_t{1}, -40),
-        std::ldexp(scalar_t{1}, -32),
-        std::ldexp(scalar_t{1}, -24),
-        std::ldexp(scalar_t{1}, -16),
-        scalar_t{1e-3},
-        scalar_t{0.25},
-        scalar_t{1},
-        scalar_t{16},
-    };
+    static_cast<void>(sut(fractional_power_t{.alpha = scalar_t{0.5}}, domain_end));
+}
 
-    for (auto const x : xs)
-    {
-        auto const sensitivity = curve(x);
-        auto const expected_gain = sensitivity / (alpha + 1.0);
-        auto const expected_transfer = x * expected_gain;
-        auto const actual_gain = target.gain(x);
-        auto const actual_transfer = target.transfer(x);
+TEST_F(sensitivity_curve_target_builder_test_t, forwards_receipt_diagnostics)
+{
+    constexpr auto achieved_error = scalar_t{0x1p-27};
+    EXPECT_CALL(mock_antiderivative_factory, call(domain_end, integral_tolerance, depth_limit))
+        .WillOnce(Return(result_t{.antiderivative = {},
+            .receipt = {.requested_tolerance = integral_tolerance,
+                .achieved_error = achieved_error,
+                .max_error = scalar_t{0x1p-28},
+                .segment_count = 9,
+                .refinement_limited = false}}));
 
-        EXPECT_LE(abs(expected_gain - actual_gain), gain_tolerance)
-            << "x=" << x << ", expected gain=" << expected_gain << ", actual gain=" << actual_gain;
+    auto const result = sut(fractional_power_t{.alpha = scalar_t{0.5}}, domain_end);
 
-        auto const transfer_rounding = scalar_t{8} * std::numeric_limits<scalar_t>::epsilon() * abs(expected_transfer);
-        EXPECT_LE(abs(expected_transfer - actual_transfer), x * gain_tolerance + transfer_rounding)
-            << "x=" << x << ", expected transfer=" << expected_transfer << ", actual transfer=" << actual_transfer;
-        EXPECT_DOUBLE_EQ(x * actual_gain, actual_transfer);
-
-        auto const input_tangent = scalar_t{1.75};
-        auto const actual_jet = target.transfer(jet_t{x, input_tangent});
-        EXPECT_DOUBLE_EQ(actual_transfer, actual_jet.f);
-        EXPECT_DOUBLE_EQ(sensitivity * input_tangent, actual_jet.df);
-    }
+    EXPECT_EQ(result.achieved_error, achieved_error);
 }
 
 TEST(curve_target_sensitivity_test, builder_scales_gain_tolerance_into_integral_units)

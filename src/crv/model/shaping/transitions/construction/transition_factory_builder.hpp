@@ -9,21 +9,17 @@
 #include <crv/lib.hpp>
 #include <crv/model/shaping/transitions/factory.hpp>
 #include <crv/model/shaping/transitions/nast.hpp>
-#include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/rules.hpp>
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <concepts>
-#include <type_traits>
 #include <utility>
 
 namespace crv::shaping::transitions::construction {
 
-template <std::floating_point t_scalar_t, typename t_integrator_t> class transition_factory_builder_t
+template <typename t_antiderivative_factory_t> class transition_factory_builder_t
 {
-    using scalar_t = t_scalar_t;
-    using integrator_t = t_integrator_t;
+    using antiderivative_factory_t = t_antiderivative_factory_t;
+    using scalar_t = antiderivative_factory_t::scalar_t;
 
     struct integrand_t
     {
@@ -32,26 +28,25 @@ template <std::floating_point t_scalar_t, typename t_integrator_t> class transit
         [[no_unique_address]] transitions::nast_base_t<scalar_t> base;
     };
 
-    using rule_t = quadrature::rules::gauss_kronrod_t<scalar_t>;
-    using integral_t = quadrature::integral_t<integrand_t, rule_t>;
     using critical_points_t = std::array<scalar_t, 0>;
-    using integration_result_t = std::remove_cvref_t<decltype(std::declval<integrator_t const&>()(
-        std::declval<integral_t>(), std::declval<scalar_t>(), std::declval<critical_points_t const&>()))>;
-    using antiderivative_t = integration_result_t::antiderivative_t;
-    using quadrature_receipt_t = integration_result_t::receipt_t;
+    using antiderivative_t = antiderivative_factory_t::template antiderivative_t<integrand_t>;
+    using quadrature_receipt_t = antiderivative_factory_t::receipt_t;
     using nast_t = transitions::nast_t<scalar_t, antiderivative_t>;
-    using factory_t = transitions::transition_factory_t<nast_t, quadrature_receipt_t>;
 
     static constexpr auto nast_domain_end = scalar_t{0.5};
 
 public:
-    constexpr explicit transition_factory_builder_t(integrator_t integrator) noexcept
-        : integrator_{std::move(integrator)}
+    using factory_t = transitions::transition_factory_t<nast_t, quadrature_receipt_t>;
+
+    constexpr transition_factory_builder_t(
+        antiderivative_factory_t build_antiderivative, scalar_t tolerance, int_t depth_limit) noexcept
+        : build_antiderivative_{std::move(build_antiderivative)}, tolerance_{tolerance}, depth_limit_{depth_limit}
     {}
 
     [[nodiscard]] auto operator()() const -> factory_t
     {
-        auto integration = integrator_(integral_t{integrand_t{}, rule_t{}}, nast_domain_end, critical_points_t{});
+        auto integration
+            = build_antiderivative_(integrand_t{}, nast_domain_end, tolerance_, critical_points_t{}, depth_limit_);
         auto const& receipt = integration.receipt;
 
         assert(std::isfinite(receipt.requested_tolerance) && receipt.requested_tolerance > scalar_t{0}
@@ -72,7 +67,9 @@ public:
     }
 
 private:
-    [[no_unique_address]] integrator_t integrator_;
+    [[no_unique_address]] antiderivative_factory_t build_antiderivative_;
+    scalar_t tolerance_;
+    int_t depth_limit_;
 };
 
 } // namespace crv::shaping::transitions::construction

@@ -4,10 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "transition_factory_builder.hpp"
-#include <crv/quadrature/construction/adaptive_integrator.hpp>
-#include <crv/quadrature/construction/antiderivative_cache_builder.hpp>
-#include <crv/quadrature/construction/stack_seeder.hpp>
-#include <crv/quadrature/construction/subdivider.hpp>
+#include <crv/quadrature/adaptive_integration_receipt.hpp>
+#include <crv/quadrature/antiderivative_factory.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 #include <optional>
@@ -19,6 +17,7 @@ namespace {
 struct transition_factory_builder_test_t : Test
 {
     using scalar_t = float_t;
+    using quadrature_receipt_t = quadrature::adaptive_integration_receipt_t<scalar_t>;
 
     struct antiderivative_t
     {
@@ -26,69 +25,70 @@ struct transition_factory_builder_test_t : Test
         [[nodiscard]] auto operator()(scalar_t) const noexcept -> scalar_t { return scalar_t{0}; }
     };
 
-    struct quadrature_receipt_t
-    {
-        scalar_t requested_tolerance;
-        scalar_t achieved_error;
-        scalar_t max_error;
-        int_t segment_count;
-        bool refinement_limited;
-
-        constexpr auto operator==(quadrature_receipt_t const&) const noexcept -> bool = default;
-    };
-
     struct integration_result_t
     {
-        using antiderivative_t = transition_factory_builder_test_t::antiderivative_t;
+        antiderivative_t antiderivative;
+        quadrature_receipt_t receipt;
+    };
+
+    struct mock_antiderivative_factory_t
+    {
+        virtual ~mock_antiderivative_factory_t() = default;
+        MOCK_METHOD(integration_result_t, call, (scalar_t domain_end, scalar_t tolerance, int_t depth_limit), (const));
+    };
+    StrictMock<mock_antiderivative_factory_t> mock_antiderivative_factory;
+
+    struct antiderivative_factory_t
+    {
+        using scalar_t = transition_factory_builder_test_t::scalar_t;
         using receipt_t = quadrature_receipt_t;
 
-        antiderivative_t antiderivative;
-        receipt_t receipt;
-    };
+        template <typename integrand_t> using antiderivative_t = transition_factory_builder_test_t::antiderivative_t;
 
-    struct mock_integrator_t
-    {
-        virtual ~mock_integrator_t() = default;
-        MOCK_METHOD(integration_result_t, call, (scalar_t domain_end), (const));
-    };
-    StrictMock<mock_integrator_t> mock_integrator;
+        mock_antiderivative_factory_t* mock = nullptr;
 
-    struct integrator_t
-    {
-        mock_integrator_t* mock = nullptr;
-
-        template <typename integral_t>
-        auto operator()(integral_t, scalar_t domain_end, std::array<scalar_t, 0> const&) const -> integration_result_t
+        template <typename integrand_t>
+        auto operator()(integrand_t, scalar_t domain_end, scalar_t tolerance, auto const&, int_t depth_limit) const
+            -> integration_result_t
         {
-            return mock->call(domain_end);
+            return mock->call(domain_end, tolerance, depth_limit);
         }
     };
 
-    struct fixed_integrator_t
+    struct fixed_antiderivative_factory_t
     {
+        using scalar_t = transition_factory_builder_test_t::scalar_t;
+        using receipt_t = quadrature_receipt_t;
+
+        template <typename integrand_t> using antiderivative_t = transition_factory_builder_test_t::antiderivative_t;
+
         integration_result_t result;
 
-        template <typename integral_t>
-        auto operator()(integral_t, scalar_t, std::array<scalar_t, 0> const&) const -> integration_result_t
+        template <typename integrand_t>
+        auto operator()(integrand_t, scalar_t, scalar_t, auto const&, int_t) const -> integration_result_t
         {
             return result;
         }
     };
 
-    using sut_t = transition_factory_builder_t<scalar_t, integrator_t>;
-    using assertion_sut_t = transition_factory_builder_t<scalar_t, fixed_integrator_t>;
-    sut_t sut{integrator_t{&mock_integrator}};
+    static constexpr auto tolerance = scalar_t{0.125};
+    static constexpr auto depth_limit = int_t{37};
+
+    using sut_t = transition_factory_builder_t<antiderivative_factory_t>;
+    using assertion_sut_t = transition_factory_builder_t<fixed_antiderivative_factory_t>;
+    sut_t sut{antiderivative_factory_t{&mock_antiderivative_factory}, tolerance, depth_limit};
 
     static auto assertion_sut(quadrature_receipt_t receipt) -> assertion_sut_t
     {
-        return assertion_sut_t{fixed_integrator_t{
-            .result = {.antiderivative = {}, .receipt = receipt},
-        }};
+        return assertion_sut_t{fixed_antiderivative_factory_t{
+                                   .result = {.antiderivative = {}, .receipt = receipt},
+                               },
+            tolerance, depth_limit};
     }
 
     auto expect_integration(quadrature_receipt_t receipt) -> void
     {
-        EXPECT_CALL(mock_integrator, call(scalar_t{0.5}))
+        EXPECT_CALL(mock_antiderivative_factory, call(scalar_t{0.5}, tolerance, depth_limit))
             .WillOnce(Return(integration_result_t{.antiderivative = {}, .receipt = receipt}));
     }
 };
@@ -96,7 +96,7 @@ struct transition_factory_builder_test_t : Test
 TEST_F(transition_factory_builder_test_t, forwards_quadrature_receipt_unchanged)
 {
     auto const receipt = quadrature_receipt_t{
-        .requested_tolerance = 0.125,
+        .requested_tolerance = tolerance,
         .achieved_error = 0.0625,
         .max_error = 0.03125,
         .segment_count = 53,
@@ -116,7 +116,7 @@ TEST_F(transition_factory_builder_test_t, forwards_quadrature_receipt_unchanged)
 TEST_F(transition_factory_builder_test_t, asserts_refinement_limited_integration)
 {
     auto const sut = assertion_sut({
-        .requested_tolerance = 0.125,
+        .requested_tolerance = tolerance,
         .achieved_error = 0.0625,
         .max_error = 0.03125,
         .segment_count = 1,
@@ -129,7 +129,7 @@ TEST_F(transition_factory_builder_test_t, asserts_refinement_limited_integration
 TEST_F(transition_factory_builder_test_t, asserts_error_above_requested_tolerance)
 {
     auto const sut = assertion_sut({
-        .requested_tolerance = 0.125,
+        .requested_tolerance = tolerance,
         .achieved_error = 0.25,
         .max_error = 0.25,
         .segment_count = 1,
@@ -142,19 +142,14 @@ TEST_F(transition_factory_builder_test_t, asserts_error_above_requested_toleranc
 struct transition_factory_builder_production_test_t : Test
 {
     using scalar_t = float_t;
-    using cache_builder_factory_t = quadrature::construction::antiderivative_cache_builder_factory_t<scalar_t>;
-    using subdivider_t = quadrature::construction::subdivider_t<scalar_t>;
-    using stack_seeder_t = quadrature::construction::stack_seeder_t<scalar_t>;
-    using integrator_t = quadrature::construction::adaptive_integrator_t<scalar_t, cache_builder_factory_t,
-        subdivider_t, stack_seeder_t>;
-    using sut_t = transition_factory_builder_t<scalar_t, integrator_t>;
+    using antiderivative_factory_t = quadrature::antiderivative_factory_t<scalar_t>;
+    using sut_t = transition_factory_builder_t<antiderivative_factory_t>;
+    using factory_t = sut_t::factory_t;
 
     static constexpr auto requested_tolerance = scalar_t{1e-12};
     static constexpr auto depth_limit = int_t{32};
 
-    using factory_t = decltype(std::declval<sut_t const&>()());
-
-    sut_t sut{integrator_t{requested_tolerance, depth_limit}};
+    sut_t sut{antiderivative_factory_t{}, requested_tolerance, depth_limit};
     factory_t factory = sut();
 };
 

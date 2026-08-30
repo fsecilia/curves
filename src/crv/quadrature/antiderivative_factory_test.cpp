@@ -3,21 +3,19 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
+#include "antiderivative_factory.hpp"
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
 #include <crv/math/abs.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/limits.hpp>
-#include <crv/quadrature/construction/adaptive_integrator.hpp>
-#include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/rules.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <cmath>
 #include <functional>
 #include <ostream>
 
-namespace crv::quadrature::construction {
+namespace crv::quadrature {
 namespace {
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -43,7 +41,6 @@ auto is_close(char const* expected_expression, char const* actual_expression, ch
 // --------------------------------------------------------------------------------------------------------------------
 
 using scalar_t = float_t;
-using rule_t = rules::gauss_kronrod_t<scalar_t>;
 
 struct integrand_t
 {
@@ -54,8 +51,6 @@ struct integrand_t
 
     friend auto operator<<(std::ostream& out, integrand_t const& src) -> std::ostream& { return out << src.name; }
 };
-
-using integral_t = integral_t<integrand_t, rule_t>;
 
 constexpr auto domain_end = scalar_t{256.0};
 constexpr auto depth_limit = int_t{64};
@@ -88,12 +83,12 @@ struct quadrature_integration_test_t : TestWithParam<param_t>
 
     static constexpr auto tolerance = scalar_t{1e-9};
 
-    adaptive_integrator_t<scalar_t> adaptive_integrator{tolerance, depth_limit};
+    antiderivative_factory_t<scalar_t> build_antiderivative{};
 };
 
 TEST_P(quadrature_integration_test_t, matches_analytic_reference)
 {
-    auto const result = adaptive_integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
+    auto const result = build_antiderivative(integrand, domain_end, tolerance, empty_critical_points);
 
     EXPECT_LT(result.receipt.achieved_error, tolerance);
     EXPECT_LT(result.receipt.max_error, tolerance);
@@ -125,6 +120,48 @@ param_t const smooth_integrands[] = {
 };
 INSTANTIATE_TEST_SUITE_P(smooth_integrands, quadrature_integration_test_t, ValuesIn(smooth_integrands));
 
+struct observed_rule_t
+{
+    using scalar_t = crv::float_t;
+    using implementation_t = rules::gauss_kronrod_t<scalar_t>;
+    using estimate_t = implementation_t::estimate_t;
+
+    int_t* estimate_calls;
+
+    template <typename integrand_t>
+    auto estimate(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> estimate_t
+    {
+        ++*estimate_calls;
+        return implementation_t{}.estimate(left, right, integrand);
+    }
+
+    template <typename integrand_t>
+    auto integrate(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
+    {
+        return implementation_t{}.integrate(left, right, integrand);
+    }
+
+    template <typename integrand_t>
+    auto average(scalar_t left, scalar_t right, integrand_t const& integrand) const noexcept -> scalar_t
+    {
+        return implementation_t{}.average(left, right, integrand);
+    }
+};
+
+TEST(antiderivative_factory_test_t, explicit_rule_instance_is_injected)
+{
+    auto estimate_calls = int_t{0};
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
+    auto const integrand = integrand_t{"x", [](scalar_t x) { return x; }};
+    using result_t = antiderivative_factory_t<scalar_t>::result_t<integrand_t, observed_rule_t>;
+
+    result_t const result = build_antiderivative(
+        integrand, scalar_t{1}, scalar_t{1e-9}, depth_limit, observed_rule_t{&estimate_calls});
+    static_cast<void>(result);
+
+    EXPECT_GT(estimate_calls, int_t{0});
+}
+
 // ====================================================================================================================
 // adaptive refinement stress
 // ====================================================================================================================
@@ -150,8 +187,8 @@ TEST(quadrature_integration_adaptive_test_t, localized_bump_triggers_refinement)
     auto const analytic_antiderivative
         = [](scalar_t x) { return sigma * half_sqrt_pi * (std::erf((x - center) / sigma) + std::erf(center / sigma)); };
 
-    auto integrator = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
-    auto const result = integrator(integral_t{bump, rule_t{}}, domain_end, empty_critical_points);
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
+    auto const result = build_antiderivative(bump, domain_end, tolerance);
 
     EXPECT_LT(result.receipt.achieved_error, tolerance);
 
@@ -184,11 +221,11 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
                 + (x - kink_location) * (x - kink_location) / scalar_t{2.0};
     };
 
-    auto blind = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
-    auto guided = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
 
-    auto const blind_result = blind(integral_t{kink, rule_t{}}, domain_end, empty_critical_points);
-    auto const guided_result = guided(integral_t{kink, rule_t{}}, domain_end, std::array{kink_location});
+    auto const blind_result = build_antiderivative(kink, domain_end, tolerance, empty_critical_points);
+    auto const guided_result =
+        build_antiderivative(kink, domain_end, tolerance, std::array{kink_location});
 
     EXPECT_LT(blind_result.receipt.achieved_error, tolerance);
     EXPECT_LT(guided_result.receipt.achieved_error, tolerance);
@@ -209,8 +246,9 @@ TEST(quadrature_integration_adaptive_test_t, structural_refinement_limit_returns
     constexpr auto tolerance = scalar_t{1e-18};
     constexpr auto restrictive_depth_limit = int_t{0};
 
-    auto integrator = adaptive_integrator_t<scalar_t>{tolerance, restrictive_depth_limit};
-    auto const result = integrator(integral_t{difficult, rule_t{}}, scalar_t{1.0}, empty_critical_points);
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
+    auto const result =
+        build_antiderivative(difficult, scalar_t{1.0}, tolerance, restrictive_depth_limit);
 
     EXPECT_TRUE(result.receipt.refinement_limited);
     EXPECT_GT(result.receipt.achieved_error, tolerance);
@@ -233,11 +271,11 @@ TEST(quadrature_integration_invariant_test_t, tighter_tolerance_shrinks_error)
 
     auto prev_error = std::numeric_limits<scalar_t>::infinity();
     auto prev_segments = int_t{0};
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
 
     for (auto const tol : tolerances)
     {
-        auto integrator = adaptive_integrator_t<scalar_t>{tol, depth_limit};
-        auto const result = integrator(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
+        auto const result = build_antiderivative(integrand, domain_end, tol, empty_critical_points);
 
         EXPECT_LT(result.receipt.achieved_error, tol);
         EXPECT_LE(result.receipt.achieved_error, prev_error);
@@ -257,11 +295,11 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
     auto const integrand = integrand_t{"1/(1+x^2)", [](scalar_t x) { return 1.0 / (1.0 + x * x); }};
     constexpr auto tolerance = scalar_t{1e-12};
 
-    auto bare = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
-    auto split = adaptive_integrator_t<scalar_t>{tolerance, depth_limit};
+    auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
 
-    auto const bare_result = bare(integral_t{integrand, rule_t{}}, domain_end, empty_critical_points);
-    auto const split_result = split(integral_t{integrand, rule_t{}}, domain_end, std::array{32.0, 64.0, 128.0});
+    auto const bare_result = build_antiderivative(integrand, domain_end, tolerance, empty_critical_points);
+    auto const split_result =
+        build_antiderivative(integrand, domain_end, tolerance, std::array{32.0, 64.0, 128.0});
 
     auto const& bare_antiderivative = bare_result.antiderivative;
     auto const& split_antiderivative = split_result.antiderivative;
@@ -273,4 +311,4 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
 }
 
 } // namespace
-} // namespace crv::quadrature::construction
+} // namespace crv::quadrature

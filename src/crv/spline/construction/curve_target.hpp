@@ -8,13 +8,10 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
-#include <crv/quadrature/construction/adaptive_integrator.hpp>
-#include <crv/quadrature/integral.hpp>
-#include <crv/quadrature/rules.hpp>
 #include <crv/ranges.hpp>
-#include <array>
 #include <cassert>
 #include <concepts>
+#include <type_traits>
 #include <utility>
 
 namespace crv::spline {
@@ -116,29 +113,47 @@ template <typename t_target_t> struct sensitivity_curve_target_result_t
 };
 
 /// constructs a sensitivity target by adaptively integrating the authored sensitivity curve
-template <std::floating_point t_scalar_t> struct sensitivity_curve_target_builder_t
+template <typename t_antiderivative_factory_t> struct sensitivity_curve_target_builder_t
 {
-    using scalar_t = t_scalar_t;
-    using rule_t = quadrature::rules::gauss_kronrod_t<scalar_t>;
+    using antiderivative_factory_t = t_antiderivative_factory_t;
+    using scalar_t = antiderivative_factory_t::scalar_t;
 
+    [[no_unique_address]] antiderivative_factory_t build_antiderivative;
     scalar_t gain_tolerance;
     int_t depth_limit;
 
-    template <typename curve_t> auto operator()(curve_t curve, scalar_t domain_end) const
+    template <typename curve_t>
+    using antiderivative_t = antiderivative_factory_t::template antiderivative_t<std::remove_cvref_t<curve_t>>;
+
+    template <typename curve_t> using target_t = sensitivity_curve_target_t<antiderivative_t<curve_t>>;
+    template <typename curve_t> using result_t = sensitivity_curve_target_result_t<target_t<curve_t>>;
+
+    template <typename curve_t> auto operator()(curve_t curve, scalar_t domain_end) const -> result_t<curve_t>
     {
-        return operator()(std::move(curve), domain_end, std::array<scalar_t, 0>{});
+        assert(domain_end > scalar_t{0});
+        auto const integral_tolerance = gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance);
+        auto result = build_antiderivative(std::move(curve), domain_end, integral_tolerance, depth_limit);
+        auto target = target_t<curve_t>{std::move(result.antiderivative)};
+
+        return {
+            .target = std::move(target),
+            .achieved_error = result.receipt.achieved_error,
+            .max_error = result.receipt.max_error,
+            .refinement_limited = result.receipt.refinement_limited,
+        };
     }
 
     template <typename curve_t>
     auto operator()(curve_t curve, scalar_t domain_end, compatible_range<scalar_t> auto const& critical_points) const
+        -> result_t<curve_t>
     {
         assert(domain_end > scalar_t{0});
         auto const integral_tolerance = gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance);
-        auto integrate = quadrature::construction::adaptive_integrator_t<scalar_t>{integral_tolerance, depth_limit};
-        auto result = integrate(quadrature::integral_t{std::move(curve), rule_t{}}, domain_end, critical_points);
+        auto result =
+            build_antiderivative(std::move(curve), domain_end, integral_tolerance, critical_points, depth_limit);
+        auto target = target_t<curve_t>{std::move(result.antiderivative)};
 
-        auto target = sensitivity_curve_target_t{std::move(result.antiderivative)};
-        return sensitivity_curve_target_result_t<decltype(target)>{
+        return {
             .target = std::move(target),
             .achieved_error = result.receipt.achieved_error,
             .max_error = result.receipt.max_error,
