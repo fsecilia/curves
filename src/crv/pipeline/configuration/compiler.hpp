@@ -29,8 +29,8 @@ class compiler_t
     using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pipeline_config_t>;
     using output_transform_builder_t
         = construction::output_transform_builder_t<decltype(pipeline_t::config_t{}.output_transform)>;
-    using config_builder_t = construction::config_builder_t<
-        construction::velocity_scale_builder_t, construction::half_life_builder_t, output_transform_builder_t>;
+    using config_builder_t = construction::config_builder_t<construction::velocity_scale_builder_t,
+        construction::half_life_builder_t, output_transform_builder_t>;
     using authored_validator_t = construction::authored_validator_t<construction::half_life_builder_t>;
     using critical_point_builder_t
         = construction::critical_point_builder_t<typename spline_policy_t::scalar_t, typename spline_policy_t::x_t>;

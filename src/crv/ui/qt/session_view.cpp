@@ -148,7 +148,8 @@ static auto compiler_error_message(compiler_error_t const& error) -> QString
 
 } // namespace
 
-session_view_t::session_view_t(session_model_t model) noexcept : model_{std::move(model)} {}
+session_view_t::session_view_t(session_model_t model) noexcept : model_{std::move(model)}
+{}
 
 auto session_view_t::open() -> open_result_t
 {
@@ -265,8 +266,8 @@ auto session_view_t::disable(model::device_t const& device, model::profile_t con
     return result;
 }
 
-auto session_view_t::apply(model::device_t const& device, model::profile_t const& profile,
-    pipeline::configuration::apply_mode_t mode) -> bool
+auto session_view_t::apply(
+    model::device_t const& device, model::profile_t const& profile, pipeline::configuration::apply_mode_t mode) -> bool
 {
     if (!model_.has_selected_attachment())
     {
@@ -318,8 +319,8 @@ auto session_view_t::report_saved() -> void
 
 auto session_view_t::report_save_failure(QString const& detail) -> void
 {
-    auto message = QString::fromStdString(
-        CRV_TR("Live configuration was applied, but saving the authored settings failed."));
+    auto message
+        = QString::fromStdString(CRV_TR("Live configuration was applied, but saving the authored settings failed."));
     if (!detail.isEmpty()) message += "\n" + detail;
     set_status(std::move(message), true);
 }

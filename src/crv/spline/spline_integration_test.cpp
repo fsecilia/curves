@@ -145,7 +145,8 @@ TEST(spline_factory_integration_test, sensitivity_authored_fractional_power_retu
         EXPECT_NEAR(built_target.target.gain(x), std::pow(x, alpha) / (alpha + 1.0), 1e-10);
 }
 
-TEST(sensitivity_curve_target_integration_test, power_law_gain_and_transfer_remain_conditioned_below_spline_refinement_scale)
+TEST(sensitivity_curve_target_integration_test,
+    power_law_gain_and_transfer_remain_conditioned_below_spline_refinement_scale)
 {
     auto const alpha = scalar_t{0.5};
     auto const curve = fractional_power_t{.alpha = alpha};
@@ -153,12 +154,11 @@ TEST(sensitivity_curve_target_integration_test, power_law_gain_and_transfer_rema
     auto constexpr gain_tolerance = scalar_t{1e-9};
     auto constexpr depth_limit = int_t{64};
 
-    auto const build_target =
-        sensitivity_curve_target_builder_t<quadrature::antiderivative_factory_t<scalar_t>>{
-            .build_antiderivative = quadrature::antiderivative_factory_t<scalar_t>{},
-            .gain_tolerance = gain_tolerance,
-            .depth_limit = depth_limit,
-        };
+    auto const build_target = sensitivity_curve_target_builder_t<quadrature::antiderivative_factory_t<scalar_t>>{
+        .build_antiderivative = quadrature::antiderivative_factory_t<scalar_t>{},
+        .gain_tolerance = gain_tolerance,
+        .depth_limit = depth_limit,
+    };
     auto const result = build_target(curve, domain_end);
     auto const& target = result.target;
 

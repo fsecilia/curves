@@ -149,8 +149,8 @@ template <typename t_antiderivative_factory_t> struct sensitivity_curve_target_b
     {
         assert(domain_end > scalar_t{0});
         auto const integral_tolerance = gain_tolerance_to_integral_tolerance(domain_end, gain_tolerance);
-        auto result =
-            build_antiderivative(std::move(curve), domain_end, integral_tolerance, critical_points, depth_limit);
+        auto result
+            = build_antiderivative(std::move(curve), domain_end, integral_tolerance, critical_points, depth_limit);
         auto target = target_t<curve_t>{std::move(result.antiderivative)};
 
         return {

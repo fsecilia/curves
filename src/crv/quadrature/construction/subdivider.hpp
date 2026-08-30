@@ -53,8 +53,7 @@ template <typename t_scalar_t> struct refinement_predicate_t
 };
 
 /// adaptively subdivides the contents of a segment stack
-template <std::floating_point t_scalar_t, typename t_refinement_predicate_t, typename t_bisector_t>
-struct subdivider_t
+template <std::floating_point t_scalar_t, typename t_refinement_predicate_t, typename t_bisector_t> struct subdivider_t
 {
     using scalar_t = t_scalar_t;
     using refinement_predicate_t = t_refinement_predicate_t;

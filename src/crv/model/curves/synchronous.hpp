@@ -211,10 +211,7 @@ struct synchronous_t
         }
 
         /// scalar evaluation is saturated and finite for every finite real input
-        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t
-        {
-            return {};
-        }
+        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
 
         /// array of critical points
         ///

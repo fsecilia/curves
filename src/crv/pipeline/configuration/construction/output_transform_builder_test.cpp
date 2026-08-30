@@ -38,7 +38,6 @@ TEST_P(output_transform_builder_test_t, matrix_satisfies_validation_tolerances)
     EXPECT_TRUE(is_valid(sut_t{}(-degrees, anisotropy, 26'000, 1000)));
 }
 
-
 struct output_scale_builder_test_case_t
 {
     int_t input_dpi;
@@ -55,8 +54,7 @@ struct output_scale_builder_test_t : TestWithParam<output_scale_builder_test_cas
 TEST_P(output_scale_builder_test_t, rounds_ratio_to_transform_scale)
 {
     auto const& [input_dpi, output_dpi, expected_raw] = GetParam();
-    EXPECT_EQ(sut_t{}(0.0, 1.0, input_dpi, output_dpi).output_scale,
-        transform_t::scale_t::literal(expected_raw));
+    EXPECT_EQ(sut_t{}(0.0, 1.0, input_dpi, output_dpi).output_scale, transform_t::scale_t::literal(expected_raw));
 }
 
 constexpr auto output_scale_cases = std::array{

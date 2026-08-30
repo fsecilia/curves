@@ -155,8 +155,8 @@ TEST(antiderivative_factory_test_t, explicit_rule_instance_is_injected)
     auto const integrand = integrand_t{"x", [](scalar_t x) { return x; }};
     using result_t = antiderivative_factory_t<scalar_t>::result_t<integrand_t, observed_rule_t>;
 
-    result_t const result = build_antiderivative(
-        integrand, scalar_t{1}, scalar_t{1e-9}, depth_limit, observed_rule_t{&estimate_calls});
+    result_t const result
+        = build_antiderivative(integrand, scalar_t{1}, scalar_t{1e-9}, depth_limit, observed_rule_t{&estimate_calls});
     static_cast<void>(result);
 
     EXPECT_GT(estimate_calls, int_t{0});
@@ -224,8 +224,7 @@ TEST(quadrature_integration_adaptive_test_t, critical_point_tames_kink)
     auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
 
     auto const blind_result = build_antiderivative(kink, domain_end, tolerance, empty_critical_points);
-    auto const guided_result =
-        build_antiderivative(kink, domain_end, tolerance, std::array{kink_location});
+    auto const guided_result = build_antiderivative(kink, domain_end, tolerance, std::array{kink_location});
 
     EXPECT_LT(blind_result.receipt.achieved_error, tolerance);
     EXPECT_LT(guided_result.receipt.achieved_error, tolerance);
@@ -247,8 +246,7 @@ TEST(quadrature_integration_adaptive_test_t, structural_refinement_limit_returns
     constexpr auto restrictive_depth_limit = int_t{0};
 
     auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
-    auto const result =
-        build_antiderivative(difficult, scalar_t{1.0}, tolerance, restrictive_depth_limit);
+    auto const result = build_antiderivative(difficult, scalar_t{1.0}, tolerance, restrictive_depth_limit);
 
     EXPECT_TRUE(result.receipt.refinement_limited);
     EXPECT_GT(result.receipt.achieved_error, tolerance);
@@ -298,8 +296,7 @@ TEST(quadrature_integration_invariant_test_t, critical_points_do_not_bias_smooth
     auto build_antiderivative = antiderivative_factory_t<scalar_t>{};
 
     auto const bare_result = build_antiderivative(integrand, domain_end, tolerance, empty_critical_points);
-    auto const split_result =
-        build_antiderivative(integrand, domain_end, tolerance, std::array{32.0, 64.0, 128.0});
+    auto const split_result = build_antiderivative(integrand, domain_end, tolerance, std::array{32.0, 64.0, 128.0});
 
     auto const& bare_antiderivative = bare_result.antiderivative;
     auto const& split_antiderivative = split_result.antiderivative;

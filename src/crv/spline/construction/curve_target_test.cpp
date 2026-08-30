@@ -7,9 +7,9 @@
 #include <crv/math/abs.hpp>
 #include <crv/quadrature/adaptive_integration_receipt.hpp>
 #include <crv/test/test.hpp>
-#include <gmock/gmock.h>
 #include <array>
 #include <cmath>
+#include <gmock/gmock.h>
 #include <limits>
 
 namespace crv::spline {

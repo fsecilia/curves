@@ -64,10 +64,7 @@ template <typename t_config_t, typename t_gain_t, typename t_speed_filter_t> str
         }
 
         auto const& transform = config.output_transform;
-        if (!transform.output_scale_is_valid())
-        {
-            return {.error = runtime_config_validation_error_t::output_scale};
-        }
+        if (!transform.output_scale_is_valid()) return {.error = runtime_config_validation_error_t::output_scale};
         if (!transform.rotation_components_are_valid())
         {
             return {.error = runtime_config_validation_error_t::output_transform_rotation_component};

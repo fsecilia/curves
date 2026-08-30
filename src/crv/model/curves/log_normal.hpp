@@ -99,10 +99,7 @@ struct log_normal_t
         }
 
         /// scalar evaluation is saturated and finite for every finite real input
-        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t
-        {
-            return {};
-        }
+        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
 
         /// no interior critical points
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }

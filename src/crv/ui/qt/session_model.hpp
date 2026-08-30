@@ -44,10 +44,7 @@ public:
                 = std::ranges::find_if(*next, [&](auto const& attachment) { return attachment.id == *previous_id; });
             if (it != next->end()) next_selection = static_cast<std::size_t>(std::ranges::distance(next->begin(), it));
         }
-        else if (!has_refreshed_ && next->size() == 1)
-        {
-            next_selection = 0;
-        }
+        else if (!has_refreshed_ && next->size() == 1) next_selection = 0;
 
         attachments_ = std::move(*next);
         selected_index_ = next_selection;
