@@ -34,7 +34,7 @@ if(ENABLE_COVERAGE)
         COMMAND lcov --capture --directory . --output-file coverage.info --ignore-errors count --ignore-errors inconsistent --ignore-errors unused
 
         # filter out system headers and tests
-        COMMAND lcov --remove coverage.info '/usr/*' '*/unit_tests/*' '*/test/*' --output-file coverage.info --ignore-errors count --ignore-errors inconsistent --ignore-errors unused
+        COMMAND lcov --remove coverage.info '/usr/*' '*/regression_tests/*' '*/test/*' --output-file coverage.info --ignore-errors count --ignore-errors inconsistent --ignore-errors unused
 
         # generate the HTML report
         COMMAND genhtml coverage.info --output-directory coverage_report --ignore-errors count --ignore-errors inconsistent --ignore-errors unused

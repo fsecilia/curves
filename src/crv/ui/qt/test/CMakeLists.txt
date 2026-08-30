@@ -3,13 +3,9 @@
 #
 # contains qt6-specific integration tests
 
-add_executable(qt_ui_integration_test
-    i18n_integration_test.cpp
-)
-target_link_libraries(qt_ui_integration_test PRIVATE qt_ui qt_ui_testing testing Qt6::Core Qt6::Test)
-set_target_properties(qt_ui_integration_test PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
-add_test(NAME qt_ui_integration_test COMMAND qt_ui_integration_test)
-add_dependencies(build_tests qt_ui_integration_test)
+target_sources(qt_ui_regression_tests PRIVATE i18n_integration_test.cpp)
+target_link_libraries(qt_ui_regression_tests PRIVATE Qt6::Core)
+set_target_properties(qt_ui_regression_tests PROPERTIES QT_EXCLUDE_FROM_TRANSLATION ON)
 
 #
 # ts to qm
@@ -33,10 +29,10 @@ add_custom_command(
 set_source_files_properties("${qm_file}" PROPERTIES QT_RESOURCE_ALIAS "${qm_filename}")
 
 # compile resource into test binary
-qt6_add_resources(qt_ui_integration_test "test_translations"
+qt6_add_resources(qt_ui_regression_tests "test_translations"
     PREFIX "/i18n"
     FILES "${qm_file}"
 )
 
 # depend on custom command
-target_sources(qt_ui_integration_test PRIVATE "${qm_file}")
+target_sources(qt_ui_regression_tests PRIVATE "${qm_file}")

@@ -199,8 +199,8 @@ set(shared_lib_kernel_files
     traits.hpp
 )
 
-# files in user-mode unit test
-set(unit_test_files
+# files in user-mode regression tests
+set(regression_test_files
     algorithm_test.cpp
     bit_test.cpp
     bitwise_enum_test.cpp
@@ -259,8 +259,10 @@ set(unit_test_files
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
     model/curves/traits_test.cpp
+    model/shaping/output_limited_curve_integration_test.cpp
     model/shaping/output_limited_curve_test.cpp
     model/shaping/transforms/compact_output_limiter_test.cpp
+    model/shaping/transforms/compact_output_limiter_transition_integration_test.cpp
     model/shaping/shaped_curve_test.cpp
     model/shaping/transitions/concepts_test.cpp
     model/shaping/transitions/construction/transition_factory_builder_test.cpp
@@ -340,15 +342,23 @@ set(unit_test_files
     spline/construction/weight_functions/hyperbolic_decay_test.cpp
     spline/construction/weight_functions/uniform_test.cpp
     spline/pipeline_config_test.cpp
+    spline/segment_integration_test.cpp
     spline/segment_locator_test.cpp
     spline/segment_test.cpp
     spline/spline_factory_test.cpp
+    spline/spline_integration_test.cpp
     spline/spline_test.cpp
     spline/tangent_extension_test.cpp
     spline/validator_test.cpp
     traits_test.cpp
     tuple_test.cpp
     variant_test.cpp
+)
+
+# files in longer-running validation tests
+set(validation_test_files
+    math/fixed/rsqrt_validation_test.cpp
+    math/stats_validation_test.cpp
 )
 
 #
@@ -499,24 +509,23 @@ endif()
 if (crv_enable_testing)
     add_subdirectory(test)
 
-    add_executable(unit_tests)
-    target_sources(unit_tests PRIVATE "${unit_test_files}")
-    target_link_libraries(unit_tests PUBLIC
+    add_executable(regression_tests)
+    target_sources(regression_tests PRIVATE "${regression_test_files}")
+    target_link_libraries(regression_tests PUBLIC
         lib
         testing
     )
-    add_test(NAME unit_tests COMMAND unit_tests)
-    add_dependencies(build_tests unit_tests)
+    add_test(NAME regression_tests COMMAND regression_tests)
+    add_dependencies(build_tests regression_tests)
 
-    if (BUILD_INTEGRATION_TESTS)
-        add_executable(spline_integration_test
-            spline/segment_integration_test.cpp
-            spline/spline_integration_test.cpp
-        )
-        target_link_libraries(spline_integration_test PRIVATE lib testing)
-        add_test(NAME spline_integration_test COMMAND spline_integration_test)
-        add_dependencies(build_tests spline_integration_test)
-    endif()
+    add_executable(validation_tests)
+    target_sources(validation_tests PRIVATE "${validation_test_files}")
+    target_link_libraries(validation_tests PUBLIC
+        lib
+        testing
+    )
+    add_test(NAME validation_tests COMMAND validation_tests)
+    add_dependencies(build_tests validation_tests)
 endif()
 
 add_subdirectory(kernel)

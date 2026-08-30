@@ -267,52 +267,6 @@ struct rsqrt_property_test_t : Test
     }
 };
 
-TEST_F(rsqrt_property_test_t, fuzz)
-{
-    std::mt19937_64 rng{0xF012345678};
-    auto literal_value_distribution = std::uniform_int_distribution<in_value_t>{0, max<in_value_t>()};
-
-    for (auto i = 0; i < 10000; ++i) test_property(in_t::literal(literal_value_distribution(rng)));
-}
-
-// sweeping test for specific ranges
-struct rsqrt_property_test_sweep_t : rsqrt_property_test_t
-{
-    static auto const sample_count = in_value_t{10000};
-
-    // sweeps [range_begin, range_begin + sample_count) densely
-    auto sweep_range(in_t range_begin) const noexcept -> void
-    {
-        for (auto sample = in_value_t{}; sample < sample_count; ++sample)
-        {
-            test_property(range_begin + in_t::literal(sample));
-        }
-    }
-};
-
-TEST_F(rsqrt_property_test_sweep_t, sweep_low)
-{
-    sweep_range(in_t::literal(1));
-}
-
-TEST_F(rsqrt_property_test_sweep_t, sweep_low_reduced_range)
-{
-    // Maps to 0.5 in the reduced range. Sweeping across this crosses a power-of-two boundary, testing both the
-    // transition of clz shifts and the minimax bounds.
-    sweep_range(in_t::literal(in_value_t{1} << 31) - in_t::literal(sample_count / 2));
-}
-
-TEST_F(rsqrt_property_test_sweep_t, sweep_mid_reduced_range)
-{
-    // Maps to exactly 0.75 in the reduced range.
-    sweep_range(in_t::literal(in_value_t{3} << 30) - in_t::literal(sample_count / 2));
-}
-
-TEST_F(rsqrt_property_test_sweep_t, sweep_high)
-{
-    sweep_range(in_t::literal(max<in_value_t>() - sample_count - 1));
-}
-
 // parameterized test for specific values
 struct rsqrt_property_test_parameterized_t : rsqrt_property_test_t, WithParamInterface<in_t>
 {

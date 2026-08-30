@@ -166,8 +166,8 @@ if (crv_enable_testing)
     )
     target_link_libraries(qt_ui_testing PUBLIC qt_ui lib)
 
-    # qt ui unit tests
-    add_executable(qt_ui_test
+    # qt ui regression tests
+    add_executable(qt_ui_regression_tests
         app_test.cpp
         command/stack_adapter_test.cpp
         i18n_test.cpp
@@ -176,9 +176,9 @@ if (crv_enable_testing)
         widgets/graph/grid_renderer_test.cpp
         widgets/graph_test.cpp
     )
-    target_link_libraries(qt_ui_test PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
-    add_test(NAME qt_ui_test COMMAND qt_ui_test)
-    add_dependencies(build_tests qt_ui_test)
+    target_link_libraries(qt_ui_regression_tests PRIVATE qt_ui qt_ui_testing testing Qt6::Test)
+    add_test(NAME qt_ui_regression_tests COMMAND qt_ui_regression_tests)
+    add_dependencies(build_tests qt_ui_regression_tests)
 
     add_subdirectory(test)
 endif()
