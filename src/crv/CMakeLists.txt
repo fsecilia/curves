@@ -506,9 +506,9 @@ if (ENABLE_ASAN)
     target_link_options(lib PUBLIC link_options_user_mode -fsanitize=address)
 endif()
 
-if (BUILD_TESTING)
-    add_subdirectory(test)
+add_subdirectory(test)
 
+if (BUILD_TESTING)
     add_executable(regression_tests)
     target_sources(regression_tests PRIVATE "${regression_test_files}")
     target_link_libraries(regression_tests PUBLIC

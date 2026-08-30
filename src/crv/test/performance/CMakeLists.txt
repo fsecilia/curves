@@ -3,22 +3,20 @@
 #
 # various performance tests
 
-if (BUILD_INTEGRATION_TESTS)
-    add_executable(performance_test_shifted_int_divider
-        performance.hpp
-        shifted_int_divider.cpp
-    )
-    target_link_libraries(performance_test_shifted_int_divider PRIVATE lib)
+add_executable(performance_test_shifted_int_divider
+    performance.hpp
+    shifted_int_divider.cpp
+)
+target_link_libraries(performance_test_shifted_int_divider PRIVATE lib)
 
-    add_executable(performance_test_pipeline
-        performance.hpp
-        pipeline.cpp
-    )
-    target_link_libraries(performance_test_pipeline PRIVATE lib)
+add_executable(performance_test_pipeline
+    performance.hpp
+    pipeline.cpp
+)
+target_link_libraries(performance_test_pipeline PRIVATE lib)
 
-    add_executable(performance_test_spline_hint
-        performance.hpp
-        spline_hint.cpp
-    )
-    target_link_libraries(performance_test_spline_hint PRIVATE lib)
-endif()
+add_executable(performance_test_spline_hint
+    performance.hpp
+    spline_hint.cpp
+)
+target_link_libraries(performance_test_spline_hint PRIVATE lib)
