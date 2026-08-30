@@ -88,7 +88,7 @@ struct transition_factory_builder_test_t : Test
 
     auto expect_integration(quadrature_receipt_t receipt) -> void
     {
-        EXPECT_CALL(mock_integrator, call(sut_t::nast_domain_end))
+        EXPECT_CALL(mock_integrator, call(scalar_t{0.5}))
             .WillOnce(Return(integration_result_t{.antiderivative = {}, .receipt = receipt}));
     }
 };
@@ -105,8 +105,8 @@ TEST_F(transition_factory_builder_test_t, forwards_quadrature_receipt_unchanged)
     expect_integration(receipt);
 
     auto const factory = sut();
-    auto const actual = factory(continuity_t::cinfinity,
-        []<typename product_t>(product_t product) -> std::optional<quadrature_receipt_t> {
+    auto const actual = factory(
+        continuity_t::cinfinity, []<typename product_t>(product_t product) -> std::optional<quadrature_receipt_t> {
             return product.quadrature_receipt;
         });
 
@@ -145,15 +145,17 @@ struct transition_factory_builder_production_test_t : Test
     using cache_builder_factory_t = quadrature::construction::antiderivative_cache_builder_factory_t<scalar_t>;
     using subdivider_t = quadrature::construction::subdivider_t<scalar_t>;
     using stack_seeder_t = quadrature::construction::stack_seeder_t<scalar_t>;
-    using integrator_t = quadrature::construction::adaptive_integrator_t<
-        scalar_t, cache_builder_factory_t, subdivider_t, stack_seeder_t>;
+    using integrator_t = quadrature::construction::adaptive_integrator_t<scalar_t, cache_builder_factory_t,
+        subdivider_t, stack_seeder_t>;
     using sut_t = transition_factory_builder_t<scalar_t, integrator_t>;
 
     static constexpr auto requested_tolerance = scalar_t{1e-12};
     static constexpr auto depth_limit = int_t{32};
 
+    using factory_t = decltype(std::declval<sut_t const&>()());
+
     sut_t sut{integrator_t{requested_tolerance, depth_limit}};
-    sut_t::factory_t factory = sut();
+    factory_t factory = sut();
 };
 
 TEST_F(transition_factory_builder_production_test_t, nast_meets_requested_quadrature_tolerance)

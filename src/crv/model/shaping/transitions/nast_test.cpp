@@ -227,5 +227,39 @@ TEST_F(nast_test_t, antiderivative_jet_on_upper_exterior_has_input_tangent)
     EXPECT_EQ(sut.antiderivative(jet_t<scalar_t>{2.0, 3.0}), (jet_t<scalar_t>{1.5, 3.0}));
 }
 
+struct domain_tracking_antiderivative_t
+{
+    int_t* domain_end_calls;
+
+    [[nodiscard]] auto domain_end() const noexcept -> scalar_t
+    {
+        ++*domain_end_calls;
+        return scalar_t{0.5};
+    }
+
+    [[nodiscard]] auto operator()(scalar_t) const noexcept -> scalar_t { return scalar_t{0}; }
+};
+
+TEST(shaping_transitions_nast_domain_test_t, antiderivative_evaluation_does_not_requery_validated_domain_end)
+{
+    auto domain_end_calls = int_t{0};
+    auto const sut
+        = nast_t<scalar_t, domain_tracking_antiderivative_t>{domain_tracking_antiderivative_t{&domain_end_calls}};
+    static_cast<void>(sut.antiderivative(scalar_t{0.25}));
+    EXPECT_EQ(domain_end_calls, int_t{1});
+}
+
+struct wrong_domain_antiderivative_t
+{
+    [[nodiscard]] auto domain_end() const noexcept -> scalar_t { return scalar_t{0.25}; }
+    [[nodiscard]] auto operator()(scalar_t) const noexcept -> scalar_t { return scalar_t{0}; }
+};
+
+TEST(shaping_transitions_nast_domain_test_t, rejects_antiderivative_that_does_not_cover_half_domain)
+{
+    EXPECT_DEATH(static_cast<void>(nast_t<scalar_t, wrong_domain_antiderivative_t>{wrong_domain_antiderivative_t{}}),
+        "half domain");
+}
+
 } // namespace
 } // namespace crv::shaping::transitions

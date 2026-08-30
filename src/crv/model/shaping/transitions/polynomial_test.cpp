@@ -47,23 +47,14 @@ struct polynomial_contract_test_t
     static_assert(sut.derivative(scalar_t{0.25}) == sut.derivative(scalar_t{0.75}));
 };
 
-using smoothstep_float_test_t = polynomial_contract_test_t<smoothstep_t, float32_t, 1.5F, 0.013671875F, 0.09375F>;
-using smoothstep_double_test_t = polynomial_contract_test_t<smoothstep_t, float64_t, 1.5, 0.013671875, 0.09375>;
-using smootherstep_float_test_t
-    = polynomial_contract_test_t<smootherstep_t, float32_t, 1.875F, 0.007080078125F, 0.078125F>;
-using smootherstep_double_test_t
-    = polynomial_contract_test_t<smootherstep_t, float64_t, 1.875, 0.007080078125, 0.078125>;
-using smootheststep_float_test_t
-    = polynomial_contract_test_t<smootheststep_t, float32_t, 2.1875F, 0.00399017333984375F, 0.068359375F>;
-using smootheststep_double_test_t
-    = polynomial_contract_test_t<smootheststep_t, float64_t, 2.1875, 0.00399017333984375, 0.068359375>;
+using smoothstep_test_t = polynomial_contract_test_t<smoothstep_t, float_t, 1.5, 0.013671875, 0.09375>;
+using smootherstep_test_t = polynomial_contract_test_t<smootherstep_t, float_t, 1.875, 0.007080078125, 0.078125>;
+using smootheststep_test_t
+    = polynomial_contract_test_t<smootheststep_t, float_t, 2.1875, 0.00399017333984375, 0.068359375>;
 
-static_assert(sizeof(smoothstep_double_test_t) == 1);
-static_assert(sizeof(smoothstep_float_test_t) == 1);
-static_assert(sizeof(smootherstep_double_test_t) == 1);
-static_assert(sizeof(smootherstep_float_test_t) == 1);
-static_assert(sizeof(smootheststep_double_test_t) == 1);
-static_assert(sizeof(smootheststep_float_test_t) == 1);
+static_assert(sizeof(smoothstep_test_t) == 1);
+static_assert(sizeof(smootherstep_test_t) == 1);
+static_assert(sizeof(smootheststep_test_t) == 1);
 
 } // namespace
 } // namespace crv::shaping::transitions

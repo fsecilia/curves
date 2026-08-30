@@ -4,134 +4,62 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "output_limited_curve.hpp"
-#include <crv/model/curves/power_law.hpp>
-#include <crv/model/shaping/transitions/smoothstep.hpp>
+#include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
-#include <cmath>
+#include <gmock/gmock.h>
 
 namespace crv::shaping {
 namespace {
 
-struct shaping_output_limited_curve_power_law_test_t : Test
+struct shaping_output_limited_curve_test_t : Test
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
-    using transition_t = transitions::smoothstep_t;
-    using upper_t = transforms::upper_output_limiter_t<scalar_t, transition_t>;
-    using lower_t = transforms::lower_output_limiter_t<scalar_t, transition_t>;
-    using power_law_t = model::curves::power_law_t::evaluator_t<scalar_t>;
-    using params_t = model::curves::power_law_t::params_t<scalar_t>;
 
-    static constexpr auto tolerance = scalar_t{2e-12};
-    static constexpr auto smoothstep_half_integral = scalar_t{3.0 / 32.0};
-
-    static auto upper_delta_for_half_width(scalar_t bound, scalar_t half_width) -> scalar_t
+    struct curve_t
     {
-        return bound * (scalar_t{1} - std::exp(-scalar_t{2} * half_width * smoothstep_half_integral));
-    }
+        scalar_t marker;
+    };
 
-    static auto lower_delta_for_half_width(scalar_t bound, scalar_t half_width) -> scalar_t
+    struct mock_limiter_t
     {
-        return bound * (std::exp(scalar_t{2} * half_width * smoothstep_half_integral) - scalar_t{1});
-    }
+        virtual ~mock_limiter_t() = default;
 
-    static auto make_power_law(scalar_t power = scalar_t{1}, scalar_t unit_speed = scalar_t{1}) -> power_law_t
-    {
-        return power_law_t{params_t{.unit_speed = unit_speed, .power = power}};
-    }
+        MOCK_METHOD(scalar_t, scalar, (scalar_t curve_marker, scalar_t input), (const, noexcept));
+        MOCK_METHOD(jet_t, jet, (scalar_t curve_marker, jet_t input), (const, noexcept));
+    };
+    StrictMock<mock_limiter_t> mock_limiter;
 
-    static auto make_upper(scalar_t bound, scalar_t delta_y) -> upper_t
+    struct limiter_t
     {
-        return upper_t::make(bound, delta_y, transition_t{}).value();
-    }
+        mock_limiter_t* mock;
 
-    static auto make_lower(scalar_t bound, scalar_t delta_y) -> lower_t
-    {
-        return lower_t::make(bound, delta_y, transition_t{}).value();
-    }
+        auto apply(curve_t const& curve, scalar_t input) const noexcept -> scalar_t
+        {
+            return mock->scalar(curve.marker, input);
+        }
 
-    static auto make_sequential(scalar_t lower_bound, scalar_t lower_delta, scalar_t upper_bound, scalar_t upper_delta)
-    {
-        auto lower_curve = output_limited_curve_t{make_lower(lower_bound, lower_delta), make_power_law()};
-        return output_limited_curve_t{make_upper(upper_bound, upper_delta), std::move(lower_curve)};
-    }
+        auto apply(curve_t const& curve, jet_t input) const noexcept -> jet_t { return mock->jet(curve.marker, input); }
+    };
+
+    static constexpr auto marker = scalar_t{7};
+    output_limited_curve_t<limiter_t, curve_t> sut{limiter_t{&mock_limiter}, curve_t{marker}};
 };
 
-TEST_F(shaping_output_limited_curve_power_law_test_t, fractional_power_law_origin_is_exact_lower_plateau_jet)
+TEST_F(shaping_output_limited_curve_test_t, forwards_scalar_composition_to_limiter)
 {
-    auto const limiter = make_lower(0.25, 0.1);
-    auto const sut = output_limited_curve_t{limiter, make_power_law(0.5, 2.0)};
-    EXPECT_EQ(sut(jet_t{0.0, 1.0}), (jet_t{0.25, 0.0}));
+    auto const input = scalar_t{3};
+    auto const expected = scalar_t{11};
+    EXPECT_CALL(mock_limiter, scalar(marker, input)).WillOnce(Return(expected));
+    EXPECT_EQ(sut(input), expected);
 }
 
-TEST_F(shaping_output_limited_curve_power_law_test_t, fractional_power_law_jet_resumes_inside_lower_transition)
+TEST_F(shaping_output_limited_curve_test_t, forwards_jet_composition_to_limiter)
 {
-    auto const bound = scalar_t{0.25};
-    auto const limiter = make_lower(bound, 0.1);
-    auto const unit_speed = scalar_t{2};
-    auto const power = scalar_t{0.5};
-    auto const input = unit_speed * std::pow(bound, scalar_t{1} / power);
-    auto const sut = output_limited_curve_t{limiter, make_power_law(power, unit_speed)};
-    EXPECT_TRUE(std::isfinite(sut(jet_t{input, 1.0}).df));
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, upper_limiter_reaches_exact_ceiling_over_growing_power_law)
-{
-    auto const bound = scalar_t{4};
-    auto const limiter = make_upper(bound, 0.5);
-    auto const curve_output = std::exp(limiter.support()->upper_log + scalar_t{1});
-    auto const unit_speed = scalar_t{2};
-    auto const power = scalar_t{0.5};
-    auto const input = unit_speed * std::pow(curve_output, scalar_t{1} / power);
-    auto const sut = output_limited_curve_t{limiter, make_power_law(power, unit_speed)};
-    EXPECT_EQ(sut(input), bound);
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, zero_upper_can_skip_power_law_scalar_domain_entirely)
-{
-    auto const limiter = upper_t::make(0.0, 0.0, transition_t{}).value();
-    auto const sut = output_limited_curve_t{limiter, make_power_law(0.5, 2.0)};
-    EXPECT_EQ(sut(-1.0), 0.0);
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, well_separated_bounds_leave_middle_output_exactly_unchanged)
-{
-    auto const lower = make_lower(1.0, 0.1);
-    auto const upper = make_upper(4.0, 0.4);
-    auto const middle_log = (lower.support()->upper_log + upper.support()->lower_log) / scalar_t{2};
-    auto const input = std::exp(middle_log);
-    auto const lower_curve = output_limited_curve_t{lower, make_power_law()};
-    auto const sut = output_limited_curve_t{upper, lower_curve};
-    EXPECT_EQ(sut(input), input);
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, nearby_supports_preserve_monotonic_order)
-{
-    auto const half_width = scalar_t{0.2};
-    auto const lower_bound = scalar_t{1};
-    auto const upper_bound = std::exp(scalar_t{2} * half_width);
-    auto const contact = std::exp(half_width);
-    auto const sut = make_sequential(lower_bound, lower_delta_for_half_width(lower_bound, half_width), upper_bound,
-        upper_delta_for_half_width(upper_bound, half_width));
-    EXPECT_LE(sut(contact * 0.99), sut(contact * 1.01));
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, overlapping_supports_preserve_monotonic_order)
-{
-    auto const sut = make_sequential(1.2, 0.3, 1.4, 0.3);
-    EXPECT_LE(sut(0.5), sut(2.0));
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, later_upper_limiter_wins_when_lower_nominal_bound_is_higher)
-{
-    auto const sut = make_sequential(2.0, 0.2, 1.5, 0.01);
-    EXPECT_EQ(sut(0.0), 1.5);
-}
-
-TEST_F(shaping_output_limited_curve_power_law_test_t, final_upper_ceiling_remains_exact_with_overlapping_supports)
-{
-    auto const sut = make_sequential(1.2, 0.3, 1.4, 0.3);
-    EXPECT_EQ(sut(100.0), 1.4);
+    auto const input = jet_t{scalar_t{3}, scalar_t{5}};
+    auto const expected = jet_t{scalar_t{11}, scalar_t{13}};
+    EXPECT_CALL(mock_limiter, jet(marker, input)).WillOnce(Return(expected));
+    EXPECT_EQ(sut(input), expected);
 }
 
 } // namespace

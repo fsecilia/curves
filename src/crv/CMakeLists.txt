@@ -44,27 +44,14 @@ set(lib_files
     model/curves/power_law.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
-    model/shaping/construction/limit_engager.hpp
-    model/shaping/construction/limit_factory.hpp
-    model/shaping/construction/limit_locator.hpp
     model/shaping/output_limited_curve.hpp
-    model/shaping/params.hpp
     model/shaping/shaped_curve.hpp
-    model/shaping/stages/input.hpp
-    model/shaping/stages/output.hpp
     model/shaping/transforms/compact_output_limiter.hpp
-    model/shaping/transforms/composite.hpp
-    model/shaping/transforms/input_affine.hpp
-    model/shaping/transforms/limit.hpp
-    model/shaping/transforms/offset.hpp
-    model/shaping/transforms/output_affine.hpp
     model/shaping/transitions/concepts.hpp
     model/shaping/transitions/construction/transition_factory_builder.hpp
     model/shaping/transitions/factory.hpp
     model/shaping/transitions/continuity.hpp
     model/shaping/transitions/nast.hpp
-    model/shaping/transitions/quadratic.hpp
-    model/shaping/transitions/smootherstep_integral.hpp
     model/shaping/transitions/smootherstep.hpp
     model/shaping/transitions/smootheststep.hpp
     model/shaping/transitions/smoothstep.hpp
@@ -272,28 +259,14 @@ set(unit_test_files
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
     model/curves/traits_test.cpp
-    model/shaping/construction/limit_engager_test.cpp
-    model/shaping/construction/limit_factory_test.cpp
-    model/shaping/construction/limit_locator_test.cpp
     model/shaping/output_limited_curve_test.cpp
     model/shaping/transforms/compact_output_limiter_test.cpp
-    model/shaping/transforms/compact_output_limiter_transition_test.cpp
-    model/shaping/params_test.cpp
     model/shaping/shaped_curve_test.cpp
-    model/shaping/stages/input_test.cpp
-    model/shaping/stages/output_test.cpp
-    model/shaping/transforms/composite_test.cpp
-    model/shaping/transforms/input_affine_test.cpp
-    model/shaping/transforms/limit_test.cpp
-    model/shaping/transforms/offset_test.cpp
-    model/shaping/transforms/output_affine_test.cpp
     model/shaping/transitions/concepts_test.cpp
     model/shaping/transitions/construction/transition_factory_builder_test.cpp
     model/shaping/transitions/factory_test.cpp
     model/shaping/transitions/nast_test.cpp
     model/shaping/transitions/polynomial_test.cpp
-    model/shaping/transitions/quadratic_test.cpp
-    model/shaping/transitions/smootherstep_integral_test.cpp
     overloaded_test.cpp
     pipeline/configuration/compiler_test.cpp
     pipeline/configuration/committer_test.cpp

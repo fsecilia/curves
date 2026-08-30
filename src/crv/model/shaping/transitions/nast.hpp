@@ -78,7 +78,7 @@ public:
     {
         if (u <= scalar_t{0}) return scalar_t{0};
         if (u >= scalar_t{1}) return u - support_midpoint;
-        if (u <= antiderivative_->domain_end()) return (*antiderivative_)(u);
+        if (u <= support_midpoint) return (*antiderivative_)(u);
         return u - support_midpoint + (*antiderivative_)(scalar_t{1} - u);
     }
 

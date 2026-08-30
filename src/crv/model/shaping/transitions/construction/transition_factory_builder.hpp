@@ -22,7 +22,6 @@ namespace crv::shaping::transitions::construction {
 
 template <std::floating_point t_scalar_t, typename t_integrator_t> class transition_factory_builder_t
 {
-public:
     using scalar_t = t_scalar_t;
     using integrator_t = t_integrator_t;
 
@@ -38,13 +37,14 @@ public:
     using critical_points_t = std::array<scalar_t, 0>;
     using integration_result_t = std::remove_cvref_t<decltype(std::declval<integrator_t const&>()(
         std::declval<integral_t>(), std::declval<scalar_t>(), std::declval<critical_points_t const&>()))>;
-    using antiderivative_t = typename integration_result_t::antiderivative_t;
-    using quadrature_receipt_t = typename integration_result_t::receipt_t;
+    using antiderivative_t = integration_result_t::antiderivative_t;
+    using quadrature_receipt_t = integration_result_t::receipt_t;
     using nast_t = transitions::nast_t<scalar_t, antiderivative_t>;
     using factory_t = transitions::transition_factory_t<nast_t, quadrature_receipt_t>;
 
     static constexpr auto nast_domain_end = scalar_t{0.5};
 
+public:
     constexpr explicit transition_factory_builder_t(integrator_t integrator) noexcept
         : integrator_{std::move(integrator)}
     {}

@@ -27,37 +27,12 @@ enum class output_limiter_error_t : uint8_t
     zero_bound_requires_zero_delta_y,
     positive_bound_requires_positive_delta_y,
     upper_delta_y_not_below_bound,
+    lower_output_not_representable,
     transition_half_integral_not_finite,
     transition_half_integral_not_positive,
     log_half_width_not_finite,
     log_half_width_not_positive,
     log_support_not_finite,
-};
-
-enum class output_limiter_region_t : uint8_t
-{
-    plateau,
-    transition,
-    identity,
-};
-
-enum class fixed_anchor_feasibility_t : uint8_t
-{
-    feasible,
-    transition_conflict,
-    bound_conflict,
-};
-
-template <std::floating_point t_scalar_t> struct output_limiter_log_support_t
-{
-    using scalar_t = t_scalar_t;
-
-    scalar_t log_bound;
-    scalar_t half_width;
-    scalar_t lower_log;
-    scalar_t upper_log;
-
-    constexpr auto operator==(output_limiter_log_support_t const&) const noexcept -> bool = default;
 };
 
 namespace detail {
@@ -73,14 +48,29 @@ template <std::floating_point t_scalar_t, typename t_transition_t, output_limite
     requires transitions::is_transition<t_transition_t, t_scalar_t>
 class compact_output_limiter_t
 {
-public:
     using scalar_t = t_scalar_t;
     using transition_t = t_transition_t;
     using jet_t = crv::jet_t<scalar_t>;
-    using log_support_t = output_limiter_log_support_t<scalar_t>;
+
+    enum class region_t : uint8_t
+    {
+        plateau,
+        transition,
+        identity,
+    };
+
+    struct log_support_t
+    {
+        scalar_t log_bound;
+        scalar_t half_width;
+        scalar_t lower_log;
+        scalar_t upper_log;
+    };
+
     using construction_error_t = output_limiter_error_t;
     using construction_result_t = std::expected<compact_output_limiter_t, construction_error_t>;
 
+public:
     [[nodiscard]] static auto make(scalar_t bound, scalar_t delta_y, transition_t transition) -> construction_result_t
     {
         if (!std::isfinite(bound)) return std::unexpected{construction_error_t::bound_not_finite};
@@ -94,8 +84,7 @@ public:
             {
                 return std::unexpected{construction_error_t::zero_bound_requires_zero_delta_y};
             }
-            return compact_output_limiter_t{
-                bound, delta_y, std::move(transition), std::nullopt, scalar_t{0}, scalar_t{0}};
+            return compact_output_limiter_t{bound, std::move(transition), std::nullopt, scalar_t{0}, scalar_t{0}};
         }
 
         if (delta_y == scalar_t{0})
@@ -105,6 +94,11 @@ public:
         if constexpr (side == output_limiter_side_t::upper)
         {
             if (delta_y >= bound) return std::unexpected{construction_error_t::upper_delta_y_not_below_bound};
+        }
+        else
+        {
+            auto const max = std::numeric_limits<scalar_t>::max();
+            if (delta_y > max - bound) return std::unexpected{construction_error_t::lower_output_not_representable};
         }
 
         auto const half_integral = transition.antiderivative(scalar_t{0.5});
@@ -120,6 +114,13 @@ public:
         auto const half_width = derive_half_width(bound, delta_y, half_integral);
         if (!std::isfinite(half_width)) return std::unexpected{construction_error_t::log_half_width_not_finite};
         if (half_width <= scalar_t{0}) return std::unexpected{construction_error_t::log_half_width_not_positive};
+        if constexpr (side == output_limiter_side_t::lower)
+        {
+            if (half_width > maximum_representable_lower_half_width(bound))
+            {
+                return std::unexpected{construction_error_t::lower_output_not_representable};
+            }
+        }
 
         auto const log_bound = std::log(bound);
         auto const lower_log = log_bound - half_width;
@@ -129,21 +130,31 @@ public:
             return std::unexpected{construction_error_t::log_support_not_finite};
         }
 
-        return compact_output_limiter_t{bound, delta_y, std::move(transition),
+        auto const lower_output = std::exp(lower_log);
+        auto const upper_output = std::exp(upper_log);
+        if constexpr (side == output_limiter_side_t::lower)
+        {
+            if (!std::isfinite(upper_output))
+            {
+                return std::unexpected{construction_error_t::lower_output_not_representable};
+            }
+        }
+
+        return compact_output_limiter_t{bound, std::move(transition),
             log_support_t{
                 .log_bound = log_bound,
                 .half_width = half_width,
                 .lower_log = lower_log,
                 .upper_log = upper_log,
             },
-            std::exp(lower_log), std::exp(upper_log)};
+            lower_output, upper_output};
     }
 
     [[nodiscard]] auto operator()(scalar_t output) const noexcept -> scalar_t
     {
         auto const region = classify(output);
-        if (region == output_limiter_region_t::plateau) return bound_;
-        if (region == output_limiter_region_t::identity) return output;
+        if (region == region_t::plateau) return bound_;
+        if (region == region_t::identity) return output;
         return transition_value_from_output(output);
     }
 
@@ -151,8 +162,8 @@ public:
     {
         auto const value = primal(output);
         auto const region = classify(value);
-        if (region == output_limiter_region_t::plateau) return jet_t{bound_};
-        if (region == output_limiter_region_t::identity) return output;
+        if (region == region_t::plateau) return jet_t{bound_};
+        if (region == region_t::identity) return output;
 
         auto const log_output = std::log(value);
         auto const u = normalized_coordinate(log_output);
@@ -161,77 +172,35 @@ public:
         return {limited, tangent(output) * multiplier};
     }
 
-    [[nodiscard]] auto classify(scalar_t output) const noexcept -> output_limiter_region_t
+    template <typename curve_t>
+    [[nodiscard]] auto apply(curve_t const& curve, scalar_t input) const noexcept -> scalar_t
     {
-        assert(std::isfinite(output) && output >= scalar_t{0}
-            && "compact_output_limiter_t: output must be finite and nonnegative");
         if (!support_)
         {
-            if constexpr (side == output_limiter_side_t::upper) return output_limiter_region_t::plateau;
-            return output_limiter_region_t::identity;
+            if constexpr (side == output_limiter_side_t::upper) return bound_;
+            return curve(input);
         }
-
-        if constexpr (side == output_limiter_side_t::upper)
-        {
-            if (output <= lower_output_) return output_limiter_region_t::identity;
-            if (output >= upper_output_) return output_limiter_region_t::plateau;
-        }
-        else
-        {
-            if (output <= lower_output_) return output_limiter_region_t::plateau;
-            if (output >= upper_output_) return output_limiter_region_t::identity;
-        }
-        return output_limiter_region_t::transition;
+        return (*this)(curve(input));
     }
 
-    [[nodiscard]] auto classify_log(scalar_t log_output) const noexcept -> output_limiter_region_t
+    template <typename curve_t> [[nodiscard]] auto apply(curve_t const& curve, jet_t input) const noexcept -> jet_t
     {
-        assert(support_ && "compact_output_limiter_t: zero-bound limiter has no logarithmic support");
-        if constexpr (side == output_limiter_side_t::upper)
+        if (!support_)
         {
-            if (log_output <= support_->lower_log) return output_limiter_region_t::identity;
-            if (log_output >= support_->upper_log) return output_limiter_region_t::plateau;
+            if constexpr (side == output_limiter_side_t::upper) return jet_t{bound_};
+            return curve(input);
         }
-        else
-        {
-            if (log_output <= support_->lower_log) return output_limiter_region_t::plateau;
-            if (log_output >= support_->upper_log) return output_limiter_region_t::identity;
-        }
-        return output_limiter_region_t::transition;
-    }
 
-    [[nodiscard]] constexpr auto bound() const noexcept -> scalar_t { return bound_; }
-    [[nodiscard]] constexpr auto delta_y() const noexcept -> scalar_t { return delta_y_; }
-    [[nodiscard]] constexpr auto support() const noexcept -> std::optional<log_support_t> const& { return support_; }
-
-    [[nodiscard]] constexpr auto is_globally_constant() const noexcept -> bool
-    {
-        if constexpr (side == output_limiter_side_t::upper) return bound_ == scalar_t{0};
-        return false;
-    }
-
-    [[nodiscard]] constexpr auto is_globally_identity() const noexcept -> bool
-    {
-        if constexpr (side == output_limiter_side_t::lower) return bound_ == scalar_t{0};
-        return false;
-    }
-
-    [[nodiscard]] auto fixed_anchor_feasibility(scalar_t anchor) const noexcept -> fixed_anchor_feasibility_t
-        requires(side == output_limiter_side_t::upper)
-    {
-        assert(std::isfinite(anchor) && anchor >= scalar_t{0}
-            && "compact_output_limiter_t: anchor must be finite and nonnegative");
-        if (anchor == scalar_t{0}) return fixed_anchor_feasibility_t::feasible;
-        if (bound_ == scalar_t{0} || anchor > bound_) return fixed_anchor_feasibility_t::bound_conflict;
-        if (std::log(anchor) <= support_->lower_log) return fixed_anchor_feasibility_t::feasible;
-        return fixed_anchor_feasibility_t::transition_conflict;
+        auto const curve_value = curve(primal(input));
+        if (classify(curve_value) == region_t::plateau) return jet_t{bound_};
+        return (*this)(curve(input));
     }
 
 private:
-    constexpr compact_output_limiter_t(scalar_t bound, scalar_t delta_y, transition_t transition,
-        std::optional<log_support_t> support, scalar_t lower_output, scalar_t upper_output) noexcept
-        : bound_{bound}, delta_y_{delta_y}, support_{std::move(support)}, lower_output_{lower_output},
-          upper_output_{upper_output}, transition_{std::move(transition)}
+    constexpr compact_output_limiter_t(scalar_t bound, transition_t transition, std::optional<log_support_t> support,
+        scalar_t lower_output, scalar_t upper_output) noexcept
+        : bound_{bound}, support_{std::move(support)}, lower_output_{lower_output}, upper_output_{upper_output},
+          transition_{std::move(transition)}
     {}
 
     [[nodiscard]] static auto derive_half_width(scalar_t bound, scalar_t delta_y, scalar_t half_integral) noexcept
@@ -247,6 +216,37 @@ private:
             ? std::log1p(ratio)
             : std::log(delta_y) - std::log(bound) + std::log1p(bound / delta_y);
         return log_ratio_plus_one / (scalar_t{2} * half_integral);
+    }
+
+    [[nodiscard]] static auto maximum_representable_lower_half_width(scalar_t bound) noexcept -> scalar_t
+    {
+        auto const max = std::numeric_limits<scalar_t>::max();
+        auto const ratio = max / bound;
+        if (std::isfinite(ratio)) return std::log(ratio);
+        return std::log(max) - std::log(bound);
+    }
+
+    [[nodiscard]] auto classify(scalar_t output) const noexcept -> region_t
+    {
+        assert(std::isfinite(output) && output >= scalar_t{0}
+            && "compact_output_limiter_t: output must be finite and nonnegative");
+        if (!support_)
+        {
+            if constexpr (side == output_limiter_side_t::upper) return region_t::plateau;
+            return region_t::identity;
+        }
+
+        if constexpr (side == output_limiter_side_t::upper)
+        {
+            if (output <= lower_output_) return region_t::identity;
+            if (output >= upper_output_) return region_t::plateau;
+        }
+        else
+        {
+            if (output <= lower_output_) return region_t::plateau;
+            if (output >= upper_output_) return region_t::identity;
+        }
+        return region_t::transition;
     }
 
     [[nodiscard]] auto normalized_coordinate(scalar_t log_output) const noexcept -> scalar_t
@@ -275,7 +275,6 @@ private:
     }
 
     scalar_t bound_;
-    scalar_t delta_y_;
     std::optional<log_support_t> support_;
     scalar_t lower_output_;
     scalar_t upper_output_;
