@@ -49,9 +49,9 @@ set(lib_files
     model/shaping/transforms/input_affine.hpp
     model/shaping/domain_warp_curve.hpp
     model/shaping/transforms/domain_warp.hpp
-    model/shaping/output_limited_curve.hpp
+    model/shaping/limited_curve.hpp
     model/shaping/shaped_curve.hpp
-    model/shaping/transforms/compact_output_limiter.hpp
+    model/shaping/transforms/limiter.hpp
     model/shaping/transitions/concepts.hpp
     model/shaping/transitions/construction/transition_factory_builder.hpp
     model/shaping/transitions/factory.hpp
@@ -275,10 +275,10 @@ set(regression_test_files
     model/shaping/domain_warp_curve_test.cpp
     model/shaping/domain_warp_curve_integration_test.cpp
     model/shaping/transforms/domain_warp_test.cpp
-    model/shaping/output_limited_curve_integration_test.cpp
-    model/shaping/output_limited_curve_test.cpp
-    model/shaping/transforms/compact_output_limiter_test.cpp
-    model/shaping/transforms/compact_output_limiter_transition_integration_test.cpp
+    model/shaping/limited_curve_integration_test.cpp
+    model/shaping/limited_curve_test.cpp
+    model/shaping/transforms/limiter_test.cpp
+    model/shaping/transforms/limiter_transition_integration_test.cpp
     model/shaping/shaped_curve_test.cpp
     model/shaping/transitions/concepts_test.cpp
     model/shaping/transitions/construction/transition_factory_builder_test.cpp

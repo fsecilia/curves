@@ -10,11 +10,14 @@
 
 namespace crv::shaping {
 
-/// composes an output limiter over a curve
-template <typename t_limiter_t, typename t_curve_t> class output_limited_curve_t
+/// composes a limiter over a nested curve
+template <typename t_limiter_t, typename t_nested_curve_t> class limited_curve_t
 {
 public:
-    constexpr output_limited_curve_t(t_limiter_t limiter, t_curve_t curve) noexcept
+    using limiter_t = t_limiter_t;
+    using nested_curve_t = t_nested_curve_t;
+
+    constexpr limited_curve_t(limiter_t limiter, nested_curve_t curve) noexcept
         : limiter_{std::move(limiter)}, curve_{std::move(curve)}
     {}
 
@@ -24,8 +27,8 @@ public:
     }
 
 private:
-    t_limiter_t limiter_;
-    t_curve_t curve_;
+    limiter_t limiter_;
+    nested_curve_t curve_;
 };
 
 } // namespace crv::shaping

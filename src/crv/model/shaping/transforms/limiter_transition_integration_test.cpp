@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include <crv/model/shaping/transforms/compact_output_limiter.hpp>
+#include <crv/model/shaping/transforms/limiter.hpp>
 #include <crv/model/shaping/transitions/construction/transition_factory_builder.hpp>
 #include <crv/quadrature/antiderivative_factory.hpp>
 #include <crv/test/test.hpp>
@@ -12,8 +12,7 @@
 namespace crv::shaping::transforms {
 namespace {
 
-struct shaping_compact_output_limiter_transition_integration_test_t : Test,
-                                                                      WithParamInterface<transitions::continuity_t>
+struct shaping_limiter_transition_integration_test_t : Test, WithParamInterface<transitions::continuity_t>
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
@@ -29,74 +28,74 @@ struct shaping_compact_output_limiter_transition_integration_test_t : Test,
     factory_t factory = builder();
 };
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, upper_preserves_linear_delta_y_semantics)
+TEST_P(shaping_limiter_transition_integration_test_t, upper_preserves_linear_delta_y_semantics)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = upper_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound - delta_y, tolerance);
 }
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, lower_preserves_linear_delta_y_semantics)
+TEST_P(shaping_limiter_transition_integration_test_t, lower_preserves_linear_delta_y_semantics)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = lower_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound + delta_y, tolerance);
 }
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, upper_transition_never_exceeds_bound)
+TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_never_exceeds_bound)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = upper_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_LE(actual, bound);
 }
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, lower_transition_never_drops_below_bound)
+TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_never_drops_below_bound)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = lower_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_GE(actual, bound);
 }
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, upper_transition_derivative_is_nondecreasing_map)
+TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_derivative_is_nondecreasing_map)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = upper_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
 }
 
-TEST_P(shaping_compact_output_limiter_transition_integration_test_t, lower_transition_derivative_is_nondecreasing_map)
+TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_derivative_is_nondecreasing_map)
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
         auto const sut
-            = lower_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_compact_output_limiter_real_transitions,
-    shaping_compact_output_limiter_transition_integration_test_t,
+INSTANTIATE_TEST_SUITE_P(shaping_limiter_real_transitions,
+    shaping_limiter_transition_integration_test_t,
     Values(transitions::continuity_t::c1, transitions::continuity_t::c2, transitions::continuity_t::c3,
         transitions::continuity_t::cinfinity));
 
@@ -114,7 +113,7 @@ struct nast_probe_curve_t
     }
 };
 
-TEST_F(shaping_compact_output_limiter_transition_integration_test_t,
+TEST_F(shaping_limiter_transition_integration_test_t,
     interior_nast_underflow_does_not_create_exact_plateau_control_flow)
 {
     auto const actual = factory(
@@ -127,7 +126,7 @@ TEST_F(shaping_compact_output_limiter_transition_integration_test_t,
             auto const curve_output = std::exp(lower_log + scalar_t{2} * half_width * u);
             auto jet_calls = int_t{0};
             auto const limiter
-                = lower_output_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+                = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
             static_cast<void>(
                 limiter.apply(nast_probe_curve_t{curve_output, &jet_calls}, jet_t{scalar_t{3}, scalar_t{1}}));
             return {product.transition.value(u) == scalar_t{0}, jet_calls};

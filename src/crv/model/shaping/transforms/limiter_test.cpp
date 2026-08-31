@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "compact_output_limiter.hpp"
+#include "limiter.hpp"
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <gmock/gmock.h>
@@ -13,7 +13,7 @@
 namespace crv::shaping::transforms {
 namespace {
 
-struct shaping_transforms_compact_output_limiter_test_t : Test
+struct shaping_transforms_limiter_test_t : Test
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
@@ -66,8 +66,8 @@ struct shaping_transforms_compact_output_limiter_test_t : Test
         auto operator()(jet_t input) const noexcept -> jet_t { return mock->jet(input); }
     };
 
-    using upper_t = upper_output_limiter_t<scalar_t, transition_t>;
-    using lower_t = lower_output_limiter_t<scalar_t, transition_t>;
+    using upper_t = upper_limiter_t<scalar_t, transition_t>;
+    using lower_t = lower_limiter_t<scalar_t, transition_t>;
 
     static constexpr auto bound = scalar_t{2};
     static constexpr auto delta_y = scalar_t{0.5};
@@ -129,77 +129,77 @@ struct shaping_transforms_compact_output_limiter_test_t : Test
     }
 };
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_nominal_bound_deflects_down_by_delta_y)
+TEST_F(shaping_transforms_limiter_test_t, upper_nominal_bound_deflects_down_by_delta_y)
 {
     EXPECT_CALL(mock_transition, antiderivative(_)).Times(2).WillRepeatedly(Return(half_integral));
     auto const sut = upper_t::make(bound, delta_y, transition_t{&mock_transition}).value();
     EXPECT_NEAR(sut(bound), bound - delta_y, tolerance);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_nominal_bound_deflects_up_by_delta_y)
+TEST_F(shaping_transforms_limiter_test_t, lower_nominal_bound_deflects_up_by_delta_y)
 {
     EXPECT_CALL(mock_transition, antiderivative(_)).Times(2).WillRepeatedly(Return(half_integral));
     auto const sut = lower_t::make(bound, delta_y, transition_t{&mock_transition}).value();
     EXPECT_NEAR(sut(bound), bound + delta_y, tolerance);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_is_exact_identity_below_support)
+TEST_F(shaping_transforms_limiter_test_t, upper_is_exact_identity_below_support)
 {
     auto const sut = make_upper();
     auto const output = std::exp(upper_lower_log() - scalar_t{1});
     EXPECT_EQ(sut(output), output);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_is_exact_plateau_above_support)
+TEST_F(shaping_transforms_limiter_test_t, upper_is_exact_plateau_above_support)
 {
     auto const sut = make_upper();
     auto const output = std::exp(upper_upper_log() + scalar_t{1});
     EXPECT_EQ(sut(output), bound);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_is_exact_plateau_below_support)
+TEST_F(shaping_transforms_limiter_test_t, lower_is_exact_plateau_below_support)
 {
     auto const sut = make_lower();
     auto const output = std::exp(lower_lower_log() - scalar_t{1});
     EXPECT_EQ(sut(output), bound);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_is_exact_identity_above_support)
+TEST_F(shaping_transforms_limiter_test_t, lower_is_exact_identity_above_support)
 {
     auto const sut = make_lower();
     auto const output = std::exp(lower_upper_log() + scalar_t{1});
     EXPECT_EQ(sut(output), output);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_lower_support_boundary_is_exact_identity)
+TEST_F(shaping_transforms_limiter_test_t, upper_lower_support_boundary_is_exact_identity)
 {
     auto const sut = make_upper();
     auto const output = std::exp(upper_lower_log());
     EXPECT_EQ(sut(output), output);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_upper_support_boundary_is_exact_plateau)
+TEST_F(shaping_transforms_limiter_test_t, upper_upper_support_boundary_is_exact_plateau)
 {
     auto const sut = make_upper();
     auto const output = std::exp(upper_upper_log());
     EXPECT_EQ(sut(output), bound);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_lower_support_boundary_is_exact_plateau)
+TEST_F(shaping_transforms_limiter_test_t, lower_lower_support_boundary_is_exact_plateau)
 {
     auto const sut = make_lower();
     auto const output = std::exp(lower_lower_log());
     EXPECT_EQ(sut(output), bound);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_upper_support_boundary_is_exact_identity)
+TEST_F(shaping_transforms_limiter_test_t, lower_upper_support_boundary_is_exact_identity)
 {
     auto const sut = make_lower();
     auto const output = std::exp(lower_upper_log());
     EXPECT_EQ(sut(output), output);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_transition_uses_antiderivative_formula)
+TEST_F(shaping_transforms_limiter_test_t, upper_transition_uses_antiderivative_formula)
 {
     auto const u = scalar_t{0.25};
     auto const j = scalar_t{0.04};
@@ -211,7 +211,7 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, upper_transition_uses_a
     EXPECT_NEAR(sut(output), expected, tolerance);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_transition_uses_antiderivative_formula)
+TEST_F(shaping_transforms_limiter_test_t, lower_transition_uses_antiderivative_formula)
 {
     auto const u = scalar_t{0.25};
     auto const j = scalar_t{0.04};
@@ -223,7 +223,7 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, lower_transition_uses_a
     EXPECT_NEAR(sut(output), expected, tolerance);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, transition_jet_uses_analytic_derivative_multiplier)
+TEST_F(shaping_transforms_limiter_test_t, transition_jet_uses_analytic_derivative_multiplier)
 {
     auto const u = scalar_t{0.25};
     auto const j = scalar_t{0.04};
@@ -239,14 +239,14 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, transition_jet_uses_ana
     EXPECT_NEAR(sut(jet_t{output, input_tangent}).df, expected, tolerance);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, plateau_jet_has_exact_zero_tangent)
+TEST_F(shaping_transforms_limiter_test_t, plateau_jet_has_exact_zero_tangent)
 {
     auto const sut = make_lower();
     auto const output = std::exp(lower_lower_log() - scalar_t{1});
     EXPECT_EQ(sut(jet_t{output, scalar_t{9}}), (jet_t{bound, scalar_t{0}}));
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, identity_jet_is_exactly_preserved)
+TEST_F(shaping_transforms_limiter_test_t, identity_jet_is_exactly_preserved)
 {
     auto const sut = make_upper();
     auto const output = std::exp(upper_lower_log() - scalar_t{1});
@@ -254,7 +254,7 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, identity_jet_is_exactly
     EXPECT_EQ(sut(input), input);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, positive_lower_plateau_skips_curve_jet)
+TEST_F(shaping_transforms_limiter_test_t, positive_lower_plateau_skips_curve_jet)
 {
     auto const limiter = make_lower();
     auto const curve_value = std::exp(lower_lower_log() - scalar_t{1});
@@ -263,7 +263,7 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, positive_lower_plateau_
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, input), (jet_t{bound, scalar_t{0}}));
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, non_plateau_jet_probes_scalar_then_evaluates_curve_jet)
+TEST_F(shaping_transforms_limiter_test_t, non_plateau_jet_probes_scalar_then_evaluates_curve_jet)
 {
     auto const limiter = make_lower();
     auto const curve_value = std::exp(lower_upper_log() + scalar_t{1});
@@ -274,26 +274,26 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, non_plateau_jet_probes_
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, input), curve_jet);
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, zero_upper_scalar_skips_curve_completely)
+TEST_F(shaping_transforms_limiter_test_t, zero_upper_scalar_skips_curve_completely)
 {
     auto const limiter = upper_t::make(scalar_t{0}, scalar_t{0}, transition_t{&mock_transition}).value();
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, scalar_t{3}), scalar_t{0});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, zero_upper_jet_skips_curve_completely)
+TEST_F(shaping_transforms_limiter_test_t, zero_upper_jet_skips_curve_completely)
 {
     auto const limiter = upper_t::make(scalar_t{0}, scalar_t{0}, transition_t{&mock_transition}).value();
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, jet_t{scalar_t{3}, scalar_t{7}}), (jet_t{scalar_t{0}, scalar_t{0}}));
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, zero_lower_scalar_is_direct_curve_identity)
+TEST_F(shaping_transforms_limiter_test_t, zero_lower_scalar_is_direct_curve_identity)
 {
     auto const limiter = lower_t::make(scalar_t{0}, scalar_t{0}, transition_t{&mock_transition}).value();
     EXPECT_CALL(mock_curve, scalar(scalar_t{3})).WillOnce(Return(scalar_t{5}));
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, scalar_t{3}), scalar_t{5});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, zero_lower_jet_is_direct_curve_identity)
+TEST_F(shaping_transforms_limiter_test_t, zero_lower_jet_is_direct_curve_identity)
 {
     auto const limiter = lower_t::make(scalar_t{0}, scalar_t{0}, transition_t{&mock_transition}).value();
     auto const input = jet_t{scalar_t{3}, scalar_t{7}};
@@ -302,12 +302,12 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, zero_lower_jet_is_direc
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, input), curve_jet);
 }
 
-struct shaping_transforms_compact_output_limiter_transition_endpoint_value_test_t
-    : shaping_transforms_compact_output_limiter_test_t,
+struct shaping_transforms_limiter_transition_endpoint_value_test_t
+    : shaping_transforms_limiter_test_t,
       WithParamInterface<float_t>
 {};
 
-TEST_P(shaping_transforms_compact_output_limiter_transition_endpoint_value_test_t,
+TEST_P(shaping_transforms_limiter_transition_endpoint_value_test_t,
     floating_transition_endpoint_value_inside_support_does_not_change_plateau_control_flow)
 {
     auto const transition_value = GetParam();
@@ -322,8 +322,8 @@ TEST_P(shaping_transforms_compact_output_limiter_transition_endpoint_value_test_
     EXPECT_NEAR(limiter.apply(curve_t{&mock_curve}, input).df, expected, tolerance);
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_transforms_compact_output_limiter_transition_endpoint_values,
-    shaping_transforms_compact_output_limiter_transition_endpoint_value_test_t, Values(float_t{0}, float_t{1}));
+INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_transition_endpoint_values,
+    shaping_transforms_limiter_transition_endpoint_value_test_t, Values(float_t{0}, float_t{1}));
 
 struct invalid_limiter_input_t
 {
@@ -331,15 +331,15 @@ struct invalid_limiter_input_t
     bool upper;
     float_t bound;
     float_t delta_y;
-    output_limiter_error_t error;
+    limiter_error_t error;
 };
 
-struct shaping_transforms_compact_output_limiter_invalid_input_test_t
-    : shaping_transforms_compact_output_limiter_test_t,
+struct shaping_transforms_limiter_invalid_input_test_t
+    : shaping_transforms_limiter_test_t,
       WithParamInterface<invalid_limiter_input_t>
 {};
 
-TEST_P(shaping_transforms_compact_output_limiter_invalid_input_test_t, rejects_invalid_input)
+TEST_P(shaping_transforms_limiter_invalid_input_test_t, rejects_invalid_input)
 {
     auto const& param = GetParam();
     if (param.upper)
@@ -354,45 +354,45 @@ TEST_P(shaping_transforms_compact_output_limiter_invalid_input_test_t, rejects_i
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_transforms_compact_output_limiter_invalid_inputs,
-    shaping_transforms_compact_output_limiter_invalid_input_test_t,
+INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_inputs,
+    shaping_transforms_limiter_invalid_input_test_t,
     Values(invalid_limiter_input_t{"upper_nan_bound", true, std::numeric_limits<float_t>::quiet_NaN(), 0.1,
-               output_limiter_error_t::bound_not_finite},
+               limiter_error_t::bound_not_finite},
         invalid_limiter_input_t{"lower_infinite_bound", false, std::numeric_limits<float_t>::infinity(), 0.1,
-            output_limiter_error_t::bound_not_finite},
-        invalid_limiter_input_t{"upper_negative_bound", true, -1.0, 0.1, output_limiter_error_t::bound_negative},
+            limiter_error_t::bound_not_finite},
+        invalid_limiter_input_t{"upper_negative_bound", true, -1.0, 0.1, limiter_error_t::bound_negative},
         invalid_limiter_input_t{"lower_nan_delta", false, 1.0, std::numeric_limits<float_t>::quiet_NaN(),
-            output_limiter_error_t::delta_y_not_finite},
+            limiter_error_t::delta_y_not_finite},
         invalid_limiter_input_t{"upper_infinite_delta", true, 1.0, std::numeric_limits<float_t>::infinity(),
-            output_limiter_error_t::delta_y_not_finite},
-        invalid_limiter_input_t{"lower_negative_delta", false, 1.0, -0.1, output_limiter_error_t::delta_y_negative},
+            limiter_error_t::delta_y_not_finite},
+        invalid_limiter_input_t{"lower_negative_delta", false, 1.0, -0.1, limiter_error_t::delta_y_negative},
         invalid_limiter_input_t{
-            "upper_zero_bound_soft", true, 0.0, 0.1, output_limiter_error_t::zero_bound_requires_zero_delta_y},
+            "upper_zero_bound_soft", true, 0.0, 0.1, limiter_error_t::zero_bound_requires_zero_delta_y},
         invalid_limiter_input_t{
-            "lower_zero_bound_soft", false, 0.0, 0.1, output_limiter_error_t::zero_bound_requires_zero_delta_y},
+            "lower_zero_bound_soft", false, 0.0, 0.1, limiter_error_t::zero_bound_requires_zero_delta_y},
         invalid_limiter_input_t{"upper_positive_bound_hard", true, 1.0, 0.0,
-            output_limiter_error_t::positive_bound_requires_positive_delta_y},
+            limiter_error_t::positive_bound_requires_positive_delta_y},
         invalid_limiter_input_t{"lower_positive_bound_hard", false, 1.0, 0.0,
-            output_limiter_error_t::positive_bound_requires_positive_delta_y},
+            limiter_error_t::positive_bound_requires_positive_delta_y},
         invalid_limiter_input_t{
-            "upper_delta_equals_bound", true, 1.0, 1.0, output_limiter_error_t::upper_delta_y_not_below_bound},
+            "upper_delta_equals_bound", true, 1.0, 1.0, limiter_error_t::upper_delta_y_not_below_bound},
         invalid_limiter_input_t{
-            "upper_delta_exceeds_bound", true, 1.0, 2.0, output_limiter_error_t::upper_delta_y_not_below_bound}),
+            "upper_delta_exceeds_bound", true, 1.0, 2.0, limiter_error_t::upper_delta_y_not_below_bound}),
     test_name_generator_t<invalid_limiter_input_t>{});
 
 struct invalid_half_integral_t
 {
     std::string_view name;
     float_t value;
-    output_limiter_error_t error;
+    limiter_error_t error;
 };
 
-struct shaping_transforms_compact_output_limiter_invalid_transition_test_t
-    : shaping_transforms_compact_output_limiter_test_t,
+struct shaping_transforms_limiter_invalid_transition_test_t
+    : shaping_transforms_limiter_test_t,
       WithParamInterface<invalid_half_integral_t>
 {};
 
-TEST_P(shaping_transforms_compact_output_limiter_invalid_transition_test_t, rejects_invalid_half_integral)
+TEST_P(shaping_transforms_limiter_invalid_transition_test_t, rejects_invalid_half_integral)
 {
     auto const& param = GetParam();
     EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(param.value));
@@ -400,24 +400,24 @@ TEST_P(shaping_transforms_compact_output_limiter_invalid_transition_test_t, reje
     EXPECT_EQ(result, std::unexpected{param.error});
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_transforms_compact_output_limiter_invalid_transition_half_integrals,
-    shaping_transforms_compact_output_limiter_invalid_transition_test_t,
+INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_transition_half_integrals,
+    shaping_transforms_limiter_invalid_transition_test_t,
     Values(invalid_half_integral_t{"nan", std::numeric_limits<float_t>::quiet_NaN(),
-               output_limiter_error_t::transition_half_integral_not_finite},
+               limiter_error_t::transition_half_integral_not_finite},
         invalid_half_integral_t{"infinity", std::numeric_limits<float_t>::infinity(),
-            output_limiter_error_t::transition_half_integral_not_finite},
-        invalid_half_integral_t{"zero", 0.0, output_limiter_error_t::transition_half_integral_not_positive},
-        invalid_half_integral_t{"negative", -0.1, output_limiter_error_t::transition_half_integral_not_positive}),
+            limiter_error_t::transition_half_integral_not_finite},
+        invalid_half_integral_t{"zero", 0.0, limiter_error_t::transition_half_integral_not_positive},
+        invalid_half_integral_t{"negative", -0.1, limiter_error_t::transition_half_integral_not_positive}),
     test_name_generator_t<invalid_half_integral_t>{});
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, rejects_lower_nominal_output_above_representable_range)
+TEST_F(shaping_transforms_limiter_test_t, rejects_lower_support_above_representable_range)
 {
     auto const max = std::numeric_limits<scalar_t>::max();
     auto const result = lower_t::make(max * scalar_t{0.75}, max * scalar_t{0.5}, transition_t{&mock_transition});
-    EXPECT_EQ(result, std::unexpected{output_limiter_error_t::lower_output_not_representable});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::lower_support_not_representable});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, accepts_lower_transition_ending_at_maximum_output)
+TEST_F(shaping_transforms_limiter_test_t, accepts_lower_transition_ending_at_maximum_output)
 {
     auto const bound_at_edge = std::numeric_limits<scalar_t>::max() / scalar_t{4};
     EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(scalar_t{0.25}));
@@ -426,16 +426,16 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, accepts_lower_transitio
 }
 
 TEST_F(
-    shaping_transforms_compact_output_limiter_test_t, rejects_lower_transition_ending_immediately_above_maximum_output)
+    shaping_transforms_limiter_test_t, rejects_lower_transition_ending_immediately_above_maximum_output)
 {
     auto const bound_at_edge = std::numeric_limits<scalar_t>::max() / scalar_t{4};
     auto const delta_above_edge = std::nextafter(bound_at_edge, std::numeric_limits<scalar_t>::infinity());
     EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(scalar_t{0.25}));
     auto const result = lower_t::make(bound_at_edge, delta_above_edge, transition_t{&mock_transition});
-    EXPECT_EQ(result, std::unexpected{output_limiter_error_t::lower_output_not_representable});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::lower_support_not_representable});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, accepts_logarithmic_half_width_when_delta_over_bound_overflows)
+TEST_F(shaping_transforms_limiter_test_t, accepts_logarithmic_half_width_when_delta_over_bound_overflows)
 {
     auto const tiny_bound = std::numeric_limits<scalar_t>::denorm_min();
     auto const large_delta = scalar_t{1e-15};
@@ -445,7 +445,7 @@ TEST_F(shaping_transforms_compact_output_limiter_test_t, accepts_logarithmic_hal
 }
 
 TEST_F(
-    shaping_transforms_compact_output_limiter_test_t, lower_transition_uses_logarithmic_evaluation_when_exp_overflows)
+    shaping_transforms_limiter_test_t, lower_transition_uses_logarithmic_evaluation_when_exp_overflows)
 {
     auto const tiny_bound = std::numeric_limits<scalar_t>::denorm_min();
     auto const large_delta = scalar_t{1e-15};
@@ -455,21 +455,21 @@ TEST_F(
     EXPECT_NEAR(sut(tiny_bound), tiny_bound + large_delta, large_delta * scalar_t{1e-12});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, rejects_nonfinite_derived_half_width)
+TEST_F(shaping_transforms_limiter_test_t, rejects_nonfinite_derived_half_width)
 {
     auto const tiny = std::numeric_limits<scalar_t>::denorm_min();
     EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(tiny));
     auto const result = upper_t::make(bound, delta_y, transition_t{&mock_transition});
-    EXPECT_EQ(result, std::unexpected{output_limiter_error_t::log_half_width_not_finite});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::log_half_width_not_finite});
 }
 
-TEST_F(shaping_transforms_compact_output_limiter_test_t, rejects_positive_softness_that_rounds_to_zero_half_width)
+TEST_F(shaping_transforms_limiter_test_t, rejects_positive_softness_that_rounds_to_zero_half_width)
 {
     auto const huge = std::numeric_limits<scalar_t>::max() / scalar_t{2};
     auto const tiny = std::numeric_limits<scalar_t>::denorm_min();
     EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(half_integral));
     auto const result = lower_t::make(huge, tiny, transition_t{&mock_transition});
-    EXPECT_EQ(result, std::unexpected{output_limiter_error_t::log_half_width_not_positive});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::log_half_width_not_positive});
 }
 
 } // namespace

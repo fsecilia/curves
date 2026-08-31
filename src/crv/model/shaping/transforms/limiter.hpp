@@ -18,7 +18,7 @@
 
 namespace crv::shaping::transforms {
 
-enum class output_limiter_error_t : uint8_t
+enum class limiter_error_t : uint8_t
 {
     bound_not_finite,
     bound_negative,
@@ -27,7 +27,7 @@ enum class output_limiter_error_t : uint8_t
     zero_bound_requires_zero_delta_y,
     positive_bound_requires_positive_delta_y,
     upper_delta_y_not_below_bound,
-    lower_output_not_representable,
+    lower_support_not_representable,
     transition_half_integral_not_finite,
     transition_half_integral_not_positive,
     log_half_width_not_finite,
@@ -37,16 +37,16 @@ enum class output_limiter_error_t : uint8_t
 
 namespace detail {
 
-enum class output_limiter_side_t : uint8_t
+enum class limiter_side_t : uint8_t
 {
     lower,
     upper,
 };
 
-/// limiter running in output space with compact support
-template <std::floating_point t_scalar_t, typename t_transition_t, output_limiter_side_t side>
+/// lower or upper limiter with compact log-space transition support
+template <std::floating_point t_scalar_t, typename t_transition_t, limiter_side_t side>
     requires transitions::is_transition<t_transition_t, t_scalar_t>
-class compact_output_limiter_t
+class limiter_t
 {
     using scalar_t = t_scalar_t;
     using transition_t = t_transition_t;
@@ -67,8 +67,8 @@ class compact_output_limiter_t
         scalar_t upper_log;
     };
 
-    using construction_error_t = output_limiter_error_t;
-    using construction_result_t = std::expected<compact_output_limiter_t, construction_error_t>;
+    using construction_error_t = limiter_error_t;
+    using construction_result_t = std::expected<limiter_t, construction_error_t>;
 
 public:
     [[nodiscard]] static auto make(scalar_t bound, scalar_t delta_y, transition_t transition) -> construction_result_t
@@ -84,21 +84,21 @@ public:
             {
                 return std::unexpected{construction_error_t::zero_bound_requires_zero_delta_y};
             }
-            return compact_output_limiter_t{bound, std::move(transition), std::nullopt, scalar_t{0}, scalar_t{0}};
+            return limiter_t{bound, std::move(transition), std::nullopt, scalar_t{0}, scalar_t{0}};
         }
 
         if (delta_y == scalar_t{0})
         {
             return std::unexpected{construction_error_t::positive_bound_requires_positive_delta_y};
         }
-        if constexpr (side == output_limiter_side_t::upper)
+        if constexpr (side == limiter_side_t::upper)
         {
             if (delta_y >= bound) return std::unexpected{construction_error_t::upper_delta_y_not_below_bound};
         }
         else
         {
             auto const max = std::numeric_limits<scalar_t>::max();
-            if (delta_y > max - bound) return std::unexpected{construction_error_t::lower_output_not_representable};
+            if (delta_y > max - bound) return std::unexpected{construction_error_t::lower_support_not_representable};
         }
 
         auto const half_integral = transition.antiderivative(scalar_t{0.5});
@@ -114,11 +114,11 @@ public:
         auto const half_width = derive_half_width(bound, delta_y, half_integral);
         if (!std::isfinite(half_width)) return std::unexpected{construction_error_t::log_half_width_not_finite};
         if (half_width <= scalar_t{0}) return std::unexpected{construction_error_t::log_half_width_not_positive};
-        if constexpr (side == output_limiter_side_t::lower)
+        if constexpr (side == limiter_side_t::lower)
         {
             if (half_width > maximum_representable_lower_half_width(bound))
             {
-                return std::unexpected{construction_error_t::lower_output_not_representable};
+                return std::unexpected{construction_error_t::lower_support_not_representable};
             }
         }
 
@@ -130,24 +130,24 @@ public:
             return std::unexpected{construction_error_t::log_support_not_finite};
         }
 
-        auto const lower_output = std::exp(lower_log);
-        auto const upper_output = std::exp(upper_log);
-        if constexpr (side == output_limiter_side_t::lower)
+        auto const lower = std::exp(lower_log);
+        auto const upper = std::exp(upper_log);
+        if constexpr (side == limiter_side_t::lower)
         {
-            if (!std::isfinite(upper_output))
+            if (!std::isfinite(upper))
             {
-                return std::unexpected{construction_error_t::lower_output_not_representable};
+                return std::unexpected{construction_error_t::lower_support_not_representable};
             }
         }
 
-        return compact_output_limiter_t{bound, std::move(transition),
+        return limiter_t{bound, std::move(transition),
             log_support_t{
                 .log_bound = log_bound,
                 .half_width = half_width,
                 .lower_log = lower_log,
                 .upper_log = upper_log,
             },
-            lower_output, upper_output};
+            lower, upper};
     }
 
     [[nodiscard]] auto operator()(scalar_t output) const noexcept -> scalar_t
@@ -177,7 +177,7 @@ public:
     {
         if (!support_)
         {
-            if constexpr (side == output_limiter_side_t::upper) return bound_;
+            if constexpr (side == limiter_side_t::upper) return bound_;
             return curve(input);
         }
         return (*this)(curve(input));
@@ -187,7 +187,7 @@ public:
     {
         if (!support_)
         {
-            if constexpr (side == output_limiter_side_t::upper) return jet_t{bound_};
+            if constexpr (side == limiter_side_t::upper) return jet_t{bound_};
             return curve(input);
         }
 
@@ -197,16 +197,16 @@ public:
     }
 
 private:
-    constexpr compact_output_limiter_t(scalar_t bound, transition_t transition, std::optional<log_support_t> support,
-        scalar_t lower_output, scalar_t upper_output) noexcept
-        : bound_{bound}, support_{std::move(support)}, lower_output_{lower_output}, upper_output_{upper_output},
+    constexpr limiter_t(scalar_t bound, transition_t transition, std::optional<log_support_t> support,
+        scalar_t lower, scalar_t upper) noexcept
+        : bound_{bound}, support_{std::move(support)}, lower_{lower}, upper_{upper},
           transition_{std::move(transition)}
     {}
 
     [[nodiscard]] static auto derive_half_width(scalar_t bound, scalar_t delta_y, scalar_t half_integral) noexcept
         -> scalar_t
     {
-        if constexpr (side == output_limiter_side_t::upper)
+        if constexpr (side == limiter_side_t::upper)
         {
             return -std::log1p(-delta_y / bound) / (scalar_t{2} * half_integral);
         }
@@ -229,29 +229,29 @@ private:
     [[nodiscard]] auto classify(scalar_t output) const noexcept -> region_t
     {
         assert(std::isfinite(output) && output >= scalar_t{0}
-            && "compact_output_limiter_t: output must be finite and nonnegative");
+            && "limiter_t: output must be finite and nonnegative");
         if (!support_)
         {
-            if constexpr (side == output_limiter_side_t::upper) return region_t::plateau;
+            if constexpr (side == limiter_side_t::upper) return region_t::plateau;
             return region_t::identity;
         }
 
-        if constexpr (side == output_limiter_side_t::upper)
+        if constexpr (side == limiter_side_t::upper)
         {
-            if (output <= lower_output_) return region_t::identity;
-            if (output >= upper_output_) return region_t::plateau;
+            if (output <= lower_) return region_t::identity;
+            if (output >= upper_) return region_t::plateau;
         }
         else
         {
-            if (output <= lower_output_) return region_t::plateau;
-            if (output >= upper_output_) return region_t::identity;
+            if (output <= lower_) return region_t::plateau;
+            if (output >= upper_) return region_t::identity;
         }
         return region_t::transition;
     }
 
     [[nodiscard]] auto normalized_coordinate(scalar_t log_output) const noexcept -> scalar_t
     {
-        if constexpr (side == output_limiter_side_t::upper)
+        if constexpr (side == limiter_side_t::upper)
         {
             return (support_->upper_log - log_output) / (scalar_t{2} * support_->half_width);
         }
@@ -268,7 +268,7 @@ private:
     {
         auto const integral = transition_.antiderivative(u);
         auto const exponent = scalar_t{2} * support_->half_width * integral;
-        if constexpr (side == output_limiter_side_t::upper) return bound_ * std::exp(-exponent);
+        if constexpr (side == limiter_side_t::upper) return bound_ * std::exp(-exponent);
 
         if (exponent <= std::log(std::numeric_limits<scalar_t>::max())) return bound_ * std::exp(exponent);
         return std::exp(support_->log_bound + exponent);
@@ -276,19 +276,19 @@ private:
 
     scalar_t bound_;
     std::optional<log_support_t> support_;
-    scalar_t lower_output_;
-    scalar_t upper_output_;
+    scalar_t lower_;
+    scalar_t upper_;
     [[no_unique_address]] transition_t transition_;
 };
 
 } // namespace detail
 
 template <std::floating_point scalar_t, typename transition_t>
-using upper_output_limiter_t
-    = detail::compact_output_limiter_t<scalar_t, transition_t, detail::output_limiter_side_t::upper>;
+using upper_limiter_t
+    = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::upper>;
 
 template <std::floating_point scalar_t, typename transition_t>
-using lower_output_limiter_t
-    = detail::compact_output_limiter_t<scalar_t, transition_t, detail::output_limiter_side_t::lower>;
+using lower_limiter_t
+    = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::lower>;
 
 } // namespace crv::shaping::transforms

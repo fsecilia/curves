@@ -3,7 +3,7 @@
 /// \file
 /// \copyright Copyright (C) 2026 Frank Secilia
 
-#include "output_limited_curve.hpp"
+#include "limited_curve.hpp"
 #include <crv/math/jet/jet.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
@@ -11,7 +11,7 @@
 namespace crv::shaping {
 namespace {
 
-struct shaping_output_limited_curve_test_t : Test
+struct shaping_limited_curve_test_t : Test
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
@@ -43,10 +43,10 @@ struct shaping_output_limited_curve_test_t : Test
     };
 
     static constexpr auto marker = scalar_t{7};
-    output_limited_curve_t<limiter_t, curve_t> sut{limiter_t{&mock_limiter}, curve_t{marker}};
+    limited_curve_t<limiter_t, curve_t> sut{limiter_t{&mock_limiter}, curve_t{marker}};
 };
 
-TEST_F(shaping_output_limited_curve_test_t, forwards_scalar_composition_to_limiter)
+TEST_F(shaping_limited_curve_test_t, forwards_scalar_composition_to_limiter)
 {
     auto const input = scalar_t{3};
     auto const expected = scalar_t{11};
@@ -54,7 +54,7 @@ TEST_F(shaping_output_limited_curve_test_t, forwards_scalar_composition_to_limit
     EXPECT_EQ(sut(input), expected);
 }
 
-TEST_F(shaping_output_limited_curve_test_t, forwards_jet_composition_to_limiter)
+TEST_F(shaping_limited_curve_test_t, forwards_jet_composition_to_limiter)
 {
     auto const input = jet_t{scalar_t{3}, scalar_t{5}};
     auto const expected = jet_t{scalar_t{11}, scalar_t{13}};
