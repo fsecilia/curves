@@ -27,6 +27,10 @@ enum class authored_validation_error_t : uint8_t
     filter_half_life_underflow,
     curve_id,
     unsupported_shaping,
+    output_scale,
+    positioning_mode,
+    positioning_height,
+    fixed_anchor_negative,
     synchronous_motivity,
     synchronous_gamma,
     synchronous_smooth,
@@ -98,10 +102,8 @@ private:
 
     template <typename curve_config_t> auto validate_curve(curve_config_t const& curve_config) const -> result_t
     {
-        if (curve_config.common != model::common_curve_config_t{})
-        {
-            return {.error = authored_validation_error_t::unsupported_shaping};
-        }
+        auto const common_result = validate_common(curve_config.common);
+        if (!common_result) return {.error = common_result.error};
 
         using specific_t = typename curve_config_t::specific_curve_config_t;
         if constexpr (std::same_as<specific_t, model::curves::synchronous_t::config_t>)
@@ -112,6 +114,40 @@ private:
         {
             return validate_log_normal(curve_config.specific);
         }
+    }
+
+    static auto validate_common(model::common_curve_config_t const& config) -> result_t
+    {
+        auto const defaults = model::common_curve_config_t{};
+        if (config.scale.input != defaults.scale.input || config.offset != defaults.offset
+            || config.ceiling != defaults.ceiling)
+        {
+            return {.error = authored_validation_error_t::unsupported_shaping};
+        }
+
+        if (!satisfies_constraint(config.scale.output)) return {.error = authored_validation_error_t::output_scale};
+        if (!satisfies_constraint(config.anchor.height))
+        {
+            return {.error = authored_validation_error_t::positioning_height};
+        }
+
+        if (config.anchor.mode.value() != model::anchor_mode_t::offset
+            && config.anchor.mode.value() != model::anchor_mode_t::fixed)
+        {
+            return {.error = authored_validation_error_t::positioning_mode};
+        }
+
+        switch (config.anchor.mode.value())
+        {
+            case model::anchor_mode_t::offset: break;
+            case model::anchor_mode_t::fixed:
+                if (config.anchor.height.value() < 0)
+                {
+                    return {.error = authored_validation_error_t::fixed_anchor_negative};
+                }
+                break;
+        }
+        return {};
     }
 
     static auto validate_synchronous(model::curves::synchronous_t::config_t const& config) -> result_t

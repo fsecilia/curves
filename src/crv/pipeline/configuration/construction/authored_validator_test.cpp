@@ -77,6 +77,64 @@ TEST_F(authored_validator_test_t, rejects_unimplemented_shaping)
     EXPECT_EQ(validate().error, authored_validation_error_t::unsupported_shaping);
 }
 
+TEST_F(authored_validator_test_t, accepts_common_output_scale)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.scale.output.value(2.0);
+    EXPECT_TRUE(validate());
+}
+
+TEST_F(authored_validator_test_t, rejects_invalid_common_output_scale)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.scale.output.value(std::numeric_limits<float_t>::quiet_NaN());
+    EXPECT_EQ(validate().error, authored_validation_error_t::output_scale);
+}
+
+TEST_F(authored_validator_test_t, accepts_negative_relative_positioning_height)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.anchor.height.value(-0.25);
+    EXPECT_TRUE(validate());
+}
+
+TEST_F(authored_validator_test_t, accepts_nonnegative_fixed_anchor)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.anchor.mode.value(model::anchor_mode_t::fixed);
+    synchronous.common.anchor.height.value(0.25);
+    EXPECT_TRUE(validate());
+}
+
+TEST_F(authored_validator_test_t, rejects_negative_fixed_anchor)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.anchor.mode.value(model::anchor_mode_t::fixed);
+    synchronous.common.anchor.height.value(-0.25);
+    EXPECT_EQ(validate().error, authored_validation_error_t::fixed_anchor_negative);
+}
+
+TEST_F(authored_validator_test_t, rejects_invalid_positioning_height)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.anchor.height.value(std::numeric_limits<float_t>::quiet_NaN());
+    EXPECT_EQ(validate().error, authored_validation_error_t::positioning_height);
+}
+
+TEST_F(authored_validator_test_t, rejects_invalid_positioning_mode)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.anchor.mode.value(static_cast<model::anchor_mode_t>(99));
+    EXPECT_EQ(validate().error, authored_validation_error_t::positioning_mode);
+}
+
+TEST_F(authored_validator_test_t, still_rejects_unimplemented_ceiling)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.common.ceiling.height.value(999.0);
+    EXPECT_EQ(validate().error, authored_validation_error_t::unsupported_shaping);
+}
+
 TEST_F(authored_validator_test_t, accepts_synchronous_unit_motivity)
 {
     auto& synchronous = std::get<0>(profile.curves.configs);

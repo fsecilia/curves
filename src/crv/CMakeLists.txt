@@ -267,6 +267,11 @@ set(regression_test_files
     model/shaping/input_affine_curve_test.cpp
     model/shaping/input_affine_curve_integration_test.cpp
     model/shaping/transforms/input_affine_test.cpp
+    model/shaping/output_scaled_curve_test.cpp
+    model/shaping/output_positioned_curve_test.cpp
+    model/shaping/transforms/output_scale_test.cpp
+    model/shaping/transforms/output_position_test.cpp
+    model/shaping/construction/common_output_builder_test.cpp
     model/shaping/domain_warp_curve_test.cpp
     model/shaping/domain_warp_curve_integration_test.cpp
     model/shaping/transforms/domain_warp_test.cpp

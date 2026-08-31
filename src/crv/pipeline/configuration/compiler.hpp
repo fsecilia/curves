@@ -8,7 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/config.hpp>
-#include <crv/model/shaping/shaped_curve.hpp>
+#include <crv/model/shaping/construction/common_output_builder.hpp>
 #include <crv/pipeline.hpp>
 #include <crv/pipeline/configuration/construction/authored_validator.hpp>
 #include <crv/pipeline/configuration/construction/compiler.hpp>
@@ -38,8 +38,9 @@ class compiler_t
     using sensitivity_target_builder_t = spline::sensitivity_curve_target_builder_t<antiderivative_factory_t>;
     using spline_factory_t
         = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
-    using gain_compiler_t = construction::gain_compiler_t<spline_policy_t, shaping::shaped_curve_builder_t,
-        critical_point_builder_t, sensitivity_target_builder_t, spline_factory_t>;
+    using gain_compiler_t
+        = construction::gain_compiler_t<spline_policy_t, shaping::construction::common_output_builder_t,
+            critical_point_builder_t, sensitivity_target_builder_t, spline_factory_t>;
     using construction_compiler_t
         = construction::compiler_t<authored_validator_t, config_builder_t, gain_compiler_t, pipeline_t::validator_t>;
 
@@ -67,7 +68,7 @@ private:
             .build_output_transform = output_transform_builder_t{},
         },
         .compile_gain = gain_compiler_t{
-            .shape_curve = shaping::shaped_curve_builder_t{},
+            .shape_curve = shaping::construction::common_output_builder_t{},
             .build_critical_points = critical_point_builder_t{},
             .build_sensitivity_target = sensitivity_target_builder_t{
                 .build_antiderivative = antiderivative_factory_t{},

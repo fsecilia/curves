@@ -23,8 +23,9 @@ using compiler_error_t = pipeline::configuration::compiler_t::error_t;
 using authored_error_t = std::variant_alternative_t<0, compiler_error_t>;
 using gain_error_t = std::variant_alternative_t<1, compiler_error_t>;
 using runtime_error_t = std::variant_alternative_t<2, compiler_error_t>;
-using sensitivity_error_t = std::variant_alternative_t<0, gain_error_t::detail_t>;
-using spline_error_t = std::variant_alternative_t<1, gain_error_t::detail_t>;
+using shaping_error_t = std::variant_alternative_t<0, gain_error_t::detail_t>;
+using sensitivity_error_t = std::variant_alternative_t<1, gain_error_t::detail_t>;
+using spline_error_t = std::variant_alternative_t<2, gain_error_t::detail_t>;
 
 static auto authored_error_message(authored_error_t const& result) -> QString
 {
@@ -46,6 +47,14 @@ static auto authored_error_message(authored_error_t const& result) -> QString
         case error_t::curve_id: return QString::fromStdString(CRV_TR("The selected curve is invalid."));
         case error_t::unsupported_shaping:
             return QString::fromStdString(CRV_TR("The selected shaping configuration is not supported."));
+        case error_t::output_scale:
+            return QString::fromStdString(CRV_TR("Output scale is outside the supported range."));
+        case error_t::positioning_mode:
+            return QString::fromStdString(CRV_TR("The selected output positioning mode is invalid."));
+        case error_t::positioning_height:
+            return QString::fromStdString(CRV_TR("Output positioning height is outside the supported range."));
+        case error_t::fixed_anchor_negative:
+            return QString::fromStdString(CRV_TR("A fixed output anchor cannot be negative."));
         case error_t::synchronous_motivity:
             return QString::fromStdString(CRV_TR("Synchronous motivity is outside the supported range."));
         case error_t::synchronous_gamma:
@@ -72,27 +81,58 @@ static auto authored_error_message(authored_error_t const& result) -> QString
 
 static auto gain_error_message(gain_error_t const& error) -> QString
 {
-    return std::visit(overloaded_t{
-                          [](sensitivity_error_t const& detail) {
-                              return QString::fromStdString(CRV_TR(
-                                  "Could not refine the sensitivity curve accurately enough (error {}, limit {}).",
-                                  detail.achieved_error, detail.max_error));
-                          },
-                          [](spline_error_t const& detail) {
-                              using reason_t = spline::spline_generation_error_reason_t;
-                              switch (detail.reason)
-                              {
-                                  case reason_t::segment_budget_exhausted:
-                                      return QString::fromStdString(
-                                          CRV_TR("Could not build the acceleration curve: segment budget exhausted."));
-                                  case reason_t::minimum_interval_width:
-                                      return QString::fromStdString(CRV_TR(
-                                          "Could not build the acceleration curve: minimum interval width reached."));
-                              }
-                              assert(false && "unexpected spline generation failure");
-                              return QString::fromStdString(CRV_TR("Could not build the acceleration curve."));
-                          },
-                      },
+    return std::visit(
+        overloaded_t{
+            [](shaping_error_t const& detail) {
+                using error_t = shaping::construction::common_output_error_t;
+                switch (detail)
+                {
+                    case error_t::output_scale_not_finite:
+                        return QString::fromStdString(CRV_TR("Output scale is not finite."));
+                    case error_t::positioning_height_not_finite:
+                        return QString::fromStdString(CRV_TR("Output positioning height is not finite."));
+                    case error_t::positioning_mode_invalid:
+                        return QString::fromStdString(CRV_TR("The output positioning mode is invalid."));
+                    case error_t::fixed_anchor_negative:
+                        return QString::fromStdString(CRV_TR("A fixed output anchor cannot be negative."));
+                    case error_t::origin_outside_domain:
+                        return QString::fromStdString(
+                            CRV_TR("The curve is not defined at the start of the authored domain."));
+                    case error_t::domain_end_outside_domain:
+                        return QString::fromStdString(CRV_TR("The curve is not defined through the authored domain."));
+                    case error_t::scaled_origin_not_representable:
+                        return QString::fromStdString(
+                            CRV_TR("The scaled curve is not representable at the start of the authored domain."));
+                    case error_t::scaled_domain_end_not_representable:
+                        return QString::fromStdString(
+                            CRV_TR("The scaled curve is not representable through the authored domain."));
+                    case error_t::positioned_origin_negative:
+                        return QString::fromStdString(
+                            CRV_TR("Output positioning makes authored sensitivity negative."));
+                }
+                assert(false && "unexpected common output construction failure");
+                return QString::fromStdString(CRV_TR("Could not apply common output shaping."));
+            },
+            [](sensitivity_error_t const& detail) {
+                return QString::fromStdString(
+                    CRV_TR("Could not refine the sensitivity curve accurately enough (error {}, limit {}).",
+                        detail.achieved_error, detail.max_error));
+            },
+            [](spline_error_t const& detail) {
+                using reason_t = spline::spline_generation_error_reason_t;
+                switch (detail.reason)
+                {
+                    case reason_t::segment_budget_exhausted:
+                        return QString::fromStdString(
+                            CRV_TR("Could not build the acceleration curve: segment budget exhausted."));
+                    case reason_t::minimum_interval_width:
+                        return QString::fromStdString(
+                            CRV_TR("Could not build the acceleration curve: minimum interval width reached."));
+                }
+                assert(false && "unexpected spline generation failure");
+                return QString::fromStdString(CRV_TR("Could not build the acceleration curve."));
+            },
+        },
         error.detail);
 }
 

@@ -64,9 +64,10 @@ template <std::floating_point scalar_t> struct sensitivity_refinement_error_t
     constexpr auto operator==(sensitivity_refinement_error_t const&) const noexcept -> bool = default;
 };
 
-template <std::floating_point scalar_t, is_fixed x_t> struct gain_compilation_error_t
+template <std::floating_point scalar_t, is_fixed x_t, typename shaping_error_t> struct gain_compilation_error_t
 {
-    using detail_t = std::variant<sensitivity_refinement_error_t<scalar_t>, spline::spline_generation_error_t<x_t>>;
+    using detail_t = std::variant<shaping_error_t, sensitivity_refinement_error_t<scalar_t>,
+        spline::spline_generation_error_t<x_t>>;
 
     detail_t detail;
 
@@ -85,7 +86,8 @@ struct gain_compiler_t
 
     using scalar_t = spline_policy_t::scalar_t;
     using x_t = spline_policy_t::x_t;
-    using error_t = gain_compilation_error_t<scalar_t, x_t>;
+    using shaping_error_t = shaped_curve_builder_t::error_t;
+    using error_t = gain_compilation_error_t<scalar_t, x_t, shaping_error_t>;
     using result_t = std::expected<void, error_t>;
 
     static_assert(std::same_as<typename spline_policy_t::spline_t, pipeline_t::gain_t>);
@@ -100,22 +102,26 @@ struct gain_compiler_t
     {
         auto const curve_index = static_cast<std::size_t>(curves.active.value());
         auto result = result_t{};
-        tuple::visit_at(curves.configs, curve_index,
-            [&](auto const& curve_config) { result = compile_curve(gain, curve_config.specific); });
+        tuple::visit_at(
+            curves.configs, curve_index, [&](auto const& curve_config) { result = compile_curve(gain, curve_config); });
         return result;
     }
 
 private:
-    template <typename config_t> auto compile_curve(pipeline_t::gain_t& gain, config_t const& config) const -> result_t
+    template <typename curve_config_t>
+    auto compile_curve(pipeline_t::gain_t& gain, curve_config_t const& curve_config) const -> result_t
     {
-        using curve_t = typename config_t::curve_t;
-        using evaluator_t = typename curve_t::template evaluator_t<scalar_t>;
+        using config_t = curve_config_t::specific_curve_config_t;
+        using curve_t = config_t::curve_t;
+        using evaluator_t = curve_t::template evaluator_t<scalar_t>;
 
-        auto evaluator = evaluator_t{model::curves::to_params<scalar_t>(config)};
-        auto curve = shape_curve(std::move(evaluator));
-        auto critical_points = build_critical_points(curve, scalar_t{spline_policy_t::domain_end});
-        auto target = build_sensitivity_target(
-            std::move(curve), scalar_t{spline_policy_t::domain_end}, critical_points.integration);
+        auto const domain_end = scalar_t{spline_policy_t::domain_end};
+        auto evaluator = evaluator_t{model::curves::to_params<scalar_t>(curve_config.specific)};
+        auto shaped_result = shape_curve(std::move(evaluator), curve_config.common, domain_end);
+        if (!shaped_result) return std::unexpected{error_t{.detail = shaped_result.error()}};
+        auto curve = std::move(*shaped_result);
+        auto critical_points = build_critical_points(curve, domain_end);
+        auto target = build_sensitivity_target(std::move(curve), domain_end, critical_points.integration);
         if (target.refinement_limited)
         {
             return std::unexpected{error_t{.detail = sensitivity_refinement_error_t<scalar_t>{

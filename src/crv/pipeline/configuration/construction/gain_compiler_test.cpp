@@ -9,6 +9,7 @@
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/test.hpp>
+#include <expected>
 #include <gmock/gmock.h>
 
 namespace crv::pipeline::configuration::construction {
@@ -19,6 +20,10 @@ using scalar_t = spline_policy_t::scalar_t;
 using x_t = spline_policy_t::x_t;
 using critical_points_t = critical_point_builder_t<scalar_t, x_t>::result_t;
 using spline_result_t = spline::spline_generation_result_t<x_t>;
+enum class shaping_error_t
+{
+    failed,
+};
 
 struct critical_point_builder_test_t : Test
 {
@@ -61,6 +66,8 @@ struct gain_compiler_test_t : Test
         template <typename value_t> constexpr auto operator()(value_t value) const noexcept -> value_t { return value; }
     };
 
+    using shaping_result_t = std::expected<shaped_curve_t, shaping_error_t>;
+
     struct target_t
     {};
 
@@ -74,7 +81,7 @@ struct gain_compiler_test_t : Test
 
     struct mock_t
     {
-        MOCK_METHOD(void, shape_curve, (), (const));
+        MOCK_METHOD(shaping_result_t, shape_curve, (model::common_curve_config_t const*, scalar_t), (const));
         MOCK_METHOD(critical_points_t, critical_points, (scalar_t), (const));
         MOCK_METHOD(target_result_t, sensitivity_target, (scalar_t, std::vector<scalar_t> const&), (const));
         MOCK_METHOD(spline_result_t, spline, (pipeline_t::gain_t*, scalar_t, std::vector<x_t> const&), (const));
@@ -83,12 +90,15 @@ struct gain_compiler_test_t : Test
 
     struct shaped_curve_builder_delegate_t
     {
+        using error_t = shaping_error_t;
+
         mock_t* mock;
 
-        template <typename curve_t> auto operator()(curve_t) const -> shaped_curve_t
+        template <typename curve_t>
+        auto operator()(curve_t, model::common_curve_config_t const& common, scalar_t domain_end) const
+            -> shaping_result_t
         {
-            mock->shape_curve();
-            return {};
+            return mock->shape_curve(&common, domain_end);
         }
     };
 
@@ -140,7 +150,7 @@ TEST_F(gain_compiler_test_t, forwards_curve_through_sensitivity_construction)
     auto const spline_points = std::vector<x_t>{to_fixed<x_t>(1.25)};
     EXPECT_CALL(mock, critical_points(scalar_t{spline_policy_t::domain_end}))
         .WillOnce(Return(critical_points_t{integration_points, spline_points}));
-    EXPECT_CALL(mock, shape_curve());
+    EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
     EXPECT_CALL(mock, sensitivity_target(scalar_t{spline_policy_t::domain_end}, integration_points))
         .WillOnce(Return(target_result_t{}));
     EXPECT_CALL(mock, spline(&gain, scalar_t{spline_policy_t::spline_gain_tolerance}, spline_points))
@@ -149,12 +159,22 @@ TEST_F(gain_compiler_test_t, forwards_curve_through_sensitivity_construction)
     EXPECT_TRUE(sut(gain, curves));
 }
 
+TEST_F(gain_compiler_test_t, shaping_failure_is_preserved)
+{
+    auto const failure = shaping_error_t::failed;
+    EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(std::unexpected{failure}));
+
+    auto const result = sut(gain, curves);
+
+    EXPECT_EQ(std::get<shaping_error_t>(result.error().detail), failure);
+}
+
 TEST_F(gain_compiler_test_t, refinement_limit_is_preserved)
 {
     auto const target_result = target_result_t{
         .target = {}, .achieved_error = scalar_t{3}, .max_error = scalar_t{2}, .refinement_limited = true};
     EXPECT_CALL(mock, critical_points).WillOnce(Return(critical_points_t{}));
-    EXPECT_CALL(mock, shape_curve());
+    EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
     EXPECT_CALL(mock, sensitivity_target).WillOnce(Return(target_result));
 
     auto const result = sut(gain, curves);
@@ -171,7 +191,7 @@ TEST_F(gain_compiler_test_t, spline_failure_is_preserved)
         .right = x_t{2},
     };
     EXPECT_CALL(mock, critical_points).WillOnce(Return(critical_points_t{}));
-    EXPECT_CALL(mock, shape_curve());
+    EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
     EXPECT_CALL(mock, sensitivity_target).WillOnce(Return(target_result_t{}));
     EXPECT_CALL(mock, spline).WillOnce(Return(spline_result_t{.error = failure}));
 
