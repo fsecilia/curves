@@ -5,6 +5,7 @@
 
 #include "limited_curve.hpp"
 #include <crv/math/jet/jet.hpp>
+#include <concepts>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 
@@ -18,6 +19,8 @@ struct shaping_limited_curve_test_t : Test
 
     struct curve_t
     {
+        using scalar_t = shaping_limited_curve_test_t::scalar_t;
+
         scalar_t marker;
     };
 
@@ -42,8 +45,11 @@ struct shaping_limited_curve_test_t : Test
         auto apply(curve_t const& curve, jet_t input) const noexcept -> jet_t { return mock->jet(curve.marker, input); }
     };
 
+    using sut_t = limited_curve_t<limiter_t, curve_t>;
+    static_assert(std::same_as<sut_t::scalar_t, scalar_t>);
+
     static constexpr auto marker = scalar_t{7};
-    limited_curve_t<limiter_t, curve_t> sut{limiter_t{&mock_limiter}, curve_t{marker}};
+    sut_t sut{limiter_t{&mock_limiter}, curve_t{marker}};
 };
 
 TEST_F(shaping_limited_curve_test_t, forwards_scalar_composition_to_limiter)

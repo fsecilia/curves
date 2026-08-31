@@ -16,6 +16,7 @@ template <typename t_limiter_t, typename t_nested_curve_t> class limited_curve_t
 public:
     using limiter_t = t_limiter_t;
     using nested_curve_t = t_nested_curve_t;
+    using scalar_t = nested_curve_t::scalar_t;
 
     constexpr limited_curve_t(limiter_t limiter, nested_curve_t curve) noexcept
         : limiter_{std::move(limiter)}, curve_{std::move(curve)}
