@@ -32,8 +32,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_preserves_linear_del
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound - delta_y, tolerance);
@@ -43,8 +42,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_preserves_linear_del
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound + delta_y, tolerance);
@@ -54,8 +52,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_never_exc
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_LE(actual, bound);
@@ -65,8 +62,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_never_dro
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_GE(actual, bound);
@@ -76,8 +72,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_derivativ
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
@@ -87,15 +82,13 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_derivativ
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut
-            = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_limiter_real_transitions,
-    shaping_limiter_transition_integration_test_t,
+INSTANTIATE_TEST_SUITE_P(shaping_limiter_real_transitions, shaping_limiter_transition_integration_test_t,
     Values(transitions::continuity_t::c1, transitions::continuity_t::c2, transitions::continuity_t::c3,
         transitions::continuity_t::cinfinity));
 
@@ -113,8 +106,8 @@ struct nast_probe_curve_t
     }
 };
 
-TEST_F(shaping_limiter_transition_integration_test_t,
-    interior_nast_underflow_does_not_create_exact_plateau_control_flow)
+TEST_F(
+    shaping_limiter_transition_integration_test_t, interior_nast_underflow_does_not_create_exact_plateau_control_flow)
 {
     auto const actual = factory(
         transitions::continuity_t::cinfinity, []<typename product_t>(product_t product) -> std::pair<bool, int_t> {

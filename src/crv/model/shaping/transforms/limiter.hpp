@@ -197,10 +197,9 @@ public:
     }
 
 private:
-    constexpr limiter_t(scalar_t bound, transition_t transition, std::optional<log_support_t> support,
-        scalar_t lower, scalar_t upper) noexcept
-        : bound_{bound}, support_{std::move(support)}, lower_{lower}, upper_{upper},
-          transition_{std::move(transition)}
+    constexpr limiter_t(scalar_t bound, transition_t transition, std::optional<log_support_t> support, scalar_t lower,
+        scalar_t upper) noexcept
+        : bound_{bound}, support_{std::move(support)}, lower_{lower}, upper_{upper}, transition_{std::move(transition)}
     {}
 
     [[nodiscard]] static auto derive_half_width(scalar_t bound, scalar_t delta_y, scalar_t half_integral) noexcept
@@ -228,8 +227,7 @@ private:
 
     [[nodiscard]] auto classify(scalar_t output) const noexcept -> region_t
     {
-        assert(std::isfinite(output) && output >= scalar_t{0}
-            && "limiter_t: output must be finite and nonnegative");
+        assert(std::isfinite(output) && output >= scalar_t{0} && "limiter_t: output must be finite and nonnegative");
         if (!support_)
         {
             if constexpr (side == limiter_side_t::upper) return region_t::plateau;
@@ -284,11 +282,9 @@ private:
 } // namespace detail
 
 template <std::floating_point scalar_t, typename transition_t>
-using upper_limiter_t
-    = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::upper>;
+using upper_limiter_t = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::upper>;
 
 template <std::floating_point scalar_t, typename transition_t>
-using lower_limiter_t
-    = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::lower>;
+using lower_limiter_t = detail::limiter_t<scalar_t, transition_t, detail::limiter_side_t::lower>;
 
 } // namespace crv::shaping::transforms

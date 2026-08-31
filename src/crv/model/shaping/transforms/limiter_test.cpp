@@ -302,9 +302,8 @@ TEST_F(shaping_transforms_limiter_test_t, zero_lower_jet_is_direct_curve_identit
     EXPECT_EQ(limiter.apply(curve_t{&mock_curve}, input), curve_jet);
 }
 
-struct shaping_transforms_limiter_transition_endpoint_value_test_t
-    : shaping_transforms_limiter_test_t,
-      WithParamInterface<float_t>
+struct shaping_transforms_limiter_transition_endpoint_value_test_t : shaping_transforms_limiter_test_t,
+                                                                     WithParamInterface<float_t>
 {};
 
 TEST_P(shaping_transforms_limiter_transition_endpoint_value_test_t,
@@ -334,9 +333,8 @@ struct invalid_limiter_input_t
     limiter_error_t error;
 };
 
-struct shaping_transforms_limiter_invalid_input_test_t
-    : shaping_transforms_limiter_test_t,
-      WithParamInterface<invalid_limiter_input_t>
+struct shaping_transforms_limiter_invalid_input_test_t : shaping_transforms_limiter_test_t,
+                                                         WithParamInterface<invalid_limiter_input_t>
 {};
 
 TEST_P(shaping_transforms_limiter_invalid_input_test_t, rejects_invalid_input)
@@ -354,8 +352,7 @@ TEST_P(shaping_transforms_limiter_invalid_input_test_t, rejects_invalid_input)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_inputs,
-    shaping_transforms_limiter_invalid_input_test_t,
+INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_inputs, shaping_transforms_limiter_invalid_input_test_t,
     Values(invalid_limiter_input_t{"upper_nan_bound", true, std::numeric_limits<float_t>::quiet_NaN(), 0.1,
                limiter_error_t::bound_not_finite},
         invalid_limiter_input_t{"lower_infinite_bound", false, std::numeric_limits<float_t>::infinity(), 0.1,
@@ -370,10 +367,10 @@ INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_inputs,
             "upper_zero_bound_soft", true, 0.0, 0.1, limiter_error_t::zero_bound_requires_zero_delta_y},
         invalid_limiter_input_t{
             "lower_zero_bound_soft", false, 0.0, 0.1, limiter_error_t::zero_bound_requires_zero_delta_y},
-        invalid_limiter_input_t{"upper_positive_bound_hard", true, 1.0, 0.0,
-            limiter_error_t::positive_bound_requires_positive_delta_y},
-        invalid_limiter_input_t{"lower_positive_bound_hard", false, 1.0, 0.0,
-            limiter_error_t::positive_bound_requires_positive_delta_y},
+        invalid_limiter_input_t{
+            "upper_positive_bound_hard", true, 1.0, 0.0, limiter_error_t::positive_bound_requires_positive_delta_y},
+        invalid_limiter_input_t{
+            "lower_positive_bound_hard", false, 1.0, 0.0, limiter_error_t::positive_bound_requires_positive_delta_y},
         invalid_limiter_input_t{
             "upper_delta_equals_bound", true, 1.0, 1.0, limiter_error_t::upper_delta_y_not_below_bound},
         invalid_limiter_input_t{
@@ -387,9 +384,8 @@ struct invalid_half_integral_t
     limiter_error_t error;
 };
 
-struct shaping_transforms_limiter_invalid_transition_test_t
-    : shaping_transforms_limiter_test_t,
-      WithParamInterface<invalid_half_integral_t>
+struct shaping_transforms_limiter_invalid_transition_test_t : shaping_transforms_limiter_test_t,
+                                                              WithParamInterface<invalid_half_integral_t>
 {};
 
 TEST_P(shaping_transforms_limiter_invalid_transition_test_t, rejects_invalid_half_integral)
@@ -404,8 +400,8 @@ INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_transition_half_inte
     shaping_transforms_limiter_invalid_transition_test_t,
     Values(invalid_half_integral_t{"nan", std::numeric_limits<float_t>::quiet_NaN(),
                limiter_error_t::transition_half_integral_not_finite},
-        invalid_half_integral_t{"infinity", std::numeric_limits<float_t>::infinity(),
-            limiter_error_t::transition_half_integral_not_finite},
+        invalid_half_integral_t{
+            "infinity", std::numeric_limits<float_t>::infinity(), limiter_error_t::transition_half_integral_not_finite},
         invalid_half_integral_t{"zero", 0.0, limiter_error_t::transition_half_integral_not_positive},
         invalid_half_integral_t{"negative", -0.1, limiter_error_t::transition_half_integral_not_positive}),
     test_name_generator_t<invalid_half_integral_t>{});
@@ -425,8 +421,7 @@ TEST_F(shaping_transforms_limiter_test_t, accepts_lower_transition_ending_at_max
     EXPECT_TRUE(result.has_value());
 }
 
-TEST_F(
-    shaping_transforms_limiter_test_t, rejects_lower_transition_ending_immediately_above_maximum_output)
+TEST_F(shaping_transforms_limiter_test_t, rejects_lower_transition_ending_immediately_above_maximum_output)
 {
     auto const bound_at_edge = std::numeric_limits<scalar_t>::max() / scalar_t{4};
     auto const delta_above_edge = std::nextafter(bound_at_edge, std::numeric_limits<scalar_t>::infinity());
@@ -444,8 +439,7 @@ TEST_F(shaping_transforms_limiter_test_t, accepts_logarithmic_half_width_when_de
     EXPECT_TRUE(result.has_value());
 }
 
-TEST_F(
-    shaping_transforms_limiter_test_t, lower_transition_uses_logarithmic_evaluation_when_exp_overflows)
+TEST_F(shaping_transforms_limiter_test_t, lower_transition_uses_logarithmic_evaluation_when_exp_overflows)
 {
     auto const tiny_bound = std::numeric_limits<scalar_t>::denorm_min();
     auto const large_delta = scalar_t{1e-15};

@@ -82,16 +82,14 @@ struct shaping_limited_curve_power_law_integration_test_t : Test
     }
 };
 
-TEST_F(
-    shaping_limited_curve_power_law_integration_test_t, fractional_power_law_origin_is_exact_lower_plateau_jet)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, fractional_power_law_origin_is_exact_lower_plateau_jet)
 {
     auto const limiter = make_lower(0.25, 0.1);
     auto const sut = limited_curve_t{limiter, make_power_law(0.5, 2.0)};
     EXPECT_EQ(sut(jet_t{0.0, 1.0}), (jet_t{0.25, 0.0}));
 }
 
-TEST_F(
-    shaping_limited_curve_power_law_integration_test_t, fractional_power_law_jet_resumes_inside_lower_transition)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, fractional_power_law_jet_resumes_inside_lower_transition)
 {
     auto const bound = scalar_t{0.25};
     auto const limiter = make_lower(bound, 0.1);
@@ -102,8 +100,7 @@ TEST_F(
     EXPECT_TRUE(std::isfinite(sut(jet_t{input, 1.0}).df));
 }
 
-TEST_F(shaping_limited_curve_power_law_integration_test_t,
-    upper_limiter_reaches_exact_ceiling_over_growing_power_law)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, upper_limiter_reaches_exact_ceiling_over_growing_power_law)
 {
     auto const bound = scalar_t{4};
     auto const delta_y = scalar_t{0.5};
@@ -123,8 +120,7 @@ TEST_F(shaping_limited_curve_power_law_integration_test_t, zero_upper_can_skip_p
     EXPECT_EQ(sut(-1.0), 0.0);
 }
 
-TEST_F(shaping_limited_curve_power_law_integration_test_t,
-    well_separated_bounds_leave_middle_output_exactly_unchanged)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, well_separated_bounds_leave_middle_output_exactly_unchanged)
 {
     auto const lower_bound = scalar_t{1};
     auto const lower_delta = scalar_t{0.1};
@@ -157,15 +153,13 @@ TEST_F(shaping_limited_curve_power_law_integration_test_t, overlapping_supports_
     EXPECT_LE(sut(0.5), sut(2.0));
 }
 
-TEST_F(shaping_limited_curve_power_law_integration_test_t,
-    later_upper_limiter_wins_when_lower_nominal_bound_is_higher)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, later_upper_limiter_wins_when_lower_nominal_bound_is_higher)
 {
     auto const sut = make_sequential(2.0, 0.2, 1.5, 0.01);
     EXPECT_EQ(sut(0.0), 1.5);
 }
 
-TEST_F(shaping_limited_curve_power_law_integration_test_t,
-    final_upper_ceiling_remains_exact_with_overlapping_supports)
+TEST_F(shaping_limited_curve_power_law_integration_test_t, final_upper_ceiling_remains_exact_with_overlapping_supports)
 {
     auto const sut = make_sequential(1.2, 0.3, 1.4, 0.3);
     EXPECT_EQ(sut(100.0), 1.4);

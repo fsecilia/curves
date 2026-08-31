@@ -5,8 +5,8 @@
 
 #include "limited_curve.hpp"
 #include <crv/math/jet/jet.hpp>
-#include <concepts>
 #include <crv/test/test.hpp>
+#include <concepts>
 #include <gmock/gmock.h>
 
 namespace crv::shaping {
