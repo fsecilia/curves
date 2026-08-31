@@ -27,15 +27,15 @@ struct bisect_lower_bound_t
     [[nodiscard]] constexpr auto operator()(real_t low, real_t high, real_t target, monotone_t const& f) const noexcept
         -> std::optional<real_t>
     {
-        assert(low >= real_t{0.0} && "domain must be strictly positive");
+        assert(low >= real_t{0.0} && "domain low must not be negative");
         assert(low <= high && "invalid search range");
 
-        // This implementation relies on the fact that positive negative numbers are ordered the same their unsigned
-        // integer representation, even though the interpretations are not 1:1. By converting to integer and conducting
-        // the search there, converting back to form the function parameter for comparison, then again when the results
-        // match identically, the search terminates in less than O(w), where w is the bit width of the type, rather than
-        // the thousands of iterations it can take midpointing in float to fp collapse. It also sidesteps the case where
-        // two values differ by 1 float ulp and cannot be resolved.
+        // This implementation relies on the fact that positive and negative numbers are ordered the same as their
+        // unsigned integer representation, even though the interpretations are not 1:1. By converting to integer and
+        // conducting the search there, converting back to form the function parameter for comparison, then again when
+        // the results match identically, the search terminates in less than O(w), where w is the bit width of the type,
+        // rather than the thousands of iterations it can take midpointing in float to fp collapse. It also sidesteps
+        // the case where two values differ by 1 float ulp and cannot be resolved.
 
         // handle oor
         if (f(high) < target) return std::nullopt;
