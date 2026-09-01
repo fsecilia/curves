@@ -72,6 +72,13 @@ inline auto nearbyint(float128_t src) noexcept -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_NEXTAFTER
+inline auto nextafter(float128_t from, float128_t toward) noexcept -> float128_t
+{
+    return nextafterq(from, toward);
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_POW
 inline auto pow(float128_t src, float128_t exponent) noexcept -> float128_t
 {

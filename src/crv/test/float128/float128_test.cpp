@@ -121,5 +121,13 @@ TEST(float128_representable_order_test_t, first_true_search_crosses_zero)
         float128_t{0});
 }
 
+TEST(float128_test_nextafter_t, nextafter_uses_float128_polyfill)
+{
+    auto const from = float128_t{1};
+    auto const toward = float128_t{2};
+
+    EXPECT_EQ(std::nextafter(from, toward), nextafterq(from, toward));
+}
+
 } // namespace
 } // namespace crv
