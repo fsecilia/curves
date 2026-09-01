@@ -5,6 +5,7 @@
 
 # handle clang ambiguities with thin polyfills
 option(polyfill_float128_exp2 "Define std::exp2(std::float128_t)" ON)
+option(polyfill_float128_isfinite "Define std::isfinite(std::float128_t)" ON)
 option(polyfill_float128_ldexp "Define std::ldexp(std::float128_t, int)" ON)
 option(polyfill_float128_llrint "Define std::llrint(std::float128_t) polyfill" ON)
 option(polyfill_float128_llround "Define std::llround(std::float128_t) polyfill" ON)
@@ -84,6 +85,10 @@ if (BUILD_TESTING OR BUILD_ANALYSIS_TESTS)
 
         if (polyfill_float128_exp2)
             target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_EXP2")
+        endif()
+
+        if (polyfill_float128_isfinite)
+            target_compile_definitions(float128 PUBLIC "-DCRV_POLYFILL_FLOAT128_ISFINITE")
         endif()
 
         if (polyfill_float128_ldexp)

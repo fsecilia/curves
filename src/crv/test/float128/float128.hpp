@@ -30,6 +30,13 @@ inline auto exp2(float128_t src) noexcept -> float128_t
 }
 #endif
 
+#if defined CRV_POLYFILL_FLOAT128_ISFINITE
+inline auto isfinite(float128_t src) noexcept -> bool
+{
+    return finiteq(src) != 0;
+}
+#endif
+
 #if defined CRV_POLYFILL_FLOAT128_LDEXP
 inline auto ldexp(float128_t src, int exponent) noexcept -> float128_t
 {

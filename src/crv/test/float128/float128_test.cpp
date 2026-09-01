@@ -6,6 +6,7 @@
 #include "float128.hpp"
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
+#include <cmath>
 #include <sstream>
 
 namespace crv {
@@ -83,6 +84,21 @@ param_t const float128_test_params[] = {
         "6.47517511943802511092443895822764655249956933803468100968988438919703954012411937101767149127664994e-4966"},
 };
 INSTANTIATE_TEST_SUITE_P(cases, float128_test_t, ValuesIn(float128_test_params));
+
+TEST(float128_isfinite_test_t, accepts_finite_value)
+{
+    EXPECT_TRUE(std::isfinite(float128_t{1}));
+}
+
+TEST(float128_isfinite_test_t, rejects_infinity)
+{
+    EXPECT_FALSE(std::isfinite(inf));
+}
+
+TEST(float128_isfinite_test_t, rejects_nan)
+{
+    EXPECT_FALSE(std::isfinite(qnan));
+}
 
 } // namespace
 } // namespace crv
