@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "float128.hpp"
+#include <crv/math/inverse.hpp>
 #include <crv/math/limits.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
@@ -98,6 +99,26 @@ TEST(float128_isfinite_test_t, rejects_infinity)
 TEST(float128_isfinite_test_t, rejects_nan)
 {
     EXPECT_FALSE(std::isfinite(qnan));
+}
+
+static_assert(detail::inverse::is_supported_float<float128_t>);
+
+TEST(float128_representable_order_test_t, orders_values_across_zero)
+{
+    auto const denorm = limits::denorm_min();
+    auto const negative_key = detail::inverse::to_key(-denorm);
+    auto const zero_key = detail::inverse::to_key(float128_t{0});
+    auto const positive_key = detail::inverse::to_key(denorm);
+
+    EXPECT_EQ(negative_key + 1, zero_key);
+    EXPECT_EQ(zero_key + 1, positive_key);
+}
+
+TEST(float128_representable_order_test_t, first_true_search_crosses_zero)
+{
+    auto const denorm = limits::denorm_min();
+    EXPECT_EQ(bisect_first_true_t{}(-denorm, denorm, [](float128_t input) noexcept { return input >= float128_t{0}; }),
+        float128_t{0});
 }
 
 } // namespace

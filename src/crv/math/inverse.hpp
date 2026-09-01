@@ -9,59 +9,139 @@
 #include <crv/math/integer.hpp>
 #include <bit>
 #include <cassert>
+#include <climits>
+#include <cmath>
 #include <concepts>
+#include <expected>
+#include <limits>
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 namespace crv {
+namespace detail::inverse {
 
-/// floating-point lower-bound bisection for monotonic increasing functions
-struct bisect_lower_bound_t
+/// IEEE binary interchange formats supported by representable-order search
+template <typename scalar_t>
+concept is_supported_float = std::floating_point<scalar_t> && CHAR_BIT == 8 && std::numeric_limits<scalar_t>::is_iec559
+    && std::numeric_limits<scalar_t>::radix == 2
+    && ((sizeof(scalar_t) == 4 && std::numeric_limits<scalar_t>::digits == 24
+            && std::numeric_limits<scalar_t>::max_exponent == 128)
+        || (sizeof(scalar_t) == 8 && std::numeric_limits<scalar_t>::digits == 53
+            && std::numeric_limits<scalar_t>::max_exponent == 1024)
+        || (sizeof(scalar_t) == 16 && std::numeric_limits<scalar_t>::digits == 113
+            && std::numeric_limits<scalar_t>::max_exponent == 16384));
+
+template <is_supported_float scalar_t> using key_t = int_by_bytes_t<sizeof(scalar_t), false>;
+
+template <is_supported_float scalar_t> [[nodiscard]] constexpr auto sign_mask() noexcept -> key_t<scalar_t>
 {
-    /// applies lower-bound bisection to find target in [low, high]
-    ///
-    /// \returns the leftmost x in [low, high] where f(x) >= target, if any; nullopt otherwise
-    /// \pre monotone_t is monotonic increasing
-    /// \pre low <= high
-    /// \pre low and high must be positve, 0.0, or -0.0
-    template <std::floating_point real_t, typename monotone_t>
-    [[nodiscard]] constexpr auto operator()(real_t low, real_t high, real_t target, monotone_t const& f) const noexcept
-        -> std::optional<real_t>
+    return key_t<scalar_t>{1} << (sizeof(scalar_t) * CHAR_BIT - 1);
+}
+
+/// monotone integer key for finite scalar order, with both zero encodings collapsed to one point
+template <is_supported_float scalar_t> [[nodiscard]] constexpr auto to_key(scalar_t value) noexcept -> key_t<scalar_t>
+{
+    assert(std::isfinite(value) && "representable-order key requires finite input");
+    auto const sign = sign_mask<scalar_t>();
+    if (value == scalar_t{0}) return sign - key_t<scalar_t>{1};
+
+    auto const bits = std::bit_cast<key_t<scalar_t>>(value);
+    auto const ordered = (bits & sign) != 0 ? ~bits : bits | sign;
+    return ordered >= sign ? ordered - key_t<scalar_t>{1} : ordered;
+}
+
+template <is_supported_float scalar_t> [[nodiscard]] constexpr auto from_key(key_t<scalar_t> key) noexcept -> scalar_t
+{
+    auto const sign = sign_mask<scalar_t>();
+    auto const zero_key = sign - key_t<scalar_t>{1};
+    if (key == zero_key) return scalar_t{0};
+
+    auto const ordered = key < zero_key ? key : key + key_t<scalar_t>{1};
+    auto const bits = ordered < sign ? ~ordered : ordered & ~sign;
+    auto const value = std::bit_cast<scalar_t>(bits);
+    assert(std::isfinite(value) && "representable-order key escaped finite interval");
+    return value;
+}
+
+template <typename result_t>
+concept is_expected_bool = requires {
+    typename result_t::value_type;
+    typename result_t::error_type;
+} && std::same_as<typename result_t::value_type, bool>;
+
+} // namespace detail::inverse
+
+/// error-propagating first-true search in finite representable scalar order
+struct try_bisect_first_true_t
+{
+    /// finds the first representable x in [low, high] whose monotone predicate is true
+    template <detail::inverse::is_supported_float scalar_t, typename predicate_t>
+        requires detail::inverse::is_expected_bool<std::invoke_result_t<predicate_t const&, scalar_t>>
+    [[nodiscard]] constexpr auto operator()(scalar_t low, scalar_t high, predicate_t const& predicate) const noexcept
     {
-        assert(low >= real_t{0.0} && "domain low must not be negative");
+        using predicate_result_t = std::invoke_result_t<predicate_t const&, scalar_t>;
+        using error_t = predicate_result_t::error_type;
+        using result_t = std::expected<std::optional<scalar_t>, error_t>;
+
+        assert(std::isfinite(low) && std::isfinite(high) && "representable-order search requires finite endpoints");
         assert(low <= high && "invalid search range");
 
-        // This implementation relies on the fact that positive and negative numbers are ordered the same as their
-        // unsigned integer representation, even though the interpretations are not 1:1. By converting to integer and
-        // conducting the search there, converting back to form the function parameter for comparison, then again when
-        // the results match identically, the search terminates in less than O(w), where w is the bit width of the type,
-        // rather than the thousands of iterations it can take midpointing in float to fp collapse. It also sidesteps
-        // the case where two values differ by 1 float ulp and cannot be resolved.
+        auto low_result = predicate(low);
+        if (!low_result) return result_t{std::unexpected{std::move(low_result).error()}};
+        if (*low_result) return result_t{std::optional<scalar_t>{low}};
+        if (low == high) return result_t{std::nullopt};
 
-        // handle oor
-        if (f(high) < target) return std::nullopt;
-        if (target <= f(low)) return low;
+        auto high_result = predicate(high);
+        if (!high_result) return result_t{std::unexpected{std::move(high_result).error()}};
+        if (!*high_result) return result_t{std::nullopt};
 
-        // sanitize negative zeros
-        //
-        // In float, -0.0 == 0.0, but -0.0 has the negative bit set, breaking the integer-based search here. These
-        // ternaries convert -0.0 to 0.0.
-        low = (low == real_t{0.0}) ? real_t{0.0} : low;
-        high = (high == real_t{0.0}) ? real_t{0.0} : high;
+        auto false_key = detail::inverse::to_key(low);
+        auto true_key = detail::inverse::to_key(high);
+        assert(false_key < true_key && "ordered search endpoints must be distinct");
 
-        using unsigned_t = int_by_bytes_t<sizeof(real_t), false>;
-        auto low_u = std::bit_cast<unsigned_t>(low);
-        auto high_u = std::bit_cast<unsigned_t>(high);
-
-        while (low_u < high_u)
+        while (true_key - false_key > 1)
         {
-            auto const mid_u = low_u + (high_u - low_u) / 2;
-            auto const mid = std::bit_cast<real_t>(mid_u);
+            auto const mid_key = false_key + (true_key - false_key) / 2;
+            auto const mid = detail::inverse::from_key<scalar_t>(mid_key);
+            auto mid_result = predicate(mid);
+            if (!mid_result) return result_t{std::unexpected{std::move(mid_result).error()}};
 
-            if (f(mid) < target) low_u = mid_u + 1;
-            else high_u = mid_u;
+            if (*mid_result) true_key = mid_key;
+            else false_key = mid_key;
         }
 
-        return std::bit_cast<real_t>(high_u);
+        return result_t{std::optional<scalar_t>{detail::inverse::from_key<scalar_t>(true_key)}};
+    }
+};
+
+/// first-true search in finite representable scalar order
+struct bisect_first_true_t
+{
+    template <detail::inverse::is_supported_float scalar_t, typename predicate_t>
+    [[nodiscard]] constexpr auto operator()(scalar_t low, scalar_t high, predicate_t const& predicate) const noexcept
+        -> std::optional<scalar_t>
+    {
+        enum class no_error_t : uint8_t
+        {
+        };
+
+        auto const result = try_bisect_first_true_t{}(low, high,
+            [&predicate](scalar_t input) noexcept { return std::expected<bool, no_error_t>{predicate(input)}; });
+        assert(result.has_value() && "non-error predicate unexpectedly failed");
+        return *result;
+    }
+};
+
+/// target-based lower-bound adapter over representable-order first-true search
+struct bisect_lower_bound_t
+{
+    /// finds the leftmost x in [low, high] where f(x) >= target, if any
+    template <detail::inverse::is_supported_float scalar_t, typename monotone_t>
+    [[nodiscard]] constexpr auto operator()(
+        scalar_t low, scalar_t high, scalar_t target, monotone_t const& f) const noexcept -> std::optional<scalar_t>
+    {
+        return bisect_first_true_t{}(low, high, [&f, target](scalar_t input) noexcept { return f(input) >= target; });
     }
 };
 
