@@ -45,6 +45,7 @@ set(lib_files
     model/curves/synchronous.hpp
     model/curves/traits.hpp
     model/domain.hpp
+    model/shaping/curve_evaluator.hpp
     model/shaping/input_affine_curve.hpp
     model/shaping/transforms/input_affine.hpp
     model/shaping/domain_warp_curve.hpp
@@ -265,6 +266,7 @@ set(regression_test_files
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
     model/curves/traits_test.cpp
+    model/shaping/curve_evaluator_test.cpp
     model/shaping/input_affine_curve_test.cpp
     model/shaping/input_affine_curve_integration_test.cpp
     model/shaping/transforms/input_affine_test.cpp
