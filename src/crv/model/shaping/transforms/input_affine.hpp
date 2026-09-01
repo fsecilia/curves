@@ -6,7 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/domain.hpp>
 #include <cassert>
 #include <cmath>
 #include <concepts>
@@ -45,32 +47,16 @@ public:
     {
         if (!std::isfinite(input)) return std::nullopt;
 
-        auto constexpr lowest = std::numeric_limits<scalar_t>::lowest();
-        auto constexpr max = std::numeric_limits<scalar_t>::max();
-
-        if (scale_ >= scalar_t{1})
-        {
-            if (shift_ > scalar_t{0} && input < lowest + shift_) return std::nullopt;
-            if (shift_ < scalar_t{0} && input > max + shift_) return std::nullopt;
-
-            auto const delta = input - shift_;
-            if (delta > scalar_t{0} && delta > max / scale_) return std::nullopt;
-            if (delta < scalar_t{0} && delta < lowest / scale_) return std::nullopt;
-            return scale_ * delta;
-        }
-
-        auto const scaled_input = scale_ * input;
-        auto const scaled_shift = scale_ * shift_;
-        if (scaled_shift > scalar_t{0} && scaled_input < lowest + scaled_shift) return std::nullopt;
-        if (scaled_shift < scalar_t{0} && scaled_input > max + scaled_shift) return std::nullopt;
-        return scaled_input - scaled_shift;
+        auto const output = scale_ >= scalar_t{1} ? scale_ * (input - shift_) : scale_ * input - scale_ * shift_;
+        if (!std::isfinite(output)) return std::nullopt;
+        return output;
     }
 
     [[nodiscard]] auto apply(scalar_t input) const noexcept -> scalar_t
     {
-        assert(try_apply(input).has_value() && "input_affine_t: transformed scalar must be representable");
-        if (scale_ >= scalar_t{1}) return scale_ * (input - shift_);
-        return scale_ * input - scale_ * shift_;
+        auto const output = try_apply(input);
+        assert(output.has_value() && "input_affine_t: transformed scalar must be representable");
+        return *output;
     }
 
     [[nodiscard]] auto apply(jet_t input) const noexcept -> jet_t
@@ -78,6 +64,40 @@ public:
         assert(try_apply(primal(input)).has_value() && "input_affine_t: transformed jet primal must be representable");
         if (scale_ >= scalar_t{1}) return scale_ * (input - shift_);
         return scale_ * input - scale_ * shift_;
+    }
+
+    /// exact outer-input preimage of a nested input domain
+    [[nodiscard]] auto preimage(model::input_domain_t<scalar_t> nested_domain) const noexcept
+        -> model::input_domain_t<scalar_t>
+    {
+        using domain_t = model::input_domain_t<scalar_t>;
+        if (nested_domain.empty()) return {};
+
+        auto constexpr lowest = std::numeric_limits<scalar_t>::lowest();
+        auto constexpr max = std::numeric_limits<scalar_t>::max();
+
+        auto const first = bisect_first_true_t{}(lowest, max, [this, nested_domain](scalar_t input) noexcept {
+            auto const output = try_apply(input);
+            if (output) return *output >= nested_domain.first();
+            return input > shift_;
+        });
+        if (!first) return {};
+
+        auto const first_excluded = bisect_first_true_t{}(lowest, max, [this, nested_domain](scalar_t input) noexcept {
+            auto const output = try_apply(input);
+            if (output) return *output > nested_domain.last();
+            return input > shift_;
+        });
+
+        if (first_excluded && *first_excluded <= *first) return {};
+        auto const last = first_excluded ? std::nextafter(*first_excluded, lowest) : max;
+
+        auto const first_output = try_apply(*first);
+        auto const last_output = try_apply(last);
+        assert(first_output && last_output && nested_domain.contains(*first_output)
+            && nested_domain.contains(*last_output)
+            && "resolved input-domain endpoints must map into the nested domain");
+        return domain_t{*first, last};
     }
 
     [[nodiscard]] auto try_inverse(scalar_t input) const noexcept -> std::optional<scalar_t>
@@ -96,7 +116,10 @@ public:
 
         if (shift_ > scalar_t{0} && quotient > max - shift_) return std::nullopt;
         if (shift_ < scalar_t{0} && quotient < lowest - shift_) return std::nullopt;
-        return shift_ + quotient;
+
+        auto const output = shift_ + quotient;
+        if (!std::isfinite(output)) return std::nullopt;
+        return output;
     }
 
 private:

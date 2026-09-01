@@ -67,7 +67,7 @@ struct common_output_builder_t
         assert(scale_value > scalar_t{0} && "common_output_builder_t: authored output scale must be positive");
         auto scale = std::move(scale_t::make(scale_value)).value();
 
-        auto const domain = curve.domain();
+        auto const domain = curve.input_domain();
         if (!domain.contains(scalar_t{0})) return std::unexpected{error_t::origin_outside_domain};
         if (!domain.contains(domain_end)) return std::unexpected{error_t::domain_end_outside_domain};
 

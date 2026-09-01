@@ -5,6 +5,7 @@
 
 #include "common_output_builder.hpp"
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <limits>
@@ -18,30 +19,17 @@ struct common_output_builder_test_t : Test
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
 
-    struct domain_t
-    {
-        scalar_t left{};
-        scalar_t right{10};
-
-        [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool
-        {
-            return std::isfinite(input) && left <= input && input <= right;
-        }
-    };
-
     struct curve_t
     {
         using scalar_t = common_output_builder_test_t::scalar_t;
-        using domain_t = common_output_builder_test_t::domain_t;
-
         scalar_t intercept{2};
         scalar_t slope{3};
-        domain_t input_domain{};
+        model::input_domain_t<scalar_t> domain{0.0, 10.0};
         std::vector<scalar_t> points{4};
 
         [[nodiscard]] auto operator()(scalar_t input) const noexcept -> scalar_t { return intercept + slope * input; }
         [[nodiscard]] auto operator()(jet_t input) const noexcept -> jet_t { return intercept + slope * input; }
-        [[nodiscard]] auto domain() const noexcept -> domain_t { return input_domain; }
+        [[nodiscard]] auto input_domain() const noexcept -> model::input_domain_t<scalar_t> { return domain; }
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return points; }
     };
 
@@ -146,7 +134,7 @@ TEST_F(common_output_builder_test_t, forwards_critical_points)
 TEST_F(common_output_builder_test_t, forwards_nested_domain)
 {
     auto const curve = build().value();
-    EXPECT_TRUE(curve.domain().contains(10.0));
+    EXPECT_TRUE(curve.input_domain().contains(10.0));
 }
 
 TEST_F(common_output_builder_test_t, rejects_nonfinite_output_scale)
@@ -182,13 +170,13 @@ TEST_F(common_output_builder_test_t, accepts_negative_relative_offset_when_origi
 
 TEST_F(common_output_builder_test_t, rejects_origin_outside_nested_domain)
 {
-    auto const curve = curve_t{.input_domain = {.left = 1.0, .right = 10.0}};
+    auto const curve = curve_t{.domain = {1.0, 10.0}};
     EXPECT_EQ(build(curve).error(), common_output_error_t::origin_outside_domain);
 }
 
 TEST_F(common_output_builder_test_t, rejects_domain_end_outside_nested_domain)
 {
-    auto const curve = curve_t{.input_domain = {.left = 0.0, .right = 9.0}};
+    auto const curve = curve_t{.domain = {0.0, 9.0}};
     EXPECT_EQ(build(curve).error(), common_output_error_t::domain_end_outside_domain);
 }
 

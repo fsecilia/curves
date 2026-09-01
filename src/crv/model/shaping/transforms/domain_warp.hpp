@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/inverse.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/model/shaping/transitions/concepts.hpp>
 #include <cassert>
 #include <cmath>
@@ -57,12 +58,6 @@ public:
         if (transition_width == scalar_t{0})
         {
             return domain_warp_t{hold_width, transition_width, std::move(transition), std::nullopt};
-        }
-
-        auto const max = std::numeric_limits<scalar_t>::max();
-        if (transition_width > max - hold_width)
-        {
-            return std::unexpected{domain_warp_error_t::support_not_representable};
         }
 
         auto const support_end = hold_width + transition_width;
@@ -143,6 +138,32 @@ public:
         return curve(apply(input));
     }
 
+    /// exact outer-input preimage of a nested input domain
+    [[nodiscard]] auto preimage(model::input_domain_t<scalar_t> nested_domain) const noexcept
+        -> model::input_domain_t<scalar_t>
+    {
+        using domain_t = model::input_domain_t<scalar_t>;
+        if (nested_domain.empty() || nested_domain.last() < scalar_t{0}) return {};
+
+        auto constexpr lowest = std::numeric_limits<scalar_t>::lowest();
+        auto constexpr max = std::numeric_limits<scalar_t>::max();
+
+        auto first = std::optional<scalar_t>{lowest};
+        if (nested_domain.first() > scalar_t{0}) first = first_at_least(nested_domain.first());
+        if (!first) return {};
+
+        auto const first_excluded = first_above(nested_domain.last());
+        if (first_excluded && *first_excluded <= *first) return {};
+        auto const last = first_excluded ? std::nextafter(*first_excluded, lowest) : max;
+
+        auto const first_output = try_apply(*first);
+        auto const last_output = try_apply(last);
+        assert(first_output && last_output && nested_domain.contains(*first_output)
+            && nested_domain.contains(*last_output)
+            && "resolved input-domain endpoints must map into the nested domain");
+        return domain_t{*first, last};
+    }
+
     /// structural hold/release boundaries in the transform's input coordinate
     [[nodiscard]] auto critical_points() const -> std::vector<scalar_t>
     {
@@ -198,6 +219,48 @@ private:
         if (input < geometry_->support_end) return region_t::transition;
         if (input == geometry_->support_end) return region_t::release_endpoint;
         return region_t::progression;
+    }
+
+    [[nodiscard]] auto first_at_least(scalar_t target) const noexcept -> std::optional<scalar_t>
+    {
+        assert(std::isfinite(target) && target > scalar_t{0} && "domain_warp_t: invalid lower target");
+        auto const max = std::numeric_limits<scalar_t>::max();
+
+        if (!geometry_)
+        {
+            return bisect_first_true_t{}(
+                hold_width_, max, [this, target](scalar_t input) noexcept { return apply_unchecked(input) >= target; });
+        }
+
+        if (target <= geometry_->transition_output_end)
+        {
+            return bisect_first_true_t{}(hold_width_, geometry_->support_end,
+                [this, target](scalar_t input) noexcept { return apply_unchecked(input) >= target; });
+        }
+
+        return bisect_first_true_t{}(geometry_->support_end, max,
+            [this, target](scalar_t input) noexcept { return apply_unchecked(input) >= target; });
+    }
+
+    [[nodiscard]] auto first_above(scalar_t target) const noexcept -> std::optional<scalar_t>
+    {
+        assert(std::isfinite(target) && "domain_warp_t: invalid upper target");
+        auto const max = std::numeric_limits<scalar_t>::max();
+
+        if (!geometry_)
+        {
+            return bisect_first_true_t{}(
+                hold_width_, max, [this, target](scalar_t input) noexcept { return apply_unchecked(input) > target; });
+        }
+
+        if (target < geometry_->transition_output_end)
+        {
+            return bisect_first_true_t{}(hold_width_, geometry_->support_end,
+                [this, target](scalar_t input) noexcept { return apply_unchecked(input) > target; });
+        }
+
+        return bisect_first_true_t{}(geometry_->support_end, max,
+            [this, target](scalar_t input) noexcept { return apply_unchecked(input) > target; });
     }
 
     [[nodiscard]] auto progression_lag() const noexcept -> scalar_t

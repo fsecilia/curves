@@ -167,12 +167,12 @@ TEST_F(model_curves_synchronous_origin_test_t, at_origin_threshold_jet_value_is_
 
 TEST_F(model_curves_synchronous_origin_test_t, domain_contains_lowest_finite_input)
 {
-    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::lowest()));
+    EXPECT_TRUE(eval.input_domain().contains(std::numeric_limits<real_t>::lowest()));
 }
 
 TEST_F(model_curves_synchronous_origin_test_t, domain_contains_largest_finite_input)
 {
-    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::max()));
+    EXPECT_TRUE(eval.input_domain().contains(std::numeric_limits<real_t>::max()));
 }
 
 TEST_F(model_curves_synchronous_origin_test_t, lowest_finite_scalar_input_evaluates_finitely)

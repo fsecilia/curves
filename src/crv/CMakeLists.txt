@@ -258,6 +258,7 @@ set(regression_test_files
     math/stats_test.cpp
     model/composed_curve_test.cpp
     model/config_test.cpp
+    model/domain_test.cpp
     model/curves/concepts_test.cpp
     model/curves/log_normal_test.cpp
     model/curves/power_law_test.cpp

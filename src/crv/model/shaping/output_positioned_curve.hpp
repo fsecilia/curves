@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/curves/concepts.hpp>
+#include <crv/model/domain.hpp>
 #include <utility>
 #include <vector>
 
@@ -21,7 +22,6 @@ public:
     using transform_t = t_transform_t;
     using nested_curve_t = t_nested_curve_t;
     using scalar_t = nested_curve_t::scalar_t;
-    using domain_t = nested_curve_t::domain_t;
 
     constexpr output_positioned_curve_t(transform_t transform, nested_curve_t curve) noexcept
         : transform_{std::move(transform)}, curve_{std::move(curve)}
@@ -33,7 +33,10 @@ public:
     }
 
     /// output positioning leaves the nested input domain unchanged
-    [[nodiscard]] auto domain() const noexcept -> domain_t { return curve_.domain(); }
+    [[nodiscard]] auto input_domain() const noexcept -> model::input_domain_t<scalar_t>
+    {
+        return curve_.input_domain();
+    }
 
     /// output positioning leaves x-space critical points unchanged
     [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return curve_.critical_points(); }

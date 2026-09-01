@@ -5,6 +5,7 @@
 
 #include "output_positioned_curve.hpp"
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 #include <vector>
@@ -17,12 +18,7 @@ struct output_positioned_curve_test_t : Test
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
 
-    struct domain_t
-    {
-        scalar_t marker;
-        [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool { return input == marker; }
-        constexpr auto operator==(domain_t const&) const noexcept -> bool = default;
-    };
+    using input_domain_t = model::input_domain_t<scalar_t>;
 
     struct curve_mock_t
     {
@@ -36,14 +32,12 @@ struct output_positioned_curve_test_t : Test
     struct curve_t
     {
         using scalar_t = output_positioned_curve_test_t::scalar_t;
-        using domain_t = output_positioned_curve_test_t::domain_t;
-
         curve_mock_t* mock;
-        domain_t input_domain;
+        input_domain_t domain;
 
         [[nodiscard]] auto operator()(scalar_t input) const noexcept -> scalar_t { return mock->scalar(input); }
         [[nodiscard]] auto operator()(jet_t input) const noexcept -> jet_t { return mock->jet(input); }
-        [[nodiscard]] auto domain() const noexcept -> domain_t { return input_domain; }
+        [[nodiscard]] auto input_domain() const noexcept -> model::input_domain_t<scalar_t> { return domain; }
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return mock->critical_points(); }
     };
 
@@ -66,7 +60,7 @@ struct output_positioned_curve_test_t : Test
 
     static_assert(is_curve<output_positioned_curve_t<transform_t, curve_t>, scalar_t>);
 
-    output_positioned_curve_t<transform_t, curve_t> sut{{&transform_mock}, {&curve_mock, {13.0}}};
+    output_positioned_curve_t<transform_t, curve_t> sut{{&transform_mock}, {&curve_mock, {13.0, 17.0}}};
 };
 
 TEST_F(output_positioned_curve_test_t, positions_nested_scalar_output)
@@ -88,7 +82,7 @@ TEST_F(output_positioned_curve_test_t, positions_nested_jet_output)
 
 TEST_F(output_positioned_curve_test_t, forwards_nested_domain)
 {
-    EXPECT_EQ(sut.domain(), (domain_t{13.0}));
+    EXPECT_EQ(sut.input_domain(), (input_domain_t{13.0, 17.0}));
 }
 
 TEST_F(output_positioned_curve_test_t, forwards_nested_critical_points)

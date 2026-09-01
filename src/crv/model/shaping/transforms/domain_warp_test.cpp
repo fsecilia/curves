@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "domain_warp.hpp"
+#include <crv/model/domain.hpp>
 #include <crv/model/shaping/transitions/smoothstep.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
@@ -63,6 +64,14 @@ TEST(shaping_transforms_domain_warp_support_test_t, accepts_exactly_representabl
     auto const max = std::numeric_limits<scalar_t>::max();
     auto const hold_width = max / scalar_t{2};
     auto const transition_width = max - hold_width;
+    EXPECT_TRUE(sut_t::make(hold_width, transition_width, transition_t{}));
+}
+
+TEST(shaping_transforms_domain_warp_support_test_t, accepts_support_endpoint_when_actual_sum_rounds_to_maximum)
+{
+    auto const max = std::numeric_limits<scalar_t>::max();
+    auto const hold_width = max * scalar_t{13.0 / 16.0};
+    auto const transition_width = std::nextafter(max - hold_width, max);
     EXPECT_TRUE(sut_t::make(hold_width, transition_width, transition_t{}));
 }
 
@@ -300,6 +309,137 @@ TEST_F(shaping_transforms_domain_warp_curve_apply_test_t,
     auto const input = jet_t{2.0, 7.0};
     EXPECT_CALL(mock_curve, jet(jet_t{0.0, 0.0})).WillOnce(Return(jet_t{3.0, 11.0}));
     EXPECT_EQ(sut.apply(curve_t{&mock_curve}, input), (jet_t{3.0, 11.0}));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, preserves_empty_nested_domain)
+{
+    EXPECT_TRUE(make_sut(2.0, 4.0).preimage(model::input_domain_t<scalar_t>{}).empty());
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, full_nested_domain_keeps_full_outer_domain)
+{
+    EXPECT_EQ(
+        make_sut(2.0, 4.0).preimage(model::input_domain_t<scalar_t>::full()), model::input_domain_t<scalar_t>::full());
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, domain_entirely_below_zero_is_unreachable)
+{
+    EXPECT_TRUE(make_sut(2.0, 4.0).preimage({-2.0, -1.0}).empty());
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, zero_only_domain_ends_at_actual_hold_frontier)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 0.0};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_EQ(domain.first(), std::numeric_limits<scalar_t>::lowest());
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, lower_endpoint_inside_transition_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.375, 4.0};
+    auto const domain = sut.preimage(nested);
+    auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.first())));
+    EXPECT_FALSE(nested.contains(sut.apply(predecessor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, lower_endpoint_at_release_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{2.0, 4.0};
+    auto const domain = sut.preimage(nested);
+    auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.first())));
+    EXPECT_FALSE(nested.contains(sut.apply(predecessor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, lower_endpoint_after_release_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{3.0, 4.0};
+    auto const domain = sut.preimage(nested);
+    auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.first())));
+    EXPECT_FALSE(nested.contains(sut.apply(predecessor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, upper_endpoint_inside_transition_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 0.375};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, upper_endpoint_at_release_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 2.0};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, upper_endpoint_after_release_is_exact)
+{
+    auto const sut = make_sut(2.0, 4.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 3.0};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, zero_transition_width_resolves_delayed_progression)
+{
+    auto const sut = make_sut(2.0, 0.0);
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 3.0};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_EQ(domain.first(), std::numeric_limits<scalar_t>::lowest());
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, zero_transition_width_skipped_singleton_is_unreachable)
+{
+    auto const denorm = std::numeric_limits<scalar_t>::denorm_min();
+    EXPECT_TRUE(make_sut(2.0, 0.0).preimage({denorm, denorm}).empty());
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, positive_domain_above_maximum_warp_output_is_unreachable)
+{
+    auto const max = std::numeric_limits<scalar_t>::max();
+    auto const hold_width = max / scalar_t{4};
+    auto const transition_width = max / scalar_t{4};
+    EXPECT_TRUE(make_sut(hold_width, transition_width).preimage({max, max}).empty());
+}
+
+TEST(shaping_transforms_domain_warp_domain_preimage_test_t, non_symmetric_transition_uses_actual_release_geometry)
+{
+    auto const sut = endpoint_sut_t::make(2.0, 4.0, endpoint_transition_t{0.25}).value();
+    auto const nested = model::input_domain_t<scalar_t>{0.0, 1.0};
+    auto const domain = sut.preimage(nested);
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(sut.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(sut.apply(successor)));
 }
 
 TEST(shaping_transforms_domain_warp_critical_points_test_t, zero_transition_width_contributes_hold_boundary_only)

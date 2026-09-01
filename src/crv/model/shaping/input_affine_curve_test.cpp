@@ -5,6 +5,7 @@
 
 #include "input_affine_curve.hpp"
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/domain.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
 #include <optional>
@@ -18,11 +19,7 @@ struct shaping_input_affine_curve_test_t : Test
 {
     using scalar_t = float_t;
     using jet_t = crv::jet_t<scalar_t>;
-
-    struct domain_t
-    {
-        [[nodiscard]] constexpr auto contains(scalar_t) const noexcept -> bool { return true; }
-    };
+    using input_domain_t = model::input_domain_t<scalar_t>;
 
     struct mock_transform_t
     {
@@ -38,7 +35,7 @@ struct shaping_input_affine_curve_test_t : Test
     {
         mock_transform_t* mock;
 
-        [[nodiscard]] auto try_apply(scalar_t input) const noexcept -> std::optional<scalar_t> { return input; }
+        [[nodiscard]] auto preimage(input_domain_t domain) const noexcept -> input_domain_t { return domain; }
         [[nodiscard]] auto apply(scalar_t input) const noexcept -> scalar_t { return mock->scalar(input); }
         [[nodiscard]] auto apply(jet_t input) const noexcept -> jet_t { return mock->jet(input); }
         [[nodiscard]] auto try_inverse(scalar_t input) const noexcept -> std::optional<scalar_t>
@@ -60,13 +57,15 @@ struct shaping_input_affine_curve_test_t : Test
     struct curve_t
     {
         using scalar_t = shaping_input_affine_curve_test_t::scalar_t;
-        using domain_t = shaping_input_affine_curve_test_t::domain_t;
 
         mock_curve_t* mock;
 
         [[nodiscard]] auto operator()(scalar_t input) const noexcept -> scalar_t { return mock->scalar(input); }
         [[nodiscard]] auto operator()(jet_t input) const noexcept -> jet_t { return mock->jet(input); }
-        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
+        [[nodiscard]] constexpr auto input_domain() const noexcept -> model::input_domain_t<scalar_t>
+        {
+            return model::input_domain_t<scalar_t>::full();
+        }
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return mock->critical_points(); }
     };
 
@@ -112,71 +111,77 @@ TEST_F(shaping_input_affine_curve_test_t, omits_unrepresentable_inverse_critical
     EXPECT_TRUE(sut.critical_points().empty());
 }
 
-struct shaping_input_affine_domain_test_t : Test
+TEST(shaping_input_affine_domain_test_t, stores_completed_transform_preimage)
 {
     using scalar_t = float_t;
-
-    struct mock_transform_t
-    {
-        virtual ~mock_transform_t() = default;
-        MOCK_METHOD(std::optional<scalar_t>, try_apply, (scalar_t), (const, noexcept));
-    };
-    StrictMock<mock_transform_t> mock_transform;
+    using input_domain_t = model::input_domain_t<scalar_t>;
 
     struct transform_t
     {
-        mock_transform_t* mock;
+        int_t* preimage_calls;
+        input_domain_t* nested_domain;
+        input_domain_t resolved;
 
-        [[nodiscard]] auto try_apply(scalar_t input) const noexcept -> std::optional<scalar_t>
+        [[nodiscard]] auto preimage(input_domain_t domain) const noexcept -> input_domain_t
         {
-            return mock->try_apply(input);
+            ++*preimage_calls;
+            *nested_domain = domain;
+            return resolved;
         }
-    };
 
-    struct mock_domain_t
-    {
-        virtual ~mock_domain_t() = default;
-        MOCK_METHOD(bool, contains, (scalar_t), (const, noexcept));
-    };
-    StrictMock<mock_domain_t> mock_domain;
-
-    struct domain_t
-    {
-        mock_domain_t* mock;
-        [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool { return mock->contains(input); }
+        [[nodiscard]] constexpr auto apply(scalar_t input) const noexcept -> scalar_t { return input; }
+        [[nodiscard]] constexpr auto try_inverse(scalar_t input) const noexcept -> std::optional<scalar_t>
+        {
+            return input;
+        }
     };
 
     struct curve_t
     {
-        using scalar_t = shaping_input_affine_domain_test_t::scalar_t;
-        using domain_t = shaping_input_affine_domain_test_t::domain_t;
-
-        domain_t input_domain;
+        using scalar_t = crv::float_t;
 
         [[nodiscard]] constexpr auto operator()(scalar_t input) const noexcept -> scalar_t { return input; }
-        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return input_domain; }
+        [[nodiscard]] constexpr auto input_domain() const noexcept -> model::input_domain_t<scalar_t>
+        {
+            return {2.0, 7.0};
+        }
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
     };
 
-    static_assert(is_curve<curve_t, scalar_t>);
-
-    input_affine_curve_t<transform_t, curve_t> sut{transform_t{&mock_transform}, curve_t{{&mock_domain}}};
-};
-
-TEST_F(shaping_input_affine_domain_test_t, rejects_input_when_transform_is_not_representable)
-{
-    auto const input = scalar_t{3};
-    EXPECT_CALL(mock_transform, try_apply(input)).WillOnce(Return(std::nullopt));
-    EXPECT_FALSE(sut.domain().contains(input));
+    auto calls = int_t{};
+    auto nested_domain = input_domain_t{};
+    auto const expected = input_domain_t{-3.0, 11.0};
+    auto const sut = input_affine_curve_t<transform_t, curve_t>{{&calls, &nested_domain, expected}, {}};
+    EXPECT_EQ(sut.input_domain(), expected);
+    EXPECT_EQ(nested_domain, (input_domain_t{2.0, 7.0}));
+    EXPECT_EQ(calls, 1);
 }
 
-TEST_F(shaping_input_affine_domain_test_t, asks_nested_domain_about_transformed_input)
+TEST(shaping_input_affine_domain_test_t, rejects_scalar_input_outside_stored_preimage)
 {
-    auto const input = scalar_t{3};
-    auto const transformed = scalar_t{5};
-    EXPECT_CALL(mock_transform, try_apply(input)).WillOnce(Return(transformed));
-    EXPECT_CALL(mock_domain, contains(transformed)).WillOnce(Return(true));
-    EXPECT_TRUE(sut.domain().contains(input));
+    using scalar_t = float_t;
+    using input_domain_t = model::input_domain_t<scalar_t>;
+
+    struct transform_t
+    {
+        [[nodiscard]] constexpr auto preimage(input_domain_t) const noexcept -> input_domain_t { return {1.0, 2.0}; }
+        [[nodiscard]] constexpr auto apply(scalar_t input) const noexcept -> scalar_t { return input; }
+        [[nodiscard]] constexpr auto try_inverse(scalar_t input) const noexcept -> std::optional<scalar_t>
+        {
+            return input;
+        }
+    };
+
+    struct curve_t
+    {
+        using scalar_t = crv::float_t;
+        [[nodiscard]] constexpr auto operator()(scalar_t input) const noexcept -> scalar_t { return input; }
+        [[nodiscard]] constexpr auto input_domain() const noexcept -> input_domain_t { return input_domain_t::full(); }
+        [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
+    };
+
+    auto const sut = input_affine_curve_t<transform_t, curve_t>{{}, {}};
+    EXPECT_DEATH(static_cast<void>(sut(0.0)), "input outside domain");
 }
 
 } // namespace

@@ -213,13 +213,13 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(model_curves_log_normal_domain_test_t, contains_lowest_finite_input)
 {
     auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
-    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::lowest()));
+    EXPECT_TRUE(eval.input_domain().contains(std::numeric_limits<real_t>::lowest()));
 }
 
 TEST(model_curves_log_normal_domain_test_t, contains_largest_finite_input)
 {
     auto const eval = evaluator_t{params_t{2.0 / 3.0, 1.5, 1.0, 0.5}};
-    EXPECT_TRUE(eval.domain().contains(std::numeric_limits<real_t>::max()));
+    EXPECT_TRUE(eval.input_domain().contains(std::numeric_limits<real_t>::max()));
 }
 
 TEST(model_curves_log_normal_domain_test_t, lowest_finite_input_evaluates_finitely)

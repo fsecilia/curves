@@ -24,6 +24,7 @@ namespace {
 
 using scalar_t = float_t;
 using jet_t = crv::jet_t<scalar_t>;
+using input_domain_t = model::input_domain_t<scalar_t>;
 using smoothstep_t = transitions::smoothstep_t;
 using warp_t = transforms::domain_warp_t<scalar_t, smoothstep_t>;
 using power_law_t = model::curves::power_law_t;
@@ -32,6 +33,25 @@ using power_law_evaluator_t = power_law_t::evaluator_t<scalar_t>;
 [[nodiscard]] auto make_warp(scalar_t hold_width, scalar_t transition_width) -> warp_t
 {
     return std::move(warp_t::make(hold_width, transition_width, smoothstep_t{})).value();
+}
+
+struct identity_curve_t
+{
+    using scalar_t = crv::float_t;
+
+    input_domain_t domain{input_domain_t::full()};
+
+    [[nodiscard]] constexpr auto operator()(scalar_t input) const noexcept -> scalar_t { return input; }
+    [[nodiscard]] constexpr auto operator()(jet_t input) const noexcept -> jet_t { return input; }
+    [[nodiscard]] constexpr auto input_domain() const noexcept -> input_domain_t { return domain; }
+    [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
+};
+
+using identity_warp_curve_t = domain_warp_curve_t<warp_t, identity_curve_t>;
+
+[[nodiscard]] auto make_domain_sut(input_domain_t nested_domain) -> identity_warp_curve_t
+{
+    return {make_warp(2.0, 4.0), identity_curve_t{nested_domain}};
 }
 
 TEST(domain_warp_power_law_integration_test_t, exact_hold_avoids_fractional_power_law_singular_jet)
@@ -76,9 +96,9 @@ TEST(
     EXPECT_EQ(make_warp_affine_power_law()(-100.0), 0.5);
 }
 
-TEST(domain_warp_input_affine_power_law_integration_test_t, enclosing_hold_extends_domain_only_when_affine_zero_is_safe)
+TEST(domain_warp_input_affine_power_law_integration_test_t, enclosing_hold_extends_domain_when_affine_zero_is_safe)
 {
-    EXPECT_TRUE(make_warp_affine_power_law().domain().contains(-std::numeric_limits<scalar_t>::max()));
+    EXPECT_EQ(make_warp_affine_power_law().input_domain().first(), std::numeric_limits<scalar_t>::lowest());
 }
 
 TEST(domain_warp_input_affine_power_law_integration_test_t, post_hold_evaluation_preserves_warp_then_affine_order)
@@ -87,48 +107,86 @@ TEST(domain_warp_input_affine_power_law_integration_test_t, post_hold_evaluation
     EXPECT_EQ(make_warp_affine_power_law()(1.5), raw(0.75));
 }
 
-struct positive_domain_t
+TEST(domain_warp_domain_integration_test_t, full_nested_domain_keeps_full_finite_outer_domain)
 {
-    [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool
-    {
-        return std::isfinite(input) && input > scalar_t{0};
-    }
-};
-
-struct positive_identity_curve_t
-{
-    using scalar_t = crv::float_t;
-    using domain_t = positive_domain_t;
-
-    [[nodiscard]] constexpr auto operator()(scalar_t input) const noexcept -> scalar_t { return input; }
-    [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
-    [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
-};
-
-TEST(domain_warp_domain_integration_test_t, hold_is_excluded_when_nested_domain_rejects_zero)
-{
-    auto const sut = domain_warp_curve_t<warp_t, positive_identity_curve_t>{make_warp(1.0, 1.0), {}};
-    EXPECT_FALSE(sut.domain().contains(0.5));
+    EXPECT_EQ(make_domain_sut(input_domain_t::full()).input_domain(), input_domain_t::full());
 }
 
-TEST(domain_warp_domain_integration_test_t, release_is_included_when_warp_maps_into_nested_domain)
+TEST(domain_warp_domain_integration_test_t, nested_domain_below_zero_has_empty_preimage)
 {
-    auto const sut = domain_warp_curve_t<warp_t, positive_identity_curve_t>{make_warp(1.0, 1.0), {}};
-    EXPECT_TRUE(sut.domain().contains(3.0));
+    EXPECT_TRUE(make_domain_sut({-2.0, -1.0}).input_domain().empty());
 }
 
-struct identity_curve_t
+TEST(domain_warp_domain_integration_test_t, nested_zero_only_domain_ends_at_exact_hold_release_frontier)
 {
-    using scalar_t = crv::float_t;
-    using domain_t = model::unbounded_domain_t<scalar_t>;
+    auto const warp = make_warp(2.0, 4.0);
+    auto const domain = make_domain_sut({0.0, 0.0}).input_domain();
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
 
-    [[nodiscard]] constexpr auto operator()(scalar_t input) const noexcept -> scalar_t { return input; }
-    [[nodiscard]] constexpr auto operator()(jet_t input) const noexcept -> jet_t { return input; }
-    [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
-    [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }
-};
+    EXPECT_EQ(domain.first(), std::numeric_limits<scalar_t>::lowest());
+    EXPECT_EQ(warp.apply(domain.last()), 0.0);
+    EXPECT_GT(warp.apply(successor), 0.0);
+}
 
-static_assert(is_curve<identity_curve_t, scalar_t>);
+TEST(domain_warp_domain_integration_test_t, nested_first_zero_keeps_full_negative_hold_extent)
+{
+    EXPECT_EQ(make_domain_sut({0.0, 0.375}).input_domain().first(), std::numeric_limits<scalar_t>::lowest());
+}
+
+TEST(domain_warp_domain_integration_test_t, positive_nested_first_excludes_hold_at_exact_representable_boundary)
+{
+    auto const warp = make_warp(2.0, 4.0);
+    auto const nested = input_domain_t{std::numeric_limits<scalar_t>::denorm_min(), 2.0};
+    auto const domain = make_domain_sut(nested).input_domain();
+    auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(warp.apply(domain.first())));
+    EXPECT_FALSE(nested.contains(warp.apply(predecessor)));
+}
+
+TEST(domain_warp_domain_integration_test_t, resolves_lower_endpoint_inside_smooth_transition)
+{
+    auto const warp = make_warp(2.0, 4.0);
+    auto const nested = input_domain_t{0.375, 4.0};
+    auto const domain = make_domain_sut(nested).input_domain();
+    auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(warp.apply(domain.first())));
+    EXPECT_FALSE(nested.contains(warp.apply(predecessor)));
+}
+
+TEST(domain_warp_domain_integration_test_t, resolves_upper_endpoint_inside_smooth_transition)
+{
+    auto const warp = make_warp(2.0, 4.0);
+    auto const nested = input_domain_t{0.0, 0.375};
+    auto const domain = make_domain_sut(nested).input_domain();
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(warp.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(warp.apply(successor)));
+}
+
+TEST(domain_warp_domain_integration_test_t, resolves_upper_endpoint_at_release)
+{
+    auto const warp = make_warp(2.0, 4.0);
+    auto const nested = input_domain_t{0.0, 2.0};
+    auto const domain = make_domain_sut(nested).input_domain();
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(warp.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(warp.apply(successor)));
+}
+
+TEST(domain_warp_domain_integration_test_t, resolves_upper_endpoint_after_release)
+{
+    auto const warp = make_warp(2.0, 4.0);
+    auto const nested = input_domain_t{0.0, 3.0};
+    auto const domain = make_domain_sut(nested).input_domain();
+    auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
+
+    EXPECT_TRUE(nested.contains(warp.apply(domain.last())));
+    EXPECT_FALSE(nested.contains(warp.apply(successor)));
+}
 
 TEST(domain_warp_nast_integration_test_t, composes_with_retained_numerical_antiderivative)
 {

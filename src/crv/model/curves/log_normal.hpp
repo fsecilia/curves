@@ -60,7 +60,6 @@ struct log_normal_t
         using curve_t = log_normal_t;
         using scalar_t = t_scalar_t;
         using real_t = real_type_t<scalar_t>;
-        using domain_t = model::unbounded_domain_t<real_t>;
 
         using jet_t = crv::jet_t<scalar_t>;
 
@@ -98,8 +97,11 @@ struct log_normal_t
             else return value_t{scaled_f};
         }
 
-        /// scalar evaluation is saturated and finite for every finite real input
-        [[nodiscard]] constexpr auto domain() const noexcept -> domain_t { return {}; }
+        /// every finite real input coordinate is admissible
+        [[nodiscard]] constexpr auto input_domain() const noexcept -> model::input_domain_t<real_t>
+        {
+            return model::input_domain_t<real_t>::full();
+        }
 
         /// no interior critical points
         [[nodiscard]] auto critical_points() const -> std::vector<scalar_t> { return {}; }

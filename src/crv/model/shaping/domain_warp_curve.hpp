@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/scalar_traits.hpp>
 #include <crv/model/curves/concepts.hpp>
+#include <crv/model/domain.hpp>
 #include <cassert>
 #include <cmath>
 #include <utility>
@@ -24,38 +25,22 @@ public:
     using transform_t = t_transform_t;
     using nested_curve_t = t_nested_curve_t;
     using scalar_t = nested_curve_t::scalar_t;
-    using nested_domain_t = nested_curve_t::domain_t;
-
-    /// propagated input domain
-    class domain_t
-    {
-    public:
-        constexpr domain_t(transform_t transform, nested_domain_t nested_domain) noexcept
-            : transform_{std::move(transform)}, nested_domain_{std::move(nested_domain)}
-        {}
-
-        [[nodiscard]] auto contains(scalar_t input) const noexcept -> bool
-        {
-            auto const nested_input = transform_.try_apply(input);
-            return nested_input && nested_domain_.contains(*nested_input);
-        }
-
-    private:
-        [[no_unique_address]] transform_t transform_;
-        [[no_unique_address]] nested_domain_t nested_domain_;
-    };
 
     constexpr domain_warp_curve_t(transform_t transform, nested_curve_t curve) noexcept
-        : transform_{std::move(transform)}, curve_{std::move(curve)}
+        : transform_{std::move(transform)}, curve_{std::move(curve)},
+          input_domain_{transform_.preimage(curve_.input_domain())}
     {}
 
     template <typename input_t> [[nodiscard]] auto operator()(input_t input) const noexcept -> input_t
     {
-        assert(domain().contains(primal(input)) && "domain_warp_curve_t: input outside domain");
+        assert(input_domain_.contains(primal(input)) && "domain_warp_curve_t: input outside domain");
         return transform_.apply(curve_, input);
     }
 
-    [[nodiscard]] auto domain() const noexcept -> domain_t { return {transform_, curve_.domain()}; }
+    [[nodiscard]] constexpr auto input_domain() const noexcept -> model::input_domain_t<scalar_t>
+    {
+        return input_domain_;
+    }
 
     /// structural warp points plus reachable nested critical-point preimages
     [[nodiscard]] auto critical_points() const -> std::vector<scalar_t>
@@ -75,6 +60,7 @@ public:
 private:
     transform_t transform_;
     nested_curve_t curve_;
+    model::input_domain_t<scalar_t> input_domain_;
 };
 
 } // namespace crv::shaping
