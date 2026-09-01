@@ -9,6 +9,10 @@
 
 #pragma once
 
+#if defined(__FAST_MATH__) || (defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__)
+#error "Curves requires floating-point infinities and NaNs; -ffast-math and -ffinite-math-only are unsupported"
+#endif
+
 #include <cstdint>
 
 namespace crv {
