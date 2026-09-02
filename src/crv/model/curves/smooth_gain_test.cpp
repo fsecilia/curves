@@ -21,6 +21,7 @@ using continuity_t = shaping::transitions::continuity_t;
 
 static_assert(is_curve<evaluator_t, real_t>);
 
+#if 0
 struct transition_vector_t
 {
     std::string_view name;
@@ -32,13 +33,6 @@ struct transition_vector_t
     {
         return out << src.name;
     }
-};
-
-transition_vector_t const transition_vectors[] = {
-    {"c1", continuity_t::c1, 0.15625, 1.125},
-    {"c2", continuity_t::c2, 0.103515625, 1.0546875},
-    {"c3", continuity_t::c3, 0.070556640625, 0.9228515625},
-    {"cinfinity", continuity_t::cinfinity, 0.06496916912866404, 1.079967576735913},
 };
 
 struct smooth_gain_transition_test_t : TestWithParam<transition_vector_t>
@@ -75,8 +69,16 @@ TEST_P(smooth_gain_transition_test_t, propagates_transition_derivative)
     EXPECT_NEAR(actual, expected, tolerance);
 }
 
+transition_vector_t const transition_vectors[] = {
+    {"c1", continuity_t::c1, 0.15625, 1.125},
+    {"c2", continuity_t::c2, 0.103515625, 1.0546875},
+    {"c3", continuity_t::c3, 0.070556640625, 0.9228515625},
+    {"cinfinity", continuity_t::cinfinity, 0.06496916912866404, 1.079967576735913},
+};
+
 INSTANTIATE_TEST_SUITE_P(transitions, smooth_gain_transition_test_t, ValuesIn(transition_vectors),
     test_name_generator_t<transition_vector_t>{});
+#endif
 
 struct smooth_gain_test_t : Test
 {

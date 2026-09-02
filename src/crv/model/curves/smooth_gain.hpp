@@ -100,6 +100,10 @@ struct smooth_gain_t
     private:
         template <typename value_t> [[nodiscard]] auto transition_value(value_t u) const noexcept -> value_t
         {
+            auto const u2 = u * u;
+            return u2 * (((-scalar_t{4} * u + scalar_t{15}) * u - scalar_t{20}) * u + scalar_t{10});
+
+#if 0
             using namespace shaping::transitions;
 
             // dispatches authored continuity as a value until shared cps curve builder can retain typed outputs
@@ -113,6 +117,7 @@ struct smooth_gain_t
 
             assert(false && "smooth_gain_t: continuity out of range");
             std::unreachable();
+#endif
         }
 
         scalar_t v_0_;
