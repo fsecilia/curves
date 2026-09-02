@@ -12,6 +12,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/model/curves/log_normal.hpp>
+#include <crv/model/curves/smooth_gain.hpp>
 #include <crv/model/curves/synchronous.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/sequential_enum_name_map.hpp>
@@ -29,13 +30,14 @@ enum class curve_id_t
 {
     synchronous,
     log_normal,
+    smooth_gain,
     count_
 };
 
 /// curve types, ordered by id
 ///
 /// *** Order here must match curve_id_t! ***
-using curves_t = std::tuple<synchronous_t, log_normal_t>;
+using curves_t = std::tuple<synchronous_t, log_normal_t, smooth_gain_t>;
 constexpr auto curves_count = static_cast<int_t>(std::tuple_size_v<curves_t>);
 
 } // namespace model::curves
@@ -44,7 +46,8 @@ namespace reflection {
 
 template <> struct enum_t<model::curves::curve_id_t>
 {
-    static constexpr auto map = sequential_enum_name_map<model::curves::curve_id_t>("synchronous", "log_normal");
+    static constexpr auto map
+        = sequential_enum_name_map<model::curves::curve_id_t>("synchronous", "log_normal", "smooth_gain");
 };
 
 } // namespace reflection

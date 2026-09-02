@@ -159,5 +159,14 @@ TEST_F(authored_validator_test_t, rejects_log_normal_nonpositive_scale)
     EXPECT_EQ(validate().error, authored_validation_error_t::log_normal_limit);
 }
 
+TEST_F(authored_validator_test_t, accepts_smooth_gain_while_curve_specific_validation_is_deferred)
+{
+    profile.curves.active.value(model::curves::curve_id_t::smooth_gain);
+    auto& smooth_gain = std::get<2>(profile.curves.configs);
+    smooth_gain.specific.v_0.value(20.0);
+    smooth_gain.specific.v_1.value(1.0);
+    EXPECT_TRUE(validate());
+}
+
 } // namespace
 } // namespace crv::pipeline::configuration::construction

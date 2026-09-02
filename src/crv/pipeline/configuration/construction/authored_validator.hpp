@@ -9,6 +9,7 @@
 #include <crv/lib.hpp>
 #include <crv/model/config.hpp>
 #include <crv/model/curves/log_normal.hpp>
+#include <crv/model/curves/smooth_gain.hpp>
 #include <crv/model/curves/synchronous.hpp>
 #include <crv/pipeline.hpp>
 #include <crv/tuple.hpp>
@@ -113,6 +114,14 @@ private:
         else if constexpr (std::same_as<specific_t, model::curves::log_normal_t::config_t>)
         {
             return validate_log_normal(curve_config.specific);
+        }
+        else
+        {
+            static_assert(std::same_as<specific_t, model::curves::smooth_gain_t::config_t>,
+                "authored_validator_t: unsupported curve config");
+
+            // accepts SmoothGain unchecked until curve-local construction owns authored validation
+            return {};
         }
     }
 

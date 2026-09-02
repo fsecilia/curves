@@ -59,6 +59,21 @@ TEST(model_test, round_trip)
     log_normal.specific.accel_peak.value(7.0);
     log_normal.specific.max_accel.value(11.0);
 
+    auto& smooth_gain = std::get<curve_config_t<curves::smooth_gain_t::config_t>>(expected_root.profile.curves.configs);
+    smooth_gain.common.scale.input.value(3.0);
+    smooth_gain.common.scale.output.value(7.0);
+    smooth_gain.common.offset.begin.value(4.0);
+    smooth_gain.common.offset.width.value(3.5);
+    smooth_gain.common.anchor.mode.value(anchor_mode_t::fixed);
+    smooth_gain.common.anchor.height.value(4.2);
+    smooth_gain.common.ceiling.height.value(512.0);
+    smooth_gain.common.ceiling.width.value(13.0);
+    smooth_gain.specific.v_0.value(-1.0);
+    smooth_gain.specific.v_1.value(12.0);
+    smooth_gain.specific.g_t.value(0.75);
+    smooth_gain.specific.g_f.value(3.0);
+    smooth_gain.specific.transition.value(shaping::transitions::continuity_t::c2);
+
     // graphs no longer same
     EXPECT_NE(expected_root, actual_root);
 
@@ -74,6 +89,17 @@ TEST(model_test, round_trip)
     // graphs are same again
     EXPECT_EQ(expected_root, actual_root);
 };
+
+TEST(model_transition_reflection_test_t, names_continuity)
+{
+    EXPECT_EQ(reflection::to_string(shaping::transitions::continuity_t::cinfinity), "cinfinity");
+}
+
+TEST(model_transition_reflection_test_t, parses_continuity)
+{
+    EXPECT_EQ(
+        reflection::from_string<shaping::transitions::continuity_t>("c2"), shaping::transitions::continuity_t::c2);
+}
 
 } // namespace
 } // namespace crv::model

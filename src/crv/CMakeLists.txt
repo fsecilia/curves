@@ -262,6 +262,7 @@ set(regression_test_files
     model/domain_test.cpp
     model/curves/concepts_test.cpp
     model/curves/log_normal_test.cpp
+    model/curves/smooth_gain_test.cpp
     model/curves/power_law_test.cpp
     model/curves/synchronous_test.cpp
     model/curves/test.hpp
