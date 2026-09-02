@@ -16,7 +16,7 @@
 
 namespace crv::spline {
 
-/// builds the final gain-space tangent from the last transfer cubic
+/// builds final gain-space tangent from final transfer endpoint
 template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t> struct tangent_extender_t
 {
     using interval_t = t_interval_t;
@@ -32,25 +32,20 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
 
     constexpr auto operator()(interval_t const& interval) const noexcept -> extended_tangent_t
     {
-        auto const segment_width = interval.subdomain.width();
-        auto const u = from_fixed<scalar_t>(segment_width);
         auto const x_max = from_fixed<scalar_t>(interval.subdomain.right_x);
         assert(x_max > scalar_t{0});
 
         // derive endpoint transfer and gain slope
         //
-        // Since u = x - x0, du/dx = 1. The jet gives T(X) and T'(X), then G'(X) = (T'(X) - G(X)) / X.
-        auto const transfer_jet = interval.cubic(jet_t{u, scalar_t{1}});
+        // The jet gives T(X) and T'(X), then G'(X) = (T'(X) - G(X)) / X.
+        auto const transfer_jet = interval.subdomain.right.y;
         auto const transfer = primal(transfer_jet);
         auto const transfer_slope = tangent(transfer_jet);
         auto const gain = transfer / x_max;
         auto const gain_slope = (transfer_slope - gain) / x_max;
 
-        // final gain slope must stay nonnegative
-        //
-        // Authored gain and sensitivity are nondecreasing. Hermite preserves the final T(X) and T'(X), so the induced
-        // endpoint gain slope must also be nonnegative.
-        assert(gain_slope >= scalar_t{0});
+        // authored gain and sensitivity are nondecreasing, so target endpoint gain slope must also be nonnegative.
+        assert(gain_slope >= scalar_t{0} && "tangent_extender_t: final gain slope must stay nonnegative");
 
         auto const extracted_slope = extract_float(gain_slope);
         auto const required_shift = x_t::frac_bits - y_t::frac_bits - extracted_slope.exponent;
