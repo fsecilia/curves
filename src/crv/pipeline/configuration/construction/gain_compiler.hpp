@@ -14,6 +14,7 @@
 #include <crv/spline/construction/spline/amr/generation_result.hpp>
 #include <crv/tuple.hpp>
 #include <algorithm>
+#include <exception>
 #include <expected>
 #include <utility>
 #include <variant>
@@ -75,12 +76,13 @@ template <std::floating_point scalar_t, is_fixed x_t, typename shaping_error_t> 
 };
 
 template <typename t_spline_policy_t, typename t_shaped_curve_builder_t, typename t_critical_point_builder_t,
-    typename t_sensitivity_target_builder_t, typename t_spline_factory_t>
+    typename t_gain_target_builder_t, typename t_sensitivity_target_builder_t, typename t_spline_factory_t>
 struct gain_compiler_t
 {
     using spline_policy_t = t_spline_policy_t;
     using shaped_curve_builder_t = t_shaped_curve_builder_t;
     using critical_point_builder_t = t_critical_point_builder_t;
+    using gain_target_builder_t = t_gain_target_builder_t;
     using sensitivity_target_builder_t = t_sensitivity_target_builder_t;
     using spline_factory_t = t_spline_factory_t;
 
@@ -94,10 +96,11 @@ struct gain_compiler_t
 
     [[no_unique_address]] shaped_curve_builder_t shape_curve;
     [[no_unique_address]] critical_point_builder_t build_critical_points;
+    [[no_unique_address]] gain_target_builder_t build_gain_target;
     [[no_unique_address]] sensitivity_target_builder_t build_sensitivity_target;
     [[no_unique_address]] spline_factory_t build_spline;
 
-    // compile authored sensitivity into the runtime gain spline
+    // compiles the authored curve into the runtime gain spline
     auto operator()(pipeline_t::gain_t& gain, model::curves_t const& curves) const -> result_t
     {
         auto const curve_index = static_cast<std::size_t>(curves.active.value());
@@ -121,6 +124,28 @@ private:
         if (!shaped_result) return std::unexpected{error_t{.detail = shaped_result.error()}};
         auto curve = std::move(*shaped_result);
         auto critical_points = build_critical_points(curve, domain_end);
+
+        switch (curve_config.interpretation.value())
+        {
+            case model::curve_interpretation_t::gain:
+                return compile_gain_curve(gain, std::move(curve), std::move(critical_points.spline));
+            case model::curve_interpretation_t::sensitivity:
+                return compile_sensitivity_curve(gain, std::move(curve), domain_end, std::move(critical_points));
+        }
+
+        std::terminate();
+    }
+
+    template <typename curve_t>
+    auto compile_gain_curve(pipeline_t::gain_t& gain, curve_t curve, std::vector<x_t> spline_points) const -> result_t
+    {
+        return compile_target(gain, build_gain_target(std::move(curve)), std::move(spline_points));
+    }
+
+    template <typename curve_t, typename critical_points_t>
+    auto compile_sensitivity_curve(pipeline_t::gain_t& gain, curve_t curve, scalar_t domain_end,
+        critical_points_t critical_points) const -> result_t
+    {
         auto target = build_sensitivity_target(std::move(curve), domain_end, critical_points.integration);
         if (target.refinement_limited)
         {
@@ -130,8 +155,14 @@ private:
                                            }}};
         }
 
-        auto const spline_result = build_spline(
-            gain, std::move(target.target), spline_policy_t::spline_gain_tolerance, std::move(critical_points.spline));
+        return compile_target(gain, std::move(target.target), std::move(critical_points.spline));
+    }
+
+    template <typename target_t>
+    auto compile_target(pipeline_t::gain_t& gain, target_t target, std::vector<x_t> spline_points) const -> result_t
+    {
+        auto const spline_result
+            = build_spline(gain, std::move(target), spline_policy_t::spline_gain_tolerance, std::move(spline_points));
         if (!spline_result) return std::unexpected{error_t{.detail = *spline_result.error}};
         return {};
     }

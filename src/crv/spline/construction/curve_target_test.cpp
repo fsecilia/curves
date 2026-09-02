@@ -45,6 +45,17 @@ TEST(curve_target_gain_test, exposes_gain_and_transfer_identity)
     }
 }
 
+struct gain_curve_target_builder_test_t : Test
+{
+    gain_curve_target_builder_t sut;
+};
+
+TEST_F(gain_curve_target_builder_test_t, wraps_authored_gain_curve)
+{
+    auto const target = sut(fractional_power_t{.alpha = 0.5});
+    EXPECT_DOUBLE_EQ(target.gain(4.0), 2.0);
+}
+
 TEST(curve_target_gain_test, singular_gain_derivative_at_origin_does_not_poison_transfer_jet)
 {
     auto const curve = fractional_power_t{.alpha = 0.5};

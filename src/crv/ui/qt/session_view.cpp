@@ -45,6 +45,8 @@ static auto authored_error_message(authored_error_t const& result) -> QString
         case error_t::filter_half_life_underflow:
             return QString::fromStdString(CRV_TR("Filter half-life is too small to represent at runtime."));
         case error_t::curve_id: return QString::fromStdString(CRV_TR("The selected curve is invalid."));
+        case error_t::curve_interpretation:
+            return QString::fromStdString(CRV_TR("The selected curve interpretation is invalid."));
         case error_t::unsupported_shaping:
             return QString::fromStdString(CRV_TR("The selected shaping configuration is not supported."));
         case error_t::output_scale:

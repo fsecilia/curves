@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/concepts.hpp>
+#include <crv/model/curve_interpretation_reflection.hpp>
 #include <crv/model/curves/curves.hpp>
 #include <crv/model/transition_reflection.hpp>
 #include <crv/reflection/constraints.hpp>
@@ -139,12 +140,16 @@ struct common_curve_config_t
 template <typename t_specific_curve_config_t> struct curve_config_t
 {
     using specific_curve_config_t = t_specific_curve_config_t;
+    using curve_t = specific_curve_config_t::curve_t;
+
+    param_t<curve_interpretation_t> interpretation{"interpretation", curve_t::default_interpretation};
     common_curve_config_t common;
     specific_curve_config_t specific;
 
     template <typename self_t, typename inspector_t>
     constexpr auto reflect(this self_t&& self, inspector_t&& inspector) -> decltype(auto)
     {
+        inspector.inspect(self.interpretation);
         self.common.reflect(inspector);
         self.specific.reflect(inspector);
         return std::forward<inspector_t>(inspector);

@@ -9,6 +9,7 @@
 #include <crv/math/complex_traits.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/model/curve_interpretation.hpp>
 #include <crv/model/curves/traits.hpp>
 #include <crv/model/domain.hpp>
 #include <crv/reflection/constraints.hpp>
@@ -39,6 +40,8 @@ namespace crv::model::curves {
 /// A Desmos graph is provided here: https://www.desmos.com/calculator/viiczscidh
 struct synchronous_t
 {
+    static constexpr auto default_interpretation = curve_interpretation_t::sensitivity;
+
     //
     // implementation params
     //

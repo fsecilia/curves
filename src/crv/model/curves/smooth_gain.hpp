@@ -8,6 +8,7 @@
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/model/curve_interpretation.hpp>
 #include <crv/model/domain.hpp>
 #include <crv/model/shaping/transitions/continuity.hpp>
 #include <crv/model/shaping/transitions/nast.hpp>
@@ -38,6 +39,8 @@ namespace crv::model::curves {
 /// H is selected at from the compact transition family.
 struct smooth_gain_t
 {
+    static constexpr auto default_interpretation = curve_interpretation_t::gain;
+
     template <std::floating_point real_t> struct params_t
     {
         using curve_t = smooth_gain_t;

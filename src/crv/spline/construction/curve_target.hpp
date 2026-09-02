@@ -16,15 +16,6 @@
 
 namespace crv::spline {
 
-/// interpretation applied before spline construction
-///
-/// Dispatch uses this enum once, then gain and sensitivity continue as separate static target types.
-enum class curve_construction_t
-{
-    gain,
-    sensitivity,
-};
-
 /// conditioned target for a gain-authored curve
 ///
 /// A finite gain can still have a cusp or singular derivative at the origin. Interpolating transfer
@@ -57,6 +48,15 @@ template <typename t_curve_t> struct gain_curve_target_t
 };
 
 template <typename curve_t> gain_curve_target_t(curve_t) -> gain_curve_target_t<curve_t>;
+
+/// constructs a conditioned target for a gain-authored curve
+struct gain_curve_target_builder_t
+{
+    template <typename curve_t> constexpr auto operator()(curve_t curve) const -> gain_curve_target_t<curve_t>
+    {
+        return {std::move(curve)};
+    }
+};
 
 /// conditioned target for a sensitivity-authored curve
 ///

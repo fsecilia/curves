@@ -83,6 +83,7 @@ struct gain_compiler_test_t : Test
     {
         MOCK_METHOD(shaping_result_t, shape_curve, (model::common_curve_config_t const*, scalar_t), (const));
         MOCK_METHOD(critical_points_t, critical_points, (scalar_t), (const));
+        MOCK_METHOD(target_t, gain_target, (), (const));
         MOCK_METHOD(target_result_t, sensitivity_target, (scalar_t, std::vector<scalar_t> const&), (const));
         MOCK_METHOD(spline_result_t, spline, (pipeline_t::gain_t*, scalar_t, std::vector<x_t> const&), (const));
     };
@@ -112,6 +113,13 @@ struct gain_compiler_test_t : Test
         }
     };
 
+    struct gain_target_builder_t
+    {
+        mock_t* mock;
+
+        template <typename curve_t> auto operator()(curve_t) const -> target_t { return mock->gain_target(); }
+    };
+
     struct sensitivity_target_builder_delegate_t
     {
         mock_t* mock;
@@ -137,11 +145,11 @@ struct gain_compiler_test_t : Test
     };
 
     using sut_t = gain_compiler_t<spline_policy_t, shaped_curve_builder_delegate_t, critical_point_builder_delegate_t,
-        sensitivity_target_builder_delegate_t, spline_factory_delegate_t>;
+        gain_target_builder_t, sensitivity_target_builder_delegate_t, spline_factory_delegate_t>;
 
     model::curves_t curves;
     pipeline_t::gain_t gain{};
-    sut_t sut{{&mock}, {&mock}, {&mock}, {&mock}};
+    sut_t sut{{&mock}, {&mock}, {&mock}, {&mock}, {&mock}};
 };
 
 TEST_F(gain_compiler_test_t, forwards_curve_through_sensitivity_construction)
@@ -153,6 +161,21 @@ TEST_F(gain_compiler_test_t, forwards_curve_through_sensitivity_construction)
     EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
     EXPECT_CALL(mock, sensitivity_target(scalar_t{spline_policy_t::domain_end}, integration_points))
         .WillOnce(Return(target_result_t{}));
+    EXPECT_CALL(mock, spline(&gain, scalar_t{spline_policy_t::spline_gain_tolerance}, spline_points))
+        .WillOnce(Return(spline_result_t{}));
+
+    EXPECT_TRUE(sut(gain, curves));
+}
+
+TEST_F(gain_compiler_test_t, forwards_curve_through_gain_construction)
+{
+    auto& synchronous = std::get<0>(curves.configs);
+    synchronous.interpretation.value(model::curve_interpretation_t::gain);
+    auto const spline_points = std::vector<x_t>{to_fixed<x_t>(1.25)};
+    EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
+    EXPECT_CALL(mock, critical_points(scalar_t{spline_policy_t::domain_end}))
+        .WillOnce(Return(critical_points_t{{}, spline_points}));
+    EXPECT_CALL(mock, gain_target).WillOnce(Return(target_t{}));
     EXPECT_CALL(mock, spline(&gain, scalar_t{spline_policy_t::spline_gain_tolerance}, spline_points))
         .WillOnce(Return(spline_result_t{}));
 

@@ -27,6 +27,7 @@ enum class authored_validation_error_t : uint8_t
     filter_half_life,
     filter_half_life_underflow,
     curve_id,
+    curve_interpretation,
     unsupported_shaping,
     output_scale,
     positioning_mode,
@@ -103,6 +104,13 @@ private:
 
     template <typename curve_config_t> auto validate_curve(curve_config_t const& curve_config) const -> result_t
     {
+        auto const interpretation = curve_config.interpretation.value();
+        if (interpretation != model::curve_interpretation_t::gain
+            && interpretation != model::curve_interpretation_t::sensitivity)
+        {
+            return {.error = authored_validation_error_t::curve_interpretation};
+        }
+
         auto const common_result = validate_common(curve_config.common);
         if (!common_result) return {.error = common_result.error};
 

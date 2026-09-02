@@ -35,12 +35,13 @@ class compiler_t
     using critical_point_builder_t
         = construction::critical_point_builder_t<typename spline_policy_t::scalar_t, typename spline_policy_t::x_t>;
     using antiderivative_factory_t = quadrature::antiderivative_factory_t<spline_policy_t::scalar_t>;
+    using gain_target_builder_t = spline::gain_curve_target_builder_t;
     using sensitivity_target_builder_t = spline::sensitivity_curve_target_builder_t<antiderivative_factory_t>;
     using spline_factory_t
         = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
     using gain_compiler_t
         = construction::gain_compiler_t<spline_policy_t, shaping::construction::common_output_builder_t,
-            critical_point_builder_t, sensitivity_target_builder_t, spline_factory_t>;
+            critical_point_builder_t, gain_target_builder_t, sensitivity_target_builder_t, spline_factory_t>;
     using construction_compiler_t
         = construction::compiler_t<authored_validator_t, config_builder_t, gain_compiler_t, pipeline_t::validator_t>;
 
@@ -70,6 +71,7 @@ private:
         .compile_gain = gain_compiler_t{
             .shape_curve = shaping::construction::common_output_builder_t{},
             .build_critical_points = critical_point_builder_t{},
+            .build_gain_target = gain_target_builder_t{},
             .build_sensitivity_target = sensitivity_target_builder_t{
                 .build_antiderivative = antiderivative_factory_t{},
                 .gain_tolerance = spline_policy_t::sensitivity_gain_tolerance,

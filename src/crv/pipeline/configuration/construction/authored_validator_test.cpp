@@ -70,6 +70,13 @@ TEST_F(authored_validator_test_t, rejects_invalid_curve_id_before_tuple_dispatch
     EXPECT_EQ(validate().error, authored_validation_error_t::curve_id);
 }
 
+TEST_F(authored_validator_test_t, rejects_invalid_curve_interpretation)
+{
+    auto& synchronous = std::get<0>(profile.curves.configs);
+    synchronous.interpretation.value(static_cast<model::curve_interpretation_t>(99));
+    EXPECT_EQ(validate().error, authored_validation_error_t::curve_interpretation);
+}
+
 TEST_F(authored_validator_test_t, rejects_unimplemented_shaping)
 {
     auto& synchronous = std::get<0>(profile.curves.configs);

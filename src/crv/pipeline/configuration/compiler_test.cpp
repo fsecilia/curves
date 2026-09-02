@@ -141,6 +141,16 @@ TEST_F(pipeline_compiler_test_t, fixed_anchor_is_unchanged_by_common_output_scal
     EXPECT_NEAR(gain_at(*scale_four, 0.0), 1.25, 2e-6);
 }
 
+TEST_F(pipeline_compiler_test_t, smooth_gain_compiles_with_gain_semantics)
+{
+    profile.curves.active.value(model::curves::curve_id_t::smooth_gain);
+
+    auto const result = sut(device, profile);
+    ASSERT_TRUE(result);
+
+    EXPECT_NEAR(gain_at(*result, 20.0), 1.5, 2e-6);
+}
+
 TEST_F(pipeline_compiler_test_t, synchronous_runtime_spline_keeps_quantized_sync_speed_as_knot)
 {
     auto const result = sut(device, profile);

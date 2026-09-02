@@ -10,6 +10,7 @@
 #include <crv/math/jet/jet.hpp>
 #include <crv/math/lambert.hpp>
 #include <crv/math/scalar_traits.hpp>
+#include <crv/model/curve_interpretation.hpp>
 #include <crv/model/curves/traits.hpp>
 #include <crv/model/domain.hpp>
 #include <crv/reflection/constraints.hpp>
@@ -36,6 +37,8 @@ namespace crv::model::curves {
 ///
 struct log_normal_t
 {
+    static constexpr auto default_interpretation = curve_interpretation_t::sensitivity;
+
     //
     // implementation params
     //

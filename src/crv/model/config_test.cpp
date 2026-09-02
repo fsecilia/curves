@@ -32,6 +32,7 @@ TEST(model_test, round_trip)
     expected_root.profile.filter_halflife.value(200);
 
     auto& synchronous = std::get<curve_config_t<curves::synchronous_t::config_t>>(expected_root.profile.curves.configs);
+    synchronous.interpretation.value(curve_interpretation_t::gain);
     synchronous.common.scale.input.value(2.0);
     synchronous.common.scale.output.value(5.0);
     synchronous.common.offset.begin.value(1.0);
@@ -60,6 +61,7 @@ TEST(model_test, round_trip)
     log_normal.specific.max_accel.value(11.0);
 
     auto& smooth_gain = std::get<curve_config_t<curves::smooth_gain_t::config_t>>(expected_root.profile.curves.configs);
+    smooth_gain.interpretation.value(curve_interpretation_t::sensitivity);
     smooth_gain.common.scale.input.value(3.0);
     smooth_gain.common.scale.output.value(7.0);
     smooth_gain.common.offset.begin.value(4.0);
@@ -89,6 +91,36 @@ TEST(model_test, round_trip)
     // graphs are same again
     EXPECT_EQ(expected_root, actual_root);
 };
+
+struct curve_interpretation_config_test_t : Test
+{
+    curves_t curves;
+};
+
+TEST_F(curve_interpretation_config_test_t, synchronous_defaults_to_sensitivity)
+{
+    EXPECT_EQ(std::get<0>(curves.configs).interpretation.value(), curve_interpretation_t::sensitivity);
+}
+
+TEST_F(curve_interpretation_config_test_t, log_normal_defaults_to_sensitivity)
+{
+    EXPECT_EQ(std::get<1>(curves.configs).interpretation.value(), curve_interpretation_t::sensitivity);
+}
+
+TEST_F(curve_interpretation_config_test_t, smooth_gain_defaults_to_gain)
+{
+    EXPECT_EQ(std::get<2>(curves.configs).interpretation.value(), curve_interpretation_t::gain);
+}
+
+TEST_F(curve_interpretation_config_test_t, reflects_gain_name)
+{
+    EXPECT_EQ(reflection::to_string(curve_interpretation_t::gain), "gain");
+}
+
+TEST_F(curve_interpretation_config_test_t, parses_sensitivity_name)
+{
+    EXPECT_EQ(reflection::from_string<curve_interpretation_t>("sensitivity"), curve_interpretation_t::sensitivity);
+}
 
 TEST(model_transition_reflection_test_t, names_continuity)
 {

@@ -38,6 +38,8 @@ set(lib_files
     math/stats.hpp
     model/composed_curve.hpp
     model/config.hpp
+    model/curve_interpretation.hpp
+    model/curve_interpretation_reflection.hpp
     model/curves/concepts.hpp
     model/curves/curves.hpp
     model/curves/log_normal.hpp
