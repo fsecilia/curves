@@ -43,7 +43,40 @@ enum class limiter_side_t : uint8_t
     upper,
 };
 
-/// lower or upper limiter with compact log-space transition support
+/// lower or upper limiter with compact log-output transition support
+///
+/// This is the familiar soft-knee limiter with deflection at the knee specified in linear space, a pluggable unit
+/// transition function, selectable direction, and support for evaluating jets.
+///
+/// For raw output y and limited output L(y), let z = log(y), B = log(bound), and let H be the unit transition with
+/// antiderivative J(u) = integral_0^u H(t) dt. The limiter smooths log-log slope:
+///
+///     d log(L) / d log(y) = H(u)
+///
+/// over the support z in [B - w, B + w]. For a lower limiter,
+///
+///     u = (z - (B - w)) / (2w),       L(y) = bound * exp( 2w J(u)),
+///
+/// while an upper limiter reverses the transition:
+///
+///     u = ((B + w) - z) / (2w),       L(y) = bound * exp(-2w J(u)).
+///
+/// Outside the support the map is exactly plateau or identity. Transitions are normalized so J(0) = 0 and J(1) = 1/2,
+/// making those formulas meet both exterior pieces exactly.
+///
+/// delta_y specifies the linear output deflection at y = bound, where u = 1/2:
+///
+///     upper: L(bound) = bound - delta_y
+///     lower: L(bound) = bound + delta_y
+///
+/// Therefore, with J_half = J(1/2),
+///
+///     upper: w = -log(1 - delta_y / bound) / (2 J_half)
+///     lower: w =  log(1 + delta_y / bound) / (2 J_half)
+///
+/// Differentiation gives dL/dy = L(y) / y * H(u), which is the multiplier used for jet tangents.
+///
+/// A linear \(C^0\) transition reduces to the conventional quadratic soft-knee limiter in log-output space.
 template <std::floating_point t_scalar_t, typename t_transition_t, limiter_side_t side>
     requires transitions::is_transition<t_transition_t, t_scalar_t>
 class limiter_t
