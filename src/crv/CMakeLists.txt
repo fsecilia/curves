@@ -43,6 +43,7 @@ set(lib_files
     model/curves/concepts.hpp
     model/curves/curves.hpp
     model/curves/log_normal.hpp
+    model/curves/output_bound.hpp
     model/curves/power_law.hpp
     model/curves/synchronous.hpp
     model/curves/traits.hpp
@@ -264,6 +265,8 @@ set(regression_test_files
     model/domain_test.cpp
     model/curves/concepts_test.cpp
     model/curves/log_normal_test.cpp
+    model/curves/output_bound_integration_test.cpp
+    model/curves/output_bound_test.cpp
     model/curves/smooth_gain_test.cpp
     model/curves/power_law_test.cpp
     model/curves/synchronous_test.cpp
