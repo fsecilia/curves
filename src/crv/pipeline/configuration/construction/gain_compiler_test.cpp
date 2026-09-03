@@ -95,9 +95,9 @@ struct gain_compiler_test_t : Test
 
         mock_t* mock;
 
-        template <typename curve_t>
-        auto operator()(curve_t, model::common_curve_config_t const& common, scalar_t domain_end) const
-            -> shaping_result_t
+        template <typename evaluator_t>
+        auto operator()(shaping::curve_evaluator_t<evaluator_t>, model::common_curve_config_t const& common,
+            scalar_t domain_end) const -> shaping_result_t
         {
             return mock->shape_curve(&common, domain_end);
         }

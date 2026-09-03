@@ -10,6 +10,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/model/config.hpp>
 #include <crv/model/curves/traits.hpp>
+#include <crv/model/shaping/curve_evaluator.hpp>
 #include <crv/pipeline.hpp>
 #include <crv/spline/construction/spline/amr/generation_result.hpp>
 #include <crv/tuple.hpp>
@@ -117,10 +118,11 @@ private:
         using config_t = curve_config_t::specific_curve_config_t;
         using curve_t = config_t::curve_t;
         using evaluator_t = curve_t::template evaluator_t<scalar_t>;
+        using evaluated_curve_t = shaping::curve_evaluator_t<evaluator_t>;
 
         auto const domain_end = scalar_t{spline_policy_t::domain_end};
-        auto evaluator = evaluator_t{model::curves::to_params<scalar_t>(curve_config.specific)};
-        auto shaped_result = shape_curve(std::move(evaluator), curve_config.common, domain_end);
+        auto base_curve = evaluated_curve_t{evaluator_t{model::curves::to_params<scalar_t>(curve_config.specific)}};
+        auto shaped_result = shape_curve(std::move(base_curve), curve_config.common, domain_end);
         if (!shaped_result) return std::unexpected{error_t{.detail = shaped_result.error()}};
         auto curve = std::move(*shaped_result);
         auto critical_points = build_critical_points(curve, domain_end);

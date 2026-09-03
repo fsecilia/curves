@@ -4,6 +4,8 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "power_law.hpp"
+#include <crv/model/curves/concepts.hpp>
+#include <crv/model/shaping/curve_evaluator.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <limits>
@@ -14,7 +16,10 @@ namespace {
 using real_t = float_t;
 using params_t = power_law_t::params_t<real_t>;
 using evaluator_t = power_law_t::evaluator_t<real_t>;
+using curve_t = shaping::curve_evaluator_t<evaluator_t>;
 using jet_t = crv::jet_t<real_t>;
+
+static_assert(is_curve<curve_t, real_t>);
 
 struct model_curves_power_law_test_t : Test
 {
@@ -124,6 +129,13 @@ TEST_F(model_curves_power_law_test_t, input_domain_accepts_large_finite_input_ev
     auto const input = std::numeric_limits<real_t>::max();
     EXPECT_TRUE(sut.input_domain().contains(input));
     EXPECT_FALSE(std::isfinite(sut(input)));
+}
+
+TEST_F(model_curves_power_law_test_t, checked_evaluation_exposes_scalar_frontier)
+{
+    auto const sut = curve_t{evaluator_t{power_law_t::params_t<real_t>{1.0, 256.0}}};
+    auto const input = std::numeric_limits<real_t>::max();
+    EXPECT_EQ(sut.try_evaluate(input), std::numeric_limits<real_t>::infinity());
 }
 
 TEST_F(model_curves_power_law_test_t, input_domain_rejects_nonfinite_input)
