@@ -13,6 +13,10 @@
 
 namespace crv {
 
+/// identifies an authored nonnegative, nondecreasing curve
+///
+/// \invariant Valid curve objects are nonnegative and nondecreasing throughout input_domain() by construction.
+/// Consumers can rely on it without runtime monotonicity checks.
 template <typename curve_t, typename real_t>
 concept is_curve = std::floating_point<real_t> && requires(curve_t const& curve, real_t x) {
     typename curve_t::scalar_t;
