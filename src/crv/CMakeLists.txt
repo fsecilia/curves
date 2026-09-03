@@ -384,6 +384,7 @@ set(regression_test_files
 set(validation_test_files
     math/fixed/rsqrt_validation_test.cpp
     math/stats_validation_test.cpp
+    spline/limiter_amr_validation_test.cpp
 )
 
 #
