@@ -65,10 +65,12 @@ public:
     {
         auto const output_primal = primal(output);
         assert(std::isfinite(output_primal) && "output_position_t: source jet primal must be finite");
-        auto const delta = output_primal - source_level_;
+
+        [[maybe_unused]] auto const delta = output_primal - source_level_;
         assert(std::isfinite(delta) && "output_position_t: translation delta must be representable");
         assert(
             std::isfinite(delta + target_level_) && "output_position_t: positioned jet primal must be representable");
+
         return (output - source_level_) + target_level_;
     }
 

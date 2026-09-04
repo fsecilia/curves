@@ -76,8 +76,7 @@ struct smooth_gain_t
         {
             using std::exp;
 
-            auto const x = primal(input);
-            assert(x >= scalar_t{0} && "smooth_gain_t: input must be nonnegative");
+            assert(primal(input) >= scalar_t{0} && "smooth_gain_t: input must be nonnegative");
 
             auto const u = (input - v_0_) * inv_span_;
             auto const u_value = primal(u);

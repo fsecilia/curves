@@ -156,11 +156,12 @@ public:
         if (first_excluded && *first_excluded <= *first) return {};
         auto const last = first_excluded ? std::nextafter(*first_excluded, lowest) : max;
 
-        auto const first_output = try_apply(*first);
-        auto const last_output = try_apply(last);
+        [[maybe_unused]] auto const first_output = try_apply(*first);
+        [[maybe_unused]] auto const last_output = try_apply(last);
         assert(first_output && last_output && nested_domain.contains(*first_output)
             && nested_domain.contains(*last_output)
             && "resolved input-domain endpoints must map into the nested domain");
+
         return domain_t{*first, last};
     }
 
