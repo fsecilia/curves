@@ -159,11 +159,11 @@ TEST_F(session_test_t, active_apply_compiles_supplied_authored_state_and_forward
     auto runtime_matches = false;
     EXPECT_CALL(mock_compiler, call(Ref(device), Ref(profile))).WillOnce(Return(runtime));
     EXPECT_CALL(mock_client, apply(attachment, _, configuration::apply_mode_t::active))
-        .WillOnce(Invoke([&](attachment_id_t, configuration::runtime_t const& actual, configuration::apply_mode_t) {
+        .WillOnce([&](attachment_id_t, configuration::runtime_t const& actual, configuration::apply_mode_t) {
             runtime_matches = actual.config.velocity_scale == runtime.config.velocity_scale
                 && actual.config.half_life == runtime.config.half_life;
             return apply_result_t{};
-        }));
+        });
 
     auto const result = sut.apply(device, profile, attachment, configuration::apply_mode_t::active);
 

@@ -72,12 +72,12 @@ struct client_test_t : Test
 
     auto return_device(crv_control_device_v1_t value) -> void
     {
-        EXPECT_CALL(mock_io, get_device).WillOnce(Invoke([value](crv_control_device_v1_t& request) mutable {
+        EXPECT_CALL(mock_io, get_device).WillOnce([value](crv_control_device_v1_t& request) mutable {
             auto const after = request.after_attachment_id;
             request = value;
             request.after_attachment_id = after;
             return io_result_t{};
-        }));
+        });
     }
 
     auto end_enumeration() -> void
@@ -87,12 +87,12 @@ struct client_test_t : Test
 
     auto capture_apply(io_result_t result = {}) -> void
     {
-        EXPECT_CALL(mock_io, apply).WillOnce(Invoke([this, result](crv_control_apply_v1_t const& request) {
+        EXPECT_CALL(mock_io, apply).WillOnce([this, result](crv_control_apply_v1_t const& request) {
             captured_apply.request = request;
             auto const* configuration = reinterpret_cast<crv_control_configuration_v1_t const*>(request.configuration);
             captured_apply.configuration = *configuration;
             return result;
-        }));
+        });
     }
 
     sut_t sut{{&mock_io}};
@@ -163,14 +163,14 @@ TEST_F(client_test_t, enumeration_walks_multiple_devices)
 
 TEST_F(client_test_t, enumeration_passes_previous_attachment_id_to_next_request)
 {
-    EXPECT_CALL(mock_io, get_device).WillOnce(Invoke([](crv_control_device_v1_t& request) {
+    EXPECT_CALL(mock_io, get_device).WillOnce([](crv_control_device_v1_t& request) {
         request.attachment_id = 37;
         return io_result_t{};
-    }));
-    EXPECT_CALL(mock_io, get_device).WillOnce(Invoke([](crv_control_device_v1_t& request) {
+    });
+    EXPECT_CALL(mock_io, get_device).WillOnce([](crv_control_device_v1_t& request) {
         if (request.after_attachment_id != 37) return io_result_t{std::unexpected{int_t{EINVAL}}};
         return io_result_t{std::unexpected{int_t{ENOENT}}};
-    }));
+    });
 
     auto const result = sut.devices();
 
