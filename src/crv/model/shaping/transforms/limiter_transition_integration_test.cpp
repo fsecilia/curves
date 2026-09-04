@@ -32,7 +32,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_preserves_linear_del
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound - delta_y, tolerance);
@@ -42,7 +42,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_preserves_linear_del
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_NEAR(actual, bound + delta_y, tolerance);
@@ -52,7 +52,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_never_exc
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_LE(actual, bound);
@@ -62,7 +62,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_never_dro
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(bound);
     });
     EXPECT_GE(actual, bound);
@@ -72,7 +72,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, upper_transition_derivativ
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = upper_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = upper_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
@@ -82,7 +82,7 @@ TEST_P(shaping_limiter_transition_integration_test_t, lower_transition_derivativ
 {
     auto const actual = factory(GetParam(), []<typename product_t>(product_t product) -> scalar_t {
         using transition_t = typename product_t::transition_t;
-        auto const sut = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+        auto const sut = lower_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
         return sut(jet_t{bound, scalar_t{1}}).df;
     });
     EXPECT_GE(actual, scalar_t{0});
@@ -119,7 +119,7 @@ TEST_F(
             auto const curve_output = std::exp(lower_log + scalar_t{2} * half_width * u);
             auto jet_calls = int_t{0};
             auto const limiter
-                = lower_limiter_t<scalar_t, transition_t>::make(bound, delta_y, product.transition).value();
+                = lower_limiter_t<scalar_t, transition_t>::construct(bound, delta_y, product.transition).value();
             static_cast<void>(
                 limiter.apply(nast_probe_curve_t{curve_output, &jet_calls}, jet_t{scalar_t{3}, scalar_t{1}}));
             return {product.transition.value(u) == scalar_t{0}, jet_calls};

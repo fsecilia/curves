@@ -36,44 +36,44 @@ struct identity_curve_t
 
 using sut_t = input_affine_curve_t<transform_t, identity_curve_t>;
 
-[[nodiscard]] auto make_sut(scalar_t scale, scalar_t shift, input_domain_t domain = input_domain_t::full(),
+[[nodiscard]] auto construct_sut(scalar_t scale, scalar_t shift, input_domain_t domain = input_domain_t::full(),
     std::vector<scalar_t> points = {}) -> sut_t
 {
-    return {std::move(transform_t::make(scale, shift)).value(), identity_curve_t{domain, std::move(points)}};
+    return {std::move(transform_t::construct(scale, shift)).value(), identity_curve_t{domain, std::move(points)}};
 }
 
 TEST(input_affine_curve_integration_test_t, composes_real_transform_for_scalar)
 {
-    EXPECT_EQ(make_sut(3.0, 2.0)(5.0), 9.0);
+    EXPECT_EQ(construct_sut(3.0, 2.0)(5.0), 9.0);
 }
 
 TEST(input_affine_curve_integration_test_t, composes_real_transform_for_jet)
 {
-    EXPECT_EQ(make_sut(2.0, 3.0)(jet_t{5.0, 7.0}), (jet_t{4.0, 14.0}));
+    EXPECT_EQ(construct_sut(2.0, 3.0)(jet_t{5.0, 7.0}), (jet_t{4.0, 14.0}));
 }
 
 TEST(input_affine_domain_integration_test_t, maps_ordinary_interval_exactly)
 {
-    auto const sut = make_sut(2.0, 1.0, {-4.0, 10.0});
+    auto const sut = construct_sut(2.0, 1.0, {-4.0, 10.0});
     auto const first = std::nextafter(-1.0, std::numeric_limits<scalar_t>::lowest());
     EXPECT_EQ(sut.input_domain(), (input_domain_t{first, 6.0}));
 }
 
 TEST(input_affine_domain_integration_test_t, resolves_expanding_scale)
 {
-    auto const sut = make_sut(4.0, 0.0, {-8.0, 12.0});
+    auto const sut = construct_sut(4.0, 0.0, {-8.0, 12.0});
     EXPECT_EQ(sut.input_domain(), (input_domain_t{-2.0, 3.0}));
 }
 
 TEST(input_affine_domain_integration_test_t, resolves_contracting_scale)
 {
-    auto const sut = make_sut(0.5, 0.0, {-2.0, 3.0});
+    auto const sut = construct_sut(0.5, 0.0, {-2.0, 3.0});
     EXPECT_EQ(sut.input_domain(), (input_domain_t{-4.0, 6.0}));
 }
 
 TEST(input_affine_domain_integration_test_t, supports_negative_outer_interval)
 {
-    auto const transform = transform_t::make(2.0, 1.0).value();
+    auto const transform = transform_t::construct(2.0, 1.0).value();
     auto const nested = input_domain_t{-4.0, -3.0};
     auto const domain = sut_t{transform, identity_curve_t{nested}}.input_domain();
 
@@ -87,12 +87,12 @@ TEST(input_affine_domain_integration_test_t, supports_negative_outer_interval)
 
 TEST(input_affine_domain_integration_test_t, preserves_empty_nested_domain)
 {
-    EXPECT_TRUE(make_sut(2.0, 1.0, {}).input_domain().empty());
+    EXPECT_TRUE(construct_sut(2.0, 1.0, {}).input_domain().empty());
 }
 
 TEST(input_affine_domain_integration_test_t, forward_representability_limits_outer_interval)
 {
-    auto const transform = transform_t::make(2.0, 0.0).value();
+    auto const transform = transform_t::construct(2.0, 0.0).value();
     auto const sut = sut_t{transform, identity_curve_t{}};
     auto const domain = sut.input_domain();
     auto const lowest = std::numeric_limits<scalar_t>::lowest();
@@ -106,7 +106,7 @@ TEST(input_affine_domain_integration_test_t, forward_representability_limits_out
 
 TEST(input_affine_domain_integration_test_t, corrects_inverse_seed_that_rounds_one_ulp_outside_nested_upper)
 {
-    auto const transform = transform_t::make(0.1, 0.0).value();
+    auto const transform = transform_t::construct(0.1, 0.0).value();
     auto const sut = sut_t{transform, identity_curve_t{{0.0, 1.7}}};
     auto const domain = sut.input_domain();
 
@@ -117,7 +117,7 @@ TEST(input_affine_domain_integration_test_t, corrects_inverse_seed_that_rounds_o
 
 TEST(input_affine_domain_integration_test_t, returned_first_is_exact_forward_boundary)
 {
-    auto const transform = transform_t::make(0.1, 0.0).value();
+    auto const transform = transform_t::construct(0.1, 0.0).value();
     auto const nested = input_domain_t{1.7, 3.0};
     auto const domain = sut_t{transform, identity_curve_t{nested}}.input_domain();
     auto const predecessor = std::nextafter(domain.first(), -std::numeric_limits<scalar_t>::infinity());
@@ -129,7 +129,7 @@ TEST(input_affine_domain_integration_test_t, returned_first_is_exact_forward_bou
 
 TEST(input_affine_domain_integration_test_t, returned_last_is_exact_forward_boundary)
 {
-    auto const transform = transform_t::make(0.1, 0.0).value();
+    auto const transform = transform_t::construct(0.1, 0.0).value();
     auto const nested = input_domain_t{-3.0, 1.7};
     auto const domain = sut_t{transform, identity_curve_t{nested}}.input_domain();
     auto const successor = std::nextafter(domain.last(), std::numeric_limits<scalar_t>::infinity());
@@ -141,7 +141,7 @@ TEST(input_affine_domain_integration_test_t, returned_last_is_exact_forward_boun
 
 TEST(input_affine_curve_integration_test_t, inverse_maps_multiple_critical_points)
 {
-    auto const sut = make_sut(2.0, 1.0, input_domain_t::full(), {2.0, 6.0});
+    auto const sut = construct_sut(2.0, 1.0, input_domain_t::full(), {2.0, 6.0});
     EXPECT_EQ(sut.critical_points(), (std::vector<scalar_t>{2.0, 4.0}));
 }
 
@@ -152,7 +152,7 @@ TEST(input_affine_power_law_integration_test_t, propagates_power_law_input_domai
     using curve_t = input_affine_curve_t<transform_t, evaluator_t>;
 
     auto const raw = evaluator_t{power_law_t::params_t<scalar_t>{1.0, 256.0}};
-    auto const transform = transform_t::make(2.0, 1.0).value();
+    auto const transform = transform_t::construct(2.0, 1.0).value();
     auto const sut = curve_t{transform, raw};
 
     EXPECT_TRUE(sut.input_domain().contains(9.0));
@@ -166,7 +166,7 @@ TEST(input_affine_power_law_integration_test_t, preserves_power_law_left_scalar_
     using curve_t = input_affine_curve_t<transform_t, evaluator_t>;
 
     auto const raw = evaluator_t{power_law_t::params_t<scalar_t>{1.0, 0.5}};
-    auto const transform = transform_t::make(2.0, 1.0).value();
+    auto const transform = transform_t::construct(2.0, 1.0).value();
     auto const sut = curve_t{transform, raw};
 
     EXPECT_EQ(sut.input_domain().first(), 1.0);

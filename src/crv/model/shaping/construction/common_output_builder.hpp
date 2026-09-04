@@ -65,7 +65,7 @@ struct common_output_builder_t
         auto const scale_value = static_cast<scalar_t>(config.scale.output.value());
         if (!std::isfinite(scale_value)) return std::unexpected{error_t::output_scale_not_finite};
         assert(scale_value > scalar_t{0} && "common_output_builder_t: authored output scale must be positive");
-        auto scale = std::move(scale_t::make(scale_value)).value();
+        auto scale = std::move(scale_t::construct(scale_value)).value();
 
         auto const domain = curve.input_domain();
         if (!domain.contains(scalar_t{0})) return std::unexpected{error_t::origin_outside_domain};
@@ -96,7 +96,7 @@ struct common_output_builder_t
                 break;
         }
 
-        auto position_result = position_t::make(source_level, height);
+        auto position_result = position_t::construct(source_level, height);
         assert(position_result.has_value() && "common_output_builder_t: validated positioning levels must construct");
         auto position = std::move(*position_result);
 

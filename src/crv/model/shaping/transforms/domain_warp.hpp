@@ -44,7 +44,7 @@ public:
     using jet_t = crv::jet_t<scalar_t>;
     using construction_result_t = std::expected<domain_warp_t, domain_warp_error_t>;
 
-    [[nodiscard]] static auto make(scalar_t hold_width, scalar_t transition_width, transition_t transition)
+    [[nodiscard]] static auto construct(scalar_t hold_width, scalar_t transition_width, transition_t transition)
         -> construction_result_t
     {
         if (!std::isfinite(hold_width)) return std::unexpected{domain_warp_error_t::hold_width_not_finite};

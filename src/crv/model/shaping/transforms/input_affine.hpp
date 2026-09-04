@@ -35,7 +35,7 @@ public:
     using jet_t = crv::jet_t<scalar_t>;
     using construction_result_t = std::expected<input_affine_t, input_affine_error_t>;
 
-    [[nodiscard]] static auto make(scalar_t scale, scalar_t shift) -> construction_result_t
+    [[nodiscard]] static auto construct(scalar_t scale, scalar_t shift) -> construction_result_t
     {
         if (!std::isfinite(scale)) return std::unexpected{input_affine_error_t::scale_not_finite};
         if (scale <= scalar_t{0}) return std::unexpected{input_affine_error_t::scale_not_positive};

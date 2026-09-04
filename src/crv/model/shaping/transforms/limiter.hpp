@@ -104,7 +104,7 @@ class limiter_t
     using construction_result_t = std::expected<limiter_t, construction_error_t>;
 
 public:
-    [[nodiscard]] static auto make(scalar_t bound, scalar_t delta_y, transition_t transition) -> construction_result_t
+    [[nodiscard]] static auto construct(scalar_t bound, scalar_t delta_y, transition_t transition) -> construction_result_t
     {
         if (!std::isfinite(bound)) return std::unexpected{construction_error_t::bound_not_finite};
         if (bound < scalar_t{0}) return std::unexpected{construction_error_t::bound_negative};

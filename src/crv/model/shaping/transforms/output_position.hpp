@@ -32,7 +32,7 @@ public:
     using jet_t = crv::jet_t<scalar_t>;
     using construction_result_t = std::expected<output_position_t, output_position_error_t>;
 
-    [[nodiscard]] static auto make(scalar_t source_level, scalar_t target_level) -> construction_result_t
+    [[nodiscard]] static auto construct(scalar_t source_level, scalar_t target_level) -> construction_result_t
     {
         if (!std::isfinite(source_level)) { return std::unexpected{output_position_error_t::source_level_not_finite}; }
         if (!std::isfinite(target_level)) { return std::unexpected{output_position_error_t::target_level_not_finite}; }
