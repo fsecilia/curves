@@ -359,7 +359,7 @@ TEST(quadrature_subdivider_bisector_contract_test, refines_once_when_predicate_s
     stack.push_back(segment_t{.left = 0.0, .right = 4.0, .coarse_integral = 100.0, .tolerance = 0.0, .depth = 0});
 
     StrictMock<mock_bisector_t> mock_bisector;
-    EXPECT_CALL(mock_bisector, call(_)).Times(1).WillOnce(make_balanced_refinement);
+    EXPECT_CALL(mock_bisector, call(_)).WillOnce(make_balanced_refinement);
 
     auto const sut = subdivider_t<scalar_t, stub_predicate_t, bisector_t>{
         .should_refine = stub_predicate_t{.depth = 0},

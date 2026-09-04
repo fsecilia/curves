@@ -63,7 +63,7 @@ TEST_F(curve_evaluator_test_t, trusted_evaluation_returns_scalar)
 
 TEST_F(curve_evaluator_test_t, trusted_evaluation_calls_wrapped_evaluator_once)
 {
-    EXPECT_CALL(evaluator_mock, scalar(3.0)).Times(1).WillOnce(Return(5.0));
+    EXPECT_CALL(evaluator_mock, scalar(3.0)).WillOnce(Return(5.0));
     static_cast<void>(curve_evaluator(3.0));
 }
 
@@ -97,7 +97,7 @@ TEST_F(curve_evaluator_test_t, checked_finite_valid_evaluation_returns_scalar)
 
 TEST_F(curve_evaluator_test_t, checked_finite_valid_evaluation_calls_wrapped_evaluator_once)
 {
-    EXPECT_CALL(evaluator_mock, scalar(3.0)).Times(1).WillOnce(Return(5.0));
+    EXPECT_CALL(evaluator_mock, scalar(3.0)).WillOnce(Return(5.0));
     [[maybe_unused]] auto const result = curve_evaluator.try_evaluate(3.0);
 }
 

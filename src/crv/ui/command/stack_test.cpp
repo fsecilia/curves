@@ -251,7 +251,7 @@ TEST_F(command_stack_test_t, undo_and_redo_reapply_command_state)
     auto& mock = *command;
 
     EXPECT_CALL(mock, redo()).Times(2);
-    EXPECT_CALL(mock, undo()).Times(1);
+    EXPECT_CALL(mock, undo());
 
     sut.push(std::move(command));
 

@@ -263,7 +263,6 @@ TEST_F(spline_interval_factory_test_t, unsafe_segment_is_not_evaluated_for_resid
 
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
-    EXPECT_CALL(mock_residual_estimator, call(_, _, _, _, _)).Times(0);
 
     auto const actual = sut(sample_target_function, subdomain);
 

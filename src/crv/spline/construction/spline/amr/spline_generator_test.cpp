@@ -196,7 +196,6 @@ TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutati
 
     EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(unrefined_state));
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(failure));
-    EXPECT_CALL(mock_assembler, call(_, _)).Times(0);
 
     auto const result = generator(spline, target, {});
 
