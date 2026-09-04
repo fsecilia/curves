@@ -79,6 +79,8 @@ TEST(input_domain_test_t, rejects_nonfinite_inputs)
     EXPECT_FALSE(sut.contains(std::numeric_limits<scalar_t>::quiet_NaN()));
 }
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
 TEST(input_domain_test_t, rejects_nonfinite_first_endpoint)
 {
     EXPECT_DEATH(static_cast<void>(sut_t{std::numeric_limits<scalar_t>::infinity(), 1.0}), "endpoints must be finite");
@@ -103,6 +105,8 @@ TEST(input_domain_test_t, empty_domain_has_no_last_input)
 {
     EXPECT_DEATH(static_cast<void>(sut_t{}.last()), "empty domain has no last input");
 }
+
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::model

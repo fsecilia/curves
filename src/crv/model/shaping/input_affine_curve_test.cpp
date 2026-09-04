@@ -157,6 +157,8 @@ TEST(shaping_input_affine_domain_test_t, stores_completed_transform_preimage)
     EXPECT_EQ(calls, 1);
 }
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
 TEST(shaping_input_affine_domain_test_t, rejects_scalar_input_outside_stored_preimage)
 {
     using scalar_t = float_t;
@@ -183,6 +185,8 @@ TEST(shaping_input_affine_domain_test_t, rejects_scalar_input_outside_stored_pre
     auto const sut = input_affine_curve_t<transform_t, curve_t>{{}, {}};
     EXPECT_DEATH(static_cast<void>(sut(0.0)), "input outside domain");
 }
+
+#endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 } // namespace
 } // namespace crv::shaping
