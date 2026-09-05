@@ -148,7 +148,8 @@ TEST_F(pipeline_compiler_test_t, smooth_gain_compiles_with_gain_semantics)
     auto const result = sut(device, profile);
     ASSERT_TRUE(result);
 
-    EXPECT_NEAR(gain_at(*result, 20.0), 1.5, 2e-6);
+    auto const& smooth_gain = std::get<2>(profile.curves.configs).specific;
+    EXPECT_NEAR(gain_at(*result, smooth_gain.v_50.value()), 1.0, 2e-6);
 }
 
 TEST_F(pipeline_compiler_test_t, synchronous_runtime_spline_keeps_quantized_sync_speed_as_knot)

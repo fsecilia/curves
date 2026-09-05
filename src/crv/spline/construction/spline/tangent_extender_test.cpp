@@ -102,7 +102,7 @@ TEST_F(spline_tangent_extender_test_t, intercept_comes_from_fixed_segment_not_fl
 
 // regression test: calculating transfer_jet by reevalutating the polynomial rather than using the right y of the
 // interval caused a catastrophic cancellation that rounded the final slope to negative when evaluating
-// curves::smooth_gain_t with parameters `v_0 = 0.0, v_1 = 20.0, g_t = 4.059, g_f = 12.989`.
+// historical SmoothGain-shaped regression case; values predate the Naka-Rushton parameterization.
 TEST_F(spline_tangent_extender_test_t, retained_constant_gain_endpoint_avoids_zero_slope_cancellation)
 {
     // reproduces the constant endpoint that exposed cubic reevaluation cancellation

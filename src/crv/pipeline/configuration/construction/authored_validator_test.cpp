@@ -171,7 +171,7 @@ TEST_F(authored_validator_test_t, accepts_smooth_gain_while_curve_specific_valid
     profile.curves.active.value(model::curves::curve_id_t::smooth_gain);
     auto& smooth_gain = std::get<2>(profile.curves.configs);
     smooth_gain.specific.v_0.value(20.0);
-    smooth_gain.specific.v_1.value(1.0);
+    smooth_gain.specific.v_50.value(1.0);
     EXPECT_TRUE(validate());
 }
 

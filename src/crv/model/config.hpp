@@ -9,7 +9,6 @@
 #include <crv/concepts.hpp>
 #include <crv/model/curve_interpretation_reflection.hpp>
 #include <crv/model/curves/curves.hpp>
-#include <crv/model/transition_reflection.hpp>
 #include <crv/reflection/constraints.hpp>
 #include <crv/reflection/enum.hpp>
 #include <crv/reflection/param.hpp>
