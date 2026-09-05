@@ -24,8 +24,7 @@ struct subdomain_t
 };
 
 using segment_t = int_t;
-using cubic_t = int_t;
-using sut_t = interval_t<subdomain_t, cubic_t, segment_t>;
+using sut_t = interval_t<subdomain_t, segment_t>;
 
 constexpr auto construct_sut(scalar_t weighted_error, x_t left_x) noexcept -> sut_t
 {
@@ -186,7 +185,6 @@ struct spline_interval_factory_test_t : Test
         using scalar_t = float_t;
         using subdomain_t = spline_interval_factory_test_t::subdomain_t;
 
-        cubic_t cubic;
         segment_t segment;
         subdomain_t subdomain;
         std::optional<residual_t> residual;
@@ -244,7 +242,6 @@ TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_
     auto const actual = sut(sample_target_function, subdomain);
 
     auto const expected = interval_t{
-        .cubic = local_cubic,
         .segment = segment,
         .subdomain = subdomain,
         .residual = residual,

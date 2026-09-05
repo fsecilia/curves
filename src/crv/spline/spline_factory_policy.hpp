@@ -104,7 +104,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     static_assert(std::is_trivially_copyable_v<packed_segment_t>);
     static_assert(std::is_trivially_copyable_v<segment_t>);
     using subdomain_t = crv::spline::subdomain_t<scalar_t, x_t>;
-    using interval_t = crv::spline::interval_t<subdomain_t, cubic_t, segment_t>;
+    using interval_t = crv::spline::interval_t<subdomain_t, segment_t>;
 
     // quantization and packing
     using float_extractor_t = float_extractor_t<scalar_t>;

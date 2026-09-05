@@ -42,16 +42,14 @@ template <std::floating_point t_scalar_t, is_fixed t_x_t> struct subdomain_t
 };
 
 /// unit of work over a subdomain
-template <typename t_subdomain_t, typename t_cubic_t, typename t_segment_t> struct interval_t
+template <typename t_subdomain_t, typename t_segment_t> struct interval_t
 {
     using subdomain_t = t_subdomain_t;
-    using cubic_t = t_cubic_t;
     using segment_t = t_segment_t;
 
     using scalar_t = subdomain_t::scalar_t;
     using residual_t = residual_t<scalar_t>;
 
-    cubic_t cubic; // local-u polynomial
     segment_t segment;
     subdomain_t subdomain;
     std::optional<residual_t> residual;
@@ -112,7 +110,7 @@ struct interval_factory_t
         // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
         if (!segment.is_safe_through(width_fixed, subdomain.left_x))
         {
-            return {.cubic = cubic, .segment = segment, .subdomain = subdomain, .residual = std::nullopt};
+            return {.segment = segment, .subdomain = subdomain, .residual = std::nullopt};
         }
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);
@@ -120,7 +118,6 @@ struct interval_factory_t
         auto const right = from_fixed<scalar_t>(subdomain.right_x);
 
         return {
-            .cubic = cubic,
             .segment = segment,
             .subdomain = subdomain,
             .residual
