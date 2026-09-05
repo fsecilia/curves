@@ -70,11 +70,10 @@ TEST(model_test, round_trip)
     smooth_gain.common.anchor.height.value(4.2);
     smooth_gain.common.ceiling.height.value(512.0);
     smooth_gain.common.ceiling.width.value(13.0);
-    smooth_gain.specific.v_0.value(-1.0);
     smooth_gain.specific.v_50.value(12.0);
-    smooth_gain.specific.k.value(2.5);
     smooth_gain.specific.g_t.value(0.75);
     smooth_gain.specific.g_f.value(3.0);
+    smooth_gain.specific.elasticity.value(1.25);
 
     // graphs no longer same
     EXPECT_NE(expected_root, actual_root);
@@ -121,7 +120,6 @@ TEST_F(curve_interpretation_config_test_t, parses_sensitivity_name)
 {
     EXPECT_EQ(reflection::from_string<curve_interpretation_t>("sensitivity"), curve_interpretation_t::sensitivity);
 }
-
 
 } // namespace
 } // namespace crv::model
