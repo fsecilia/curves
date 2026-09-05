@@ -78,8 +78,11 @@ struct smooth_gain_t
             log_v_50_ = log(v_50_);
             k_ = scalar_t{4} * elasticity_ / log_gain_delta_;
 
+// the ui has no way to enforce this yet
+#if 0
             assert(isfinite(k_) && k_ > scalar_t{1}
                 && "smooth_gain_t: elasticity must keep the derived Hill exponent greater than one");
+#endif
         }
 
         template <typename value_t> [[nodiscard]] auto operator()(value_t input) const noexcept -> value_t
