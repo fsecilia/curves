@@ -8,8 +8,8 @@
 #include <crv/pipeline/configuration/committer.hpp>
 #include <crv/pipeline/configuration/transaction.hpp>
 #include <crv/spline/construction/curve_target.hpp>
+#include <crv/spline/default_spline_policy.hpp>
 #include <crv/spline/spline_factory.hpp>
-#include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/test.hpp>
 #include <array>
 #include <concepts>

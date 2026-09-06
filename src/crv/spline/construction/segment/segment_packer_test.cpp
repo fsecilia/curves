@@ -12,6 +12,9 @@ namespace crv::spline {
 namespace {
 
 using field_layout_t = int_t;
+using unpacked_field_t = int_t;
+using y_t = fixed_t<int64_t, 20>;
+
 struct segment_layout_t
 {
     field_layout_t intermediate;
@@ -19,8 +22,6 @@ struct segment_layout_t
 };
 constexpr auto segment_layout = segment_layout_t{.intermediate = 3, .final = 5};
 
-using y_t = fixed_t<int64_t, 20>;
-using unpacked_field_t = int_t;
 struct unpacked_segment_t
 {
     unpacked_field_t d;
@@ -37,6 +38,7 @@ struct packed_field_t
     auto operator==(packed_field_t const&) const noexcept -> bool = default;
 };
 using test_packed_field_t = packed_field_t;
+
 struct packed_segment_t
 {
     using packed_field_t = test_packed_field_t;

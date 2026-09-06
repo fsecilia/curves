@@ -7,10 +7,10 @@
 #include <crv/model/composed_curve.hpp>
 #include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/construction/spline/amr/spline_generator.hpp>
+#include <crv/spline/default_spline_policy.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline.hpp>
 #include <crv/spline/spline_factory.hpp>
-#include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/accuracy/accuracy_test_runner.hpp>
 #include <cmath>
 #include <cstdlib>
@@ -21,9 +21,9 @@ namespace {
 struct curves_test_t
 {
     using pipeline_config_t = spline::prod_pipeline_config_t;
-    using spline_factory_policy_t = spline::default_spline_policy_t<reference_float_t, pipeline_config_t>;
-    using spline_factory_t = spline::spline_factory_t<spline_factory_policy_t,
-        spline::spline_generator_factory_t<spline_factory_policy_t>>;
+    using spline_policy_t = spline::default_spline_policy_t<reference_float_t, pipeline_config_t>;
+    using spline_factory_t
+        = spline::spline_factory_t<spline_policy_t, spline::spline_generator_factory_t<spline_policy_t>>;
 
     using in_t = pipeline_config_t::x_t;
     using out_t = pipeline_config_t::y_t;
@@ -59,7 +59,7 @@ struct curves_test_t
             approximation, ref_impl};
 
         auto const min = in_t{};
-        auto const max = in_t{spline_factory_policy_t::domain_end};
+        auto const max = in_t{spline_policy_t::domain_end};
 
         auto const sync_speed = to_fixed<in_t>(curve_config.sync_speed.value());
         auto const half = min + (max - min) / 2;

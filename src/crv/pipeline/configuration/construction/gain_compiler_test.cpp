@@ -6,8 +6,8 @@
 #include "gain_compiler.hpp"
 #include <crv/model/curves/log_normal.hpp>
 #include <crv/model/curves/synchronous.hpp>
+#include <crv/spline/default_spline_policy.hpp>
 #include <crv/spline/pipeline_config.hpp>
-#include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/test.hpp>
 #include <expected>
 #include <gmock/gmock.h>

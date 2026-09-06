@@ -18,9 +18,9 @@
 #include <crv/quadrature/antiderivative_factory.hpp>
 #include <crv/spline/construction/curve_target.hpp>
 #include <crv/spline/construction/spline/amr/spline_generator.hpp>
+#include <crv/spline/default_spline_policy.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/spline_factory.hpp>
-#include <crv/spline/spline_factory_policy.hpp>
 
 namespace crv::pipeline::configuration {
 

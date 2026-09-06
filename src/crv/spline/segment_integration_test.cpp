@@ -6,8 +6,8 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/polynomial.hpp>
+#include <crv/spline/default_spline_policy.hpp>
 #include <crv/spline/pipeline_config.hpp>
-#include <crv/spline/spline_factory_policy.hpp>
 #include <crv/test/test.hpp>
 #include <algorithm>
 #include <array>

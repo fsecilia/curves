@@ -132,7 +132,7 @@ set(lib_files
     spline/construction/weight_functions/exponential_decay.hpp
     spline/construction/weight_functions/hyperbolic_decay.hpp
     spline/construction/weight_functions/uniform.hpp
-    spline/spline_factory_policy.hpp
+    spline/default_spline_policy.hpp
     spline/spline_factory.hpp
     tuple.hpp
     variant.hpp
@@ -364,6 +364,7 @@ set(regression_test_files
     spline/construction/weight_functions/exponential_decay_test.cpp
     spline/construction/weight_functions/hyperbolic_decay_test.cpp
     spline/construction/weight_functions/uniform_test.cpp
+    spline/default_spline_policy_test.cpp
     spline/pipeline_config_test.cpp
     spline/segment_integration_test.cpp
     spline/segment_locator_test.cpp
