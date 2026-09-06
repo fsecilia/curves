@@ -243,6 +243,7 @@ set(regression_test_files
     math/fixed/quantizer_test.cpp
     math/fixed/rsqrt_test.cpp
     math/fixed/uabs_test.cpp
+    math/float_extraction_test.cpp
     math/float_limits_test.cpp
     math/int_traits_test.cpp
     math/integer_test.cpp

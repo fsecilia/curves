@@ -88,6 +88,10 @@ template <typename t_packed_field_t> struct field_layout_t
         return static_cast<int_t>((packed_field_t{1} << shift_width) >> 1) - 1;
     }
 
+    // a shift is a negated exponent, so asymmetric bounds reverse: shifts [-64, 63] becomes exponents [-63, 64]
+    constexpr auto min_exponent() const noexcept -> int_t { return -max_shift(); }
+    constexpr auto max_exponent() const noexcept -> int_t { return -min_shift(); }
+
     constexpr auto operator==(field_layout_t const&) const noexcept -> bool = default;
 };
 

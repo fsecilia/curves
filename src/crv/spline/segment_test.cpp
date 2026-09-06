@@ -28,8 +28,24 @@ namespace field_layout_tests {
 
 static_assert(field_layout_t{0, false}.shift_mask() == 0x0ULL);
 static_assert(field_layout_t{8, false}.shift_mask() == 0xffULL);
-static_assert(field_layout_t{8, true}.min_shift() == -0x80);
-static_assert(field_layout_t{8, true}.max_shift() == 0x7f);
+
+constexpr auto signed_seven_bit = field_layout_t{7, true};
+static_assert(signed_seven_bit.min_shift() == -64);
+static_assert(signed_seven_bit.max_shift() == 63);
+static_assert(signed_seven_bit.min_exponent() == -63);
+static_assert(signed_seven_bit.max_exponent() == 64);
+
+constexpr auto signed_four_bit = field_layout_t{4, true};
+static_assert(signed_four_bit.min_shift() == -8);
+static_assert(signed_four_bit.max_shift() == 7);
+static_assert(signed_four_bit.min_exponent() == -7);
+static_assert(signed_four_bit.max_exponent() == 8);
+
+constexpr auto unsigned_four_bit = field_layout_t{4, false};
+static_assert(unsigned_four_bit.min_shift() == 0);
+static_assert(unsigned_four_bit.max_shift() == 15);
+static_assert(unsigned_four_bit.min_exponent() == -15);
+static_assert(unsigned_four_bit.max_exponent() == 0);
 
 } // namespace field_layout_tests
 

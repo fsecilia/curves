@@ -76,8 +76,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     // layout configuration
     static constexpr auto segment_layout = pipeline_config_t::segment_layout;
     static constexpr auto intermediate_layout_max_shift = segment_layout.intermediate.max_shift();
-    static constexpr auto final_layout_min_shift = segment_layout.final.min_shift();
-    static constexpr auto final_layout_max_shift = segment_layout.final.max_shift();
+    static constexpr auto final_aligned_exponent_min = segment_layout.final.min_exponent();
+    static constexpr auto final_aligned_exponent_max = segment_layout.final.max_exponent();
 
     // fundamental traits
     using unpacked_field_t = unpacked_field_t<int_t>;
@@ -108,7 +108,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
 
     // quantization and packing
     using float_extractor_t = float_extractor_t<scalar_t>;
-    using exponent_aligner_t = exponent_aligner_t<final_layout_min_shift, final_layout_max_shift>;
+    using exponent_aligner_t = exponent_aligner_t<final_aligned_exponent_min, final_aligned_exponent_max>;
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using radix_aligner_t = crv::spline::radix_aligner_t<unpacked_field_t, scaled_int_t, exponent_aligner_t{}>;
     using field_packer_t = crv::spline::field_packer_t<packed_field_t>;
