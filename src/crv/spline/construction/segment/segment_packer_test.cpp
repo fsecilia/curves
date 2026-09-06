@@ -6,6 +6,7 @@
 #include "segment_packer.hpp"
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/test/test.hpp>
+#include <concepts>
 
 namespace crv::spline {
 namespace {
@@ -35,8 +36,11 @@ struct packed_field_t
 
     auto operator==(packed_field_t const&) const noexcept -> bool = default;
 };
+using test_packed_field_t = packed_field_t;
 struct packed_segment_t
 {
+    using packed_field_t = test_packed_field_t;
+
     packed_field_t d;
     packed_field_t c;
     packed_field_t b;
@@ -54,10 +58,12 @@ struct field_packer_t
     }
 };
 
-constexpr auto pack_segment = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>{};
+using sut_t = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
+static_assert(std::same_as<sut_t::packed_field_t, packed_field_t>);
+constexpr auto sut = sut_t{};
 constexpr auto g0 = y_t::literal(19);
 
-static_assert(pack_segment(unpacked_segment_t{.d = 7, .c = 11, .b = 13, .g0 = g0})
+static_assert(sut(unpacked_segment_t{.d = 7, .c = 11, .b = 13, .g0 = g0})
     == packed_segment_t{
         .d = {.packed_field = 7, .field_layout = 3},
         .c = {.packed_field = 11, .field_layout = 3},

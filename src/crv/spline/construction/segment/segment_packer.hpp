@@ -15,6 +15,7 @@ template <typename t_packed_segment_t, typename unpacked_segment_t, typename fie
 struct segment_packer_t
 {
     using packed_segment_t = t_packed_segment_t;
+    using packed_field_t = packed_segment_t::packed_field_t;
 
     static constexpr auto segment_layout = t_segment_layout;
 

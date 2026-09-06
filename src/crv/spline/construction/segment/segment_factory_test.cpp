@@ -70,6 +70,7 @@ struct segment_t
 
 struct segment_quantizer_t
 {
+    using scalar_t = float_t;
     using cubic_t = cubic_t;
     using x_t = int_t;
 
@@ -83,6 +84,8 @@ struct segment_quantizer_t
 
 struct segment_packer_t
 {
+    using packed_field_t = uint64_t;
+
     static constexpr auto segment_layout = spline::segment_layout;
     constexpr auto operator()(unpacked_segment_t const& unpacked) const noexcept -> packed_segment_t
     {
