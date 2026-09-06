@@ -20,13 +20,13 @@ namespace float32 {
 constexpr auto sut = float_extractor_t<float32_t>{};
 using scaled_int_t = scaled_int_t<int32_t>;
 
-// 1.0f -> 1.0 * 2^0 -> mantissa: (1<<23), exp: -23
+// 1.0f -> 1.0 * 2^0 -> significand: (1<<23), exp: -23
 static_assert(sut(1.0f) == scaled_int_t{0x00800000, -23});
 
-// 1.5f -> 1.5 * 2^0 -> mantissa: (1<<23) + (1<<22), exp: -23
+// 1.5f -> 1.5 * 2^0 -> significand: (1<<23) + (1<<22), exp: -23
 static_assert(sut(1.5f) == scaled_int_t{0x00c00000, -23});
 
-// -2.0f -> -1.0 * 2^1 -> mantissa: -(1<<23), exp: -22
+// -2.0f -> -1.0 * 2^1 -> significand: -(1<<23), exp: -22
 static_assert(sut(-2.0f) == scaled_int_t{-0x00800000, -22});
 
 // exact zero triggers ftz branch
@@ -62,40 +62,40 @@ static_assert(float_extractor_t<float64_t>{}(1.0) == scaled_int_t<int64_t>{int64
 
 namespace exponent_aligner_tests {
 
-using mantissa_t = int32_t;
-using scaled_int_t = scaled_int_t<mantissa_t>;
+using significand_t = int32_t;
+using scaled_int_t = scaled_int_t<significand_t>;
 constexpr auto exponent_min = -20;
 constexpr auto exponent_max = 20;
-constexpr auto mantissa_min = min<mantissa_t>();
-constexpr auto mantissa_max = max<mantissa_t>();
+constexpr auto significand_min = min<significand_t>();
+constexpr auto significand_max = max<significand_t>();
 
 // arbitrary clamp bounds for testing
 constexpr auto sut = exponent_aligner_t<exponent_min, exponent_max>{};
 
 // exponent within range results in no shift
-static_assert(sut(scaled_int_t{.mantissa = 100, .exponent = 0}) == scaled_int_t{.mantissa = 100, .exponent = 0});
+static_assert(sut(scaled_int_t{.significand = 100, .exponent = 0}) == scaled_int_t{.significand = 100, .exponent = 0});
 
-// clamp positive mantissa to min exponent
-static_assert(sut(scaled_int_t{.mantissa = 0x00800000, .exponent = exponent_min - 3})
-    == scaled_int_t{.mantissa = 0x00100000, .exponent = exponent_min});
+// clamp positive significand to min exponent
+static_assert(sut(scaled_int_t{.significand = 0x00800000, .exponent = exponent_min - 3})
+    == scaled_int_t{.significand = 0x00100000, .exponent = exponent_min});
 
-// clamp positive mantissa to max exponent
-static_assert(sut(scaled_int_t{.mantissa = 1, .exponent = exponent_max + 5})
-    == scaled_int_t{.mantissa = 32, .exponent = exponent_max});
+// clamp positive significand to max exponent
+static_assert(sut(scaled_int_t{.significand = 1, .exponent = exponent_max + 5})
+    == scaled_int_t{.significand = 32, .exponent = exponent_max});
 
-// clamp negative mantissa to min exponent
-static_assert(sut(scaled_int_t{.mantissa = -0x00800000, .exponent = exponent_min - 3})
-    == scaled_int_t{.mantissa = -0x00100000, .exponent = exponent_min});
+// clamp negative significand to min exponent
+static_assert(sut(scaled_int_t{.significand = -0x00800000, .exponent = exponent_min - 3})
+    == scaled_int_t{.significand = -0x00100000, .exponent = exponent_min});
 
-// clamp negative mantissa to max exponent
-static_assert(sut(scaled_int_t{.mantissa = -1, .exponent = exponent_max + 5})
-    == scaled_int_t{.mantissa = -32, .exponent = exponent_max});
+// clamp negative significand to max exponent
+static_assert(sut(scaled_int_t{.significand = -1, .exponent = exponent_max + 5})
+    == scaled_int_t{.significand = -32, .exponent = exponent_max});
 
 // saturation_checks
-static_assert(
-    sut(scaled_int_t{.mantissa = 1000, .exponent = 55}) == scaled_int_t{.mantissa = mantissa_max, .exponent = 20});
-static_assert(
-    sut(scaled_int_t{.mantissa = -1000, .exponent = 55}) == scaled_int_t{.mantissa = mantissa_min, .exponent = 20});
+static_assert(sut(scaled_int_t{.significand = 1000, .exponent = 55})
+    == scaled_int_t{.significand = significand_max, .exponent = 20});
+static_assert(sut(scaled_int_t{.significand = -1000, .exponent = 55})
+    == scaled_int_t{.significand = significand_min, .exponent = 20});
 
 } // namespace exponent_aligner_tests
 

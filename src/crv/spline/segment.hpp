@@ -54,10 +54,10 @@ template <typename t_packed_field_t, is_fixed t_y_t> struct packed_segment_t
 template <typename t_unpacked_field_t, is_fixed t_y_t> struct traits_t
 {
     using unpacked_field_t = t_unpacked_field_t;
-    using mantissa_t = unpacked_field_t::mantissa_t;
+    using significand_t = unpacked_field_t::significand_t;
     using y_t = t_y_t;
 
-    using packed_field_t = make_unsigned_t<mantissa_t>; // [signed mantissa | unsigned shift]
+    using packed_field_t = make_unsigned_t<significand_t>; // [signed significand | unsigned shift]
 
     using packed_segment_t = crv::spline::packed_segment_t<packed_field_t, y_t>;
     using unpacked_segment_t = crv::spline::unpacked_segment_t<unpacked_field_t, y_t>;
@@ -107,11 +107,11 @@ template <typename field_layout_t> struct segment_layout_t
 // unpacking
 //
 
-template <signed_integral t_mantissa_t> struct unpacked_field_t
+template <signed_integral t_significand_t> struct unpacked_field_t
 {
-    using mantissa_t = t_mantissa_t;
+    using significand_t = t_significand_t;
 
-    mantissa_t mantissa;
+    significand_t significand;
     int_t shift;
 
     constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
@@ -124,7 +124,7 @@ template <typename t_unpacked_field_t> struct field_unpacker_t
     template <typename packed_field_t, typename field_layout_t>
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        using mantissa_t = unpacked_field_t::mantissa_t;
+        using significand_t = unpacked_field_t::significand_t;
 
         auto const shift_masked = packed_field & layout.shift_mask();
         int_t shift;
@@ -140,10 +140,10 @@ template <typename t_unpacked_field_t> struct field_unpacker_t
         }
 
         // use arithmetic shift to extend sign
-        auto const mantissa = static_cast<mantissa_t>(packed_field) >> layout.shift_width;
+        auto const significand = static_cast<significand_t>(packed_field) >> layout.shift_width;
 
         return {
-            .mantissa = mantissa,
+            .significand = significand,
             .shift = shift,
         };
     }
@@ -204,9 +204,9 @@ struct segment_evaluator_t
     using y_t = t_y_t;
 
     using unpacked_segment_t = traits_t::unpacked_segment_t;
-    using mantissa_t = traits_t::mantissa_t;
+    using significand_t = traits_t::significand_t;
 
-    using narrow_t = make_signed_t<mantissa_t>;
+    using narrow_t = make_signed_t<significand_t>;
     using wide_t = widened_t<narrow_t>;
     using x_value_t = typename x_t::value_t;
     using y_value_t = typename y_t::value_t;
@@ -255,18 +255,18 @@ struct segment_evaluator_t
         if (!valid_final_shift(unpacked_segment.b.shift)) return false;
 
         auto bounds = bounds_t{
-            .lower = widen(unpacked_segment.d.mantissa),
-            .upper = widen(unpacked_segment.d.mantissa),
+            .lower = widen(unpacked_segment.d.significand),
+            .upper = widen(unpacked_segment.d.significand),
         };
 
         if (!apply_coefficient_bounds(
-                bounds, unpacked_segment.c.mantissa, unpacked_segment.d.shift, widen_coordinate(u_max), bounds))
+                bounds, unpacked_segment.c.significand, unpacked_segment.d.shift, widen_coordinate(u_max), bounds))
         {
             return false;
         }
 
         if (!apply_coefficient_bounds(
-                bounds, unpacked_segment.b.mantissa, unpacked_segment.c.shift, widen_coordinate(u_max), bounds))
+                bounds, unpacked_segment.b.significand, unpacked_segment.c.shift, widen_coordinate(u_max), bounds))
         {
             return false;
         }
@@ -347,7 +347,7 @@ private:
     static constexpr auto widen_coordinate(x_t x) noexcept -> wide_t { return int_cast<wide_t>(x.value); }
 
     static constexpr auto apply_coefficient_bounds(
-        bounds_t accumulator, mantissa_t coefficient, int_t shift, wide_t u_max, bounds_t& result) noexcept -> bool
+        bounds_t accumulator, significand_t coefficient, int_t shift, wide_t u_max, bounds_t& result) noexcept -> bool
     {
         if (!valid_shift(shift) || u_max < 0) return false;
 
@@ -406,21 +406,21 @@ private:
 
     constexpr auto evaluate_s(unpacked_segment_t const& unpacked_segment, x_t u) const noexcept -> y_t
     {
-        auto accumulator = unpacked_segment.d.mantissa;
-        accumulator = apply_coefficient(unpacked_segment.c.mantissa, unpacked_segment.d.shift, u, accumulator);
-        accumulator = apply_coefficient(unpacked_segment.b.mantissa, unpacked_segment.c.shift, u, accumulator);
+        auto accumulator = unpacked_segment.d.significand;
+        accumulator = apply_coefficient(unpacked_segment.c.significand, unpacked_segment.d.shift, u, accumulator);
+        accumulator = apply_coefficient(unpacked_segment.b.significand, unpacked_segment.c.shift, u, accumulator);
         return align_to_y(accumulator, unpacked_segment.b.shift);
     }
 
     constexpr auto apply_coefficient(
-        mantissa_t coeff, int_t relative_shift, x_t x, mantissa_t accumulator) const noexcept -> mantissa_t
+        significand_t coeff, int_t relative_shift, x_t x, significand_t accumulator) const noexcept -> significand_t
     {
         auto const wide_product = widen(accumulator) * x.value;
         auto const aligned_product = shifter_t<rounding_mode>{}.template shr<narrow_t>(wide_product, relative_shift);
         return add_wrap(aligned_product, coeff);
     }
 
-    constexpr auto align_to_y(mantissa_t accumulator, int_t shift) const noexcept -> y_t
+    constexpr auto align_to_y(significand_t accumulator, int_t shift) const noexcept -> y_t
     {
         return y_t::literal(
             saturate_cast<typename y_t::value_t>(shifter_t<rounding_mode>{}.shift(widen(accumulator), -shift)));

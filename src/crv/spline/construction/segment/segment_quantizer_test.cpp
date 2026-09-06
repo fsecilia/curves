@@ -12,14 +12,14 @@ namespace crv::spline {
 namespace {
 
 //
-// mantissa_quantizer_t
+// significand_quantizer_t
 //
 
-namespace mantissa_quantizer_tests {
+namespace significand_quantizer_tests {
 
-using mantissa_t = int32_t;
-constexpr auto quantize = mantissa_quantizer_t<mantissa_t>{};
-constexpr auto truncating_quantize = mantissa_quantizer_t<mantissa_t, rounding_modes::shr::truncate>{};
+using significand_t = int32_t;
+constexpr auto quantize = significand_quantizer_t<significand_t>{};
+constexpr auto truncating_quantize = significand_quantizer_t<significand_t, rounding_modes::shr::truncate>{};
 
 // passthrough with no shift
 static_assert(quantize(100, 0) == 100);
@@ -39,12 +39,12 @@ static_assert(quantize(-3, 1) == -2); // -1.5 rounds to -2
 static_assert(quantize(-5, 1) == -2); // -2.5 rounds to -2
 
 // container shift saturation; max_container_shift for int32_t is 31
-static_assert(quantize(max<mantissa_t>(), 30) == (max<mantissa_t>() >> 30) + 1); // no flush before max
-static_assert(quantize(max<mantissa_t>(), 31) == 0); // flush exactly at max
-static_assert(quantize(max<mantissa_t>(), 32) == 0); // flush exceeding max
-static_assert(quantize(max<mantissa_t>(), 100) == 0); // flush large values
+static_assert(quantize(max<significand_t>(), 30) == (max<significand_t>() >> 30) + 1); // no flush before max
+static_assert(quantize(max<significand_t>(), 31) == 0); // flush exactly at max
+static_assert(quantize(max<significand_t>(), 32) == 0); // flush exceeding max
+static_assert(quantize(max<significand_t>(), 100) == 0); // flush large values
 
-} // namespace mantissa_quantizer_tests
+} // namespace significand_quantizer_tests
 
 //
 // radix_aligner_t
@@ -52,12 +52,12 @@ static_assert(quantize(max<mantissa_t>(), 100) == 0); // flush large values
 
 namespace radix_aligner_tests {
 
-using mantissa_t = int32_t;
-using scaled_int_t = scaled_int_t<mantissa_t>;
+using significand_t = int32_t;
+using scaled_int_t = scaled_int_t<significand_t>;
 
 struct unpacked_field_t
 {
-    mantissa_t mantissa;
+    significand_t significand;
     int_t shift;
     constexpr auto operator==(unpacked_field_t const&) const noexcept -> bool = default;
 };
@@ -68,22 +68,24 @@ constexpr auto truncating_aligner = exponent_aligner_t<-20, 20, rounding_modes::
 constexpr auto align_radix = radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>{};
 
 // passthrough; exponent is well within the aligner's bounds
-// exponent = 5 + 2 = 7, shift output becomes -7, mantissa is untouched
-static_assert(align_radix({.mantissa = 100, .exponent = 5}, 2) == unpacked_field_t{.mantissa = 100, .shift = -7});
+// exponent = 5 + 2 = 7, shift output becomes -7, significand is untouched
+static_assert(align_radix({.significand = 100, .exponent = 5}, 2) == unpacked_field_t{.significand = 100, .shift = -7});
 
 // rounding mode controls right shifts
-static_assert(
-    truncating_aligner(scaled_int_t{.mantissa = 3, .exponent = -21}) == scaled_int_t{.mantissa = 1, .exponent = -20});
+static_assert(truncating_aligner(scaled_int_t{.significand = 3, .exponent = -21})
+    == scaled_int_t{.significand = 1, .exponent = -20});
 
 // positive saturation; exponent exceeds max
 // exponent = 15 + 10 = 25, clamps to 20
-// deficit of 5 means mantissa is left-shifted by 5 (10 << 5 = 320); shift output is -20
-static_assert(align_radix({.mantissa = 10, .exponent = 15}, 10) == unpacked_field_t{.mantissa = 320, .shift = -20});
+// deficit of 5 means significand is left-shifted by 5 (10 << 5 = 320); shift output is -20
+static_assert(
+    align_radix({.significand = 10, .exponent = 15}, 10) == unpacked_field_t{.significand = 320, .shift = -20});
 
 // negative saturation; exponent falls below min
 // exponent = -15 + (-10) = -25, clamps to -20
-// surplus of 5 means mantissa is right-shifted by 5 (1000 >> 5 = 31 RNE); shift output is 20
-static_assert(align_radix({.mantissa = 1000, .exponent = -15}, -10) == unpacked_field_t{.mantissa = 31, .shift = 20});
+// surplus of 5 means significand is right-shifted by 5 (1000 >> 5 = 31 RNE); shift output is 20
+static_assert(
+    align_radix({.significand = 1000, .exponent = -15}, -10) == unpacked_field_t{.significand = 31, .shift = 20});
 
 } // namespace radix_aligner_tests
 
@@ -94,9 +96,9 @@ static_assert(align_radix({.mantissa = 1000, .exponent = -15}, -10) == unpacked_
 namespace segment_quantizer_tests {
 
 using scalar_t = float_t;
-using mantissa_t = int_t;
-using unpacked_field_t = spline::unpacked_field_t<mantissa_t>;
-using scaled_int_t = crv::scaled_int_t<mantissa_t>;
+using significand_t = int_t;
+using unpacked_field_t = spline::unpacked_field_t<significand_t>;
+using scaled_int_t = crv::scaled_int_t<significand_t>;
 
 auto const max_intermediate_shift = 0x7f;
 
@@ -110,16 +112,16 @@ struct float_extractor_t
 {
     using scalar_t = float_t;
 
-    // mantissa is 10x, exponent is 1x
+    // significand is 10x, exponent is 1x
     constexpr auto operator()(scalar_t scalar) const noexcept -> scaled_int_t
     {
-        return {.mantissa = static_cast<mantissa_t>(scalar * 10), .exponent = static_cast<int_t>(scalar)};
+        return {.significand = static_cast<significand_t>(scalar * 10), .exponent = static_cast<int_t>(scalar)};
     }
 };
 
 struct shift_planner_t
 {
-    using plan_t = spline::shift_planner_t<mantissa_t>::plan_t;
+    using plan_t = spline::shift_planner_t<significand_t>::plan_t;
 
     constexpr auto operator()(int_t accumulator_bit_count, int_t accumulator_exponent, int_t next_exponent,
         int_t coordinate_radix_shift, int_t coordinate_magnitude_bits) const noexcept -> plan_t
@@ -133,26 +135,26 @@ struct shift_planner_t
     }
 };
 
-struct mantissa_quantizer_t
+struct significand_quantizer_t
 {
-    constexpr auto operator()(mantissa_t mantissa, int_t preshift) const noexcept -> mantissa_t
+    constexpr auto operator()(significand_t significand, int_t preshift) const noexcept -> significand_t
     {
-        return static_cast<mantissa_t>(mantissa + preshift);
+        return static_cast<significand_t>(significand + preshift);
     }
 };
 
 struct radix_aligner_t
 {
-    using scaled_int_t = crv::scaled_int_t<mantissa_t>;
+    using scaled_int_t = crv::scaled_int_t<significand_t>;
 
     constexpr auto operator()(scaled_int_t const& accum, int_t radix) const noexcept -> unpacked_field_t
     {
-        return {.mantissa = static_cast<mantissa_t>(accum.mantissa + radix), .shift = accum.exponent};
+        return {.significand = static_cast<significand_t>(accum.significand + radix), .shift = accum.exponent};
     }
 };
 
-constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t, shift_planner_t, mantissa_quantizer_t,
-    radix_aligner_t, max_intermediate_shift, x_t>{};
+constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t, shift_planner_t,
+    significand_quantizer_t, radix_aligner_t, max_intermediate_shift, x_t>{};
 
 // Project cubic order is {d, c, b, a}. Width raw=5 contributes three magnitude bits.
 //
@@ -164,9 +166,9 @@ constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t, 
 TEST(segment_quantizer_isolation_tests, transfer_constant_does_not_participate_in_dynamic_shift_planning)
 {
     auto const expected = unpacked_segment_t{
-        .d = {.mantissa = 10, .shift = 20},
-        .c = {.mantissa = 20, .shift = 23},
-        .b = {.mantissa = 50, .shift = 3},
+        .d = {.significand = 10, .shift = 20},
+        .c = {.significand = 20, .shift = 23},
+        .b = {.significand = 50, .shift = 3},
         .g0 = y_t{4},
     };
     EXPECT_EQ(sut({1.0, 2.0, 3.0, 4.0}, x_t::literal(5), x_t{1}), expected);
@@ -193,18 +195,18 @@ using y_t = fixed_t<int64_t, 25>;
 using unpacked_segment_t = spline::unpacked_segment_t<unpacked_field_t, y_t>;
 
 constexpr auto aligner = exponent_aligner_t<-30, 30>{};
-constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t<scalar_t>, shift_planner_t<mantissa_t>,
-    mantissa_quantizer_t<mantissa_t>, radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift,
-    x_t>{};
+constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t<scalar_t>,
+    shift_planner_t<significand_t>, significand_quantizer_t<significand_t>,
+    radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift, x_t>{};
 
 // The three S coefficients maintain a high-precision dynamic representation. g0 is directly quantized from the
 // floating Hermite endpoint a and the actual fixed runtime origin converted back to scalar.
 TEST(segment_quantizer_end_to_end_tests, quantizes_s_and_g0_in_their_distinct_representations)
 {
     auto const segment = sut({0.125, 0.25, 0.5, 3.0}, x_t{1}, x_t{2});
-    EXPECT_EQ(segment.d, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 15}));
-    EXPECT_EQ(segment.c, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 15}));
-    EXPECT_EQ(segment.b, (unpacked_field_t{.mantissa = 4503599627370496, .shift = 28}));
+    EXPECT_EQ(segment.d, (unpacked_field_t{.significand = 4503599627370496, .shift = 15}));
+    EXPECT_EQ(segment.c, (unpacked_field_t{.significand = 4503599627370496, .shift = 15}));
+    EXPECT_EQ(segment.b, (unpacked_field_t{.significand = 4503599627370496, .shift = 28}));
     EXPECT_EQ(segment.g0, to_fixed<y_t>(1.5));
 }
 

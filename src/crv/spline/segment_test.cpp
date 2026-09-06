@@ -16,7 +16,7 @@ using layout_y_t = fixed_t<int64_t, 20>;
 using layout_traits_t = spline::traits_t<spline::unpacked_field_t<int_t>, layout_y_t>;
 using packed_field_t = layout_traits_t::packed_field_t;
 using unpacked_field_t = layout_traits_t::unpacked_field_t;
-using mantissa_t = layout_traits_t::mantissa_t;
+using significand_t = layout_traits_t::significand_t;
 using packed_segment_t = layout_traits_t::packed_segment_t;
 using unpacked_segment_t = layout_traits_t::unpacked_segment_t;
 using field_layout_t = spline::field_layout_t<packed_field_t>;
@@ -57,8 +57,8 @@ constexpr auto test_unpack(unpacked_field_t unpacked_field, field_layout_t field
     return field_unpacker_t{}(packed, field_layout) == unpacked_field;
 }
 
-static_assert(test_unpack({.mantissa = 5, .shift = 3}, {.shift_width = 4, .is_signed = false}));
-static_assert(test_unpack({.mantissa = -5, .shift = -3}, {.shift_width = 4, .is_signed = true}));
+static_assert(test_unpack({.significand = 5, .shift = 3}, {.shift_width = 4, .is_signed = false}));
+static_assert(test_unpack({.significand = -5, .shift = -3}, {.shift_width = 4, .is_signed = true}));
 
 } // namespace field_unpacker_tests
 
@@ -77,7 +77,7 @@ struct echoing_field_unpacker_t
 
     constexpr auto operator()(packed_field_t packed_field, field_layout_t layout) const noexcept -> unpacked_field_t
     {
-        return {.mantissa = static_cast<mantissa_t>(packed_field), .shift = layout.shift_width};
+        return {.significand = static_cast<significand_t>(packed_field), .shift = layout.shift_width};
     }
 };
 
@@ -86,23 +86,23 @@ constexpr auto unpacker
 constexpr auto g0 = layout_y_t::literal(40);
 constexpr auto packed = packed_segment_t{.d = 10, .c = 20, .b = 30, .g0 = g0};
 
-static_assert(unpacker(packed, 0) == unpacked_field_t{.mantissa = 10, .shift = intermediate_shift_width});
-static_assert(unpacker(packed, 1) == unpacked_field_t{.mantissa = 20, .shift = intermediate_shift_width});
-static_assert(unpacker(packed, 2) == unpacked_field_t{.mantissa = 30, .shift = final_shift_width});
+static_assert(unpacker(packed, 0) == unpacked_field_t{.significand = 10, .shift = intermediate_shift_width});
+static_assert(unpacker(packed, 1) == unpacked_field_t{.significand = 20, .shift = intermediate_shift_width});
+static_assert(unpacker(packed, 2) == unpacked_field_t{.significand = 30, .shift = final_shift_width});
 
 constexpr auto unpacked = unpacker(packed);
-static_assert(unpacked.d == unpacked_field_t{.mantissa = 10, .shift = intermediate_shift_width});
-static_assert(unpacked.c == unpacked_field_t{.mantissa = 20, .shift = intermediate_shift_width});
-static_assert(unpacked.b == unpacked_field_t{.mantissa = 30, .shift = final_shift_width});
+static_assert(unpacked.d == unpacked_field_t{.significand = 10, .shift = intermediate_shift_width});
+static_assert(unpacked.c == unpacked_field_t{.significand = 20, .shift = intermediate_shift_width});
+static_assert(unpacked.b == unpacked_field_t{.significand = 30, .shift = final_shift_width});
 static_assert(unpacked.g0 == g0);
 
 constexpr auto packer = segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>{};
 constexpr auto real_unpacker
     = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>{};
 constexpr auto roundtrip_source = unpacked_segment_t{
-    .d = {.mantissa = 1234567, .shift = 17},
-    .c = {.mantissa = -2345678, .shift = 9},
-    .b = {.mantissa = 3456789, .shift = -37},
+    .d = {.significand = 1234567, .shift = 17},
+    .c = {.significand = -2345678, .shift = 9},
+    .b = {.significand = 3456789, .shift = -37},
     .g0 = layout_y_t::literal(-4567890),
 };
 static_assert(real_unpacker(packer(roundtrip_source)) == roundtrip_source);
@@ -127,9 +127,9 @@ static_assert(decltype(evaluate)::correction_divide_shift == 0);
 template <typename value_t> constexpr auto constant_s(value_t s_raw, value_t g0_raw) noexcept -> unpacked_segment_t
 {
     return {
-        .d = {.mantissa = 0, .shift = 0},
-        .c = {.mantissa = 0, .shift = 0},
-        .b = {.mantissa = static_cast<int64_t>(s_raw), .shift = 0},
+        .d = {.significand = 0, .shift = 0},
+        .c = {.significand = 0, .shift = 0},
+        .b = {.significand = static_cast<int64_t>(s_raw), .shift = 0},
         .g0 = y_t::literal(static_cast<int64_t>(g0_raw)),
     };
 }
@@ -139,9 +139,9 @@ static_assert(evaluate(constant_s(11, 99), x_t::literal(0), x_t::literal(0)) == 
 static_assert(evaluate(constant_s(11, 99), x_t::literal(7), x_t::literal(0)) == y_t::literal(11));
 
 constexpr auto rounded_s = unpacked_segment_t{
-    .d = {.mantissa = 0, .shift = 0},
-    .c = {.mantissa = 0, .shift = 0},
-    .b = {.mantissa = 3, .shift = 1},
+    .d = {.significand = 0, .shift = 0},
+    .c = {.significand = 0, .shift = 0},
+    .b = {.significand = 3, .shift = 1},
     .g0 = y_t{},
 };
 static_assert(evaluate_truncating(rounded_s, x_t{}, x_t{}) == y_t::literal(1));
@@ -187,9 +187,9 @@ constexpr auto make_segment(int64_t d, int_t d_shift, int64_t c, int_t c_shift, 
     int64_t g0 = 0) noexcept -> unpacked_segment_t
 {
     return {
-        .d = {.mantissa = d, .shift = d_shift},
-        .c = {.mantissa = c, .shift = c_shift},
-        .b = {.mantissa = b, .shift = b_shift},
+        .d = {.significand = d, .shift = d_shift},
+        .c = {.significand = c, .shift = c_shift},
+        .b = {.significand = b, .shift = b_shift},
         .g0 = y_t::literal(g0),
     };
 }
@@ -256,9 +256,9 @@ using sut_t = segment_t<traits_t, x_t, unpacker_t, evaluator_t>;
 
 constexpr auto pack_field = spline::field_packer_t<packed_field_t>{};
 constexpr auto packed = packed_segment_t{
-    .d = pack_field(typename traits_t::unpacked_field_t{.mantissa = 0, .shift = 0}, segment_layout.intermediate),
-    .c = pack_field(typename traits_t::unpacked_field_t{.mantissa = 0, .shift = 0}, segment_layout.intermediate),
-    .b = pack_field(typename traits_t::unpacked_field_t{.mantissa = 7, .shift = 0}, segment_layout.final),
+    .d = pack_field(typename traits_t::unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
+    .c = pack_field(typename traits_t::unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
+    .b = pack_field(typename traits_t::unpacked_field_t{.significand = 7, .shift = 0}, segment_layout.final),
     .g0 = y_t::literal(11),
 };
 constexpr auto sut = sut_t{packed};

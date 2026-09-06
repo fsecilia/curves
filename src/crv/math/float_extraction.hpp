@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 /// \file
-/// \brief float mantissa and exponent extraction
+/// \brief float significand and exponent extraction
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #pragma once
@@ -16,20 +16,20 @@
 
 namespace crv {
 
-/// holds floating point expressed as integer mantissa and exponent
-template <typename t_mantissa_t> struct scaled_int_t
+/// holds floating point expressed as integer significand and exponent
+template <typename t_significand_t> struct scaled_int_t
 {
-    using mantissa_t = t_mantissa_t;
+    using significand_t = t_significand_t;
     using exponent_t = int_t;
 
-    mantissa_t mantissa;
+    significand_t significand;
     exponent_t exponent;
 
     constexpr auto operator<=>(scaled_int_t const&) const noexcept -> auto = default;
     constexpr auto operator==(scaled_int_t const&) const noexcept -> bool = default;
 };
 
-// extracts integer mantissa and exponent from float
+// extracts integer significand and exponent from float
 template <std::floating_point t_scalar_t> struct float_extractor_t
 {
     using scalar_t = t_scalar_t;
@@ -59,26 +59,26 @@ template <std::floating_point t_scalar_t> struct float_extractor_t
         if (raw_exponent == 0) return {}; // ftz; flush subnormals to zero
         auto const exponent = int_cast<exponent_t>(int_cast<signed_t>(raw_exponent) - exponent_bias - frac_bit_count);
 
-        return {.mantissa = extract_mantissa(bits), .exponent = exponent};
+        return {.significand = extract_significand(bits), .exponent = exponent};
     }
 
 private:
-    using mantissa_t = scaled_int_t::mantissa_t;
+    using significand_t = scaled_int_t::significand_t;
     using exponent_t = scaled_int_t::exponent_t;
 
-    constexpr auto extract_mantissa(unsigned_t bits) const noexcept -> mantissa_t
+    constexpr auto extract_significand(unsigned_t bits) const noexcept -> significand_t
     {
         auto const raw_magnitude = (bits & frac_mask) | implicit_bit;
 
-        auto mantissa = static_cast<mantissa_t>(raw_magnitude);
-        assert(static_cast<unsigned_t>(mantissa) == raw_magnitude);
+        auto significand = static_cast<significand_t>(raw_magnitude);
+        assert(static_cast<unsigned_t>(significand) == raw_magnitude);
 
         auto const is_negative = (bits >> (bit_count - 1)) != 0;
-        return is_negative ? -mantissa : mantissa;
+        return is_negative ? -significand : significand;
     }
 };
 
-/// shifts integer mantissa to keep integer exponent within a range; saturates
+/// shifts integer significand to keep integer exponent within a range; saturates
 template <int_t t_exponent_min, int_t t_exponent_max, auto rounding_mode = rounding_modes::shr::nearest_even>
 struct exponent_aligner_t
 {
@@ -90,7 +90,7 @@ struct exponent_aligner_t
         auto const exponent_clamped = std::clamp(src.exponent, exponent_min, exponent_max);
         auto const left_shift = src.exponent - exponent_clamped;
         constexpr auto shifter = saturating_shifter_t<shifter_t<rounding_mode>{}>{};
-        return {.mantissa = shifter.shift(src.mantissa, left_shift), .exponent = exponent_clamped};
+        return {.significand = shifter.shift(src.significand, left_shift), .exponent = exponent_clamped};
     }
 };
 

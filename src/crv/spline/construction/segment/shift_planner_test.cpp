@@ -9,9 +9,9 @@
 namespace crv::spline {
 namespace {
 
-using mantissa_t = int64_t;
-constexpr auto plan_shift = shift_planner_t<mantissa_t>{};
-using plan_t = shift_planner_t<mantissa_t>::plan_t;
+using significand_t = int64_t;
+constexpr auto plan_shift = shift_planner_t<significand_t>{};
+using plan_t = shift_planner_t<significand_t>::plan_t;
 
 // equal exponents: semantic radix alone determines alignment
 static_assert(plan_shift(1, 10, 10, 5, 2)

@@ -28,26 +28,26 @@ struct extended_tangent_t
     using x_t = t_x_t;
     using y_t = t_y_t;
     using unpacked_field_t = t_unpacked_field_t;
-    using mantissa_t = unpacked_field_t::mantissa_t;
-    using wide_t = widened_t<mantissa_t>;
+    using significand_t = unpacked_field_t::significand_t;
+    using wide_t = widened_t<significand_t>;
 
-    unpacked_field_t slope; // represented real slope is mantissa * 2^(x_frac - y_frac - shift)
+    unpacked_field_t slope; // represented real slope is significand * 2^(x_frac - y_frac - shift)
     y_t y0;
     x_t x_max_delta;
 
     /// returns the largest nonnegative raw x delta for which the stored quantized line does not exceed y_limit
     static constexpr auto clamp_delta(unpacked_field_t slope, y_t y0, y_t y_limit) noexcept -> x_t
     {
-        assert(slope.mantissa >= 0);
+        assert(slope.significand >= 0);
         assert(y0 >= y_t{0});
         assert(y0 <= y_limit);
 
-        if (slope.mantissa == 0) return max<x_t>();
+        if (slope.significand == 0) return max<x_t>();
         if (y0 == y_limit) return x_t{0};
 
         auto const within_limit = [&](typename x_t::value_t x_raw) constexpr noexcept -> bool {
             assert(x_raw >= 0);
-            auto const product = widen(slope.mantissa) * x_raw;
+            auto const product = widen(slope.significand) * x_raw;
 
             if (slope.shift >= 0)
             {
@@ -89,20 +89,20 @@ struct extended_tangent_t
 
         static_assert(signed_integral<x_value_t>);
         static_assert(signed_integral<y_value_t>);
-        static_assert(signed_integral<mantissa_t>);
+        static_assert(signed_integral<significand_t>);
         static_assert(sizeof(x_value_t) <= sizeof(wide_t));
         static_assert(sizeof(y_value_t) <= sizeof(wide_t));
 
-        if (slope.mantissa < 0 || x_max_delta < x_t{0}) return false;
+        if (slope.significand < 0 || x_max_delta < x_t{0}) return false;
 
         constexpr auto wide_bits = int_t{sizeof(wide_t) * CHAR_BIT};
         if (slope.shift >= wide_bits) return false;
         if (slope.shift == min<int_t>()) return false;
 
-        auto const mantissa = widen(slope.mantissa);
+        auto const significand = widen(slope.significand);
         auto const x_delta = int_cast<wide_t>(x_max_delta.value);
-        if (mantissa != 0 && x_delta > max<wide_t>() / mantissa) return false;
-        auto const product = mantissa * x_delta;
+        if (significand != 0 && x_delta > max<wide_t>() / significand) return false;
+        auto const product = significand * x_delta;
 
         auto const y_max = int_cast<wide_t>(max<y_value_t>());
         if (slope.shift >= 0)
@@ -121,11 +121,11 @@ struct extended_tangent_t
     // \param x position relative to end of spline domain
     constexpr auto operator()(x_t x) const noexcept -> y_t
     {
-        assert(slope.mantissa >= 0);
+        assert(slope.significand >= 0);
         assert(x >= x_t{0});
 
         auto const x_bounded = min(x.value, x_max_delta.value);
-        auto const wide_product = widen(slope.mantissa) * x_bounded;
+        auto const wide_product = widen(slope.significand) * x_bounded;
 
         typename y_t::value_t delta;
         if (slope.shift >= 0)

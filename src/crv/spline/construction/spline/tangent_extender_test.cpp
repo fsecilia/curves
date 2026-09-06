@@ -86,7 +86,7 @@ TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_cont
     auto const actual = sut(make_interval({45.0, 9.0}));
 
     EXPECT_EQ(actual.y0, y_t{9});
-    EXPECT_EQ(actual.slope.mantissa, 0);
+    EXPECT_EQ(actual.slope.significand, 0);
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
     EXPECT_EQ(actual(x_t{100}), y_t{9});
 }
@@ -110,7 +110,7 @@ TEST_F(spline_tangent_extender_test_t, retained_constant_gain_endpoint_avoids_ze
     auto constexpr x_max = scalar_t{256};
     auto const actual = sut(make_interval({x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256}));
 
-    EXPECT_EQ(actual.slope.mantissa, 0);
+    EXPECT_EQ(actual.slope.significand, 0);
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

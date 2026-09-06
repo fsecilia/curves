@@ -271,7 +271,7 @@ TEST_F(client_test_t, apply_passes_runtime_gain_representation)
 {
     using tangent_t = pipeline_t::gain_t::extended_tangent_t;
     runtime.gain.extend_final_tangent = tangent_t{
-        .slope = {.mantissa = 0x12345, .shift = 17},
+        .slope = {.significand = 0x12345, .shift = 17},
         .y0 = tangent_t::y_t::literal(0x23456),
         .x_max_delta = tangent_t::x_t::literal(0x34567),
     };

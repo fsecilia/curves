@@ -20,12 +20,12 @@ namespace crv::spline {
 ///
 /// coordinate_radix_shift describes fixed-point radix alignment. coordinate_magnitude_bits is separate and only bounds
 /// product growth from the interval width.
-template <signed_integral t_mantissa_t> struct shift_planner_t
+template <signed_integral t_significand_t> struct shift_planner_t
 {
-    using mantissa_t = t_mantissa_t;
+    using significand_t = t_significand_t;
 
     /// largest accumulator magnitude the planner can model
-    static constexpr auto max_accumulator_bit_count = static_cast<int_t>(sizeof(mantissa_t) * CHAR_BIT) - 1;
+    static constexpr auto max_accumulator_bit_count = static_cast<int_t>(sizeof(significand_t) * CHAR_BIT) - 1;
 
     /// largest accumulator magnitude that still leaves one carry bit
     static constexpr auto max_safe_bits = max_accumulator_bit_count - 1;
@@ -46,7 +46,7 @@ template <signed_integral t_mantissa_t> struct shift_planner_t
         int_t coordinate_radix_shift, int_t coordinate_magnitude_bits) const noexcept -> plan_t
     {
         assert(accumulator_bit_count >= 0 && accumulator_bit_count <= max_accumulator_bit_count
-            && "shift_planner_t: accumulator bit count exceeds mantissa magnitude bits");
+            && "shift_planner_t: accumulator bit count exceeds significand magnitude bits");
         assert(coordinate_radix_shift >= 0 && "shift_planner_t: coordinate radix shift must be nonnegative");
         assert(coordinate_magnitude_bits >= 0 && "shift_planner_t: coordinate magnitude bits must be nonnegative");
 

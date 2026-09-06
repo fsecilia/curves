@@ -50,7 +50,7 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
         auto const extracted_slope = extract_float(gain_slope);
         auto const required_shift = x_t::frac_bits - y_t::frac_bits - extracted_slope.exponent;
         auto const slope
-            = unpacked_field_t{.mantissa = extracted_slope.mantissa, .shift = int_cast<int_t>(required_shift)};
+            = unpacked_field_t{.significand = extracted_slope.significand, .shift = int_cast<int_t>(required_shift)};
 
         // anchor extension to shipped fixed segment, not floating endpoint
         auto const y0 = interval.segment(interval.subdomain.right_x, interval.subdomain.left_x);

@@ -50,9 +50,9 @@ struct spline_validator_test_t
     static constexpr auto make_segment(int64_t b, int64_t g0) noexcept -> segment_t
     {
         return segment_t{pack_segment(unpacked_segment_t{
-            .d = {.mantissa = 0, .shift = 0},
-            .c = {.mantissa = 0, .shift = 0},
-            .b = {.mantissa = b, .shift = 0},
+            .d = {.significand = 0, .shift = 0},
+            .c = {.significand = 0, .shift = 0},
+            .b = {.significand = b, .shift = 0},
             .g0 = y_t::literal(g0),
         })};
     }
@@ -67,7 +67,7 @@ struct spline_validator_test_t
             .segment_locator = locator_t{keys, x_t{20}, 2},
             .segments = segments,
             .extend_final_tangent = tangent_t{
-                .slope = {.mantissa = 0, .shift = 0},
+                .slope = {.significand = 0, .shift = 0},
                 .y0 = y_t{1},
                 .x_max_delta = max<x_t>(),
             },

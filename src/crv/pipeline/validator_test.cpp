@@ -41,7 +41,7 @@ struct runtime_config_validator_test_t
             .segment_locator = locator_t{keys, x_t{1}, 1},
             .segments = segments,
             .extend_final_tangent = tangent_t{
-                .slope = {.mantissa = 0, .shift = 0},
+                .slope = {.significand = 0, .shift = 0},
                 .y0 = y_t{1},
                 .x_max_delta = max<x_t>(),
             },
@@ -159,9 +159,9 @@ static_assert(crv::pipeline_t::validate(valid_config, invalid_locator_gain).erro
 
 constexpr auto unsafe_segment_gain = [] {
     auto gain = fixture_t::make_valid_gain();
-    constexpr auto max_positive_mantissa = (uint64_t{1} << 56) - 1;
+    constexpr auto max_positive_significand = (uint64_t{1} << 56) - 1;
     gain.segments[0] = fixture_t::segment_t{fixture_t::packed_segment_t{
-        .d = max_positive_mantissa << spline::prod_pipeline_config_t::segment_layout.intermediate.shift_width,
+        .d = max_positive_significand << spline::prod_pipeline_config_t::segment_layout.intermediate.shift_width,
         .c = 0,
         .b = 0,
         .g0 = {},

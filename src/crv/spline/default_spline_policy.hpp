@@ -82,7 +82,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     // fundamental traits
     using unpacked_field_t = unpacked_field_t<int_t>;
     using traits_t = traits_t<unpacked_field_t, y_t>;
-    using mantissa_t = traits_t::mantissa_t;
+    using significand_t = traits_t::significand_t;
     using packed_field_t = traits_t::packed_field_t;
     using unpacked_segment_t = traits_t::unpacked_segment_t;
     using packed_segment_t = traits_t::packed_segment_t;
@@ -112,10 +112,10 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using scaled_int_t = float_extractor_t::scaled_int_t;
     using radix_aligner_t = crv::spline::radix_aligner_t<unpacked_field_t, scaled_int_t, exponent_aligner_t{}>;
     using field_packer_t = crv::spline::field_packer_t<packed_field_t>;
-    using mantissa_quantizer_t = crv::spline::mantissa_quantizer_t<mantissa_t>;
-    using shift_planner_t = crv::spline::shift_planner_t<mantissa_t>;
+    using significand_quantizer_t = crv::spline::significand_quantizer_t<significand_t>;
+    using shift_planner_t = crv::spline::shift_planner_t<significand_t>;
     using segment_quantizer_t = crv::spline::segment_quantizer_t<unpacked_segment_t, float_extractor_t, shift_planner_t,
-        mantissa_quantizer_t, radix_aligner_t, intermediate_layout_max_shift, x_t>;
+        significand_quantizer_t, radix_aligner_t, intermediate_layout_max_shift, x_t>;
     using segment_packer_t
         = crv::spline::segment_packer_t<packed_segment_t, unpacked_segment_t, field_packer_t, segment_layout>;
     using segment_factory_t = crv::spline::segment_factory_t<segment_t, segment_quantizer_t, segment_packer_t>;
