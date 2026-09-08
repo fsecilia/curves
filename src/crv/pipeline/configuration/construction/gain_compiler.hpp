@@ -12,7 +12,7 @@
 #include <crv/model/curves/traits.hpp>
 #include <crv/model/shaping/curve_evaluator.hpp>
 #include <crv/pipeline.hpp>
-#include <crv/spline/construction/spline/amr/generation_result.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <crv/tuple.hpp>
 #include <algorithm>
 #include <exception>
@@ -69,7 +69,7 @@ template <std::floating_point scalar_t> struct sensitivity_refinement_error_t
 template <std::floating_point scalar_t, is_fixed x_t, typename shaping_error_t> struct gain_compilation_error_t
 {
     using detail_t = std::variant<shaping_error_t, sensitivity_refinement_error_t<scalar_t>,
-        spline::spline_generation_error_t<x_t>>;
+        spline::spline_construction_error_t<x_t>>;
 
     detail_t detail;
 
@@ -165,7 +165,7 @@ private:
     {
         auto const spline_result
             = build_spline(gain, std::move(target), spline_policy_t::spline_gain_tolerance, std::move(spline_points));
-        if (!spline_result) return std::unexpected{error_t{.detail = *spline_result.error}};
+        if (!spline_result) return std::unexpected{error_t{.detail = spline_result.error()}};
         return {};
     }
 };

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
+#include <expected>
 #include <utility>
 
 namespace crv::spline {
@@ -22,6 +23,8 @@ public:
     using critical_points_t = refinement_pool_seeder_t::critical_points_t;
     using workspace_t = typestates_t::workspace_t;
     using result_t = refiner_t::result_t;
+
+    static_assert(std::same_as<typename refinement_pool_seeder_t::error_t, typename refiner_t::error_t>);
 
     constexpr spline_generator_t() : spline_generator_t{{}, {}, {}} {}
 
@@ -48,17 +51,24 @@ public:
         auto unseeded_state = typename typestates_t::initial_t{workspace_};
         auto const& construction_target = target;
         auto unrefined_state = seed_refinement_pool_(std::move(unseeded_state), construction_target, critical_points);
-        auto const result = refine_(std::move(unrefined_state), construction_target);
+        if (!unrefined_state)
+        {
+            auto const error = unrefined_state.error();
+            workspace_.clear();
+            return std::unexpected{error};
+        }
+
+        auto result = refine_(std::move(*unrefined_state), construction_target);
         if (!result)
         {
             workspace_.clear();
-            return result;
+            return std::unexpected{std::move(result).error()};
         }
 
         assemble_(typename typestates_t::unassembled_t{workspace_}, spline);
 
         assert(workspace_.empty());
-        return result;
+        return {};
     }
 
 private:

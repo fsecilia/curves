@@ -72,6 +72,14 @@ struct segment_quantizer_t
     [[no_unique_address]] significand_quantizer_t quantize_significand;
     [[no_unique_address]] radix_aligner_t align_radix;
 
+    /// checks whether the gain anchor source can be converted to y_t
+    constexpr auto is_g0_representable(cubic_t const& cubic, x_t x0) const noexcept -> bool
+    {
+        assert(x0 >= x_t{0});
+        if (x0 == x_t{0}) return true;
+        return fixed_converter_t<y_t>{}.is_representable(gain_anchor_source(cubic, x0));
+    }
+
     constexpr auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept
         -> unpacked_segment_t
     {
@@ -135,14 +143,19 @@ struct segment_quantizer_t
         }
         else
         {
-            auto const scalar_x0 = from_fixed<scalar_t>(x0);
-            unpacked.g0 = to_fixed<y_t>(cubic[3] / scalar_x0);
+            unpacked.g0 = to_fixed<y_t>(gain_anchor_source(cubic, x0));
         }
 
         return unpacked;
     }
 
 private:
+    static constexpr auto gain_anchor_source(cubic_t const& cubic, x_t x0) noexcept -> scalar_t
+    {
+        assert(x0 > x_t{0});
+        return cubic[3] / from_fixed<scalar_t>(x0);
+    }
+
     static constexpr auto dynamic_field(unpacked_segment_t& segment, int_t index) noexcept -> unpacked_field_t&
     {
         assert(0 <= index && index < dynamic_fields_per_segment);

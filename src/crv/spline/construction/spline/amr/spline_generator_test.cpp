@@ -4,7 +4,10 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "spline_generator.hpp"
+#include <crv/math/fixed/fixed.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <crv/test/test.hpp>
+#include <expected>
 #include <gmock/gmock.h>
 
 namespace crv::spline {
@@ -19,11 +22,8 @@ struct spline_generator_test_t : Test
     static constexpr auto target = target_t{};
     using scalar_t = float_t;
 
-    struct x_t
-    {
-        int_t value;
-        constexpr auto operator<=>(x_t const&) const noexcept = default;
-    };
+    using x_t = fixed_t<int_t, 0>;
+    using error_t = spline_construction_error_t<x_t>;
 
     using critical_points_t = std::vector<x_t>;
 
@@ -65,27 +65,24 @@ struct spline_generator_test_t : Test
         using unassembled_t = unassembled_state_t;
     };
 
-    struct result_t
-    {
-        bool succeeded = true;
-        constexpr explicit operator bool() const noexcept { return succeeded; }
-        constexpr auto operator==(result_t const&) const noexcept -> bool = default;
-    };
+    using result_t = std::expected<void, error_t>;
+    using seeding_result_t = std::expected<unrefined_state_t, error_t>;
 
     struct mock_refinement_seeder_t
     {
         virtual ~mock_refinement_seeder_t() = default;
-        MOCK_METHOD(unrefined_state_t, call, (initial_state_t, target_t const&, critical_points_t));
+        MOCK_METHOD(seeding_result_t, call, (initial_state_t, target_t const&, critical_points_t));
     };
     StrictMock<mock_refinement_seeder_t> mock_seeder;
 
     struct refinement_seeder_t
     {
         using critical_points_t = spline_generator_test_t::critical_points_t;
+        using error_t = spline_generator_test_t::error_t;
         mock_refinement_seeder_t* mock;
 
         auto operator()(initial_state_t state, auto const& passed_target, critical_points_t const& critical_points)
-            -> unrefined_state_t
+            -> seeding_result_t
         {
             return mock->call(state, passed_target, critical_points);
         }
@@ -100,6 +97,7 @@ struct spline_generator_test_t : Test
 
     struct refiner_t
     {
+        using error_t = spline_generator_test_t::error_t;
         using result_t = spline_generator_test_t::result_t;
 
         mock_refiner_t* mock;
@@ -132,6 +130,7 @@ struct spline_generator_test_t : Test
     spline_t spline;
     unrefined_state_t const unrefined_state{100};
     result_t const success{};
+    seeding_result_t const seeded{unrefined_state};
 };
 
 TEST_F(spline_generator_test_t, forwards_states_and_target)
@@ -141,7 +140,7 @@ TEST_F(spline_generator_test_t, forwards_states_and_target)
 
     EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t, auto const& passed_target, auto) {
         expected_target_address = &passed_target;
-        return unrefined_state;
+        return seeded;
     });
     EXPECT_CALL(mock_refiner, call(unrefined_state, _)).WillOnce([&](unrefined_state_t, auto const& passed_target) {
         EXPECT_EQ(static_cast<void const*>(&passed_target), expected_target_address);
@@ -157,7 +156,7 @@ TEST_F(spline_generator_test_t, preserves_exact_critical_points_while_sorting_an
     auto const critical_points = critical_points_t{x_t{11}, x_t{5}, x_t{7}, x_t{5}};
     auto const expected = critical_points_t{x_t{5}, x_t{7}, x_t{11}};
 
-    EXPECT_CALL(mock_seeder, call(_, _, expected)).WillOnce(Return(unrefined_state));
+    EXPECT_CALL(mock_seeder, call(_, _, expected)).WillOnce(Return(seeded));
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
     EXPECT_CALL(mock_assembler, call(_, _));
 
@@ -170,7 +169,7 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state_and_
     EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t state, auto const&, auto) {
         EXPECT_TRUE(state.ws.empty());
         workspace_address = &state.ws;
-        return unrefined_state;
+        return seeded;
     });
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
     EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) {
@@ -182,24 +181,51 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state_and_
 
 TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
 {
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(unrefined_state));
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(seeded));
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
     EXPECT_CALL(mock_assembler, call(_, Ref(spline)));
 
     EXPECT_TRUE(generator(spline, target, {}));
 }
 
-TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutating_spline)
+TEST_F(spline_generator_test_t, seeding_failure_clears_workspace_without_assembling_or_mutating_spline)
 {
-    auto const failure = result_t{false};
+    auto const failure = error_t{
+        .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+        .left = x_t{3},
+        .right = x_t{4},
+    };
     auto const original_spline = spline;
 
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(unrefined_state));
-    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(failure));
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](auto, auto const&, auto) -> seeding_result_t {
+        workspace_empty = false;
+        return std::unexpected{failure};
+    });
 
     auto const result = generator(spline, target, {});
 
-    EXPECT_EQ(result, failure);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), failure);
+    EXPECT_EQ(spline.id, original_spline.id);
+    EXPECT_TRUE(workspace_empty);
+}
+
+TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutating_spline)
+{
+    auto const failure = error_t{
+        .reason = spline_construction_error_reason_t::segment_budget_exhausted,
+        .left = x_t{1},
+        .right = x_t{2},
+    };
+    auto const original_spline = spline;
+
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(seeded));
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(std::unexpected{failure}));
+
+    auto const result = generator(spline, target, {});
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), failure);
     EXPECT_EQ(spline.id, original_spline.id);
     EXPECT_TRUE(workspace_empty);
 }
@@ -208,7 +234,7 @@ TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutati
 TEST_F(spline_generator_test_t, asserts_when_initial_workspace_dirty)
 {
     workspace_empty = false;
-    EXPECT_DEATH(generator(spline, target, {}), "workspace_.empty");
+    EXPECT_DEATH(static_cast<void>(generator(spline, target, {})), "workspace_.empty");
 }
 #endif
 

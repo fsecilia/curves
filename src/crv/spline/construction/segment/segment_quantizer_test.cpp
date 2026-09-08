@@ -9,6 +9,8 @@
 #include <crv/spline/construction/segment/local_coordinate.hpp>
 #include <crv/spline/construction/segment/shift_planner.hpp>
 #include <crv/test/test.hpp>
+#include <cmath>
+#include <limits>
 
 namespace crv::spline {
 namespace {
@@ -212,6 +214,26 @@ constexpr auto aligner = exponent_aligner_t<-30, 30>{};
 constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t<scalar_t>,
     shift_planner_t<significand_t>, significand_quantizer_t<significand_t>,
     radix_aligner_t<unpacked_field_t, scaled_int_t, aligner>, max_intermediate_shift, x_t>{};
+
+TEST(segment_quantizer_end_to_end_tests, gain_anchor_precondition_uses_actual_fixed_conversion_source)
+{
+    auto const x0 = x_t{2};
+    auto const scalar_x0 = from_fixed<scalar_t>(x0);
+    auto const first_unrepresentable
+        = std::ldexp(scalar_t{1}, std::numeric_limits<typename y_t::value_t>::digits - y_t::frac_bits);
+    auto const last_representable = std::nextafter(first_unrepresentable, scalar_t{0});
+    auto const representable = cubic_t<scalar_t>{0.0, 0.0, 0.0, last_representable * scalar_x0};
+    auto const unrepresentable = cubic_t<scalar_t>{0.0, 0.0, 0.0, first_unrepresentable * scalar_x0};
+
+    EXPECT_TRUE(sut.is_g0_representable(representable, x0));
+    EXPECT_EQ(sut(representable, 0.0, x_t{1}, x0).g0, to_fixed<y_t>(last_representable));
+    EXPECT_FALSE(sut.is_g0_representable(unrepresentable, x0));
+}
+
+TEST(segment_quantizer_end_to_end_tests, global_origin_does_not_require_gain_anchor_representability)
+{
+    EXPECT_TRUE(sut.is_g0_representable({0.0, 0.0, 0.0, 1e300}, x_t{0}));
+}
 
 // The three S coefficients maintain a high-precision dynamic representation. g0 is directly quantized from the
 // floating Hermite endpoint a and the actual fixed runtime origin converted back to scalar.

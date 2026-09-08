@@ -13,6 +13,7 @@
 #include <crv/spline/construction/segment/amr/residual_estimator.hpp>
 #include <crv/spline/construction/segment/amr/transfer_sample.hpp>
 #include <crv/spline/construction/segment/local_coordinate.hpp>
+#include <expected>
 #include <optional>
 
 namespace crv::spline {
@@ -75,7 +76,7 @@ struct interval_priority_less_t
     }
 };
 
-/// constructs intervals from subdomains
+/// creates intervals from subdomains
 template <typename t_interval_t, typename segment_factory_t, typename approximant_factory_t,
     typename hermite_converter_t, typename local_coordinate_converter_t, typename residual_estimator_t>
 struct interval_factory_t
@@ -86,6 +87,8 @@ struct interval_factory_t
     using approximant_t = approximant_factory_t::approximant_t;
     using x_t = approximant_t::x_t;
     using subdomain_t = interval_t::subdomain_t;
+    using error_t = segment_factory_t::error_t;
+    using result_t = std::expected<interval_t, error_t>;
 
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] approximant_factory_t approximant_factory;
@@ -93,7 +96,7 @@ struct interval_factory_t
     [[no_unique_address]] local_coordinate_converter_t convert_local_coordinate;
     residual_estimator_t estimate_residual;
 
-    constexpr auto operator()(auto const& target, subdomain_t const& subdomain) const noexcept -> interval_t
+    constexpr auto operator()(auto const& target, subdomain_t const& subdomain) const noexcept -> result_t
     {
         auto const width_fixed = subdomain.width();
         assert(width_fixed > x_t{0});
@@ -107,12 +110,13 @@ struct interval_factory_t
         auto const cubic = convert_local_coordinate(normalized_cubic, width);
 
         // pass exact left endpoint derivative so final b avoids the normalized-Hermite round trip divide then multiply
-        auto const segment = segment_factory(cubic, subdomain.left.y.df, width_fixed, subdomain.left_x);
+        auto segment = segment_factory(cubic, subdomain.left.y.df, width_fixed, subdomain.left_x);
+        if (!segment) return std::unexpected{segment.error()};
 
         // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
-        if (!segment.is_safe_through(width_fixed, subdomain.left_x))
+        if (!segment->is_safe_through(width_fixed, subdomain.left_x))
         {
-            return {.segment = segment, .subdomain = subdomain, .residual = std::nullopt};
+            return interval_t{.segment = *segment, .subdomain = subdomain, .residual = std::nullopt};
         }
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);
@@ -120,9 +124,9 @@ struct interval_factory_t
         auto const right = from_fixed<scalar_t>(subdomain.right_x);
 
         auto const residual
-            = estimate_residual(target, approximant_factory(segment, subdomain.left_x), left, midpoint, right);
+            = estimate_residual(target, approximant_factory(*segment, subdomain.left_x), left, midpoint, right);
 
-        return {.segment = segment, .subdomain = subdomain, .residual = residual};
+        return interval_t{.segment = *segment, .subdomain = subdomain, .residual = residual};
     }
 };
 

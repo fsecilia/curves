@@ -7,6 +7,7 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <expected>
 
 namespace crv::spline {
 
@@ -26,17 +27,23 @@ template <typename t_subdivision_t, typename bisector_t, typename interval_facto
 
     using interval_t = interval_factory_t::interval_t;
     using scalar_t = interval_t::scalar_t;
+    using error_t = interval_factory_t::error_t;
+    using result_t = std::expected<subdivision_t, error_t>;
 
     [[no_unique_address]] bisector_t bisect;
     interval_factory_t create_interval;
 
-    constexpr auto operator()(auto const& target, interval_t const& interval) const noexcept -> subdivision_t
+    constexpr auto operator()(auto const& target, interval_t const& interval) const noexcept -> result_t
     {
         auto const child_domains = bisect(target, interval.subdomain);
-        return subdivision_t{
-            .left = create_interval(target, child_domains.left),
-            .right = create_interval(target, child_domains.right),
-        };
+
+        auto left = create_interval(target, child_domains.left);
+        if (!left) return std::unexpected{left.error()};
+
+        auto right = create_interval(target, child_domains.right);
+        if (!right) return std::unexpected{right.error()};
+
+        return subdivision_t{.left = *left, .right = *right};
     }
 };
 

@@ -4,9 +4,12 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "refinement_pool_seeder.hpp"
+#include <crv/spline/construction/error.hpp>
 #include <crv/spline/construction/segment/amr/interval.hpp>
 #include <crv/spline/construction/spline/amr/seed/subdomain_factory.hpp>
 #include <crv/test/test.hpp>
+#include <expected>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -48,8 +51,20 @@ struct spline_refinement_pool_seeder_test_t : Test
 
     struct interval_factory_t
     {
-        constexpr auto operator()(auto const&, subdomain_t const& subdomain) const noexcept -> subdomain_t
+        using error_t = spline_construction_error_t<x_t>;
+
+        std::optional<x_t> fail_left_x;
+
+        auto operator()(auto const&, subdomain_t const& subdomain) const noexcept -> std::expected<subdomain_t, error_t>
         {
+            if (fail_left_x == subdomain.left_x)
+            {
+                return std::unexpected{error_t{
+                    .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+                    .left = subdomain.left_x,
+                    .right = subdomain.right_x,
+                }};
+            }
             return subdomain;
         }
     };
@@ -75,6 +90,7 @@ TEST_F(spline_refinement_pool_seeder_test_t, seeds_one_interval_between_each_exa
 
     auto const actual_state = sut(typestate_t{workspace}, target, critical_points);
 
+    ASSERT_TRUE(actual_state);
     ASSERT_EQ(workspace.refinement_pool.size(), 3u);
     EXPECT_EQ(workspace.refinement_pool[0].left_x, x_t{0});
     EXPECT_EQ(workspace.refinement_pool[0].right_x, critical_points[0]);
@@ -82,15 +98,35 @@ TEST_F(spline_refinement_pool_seeder_test_t, seeds_one_interval_between_each_exa
     EXPECT_EQ(workspace.refinement_pool[1].right_x, critical_points[1]);
     EXPECT_EQ(workspace.refinement_pool[2].left_x, critical_points[1]);
     EXPECT_EQ(workspace.refinement_pool[2].right_x, sut_t::domain_end);
-    EXPECT_EQ(&actual_state.workspace, &workspace);
+    EXPECT_EQ(&actual_state->workspace, &workspace);
+}
+
+TEST_F(spline_refinement_pool_seeder_test_t, interval_construction_failure_is_propagated_without_continuing)
+{
+    auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(102)};
+    sut.create_interval.fail_left_x = critical_points[0];
+
+    auto const result = sut(typestate_t{workspace}, target, critical_points);
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(),
+        (interval_factory_t::error_t{
+            .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+            .left = critical_points[0],
+            .right = critical_points[1],
+        }));
+    ASSERT_EQ(workspace.refinement_pool.size(), 1u);
+    EXPECT_EQ(workspace.refinement_pool.front().left_x, x_t{0});
+    EXPECT_EQ(workspace.refinement_pool.front().right_x, critical_points[0]);
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, permits_supplied_knots_one_raw_unit_apart)
 {
     auto const critical_points = critical_points_t{x_t::literal(100), x_t::literal(101)};
 
-    sut(typestate_t{workspace}, target, critical_points);
+    auto const result = sut(typestate_t{workspace}, target, critical_points);
 
+    ASSERT_TRUE(result);
     ASSERT_EQ(workspace.refinement_pool.size(), 3u);
     EXPECT_EQ(workspace.refinement_pool[1].width(), x_t::literal(1));
 }
@@ -100,30 +136,33 @@ TEST_F(spline_refinement_pool_seeder_test_t, permits_supplied_knots_one_raw_unit
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_unique)
 {
     auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(101)};
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "unique");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut(typestate_t{workspace}, target, critical_points)), "unique");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_monotonically_increasing)
 {
     auto const critical_points = critical_points_t{x_t::literal(101), x_t::literal(100)};
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "monotonically increasing");
+    EXPECT_DEBUG_DEATH(
+        static_cast<void>(sut(typestate_t{workspace}, target, critical_points)), "monotonically increasing");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_points_must_be_inside_domain)
 {
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points_t{x_t{0}}), "in \\(0, domain_end\\)");
+    EXPECT_DEBUG_DEATH(
+        static_cast<void>(sut(typestate_t{workspace}, target, critical_points_t{x_t{0}})), "in \\(0, domain_end\\)");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, critical_point_partitioning_must_fit_segment_budget)
 {
     auto const critical_points = critical_points_t{x_t::literal(100), x_t::literal(101), x_t::literal(102)};
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, critical_points), "exceeded segment budget");
+    EXPECT_DEBUG_DEATH(
+        static_cast<void>(sut(typestate_t{workspace}, target, critical_points)), "exceeded segment budget");
 }
 
 TEST_F(spline_refinement_pool_seeder_test_t, refinement_pool_must_be_empty)
 {
     workspace.refinement_pool.push_back({});
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, target, {}), "empty");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut(typestate_t{workspace}, target, {})), "empty");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

@@ -7,8 +7,10 @@
 #pragma once
 
 #include <crv/lib.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <climits>
 #include <concepts>
+#include <expected>
 #include <limits>
 
 namespace crv::spline {
@@ -19,7 +21,10 @@ template <typename t_segment_t, typename segment_quantizer_t, typename segment_p
     using segment_t = t_segment_t;
     using cubic_t = segment_quantizer_t::cubic_t;
     using scalar_t = segment_quantizer_t::scalar_t;
+    using x_t = segment_t::x_t;
     using packed_field_t = segment_packer_t::packed_field_t;
+    using error_t = spline_construction_error_t<x_t>;
+    using result_t = std::expected<segment_t, error_t>;
 
     static constexpr auto scalar_significand_bits = std::numeric_limits<scalar_t>::digits;
     static constexpr auto intermediate_significand_bits = static_cast<int_t>(sizeof(packed_field_t) * CHAR_BIT)
@@ -35,13 +40,32 @@ template <typename t_segment_t, typename segment_quantizer_t, typename segment_p
     [[no_unique_address]] segment_quantizer_t quantize_segment;
     [[no_unique_address]] segment_packer_t pack_segment;
 
-    constexpr auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, typename segment_t::x_t width,
-        typename segment_t::x_t x0) const noexcept -> segment_t
+    constexpr auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept
+        -> result_t
     {
-        static_assert(std::same_as<typename segment_quantizer_t::x_t, typename segment_t::x_t>);
+        static_assert(std::same_as<typename segment_quantizer_t::x_t, x_t>);
+        auto const right = x0 + width;
+
+        if (!quantize_segment.is_g0_representable(cubic, x0))
+        {
+            return std::unexpected{error_t{
+                .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+                .left = x0,
+                .right = right,
+            }};
+        }
+
         auto const unpacked_segment = quantize_segment(cubic, left_endpoint_derivative, width, x0);
-        auto const packed_segment = pack_segment(unpacked_segment);
-        return segment_t{packed_segment};
+        if (!segment_packer_t::segment_layout.final.is_encodable(unpacked_segment.b))
+        {
+            return std::unexpected{error_t{
+                .reason = spline_construction_error_reason_t::left_endpoint_derivative_not_representable,
+                .left = x0,
+                .right = right,
+            }};
+        }
+
+        return segment_t{pack_segment(unpacked_segment)};
     }
 };
 

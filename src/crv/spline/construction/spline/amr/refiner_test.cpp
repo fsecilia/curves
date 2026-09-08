@@ -4,7 +4,9 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "refiner.hpp"
+#include <crv/spline/construction/error.hpp>
 #include <crv/test/test.hpp>
+#include <expected>
 #include <gmock/gmock.h>
 #include <optional>
 #include <queue>
@@ -56,6 +58,9 @@ struct spline_refiner_test_t : Test
         interval_t right;
     };
 
+    using error_t = spline_construction_error_t<x_t>;
+    using subdivision_result_t = std::expected<subdivision_t, error_t>;
+
     using intervals_t = std::vector<interval_t>;
 
     struct workspace_t
@@ -90,16 +95,19 @@ struct spline_refiner_test_t : Test
     struct mock_subdivider_t
     {
         virtual ~mock_subdivider_t() = default;
-        MOCK_METHOD(subdivision_t, call, (sample_target_function_t const&, interval_t const&), (const, noexcept));
+        MOCK_METHOD(
+            subdivision_result_t, call, (sample_target_function_t const&, interval_t const&), (const, noexcept));
     };
     StrictMock<mock_subdivider_t> mock_subdivide;
 
     struct subdivider_t
     {
         using interval_t = spline_refiner_test_t::interval_t;
+        using error_t = spline_refiner_test_t::error_t;
         mock_subdivider_t* mock = nullptr;
 
-        auto operator()(auto const& sample_target_function, interval_t const& interval) const noexcept -> subdivision_t
+        auto operator()(auto const& sample_target_function, interval_t const& interval) const noexcept
+            -> subdivision_result_t
         {
             return mock->call(sample_target_function, interval);
         }
@@ -152,6 +160,26 @@ TEST_F(spline_refiner_test_t, unsafe_interval_forces_subdivision_without_quality
     EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(30), safe(20)}));
 }
 
+TEST_F(spline_refiner_test_t, construction_failure_is_propagated_without_replacing_parent)
+{
+    auto const parent = unsafe(10, x_t{4}, x_t{5}, x_t{6});
+    auto const failure = error_t{
+        .reason = spline_construction_error_reason_t::left_endpoint_derivative_not_representable,
+        .left = x_t{4},
+        .right = x_t{5},
+    };
+    workspace.refinement_pool.push(parent);
+    EXPECT_CALL(mock_subdivide, call(Ref(sample_target_function), parent)).WillOnce(Return(std::unexpected{failure}));
+
+    auto const result = sut(typestate_t{workspace}, sample_target_function);
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), failure);
+    ASSERT_EQ(workspace.refinement_pool.size(), 1u);
+    EXPECT_EQ(workspace.refinement_pool.top(), parent);
+    EXPECT_TRUE(workspace.completed_intervals.empty());
+}
+
 TEST_F(spline_refiner_test_t, optional_refinement_stops_at_combined_segment_budget)
 {
     workspace.refinement_pool.push(safe(10));
@@ -183,10 +211,9 @@ TEST_F(spline_refiner_test_t, required_refinement_fails_at_segment_budget_with_e
     auto const result = sut(typestate_t{workspace}, sample_target_function);
 
     ASSERT_FALSE(result);
-    ASSERT_TRUE(result.error.has_value());
-    EXPECT_EQ(result.error->reason, spline_generation_error_reason_t::segment_budget_exhausted);
-    EXPECT_EQ(result.error->left, x_t{11});
-    EXPECT_EQ(result.error->right, x_t{15});
+    EXPECT_EQ(result.error().reason, spline_construction_error_reason_t::segment_budget_exhausted);
+    EXPECT_EQ(result.error().left, x_t{11});
+    EXPECT_EQ(result.error().right, x_t{15});
 }
 
 TEST_F(spline_refiner_test_t, required_refinement_fails_when_no_distinct_midpoint_exists)
@@ -196,30 +223,29 @@ TEST_F(spline_refiner_test_t, required_refinement_fails_when_no_distinct_midpoin
     auto const result = sut(typestate_t{workspace}, sample_target_function);
 
     ASSERT_FALSE(result);
-    ASSERT_TRUE(result.error.has_value());
-    EXPECT_EQ(result.error->reason, spline_generation_error_reason_t::minimum_interval_width);
-    EXPECT_EQ(result.error->left, x_t{7});
-    EXPECT_EQ(result.error->right, x_t{8});
+    EXPECT_EQ(result.error().reason, spline_construction_error_reason_t::minimum_interval_width);
+    EXPECT_EQ(result.error().left, x_t{7});
+    EXPECT_EQ(result.error().right, x_t{8});
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
 TEST_F(spline_refiner_test_t, asserts_on_empty_refinement_pool)
 {
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "must not be empty");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut(typestate_t{workspace}, sample_target_function)), "must not be empty");
 }
 
 TEST_F(spline_refiner_test_t, asserts_on_overfull_refinement_pool)
 {
     for (auto id = int_t{1}; id <= max_segment_count + 1; ++id) workspace.refinement_pool.push(safe(id));
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "overfull");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut(typestate_t{workspace}, sample_target_function)), "overfull");
 }
 
 TEST_F(spline_refiner_test_t, asserts_on_non_empty_completed_intervals)
 {
     workspace.refinement_pool.push(safe(1));
     workspace.completed_intervals.push_back(safe(2));
-    EXPECT_DEBUG_DEATH(sut(typestate_t{workspace}, sample_target_function), "must be empty");
+    EXPECT_DEBUG_DEATH(static_cast<void>(sut(typestate_t{workspace}, sample_target_function)), "must be empty");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

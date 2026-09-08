@@ -4,7 +4,9 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "interval.hpp"
+#include <crv/spline/construction/error.hpp>
 #include <crv/test/test.hpp>
+#include <expected>
 #include <gmock/gmock.h>
 
 namespace crv::spline {
@@ -72,6 +74,8 @@ struct spline_interval_factory_test_t : Test
     using function_sample_t = subdomain_t::function_sample_t;
     using cubic_t = cubic_t<scalar_t>;
 
+    int_t safety_calls = 0;
+
     struct segment_t
     {
         cubic_t cubic;
@@ -79,9 +83,11 @@ struct spline_interval_factory_test_t : Test
         x_t width;
         x_t x0;
         bool safe;
+        int_t* safety_calls;
 
-        constexpr auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
+        auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
         {
+            ++*safety_calls;
             return safe && u_max == width && passed_x0 == x0;
         }
 
@@ -90,14 +96,19 @@ struct spline_interval_factory_test_t : Test
 
     struct segment_factory_t
     {
-        using segment_t = segment_t;
+        using segment_t = spline_interval_factory_test_t::segment_t;
+        using error_t = spline_construction_error_t<x_t>;
+        using result_t = std::expected<segment_t, error_t>;
 
         bool safe = true;
+        int_t* safety_calls = nullptr;
+        std::optional<error_t> error;
 
-        constexpr auto operator()(
-            cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept -> segment_t
+        auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept
+            -> result_t
         {
-            return {cubic, left_endpoint_derivative, width, x0, safe};
+            if (error) return std::unexpected{*error};
+            return segment_t{cubic, left_endpoint_derivative, width, x0, safe, safety_calls};
         }
     };
 
@@ -197,7 +208,7 @@ struct spline_interval_factory_test_t : Test
     using sut_t = spline::interval_factory_t<interval_t, segment_factory_t, approximant_factory_t, hermite_converter_t,
         local_coordinate_converter_t, residual_estimator_t>;
     sut_t sut{
-        .segment_factory = {},
+        .segment_factory = {.safe = true, .safety_calls = &safety_calls, .error = std::nullopt},
         .approximant_factory = {},
         .convert_hermite = hermite_converter_t{&mock_hermite_converter},
         .convert_local_coordinate = local_coordinate_converter_t{&mock_local_coordinate_converter},
@@ -230,6 +241,7 @@ struct spline_interval_factory_test_t : Test
         .width = width_fixed,
         .x0 = left_x,
         .safe = true,
+        .safety_calls = &safety_calls,
     };
     residual_t const residual{14};
 };
@@ -254,7 +266,8 @@ TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_
         .subdomain = subdomain,
         .residual = residual,
     };
-    EXPECT_EQ(expected, actual);
+    ASSERT_TRUE(actual);
+    EXPECT_EQ(expected, *actual);
 }
 
 TEST_F(spline_interval_factory_test_t, unsafe_segment_is_not_evaluated_for_residual)
@@ -271,8 +284,33 @@ TEST_F(spline_interval_factory_test_t, unsafe_segment_is_not_evaluated_for_resid
 
     auto const actual = sut(sample_target_function, subdomain);
 
-    EXPECT_FALSE(actual.residual.has_value());
-    EXPECT_FALSE(actual.segment.safe);
+    ASSERT_TRUE(actual);
+    EXPECT_FALSE(actual->residual.has_value());
+    EXPECT_FALSE(actual->segment.safe);
+}
+
+TEST_F(spline_interval_factory_test_t, segment_construction_error_skips_runtime_safety_and_residual)
+{
+    auto const failure = segment_factory_t::error_t{
+        .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+        .left = left_x,
+        .right = right_x,
+    };
+    sut.segment_factory.error = failure;
+
+    auto local_left_y = left.y;
+    auto local_right_y = right.y;
+    local_left_y.df *= width;
+    local_right_y.df *= width;
+
+    EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
+    EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
+
+    auto const actual = sut(sample_target_function, subdomain);
+
+    ASSERT_FALSE(actual);
+    EXPECT_EQ(actual.error(), failure);
+    EXPECT_EQ(safety_calls, 0);
 }
 
 } // namespace interval_factory_tests

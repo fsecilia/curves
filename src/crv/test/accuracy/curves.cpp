@@ -38,7 +38,7 @@ struct curves_test_t
         auto operator()(in_t x) const noexcept -> out_t { return spline->evaluate(x, hint); }
     };
 
-    auto operator()() noexcept -> void
+    auto operator()() -> void
     {
         using range_t = sweep_range_t<in_t>;
 
@@ -52,7 +52,7 @@ struct curves_test_t
         auto const ref_impl = [&target](auto x) { return target.transfer(x); };
 
         auto approx_impl = impl_t{};
-        spline_factory_t{}(approx_impl, target, reference_float_t{1e-10});
+        spline_factory_t{}(approx_impl, target, reference_float_t{1e-10}).value();
 
         auto const approximation = approximation_t{.spline = &approx_impl};
         auto const runner = accuracy_test_runner_t<decltype(approximation), decltype(ref_impl), error_metrics_t>{

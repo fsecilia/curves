@@ -52,7 +52,8 @@ struct pipeline_integration_test_t : Test
 
         auto result = spline_t{};
         factory_t{}(
-            result, spline::gain_curve_target_t{curve}, spline_policy_t::spline_gain_tolerance, std::vector<speed_t>{});
+            result, spline::gain_curve_target_t{curve}, spline_policy_t::spline_gain_tolerance, std::vector<speed_t>{})
+            .value();
         return result;
     }
 

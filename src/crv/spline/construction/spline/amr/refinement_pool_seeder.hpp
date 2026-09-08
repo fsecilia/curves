@@ -10,6 +10,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/jet/jet.hpp>
 #include <crv/spline/construction/segment/amr/transfer_sample.hpp>
+#include <expected>
 #include <vector>
 
 namespace crv::spline {
@@ -25,6 +26,9 @@ struct refinement_pool_seeder_t
     using scalar_t = subdomain_factory_t::scalar_t;
     using jet_t = subdomain_factory_t::jet_t;
     using function_sample_t = subdomain_factory_t::function_sample_t;
+    using error_t = interval_factory_t::error_t;
+    using next_t = typestate_t::next_t;
+    using result_t = std::expected<next_t, error_t>;
 
     using critical_points_t = std::vector<x_t>;
 
@@ -34,7 +38,7 @@ struct refinement_pool_seeder_t
     static constexpr auto domain_end = x_t{1} << log2_domain_end;
 
     constexpr auto operator()(typestate_t&& state, auto const& target, critical_points_t const& critical_points) const
-        -> typename typestate_t::next_t
+        -> result_t
     {
         assert(std::ranges::adjacent_find(critical_points, std::greater_equal{}) == critical_points.end()
             && "critical points must be unique and strictly monotonically increasing");
@@ -52,21 +56,26 @@ struct refinement_pool_seeder_t
 
         for (auto const right_x : critical_points)
         {
-            left_sample = seed_interval(target, left_sample, left_x, right_x, refinement_pool);
+            auto seeded = seed_interval(target, left_sample, left_x, right_x, refinement_pool);
+            if (!seeded) return std::unexpected{seeded.error()};
+            left_sample = *seeded;
             left_x = right_x;
         }
 
-        seed_interval(target, left_sample, left_x, domain_end, refinement_pool);
+        auto seeded = seed_interval(target, left_sample, left_x, domain_end, refinement_pool);
+        if (!seeded) return std::unexpected{seeded.error()};
 
-        return typename typestate_t::next_t{workspace};
+        return next_t{workspace};
     }
 
 private:
     constexpr auto seed_interval(auto const& target, function_sample_t const& left_sample, x_t left_x, x_t right_x,
-        auto& refinement_pool) const -> function_sample_t
+        auto& refinement_pool) const -> std::expected<function_sample_t, error_t>
     {
         auto const subdomain = create_subdomain(target, left_sample, left_x, right_x);
-        refinement_pool.emplace(create_interval(target, subdomain));
+        auto interval = create_interval(target, subdomain);
+        if (!interval) return std::unexpected{interval.error()};
+        refinement_pool.emplace(*interval);
         return subdomain.right;
     }
 };

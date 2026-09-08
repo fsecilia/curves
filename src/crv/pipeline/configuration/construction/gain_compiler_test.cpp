@@ -19,7 +19,7 @@ using spline_policy_t = spline::default_spline_policy_t<float_t, spline::prod_pi
 using scalar_t = spline_policy_t::scalar_t;
 using x_t = spline_policy_t::x_t;
 using critical_points_t = critical_point_builder_t<scalar_t, x_t>::result_t;
-using spline_result_t = spline::spline_generation_result_t<x_t>;
+using spline_result_t = std::expected<void, spline::spline_construction_error_t<x_t>>;
 enum class shaping_error_t
 {
     failed,
@@ -208,19 +208,19 @@ TEST_F(gain_compiler_test_t, refinement_limit_is_preserved)
 
 TEST_F(gain_compiler_test_t, spline_failure_is_preserved)
 {
-    auto const failure = spline::spline_generation_error_t<x_t>{
-        .reason = spline::spline_generation_error_reason_t::segment_budget_exhausted,
+    auto const failure = spline::spline_construction_error_t<x_t>{
+        .reason = spline::spline_construction_error_reason_t::gain_anchor_not_representable,
         .left = x_t{1},
         .right = x_t{2},
     };
     EXPECT_CALL(mock, critical_points).WillOnce(Return(critical_points_t{}));
     EXPECT_CALL(mock, shape_curve(_, scalar_t{spline_policy_t::domain_end})).WillOnce(Return(shaping_result_t{}));
     EXPECT_CALL(mock, sensitivity_target).WillOnce(Return(target_result_t{}));
-    EXPECT_CALL(mock, spline).WillOnce(Return(spline_result_t{.error = failure}));
+    EXPECT_CALL(mock, spline).WillOnce(Return(std::unexpected{failure}));
 
     auto const result = sut(gain, curves);
 
-    EXPECT_EQ(std::get<spline::spline_generation_error_t<x_t>>(result.error().detail), failure);
+    EXPECT_EQ(std::get<spline::spline_construction_error_t<x_t>>(result.error().detail), failure);
 }
 
 } // namespace

@@ -9,7 +9,7 @@
 #include <crv/pipeline/configuration/construction/authored_validator.hpp>
 #include <crv/pipeline/configuration/construction/gain_compiler.hpp>
 #include <crv/pipeline/validator.hpp>
-#include <crv/spline/construction/spline/amr/generation_result.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <cassert>
 #include <format>
 #include <system_error>
@@ -121,7 +121,7 @@ static auto gain_error_message(gain_error_t const& error) -> QString
                         detail.achieved_error, detail.max_error));
             },
             [](spline_error_t const& detail) {
-                using reason_t = spline::spline_generation_error_reason_t;
+                using reason_t = spline::spline_construction_error_reason_t;
                 switch (detail.reason)
                 {
                     case reason_t::segment_budget_exhausted:
@@ -130,8 +130,15 @@ static auto gain_error_message(gain_error_t const& error) -> QString
                     case reason_t::minimum_interval_width:
                         return QString::fromStdString(
                             CRV_TR("Could not build the acceleration curve: minimum interval width reached."));
+                    case reason_t::gain_anchor_not_representable:
+                        return QString::fromStdString(
+                            CRV_TR("Could not build the acceleration curve: a gain anchor is not representable."));
+                    case reason_t::left_endpoint_derivative_not_representable:
+                        return QString::fromStdString(
+                            CRV_TR("Could not build the acceleration curve: a left endpoint derivative is not "
+                                   "representable."));
                 }
-                assert(false && "unexpected spline generation failure");
+                assert(false && "unexpected spline construction failure");
                 return QString::fromStdString(CRV_TR("Could not build the acceleration curve."));
             },
         },

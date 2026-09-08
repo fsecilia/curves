@@ -5,6 +5,8 @@
 
 #include "default_spline_policy.hpp"
 #include <crv/spline/pipeline_config.hpp>
+#include <crv/test/test.hpp>
+#include <cmath>
 
 namespace crv::spline {
 namespace {
@@ -27,6 +29,39 @@ constexpr auto quantized
 static_assert(quantized.b.significand == 48'828'125'000'000'000);
 static_assert(quantized.b.shift == -64);
 static_assert(-quantized.b.shift == policy_t::exponent_aligner_t::exponent_max);
+
+struct final_b_boundary_test_t : Test
+{
+    float_t const final_b_first_unencodable_source = std::ldexp(float_t{1}, 67);
+};
+
+TEST_F(final_b_boundary_test_t, final_field_boundary_matches_layout_geometry)
+{
+    auto const final_b_last_encodable_source = std::nextafter(final_b_first_unencodable_source, float_t{0});
+    auto const final_b_last_encodable = policy_t::segment_quantizer_t{}(
+        policy_t::cubic_t{0.0, 0.0, 0.0, 0.0}, final_b_last_encodable_source, policy_t::x_t{1}, policy_t::x_t{0});
+    auto const final_b_first_unencodable = policy_t::segment_quantizer_t{}(
+        policy_t::cubic_t{0.0, 0.0, 0.0, 0.0}, final_b_first_unencodable_source, policy_t::x_t{1}, policy_t::x_t{0});
+
+    EXPECT_TRUE(final_layout.is_encodable(final_b_last_encodable.b));
+    EXPECT_FALSE(final_layout.is_encodable(final_b_first_unencodable.b));
+    EXPECT_EQ(final_b_first_unencodable.b.significand, (int64_t{1} << 56));
+    EXPECT_EQ(final_b_first_unencodable.b.shift, -64);
+}
+
+TEST_F(final_b_boundary_test_t, segment_factory_rejects_first_unencodable_final_b)
+{
+    auto const result = policy_t::segment_factory_t{}(
+        policy_t::cubic_t{0.0, 0.0, 0.0, 0.0}, final_b_first_unencodable_source, policy_t::x_t{1}, policy_t::x_t{0});
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(),
+        (spline_construction_error_t<policy_t::x_t>{
+            .reason = spline_construction_error_reason_t::left_endpoint_derivative_not_representable,
+            .left = policy_t::x_t{0},
+            .right = policy_t::x_t{1},
+        }));
+}
 
 constexpr auto packed = policy_t::field_packer_t{}(quantized.b, final_layout);
 static_assert(packed == 0x56bc75e2d6310040ULL);

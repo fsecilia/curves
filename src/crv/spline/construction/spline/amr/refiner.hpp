@@ -6,8 +6,9 @@
 #pragma once
 
 #include <crv/lib.hpp>
-#include <crv/spline/construction/spline/amr/generation_result.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <cassert>
+#include <expected>
 
 namespace crv::spline {
 
@@ -27,7 +28,10 @@ struct refiner_t
 {
     using interval_t = subdivider_t::interval_t;
     using x_t = interval_t::subdomain_t::x_t;
-    using result_t = spline_generation_result_t<x_t>;
+    using error_t = spline_construction_error_t<x_t>;
+    using result_t = std::expected<void, error_t>;
+
+    static_assert(std::same_as<typename subdivider_t::error_t, error_t>);
 
     subdivision_predicate_t requires_subdivision;
     subdivider_t subdivide;
@@ -53,19 +57,19 @@ struct refiner_t
                     {
                         return drain_remaining_safe(refinement_pool, completed_intervals);
                     }
-                    split_top(refinement_pool, target);
+                    if (auto result = split_top(refinement_pool, target); !result) return result;
                     break;
 
                 case refinement_requirement_t::required:
                     if (!can_bisect(interval))
                     {
-                        return failure(spline_generation_error_reason_t::minimum_interval_width, interval);
+                        return failure(spline_construction_error_reason_t::minimum_interval_width, interval);
                     }
                     if (segment_budget_full(refinement_pool, completed_intervals))
                     {
-                        return failure(spline_generation_error_reason_t::segment_budget_exhausted, interval);
+                        return failure(spline_construction_error_reason_t::segment_budget_exhausted, interval);
                     }
-                    split_top(refinement_pool, target);
+                    if (auto result = split_top(refinement_pool, target); !result) return result;
                     break;
             }
         }
@@ -93,13 +97,16 @@ private:
         return refinement_pool.size() + completed_intervals.size() >= static_cast<std::size_t>(max_segment_count);
     }
 
-    constexpr auto split_top(auto& refinement_pool, auto const& target) const -> void
+    constexpr auto split_top(auto& refinement_pool, auto const& target) const -> result_t
     {
         // construct both children before mutating the pool
-        auto const children = subdivide(target, refinement_pool.top());
+        auto children = subdivide(target, refinement_pool.top());
+        if (!children) return std::unexpected{children.error()};
+
         refinement_pool.pop();
-        refinement_pool.push(children.left);
-        refinement_pool.push(children.right);
+        refinement_pool.push(children->left);
+        refinement_pool.push(children->right);
+        return {};
     }
 
     static constexpr auto complete_top(auto& refinement_pool, auto& completed_intervals) -> void
@@ -115,21 +122,21 @@ private:
         {
             if (!refinement_pool.top().residual)
             {
-                return failure(spline_generation_error_reason_t::segment_budget_exhausted, refinement_pool.top());
+                return failure(spline_construction_error_reason_t::segment_budget_exhausted, refinement_pool.top());
             }
             complete_top(refinement_pool, completed_intervals);
         }
         return {};
     }
 
-    static constexpr auto failure(spline_generation_error_reason_t reason, interval_t const& interval) noexcept
+    static constexpr auto failure(spline_construction_error_reason_t reason, interval_t const& interval) noexcept
         -> result_t
     {
-        return {.error = typename result_t::error_t{
-                    .reason = reason,
-                    .left = interval.subdomain.left_x,
-                    .right = interval.subdomain.right_x,
-                }};
+        return std::unexpected{error_t{
+            .reason = reason,
+            .left = interval.subdomain.left_x,
+            .right = interval.subdomain.right_x,
+        }};
     }
 };
 

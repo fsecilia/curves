@@ -35,7 +35,9 @@ struct spline_induced_gain_segment_test_t : Test
     {
         ASSERT_GE(x0, x_t{0});
         ASSERT_GT(width, x_t{0});
-        auto const segment = make_segment(transfer, transfer[2], width, x0);
+        auto const result = make_segment(transfer, transfer[2], width, x0);
+        ASSERT_TRUE(result);
+        auto const& segment = *result;
 
         for (auto const u : offsets)
         {
@@ -97,6 +99,16 @@ TEST_F(spline_induced_gain_segment_test_t, agrees_near_minimum_refinement_width_
     auto const large_transfer = cubic_t{1e-7, -2e-4, 1.5, 34.0};
     test(large_transfer, large_x0, large_width,
         {x_t{0}, x_t::literal(1), large_width / 2, x_t::literal(large_width.value - 1), large_width}, 2e-9);
+}
+
+TEST_F(spline_induced_gain_segment_test_t, rejects_first_clear_unrepresentable_gain_anchor)
+{
+    auto const result = make_segment(cubic_t{0.0, 0.0, 0.0, 1024.0}, 0.0, x_t{1}, x_t{1});
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().reason, spline_construction_error_reason_t::gain_anchor_not_representable);
+    EXPECT_EQ(result.error().left, x_t{1});
+    EXPECT_EQ(result.error().right, x_t{2});
 }
 
 TEST_F(spline_induced_gain_segment_test_t, handles_small_and_large_g0_minus_s_without_a_second_approximation)
