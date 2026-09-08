@@ -19,6 +19,8 @@ template <typename t_packed_field_t> struct field_packer_t
     template <typename unpacked_field_t, typename field_layout_t>
     constexpr auto operator()(unpacked_field_t unpacked_field, field_layout_t layout) const noexcept -> packed_field_t
     {
+        assert(layout.is_encodable(unpacked_field) && "field_packer_t: unpacked field is not encodable");
+
         auto const packed_significand = static_cast<packed_field_t>(unpacked_field.significand) << layout.shift_width;
         auto const packed_shift = unpacked_field.shift & layout.shift_mask();
 

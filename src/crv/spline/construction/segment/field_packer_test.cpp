@@ -48,5 +48,18 @@ static_assert(pack_field(unpacked_field_t{.significand = min_significand, .shift
 // zero
 static_assert(pack_field(unpacked_field_t{.significand = 0, .shift = 0}, layout) == packed_field_t{0});
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+struct field_packer_test_t : Test
+{};
+
+TEST_F(field_packer_test_t, asserts_unencodable_field)
+{
+    auto const unencodable = unpacked_field_t{.significand = max_significand + 1, .shift = 0};
+    EXPECT_DEBUG_DEATH(static_cast<void>(pack_field(unencodable, layout)), "unpacked field is not encodable");
+}
+
+#endif
+
 } // namespace
 } // namespace crv::spline
