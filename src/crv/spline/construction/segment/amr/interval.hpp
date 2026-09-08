@@ -105,7 +105,9 @@ struct interval_factory_t
 
         auto const normalized_cubic = convert_hermite(local_left_y, local_right_y);
         auto const cubic = convert_local_coordinate(normalized_cubic, width);
-        auto const segment = segment_factory(cubic, width_fixed, subdomain.left_x);
+
+        // pass exact left endpoint derivative so final b avoids the normalized-Hermite round trip divide then multiply
+        auto const segment = segment_factory(cubic, subdomain.left.y.df, width_fixed, subdomain.left_x);
 
         // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
         if (!segment.is_safe_through(width_fixed, subdomain.left_x))
@@ -117,12 +119,10 @@ struct interval_factory_t
         auto const midpoint = from_fixed<scalar_t>(subdomain.midpoint_x);
         auto const right = from_fixed<scalar_t>(subdomain.right_x);
 
-        return {
-            .segment = segment,
-            .subdomain = subdomain,
-            .residual
-            = estimate_residual(target, approximant_factory(segment, subdomain.left_x), left, midpoint, right),
-        };
+        auto const residual
+            = estimate_residual(target, approximant_factory(segment, subdomain.left_x), left, midpoint, right);
+
+        return {.segment = segment, .subdomain = subdomain, .residual = residual};
     }
 };
 

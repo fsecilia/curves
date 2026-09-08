@@ -75,6 +75,7 @@ struct spline_interval_factory_test_t : Test
     struct segment_t
     {
         cubic_t cubic;
+        scalar_t left_endpoint_derivative;
         x_t width;
         x_t x0;
         bool safe;
@@ -93,9 +94,10 @@ struct spline_interval_factory_test_t : Test
 
         bool safe = true;
 
-        constexpr auto operator()(cubic_t const& cubic, x_t width, x_t x0) const noexcept -> segment_t
+        constexpr auto operator()(
+            cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept -> segment_t
         {
-            return {cubic, width, x0, safe};
+            return {cubic, left_endpoint_derivative, width, x0, safe};
         }
     };
 
@@ -222,7 +224,13 @@ struct spline_interval_factory_test_t : Test
     x_t const width_fixed = x_t::literal(5);
     cubic_t const normalized_cubic{1.0, 2.0, 3.0, 4.0};
     cubic_t const local_cubic{10.0, 20.0, 30.0, 40.0};
-    segment_t const segment{.cubic = local_cubic, .width = width_fixed, .x0 = left_x, .safe = true};
+    segment_t const segment{
+        .cubic = local_cubic,
+        .left_endpoint_derivative = left.y.df,
+        .width = width_fixed,
+        .x0 = left_x,
+        .safe = true,
+    };
     residual_t const residual{14};
 };
 

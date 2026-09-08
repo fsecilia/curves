@@ -47,7 +47,7 @@ template <typename unpacked_field_t, typename t_scaled_int_t, auto align_exponen
     }
 };
 
-/// compiles a transfer cubic into the fixed induced-gain segment
+/// compiles a transfer cubic and exact left derivative into the fixed induced-gain segment
 ///
 /// Dynamic shift planning uses only S(u) = b + c*u + d*u^2. The constant a is stored separately as g0 = a/x0 in y_t,
 /// so a large g0 cannot reduce precision in d/c/b. At x0 == 0, transfer requires a == 0 and g0 is unused.
@@ -72,7 +72,8 @@ struct segment_quantizer_t
     [[no_unique_address]] significand_quantizer_t quantize_significand;
     [[no_unique_address]] radix_aligner_t align_radix;
 
-    constexpr auto operator()(cubic_t const& cubic, x_t width, x_t x0) const noexcept -> unpacked_segment_t
+    constexpr auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept
+        -> unpacked_segment_t
     {
         assert(width > x_t{0});
         assert(x0 >= x_t{0});
@@ -80,15 +81,16 @@ struct segment_quantizer_t
         auto const coordinate_magnitude_bits = int_cast<int_t>(bit_width(width.value - 1));
         auto unpacked = unpacked_segment_t{};
 
-        // polynomial order {d, c, b, a}; first three terms form S's Horner chain
-        auto next_term = extract_float(cubic[0]);
+        // local quadratic supplies the exact {d, c, b} coefficients used by S's Horner chain
+        auto const local_quadratic = polynomial_t{cubic[0], cubic[1], left_endpoint_derivative};
+        auto next_term = extract_float(local_quadratic[0]);
         auto accumulator_significand = int_cast<significand_t>(next_term.significand);
         auto accumulator_exponent = next_term.exponent;
         auto runtime_accumulator_bit_count = int_cast<int_t>(bit_width(accumulator_significand));
 
         for (auto field_index = 0; field_index < dynamic_fields_per_segment - 1; ++field_index)
         {
-            next_term = extract_float(cubic[field_index + 1]);
+            next_term = extract_float(local_quadratic[field_index + 1]);
 
             // zero has no useful exponent; keep relative shift neutral
             auto const eval_next_exponent = (next_term.significand == 0) ? accumulator_exponent : next_term.exponent;

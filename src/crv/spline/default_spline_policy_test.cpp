@@ -23,7 +23,7 @@ static_assert(policy_t::exponent_aligner_t::exponent_min == final_layout.min_exp
 static_assert(policy_t::exponent_aligner_t::exponent_max == final_layout.max_exponent());
 
 constexpr auto quantized
-    = policy_t::segment_quantizer_t{}(policy_t::cubic_t{0.0, 0.0, 1e20, 0.0}, policy_t::x_t{1}, policy_t::x_t{0});
+    = policy_t::segment_quantizer_t{}(policy_t::cubic_t{0.0, 0.0, 0.0, 0.0}, 1e20, policy_t::x_t{1}, policy_t::x_t{0});
 static_assert(quantized.b.significand == 48'828'125'000'000'000);
 static_assert(quantized.b.shift == -64);
 static_assert(-quantized.b.shift == policy_t::exponent_aligner_t::exponent_max);

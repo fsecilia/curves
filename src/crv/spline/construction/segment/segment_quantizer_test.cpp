@@ -4,7 +4,9 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "segment_quantizer.hpp"
+#include <crv/math/jet/jet.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/spline/construction/segment/local_coordinate.hpp>
 #include <crv/spline/construction/segment/shift_planner.hpp>
 #include <crv/test/test.hpp>
 
@@ -171,10 +173,10 @@ TEST(segment_quantizer_isolation_tests, transfer_constant_does_not_participate_i
         .b = {.significand = 50, .shift = 3},
         .g0 = y_t{4},
     };
-    EXPECT_EQ(sut({1.0, 2.0, 3.0, 4.0}, x_t::literal(5), x_t{1}), expected);
+    EXPECT_EQ(sut({1.0, 2.0, 3.0, 4.0}, 3.0, x_t::literal(5), x_t{1}), expected);
 
-    auto const small_a = sut({1.0, 2.0, 3.0, 0.25}, x_t::literal(5), x_t{1});
-    auto const large_a = sut({1.0, 2.0, 3.0, 64.0}, x_t::literal(5), x_t{1});
+    auto const small_a = sut({1.0, 2.0, 3.0, 0.25}, 3.0, x_t::literal(5), x_t{1});
+    auto const large_a = sut({1.0, 2.0, 3.0, 64.0}, 3.0, x_t::literal(5), x_t{1});
     EXPECT_EQ(small_a.d, large_a.d);
     EXPECT_EQ(small_a.c, large_a.c);
     EXPECT_EQ(small_a.b, large_a.b);
@@ -182,8 +184,20 @@ TEST(segment_quantizer_isolation_tests, transfer_constant_does_not_participate_i
     EXPECT_EQ(large_a.g0, y_t{64});
 }
 
+TEST(segment_quantizer_isolation_tests, authoritative_derivative_drives_c_to_b_planning_and_final_b)
+{
+    auto const expected = unpacked_segment_t{
+        .d = {.significand = 10, .shift = 20},
+        .c = {.significand = 20, .shift = 27},
+        .b = {.significand = 90, .shift = 7},
+        .g0 = y_t{4},
+    };
+
+    EXPECT_EQ(sut({1.0, 2.0, 3.0, 4.0}, 7.0, x_t::literal(5), x_t{1}), expected);
+}
+
 // at the global origin g0 is unused and stored as zero; the transfer cubic must itself satisfy T(0)=0
-constexpr auto const first = sut({1.0, 2.0, 3.0, 0.0}, x_t::literal(5), x_t{0});
+constexpr auto const first = sut({1.0, 2.0, 3.0, 0.0}, 3.0, x_t::literal(5), x_t{0});
 static_assert(first.g0 == y_t{0});
 
 } // namespace isolation_tests
@@ -203,7 +217,7 @@ constexpr auto sut = segment_quantizer_t<unpacked_segment_t, float_extractor_t<s
 // floating Hermite endpoint a and the actual fixed runtime origin converted back to scalar.
 TEST(segment_quantizer_end_to_end_tests, quantizes_s_and_g0_in_their_distinct_representations)
 {
-    auto const segment = sut({0.125, 0.25, 0.5, 3.0}, x_t{1}, x_t{2});
+    auto const segment = sut({0.125, 0.25, 0.5, 3.0}, 0.5, x_t{1}, x_t{2});
     EXPECT_EQ(segment.d, (unpacked_field_t{.significand = 4503599627370496, .shift = 15}));
     EXPECT_EQ(segment.c, (unpacked_field_t{.significand = 4503599627370496, .shift = 15}));
     EXPECT_EQ(segment.b, (unpacked_field_t{.significand = 4503599627370496, .shift = 28}));
@@ -212,12 +226,26 @@ TEST(segment_quantizer_end_to_end_tests, quantizes_s_and_g0_in_their_distinct_re
 
 TEST(segment_quantizer_end_to_end_tests, transfer_constant_cannot_cause_destructive_dynamic_flushing)
 {
-    auto const flushed = sut({1.0, 1.2e-35, 0.25, 7.0}, x_t{1}, x_t{2});
-    auto const flushed_other_a = sut({1.0, 1.2e-35, 0.25, 0.125}, x_t{1}, x_t{2});
+    auto const flushed = sut({1.0, 1.2e-35, 0.25, 7.0}, 0.25, x_t{1}, x_t{2});
+    auto const flushed_other_a = sut({1.0, 1.2e-35, 0.25, 0.125}, 0.25, x_t{1}, x_t{2});
     EXPECT_EQ(flushed.d, flushed_other_a.d);
     EXPECT_EQ(flushed.c, flushed_other_a.c);
     EXPECT_EQ(flushed.b, flushed_other_a.b);
     EXPECT_NE(flushed.g0, flushed_other_a.g0);
+}
+
+TEST(segment_quantizer_end_to_end_tests, preserves_left_derivative_across_normalized_hermite_round_trip)
+{
+    constexpr auto left_endpoint_derivative = scalar_t{0.3};
+    constexpr auto width = scalar_t{3.0};
+    constexpr auto normalized = hermite_converter_t<scalar_t>{}(
+        jet_t<scalar_t>{0.0, left_endpoint_derivative * width}, jet_t<scalar_t>{1.0, 0.0});
+    constexpr auto local = local_coordinate_converter_t<scalar_t>{}(normalized, width);
+    static_assert(local[2] != left_endpoint_derivative);
+
+    auto const authoritative = sut(local, left_endpoint_derivative, x_t{3}, x_t{0});
+    auto const round_tripped = sut(local, local[2], x_t{3}, x_t{0});
+    EXPECT_NE(authoritative.b, round_tripped.b);
 }
 
 } // namespace end_to_end_tests

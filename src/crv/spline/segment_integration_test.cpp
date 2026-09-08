@@ -35,7 +35,7 @@ struct spline_induced_gain_segment_test_t : Test
     {
         ASSERT_GE(x0, x_t{0});
         ASSERT_GT(width, x_t{0});
-        auto const segment = make_segment(transfer, width, x0);
+        auto const segment = make_segment(transfer, transfer[2], width, x0);
 
         for (auto const u : offsets)
         {
