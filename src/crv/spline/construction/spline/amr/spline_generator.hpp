@@ -22,9 +22,12 @@ class spline_generator_t
 public:
     using critical_points_t = refinement_pool_seeder_t::critical_points_t;
     using workspace_t = typestates_t::workspace_t;
-    using result_t = refiner_t::result_t;
+    using unassembled_t = typestates_t::unassembled_t;
+    using error_t = refiner_t::error_t;
+    using result_t = std::expected<void, error_t>;
 
-    static_assert(std::same_as<typename refinement_pool_seeder_t::error_t, typename refiner_t::error_t>);
+    static_assert(std::same_as<typename refinement_pool_seeder_t::error_t, error_t>);
+    static_assert(std::same_as<typename refiner_t::result_t::value_type, unassembled_t>);
 
     constexpr spline_generator_t() : spline_generator_t{{}, {}, {}} {}
 
@@ -58,14 +61,14 @@ public:
             return std::unexpected{error};
         }
 
-        auto result = refine_(std::move(*unrefined_state), construction_target);
-        if (!result)
+        auto unassembled_state = refine_(std::move(*unrefined_state), construction_target);
+        if (!unassembled_state)
         {
             workspace_.clear();
-            return std::unexpected{std::move(result).error()};
+            return std::unexpected{std::move(unassembled_state).error()};
         }
 
-        assemble_(typename typestates_t::unassembled_t{workspace_}, spline);
+        assemble_(std::move(*unassembled_state), spline);
 
         assert(workspace_.empty());
         return {};

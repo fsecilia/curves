@@ -49,13 +49,14 @@ struct spline_generator_test_t : Test
 
     struct unrefined_state_t
     {
+        workspace_t& workspace;
         int_t id = 0;
-        constexpr auto operator==(unrefined_state_t const&) const noexcept -> bool = default;
     };
 
     struct unassembled_state_t
     {
         workspace_t& workspace;
+        int_t id = 0;
     };
 
     struct typestates_t
@@ -67,6 +68,7 @@ struct spline_generator_test_t : Test
 
     using result_t = std::expected<void, error_t>;
     using seeding_result_t = std::expected<unrefined_state_t, error_t>;
+    using refinement_result_t = std::expected<unassembled_state_t, error_t>;
 
     struct mock_refinement_seeder_t
     {
@@ -91,14 +93,14 @@ struct spline_generator_test_t : Test
     struct mock_refiner_t
     {
         virtual ~mock_refiner_t() = default;
-        MOCK_METHOD(result_t, call, (unrefined_state_t, target_t const&));
+        MOCK_METHOD(refinement_result_t, call, (unrefined_state_t, target_t const&));
     };
     StrictMock<mock_refiner_t> mock_refiner;
 
     struct refiner_t
     {
         using error_t = spline_generator_test_t::error_t;
-        using result_t = spline_generator_test_t::result_t;
+        using result_t = spline_generator_test_t::refinement_result_t;
 
         mock_refiner_t* mock;
         auto operator()(unrefined_state_t state, auto const& passed_target) { return mock->call(state, passed_target); }
@@ -128,25 +130,39 @@ struct spline_generator_test_t : Test
     };
 
     spline_t spline;
-    unrefined_state_t const unrefined_state{100};
-    result_t const success{};
-    seeding_result_t const seeded{unrefined_state};
+
+    static auto successful_seed(initial_state_t state) -> seeding_result_t
+    {
+        return unrefined_state_t{.workspace = state.ws, .id = 100};
+    }
+
+    static auto successful_refinement(unrefined_state_t state) -> refinement_result_t
+    {
+        return unassembled_state_t{.workspace = state.workspace, .id = 200};
+    }
 };
 
 TEST_F(spline_generator_test_t, forwards_states_and_target)
 {
     InSequence seq;
     void const* expected_target_address = nullptr;
+    workspace_t* expected_workspace_address = nullptr;
 
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t, auto const& passed_target, auto) {
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t state, auto const& passed_target, auto) {
         expected_target_address = &passed_target;
-        return seeded;
+        expected_workspace_address = &state.ws;
+        return successful_seed(state);
     });
-    EXPECT_CALL(mock_refiner, call(unrefined_state, _)).WillOnce([&](unrefined_state_t, auto const& passed_target) {
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([&](unrefined_state_t state, auto const& passed_target) {
         EXPECT_EQ(static_cast<void const*>(&passed_target), expected_target_address);
-        return success;
+        EXPECT_EQ(&state.workspace, expected_workspace_address);
+        EXPECT_EQ(state.id, 100);
+        return successful_refinement(state);
     });
-    EXPECT_CALL(mock_assembler, call(_, _));
+    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) {
+        EXPECT_EQ(&state.workspace, expected_workspace_address);
+        EXPECT_EQ(state.id, 200);
+    });
 
     EXPECT_TRUE(generator(spline, target, {}));
 }
@@ -156,8 +172,12 @@ TEST_F(spline_generator_test_t, preserves_exact_critical_points_while_sorting_an
     auto const critical_points = critical_points_t{x_t{11}, x_t{5}, x_t{7}, x_t{5}};
     auto const expected = critical_points_t{x_t{5}, x_t{7}, x_t{11}};
 
-    EXPECT_CALL(mock_seeder, call(_, _, expected)).WillOnce(Return(seeded));
-    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
+    EXPECT_CALL(mock_seeder, call(_, _, expected)).WillOnce([](initial_state_t state, auto const&, auto) {
+        return successful_seed(state);
+    });
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
+        return successful_refinement(state);
+    });
     EXPECT_CALL(mock_assembler, call(_, _));
 
     EXPECT_TRUE(generator(spline, target, critical_points));
@@ -169,9 +189,11 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state_and_
     EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([&](initial_state_t state, auto const&, auto) {
         EXPECT_TRUE(state.ws.empty());
         workspace_address = &state.ws;
-        return seeded;
+        return successful_seed(state);
     });
-    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
+        return successful_refinement(state);
+    });
     EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) {
         EXPECT_EQ(&state.workspace, workspace_address);
     });
@@ -181,8 +203,12 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state_and_
 
 TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
 {
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(seeded));
-    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(success));
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([](initial_state_t state, auto const&, auto) {
+        return successful_seed(state);
+    });
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
+        return successful_refinement(state);
+    });
     EXPECT_CALL(mock_assembler, call(_, Ref(spline)));
 
     EXPECT_TRUE(generator(spline, target, {}));
@@ -219,7 +245,9 @@ TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutati
     };
     auto const original_spline = spline;
 
-    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce(Return(seeded));
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([](initial_state_t state, auto const&, auto) {
+        return successful_seed(state);
+    });
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce(Return(std::unexpected{failure}));
 
     auto const result = generator(spline, target, {});

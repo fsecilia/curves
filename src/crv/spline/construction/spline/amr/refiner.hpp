@@ -29,7 +29,8 @@ struct refiner_t
     using interval_t = subdivider_t::interval_t;
     using x_t = interval_t::subdomain_t::x_t;
     using error_t = spline_construction_error_t<x_t>;
-    using result_t = std::expected<void, error_t>;
+    using next_t = typestate_t::next_t;
+    using result_t = std::expected<next_t, error_t>;
 
     static_assert(std::same_as<typename subdivider_t::error_t, error_t>);
 
@@ -55,9 +56,14 @@ struct refiner_t
                 case refinement_requirement_t::optional:
                     if (segment_budget_full(refinement_pool, completed_intervals))
                     {
-                        return drain_remaining_safe(refinement_pool, completed_intervals);
+                        auto const result = drain_remaining_safe(refinement_pool, completed_intervals);
+                        if (!result) return std::unexpected{result.error()};
+                        return next_t{workspace};
                     }
-                    if (auto result = split_top(refinement_pool, target); !result) return result;
+                    if (auto result = split_top(refinement_pool, target); !result)
+                    {
+                        return std::unexpected{result.error()};
+                    }
                     break;
 
                 case refinement_requirement_t::required:
@@ -69,15 +75,20 @@ struct refiner_t
                     {
                         return failure(spline_construction_error_reason_t::segment_budget_exhausted, interval);
                     }
-                    if (auto result = split_top(refinement_pool, target); !result) return result;
+                    if (auto result = split_top(refinement_pool, target); !result)
+                    {
+                        return std::unexpected{result.error()};
+                    }
                     break;
             }
         }
 
-        return {};
+        return next_t{workspace};
     }
 
 private:
+    using operation_result_t = std::expected<void, error_t>;
+
     constexpr auto refinement_requirement(interval_t const& interval) const noexcept -> refinement_requirement_t
     {
         if (!interval.residual) return refinement_requirement_t::required;
@@ -97,7 +108,7 @@ private:
         return refinement_pool.size() + completed_intervals.size() >= static_cast<std::size_t>(max_segment_count);
     }
 
-    constexpr auto split_top(auto& refinement_pool, auto const& target) const -> result_t
+    constexpr auto split_top(auto& refinement_pool, auto const& target) const -> operation_result_t
     {
         // construct both children before mutating the pool
         auto children = subdivide(target, refinement_pool.top());
@@ -116,7 +127,7 @@ private:
         refinement_pool.pop();
     }
 
-    static constexpr auto drain_remaining_safe(auto& refinement_pool, auto& completed_intervals) -> result_t
+    static constexpr auto drain_remaining_safe(auto& refinement_pool, auto& completed_intervals) -> operation_result_t
     {
         while (!refinement_pool.empty())
         {
@@ -130,7 +141,7 @@ private:
     }
 
     static constexpr auto failure(spline_construction_error_reason_t reason, interval_t const& interval) noexcept
-        -> result_t
+        -> std::unexpected<error_t>
     {
         return std::unexpected{error_t{
             .reason = reason,

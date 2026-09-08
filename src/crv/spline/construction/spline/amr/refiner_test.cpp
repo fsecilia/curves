@@ -70,9 +70,15 @@ struct spline_refiner_test_t : Test
     };
     workspace_t workspace;
 
+    struct next_typestate_t
+    {
+        workspace_t& workspace;
+    };
+
     struct typestate_t
     {
         workspace_t& workspace;
+        using next_t = next_typestate_t;
     };
 
     struct sample_target_function_t
@@ -127,7 +133,8 @@ TEST_F(spline_refiner_test_t, safe_complete_interval_finishes)
 
     auto const result = sut(typestate_t{workspace}, sample_target_function);
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(&result->workspace, &workspace);
     EXPECT_TRUE(workspace.refinement_pool.empty());
     EXPECT_EQ(workspace.completed_intervals, (intervals_t{safe(1)}));
 }
