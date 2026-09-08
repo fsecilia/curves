@@ -278,7 +278,6 @@ constexpr auto packed = packed_segment_t{
 constexpr auto sut = sut_t{packed};
 
 static_assert(sizeof(sut_t) == 32);
-static_assert(alignof(sut_t) == 32);
 static_assert(std::is_trivially_copyable_v<sut_t>);
 static_assert(sut(x_t::literal(2), x_t::literal(2)) == y_t::literal(11));
 static_assert(sut.is_safe_through(x_t::literal(4), x_t::literal(2)));

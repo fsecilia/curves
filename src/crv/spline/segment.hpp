@@ -452,7 +452,7 @@ private:
 ///
 /// The packed fields are S(u) Horner coefficients. g0 stays as an ordinary y_t value with no dynamic-shift metadata.
 template <typename traits_t, is_fixed t_x_t, typename t_segment_unpacker_t, typename t_segment_evaluator_t>
-class alignas(32) segment_t
+class segment_t
 {
 public:
     using x_t = t_x_t;
@@ -470,7 +470,6 @@ public:
     explicit constexpr segment_t(packed_segment_t packed_segment) noexcept : packed_segment_{packed_segment}
     {
         static_assert(std::is_trivially_copyable_v<segment_t>);
-        static_assert(alignof(segment_t) >= 32);
     }
 
     constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t

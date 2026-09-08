@@ -16,6 +16,23 @@ namespace production_policy_tests {
 using policy_t = default_spline_policy_t<float_t, prod_pipeline_config_t>;
 constexpr auto final_layout = policy_t::segment_layout.final;
 
+struct segment_storage_layout_test_t : Test
+{
+    policy_t::spline_t spline{};
+};
+
+TEST_F(segment_storage_layout_test_t, packs_two_segments_per_cache_line)
+{
+    auto const base = reinterpret_cast<std::uintptr_t>(spline.segments.data());
+    auto const first = reinterpret_cast<std::uintptr_t>(&spline.segments[0]);
+    auto const second = reinterpret_cast<std::uintptr_t>(&spline.segments[1]);
+    auto const third = reinterpret_cast<std::uintptr_t>(&spline.segments[2]);
+
+    EXPECT_EQ(base % 64, 0);
+    EXPECT_EQ(second - first, 32);
+    EXPECT_EQ(third - first, 64);
+}
+
 // final shift [-64, 63] is the negation of aligned exponent [-63, 64].
 static_assert(final_layout.min_shift() == -64);
 static_assert(final_layout.max_shift() == 63);

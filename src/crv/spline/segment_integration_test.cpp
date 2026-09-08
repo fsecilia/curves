@@ -56,7 +56,6 @@ struct spline_induced_gain_segment_test_t : Test
 };
 
 static_assert(sizeof(typename spline_induced_gain_segment_test_t::segment_t) == 32);
-static_assert(alignof(typename spline_induced_gain_segment_test_t::segment_t) == 32);
 static_assert(std::is_trivially_copyable_v<typename spline_induced_gain_segment_test_t::segment_t>);
 
 TEST_F(spline_induced_gain_segment_test_t, first_segment_is_continuous_at_zero_without_division)

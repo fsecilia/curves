@@ -46,6 +46,7 @@
 #include <crv/spline/spline.hpp>
 #include <crv/spline/tangent_extension.hpp>
 #include <concepts>
+#include <cstddef>
 #include <type_traits>
 
 namespace crv::spline {
@@ -100,7 +101,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using segment_t = crv::spline::segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
     static_assert(sizeof(packed_segment_t) == 32);
     static_assert(sizeof(segment_t) == 32);
-    static_assert(alignof(segment_t) == 32);
+    static_assert(64 % sizeof(segment_t) == 0);
+    static_assert(64 / sizeof(segment_t) == 2);
     static_assert(std::is_trivially_copyable_v<packed_segment_t>);
     static_assert(std::is_trivially_copyable_v<segment_t>);
     using subdomain_t = crv::spline::subdomain_t<scalar_t, x_t>;
@@ -156,6 +158,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
 
     // final target
     using spline_t = crv::spline::spline_t<segment_t, extended_tangent_t, segment_locator_t>;
+    static_assert(alignof(spline_t) >= 64);
+    static_assert(offsetof(spline_t, segments) % 64 == 0);
     using spline_generator_t = crv::spline::spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
         refinement_pool_seeder_t, refiner_t, assembler_t>;
 };
