@@ -8,6 +8,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/algorithm.hpp>
+#include <crv/math/cmp.hpp>
 #include <crv/math/division/divider.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/int_traits.hpp>
@@ -70,11 +71,27 @@ template <typename t_unpacked_field_t, is_fixed t_y_t> struct traits_t
 template <typename t_packed_field_t> struct field_layout_t
 {
     using packed_field_t = t_packed_field_t;
+    using packed_significand_t = make_signed_t<packed_field_t>;
 
     int_t shift_width;
     bool is_signed;
 
-    constexpr auto shift_mask() const noexcept -> packed_field_t { return (packed_field_t{1} << shift_width) - 1; }
+    constexpr auto shift_mask() const noexcept -> packed_field_t
+    {
+        return static_cast<packed_field_t>((packed_field_t{1} << shift_width) - 1);
+    }
+
+    /// checks whether an unpacked field can be encoded exactly in this layout
+    template <typename unpacked_field_t>
+    constexpr auto is_encodable(unpacked_field_t const& unpacked_field) const noexcept -> bool
+    {
+        auto const min_significand = min<packed_significand_t>() >> shift_width;
+        auto const max_significand = max<packed_significand_t>() >> shift_width;
+
+        return min_shift() <= unpacked_field.shift && unpacked_field.shift <= max_shift()
+            && !cmp_less(unpacked_field.significand, min_significand)
+            && !cmp_greater(unpacked_field.significand, max_significand);
+    }
 
     constexpr auto min_shift() const noexcept -> int_t
     {

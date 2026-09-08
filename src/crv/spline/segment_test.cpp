@@ -47,6 +47,20 @@ static_assert(unsigned_four_bit.max_shift() == 15);
 static_assert(unsigned_four_bit.min_exponent() == -15);
 static_assert(unsigned_four_bit.max_exponent() == 0);
 
+using small_packed_field_t = uint8_t;
+using small_unpacked_field_t = spline::unpacked_field_t<int8_t>;
+using small_field_layout_t = spline::field_layout_t<small_packed_field_t>;
+
+constexpr auto small_signed_four_bit = small_field_layout_t{4, true};
+static_assert(small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = -8, .shift = 0}));
+static_assert(small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 7, .shift = 0}));
+static_assert(!small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = -9, .shift = 0}));
+static_assert(!small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 8, .shift = 0}));
+static_assert(small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 0, .shift = -8}));
+static_assert(small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 0, .shift = 7}));
+static_assert(!small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 0, .shift = -9}));
+static_assert(!small_signed_four_bit.is_encodable(small_unpacked_field_t{.significand = 0, .shift = 8}));
+
 } // namespace field_layout_tests
 
 namespace field_unpacker_tests {
