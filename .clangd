@@ -17,3 +17,10 @@ If:
 
 CompileFlags:
   Add: [-x, c++-header]
+
+---
+
+Diagnostics:
+  ClangTidy:
+    CheckOptions:
+      bugprone-unused-return-value.AllowCastToVoid: true
