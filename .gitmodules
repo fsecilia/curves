@@ -1,3 +1,6 @@
 [submodule "external/tomlplusplus"]
 	path = external/tomlplusplus
 	url = https://github.com/marzer/tomlplusplus.git
+[submodule "external/gtest"]
+	path = external/gtest
+	url = https://github.com/google/googletest.git
