@@ -12,6 +12,7 @@
 #include <crv/test/test.hpp>
 #include <cmath>
 #include <gmock/gmock.h>
+#include <limits>
 
 namespace crv::spline {
 namespace {
@@ -107,6 +108,7 @@ TEST_F(spline_tangent_extender_test_t, uses_positive_represented_gain_slope_and_
     EXPECT_EQ(actual(x_t{1}), y_t{10});
     EXPECT_EQ(actual.x_max_delta, x_t{91});
     EXPECT_EQ(actual(x_t{92}), y_t{100});
+    EXPECT_TRUE(actual.is_safe());
 }
 
 TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_continuation)
@@ -229,6 +231,15 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_zero_clamp_extreme_slop
     EXPECT_TRUE(actual.is_safe());
 }
 
+TEST_F(production_tangent_extender_test_t, keeps_useful_runtime_left_shift)
+{
+    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, 52)));
+
+    EXPECT_LT(actual.slope.shift, 0);
+    EXPECT_GT(actual.x_max_delta, x_t{0});
+    EXPECT_TRUE(actual.is_safe());
+}
+
 struct tangent_extender_rounding_boundary_test_t : spline_tangent_extender_test_t
 {
     struct fixed_slope_extractor_t
@@ -266,14 +277,33 @@ TEST_F(tangent_extender_rounding_boundary_test_t, keeps_slope_when_a_runtime_inp
         = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -74}}(make_interval(1.0, y_t{0}));
 
     EXPECT_EQ(actual(x_t::literal(int64_t{1} << 62)), y_t::literal(1));
+    EXPECT_TRUE(actual.is_safe());
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
+TEST_F(spline_tangent_extender_test_t, rejects_nonfinite_gain_slope)
+{
+    auto const interval = interval_t{
+        .segment = {&mock_segment}, .right_gain_slope = std::numeric_limits<scalar_t>::infinity(), .subdomain = {}};
+    EXPECT_DEATH(static_cast<void>(sut(interval)), "gain_slope.*finite");
+}
+
 TEST_F(spline_tangent_extender_test_t, rejects_negative_gain_slope)
 {
     auto const interval = interval_t{.segment = {&mock_segment}, .right_gain_slope = -1.0, .subdomain = {}};
-    EXPECT_DEATH(static_cast<void>(sut(interval)), "gain_slope");
+    EXPECT_DEATH(static_cast<void>(sut(interval)), "gain_slope.*nonnegative");
+}
+
+TEST_F(spline_tangent_extender_test_t, rejects_anchor_above_limit)
+{
+    EXPECT_DEATH(([&] {
+        EXPECT_CALL(mock_segment, call(right_x, left_x)).WillOnce(Return(y_t{101}));
+        auto const interval
+            = interval_t{.segment = {&mock_segment}, .right_gain_slope = 1.0, .subdomain = {left_x, right_x}};
+        static_cast<void>(sut(interval));
+    }()),
+        "anchor");
 }
 
 #endif // defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

@@ -14,6 +14,7 @@
 #include <crv/spline/tangent_extension.hpp>
 #include <cassert>
 #include <climits>
+#include <cmath>
 #include <concepts>
 #include <type_traits>
 
@@ -36,7 +37,8 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
     constexpr auto operator()(interval_t const& interval) const noexcept -> extended_tangent_t
     {
         auto const gain_slope = interval.right_gain_slope;
-        assert(gain_slope >= scalar_t{0} && "tangent_extender_t: final gain slope must stay nonnegative");
+        assert(std::isfinite(gain_slope) && "tangent_extender_t: final gain slope must be finite");
+        assert(gain_slope >= scalar_t{0} && "tangent_extender_t: final gain slope must be nonnegative");
 
         auto const extracted_slope = extract_float(gain_slope);
         auto const required_shift = x_t::frac_bits - y_t::frac_bits - extracted_slope.exponent;
@@ -45,13 +47,17 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
 
         // anchor extension to shipped fixed segment, not floating endpoint
         auto const y0 = interval.segment(interval.subdomain.right_x, interval.subdomain.left_x);
-        if (is_runtime_zero(slope)) return canonical_zero(y0);
-
         auto const y_limit_fixed = to_fixed<y_t>(y_limit);
-        auto const x_max_delta = extended_tangent_t::clamp_delta(slope, y0, y_limit_fixed);
-        if (x_max_delta == x_t{0}) return canonical_zero(y0);
+        assert(y0 >= y_t{0} && y0 <= y_limit_fixed && "tangent_extender_t: final anchor must stay within y limit");
 
-        return extended_tangent_t{.slope = slope, .y0 = y0, .x_max_delta = x_max_delta};
+        auto result = canonical_zero(y0);
+        if (!is_runtime_zero(slope))
+        {
+            auto const x_max_delta = extended_tangent_t::clamp_delta(slope, y0, y_limit_fixed);
+            if (x_max_delta != x_t{0}) result = {.slope = slope, .y0 = y0, .x_max_delta = x_max_delta};
+        }
+
+        return result;
     }
 
 private:
