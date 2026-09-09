@@ -45,10 +45,10 @@ static_assert(sut(smallest_positive_normalized_float) != scaled_int_t{});
 static_assert(sut(-smallest_positive_normalized_float) != scaled_int_t{});
 
 // max positive float
-static_assert(sut(std::numeric_limits<float>::max()) == scaled_int_t{0x00FFFFFF, 104});
+static_assert(sut(std::numeric_limits<float32_t>::max()) == scaled_int_t{0x00FFFFFF, 104});
 
 // max negative float
-static_assert(sut(std::numeric_limits<float>::lowest()) == scaled_int_t{-0x00FFFFFF, 104});
+static_assert(sut(std::numeric_limits<float32_t>::lowest()) == scaled_int_t{-0x00FFFFFF, 104});
 
 } // namespace float32
 
