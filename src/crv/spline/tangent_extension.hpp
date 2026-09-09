@@ -22,7 +22,7 @@ namespace crv::spline {
 /// constant. clamp_delta() uses the same quantized line and rounding as operator(), so the stored clamp point matches
 /// runtime evaluation.
 template <typename t_x_t, typename t_y_t, typename t_unpacked_field_t,
-    auto rounding_mode = rounding_modes::shr::fast::nearest_up>
+    auto t_rounding_mode = rounding_modes::shr::fast::nearest_up>
 struct extended_tangent_t
 {
     using x_t = t_x_t;
@@ -30,6 +30,8 @@ struct extended_tangent_t
     using unpacked_field_t = t_unpacked_field_t;
     using significand_t = unpacked_field_t::significand_t;
     using wide_t = widened_t<significand_t>;
+
+    static constexpr auto rounding_mode = t_rounding_mode;
 
     unpacked_field_t slope; // represented real slope is significand * 2^(x_frac - y_frac - shift)
     y_t y0;

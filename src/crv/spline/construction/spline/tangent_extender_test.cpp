@@ -6,8 +6,11 @@
 #include "tangent_extender.hpp"
 #include <crv/math/float_extraction.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/spline/default_spline_policy.hpp>
+#include <crv/spline/pipeline_config.hpp>
 #include <crv/spline/segment.hpp>
 #include <crv/test/test.hpp>
+#include <cmath>
 #include <gmock/gmock.h>
 
 namespace crv::spline {
@@ -111,7 +114,7 @@ TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_cont
     auto const actual = sut(make_interval(0.0));
 
     EXPECT_EQ(actual.y0, y_t{9});
-    EXPECT_EQ(actual.slope.significand, 0);
+    EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
     EXPECT_EQ(actual(x_t{100}), y_t{9});
 }
@@ -144,6 +147,125 @@ TEST_F(spline_tangent_extender_test_t, represented_constant_gain_receipt_avoids_
         = contradictory_sut(make_contradictory_interval(0.0, {x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256}));
 
     EXPECT_EQ(actual.slope.significand, 0);
+}
+
+struct production_tangent_extender_test_t : Test
+{
+    using scalar_t = float_t;
+    using policy_t = default_spline_policy_t<scalar_t, prod_pipeline_config_t>;
+    using x_t = policy_t::x_t;
+    using y_t = policy_t::y_t;
+    using segment_t = policy_t::segment_t;
+    using unpacked_field_t = policy_t::unpacked_field_t;
+    using unpacked_segment_t = policy_t::unpacked_segment_t;
+
+    struct subdomain_t
+    {
+        x_t left_x;
+        x_t right_x;
+    };
+
+    struct interval_t
+    {
+        using segment_t = production_tangent_extender_test_t::segment_t;
+        segment_t segment;
+        scalar_t right_gain_slope;
+        subdomain_t subdomain;
+    };
+
+    using sut_t = tangent_extender_t<interval_t, policy_t::extended_tangent_t, policy_t::float_extractor_t>;
+    sut_t sut{.y_limit = policy_t::y_limit, .extract_float = {}};
+
+    static constexpr auto represented_segment() noexcept -> segment_t
+    {
+        auto const unpacked = unpacked_segment_t{
+            .d = {.significand = 0, .shift = 0},
+            .c = {.significand = 1, .shift = 127},
+            .b = {.significand = 0, .shift = 63},
+            .g0 = y_t{0},
+        };
+        return segment_t{policy_t::segment_packer_t{}(unpacked)};
+    }
+
+    static constexpr auto interval_with_slope(scalar_t slope) noexcept -> interval_t
+    {
+        return {.segment = represented_segment(),
+            .right_gain_slope = slope,
+            .subdomain = {.left_x = x_t{0}, .right_x = x_t{1}}};
+    }
+};
+
+TEST_F(production_tangent_extender_test_t, canonicalizes_represented_tiny_slope_to_exact_runtime_zero)
+{
+    auto const segment = represented_segment();
+    ASSERT_TRUE(segment.is_safe_through(x_t{1}, x_t{0}));
+
+    auto const gain_slope = policy_t::right_gain_slope_calculator_t{}(segment.unpacked_segment(), x_t{1}, x_t{0});
+    ASSERT_EQ(gain_slope, std::ldexp(scalar_t{1}, -191));
+
+    auto const actual = sut(interval_with_slope(gain_slope));
+
+    EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
+    EXPECT_EQ(actual.y0, y_t{0});
+    EXPECT_EQ(actual.x_max_delta, max<x_t>());
+    EXPECT_TRUE(actual.is_safe());
+}
+
+TEST_F(production_tangent_extender_test_t, canonicalizes_observational_zero_inside_evaluator_shift_range)
+{
+    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, -76)));
+
+    EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
+    EXPECT_EQ(actual.x_max_delta, max<x_t>());
+}
+
+TEST_F(production_tangent_extender_test_t, canonicalizes_zero_clamp_extreme_slope_without_left_shift)
+{
+    auto const actual = sut(interval_with_slope(1e54));
+
+    EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
+    EXPECT_EQ(actual.y0, y_t{0});
+    EXPECT_EQ(actual.x_max_delta, max<x_t>());
+    EXPECT_TRUE(actual.is_safe());
+}
+
+struct tangent_extender_rounding_boundary_test_t : spline_tangent_extender_test_t
+{
+    struct fixed_slope_extractor_t
+    {
+        using scalar_t = spline_tangent_extender_test_t::scalar_t;
+
+        struct extracted_t
+        {
+            int64_t significand;
+            int_t exponent;
+        };
+
+        int_t exponent;
+
+        constexpr auto operator()(scalar_t) const noexcept -> extracted_t
+        {
+            return {.significand = 1, .exponent = exponent};
+        }
+    };
+
+    using boundary_sut_t = tangent_extender_t<interval_t, extended_tangent_t, fixed_slope_extractor_t>;
+};
+
+TEST_F(tangent_extender_rounding_boundary_test_t, canonicalizes_when_maximum_product_stays_below_halfway)
+{
+    auto const actual
+        = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -75}}(make_interval(1.0, y_t{0}));
+
+    EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
+}
+
+TEST_F(tangent_extender_rounding_boundary_test_t, keeps_slope_when_a_runtime_input_reaches_halfway)
+{
+    auto const actual
+        = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -74}}(make_interval(1.0, y_t{0}));
+
+    EXPECT_EQ(actual(x_t::literal(int64_t{1} << 62)), y_t::literal(1));
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

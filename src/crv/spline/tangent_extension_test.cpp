@@ -49,6 +49,20 @@ static_assert(!integer_sut_t{
 }
         .is_safe());
 
+// arithmetic-width boundary is later than the observable-output boundary
+static_assert(integer_sut_t{
+                  .slope = {.significand = integer_max, .shift = 126},
+                  .y0 = integer_y_t{},
+                  .x_max_delta = integer_x_t::literal(integer_max),
+              }(integer_x_t::literal(integer_max))
+    == integer_y_t{1});
+static_assert(integer_sut_t{
+                  .slope = {.significand = integer_max, .shift = 127},
+                  .y0 = integer_y_t{},
+                  .x_max_delta = integer_x_t::literal(integer_max),
+              }(integer_x_t::literal(integer_max))
+    == integer_y_t{0});
+
 // rounding mode controls runtime right shifts
 static_assert(truncating_integer_sut_t{
                   .slope = {.significand = 3, .shift = 1},
@@ -56,6 +70,16 @@ static_assert(truncating_integer_sut_t{
                   .x_max_delta = integer_x_t{1},
               }(integer_x_t{1})
     == integer_y_t{1});
+
+// nearest-up first output increment occurs exactly at the half-way product
+constexpr auto nearest_up_boundary_tangent = integer_sut_t{
+    .slope = {.significand = 1, .shift = 4},
+    .y0 = integer_y_t{},
+    .x_max_delta = integer_x_t{9},
+};
+static_assert(nearest_up_boundary_tangent(integer_x_t{7}) == integer_y_t{0});
+static_assert(nearest_up_boundary_tangent(integer_x_t{8}) == integer_y_t{1});
+static_assert(nearest_up_boundary_tangent(integer_x_t{9}) == integer_y_t{1});
 
 // exact left-shift boundary and one raw unit beyond it
 static_assert(integer_sut_t{
