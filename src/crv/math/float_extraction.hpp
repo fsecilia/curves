@@ -11,6 +11,7 @@
 #include <crv/math/shifter.hpp>
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <concepts>
 #include <limits>
 
@@ -51,11 +52,11 @@ template <std::floating_point t_scalar_t> struct float_extractor_t
     /// \pre isfinite(value)
     constexpr auto operator()(scalar_t value) const noexcept -> scaled_int_t
     {
+        assert(std::isfinite(value) && "float_extractor_t: input must be finite");
         auto const bits = std::bit_cast<unsigned_t>(value);
 
         // extract exponent
         auto const raw_exponent = (bits >> frac_bit_count) & exponent_mask;
-        assert(raw_exponent != exponent_mask); // inf and nan are not supported
         if (raw_exponent == 0) return {}; // ftz; flush subnormals to zero
         auto const exponent = int_cast<exponent_t>(int_cast<signed_t>(raw_exponent) - exponent_bias - frac_bit_count);
 

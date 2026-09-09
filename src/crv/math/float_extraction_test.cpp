@@ -54,6 +54,16 @@ static_assert(sut(std::numeric_limits<float>::lowest()) == scaled_int_t{-0x00FFF
 
 static_assert(float_extractor_t<float64_t>{}(1.0) == scaled_int_t<int64_t>{int64_t{1} << 52, -52});
 
+#if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
+TEST(float_extractor_test, rejects_nonfinite_input)
+{
+    EXPECT_DEATH(
+        static_cast<void>(float_extractor_t<float64_t>{}(std::numeric_limits<float64_t>::infinity())), "finite");
+}
+
+#endif // defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
+
 } // namespace float_extraction_tests
 
 // --------------------------------------------------------------------------------------------------------------------
