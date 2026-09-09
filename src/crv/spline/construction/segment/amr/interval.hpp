@@ -52,6 +52,7 @@ template <typename t_subdomain_t, typename t_segment_t> struct interval_t
     using residual_t = residual_t<scalar_t>;
 
     segment_t segment;
+    scalar_t right_gain_slope;
     subdomain_t subdomain;
     std::optional<residual_t> residual;
 
@@ -77,8 +78,9 @@ struct interval_priority_less_t
 };
 
 /// creates intervals from subdomains
-template <typename t_interval_t, typename segment_factory_t, typename approximant_factory_t,
-    typename hermite_converter_t, typename local_coordinate_converter_t, typename residual_estimator_t>
+template <typename t_interval_t, typename segment_factory_t, typename right_gain_slope_calculator_t,
+    typename approximant_factory_t, typename hermite_converter_t, typename local_coordinate_converter_t,
+    typename residual_estimator_t>
 struct interval_factory_t
 {
     using interval_t = t_interval_t;
@@ -91,6 +93,7 @@ struct interval_factory_t
     using result_t = std::expected<interval_t, error_t>;
 
     [[no_unique_address]] segment_factory_t segment_factory;
+    [[no_unique_address]] right_gain_slope_calculator_t calc_right_gain_slope;
     [[no_unique_address]] approximant_factory_t approximant_factory;
     [[no_unique_address]] hermite_converter_t convert_hermite;
     [[no_unique_address]] local_coordinate_converter_t convert_local_coordinate;
@@ -113,10 +116,17 @@ struct interval_factory_t
         auto segment = segment_factory(cubic, subdomain.left.y.df, width_fixed, subdomain.left_x);
         if (!segment) return std::unexpected{segment.error()};
 
+        auto const right_gain_slope = calc_right_gain_slope(segment->unpacked_segment(), width_fixed, subdomain.left_x);
+
         // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
         if (!segment->is_safe_through(width_fixed, subdomain.left_x))
         {
-            return interval_t{.segment = *segment, .subdomain = subdomain, .residual = std::nullopt};
+            return interval_t{
+                .segment = *segment,
+                .right_gain_slope = right_gain_slope,
+                .subdomain = subdomain,
+                .residual = std::nullopt,
+            };
         }
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);
@@ -126,7 +136,12 @@ struct interval_factory_t
         auto const residual
             = estimate_residual(target, approximant_factory(*segment, subdomain.left_x), left, midpoint, right);
 
-        return interval_t{.segment = *segment, .subdomain = subdomain, .residual = residual};
+        return interval_t{
+            .segment = *segment,
+            .right_gain_slope = right_gain_slope,
+            .subdomain = subdomain,
+            .residual = residual,
+        };
     }
 };
 

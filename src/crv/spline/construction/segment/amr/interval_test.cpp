@@ -76,14 +76,23 @@ struct spline_interval_factory_test_t : Test
 
     int_t safety_calls = 0;
 
+    struct unpacked_segment_t
+    {
+        int_t id;
+        constexpr auto operator==(unpacked_segment_t const&) const noexcept -> bool = default;
+    };
+
     struct segment_t
     {
+        unpacked_segment_t unpacked;
         cubic_t cubic;
         scalar_t left_endpoint_derivative;
         x_t width;
         x_t x0;
         bool safe;
         int_t* safety_calls;
+
+        constexpr auto unpacked_segment() const noexcept -> unpacked_segment_t { return unpacked; }
 
         auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
         {
@@ -100,6 +109,7 @@ struct spline_interval_factory_test_t : Test
         using error_t = spline_construction_error_t<x_t>;
         using result_t = std::expected<segment_t, error_t>;
 
+        unpacked_segment_t unpacked_segment{};
         bool safe = true;
         int_t* safety_calls = nullptr;
         std::optional<error_t> error;
@@ -108,7 +118,31 @@ struct spline_interval_factory_test_t : Test
             -> result_t
         {
             if (error) return std::unexpected{*error};
-            return segment_t{cubic, left_endpoint_derivative, width, x0, safe, safety_calls};
+            return segment_t{
+                .unpacked = unpacked_segment,
+                .cubic = cubic,
+                .left_endpoint_derivative = left_endpoint_derivative,
+                .width = width,
+                .x0 = x0,
+                .safe = safe,
+                .safety_calls = safety_calls,
+            };
+        }
+    };
+
+    struct mock_right_gain_slope_calculator_t
+    {
+        virtual ~mock_right_gain_slope_calculator_t() = default;
+        MOCK_METHOD(scalar_t, call, (unpacked_segment_t unpacked_segment, x_t width, x_t x0), (const, noexcept));
+    };
+    StrictMock<mock_right_gain_slope_calculator_t> mock_right_gain_slope_calculator;
+
+    struct right_gain_slope_calculator_t
+    {
+        mock_right_gain_slope_calculator_t* mock = nullptr;
+        auto operator()(unpacked_segment_t unpacked_segment, x_t width, x_t x0) const noexcept -> scalar_t
+        {
+            return mock->call(unpacked_segment, width, x0);
         }
     };
 
@@ -199,16 +233,23 @@ struct spline_interval_factory_test_t : Test
         using subdomain_t = spline_interval_factory_test_t::subdomain_t;
 
         segment_t segment;
+        scalar_t right_gain_slope;
         subdomain_t subdomain;
         std::optional<residual_t> residual;
 
         constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
     };
 
-    using sut_t = spline::interval_factory_t<interval_t, segment_factory_t, approximant_factory_t, hermite_converter_t,
-        local_coordinate_converter_t, residual_estimator_t>;
+    using sut_t = spline::interval_factory_t<interval_t, segment_factory_t, right_gain_slope_calculator_t,
+        approximant_factory_t, hermite_converter_t, local_coordinate_converter_t, residual_estimator_t>;
     sut_t sut{
-        .segment_factory = {.safe = true, .safety_calls = &safety_calls, .error = std::nullopt},
+        .segment_factory = {
+            .unpacked_segment = {91},
+            .safe = true,
+            .safety_calls = &safety_calls,
+            .error = std::nullopt,
+        },
+        .calc_right_gain_slope = right_gain_slope_calculator_t{&mock_right_gain_slope_calculator},
         .approximant_factory = {},
         .convert_hermite = hermite_converter_t{&mock_hermite_converter},
         .convert_local_coordinate = local_coordinate_converter_t{&mock_local_coordinate_converter},
@@ -235,7 +276,9 @@ struct spline_interval_factory_test_t : Test
     x_t const width_fixed = x_t::literal(5);
     cubic_t const normalized_cubic{1.0, 2.0, 3.0, 4.0};
     cubic_t const local_cubic{10.0, 20.0, 30.0, 40.0};
+    unpacked_segment_t const unpacked_segment{91};
     segment_t const segment{
+        .unpacked = unpacked_segment,
         .cubic = local_cubic,
         .left_endpoint_derivative = left.y.df,
         .width = width_fixed,
@@ -243,6 +286,7 @@ struct spline_interval_factory_test_t : Test
         .safe = true,
         .safety_calls = &safety_calls,
     };
+    scalar_t const right_gain_slope = -2.75;
     residual_t const residual{14};
 };
 
@@ -255,6 +299,8 @@ TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_
 
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
+    EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, width_fixed, left_x))
+        .WillOnce(Return(right_gain_slope));
     EXPECT_CALL(mock_residual_estimator,
         call(sample_target_function, approximant_t{.segment = segment, .x0 = left_x}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
@@ -263,6 +309,7 @@ TEST_F(spline_interval_factory_test_t, builds_transfer_hermite_and_measures_the_
 
     auto const expected = interval_t{
         .segment = segment,
+        .right_gain_slope = right_gain_slope,
         .subdomain = subdomain,
         .residual = residual,
     };
@@ -281,12 +328,15 @@ TEST_F(spline_interval_factory_test_t, unsafe_segment_is_not_evaluated_for_resid
 
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
+    EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, width_fixed, left_x))
+        .WillOnce(Return(right_gain_slope));
 
     auto const actual = sut(sample_target_function, subdomain);
 
     ASSERT_TRUE(actual);
     EXPECT_FALSE(actual->residual.has_value());
     EXPECT_FALSE(actual->segment.safe);
+    EXPECT_EQ(actual->right_gain_slope, right_gain_slope);
 }
 
 TEST_F(spline_interval_factory_test_t, segment_construction_error_skips_runtime_safety_and_residual)

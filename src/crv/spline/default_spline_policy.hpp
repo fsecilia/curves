@@ -27,6 +27,7 @@
 #include <crv/spline/construction/segment/amr/subdivision_predicate.hpp>
 #include <crv/spline/construction/segment/field_packer.hpp>
 #include <crv/spline/construction/segment/local_coordinate.hpp>
+#include <crv/spline/construction/segment/right_gain_slope_calculator.hpp>
 #include <crv/spline/construction/segment/segment_factory.hpp>
 #include <crv/spline/construction/segment/segment_packer.hpp>
 #include <crv/spline/construction/segment/segment_quantizer.hpp>
@@ -131,8 +132,10 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using approximant_t = crv::spline::approximant_t<scalar_t, segment_t>;
     using approximant_factory_t = crv::spline::approximant_factory_t<approximant_t>;
     using local_coordinate_converter_t = crv::spline::local_coordinate_converter_t<scalar_t>;
-    using interval_factory_t = crv::spline::interval_factory_t<interval_t, segment_factory_t, approximant_factory_t,
-        hermite_converter_t, local_coordinate_converter_t, residual_estimator_t>;
+    using right_gain_slope_calculator_t = crv::spline::right_gain_slope_calculator_t<scalar_t, x_t, unpacked_segment_t>;
+    using interval_factory_t
+        = crv::spline::interval_factory_t<interval_t, segment_factory_t, right_gain_slope_calculator_t,
+            approximant_factory_t, hermite_converter_t, local_coordinate_converter_t, residual_estimator_t>;
     using bisection_t = crv::spline::bisection_t<subdomain_t>;
     using bisector_t = crv::spline::bisector_t<bisection_t>;
     using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, x_t, log2_min_width>;
