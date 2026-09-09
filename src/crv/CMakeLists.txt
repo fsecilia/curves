@@ -117,6 +117,7 @@ set(lib_files
     spline/construction/segment/amr/transfer_sample.hpp
     spline/construction/segment/field_packer.hpp
     spline/construction/segment/local_coordinate.hpp
+    spline/construction/segment/right_gain_slope_calculator.hpp
     spline/construction/segment/segment_factory.hpp
     spline/construction/segment/segment_packer.hpp
     spline/construction/segment/segment_quantizer.hpp
@@ -350,6 +351,7 @@ set(regression_test_files
     spline/construction/segment/amr/subdivision_test.cpp
     spline/construction/segment/field_packer_test.cpp
     spline/construction/segment/local_coordinate_test.cpp
+    spline/construction/segment/right_gain_slope_calculator_test.cpp
     spline/construction/segment/segment_factory_test.cpp
     spline/construction/segment/segment_packer_test.cpp
     spline/construction/segment/segment_quantizer_test.cpp
