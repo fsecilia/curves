@@ -20,6 +20,7 @@
 #include <crv/spline/construction/segment/amr/approximant.hpp>
 #include <crv/spline/construction/segment/amr/bisection.hpp>
 #include <crv/spline/construction/segment/amr/error_metric.hpp>
+#include <crv/spline/construction/segment/amr/final_endpoint_acceptance.hpp>
 #include <crv/spline/construction/segment/amr/interval.hpp>
 #include <crv/spline/construction/segment/amr/node_generator.hpp>
 #include <crv/spline/construction/segment/amr/residual_estimator.hpp>
@@ -63,9 +64,12 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     static constexpr auto depth_max = 4;
     static constexpr auto log2_domain_end = 8;
     static constexpr auto log2_min_width = -10;
-    static constexpr auto y_limit = scalar_t{1000.0};
+    static constexpr auto y_limit_value = int_t{1000};
+    static constexpr auto y_limit = scalar_t{y_limit_value};
     static constexpr auto max_segment_count = 1 << (depth_max * 2);
     static constexpr auto domain_end = 1 << log2_domain_end;
+    static constexpr auto domain_end_fixed = x_t{1} << log2_domain_end;
+    static constexpr auto y_limit_fixed = y_t{y_limit_value};
 
     // provisional production error budgets in gain space
     //
@@ -133,9 +137,10 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using approximant_factory_t = crv::spline::approximant_factory_t<approximant_t>;
     using local_coordinate_converter_t = crv::spline::local_coordinate_converter_t<scalar_t>;
     using right_gain_slope_calculator_t = crv::spline::right_gain_slope_calculator_t<scalar_t, x_t, unpacked_segment_t>;
-    using interval_factory_t
-        = crv::spline::interval_factory_t<interval_t, segment_factory_t, right_gain_slope_calculator_t,
-            approximant_factory_t, hermite_converter_t, local_coordinate_converter_t, residual_estimator_t>;
+    using final_endpoint_acceptance_t = crv::spline::final_endpoint_acceptance_t<y_t, scalar_t>;
+    using interval_factory_t = crv::spline::interval_factory_t<interval_t, segment_factory_t,
+        right_gain_slope_calculator_t, final_endpoint_acceptance_t, approximant_factory_t, hermite_converter_t,
+        local_coordinate_converter_t, residual_estimator_t, domain_end_fixed, y_limit_fixed>;
     using bisection_t = crv::spline::bisection_t<subdomain_t>;
     using bisector_t = crv::spline::bisector_t<bisection_t>;
     using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, x_t, log2_min_width>;

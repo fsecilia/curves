@@ -21,8 +21,8 @@ enum class refinement_requirement_t
 
 /// best-first, best-effort adaptive mesh refiner
 ///
-/// Unsafe intervals are mandatory work and remain ahead of quality-only work in the refinement pool. Optional
-/// refinement may stop at the segment budget; mandatory refinement must either split or return a construction error.
+/// Mandatory-refinement intervals remain ahead of quality-only work in the refinement pool. Optional refinement may
+/// stop at the segment budget; mandatory refinement must either split or return a construction error.
 template <typename typestate_t, typename subdivider_t, typename subdivision_predicate_t, int_t max_segment_count>
 struct refiner_t
 {
@@ -56,7 +56,7 @@ struct refiner_t
                 case refinement_requirement_t::optional:
                     if (segment_budget_full(refinement_pool, completed_intervals))
                     {
-                        auto const result = drain_remaining_safe(refinement_pool, completed_intervals);
+                        auto const result = drain_remaining(refinement_pool, completed_intervals);
                         if (!result) return std::unexpected{result.error()};
                         return next_t{workspace};
                     }
@@ -127,10 +127,11 @@ private:
         refinement_pool.pop();
     }
 
-    static constexpr auto drain_remaining_safe(auto& refinement_pool, auto& completed_intervals) -> operation_result_t
+    static constexpr auto drain_remaining(auto& refinement_pool, auto& completed_intervals) -> operation_result_t
     {
         while (!refinement_pool.empty())
         {
+            // optional budget exhaustion may drain only acceptable intervals
             if (!refinement_pool.top().residual)
             {
                 return failure(spline_construction_error_reason_t::segment_budget_exhausted, refinement_pool.top());

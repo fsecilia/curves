@@ -59,7 +59,7 @@ template <typename t_subdomain_t, typename t_segment_t> struct interval_t
     constexpr auto operator==(interval_t const&) const noexcept -> bool = default;
 };
 
-/// orders unsafe intervals first, then by residual.weighted_error and exact domain.left_x
+/// orders mandatory-refinement intervals first, then by residual.weighted_error and exact domain.left_x
 struct interval_priority_less_t
 {
     template <typename interval_t>
@@ -79,21 +79,27 @@ struct interval_priority_less_t
 
 /// creates intervals from subdomains
 template <typename t_interval_t, typename segment_factory_t, typename right_gain_slope_calculator_t,
-    typename approximant_factory_t, typename hermite_converter_t, typename local_coordinate_converter_t,
-    typename residual_estimator_t>
+    typename final_endpoint_acceptance_t, typename approximant_factory_t, typename hermite_converter_t,
+    typename local_coordinate_converter_t, typename residual_estimator_t, auto domain_end, auto y_limit>
 struct interval_factory_t
 {
     using interval_t = t_interval_t;
 
     using scalar_t = interval_t::scalar_t;
+    using segment_t = interval_t::segment_t;
     using approximant_t = approximant_factory_t::approximant_t;
     using x_t = approximant_t::x_t;
+    using y_t = segment_t::y_t;
     using subdomain_t = interval_t::subdomain_t;
     using error_t = segment_factory_t::error_t;
     using result_t = std::expected<interval_t, error_t>;
 
+    static_assert(std::same_as<std::remove_cv_t<decltype(domain_end)>, x_t>);
+    static_assert(std::same_as<std::remove_cv_t<decltype(y_limit)>, y_t>);
+
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] right_gain_slope_calculator_t calc_right_gain_slope;
+    [[no_unique_address]] final_endpoint_acceptance_t accept_final_endpoint;
     [[no_unique_address]] approximant_factory_t approximant_factory;
     [[no_unique_address]] hermite_converter_t convert_hermite;
     [[no_unique_address]] local_coordinate_converter_t convert_local_coordinate;
@@ -127,6 +133,20 @@ struct interval_factory_t
                 .subdomain = subdomain,
                 .residual = std::nullopt,
             };
+        }
+
+        if (subdomain.right_x == domain_end)
+        {
+            auto const anchor = (*segment)(subdomain.right_x, subdomain.left_x);
+            if (!accept_final_endpoint(anchor, right_gain_slope, y_limit))
+            {
+                return interval_t{
+                    .segment = *segment,
+                    .right_gain_slope = right_gain_slope,
+                    .subdomain = subdomain,
+                    .residual = std::nullopt,
+                };
+            }
         }
 
         auto const left = from_fixed<scalar_t>(subdomain.left_x);

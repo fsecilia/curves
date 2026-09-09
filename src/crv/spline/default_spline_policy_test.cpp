@@ -4,6 +4,7 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "default_spline_policy.hpp"
+#include <crv/math/fixed/float_conversions.hpp>
 #include <crv/spline/pipeline_config.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
@@ -16,10 +17,17 @@ namespace production_policy_tests {
 using policy_t = default_spline_policy_t<float_t, prod_pipeline_config_t>;
 constexpr auto final_layout = policy_t::segment_layout.final;
 
+static_assert(policy_t::domain_end_fixed == policy_t::x_t{policy_t::domain_end});
+
 struct segment_storage_layout_test_t : Test
 {
     policy_t::spline_t spline{};
 };
+
+TEST_F(segment_storage_layout_test_t, fixed_y_limit_matches_tangent_conversion)
+{
+    EXPECT_EQ(policy_t::y_limit_fixed, to_fixed<policy_t::y_t>(policy_t::y_limit));
+}
 
 TEST_F(segment_storage_layout_test_t, packs_two_segments_per_cache_line)
 {

@@ -344,6 +344,7 @@ set(regression_test_files
     spline/construction/segment/amr/approximant_test.cpp
     spline/construction/segment/amr/bisection_test.cpp
     spline/construction/segment/amr/error_metric_test.cpp
+    spline/construction/segment/amr/final_endpoint_acceptance_test.cpp
     spline/construction/segment/amr/interval_test.cpp
     spline/construction/segment/amr/node_generator_test.cpp
     spline/construction/segment/amr/residual_estimator_test.cpp
