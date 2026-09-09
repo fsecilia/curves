@@ -459,6 +459,7 @@ public:
     using segment_unpacker_t = t_segment_unpacker_t;
     using segment_evaluator_t = t_segment_evaluator_t;
     using packed_segment_t = traits_t::packed_segment_t;
+    using unpacked_segment_t = traits_t::unpacked_segment_t;
     using y_t = segment_evaluator_t::y_t;
 
     static_assert(segment_unpacker_t::segment_layout.intermediate.max_shift() <= segment_evaluator_t::max_shift);
@@ -472,20 +473,22 @@ public:
         static_assert(std::is_trivially_copyable_v<segment_t>);
     }
 
+    constexpr auto unpacked_segment() const noexcept -> unpacked_segment_t { return unpack_segment_(packed_segment_); }
+
     constexpr auto operator()(x_t x, x_t x0) const noexcept -> y_t
     {
-        return evaluate_segment(unpack_segment(packed_segment_), x, x0);
+        return evaluate_segment_(unpacked_segment(), x, x0);
     }
 
     /// proves evaluator arithmetic safe for every local coordinate in [0, u_max]
     constexpr auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool
     {
-        return evaluate_segment.is_safe_through(unpack_segment(packed_segment_), u_max, x0);
+        return evaluate_segment_.is_safe_through(unpacked_segment(), u_max, x0);
     }
 
 private:
-    [[no_unique_address]] segment_unpacker_t unpack_segment;
-    [[no_unique_address]] segment_evaluator_t evaluate_segment;
+    [[no_unique_address]] segment_unpacker_t unpack_segment_;
+    [[no_unique_address]] segment_evaluator_t evaluate_segment_;
     packed_segment_t packed_segment_;
 };
 

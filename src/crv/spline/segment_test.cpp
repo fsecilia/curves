@@ -253,10 +253,11 @@ namespace segment_tests {
 
 using x_t = fixed_t<int64_t, 14>;
 using y_t = fixed_t<int64_t, 18>;
-using traits_t = spline::traits_t<spline::unpacked_field_t<int64_t>, y_t>;
+using traits_t = traits_t<spline::unpacked_field_t<int64_t>, y_t>;
 using packed_segment_t = traits_t::packed_segment_t;
 using unpacked_segment_t = traits_t::unpacked_segment_t;
 using packed_field_t = traits_t::packed_field_t;
+using unpacked_field_t = traits_t::unpacked_field_t;
 using field_layout_t = spline::field_layout_t<packed_field_t>;
 using segment_layout_t = spline::segment_layout_t<field_layout_t>;
 constexpr auto segment_layout = segment_layout_t{
@@ -264,21 +265,28 @@ constexpr auto segment_layout = segment_layout_t{
     .final = {.shift_width = 4, .is_signed = true},
 };
 using field_unpacker_t = spline::field_unpacker_t<traits_t::unpacked_field_t>;
-using unpacker_t = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
-using evaluator_t = segment_evaluator_t<traits_t, x_t, y_t>;
-using sut_t = segment_t<traits_t, x_t, unpacker_t, evaluator_t>;
+using segment_unpacker_t = segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
+using segment_evaluator_t = segment_evaluator_t<traits_t, x_t, y_t>;
+using sut_t = segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
 
 constexpr auto pack_field = spline::field_packer_t<packed_field_t>{};
-constexpr auto packed = packed_segment_t{
-    .d = pack_field(typename traits_t::unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
-    .c = pack_field(typename traits_t::unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
-    .b = pack_field(typename traits_t::unpacked_field_t{.significand = 7, .shift = 0}, segment_layout.final),
+constexpr auto packed_segment = packed_segment_t{
+    .d = pack_field(unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
+    .c = pack_field(unpacked_field_t{.significand = 0, .shift = 0}, segment_layout.intermediate),
+    .b = pack_field(unpacked_field_t{.significand = 7, .shift = 0}, segment_layout.final),
     .g0 = y_t::literal(11),
 };
-constexpr auto sut = sut_t{packed};
+constexpr auto sut = sut_t{packed_segment};
+constexpr auto unpacked_segment = unpacked_segment_t{
+    .d = {.significand = 0, .shift = 0},
+    .c = {.significand = 0, .shift = 0},
+    .b = {.significand = 7, .shift = 0},
+    .g0 = y_t::literal(11),
+};
 
 static_assert(sizeof(sut_t) == 32);
 static_assert(std::is_trivially_copyable_v<sut_t>);
+static_assert(sut.unpacked_segment() == unpacked_segment);
 static_assert(sut(x_t::literal(2), x_t::literal(2)) == y_t::literal(11));
 static_assert(sut.is_safe_through(x_t::literal(4), x_t::literal(2)));
 
