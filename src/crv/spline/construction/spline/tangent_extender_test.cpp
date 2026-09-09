@@ -5,6 +5,7 @@
 
 #include "tangent_extender.hpp"
 #include <crv/math/float_extraction.hpp>
+#include <crv/math/jet/jet.hpp>
 #include <crv/spline/segment.hpp>
 #include <crv/test/test.hpp>
 #include <gmock/gmock.h>
@@ -38,41 +39,66 @@ struct spline_tangent_extender_test_t : Test
         auto operator()(x_t x, x_t x0) const noexcept -> y_t { return mock->call(x, x0); }
     };
 
-    struct transfer_sample_t
-    {
-        jet_t<scalar_t> y;
-    };
-
     struct subdomain_t
     {
         x_t left_x = spline_tangent_extender_test_t::left_x;
         x_t right_x = spline_tangent_extender_test_t::right_x;
-        transfer_sample_t right;
     };
 
     struct interval_t
     {
         using segment_t = spline_tangent_extender_test_t::segment_t;
         segment_t segment;
+        scalar_t right_gain_slope;
         subdomain_t subdomain;
     };
 
     using sut_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t<scalar_t>>;
     sut_t sut{.y_limit = 100.0, .extract_float = {}};
 
-    auto make_interval(jet_t<scalar_t> transfer_endpoint, y_t endpoint = y_t{9}, x_t left = left_x, x_t right = right_x)
+    auto make_interval(scalar_t right_gain_slope, y_t endpoint = y_t{9}, x_t left = left_x, x_t right = right_x)
         -> interval_t
     {
-        auto const subdomain = subdomain_t{.left_x = left, .right_x = right, .right = {.y = transfer_endpoint}};
+        auto const subdomain = subdomain_t{.left_x = left, .right_x = right};
         EXPECT_CALL(mock_segment, call(subdomain.right_x, subdomain.left_x)).WillOnce(Return(endpoint));
-        return {.segment = {&mock_segment}, .subdomain = subdomain};
+        return {.segment = {&mock_segment}, .right_gain_slope = right_gain_slope, .subdomain = subdomain};
+    }
+
+    struct contradictory_subdomain_t
+    {
+        x_t left_x = spline_tangent_extender_test_t::left_x;
+        x_t right_x = spline_tangent_extender_test_t::right_x;
+        struct
+        {
+            jet_t<scalar_t> y;
+        } right;
+    };
+
+    struct contradictory_interval_t
+    {
+        using segment_t = spline_tangent_extender_test_t::segment_t;
+        segment_t segment;
+        scalar_t right_gain_slope;
+        contradictory_subdomain_t subdomain;
+    };
+
+    using contradictory_sut_t
+        = tangent_extender_t<contradictory_interval_t, extended_tangent_t, float_extractor_t<scalar_t>>;
+    contradictory_sut_t contradictory_sut{.y_limit = 100.0, .extract_float = {}};
+
+    auto make_contradictory_interval(scalar_t right_gain_slope, jet_t<scalar_t> transfer_endpoint,
+        y_t endpoint = y_t{9}, x_t left = left_x, x_t right = right_x) -> contradictory_interval_t
+    {
+        auto const subdomain
+            = contradictory_subdomain_t{.left_x = left, .right_x = right, .right = {.y = transfer_endpoint}};
+        EXPECT_CALL(mock_segment, call(subdomain.right_x, subdomain.left_x)).WillOnce(Return(endpoint));
+        return {.segment = {&mock_segment}, .right_gain_slope = right_gain_slope, .subdomain = subdomain};
     }
 };
 
-TEST_F(spline_tangent_extender_test_t, derives_positive_gain_slope_and_clamp_from_transfer_endpoint)
+TEST_F(spline_tangent_extender_test_t, uses_positive_represented_gain_slope_and_clamps_to_limit)
 {
-    // at X=5: T=45, T'=14, G=9, so G'=(14-9)/5=1
-    auto const actual = sut(make_interval({45.0, 14.0}));
+    auto const actual = sut(make_interval(1.0));
 
     EXPECT_EQ(actual.y0, y_t{9});
     EXPECT_EQ(actual(x_t{1}), y_t{10});
@@ -82,8 +108,7 @@ TEST_F(spline_tangent_extender_test_t, derives_positive_gain_slope_and_clamp_fro
 
 TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_continuation)
 {
-    // at X=5: T=45, T'=9, G=9, so G'=0
-    auto const actual = sut(make_interval({45.0, 9.0}));
+    auto const actual = sut(make_interval(0.0));
 
     EXPECT_EQ(actual.y0, y_t{9});
     EXPECT_EQ(actual.slope.significand, 0);
@@ -91,24 +116,32 @@ TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_cont
     EXPECT_EQ(actual(x_t{100}), y_t{9});
 }
 
-TEST_F(spline_tangent_extender_test_t, intercept_comes_from_fixed_segment_not_floating_transfer_endpoint)
+TEST_F(spline_tangent_extender_test_t, anchor_comes_from_packed_segment)
 {
-    auto const actual = sut(make_interval({45.0, 14.0}, y_t{10}));
+    auto const actual = sut(make_interval(1.0, y_t{10}));
 
     EXPECT_EQ(actual.y0, y_t{10});
     EXPECT_EQ(actual(x_t{1}), y_t{11});
     EXPECT_EQ(actual.x_max_delta, x_t{90});
 }
 
-// regression test: calculating transfer_jet by reevalutating the polynomial rather than using the right y of the
-// interval caused a catastrophic cancellation that rounded the final slope to negative when evaluating
-// historical SmoothGain-shaped regression case; values predate the Naka-Rushton parameterization.
-TEST_F(spline_tangent_extender_test_t, retained_constant_gain_endpoint_avoids_zero_slope_cancellation)
+TEST_F(spline_tangent_extender_test_t, represented_slope_beats_contradictory_target_endpoint)
 {
-    // reproduces the constant endpoint that exposed cubic reevaluation cancellation
+    // target endpoint implies G'=-1 at X=5; accepted represented slope is authoritative.
+    auto const actual = contradictory_sut(make_contradictory_interval(0.0, {45.0, 4.0}));
+
+    EXPECT_EQ(actual.slope.significand, 0);
+    EXPECT_EQ(actual.x_max_delta, max<x_t>());
+    EXPECT_EQ(actual(x_t{100}), y_t{9});
+}
+
+// regression test: historical target reconstruction could perturb a mathematically constant final gain slope.
+TEST_F(spline_tangent_extender_test_t, represented_constant_gain_receipt_avoids_zero_slope_cancellation)
+{
     auto constexpr gain = scalar_t{12.989};
     auto constexpr x_max = scalar_t{256};
-    auto const actual = sut(make_interval({x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256}));
+    auto const actual
+        = contradictory_sut(make_contradictory_interval(0.0, {x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256}));
 
     EXPECT_EQ(actual.slope.significand, 0);
 }
@@ -117,8 +150,7 @@ TEST_F(spline_tangent_extender_test_t, retained_constant_gain_endpoint_avoids_ze
 
 TEST_F(spline_tangent_extender_test_t, rejects_negative_gain_slope)
 {
-    // at X=5: T=45, T'=4, G=9, so G'=-1, which violates the nondecreasing authored-curve contract
-    auto const interval = interval_t{.segment = {&mock_segment}, .subdomain = {.right = {.y = {45.0, 4.0}}}};
+    auto const interval = interval_t{.segment = {&mock_segment}, .right_gain_slope = -1.0, .subdomain = {}};
     EXPECT_DEATH(static_cast<void>(sut(interval)), "gain_slope");
 }
 
