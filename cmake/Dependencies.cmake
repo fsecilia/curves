@@ -16,62 +16,77 @@
 set(THREADS_PREFER_PTHREAD_FLAG True)
 find_package(Threads REQUIRED)
 
-# find gtest when testing is requested
-if (BUILD_TESTING)
-    set(INSTALL_GTEST OFF)
-    if (NOT TARGET GTest::gtest)
-        # try finding system package normally
-        find_package(GTest QUIET)
-    endif()
-    if (NOT TARGET GTest::gtest)
-        # look where debian puts the source build
-        if (EXISTS /usr/src/googletest)
-            add_subdirectory(/usr/src/googletest "${CMAKE_BINARY_DIR}/external/googletest" EXCLUDE_FROM_ALL)
-        endif()
-    endif()
-    if (NOT TARGET GTest::gtest)
-        message(WARNING "GoogleTest not found: disabling BUILD_TESTING")
-        set(BUILD_TESTING OFF CACHE BOOL "build project tests" FORCE)
-    endif()
-endif()
-
 # ---------------------------------------------------------------------------------------------------------------------
 # External Dependencies
 # ---------------------------------------------------------------------------------------------------------------------
 
-option(USE_HOST_DEPS "use host dependencies instead of bundled" OFF)
-
-# finds package, perferring host version to bundled submodule
+# finds a dependency, preferring an initialized bundled submodule
 #
-# usage: find_or_bundle(dink "0.1.0...<1.0.0")
-macro(find_or_bundle NAME VERSION)
-    # try finding package with appropriate strictness
+# usage:
+#   find_or_bundle(tomlplusplus "3.4.0...<4.0.0")
+#   find_or_bundle(
+#       GTest "1.18.0...<2.0.0"
+#       BUNDLE googletest
+#       REQUIRED_TARGETS
+#           GTest::gtest
+#           GTest::gtest_main
+#           GTest::gmock
+#           GTest::gmock_main
+#   )
+function(find_or_bundle NAME VERSION)
+    cmake_parse_arguments(
+        ARG
+        ""
+        "BUNDLE"
+        "REQUIRED_TARGETS"
+        ${ARGN}
+    )
+
+    if (ARG_BUNDLE)
+        set(_bundle_name "${ARG_BUNDLE}")
+    else()
+        set(_bundle_name "${NAME}")
+    endif()
+
+    set(_bundle_dir "${CMAKE_SOURCE_DIR}/external/${_bundle_name}")
+
     message(CHECK_START "finding ${NAME}")
-    string(TOUPPER "${NAME}" _UPPER_NAME)
-    if (USE_HOST_DEPS OR USE_HOST_${_UPPER_NAME})
-        find_package(${NAME} "${VERSION}" CONFIG REQUIRED)
+
+    if (EXISTS "${_bundle_dir}/CMakeLists.txt")
+        message(CHECK_PASS "using bundled ${_bundle_name}")
+        add_subdirectory("${_bundle_dir}" EXCLUDE_FROM_ALL)
     else()
         find_package(${NAME} "${VERSION}" CONFIG QUIET)
-    endif()
 
-    if (${NAME}_FOUND)
-        message(CHECK_PASS "using system ${NAME} v${${NAME}_VERSION}")
-    else()
-        message(CHECK_FAIL "system ${NAME} missing or old; using bundled")
-
-        # check for empty submodule
-        if (NOT EXISTS "${CMAKE_SOURCE_DIR}/external/${NAME}/CMakeLists.txt")
-             message(FATAL_ERROR
-                "submodule 'external/${NAME}' missing or empty; "
-                "run: git submodule update --init --recursive")
+        if (${NAME}_FOUND)
+            message(CHECK_PASS "using system ${NAME} v${${NAME}_VERSION}")
+        else()
+            message(CHECK_FAIL "compatible system ${NAME} not found")
+            message(FATAL_ERROR
+                "dependency '${NAME}' unavailable; initialize submodule "
+                "'external/${_bundle_name}' or install a compatible host package")
         endif()
-
-        # disable transitive installs
-        set(${NAME}_INSTALL OFF CACHE BOOL "install ${NAME} transitively")
-
-        # use vendored submodule
-        add_subdirectory("external/${NAME}" EXCLUDE_FROM_ALL)
     endif()
-endmacro()
 
+    foreach (_target IN LISTS ARG_REQUIRED_TARGETS)
+        if (NOT TARGET "${_target}")
+            message(FATAL_ERROR "dependency '${NAME}' did not provide required target '${_target}'")
+        endif()
+    endforeach()
+endfunction()
+
+set(tomlplusplus_INSTALL OFF CACHE BOOL "install tomlplusplus transitively")
 find_or_bundle(tomlplusplus "3.4.0...<4.0.0")
+
+if (BUILD_TESTING)
+    set(INSTALL_GTEST OFF CACHE BOOL "install gtest transitively")
+    find_or_bundle(
+        GTest "1.16.0...<2.0.0"
+        BUNDLE gtest
+        REQUIRED_TARGETS
+            GTest::gtest
+            GTest::gtest_main
+            GTest::gmock
+            GTest::gmock_main
+    )
+endif()
