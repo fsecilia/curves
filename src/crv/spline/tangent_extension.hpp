@@ -82,43 +82,49 @@ struct extended_tangent_t
         return x_t::literal(low);
     }
 
-    /// proves evaluator arithmetic safe for every clamped runtime delta
-    constexpr auto is_safe() const noexcept -> bool
+    /// validates encoded tangent arithmetic for every clamped runtime delta
+    struct validator_t
     {
-        using x_value_t = typename x_t::value_t;
-        using y_value_t = typename y_t::value_t;
-        using unsigned_wide_t = make_unsigned_t<wide_t>;
-
-        static_assert(signed_integral<x_value_t>);
-        static_assert(signed_integral<y_value_t>);
-        static_assert(signed_integral<significand_t>);
-        static_assert(sizeof(x_value_t) <= sizeof(wide_t));
-        static_assert(sizeof(y_value_t) <= sizeof(wide_t));
-
-        if (slope.significand < 0 || x_max_delta < x_t{0}) return false;
-
-        constexpr auto wide_bits = int_t{sizeof(wide_t) * CHAR_BIT};
-        if (slope.shift >= wide_bits) return false;
-        if (slope.shift == min<int_t>()) return false;
-
-        auto const significand = widen(slope.significand);
-        auto const x_delta = int_cast<wide_t>(x_max_delta.value);
-        if (significand != 0 && x_delta > max<wide_t>() / significand) return false;
-        auto const product = significand * x_delta;
-
-        auto const y_max = int_cast<wide_t>(max<y_value_t>());
-        if (slope.shift >= 0)
+        constexpr auto operator()(extended_tangent_t const& tangent) const noexcept -> bool
         {
-            auto const shift = slope.shift;
-            auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
-            if (product > max<wide_t>() - half) return false;
-            return shifter_t<rounding_mode>{}.shr(product, shift) <= y_max;
-        }
+            using x_value_t = typename x_t::value_t;
+            using y_value_t = typename y_t::value_t;
+            using unsigned_wide_t = make_unsigned_t<wide_t>;
 
-        auto const left_shift = -slope.shift;
-        if (left_shift >= wide_bits) return false;
-        return product <= (y_max >> left_shift);
-    }
+            static_assert(signed_integral<x_value_t>);
+            static_assert(signed_integral<y_value_t>);
+            static_assert(signed_integral<significand_t>);
+            static_assert(sizeof(x_value_t) <= sizeof(wide_t));
+            static_assert(sizeof(y_value_t) <= sizeof(wide_t));
+
+            if (tangent.slope.significand < 0 || tangent.x_max_delta < x_t{0}) return false;
+
+            constexpr auto wide_bits = int_t{sizeof(wide_t) * CHAR_BIT};
+            if (tangent.slope.shift >= wide_bits) return false;
+            if (tangent.slope.shift == min<int_t>()) return false;
+
+            auto const significand = widen(tangent.slope.significand);
+            auto const x_delta = int_cast<wide_t>(tangent.x_max_delta.value);
+            if (significand != 0 && x_delta > max<wide_t>() / significand) return false;
+            auto const product = significand * x_delta;
+
+            auto const y_max = int_cast<wide_t>(max<y_value_t>());
+            if (tangent.slope.shift >= 0)
+            {
+                auto const shift = tangent.slope.shift;
+                auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
+                if (product > max<wide_t>() - half) return false;
+                return shifter_t<rounding_mode>{}.shr(product, shift) <= y_max;
+            }
+
+            auto const left_shift = -tangent.slope.shift;
+            if (left_shift >= wide_bits) return false;
+            return product <= (y_max >> left_shift);
+        }
+    };
+
+    /// proves evaluator arithmetic safe for every clamped runtime delta
+    constexpr auto is_safe() const noexcept -> bool { return validator_t{}(*this); }
 
     // \param x position relative to end of spline domain
     constexpr auto operator()(x_t x) const noexcept -> y_t
