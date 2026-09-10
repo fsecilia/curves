@@ -174,6 +174,88 @@ struct tangent_extender_t
     }
 };
 
+struct assembler_preparation_order_test_t : Test
+{
+    enum class event_t
+    {
+        sort,
+        extend_tangent,
+        unzip,
+        pad,
+    };
+
+    using events_t = std::vector<event_t>;
+    events_t events;
+
+    struct interval_sorter_t
+    {
+        events_t* events;
+
+        auto operator()(auto& intervals) const noexcept -> void
+        {
+            events->push_back(event_t::sort);
+            crv::spline::interval_sorter_t{}(intervals);
+        }
+    };
+
+    struct tangent_extender_t
+    {
+        events_t* events;
+
+        auto operator()(interval_t const& interval) const noexcept -> int_t
+        {
+            events->push_back(event_t::extend_tangent);
+            return interval.segment.payload_id;
+        }
+    };
+
+    struct interval_unzipper_t
+    {
+        events_t* events;
+
+        auto operator()(auto const& intervals, int_t segment_count, auto& segments, auto& keys) const noexcept -> void
+        {
+            events->push_back(event_t::unzip);
+            crv::spline::interval_unzipper_t{}(intervals, segment_count, segments, keys);
+        }
+    };
+
+    struct key_padder_t
+    {
+        events_t* events;
+
+        auto operator()(auto& keys, int_t start, auto const& value) const noexcept -> void
+        {
+            events->push_back(event_t::pad);
+            crv::spline::key_padder_t{}(keys, start, value);
+        }
+    };
+};
+
+TEST_F(assembler_preparation_order_test_t, prepares_tangent_before_destination_writes)
+{
+    auto workspace = workspace_t{};
+    auto state = typestate_t{workspace};
+    state.workspace.completed_intervals = {
+        {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 42}},
+    };
+    auto spline = spline_t{};
+
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+        tangent_extender_t, 100>;
+    auto const sut = sut_t{
+        .sort_intervals = {&events},
+        .unzip_intervals = {&events},
+        .pad_keys = {&events},
+        .extend_tangent = {&events},
+    };
+
+    sut(std::move(state), spline);
+
+    EXPECT_EQ(events, (events_t{event_t::sort, event_t::extend_tangent, event_t::unzip, event_t::pad}));
+}
+
 TEST(spline_assembler_test, vs_real_dependencies)
 {
     auto workspace = workspace_t{};
