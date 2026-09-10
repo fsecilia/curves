@@ -367,32 +367,27 @@ INSTANTIATE_TEST_SUITE_P(
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
 
-TEST(spline_assembler_test, asserts_on_empty_workspace)
+struct spline_assembler_death_test_t : Test
 {
-    auto workspace = workspace_t{};
-    auto state = typestate_t{workspace};
-    auto spline = spline_t{};
+    workspace_t workspace{};
+    typestate_t state{workspace};
+    spline_t spline{};
 
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
         tangent_extender_t, 100>;
-    auto sut = sut_t{};
+    sut_t sut{};
+};
 
+TEST_F(spline_assembler_death_test_t, asserts_on_empty_workspace)
+{
     EXPECT_DEATH(sut(std::move(state), spline), "completed_intervals\\.empty");
 }
 
-TEST(spline_assembler_test, asserts_on_capacity_exceeded)
+TEST_F(spline_assembler_death_test_t, asserts_on_capacity_exceeded)
 {
-    auto workspace = workspace_t{};
-    auto state = typestate_t{workspace};
-    auto spline = spline_t{};
-
     // overfill the workspace by 1
     auto const overfill_count = segment_locator_t::max_segment_count + 1;
     for (auto i = 0; i < overfill_count; ++i) state.workspace.completed_intervals.push_back({});
-
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
-        tangent_extender_t, 100>;
-    auto sut = sut_t{};
 
     EXPECT_DEATH(sut(std::move(state), spline), "max_segment_count");
 }
