@@ -24,6 +24,7 @@ struct spline_tangent_extender_test_t : Test
     using y_t = fixed_t<int64_t, 25>;
     using unpacked_field_t = spline::unpacked_field_t<int64_t>;
     using extended_tangent_t = spline::extended_tangent_t<x_t, y_t, unpacked_field_t>;
+    using tangent_validator_t = extended_tangent_t::validator_t;
 
     static constexpr auto left_x = x_t{3};
     static constexpr auto right_x = x_t{5};
@@ -57,8 +58,8 @@ struct spline_tangent_extender_test_t : Test
         subdomain_t subdomain;
     };
 
-    using sut_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t<scalar_t>>;
-    sut_t sut{.y_limit = 100.0, .extract_float = {}};
+    using sut_t = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t<scalar_t>, tangent_validator_t>;
+    sut_t sut{.y_limit = 100.0, .extract_float = {}, .validate = {}};
 
     auto make_interval(scalar_t right_gain_slope, y_t endpoint = y_t{9}, x_t left = left_x, x_t right = right_x)
         -> interval_t
@@ -86,9 +87,9 @@ struct spline_tangent_extender_test_t : Test
         contradictory_subdomain_t subdomain;
     };
 
-    using contradictory_sut_t
-        = tangent_extender_t<contradictory_interval_t, extended_tangent_t, float_extractor_t<scalar_t>>;
-    contradictory_sut_t contradictory_sut{.y_limit = 100.0, .extract_float = {}};
+    using contradictory_sut_t = tangent_extender_t<contradictory_interval_t, extended_tangent_t,
+        float_extractor_t<scalar_t>, tangent_validator_t>;
+    contradictory_sut_t contradictory_sut{.y_limit = 100.0, .extract_float = {}, .validate = {}};
 
     auto make_contradictory_interval(scalar_t right_gain_slope, jet_t<scalar_t> transfer_endpoint,
         y_t endpoint = y_t{9}, x_t left = left_x, x_t right = right_x) -> contradictory_interval_t
@@ -102,7 +103,7 @@ struct spline_tangent_extender_test_t : Test
 
 TEST_F(spline_tangent_extender_test_t, uses_positive_represented_gain_slope_and_clamps_to_limit)
 {
-    auto const actual = sut(make_interval(1.0));
+    auto const actual = sut(make_interval(1.0)).value();
 
     EXPECT_EQ(actual.y0, y_t{9});
     EXPECT_EQ(actual(x_t{1}), y_t{10});
@@ -113,7 +114,7 @@ TEST_F(spline_tangent_extender_test_t, uses_positive_represented_gain_slope_and_
 
 TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_continuation)
 {
-    auto const actual = sut(make_interval(0.0));
+    auto const actual = sut(make_interval(0.0)).value();
 
     EXPECT_EQ(actual.y0, y_t{9});
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
@@ -123,7 +124,7 @@ TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_cont
 
 TEST_F(spline_tangent_extender_test_t, anchor_comes_from_packed_segment)
 {
-    auto const actual = sut(make_interval(1.0, y_t{10}));
+    auto const actual = sut(make_interval(1.0, y_t{10})).value();
 
     EXPECT_EQ(actual.y0, y_t{10});
     EXPECT_EQ(actual(x_t{1}), y_t{11});
@@ -133,7 +134,7 @@ TEST_F(spline_tangent_extender_test_t, anchor_comes_from_packed_segment)
 TEST_F(spline_tangent_extender_test_t, represented_slope_beats_contradictory_target_endpoint)
 {
     // target endpoint implies G'=-1 at X=5; accepted represented slope is authoritative.
-    auto const actual = contradictory_sut(make_contradictory_interval(0.0, {45.0, 4.0}));
+    auto const actual = contradictory_sut(make_contradictory_interval(0.0, {45.0, 4.0})).value();
 
     EXPECT_EQ(actual.slope.significand, 0);
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
@@ -146,9 +147,68 @@ TEST_F(spline_tangent_extender_test_t, represented_constant_gain_receipt_avoids_
     auto constexpr gain = scalar_t{12.989};
     auto constexpr x_max = scalar_t{256};
     auto const actual
-        = contradictory_sut(make_contradictory_interval(0.0, {x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256}));
+        = contradictory_sut(make_contradictory_interval(0.0, {x_max * gain, gain}, y_t{13}, x_t{20}, x_t{256})).value();
 
     EXPECT_EQ(actual.slope.significand, 0);
+}
+
+struct validating_tangent_extender_test_t : spline_tangent_extender_test_t
+{
+    struct mock_extended_tangent_validator_t
+    {
+        virtual ~mock_extended_tangent_validator_t() = default;
+        MOCK_METHOD(bool, call, (extended_tangent_t const&), (const, noexcept));
+    };
+    StrictMock<mock_extended_tangent_validator_t> mock_extended_tangent_validator;
+
+    struct extended_tangent_validator_t
+    {
+        mock_extended_tangent_validator_t* mock = nullptr;
+
+        auto operator()(extended_tangent_t const& tangent) const noexcept -> bool { return mock->call(tangent); }
+    };
+
+    using validating_sut_t
+        = tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t<scalar_t>, extended_tangent_validator_t>;
+    validating_sut_t validating_sut{
+        .y_limit = 100.0,
+        .extract_float = {},
+        .validate = {&mock_extended_tangent_validator},
+    };
+
+    static constexpr auto same_tangent(extended_tangent_t const& lhs, extended_tangent_t const& rhs) noexcept -> bool
+    {
+        return lhs.slope == rhs.slope && lhs.y0 == rhs.y0 && lhs.x_max_delta == rhs.x_max_delta;
+    }
+};
+
+TEST_F(validating_tangent_extender_test_t, validator_acceptance_returns_validated_candidate)
+{
+    auto validated_candidate = extended_tangent_t{};
+    EXPECT_CALL(mock_extended_tangent_validator, call(_)).WillOnce([&](extended_tangent_t const& candidate) {
+        validated_candidate = candidate;
+        return true;
+    });
+
+    auto const result = validating_sut(make_interval(1.0));
+
+    ASSERT_TRUE(result);
+    EXPECT_TRUE(same_tangent(*result, validated_candidate));
+}
+
+TEST_F(validating_tangent_extender_test_t, validator_rejection_returns_flat_construction_failure)
+{
+    EXPECT_CALL(mock_extended_tangent_validator, call(_)).WillOnce(Return(false));
+
+    auto const result = validating_sut(make_interval(1.0));
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(),
+        (validating_sut_t::error_t{
+            .reason = spline_construction_error_reason_t::tangent_not_representable,
+            .left = left_x,
+            .right = right_x,
+        }));
 }
 
 struct production_tangent_extender_test_t : Test
@@ -175,8 +235,9 @@ struct production_tangent_extender_test_t : Test
         subdomain_t subdomain;
     };
 
-    using sut_t = tangent_extender_t<interval_t, policy_t::extended_tangent_t, policy_t::float_extractor_t>;
-    sut_t sut{.y_limit = policy_t::y_limit, .extract_float = {}};
+    using sut_t = tangent_extender_t<interval_t, policy_t::extended_tangent_t, policy_t::float_extractor_t,
+        policy_t::tangent_validator_t>;
+    sut_t sut{.y_limit = policy_t::y_limit, .extract_float = {}, .validate = {}};
 
     static constexpr auto represented_segment() noexcept -> segment_t
     {
@@ -205,7 +266,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_represented_tiny_slope_
     auto const gain_slope = policy_t::right_gain_slope_calculator_t{}(segment.unpacked_segment(), x_t{1}, x_t{0});
     ASSERT_EQ(gain_slope, std::ldexp(scalar_t{1}, -191));
 
-    auto const actual = sut(interval_with_slope(gain_slope));
+    auto const actual = sut(interval_with_slope(gain_slope)).value();
 
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.y0, y_t{0});
@@ -215,7 +276,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_represented_tiny_slope_
 
 TEST_F(production_tangent_extender_test_t, canonicalizes_observational_zero_inside_evaluator_shift_range)
 {
-    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, -76)));
+    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, -76))).value();
 
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
@@ -223,7 +284,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_observational_zero_insi
 
 TEST_F(production_tangent_extender_test_t, canonicalizes_zero_clamp_extreme_slope_without_left_shift)
 {
-    auto const actual = sut(interval_with_slope(1e54));
+    auto const actual = sut(interval_with_slope(1e54)).value();
 
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.y0, y_t{0});
@@ -233,7 +294,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_zero_clamp_extreme_slop
 
 TEST_F(production_tangent_extender_test_t, keeps_useful_runtime_left_shift)
 {
-    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, 52)));
+    auto const actual = sut(interval_with_slope(std::ldexp(scalar_t{1}, 52))).value();
 
     EXPECT_LT(actual.slope.shift, 0);
     EXPECT_GT(actual.x_max_delta, x_t{0});
@@ -260,21 +321,24 @@ struct tangent_extender_rounding_boundary_test_t : spline_tangent_extender_test_
         }
     };
 
-    using boundary_sut_t = tangent_extender_t<interval_t, extended_tangent_t, fixed_slope_extractor_t>;
+    using boundary_sut_t
+        = tangent_extender_t<interval_t, extended_tangent_t, fixed_slope_extractor_t, tangent_validator_t>;
 };
 
 TEST_F(tangent_extender_rounding_boundary_test_t, canonicalizes_when_maximum_product_stays_below_halfway)
 {
-    auto const actual
-        = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -75}}(make_interval(1.0, y_t{0}));
+    auto const actual = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -75}, .validate = {}}(
+        make_interval(1.0, y_t{0}))
+                            .value();
 
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
 }
 
 TEST_F(tangent_extender_rounding_boundary_test_t, keeps_slope_when_a_runtime_input_reaches_halfway)
 {
-    auto const actual
-        = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -74}}(make_interval(1.0, y_t{0}));
+    auto const actual = boundary_sut_t{.y_limit = 100.0, .extract_float = {.exponent = -74}, .validate = {}}(
+        make_interval(1.0, y_t{0}))
+                            .value();
 
     EXPECT_EQ(actual(x_t::literal(int64_t{1} << 62)), y_t::literal(1));
     EXPECT_TRUE(actual.is_safe());

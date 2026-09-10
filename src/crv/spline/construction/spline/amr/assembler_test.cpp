@@ -4,8 +4,10 @@
 /// \copyright Copyright (C) 2026 Frank Secilia
 
 #include "assembler.hpp"
+#include <crv/spline/construction/error.hpp>
 #include <crv/test/test.hpp>
 #include <array>
+#include <expected>
 #include <gmock/gmock.h>
 
 namespace crv::spline {
@@ -144,6 +146,8 @@ struct segment_locator_t
 
     constexpr segment_locator_t() = default;
     constexpr segment_locator_t(auto const& k, auto mx, int_t c) : keys(k), max_x(mx), count(c) {}
+
+    constexpr auto operator==(segment_locator_t const&) const noexcept -> bool = default;
 };
 
 struct spline_t
@@ -154,6 +158,8 @@ struct spline_t
     std::array<segment_t, max_segment_count> segments{};
     segment_locator_t segment_locator{};
     int_t extend_final_tangent{};
+
+    constexpr auto operator==(spline_t const&) const noexcept -> bool = default;
 };
 
 struct workspace_t
@@ -168,8 +174,14 @@ struct typestate_t
 
 struct tangent_extender_t
 {
-    constexpr auto operator()(interval_t const& interval) const noexcept -> int_t
+    using error_t = spline_construction_error_t<x_t>;
+    using result_t = std::expected<int_t, error_t>;
+
+    error_t const* failure = nullptr;
+
+    constexpr auto operator()(interval_t const& interval) const noexcept -> result_t
     {
+        if (failure) return std::unexpected{*failure};
         return interval.segment.payload_id;
     }
 };
@@ -200,9 +212,12 @@ struct assembler_preparation_order_test_t : Test
 
     struct tangent_extender_t
     {
+        using error_t = spline_construction_error_t<x_t>;
+        using result_t = std::expected<int_t, error_t>;
+
         events_t* events;
 
-        auto operator()(interval_t const& interval) const noexcept -> int_t
+        auto operator()(interval_t const& interval) const noexcept -> result_t
         {
             events->push_back(event_t::extend_tangent);
             return interval.segment.payload_id;
@@ -211,7 +226,7 @@ struct assembler_preparation_order_test_t : Test
 
     struct interval_unzipper_t
     {
-        events_t* events;
+        std::vector<event_t>* events;
 
         auto operator()(auto const& intervals, int_t segment_count, auto& segments, auto& keys) const noexcept -> void
         {
@@ -222,7 +237,7 @@ struct assembler_preparation_order_test_t : Test
 
     struct key_padder_t
     {
-        events_t* events;
+        std::vector<event_t>* events;
 
         auto operator()(auto& keys, int_t start, auto const& value) const noexcept -> void
         {
@@ -294,6 +309,48 @@ TEST(spline_assembler_test, vs_real_dependencies)
 
     // tangent extender must run on final interval
     EXPECT_EQ(spline.segments[1].payload_id, spline.extend_final_tangent);
+}
+
+struct assembler_tangent_failure_test_t : Test
+{
+    using error_t = tangent_extender_t::error_t;
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+        tangent_extender_t, 100>;
+
+    workspace_t workspace{
+        .completed_intervals = {
+            {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+            {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 42}},
+        },
+    };
+    typestate_t state{workspace};
+    spline_t spline{
+        .segments = {{{.payload_id = 1}, {.payload_id = 2}, {.payload_id = 3}}},
+        .segment_locator = segment_locator_t{std::array{x_t{4}, x_t{5}}, x_t{6}, 2},
+        .extend_final_tangent = 7,
+    };
+    spline_t const original_spline = spline;
+    error_t const failure{
+        .reason = spline_construction_error_reason_t::tangent_not_representable,
+        .left = x_t{20},
+        .right = x_t{100},
+    };
+};
+
+TEST_F(assembler_tangent_failure_test_t, preserves_destination_and_exact_error)
+{
+    auto const sut = sut_t{
+        .sort_intervals = {},
+        .unzip_intervals = {},
+        .pad_keys = {},
+        .extend_tangent = {.failure = &failure},
+    };
+
+    auto const result = sut(std::move(state), spline);
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), failure);
+    EXPECT_EQ(spline, original_spline);
 }
 
 //

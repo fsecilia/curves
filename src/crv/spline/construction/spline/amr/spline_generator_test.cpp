@@ -305,10 +305,14 @@ struct spline_generator_factory_test_t : Test
         float_t global_tolerance;
     };
 
+    struct tangent_validator_t
+    {};
+
     struct tangent_extender_t
     {
         float_t y_limit;
         int_t extract_float;
+        tangent_validator_t validate;
     };
 
     struct refiner_t
@@ -338,6 +342,7 @@ struct spline_generator_factory_test_t : Test
         using refinement_pool_seeder_t = int_t;
         using subdivision_predicate_t = spline_generator_factory_test_t::subdivision_predicate_t;
         using refiner_t = spline_generator_factory_test_t::refiner_t;
+        using tangent_validator_t = spline_generator_factory_test_t::tangent_validator_t;
         using tangent_extender_t = spline_generator_factory_test_t::tangent_extender_t;
         using assembler_t = spline_generator_factory_test_t::assembler_t;
         using spline_generator_t = spline_generator_factory_test_t::spline_generator_t;

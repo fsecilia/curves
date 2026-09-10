@@ -11,6 +11,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/spline/construction/error.hpp>
 #include <algorithm>
+#include <concepts>
 #include <expected>
 #include <iterator>
 
@@ -62,6 +63,8 @@ struct assembler_t
     using error_t = spline_construction_error_t<x_t>;
     using result_t = std::expected<void, error_t>;
 
+    static_assert(std::same_as<typename tangent_extender_t::error_t, error_t>);
+
     [[no_unique_address]] interval_sorter_t sort_intervals;
     [[no_unique_address]] interval_unzipper_t unzip_intervals;
     [[no_unique_address]] key_padder_t pad_keys;
@@ -85,6 +88,8 @@ struct assembler_t
         // prepare
         sort_intervals(completed_intervals);
         auto const extended_tangent = extend_tangent(completed_intervals[segment_count - 1]);
+        if (!extended_tangent) return std::unexpected{extended_tangent.error()};
+
         using sorted_keys_t = std::array<x_t, total_key_count>;
         sorted_keys_t sorted_keys;
         auto& segments = spline.segments;
@@ -93,7 +98,7 @@ struct assembler_t
 
         // commit
         spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline.extend_final_tangent = extended_tangent;
+        spline.extend_final_tangent = *extended_tangent;
         completed_intervals.clear();
         return {};
     }

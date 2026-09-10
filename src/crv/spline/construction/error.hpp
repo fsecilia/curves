@@ -17,6 +17,7 @@ enum class spline_construction_error_reason_t
     minimum_interval_width,
     gain_anchor_not_representable,
     left_endpoint_derivative_not_representable,
+    tangent_not_representable,
 };
 
 template <is_fixed t_x_t> struct spline_construction_error_t

@@ -152,7 +152,9 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using workspace_t = crv::spline::workspace_t<interval_t, crv::spline::interval_priority_less_t, max_segment_count>;
     using typestates_t = crv::spline::typestates_t<workspace_t>;
     using extended_tangent_t = crv::spline::extended_tangent_t<x_t, y_t, unpacked_field_t>;
-    using tangent_extender_t = crv::spline::tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t>;
+    using tangent_validator_t = extended_tangent_t::validator_t;
+    using tangent_extender_t
+        = crv::spline::tangent_extender_t<interval_t, extended_tangent_t, float_extractor_t, tangent_validator_t>;
 
     // orchestrators
     using assembler_t

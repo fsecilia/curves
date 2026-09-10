@@ -106,7 +106,11 @@ template <typename policy_t> struct spline_generator_factory_t
                 .unzip_intervals = {},
                 .pad_keys = {},
                 .extend_tangent =
-                    typename policy_t::tangent_extender_t{.y_limit = policy_t::y_limit, .extract_float = {}},
+                    typename policy_t::tangent_extender_t{
+                        .y_limit = policy_t::y_limit,
+                        .extract_float = {},
+                        .validate = typename policy_t::tangent_validator_t{},
+                    },
             }};
     }
 };

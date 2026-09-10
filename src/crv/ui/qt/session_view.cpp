@@ -137,6 +137,9 @@ static auto gain_error_message(gain_error_t const& error) -> QString
                         return QString::fromStdString(
                             CRV_TR("Could not build the acceleration curve: a left endpoint derivative is not "
                                    "representable."));
+                    case reason_t::tangent_not_representable:
+                        return QString::fromStdString(
+                            CRV_TR("Could not build the acceleration curve: the final tangent is not representable."));
                 }
                 assert(false && "unexpected spline construction failure");
                 return QString::fromStdString(CRV_TR("Could not build the acceleration curve."));

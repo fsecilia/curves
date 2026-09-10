@@ -10,18 +10,21 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/math/int_traits.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <crv/spline/construction/segment/amr/interval.hpp>
 #include <crv/spline/tangent_extension.hpp>
 #include <cassert>
 #include <climits>
 #include <cmath>
 #include <concepts>
+#include <expected>
 #include <type_traits>
 
 namespace crv::spline {
 
 /// builds final gain-space tangent from right gain slope and right endpoint of final mapped interval
-template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t> struct tangent_extender_t
+template <typename t_interval_t, typename t_extended_tangent_t, typename float_extractor_t, typename validator_t>
+struct tangent_extender_t
 {
     using interval_t = t_interval_t;
     using extended_tangent_t = t_extended_tangent_t;
@@ -30,11 +33,14 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
     using y_t = extended_tangent_t::y_t;
     using unpacked_field_t = extended_tangent_t::unpacked_field_t;
     using scalar_t = float_extractor_t::scalar_t;
+    using error_t = spline_construction_error_t<x_t>;
+    using result_t = std::expected<extended_tangent_t, error_t>;
 
     scalar_t y_limit;
     [[no_unique_address]] float_extractor_t extract_float;
+    [[no_unique_address]] validator_t validate;
 
-    constexpr auto operator()(interval_t const& interval) const noexcept -> extended_tangent_t
+    constexpr auto operator()(interval_t const& interval) const noexcept -> result_t
     {
         auto const gain_slope = interval.right_gain_slope;
         assert(std::isfinite(gain_slope) && "tangent_extender_t: final gain slope must be finite");
@@ -55,6 +61,15 @@ template <typename t_interval_t, typename t_extended_tangent_t, typename float_e
         {
             auto const x_max_delta = extended_tangent_t::clamp_delta(slope, y0, y_limit_fixed);
             if (x_max_delta != x_t{0}) result = {.slope = slope, .y0 = y0, .x_max_delta = x_max_delta};
+        }
+
+        if (!validate(result))
+        {
+            return std::unexpected{error_t{
+                .reason = spline_construction_error_reason_t::tangent_not_representable,
+                .left = interval.subdomain.left_x,
+                .right = interval.subdomain.right_x,
+            }};
         }
 
         return result;
