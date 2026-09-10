@@ -77,14 +77,19 @@ struct spline_interval_factory_test_t : Test
     using function_sample_t = subdomain_t::function_sample_t;
     using cubic_t = cubic_t<scalar_t>;
 
-    int_t safety_calls = 0;
-    int_t endpoint_evaluation_calls = 0;
-
     struct unpacked_segment_t
     {
         int_t id;
         constexpr auto operator==(unpacked_segment_t const&) const noexcept -> bool = default;
     };
+
+    struct mock_segment_t
+    {
+        virtual ~mock_segment_t() = default;
+        MOCK_METHOD(y_t, evaluate, (x_t x, x_t x0), (const, noexcept));
+        MOCK_METHOD(bool, is_safe_through, (x_t u_max, x_t x0), (const, noexcept));
+    };
+    StrictMock<mock_segment_t> mock_segment;
 
     struct segment_t
     {
@@ -96,33 +101,13 @@ struct spline_interval_factory_test_t : Test
         x_t width;
         x_t x0;
         y_t anchor;
-        bool safe;
-        int_t* safety_calls;
-        int_t* endpoint_evaluation_calls;
+        mock_segment_t* mock;
 
         constexpr auto unpacked_segment() const noexcept -> unpacked_segment_t { return unpacked; }
 
-#if 0
-        auto operator()(x_t x, x_t passed_x0) const noexcept -> y_t
-        {
-            ++*endpoint_evaluation_calls;
-            assert(x == x0 + width);
-            assert(passed_x0 == x0);
-            return anchor;
-        }
-#else
-        auto operator()(x_t, x_t) const noexcept -> y_t
-        {
-            ++*endpoint_evaluation_calls;
-            return anchor;
-        }
-#endif
+        auto operator()(x_t x, x_t x0) const noexcept -> y_t { return mock->evaluate(x, x0); }
 
-        auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
-        {
-            ++*safety_calls;
-            return safe && u_max == width && passed_x0 == x0;
-        }
+        auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool { return mock->is_safe_through(u_max, x0); }
 
         constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
     };
@@ -135,9 +120,7 @@ struct spline_interval_factory_test_t : Test
 
         unpacked_segment_t unpacked_segment{};
         y_t anchor{};
-        bool safe = true;
-        int_t* safety_calls = nullptr;
-        int_t* endpoint_evaluation_calls = nullptr;
+        mock_segment_t* mock = nullptr;
         std::optional<error_t> error;
 
         auto operator()(cubic_t const& cubic, scalar_t left_endpoint_derivative, x_t width, x_t x0) const noexcept
@@ -151,9 +134,7 @@ struct spline_interval_factory_test_t : Test
                 .width = width,
                 .x0 = x0,
                 .anchor = anchor,
-                .safe = safe,
-                .safety_calls = safety_calls,
-                .endpoint_evaluation_calls = endpoint_evaluation_calls,
+                .mock = mock,
             };
         }
     };
@@ -296,9 +277,7 @@ struct spline_interval_factory_test_t : Test
         .segment_factory = {
             .unpacked_segment = {91},
             .anchor = y_t{5},
-            .safe = true,
-            .safety_calls = &safety_calls,
-            .endpoint_evaluation_calls = &endpoint_evaluation_calls,
+            .mock = &mock_segment,
             .error = std::nullopt,
         },
         .calc_right_gain_slope = right_gain_slope_calculator_t{&mock_right_gain_slope_calculator},
@@ -337,9 +316,7 @@ struct spline_interval_factory_test_t : Test
         .width = width_fixed,
         .x0 = left_x,
         .anchor = y_t{5},
-        .safe = true,
-        .safety_calls = &safety_calls,
-        .endpoint_evaluation_calls = &endpoint_evaluation_calls,
+        .mock = &mock_segment,
     };
     scalar_t const right_gain_slope = -2.75;
     residual_t const residual{.id = 14, .weighted_error = 17.0};
@@ -365,9 +342,7 @@ struct spline_interval_factory_test_t : Test
             .width = passed_width,
             .x0 = left_x,
             .anchor = sut.segment_factory.anchor,
-            .safe = sut.segment_factory.safe,
-            .safety_calls = &safety_calls,
-            .endpoint_evaluation_calls = &endpoint_evaluation_calls,
+            .mock = &mock_segment,
         };
     }
 };
@@ -383,6 +358,7 @@ TEST_F(spline_interval_factory_test_t, runtime_safe_interior_negative_slope_meas
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, width_fixed, left_x))
         .WillOnce(Return(right_gain_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(width_fixed, left_x)).WillOnce(Return(true));
     EXPECT_CALL(mock_residual_estimator,
         call(sample_target_function, approximant_t{.segment = segment, .x0 = left_x}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
@@ -401,7 +377,6 @@ TEST_F(spline_interval_factory_test_t, runtime_safe_interior_negative_slope_meas
 
 TEST_F(spline_interval_factory_test_t, runtime_unsafe_final_segment_skips_endpoint_acceptance_and_residual)
 {
-    sut.segment_factory.safe = false;
     auto const final_subdomain = make_final_subdomain();
     auto const final_width_fixed = final_subdomain.width();
     auto const final_width = from_fixed<scalar_t>(final_width_fixed);
@@ -415,14 +390,13 @@ TEST_F(spline_interval_factory_test_t, runtime_unsafe_final_segment_skips_endpoi
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(right_gain_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(false));
 
     auto const actual = sut(sample_target_function, final_subdomain);
 
     ASSERT_TRUE(actual);
     EXPECT_FALSE(actual->residual.has_value());
-    EXPECT_FALSE(actual->segment.safe);
     EXPECT_EQ(actual->right_gain_slope, right_gain_slope);
-    EXPECT_EQ(endpoint_evaluation_calls, 0);
 }
 
 TEST_F(spline_interval_factory_test_t, accepted_final_encoded_endpoint_is_measured_for_residual)
@@ -442,6 +416,9 @@ TEST_F(spline_interval_factory_test_t, accepted_final_encoded_endpoint_is_measur
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(accepted_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x))
+        .WillOnce(Return(final_segment.anchor));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(final_segment.anchor, accepted_slope, y_limit))
         .WillOnce(Return(true));
     EXPECT_CALL(mock_residual_estimator,
@@ -453,7 +430,6 @@ TEST_F(spline_interval_factory_test_t, accepted_final_encoded_endpoint_is_measur
 
     ASSERT_TRUE(actual);
     EXPECT_EQ(actual->residual, residual);
-    EXPECT_EQ(endpoint_evaluation_calls, 1);
 }
 
 TEST_F(spline_interval_factory_test_t, packed_endpoint_anchor_controls_final_requiredness)
@@ -473,6 +449,8 @@ TEST_F(spline_interval_factory_test_t, packed_endpoint_anchor_controls_final_req
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{-1}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{-1}, represented_slope, y_limit)).WillOnce(Return(false));
 
     auto const actual = sut(sample_target_function, final_subdomain);
@@ -481,7 +459,6 @@ TEST_F(spline_interval_factory_test_t, packed_endpoint_anchor_controls_final_req
     EXPECT_FALSE(actual->residual.has_value());
     EXPECT_EQ(actual->segment.anchor, y_t{-1});
     EXPECT_EQ(final_subdomain.right.y.f, scalar_t{9});
-    EXPECT_EQ(endpoint_evaluation_calls, 1);
 }
 
 TEST_F(spline_interval_factory_test_t, represented_right_gain_slope_controls_final_requiredness)
@@ -500,6 +477,8 @@ TEST_F(spline_interval_factory_test_t, represented_right_gain_slope_controls_fin
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{5}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{5}, represented_slope, y_limit)).WillOnce(Return(false));
 
     auto const actual = sut(sample_target_function, final_subdomain);
@@ -529,12 +508,13 @@ TEST_F(spline_interval_factory_test_t, endpoint_required_final_interval_outranks
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
+    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{-1}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{-1}, represented_slope, y_limit)).WillOnce(Return(false));
 
     auto const mandatory_final = sut(sample_target_function, final_subdomain);
     ASSERT_TRUE(mandatory_final);
     ASSERT_FALSE(mandatory_final->residual.has_value());
-    ASSERT_TRUE(mandatory_final->segment.safe);
 
     auto const optional_interior = interval_t{
         .segment = segment,
@@ -571,7 +551,6 @@ TEST_F(spline_interval_factory_test_t, segment_construction_error_skips_runtime_
 
     ASSERT_FALSE(actual);
     EXPECT_EQ(actual.error(), failure);
-    EXPECT_EQ(safety_calls, 0);
 }
 
 } // namespace interval_factory_tests
