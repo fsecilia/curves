@@ -34,6 +34,7 @@ template <typename t_spline_t> struct spline_validator_t
 {
     using spline_t = t_spline_t;
     using x_t = spline_t::x_t;
+    using tangent_validator_t = typename spline_t::extended_tangent_t::validator_t;
 
     CRV_ALWAYS_INLINE
     constexpr auto operator()(spline_t const& spline) const noexcept -> spline_validation_result_t
@@ -56,7 +57,10 @@ template <typename t_spline_t> struct spline_validator_t
             }
         }
 
-        if (!spline.extend_final_tangent.is_safe()) return {.error = spline_validation_error_t::tangent};
+        if (!tangent_validator_t{}(spline.extend_final_tangent))
+        {
+            return {.error = spline_validation_error_t::tangent};
+        }
 
         auto const final_segment_index = segment_count - 1;
         auto const final_origin = locator.segment_origin(final_segment_index);

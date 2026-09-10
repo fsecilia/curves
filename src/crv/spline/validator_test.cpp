@@ -107,6 +107,34 @@ constexpr auto unsafe_tangent_spline = [] {
 }();
 static_assert(validator(unsafe_tangent_spline).error == spline_validation_error_t::tangent);
 
+struct component_validated_tangent_t
+{
+    fixture_t::y_t y0{};
+    bool accepted = true;
+
+    struct validator_t
+    {
+        constexpr auto operator()(component_validated_tangent_t const& tangent) const noexcept -> bool
+        {
+            return tangent.accepted;
+        }
+    };
+};
+
+using component_validated_spline_t
+    = spline::spline_t<fixture_t::segment_t, component_validated_tangent_t, fixture_t::locator_t>;
+
+constexpr auto component_rejected_tangent_spline = [] {
+    auto const source = fixture_t::make_valid_spline();
+    return component_validated_spline_t{
+        .segment_locator = source.segment_locator,
+        .segments = source.segments,
+        .extend_final_tangent = {.y0 = source.extend_final_tangent.y0, .accepted = false},
+    };
+}();
+static_assert(spline_validator_t<component_validated_spline_t>{}(component_rejected_tangent_spline).error
+    == spline_validation_error_t::tangent);
+
 constexpr auto mismatched_tangent_spline = [] {
     auto spline = fixture_t::make_valid_spline();
     spline.extend_final_tangent.y0 = fixture_t::y_t{2};
