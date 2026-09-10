@@ -159,7 +159,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     // orchestrators
     using assembler_t
         = crv::spline::assembler_t<typename typestates_t::unassembled_t, interval_t, crv::spline::interval_sorter_t,
-            crv::spline::interval_unzipper_t, crv::spline::key_padder_t, tangent_extender_t, domain_end>;
+            crv::spline::segment_projector_t, crv::spline::locator_key_preparer_t, tangent_extender_t, domain_end>;
     using refiner_t = crv::spline::refiner_t<typename typestates_t::unrefined_t, subdivider_t, subdivision_predicate_t,
         max_segment_count>;
     using subdomain_factory_t = crv::spline::seed::subdomain_factory_t<x_t, subdomain_t>;

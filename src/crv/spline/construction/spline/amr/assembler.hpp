@@ -28,36 +28,33 @@ struct interval_sorter_t
     }
 };
 
-/// unzips intervals into segments and keys
-struct interval_unzipper_t
+/// projects interval segments into destination storage
+struct segment_projector_t
 {
-    template <typename segments_t, typename keys_t>
-    constexpr auto operator()(
-        auto const& intervals, int_t segment_count, segments_t& segments, keys_t& keys) const noexcept -> void
+    constexpr auto operator()(auto const& intervals, auto& segments) const noexcept -> void
     {
-        segments[0] = intervals[0].segment;
-        for (auto segment_index = 1; segment_index < segment_count; ++segment_index)
-        {
-            auto const& interval = intervals[segment_index];
-            segments[segment_index] = interval.segment;
-            keys[segment_index - 1] = interval.subdomain.left_x;
-        }
+        auto segment = std::begin(segments);
+        for (auto const& interval : intervals) *segment++ = interval.segment;
     }
 };
 
-/// pads end of sorted key array with max value
-struct key_padder_t
+/// prepares padded locator keys from intervals
+struct locator_key_preparer_t
 {
-    constexpr auto operator()(auto& keys, int_t start, auto const& value) const noexcept -> void
+    constexpr auto operator()(auto const& intervals, auto& keys, auto const& x_max) const noexcept -> void
     {
-        auto const size = int_cast<int_t>(std::size(keys));
-        for (auto padding_index = start; padding_index < size; ++padding_index) keys[padding_index] = value;
+        auto key = std::begin(keys);
+        auto interval = std::begin(intervals);
+        if (interval != std::end(intervals)) ++interval;
+
+        for (; interval != std::end(intervals); ++interval, ++key) *key = interval->subdomain.left_x;
+        for (; key != std::end(keys); ++key) *key = x_max;
     }
 };
 
 /// assembles completed intervals into final spline
-template <typename typestate_t, typename interval_t, typename interval_sorter_t, typename interval_unzipper_t,
-    typename key_padder_t, typename tangent_extender_t, int_t domain_end>
+template <typename typestate_t, typename interval_t, typename interval_sorter_t, typename segment_projector_t,
+    typename locator_key_preparer_t, typename tangent_extender_t, int_t domain_end>
 struct assembler_t
 {
     using x_t = interval_t::segment_t::x_t;
@@ -69,8 +66,8 @@ struct assembler_t
     static_assert(std::same_as<typename tangent_extender_t::error_t, error_t>);
 
     [[no_unique_address]] interval_sorter_t sort_intervals;
-    [[no_unique_address]] interval_unzipper_t unzip_intervals;
-    [[no_unique_address]] key_padder_t pad_keys;
+    [[no_unique_address]] segment_projector_t project_segments;
+    [[no_unique_address]] locator_key_preparer_t prepare_locator_keys;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
     template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> result_t
@@ -110,8 +107,8 @@ private:
         auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
         auto sorted_keys = sorted_keys_t{};
 
-        unzip_intervals(completed_intervals, segment_count, spline.segments, sorted_keys);
-        pad_keys(sorted_keys, segment_count - 1, x_max);
+        project_segments(completed_intervals, spline.segments);
+        prepare_locator_keys(completed_intervals, sorted_keys, x_max);
 
         spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
         spline.extend_final_tangent = extended_tangent;

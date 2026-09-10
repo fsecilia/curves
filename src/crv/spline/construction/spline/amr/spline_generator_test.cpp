@@ -324,8 +324,8 @@ struct spline_generator_factory_test_t : Test
     struct assembler_t
     {
         int_t sort_intervals;
-        int_t unzip_intervals;
-        int_t pad_keys;
+        int_t project_segments;
+        int_t prepare_locator_keys;
         tangent_extender_t extend_tangent;
     };
 

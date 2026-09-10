@@ -66,66 +66,70 @@ constexpr auto test_interval_sorter() noexcept -> bool
 }
 static_assert(test_interval_sorter());
 
-constexpr auto test_key_padder() noexcept -> bool
-{
-    auto actual = std::array<x_t, 5>{x_t{1}, x_t{2}, x_t{0}, x_t{0}, x_t{0}};
-
-    auto const pad_start = 2;
-    auto const pad_value = x_t{99};
-
-    key_padder_t{}(actual, pad_start, pad_value);
-
-    auto const expected = std::array<x_t, 5>{x_t{1}, x_t{2}, pad_value, pad_value, pad_value};
-
-    return expected == actual;
-}
-static_assert(test_key_padder());
-
-constexpr auto test_key_padder_pad_all() noexcept -> bool
-{
-    auto actual = std::array<x_t, 3>{x_t{0}, x_t{0}, x_t{0}};
-
-    key_padder_t{}(actual, 0, x_t{99});
-
-    auto const expected = std::array<x_t, 3>{x_t{99}, x_t{99}, x_t{99}};
-
-    return expected == actual;
-}
-static_assert(test_key_padder_pad_all());
-
-TEST(spline_assembler_test, interval_unzipper_single_interval)
+constexpr auto test_segment_projector_single_interval() noexcept -> bool
 {
     auto const intervals
         = std::array<interval_t, 1>{{{.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}}}};
+    auto actual = std::array<segment_t, 1>{};
 
-    auto const active_count = 1;
-    auto actual_segments = std::array<segment_t, 1>{};
-    auto actual_keys = std::array<x_t, 0>{};
+    segment_projector_t{}(intervals, actual);
 
-    interval_unzipper_t{}(intervals, active_count, actual_segments, actual_keys);
-
-    EXPECT_EQ(actual_segments[0], intervals[0].segment);
+    return actual[0] == intervals[0].segment;
 }
+static_assert(test_segment_projector_single_interval());
 
-TEST(spline_assembler_test, interval_unzipper)
+constexpr auto test_segment_projector_multiple_intervals() noexcept -> bool
 {
-    auto const intervals = std::array<interval_t, 2>{{
+    auto const intervals = std::array<interval_t, 3>{{
         {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}},
         {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{30}}, .segment = {.payload_id = 99}},
+    }};
+    auto actual = std::array<segment_t, 4>{{
+        {.payload_id = 1},
+        {.payload_id = 2},
+        {.payload_id = 3},
+        {.payload_id = 101},
     }};
 
-    auto const active_count = 2;
-    auto actual_segments = std::array<segment_t, 2>{};
-    auto actual_keys = std::array<x_t, 1>{};
+    segment_projector_t{}(intervals, actual);
 
-    interval_unzipper_t{}(intervals, active_count, actual_segments, actual_keys);
-
-    auto const expected_segments = std::array{intervals[0].segment, intervals[1].segment};
-    auto const expected_keys = std::array{intervals[1].subdomain.left_x};
-
-    EXPECT_EQ(expected_segments, actual_segments);
-    EXPECT_EQ(expected_keys, actual_keys);
+    auto const expected
+        = std::array{intervals[0].segment, intervals[1].segment, intervals[2].segment, segment_t{.payload_id = 101}};
+    return actual == expected;
 }
+static_assert(test_segment_projector_multiple_intervals());
+
+constexpr auto test_locator_key_preparer() noexcept -> bool
+{
+    auto const intervals = std::array<interval_t, 3>{{
+        {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}},
+        {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+        {.subdomain = {.left_x = x_t{30}}, .segment = {.payload_id = 99}},
+    }};
+    auto actual = std::array<x_t, 5>{};
+    auto const x_max = x_t{100};
+
+    locator_key_preparer_t{}(intervals, actual, x_max);
+
+    auto const expected = std::array{x_t{20}, x_t{30}, x_max, x_max, x_max};
+    return actual == expected;
+}
+static_assert(test_locator_key_preparer());
+
+constexpr auto test_locator_key_preparer_single_interval() noexcept -> bool
+{
+    auto const intervals
+        = std::array<interval_t, 1>{{{.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}}}};
+    auto actual = std::array<x_t, 3>{};
+    auto const x_max = x_t{100};
+
+    locator_key_preparer_t{}(intervals, actual, x_max);
+
+    auto const expected = std::array{x_t{100}, x_t{100}, x_t{100}};
+    return actual == expected;
+}
+static_assert(test_locator_key_preparer_single_interval());
 
 } // namespace dependency_tests
 
@@ -192,8 +196,8 @@ struct assembler_preparation_order_test_t : Test
     {
         sort,
         extend_tangent,
-        unzip,
-        pad,
+        project_segments,
+        prepare_locator_keys,
     };
 
     using events_t = std::vector<event_t>;
@@ -224,25 +228,25 @@ struct assembler_preparation_order_test_t : Test
         }
     };
 
-    struct interval_unzipper_t
+    struct segment_projector_t
     {
-        std::vector<event_t>* events;
+        events_t* events;
 
-        auto operator()(auto const& intervals, int_t segment_count, auto& segments, auto& keys) const noexcept -> void
+        auto operator()(auto const& intervals, auto& segments) const noexcept -> void
         {
-            events->push_back(event_t::unzip);
-            crv::spline::interval_unzipper_t{}(intervals, segment_count, segments, keys);
+            events->push_back(event_t::project_segments);
+            crv::spline::segment_projector_t{}(intervals, segments);
         }
     };
 
-    struct key_padder_t
+    struct locator_key_preparer_t
     {
-        std::vector<event_t>* events;
+        events_t* events;
 
-        auto operator()(auto& keys, int_t start, auto const& value) const noexcept -> void
+        auto operator()(auto const& intervals, auto& keys, auto const& x_max) const noexcept -> void
         {
-            events->push_back(event_t::pad);
-            crv::spline::key_padder_t{}(keys, start, value);
+            events->push_back(event_t::prepare_locator_keys);
+            crv::spline::locator_key_preparer_t{}(intervals, keys, x_max);
         }
     };
 };
@@ -257,18 +261,19 @@ TEST_F(assembler_preparation_order_test_t, prepares_tangent_before_destination_w
     };
     auto spline = spline_t{};
 
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
         tangent_extender_t, 100>;
     auto const sut = sut_t{
         .sort_intervals = {&events},
-        .unzip_intervals = {&events},
-        .pad_keys = {&events},
+        .project_segments = {&events},
+        .prepare_locator_keys = {&events},
         .extend_tangent = {&events},
     };
 
     ASSERT_TRUE(sut(std::move(state), spline));
 
-    EXPECT_EQ(events, (events_t{event_t::sort, event_t::extend_tangent, event_t::unzip, event_t::pad}));
+    EXPECT_EQ(events,
+        (events_t{event_t::sort, event_t::extend_tangent, event_t::project_segments, event_t::prepare_locator_keys}));
 }
 
 TEST(spline_assembler_test, vs_real_dependencies)
@@ -286,7 +291,7 @@ TEST(spline_assembler_test, vs_real_dependencies)
 
     constexpr auto domain_end_value = 100;
 
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
         tangent_extender_t, domain_end_value>;
     auto const sut = sut_t{};
     ASSERT_TRUE(sut(std::move(state), spline));
@@ -314,7 +319,7 @@ TEST(spline_assembler_test, vs_real_dependencies)
 struct assembler_tangent_failure_test_t : Test
 {
     using error_t = tangent_extender_t::error_t;
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
         tangent_extender_t, 100>;
 
     workspace_t workspace{
@@ -341,8 +346,8 @@ TEST_F(assembler_tangent_failure_test_t, preserves_destination_and_exact_error)
 {
     auto const sut = sut_t{
         .sort_intervals = {},
-        .unzip_intervals = {},
-        .pad_keys = {},
+        .project_segments = {},
+        .prepare_locator_keys = {},
         .extend_tangent = {.failure = &failure},
     };
 
@@ -382,7 +387,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
         });
     }
 
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
         tangent_extender_t, domain_end_value>;
     auto sut = sut_t{};
     ASSERT_TRUE(sut(std::move(state), spline));
@@ -430,7 +435,7 @@ struct spline_assembler_death_test_t : Test
     typestate_t state{workspace};
     spline_t spline{};
 
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
         tangent_extender_t, 100>;
     sut_t sut{};
 };

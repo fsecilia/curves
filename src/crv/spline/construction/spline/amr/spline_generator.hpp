@@ -103,8 +103,8 @@ template <typename policy_t> struct spline_generator_factory_t
             },
             typename policy_t::assembler_t{
                 .sort_intervals = {},
-                .unzip_intervals = {},
-                .pad_keys = {},
+                .project_segments = {},
+                .prepare_locator_keys = {},
                 .extend_tangent =
                     typename policy_t::tangent_extender_t{
                         .y_limit = policy_t::y_limit,
