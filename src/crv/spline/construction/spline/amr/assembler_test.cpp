@@ -251,7 +251,7 @@ struct assembler_preparation_order_test_t : Test
     };
 };
 
-TEST_F(assembler_preparation_order_test_t, prepares_tangent_before_destination_writes)
+TEST_F(assembler_preparation_order_test_t, prepares_before_destination_writes)
 {
     auto workspace = workspace_t{};
     auto state = typestate_t{workspace};
@@ -273,7 +273,7 @@ TEST_F(assembler_preparation_order_test_t, prepares_tangent_before_destination_w
     ASSERT_TRUE(sut(std::move(state), spline));
 
     EXPECT_EQ(events,
-        (events_t{event_t::sort, event_t::extend_tangent, event_t::project_segments, event_t::prepare_locator_keys}));
+        (events_t{event_t::sort, event_t::prepare_locator_keys, event_t::extend_tangent, event_t::project_segments}));
 }
 
 TEST(spline_assembler_test, vs_real_dependencies)

@@ -72,17 +72,21 @@ struct assembler_t
 
     template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> result_t
     {
-        auto& completed_intervals = state.workspace.completed_intervals;
+        using segment_locator_t = spline_t::segment_locator_t;
 
-        auto const extended_tangent = prepare<spline_t>(completed_intervals);
+        auto& completed_intervals = state.workspace.completed_intervals;
+        auto sorted_keys = std::array<x_t, segment_locator_t::total_key_count>{};
+
+        auto const extended_tangent = prepare<spline_t>(completed_intervals, sorted_keys);
         if (!extended_tangent) return std::unexpected{extended_tangent.error()};
 
-        commit(completed_intervals, *extended_tangent, spline);
+        commit(completed_intervals, sorted_keys, *extended_tangent, spline);
         return {};
     }
 
 private:
-    template <typename spline_t> constexpr auto prepare(auto& completed_intervals) const -> tangent_result_t
+    template <typename spline_t>
+    constexpr auto prepare(auto& completed_intervals, auto& sorted_keys) const -> tangent_result_t
     {
         using segment_locator_t = spline_t::segment_locator_t;
 
@@ -94,21 +98,19 @@ private:
         assert(segment_count <= segment_locator_t::max_segment_count);
 
         sort_intervals(completed_intervals);
+        prepare_locator_keys(completed_intervals, sorted_keys, x_max);
         return extend_tangent(completed_intervals[segment_count - 1]);
     }
 
     template <typename spline_t>
-    constexpr auto commit(auto& completed_intervals, extended_tangent_t const& extended_tangent, spline_t& spline) const
-        -> void
+    constexpr auto commit(auto& completed_intervals, auto const& sorted_keys,
+        extended_tangent_t const& extended_tangent, spline_t& spline) const -> void
     {
         using segment_locator_t = spline_t::segment_locator_t;
-        using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
 
         auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
-        auto sorted_keys = sorted_keys_t{};
 
         project_segments(completed_intervals, spline.segments);
-        prepare_locator_keys(completed_intervals, sorted_keys, x_max);
 
         spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
         spline.extend_final_tangent = extended_tangent;
