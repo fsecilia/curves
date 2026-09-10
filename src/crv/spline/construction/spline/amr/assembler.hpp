@@ -11,6 +11,7 @@
 #include <crv/math/fixed/float_conversions.hpp>
 #include <crv/spline/construction/error.hpp>
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <expected>
 #include <iterator>
@@ -62,6 +63,8 @@ struct assembler_t
     using x_t = interval_t::segment_t::x_t;
     using error_t = spline_construction_error_t<x_t>;
     using result_t = std::expected<void, error_t>;
+    using tangent_result_t = tangent_extender_t::result_t;
+    using extended_tangent_t = tangent_result_t::value_type;
 
     static_assert(std::same_as<typename tangent_extender_t::error_t, error_t>);
 
@@ -72,38 +75,49 @@ struct assembler_t
 
     template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> result_t
     {
+        auto& completed_intervals = state.workspace.completed_intervals;
+
+        auto const extended_tangent = prepare<spline_t>(completed_intervals);
+        if (!extended_tangent) return std::unexpected{extended_tangent.error()};
+
+        commit(completed_intervals, *extended_tangent, spline);
+        return {};
+    }
+
+private:
+    template <typename spline_t> constexpr auto prepare(auto& completed_intervals) const -> tangent_result_t
+    {
         using segment_locator_t = spline_t::segment_locator_t;
 
-        constexpr auto total_key_count = segment_locator_t::total_key_count;
-        static_assert(total_key_count + 1 == spline_t::max_segment_count);
+        static_assert(segment_locator_t::total_key_count + 1 == spline_t::max_segment_count);
 
-        // get completed intervals out of workspace
-        auto& workspace = state.workspace;
-        auto& completed_intervals = workspace.completed_intervals;
         assert(!completed_intervals.empty());
 
         auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
         assert(segment_count <= segment_locator_t::max_segment_count);
 
-        // prepare
         sort_intervals(completed_intervals);
-        auto const extended_tangent = extend_tangent(completed_intervals[segment_count - 1]);
-        if (!extended_tangent) return std::unexpected{extended_tangent.error()};
-
-        using sorted_keys_t = std::array<x_t, total_key_count>;
-        sorted_keys_t sorted_keys;
-        auto& segments = spline.segments;
-        unzip_intervals(completed_intervals, segment_count, segments, sorted_keys);
-        pad_keys(sorted_keys, segment_count - 1, x_max);
-
-        // commit
-        spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
-        spline.extend_final_tangent = *extended_tangent;
-        completed_intervals.clear();
-        return {};
+        return extend_tangent(completed_intervals[segment_count - 1]);
     }
 
-private:
+    template <typename spline_t>
+    constexpr auto commit(auto& completed_intervals, extended_tangent_t const& extended_tangent, spline_t& spline) const
+        -> void
+    {
+        using segment_locator_t = spline_t::segment_locator_t;
+        using sorted_keys_t = std::array<x_t, segment_locator_t::total_key_count>;
+
+        auto const segment_count = int_cast<int_t>(std::size(completed_intervals));
+        auto sorted_keys = sorted_keys_t{};
+
+        unzip_intervals(completed_intervals, segment_count, spline.segments, sorted_keys);
+        pad_keys(sorted_keys, segment_count - 1, x_max);
+
+        spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
+        spline.extend_final_tangent = extended_tangent;
+        completed_intervals.clear();
+    }
+
     static constexpr auto x_max = x_t{domain_end};
 };
 
