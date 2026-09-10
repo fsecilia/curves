@@ -154,32 +154,50 @@ public:
         return segment_index + 1 == segment_count_ ? x_max_ : key_at(segment_index + 1);
     }
 
-    /// validates tree structure and capacity
+    /// validates locator contents and capacity
     struct validator_t
     {
+        // validates existing instance
         constexpr auto operator()(segment_locator_t const& locator) const noexcept -> bool
         {
-            if (locator.segment_count_ <= 0 || max_segment_count < locator.segment_count_) return false;
-            if (locator.x_max_ <= x_t{0}) return false;
+            return validate(
+                [&locator](int_t in_order_index) constexpr noexcept { return locator.key_at(in_order_index); },
+                locator.x_max_, locator.segment_count_);
+        }
+
+        /// validates prepared, in-order constructor source
+        constexpr auto operator()(
+            std::span<x_t const, total_key_count> sorted_keys, x_t x_max, int_t segment_count) const noexcept -> bool
+        {
+            return validate(
+                [sorted_keys](int_t in_order_index) constexpr noexcept { return sorted_keys[in_order_index - 1]; },
+                x_max, segment_count);
+        }
+
+    private:
+        static constexpr auto validate(auto const& key_at, x_t x_max, int_t segment_count) noexcept -> bool
+        {
+            if (segment_count <= 0 || max_segment_count < segment_count) return false;
+            if (x_max <= x_t{0}) return false;
 
             auto previous_key = min<x_t>();
 
             // validate real breakpoints are sorted
-            for (auto i = 1; i < locator.segment_count_; ++i)
+            for (auto i = 1; i < segment_count; ++i)
             {
-                auto const key = locator.key_at(i);
+                auto const key = key_at(i);
                 if (key <= x_t{0}) return false;
                 if (key <= previous_key) return false;
-                if (key >= locator.x_max_) return false;
+                if (key >= x_max) return false;
                 previous_key = key;
             }
 
             // keep padding at or past domain end
-            for (auto i = locator.segment_count_; i <= total_key_count; ++i)
+            for (auto i = segment_count; i <= total_key_count; ++i)
             {
-                auto const key = locator.key_at(i);
+                auto const key = key_at(i);
                 if (key < previous_key) return false;
-                if (key < locator.x_max_) return false;
+                if (key < x_max) return false;
                 previous_key = key;
             }
 
@@ -187,7 +205,7 @@ public:
         }
     };
 
-    /// validates tree structure and capacity
+    /// validates locator contents and capacity
     constexpr auto is_valid() const noexcept -> bool { return validator_t{}(*this); }
 
     /// prefetches the leaf selected by a previous lookup

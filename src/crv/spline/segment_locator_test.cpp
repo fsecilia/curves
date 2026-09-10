@@ -51,6 +51,8 @@ constexpr auto empty_keys = std::array<x_t, 0>{};
 constexpr auto validate = sut_t::validator_t{};
 static_assert(validate(sut_t{empty_keys, 5, 1}));
 static_assert(!validate(sut_t{empty_keys, 5, 0}));
+static_assert(validate(empty_keys, 5, 1));
+static_assert(!validate(empty_keys, 5, 0));
 
 // bypass tree descent
 constexpr auto sut = sut_t{empty_keys, 5, 1};
@@ -205,43 +207,54 @@ using segments_t = std::array<x_t, 3>;
 
 constexpr auto validate = sut_t::validator_t{};
 
+/// validates via both construction parameters and a constructed instance
+constexpr auto validate_both(segments_t keys, x_t x_max, int_t segment_count, bool expected) noexcept -> bool
+{
+    return validate(keys, x_max, segment_count) == expected && validate(sut_t{keys, x_max, segment_count}) == expected;
+}
+
 // valid baseline
-static_assert(validate(sut_t{segments_t{10, 20, 30}, 40, 4}));
+static_assert(validate_both(segments_t{10, 20, 30}, 40, 4, true));
 
 // segment count bounds
-static_assert(!validate(sut_t{segments_t{10, 20, 30}, 40, 0}));
-static_assert(!validate(sut_t{segments_t{10, 20, 30}, 40, 5}));
+static_assert(validate_both(segments_t{10, 20, 30}, 40, 0, false));
+static_assert(validate_both(segments_t{10, 20, 30}, 40, 5, false));
 
 // positive domain end required
-static_assert(!validate(sut_t{segments_t{10, 20, 30}, 0, 4}));
+static_assert(validate_both(segments_t{10, 20, 30}, 0, 4, false));
+static_assert(validate_both(segments_t{10, 20, 30}, -1, 4, false));
 
 // first breakpoint must leave a positive first segment
-static_assert(!validate(sut_t{segments_t{0, 20, 30}, 40, 4}));
-static_assert(validate(sut_t{segments_t{1, 20, 30}, 40, 4}));
+static_assert(validate_both(segments_t{0, 20, 30}, 40, 4, false));
+static_assert(validate_both(segments_t{1, 20, 30}, 40, 4, true));
 
 // negative key
-static_assert(!validate(sut_t{segments_t{-10, 20, 30}, 40, 4}));
+static_assert(validate_both(segments_t{-10, 20, 30}, 40, 4, false));
 
 // duplicate first pair
-static_assert(!validate(sut_t{segments_t{10, 10, 20}, 40, 4}));
+static_assert(validate_both(segments_t{10, 10, 20}, 40, 4, false));
 
 // duplicate last pair
-static_assert(!validate(sut_t{segments_t{10, 20, 20}, 40, 4}));
+static_assert(validate_both(segments_t{10, 20, 20}, 40, 4, false));
 
 // out of order
-static_assert(!validate(sut_t{segments_t{10, 30, 20}, 40, 4}));
+static_assert(validate_both(segments_t{10, 30, 20}, 40, 4, false));
 
 // min bound key
-static_assert(!validate(sut_t{segments_t{min<x_t>(), 20, 30}, 40, 4}));
+static_assert(validate_both(segments_t{min<x_t>(), 20, 30}, 40, 4, false));
+
+// active breakpoint must remain below domain end
+static_assert(validate_both(segments_t{10, 20, 30}, 30, 4, false));
 
 // padding validation with fewer than max segments, all padding >= x_max
-static_assert(validate(sut_t{segments_t{10, 50, 60}, 20, 2}));
+static_assert(validate_both(segments_t{10, 50, 60}, 20, 2, true));
+static_assert(validate_both(segments_t{10, 20, 60}, 20, 2, true));
 
 // padding validation with fewer than max segments
-static_assert(!validate(sut_t{segments_t{10, 15, 60}, 20, 2}));
+static_assert(validate_both(segments_t{10, 15, 60}, 20, 2, false));
 
 // padding validation not monotonic
-static_assert(!validate(sut_t{segments_t{10, 60, 50}, 20, 2}));
+static_assert(validate_both(segments_t{10, 60, 50}, 20, 2, false));
 
 // compatibility convenience delegates to the component validator
 constexpr auto compatibility_sut = sut_t{segments_t{10, 20, 30}, 40, 4};
