@@ -41,7 +41,8 @@ struct spline_validator_test_t
     using locator_t = spline::segment_locator_t<x_t, 1>;
     using tangent_t = spline::extended_tangent_t<x_t, y_t, unpacked_field_t>;
     using spline_t = spline::spline_t<segment_t, tangent_t, locator_t>;
-    using validator_t = spline::spline_validator_t<spline_t>;
+    using locator_validator_t = locator_t::validator_t;
+    using validator_t = spline::spline_validator_t<spline_t, locator_validator_t>;
 
     static constexpr auto pack_field = spline::field_packer_t<packed_field_t>{};
     static constexpr auto pack_segment
@@ -78,7 +79,7 @@ struct spline_validator_test_t
 using fixture_t = spline_validator_test_t;
 using spline_validation_error_t = spline::spline_validation_error_t;
 
-constexpr auto validator = fixture_t::validator_t{};
+constexpr auto validator = fixture_t::validator_t{.validate_segment_locator = {}};
 constexpr auto valid_spline = fixture_t::make_valid_spline();
 
 static_assert(validator(valid_spline) == spline_validation_result_t{});
@@ -91,6 +92,18 @@ constexpr auto invalid_locator_spline = [] {
     return spline;
 }();
 static_assert(validator(invalid_locator_spline).error == spline_validation_error_t::locator);
+
+struct injected_locator_validator_t
+{
+    bool accepted;
+
+    constexpr auto operator()(fixture_t::locator_t const&) const noexcept -> bool { return accepted; }
+};
+
+constexpr auto rejecting_locator_validator = spline_validator_t<fixture_t::spline_t, injected_locator_validator_t>{
+    .validate_segment_locator = {.accepted = false},
+};
+static_assert(rejecting_locator_validator(valid_spline).error == spline_validation_error_t::locator);
 
 constexpr auto unsafe_segment_spline = [] {
     auto spline = fixture_t::make_valid_spline();
@@ -132,7 +145,9 @@ constexpr auto component_rejected_tangent_spline = [] {
         .extend_final_tangent = {.y0 = source.extend_final_tangent.y0, .accepted = false},
     };
 }();
-static_assert(spline_validator_t<component_validated_spline_t>{}(component_rejected_tangent_spline).error
+static_assert(spline_validator_t<component_validated_spline_t, fixture_t::locator_validator_t>{
+                  .validate_segment_locator = {}}(component_rejected_tangent_spline)
+                  .error
     == spline_validation_error_t::tangent);
 
 constexpr auto mismatched_tangent_spline = [] {

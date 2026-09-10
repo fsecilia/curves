@@ -30,11 +30,15 @@ struct spline_validation_result_t
 };
 
 /// validates the complete encoded spline representation used by runtime evaluation
-template <typename t_spline_t> struct spline_validator_t
+template <typename t_spline_t, typename t_segment_locator_validator_t> struct spline_validator_t
 {
     using spline_t = t_spline_t;
+    using segment_locator_validator_t = t_segment_locator_validator_t;
+
     using x_t = spline_t::x_t;
     using tangent_validator_t = typename spline_t::extended_tangent_t::validator_t;
+
+    [[no_unique_address]] segment_locator_validator_t validate_segment_locator;
 
     CRV_ALWAYS_INLINE
     constexpr auto operator()(spline_t const& spline) const noexcept -> spline_validation_result_t
@@ -43,7 +47,7 @@ template <typename t_spline_t> struct spline_validator_t
         static_assert(std::is_standard_layout_v<spline_t>);
 
         auto const& locator = spline.segment_locator;
-        if (!locator.is_valid()) return {.error = spline_validation_error_t::locator};
+        if (!validate_segment_locator(locator)) return {.error = spline_validation_error_t::locator};
 
         auto const segment_count = locator.segment_count();
         for (auto segment_index = int_t{0}; segment_index < segment_count; ++segment_index)

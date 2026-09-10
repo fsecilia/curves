@@ -155,39 +155,42 @@ public:
     }
 
     /// validates tree structure and capacity
-    constexpr auto is_valid() const noexcept -> bool
+    struct validator_t
     {
-        // validate segment count
-        if (segment_count_ <= 0 || max_segment_count < segment_count_) return false;
-
-        // validate domain end
-        if (x_max_ <= x_t{0}) return false;
-
-        auto previous_key = min<x_t>();
-
-        // validate sorted real breakpoints
-        for (auto i = 1; i < segment_count_; ++i)
+        constexpr auto operator()(segment_locator_t const& locator) const noexcept -> bool
         {
-            auto const key = key_at(i);
-            if (key <= x_t{0}) return false;
-            if (key <= previous_key) return false;
-            if (key >= x_max_) return false;
-            previous_key = key;
+            if (locator.segment_count_ <= 0 || max_segment_count < locator.segment_count_) return false;
+            if (locator.x_max_ <= x_t{0}) return false;
+
+            auto previous_key = min<x_t>();
+
+            // validate real breakpoints are sorted
+            for (auto i = 1; i < locator.segment_count_; ++i)
+            {
+                auto const key = locator.key_at(i);
+                if (key <= x_t{0}) return false;
+                if (key <= previous_key) return false;
+                if (key >= locator.x_max_) return false;
+                previous_key = key;
+            }
+
+            // keep padding at or past domain end
+            for (auto i = locator.segment_count_; i <= total_key_count; ++i)
+            {
+                auto const key = locator.key_at(i);
+                if (key < previous_key) return false;
+                if (key < locator.x_max_) return false;
+                previous_key = key;
+            }
+
+            return true;
         }
+    };
 
-        // keep padding at or past domain end
-        for (auto i = segment_count_; i <= total_key_count; ++i)
-        {
-            auto const key = key_at(i);
-            if (key < previous_key) return false;
-            if (key < x_max_) return false;
-            previous_key = key;
-        }
+    /// validates tree structure and capacity
+    constexpr auto is_valid() const noexcept -> bool { return validator_t{}(*this); }
 
-        return true;
-    }
-
-    /// prefetches the leaf selected by the previous lookup
+    /// prefetches the leaf selected by a previous lookup
     constexpr auto prefetch(hint_t const& hint, auto const& prefetcher) const noexcept -> void
     {
         if constexpr (depth_max != 0)

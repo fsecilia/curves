@@ -90,7 +90,10 @@ template <typename t_config_t, typename t_gain_t, typename t_speed_filter_t> str
             return {.error = runtime_config_validation_error_t::output_transform_determinant};
         }
 
-        auto const spline_result = spline::spline_validator_t<gain_t>{}(gain);
+        auto const validate_spline
+            = spline::spline_validator_t<gain_t, typename gain_t::segment_locator_t::validator_t>{
+                .validate_segment_locator = {}};
+        auto const spline_result = validate_spline(gain);
         switch (spline_result.error)
         {
             case spline::spline_validation_error_t::none: break;

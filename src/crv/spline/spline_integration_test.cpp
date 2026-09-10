@@ -86,7 +86,9 @@ template <typename target_t> auto build_spline(target_t const& target) -> spline
     if (result)
     {
         expect_all_segments_safe(spline);
-        EXPECT_TRUE(spline_validator_t<spline_t>{}(spline));
+        auto const validate_spline = spline_validator_t<spline_t, typename spline_t::segment_locator_t::validator_t>{
+            .validate_segment_locator = {}};
+        EXPECT_TRUE(validate_spline(spline));
     }
     return spline;
 }
