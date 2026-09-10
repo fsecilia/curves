@@ -9,7 +9,9 @@
 #include <crv/lib.hpp>
 #include <crv/math/fixed/fixed.hpp>
 #include <crv/math/fixed/float_conversions.hpp>
+#include <crv/spline/construction/error.hpp>
 #include <algorithm>
+#include <expected>
 #include <iterator>
 
 namespace crv::spline {
@@ -56,12 +58,16 @@ template <typename typestate_t, typename interval_t, typename interval_sorter_t,
     typename key_padder_t, typename tangent_extender_t, int_t domain_end>
 struct assembler_t
 {
+    using x_t = interval_t::segment_t::x_t;
+    using error_t = spline_construction_error_t<x_t>;
+    using result_t = std::expected<void, error_t>;
+
     [[no_unique_address]] interval_sorter_t sort_intervals;
     [[no_unique_address]] interval_unzipper_t unzip_intervals;
     [[no_unique_address]] key_padder_t pad_keys;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
-    template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> void
+    template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> result_t
     {
         using segment_locator_t = spline_t::segment_locator_t;
 
@@ -89,12 +95,10 @@ struct assembler_t
         spline.segment_locator = segment_locator_t{sorted_keys, x_max, segment_count};
         spline.extend_final_tangent = extended_tangent;
         completed_intervals.clear();
+        return {};
     }
 
 private:
-    using segment_t = interval_t::segment_t;
-    using x_t = segment_t::x_t;
-
     static constexpr auto x_max = x_t{domain_end};
 };
 

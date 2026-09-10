@@ -69,6 +69,7 @@ struct spline_generator_test_t : Test
     using result_t = std::expected<void, error_t>;
     using seeding_result_t = std::expected<unrefined_state_t, error_t>;
     using refinement_result_t = std::expected<unassembled_state_t, error_t>;
+    using assembly_result_t = std::expected<void, error_t>;
 
     struct mock_refinement_seeder_t
     {
@@ -109,14 +110,17 @@ struct spline_generator_test_t : Test
     struct mock_assembler_t
     {
         virtual ~mock_assembler_t() = default;
-        MOCK_METHOD(void, call, (unassembled_state_t, spline_t&));
+        MOCK_METHOD(assembly_result_t, call, (unassembled_state_t, spline_t&));
     };
     StrictMock<mock_assembler_t> mock_assembler;
 
     struct assembler_t
     {
+        using error_t = spline_generator_test_t::error_t;
+        using result_t = spline_generator_test_t::assembly_result_t;
+
         mock_assembler_t* mock = nullptr;
-        auto operator()(unassembled_state_t state, spline_t& spline) { mock->call(state, spline); }
+        auto operator()(unassembled_state_t state, spline_t& spline) -> result_t { return mock->call(state, spline); }
     };
 
     using generator_t = spline_generator_t<scalar_t, x_t, spline_t, typestates_t, refinement_pool_t,
@@ -159,9 +163,10 @@ TEST_F(spline_generator_test_t, forwards_states_and_target)
         EXPECT_EQ(state.id, 100);
         return successful_refinement(state);
     });
-    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) {
+    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) -> assembly_result_t {
         EXPECT_EQ(&state.workspace, expected_workspace_address);
         EXPECT_EQ(state.id, 200);
+        return {};
     });
 
     EXPECT_TRUE(generator(spline, target, {}));
@@ -178,7 +183,7 @@ TEST_F(spline_generator_test_t, preserves_exact_critical_points_while_sorting_an
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
         return successful_refinement(state);
     });
-    EXPECT_CALL(mock_assembler, call(_, _));
+    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce(Return(assembly_result_t{}));
 
     EXPECT_TRUE(generator(spline, target, critical_points));
 }
@@ -194,8 +199,9 @@ TEST_F(spline_generator_test_t, passes_workspace_reference_to_initial_state_and_
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
         return successful_refinement(state);
     });
-    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) {
+    EXPECT_CALL(mock_assembler, call(_, _)).WillOnce([&](unassembled_state_t state, spline_t&) -> assembly_result_t {
         EXPECT_EQ(&state.workspace, workspace_address);
+        return {};
     });
 
     EXPECT_TRUE(generator(spline, target, {}));
@@ -209,7 +215,7 @@ TEST_F(spline_generator_test_t, passes_spline_reference_to_assembler)
     EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
         return successful_refinement(state);
     });
-    EXPECT_CALL(mock_assembler, call(_, Ref(spline)));
+    EXPECT_CALL(mock_assembler, call(_, Ref(spline))).WillOnce(Return(assembly_result_t{}));
 
     EXPECT_TRUE(generator(spline, target, {}));
 }
@@ -255,6 +261,32 @@ TEST_F(spline_generator_test_t, failure_is_returned_without_assembling_or_mutati
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), failure);
     EXPECT_EQ(spline.id, original_spline.id);
+    EXPECT_TRUE(workspace_empty);
+}
+
+TEST_F(spline_generator_test_t, assembly_failure_is_preserved_and_clears_workspace)
+{
+    auto const failure = error_t{
+        .reason = spline_construction_error_reason_t::gain_anchor_not_representable,
+        .left = x_t{5},
+        .right = x_t{6},
+    };
+
+    EXPECT_CALL(mock_seeder, call(_, _, _)).WillOnce([](initial_state_t state, auto const&, auto) {
+        return successful_seed(state);
+    });
+    EXPECT_CALL(mock_refiner, call(_, _)).WillOnce([](unrefined_state_t state, auto const&) {
+        return successful_refinement(state);
+    });
+    EXPECT_CALL(mock_assembler, call(_, Ref(spline))).WillOnce([&](auto, auto&) -> assembly_result_t {
+        workspace_empty = false;
+        return std::unexpected{failure};
+    });
+
+    auto const result = generator(spline, target, {});
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), failure);
     EXPECT_TRUE(workspace_empty);
 }
 

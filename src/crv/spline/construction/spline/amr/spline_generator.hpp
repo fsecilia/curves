@@ -28,6 +28,7 @@ public:
 
     static_assert(std::same_as<typename refinement_pool_seeder_t::error_t, error_t>);
     static_assert(std::same_as<typename refiner_t::result_t::value_type, unassembled_t>);
+    static_assert(std::same_as<typename assembler_t::error_t, error_t>);
 
     constexpr spline_generator_t() : spline_generator_t{{}, {}, {}} {}
 
@@ -68,7 +69,13 @@ public:
             return std::unexpected{std::move(unassembled_state).error()};
         }
 
-        assemble_(std::move(*unassembled_state), spline);
+        auto const assembly_result = assemble_(std::move(*unassembled_state), spline);
+        if (!assembly_result)
+        {
+            auto const error = assembly_result.error();
+            workspace_.clear();
+            return std::unexpected{error};
+        }
 
         assert(workspace_.empty());
         return {};

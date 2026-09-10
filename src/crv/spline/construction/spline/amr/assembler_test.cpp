@@ -251,7 +251,7 @@ TEST_F(assembler_preparation_order_test_t, prepares_tangent_before_destination_w
         .extend_tangent = {&events},
     };
 
-    sut(std::move(state), spline);
+    ASSERT_TRUE(sut(std::move(state), spline));
 
     EXPECT_EQ(events, (events_t{event_t::sort, event_t::extend_tangent, event_t::unzip, event_t::pad}));
 }
@@ -274,7 +274,7 @@ TEST(spline_assembler_test, vs_real_dependencies)
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
         tangent_extender_t, domain_end_value>;
     auto const sut = sut_t{};
-    sut(std::move(state), spline);
+    ASSERT_TRUE(sut(std::move(state), spline));
 
     // workspace must be clear
     EXPECT_TRUE(state.workspace.completed_intervals.empty());
@@ -328,7 +328,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, interval_unzipper_t, key_padder_t,
         tangent_extender_t, domain_end_value>;
     auto sut = sut_t{};
-    sut(std::move(state), spline);
+    ASSERT_TRUE(sut(std::move(state), spline));
 
     EXPECT_TRUE(state.workspace.completed_intervals.empty());
 
@@ -380,7 +380,7 @@ struct spline_assembler_death_test_t : Test
 
 TEST_F(spline_assembler_death_test_t, asserts_on_empty_workspace)
 {
-    EXPECT_DEATH(sut(std::move(state), spline), "completed_intervals\\.empty");
+    EXPECT_DEATH(static_cast<void>(sut(std::move(state), spline)), "completed_intervals\\.empty");
 }
 
 TEST_F(spline_assembler_death_test_t, asserts_on_capacity_exceeded)
@@ -389,7 +389,7 @@ TEST_F(spline_assembler_death_test_t, asserts_on_capacity_exceeded)
     auto const overfill_count = segment_locator_t::max_segment_count + 1;
     for (auto i = 0; i < overfill_count; ++i) state.workspace.completed_intervals.push_back({});
 
-    EXPECT_DEATH(sut(std::move(state), spline), "max_segment_count");
+    EXPECT_DEATH(static_cast<void>(sut(std::move(state), spline)), "max_segment_count");
 }
 
 #endif // #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG
