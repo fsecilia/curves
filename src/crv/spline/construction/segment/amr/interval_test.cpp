@@ -102,6 +102,7 @@ struct spline_interval_factory_test_t : Test
 
         constexpr auto unpacked_segment() const noexcept -> unpacked_segment_t { return unpacked; }
 
+#if 0
         auto operator()(x_t x, x_t passed_x0) const noexcept -> y_t
         {
             ++*endpoint_evaluation_calls;
@@ -109,6 +110,13 @@ struct spline_interval_factory_test_t : Test
             assert(passed_x0 == x0);
             return anchor;
         }
+#else
+        auto operator()(x_t, x_t) const noexcept -> y_t
+        {
+            ++*endpoint_evaluation_calls;
+            return anchor;
+        }
+#endif
 
         auto is_safe_through(x_t u_max, x_t passed_x0) const noexcept -> bool
         {
