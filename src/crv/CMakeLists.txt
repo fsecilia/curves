@@ -455,6 +455,7 @@ set(shared_lib_kernel_cxx_options_clang
     -Wno-disabled-macro-expansion
     -Wno-documentation
     -Wno-documentation-unknown-command
+    -Wno-lifetime-safety-suggestions
     -Wno-missing-prototypes
     -Wno-padded
     -Wno-reserved-macro-identifier
