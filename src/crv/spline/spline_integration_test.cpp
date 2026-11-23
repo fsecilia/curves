@@ -64,6 +64,7 @@ struct fractional_power_t
 
 auto expect_all_segments_safe(spline_t const& spline) -> void
 {
+    auto const validate_segment = policy_t::segment_validator_t{};
     auto const& locator = spline.segment_locator;
     auto const segment_count = locator.segment_count();
     ASSERT_GT(segment_count, 0);
@@ -72,7 +73,7 @@ auto expect_all_segments_safe(spline_t const& spline) -> void
     {
         auto const left = locator.segment_origin(segment_index);
         auto const right = locator.segment_end(segment_index);
-        EXPECT_TRUE(spline.segments[segment_index].is_safe_through(right - left, left))
+        EXPECT_TRUE(validate_segment(spline.segments[segment_index], right - left, left))
             << "segment=" << segment_index << " left_raw=" << left.value << " right_raw=" << right.value;
     }
 }

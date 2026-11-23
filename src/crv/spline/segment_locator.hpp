@@ -205,9 +205,6 @@ public:
         }
     };
 
-    /// validates locator contents and capacity
-    constexpr auto is_valid() const noexcept -> bool { return validator_t{}(*this); }
-
     /// prefetches the leaf selected by a previous lookup
     constexpr auto prefetch(hint_t const& hint, auto const& prefetcher) const noexcept -> void
     {

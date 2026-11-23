@@ -123,9 +123,6 @@ struct extended_tangent_t
         }
     };
 
-    /// proves evaluator arithmetic safe for every clamped runtime delta
-    constexpr auto is_safe() const noexcept -> bool { return validator_t{}(*this); }
-
     // \param x position relative to end of spline domain
     constexpr auto operator()(x_t x) const noexcept -> y_t
     {

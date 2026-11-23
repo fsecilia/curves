@@ -62,8 +62,6 @@ struct segment_locator_t
 
     int_t segment_count_ = spline::segment_count;
     constexpr auto segment_count() const noexcept -> int_t { return segment_count_; }
-
-    constexpr auto is_valid() const noexcept -> bool { return true; }
 };
 
 using sut_t = spline_t<segment_t, extended_tangent_t, segment_locator_t>;
@@ -148,7 +146,6 @@ struct spline_prefetch_test_t : Test
 
         auto segment_count() const noexcept -> int_t { return spline::segment_count; }
         auto x_max() const noexcept -> x_t { return spline::x_max; }
-        auto is_valid() const noexcept -> bool { return true; }
         auto locate(x_t, hint_t&) const noexcept -> result_t { return {}; }
         auto prefetch(hint_t const& hint, auto const&) const noexcept -> void
         {

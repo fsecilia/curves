@@ -109,7 +109,7 @@ TEST_F(spline_tangent_extender_test_t, uses_positive_represented_gain_slope_and_
     EXPECT_EQ(actual(x_t{1}), y_t{10});
     EXPECT_EQ(actual.x_max_delta, x_t{91});
     EXPECT_EQ(actual(x_t{92}), y_t{100});
-    EXPECT_TRUE(actual.is_safe());
+    EXPECT_TRUE(tangent_validator_t{}(actual));
 }
 
 TEST_F(spline_tangent_extender_test_t, supports_zero_gain_slope_as_constant_continuation)
@@ -220,6 +220,7 @@ struct production_tangent_extender_test_t : Test
     using segment_t = policy_t::segment_t;
     using unpacked_field_t = policy_t::unpacked_field_t;
     using unpacked_segment_t = policy_t::unpacked_segment_t;
+    using tangent_validator_t = policy_t::tangent_validator_t;
 
     struct subdomain_t
     {
@@ -261,7 +262,7 @@ struct production_tangent_extender_test_t : Test
 TEST_F(production_tangent_extender_test_t, canonicalizes_represented_tiny_slope_to_exact_runtime_zero)
 {
     auto const segment = represented_segment();
-    ASSERT_TRUE(segment.is_safe_through(x_t{1}, x_t{0}));
+    ASSERT_TRUE(segment_t::validator_t{}(segment, x_t{1}, x_t{0}));
 
     auto const gain_slope = policy_t::right_gain_slope_calculator_t{}(segment.unpacked_segment(), x_t{1}, x_t{0});
     ASSERT_EQ(gain_slope, std::ldexp(scalar_t{1}, -191));
@@ -271,7 +272,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_represented_tiny_slope_
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.y0, y_t{0});
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
-    EXPECT_TRUE(actual.is_safe());
+    EXPECT_TRUE(tangent_validator_t{}(actual));
 }
 
 TEST_F(production_tangent_extender_test_t, canonicalizes_observational_zero_inside_evaluator_shift_range)
@@ -289,7 +290,7 @@ TEST_F(production_tangent_extender_test_t, canonicalizes_zero_clamp_extreme_slop
     EXPECT_EQ(actual.slope, (unpacked_field_t{.significand = 0, .shift = 0}));
     EXPECT_EQ(actual.y0, y_t{0});
     EXPECT_EQ(actual.x_max_delta, max<x_t>());
-    EXPECT_TRUE(actual.is_safe());
+    EXPECT_TRUE(tangent_validator_t{}(actual));
 }
 
 TEST_F(production_tangent_extender_test_t, keeps_useful_runtime_left_shift)
@@ -298,7 +299,7 @@ TEST_F(production_tangent_extender_test_t, keeps_useful_runtime_left_shift)
 
     EXPECT_LT(actual.slope.shift, 0);
     EXPECT_GT(actual.x_max_delta, x_t{0});
-    EXPECT_TRUE(actual.is_safe());
+    EXPECT_TRUE(tangent_validator_t{}(actual));
 }
 
 struct tangent_extender_rounding_boundary_test_t : spline_tangent_extender_test_t
@@ -341,7 +342,7 @@ TEST_F(tangent_extender_rounding_boundary_test_t, keeps_slope_when_a_runtime_inp
                             .value();
 
     EXPECT_EQ(actual(x_t::literal(int64_t{1} << 62)), y_t::literal(1));
-    EXPECT_TRUE(actual.is_safe());
+    EXPECT_TRUE(tangent_validator_t{}(actual));
 }
 
 #if defined CRV_ENABLE_DEATH_TESTS && !defined NDEBUG

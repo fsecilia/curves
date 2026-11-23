@@ -289,7 +289,7 @@ static_assert(std::is_trivially_copyable_v<sut_t>);
 static_assert(std::is_standard_layout_v<sut_t>);
 static_assert(sut.unpacked_segment() == unpacked_segment);
 static_assert(sut(x_t::literal(2), x_t::literal(2)) == y_t::literal(11));
-static_assert(sut.is_safe_through(x_t::literal(4), x_t::literal(2)));
+static_assert(sut_t::validator_t{}(sut, x_t::literal(4), x_t::literal(2)));
 
 // substitutes both dependencies so validation cannot accidentally use the production arithmetic proof
 struct validation_unpacker_t
@@ -330,8 +330,6 @@ static_assert(validate_segment(validation_segment, x_t::literal(23), x_t::litera
 static_assert(!validate_segment(validation_segment, x_t::literal(24), x_t::literal(17)));
 static_assert(!validate_segment(validation_segment, x_t::literal(23), x_t::literal(18)));
 static_assert(!validate_segment(validation_segment_t{}, x_t::literal(23), x_t::literal(17)));
-static_assert(validation_segment.is_safe_through(x_t::literal(23), x_t::literal(17)));
-static_assert(!validation_segment.is_safe_through(x_t::literal(24), x_t::literal(17)));
 
 } // namespace segment_tests
 

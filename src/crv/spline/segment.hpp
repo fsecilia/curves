@@ -489,8 +489,6 @@ public:
         }
     };
 
-    constexpr auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool { return validator_t{}(*this, u_max, x0); }
-
 private:
     [[no_unique_address]] segment_unpacker_t unpack_segment_;
     [[no_unique_address]] segment_evaluator_t evaluate_segment_;

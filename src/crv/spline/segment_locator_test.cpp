@@ -256,10 +256,6 @@ static_assert(validate_both(segments_t{10, 15, 60}, 20, 2, false));
 // padding validation not monotonic
 static_assert(validate_both(segments_t{10, 60, 50}, 20, 2, false));
 
-// compatibility convenience delegates to the component validator
-constexpr auto compatibility_sut = sut_t{segments_t{10, 20, 30}, 40, 4};
-static_assert(compatibility_sut.is_valid() == validate(compatibility_sut));
-
 } // namespace validator_tests
 
 //
