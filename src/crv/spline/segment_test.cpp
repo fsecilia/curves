@@ -286,9 +286,52 @@ constexpr auto unpacked_segment = unpacked_segment_t{
 
 static_assert(sizeof(sut_t) == 32);
 static_assert(std::is_trivially_copyable_v<sut_t>);
+static_assert(std::is_standard_layout_v<sut_t>);
 static_assert(sut.unpacked_segment() == unpacked_segment);
 static_assert(sut(x_t::literal(2), x_t::literal(2)) == y_t::literal(11));
 static_assert(sut.is_safe_through(x_t::literal(4), x_t::literal(2)));
+
+// substitutes both dependencies so validation cannot accidentally use the production arithmetic proof
+struct validation_unpacker_t
+{
+    static constexpr auto segment_layout = segment_tests::segment_layout;
+
+    constexpr auto operator()(packed_segment_t const& packed) const noexcept -> unpacked_segment_t
+    {
+        return packed == packed_segment ? unpacked_segment_t{
+            .d = {.significand = 3, .shift = 1},
+            .c = {.significand = -5, .shift = 2},
+            .b = {.significand = 9, .shift = -1},
+            .g0 = y_t::literal(15),
+        } : unpacked_segment_t{};
+    }
+};
+
+struct validation_evaluator_t
+{
+    using y_t = segment_tests::y_t;
+    static constexpr auto max_shift = segment_evaluator_t::max_shift;
+
+    constexpr auto is_safe_through(unpacked_segment_t const& unpacked, x_t width, x_t origin) const noexcept -> bool
+    {
+        return unpacked == unpacked_segment_t{
+            .d = {.significand = 3, .shift = 1},
+            .c = {.significand = -5, .shift = 2},
+            .b = {.significand = 9, .shift = -1},
+            .g0 = y_t::literal(15),
+        } && width == x_t::literal(23) && origin == x_t::literal(17);
+    }
+};
+
+using validation_segment_t = segment_t<traits_t, x_t, validation_unpacker_t, validation_evaluator_t>;
+constexpr auto validation_segment = validation_segment_t{packed_segment};
+constexpr auto validate_segment = validation_segment_t::validator_t{};
+static_assert(validate_segment(validation_segment, x_t::literal(23), x_t::literal(17)));
+static_assert(!validate_segment(validation_segment, x_t::literal(24), x_t::literal(17)));
+static_assert(!validate_segment(validation_segment, x_t::literal(23), x_t::literal(18)));
+static_assert(!validate_segment(validation_segment_t{}, x_t::literal(23), x_t::literal(17)));
+static_assert(validation_segment.is_safe_through(x_t::literal(23), x_t::literal(17)));
+static_assert(!validation_segment.is_safe_through(x_t::literal(24), x_t::literal(17)));
 
 } // namespace segment_tests
 

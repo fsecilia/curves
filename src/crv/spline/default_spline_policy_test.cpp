@@ -17,6 +17,9 @@ namespace production_policy_tests {
 using policy_t = default_spline_policy_t<float_t, prod_pipeline_config_t>;
 constexpr auto final_layout = policy_t::segment_layout.final;
 
+static_assert(std::same_as<policy_t::segment_validator_t, policy_t::segment_t::validator_t>);
+static_assert(std::same_as<decltype(policy_t::interval_factory_t::validate_segment), policy_t::segment_validator_t>);
+
 static_assert(policy_t::domain_end_fixed == policy_t::x_t{policy_t::domain_end});
 
 struct segment_storage_layout_test_t : Test

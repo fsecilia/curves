@@ -104,6 +104,7 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using segment_unpacker_t
         = crv::spline::segment_unpacker_t<packed_segment_t, unpacked_segment_t, field_unpacker_t, segment_layout>;
     using segment_t = crv::spline::segment_t<traits_t, x_t, segment_unpacker_t, segment_evaluator_t>;
+    using segment_validator_t = segment_t::validator_t;
     static_assert(sizeof(packed_segment_t) == 32);
     static_assert(sizeof(segment_t) == 32);
     static_assert(64 % sizeof(segment_t) == 0);
@@ -139,8 +140,8 @@ template <std::floating_point t_scalar_t, typename t_pipeline_config_t> struct d
     using right_gain_slope_calculator_t = crv::spline::right_gain_slope_calculator_t<scalar_t, x_t, unpacked_segment_t>;
     using final_endpoint_acceptance_t = crv::spline::final_endpoint_acceptance_t<y_t, scalar_t>;
     using interval_factory_t = crv::spline::interval_factory_t<interval_t, segment_factory_t,
-        right_gain_slope_calculator_t, final_endpoint_acceptance_t, approximant_factory_t, hermite_converter_t,
-        local_coordinate_converter_t, residual_estimator_t, domain_end_fixed, y_limit_fixed>;
+        right_gain_slope_calculator_t, segment_validator_t, final_endpoint_acceptance_t, approximant_factory_t,
+        hermite_converter_t, local_coordinate_converter_t, residual_estimator_t, domain_end_fixed, y_limit_fixed>;
     using bisection_t = crv::spline::bisection_t<subdomain_t>;
     using bisector_t = crv::spline::bisector_t<bisection_t>;
     using subdivision_predicate_t = crv::spline::subdivision_predicate_t<scalar_t, x_t, log2_min_width>;

@@ -95,11 +95,12 @@ template <typename policy_t> struct spline_generator_factory_t
 
     [[nodiscard]] auto operator()(scalar_t global_tolerance) const -> product_t
     {
-        return typename policy_t::spline_generator_t{typename policy_t::refinement_pool_seeder_t{},
+        return typename policy_t::spline_generator_t{typename policy_t::refinement_pool_seeder_t{.create_subdomain = {},
+                                                         .create_interval = create_interval_factory()},
             typename policy_t::refiner_t{
                 .requires_subdivision =
                     typename policy_t::subdivision_predicate_t{.global_tolerance = global_tolerance},
-                .subdivide = {},
+                .subdivide = {.bisect = {}, .create_interval = create_interval_factory()},
             },
             typename policy_t::assembler_t{
                 .sort_intervals = {},
@@ -113,6 +114,21 @@ template <typename policy_t> struct spline_generator_factory_t
                         .validate = typename policy_t::tangent_validator_t{},
                     },
             }};
+    }
+
+private:
+    static constexpr auto create_interval_factory() -> typename policy_t::interval_factory_t
+    {
+        return typename policy_t::interval_factory_t{
+            .segment_factory = {},
+            .calc_right_gain_slope = {},
+            .validate_segment = typename policy_t::segment_validator_t{},
+            .accept_final_endpoint = {},
+            .approximant_factory = {},
+            .convert_hermite = {},
+            .convert_local_coordinate = {},
+            .estimate_residual = {},
+        };
     }
 };
 

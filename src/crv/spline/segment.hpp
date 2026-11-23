@@ -480,11 +480,16 @@ public:
         return evaluate_segment_(unpacked_segment(), x, x0);
     }
 
-    /// proves evaluator arithmetic safe for every local coordinate in [0, u_max]
-    constexpr auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool
+    /// proves evaluator arithmetic safe for every local coordinate in [0, u_max] at origin x0
+    struct validator_t
     {
-        return evaluate_segment_.is_safe_through(unpacked_segment(), u_max, x0);
-    }
+        constexpr auto operator()(segment_t const& segment, x_t u_max, x_t x0) const noexcept -> bool
+        {
+            return segment.evaluate_segment_.is_safe_through(segment.unpacked_segment(), u_max, x0);
+        }
+    };
+
+    constexpr auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool { return validator_t{}(*this, u_max, x0); }
 
 private:
     [[no_unique_address]] segment_unpacker_t unpack_segment_;

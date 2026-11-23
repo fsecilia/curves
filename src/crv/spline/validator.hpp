@@ -30,15 +30,18 @@ struct spline_validation_result_t
 };
 
 /// validates the complete encoded spline representation used by runtime evaluation
-template <typename t_spline_t, typename t_segment_locator_validator_t> struct spline_validator_t
+template <typename t_spline_t, typename t_segment_locator_validator_t, typename t_segment_validator_t>
+struct spline_validator_t
 {
     using spline_t = t_spline_t;
     using segment_locator_validator_t = t_segment_locator_validator_t;
+    using segment_validator_t = t_segment_validator_t;
 
     using x_t = spline_t::x_t;
     using tangent_validator_t = typename spline_t::extended_tangent_t::validator_t;
 
     [[no_unique_address]] segment_locator_validator_t validate_segment_locator;
+    [[no_unique_address]] segment_validator_t validate_segment;
 
     CRV_ALWAYS_INLINE
     constexpr auto operator()(spline_t const& spline) const noexcept -> spline_validation_result_t
@@ -55,7 +58,7 @@ template <typename t_spline_t, typename t_segment_locator_validator_t> struct sp
             auto const origin = locator.segment_origin(segment_index);
             auto const end = locator.segment_end(segment_index);
             auto const width = end - origin;
-            if (!spline.segments[segment_index].is_safe_through(width, origin))
+            if (!validate_segment(spline.segments[segment_index], width, origin))
             {
                 return {.error = spline_validation_error_t::segment, .segment_index = segment_index};
             }

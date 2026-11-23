@@ -79,8 +79,9 @@ struct interval_priority_less_t
 
 /// creates intervals from subdomains
 template <typename t_interval_t, typename segment_factory_t, typename right_gain_slope_calculator_t,
-    typename final_endpoint_acceptance_t, typename approximant_factory_t, typename hermite_converter_t,
-    typename local_coordinate_converter_t, typename residual_estimator_t, auto domain_end, auto y_limit>
+    typename segment_validator_t, typename final_endpoint_acceptance_t, typename approximant_factory_t,
+    typename hermite_converter_t, typename local_coordinate_converter_t, typename residual_estimator_t, auto domain_end,
+    auto y_limit>
 struct interval_factory_t
 {
     using interval_t = t_interval_t;
@@ -99,6 +100,7 @@ struct interval_factory_t
 
     [[no_unique_address]] segment_factory_t segment_factory;
     [[no_unique_address]] right_gain_slope_calculator_t calc_right_gain_slope;
+    [[no_unique_address]] segment_validator_t validate_segment;
     [[no_unique_address]] final_endpoint_acceptance_t accept_final_endpoint;
     [[no_unique_address]] approximant_factory_t approximant_factory;
     [[no_unique_address]] hermite_converter_t convert_hermite;
@@ -125,7 +127,7 @@ struct interval_factory_t
         auto const right_gain_slope = calc_right_gain_slope(segment->unpacked_segment(), width_fixed, subdomain.left_x);
 
         // construction also evaluates right endpoint when anchoring final tangent, so prove closed interval
-        if (!segment->is_safe_through(width_fixed, subdomain.left_x))
+        if (!validate_segment(*segment, width_fixed, subdomain.left_x))
         {
             return interval_t{
                 .segment = *segment,

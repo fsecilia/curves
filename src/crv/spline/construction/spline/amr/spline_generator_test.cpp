@@ -320,10 +320,39 @@ struct spline_generator_factory_test_t : Test
         tangent_validator_t validate;
     };
 
+    struct segment_validator_t
+    {
+        int_t marker = 17;
+    };
+
+    struct interval_factory_t
+    {
+        int_t segment_factory;
+        int_t calc_right_gain_slope;
+        segment_validator_t validate_segment{.marker = -1};
+        int_t accept_final_endpoint;
+        int_t approximant_factory;
+        int_t convert_hermite;
+        int_t convert_local_coordinate;
+        int_t estimate_residual;
+    };
+
+    struct refinement_pool_seeder_t
+    {
+        int_t create_subdomain;
+        interval_factory_t create_interval;
+    };
+
+    struct subdivider_t
+    {
+        int_t bisect;
+        interval_factory_t create_interval;
+    };
+
     struct refiner_t
     {
         subdivision_predicate_t requires_subdivision;
-        int_t subdivide;
+        subdivider_t subdivide;
     };
 
     struct assembler_t
@@ -337,7 +366,7 @@ struct spline_generator_factory_test_t : Test
 
     struct spline_generator_t
     {
-        int_t seeder;
+        refinement_pool_seeder_t seeder;
         refiner_t refiner;
         assembler_t assembler;
     };
@@ -345,7 +374,9 @@ struct spline_generator_factory_test_t : Test
     struct policy_t
     {
         using scalar_t = float_t;
-        using refinement_pool_seeder_t = int_t;
+        using refinement_pool_seeder_t = spline_generator_factory_test_t::refinement_pool_seeder_t;
+        using interval_factory_t = spline_generator_factory_test_t::interval_factory_t;
+        using segment_validator_t = spline_generator_factory_test_t::segment_validator_t;
         using subdivision_predicate_t = spline_generator_factory_test_t::subdivision_predicate_t;
         using refiner_t = spline_generator_factory_test_t::refiner_t;
         using tangent_validator_t = spline_generator_factory_test_t::tangent_validator_t;
@@ -365,6 +396,20 @@ TEST_F(spline_generator_factory_test_t, wires_runtime_and_policy_constants)
     EXPECT_EQ(generator.refiner.requires_subdivision.global_tolerance, 1.5);
     EXPECT_EQ(generator.assembler.extend_tangent.y_limit, policy_t::y_limit);
     EXPECT_EQ(generator.assembler.validate_segment_locator.marker, 13);
+}
+
+TEST_F(spline_generator_factory_test_t, wires_segment_validator_into_seed_intervals)
+{
+    auto const generator = spline_generator_factory_t<policy_t>{}(1.5);
+
+    EXPECT_EQ(generator.seeder.create_interval.validate_segment.marker, 17);
+}
+
+TEST_F(spline_generator_factory_test_t, wires_segment_validator_into_subdivided_intervals)
+{
+    auto const generator = spline_generator_factory_t<policy_t>{}(1.5);
+
+    EXPECT_EQ(generator.refiner.subdivide.create_interval.validate_segment.marker, 17);
 }
 
 } // namespace

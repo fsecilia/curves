@@ -87,7 +87,6 @@ struct spline_interval_factory_test_t : Test
     {
         virtual ~mock_segment_t() = default;
         MOCK_METHOD(y_t, evaluate, (x_t x, x_t x0), (const, noexcept));
-        MOCK_METHOD(bool, is_safe_through, (x_t u_max, x_t x0), (const, noexcept));
     };
     StrictMock<mock_segment_t> mock_segment;
 
@@ -107,9 +106,23 @@ struct spline_interval_factory_test_t : Test
 
         auto operator()(x_t x, x_t x0) const noexcept -> y_t { return mock->evaluate(x, x0); }
 
-        auto is_safe_through(x_t u_max, x_t x0) const noexcept -> bool { return mock->is_safe_through(u_max, x0); }
-
         constexpr auto operator==(segment_t const&) const noexcept -> bool = default;
+    };
+
+    struct mock_segment_validator_t
+    {
+        virtual ~mock_segment_validator_t() = default;
+        MOCK_METHOD(bool, call, (segment_t const& segment, x_t u_max, x_t x0), (const, noexcept));
+    };
+    StrictMock<mock_segment_validator_t> mock_segment_validator;
+
+    struct segment_validator_t
+    {
+        mock_segment_validator_t* mock;
+        auto operator()(segment_t const& segment, x_t u_max, x_t x0) const noexcept -> bool
+        {
+            return mock->call(segment, u_max, x0);
+        }
     };
 
     struct segment_factory_t
@@ -271,8 +284,8 @@ struct spline_interval_factory_test_t : Test
     static constexpr auto y_limit = y_t{1000};
 
     using sut_t = spline::interval_factory_t<interval_t, segment_factory_t, right_gain_slope_calculator_t,
-        final_endpoint_acceptance_t, approximant_factory_t, hermite_converter_t, local_coordinate_converter_t,
-        residual_estimator_t, domain_end, y_limit>;
+        segment_validator_t, final_endpoint_acceptance_t, approximant_factory_t, hermite_converter_t,
+        local_coordinate_converter_t, residual_estimator_t, domain_end, y_limit>;
     sut_t sut{
         .segment_factory = {
             .unpacked_segment = {91},
@@ -281,6 +294,7 @@ struct spline_interval_factory_test_t : Test
             .error = std::nullopt,
         },
         .calc_right_gain_slope = right_gain_slope_calculator_t{&mock_right_gain_slope_calculator},
+        .validate_segment = segment_validator_t{&mock_segment_validator},
         .accept_final_endpoint = final_endpoint_acceptance_t{&mock_final_endpoint_acceptance},
         .approximant_factory = {},
         .convert_hermite = hermite_converter_t{&mock_hermite_converter},
@@ -354,11 +368,12 @@ TEST_F(spline_interval_factory_test_t, runtime_safe_interior_negative_slope_meas
     local_left_y.df *= width;
     local_right_y.df *= width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, width_fixed, left_x))
         .WillOnce(Return(right_gain_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment_validator, call(segment, width_fixed, left_x)).WillOnce(Return(true));
     EXPECT_CALL(mock_residual_estimator,
         call(sample_target_function, approximant_t{.segment = segment, .x0 = left_x}, left.x, midpoint.x, right.x))
         .WillOnce(Return(residual));
@@ -386,17 +401,24 @@ TEST_F(spline_interval_factory_test_t, runtime_unsafe_final_segment_skips_endpoi
     local_left_y.df *= final_width;
     local_right_y.df *= final_width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(right_gain_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(false));
+    EXPECT_CALL(mock_segment_validator, call(make_segment(final_width_fixed), final_width_fixed, left_x))
+        .WillOnce(Return(false));
 
     auto const actual = sut(sample_target_function, final_subdomain);
 
     ASSERT_TRUE(actual);
-    EXPECT_FALSE(actual->residual.has_value());
-    EXPECT_EQ(actual->right_gain_slope, right_gain_slope);
+    EXPECT_EQ(*actual,
+        (interval_t{
+            .segment = make_segment(final_width_fixed),
+            .right_gain_slope = right_gain_slope,
+            .subdomain = final_subdomain,
+            .residual = std::nullopt,
+        }));
 }
 
 TEST_F(spline_interval_factory_test_t, accepted_final_encoded_endpoint_is_measured_for_residual)
@@ -412,11 +434,13 @@ TEST_F(spline_interval_factory_test_t, accepted_final_encoded_endpoint_is_measur
     local_left_y.df *= final_width;
     local_right_y.df *= final_width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(accepted_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment_validator, call(make_segment(final_width_fixed), final_width_fixed, left_x))
+        .WillOnce(Return(true));
     EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x))
         .WillOnce(Return(final_segment.anchor));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(final_segment.anchor, accepted_slope, y_limit))
@@ -445,11 +469,13 @@ TEST_F(spline_interval_factory_test_t, packed_endpoint_anchor_controls_final_req
     local_left_y.df *= final_width;
     local_right_y.df *= final_width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment_validator, call(make_segment(final_width_fixed), final_width_fixed, left_x))
+        .WillOnce(Return(true));
     EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{-1}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{-1}, represented_slope, y_limit)).WillOnce(Return(false));
 
@@ -473,11 +499,13 @@ TEST_F(spline_interval_factory_test_t, represented_right_gain_slope_controls_fin
     local_left_y.df *= final_width;
     local_right_y.df *= final_width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment_validator, call(make_segment(final_width_fixed), final_width_fixed, left_x))
+        .WillOnce(Return(true));
     EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{5}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{5}, represented_slope, y_limit)).WillOnce(Return(false));
 
@@ -504,11 +532,13 @@ TEST_F(spline_interval_factory_test_t, endpoint_required_final_interval_outranks
     local_left_y.df *= final_width;
     local_right_y.df *= final_width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, final_width)).WillOnce(Return(local_cubic));
     EXPECT_CALL(mock_right_gain_slope_calculator, call(unpacked_segment, final_width_fixed, left_x))
         .WillOnce(Return(represented_slope));
-    EXPECT_CALL(mock_segment, is_safe_through(final_width_fixed, left_x)).WillOnce(Return(true));
+    EXPECT_CALL(mock_segment_validator, call(make_segment(final_width_fixed), final_width_fixed, left_x))
+        .WillOnce(Return(true));
     EXPECT_CALL(mock_segment, evaluate(final_subdomain.right_x, final_subdomain.left_x)).WillOnce(Return(y_t{-1}));
     EXPECT_CALL(mock_final_endpoint_acceptance, call(y_t{-1}, represented_slope, y_limit)).WillOnce(Return(false));
 
@@ -544,6 +574,7 @@ TEST_F(spline_interval_factory_test_t, segment_construction_error_skips_runtime_
     local_left_y.df *= width;
     local_right_y.df *= width;
 
+    InSequence sequence;
     EXPECT_CALL(mock_hermite_converter, call(local_left_y, local_right_y)).WillOnce(Return(normalized_cubic));
     EXPECT_CALL(mock_local_coordinate_converter, call(normalized_cubic, width)).WillOnce(Return(local_cubic));
 
