@@ -9,6 +9,8 @@
 #include <array>
 #include <expected>
 #include <gmock/gmock.h>
+#include <optional>
+#include <span>
 
 namespace crv::spline {
 namespace {
@@ -190,18 +192,49 @@ struct tangent_extender_t
     }
 };
 
+struct segment_locator_validator_t
+{
+    constexpr auto operator()(std::span<x_t const, segment_locator_t::total_key_count>, x_t, int_t) const noexcept
+        -> bool
+    {
+        return true;
+    }
+};
+
 struct assembler_preparation_order_test_t : Test
 {
     enum class event_t
     {
         sort,
+        prepare_locator_keys,
+        validate_locator,
         extend_tangent,
         project_segments,
-        prepare_locator_keys,
     };
 
     using events_t = std::vector<event_t>;
     events_t events;
+
+    struct locator_call_t
+    {
+        std::array<x_t, segment_locator_t::total_key_count> keys;
+        x_t x_max;
+        int_t segment_count;
+
+        constexpr auto operator==(locator_call_t const&) const noexcept -> bool = default;
+    };
+
+    std::optional<locator_call_t> locator_call;
+    bool locator_accepted = true;
+
+    workspace_t workspace{
+        .completed_intervals = {
+            {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
+            {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 37}},
+        },
+    };
+    typestate_t state{workspace};
+    spline_t spline{};
 
     struct interval_sorter_t
     {
@@ -228,6 +261,21 @@ struct assembler_preparation_order_test_t : Test
         }
     };
 
+    struct segment_locator_validator_t
+    {
+        events_t* events;
+        std::optional<locator_call_t>* locator_call;
+        bool const* accepted;
+
+        auto operator()(std::span<x_t const, segment_locator_t::total_key_count> keys, x_t x_max,
+            int_t segment_count) const noexcept -> bool
+        {
+            events->push_back(event_t::validate_locator);
+            *locator_call = locator_call_t{.keys = {keys[0], keys[1]}, .x_max = x_max, .segment_count = segment_count};
+            return *accepted;
+        }
+    };
+
     struct segment_projector_t
     {
         events_t* events;
@@ -249,31 +297,59 @@ struct assembler_preparation_order_test_t : Test
             crv::spline::locator_key_preparer_t{}(intervals, keys, x_max);
         }
     };
+
+    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
+        segment_locator_validator_t, tangent_extender_t, 100>;
+
+    auto make_sut() -> sut_t
+    {
+        return {
+            .sort_intervals = {&events},
+            .project_segments = {&events},
+            .prepare_locator_keys = {&events},
+            .validate_segment_locator = {&events, &locator_call, &locator_accepted},
+            .extend_tangent = {&events},
+        };
+    }
 };
 
 TEST_F(assembler_preparation_order_test_t, prepares_before_destination_writes)
 {
-    auto workspace = workspace_t{};
-    auto state = typestate_t{workspace};
-    state.workspace.completed_intervals = {
-        {.subdomain = {.left_x = x_t{20}}, .segment = {.payload_id = 73}},
-        {.subdomain = {.left_x = x_t{10}}, .segment = {.payload_id = 42}},
-    };
-    auto spline = spline_t{};
-
-    using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
-        tangent_extender_t, 100>;
-    auto const sut = sut_t{
-        .sort_intervals = {&events},
-        .project_segments = {&events},
-        .prepare_locator_keys = {&events},
-        .extend_tangent = {&events},
-    };
-
-    ASSERT_TRUE(sut(std::move(state), spline));
+    ASSERT_TRUE(make_sut()(std::move(state), spline));
 
     EXPECT_EQ(events,
-        (events_t{event_t::sort, event_t::prepare_locator_keys, event_t::extend_tangent, event_t::project_segments}));
+        (events_t{event_t::sort, event_t::prepare_locator_keys, event_t::validate_locator, event_t::extend_tangent,
+            event_t::project_segments}));
+}
+
+TEST_F(assembler_preparation_order_test_t, validates_sorted_and_padded_locator_source)
+{
+    ASSERT_TRUE(make_sut()(std::move(state), spline));
+
+    EXPECT_EQ(locator_call, (locator_call_t{.keys = {x_t{20}, x_t{100}}, .x_max = x_t{100}, .segment_count = 2}));
+}
+
+TEST_F(assembler_preparation_order_test_t, locator_rejection_preserves_destination_and_skips_commit)
+{
+    locator_accepted = false;
+    spline = spline_t{
+        .segments = {{{.payload_id = 1}, {.payload_id = 2}, {.payload_id = 3}}},
+        .segment_locator = segment_locator_t{std::array{x_t{4}, x_t{5}}, x_t{6}, 2},
+        .extend_final_tangent = 7,
+    };
+    auto const original_spline = spline;
+
+    auto const result = make_sut()(std::move(state), spline);
+
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(),
+        (spline_construction_error_t<x_t>{
+            .reason = spline_construction_error_reason_t::locator_not_representable,
+            .left = x_t{0},
+            .right = x_t{100},
+        }));
+    EXPECT_EQ(spline, original_spline);
+    EXPECT_EQ(events, (events_t{event_t::sort, event_t::prepare_locator_keys, event_t::validate_locator}));
 }
 
 TEST(spline_assembler_test, vs_real_dependencies)
@@ -292,7 +368,7 @@ TEST(spline_assembler_test, vs_real_dependencies)
     constexpr auto domain_end_value = 100;
 
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
-        tangent_extender_t, domain_end_value>;
+        segment_locator_validator_t, tangent_extender_t, domain_end_value>;
     auto const sut = sut_t{};
     ASSERT_TRUE(sut(std::move(state), spline));
 
@@ -320,7 +396,7 @@ struct assembler_tangent_failure_test_t : Test
 {
     using error_t = tangent_extender_t::error_t;
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
-        tangent_extender_t, 100>;
+        segment_locator_validator_t, tangent_extender_t, 100>;
 
     workspace_t workspace{
         .completed_intervals = {
@@ -348,6 +424,7 @@ TEST_F(assembler_tangent_failure_test_t, preserves_destination_and_exact_error)
         .sort_intervals = {},
         .project_segments = {},
         .prepare_locator_keys = {},
+        .validate_segment_locator = {},
         .extend_tangent = {.failure = &failure},
     };
 
@@ -388,7 +465,7 @@ TEST_P(spline_assembler_boundary_test_t, handles_variable_segment_counts)
     }
 
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
-        tangent_extender_t, domain_end_value>;
+        segment_locator_validator_t, tangent_extender_t, domain_end_value>;
     auto sut = sut_t{};
     ASSERT_TRUE(sut(std::move(state), spline));
 
@@ -436,7 +513,7 @@ struct spline_assembler_death_test_t : Test
     spline_t spline{};
 
     using sut_t = assembler_t<typestate_t, interval_t, interval_sorter_t, segment_projector_t, locator_key_preparer_t,
-        tangent_extender_t, 100>;
+        segment_locator_validator_t, tangent_extender_t, 100>;
     sut_t sut{};
 };
 

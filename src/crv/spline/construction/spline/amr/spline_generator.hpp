@@ -105,6 +105,7 @@ template <typename policy_t> struct spline_generator_factory_t
                 .sort_intervals = {},
                 .project_segments = {},
                 .prepare_locator_keys = {},
+                .validate_segment_locator = typename policy_t::segment_locator_validator_t{},
                 .extend_tangent =
                     typename policy_t::tangent_extender_t{
                         .y_limit = policy_t::y_limit,

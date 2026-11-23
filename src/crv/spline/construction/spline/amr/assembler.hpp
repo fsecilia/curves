@@ -54,7 +54,8 @@ struct locator_key_preparer_t
 
 /// assembles completed intervals into final spline
 template <typename typestate_t, typename interval_t, typename interval_sorter_t, typename segment_projector_t,
-    typename locator_key_preparer_t, typename tangent_extender_t, int_t domain_end>
+    typename locator_key_preparer_t, typename segment_locator_validator_t, typename tangent_extender_t,
+    int_t domain_end>
 struct assembler_t
 {
     using x_t = interval_t::segment_t::x_t;
@@ -68,6 +69,7 @@ struct assembler_t
     [[no_unique_address]] interval_sorter_t sort_intervals;
     [[no_unique_address]] segment_projector_t project_segments;
     [[no_unique_address]] locator_key_preparer_t prepare_locator_keys;
+    [[no_unique_address]] segment_locator_validator_t validate_segment_locator;
     [[no_unique_address]] tangent_extender_t extend_tangent;
 
     template <typename spline_t> constexpr auto operator()(typestate_t&& state, spline_t& spline) const -> result_t
@@ -99,6 +101,14 @@ private:
 
         sort_intervals(completed_intervals);
         prepare_locator_keys(completed_intervals, sorted_keys, x_max);
+        if (!validate_segment_locator(sorted_keys, x_max, segment_count))
+        {
+            return std::unexpected{error_t{
+                .reason = spline_construction_error_reason_t::locator_not_representable,
+                .left = x_t{0},
+                .right = x_max,
+            }};
+        }
         return extend_tangent(completed_intervals[segment_count - 1]);
     }
 

@@ -308,6 +308,11 @@ struct spline_generator_factory_test_t : Test
     struct tangent_validator_t
     {};
 
+    struct segment_locator_validator_t
+    {
+        int_t marker = 13;
+    };
+
     struct tangent_extender_t
     {
         float_t y_limit;
@@ -326,6 +331,7 @@ struct spline_generator_factory_test_t : Test
         int_t sort_intervals;
         int_t project_segments;
         int_t prepare_locator_keys;
+        segment_locator_validator_t validate_segment_locator;
         tangent_extender_t extend_tangent;
     };
 
@@ -343,6 +349,7 @@ struct spline_generator_factory_test_t : Test
         using subdivision_predicate_t = spline_generator_factory_test_t::subdivision_predicate_t;
         using refiner_t = spline_generator_factory_test_t::refiner_t;
         using tangent_validator_t = spline_generator_factory_test_t::tangent_validator_t;
+        using segment_locator_validator_t = spline_generator_factory_test_t::segment_locator_validator_t;
         using tangent_extender_t = spline_generator_factory_test_t::tangent_extender_t;
         using assembler_t = spline_generator_factory_test_t::assembler_t;
         using spline_generator_t = spline_generator_factory_test_t::spline_generator_t;
@@ -357,6 +364,7 @@ TEST_F(spline_generator_factory_test_t, wires_runtime_and_policy_constants)
 
     EXPECT_EQ(generator.refiner.requires_subdivision.global_tolerance, 1.5);
     EXPECT_EQ(generator.assembler.extend_tangent.y_limit, policy_t::y_limit);
+    EXPECT_EQ(generator.assembler.validate_segment_locator.marker, 13);
 }
 
 } // namespace
