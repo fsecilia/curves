@@ -42,6 +42,38 @@ using y_t = policy_t::y_t;
 using spline_factory_t = spline_factory_t<policy_t, spline_generator_factory_t<policy_t>>;
 using spline_t = spline_factory_t::spline_t;
 
+// a valid final segment does not establish the arithmetic safety of its supplied tangent
+constexpr auto tangent_sum_overflow_spline = [] {
+    auto spline = spline_t{};
+    auto keys = std::array<x_t, policy_t::segment_locator_t::total_key_count>{};
+    keys.fill(policy_t::domain_end_fixed);
+    spline.segment_locator = policy_t::segment_locator_t{keys, policy_t::domain_end_fixed, 1};
+    spline.segments[0] = policy_t::segment_t{policy_t::segment_packer_t{}(policy_t::unpacked_segment_t{
+        .d = {.significand = 0, .shift = 0},
+        .c = {.significand = 0, .shift = 0},
+        .b = {.significand = policy_t::y_limit_value, .shift = -y_t::frac_bits},
+        .g0 = policy_t::y_limit_fixed,
+    })};
+    spline.extend_final_tangent = {
+        .slope = {.significand = 64, .shift = 0},
+        .y0 = policy_t::y_limit_fixed,
+        .x_max_delta = x_t{1},
+    };
+    return spline;
+}();
+constexpr auto validate_encoded_spline
+    = spline_validator_t<spline_t, policy_t::segment_locator_validator_t, policy_t::segment_validator_t>{
+        .validate_segment_locator = {}, .validate_segment = {}};
+static_assert(validate_encoded_spline(tangent_sum_overflow_spline).error == spline_validation_error_t::tangent);
+
+// runtime validation enforces representation safety, not the hosted gain limit
+constexpr auto representable_tangent_spline = [] {
+    auto spline = tangent_sum_overflow_spline;
+    spline.extend_final_tangent.slope.significand = 32;
+    return spline;
+}();
+static_assert(validate_encoded_spline(representable_tangent_spline));
+
 auto evaluate_spline(spline_t const& spline, x_t x) noexcept -> y_t
 {
     auto hint = spline_t::hint_t{};

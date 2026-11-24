@@ -108,18 +108,21 @@ struct extended_tangent_t
             if (significand != 0 && x_delta > max<wide_t>() / significand) return false;
             auto const product = significand * x_delta;
 
+            // delta must fit on its own and leave room for a positive anchor
             auto const y_max = int_cast<wide_t>(max<y_value_t>());
+            auto const anchor = int_cast<wide_t>(tangent.y0.value);
+            auto const delta_max = anchor > 0 ? y_max - anchor : y_max;
             if (tangent.slope.shift >= 0)
             {
                 auto const shift = tangent.slope.shift;
                 auto const half = static_cast<wide_t>((unsigned_wide_t{1} << shift) >> 1);
                 if (product > max<wide_t>() - half) return false;
-                return shifter_t<rounding_mode>{}.shr(product, shift) <= y_max;
+                return shifter_t<rounding_mode>{}.shr(product, shift) <= delta_max;
             }
 
             auto const left_shift = -tangent.slope.shift;
             if (left_shift >= wide_bits) return false;
-            return product <= (y_max >> left_shift);
+            return product <= (delta_max >> left_shift);
         }
     };
 

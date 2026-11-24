@@ -81,6 +81,60 @@ static_assert(!validate_integer(integer_sut_t{
     .x_max_delta = integer_x_t::literal((integer_max >> 1) + 1),
 }));
 
+// right-shift rounding must leave enough room to add the anchor
+constexpr auto rounded_sum_boundary = integer_sut_t{
+    .slope = {.significand = 1, .shift = 1},
+    .y0 = integer_y_t::literal(integer_max - 1),
+    .x_max_delta = integer_x_t{2},
+};
+static_assert(validate_integer(rounded_sum_boundary));
+static_assert(rounded_sum_boundary(integer_x_t{2}) == max<integer_y_t>());
+static_assert(!validate_integer(integer_sut_t{
+    .slope = rounded_sum_boundary.slope,
+    .y0 = rounded_sum_boundary.y0,
+    .x_max_delta = integer_x_t{3},
+}));
+
+// left shifts must leave room for the anchor before shifting
+constexpr auto shifted_sum_boundary = integer_sut_t{
+    .slope = {.significand = 1, .shift = -1},
+    .y0 = integer_y_t::literal(integer_max - 2),
+    .x_max_delta = integer_x_t{1},
+};
+static_assert(validate_integer(shifted_sum_boundary));
+static_assert(shifted_sum_boundary(integer_x_t{1}) == max<integer_y_t>());
+static_assert(!validate_integer(integer_sut_t{
+    .slope = shifted_sum_boundary.slope,
+    .y0 = integer_y_t::literal(integer_max - 1),
+    .x_max_delta = shifted_sum_boundary.x_max_delta,
+}));
+
+// no positive headroom remains at the maximum anchor
+static_assert(validate_integer(integer_sut_t{
+    .slope = {.significand = 0, .shift = 0},
+    .y0 = max<integer_y_t>(),
+    .x_max_delta = max<integer_x_t>(),
+}));
+static_assert(!validate_integer(integer_sut_t{
+    .slope = {.significand = 1, .shift = 0},
+    .y0 = max<integer_y_t>(),
+    .x_max_delta = integer_x_t{1},
+}));
+
+// a negative anchor cannot cause upward overflow, but delta must still fit before addition
+constexpr auto negative_anchor_boundary = integer_sut_t{
+    .slope = {.significand = 1, .shift = 0},
+    .y0 = min<integer_y_t>(),
+    .x_max_delta = max<integer_x_t>(),
+};
+static_assert(validate_integer(negative_anchor_boundary));
+static_assert(negative_anchor_boundary(max<integer_x_t>()) == integer_y_t{-1});
+static_assert(!validate_integer(integer_sut_t{
+    .slope = {.significand = 2, .shift = 0},
+    .y0 = negative_anchor_boundary.y0,
+    .x_max_delta = negative_anchor_boundary.x_max_delta,
+}));
+
 // representative finite clamp remains valid
 static_assert(validate_integer(integer_sut_t{
     .slope = {.significand = 3, .shift = 1},
