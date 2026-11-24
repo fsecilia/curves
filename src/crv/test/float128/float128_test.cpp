@@ -6,8 +6,10 @@
 #include "float128.hpp"
 #include <crv/math/inverse.hpp>
 #include <crv/math/limits.hpp>
+#include <crv/model/shaping/target_crossing.hpp>
 #include <crv/test/test.hpp>
 #include <cmath>
+#include <expected>
 #include <sstream>
 
 namespace crv {
@@ -119,6 +121,48 @@ TEST(float128_representable_order_test_t, first_true_search_crosses_zero)
     auto const denorm = limits::denorm_min();
     EXPECT_EQ(bisect_first_true_t{}(-denorm, denorm, [](float128_t input) noexcept { return input >= float128_t{0}; }),
         float128_t{0});
+}
+
+struct float128_target_crossing_test_t : Test
+{
+    using scalar_t = float128_t;
+    enum class error_t : uint8_t
+    {
+        failed,
+    };
+
+    // both boundaries are distinct in binary128 but round to the same binary64 value
+    struct curve_t
+    {
+        scalar_t first_finite;
+        scalar_t first_infinite;
+
+        auto try_evaluate(scalar_t input) const noexcept -> std::expected<scalar_t, error_t>
+        {
+            if (input < first_finite) return scalar_t{0};
+            if (input < first_infinite) return scalar_t{1};
+            return inf;
+        }
+    };
+
+    scalar_t first_finite = std::nextafter(scalar_t{1}, scalar_t{2});
+    scalar_t first_infinite = std::nextafter(first_finite, scalar_t{2});
+    curve_t curve{first_finite, first_infinite};
+    shaping::target_crossing_t<try_bisect_first_true_t> sut{{}};
+};
+
+TEST_F(float128_target_crossing_test_t, inclusive_resolves_binary128_finite_coordinate)
+{
+    using namespace shaping;
+    EXPECT_EQ(sut(scalar_t{1}, scalar_t{2}, scalar_t{1}, crossing_comparison_t::inclusive, curve),
+        crossing_result_t<scalar_t>{finite_crossing_t<scalar_t>{first_finite}});
+}
+
+TEST_F(float128_target_crossing_test_t, strict_resolves_binary128_frontier_coordinate)
+{
+    using namespace shaping;
+    EXPECT_EQ(sut(scalar_t{1}, scalar_t{2}, scalar_t{1}, crossing_comparison_t::strict, curve),
+        crossing_result_t<scalar_t>{crossing_frontier_t<scalar_t>{first_infinite}});
 }
 
 TEST(float128_test_nextafter_t, nextafter_uses_float128_polyfill)
