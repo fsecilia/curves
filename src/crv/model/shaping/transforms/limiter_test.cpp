@@ -406,6 +406,50 @@ INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_invalid_transition_half_inte
         invalid_half_integral_t{"negative", -0.1, limiter_error_t::transition_half_integral_not_positive}),
     test_name_generator_t<invalid_half_integral_t>{});
 
+TEST_F(shaping_transforms_limiter_test_t, rejects_upper_support_with_overflowing_exponential)
+{
+    auto const edge_bound = std::numeric_limits<scalar_t>::max() / scalar_t{2};
+    auto const edge_delta = edge_bound / scalar_t{2};
+    auto const upper_log = upper_upper_log(edge_bound, edge_delta);
+    ASSERT_TRUE(std::isfinite(upper_log));
+    ASSERT_GT(upper_log, std::log(std::numeric_limits<scalar_t>::max()));
+    ASSERT_TRUE(std::isinf(std::exp(upper_log)));
+
+    EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(half_integral));
+    auto const result = upper_t::construct(edge_bound, edge_delta, transition_t{&mock_transition});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::upper_support_not_representable});
+}
+
+TEST_F(shaping_transforms_limiter_test_t, rejects_upper_support_at_rounded_log_maximum)
+{
+    auto const edge_bound = std::numeric_limits<scalar_t>::max();
+    auto const edge_delta = edge_bound * std::numeric_limits<scalar_t>::epsilon();
+    ASSERT_GT(upper_half_width(edge_bound, edge_delta), scalar_t{0});
+    ASSERT_EQ(upper_upper_log(edge_bound, edge_delta), std::log(edge_bound));
+
+    EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(half_integral));
+    auto const result = upper_t::construct(edge_bound, edge_delta, transition_t{&mock_transition});
+    EXPECT_EQ(result, std::unexpected{limiter_error_t::upper_support_not_representable});
+}
+
+TEST_F(shaping_transforms_limiter_test_t, accepts_upper_support_immediately_below_rounded_log_maximum)
+{
+    auto const edge_bound = scalar_t{1};
+    auto const edge_delta = scalar_t{0.5};
+    auto const log_max = std::log(std::numeric_limits<scalar_t>::max());
+    auto const target_log = std::nextafter(log_max, scalar_t{0});
+    auto const j_half = -std::log1p(-edge_delta / edge_bound) / (scalar_t{2} * target_log);
+    auto const upper_log = upper_upper_log(edge_bound, edge_delta, j_half);
+    ASSERT_EQ(upper_log, target_log);
+    auto const upper = std::exp(upper_log);
+    ASSERT_TRUE(std::isfinite(upper));
+
+    EXPECT_CALL(mock_transition, antiderivative(scalar_t{0.5})).WillOnce(Return(j_half));
+    auto const result = upper_t::construct(edge_bound, edge_delta, transition_t{&mock_transition});
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)(upper), edge_bound);
+}
+
 TEST_F(shaping_transforms_limiter_test_t, rejects_lower_support_above_representable_range)
 {
     auto const max = std::numeric_limits<scalar_t>::max();

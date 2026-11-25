@@ -27,6 +27,7 @@ enum class limiter_error_t : uint8_t
     zero_bound_requires_zero_delta_y,
     positive_bound_requires_positive_delta_y,
     upper_delta_y_not_below_bound,
+    upper_support_not_representable,
     lower_support_not_representable,
     transition_half_integral_not_finite,
     transition_half_integral_not_positive,
@@ -104,7 +105,8 @@ class limiter_t
     using construction_result_t = std::expected<limiter_t, construction_error_t>;
 
 public:
-    [[nodiscard]] static auto construct(scalar_t bound, scalar_t delta_y, transition_t transition) -> construction_result_t
+    [[nodiscard]] static auto construct(scalar_t bound, scalar_t delta_y, transition_t transition)
+        -> construction_result_t
     {
         if (!std::isfinite(bound)) return std::unexpected{construction_error_t::bound_not_finite};
         if (bound < scalar_t{0}) return std::unexpected{construction_error_t::bound_negative};
@@ -170,6 +172,14 @@ public:
             if (!std::isfinite(upper))
             {
                 return std::unexpected{construction_error_t::lower_support_not_representable};
+            }
+        }
+        else
+        {
+            // reject the rounded log boundary even if exp rounds back into range
+            if (!std::isfinite(upper) || upper_log >= std::log(std::numeric_limits<scalar_t>::max()))
+            {
+                return std::unexpected{construction_error_t::upper_support_not_representable};
             }
         }
 
