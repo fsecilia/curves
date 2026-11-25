@@ -6,6 +6,7 @@
 #include "limiter.hpp"
 #include <crv/test/test.hpp>
 #include <cmath>
+#include <expected>
 #include <gmock/gmock.h>
 #include <limits>
 #include <string_view>
@@ -49,12 +50,15 @@ struct shaping_transforms_limiter_test_t : Test
         }
     };
 
+    using checked_result_t = std::expected<scalar_t, curve_evaluation_error_t>;
+
     struct mock_curve_t
     {
         virtual ~mock_curve_t() = default;
 
         MOCK_METHOD(scalar_t, scalar, (scalar_t), (const, noexcept));
         MOCK_METHOD(jet_t, jet, (jet_t), (const, noexcept));
+        MOCK_METHOD(checked_result_t, try_evaluate, (scalar_t), (const, noexcept));
     };
     StrictMock<mock_curve_t> mock_curve;
 
@@ -64,6 +68,7 @@ struct shaping_transforms_limiter_test_t : Test
 
         auto operator()(scalar_t input) const noexcept -> scalar_t { return mock->scalar(input); }
         auto operator()(jet_t input) const noexcept -> jet_t { return mock->jet(input); }
+        auto try_evaluate(scalar_t input) const noexcept -> checked_result_t { return mock->try_evaluate(input); }
     };
 
     using upper_t = upper_limiter_t<scalar_t, transition_t>;
@@ -221,6 +226,148 @@ TEST_F(shaping_transforms_limiter_test_t, lower_transition_uses_antiderivative_f
     EXPECT_CALL(mock_transition, antiderivative(DoubleNear(u, tolerance))).WillOnce(Return(j));
     auto const expected = bound * std::exp(scalar_t{2} * half_width * j);
     EXPECT_NEAR(sut(output), expected, tolerance);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_upper_is_exact_identity_at_lower_support)
+{
+    auto const sut = construct_upper();
+    auto const output = std::exp(upper_lower_log());
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), output);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_upper_transition_uses_antiderivative_formula)
+{
+    auto const u = scalar_t{0.25};
+    auto const j = scalar_t{0.04};
+    auto const half_width = upper_half_width();
+    auto const output = std::exp(upper_upper_log() - scalar_t{2} * half_width * u);
+    auto const sut = construct_upper();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_CALL(mock_transition, antiderivative(DoubleNear(u, tolerance))).WillOnce(Return(j));
+    auto const expected = bound * std::exp(-scalar_t{2} * half_width * j);
+    EXPECT_NEAR(sut.try_apply(curve_t{&mock_curve}, 3.0).value(), expected, tolerance);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_upper_is_exact_plateau_at_upper_support)
+{
+    auto const sut = construct_upper();
+    auto const output = std::exp(upper_upper_log());
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), bound);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_upper_absorbs_positive_overflow)
+{
+    auto const sut = construct_upper();
+    auto const infinity = std::numeric_limits<scalar_t>::infinity();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{infinity}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), bound);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_lower_is_exact_plateau_at_lower_support)
+{
+    auto const sut = construct_lower();
+    auto const output = std::exp(lower_lower_log());
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), bound);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_lower_transition_uses_antiderivative_formula)
+{
+    auto const u = scalar_t{0.25};
+    auto const j = scalar_t{0.04};
+    auto const half_width = lower_half_width();
+    auto const output = std::exp(lower_lower_log() + scalar_t{2} * half_width * u);
+    auto const sut = construct_lower();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_CALL(mock_transition, antiderivative(DoubleNear(u, tolerance))).WillOnce(Return(j));
+    auto const expected = bound * std::exp(scalar_t{2} * half_width * j);
+    EXPECT_NEAR(sut.try_apply(curve_t{&mock_curve}, 3.0).value(), expected, tolerance);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_lower_is_exact_identity_at_upper_support)
+{
+    auto const sut = construct_lower();
+    auto const output = std::exp(lower_upper_log());
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{output}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), output);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_lower_preserves_positive_overflow)
+{
+    auto const sut = construct_lower();
+    auto const infinity = std::numeric_limits<scalar_t>::infinity();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{infinity}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), infinity);
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_zero_upper_skips_curve_completely)
+{
+    auto const sut = upper_t::construct(0.0, 0.0, transition_t{&mock_transition}).value();
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), scalar_t{0});
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_zero_lower_preserves_finite_output)
+{
+    auto const sut = lower_t::construct(0.0, 0.0, transition_t{&mock_transition}).value();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{5.0}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), scalar_t{5});
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_zero_lower_preserves_positive_overflow)
+{
+    auto const sut = lower_t::construct(0.0, 0.0, transition_t{&mock_transition}).value();
+    auto const infinity = std::numeric_limits<scalar_t>::infinity();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{infinity}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), infinity);
+}
+
+struct shaping_transforms_limiter_checked_error_test_t : shaping_transforms_limiter_test_t,
+                                                         WithParamInterface<curve_evaluation_error_t>
+{};
+
+TEST_P(shaping_transforms_limiter_checked_error_test_t, checked_upper_preserves_nested_error)
+{
+    auto const sut = construct_upper();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{std::unexpected{GetParam()}}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), std::unexpected{GetParam()});
+}
+
+TEST_P(shaping_transforms_limiter_checked_error_test_t, checked_lower_preserves_nested_error)
+{
+    auto const sut = construct_lower();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{std::unexpected{GetParam()}}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), std::unexpected{GetParam()});
+}
+
+TEST_P(shaping_transforms_limiter_checked_error_test_t, checked_zero_lower_preserves_nested_error)
+{
+    auto const sut = lower_t::construct(0.0, 0.0, transition_t{&mock_transition}).value();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{std::unexpected{GetParam()}}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), std::unexpected{GetParam()});
+}
+
+INSTANTIATE_TEST_SUITE_P(shaping_transforms_limiter_checked_errors, shaping_transforms_limiter_checked_error_test_t,
+    Values(curve_evaluation_error_t::negative_finite_result, curve_evaluation_error_t::negative_infinity,
+        curve_evaluation_error_t::nan, curve_evaluation_error_t::unexpected_positive_infinity));
+
+TEST_F(shaping_transforms_limiter_test_t, checked_transition_rejects_nan_result)
+{
+    auto const sut = construct_upper();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{bound}));
+    EXPECT_CALL(mock_transition, antiderivative(DoubleNear(0.5, tolerance)))
+        .WillOnce(Return(std::numeric_limits<scalar_t>::quiet_NaN()));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0), std::unexpected{curve_evaluation_error_t::nan});
+}
+
+TEST_F(shaping_transforms_limiter_test_t, checked_transition_rejects_unsanctioned_positive_overflow)
+{
+    auto const sut = construct_lower();
+    EXPECT_CALL(mock_curve, try_evaluate(3.0)).WillOnce(Return(checked_result_t{bound}));
+    EXPECT_CALL(mock_transition, antiderivative(DoubleNear(0.5, tolerance))).WillOnce(Return(scalar_t{1000}));
+    EXPECT_EQ(sut.try_apply(curve_t{&mock_curve}, 3.0),
+        std::unexpected{curve_evaluation_error_t::unexpected_positive_infinity});
 }
 
 TEST_F(shaping_transforms_limiter_test_t, transition_jet_uses_analytic_derivative_multiplier)

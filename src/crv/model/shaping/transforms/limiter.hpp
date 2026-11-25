@@ -7,6 +7,7 @@
 
 #include <crv/lib.hpp>
 #include <crv/math/jet/jet.hpp>
+#include <crv/model/shaping/curve_evaluator.hpp>
 #include <crv/model/shaping/transitions/concepts.hpp>
 #include <cassert>
 #include <cmath>
@@ -224,6 +225,36 @@ public:
             return curve(input);
         }
         return (*this)(curve(input));
+    }
+
+    /// applies the limiter to a checked scalar result, preserving errors and sanctioned overflow
+    ///
+    /// The input must belong to the nested curve's semantic domain. A successful nested result must be finite and
+    /// nonnegative or be positive infinity denoting overflow of the actual curve output, not an intermediate result.
+    template <typename curve_t>
+    [[nodiscard]] auto try_apply(curve_t const& curve, scalar_t input) const noexcept
+        -> std::expected<scalar_t, curve_evaluation_error_t>
+    {
+        if constexpr (side == limiter_side_t::upper)
+        {
+            if (!support_) return bound_;
+        }
+
+        auto const output = curve.try_evaluate(input);
+        if (!output || !support_) return output;
+
+        // sanctioned positive overflow lies beyond the finite upper support
+        if (*output == std::numeric_limits<scalar_t>::infinity())
+        {
+            if constexpr (side == limiter_side_t::upper) return bound_;
+            return output;
+        }
+
+        auto const limited = (*this)(*output);
+        // a finite input cannot legitimately overflow within the constructed support
+        if (std::isnan(limited)) return std::unexpected{curve_evaluation_error_t::nan};
+        if (!std::isfinite(limited)) return std::unexpected{curve_evaluation_error_t::unexpected_positive_infinity};
+        return limited;
     }
 
     template <typename curve_t> [[nodiscard]] auto apply(curve_t const& curve, jet_t input) const noexcept -> jet_t

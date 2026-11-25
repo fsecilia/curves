@@ -22,6 +22,7 @@ enum class curve_evaluation_error_t : uint8_t
     negative_finite_result,
     negative_infinity,
     nan,
+    unexpected_positive_infinity, // transform arithmetic overflow without sanctioned overflow evidence
 };
 
 /// provides trusted and checked scalar curve evaluation
